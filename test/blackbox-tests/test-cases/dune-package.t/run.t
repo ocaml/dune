@@ -146,8 +146,7 @@ Build with "DUNE_STORE_ORIG_SOURCE_DIR=true" profile
 
 Install the package directly
 
-  $ dune install "--prefix=$PWD/prefix" --root=a 2>&1 | grep -v "Installing"
-  [1]
+  $ dune install "--prefix=$PWD/prefix" --root=a
 
   $ dune_cmd cat prefix/lib/a/dune-package | grep -e 'lib/a' -e 'share/a'
     $TESTCASE_ROOT/prefix/lib/a)

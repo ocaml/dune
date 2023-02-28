@@ -6,7 +6,7 @@ directory could be copied to the current directory, if needed.
 
 The syntax is as follows:
 
-.. code:: scheme
+.. code:: dune
 
     (copy_files
      <optional-fields>
@@ -27,13 +27,13 @@ details.
 
 The short form:
 
-.. code:: scheme
+.. code:: dune
 
     (copy_files <glob>)
 
 is equivalent to:
 
-.. code:: scheme
+.. code:: dune
 
     (copy_files (files <glob>))
 

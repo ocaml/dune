@@ -938,15 +938,16 @@ end = struct
 
   exception Abort of run_error
 
-  let handle_invalidation_events events =
+  let handle_invalidation_events =
     let handle_event event =
       match (event : Event.build_input_change) with
       | Invalidation invalidation -> invalidation
       | Fs_event event -> Fs_memo.handle_fs_event event
     in
-    let events = Nonempty_list.to_list events in
-    List.fold_left events ~init:Memo.Invalidation.empty ~f:(fun acc event ->
-        Memo.Invalidation.combine acc (handle_event event))
+    fun events ->
+      let events = Nonempty_list.to_list events in
+      List.fold_left events ~init:Memo.Invalidation.empty ~f:(fun acc event ->
+          Memo.Invalidation.combine acc (handle_event event))
 
   (** This function is the heart of the scheduler. It makes progress in
       executing fibers by doing the following:

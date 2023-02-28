@@ -20,23 +20,13 @@ let output_of_lib ~target_dir lib =
   let info = Lib.info lib in
   match Lib_info.status info with
   | Private _ -> `Private_library_or_emit target_dir
-  | Installed | Installed_private ->
+  | Installed | Installed_private | Public _ ->
     let lib_name = Lib_info.name info in
     let src_dir = Lib_info.src_dir info in
     `Public_library
       ( src_dir
       , Path.Build.L.relative target_dir
           [ "node_modules"; Lib_name.to_string lib_name ] )
-  | Public _ ->
-    let lib_name = Lib_info.name info in
-    let src_dir = Lib_info.src_dir info in
-    `Public_library
-      ( src_dir
-      , Path.Build.L.relative target_dir
-          [ "node_modules"
-          ; Lib_name.to_string lib_name
-          ; Path.Source.to_string (Path.drop_build_context_exn src_dir)
-          ] )
 
 let make_js_name ~js_ext ~output m =
   let basename = Melange.js_basename m ^ js_ext in

@@ -1,10 +1,11 @@
-name: Melange demo app build time benchmark
+name: Build time benchmarks
 
 # Do not run this workflow on pull request since this workflow has permission to modify contents.
 on:
   push:
     branches:
       - main
+      - bench/add-synthetic-benchmark
 
 permissions:
   # deployments permission to deploy GitHub pages website
@@ -65,7 +66,7 @@ jobs:
 
       - name: Run pupilfirst benchmark
         working-directory: pupilfirst
-        run: ../bench/gen-melange-benchmark.sh 'opam exec -- ../_boot/dune.exe build --root=. @main' 'opam exec -- ../_boot/dune.exe clean --root=.' 'pupilfirst build time (${{ runner.os }})' > melange-benchmark-result.json
+        run: ../bench/gen-benchmark.sh 'opam exec -- ../_boot/dune.exe build --root=. @main' 'opam exec -- ../_boot/dune.exe clean --root=.' 'pupilfirst build time (${{ runner.os }})' > melange-benchmark-result.json
 
       - name: Print pupilfirst benchmark results
         working-directory: pupilfirst
@@ -82,7 +83,38 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
           # Ratio indicating how worse the current benchmark result is.
-          # 150% means if last build took 40s and current takes 50s, it will trigger an alert
+          # 150% means if last build took 40s and current takes >60s, it will trigger an alert
+          alert-threshold: "150%"
+          fail-on-alert: true
+          # Enable alert commit comment
+          comment-on-alert: true
+          # Mention @jchavarri in the commit comment
+          alert-comment-cc-users: '@jchavarri'
+
+      - name: Create synthetic benchmark
+        working-directory: bench
+        run: opam exec -- ../_boot/dune.exe exec ./gen_synthetic.exe -- -n 2000 synthetic
+
+      - name: Run synthetic benchmark
+        working-directory: bench/synthetic
+        run: ../gen-benchmark.sh 'opam exec -- ../../_boot/dune.exe build @all' 'opam exec -- ../../_boot/dune.exe clean' 'synthetic build time (${{ runner.os }})' > synthetic-benchmark-result.json
+
+      - name: Print synthetic benchmark results
+        working-directory: bench/synthetic
+        run: |
+          cat bench.json
+          cat synthetic-benchmark-result.json
+
+      - name: Store synthetic benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Synthetic Benchmark
+          tool: "customSmallerIsBetter"
+          output-file-path: bench/synthetic/synthetic-benchmark-result.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          # Ratio indicating how worse the current benchmark result is.
+          # 150% means if last build took 40s and current takes >60s, it will trigger an alert
           alert-threshold: "150%"
           fail-on-alert: true
           # Enable alert commit comment

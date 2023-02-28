@@ -59,8 +59,8 @@ end = struct
     | { commands = []; error } -> raise (User_error.E error)
     | { commands = { dir; metadata; prog; args } :: commands; error } ->
       let* () =
-        Process.run ~display:!Clflags.display ~dir ~env:Env.initial Strict prog
-          args ~metadata
+        Process.run ~display:Quiet ~dir ~env:Env.initial Strict prog args
+          ~metadata
       in
       exec { commands; error }
 
@@ -68,8 +68,8 @@ end = struct
     | { commands = []; error } -> Fiber.return (Error error)
     | { commands = { dir; metadata; prog; args } :: commands; error } -> (
       let* output, code =
-        Process.run_capture ~display:!Clflags.display ~dir ~env:Env.initial
-          Return prog args ~metadata
+        Process.run_capture ~display:Quiet ~dir ~env:Env.initial Return prog
+          args ~metadata
       in
       match code with
       | 1 -> Fiber.return (Ok { Diff.output; loc = metadata.loc })

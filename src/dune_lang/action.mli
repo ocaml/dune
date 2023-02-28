@@ -78,6 +78,7 @@ type t =
   | Redirect_in of Inputs.t * String_with_vars.t * t
   | Ignore of Outputs.t * t
   | Progn of t list
+  | Concurrent of t list
   | Echo of String_with_vars.t list
   | Cat of String_with_vars.t list
   | Copy of String_with_vars.t * String_with_vars.t

@@ -136,8 +136,9 @@ let rec dep expander = function
   | Source_tree s ->
     Other
       (let* path = Expander.expand_path expander s in
-       Action_builder.map ~f:Path.Set.to_list
-         (Action_builder.source_tree ~dir:path))
+       Dep.Set.source_tree_with_file_set path
+       |> Action_builder.dyn_memo_deps
+       |> Action_builder.map ~f:Path.Set.to_list)
   | Package p ->
     Other
       (let* pkg = Expander.expand_str expander p in

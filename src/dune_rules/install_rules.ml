@@ -155,6 +155,15 @@ end = struct
                   in
                   (sub_dir, dst)
               in
+              let sub_dir =
+                match sub_dir with
+                | None -> lib_subdir
+                | Some subdir ->
+                  Some
+                    (match lib_subdir with
+                    | None -> subdir
+                    | Some lib_subdir -> Filename.concat lib_subdir subdir)
+              in
               make_entry ?sub_dir Lib source ?dst))
     in
     let { Lib_config.has_native; ext_obj; _ } = lib_config in

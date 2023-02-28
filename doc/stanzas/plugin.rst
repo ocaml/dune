@@ -9,7 +9,7 @@ Plugins are a way to load OCaml libraries at runtime. The ``plugin`` stanza
 allows you to declare the plugin's name, which :ref:`sites<sites>` should be
 present and which libraries it will load.
 
-.. code:: lisp
+.. code:: dune
 
    (plugin
     (name <name>)

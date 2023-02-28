@@ -706,7 +706,8 @@ Testsuite for the (foreign_library ...) stanza.
 
   $ rm -rf _build
   $ touch external/external_library.opam
-  $ ( cd external && ../sdune build @install && ../sdune install --prefix install 2>&1 | dune_cmd sanitize )
+  $ ( cd external && ../sdune build @install \
+  > && ../sdune install --prefix install --display=short 2>&1 | dune_cmd sanitize )
   Installing install/lib/external_library/META
   Installing install/lib/external_library/correction.h
   Installing install/lib/external_library/dune-package

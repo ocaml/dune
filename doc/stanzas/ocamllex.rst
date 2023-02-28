@@ -3,7 +3,7 @@ ocamllex
 
 ``(ocamllex <names>)`` is essentially a shorthand for:
 
-.. code:: lisp
+.. code:: dune
 
     (rule
      (target <name>.ml)
@@ -13,7 +13,7 @@ ocamllex
 
 To use a different rule mode, use the long form:
 
-.. code:: scheme
+.. code:: dune
 
     (ocamllex
      (modules <names>)

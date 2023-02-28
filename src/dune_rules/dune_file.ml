@@ -907,7 +907,10 @@ module Library = struct
     | Some x, From _ -> From x
     | Some _, This _ (* cannot specify for wrapped for implements *)
     | None, From _ -> assert false (* cannot inherit for normal libs *)
-    | None, This (Simple false) -> This None
+    | None, This (Simple false) -> (
+      match t.stdlib with
+      | None -> This None
+      | Some _ -> This (Some (Module_name.of_local_lib_name t.name)))
     | None, This (Simple true | Yes_with_transition _) ->
       This (Some (Module_name.of_local_lib_name t.name))
 

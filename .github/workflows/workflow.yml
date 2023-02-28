@@ -78,7 +78,7 @@ jobs:
       - run: opam install ./dune.opam --deps-only --with-test
 
       - name: Install system deps on macOS
-        run: brew install coreutils
+        run: brew install coreutils pkg-config file
         if: ${{ matrix.os == 'macos-latest' }}
 
       # dune doesn't have any additional dependencies so we can build it right

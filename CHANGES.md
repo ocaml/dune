@@ -1,17 +1,41 @@
 Unreleased
 ----------
 
+- Do not re-render UI on every frame if the UI doesn't change (#7186, fix
+  #7184, @rgrinberg)
+
 - Fix preludes not being recorded as dependencies in the `(mdx)` stanza (#7109,
   fixes #7077, @emillon).
 
-- Invoke preprocessor commands from directory of dune file containing the
-  commands rather than from the workspace root (#7057, fixes #7043, @gridbugs)
+- Make coq_db creation in scope lazy (@ejgallego, #7133)
+
+- Non-user proccesses such as version control or config checking are now run
+  silently. (#6994, fixes #4066, @Alizter)
 
 - Add the `--display-separate-messages` flag to separate the error messages
   produced by commands with a blank line. (#6823, fixes #6158, @esope)
 
 - Accept the Ordered Set Language for the `modes` field in `library` stanzas
   (#6611, @anmonteiro).
+
+- dune install now respects --display quiet mode (#7116, fixes #4573, fixes
+  #7106, @Alizter)
+
+- Stub shared libraries (dllXXX_stubs.so) in Dune-installed libraries could not
+  be used as dependencies of libraries in the workspace (eg when compiling to
+  bytecode and/or Javascript).  This is now fixed. (#7151, @nojb)
+
+- Allow the main module of a library with `(stdlib ...)` to depend on other
+  libraries (#7154, @anmonteiro).
+
+- Bytecode executables built for JSOO are linked with `-noautolink` and no
+  longer depend on the shared stubs of their dependent libraries (#7156, @nojb)
+
+- Added a new user action `(concurrent )` which is like `(progn )` but runs the
+  actions concurrently. (#6933, @Alizter)
+
+- Allow `(stdlib ...)` to be used with `(wrapped false)` in library stanzas
+  (#7139, @anmonteiro).
 
 3.7.0 (2023-02-17)
 ------------------

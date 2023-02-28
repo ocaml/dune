@@ -221,7 +221,7 @@ module Sources : sig
     val load :
          dune_version:Dune_lang.Syntax.Version.t
       -> dir:Path.Build.t
-      -> files:String.Set.t
+      -> files:Filename.Set.t
       -> t
   end
 end

@@ -1129,16 +1129,6 @@ let extend_basename t ~suffix =
   | In_build_dir t -> in_build_dir (Local.extend_basename t ~suffix)
   | External t -> external_ (External.extend_basename t ~suffix)
 
-let insert_after_build_dir_exn =
-  let error a b =
-    Code_error.raise "Path.insert_after_build_dir_exn"
-      [ ("path", to_dyn a); ("insert", String b) ]
-  in
-  fun a b ->
-    match a with
-    | In_build_dir a -> in_build_dir (Local.append (Local.of_string b) a)
-    | In_source_tree _ | External _ -> error a b
-
 let clear_dir dir = Fpath.clear_dir (to_string dir)
 
 let rm_rf ?(allow_external = false) t =

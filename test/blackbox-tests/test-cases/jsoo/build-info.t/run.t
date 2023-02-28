@@ -6,7 +6,7 @@ Jsoo and build-info
   Warning: Consider passing '-g' option to ocamlc.
   $ node _build/default/src/main.bc.js
   unknown
-  $ dune install --prefix _install
+  $ dune install --prefix _install --display short
   Installing _install/lib/main/META
   Installing _install/lib/main/dune-package
   Installing _install/lib/main/opam
@@ -26,7 +26,7 @@ Jsoo and build-info
   Warning: Consider passing '-g' option to ocamlc.
   $ node _build/default/src/main.bc.js
   unknown
-  $ dune install --prefix _install
+  $ dune install --prefix _install --display short
   Deleting _install/lib/main/META
   Installing _install/lib/main/META
   Deleting _install/lib/main/dune-package
@@ -47,7 +47,7 @@ Jsoo and build-info
   Warning: Consider passing '-g' option to ocamlc.
   $ node _build/default/src/main.bc.js
   0.2.0
-  $ dune install --prefix _install
+  $ dune install --prefix _install --display short
   Deleting _install/lib/main/META
   Installing _install/lib/main/META
   Deleting _install/lib/main/dune-package

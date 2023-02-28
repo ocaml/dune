@@ -21,7 +21,7 @@ Test dependency on a private library in the same package as melange.emit
 
   $ dune build
 
-  $ dune install --prefix $PWD/prefix
+  $ dune install --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/a/META
   Installing $TESTCASE_ROOT/prefix/lib/a/__private__/a/.public_cmi_melange/a.cmi
   Installing $TESTCASE_ROOT/prefix/lib/a/__private__/a/.public_cmi_melange/a.cmt

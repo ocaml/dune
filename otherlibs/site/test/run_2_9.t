@@ -163,7 +163,7 @@ Test with an opam like installation
   $ test -e a/a.install
   [1]
 
-  $ dune install -p a --create-install-files a 2> /dev/null
+  $ dune install -p a --create-install-files a
 
   $ grep "_destdir" a/a.install -c
   7
@@ -179,7 +179,7 @@ Build everything
 Test with a normal installation
 --------------------------------
 
-  $ dune install --prefix _install 2> /dev/null
+  $ dune install --prefix _install
 
 Once installed, we have the sites information:
 
@@ -198,7 +198,7 @@ Once installed, we have the sites information:
 Test with a relocatable installation
 --------------------------------
 
-  $ dune install --prefix _install_relocatable --relocatable 2> /dev/null
+  $ dune install --prefix _install_relocatable --relocatable
 
 Once installed, we have the sites information:
 
@@ -339,7 +339,7 @@ Test compiling an external plugin
   info.txt is found: true
   run c: registered:e,b.
 
-  $ OCAMLPATH=$PWD/_install/lib:$OCAMLPATH dune install --root=e --prefix $PWD/_install 2> /dev/null
+  $ OCAMLPATH=$PWD/_install/lib:$OCAMLPATH dune install --root=e --prefix $PWD/_install
 
   $ OCAMLPATH=_install/lib:$OCAMLPATH _install/bin/c
   run a

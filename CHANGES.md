@@ -18,6 +18,9 @@ Unreleased
 - Accept the Ordered Set Language for the `modes` field in `library` stanzas
   (#6611, @anmonteiro).
 
+- dune install now respects --display quiet mode (#7116, fixes #4573, fixes
+  #7106, @Alizter)
+
 - Stub shared libraries (dllXXX_stubs.so) in Dune-installed libraries could not
   be used as dependencies of libraries in the workspace (eg when compiling to
   bytecode and/or Javascript).  This is now fixed. (#7151, @nojb)

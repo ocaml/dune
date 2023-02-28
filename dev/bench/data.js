@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677610640423,
+  "lastUpdate": 1677612181205,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7307,6 +7307,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.44799662044667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "71855677+jonahbeckford@users.noreply.github.com",
+            "name": "jonahbeckford",
+            "username": "jonahbeckford"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3f75e20b3c920c9662d328b9af2cd1ff7611046b",
+          "message": "Test case for bug report (#6725)\n\nTest the situation where we have:\r\n\r\n1. an empty library A\r\n2. an executable with a module A\r\n3. conditional module selection in the exe\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-28T11:02:53-08:00",
+          "tree_id": "0e5b1bdd5c4bbae52a7dd079dd470f671c6a2741",
+          "url": "https://github.com/ocaml/dune/commit/3f75e20b3c920c9662d328b9af2cd1ff7611046b"
+        },
+        "date": 1677612180320,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.32016590114667",
             "unit": "seconds"
           }
         ]

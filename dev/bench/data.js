@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677610615938,
+  "lastUpdate": 1677610640423,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7278,6 +7278,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.89898680954",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bf5697dccb058ca2a38f46e604debd8084d4d932",
+          "message": "chore: add rule streaming proposal (#7195)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-28T10:37:50-08:00",
+          "tree_id": "f829cb46169117ba00ec458aea929236439f42e2",
+          "url": "https://github.com/ocaml/dune/commit/bf5697dccb058ca2a38f46e604debd8084d4d932"
+        },
+        "date": 1677610639572,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.44799662044667",
             "unit": "seconds"
           }
         ]

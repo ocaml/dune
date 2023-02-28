@@ -252,7 +252,11 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
       in
       let extra_deps, sandbox =
         match src.kind with
-        | Stubs stubs -> Dep_conf_eval.unnamed stubs.extra_deps ~expander
+        | Stubs stubs ->
+          let action_builder, sandbox =
+            Dep_conf_eval.unnamed stubs.extra_deps ~expander
+          in
+          (Action_builder.ignore action_builder, sandbox)
         | Ctypes _ -> (Action_builder.return (), Sandbox_config.default)
       in
       (* We don't sandbox the C compiler, see comment in [build_file] about

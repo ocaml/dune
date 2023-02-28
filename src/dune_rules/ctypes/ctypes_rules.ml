@@ -306,7 +306,10 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx ~version =
         ])
   in
   let* expander = Super_context.expander sctx ~dir in
-  let deps, sandbox = Dep_conf_eval.unnamed ~expander ctypes.deps in
+  let deps, sandbox =
+    let deps, sandbox = Dep_conf_eval.unnamed ~expander ctypes.deps in
+    (Action_builder.ignore deps, sandbox)
+  in
   let* () =
     Super_context.add_rule sctx ~loc:Loc.none ~dir
     @@

@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - bench/add-synthetic-benchmark
 
 permissions:
   # deployments permission to deploy GitHub pages website
@@ -92,11 +93,11 @@ jobs:
 
       - name: Create synthetic benchmark
         working-directory: bench
-        run: opam exec -- ../_boot/dune.exe exec ./gen_synthetic.exe -- -n 6 synthetic
+        run: opam exec -- ../_boot/dune.exe exec ./gen_synthetic.exe -- -n 2000 synthetic
 
       - name: Run synthetic benchmark
         working-directory: bench/synthetic
-        run: ../gen-benchmark.sh 'opam exec -- ../../_boot/dune.exe build ./main.exe' 'opam exec -- ../../_boot/dune.exe clean' 'synthetic build time (${{ runner.os }})' > synthetic-benchmark-result.json
+        run: ../gen-benchmark.sh 'opam exec -- ../../_boot/dune.exe build @all' 'opam exec -- ../../_boot/dune.exe clean' 'synthetic build time (${{ runner.os }})' > synthetic-benchmark-result.json
 
       - name: Print synthetic benchmark results
         working-directory: bench/synthetic

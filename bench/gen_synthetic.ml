@@ -12,10 +12,7 @@ let comment_size = ref 5000
 
 let count n = Array.to_list (Array.init n (fun k -> k + 1))
 
-let write_directory basedir dir_row dir_col =
-  let dirname = sprintf "%s/dir_%d_%d" basedir dir_row dir_col in
-  Unix.mkdir dirname 0o777;
-
+let write_modules basedir dir_row dir_col =
   for row = 1 to !mod_rows do
     for col = 1 to !mod_cols do
       let deps =
@@ -42,7 +39,7 @@ let write_directory basedir dir_row dir_col =
       let comment = String.make !comment_size 'X' in
       let mod_text = sprintf "(* %s *)\nlet f() =\n  %s\n" comment str_deps in
       let modname =
-        sprintf "%s/m_%d_%d_%d_%d" dirname dir_row dir_col row col
+        sprintf "%s/m_%d_%d_%d_%d" basedir dir_row dir_col row col
       in
       let f = open_out (sprintf "%s.ml" modname) in
       output_string f mod_text;
@@ -62,8 +59,6 @@ let write_directory basedir dir_row dir_col =
 
 let dune =
   {|
-(include_subdirs unqualified)
-
 (library
  (name test)
  (modules :standard \ main))
@@ -80,11 +75,9 @@ let write basedir =
   output_string f dune;
   let () = close_out f in
 
-  let basedir = Filename.concat basedir "src" in
-  let () = Unix.mkdir basedir 0o777 in
   for row = 1 to !dir_rows do
     for col = 1 to !dir_cols do
-      write_directory basedir row col
+      write_modules basedir row col
     done
   done
 

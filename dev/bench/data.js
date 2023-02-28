@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677604620156,
+  "lastUpdate": 1677610615938,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7249,6 +7249,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "43.29519833493999",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "5031221+voodoos@users.noreply.github.com",
+            "name": "Ulysse",
+            "username": "voodoos"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "93e8a95088e8437e7ddd64a5b1fc9a3500fef6d2",
+          "message": "Add test illustrating #6575 (#6576)\n\nSigned-off-by: Ulysse Gérard <thevoodoos@gmail.com>",
+          "timestamp": "2023-02-28T10:38:13-08:00",
+          "tree_id": "379ff33814986639bfcc27214fe40f646cb33253",
+          "url": "https://github.com/ocaml/dune/commit/93e8a95088e8437e7ddd64a5b1fc9a3500fef6d2"
+        },
+        "date": 1677610615141,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.89898680954",
             "unit": "seconds"
           }
         ]

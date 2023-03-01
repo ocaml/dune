@@ -1,25 +1,12 @@
 Test virtual lib in an exe / melange environment
 
-  $ dune build @melange --display=short
-      ocamldep impl_melange/.impl_melange.objs/virt.impl.d
-      ocamldep vlib/.vlib.objs/shared.impl.d
-      ocamldep vlib/.vlib.objs/virt.intf.d
-      ocamldep vlib/.vlib.objs/vlib_impl.impl.d
-          melc vlib/.vlib.objs/melange/virt.{cmi,cmti}
-          melc vlib/.vlib.objs/melange/vlib_impl.{cmi,cmj,cmt}
-          melc vlib/.vlib.objs/melange/shared.{cmi,cmj,cmt}
-          melc output/vlib/vlib_impl.js
-          melc impl_melange/.impl_melange.objs/melange/virt.{cmj,cmt}
-          melc output/vlib/shared.js
-          melc .output.mobjs/melange/melange__Mel.{cmi,cmj,cmt}
-          melc output/impl_melange/virt.js
-          melc output/mel.js
-  $ output=_build/default/output/mel.js
-  $ test -f "$output" && node "$output"
-  melange
+The native build passes
 
   $ dune exec ./ml.exe --display=short
       ocamldep impl_ml/.impl_ml.objs/virt.impl.d
+      ocamldep vlib/.vlib.objs/shared.impl.d
+      ocamldep vlib/.vlib.objs/virt.intf.d
+      ocamldep vlib/.vlib.objs/vlib_impl.impl.d
         ocamlc vlib/.vlib.objs/byte/virt.{cmi,cmti}
         ocamlc vlib/.vlib.objs/byte/vlib_impl.{cmi,cmo,cmt}
       ocamlopt vlib/.vlib.objs/native/vlib_impl.{cmx,o}
@@ -30,13 +17,21 @@ Test virtual lib in an exe / melange environment
       ocamlopt .ml.eobjs/native/dune__exe__Ml.{cmx,o}
       ocamlopt impl_ml/impl_ml.{a,cmxa}
       ocamlopt ml.exe
-  ml
-  $ ls _build/default/vlib/.vlib.objs/byte
-  shared.cmi
-  shared.cmo
-  shared.cmt
-  virt.cmi
-  virt.cmti
-  vlib_impl.cmi
-  vlib_impl.cmo
-  vlib_impl.cmt
+  Hello from ml
+
+Melange can't produce a `.cmj` solely from a virtual module `.cmi`, because it
+needs to consult the `.cmj` files of dependencies to know where the require
+call should be emitted
+
+  $ dune build @melange --display=short
+      ocamldep impl_melange/.impl_melange.objs/virt.impl.d
+          melc vlib/.vlib.objs/melange/virt.{cmi,cmti}
+          melc vlib/.vlib.objs/melange/vlib_impl.{cmi,cmj,cmt} (exit 2)
+  File "vlib/vlib_impl.ml", line 1:
+  Error: Virt not found, it means either the module does not exist or it is a namespace
+  [1]
+
+  $ output=_build/default/output/mel.js
+  $ test -f "$output" && node "$output"
+  [1]
+

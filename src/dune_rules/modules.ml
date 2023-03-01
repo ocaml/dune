@@ -796,7 +796,7 @@ let with_unique_map modules =
 
 let unique_map t = Lazy.force t.unique_map
 
-let equal (x : t) (y : t) = Poly.equal x y
+let equal (x : t) (y : t) = Poly.equal x.modules y.modules
 
 let rec encode t ~src_dir =
   let open Dune_lang in

@@ -41,13 +41,20 @@ jobs:
       # away this makes it possible to see build errors as soon as possible
       - run: opam exec -- make _boot/dune.exe
 
-      - name: Install deps on Unix
+      - name: Install opam deps
         run: |
           opam install . --deps-only --with-test
           opam exec -- make dev-deps
-          # Install hyperfine
+
+      - name: Install hyperfine on macOS
+        run: brew install hyperfine
+        if: ${{ matrix.os == 'macos-latest' }}
+        
+      - name: Install hyperfine on Linux
+        run: |
           wget https://github.com/sharkdp/hyperfine/releases/download/v1.14.0/hyperfine_1.14.0_amd64.deb
           sudo dpkg -i hyperfine_1.14.0_amd64.deb
+        if: ${{ matrix.os == 'ubuntu-latest' }}
 
       - name: Clone pupilfirst repo
         run: git clone https://github.com/jchavarri/pupilfirst.git

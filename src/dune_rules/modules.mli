@@ -92,7 +92,7 @@ module Sourced_module : sig
     | Impl_of_virtual_module of Module.t Ml_kind.Dict.t
 end
 
-val obj_map : t -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t
+val unique_map : t -> Module.t Module_name.Unique.Map.t
 
 val obj_map_build :
   t -> f:(Sourced_module.t -> 'a Memo.t) -> 'a Module.Obj_map.t Memo.t

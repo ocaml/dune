@@ -30,13 +30,7 @@ let make ~vlib ~impl ~vlib_modules ~vlib_foreign_objects =
     in
     Mode.cm_kind (if byte then Byte else Native)
   in
-  let vlib_obj_map =
-    Modules.obj_map vlib_modules ~f:(function
-      | Normal m -> m
-      | _ -> assert false)
-    |> Module.Obj_map.fold ~init:Module_name.Unique.Map.empty ~f:(fun m acc ->
-           Module_name.Unique.Map.add_exn acc (Module.obj_name m) m)
-  in
+  let vlib_obj_map = Modules.unique_map vlib_modules in
   { impl; impl_cm_kind; vlib; vlib_modules; vlib_foreign_objects; vlib_obj_map }
 
 let vlib_stubs_o_files = function

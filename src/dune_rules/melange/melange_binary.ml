@@ -13,20 +13,25 @@ let where =
       @@ Process.run_capture_line ~display:Quiet Process.Strict bin
            [ "--where" ]
     in
-    Path.of_string where
+    where
   in
   let memo =
-    Memo.create "melange-where" ~input:(module Path) ~cutoff:Path.equal impl
+    Memo.create "melange-where" ~input:(module Path) ~cutoff:String.equal impl
   in
   fun sctx ~loc ~dir ->
     let open Memo.O in
     let* env = Super_context.env_node sctx ~dir >>= Env_node.external_env in
-    match Env.get env "MELANGELIB" with
-    | Some p -> Memo.return (Some (Path.of_string p))
-    | None -> (
-      let* melc = melc sctx ~loc ~dir in
-      match melc with
-      | Error _ -> Memo.return None
-      | Ok melc ->
-        let+ res = Memo.exec memo melc in
-        Some res)
+    let+ melange_dirs =
+      match Env.get env "MELANGELIB" with
+      | Some p -> Memo.return (Some p)
+      | None -> (
+        let* melc = melc sctx ~loc ~dir in
+        match melc with
+        | Error _ -> Memo.return None
+        | Ok melc ->
+          let+ res = Memo.exec memo melc in
+          Some res)
+    in
+    match melange_dirs with
+    | None -> []
+    | Some dirs -> Bin.parse_path dirs

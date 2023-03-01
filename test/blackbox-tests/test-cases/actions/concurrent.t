@@ -33,23 +33,22 @@ They will block on the read however, which means if called with the same two
 pipes but swapped, they will only terminate when both scripts are running at the
 same time.
   $ cat > run.sh << EOF
-  > #!/bin/bash
   > echo foo>\$1 & read line<\$2
   > EOF
-  $ chmod +x run.sh
 
 We create an action that will create named pipes a and b and then run our script
 on both of them, but importantly inside the concurrent action. This will
 demonstrate that subactions are indeed being run concurrently. 
   $ cat > dune << EOF
   > (rule
+  >  (deps run.sh)
   >  (alias my-rule)
   >  (action
   >   (progn
   >    (run mkfifo a b)
   >    (concurrent
-  >     (run ./run.sh a b)
-  >     (run ./run.sh b a)))))
+  >     (run sh run.sh a b)
+  >     (run sh run.sh b a)))))
   > EOF
 
 When we run the rule, we see that the two actions are indeed run concurrently.

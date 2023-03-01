@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - bench/add-synthetic-benchmark
+      - bench/enable-macos
 
 permissions:
   # deployments permission to deploy GitHub pages website
@@ -21,6 +21,7 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
+          - macos-latest
         ocaml-compiler:
           - 4.14.x
 

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677713397756,
+  "lastUpdate": 1677713769936,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7715,6 +7715,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (Linux)",
             "value": "71.63756332902666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f6deaf9dd20458276b61df9eeb23381cc9846ab7",
+          "message": "test: use sh in concurrent test (#7205)\n\nno need to switch to bash\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-01T15:10:41-08:00",
+          "tree_id": "c44bbeb5ef287241bb3d1a4761f983dc063860b2",
+          "url": "https://github.com/ocaml/dune/commit/f6deaf9dd20458276b61df9eeb23381cc9846ab7"
+        },
+        "date": 1677713769060,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (Linux)",
+            "value": "73.44171568489332",
             "unit": "seconds"
           }
         ]

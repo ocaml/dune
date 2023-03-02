@@ -501,14 +501,15 @@ end = struct
 
   module Normal = struct
     type t =
-      { build_dir_only_sub_dirs : Subdir_set.t
+      { build_dir_only_sub_dirs : Build_config.Rules.Build_only_sub_dirs.t
       ; directory_targets : Loc.t Path.Build.Map.t
       ; rules : Rules.t Memo.Lazy.t
       }
 
     let combine_exn r { build_dir_only_sub_dirs; directory_targets; rules } =
       { build_dir_only_sub_dirs =
-          Subdir_set.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
+          Build_config.Rules.Build_only_sub_dirs.union r.build_dir_only_sub_dirs
+            build_dir_only_sub_dirs
       ; directory_targets =
           Path.Build.Map.union_exn r.directory_targets directory_targets
       ; rules =
@@ -660,6 +661,9 @@ end = struct
       Memo.return
         (Loaded.Build_under_directory_target { directory_target_ancestor })
     | Normal { rules; build_dir_only_sub_dirs; directory_targets } ->
+      let build_dir_only_sub_dirs =
+        Build_config.Rules.Build_only_sub_dirs.find build_dir_only_sub_dirs dir
+      in
       Path.Build.Map.iteri directory_targets ~f:(fun dir_target loc ->
           let name = Path.Build.basename dir_target in
           if

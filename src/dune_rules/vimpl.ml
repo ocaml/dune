@@ -6,7 +6,6 @@ type t =
   ; vlib_modules : Modules.t
   ; vlib_foreign_objects : Path.t list
   ; impl_cm_kind : Cm_kind.t
-  ; vlib_obj_map : Module.t Module_name.Unique.Map.t
   }
 
 let vlib_modules t = t.vlib_modules
@@ -30,11 +29,10 @@ let make ~vlib ~impl ~vlib_modules ~vlib_foreign_objects =
     in
     Mode.cm_kind (if byte then Byte else Native)
   in
-  let vlib_obj_map = Modules.unique_map vlib_modules in
-  { impl; impl_cm_kind; vlib; vlib_modules; vlib_foreign_objects; vlib_obj_map }
+  { impl; impl_cm_kind; vlib; vlib_modules; vlib_foreign_objects }
 
 let vlib_stubs_o_files = function
   | None -> []
   | Some t -> t.vlib_foreign_objects
 
-let vlib_obj_map t = t.vlib_obj_map
+let vlib_obj_map t = Modules.obj_map t.vlib_modules

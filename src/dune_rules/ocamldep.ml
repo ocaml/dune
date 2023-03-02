@@ -35,10 +35,10 @@ let parse_module_names ~dir ~(unit : Module.t) ~modules words =
           ])
 
 let parse_compilation_units ~modules =
-  let unique_map = Modules.unique_map modules in
+  let obj_map = Modules.obj_map modules in
   List.filter_map ~f:(fun m ->
       let obj_name = Module_name.Unique.of_string m in
-      Module_name.Unique.Map.find unique_map obj_name)
+      Module_name.Unique.Map.find obj_map obj_name)
 
 let parse_deps_exn ~file lines =
   let invalid () =

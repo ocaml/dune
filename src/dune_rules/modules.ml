@@ -730,7 +730,7 @@ module Wrapped = struct
 end
 
 type t =
-  { unique_map : Module.t Module_name.Unique.Map.t Lazy.t
+  { obj_map : Module.t Module_name.Unique.Map.t Lazy.t
   ; modules : modules
   }
 
@@ -753,7 +753,7 @@ module Sourced_module = struct
     | Impl_of_virtual_module of Module.t Ml_kind.Dict.t
 end
 
-let rec obj_map :
+let rec obj_map' :
           'a. modules -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t =
  fun t ~f ->
   let normal m = f (Sourced_module.Normal m) in
@@ -763,8 +763,8 @@ let rec obj_map :
   | Wrapped w -> Wrapped.obj_map w ~f:normal
   | Stdlib w -> Stdlib.obj_map w ~f:normal
   | Impl { vlib; impl } ->
-    Module.Obj_map.merge (obj_map vlib.modules ~f:Fun.id)
-      (obj_map impl.modules ~f:Fun.id) ~f:(fun _ vlib impl ->
+    Module.Obj_map.merge (obj_map' vlib.modules ~f:Fun.id)
+      (obj_map' impl.modules ~f:Fun.id) ~f:(fun _ vlib impl ->
         match (vlib, impl) with
         | None, None -> assert false
         | Some (Normal m), None ->
@@ -776,25 +776,25 @@ let rec obj_map :
         | _, Some (Imported_from_vlib _ | Impl_of_virtual_module _) ->
           assert false)
 
-let unique_map modules =
-  obj_map modules ~f:(function
+let obj_map_build :
+      'a. t -> f:(Sourced_module.t -> 'a Memo.t) -> 'a Module.Obj_map.t Memo.t =
+ fun t ~f ->
+  Module.Obj_map_traversals.parallel_map (obj_map' t.modules ~f) ~f:(fun _ x ->
+      x)
+
+let obj_map modules =
+  obj_map' modules ~f:(function
     | Sourced_module.Normal m -> m
     | Imported_from_vlib m -> m
     | Impl_of_virtual_module { intf = _; impl } -> impl)
   |> Module.Obj_map.to_list_map ~f:(fun m _ -> (Module.obj_name m, m))
   |> Module_name.Unique.Map.of_list_exn
 
-let obj_map_build :
-      'a. t -> f:(Sourced_module.t -> 'a Memo.t) -> 'a Module.Obj_map.t Memo.t =
- fun t ~f ->
-  Module.Obj_map_traversals.parallel_map (obj_map t.modules ~f) ~f:(fun _ x ->
-      x)
+let with_obj_map modules =
+  let obj_map = lazy (obj_map modules) in
+  { obj_map; modules }
 
-let with_unique_map modules =
-  let unique_map = lazy (unique_map modules) in
-  { unique_map; modules }
-
-let unique_map t = Lazy.force t.unique_map
+let obj_map t = Lazy.force t.obj_map
 
 let equal (x : t) (y : t) = Poly.equal x.modules y.modules
 
@@ -807,28 +807,27 @@ let rec encode t ~src_dir =
   | Stdlib m -> List (atom "stdlib" :: Stdlib.encode m ~src_dir)
   | Impl { impl; _ } -> encode impl ~src_dir
 
-let singleton m = with_unique_map (Singleton m)
+let singleton m = with_obj_map (Singleton m)
 
 let decode ~src_dir =
   let open Dune_lang.Decoder in
-  sum
-    [ ( "singleton"
-      , let+ m = Module.decode ~src_dir in
-        let modules = Singleton m in
-        with_unique_map modules )
-    ; ( "unwrapped"
-      , let+ modules = Unwrapped.decode ~src_dir in
-        let modules = Unwrapped modules in
-        with_unique_map modules )
-    ; ( "wrapped"
-      , let+ w = Wrapped.decode ~src_dir in
-        let modules = Wrapped w in
-        with_unique_map modules )
-    ; ( "stdlib"
-      , let+ stdlib = Stdlib.decode ~src_dir in
-        let modules = Stdlib stdlib in
-        with_unique_map modules )
-    ]
+  let+ modules =
+    sum
+      [ ( "singleton"
+        , let+ m = Module.decode ~src_dir in
+          Singleton m )
+      ; ( "unwrapped"
+        , let+ modules = Unwrapped.decode ~src_dir in
+          Unwrapped modules )
+      ; ( "wrapped"
+        , let+ w = Wrapped.decode ~src_dir in
+          Wrapped w )
+      ; ( "stdlib"
+        , let+ stdlib = Stdlib.decode ~src_dir in
+          Stdlib stdlib )
+      ]
+  in
+  with_obj_map modules
 
 let rec to_dyn t =
   let open Dyn in
@@ -886,7 +885,7 @@ let lib ~obj_dir ~main_module_name ~wrapped ~stdlib ~lib_name ~implements
       | (Simple true | Yes_with_transition _), None, _ ->
         Code_error.raise "Modules.lib: cannot wrap without main module name" [])
   in
-  with_unique_map modules
+  with_obj_map modules
 
 let impl impl ~vlib =
   let modules =
@@ -896,7 +895,7 @@ let impl impl ~vlib =
         [ ("impl", to_dyn impl); ("vlib", to_dyn vlib) ]
     | _, _ -> Impl { impl; vlib }
   in
-  with_unique_map modules
+  with_obj_map modules
 
 let rec find t name =
   match t.modules with
@@ -954,14 +953,14 @@ let make_singleton m mangle =
        let m = Module.set_path m [ name ] in
        Mangle.wrap_module mangle m ~interface:None)
   in
-  with_unique_map modules
+  with_obj_map modules
 
 let singleton_exe m = make_singleton m Exe
 
 let exe_unwrapped modules ~obj_dir =
   let mangle = Mangle.Unwrapped in
   let modules = Unwrapped (Unwrapped.of_trie modules ~mangle ~obj_dir) in
-  with_unique_map modules
+  with_obj_map modules
 
 let make_wrapped ~obj_dir ~modules kind =
   let mangle : Mangle.t =
@@ -975,7 +974,7 @@ let make_wrapped ~obj_dir ~modules kind =
     let modules =
       Wrapped (Wrapped.make_exe_or_melange ~obj_dir ~modules mangle)
     in
-    with_unique_map modules
+    with_obj_map modules
 
 let rec impl_only t =
   match t.modules with
@@ -1105,33 +1104,40 @@ let rec fold_user_written t ~f ~init =
 let rec map_user_written t ~f =
   let f m = if is_user_written m then f m else Memo.return m in
   let open Memo.O in
-  match t.modules with
-  | Singleton m ->
-    let+ res = f m in
-    with_unique_map (Singleton res)
-  | Unwrapped m ->
-    let+ res = Unwrapped.Memo_traversals.parallel_map m ~f in
-    with_unique_map (Unwrapped res)
-  | Stdlib w ->
-    let+ res = Stdlib.traverse w ~f in
-    with_unique_map (Stdlib res)
-  | Wrapped
-      ({ group; wrapped_compat = _; wrapped = _; toplevel_module = _ } as w) ->
-    let+ group = Group.Memo_traversals.parallel_map group ~f in
-    with_unique_map (Wrapped { w with group })
-  | Impl t ->
-    let+ modules = map_user_written t.vlib ~f in
-    with_unique_map (Impl { t with vlib = modules })
+  let+ modules =
+    match t.modules with
+    | Singleton m ->
+      let+ res = f m in
+      Singleton res
+    | Unwrapped m ->
+      let+ res = Unwrapped.Memo_traversals.parallel_map m ~f in
+      Unwrapped res
+    | Stdlib w ->
+      let+ res = Stdlib.traverse w ~f in
+      Stdlib res
+    | Wrapped
+        ({ group; wrapped_compat = _; wrapped = _; toplevel_module = _ } as w)
+      ->
+      let+ group = Group.Memo_traversals.parallel_map group ~f in
+      Wrapped { w with group }
+    | Impl t ->
+      let+ modules = map_user_written t.vlib ~f in
+      Impl { t with vlib = modules }
+  in
+  with_obj_map modules
 
 let version_installed t ~src_root ~install_dir =
   let f = Module.version_installed ~src_root ~install_dir in
   let rec loop t =
-    match t.modules with
-    | Singleton m -> with_unique_map (Singleton (f m))
-    | Unwrapped m -> with_unique_map (Unwrapped (Unwrapped.map ~f m))
-    | Stdlib w -> with_unique_map (Stdlib (Stdlib.map w ~f))
-    | Wrapped w -> with_unique_map (Wrapped (Wrapped.map w ~f))
-    | Impl w -> with_unique_map (Impl { w with impl = loop w.impl })
+    let modules =
+      match t.modules with
+      | Singleton m -> Singleton (f m)
+      | Unwrapped m -> Unwrapped (Unwrapped.map ~f m)
+      | Stdlib w -> Stdlib (Stdlib.map w ~f)
+      | Wrapped w -> Wrapped (Wrapped.map w ~f)
+      | Impl w -> Impl { w with impl = loop w.impl }
+    in
+    with_obj_map modules
   in
   loop t
 

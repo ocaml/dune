@@ -32,8 +32,6 @@ val read_deps_of :
   -> Module.t
   -> Module.t list Action_builder.t
 
-val parse_compilation_units : modules:Modules.t -> string list -> Module.t list
-
 (** [read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit] returns the
     immediate dependencies found in the modules of [modules] for the file with
     kind [ml_kind] of the module [unit]. If there is no such file with kind

@@ -43,8 +43,7 @@ jobs:
 
       - name: Install opam deps
         run: |
-          opam install . --deps-only --with-test
-          opam exec -- make dev-deps
+          opam install . --deps-only
 
       - name: Install hyperfine on macOS
         run: brew install hyperfine

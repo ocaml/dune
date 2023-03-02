@@ -35,10 +35,10 @@ module type S = sig
       things like waiting for user input.
 
       [time_budget] should be as accurate as possible, but if it's not, the only
-      consequence would be modifying the rendering rate. That is, if
-      [time_budget] is an underestimate the actual amount of time spent, we will
-      render faster than the desired frame rate. If it is an overestimate, we
-      will render slower. *)
+      consequence would be modifying the rendering rate. If [time_budget] is an
+      underestimation of the actual amount of time spent, we will render faster
+      than the desired frame rate. If it is an overestimation, we will render
+      slower. *)
   val handle_user_events : now:float -> time_budget:float -> Mutex.t -> float
 
   (** [reset] is called by the main thread to reset the user interface. *)

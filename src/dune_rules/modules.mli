@@ -90,9 +90,11 @@ module Sourced_module : sig
     | Normal of Module.t
     | Imported_from_vlib of Module.t
     | Impl_of_virtual_module of Module.t Ml_kind.Dict.t
+
+  val to_module : t -> Module.t
 end
 
-val obj_map : t -> Module.t Module_name.Unique.Map.t
+val obj_map : t -> Sourced_module.t Module_name.Unique.Map.t
 
 val obj_map_build :
   t -> f:(Sourced_module.t -> 'a Memo.t) -> 'a Module.Obj_map.t Memo.t

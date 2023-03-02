@@ -729,8 +729,20 @@ module Wrapped = struct
   let alias_for t m = Group.alias_for t.group m
 end
 
+module Sourced_module = struct
+  type t =
+    | Normal of Module.t
+    | Imported_from_vlib of Module.t
+    | Impl_of_virtual_module of Module.t Ml_kind.Dict.t
+
+  let to_module = function
+    | Normal m -> m
+    | Imported_from_vlib m -> m
+    | Impl_of_virtual_module { intf = _; impl } -> impl
+end
+
 type t =
-  { obj_map : Module.t Module_name.Unique.Map.t Lazy.t
+  { obj_map : Sourced_module.t Module_name.Unique.Map.t Lazy.t
   ; modules : modules
   }
 
@@ -745,13 +757,6 @@ and impl =
   { impl : t
   ; vlib : t
   }
-
-module Sourced_module = struct
-  type t =
-    | Normal of Module.t
-    | Imported_from_vlib of Module.t
-    | Impl_of_virtual_module of Module.t Ml_kind.Dict.t
-end
 
 let rec obj_map' :
           'a. modules -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t =
@@ -783,11 +788,8 @@ let obj_map_build :
       x)
 
 let obj_map modules =
-  obj_map' modules ~f:(function
-    | Sourced_module.Normal m -> m
-    | Imported_from_vlib m -> m
-    | Impl_of_virtual_module { intf = _; impl } -> impl)
-  |> Module.Obj_map.to_list_map ~f:(fun m _ -> (Module.obj_name m, m))
+  obj_map' modules ~f:Fun.id
+  |> Module.Obj_map.to_list_map ~f:(fun m s -> (Module.obj_name m, s))
   |> Module_name.Unique.Map.of_list_exn
 
 let with_obj_map modules =

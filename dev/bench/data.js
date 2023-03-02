@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677794943565,
+  "lastUpdate": 1677795285803,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -8092,6 +8092,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "6.025551723646667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8d88ee8068abb053fe8ed7c9c21b3a1883dbaf47",
+          "message": "feature: add terminal ui backend based on NoTTY (#6996)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-03-02T13:48:18-08:00",
+          "tree_id": "fed526d9dc61ac26685496aeb92a7b07d214d084",
+          "url": "https://github.com/ocaml/dune/commit/8d88ee8068abb053fe8ed7c9c21b3a1883dbaf47"
+        },
+        "date": 1677795284780,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "67.51444762060001",
             "unit": "seconds"
           }
         ]

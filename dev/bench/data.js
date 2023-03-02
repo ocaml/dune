@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677775174215,
+  "lastUpdate": 1677785542582,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7597,6 +7597,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.378816458073324",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "53f06748757eb600dd6c81705b52fdead50af727",
+          "message": "fix(rules): don't descend into automatic subdirs infinitely (#7208)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-02T11:13:11-08:00",
+          "tree_id": "a7950772a83a60cfa187ac773a18a1bfde836f41",
+          "url": "https://github.com/ocaml/dune/commit/53f06748757eb600dd6c81705b52fdead50af727"
+        },
+        "date": 1677785541440,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.332690064513336",
             "unit": "seconds"
           }
         ]

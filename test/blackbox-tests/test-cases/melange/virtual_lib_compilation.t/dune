@@ -7,5 +7,4 @@
  (target output)
  (alias melange)
  (entries mel)
- (libraries vlib impl_melange)
- (module_system commonjs))
+ (libraries vlib impl_melange))

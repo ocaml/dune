@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677785941015,
+  "lastUpdate": 1677793698298,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7626,6 +7626,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.332690064513336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "a75e28cd778e05bcde8239f5df926ac349b2d172",
+          "message": "doc(coq): update documentation about coqdep\n\n<!-- ps-id: 429b0fd3-7098-410b-96a4-80d1b39c4072 -->\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-03-02T22:24:50+01:00",
+          "tree_id": "5f2ece398a4ac6ff73d27ce329711dae8f9845a8",
+          "url": "https://github.com/ocaml/dune/commit/a75e28cd778e05bcde8239f5df926ac349b2d172"
+        },
+        "date": 1677793695761,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.468556154939996",
             "unit": "seconds"
           }
         ]

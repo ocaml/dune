@@ -113,6 +113,8 @@ Errors if the same extension is present multiple times
   - dune:4
   - dune:4
   Extensions must be unique per melange.emit stanza
+  Hint: specify different extensions with (module_systems (<system1>
+  <extension1>) (<system2> <extension2>))
   [1]
 
   $ cat > dune <<EOF
@@ -133,4 +135,6 @@ Errors if the same extension is present multiple times
   - dune:4
   - dune:4
   Extensions must be unique per melange.emit stanza
+  Hint: specify different extensions with (module_systems (<system1>
+  <extension1>) (<system2> <extension2>))
   [1]

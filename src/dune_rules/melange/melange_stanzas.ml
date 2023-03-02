@@ -81,6 +81,11 @@ module Emit = struct
             ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
             ; Pp.textf "Extensions must be unique per melange.emit stanza"
             ]
+            ~hints:
+              [ Pp.textf
+                  "specify different extensions with (module_systems \
+                   (<system1> <extension1>) (<system2> <extension2>))"
+              ]
       in
 
       module_systems

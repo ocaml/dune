@@ -7,6 +7,7 @@
   dune_rpc_private
   dune_rpc_server
   dune_rpc_impl
+  dune_rpc_client
   stdune
   test_scheduler
   csexp

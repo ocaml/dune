@@ -13,14 +13,17 @@ let register_action_deps :
   | Eager -> Build_system.build_deps deps
   | Lazy -> Memo.return deps
 
-let deps d =
+let dyn_memo_deps deps =
   of_thunk
     { f =
         (fun mode ->
           let open Memo.O in
-          let+ deps = register_action_deps mode d in
-          ((), deps))
+          let* deps, paths = deps in
+          let+ deps = register_action_deps mode deps in
+          (paths, deps))
     }
+
+let deps d = dyn_memo_deps (Memo.return (d, ()))
 
 let dep d = deps (Dep.Set.singleton d)
 
@@ -126,16 +129,6 @@ let paths_existing paths =
 let fail x =
   let+ () = return () in
   x.fail ()
-
-let source_tree ~dir =
-  of_thunk
-    { f =
-        (fun mode ->
-          let open Memo.O in
-          let* deps, paths = Dep.Set.source_tree_with_file_set dir in
-          let+ deps = register_action_deps mode deps in
-          (paths, deps))
-    }
 
 (* CR-someday amokhov: The set of targets is accumulated using information from
    multiple sources by calling [Targets.combine], which performs set union and

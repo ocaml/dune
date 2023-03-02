@@ -30,6 +30,7 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
       Redirect_in (inputs, f_path ~dir fn, f t ~dir)
     | Ignore (outputs, t) -> Ignore (outputs, f t ~dir)
     | Progn l -> Progn (List.map l ~f:(fun t -> f t ~dir))
+    | Concurrent l -> Concurrent (List.map l ~f:(fun t -> f t ~dir))
     | Echo xs -> Echo (List.map xs ~f:(f_string ~dir))
     | Cat xs -> Cat (List.map xs ~f:(f_path ~dir))
     | Copy (x, y) -> Copy (f_path ~dir x, f_target ~dir y)

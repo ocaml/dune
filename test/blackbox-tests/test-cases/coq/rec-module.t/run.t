@@ -1,5 +1,5 @@
   $ dune build --display short --debug-dependency-path @all
-        coqdep rec_module.theory.d
+        coqdep .rec_module.theory.d
           coqc b/foo.{glob,vo}
           coqc c/d/bar.{glob,vo}
           coqc c/ooo.{glob,vo}

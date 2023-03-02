@@ -85,6 +85,7 @@ type t =
   | Redirect_in of Inputs.t * String_with_vars.t * t
   | Ignore of Outputs.t * t
   | Progn of t list
+  | Concurrent of t list
   | Echo of String_with_vars.t list
   | Cat of String_with_vars.t list
   | Copy of String_with_vars.t * String_with_vars.t
@@ -210,6 +211,9 @@ let decode =
         ; ("ignore-stderr", t >>| fun t -> Ignore (Stderr, t))
         ; ("ignore-outputs", t >>| fun t -> Ignore (Outputs, t))
         ; ("progn", repeat t >>| fun l -> Progn l)
+        ; ( "concurrent"
+          , Syntax.since Stanza.syntax (3, 8) >>> repeat t >>| fun l ->
+            Concurrent l )
         ; ( "echo"
           , let+ x = sw
             and+ xs = repeat sw in
@@ -299,6 +303,7 @@ let rec encode =
   | Ignore (outputs, r) ->
     List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs)); encode r ]
   | Progn l -> List (atom "progn" :: List.map l ~f:encode)
+  | Concurrent l -> List (atom "concurrent" :: List.map l ~f:encode)
   | Echo xs -> List (atom "echo" :: List.map xs ~f:sw)
   | Cat xs -> List (atom "cat" :: List.map xs ~f:sw)
   | Copy (x, y) -> List [ atom "copy"; sw x; sw y ]
@@ -355,7 +360,7 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Mkdir _
     | Diff _
     | Cram _ -> false
-    | Pipe (_, ts) | Progn ts ->
+    | Pipe (_, ts) | Progn ts | Concurrent ts ->
       List.fold_left ts ~init:false ~f:(fun acc t ->
           let have_dyn = loop t in
           if acc && have_dyn then
@@ -383,6 +388,7 @@ let rec map_string_with_vars t ~f =
   | Redirect_in (i, sw, t) -> Redirect_in (i, f sw, t)
   | Ignore (o, t) -> Ignore (o, map_string_with_vars t ~f)
   | Progn xs -> Progn (List.map xs ~f:(map_string_with_vars ~f))
+  | Concurrent xs -> Concurrent (List.map xs ~f:(map_string_with_vars ~f))
   | Echo xs -> Echo xs
   | Cat xs -> Cat (List.map ~f xs)
   | Copy (sw1, sw2) -> Copy (f sw1, f sw2)

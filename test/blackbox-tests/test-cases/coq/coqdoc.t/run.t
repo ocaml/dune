@@ -31,7 +31,6 @@ Note that this currently works due to a bug in @all detecting directory targets.
   bar.vos
   base.dune-package
   base.install
-  basic.theory.d
   foo.glob
   foo.v
   foo.vo

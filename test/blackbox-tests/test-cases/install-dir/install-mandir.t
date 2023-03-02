@@ -7,7 +7,7 @@
   > EOF
   $ dune build @install
   $ mkdir install mandir
-  $ dune install --dry-run --prefix ./install --mandir $PWD/mandir 2>&1 | grep mandir
+  $ dune install --dry-run --prefix ./install --mandir $PWD/mandir --display short 2>&1 | grep mandir
   Removing (if it exists) $TESTCASE_ROOT/mandir/manfile
   Installing $TESTCASE_ROOT/mandir/manfile
   Creating directory $TESTCASE_ROOT/mandir

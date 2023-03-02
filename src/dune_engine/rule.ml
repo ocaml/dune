@@ -119,10 +119,6 @@ let set_action t action =
   let action = Action_builder.memoize "Rule.set_action" action in
   { t with action }
 
-let find_source_dir rule =
-  let _, src_dir = Path.Build.extract_build_context_dir_exn rule.dir in
-  Source_tree.nearest_dir src_dir
-
 module Anonymous_action = struct
   type t =
     { context : Build_context.t option

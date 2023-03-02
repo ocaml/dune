@@ -61,6 +61,7 @@ struct
     | Ignore (outputs, r) ->
       List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs)); encode r ]
     | Progn l -> List (atom "progn" :: List.map l ~f:encode)
+    | Concurrent l -> List (atom "concurrent" :: List.map l ~f:encode)
     | Echo xs -> List (atom "echo" :: List.map xs ~f:string)
     | Cat xs -> List (atom "cat" :: List.map xs ~f:path)
     | Copy (x, y) -> List [ atom "copy"; path x; target y ]
@@ -117,6 +118,8 @@ struct
   let ignore_outputs t = Ignore (Outputs, t)
 
   let progn ts = Progn ts
+
+  let concurrent ts = Concurrent ts
 
   let echo s = Echo s
 
@@ -289,7 +292,7 @@ let fold_one_step t ~init:acc ~f =
   | Redirect_in (_, _, t)
   | Ignore (_, t)
   | With_accepted_exit_codes (_, t) -> f acc t
-  | Progn l | Pipe (_, l) -> List.fold_left l ~init:acc ~f
+  | Progn l | Pipe (_, l) | Concurrent l -> List.fold_left l ~init:acc ~f
   | Run _
   | Dynamic_run _
   | Echo _
@@ -337,7 +340,7 @@ let rec is_dynamic = function
   | Redirect_in (_, _, t)
   | Ignore (_, t)
   | With_accepted_exit_codes (_, t) -> is_dynamic t
-  | Progn l | Pipe (_, l) -> List.exists l ~f:is_dynamic
+  | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:is_dynamic
   | Run _
   | System _
   | Bash _
@@ -386,7 +389,7 @@ let is_useful_to distribute memoize =
     | Redirect_out (_, _, _, t) -> memoize || loop t
     | Redirect_in (_, _, t) -> loop t
     | Ignore (_, t) | With_accepted_exit_codes (_, t) -> loop t
-    | Progn l | Pipe (_, l) -> List.exists l ~f:loop
+    | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:loop
     | Echo _ -> false
     | Cat _ -> memoize
     | Copy _ -> memoize

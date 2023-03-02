@@ -413,7 +413,8 @@ let melange_emit_rules sctx { stanza_dir; stanza } =
         Melange_rules.setup_emit_js_rules ~dir_contents ~dir:stanza_dir ~scope
           ~sctx stanza)
   in
-  { Build_config.Rules.build_dir_only_sub_dirs = Subdir_set.empty
+  { Build_config.Rules.build_dir_only_sub_dirs =
+      Subdir_set.These (String.Set.of_keys automatic_sub_dirs_map)
   ; directory_targets = Path.Build.Map.empty
   ; rules
   }
@@ -423,12 +424,19 @@ let gen_melange_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
   then Some (melange_emit_rules sctx for_melange)
   else None
 
+let empty_rules =
+  { Build_config.Rules.build_dir_only_sub_dirs =
+      Subdir_set.These (String.Set.of_keys automatic_sub_dirs_map)
+  ; directory_targets = Path.Build.Map.empty
+  ; rules = Memo.return Rules.empty
+  }
+
 let gen_melange_emit_rules_or_empty_redirect sctx ~dir = function
-  | None -> Build_config.(Redirect_to_parent Rules.empty)
+  | None -> Build_config.(Redirect_to_parent empty_rules)
   | Some for_melange -> (
     match gen_melange_emit_rules sctx ~dir for_melange with
     | Some r -> Build_config.Redirect_to_parent r
-    | None -> Build_config.(Redirect_to_parent Rules.empty))
+    | None -> Build_config.(Redirect_to_parent empty_rules))
 
 (* Once [gen_rules] has decided what to do with the directory, it should end
    with [has_rules] or [redirect_to_parent] *)
@@ -523,41 +531,52 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
           in
           Rules.union rules rules'
         in
-        let* subdirs =
-          let+ subdirs =
-            let subdirs = String.Set.of_keys automatic_sub_dirs_map in
-            let+ stanzas = Only_packages.stanzas_in_dir dir in
-            match stanzas with
-            | None -> subdirs
-            | Some stanzas ->
-              List.filter_map stanzas.stanzas ~f:(function
-                | Melange_stanzas.Emit.T mel -> Some mel.target
-                | _ -> None)
-              |> String.Set.of_list |> String.Set.union subdirs
-          in
-          match components with
-          | [] ->
-            String.Set.union subdirs
-              (String.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ])
-          | _ -> subdirs
-        in
-        let+ directory_targets =
+        let* directory_targets =
           collect_directory_targets ~dir ~init:directory_targets
         in
-        let build_config =
-          { Build_config.Rules.build_dir_only_sub_dirs = S.These subdirs
+        let automatic_subdirs =
+          match List.last components with
+          | None -> String.Set.of_keys automatic_sub_dirs_map
+          | Some comp ->
+            if String.Map.mem automatic_sub_dirs_map comp then String.Set.empty
+            else String.Set.of_keys automatic_sub_dirs_map
+        in
+        let build_config subdirs =
+          { Build_config.Rules.build_dir_only_sub_dirs = subdirs
           ; directory_targets
           ; rules
           }
         in
         match under_melange_emit_target with
-        | None -> Build_config.Rules build_config
-        | Some for_melange -> (
-          match gen_melange_emit_rules sctx ~dir for_melange with
-          | None -> Build_config.Redirect_to_parent build_config
-          | Some emit ->
-            Build_config.Rules
-              (Build_config.Rules.combine_exn build_config emit)))))
+        | None ->
+          let+ subdirs =
+            let+ subdirs =
+              let+ stanzas = Only_packages.stanzas_in_dir dir in
+              match stanzas with
+              | None -> automatic_subdirs
+              | Some stanzas ->
+                List.filter_map stanzas.stanzas ~f:(function
+                  | Melange_stanzas.Emit.T mel -> Some mel.target
+                  | _ -> None)
+                |> String.Set.of_list
+                |> String.Set.union automatic_subdirs
+            in
+            match components with
+            | [] ->
+              String.Set.union subdirs
+                (String.Set.of_list
+                   [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ])
+            | _ -> subdirs
+          in
+          Build_config.Rules (build_config (S.These subdirs))
+        | Some for_melange ->
+          let build_config = build_config (S.These automatic_subdirs) in
+          Memo.return
+            (match gen_melange_emit_rules sctx ~dir for_melange with
+            | None -> Build_config.Redirect_to_parent build_config
+            | Some emit ->
+              Build_config.Rules
+                (Build_config.Rules.combine_exn build_config emit)))))
 
 let with_context ctx ~f =
   Super_context.find ctx >>= function

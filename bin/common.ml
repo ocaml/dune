@@ -525,6 +525,7 @@ module Builder = struct
     ; workspace_config : Dune_rules.Workspace.Clflags.t
     ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
     ; report_errors_config : Dune_engine.Report_errors_config.t
+    ; separate_error_messages : bool
     ; require_dune_project_file : bool
     ; insignificant_changes : [ `React | `Ignore ]
     ; build_dir : string
@@ -804,6 +805,12 @@ module Builder = struct
             ~doc:
               "react to insignificant file system changes; this is only useful \
                for benchmarking dune")
+    and+ separate_error_messages =
+      Arg.(
+        value & flag
+        & info
+            [ "display-separate-messages" ]
+            ~doc:"Separate error messages with a blank line.")
     in
     { debug_dep_path
     ; debug_backtraces
@@ -840,6 +847,7 @@ module Builder = struct
         }
     ; cache_debug_flags
     ; report_errors_config
+    ; separate_error_messages
     ; require_dune_project_file
     ; insignificant_changes =
         (if react_to_insignificant_changes then `React else `Ignore)
@@ -1014,7 +1022,8 @@ let init ?log_file c =
   Dune_util.Report_error.print_memo_stacks := c.builder.debug_dep_path;
   Clflags.report_errors_config := c.builder.report_errors_config;
   Clflags.debug_backtraces c.builder.debug_backtraces;
-  Clflags.debug_artifact_substitution := c.builder.debug_artifact_substitution;
+  Dune_rules.Clflags.debug_artifact_substitution :=
+    c.builder.debug_artifact_substitution;
   Clflags.debug_load_dir := c.builder.debug_load_dir;
   Clflags.debug_digests := c.builder.debug_digests;
   Clflags.debug_fs_cache := c.builder.cache_debug_flags.fs_cache;
@@ -1023,16 +1032,17 @@ let init ?log_file c =
   Clflags.diff_command := c.builder.diff_command;
   Clflags.promote := c.builder.promote;
   Clflags.force := c.builder.force;
-  Clflags.store_orig_src_dir := c.builder.store_orig_src_dir;
-  Clflags.promote_install_files := c.builder.promote_install_files;
+  Dune_rules.Clflags.store_orig_src_dir := c.builder.store_orig_src_dir;
+  Dune_rules.Clflags.promote_install_files := c.builder.promote_install_files;
   Clflags.always_show_command_line := c.builder.always_show_command_line;
-  Clflags.ignore_promoted_rules := c.builder.ignore_promoted_rules;
+  Dune_rules.Clflags.ignore_promoted_rules := c.builder.ignore_promoted_rules;
   Clflags.on_missing_dune_project_file :=
     if c.builder.require_dune_project_file then Error else Warn;
   Dune_util.Log.info
     [ Pp.textf "Workspace root: %s"
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)
     ];
+  Dune_console.separate_messages c.builder.separate_error_messages;
   config
 
 let footer =

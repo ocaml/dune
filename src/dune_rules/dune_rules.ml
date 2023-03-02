@@ -52,6 +52,7 @@ module Command = Command
 module Install = Install
 module Lib_name = Lib_name
 module Diff = Dune_lang.Action.Diff
+module Clflags = Clflags
 
 module Install_rules = struct
   let install_file = Install_rules.install_file

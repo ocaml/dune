@@ -12,7 +12,7 @@ the new ``data_only_dirs`` stanza.
 
 Example:
 
-.. code:: scheme
+.. code:: dune
 
      (ignored_subdirs (<sub-dir1> <sub-dir2> ...))
 
@@ -20,6 +20,6 @@ All of the specified ``<sub-dirn>`` will be ignored by Dune. Note that users
 should rely on the ``dirs`` stanza along with the appropriate set operations
 instead of this stanza. For example:
 
-.. code:: lisp
+.. code:: dune
 
   (dirs :standard \ <sub-dir1> <sub-dir2> ...)

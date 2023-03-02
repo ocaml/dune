@@ -59,14 +59,14 @@ Documentation Stanza: Examples
 The :ref:`documentation-stanza` stanza will attach all the ``.mld`` files in
 the current directory in a project with a single package.
 
-.. code-block:: lisp
+.. code-block:: dune
 
    (documentation)
 
 This stanza will attach three ``.mld`` files to package ``foo``. The ``.mld`` files should
 be named ``foo.mld``, ``bar.mld``, and ``baz.mld``
 
-.. code-block:: lisp
+.. code-block:: dune
 
    (documentation
     (package foo)
@@ -75,7 +75,7 @@ be named ``foo.mld``, ``bar.mld``, and ``baz.mld``
 This stanza will attach all ``.mld`` files to the inferred package, 
 excluding ``wip.mld``, in the current directory:
 
-.. code-block:: lisp
+.. code-block:: dune
 
    (documentation
     (mld_files :standard \ wip))
@@ -102,7 +102,7 @@ installed.
 Passing Options to ``odoc``
 ===========================
 
-.. code-block:: lisp
+.. code-block:: dune
 
     (env
      (<profile>

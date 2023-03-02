@@ -93,7 +93,7 @@ follows:
 The file must be preprocessed with the ``ppx_inline_test`` PPX rewriter,
 so for instance the ``dune`` file might look like this:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name foo)
@@ -102,7 +102,7 @@ so for instance the ``dune`` file might look like this:
 In order to tell Dune that our library contains inline tests, 
 we have to add an ``inline_tests`` field:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name foo)
@@ -128,7 +128,7 @@ rewriter. To use such a framework, you must tell Dune about it,
 as it cannot guess. You can do that by adding a ``backend``
 field:
 
-.. code:: scheme
+.. code:: dune
 	
    (library
     (name foo)
@@ -176,7 +176,7 @@ expectation tests is always as follows:
 Dune makes this workflow very easy. Simply add ``ppx_expect`` to
 your list of PPX rewriters as follows:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name foo)
@@ -367,7 +367,7 @@ backend is specified by three parameters:
 These three parameters can be specified inside the
 ``inline_tests.backend`` field, which accepts the following fields:
 
-.. code:: scheme
+.. code:: dune
 
    (generate_runner   <action>)
    (runner_libraries (<ocaml-libraries>))
@@ -423,7 +423,7 @@ In this example, we put tests in comments of the form:
 
 The backend for such a framework looks like this:
 
-.. code:: lisp
+.. code:: dune
 
    (library
     (name simple_tests)
@@ -445,7 +445,7 @@ to this alias in any directory in order to define custom tests. For instance, if
 you have a binary ``tests.exe`` that you want to run as part of
 running your test suite, simply add this to a ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
    (rule
     (alias  runtest)
@@ -455,7 +455,7 @@ Hence to define a test, a pair of alias and executable stanzas are required.
 To simplify this common pattern, Dune provides a :ref:`tests-stanza` stanza to
 define multiple tests and their aliases at once:
 
-.. code:: scheme
+.. code:: dune
 
    (tests (names test1 test2))
 
@@ -469,7 +469,7 @@ which in essence is the same as running the ``diff`` tool, except that
 it's more integrated in Dune, especially with the ``promote``
 command. For instance, let's consider this test:
 
-.. code:: scheme
+.. code:: dune
 
    (rule
    (with-stdout-to tests.output (run ./tests.exe)))
@@ -485,7 +485,7 @@ generated ``test.output`` file to ``tests.expected`` in the source tree.
 
 Alternatively, the :ref:`tests-stanza` also supports this style of tests.
 
-.. code:: scheme
+.. code:: dune
 
    (tests (names tests))
 
@@ -524,7 +524,7 @@ for testing binaries. Cram tests are automatically discovered from files or dire
 with a ``.t`` extension. By default, this has been enabled since Dune 3.0. For
 older versions, it must be manually enabled in the ``dune-project`` file:
 
-.. code:: scheme
+.. code:: dune
 
    (lang dune 2.7)
    (cram enable)
@@ -675,7 +675,7 @@ Testing an OCaml Program
 The most common testing situation involves testing an executable that is defined
 in Dune. For example:
 
-.. code:: scheme
+.. code:: dune
 
    (executable
     (name wc)

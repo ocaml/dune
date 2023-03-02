@@ -6,7 +6,7 @@ executable
 The ``executable`` stanza must be used to describe an executable. The format of
 executable stanzas is as follows:
 
-.. code:: scheme
+.. code:: dune
 
     (executable
      (name <name>)
@@ -48,7 +48,7 @@ files for executables. See `executables_implicit_empty_intf`_.
   installed under this name. It's the same as adding the following stanza to
   your ``dune`` file:
 
-   .. code:: scheme
+   .. code:: dune
 
        (install
         (section bin)
@@ -170,7 +170,7 @@ available.
 For instance the following ``executables`` stanza will produce bytecode
 executables and native shared objects:
 
-.. code:: scheme
+.. code:: dune
 
           (executables
             (names a b c)
@@ -189,7 +189,7 @@ Additionally, you can use the following shorthands:
 
 For instance, the following ``modes`` fields are all equivalent:
 
-.. code:: scheme
+.. code:: dune
 
           (modes (exe object shared_object))
           (modes ((best exe)

@@ -1,4 +1,9 @@
 (executable
+ (name copyfile)
+ (modules copyfile)
+ (libraries stdune))
+
+(executable
  (name main)
  (modules main)
  (enabled_if

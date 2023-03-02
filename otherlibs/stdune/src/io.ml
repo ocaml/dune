@@ -248,9 +248,38 @@ struct
     in
     (ic, oc)
 
+  module Copyfile = struct
+    (* Bindings to mac's fast copy function. It's similar to a hardlink, except
+       it does COW when edited. It will also default back to regular copying if
+       it fails for w/e reason *)
+    external copyfile : string -> string -> unit = "stdune_copyfile"
+
+    external available : unit -> bool = "stdune_is_darwin"
+  end
+
   let copy_file ?chmod ~src ~dst () =
     Exn.protectx (setup_copy ?chmod ~src ~dst ()) ~finally:close_both
       ~f:(fun (ic, oc) -> copy_channels ic oc)
+
+  let copy_file =
+    match Copyfile.available () with
+    | false -> copy_file
+    | true -> (
+      fun ?chmod ~src ~dst () ->
+        let src = Path.to_string src in
+        let dst = Path.to_string dst in
+        (try Copyfile.copyfile src dst with
+        | Unix.Unix_error (Unix.EPERM, "unlink", _) ->
+          let message = Printf.sprintf "%s: Is a directory" dst in
+          raise (Sys_error message)
+        | Unix.Unix_error (Unix.ENOENT, "realpath", _) ->
+          let message =
+            Printf.sprintf "error: %s: No such file or directory" src
+          in
+          raise (Sys_error message));
+        match chmod with
+        | None -> ()
+        | Some chmod -> (Unix.stat src).st_perm |> chmod |> Unix.chmod dst)
 
   let file_line path n =
     with_file_in ~binary:false path ~f:(fun ic ->

@@ -44,6 +44,7 @@ jobs:
       - name: Install opam deps
         run: |
           opam install . --deps-only
+          opam exec -- make melange # rescript_syntax is needed for pupilfirst
 
       - name: Install hyperfine on macOS
         run: brew install hyperfine

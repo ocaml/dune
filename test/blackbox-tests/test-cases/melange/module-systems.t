@@ -76,6 +76,22 @@ Defaults to commonjs / `.js` if no config present at all
   $ ls _build/default/output
   main.js
 
+Errors out if extension starts with dot
+
+  $ cat > dune <<EOF
+  > (melange.emit
+  >  (target output)
+  >  (alias melange)
+  >  (module_systems (commonjs .bs.js)))
+  > EOF
+
+  $ dune build @mel --display=short
+  File "dune", line 4, characters 27-33:
+  4 |  (module_systems (commonjs .bs.js)))
+                                 ^^^^^^
+  Error: extension must not start with '.'
+  [1]
+
 Errors if the same extension is present multiple times
 
   $ dune clean
@@ -93,7 +109,9 @@ Errors if the same extension is present multiple times
   File "dune", line 4, characters 26-29:
   4 |  (module_systems commonjs es6))
                                 ^^^
-  Error: JavaScript extension .js appears more than once
+  Error: JavaScript extension .js appears more than once:
+  - dune:4
+  - dune:4
   Extensions must be unique per melange.emit stanza
   [1]
 
@@ -111,6 +129,8 @@ Errors if the same extension is present multiple times
   File "dune", line 4, characters 48-53:
   4 |  (module_systems (commonjs bs.js) commonjs (es6 bs.js)))
                                                       ^^^^^
-  Error: JavaScript extension .bs.js appears more than once
+  Error: JavaScript extension .bs.js appears more than once:
+  - dune:4
+  - dune:4
   Extensions must be unique per melange.emit stanza
   [1]

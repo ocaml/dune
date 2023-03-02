@@ -9,6 +9,10 @@ end
 (* TODO add invariants and make this abstract or private *)
 type t = string
 
+module Extension : sig
+  type t = string
+end
+
 val split_extension : t -> string * string
 
 val split_extension_after_dot : t -> string * string

@@ -6,7 +6,7 @@ module Emit = struct
     { loc : Loc.t
     ; target : string
     ; alias : Alias.Name.t option
-    ; module_systems : (Melange.Module_system.t * string) list
+    ; module_systems : (Melange.Module_system.t * Filename.Extension.t) list
     ; modules : Stanza_common.Modules_settings.t
     ; libraries : Lib_dep.t list
     ; package : Package.t option
@@ -67,17 +67,22 @@ module Emit = struct
               let _, ext = Melange.Module_system.default in
               (module_system, (loc, ext)))
       in
-      let (_ : String.Set.t), module_systems =
-        List.fold_map module_systems ~init:String.Set.empty
-          ~f:(fun seen (ms, (loc, ext)) ->
-            match String.Set.mem seen ext with
-            | true ->
-              User_error.raise ~loc
-                [ Pp.textf "JavaScript extension %s appears more than once" ext
-                ; Pp.textf "Extensions must be unique per melange.emit stanza"
-                ]
-            | false -> (String.Set.add seen ext, (ms, ext)))
+
+      let module_systems =
+        match
+          String.Map.of_list_map module_systems ~f:(fun (ms, (loc, ext)) ->
+              (ext, (loc, ms)))
+        with
+        | Ok m -> String.Map.to_list_map m ~f:(fun ext (_loc, ms) -> (ms, ext))
+        | Error (ext, (_, (loc1, _)), (_, (loc2, _))) ->
+          User_error.raise ~loc:loc2
+            [ Pp.textf "JavaScript extension %s appears more than once:" ext
+            ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+            ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+            ; Pp.textf "Extensions must be unique per melange.emit stanza"
+            ]
       in
+
       module_systems
     in
     fields

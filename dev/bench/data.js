@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677713769936,
+  "lastUpdate": 1677721628589,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7539,6 +7539,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.63444994974",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e909c5a3ad09944a52854ce2f2c5e4d57e86ff9b",
+          "message": "test: vendored and public libs (#7197)\n\nDemonstrate that a public library is currently allowed to depend on a\r\npublic library that is vendored. This should not work.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-01T17:23:38-08:00",
+          "tree_id": "8c70311d7c6bdb0940aaca7f65a78fedc5506333",
+          "url": "https://github.com/ocaml/dune/commit/e909c5a3ad09944a52854ce2f2c5e4d57e86ff9b"
+        },
+        "date": 1677721627060,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.64735710306666",
             "unit": "seconds"
           }
         ]

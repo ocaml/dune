@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677722056630,
+  "lastUpdate": 1677774801716,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7568,6 +7568,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.64735710306666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "javier.chavarri@gmail.com",
+            "name": "Javier Chávarri",
+            "username": "jchavarri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "013a0205d831242a97c699ec731e0e060baf1521",
+          "message": "benchmark: add warm run (#7198)\n\nSigned-off-by: Javier Chávarri <javier.chavarri@gmail.com>",
+          "timestamp": "2023-03-02T08:14:27-08:00",
+          "tree_id": "c13569935c6591a70022a618f6ae51b858320ff9",
+          "url": "https://github.com/ocaml/dune/commit/013a0205d831242a97c699ec731e0e060baf1521"
+        },
+        "date": 1677774800176,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.378816458073324",
             "unit": "seconds"
           }
         ]

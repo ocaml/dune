@@ -19,3 +19,13 @@ Make sure an error is returned if trying to nest `melange.emit` stanzas
   > EOF
 
   $ dune build @mel
+  File "a/b/c/dune", line 1, characters 0-70:
+  1 | (melange.emit
+  2 |  (target output)
+  3 |  (alias mel)
+  4 |  (module_system commonjs))
+  Error: melange.emit stanzas cannot be nested
+  - a/dune:1
+  - a/b/c/dune:1
+  Hint: Move the melange.emit stanza from a/b/c to at least the level of a
+  [1]

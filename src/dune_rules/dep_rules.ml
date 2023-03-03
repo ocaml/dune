@@ -4,7 +4,8 @@ open Ocamldep.Modules_data
 
 let transitive_deps_contents modules =
   List.map modules ~f:(fun m ->
-      Module_name.to_string (Module.name (Modules.Sourced_module.to_module m)))
+      (* TODO use object names *)
+      Modules.Sourced_module.to_module m |> Module.name |> Module_name.to_string)
   |> String.concat ~sep:"\n"
 
 let ooi_deps { vimpl; sctx; dir; obj_dir; modules = _; stdlib = _; sandbox = _ }
@@ -57,11 +58,12 @@ let deps_of_module ({ modules; _ } as md) ~ml_kind m =
     List.singleton interface_module |> Action_builder.return |> Memo.return
   | _ -> (
     let+ deps = Ocamldep.deps_of md ~ml_kind m in
-    let open Action_builder.O in
-    let+ deps = deps in
     match Modules.alias_for modules m with
     | [] -> deps
-    | aliases -> aliases @ deps)
+    | aliases ->
+      let open Action_builder.O in
+      let+ deps = deps in
+      aliases @ deps)
 
 let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind
     sourced_module =
@@ -79,9 +81,7 @@ let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind
     let+ deps =
       ooi_deps md ~dune_version ~vlib_obj_map ~ml_kind sourced_module
     in
-    let open Action_builder.O in
-    let+ deps = deps in
-    List.map ~f:Modules.Sourced_module.to_module deps
+    Action_builder.map deps ~f:(List.map ~f:Modules.Sourced_module.to_module)
   | Some lib ->
     let modules = Vimpl.vlib_modules vimpl in
     let info = Lib.Local.info lib in

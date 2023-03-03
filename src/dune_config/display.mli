@@ -3,9 +3,11 @@
     - [status_line] indictates if a status line is shown.
     - [verbosity] indicates how verbose the display will be. *)
 type t =
-  { status_line : bool
-  ; verbosity : Dune_engine.Display.t
-  }
+  | Simple of
+      { status_line : bool
+      ; verbosity : Dune_engine.Display.t
+      }
+  | Tui
 
 (** All the supported display modes for setting from the command line. *)
 val all : (string * t) list

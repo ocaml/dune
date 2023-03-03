@@ -152,6 +152,15 @@ The semantics of the fields are:
   Previous versions of Dune before 3.7 would disable the native rules depending
   on whether or not the ``dev`` profile was selected.
 
+Coq Dependencies
+~~~~~~~~~~~~~~~~
+
+When a Coq file ``a.v`` depends on another file ``b.v``, Dune is able to build
+them in the correct order, even if they are in separate theories. Under the
+hood, Dune asks coqdep how to resolve these dependencies, which is why it is
+called once per theory.
+
+
 Coq Documentation
 ~~~~~~~~~~~~~~~~~
 
@@ -216,13 +225,13 @@ Limitations
 .. _limitation-mlpack:
 
 - A ``foo.mlpack`` file must the present in directories of locally defined
-  plugins for things to work. ``coqdep`` will recognize a plugin by looking at
-  the existence of an ``.mlpack`` file, as it cannot access (for now) Dune's
-  library database. This is a limitation of ``coqdep``. See the :ref:`example
-  plugin<example plugin>` or the `this template
-  <https://github.com/ejgallego/coq-plugin-template>`_.
+  plugins for things to work. ``coqdep``, which is used internally by Dune, will
+  recognize a plugin by looking at the existence of an ``.mlpack`` file, as it
+  cannot access (for now) Dune's library database. This is a limitation of
+  ``coqdep``. See the :ref:`example plugin<example plugin>` or the `this
+  template <https://github.com/ejgallego/coq-plugin-template>`_.
 
-  This limitation will be lifted soon, as newer ``coqdep`` can use
+  This limitation will be lifted soon, as newer versions of ``coqdep`` can use
   findlib's database to check the existence of OCaml libraries.
 
 .. _coq-lang:
@@ -360,7 +369,6 @@ Now we run ``dune build``. After this is complete, we get the following files:
   │   ├── default
   │   │   ├── A.glob
   │   │   ├── A.v
-  │   │   ├── A.v.d
   │   │   └── A.vo
   │   └── log
   ├── dune
@@ -499,12 +507,10 @@ following files:
   ├── AA
   │   ├── aa.glob
   │   ├── aa.v
-  │   ├── aa.v.d
   │   └── aa.vo
   ├── AB
   │   ├── ab.glob
   │   ├── ab.v
-  │   ├── ab.v.d
   │   └── ab.vo
   └── A.html
       ├── A.AA.aa.html

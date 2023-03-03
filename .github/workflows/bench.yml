@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - bench/add-warm-run
+      - perf/run-parse_compilation_units-once
 
 permissions:
   # deployments permission to deploy GitHub pages website

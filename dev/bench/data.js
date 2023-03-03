@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677795312177,
+  "lastUpdate": 1677885881492,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7684,6 +7684,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.17965460165333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "javier.chavarri@gmail.com",
+            "name": "Javier Chávarri",
+            "username": "jchavarri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5bdb8444d202d55aeb71e68bd8b26a9f0b4358ea",
+          "message": "perf: run parse_compilation_units once (#7187)\n\nfix: speed up compilation with many modules\r\n\r\nOnly generate the map used to look up dependencies once per library/executable. Rather than once per module.\r\n\r\nSigned-off-by: Javier Chávarri <javier.chavarri@gmail.com>\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\nCo-authored-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-03T14:59:30-08:00",
+          "tree_id": "8e1a40d009380c9ba654d90156bd4ee3f4eb639f",
+          "url": "https://github.com/ocaml/dune/commit/5bdb8444d202d55aeb71e68bd8b26a9f0b4358ea"
+        },
+        "date": 1677885880516,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.707560031073335",
             "unit": "seconds"
           }
         ]

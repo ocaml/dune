@@ -155,6 +155,8 @@ let rules md =
   | None ->
     dict_of_func_concurrently (fun ~ml_kind ->
         let+ per_module =
-          Modules.obj_map_build modules ~f:(deps_of md ~ml_kind)
+          Modules.obj_map modules
+          |> Module_name.Unique.Map_traversals.parallel_map
+               ~f:(fun _obj_name m -> deps_of md ~ml_kind m)
         in
         Dep_graph.make ~dir:md.dir ~per_module)

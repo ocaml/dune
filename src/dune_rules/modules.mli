@@ -96,9 +96,6 @@ end
 
 val obj_map : t -> Sourced_module.t Module_name.Unique.Map.t
 
-val obj_map_build :
-  t -> f:(Sourced_module.t -> 'a Memo.t) -> 'a Module.Obj_map.t Memo.t
-
 (** List of entry modules visible to users of the library. For wrapped
     libraries, this is always one module. For unwrapped libraries, this could be
     more than one. *)

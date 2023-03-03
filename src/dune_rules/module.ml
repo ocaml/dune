@@ -326,8 +326,6 @@ module Obj_map = struct
   end)
 end
 
-module Obj_map_traversals = Memo.Make_map_traversals (Obj_map)
-
 let encode ({ source; obj_name; pp = _; visibility; kind; install_as = _ } as t)
     ~src_dir =
   let open Dune_lang.Encoder in

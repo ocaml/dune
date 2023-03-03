@@ -113,10 +113,6 @@ module Stdlib = struct
     let exit_module = stdlib.exit_module in
     { modules; unwrapped; exit_module; main_module_name }
 
-  let obj_map t ~f =
-    Module_name.Map.fold t.modules ~init:Module.Obj_map.empty ~f:(fun m acc ->
-        Module.Obj_map.add_exn acc m (f m))
-
   let impl_only t =
     Module_name.Map.values t.modules
     |> List.filter ~f:(fun m ->
@@ -575,10 +571,6 @@ module Unwrapped = struct
 
   let map t ~f = Group.map_modules t ~f
 
-  let obj_map t ~f =
-    fold t ~init:Module.Obj_map.empty ~f:(fun m acc ->
-        Module.Obj_map.add_exn acc m (f m))
-
   let entry_modules m =
     Module_name.Map.to_list_map m ~f:(fun _ m ->
         match (m : Group.node) with
@@ -702,11 +694,6 @@ module Wrapped = struct
     ; toplevel_module = `Hidden
     }
 
-  let obj_map { group; wrapped_compat; wrapped = _; toplevel_module = _ } ~f =
-    let add_module m acc = Module.Obj_map.add_exn acc m (f m) in
-    let init = Group.fold group ~init:Module.Obj_map.empty ~f:add_module in
-    Module_name.Map.fold ~init wrapped_compat ~f:add_module
-
   let impl_only { group; wrapped_compat; wrapped = _; toplevel_module = _ } =
     let init = Module_name.Map.values wrapped_compat in
     Group.fold group ~init ~f:(fun v acc ->
@@ -758,39 +745,28 @@ and impl =
   ; vlib : t
   }
 
-let rec obj_map' :
-          'a. modules -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t =
- fun t ~f ->
-  let normal m = f (Sourced_module.Normal m) in
-  match t with
-  | Singleton m -> Module.Obj_map.add_exn Module.Obj_map.empty m (normal m)
-  | Unwrapped m -> Unwrapped.obj_map m ~f:normal
-  | Wrapped w -> Wrapped.obj_map w ~f:normal
-  | Stdlib w -> Stdlib.obj_map w ~f:normal
-  | Impl { vlib; impl } ->
-    Module.Obj_map.merge (obj_map' vlib.modules ~f:Fun.id)
-      (obj_map' impl.modules ~f:Fun.id) ~f:(fun _ vlib impl ->
-        match (vlib, impl) with
-        | None, None -> assert false
-        | Some (Normal m), None ->
-          Some (f (Sourced_module.Imported_from_vlib m))
-        | None, Some (Normal m) -> Some (f (Normal m))
-        | Some (Normal intf), Some (Normal impl) ->
-          Some (f (Sourced_module.Impl_of_virtual_module { intf; impl }))
-        | Some (Imported_from_vlib _ | Impl_of_virtual_module _), _
-        | _, Some (Imported_from_vlib _ | Impl_of_virtual_module _) ->
-          assert false)
-
-let obj_map_build :
-      'a. t -> f:(Sourced_module.t -> 'a Memo.t) -> 'a Module.Obj_map.t Memo.t =
- fun t ~f ->
-  Module.Obj_map_traversals.parallel_map (obj_map' t.modules ~f) ~f:(fun _ x ->
-      x)
-
-let obj_map modules =
-  obj_map' modules ~f:Fun.id
-  |> Module.Obj_map.to_list_map ~f:(fun m s -> (Module.obj_name m, s))
-  |> Module_name.Unique.Map.of_list_exn
+let rec obj_map : 'a. modules -> Sourced_module.t Module_name.Unique.Map.t =
+  let module Map = Module_name.Unique.Map in
+  let normal m = Sourced_module.Normal m in
+  let f m acc = Map.add_exn acc (Module.obj_name m) (normal m) in
+  fun t ->
+    match t with
+    | Singleton m -> Map.add_exn Map.empty (Module.obj_name m) (normal m)
+    | Unwrapped m -> Unwrapped.fold m ~init:Map.empty ~f
+    | Wrapped w -> Wrapped.fold w ~init:Map.empty ~f
+    | Stdlib w -> Stdlib.fold w ~init:Map.empty ~f
+    | Impl { vlib; impl } ->
+      Map.merge (obj_map vlib.modules) (obj_map impl.modules)
+        ~f:(fun _ vlib impl ->
+          match (vlib, impl) with
+          | None, None -> assert false
+          | Some (Normal m), None -> Some (Sourced_module.Imported_from_vlib m)
+          | None, Some (Normal m) -> Some (Normal m)
+          | Some (Normal intf), Some (Normal impl) ->
+            Some (Sourced_module.Impl_of_virtual_module { intf; impl })
+          | Some (Imported_from_vlib _ | Impl_of_virtual_module _), _
+          | _, Some (Imported_from_vlib _ | Impl_of_virtual_module _) ->
+            assert false)
 
 let with_obj_map modules =
   let obj_map = lazy (obj_map modules) in

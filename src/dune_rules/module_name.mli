@@ -66,6 +66,12 @@ module Unique : sig
   include Dune_lang.Conv.S with type t := t
 
   include Comparable_intf.S with type key := t
+
+  module Map_traversals : sig
+    val parallel_iter : 'a Map.t -> f:(t -> 'a -> unit Memo.t) -> unit Memo.t
+
+    val parallel_map : 'a Map.t -> f:(t -> 'a -> 'b Memo.t) -> 'b Map.t Memo.t
+  end
 end
 
 module Path : sig

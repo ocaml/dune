@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677886642584,
+  "lastUpdate": 1677886845702,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7742,6 +7742,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.49125791864",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "40a5eae5bf6871db10c55983dee3506d3e4b8dad",
+          "message": "test: disable concurrent.t on macos (#7212)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-03-03T15:09:52-08:00",
+          "tree_id": "6e1b1064053ed570b20f1a485cc8ad2ae7c9c3e5",
+          "url": "https://github.com/ocaml/dune/commit/40a5eae5bf6871db10c55983dee3506d3e4b8dad"
+        },
+        "date": 1677886844298,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "43.838432390659996",
             "unit": "seconds"
           }
         ]

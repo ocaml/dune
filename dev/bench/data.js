@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677886249762,
+  "lastUpdate": 1677886642584,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7713,6 +7713,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.707560031073335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ce02bf035c7c421167be3b7b706f2b934faa6f59",
+          "message": "feature(ansi_color): add support for 8 and 24 bit color codes (#7188)\n\nAnsi escape codes for 8-bit and 24-bit colors will no longer be dropped.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-03-03T15:08:29-08:00",
+          "tree_id": "318e336a11b12824df8dcf9cbf53feb6fc3d84ef",
+          "url": "https://github.com/ocaml/dune/commit/ce02bf035c7c421167be3b7b706f2b934faa6f59"
+        },
+        "date": 1677886641149,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.49125791864",
             "unit": "seconds"
           }
         ]

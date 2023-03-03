@@ -48,7 +48,7 @@ Reproduce github #7020
   > EOF
 
   $ dune build @melange
-  Error: The library dummyfoo was not compiled with Dune or it waas compiled
+  Error: The library dummyfoo was not compiled with Dune or it was compiled
   with Dune but published with a META template. Such libraries are not
   compatible with melange support
   -> required by alias melange

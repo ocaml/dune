@@ -62,7 +62,7 @@ let impl_only_modules_defined_in_this_lib sctx lib =
   | None ->
     User_error.raise
       [ Pp.textf
-          "The library %s was not compiled with Dune or it waas compiled with \
+          "The library %s was not compiled with Dune or it was compiled with \
            Dune but published with a META template. Such libraries are not \
            compatible with melange support"
           (Lib.name lib |> Lib_name.to_string)

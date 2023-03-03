@@ -38,7 +38,8 @@ let parse_compilation_units ~modules =
   let obj_map = Modules.obj_map modules in
   List.filter_map ~f:(fun m ->
       let obj_name = Module_name.Unique.of_string m in
-      Module_name.Unique.Map.find obj_map obj_name)
+      Module_name.Unique.Map.find obj_map obj_name
+      |> Option.map ~f:Modules.Sourced_module.to_module)
 
 let parse_deps_exn ~file lines =
   let invalid () =

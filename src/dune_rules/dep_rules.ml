@@ -59,7 +59,6 @@ let deps_of_module ({ modules; _ } as md) ~ml_kind m =
     let+ deps = Ocamldep.deps_of md ~ml_kind m in
     let open Action_builder.O in
     let+ deps = deps in
-    let deps = List.map ~f:Modules.Sourced_module.to_module deps in
     match Modules.alias_for modules m with
     | [] -> deps
     | aliases -> aliases @ deps)
@@ -94,11 +93,7 @@ let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind
     let+ () =
       Super_context.add_rule sctx ~dir (Action_builder.symlink ~src ~dst)
     in
-    let open Action_builder.O in
-    let+ deps =
-      Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind m
-    in
-    List.map ~f:Modules.Sourced_module.to_module deps
+    Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind m
 
 let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
   let is_alias =

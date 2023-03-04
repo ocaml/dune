@@ -26,6 +26,8 @@ Unreleased
 - Speed up rule generation for libraries and executables with many modules
   (#7187, @jchavarri)
 
+- Add `--watch-exclusions` to dune build options (#7216, @jonahbeckford)
+
 - Do not re-render UI on every frame if the UI doesn't change (#7186, fix
   #7184, @rgrinberg)
 

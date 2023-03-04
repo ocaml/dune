@@ -19,6 +19,8 @@ val forbid_builds : t -> t
 
 val signal_watcher : t -> [ `Yes | `No ]
 
+val watch_exclusions : t -> string list
+
 val stats : t -> Dune_stats.t option
 
 val print_metrics : t -> bool

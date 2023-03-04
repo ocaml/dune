@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677898871139,
+  "lastUpdate": 1677899223676,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -8527,6 +8527,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.2622258283666667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "436965f550c40fd19fbe29d8a4b19f9b75bf8914",
+          "message": "test: re-enable actions test on macos (#7215)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-03T18:42:23-08:00",
+          "tree_id": "60be2b993aa5adad561a6a4764ab152bb30fd71d",
+          "url": "https://github.com/ocaml/dune/commit/436965f550c40fd19fbe29d8a4b19f9b75bf8914"
+        },
+        "date": 1677899223000,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "69.65386287670667",
             "unit": "seconds"
           }
         ]

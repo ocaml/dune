@@ -37,6 +37,10 @@ val copy_file : [ `Portable | `Best ] t
     Note that environment variables take precedence over the values passed here
     for easy overriding. *)
 
+(** Execute some actions in background threads. See [Action_exec] for the
+    concrete list of actions *)
+val background_actions : Toggle.t t
+
 (** Compute digests of files in a background thread *)
 val background_digests : Toggle.t t
 

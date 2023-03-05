@@ -139,8 +139,6 @@ module Event : sig
         internally. *)
     val send_file_watcher_events : t -> Dune_file_watcher.Event.t list -> unit
 
-    val send_invalidation_event : t -> Memo.Invalidation.t -> unit
-
     val send_job_completed : t -> job -> Proc.Process_info.t -> unit
 
     val send_shutdown : t -> Shutdown.Reason.t -> unit
@@ -163,9 +161,7 @@ end = struct
     | Fiber_fill_ivar of Fiber.fill
 
   module Invalidation_event = struct
-    type t =
-      | Invalidation of Memo.Invalidation.t
-      | Filesystem_event of Dune_file_watcher.Event.t
+    type t = Dune_file_watcher.Event.t
   end
 
   module Queue = struct
@@ -290,10 +286,10 @@ end = struct
                   Build_inputs_changed build_input_changes)
             | event :: events -> (
               match (event : Invalidation_event.t) with
-              | Filesystem_event Watcher_terminated ->
+              | Watcher_terminated ->
                 q.invalidation_events <- [];
                 Some File_system_watcher_terminated
-              | Filesystem_event (Sync id) -> (
+              | Sync id -> (
                 match Nonempty_list.of_list (List.rev acc) with
                 | None ->
                   q.invalidation_events <- events;
@@ -301,17 +297,15 @@ end = struct
                 | Some build_input_changes ->
                   q.invalidation_events <- event :: events;
                   Some (Build_inputs_changed build_input_changes))
-              | Filesystem_event (Fs_memo_event event) ->
+              | Fs_memo_event event ->
                 process_events (Fs_event event :: acc) events
-              | Filesystem_event Queue_overflow ->
+              | Queue_overflow ->
                 process_events
                   (Invalidation
                      (Memo.Invalidation.clear_caches
                         ~reason:Event_queue_overflow)
                   :: acc)
-                  events
-              | Invalidation invalidation ->
-                process_events (Invalidation invalidation :: acc) events)
+                  events)
           in
           process_events [] events
 
@@ -376,17 +370,9 @@ end = struct
     let send_worker_task_completed q event =
       add_event q (fun q -> Queue.push q.worker_tasks_completed event)
 
-    let send_invalidation_events q events =
-      add_event q (fun q ->
-          q.invalidation_events <- q.invalidation_events @ events)
-
     let send_file_watcher_events q files =
-      send_invalidation_events q
-        (List.map files ~f:(fun file : Invalidation_event.t ->
-             Filesystem_event file))
-
-    let send_invalidation_event q invalidation =
-      send_invalidation_events q [ Invalidation invalidation ]
+      add_event q (fun q ->
+          q.invalidation_events <- q.invalidation_events @ files)
 
     let send_job_completed q job proc_info =
       add_event q (fun q -> Queue.push q.jobs_completed (job, proc_info))
@@ -817,8 +803,6 @@ exception Build_cancelled
 let cancelled () = raise (Memo.Non_reproducible Build_cancelled)
 
 let check_cancelled t = if Fiber.Cancel.fired t.cancel then cancelled ()
-
-let abort_if_build_was_cancelled = t_opt () >>| Option.iter ~f:check_cancelled
 
 let check_point =
   t_opt () >>= function
@@ -1299,11 +1283,6 @@ let shutdown () =
   let+ t = t () in
   Event.Queue.send_shutdown t.events Requested
 
-let inject_memo_invalidation invalidation =
-  let* t = t () in
-  Event.Queue.send_invalidation_event t.events invalidation;
-  Fiber.return ()
-
 let wait_for_process_with_timeout t pid ~timeout ~is_process_group_leader =
   Fiber.of_thunk (fun () ->
       let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) timeout in
@@ -1335,7 +1314,3 @@ let sleep duration =
   | `Cancelled ->
     (* cancellation mechanism isn't exposed to the user *)
     assert false
-
-let wait_for_build_input_change () =
-  let* t = t () in
-  wait_for_build_input_change t

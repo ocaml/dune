@@ -111,10 +111,6 @@ val wait_for_process :
   -> Pid.t
   -> Proc.Process_info.t Fiber.t
 
-(** If the current build was cancelled, raise
-    [Memo.Non_reproducible Run.Build_cancelled]. *)
-val abort_if_build_was_cancelled : unit Fiber.t
-
 (** Number of jobs currently running in the background *)
 val running_jobs_count : t -> int
 
@@ -141,21 +137,11 @@ val running_jobs_count : t -> int
     will get suspended and will never restart. *)
 val shutdown : unit -> unit Fiber.t
 
-val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t
-
 (** [sleep duration] wait for [duration] to elapse. Sleepers are checked for
     wake up at a rate of once per 0.1 seconds. So [duration] should be at least
     this long. *)
 val sleep : float -> unit Fiber.t
 
 val stats : unit -> Dune_stats.t option Fiber.t
-
-(** Wait for a build input to change. If a build input change was seen but
-    hasn't been handled yet, return immediately.
-
-    Return even for build input change that are not significant, so that RPC
-    clients may observe that Dune reacted to a file change. This is needed for
-    benchmarking the watch mode of Dune. *)
-val wait_for_build_input_change : unit -> unit Fiber.t
 
 val spawn_thread : (unit -> 'a) -> unit

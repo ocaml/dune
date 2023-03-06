@@ -49,6 +49,11 @@ module Value = struct
     | Int of int
     | Path of Path.t
     | String of string
+
+  let to_dyn = function
+    | Int i -> Dyn.Int i
+    | Path p -> Path.to_dyn p
+    | String s -> Dyn.String s
 end
 
 module Version = struct

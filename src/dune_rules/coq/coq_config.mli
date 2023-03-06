@@ -14,6 +14,8 @@ module Value : sig
     | Int of int
     | Path of Path.t
     | String of string
+
+  val to_dyn : t -> Dyn.t
 end
 
 (** [by_name t name] returns the value of the option [name] in the Coq
@@ -24,5 +26,7 @@ end
     - version.revision
     - version.suffix
     - version
-    - ocaml-version *)
+    - ocaml-version
+    - coqlib
+    - coq_native_compiler_default *)
 val by_name : t -> string -> Value.t Option.t

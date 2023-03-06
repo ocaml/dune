@@ -1283,7 +1283,10 @@ module Run = struct
     in
     Option.iter file_watcher ~f:(fun watcher ->
         match Dune_file_watcher.shutdown watcher with
-        | `Kill pid -> ignore (wait_for_process t pid : _ Fiber.t)
+        | `Kill pid ->
+          (* XXX this can't be right because if we ignore the fiber,
+             we will not wait for the process *)
+          ignore (wait_for_process t pid : _ Fiber.t)
         | `Thunk f -> f ()
         | `No_op -> ());
     ignore (kill_and_wait_for_all_processes t : saw_shutdown);

@@ -14,8 +14,7 @@ Test simple interactions between melange.emit and copy_files
   > (melange.emit
   >  (alias mel)
   >  (target output)
-  >  (runtime_deps ./some_dir)
-  >  (module_system commonjs))
+  >  (runtime_deps ./some_dir))
   > EOF
 
   $ cat > main.ml <<EOF
@@ -34,12 +33,11 @@ Rules created for the assets in the output directory
   $ dune build @mel --display=short
           melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
           melc output/main.js
-  File "dune", line 5, characters 0-97:
+  File "dune", line 5, characters 0-71:
   5 | (melange.emit
   6 |  (alias mel)
   7 |  (target output)
-  8 |  (runtime_deps ./some_dir)
-  9 |  (module_system commonjs))
+  8 |  (runtime_deps ./some_dir))
   Error: Error trying to read targets after a rule was run:
   - output/some_dir: Unexpected file kind "S_DIR" (directory)
   [1]

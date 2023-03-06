@@ -9,8 +9,7 @@ Test simple interactions between melange.emit and copy_files
   > (melange.emit
   >  (alias mel)
   >  (target output)
-  >  (runtime_deps assets/file.txt (glob_files_rec ./globbed/*.txt))
-  >  (module_system commonjs))
+  >  (runtime_deps assets/file.txt (glob_files_rec ./globbed/*.txt)))
   > EOF
 
   $ mkdir assets
@@ -79,5 +78,6 @@ The runtime_dep index.txt was copied to the build folder
   $ node _build/default/output/main.js
   hello from file
   
+
 
 

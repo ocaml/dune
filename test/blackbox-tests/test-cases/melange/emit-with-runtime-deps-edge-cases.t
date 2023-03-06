@@ -1,25 +1,25 @@
 Test simple interactions between melange.emit and copy_files
 
+  $ mkdir a
   $ cat > dune-project <<EOF
   > (lang dune 3.7)
   > (using melange 0.1)
   > (using directory-targets 0.1)
   > EOF
 
-  $ cat > dune <<EOF
+  $ cat > a/dune <<EOF
   > (melange.emit
   >  (alias mel)
   >  (target output)
-  >  (runtime_deps assets/file.txt assets/file.txt)
-  >  (module_system commonjs))
+  >  (runtime_deps assets/file.txt assets/file.txt))
   > EOF
 
-  $ mkdir assets
-  $ cat > assets/file.txt <<EOF
+  $ mkdir a/assets
+  $ cat > a/assets/file.txt <<EOF
   > hello from file
   > EOF
 
-  $ cat > main.ml <<EOF
+  $ cat > a/main.ml <<EOF
   > let dirname = [%bs.raw "__dirname"]
   > let file_path = "./assets/file.txt"
   > let file_content = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
@@ -28,30 +28,31 @@ Test simple interactions between melange.emit and copy_files
 
 Rules created for the assets in the output directory
 
-  $ mkdir output
+  $ mkdir a/output
   $ dune rules @mel | grep file.txt
-  ((deps ((File (In_build_dir _build/default/assets/file.txt))))
-   (targets ((files (default/output/assets/file.txt)) (directories ())))
-     (symlink ../../assets/file.txt output/assets/file.txt))))
+  ((deps ((File (In_build_dir _build/default/a/assets/file.txt))))
+   (targets ((files (default/a/output/a/assets/file.txt)) (directories ())))
+     (symlink ../../../assets/file.txt a/output/a/assets/file.txt))))
 
   $ dune build @mel --display=short
-          melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc output/main.js
+          melc a/.output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
+          melc a/output/a/main.js
 
 The runtime_dep index.txt was copied to the build folder
 
-  $ ls _build/default/output/assets
+  $ ls _build/default/a/output/a/assets
   file.txt
 
-  $ dune build output/assets/file.txt --display=short
-  $ ls _build/default/output
+  $ dune build a/output/a/assets/file.txt --display=short
+  $ ls _build/default/a/output/a
   assets
   main.js
 
 
-  $ node _build/default/output/main.js
+  $ node _build/default/a/output/a/main.js
   hello from file
   
+
 
 
 Test depending on non-existing paths
@@ -62,8 +63,7 @@ Test depending on non-existing paths
   > (melange.emit
   >  (alias non-existing-mel)
   >  (target another-output)
-  >  (runtime_deps doesnt-exist.txt)
-  >  (module_system commonjs))
+  >  (runtime_deps doesnt-exist.txt))
   > EOF
 
   $ dune build @non-existing-mel --display=short
@@ -78,8 +78,7 @@ Test depending on paths that "escape" the melange.emit directory
   > (melange.emit
   >  (alias mel)
   >  (target another-output)
-  >  (runtime_deps ../assets/file.txt)
-  >  (module_system commonjs))
+  >  (runtime_deps ../a/assets/file.txt))
   > EOF
   $ cat > another/main.ml <<EOF
   > let dirname = [%bs.raw "__dirname"]
@@ -92,22 +91,23 @@ Need to create the source dir first for the alias to be picked up
 
   $ mkdir -p another/another-output/assets
   $ dune rules @mel | grep .txt
-  ((deps ((File (In_build_dir _build/default/assets/file.txt))))
-    ((files (default/another/another-output/assets/file.txt)) (directories ())))
-     (symlink ../../../assets/file.txt another/another-output/assets/file.txt))))
-  ((deps ((File (In_build_dir _build/default/assets/file.txt))))
-   (targets ((files (default/output/assets/file.txt)) (directories ())))
-     (symlink ../../assets/file.txt output/assets/file.txt))))
+  ((deps ((File (In_build_dir _build/default/a/assets/file.txt))))
+   (targets ((files (default/a/output/a/assets/file.txt)) (directories ())))
+     (symlink ../../../assets/file.txt a/output/a/assets/file.txt))))
+  ((deps ((File (In_build_dir _build/default/a/assets/file.txt))))
+    ((files (default/another/another-output/a/assets/file.txt))
+      ../../../../a/assets/file.txt
+      another/another-output/a/assets/file.txt))))
 
   $ dune build @mel --display=short
-          melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
+          melc a/.output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
           melc another/.another-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc output/main.js
+          melc a/output/a/main.js
           melc another/another-output/another/main.js
 
-Path ends ups being emitted "correctly", but ouside the target dir.
+Path ends ups being emitted "correctly", but outside the target dir.
   $ ls _build/default/another/another-output/another
   main.js
-  $ ls _build/default/another/another-output/assets
+  $ ls _build/default/another/another-output/a/assets
   file.txt
 

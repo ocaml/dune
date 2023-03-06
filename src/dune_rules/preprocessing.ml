@@ -728,10 +728,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
           (Super_context.context sctx).version)
   in
   let preprocessor_deps, sandbox =
-    let preprocessor_deps, sandbox =
-      Dep_conf_eval.unnamed preprocessor_deps ~expander
-    in
-    (Action_builder.ignore preprocessor_deps, sandbox)
+    Dep_conf_eval.unnamed preprocessor_deps ~expander
   in
   let sandbox =
     match

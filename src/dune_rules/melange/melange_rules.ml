@@ -249,13 +249,10 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
 
 module Runtime_deps = struct
   let to_action_builder ~expander dep_conf =
-    let runtime_deps =
-      let runtime_deps, _sandbox =
-        Dep_conf_eval.unnamed_get_paths ~expander dep_conf
-      in
-      runtime_deps
+    let runtime_deps, _sandbox =
+      Dep_conf_eval.unnamed_get_paths ~expander dep_conf
     in
-    Action_builder.memoize "melange runtime deps" runtime_deps
+    runtime_deps
 
   let eval ~expander (deps : Dep_conf.t list) =
     let open Memo.O in
@@ -264,8 +261,7 @@ module Runtime_deps = struct
     paths
 
   let targets ~output deps =
-    Path.Set.to_list_map
-      ~f:(fun src ->
+    Path.Set.to_list_map deps ~f:(fun src ->
         let dst =
           match output with
           | `Private_library_or_emit output_dir ->
@@ -278,7 +274,6 @@ module Runtime_deps = struct
             lib_output_path ~output_dir ~lib_dir src
         in
         (src, dst))
-      deps
 end
 
 let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode

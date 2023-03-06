@@ -273,6 +273,14 @@ let named ~expander l =
         | Unnamed dep -> add_sandbox_config acc dep
         | Named (_, l) -> List.fold_left l ~init:acc ~f:add_sandbox_config) )
 
+let unnamed ?(sandbox = Sandbox_config.no_special_requirements) ~expander l =
+  let expander = prepare_expander expander in
+  ( List.fold_left l ~init:(Action_builder.return ()) ~f:(fun acc x ->
+        let+ () = acc
+        and+ _x = to_action_builder (dep expander x) in
+        ())
+  , List.fold_left l ~init:sandbox ~f:add_sandbox_config )
+
 let unnamed_get_paths ?(sandbox = Sandbox_config.no_special_requirements)
     ~expander l =
   let expander = prepare_expander expander in
@@ -284,8 +292,3 @@ let unnamed_get_paths ?(sandbox = Sandbox_config.no_special_requirements)
      in
      Path.Set.of_list (List.concat paths))
   , List.fold_left l ~init:sandbox ~f:add_sandbox_config )
-
-let unnamed ?(sandbox = Sandbox_config.no_special_requirements) ~expander l =
-  let expander = prepare_expander expander in
-  let builder, sandbox = unnamed_get_paths ~sandbox ~expander l in
-  (Action_builder.ignore builder, sandbox)

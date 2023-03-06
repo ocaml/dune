@@ -3,7 +3,10 @@
   $ ocamlc_where="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
   $ melc_where="$(melc -where)"
-  $ export BUILD_PATH_PREFIX_MAP="/MELC_WHERE=$melc_where:$BUILD_PATH_PREFIX_MAP"
+  $ IFS=: read -r melc_stdlib melc_stdlib2 melc_stdlib3 <<< "$melc_where"
+  $ export BUILD_PATH_PREFIX_MAP="/MELC_STDLIB=$melc_stdlib:$BUILD_PATH_PREFIX_MAP"
+  $ export BUILD_PATH_PREFIX_MAP="/MELC_STDLIB=$melc_stdlib2:$BUILD_PATH_PREFIX_MAP"
+  $ export BUILD_PATH_PREFIX_MAP="/MELC_STDLIB=$melc_stdlib3:$BUILD_PATH_PREFIX_MAP"
   $ melc_compiler="$(which melc)"
   $ export BUILD_PATH_PREFIX_MAP="/MELC_COMPILER=$melc_compiler:$BUILD_PATH_PREFIX_MAP"
 
@@ -59,12 +62,15 @@ Dump-dot-merlin includes the melange flags
 
   $ dune ocaml dump-dot-merlin $PWD
   EXCLUDE_QUERY_DIR
-  STDLIB /MELC_WHERE
+  STDLIB /MELC_STDLIB
+  B /MELC_STDLIB
+  B /MELC_STDLIB
   B $TESTCASE_ROOT/_build/default/.output.mobjs/melange
   S $TESTCASE_ROOT
   # FLG -ppx '/MELC_COMPILER -as-ppx -bs-jsx 3'
   # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs
   
+
 
 
 Check for flag directives ordering when another preprocessor is defined
@@ -103,8 +109,13 @@ Melange ppx should appear after user ppx, so that Merlin applies the former firs
 
   $ dune ocaml merlin dump-config $PWD | grep -v "(B "  | grep -v "(S "
   Bar
-  ((STDLIB /MELC_WHERE)
+  ((STDLIB
+    /MELC_STDLIB)
    (EXCLUDE_QUERY_DIR)
+   (B
+    /MELC_STDLIB)
+   (B
+    /MELC_STDLIB)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
    (S
@@ -125,8 +136,13 @@ Melange ppx should appear after user ppx, so that Merlin applies the former firs
      -short-paths
      -keep-locs)))
   Foo
-  ((STDLIB /MELC_WHERE)
+  ((STDLIB
+    /MELC_STDLIB)
    (EXCLUDE_QUERY_DIR)
+   (B
+    /MELC_STDLIB)
+   (B
+    /MELC_STDLIB)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
    (S

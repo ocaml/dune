@@ -9,13 +9,13 @@ Make sure an error is returned if trying to nest `melange.emit` stanzas
   > (melange.emit
   >  (target output)
   >  (alias mel)
-  >  (module_system commonjs))
+  >  (module_systems commonjs))
   > EOF
   $ cat > a/b/c/dune <<EOF
   > (melange.emit
   >  (target output)
   >  (alias mel)
-  >  (module_system commonjs))
+  >  (module_systems commonjs))
   > EOF
 
   $ dune build @mel
@@ -23,7 +23,7 @@ Make sure an error is returned if trying to nest `melange.emit` stanzas
   1 | (melange.emit
   2 |  (target output)
   3 |  (alias mel)
-  4 |  (module_system commonjs))
+  4 |  (module_systems commonjs))
   Error: melange.emit stanzas cannot be nested
   - a/dune:1
   - a/b/c/dune:1

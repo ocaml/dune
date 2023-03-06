@@ -42,8 +42,7 @@ All 3 entries (Foo, Foo__ and Bar) contain a ppx directive
   $ cat >dune <<EOF
   > (melange.emit
   >  (target "$target")
-  >  (entries main)
-  >  (module_system commonjs))
+  >  (entries main))
   > EOF
 
   $ touch main.ml
@@ -66,6 +65,7 @@ Dump-dot-merlin includes the melange flags
   # FLG -ppx '/MELC_COMPILER -as-ppx -bs-jsx 3'
   # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs
   
+
 
 Check for flag directives ordering when another preprocessor is defined
 

@@ -9,8 +9,7 @@ Test melange.emit promotion
   > (melange.emit
   >  (alias dist)
   >  (entries hello)
-  >  (target dist)
-  >  (module_system commonjs))
+  >  (target dist))
   > EOF
 
   $ cat > hello.res <<EOF

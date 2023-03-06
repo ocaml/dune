@@ -10,7 +10,6 @@ Test (preprocess) field on melange.emit stanza
   >  (target output)
   >  (entries main)
   >  (alias melange)
-  >  (module_system commonjs)
   >  (preprocess
   >   (action
   >    (run cat %{input-file}))))

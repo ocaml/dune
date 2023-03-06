@@ -8,8 +8,7 @@ Test that the target directory exists
   $ cat > dune <<EOF
   > (melange.emit
   >  (alias melange)
-  >  (target output)
-  >  (module_system commonjs))
+  >  (target output))
   > EOF
 
 Create the target dir
@@ -36,8 +35,7 @@ Target promotion works
   > (melange.emit
   >  (alias melange)
   >  (target output)
-  >  (promote (until-clean))
-  >  (module_system commonjs))
+  >  (promote (until-clean)))
   > EOF
 
   $ dune build @melange

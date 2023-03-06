@@ -44,7 +44,7 @@ Reproduce github #7020
   >  (target es6)
   >  (alias melange)
   >  (libraries dummyfoo)
-  >  (module_system es6))
+  >  (module_systems es6))
   > EOF
 
   $ dune build @melange

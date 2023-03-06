@@ -2,6 +2,10 @@ include Stdlib.Filename
 
 type t = string
 
+module Extension = struct
+  type nonrec t = t
+end
+
 let split_extension fn =
   let ext = extension fn in
   (String.sub fn ~pos:0 ~len:(String.length fn - String.length ext), ext)

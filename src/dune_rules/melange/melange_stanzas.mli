@@ -6,7 +6,7 @@ module Emit : sig
     { loc : Loc.t
     ; target : string
     ; alias : Alias.Name.t option
-    ; module_system : Melange.Module_system.t
+    ; module_systems : (Melange.Module_system.t * string) list
     ; modules : Stanza_common.Modules_settings.t
     ; libraries : Lib_dep.t list
     ; package : Package.t option
@@ -15,7 +15,6 @@ module Emit : sig
     ; promote : Rule.Promote.t option
     ; compile_flags : Ordered_set_lang.Unexpanded.t
     ; allow_overlapping_dependencies : bool
-    ; javascript_extension : string
     }
 
   type Stanza.t += T of t

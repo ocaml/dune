@@ -9,7 +9,11 @@ end
 (* TODO add invariants and make this abstract or private *)
 type t = string
 
-val split_extension : t -> string * string
+module Extension : sig
+  type nonrec t = t
+end
+
+val split_extension : t -> string * Extension.t
 
 val split_extension_after_dot : t -> string * string
 

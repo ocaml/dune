@@ -60,8 +60,7 @@ The same for melange.emit:
   >  (alias melange)
   >  (target output)
   >  (libraries lib1)
-  >  (root_module root)
-  >  (module_system commonjs))
+  >  (root_module root))
   > EOF
   $ cat > lib1.ml <<EOF
   > let greeting = ()

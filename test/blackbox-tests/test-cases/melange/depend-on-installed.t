@@ -88,7 +88,6 @@ Test dependency on installed package
   $ cat > app/dune <<EOF
   > (melange.emit
   >  (target dist)
-  >  (module_system commonjs)
   >  (alias melange-dist)
   >  (libraries b))
   > EOF

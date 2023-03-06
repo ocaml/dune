@@ -5,6 +5,8 @@ module Module_system = struct
     | Es6
     | CommonJs
 
+  let default = (CommonJs, ".js")
+
   let to_string = function
     | Es6 -> "es6"
     | CommonJs -> "commonjs"

@@ -10,8 +10,7 @@ Test melange.emit promotion
   >  (alias dist)
   >  (entries hello)
   >  (promote (until-clean))
-  >  (target dist)
-  >  (module_system commonjs))
+  >  (target dist))
   > EOF
 
   $ cat > hello.ml <<EOF

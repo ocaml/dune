@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678077341411,
+  "lastUpdate": 1678077352080,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -8643,6 +8643,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "66.00451846413334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "a658bd6c754a9ad2a55c01ea92fc0e3dea942557",
+          "message": "fix: disallow nested melange.emit stanzas\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-05T20:01:06-08:00",
+          "tree_id": "94aa0c568f7726f771a66960b236c637e218bafe",
+          "url": "https://github.com/ocaml/dune/commit/a658bd6c754a9ad2a55c01ea92fc0e3dea942557"
+        },
+        "date": 1678077351148,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.5985992628000003",
             "unit": "seconds"
           }
         ]

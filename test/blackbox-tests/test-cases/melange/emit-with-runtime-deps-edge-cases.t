@@ -56,6 +56,7 @@ The runtime_dep index.txt was copied to the build folder
 
 
 
+
 Test depending on non-existing paths
 
   $ mkdir another
@@ -114,7 +115,6 @@ Path ends ups being emitted "correctly", but outside the target dir.
 
 Test depending on external paths
 
-  $ dune clean
   $ mkdir external
   $ cat > external/dune <<EOF
   > (melange.emit
@@ -130,82 +130,11 @@ Test depending on external paths
   > EOF
 
   $ dune build @mel --display=short
-          melc a/.output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc another/.another-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc a/output/a/main.js
-          melc another/another-output/another/main.js
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("[as_in_build_dir_exn] called on something not in build dir",
-    { t = External "/etc/hosts" })
-  Raised at Stdune__Code_error.raise in file
-    "otherlibs/stdune/src/code_error.ml", line 11, characters 30-62
-  Called from Dune_rules__Melange_rules.Runtime_deps.targets.(fun) in file
-    "src/dune_rules/melange/melange_rules.ml", line 269, characters 14-45
-  Called from Stdune__Set.Make.to_list_map.(fun) in file
-    "otherlibs/stdune/src/set.ml", line 16, characters 37-40
-  Called from Stdlib__Set.Make.fold in file "set.ml", line 383, characters
-    34-55
-  Called from Stdune__Set.Make.to_list_map in file
-    "otherlibs/stdune/src/set.ml", line 16, characters 4-48
-  Called from Dune_rules__Melange_rules.setup_runtime_assets_rules in file
-    "src/dune_rules/melange/melange_rules.ml", line 286, characters 16-62
-  Called from Fiber__Scheduler.exec in file "otherlibs/fiber/src/scheduler.ml",
-    line 73, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 36, characters 27-56
-  Called from Fiber__Scheduler.exec in file "otherlibs/fiber/src/scheduler.ml",
-    line 73, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 36, characters 27-56
-  Called from Fiber__Scheduler.exec in file "otherlibs/fiber/src/scheduler.ml",
-    line 73, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 36, characters 27-56
-  Called from Fiber__Scheduler.exec in file "otherlibs/fiber/src/scheduler.ml",
-    line 73, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 36, characters 27-56
-  Called from Fiber__Scheduler.exec in file "otherlibs/fiber/src/scheduler.ml",
-    line 73, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 36, characters 27-56
-  Called from Fiber__Scheduler.exec in file "otherlibs/fiber/src/scheduler.ml",
-    line 73, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 36, characters 27-56
-  Called from Fiber__Scheduler.exec in file "otherlibs/fiber/src/scheduler.ml",
-    line 73, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 36, characters 27-56
-  Called from Fiber__Scheduler.exec in file "otherlibs/fiber/src/scheduler.ml",
-    line 73, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 36, characters 27-56
-  Called from Fiber__Scheduler.exec in file "otherlibs/fiber/src/scheduler.ml",
-    line 73, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 36, characters 27-56
-  Called from Fiber__Scheduler.exec in file "otherlibs/fiber/src/scheduler.ml",
-    line 73, characters 8-11
-  -> required by ("<unnamed>", ())
-  -> required by ("<unnamed>", ())
-  -> required by ("<unnamed>", ())
-  -> required by
-     ("load-dir", In_build_dir "default/external/external-output/external")
-  -> required by
-     ("build-file",
-     In_build_dir "default/external/external-output/external/main.js")
-  -> required by ("<unnamed>", ())
-  -> required by
-     ("build-alias", { dir = In_build_dir "default/external"; name = "mel" })
-  -> required by ("toplevel", ())
-  
-  I must not crash.  Uncertainty is the mind-killer. Exceptions are the
-  little-death that brings total obliteration.  I will fully express my cases. 
-  Execution will pass over me and through me.  And when it has gone past, I
-  will unwind the stack along its path.  Where the cases are handled there will
-  be nothing.  Only I will remain.
-  [1]
+          melc external/.external-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
+          melc external/external-output/external/main.js
 
+External paths are not copied to the target directory
+
+  $ ls _build/default/external/external-output/external
+  main.js
 

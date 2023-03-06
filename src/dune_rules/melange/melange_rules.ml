@@ -261,19 +261,17 @@ module Runtime_deps = struct
     paths
 
   let targets ~output deps =
-    Path.Set.to_list_map deps ~f:(fun src ->
-        let dst =
-          match output with
-          | `Private_library_or_emit output_dir ->
-            let target =
-              src |> Path.as_in_build_dir_exn
-              |> Path.Build.drop_build_context_exn
-            in
-            Path.Build.append_source output_dir target
-          | `Public_library (lib_dir, output_dir) ->
-            lib_output_path ~output_dir ~lib_dir src
-        in
-        (src, dst))
+    Path.Set.to_list deps
+    |> List.filter_map ~f:(fun src ->
+           match output with
+           | `Private_library_or_emit output_dir -> (
+             match Path.as_in_build_dir src with
+             | Some src_build ->
+               let target = Path.Build.drop_build_context_exn src_build in
+               Some (src, Path.Build.append_source output_dir target)
+             | None -> None)
+           | `Public_library (lib_dir, output_dir) ->
+             Some (src, lib_output_path ~output_dir ~lib_dir src))
 end
 
 let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode

@@ -26,6 +26,5 @@ Building a project with 2 melange.emit stanzas should add rules to both aliases
           melc .dist.mobjs/melange/melange.{cmi,cmj,cmt}
           melc dist/.dist.mobjs/melange.js
   $ dune build @second --display=short
-  Error: No rule found for dist-es6/.dist-es6.mobjs/melange.mjs
-  -> required by alias second
-  [1]
+          melc .dist-es6.mobjs/melange/melange.{cmi,cmj,cmt}
+          melc dist-es6/.dist-es6.mobjs/melange.mjs

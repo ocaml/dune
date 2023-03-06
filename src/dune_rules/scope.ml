@@ -157,7 +157,7 @@ module DB = struct
   let public_theories ~find_db coq_stanzas =
     List.filter_map coq_stanzas ~f:(fun (dir, (stanza : Coq_stanza.Theory.t)) ->
         if Option.is_some stanza.package then
-          Some (stanza, Coq_lib.DB.Theory dir)
+          Some (stanza, Coq_lib.DB.Entry.Theory dir)
         else None)
     |> Coq_lib.DB.create_from_coqlib_stanzas ~find_db ~parent:None
 
@@ -239,7 +239,7 @@ module DB = struct
         List.map coq_stanzas ~f:(fun (dir, (stanza : Coq_stanza.Theory.t)) ->
             let entry =
               match stanza.package with
-              | None -> Coq_lib.DB.Theory dir
+              | None -> Coq_lib.DB.Entry.Theory dir
               | Some _ -> Redirect public_theories
             in
             (stanza, entry))

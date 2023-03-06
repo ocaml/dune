@@ -53,13 +53,15 @@ let coq_flags ~dir ~stanza_flags ~expander ~sctx =
 
 let theories_flags ~theories_deps =
   let theory_coqc_flag lib =
-    let dir = Coq_lib.src_root lib in
-    let binding_flag = if Coq_lib.implicit lib then "-R" else "-Q" in
-    Command.Args.S
-      [ A binding_flag
-      ; Path (Path.build dir)
-      ; A (Coq_lib.name lib |> Coq_lib_name.wrapper)
-      ]
+    match lib with
+    | Coq_lib.Dune lib ->
+      let dir = Coq_lib.Dune.src_root lib in
+      let binding_flag = if Coq_lib.Dune.implicit lib then "-R" else "-Q" in
+      Command.Args.S
+        [ A binding_flag
+        ; Path (Path.build dir)
+        ; A (Coq_lib.name (Dune lib) |> Coq_lib_name.wrapper)
+        ]
   in
   Resolve.Memo.args
     (let open Resolve.Memo.O in
@@ -105,10 +107,12 @@ let native_includes ~dir =
 
 let directories_of_lib ~sctx lib =
   let name = Coq_lib.name lib in
-  let dir = Coq_lib.src_root lib in
-  let* dir_contents = Dir_contents.get sctx ~dir in
-  let+ coq_sources = Dir_contents.coq dir_contents in
-  Coq_sources.directories coq_sources ~name
+  match lib with
+  | Coq_lib.Dune lib ->
+    let dir = Coq_lib.Dune.src_root lib in
+    let* dir_contents = Dir_contents.get sctx ~dir in
+    let+ coq_sources = Dir_contents.coq dir_contents in
+    Coq_sources.directories coq_sources ~name
 
 let setup_native_theory_includes ~sctx ~theories_deps ~theory_dirs =
   Resolve.Memo.bind theories_deps ~f:(fun theories_deps ->
@@ -210,8 +214,11 @@ let ml_flags_and_ml_pack_rule ~context ~lib_db ~theories_deps
     let libs =
       let* theories = theories_deps in
       let* theories =
-        Resolve.Memo.lift
-        @@ Resolve.List.concat_map ~f:Coq_lib.libraries theories
+        Resolve.List.concat_map
+          ~f:(function
+            | Coq_lib.Dune lib -> Coq_lib.Dune.libraries lib)
+          theories
+        |> Resolve.Memo.lift
       in
       let libs = libs @ theories in
       Lib.closure ~linking:false (List.map ~f:snd libs)
@@ -382,8 +389,8 @@ let deps_of ~dir ~boot_type ~wrapper_name ~mode coq_module =
     let deps =
       match boot_type with
       | `No_boot | `Bootstrap_prelude -> deps
-      | `Bootstrap lib ->
-        Path.relative (Path.build (Coq_lib.src_root lib)) "Init/Prelude.vo"
+      | `Bootstrap (Coq_lib.Dune lib) ->
+        Path.relative (Path.build (Coq_lib.Dune.src_root lib)) "Init/Prelude.vo"
         :: deps
     in
     Action_builder.paths deps
@@ -462,11 +469,14 @@ let setup_coqc_rule ~loc ~dir ~sctx ~coqc_dir ~file_targets ~stanza_flags
 
 let coq_modules_of_theory ~sctx lib =
   Action_builder.of_memo
-    (let name = Coq_lib.name lib in
-     let dir = Coq_lib.src_root lib in
-     let* dir_contents = Dir_contents.get sctx ~dir in
-     let+ coq_sources = Dir_contents.coq dir_contents in
-     Coq_sources.library coq_sources ~name)
+  @@
+  let name = Coq_lib.name lib in
+  match lib with
+  | Coq_lib.Dune lib ->
+    let dir = Coq_lib.Dune.src_root lib in
+    let* dir_contents = Dir_contents.get sctx ~dir in
+    let+ coq_sources = Dir_contents.coq dir_contents in
+    Coq_sources.library coq_sources ~name
 
 let source_rule ~sctx theories =
   (* sources for depending libraries coqdep requires all the files to be in the

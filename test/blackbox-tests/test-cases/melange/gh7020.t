@@ -44,6 +44,7 @@ Reproduce github #7020
   >  (target es6)
   >  (alias melange)
   >  (libraries dummyfoo)
+  >  (emit_stdlib false)
   >  (module_systems es6))
   > EOF
 

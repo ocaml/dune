@@ -11,6 +11,7 @@ Test simple interactions between melange.emit and copy_files
   > (melange.emit
   >  (alias mel)
   >  (target output)
+  >  (emit_stdlib false)
   >  (runtime_deps assets/file.txt assets/file.txt))
   > EOF
 
@@ -61,15 +62,17 @@ Test depending on non-existing paths
   > (melange.emit
   >  (alias non-existing-mel)
   >  (target another-output)
+  >  (emit_stdlib false)
   >  (runtime_deps doesnt-exist.txt))
   > EOF
 
   $ dune build @non-existing-mel
-  File "another/dune", line 1, characters 0-98:
+  File "another/dune", line 1, characters 0-119:
   1 | (melange.emit
   2 |  (alias non-existing-mel)
   3 |  (target another-output)
-  4 |  (runtime_deps doesnt-exist.txt))
+  4 |  (emit_stdlib false)
+  5 |  (runtime_deps doesnt-exist.txt))
   Error: No rule found for another/doesnt-exist.txt
   [1]
 
@@ -80,6 +83,7 @@ Test depending on paths that "escape" the melange.emit directory
   > (melange.emit
   >  (alias mel)
   >  (target another-output)
+  >  (emit_stdlib false)
   >  (runtime_deps ../a/assets/file.txt))
   > EOF
   $ cat > another/main.ml <<EOF
@@ -119,6 +123,7 @@ Test depending on external paths
   > (melange.emit
   >  (alias mel)
   >  (target external-output)
+  >  (emit_stdlib false)
   >  (runtime_deps /etc/hosts))
   > EOF
   $ cat > external/main.ml <<EOF

@@ -8,6 +8,7 @@ Test simple interactions between melange.emit and copy_files
   $ cat > dune <<EOF
   > (melange.emit
   >  (alias mel)
+  >  (emit_stdlib false)
   >  (target output)
   >  (runtime_deps assets/file.txt (glob_files_rec ./globbed/*.txt)))
   > EOF

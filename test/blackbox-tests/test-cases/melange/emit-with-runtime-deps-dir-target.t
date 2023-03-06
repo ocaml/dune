@@ -14,6 +14,7 @@ Test simple interactions between melange.emit and copy_files
   > (melange.emit
   >  (alias mel)
   >  (target output)
+  >  (emit_stdlib false)
   >  (runtime_deps ./some_dir))
   > EOF
 

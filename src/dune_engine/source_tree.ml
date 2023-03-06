@@ -586,6 +586,7 @@ end = struct
     | Some kind -> Dir0.This { Vcs.kind; root = Path.(append_source root) path }
 
   let root () =
+    let* (_ : Memo.Run.t) = Memo.current_run () in
     let path = Path.Source.root in
     let dir_status : Sub_dirs.Status.t = Normal in
     let error_unable_to_load ~path unix_error =

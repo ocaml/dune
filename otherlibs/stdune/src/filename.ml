@@ -3,7 +3,7 @@ include Stdlib.Filename
 type t = string
 
 module Extension = struct
-  type t = string
+  type nonrec t = t
 end
 
 let split_extension fn =

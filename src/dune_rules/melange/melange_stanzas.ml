@@ -75,8 +75,19 @@ module Emit = struct
         with
         | Ok m -> String.Map.to_list_map m ~f:(fun ext (_loc, ms) -> (ms, ext))
         | Error (ext, (_, (loc1, _)), (_, (loc2, _))) ->
-          User_error.raise ~loc:loc2
-            [ Pp.textf "JavaScript extension %s appears more than once:" ext
+          let main_message =
+            Pp.textf "JavaScript extension %s appears more than once:" ext
+          in
+          let annots =
+            let main = User_message.make ~loc:loc2 [ main_message ] in
+            let related =
+              [ User_message.make ~loc:loc1 [ Pp.text "Already defined here" ] ]
+            in
+            User_message.Annots.singleton Compound_user_error.annot
+              [ Compound_user_error.make ~main ~related ]
+          in
+          User_error.raise ~annots ~loc:loc2
+            [ main_message
             ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
             ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
             ; Pp.textf "Extensions must be unique per melange.emit stanza"

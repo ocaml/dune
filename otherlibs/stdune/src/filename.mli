@@ -10,10 +10,10 @@ end
 type t = string
 
 module Extension : sig
-  type t = string
+  type nonrec t = t
 end
 
-val split_extension : t -> string * string
+val split_extension : t -> string * Extension.t
 
 val split_extension_after_dot : t -> string * string
 

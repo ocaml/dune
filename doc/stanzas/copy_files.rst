@@ -23,7 +23,7 @@ details.
   details.
 
 - ``(enabled_if <blang expression>)`` conditionally disables this stanza. The
-  condition is specified using the :ref:`blang`.
+  condition is specified using the :doc:`concepts/boolean-language`.
 
 The short form:
 

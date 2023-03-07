@@ -175,10 +175,10 @@ order to declare a multi-directory library, you need to use the
 
 - ``(enabled_if <blang expression>)`` conditionally disables a library. A
   disabled library cannot be built and will not be installed. The condition is
-  specified using the :ref:`blang`, and the field allows for the ``%{os_type}``
-  variable, which is expanded to the type of OS being targeted by the current
-  build. Its value is the same as the value of the ``os_type`` parameter in the
-  output of ``ocamlc -config``.
+  specified using the :doc:`concepts/boolean-language`, and the field allows
+  for the ``%{os_type}`` variable, which is expanded to the type of OS being
+  targeted by the current build. Its value is the same as the value of the
+  ``os_type`` parameter in the output of ``ocamlc -config``.
 
 - ``(inline_tests)`` enables inline tests for this library. They can be
   configured through options using ``(inline_tests <options>)``. See

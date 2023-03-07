@@ -13,7 +13,7 @@ The syntax is as follows:
      <optional-fields>)
 
 ``<action>`` is what you run to produce the targets from the dependencies. See
-the :ref:`user-actions` section for more details.
+:doc:`concepts/actions` for more details.
 
 ``<optional-fields>`` are:
 
@@ -92,7 +92,7 @@ are never ignored.
 Inferred Rules
 ~~~~~~~~~~~~~~
 
-When using the action DSL (see :ref:`user-actions`), the dependencies and
+When using the action DSL (see :doc:`concepts/actions`), the dependencies and
 targets are usually obvious.
 
 For instance:

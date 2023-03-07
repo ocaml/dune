@@ -15,5 +15,5 @@ specification of the predicate language:
 The exact meaning of ``:standard`` and the nature of :token:`element` depends
 on the context. For example, in the case of the :ref:`dune-subdirs`, an
 :token:`element` corresponds to file glob patterns. Another example is the user
-action :ref:`(with-accepted-exit-codes ...) <user-actions>`, where an
+action :doc:`(with-accepted-exit-codes ...) <actions>`, where an
 :token:`element` corresponds to a literal integer.

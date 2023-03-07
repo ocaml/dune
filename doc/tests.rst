@@ -376,12 +376,11 @@ These three parameters can be specified inside the
 
 For instance:
 
-``<action>`` follows the :ref:`user-actions` specification. It
-describes an action that should be executed in the library's directory 
-using this backend for their tests. It's expected that the
-action will produce some OCaml code on its standard output. This code will
-constitute the test runner. The action can use the following
-additional variables:
+``<action>`` follows the :doc:`concepts/actions` specification. It describes an
+action that should be executed in the library's directory using this backend
+for their tests. It's expected that the action will produce some OCaml code on
+its standard output. This code will constitute the test runner. The action can
+use the following additional variables:
 
 - ``%{library-name}`` — the name of the library being tested
 - ``%{impl-files}`` — the list of implementation files in the

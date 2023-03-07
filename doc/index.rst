@@ -32,6 +32,7 @@ Welcome to Dune's Documentation!
    concepts/preprocessing-spec
    concepts/dependency-spec
    concepts/ocaml-flags
+   concepts/actions
 
 .. toctree::
    :caption: Reference

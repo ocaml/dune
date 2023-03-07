@@ -8,20 +8,20 @@ open Import
 module Id = struct
   module T = struct
     type t =
-      { path : Path.Build.t
+      { path : Path.t
       ; loc : Loc.t
       ; name : Coq_lib_name.t
       }
 
     let compare t { path; name; _ } =
       let open Ordering.O in
-      let= () = Path.Build.compare t.path path in
+      let= () = Path.compare t.path path in
       Coq_lib_name.compare t.name name
 
     let to_dyn { path; loc; name } =
       Dyn.(
         record
-          [ ("path", Path.Build.to_dyn path)
+          [ ("path", Path.to_dyn path)
           ; ("loc", Loc.to_dyn loc)
           ; ("name", Coq_lib_name.to_dyn name)
           ])
@@ -32,9 +32,7 @@ module Id = struct
   (* TODO include loc *)
   let pp { path; name; _ } =
     Pp.concat ~sep:Pp.space
-      [ Pp.textf "theory %s in" (Coq_lib_name.to_string name)
-      ; Path.pp (Path.build path)
-      ]
+      [ Pp.textf "theory %s in" (Coq_lib_name.to_string name); Path.pp path ]
 
   let create ~path ~name:(loc, name) = { path; name; loc }
 
@@ -342,7 +340,7 @@ module DB = struct
 
     let create_from_stanza_impl (coq_db, db, dir, (s : Coq_stanza.Theory.t)) =
       let name = snd s.name in
-      let id = Id.create ~path:dir ~name:s.name in
+      let id = Id.create ~path:(Path.build dir) ~name:s.name in
       let coq_lang_version = s.buildable.coq_lang_version in
       let open Memo.O in
       let boot_id = if s.boot then None else boot_library_id coq_db in
@@ -397,7 +395,7 @@ module DB = struct
     let memo =
       Memo.create "create-from-stanza"
         ~human_readable_description:(fun (_, _, path, theory) ->
-          Id.pp (Id.create ~path ~name:theory.name))
+          Id.pp (Id.create ~path:(Path.build path) ~name:theory.name))
         ~input:(module Input)
         create_from_stanza_impl
 
@@ -456,7 +454,8 @@ module DB = struct
     | [] -> None
     | [ ((theory, entry) : Coq_stanza.Theory.t * Entry.t) ] -> (
       match entry with
-      | Theory path -> Some (Id.create ~path ~name:theory.name)
+      | Theory path ->
+        Some (Id.create ~path:(Path.build path) ~name:theory.name)
       | Redirect lib -> lib.boot_id)
     | boots ->
       let stanzas = List.map boots ~f:fst in

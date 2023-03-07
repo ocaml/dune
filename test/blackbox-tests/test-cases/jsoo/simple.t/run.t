@@ -29,4 +29,4 @@ disable_dynamically_linked_foreign_archives = true:
 
 We expect a runtime error when running this bc-for-jsoo file.
 
-  $ ! dune exe bin/technologic.bc-for-jsoo >/dev/null 2>&1
+  $ ! if dune exe bin/technologic.bc-for-jsoo ; then true ; else false ; fi 2> /dev/null

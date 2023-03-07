@@ -261,17 +261,16 @@ module Runtime_deps = struct
     paths
 
   let targets ~output deps =
-    Path.Set.to_list deps
-    |> List.filter_map ~f:(fun src ->
-           match output with
-           | `Private_library_or_emit output_dir -> (
-             match Path.as_in_build_dir src with
-             | Some src_build ->
-               let target = Path.Build.drop_build_context_exn src_build in
-               Some (src, Path.Build.append_source output_dir target)
-             | None -> None)
-           | `Public_library (lib_dir, output_dir) ->
-             Some (src, lib_output_path ~output_dir ~lib_dir src))
+    Path.Set.to_list_map deps ~f:(fun src ->
+        match output with
+        | `Private_library_or_emit output_dir -> (
+          match Path.as_in_build_dir src with
+          | Some src_build ->
+            let target = Path.Build.drop_build_context_exn src_build in
+            (src, Some (Path.Build.append_source output_dir target))
+          | None -> (src, None))
+        | `Public_library (lib_dir, output_dir) ->
+          (src, Some (lib_output_path ~output_dir ~lib_dir src)))
 end
 
 let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode
@@ -285,15 +284,24 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode
   let+ () =
     let loc = mel.loc in
     Memo.parallel_iter targets ~f:(fun (src, dst) ->
-        Super_context.add_rule ~loc ~dir ~mode sctx
-          (Action_builder.symlink ~src ~dst))
+        match dst with
+        | None -> Memo.return ()
+        | Some dst ->
+          Super_context.add_rule ~loc ~dir ~mode sctx
+            (Action_builder.symlink ~src ~dst))
   and+ () =
     match mel.alias with
     | None -> Memo.return ()
     | Some alias_name ->
       let deps =
         Action_builder.paths
-          (List.map ~f:(fun (_, dst) -> Path.build dst) targets)
+          (List.map
+             ~f:(fun (src, dst) ->
+               (* [dst] is [None] for external path dependencies *)
+               match dst with
+               | None -> src
+               | Some dst -> Path.build dst)
+             targets)
       in
       let alias = Alias.make alias_name ~dir:target_dir in
       Rules.Produce.Alias.add_deps alias deps

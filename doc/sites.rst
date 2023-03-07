@@ -258,7 +258,7 @@ The generated module `sites` depends here also on the library
 If the executable being created is an OCaml toplevel, then the
 ``libraries`` stanza needs to also include the ``dune-site.toplevel``
 library.  This causes the loading to use the toplevel's normal loading
-mechanism rather than Dynload.loadfile (which is not allowed in
+mechanism rather than ``Dynload.loadfile`` (which is not allowed in
 toplevels).
 
 - The module ``registration.ml`` of the library ``app.registration``:

@@ -1,8 +1,8 @@
 Testsuite for (toplevel that loads plugins). This version
-still uses dune-site.dynlink, but only implicitly as it is
+still uses ``dune-site.dynlink``, but only implicitly as it is
 the default implementation of the virtual library.
-It uses Dynlink.loadfile.
-This is not allowed in top-levels, so it fails.
+It uses ``Dynlink.loadfile``.
+This is not allowed in toplevels, so it fails.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.7)

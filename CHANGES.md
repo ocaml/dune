@@ -37,6 +37,10 @@ Unreleased
 - Dune in watch mode no longer builds concurrent rules in serial (#7395
   @rgrinberg, @jchavarri)
 
+- Dune can now detect Coq theories from outside the workspace. This allows for
+  composition with installed theories (not necessarily installed with Dune).
+  (#7047, @Alizter, @ejgallego)
+
 - `dune coq top` now correctly respects the project root when called from a
   subdirectory. However, absolute filenames passed to `dune coq top` are no
   longer supported (due to being buggy) (#7357, fixes #7344, @rlepigre and

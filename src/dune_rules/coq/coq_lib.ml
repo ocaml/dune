@@ -30,11 +30,11 @@ module Id = struct
   include T
 
   let pp { path; loc; name } =
+    let loc_or_path =
+      if Loc.is_none loc then Path.pp path else Loc.pp_file_colon_line loc
+    in
     Pp.concat ~sep:Pp.space
-      [ Loc.pp_file_colon_line loc
-      ; Pp.textf "theory %s in" (Coq_lib_name.to_string name)
-      ; Path.pp path
-      ]
+      [ Pp.textf "theory %s in" (Coq_lib_name.to_string name); loc_or_path ]
 
   let create ~path ~name:(loc, name) = { path; name; loc }
 
@@ -45,14 +45,19 @@ module Id = struct
 end
 
 module rec R : sig
-  type t = Dune of Dune.t
+  type t =
+    | Dune of Dune.t
+    | Legacy of Legacy.t
 
   val to_dyn : t -> Dyn.t
 end = struct
-  type t = Dune of Dune.t
+  type t =
+    | Dune of Dune.t
+    | Legacy of Legacy.t
 
   let to_dyn = function
     | Dune t -> Dyn.Variant ("Dune", [ Dune.to_dyn t ])
+    | Legacy t -> Dyn.Variant ("Legacy", [ Legacy.to_dyn t ])
 end
 
 and Dune : sig
@@ -80,6 +85,7 @@ and Dune : sig
 
   val implicit : t -> bool
 
+  (** ML libraries *)
   val libraries : t -> (Loc.t * Lib.t) list Resolve.t
 end = struct
   type t =
@@ -139,18 +145,78 @@ end = struct
   let libraries t = t.libraries
 end
 
-(* TODO Legacy library *)
+and Legacy : sig
+  type t =
+    { boot_id : Id.t option
+    ; id : Id.t
+    ; implicit : bool (* Only useful for the stdlib *)
+    ; installed_root : Path.t (* ; libraries : (Loc.t * Lib.t) list Resolve.t *)
+    ; vo : Path.t list
+    ; cmxs : Path.t list
+    }
+
+  val to_dyn : t -> Dyn.t
+
+  val implicit : t -> bool
+
+  val installed_root : t -> Path.t
+
+  val cmxs_directories : t -> Path.t list
+
+  val vo : t -> Path.t list
+end = struct
+  type t =
+    { boot_id : Id.t option
+    ; id : Id.t
+    ; implicit : bool (* Only useful for the stdlib *)
+    ; installed_root : Path.t (* ; libraries : (Loc.t * Lib.t) list Resolve.t *)
+    ; vo : Path.t list
+    ; cmxs : Path.t list
+    }
+
+  let to_dyn { boot_id; id; implicit; installed_root; vo; cmxs } =
+    Dyn.record
+      [ ("boot_id", Dyn.option Id.to_dyn boot_id)
+      ; ("id", Id.to_dyn id)
+      ; ("implicit", Dyn.bool implicit)
+      ; ("installed_root", Path.to_dyn installed_root)
+      ; ("vo", Dyn.list Path.to_dyn vo)
+      ; ("cmxs", Dyn.list Path.to_dyn cmxs)
+        (* ; ( "libraries" *)
+        (*   , Resolve.to_dyn (Dyn.list (Dyn.pair Loc.to_dyn Lib.to_dyn)) libraries *)
+        (* ) *)
+      ]
+
+  let implicit t = t.implicit
+
+  let installed_root t = t.installed_root
+
+  let cmxs_directories t = t.cmxs
+
+  let vo t = t.vo
+end
 
 include R
 
-let id_of_lib = function
-  | Dune t -> t.id
-
 let boot_id_of_lib = function
   | Dune t -> t.boot_id
+  | Legacy t -> t.boot_id
+
+let id_of_lib = function
+  | Dune t -> t.id
+  | Legacy t -> t.id
 
 let name = function
   | Dune t -> t.id.name
+  | Legacy t -> t.id.name
+
+let obj_root = function
+  | Dune t -> Dune.obj_root t |> Path.build
+  | Legacy t -> Legacy.installed_root t
+
+let implicit = function
+  | Dune t -> Dune.implicit t
+  | Legacy t -> Legacy.implicit t
 
 module Error = struct
   let annots =
@@ -170,20 +236,34 @@ module Error = struct
       ]
     |> Resolve.fail
 
-  let theory_not_found ~loc name =
+  let theory_not_found ~loc ?hints name =
     let name = Coq_lib_name.to_string name in
     Resolve.Memo.fail
-    @@ User_message.make ~annots ~loc [ Pp.textf "Theory %s not found" name ]
+    @@ User_message.make ~annots ~loc ?hints
+         [ Pp.textf "Theory %S has not been found." name ]
 
-  let hidden_without_composition ~loc name =
+  module Hidden_reason = struct
+    type t =
+      | LackOfTheoryComposition
+      | LackOfInstalledComposition
+  end
+
+  let hidden_without_composition ~loc ~reason name =
     let name = Coq_lib_name.to_string name in
+    let reason =
+      match reason with
+      | Hidden_reason.LackOfTheoryComposition ->
+        Pp.textf
+          "Upgrade coq lang to 0.4 to enable composition with theories in a \
+           different scope."
+      | LackOfInstalledComposition ->
+        Pp.textf
+          "Upgrade coq lang to 0.8 to enable composition with installed \
+           theories."
+    in
     Resolve.Memo.fail
     @@ User_message.make ~annots ~loc
-         [ Pp.textf
-             "Theory %s not found in the current scope. Upgrade coq lang to \
-              0.4 to enable scope composition."
-             name
-         ]
+         [ Pp.textf "Theory %s not found in the current scope." name; reason ]
 
   let private_deps_not_allowed ~loc name =
     let name = Coq_lib_name.to_string name in
@@ -205,6 +285,18 @@ module Error = struct
       [ Pp.textf "Cannot have more than one boot theory in scope:"
       ; Pp.enumerate theories ~f:name
       ]
+
+  (* XXX: Not in the test suite *)
+  let duplicate_boot_path paths =
+    let describe_path cp =
+      let name = Coq_path.name cp in
+      let path = Coq_path.path cp in
+      Pp.textf "%s at %s" (Coq_lib_name.to_string name) (Path.to_string path)
+    in
+    User_error.raise
+      [ Pp.textf "Found more than one installed Coq standard libraries"
+      ; Pp.enumerate paths ~f:describe_path
+      ]
 end
 
 let top_closure =
@@ -212,6 +304,7 @@ let top_closure =
   let deps t =
     match t with
     | Dune t -> t.theories |> Resolve.map ~f:(List.map ~f:snd)
+    | Legacy _ -> Resolve.return []
   in
   fun theories ->
     let open Resolve.O in
@@ -223,9 +316,12 @@ module DB = struct
   type lib = t
 
   module Resolve_result = struct
+    (** This is the first result of resolving a coq library, later one we will
+        refine this data. *)
     type 'a t =
       | Redirect of 'a
       | Theory of Lib.DB.t * Path.Build.t * Coq_stanza.Theory.t
+      | Legacy_theory of Coq_path.t
       | Not_found
   end
 
@@ -333,7 +429,7 @@ module DB = struct
           match theory with
           | Dune { package = None; _ } ->
             Error.private_deps_not_allowed ~loc theory_name
-          | Dune _ -> Resolve.Memo.return ()
+          | Legacy _ | Dune _ -> Resolve.Memo.return ()
       in
       (loc, theory)
 
@@ -345,17 +441,18 @@ module DB = struct
       Resolve.Memo.List.map theories ~f
 
     let create_from_stanza_impl (coq_db, db, dir, (s : Coq_stanza.Theory.t)) =
-      let name = snd s.name in
-      let id = Id.create ~path:(Path.build dir) ~name:s.name in
+      let name = s.name in
+      let id = Id.create ~path:(Path.build dir) ~name in
       let coq_lang_version = s.buildable.coq_lang_version in
       let open Memo.O in
       let boot_id = if s.boot then None else boot_library_id coq_db in
       let allow_private_deps = Option.is_none s.package in
       let use_stdlib = s.buildable.use_stdlib in
       let+ libraries =
-        resolve_plugins ~db ~allow_private_deps ~name s.buildable.plugins
+        resolve_plugins ~db ~allow_private_deps ~name:(snd name)
+          s.buildable.plugins
       and+ theories =
-        resolve_theories ~coq_lang_version ~allow_private_deps ~coq_db ~boot_id
+        resolve_theories ~coq_db ~coq_lang_version ~allow_private_deps ~boot_id
           s.buildable.theories
       and+ boot = resolve_boot ~coq_lang_version ~coq_db boot_id in
       let theories =
@@ -367,26 +464,21 @@ module DB = struct
       in
       let theories = map_error theories in
       let libraries = map_error libraries in
-      Dune
-        { loc = s.buildable.loc
-        ; boot_id
-        ; id
-        ; use_stdlib
-        ; implicit = s.boot
-        ; obj_root = dir
-        ; src_root = dir
-        ; theories
-        ; libraries
-        ; theories_closure =
-            lazy
-              (Resolve.bind theories ~f:(fun theories ->
-                   List.map theories ~f:snd |> top_closure))
-        ; package = s.package
-        }
-
-    let resolve_boot coq_db ~coq_lang_version =
-      let boot_id = boot_library_id coq_db in
-      resolve_boot ~coq_lang_version ~coq_db boot_id
+      { Dune.loc = s.buildable.loc
+      ; boot_id
+      ; id
+      ; use_stdlib
+      ; implicit = s.boot
+      ; obj_root = dir
+      ; src_root = dir
+      ; theories
+      ; libraries
+      ; theories_closure =
+          lazy
+            (Resolve.bind theories ~f:(fun theories ->
+                 List.map theories ~f:snd |> top_closure))
+      ; package = s.package
+      }
 
     module Input = struct
       type nonrec t = t * Lib.DB.t * Path.Build.t * Coq_stanza.Theory.t
@@ -412,15 +504,29 @@ module DB = struct
     let create_from_stanza coq_db db dir stanza =
       Memo.exec memo (coq_db, db, dir, stanza)
 
+    (* XXX: Memoize? This is pretty cheap so not sure worth the cost *)
+    let create_from_coqpath ~boot_id cp =
+      let name = Coq_path.name cp in
+      let installed_root = Coq_path.path cp in
+      let implicit = Coq_path.stdlib cp in
+      let cmxs = Coq_path.cmxs cp in
+      let vo = Coq_path.vo cp in
+      let id = Id.create ~path:installed_root ~name:(Loc.none, name) in
+      Resolve.Memo.return
+        { Legacy.boot_id; id; implicit; installed_root; vo; cmxs }
+
     module Resolve_result_no_redirect = struct
+      (** In our second iteration, we remove all the redirects *)
       type t =
         | Theory of Lib.db * Path.Build.t * Coq_stanza.Theory.t
+        | Legacy_theory of Coq_path.t
         | Not_found
     end
 
     let rec find coq_db name : Resolve_result_no_redirect.t =
       match coq_db.resolve name with
       | Theory (db, dir, stanza) -> Theory (db, dir, stanza)
+      | Legacy_theory cp -> Legacy_theory cp
       | Redirect coq_db -> find coq_db name
       | Not_found -> (
         match coq_db.parent with
@@ -428,40 +534,50 @@ module DB = struct
         | Some parent -> find parent name)
 
     module Resolve_final_result = struct
+      (** Next we find corresponding Coq libraries for the various cases *)
       type t =
         | Found_stanza of Lib.DB.t * Path.Build.t * Coq_stanza.Theory.t
-        | Hidden
+        | Found_path of Coq_path.t
+        | Hidden of Error.Hidden_reason.t
         | Not_found
     end
 
     let find coq_db ~coq_lang_version name : Resolve_final_result.t =
       match find coq_db name with
       | Not_found -> Not_found
-      (* Composing with theories in the same project should come past 0.4 *)
       | Theory (mldb, dir, stanza) when coq_lang_version >= (0, 4) ->
         Found_stanza (mldb, dir, stanza)
+      | Legacy_theory cp when coq_lang_version >= (0, 8) -> Found_path cp
+      | Legacy_theory cp when Coq_path.stdlib cp -> Found_path cp
+      | Legacy_theory _ -> Hidden LackOfInstalledComposition
       | Theory (mldb, dir, stanza) -> (
         match coq_db.resolve name with
-        | Not_found -> Hidden
-        | Theory _ | Redirect _ -> Found_stanza (mldb, dir, stanza))
+        | Not_found -> Hidden LackOfTheoryComposition
+        | Theory _ | Redirect _ | Legacy_theory _ ->
+          Found_stanza (mldb, dir, stanza))
 
+    (** Our final final resolve is used externally, and should return the
+        library data found from the previous iterations. *)
     let resolve coq_db ~coq_lang_version (loc, name) =
       match find coq_db ~coq_lang_version name with
       | Not_found -> Error.theory_not_found ~loc name
-      | Hidden -> Error.hidden_without_composition ~loc name
+      | Hidden reason -> Error.hidden_without_composition ~loc ~reason name
       | Found_stanza (db, dir, stanza) ->
         let open Memo.O in
         let+ theory = create_from_stanza coq_db db dir stanza in
         let open Resolve.O in
-        let* (_ : (Loc.t * Lib.t) list) =
-          match theory with
-          | Dune t -> t.libraries
-        in
-        let+ (_ : (Loc.t * lib) list) =
-          match theory with
-          | Dune t -> t.theories
-        in
-        theory
+        let* (_ : (Loc.t * Lib.t) list) = theory.libraries in
+        let+ (_ : (Loc.t * lib) list) = theory.theories in
+        Dune theory
+      | Found_path cp ->
+        let open Resolve.Memo.O in
+        let boot_id = coq_db.boot_id in
+        let+ theory = create_from_coqpath ~boot_id cp in
+        Legacy theory
+
+    let resolve_boot coq_db ~coq_lang_version =
+      let boot_id = boot_library_id coq_db in
+      resolve_boot ~coq_lang_version ~coq_db boot_id
   end
 
   include R
@@ -513,16 +629,45 @@ module DB = struct
     in
     { boot_id; resolve; parent }
 
+  (* XXX: This is basically duplicated from create_from_coqlib_stanzas
+     except for the slightly different input type *)
+  let select_boot_path (cp : Coq_path.t list) =
+    match List.find_all cp ~f:Coq_path.stdlib with
+    | [] -> None
+    | [ stdlib ] ->
+      let name = (Loc.none, Coq_path.name stdlib) in
+      let path = Coq_path.path stdlib in
+      Some (Id.create ~path ~name)
+    | paths -> Error.duplicate_boot_path paths
+
+  let create_from_coqpaths cps =
+    (* No parent for coqpaths for now *)
+    let parent = None in
+    let boot_id = select_boot_path cps in
+    (* Map is eager, this may not be very convenient in large trees,
+       but should be fine for now *)
+    let map =
+      match
+        Coq_lib_name.Map.of_list_map cps ~f:(fun cp -> (Coq_path.name cp, cp))
+      with
+      | Ok m -> m
+      | Error (name, cp1, cp2) ->
+        let id1 = Id.create ~path:(Coq_path.path cp1) ~name:(Loc.none, name) in
+        let id2 = Id.create ~path:(Coq_path.path cp2) ~name:(Loc.none, name) in
+        Error.duplicate_theory_name id1 id2
+    in
+    let resolve name : t Resolve_result.t =
+      match Coq_lib_name.Map.find map name with
+      | None -> Not_found
+      | Some cp -> Legacy_theory cp
+    in
+    { parent; resolve; boot_id }
+
+  (* Resolve helpers *)
   let find_many t theories ~coq_lang_version =
     Resolve.Memo.List.map theories ~f:(resolve ~coq_lang_version t)
-
-  let requires_for_user_written db theories ~coq_lang_version =
-    let open Memo.O in
-    let+ theories =
-      Resolve.Memo.List.map theories ~f:(resolve ~coq_lang_version db)
-    in
-    Resolve.O.(theories >>= top_closure)
 end
 
 let theories_closure = function
   | Dune t -> Lazy.force t.theories_closure
+  | Legacy _ -> Resolve.return []

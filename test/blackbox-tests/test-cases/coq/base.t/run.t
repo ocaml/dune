@@ -1,4 +1,4 @@
-  $ dune build --display short --debug-dependency-path @all
+  $ dune build --display short --debug-dependency-path @all --always-show-command-line
         coqdep .basic.theory.d
           coqc foo.{glob,vo}
           coqc bar.{glob,vo}

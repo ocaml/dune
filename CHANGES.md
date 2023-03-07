@@ -49,6 +49,8 @@ Unreleased
 - Allow `(stdlib ...)` to be used with `(wrapped false)` in library stanzas
   (#7139, @anmonteiro).
 
+- Promote files into the source tree atomically (#7233, @rgrinberg)
+
 3.7.0 (2023-02-17)
 ------------------
 

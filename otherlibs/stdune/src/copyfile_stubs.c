@@ -15,8 +15,9 @@
 #include <string.h>
 #include <sys/syslimits.h>
 
-CAMLprim value stdune_copyfile(value v_from, value v_to) {
-  CAMLparam2(v_from, v_to);
+CAMLprim value stdune_copyfile(value v_from, value v_to,
+                               value v_dst_maybe_present) {
+  CAMLparam3(v_from, v_to, v_dst_maybe_present);
   caml_unix_check_path(v_from, "copyfile");
   caml_unix_check_path(v_to, "copyfile");
   char from[PATH_MAX];
@@ -36,11 +37,14 @@ CAMLprim value stdune_copyfile(value v_from, value v_to) {
     caml_acquire_runtime_system();
     uerror("realpath", v_from);
   }
-  /* nor does it automatically overwrite the target */
-  int ret = unlink(to);
-  if (ret < 0 && errno != ENOENT) {
-    caml_acquire_runtime_system();
-    uerror("unlink", v_to);
+  int ret;
+  if (Bool_val(v_dst_maybe_present)) {
+    /* nor does it automatically overwrite the target */
+    ret = unlink(to);
+    if (ret < 0 && errno != ENOENT) {
+      caml_acquire_runtime_system();
+      uerror("unlink", v_to);
+    }
   }
   ret = copyfile(real_from, to, NULL, COPYFILE_CLONE);
   caml_acquire_runtime_system();

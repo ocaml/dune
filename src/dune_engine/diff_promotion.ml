@@ -64,7 +64,8 @@ module File = struct
   let do_promote ~correction_file ~dst =
     Path.Source.unlink_no_err dst;
     let chmod = Path.Permissions.add Path.Permissions.write in
-    Io.copy_file ~chmod ~src:correction_file ~dst:(Path.source dst) ()
+    Io.copy_file ~atomically:true ~chmod ~src:correction_file
+      ~dst:(Path.source dst) ()
 
   let correction_file { src; staging; _ } =
     Path.build (Option.value staging ~default:src)

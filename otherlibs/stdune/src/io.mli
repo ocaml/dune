@@ -23,3 +23,12 @@ val portable_symlink : src:Path.t -> dst:Path.t -> unit
 
 (** Hardlink with fallback to copy on systems that don't support it. *)
 val portable_hardlink : src:Path.t -> dst:Path.t -> unit
+
+(** Like [copy_file] in [Io_intf] but allows us to copy atomically *)
+val copy_file :
+     ?atomically:bool
+  -> ?chmod:(int -> int)
+  -> src:Path.t
+  -> dst:Path.t
+  -> unit
+  -> unit

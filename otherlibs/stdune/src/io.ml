@@ -252,23 +252,24 @@ struct
     (* Bindings to mac's fast copy function. It's similar to a hardlink, except
        it does COW when edited. It will also default back to regular copying if
        it fails for w/e reason *)
-    external copyfile : string -> string -> unit = "stdune_copyfile"
+    external copyfile : string -> string -> dst_maybe_present:bool -> unit
+      = "stdune_copyfile"
 
     external available : unit -> bool = "stdune_is_darwin"
   end
 
-  let copy_file ?chmod ~src ~dst () =
+  let gen_copy_file ?chmod ~src ~dst ~dst_maybe_present:_ () =
     Exn.protectx (setup_copy ?chmod ~src ~dst ()) ~finally:close_both
       ~f:(fun (ic, oc) -> copy_channels ic oc)
 
-  let copy_file =
+  let gen_copy_file =
     match Copyfile.available () with
-    | false -> copy_file
+    | false -> gen_copy_file
     | true -> (
-      fun ?chmod ~src ~dst () ->
+      fun ?chmod ~src ~dst ~dst_maybe_present () ->
         let src = Path.to_string src in
         let dst = Path.to_string dst in
-        (try Copyfile.copyfile src dst with
+        (try Copyfile.copyfile src dst ~dst_maybe_present with
         | Unix.Unix_error (Unix.EPERM, "unlink", _) ->
           let message = Printf.sprintf "%s: Is a directory" dst in
           raise (Sys_error message)
@@ -280,6 +281,8 @@ struct
         match chmod with
         | None -> ()
         | Some chmod -> (Unix.stat src).st_perm |> chmod |> Unix.chmod dst)
+
+  let copy_file = gen_copy_file ~dst_maybe_present:true
 
   let file_line path n =
     with_file_in ~binary:false path ~f:(fun ic ->
@@ -335,6 +338,19 @@ let portable_symlink ~src ~dst =
         Unix.unlink dst;
         Unix.symlink src dst)
     | exception Unix.Unix_error _ -> Unix.symlink src dst
+
+let copy_atomically ?chmod ~src ~dst () =
+  let dst_basename = Path.basename dst in
+  let dir = Temp.create Dir ~prefix:(Path.basename src) ~suffix:"" in
+  let temp_dst = Path.relative dir dst_basename in
+  Exn.protect
+    ~finally:(fun () -> Temp.destroy Dir dir)
+    ~f:(fun () ->
+      gen_copy_file ~dst_maybe_present:false ?chmod ~src ~dst:temp_dst ();
+      Path.rename temp_dst dst)
+
+let copy_file ?(atomically = false) ?chmod ~src ~dst () =
+  (if atomically then copy_atomically else copy_file) ?chmod ~src ~dst ()
 
 let portable_hardlink ~src ~dst =
   let user_error msg =

@@ -32,3 +32,13 @@ let%expect_test "copy file chmod" =
   [%expect {|
     foobarbaz
     permissions: 428 |}]
+
+let%expect_test "copy file overwrite" =
+  let dir = temp_dir () in
+  let src = Path.relative dir "initial" in
+  let dst = Path.relative dir "final" in
+  Io.write_file src "foobarbaz";
+  Io.write_file dst "xxx";
+  Io.copy_file ~atomically:true ~src ~dst ();
+  print_endline (Io.read_file dst);
+  [%expect {| foobarbaz |}]

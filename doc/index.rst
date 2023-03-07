@@ -29,6 +29,7 @@ Welcome to Dune's Documentation!
    concepts/predicate-language
    concepts/variables
    concepts/library-dependencies
+   concepts/preprocessing-spec
 
 .. toctree::
    :caption: Reference

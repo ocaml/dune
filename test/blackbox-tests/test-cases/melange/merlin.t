@@ -2,11 +2,12 @@
 
   $ ocamlc_where="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
-  $ melc_where="$(melc -where)"
-  $ IFS=: read -r melc_stdlib melc_stdlib2 melc_stdlib3 <<< "$melc_where"
-  $ export BUILD_PATH_PREFIX_MAP="/MELC_STDLIB=$melc_stdlib:$BUILD_PATH_PREFIX_MAP"
-  $ export BUILD_PATH_PREFIX_MAP="/MELC_STDLIB=$melc_stdlib2:$BUILD_PATH_PREFIX_MAP"
-  $ export BUILD_PATH_PREFIX_MAP="/MELC_STDLIB=$melc_stdlib3:$BUILD_PATH_PREFIX_MAP"
+  $ melc_where=($(melc -where | awk '{split($0,a,":"); print a[1],a[2],a[3]}'))
+  $ for stdlib_path in "${melc_where[@]}"
+  > do
+  >    export BUILD_PATH_PREFIX_MAP="/MELC_STDLIB=$stdlib_path:$BUILD_PATH_PREFIX_MAP"
+  > done
+
   $ melc_compiler="$(which melc)"
   $ export BUILD_PATH_PREFIX_MAP="/MELC_COMPILER=$melc_compiler:$BUILD_PATH_PREFIX_MAP"
 

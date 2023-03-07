@@ -1,7 +1,6 @@
 (library
  (name dune_site_backend)
  (public_name dune-site.linker)
- 
  ; The linker module is virtual because it has two implementations
  ; for load.
  ; dune-site.dynlink implements it using Dynlink.loadfile

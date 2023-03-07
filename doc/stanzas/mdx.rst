@@ -55,7 +55,7 @@ Where ``<optional-fields>`` are:
   some dependencies.
 
 - ``(locks <lock-names>)`` specifies that the action of running the tests
-  holds the specified locks.  See the :ref:`locks` section for more details.
+  holds the specified locks. See :doc:`concepts/locks` for more details.
 
 Upgrading from Version 0.1
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

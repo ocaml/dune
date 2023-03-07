@@ -34,6 +34,7 @@ Welcome to Dune's Documentation!
    concepts/ocaml-flags
    concepts/actions
    concepts/sandboxing
+   concepts/locks
 
 .. toctree::
    :caption: Reference

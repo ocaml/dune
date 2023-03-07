@@ -32,7 +32,7 @@ The syntax is as follows:
 - ``(fallback)`` is deprecated and is the same as ``(mode fallback)``.
 
 - ``(locks (<lock-names>))`` specifies that the action must be run while holding
-  the following locks. See the :ref:`locks` section for more details.
+  the following locks. See :doc:`concepts/locks` for more details.
 
 - ``(alias <alias-name>)`` specifies this rule's alias. Building this alias
   means building the targets of this rule.

@@ -34,7 +34,7 @@ The syntax is as follows:
   command line, either with ``--only-packages <pkgs>`` or ``-p <pkgs>``.
 
 - ``(locks (<lock-names>))`` specifies that the action must be run while holding
-  the following locks. See the :ref:`locks` section for more details.
+  the following locks. See :doc:`concepts/locks` for more details.
 
 - ``(enabled_if <blang expression>)`` specifies the Boolean condition that must
   be true for the tests to run. The condition is specified using the

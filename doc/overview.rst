@@ -87,7 +87,7 @@ Terminology
      from this directory. Moreover, scopes are separate from your project's
      dependencies. The scope also determines where private items are visible.
      Private items include libraries or binaries that will not be installed.
-     See :ref:`scopes` for more details.
+     See :doc:`concepts/scopes` for more details.
 
    build context
      A specific configuration written in a :ref:`dune-workspace` file, which

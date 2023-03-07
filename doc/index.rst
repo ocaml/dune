@@ -17,8 +17,13 @@ Welcome to Dune's Documentation!
    overview
    quick-start
    dune-files
-   concepts
    usage
+
+.. toctree::
+   :caption: Concepts
+
+   concepts
+   concepts/scopes
 
 .. toctree::
    :caption: Reference

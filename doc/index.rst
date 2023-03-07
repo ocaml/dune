@@ -36,6 +36,7 @@ Welcome to Dune's Documentation!
    concepts/sandboxing
    concepts/locks
    concepts/promotion
+   concepts/package-spec
 
 .. toctree::
    :caption: Reference

@@ -222,14 +222,16 @@ let top_closure =
 module DB = struct
   type lib = t
 
+  module Resolve_result = struct
+    type 'a t =
+      | Redirect of 'a
+      | Theory of Lib.DB.t * Path.Build.t * Coq_stanza.Theory.t
+      | Not_found
+  end
+
   type t =
     { parent : t option
-    ; resolve :
-           Coq_lib_name.t
-        -> [ `Redirect of t
-           | `Theory of Lib.DB.t * Path.Build.t * Coq_stanza.Theory.t
-           | `Not_found
-           ]
+    ; resolve : Coq_lib_name.t -> t Resolve_result.t
     ; boot_id : Id.t option
     }
 
@@ -382,6 +384,10 @@ module DB = struct
         ; package = s.package
         }
 
+    let resolve_boot coq_db ~coq_lang_version =
+      let boot_id = boot_library_id coq_db in
+      resolve_boot ~coq_lang_version ~coq_db boot_id
+
     module Input = struct
       type nonrec t = t * Lib.DB.t * Path.Build.t * Coq_stanza.Theory.t
 
@@ -406,34 +412,44 @@ module DB = struct
     let create_from_stanza coq_db db dir stanza =
       Memo.exec memo (coq_db, db, dir, stanza)
 
-    let rec find coq_db name =
+    module Resolve_result_no_redirect = struct
+      type t =
+        | Theory of Lib.db * Path.Build.t * Coq_stanza.Theory.t
+        | Not_found
+    end
+
+    let rec find coq_db name : Resolve_result_no_redirect.t =
       match coq_db.resolve name with
-      | `Theory (db, dir, stanza) -> Some (db, dir, stanza)
-      | `Redirect coq_db -> find coq_db name
-      | `Not_found -> (
+      | Theory (db, dir, stanza) -> Theory (db, dir, stanza)
+      | Redirect coq_db -> find coq_db name
+      | Not_found -> (
         match coq_db.parent with
-        | None -> None
+        | None -> Not_found
         | Some parent -> find parent name)
 
-    let find coq_db ~coq_lang_version name =
-      match find coq_db name with
-      | None -> `Not_found
-      | Some (mldb, dir, stanza) when coq_lang_version >= (0, 4) ->
-        `Found (mldb, dir, stanza)
-      | Some (mldb, dir, stanza) -> (
-        match coq_db.resolve name with
-        | `Not_found -> `Hidden
-        | `Theory _ | `Redirect _ -> `Found (mldb, dir, stanza))
+    module Resolve_final_result = struct
+      type t =
+        | Found_stanza of Lib.DB.t * Path.Build.t * Coq_stanza.Theory.t
+        | Hidden
+        | Not_found
+    end
 
-    let resolve_boot coq_db ~coq_lang_version =
-      let boot_id = boot_library_id coq_db in
-      resolve_boot ~coq_lang_version ~coq_db boot_id
+    let find coq_db ~coq_lang_version name : Resolve_final_result.t =
+      match find coq_db name with
+      | Not_found -> Not_found
+      (* Composing with theories in the same project should come past 0.4 *)
+      | Theory (mldb, dir, stanza) when coq_lang_version >= (0, 4) ->
+        Found_stanza (mldb, dir, stanza)
+      | Theory (mldb, dir, stanza) -> (
+        match coq_db.resolve name with
+        | Not_found -> Hidden
+        | Theory _ | Redirect _ -> Found_stanza (mldb, dir, stanza))
 
     let resolve coq_db ~coq_lang_version (loc, name) =
       match find coq_db ~coq_lang_version name with
-      | `Not_found -> Error.theory_not_found ~loc name
-      | `Hidden -> Error.hidden_without_composition ~loc name
-      | `Found (db, dir, stanza) ->
+      | Not_found -> Error.theory_not_found ~loc name
+      | Hidden -> Error.hidden_without_composition ~loc name
+      | Found_stanza (db, dir, stanza) ->
         let open Memo.O in
         let+ theory = create_from_stanza coq_db db dir stanza in
         let open Resolve.O in
@@ -487,13 +503,13 @@ module DB = struct
         let id2 = Id.create ~path:(path entry2) ~name:theory2.name in
         Error.duplicate_theory_name id1 id2
     in
-    let resolve name =
+    let resolve name : t Resolve_result.t =
       match Coq_lib_name.Map.find map name with
-      | None -> `Not_found
+      | None -> Not_found
       | Some (theory, entry) -> (
         match entry with
-        | Theory dir -> `Theory (find_db dir, dir, theory)
-        | Redirect db -> `Redirect db)
+        | Theory dir -> Theory (find_db dir, dir, theory)
+        | Redirect db -> Redirect db)
     in
     { boot_id; resolve; parent }
 

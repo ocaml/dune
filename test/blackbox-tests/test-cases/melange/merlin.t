@@ -2,19 +2,8 @@
 
   $ ocamlc_where="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
-  $ melc --where > melc_where.txt
-  $ cat > ./script.js <<EOF
-  > #!/usr/bin/env node
-  > var fs = require("fs");
-  > var contents = fs.readFileSync("melc_where.txt")
-  >    .toString("utf8")
-  >    .split(/:/)
-  >    .map(x => x.trim());
-  > contents.forEach(x => process.stdout.write(\`export BUILD_PATH_PREFIX_MAP="/MELC_STDLIB=\${x}:\$BUILD_PATH_PREFIX_MAP"; \`))
-  > EOF
-  $ chmod +x script.js
-  $ eval `./script.js`
   $ melc_compiler="$(which melc)"
+  $ export BUILD_PATH_PREFIX_MAP="$(melc_stdlib_prefix)":$BUILD_PATH_PREFIX_MAP
   $ export BUILD_PATH_PREFIX_MAP="/MELC_COMPILER=$melc_compiler:$BUILD_PATH_PREFIX_MAP"
 
   $ cat >dune-project <<EOF

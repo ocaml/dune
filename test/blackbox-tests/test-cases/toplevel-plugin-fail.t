@@ -10,31 +10,31 @@ This is not allowed in toplevels, so it fails.
   > (map_workspace_root false)
   > 
   > (package
-  >   (name top_with_plugins)
-  >   (sites (lib top_plugins)))
+  >  (name top_with_plugins)
+  >  (sites (lib top_plugins)))
   > EOF
 
   $ cat > dune <<EOF
   > (executable
-  >   (public_name top_with_plugins)
-  >   (name top_with_plugins)
-  >   (modes byte)
-  >   (flags :standard -safe-string)
-  >   (modules sites top_with_plugins)
-  >   (link_flags (-linkall))
-  >   (libraries compiler-libs.toplevel
-  >     top_with_plugins.register dune-site dune-site.plugins 
-  >     dune-site.dynlink))
+  >  (public_name top_with_plugins)
+  >  (name top_with_plugins)
+  >  (modes byte)
+  >  (flags :standard -safe-string)
+  >  (modules sites top_with_plugins)
+  >  (link_flags (-linkall))
+  >  (libraries compiler-libs.toplevel
+  >   top_with_plugins.register dune-site dune-site.plugins 
+  >   dune-site.dynlink))
   > 
   > (library
-  >   (public_name top_with_plugins.register)
-  >   (modes byte)
-  >   (name registration)
-  >   (modules registration))
+  >  (public_name top_with_plugins.register)
+  >  (modes byte)
+  >  (name registration)
+  >  (modules registration))
   > 
   > (generate_sites_module
-  >   (module sites)
-  >   (plugins (top_with_plugins top_plugins)))
+  >  (module sites)
+  >  (plugins (top_with_plugins top_plugins)))
   > EOF
 
   $ cat > top_with_plugins.ml <<EOF
@@ -70,21 +70,21 @@ This is not allowed in toplevels, so it fails.
   > (wrapped_executables false)
   > (map_workspace_root false)
   > (package
-  >   (name top-plugin1))
+  >  (name top-plugin1))
   > EOF
 
   $ cat > plugin1/dune <<EOF
   > (library
-  >   (public_name top-plugin1.plugin1_impl)
-  >   (modes byte)
-  >   (name plugin1_impl)
-  >   (modules plugin1_impl)
-  >   (libraries top_with_plugins.register))
+  >  (public_name top-plugin1.plugin1_impl)
+  >  (modes byte)
+  >  (name plugin1_impl)
+  >  (modules plugin1_impl)
+  >  (libraries top_with_plugins.register))
   > 
   > (plugin
-  >   (name plugin1)
-  >   (libraries top-plugin1.plugin1_impl)
-  >   (site (top_with_plugins top_plugins)))
+  >  (name plugin1)
+  >  (libraries top-plugin1.plugin1_impl)
+  >  (site (top_with_plugins top_plugins)))
   > EOF
 
   $ cat > plugin1/plugin1_impl.ml <<EOF
@@ -106,21 +106,21 @@ This is not allowed in toplevels, so it fails.
   > (wrapped_executables false)
   > (map_workspace_root false)
   > (package
-  >   (name top-plugin2))
+  >  (name top-plugin2))
   > EOF
 
   $ cat > plugin2/dune <<EOF
   > (library
-  >   (public_name top-plugin2.plugin2_impl)
-  >   (modes byte)
-  >   (name plugin2_impl)
-  >   (modules plugin2_impl)
-  >   (libraries top_with_plugins.register))
+  >  (public_name top-plugin2.plugin2_impl)
+  >  (modes byte)
+  >  (name plugin2_impl)
+  >  (modules plugin2_impl)
+  >  (libraries top_with_plugins.register))
   > 
   > (plugin
-  >   (name plugin2)
-  >   (libraries top-plugin2.plugin2_impl)
-  >   (site (top_with_plugins top_plugins)))
+  >  (name plugin2)
+  >  (libraries top-plugin2.plugin2_impl)
+  >  (site (top_with_plugins top_plugins)))
   > EOF
 
   $ cat > plugin2/plugin2_impl.ml <<EOF

@@ -6,20 +6,20 @@ Test sites plugins (example from the manual)
   > (name app)
   > 
   > (package
-  > (name app)
-  > (sites (lib plugins)))
+  >  (name app)
+  >  (sites (lib plugins)))
   > EOF
 
   $ cat > dune <<EOF
   > (executable
-  > (public_name app)
-  > (modules sites app)
-  > (libraries app.register dune-site dune-site.plugins))
+  >  (public_name app)
+  >  (modules sites app)
+  >  (libraries app.register dune-site dune-site.plugins))
   > 
   > (library
-  > (public_name app.register)
-  > (name registration)
-  > (modules registration))
+  >  (public_name app.register)
+  >  (name registration)
+  >  (modules registration))
   > 
   > (generate_sites_module
   > (module sites)
@@ -48,20 +48,20 @@ Test sites plugins (example from the manual)
   > (generate_opam_files true)
   > 
   > (package
-  > (name plugin1))
+  >  (name plugin1))
   > EOF
 
   $ cat > plugin/dune <<EOF
   > (library
-  > (public_name plugin1.plugin1_impl)
-  > (name plugin1_impl)
-  > (modules plugin1_impl)
-  > (libraries app.register))
+  >  (public_name plugin1.plugin1_impl)
+  >  (name plugin1_impl)
+  >  (modules plugin1_impl)
+  >  (libraries app.register))
   > 
   > (plugin
-  > (name plugin1)
-  > (libraries plugin1.plugin1_impl)
-  > (site (app plugins)))
+  >  (name plugin1)
+  >  (libraries plugin1.plugin1_impl)
+  >  (site (app plugins)))
   > EOF
 
   $ cat > plugin/plugin1_impl.ml <<EOF

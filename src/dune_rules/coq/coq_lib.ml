@@ -29,10 +29,12 @@ module Id = struct
 
   include T
 
-  (* TODO include loc *)
-  let pp { path; name; _ } =
+  let pp { path; loc; name } =
     Pp.concat ~sep:Pp.space
-      [ Pp.textf "theory %s in" (Coq_lib_name.to_string name); Path.pp path ]
+      [ Loc.pp_file_colon_line loc
+      ; Pp.textf "theory %s in" (Coq_lib_name.to_string name)
+      ; Path.pp path
+      ]
 
   let create ~path ~name:(loc, name) = { path; name; loc }
 
@@ -154,21 +156,17 @@ module Error = struct
   let annots =
     User_message.Annots.singleton User_message.Annots.needs_stack_trace ()
 
-  let duplicate_theory_name name1 name2 =
-    let loc1, name = name1 in
-    let loc2, _ = name2 in
+  let duplicate_theory_name (id1 : Id.t) (id2 : Id.t) =
+    let name = id1.name in
     User_error.raise
       [ Pp.textf "Coq theory %s is defined twice:" (Coq_lib_name.to_string name)
-      ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-      ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+      ; Pp.enumerate ~f:Id.pp [ id1; id2 ]
       ]
 
-  let incompatible_boot id id' =
-    let pp_lib (id : Id.t) = Pp.seq (Pp.text "- ") (Id.pp id) in
+  let incompatible_boot id1 id2 =
     User_message.make ~annots
-      [ Pp.textf "The following theories use incompatible boot libraries"
-      ; pp_lib id'
-      ; pp_lib id
+      [ Pp.textf "The following theories use incompatible boot libraries:"
+      ; Pp.enumerate ~f:Id.pp [ id1; id2 ]
       ]
     |> Resolve.fail
 
@@ -234,6 +232,12 @@ module DB = struct
            ]
     ; boot_id : Id.t option
     }
+
+  let rec to_dyn { parent; resolve = _; boot_id } =
+    Dyn.record
+      [ ("parent", Dyn.option to_dyn parent)
+      ; ("boot_id", Dyn.option Id.to_dyn boot_id)
+      ]
 
   module Entry = struct
     type nonrec t =
@@ -461,7 +465,6 @@ module DB = struct
       let stanzas = List.map boots ~f:fst in
       Error.duplicate_boot_lib stanzas
 
-  (* Should we register errors and printers, or raise is OK? *)
   let create_from_coqlib_stanzas ~(parent : t option) ~find_db
       (entries : (Coq_stanza.Theory.t * Entry.t) list) =
     let boot_id = select_boot_id entries in
@@ -472,8 +475,17 @@ module DB = struct
             (snd theory.name, (theory, entry)))
       with
       | Ok m -> m
-      | Error (_name, (theory1, _entry1), (theory2, _entry2)) ->
-        Error.duplicate_theory_name theory1.name theory2.name
+      | Error (_name, (theory1, entry1), (theory2, entry2)) ->
+        let path entry =
+          match (entry : Entry.t) with
+          | Theory dir -> Path.build dir
+          | Redirect db ->
+            Code_error.raise "created stanza redirected to a library"
+              [ ("db", to_dyn db) ]
+        in
+        let id1 = Id.create ~path:(path entry1) ~name:theory1.name in
+        let id2 = Id.create ~path:(path entry2) ~name:theory2.name in
+        Error.duplicate_theory_name id1 id2
     in
     let resolve name =
       match Coq_lib_name.Map.find map name with

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678217140621,
+  "lastUpdate": 1678217153448,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -8991,6 +8991,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "78.63035834904",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "ivg@ieee.org",
+            "name": "Ivan Gotovchits",
+            "username": "ivg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "086a78cc56b25a4da5795671698d7ef4d1473a21",
+          "message": "adds support for loading plugins in toplevels (#6082)\n\n* adds support for loading plugins in toplevels\r\n\r\nUses virtual libraries to select the proper dynamic linker\r\nfacility. To load in the toplevel add `dune-site.toplevel` library as\r\nthe dependency to your toplevel.\r\n\r\n3. Also, handle moved load_file function.  Prior to OCaml 4.13.0, the\r\nload_file function was in Topdirs.  Starting with OCaml 4.13.0, the\r\nload_file function moved to Toploop. In order to find it open both\r\nthese modules, suppressing the warning for unused open, and then\r\nreference load_file unqualified.\r\n\r\nSigned-off-by: Richard L Ford <richardlford@gmail.com>\r\nSigned-off-by: ivg <ivg@ieee.org>\r\nCo-authored-by: Richard L Ford <richardlford@gmail.com>",
+          "timestamp": "2023-03-07T10:56:52-08:00",
+          "tree_id": "4d0b1d0bf8c7d9c57a95f271146f9dc6c992e502",
+          "url": "https://github.com/ocaml/dune/commit/086a78cc56b25a4da5795671698d7ef4d1473a21"
+        },
+        "date": 1678217152462,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.9827855113866668",
             "unit": "seconds"
           }
         ]

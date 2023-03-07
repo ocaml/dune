@@ -90,8 +90,8 @@ files for executables. See `executables_implicit_empty_intf`_.
 
 - ``js_of_ocaml``: See the section about :ref:`jsoo-field`
 
-- ``flags``, ``ocamlc_flags``, and ``ocamlopt_flags``: See the section about
-  specifying :ref:`ocaml-flags`.
+- ``flags``, ``ocamlc_flags``, and ``ocamlopt_flags``: See
+  :doc:`concepts/ocaml-flags`.
 
 - ``(modules_without_implementation <modules>)`` is the same as the
   corresponding field of `library`_.

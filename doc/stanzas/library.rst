@@ -138,8 +138,8 @@ order to declare a multi-directory library, you need to use the
 
 - ``js_of_ocaml`` sets options for JavaScript compilation, see :ref:`jsoo-field`.
 
-- For ``flags``, ``ocamlc_flags``, and ``ocamlopt_flags``, see the section about
-  :ref:`ocaml-flags`
+- For ``flags``, ``ocamlc_flags``, and ``ocamlopt_flags``, see
+  :doc:`concepts/ocaml-flags`.
 
 - ``(library_flags (<flags>))`` is a list of flags passed to ``ocamlc`` and
   ``ocamlopt`` when building the library archive files. You can use this to

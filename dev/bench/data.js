@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678077352080,
+  "lastUpdate": 1678202585511,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7858,6 +7858,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.45420881360666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "77489f7cd89ee362fa7475da91aaca1b400ddce0",
+          "message": "test: remove unnecessary shell script (#7209)\n\ninstead of sdune, just export an environment variable to enable\r\nsandboxing\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-07T07:04:03-08:00",
+          "tree_id": "9cb2bbecc04d3ce663ce9b598884de0ab98f3173",
+          "url": "https://github.com/ocaml/dune/commit/77489f7cd89ee362fa7475da91aaca1b400ddce0"
+        },
+        "date": 1678202584277,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.26893459143333",
             "unit": "seconds"
           }
         ]

@@ -120,9 +120,10 @@ order to declare a multi-directory library, you need to use the
   are split is historical, and hopefully we won't need two options soon. Both
   PPX kinds support an optional field: ``(cookies <cookies>)``, where
   ``<cookies>`` is a list of pairs ``(<name> <value>)`` with ``<name>`` being
-  the cookie name and ``<value>`` a string that supports :ref:`variables`
-  evaluated by each preprocessor invocation (note: libraries that share cookies
-  with the same name should agree on their expanded value).
+  the cookie name and ``<value>`` a string that supports
+  :doc:`concepts/variables` evaluated by each preprocessor invocation (note:
+  libraries that share cookies with the same name should agree on their
+  expanded value).
 
 - ``(ppx_runtime_libraries (<library-names>))`` is for when the library is a
   ``ppx rewriter`` or a ``[@@deriving ...]`` plugin, and has runtime
@@ -143,7 +144,7 @@ order to declare a multi-directory library, you need to use the
 - ``(library_flags (<flags>))`` is a list of flags passed to ``ocamlc`` and
   ``ocamlopt`` when building the library archive files. You can use this to
   specify ``-linkall``, for instance. ``<flags>`` is a list of strings
-  supporting :ref:`variables`.
+  supporting :doc:`concepts/variables`.
 
 - ``(c_library_flags <flags>)`` specifies the flags passed to the C compiler
   when constructing the library archive file for the C stubs. ``<flags>`` uses

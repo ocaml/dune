@@ -57,7 +57,7 @@ and interprets the following escape sequences:
 - ``\xHH``, a backslash followed by two hexadecimal characters to
   represent the character with ASCII code ``HH`` in hexadecimal
 - ``\\``, a double backslash to represent a single backslash
-- ``\%{`` to represent ``%{`` (see :ref:`variables`)
+- ``\%{`` to represent ``%{`` (see :doc:`concepts/variables`)
 
 Additionally, you can use a backslash just before the end of the line. This
 skips the newline leading up to the next non-space character. For instance, the

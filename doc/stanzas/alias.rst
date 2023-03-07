@@ -38,8 +38,8 @@ The syntax is as follows:
 
 - ``(enabled_if <blang expression>)`` specifies the Boolean condition that must
   be true for the tests to run. The condition is specified using the
-  :doc:`concepts/boolean-language`, and the field allows for :ref:`variables`
-  to appear in the expressions.
+  :doc:`concepts/boolean-language`, and the field allows for
+  :doc:`concepts/variables` to appear in the expressions.
 
 The typical use of the ``alias`` stanza is to define tests:
 

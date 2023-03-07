@@ -44,8 +44,8 @@ the :ref:`user-actions` section for more details.
 
 - ``(enabled_if <blang expression>)`` specifies the Boolean condition that must
   be true for the rule to be considered. The condition is specified using the
-  :doc:`concepts/boolean-language`, and the field allows for :ref:`variables`
-  to appear in the expressions.
+  :doc:`concepts/boolean-language`, and the field allows for
+  :doc:`concepts/variables` to appear in the expressions.
 
 Please note: contrary to makefiles or other build systems, user rules currently
 don't support patterns, such as a rule to produce ``%.y`` from ``%.x`` for any

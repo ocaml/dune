@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Speed up file copying on macos by using `clonefile` when available
+  (@rgrinberg, #7210)
+
 - Adds support for loading plugins in toplevels (#6082, fixes #6081, 
   @ivg, @richardlford)
 

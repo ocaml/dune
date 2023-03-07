@@ -5,6 +5,25 @@ All dune commands work when you run them in sub-directories, so this should be n
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
   -native-compiler ondemand
+  -I lib/coq/../coq-core/plugins/btauto
+  -I lib/coq/../coq-core/plugins/cc
+  -I lib/coq/../coq-core/plugins/derive
+  -I lib/coq/../coq-core/plugins/extraction
+  -I lib/coq/../coq-core/plugins/firstorder
+  -I lib/coq/../coq-core/plugins/funind
+  -I lib/coq/../coq-core/plugins/ltac
+  -I lib/coq/../coq-core/plugins/ltac2
+  -I lib/coq/../coq-core/plugins/micromega
+  -I lib/coq/../coq-core/plugins/nsatz
+  -I lib/coq/../coq-core/plugins/number_string_notation
+  -I lib/coq/../coq-core/plugins/ring
+  -I lib/coq/../coq-core/plugins/rtauto
+  -I lib/coq/../coq-core/plugins/ssreflect
+  -I lib/coq/../coq-core/plugins/ssrmatching
+  -I lib/coq/../coq-core/plugins/tauto
+  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/zify
+  -R coq/theories Coq
   -R $TESTCASE_ROOT/_build/default/theories foo
   $ cd theories
 

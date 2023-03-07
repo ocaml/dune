@@ -12,6 +12,6 @@ BUG The directory target is found before the theory
 
   $ dune build
   Error: Coq theory foo is defined twice:
-  - dune:5
-  - dune:2
+  - theory foo in dune:5
+  - theory foo in dune:2
   [1]

@@ -22,20 +22,20 @@ module Module = struct
   (* We keep prefix and name separated as the handling of `From Foo Require
      Bar.` may benefit from it. *)
   type t =
-    { source : Path.Build.t
+    { source : Path.t
     ; prefix : string list
     ; name : Name.t
     }
 
   let compare { source; prefix; name } t =
     let open Ordering.O in
-    let= () = Path.Build.compare source t.source in
+    let= () = Path.compare source t.source in
     let= () = List.compare prefix t.prefix ~compare:String.compare in
     Name.compare name t.name
 
   let to_dyn { source; prefix; name } =
     Dyn.record
-      [ ("source", Path.Build.to_dyn source)
+      [ ("source", Path.to_dyn source)
       ; ("prefix", Dyn.list Dyn.string prefix)
       ; ("name", Name.to_dyn name)
       ]
@@ -104,7 +104,7 @@ let obj_files x ~wrapper_name ~mode ~obj_dir ~obj_files_mode =
 let to_dyn { source; prefix; name } =
   let open Dyn in
   record
-    [ ("source", Path.Build.to_dyn source)
+    [ ("source", Path.to_dyn source)
     ; ("prefix", list string prefix)
     ; ("name", Name.to_dyn name)
     ]
@@ -116,7 +116,7 @@ let parse ~dir ~loc s =
   | name :: prefix ->
     let prefix = List.rev prefix in
     let source = List.fold_left prefix ~init:dir ~f:Path.Build.relative in
-    let source = Path.Build.relative source (name ^ ".v") in
+    let source = Path.build @@ Path.Build.relative source (name ^ ".v") in
     make ~name ~source ~prefix
 
 let eval =

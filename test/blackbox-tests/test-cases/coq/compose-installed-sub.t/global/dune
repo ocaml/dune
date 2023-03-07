@@ -1,0 +1,5 @@
+(coq.theory
+ (name global)
+ (package global))
+
+(include_subdirs qualified)

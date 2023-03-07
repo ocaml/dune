@@ -2,44 +2,6 @@
 General Concepts
 ****************
 
-.. _ordered-set-language:
-
-Ordered Set Language
-====================
-
-A few fields take an ordered set as argument and can be specified using a small
-DSL.
-
-This DSL is interpreted by Dune into an ordered set of strings using the
-following rules:
-
-- ``:standard`` denotes the standard value of the field when it's absent
-- an atom not starting with a ``:`` is a singleton containing only this atom
-- a list of sets is the concatenation of its inner sets
-- ``(<sets1> \ <sets2>)`` is the set composed of elements of ``<sets1>`` that do
-  not appear in ``<sets2>``
-
-In addition, some fields support the inclusion of an external file using the
-syntax ``(:include <filename>)``. For instance, this is useful when you need to
-run a script to figure out some compilation flags. ``<filename>`` is expected to
-contain a single S-expression and cannot contain ``(:include ...)`` forms.
-
-Note that inside an ordered set, the first element of a list cannot be
-an atom except if it starts with ``-`` or ``:``. The reason for this is
-that we're planning to add simple programmatic features in the
-future so that one may write:
-
-.. code::
-
-   (flags (if (>= %{ocaml_version} 4.06) ...))
-
-This restriction will allow you to add this feature without introducing
-breaking changes. If you want to write a list where the first element
-doesn't start with ``-``, you can simply quote it: ``("x" y z)``.
-
-Most fields using the ordered set language also support :ref:`variables`.
-Variables are expanded after the set language is interpreted.
-
 .. _blang:
 
 Boolean Language
@@ -712,7 +674,8 @@ you can specify OCaml compilation flags using the following fields:
 - ``(ocamlc_flags <flags>)`` to specify flags passed to ``ocamlc`` only
 - ``(ocamlopt_flags <flags>)`` to specify flags passed to ``ocamlopt`` only
 
-For all these fields, ``<flags>`` is specified in the `Ordered set language`_.
+For all these fields, ``<flags>`` is specified in the
+:doc:`concepts/ordered-set-language`.
 These fields all support ``(:include ...)`` forms.
 
 The default value for ``(flags ...)`` is taken from the environment,
@@ -1257,16 +1220,17 @@ Here is a complete list of supported subfields:
   raise an error if multiple source files map to the same object name.
   If you need to have multiple object files with the same name, you can
   package them into different :ref:`foreign-archives` via the
-  ``foreign_archives`` field. This field uses the :ref:`ordered-set-language`
-  where the ``:standard`` value corresponds to the set of names of all
-  source files whose extensions match the specified ``language``.
+  ``foreign_archives`` field. This field uses the
+  :doc:`concepts/ordered-set-language` where the ``:standard`` value
+  corresponds to the set of names of all source files whose extensions match
+  the specified ``language``.
 - ``flags`` are passed when compiling source files. This field is specified
-  using the :ref:`ordered-set-language`, where the ``:standard`` value comes
-  from the environment settings ``c_flags`` and ``cxx_flags``, respectively.
-  Note that, for C stubs, Dune unconditionally adds the flags present in the
-  OCaml config fields ``ocamlc_cflags`` and ``ocamlc_cppflags`` to the
-  compiler command line. This behavior can be disabled since Dune 2.8 via the
-  ``dune-project`` option :ref:`always-add-cflags`.
+  using the :doc:`concepts/ordered-set-language`, where the ``:standard`` value
+  comes from the environment settings ``c_flags`` and ``cxx_flags``,
+  respectively. Note that, for C stubs, Dune unconditionally adds the flags
+  present in the OCaml config fields ``ocamlc_cflags`` and ``ocamlc_cppflags``
+  to the compiler command line. This behavior can be disabled since Dune 2.8
+  via the ``dune-project`` option :ref:`always-add-cflags`.
 - ``include_dirs`` are tracked as dependencies and passed to the compiler
   via the ``-I`` flag. You can use :ref:`variables` in this field and
   refer to a library source directory using the ``(lib library-name)`` syntax.
@@ -1416,8 +1380,8 @@ flags for C will contain only ``ocamlc_cflags`` or both ``ocamlc_cflags`` and
 ``ocamlc_cppflags``.
 
 There are multiple levels where one can declare custom flags (using the
-:ref:`ordered-set-language`), and each level inherits the flags of the previous
-one in its `:standard` set:
+:doc:`concepts/ordered-set-language`), and each level inherits the flags of the
+previous one in its `:standard` set:
 
 - In the global `env` definition of a `dune-workspace` file
 - In the per-context `env` definitions in a `dune-workspace` file

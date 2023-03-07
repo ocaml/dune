@@ -285,7 +285,8 @@ as:
     (inline_tests (flags (-foo bar)))
     (preprocess (pps ppx_expect)))
 
-The argument of the ``flags`` field follows the :ref:`ordered-set-language`.
+The argument of the ``flags`` field follows the
+:doc:`concepts/ordered-set-language`.
 
 
 Passing Special Arguments to the Test Executable
@@ -306,8 +307,7 @@ You can specify such flags by using ``flags`` field. For instance:
       (flags (-foo bar))))
      (preprocess (pps ppx_expect))))
 
-The argument of the ``flags`` field follows the :ref:`ordered-set-language`.
-
+The argument of the ``flags`` field follows the :doc:`concepts/ordered-set-language`.
 
 Using Additional Libraries in the Test Runner
 ---------------------------------------------

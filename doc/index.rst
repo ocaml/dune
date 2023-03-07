@@ -24,6 +24,7 @@ Welcome to Dune's Documentation!
 
    concepts
    concepts/scopes
+   concepts/ordered-set-language
 
 .. toctree::
    :caption: Reference

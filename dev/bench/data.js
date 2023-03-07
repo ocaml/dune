@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678219828578,
+  "lastUpdate": 1678219839029,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -9078,6 +9078,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "65.9944071341",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a0dd51512f269d7c18f0c6216ab66d3ab7368da2",
+          "message": "chore: add clonefile on macos optimization to CHANGES (#7237)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-07T11:45:52-08:00",
+          "tree_id": "b471c4175c60ce05265ef19667bad2d9238c68fc",
+          "url": "https://github.com/ocaml/dune/commit/a0dd51512f269d7c18f0c6216ab66d3ab7368da2"
+        },
+        "date": 1678219838322,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6045589385133334",
             "unit": "seconds"
           }
         ]

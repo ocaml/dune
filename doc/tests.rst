@@ -646,11 +646,11 @@ field:
     (applies_to * \ foo bar)
     (deps ../foo.exe))
 
-We use the :ref:`predicate-lang` to apply this stanza to all tests in this
-directory, except for ``foo.t`` and ``bar.t``. The ``applies_to`` field also
-accepts the special value ``:whole_subtree`` in order to apply the options to all tests
-in all subdirectories (recursively). This is useful to apply common options to
-an entire test suite.
+We use the :doc:`concepts/predicate-language` to apply this stanza to all tests
+in this directory, except for ``foo.t`` and ``bar.t``. The ``applies_to`` field
+also accepts the special value ``:whole_subtree`` in order to apply the options
+to all tests in all subdirectories (recursively). This is useful to apply
+common options to an entire test suite.
 
 The ``cram`` stanza accepts the following fields:
 

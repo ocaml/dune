@@ -2,28 +2,6 @@
 General Concepts
 ****************
 
-.. _predicate-lang:
-
-Predicate Language
-==================
-
-The predicate language allows the user to define simple predicates
-(Boolean-valued functions) that Dune can evaluate. Here is a semi-formal
-specification of the predicate language:
-
-.. productionlist::
-   pred : (and `pred` `pred`)
-        : (or `pred` `pred`)
-        : (not `pred`)
-        : :standard
-        : `element`
-
-The exact meaning of ``:standard`` and the nature of :token:`element` depends
-on the context. For example, in the case of the :ref:`dune-subdirs`, an
-:token:`element` corresponds to file glob patterns. Another example is the user
-action :ref:`(with-accepted-exit-codes ...) <user-actions>`, where an
-:token:`element` corresponds to a literal integer.
-
 .. _variables:
 
 Variables
@@ -700,10 +678,10 @@ The following constructions are available:
 - ``(with-stdin-from <file> <DSL>)`` to redirect the input from a file
 - ``(with-accepted-exit-codes <pred> <DSL>)`` specifies the list of expected exit codes
   for the programs executed in ``<DSL>``. ``<pred>`` is a predicate on integer
-  values, and is specified using the :ref:`predicate-lang`. ``<DSL>`` can only
-  contain nested occurrences of ``run``, ``bash``, ``system``, ``chdir``,
-  ``setenv``, ``ignore-<outputs>``, ``with-stdin-from`` and
-  ``with-<outputs>-to``. This action is available since Dune 2.0.
+  values, and is specified using the :doc:`concepts/predicate-language`.
+  ``<DSL>`` can only contain nested occurrences of ``run``, ``bash``,
+  ``system``, ``chdir``, ``setenv``, ``ignore-<outputs>``, ``with-stdin-from``
+  and ``with-<outputs>-to``. This action is available since Dune 2.0.
 - ``(progn <DSL>...)`` to execute several commands in sequence
 - ``(concurrent <DSL>...)``` to execute several commands concurrently
   and collect all resulting errors, if any.

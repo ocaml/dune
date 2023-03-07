@@ -26,6 +26,7 @@ Welcome to Dune's Documentation!
    concepts/scopes
    concepts/ordered-set-language
    concepts/boolean-language
+   concepts/predicate-language
 
 .. toctree::
    :caption: Reference

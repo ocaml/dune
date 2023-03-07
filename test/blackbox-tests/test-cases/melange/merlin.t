@@ -2,7 +2,8 @@
 
   $ ocamlc_where="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
-  $ melc_where=($(melc -where | awk '{split($0,a,":"); print a[1],a[2],a[3]}'))
+  $ melc --where > melc_where.txt
+  $ melc_where=$(awk '{split($0,a,":"); print a[1],a[2],a[3]}' melc_where.txt)
   $ for stdlib_path in "${melc_where[@]}"
   > do
   >    export BUILD_PATH_PREFIX_MAP="/MELC_STDLIB=$stdlib_path:$BUILD_PATH_PREFIX_MAP"

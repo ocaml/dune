@@ -1,9 +1,3 @@
-****************
-General Concepts
-****************
-
-.. _foreign-sources-and-archives:
-
 Foreign Sources, Archives and Objects
 =====================================
 
@@ -45,20 +39,19 @@ Here is a complete list of supported subfields:
   raise an error if multiple source files map to the same object name.
   If you need to have multiple object files with the same name, you can
   package them into different :ref:`foreign-archives` via the
-  ``foreign_archives`` field. This field uses the
-  :doc:`concepts/ordered-set-language` where the ``:standard`` value
-  corresponds to the set of names of all source files whose extensions match
-  the specified ``language``.
+  ``foreign_archives`` field. This field uses the :doc:`ordered-set-language`
+  where the ``:standard`` value corresponds to the set of names of all source
+  files whose extensions match the specified ``language``.
 - ``flags`` are passed when compiling source files. This field is specified
-  using the :doc:`concepts/ordered-set-language`, where the ``:standard`` value
-  comes from the environment settings ``c_flags`` and ``cxx_flags``,
-  respectively. Note that, for C stubs, Dune unconditionally adds the flags
-  present in the OCaml config fields ``ocamlc_cflags`` and ``ocamlc_cppflags``
-  to the compiler command line. This behavior can be disabled since Dune 2.8
-  via the ``dune-project`` option :ref:`always-add-cflags`.
+  using the :doc:`ordered-set-language`, where the ``:standard`` value comes
+  from the environment settings ``c_flags`` and ``cxx_flags``, respectively.
+  Note that, for C stubs, Dune unconditionally adds the flags present in the
+  OCaml config fields ``ocamlc_cflags`` and ``ocamlc_cppflags`` to the compiler
+  command line. This behavior can be disabled since Dune 2.8 via the
+  ``dune-project`` option :ref:`always-add-cflags`.
 - ``include_dirs`` are tracked as dependencies and passed to the compiler
-  via the ``-I`` flag. You can use :doc:`concepts/variables` in this field and
-  refer to a library source directory using the ``(lib library-name)`` syntax.
+  via the ``-I`` flag. You can use :doc:`variables` in this field and refer to
+  a library source directory using the ``(lib library-name)`` syntax.
   Additionally, the syntax ``(include filename)`` can be used to specify a file
   containing additional arguments to ``(include_dirs ...)``. The named file can
   either contain a single path to be added to this list of include directories,
@@ -205,13 +198,13 @@ flags for C will contain only ``ocamlc_cflags`` or both ``ocamlc_cflags`` and
 ``ocamlc_cppflags``.
 
 There are multiple levels where one can declare custom flags (using the
-:doc:`concepts/ordered-set-language`), and each level inherits the flags of the
-previous one in its `:standard` set:
+:doc:`ordered-set-language`), and each level inherits the flags of the previous
+one in its `:standard` set:
 
 - In the global `env` definition of a `dune-workspace` file
 - In the per-context `env` definitions in a `dune-workspace` file
 - In the env definition of a `dune` file
 - In a `foreign_` field of an executable or a library
 
-The ``%{cc}`` :doc:`variable <concepts/variables>` will contain the flags from
-the first three levels only.
+The ``%{cc}`` :doc:`variable <variables>` will contain the flags from the first
+three levels only.

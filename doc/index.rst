@@ -22,7 +22,6 @@ Welcome to Dune's Documentation!
 .. toctree::
    :caption: Concepts
 
-   concepts
    concepts/scopes
    concepts/ordered-set-language
    concepts/boolean-language
@@ -37,6 +36,7 @@ Welcome to Dune's Documentation!
    concepts/locks
    concepts/promotion
    concepts/package-spec
+   concepts/foreign
 
 .. toctree::
    :caption: Reference

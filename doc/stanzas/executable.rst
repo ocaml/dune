@@ -111,8 +111,8 @@ files for executables. See `executables_implicit_empty_intf`_.
   them.
 
 - ``(foreign_stubs <foreign-stubs-spec>)`` specifies foreign source files, e.g.,
-  C or C++ stubs, to be linked into the executable. See the section
-  :ref:`foreign-sources-and-archives` for more details.
+  C or C++ stubs, to be linked into the executable. See
+  :doc:`concepts/foreign` for more details.
 
 - ``(foreign_archives <foreign-archives-list>)`` specifies archives of foreign
   object files to be linked into the executable. See the section

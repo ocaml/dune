@@ -91,8 +91,8 @@ order to declare a multi-directory library, you need to use the
 
 - ``(foreign_stubs <foreign-stubs-spec>)`` specifies foreign source files, e.g.,
   C or C++ stubs, to be compiled and packaged together with the library. See the
-  section :ref:`foreign-sources-and-archives` for more details. This field
-  replaces the now-deleted fields ``c_names``, ``c_flags``, ``cxx_names``, and
+  section :doc:`concepts/foreign` for more details. This field replaces the
+  now-deleted fields ``c_names``, ``c_flags``, ``cxx_names``, and
   ``cxx_flags``.
 
 - ``(foreign_archives <foreign-archives-list>)`` specifies archives of foreign

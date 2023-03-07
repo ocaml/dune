@@ -696,7 +696,7 @@ tests are executed in a clean environment. This is why all Cram tests are
 sandboxed. To respect sandboxing, every test should specify dependency on any
 artifact that might rely on using the ``deps`` field.
 
-See :ref:`dune-action-plugin` for details about the sandboxing mechanism.
+See :doc:`concepts/sandboxing` for details about the sandboxing mechanism.
 
 
 Test Output Sanitation

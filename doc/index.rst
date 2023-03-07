@@ -33,6 +33,7 @@ Welcome to Dune's Documentation!
    concepts/dependency-spec
    concepts/ocaml-flags
    concepts/actions
+   concepts/sandboxing
 
 .. toctree::
    :caption: Reference

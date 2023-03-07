@@ -2,12 +2,8 @@
 
   $ ocamlc_where="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
-  $ melc_where="$(melc -where)"
-  $ IFS=: read -r melc_stdlib melc_stdlib2 melc_stdlib3 <<< "$melc_where"
-  $ export BUILD_PATH_PREFIX_MAP="/MELC_STDLIB=$melc_stdlib:$BUILD_PATH_PREFIX_MAP"
-  $ export BUILD_PATH_PREFIX_MAP="/MELC_STDLIB=$melc_stdlib2:$BUILD_PATH_PREFIX_MAP"
-  $ export BUILD_PATH_PREFIX_MAP="/MELC_STDLIB=$melc_stdlib3:$BUILD_PATH_PREFIX_MAP"
   $ melc_compiler="$(which melc)"
+  $ export BUILD_PATH_PREFIX_MAP="$(melc_stdlib_prefix)":$BUILD_PATH_PREFIX_MAP
   $ export BUILD_PATH_PREFIX_MAP="/MELC_COMPILER=$melc_compiler:$BUILD_PATH_PREFIX_MAP"
 
   $ cat >dune-project <<EOF
@@ -109,13 +105,8 @@ Melange ppx should appear after user ppx, so that Merlin applies the former firs
 
   $ dune ocaml merlin dump-config $PWD | grep -v "(B "  | grep -v "(S "
   Bar
-  ((STDLIB
-    /MELC_STDLIB)
+  ((STDLIB /MELC_STDLIB)
    (EXCLUDE_QUERY_DIR)
-   (B
-    /MELC_STDLIB)
-   (B
-    /MELC_STDLIB)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
    (S
@@ -136,13 +127,8 @@ Melange ppx should appear after user ppx, so that Merlin applies the former firs
      -short-paths
      -keep-locs)))
   Foo
-  ((STDLIB
-    /MELC_STDLIB)
+  ((STDLIB /MELC_STDLIB)
    (EXCLUDE_QUERY_DIR)
-   (B
-    /MELC_STDLIB)
-   (B
-    /MELC_STDLIB)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
    (S

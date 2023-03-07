@@ -1,6 +1,9 @@
 (env
  (_
-  (binaries ../utils/dune_cmd.exe ../utils/dunepp.exe)))
+  (binaries
+   ../utils/dune_cmd.exe
+   ../utils/dunepp.exe
+   ../utils/melc_stdlib_prefix.exe)))
 
 (cram
  (applies_to pp-cwd)

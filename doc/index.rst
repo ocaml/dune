@@ -28,6 +28,7 @@ Welcome to Dune's Documentation!
    concepts/boolean-language
    concepts/predicate-language
    concepts/variables
+   concepts/library-dependencies
 
 .. toctree::
    :caption: Reference

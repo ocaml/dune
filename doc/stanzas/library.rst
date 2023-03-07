@@ -57,7 +57,7 @@ order to declare a multi-directory library, you need to use the
   ``Foo``, use ``(modules (:standard \ foo))``
 
 - ``(libraries <library-dependencies>)`` specifies the library's dependencies.
-  See the section about :ref:`library-deps` for more details.
+  See :doc:`concepts/library-dependencies` for more details.
 
 - ``(wrapped <boolean>)`` specifies whether the library modules should be
   available only through the top-level library module, or if they should all be

@@ -60,7 +60,7 @@ files for executables. See `executables_implicit_empty_intf`_.
   specifies the package the executables are part of it.
 
 - ``(libraries <library-dependencies>)`` specifies the library dependencies. See
-  the section about :ref:`library-deps` for more details.
+  :doc:`concepts/library-dependencies` for more details.
 
 - ``(link_flags <flags>)`` specifies additional flags to pass to the linker.
   This field supports ``(:include ...)`` forms.

@@ -81,8 +81,8 @@ order to declare a multi-directory library, you need to use the
 
 - ``(preprocessor_deps (<deps-conf list>))`` specifies extra preprocessor
   dependencies preprocessor, i.e., if the preprocessor reads a generated file.
-  The specification of dependencies is described in the :ref:`deps-field`
-  section.
+  The specification of dependencies is described in
+  :doc:`concepts/dependency-spec`.
 
 - ``(optional)`` - if present, it indicates that the library should only be
   built and installed if all the dependencies are available, either in the

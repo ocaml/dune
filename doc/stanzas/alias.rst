@@ -19,8 +19,8 @@ The syntax is as follows:
 
 .. _alias-fields:
 
-``<deps-conf list>`` specifies the dependencies of the alias. See the
-:ref:`deps-field` section for more details.
+``<deps-conf list>`` specifies the dependencies of the alias. See
+:doc:`concepts/dependency-spec` section for more details.
 
 ``<optional-fields>`` are:
 

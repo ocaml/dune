@@ -30,6 +30,7 @@ Welcome to Dune's Documentation!
    concepts/variables
    concepts/library-dependencies
    concepts/preprocessing-spec
+   concepts/dependency-spec
 
 .. toctree::
    :caption: Reference

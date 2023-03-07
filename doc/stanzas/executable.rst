@@ -66,8 +66,8 @@ files for executables. See `executables_implicit_empty_intf`_.
   This field supports ``(:include ...)`` forms.
 
 - ``(link_deps (<deps-conf list>))`` specifies the dependencies used only by the
-  linker, i.e., when using a version script. See the :ref:`deps-field` section
-  for more details.
+  linker, i.e., when using a version script. See
+  :doc:`concepts/dependency-spec` for more details.
 
 - ``(modules <modules>)`` specifies which modules in the current directory Dune
   should consider when building this executable. Modules not listed here will be

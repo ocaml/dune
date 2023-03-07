@@ -95,4 +95,4 @@ Some build rules are inherently not reproducible because they involve running
 non-deterministic commands that, for example, depend on the current time or
 download files from the Internet. To prevent Dune from caching such rules, mark
 them as non-reproducible by using ``(deps (universe))``. Please see
-:ref:`deps-field`.
+:doc:`concepts/dependency-spec`.

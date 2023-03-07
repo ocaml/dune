@@ -260,7 +260,7 @@ Specifying Inline Test Dependencies
 
 If your tests are reading files, you must tell Dune by adding
 a ``deps`` field the ``inline_tests`` field. The argument of this
-``deps`` field follows the usual :ref:`deps-field`. For instance:
+``deps`` field follows the usual :doc:`concepts/dependency-spec`. For instance:
 
 .. code:: ocaml
 

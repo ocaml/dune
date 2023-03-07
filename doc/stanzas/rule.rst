@@ -23,8 +23,8 @@ the :ref:`user-actions` section for more details.
   ``(targets)`` can be omitted if it can be inferred from the action. See
   `inferred rules`_.
 
-- ``(deps <deps-conf list>)`` specifies the dependencies of the rule. See the
-  :ref:`deps-field` section for more details.
+- ``(deps <deps-conf list>)`` specifies the dependencies of the rule. See
+  :doc:`concepts/dependency-spec` for more details.
 
 - ``(mode <mode>)`` specifies how to handle the targets. See `modes`_ for
   details.

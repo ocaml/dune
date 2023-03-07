@@ -28,5 +28,6 @@ end
     - version
     - ocaml-version
     - coqlib
+    - coqcorelib
     - coq_native_compiler_default *)
 val by_name : t -> string -> Value.t Option.t

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678208212044,
+  "lastUpdate": 1678208541038,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -8875,6 +8875,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.23607095668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ac0f50314c89f9da4e53310505faf4e21e6f9fc6",
+          "message": "feature: use clonefile on macos (#7210)\n\nUse mac's [clonefile] instead of manually copying. [clonefile] is like\r\nhardlink but it will copy-on-write when edited.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-07T08:38:03-08:00",
+          "tree_id": "05d8958bf2f214d3bd6b05e15788815ed0418e95",
+          "url": "https://github.com/ocaml/dune/commit/ac0f50314c89f9da4e53310505faf4e21e6f9fc6"
+        },
+        "date": 1678208540132,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "64.99094837290666",
             "unit": "seconds"
           }
         ]

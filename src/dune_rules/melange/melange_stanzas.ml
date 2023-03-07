@@ -11,6 +11,7 @@ module Emit = struct
     ; libraries : Lib_dep.t list
     ; package : Package.t option
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
+    ; runtime_deps : Dep_conf.t list
     ; preprocessor_deps : Dep_conf.t list
     ; promote : Rule.Promote.t option
     ; compile_flags : Ordered_set_lang.Unexpanded.t
@@ -128,6 +129,8 @@ module Emit = struct
            ~default:[ Melange.Module_system.default ]
        and+ libraries = field "libraries" decode_lib ~default:[]
        and+ package = field_o "package" Stanza_common.Pkg.decode
+       and+ runtime_deps =
+         field "runtime_deps" (repeat Dep_conf.decode) ~default:[]
        and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
        and+ promote = field_o "promote" Rule_mode_decoder.Promote.decode
        and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
@@ -155,6 +158,7 @@ module Emit = struct
        ; libraries
        ; package
        ; preprocess
+       ; runtime_deps
        ; preprocessor_deps
        ; promote
        ; compile_flags

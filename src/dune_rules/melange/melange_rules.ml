@@ -28,6 +28,16 @@ let output_of_lib ~target_dir lib =
       , Path.Build.L.relative target_dir
           [ "node_modules"; Lib_name.to_string lib_name ] )
 
+let lib_output_path ~output_dir ~lib_dir src =
+  let dir =
+    let src_dir = Path.to_string src in
+    let lib_dir = Path.to_string lib_dir in
+    String.drop_prefix src_dir ~prefix:lib_dir
+    |> Option.value_exn
+    |> String.drop_prefix_if_exists ~prefix:"/"
+  in
+  if dir = "" then output_dir else Path.Build.relative output_dir dir
+
 let make_js_name ~js_ext ~output m =
   let basename = Melange.js_basename m ^ js_ext in
   match output with
@@ -35,16 +45,7 @@ let make_js_name ~js_ext ~output m =
     let src_dir =
       Module.file m ~ml_kind:Impl |> Option.value_exn |> Path.parent_exn
     in
-    let dir =
-      let src_dir = Path.to_string src_dir in
-      let lib_dir = Path.to_string lib_dir in
-      String.drop_prefix src_dir ~prefix:lib_dir
-      |> Option.value_exn
-      |> String.drop_prefix_if_exists ~prefix:"/"
-    in
-    let output_dir =
-      if dir = "" then output_dir else Path.Build.relative output_dir dir
-    in
+    let output_dir = lib_output_path ~output_dir ~lib_dir src_dir in
     Path.Build.relative output_dir basename
   | `Private_library_or_emit target_dir ->
     let dst_dir =
@@ -195,11 +196,10 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
     let requires_link = Lib.Compile.requires_link compile_info in
     let* flags = ocaml_flags sctx ~dir mel.compile_flags in
     let* cctx =
-      let js_of_ocaml = None in
       let direct_requires = Lib.Compile.direct_requires compile_info in
       Compilation_context.create () ~loc:mel.loc ~super_context:sctx ~expander
         ~scope ~obj_dir ~modules ~flags ~requires_link
-        ~requires_compile:direct_requires ~preprocessing:pp ~js_of_ocaml
+        ~requires_compile:direct_requires ~preprocessing:pp ~js_of_ocaml:None
         ~opaque:Inherit_from_settings ~package:mel.package
         ~modes:
           { ocaml = { byte = None; native = None }
@@ -247,6 +247,60 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
   in
   Buildable_rules.with_lib_deps ctx compile_info ~dir ~f
 
+module Runtime_deps = struct
+  let to_action_builder ~expander dep_conf =
+    let runtime_deps, _sandbox =
+      Dep_conf_eval.unnamed_get_paths ~expander dep_conf
+    in
+    runtime_deps
+
+  let eval ~expander (deps : Dep_conf.t list) =
+    let open Memo.O in
+    let builder = to_action_builder ~expander deps in
+    let+ paths, _ = Action_builder.run builder Eager in
+    paths
+
+  let targets ~output deps =
+    Path.Set.fold ~init:([], []) deps ~f:(fun src (copy, non_copy) ->
+        match output with
+        | `Private_library_or_emit output_dir -> (
+          match Path.as_in_build_dir src with
+          | None -> (copy, src :: non_copy)
+          | Some src_build ->
+            let target = Path.Build.drop_build_context_exn src_build in
+            ((src, Path.Build.append_source output_dir target) :: copy, non_copy)
+          )
+        | `Public_library (lib_dir, output_dir) ->
+          ((src, lib_output_path ~output_dir ~lib_dir src) :: copy, non_copy))
+end
+
+let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode
+    ~(mel : Melange_stanzas.Emit.t) ~output =
+  let open Memo.O in
+  let* runtime_dep_paths =
+    let* expander = Super_context.expander sctx ~dir in
+    Runtime_deps.eval ~expander mel.runtime_deps
+  in
+  let copy, non_copy = Runtime_deps.targets ~output runtime_dep_paths in
+  let+ () =
+    let loc = mel.loc in
+    Memo.parallel_iter copy ~f:(fun (src, dst) ->
+        Super_context.add_rule ~loc ~dir ~mode sctx
+          (Action_builder.symlink ~src ~dst))
+  and+ () =
+    match mel.alias with
+    | None -> Memo.return ()
+    | Some alias_name ->
+      let deps =
+        Action_builder.paths
+          (non_copy
+          @ List.rev_map copy ~f:(fun (_, target) -> Path.build target))
+      in
+      let alias = Alias.make alias_name ~dir:target_dir in
+      Rules.Produce.Alias.add_deps alias deps
+  in
+  ()
+
 let setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
     ~mode (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
@@ -281,6 +335,9 @@ let setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
   in
   let output = `Private_library_or_emit target_dir in
   let obj_dir = Obj_dir.of_local obj_dir in
+  let* () =
+    setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~mel ~output
+  in
   Memo.parallel_iter modules_for_js ~f:(fun m ->
       build_js ~dir ~loc ~pkg_name ~mode ~module_systems ~output ~obj_dir ~sctx
         ~includes m)
@@ -335,20 +392,22 @@ let emit_target_dir (emit : Melange_stanzas.Emit.t) ~dir =
 
 let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
   let open Memo.O in
-  let* compile_info = compile_info ~scope mel in
   let target_dir = emit_target_dir ~dir:(Dir_contents.dir dir_contents) mel in
   let mode =
     match mel.promote with
     | None -> Rule.Mode.Standard
     | Some p -> Promote p
   in
-  let* () =
+  let* compile_info = compile_info ~scope mel in
+  let+ () =
     let* requires_link =
       Lib.Compile.requires_link compile_info
       |> Memo.Lazy.force >>= Resolve.read_memo
     in
     setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
       mel
+  and+ () =
+    setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
+      ~mode mel
   in
-  setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
-    ~mode mel
+  ()

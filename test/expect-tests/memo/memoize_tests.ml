@@ -670,12 +670,12 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     {|
     Started evaluating base
     Evaluated base: 2
+    Started evaluating yes_cutoff
+    Evaluated yes_cutoff: 1
     Started evaluating after_no_cutoff
     Started evaluating no_cutoff
     Evaluated no_cutoff: 1
     Evaluated after_no_cutoff: 2
-    Started evaluating yes_cutoff
-    Evaluated yes_cutoff: 1
     f 0 = Ok 4
     Memo graph: 6/5 restored/computed nodes, 11 traversed edges
     Memo cycle detection graph: 0/0/0 nodes/edges/paths

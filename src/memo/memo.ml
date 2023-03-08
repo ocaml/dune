@@ -465,8 +465,9 @@ module M = struct
 
     val changed_or_not :
          t
-      -> f:(Dep_node.packed -> Changed_or_not.t Fiber.t)
-      -> Changed_or_not.t Fiber.t
+      -> f:(Dep_node.packed -> [ `Answer of Changed_or_not.t | `Delay ] Fiber.t)
+      -> [ `Answer of Changed_or_not.t | `Uncomputed of Dep_node.packed list ]
+         Fiber.t
   end = struct
     (* The array is stored reversed to avoid reversing the list in [create]. We
        need to be careful about traversing the array in the right order in the
@@ -482,22 +483,27 @@ module M = struct
     let to_list = Array.fold_left ~init:[] ~f:(fun acc x -> x :: acc)
 
     let changed_or_not t ~f =
-      let rec go index =
+      let rec go acc index =
         if index < 0 then (
           if !Counters.enabled then
             Counters.edges_traversed :=
               !Counters.edges_traversed + Array.length t;
-          Fiber.return Changed_or_not.Unchanged)
+          Fiber.return
+          @@
+          match acc with
+          | [] -> `Answer Changed_or_not.Unchanged
+          | uncomputed -> `Uncomputed uncomputed)
         else
           f t.(index) >>= function
-          | Changed_or_not.Unchanged -> go (index - 1)
-          | (Changed | Cancelled _) as res ->
+          | `Delay -> go (t.(index) :: acc) (index - 1)
+          | `Answer Changed_or_not.Unchanged -> go acc (index - 1)
+          | `Answer (Changed | Cancelled _) as res ->
             if !Counters.enabled then
               Counters.edges_traversed :=
                 !Counters.edges_traversed + (Array.length t - index);
             Fiber.return res
       in
-      go (Array.length t - 1)
+      go [] (Array.length t - 1)
   end
 
   (** The following state transition diagram shows how a node's state changes
@@ -1100,6 +1106,15 @@ let report_and_collect_errors f =
 
 let check_point = ref (Fiber.return ())
 
+let rec find_map xs ~f =
+  match xs with
+  | [] -> Fiber.return None
+  | x :: xs -> (
+    let* x = f x in
+    match x with
+    | None -> find_map xs ~f
+    | Some _ as y -> Fiber.return y)
+
 module Exec : sig
   val exec_dep_node : ('i, 'o) Dep_node.t -> 'o Fiber.t
 end = struct
@@ -1127,38 +1142,47 @@ end = struct
          skip the unnecessary work. The downside is that if a computation is in
          fact non-deterministic, there is no way to force rerunning it, apart
          from changing some of its dependencies. *)
-      let+ deps_changed =
+      let* deps_changed =
         (* Make sure [f] gets inlined to avoid unnecessary closure allocations
            and improve stack traces in profiling. *)
         Deps.changed_or_not cached_value.deps
           ~f:(fun [@inline] (Dep_node.T dep) ->
-            consider_and_restore_from_cache_without_adding_dep dep >>= function
-            | Ok cached_value_of_dep -> (
+            consider_and_restore_from_cache_without_adding_dep dep >>| function
+            | Ok cached_value_of_dep ->
               (* The [Changed] branch will be taken if [cached_value]'s node was
                  skipped in the previous run (it was unreachable), while [dep]
                  wasn't skipped and [cached_value_of_dep] changed. *)
-              match
-                Run.compare cached_value_of_dep.last_changed_at
-                  cached_value.last_validated_at
-              with
-              | Gt -> Fiber.return Changed_or_not.Changed
-              | Eq | Lt -> Fiber.return Changed_or_not.Unchanged)
-            | Failure (Cancelled { dependency_cycle }) ->
-              Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
+              `Answer
+                (match
+                   Run.compare cached_value_of_dep.last_changed_at
+                     cached_value.last_validated_at
+                 with
+                | Gt -> Changed_or_not.Changed
+                | Eq | Lt -> Unchanged)
+            | Failure (Cache_lookup.Failure.Cancelled { dependency_cycle }) ->
+              `Answer (Changed_or_not.Cancelled { dependency_cycle })
             | Failure (Out_of_date _old_value) -> (
               match dep.has_cutoff with
+              | true -> `Delay
               | false ->
                 (* If [dep] has no cutoff, it is sufficient to check whether it
                    is up to date. If not, we must recompute the
                    [cached_value]. *)
-                Fiber.return Changed_or_not.Changed
-              | true -> (
+                `Answer Changed_or_not.Changed))
+      in
+      let+ deps_changed =
+        match deps_changed with
+        | `Answer s -> Fiber.return s
+        | `Uncomputed nodes -> (
+          let+ res =
+            find_map nodes ~f:(fun [@inline] (Dep_node.T dep) ->
                 (* If [dep] has a cutoff predicate, it is not sufficient to
                    check whether it is up to date: even if it isn't, after we
                    recompute it, the resulting value may remain unchanged,
                    allowing us to skip recomputing the [cached_value]. *)
-                consider_and_compute_without_adding_dep dep
-                >>| function
+                consider_and_compute_without_adding_dep dep >>| function
+                | Error dependency_cycle ->
+                  Some (Changed_or_not.Cancelled { dependency_cycle })
                 | Ok cached_value_of_dep -> (
                   (* Note: [cached_value_of_dep.value] will be [Cancelled _] if
                      [dep] itself doesn't introduce a dependency cycle but one
@@ -1168,9 +1192,12 @@ end = struct
                     Run.compare cached_value_of_dep.last_changed_at
                       cached_value.last_validated_at
                   with
-                  | Gt -> Changed_or_not.Changed
-                  | Eq | Lt -> Unchanged)
-                | Error dependency_cycle -> Cancelled { dependency_cycle })))
+                  | Gt -> Some Changed_or_not.Changed
+                  | Eq | Lt -> None))
+          in
+          match res with
+          | Some x -> x
+          | None -> Unchanged)
       in
       match deps_changed with
       | Unchanged ->

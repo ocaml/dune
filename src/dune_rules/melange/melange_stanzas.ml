@@ -29,14 +29,31 @@ module Emit = struct
     let add kind name acc =
       match Lib_name.Map.find acc name with
       | None -> Lib_name.Map.set acc name kind
-      | Some _present ->
-        User_error.raise ~loc
-          [ Pp.textf "library %S is present twice" (Lib_name.to_string name) ]
+      | Some kind' -> (
+        match (kind, kind') with
+        | Lib_dep.Required, Required ->
+          User_error.raise ~loc
+            [ Pp.textf "library %S is present twice" (Lib_name.to_string name) ]
+        | (Optional | Forbidden), (Optional | Forbidden) -> acc
+        | Optional, Required | Required, Optional ->
+          User_error.raise ~loc
+            [ Pp.textf
+                "library %S is present both as an optional and required \
+                 dependency"
+                (Lib_name.to_string name)
+            ]
+        | Forbidden, Required | Required, Forbidden ->
+          User_error.raise ~loc
+            [ Pp.textf
+                "library %S is present both as a forbidden and required \
+                 dependency"
+                (Lib_name.to_string name)
+            ])
     in
     ignore
       (List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
            match x with
-           | Lib_dep.Direct (_, s) -> add true s acc
+           | Lib_dep.Direct (_, s) -> add Lib_dep.Required s acc
            | Lib_dep.Re_export (_, name) ->
              User_error.raise ~loc
                [ Pp.textf
@@ -44,10 +61,16 @@ module Emit = struct
                     melange libraries"
                    (Lib_name.to_string name)
                ]
-           | Select _ ->
-             User_error.raise ~loc
-               [ Pp.textf "select is not supported for melange libraries" ])
-        : bool Lib_name.Map.t);
+           | Select { choices; _ } ->
+             List.fold_left choices ~init:acc
+               ~f:(fun acc (c : Lib_dep.Select.Choice.t) ->
+                 let acc =
+                   Lib_name.Set.fold c.required ~init:acc
+                     ~f:(add Lib_dep.Optional)
+                 in
+                 Lib_name.Set.fold c.forbidden ~init:acc
+                   ~f:(add Lib_dep.Forbidden)))
+        : Lib_dep.kind Lib_name.Map.t);
     t
 
   let decode =

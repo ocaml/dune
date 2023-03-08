@@ -32,11 +32,6 @@ type for_ =
 module Lib_deps = struct
   type t = Lib_dep.t list
 
-  type kind =
-    | Required
-    | Optional
-    | Forbidden
-
   let decode for_ =
     let+ loc = loc
     and+ t =
@@ -52,7 +47,7 @@ module Lib_deps = struct
       | None -> Lib_name.Map.set acc name kind
       | Some kind' -> (
         match (kind, kind') with
-        | Required, Required ->
+        | Lib_dep.Required, Required ->
           User_error.raise ~loc
             [ Pp.textf "library %S is present twice" (Lib_name.to_string name) ]
         | (Optional | Forbidden), (Optional | Forbidden) -> acc
@@ -83,7 +78,7 @@ module Lib_deps = struct
                    Lib_name.Set.fold c.required ~init:acc ~f:(add Optional)
                  in
                  Lib_name.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
-        : kind Lib_name.Map.t);
+        : Lib_dep.kind Lib_name.Map.t);
     t
 
   let of_pps pps = List.map pps ~f:(fun pp -> Lib_dep.direct (Loc.none, pp))

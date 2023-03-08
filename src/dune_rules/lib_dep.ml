@@ -94,6 +94,11 @@ module Select = struct
     { result_fn; choices; loc }
 end
 
+type kind =
+  | Required
+  | Optional
+  | Forbidden
+
 type t =
   | Direct of (Loc.t * Lib_name.t)
   | Re_export of (Loc.t * Lib_name.t)

@@ -20,7 +20,8 @@ Welcome to Dune's Documentation!
    usage
 
 .. toctree::
-   :caption: Concepts
+   :caption: Reference
+   :maxdepth: 3
 
    concepts/scopes
    concepts/ordered-set-language
@@ -37,11 +38,6 @@ Welcome to Dune's Documentation!
    concepts/promotion
    concepts/package-spec
    concepts/foreign
-
-.. toctree::
-   :caption: Reference
-   :maxdepth: 3
-
    formatting
    coq
    cross-compilation

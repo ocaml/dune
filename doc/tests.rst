@@ -382,10 +382,10 @@ for their tests. It's expected that the action will produce some OCaml code on
 its standard output. This code will constitute the test runner. The action can
 use the following additional variables:
 
-- ``%{library-name}`` — the name of the library being tested
-- ``%{impl-files}`` — the list of implementation files in the
+- ``%{library-name}`` --- the name of the library being tested
+- ``%{impl-files}`` --- the list of implementation files in the
   library, i.e., all the ``.ml`` and ``.re`` files
-- ``%{intf-files}`` — the list of interface files in the library,
+- ``%{intf-files}`` --- the list of interface files in the library,
   i.e., all the ``.mli`` and ``.rei`` files
 
 The ``runner_libraries`` field specifies what OCaml libraries the test

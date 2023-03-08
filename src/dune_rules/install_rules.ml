@@ -172,7 +172,7 @@ end = struct
     in
     let* melange_runtime_deps =
       let* expander = Super_context.expander sctx ~dir:lib_src_dir in
-      Melange_rules.Runtime_deps.eval ~expander (snd lib.melange_runtime_deps)
+      Melange_rules.eval_runtime_deps ~expander (snd lib.melange_runtime_deps)
     in
     let melange_runtime_entries =
       Path.Set.to_list_map
@@ -597,7 +597,7 @@ end = struct
                   let* expander =
                     Super_context.expander sctx ~dir:lib_src_dir
                   in
-                  Melange_rules.Runtime_deps.eval ~expander dep_conf
+                  Melange_rules.eval_runtime_deps ~expander dep_conf
                 in
                 Path.Set.to_list melange_runtime_deps
               | External _paths -> assert false

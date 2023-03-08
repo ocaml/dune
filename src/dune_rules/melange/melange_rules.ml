@@ -258,12 +258,6 @@ module Runtime_deps = struct
     in
     runtime_deps
 
-  let eval ~expander (deps : Dep_conf.t list) =
-    let open Memo.O in
-    let builder = to_action_builder ~expander deps in
-    let+ paths, _ = Action_builder.run builder Eager in
-    paths
-
   let targets ~output deps =
     Path.Set.fold ~init:([], []) deps ~f:(fun src (copy, non_copy) ->
         match output with
@@ -283,6 +277,12 @@ module Runtime_deps = struct
           , non_copy ))
 end
 
+let eval_runtime_deps ~expander (deps : Dep_conf.t list) =
+  let open Memo.O in
+  let builder = Runtime_deps.to_action_builder ~expander deps in
+  let+ paths, _ = Action_builder.run builder Eager in
+  paths
+
 let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode
     ~(mel : Melange_stanzas.Emit.t) ~output ~for_ =
   let open Memo.O in
@@ -290,7 +290,7 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode
     match for_ with
     | `Emit ->
       let* expander = Super_context.expander sctx ~dir in
-      Runtime_deps.eval ~expander mel.runtime_deps
+      eval_runtime_deps ~expander mel.runtime_deps
     | `Library lib_info -> (
       match Lib_info.melange_runtime_deps lib_info with
       | Local dep_conf ->
@@ -299,7 +299,7 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode
           Lib_info.src_dir info
         in
         let* expander = Super_context.expander sctx ~dir in
-        Runtime_deps.eval ~expander dep_conf
+        eval_runtime_deps ~expander dep_conf
       | External paths -> Memo.return (Path.Set.of_list paths))
   in
   let copy, non_copy = Runtime_deps.targets ~output runtime_dep_paths in

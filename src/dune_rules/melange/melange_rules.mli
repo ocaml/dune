@@ -19,6 +19,5 @@ val setup_emit_js_rules :
   -> Melange_stanzas.Emit.t
   -> unit Memo.t
 
-module Runtime_deps : sig
-  val eval : expander:Expander.t -> Dep_conf.t list -> Path.Set.t Memo.t
-end
+val eval_runtime_deps :
+  expander:Expander.t -> Dep_conf.t list -> Path.Set.t Memo.t

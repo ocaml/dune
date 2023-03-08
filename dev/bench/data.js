@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678316052263,
+  "lastUpdate": 1678316065686,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -9774,6 +9774,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "81.64070325075333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "634bc0ebbf9f85dddb849c065a2d9caf4e7a3071",
+          "message": "test(coq): duplicate theory in a project\n\nAppears to work correctly.\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>\n\n<!-- ps-id: 45dfb6a8-bff8-48ae-8ad7-fa0ca6b41d12 -->",
+          "timestamp": "2023-03-08T23:20:00+01:00",
+          "tree_id": "91a11ed7cde64337ffc350ef7fe43244fefefcf0",
+          "url": "https://github.com/ocaml/dune/commit/634bc0ebbf9f85dddb849c065a2d9caf4e7a3071"
+        },
+        "date": 1678316064552,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.1275339876133335",
             "unit": "seconds"
           }
         ]

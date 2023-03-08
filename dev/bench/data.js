@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678219839029,
+  "lastUpdate": 1678287971298,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -8003,6 +8003,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.07062802632",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a3ff6bf48bb5e203bfda1afaf1fe0b69ae77103d",
+          "message": "Show that multiple licenses are supported (#7098)\n\nThe stanza is in the singular, but in fact supports more than one\r\nlicense. A lot of `.opam.template` files exist that add a `license`\r\nfield to be able to specify multiple licenses where this is not strictly\r\nrequired.\r\n\r\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-03-08T14:46:55Z",
+          "tree_id": "05a7593b486388c1fb85169ce2d7e9d232e0f076",
+          "url": "https://github.com/ocaml/dune/commit/a3ff6bf48bb5e203bfda1afaf1fe0b69ae77103d"
+        },
+        "date": 1678287969911,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.60195301587334",
             "unit": "seconds"
           }
         ]

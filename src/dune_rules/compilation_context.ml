@@ -209,11 +209,16 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   }
 
 let for_alias_module t alias_module =
+  let keep_flags = Modules.is_stdlib_alias (modules t) alias_module in
   let flags =
-    let project = Scope.project t.scope in
-    let dune_version = Dune_project.dune_version project in
-    let profile = (Super_context.context t.super_context).profile in
-    Ocaml_flags.default ~dune_version ~profile
+    if keep_flags then
+      (* in the case of stdlib, these flags can be written by the user *)
+      t.flags
+    else
+      let project = Scope.project t.scope in
+      let dune_version = Dune_project.dune_version project in
+      let profile = (Super_context.context t.super_context).profile in
+      Ocaml_flags.default ~dune_version ~profile
   in
   let sandbox =
     let ctx = Super_context.context t.super_context in

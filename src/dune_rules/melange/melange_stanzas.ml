@@ -89,8 +89,7 @@ module Emit = struct
           in
           User_error.raise ~annots ~loc:loc2
             [ main_message
-            ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-            ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+            ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
             ; Pp.textf "Extensions must be unique per melange.emit stanza"
             ]
             ~hints:

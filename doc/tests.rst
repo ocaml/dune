@@ -129,7 +129,7 @@ as it cannot guess. You can do that by adding a ``backend``
 field:
 
 .. code:: dune
-	
+
    (library
     (name foo)
     (inline_tests (backend qtest.lib)))
@@ -220,7 +220,7 @@ promotion, which in turn makes the workflow even smoother.
 
 Running a Subset of the Test Suite
 ----------------------------------
-	
+
 You may also run a group of tests located under a directory with:
 
 .. code:: bash
@@ -337,9 +337,9 @@ are doing), forcing the linker to load your test module, since the test
 runner doesn't depend on anything itself. This field supports
 ``(:include ...)`` forms.
 
-.. code:: ocaml
+.. code:: dune
 
-	 (library
+   (library
     (name foo)
     (inline_tests
      (executable
@@ -573,7 +573,7 @@ For example, here's an example of how we'd test the ``wc`` utility. ``wc.t``:
      $ cat >foo <<EOF
      > foo
      > bar
-	  > baz
+     > baz
      > EOF
 
    After creating the fixture, we want to verify that ``wc`` gives us the right

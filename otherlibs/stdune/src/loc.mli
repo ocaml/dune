@@ -27,7 +27,7 @@ val of_pos : string * int * int * int -> t
 
 val to_file_colon_line : t -> string
 
-val pp_file_colon_line : t -> unit Pp.t
+val pp_file_colon_line : t -> 'a Pp.t
 
 val to_dyn_hum : t -> Dyn.t
 

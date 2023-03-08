@@ -20,7 +20,7 @@ The syntax is as follows:
 .. _alias-fields:
 
 ``<deps-conf list>`` specifies the dependencies of the alias. See
-:doc:`concepts/dependency-spec` section for more details.
+:doc:`concepts/dependency-spec` for more details.
 
 ``<optional-fields>`` are:
 

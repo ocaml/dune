@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678309907905,
+  "lastUpdate": 1678309921048,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -9600,6 +9600,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "81.70524991299332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "3802efe8100508bb60eb599e0a105f4556c887d5",
+          "message": "coq_config: Add coqcorelib\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>\n\n<!-- ps-id: 1d5e63eb-4cb5-466f-8270-bf05bd1fe056 -->",
+          "timestamp": "2023-03-08T21:42:14+01:00",
+          "tree_id": "431953a65bb9985cb86ff5e44ea820fd4dd83293",
+          "url": "https://github.com/ocaml/dune/commit/3802efe8100508bb60eb599e0a105f4556c887d5"
+        },
+        "date": 1678309919880,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.0131303777266667",
             "unit": "seconds"
           }
         ]

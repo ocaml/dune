@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678309921048,
+  "lastUpdate": 1678311094226,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -8177,6 +8177,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.292520837839994",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "357348710e9c00dd5a8cea6074b9187e8e2a5e77",
+          "message": "ci(coq): bump coq version to 8.16.1\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>\n\n<!-- ps-id: 90edb35a-a48c-4b1a-99f5-ef48b01352ae -->",
+          "timestamp": "2023-03-08T22:06:41+01:00",
+          "tree_id": "8084c0cf8cc1a44895ec8891955d8ea384b650b1",
+          "url": "https://github.com/ocaml/dune/commit/357348710e9c00dd5a8cea6074b9187e8e2a5e77"
+        },
+        "date": 1678311092574,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "45.29232647927333",
             "unit": "seconds"
           }
         ]

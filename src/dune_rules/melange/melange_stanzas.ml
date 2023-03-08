@@ -98,7 +98,7 @@ module Emit = struct
          field "module_systems" module_systems
            ~default:[ Melange.Module_system.default ]
        and+ libraries =
-         field "libraries" (Lib_deps.decode ~allow_re_export:false) ~default:[]
+         field "libraries" (Lib_dep.L.decode ~allow_re_export:false) ~default:[]
        and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ runtime_deps =
          field "runtime_deps" (repeat Dep_conf.decode) ~default:[]

@@ -111,7 +111,7 @@ module Buildable = struct
         | Library _ -> true
         | Executable -> false
       in
-      field "libraries" (Lib_deps.decode ~allow_re_export) ~default:[]
+      field "libraries" (Lib_dep.L.decode ~allow_re_export) ~default:[]
     and+ flags = Ocaml_flags.Spec.decode
     and+ js_of_ocaml =
       field "js_of_ocaml" Js_of_ocaml.In_buildable.decode

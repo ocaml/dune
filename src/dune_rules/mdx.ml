@@ -215,7 +215,7 @@ let decode =
      and+ libraries =
        field "libraries" ~default:[]
          (Dune_lang.Syntax.since syntax (0, 2)
-         >>> Lib_deps.decode ~allow_re_export:false)
+         >>> Lib_dep.L.decode ~allow_re_export:false)
      and+ locks =
        Locks.field ~check:(Dune_lang.Syntax.since syntax (0, 3)) ()
      in

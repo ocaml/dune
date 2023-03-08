@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678307226295,
+  "lastUpdate": 1678307638495,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -9310,6 +9310,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8143357543066667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3b934509f88b996d5118fe394e378514544d1494",
+          "message": "test: sigpipe handling (#7242)\n\nWe show that sigpipe currently kills dune\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-08T12:04:18-08:00",
+          "tree_id": "e5fe1bc41931c1d1984c5f3effdef92a8166c7d1",
+          "url": "https://github.com/ocaml/dune/commit/3b934509f88b996d5118fe394e378514544d1494"
+        },
+        "date": 1678307637114,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "81.54937648955999",
             "unit": "seconds"
           }
         ]

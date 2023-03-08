@@ -2,7 +2,7 @@ module type Basic = Monoid_intf.Basic
 
 module type S = Monoid_intf.S
 
-module Make (M : Basic) : Monoid_intf.S with type t = M.t = struct
+module Make (M : Basic) : S with type t = M.t = struct
   include M
 
   module O = struct
@@ -42,7 +42,7 @@ end)
 
 module List (M : sig
   type t
-end) : Monoid_intf.S with type t = M.t list = Make (struct
+end) : S with type t = M.t list = Make (struct
   type t = M.t list
 
   let empty = []
@@ -52,7 +52,7 @@ end)
 
 module Appendable_list (M : sig
   type t
-end) : Monoid_intf.S with type t = M.t Appendable_list.t = Make (struct
+end) : S with type t = M.t Appendable_list.t = Make (struct
   type t = M.t Appendable_list.t
 
   let empty = Appendable_list.empty
@@ -60,7 +60,7 @@ end) : Monoid_intf.S with type t = M.t Appendable_list.t = Make (struct
   let combine = Appendable_list.( @ )
 end)
 
-module Unit : Monoid_intf.S with type t = Unit.t = Make (struct
+module Unit : S with type t = Unit.t = Make (struct
   include Unit
 
   let empty = ()
@@ -68,13 +68,15 @@ module Unit : Monoid_intf.S with type t = Unit.t = Make (struct
   let combine () () = ()
 end)
 
-module Add (M : sig
+module type Add = sig
   type t
 
   val zero : t
 
   val ( + ) : t -> t -> t
-end) : Monoid_intf.S with type t = M.t = Make (struct
+end
+
+module Add (M : Add) : S with type t = M.t = Make (struct
   include M
 
   let empty = zero
@@ -82,13 +84,15 @@ end) : Monoid_intf.S with type t = M.t = Make (struct
   let combine = ( + )
 end)
 
-module Mul (M : sig
+module type Mul = sig
   type t
 
   val one : t
 
   val ( * ) : t -> t -> t
-end) : Monoid_intf.S with type t = M.t = Make (struct
+end
+
+module Mul (M : Mul) : S with type t = M.t = Make (struct
   include M
 
   let empty = one
@@ -96,20 +100,22 @@ end) : Monoid_intf.S with type t = M.t = Make (struct
   let combine = ( * )
 end)
 
-module Union (M : sig
+module type Union = sig
   type t
 
   val empty : t
 
   val union : t -> t -> t
-end) : Monoid_intf.S with type t = M.t = Make (struct
+end
+
+module Union (M : Union) : S with type t = M.t = Make (struct
   include M
 
   let combine = union
 end)
 
-module Product (A : Monoid_intf.Basic) (B : Monoid_intf.Basic) :
-  Monoid_intf.S with type t = A.t * B.t = Make (struct
+module Product (A : Basic) (B : Basic) : S with type t = A.t * B.t =
+Make (struct
   type t = A.t * B.t
 
   let empty = (A.empty, B.empty)
@@ -117,11 +123,8 @@ module Product (A : Monoid_intf.Basic) (B : Monoid_intf.Basic) :
   let combine (a1, b1) (a2, b2) = (A.combine a1 a2, B.combine b1 b2)
 end)
 
-module Product3
-    (A : Monoid_intf.Basic)
-    (B : Monoid_intf.Basic)
-    (C : Monoid_intf.Basic) : Monoid_intf.S with type t = A.t * B.t * C.t =
-Make (struct
+module Product3 (A : Basic) (B : Basic) (C : Basic) :
+  S with type t = A.t * B.t * C.t = Make (struct
   type t = A.t * B.t * C.t
 
   let empty = (A.empty, B.empty, C.empty)
@@ -133,7 +136,7 @@ end)
 module Function (A : sig
   type t
 end)
-(M : Monoid_intf.Basic) : Monoid_intf.S with type t = A.t -> M.t = Make (struct
+(M : Basic) : S with type t = A.t -> M.t = Make (struct
   type t = A.t -> M.t
 
   let empty _ = M.empty
@@ -144,7 +147,7 @@ end)
 module Endofunction = struct
   module Left (A : sig
     type t
-  end) : Monoid_intf.S with type t = A.t -> A.t = Make (struct
+  end) : S with type t = A.t -> A.t = Make (struct
     type t = A.t -> A.t
 
     let empty x = x
@@ -154,11 +157,40 @@ module Endofunction = struct
 
   module Right (A : sig
     type t
-  end) : Monoid_intf.S with type t = A.t -> A.t = Make (struct
+  end) : S with type t = A.t -> A.t = Make (struct
     type t = A.t -> A.t
 
     let empty x = x
 
     let combine f g x = f (g x)
   end)
+end
+
+module Commutative = struct
+  (* Inject the "proof" of commutativity into a give monoid. *)
+  module Make_commutative (M : S) = struct
+    include M
+
+    type combine_is_commutative
+  end
+
+  module type Basic = Monoid_intf.Commutative.Basic
+
+  module type S = Monoid_intf.Commutative.S
+
+  module Make (M : Basic) = Make_commutative (Make (M))
+  module Exists = Make_commutative (Exists)
+  module Forall = Make_commutative (Forall)
+  module Unit = Make_commutative (Unit)
+  module Add (M : Add) = Make_commutative (Add (M))
+  module Mul (M : Mul) = Make_commutative (Mul (M))
+  module Union (M : Union) = Make_commutative (Union (M))
+  module Product (A : Basic) (B : Basic) = Make_commutative (Product (A) (B))
+  module Product3 (A : Basic) (B : Basic) (C : Basic) =
+    Make_commutative (Product3 (A) (B) (C))
+  module Function (A : sig
+    type t
+  end)
+  (M : Basic) =
+    Make_commutative (Function (A) (M))
 end

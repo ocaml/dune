@@ -455,8 +455,8 @@ let gen_melange_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
       in
       User_error.raise ~loc:stanza.loc ~annots
         [ main_message
-        ; Pp.textf "- %s" (Loc.to_file_colon_line parent_stanza.loc)
-        ; Pp.textf "- %s" (Loc.to_file_colon_line stanza.loc)
+        ; Pp.enumerate ~f:Loc.pp_file_colon_line
+            [ parent_stanza.loc; stanza.loc ]
         ]
         ~hints:
           (let emit_dir = Path.Build.drop_build_context_exn stanza_dir in

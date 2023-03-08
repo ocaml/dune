@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678306575591,
+  "lastUpdate": 1678306586880,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -9252,6 +9252,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "69.79490539173334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "16b7df37807be538ba33adc5b7d55888c589205e",
+          "message": "test: fix macOS test suite (#7236)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-08T11:51:03-08:00",
+          "tree_id": "07ac0d15890807f368fde05aa4c7d71ccfefa501",
+          "url": "https://github.com/ocaml/dune/commit/16b7df37807be538ba33adc5b7d55888c589205e"
+        },
+        "date": 1678306586146,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8143357543066667",
             "unit": "seconds"
           }
         ]

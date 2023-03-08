@@ -82,7 +82,7 @@ Libraries
 In order to attach a library to a package, merely add a
 ``public_name`` field to your library. This is the name that external
 users of your libraries must use in order to refer to it. Dune
-requires that the public name of a library is either the name of the
+requires that a library’s public name is either the name of the
 package it is part of or start with the package name followed by a dot
 character.
 

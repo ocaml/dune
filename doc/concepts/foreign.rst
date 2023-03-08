@@ -201,7 +201,7 @@ There are multiple levels where one can declare custom flags (using the
 :doc:`ordered-set-language`), and each level inherits the flags of the previous
 one in its `:standard` set:
 
-- In the global `env` definition of a `dune-workspace` file
+- In the global ``env`` definition of a ``dune-workspace`` file
 - In the per-context `env` definitions in a `dune-workspace` file
 - In the env definition of a `dune` file
 - In a `foreign_` field of an executable or a library

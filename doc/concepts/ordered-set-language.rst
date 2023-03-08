@@ -18,7 +18,7 @@ syntax ``(:include <filename>)``. For instance, this is useful when you need to
 run a script to figure out some compilation flags. ``<filename>`` is expected to
 contain a single S-expression and cannot contain ``(:include ...)`` forms.
 
-Note that inside an ordered set, the first element of a list cannot be
+Note that inside an ordered set, a list’s first element cannot be
 an atom except if it starts with ``-`` or ``:``. The reason for this is
 that we're planning to add simple programmatic features in the
 future so that one may write:

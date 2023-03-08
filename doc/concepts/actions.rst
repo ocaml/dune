@@ -88,7 +88,7 @@ Most languages recognize such lines and update their current location
 to report errors in the original file rather than the
 copy. This is important because the copy exists only under the ``_build``
 directory, and in order for editors to jump to errors when parsing the
-output of the build system, errors must point to files that exist in
+build system’s output, errors must point to files that exist in
 the source tree. In the beta versions of Dune, ``copy#`` was
 called ``copy-and-add-line-directive``. However, most of time, one
 wants this behavior rather than a bare copy, so it was renamed to

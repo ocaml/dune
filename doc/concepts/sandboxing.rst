@@ -21,8 +21,8 @@ directory, filtering it to only contain the files that were declared as
 dependencies. We run the action in that directory, and then we copy
 the targets back to the build directory.
 
-You can configure Dune to use sandboxing modes ``symlink``, ``hardlink`` or
-``copy``, which determines how the individual files are populated (they will be
+You can configure Dune to use sandboxing modes ``symlink``, ``hardlink``, or
+``copy``, which determine how the individual files are populated (they will be
 symlinked, hardlinked, or copied into the sandbox directory).
 
 This approach is very simple and portable, but that comes with
@@ -31,14 +31,14 @@ certain limitations:
 - The actions in the sandbox can use absolute paths to refer to anywhere outside
   the sandbox. This means that only dependencies on relative paths in the build
   tree can be enforced/detected by sandboxing.
-- The sandboxed actions still run with full permissions of Dune itself so
+- The sandboxed actions still run with full permissions of Dune itself, so
   sandboxing is not a security feature. It won't prevent network access either.
 - We don't erase the environment variables of the sandboxed
   commands. This is something we want to change.
 - Performance impact is usually small, but it can get noticeable for
   fast actions with very large sets of dependencies.
 
-Per-action Sandboxing Configuration
+Per-Action Sandboxing Configuration
 -----------------------------------
 
 Some actions may rely on sandboxing to work correctly.
@@ -46,7 +46,7 @@ For example, an action may need the input directory to contain nothing
 except the input files, or the action might create temporary files that
 break other build actions.
 
-Some other actions may refuse to work with Sandboxing. Cor example,
+Some other actions may refuse to work with Sandboxing. For example,
 if they rely on absolute path to the build directory staying fixed,
 or if they deliberately use some files without declaring dependencies
 (this is usually a very bad idea, by the way).
@@ -66,6 +66,6 @@ the action allows it.
 
 This is controlled by:
 
-- ``dune --sandbox <...>`` cli flag (see ``man dune-build``)
+- ``dune --sandbox <...>`` CLI flag (see ``man dune-build``)
 - ``DUNE_SANDBOX`` environment (see ``man dune-build``)
 - ``(sandboxing_preference ..)`` field in the dune config (see ``man dune-config``)

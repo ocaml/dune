@@ -35,7 +35,7 @@ Once you have done this, Dune will know about the package named
 The ``package`` stanza accepts more fields, such as dependencies.
 
 Note that package names are in a global namespace, so the name you choose must
-be universally unique. In particular, package managers never allow to
+be universally unique. In particular, package managers never allow users to
 release two packages with the same name.
 
 .. TODO: describe this more in details
@@ -54,7 +54,7 @@ Attaching Elements to a Package
 
 Attaching an element to a package means declaring to Dune that this
 element is part of the said package. The method to attach an element
-to a package depends on the kind of the element. In this sub-section,
+to a package depends on the kind of the element. In this subsection,
 we will go through the various kinds of elements and describe how to
 attach each of them to a package.
 
@@ -69,8 +69,8 @@ Sites of a Package
 ------------------
 
 When packages need additional resources outside their binary, their location
-could be hard to find. Moreover some packages could add resources to another
-package, for example in the case of plugins. These location are called sites in
+could be hard to find. Moreover, some packages could add resources to another
+package, e.g., in the case of plugins. These locations are called sites in
 Dune. One package can define them. During execution, one site corresponds to a
 list of directories. They are like layers, and the first directories have a higher
 priority. Examples and precisions are available at :ref:`sites`.
@@ -100,14 +100,14 @@ the library files in a directory ``<prefix>/lib/<package-name>``.
 
 If the library name contains dots, the full directory in which the
 library files are installed is ``lib/<comp1>/<comp2/.../<compn>``,
-where ``<comp1>``, ``<comp2>``, ... ``<compn>`` are the dot separated
+where ``<comp1>``, ``<comp2>``, ... ``<compn>`` are the dot-separated
 component of the public library name. By definition, ``<comp1>`` is
 always the package name.
 
 Executables
 ^^^^^^^^^^^
 
-Similarly to libraries, to attach an executable to a package simply
+Similar to libraries, to attach an executable to a package simply
 add a ``public_name`` field to your ``executable`` stanza or a
 ``public_names`` field for ``executables`` stanzas. Designate this
 name to match the available executables through the installed ``PATH``

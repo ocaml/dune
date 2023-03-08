@@ -2,7 +2,7 @@ Boolean Language
 ================
 
 The Boolean language allows the user to define simple Boolean expressions that
-Dune can evaluate. Here's a semi-formal specification of the language:
+Dune can evaluate. Here's a semiformal specification of the language:
 
 .. productionlist:: blang
    op : '=' | '<' | '>' | '<>' | '>=' | '<='

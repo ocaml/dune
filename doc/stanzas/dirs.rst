@@ -7,7 +7,7 @@ dirs
 
 The ``dirs`` stanza allows specifying the subdirectories Dune will include in a
 build. The syntax is based on Dune's :doc:`concepts/predicate-language` and
-allows the user the following operations:
+allows the following operations:
 
 - The special value ``:standard`` which refers to the default set of used
   directories. These are the directories that don't start with ``.`` or ``_``.

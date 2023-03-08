@@ -44,7 +44,7 @@ all the literals evaluate to true. It is an error if none of the clauses are
 selectable. You can add a fallback by adding a clause of the form ``(->
 <file>)`` at the end of the list.
 
-Re-exported dependencies
+Re-Exported Dependencies
 ------------------------
 
 A dependency ``foo`` may be marked as always *re-exported* using the

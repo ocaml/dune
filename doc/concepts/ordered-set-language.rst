@@ -4,7 +4,7 @@ Ordered Set Language
 A few fields take an ordered set as argument and can be specified using a small
 DSL.
 
-This DSL is interpreted by Dune into an ordered set of strings using the
+Dune interprets this DSL into an ordered set of strings using the
 following rules:
 
 - ``:standard`` denotes the standard value of the field when it's absent

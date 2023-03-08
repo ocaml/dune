@@ -1,4 +1,4 @@
-Foreign Sources, Archives and Objects
+Foreign Sources, Archives, and Objects
 =====================================
 
 Dune provides basic support for including foreign source files as well
@@ -32,7 +32,7 @@ Dune treats ``*.c`` files as C sources, and ``*.cpp``, ``*.cc``, and
 Here is a complete list of supported subfields:
 
 - ``language`` specifies the source language, where ``c`` means C and
-  ``cxx`` means C++. In future, more languages may be supported.
+  ``cxx`` means C++. In the future, more languages may be supported.
 - ``names`` specifies the *names* of source files. When specifying a source
   file, omit the extension and any relative parts of the path;
   Dune will scan all library directories to find all matching files and
@@ -59,7 +59,7 @@ Here is a complete list of supported subfields:
   ``(lib ...)`` and ``(include ...)`` syntax is also supported in files included
   in this way).
   For example, ``(include_dirs dir1 (lib lib1) (lib lib2) (include inc1) dir2)`` specifies
-  the directory ``dir1``, the source directories of ``lib1`` and ``lib2``,
+  the directory ``dir1``, the source directories of ``lib1``, and ``lib2``,
   the list of directories contained in the file ``inc1``,
   and the directory ``dir2``, in this order.
   Some examples of possible contents of the file ``inc1`` are:

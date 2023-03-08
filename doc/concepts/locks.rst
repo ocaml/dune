@@ -8,7 +8,7 @@ through a chain of dependencies. This basic assumption allows Dune to
 parallelize the build.
 
 However, it is sometimes the case that two independent rules cannot be
-executed concurrently. For instance this can happen for more
+executed concurrently. For instance, this can happen for more
 complicated tests. In order to prevent Dune from running the
 actions at the same time, you can specify that both actions take the
 same lock:
@@ -31,7 +31,7 @@ Dune will make sure that the executions of ``test.exe foo`` and
 ``test.exe bar`` are serialized.
 
 Although they don't live in the filesystem, lock names are interpreted as file
-names. So for instance ``(with-lock m ...)`` in ``src/dune`` and ``(with-lock
+names. So for instance, ``(with-lock m ...)`` in ``src/dune`` and ``(with-lock
 ../src/m)`` in ``test/dune`` refer to the same lock.
 
 Note also that locks are per build context. So if your workspace has two build

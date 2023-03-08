@@ -13,7 +13,7 @@ support :doc:`variables`. Moreover, you don't need to specify dependencies
 explicitly for the special ``%{<kind>:...}`` forms; these are recognized and
 automatically handled by Dune.
 
-The DSL is currently quite limited, so if you want to do something complicated
+The DSL is currently quite limited, so if you want to do something complicated,
 it's recommended to write a small OCaml program and use the DSL to invoke it.
 You can use `shexp <https://github.com/janestreet/shexp>`__ to write portable
 scripts or :ref:`configurator` for configuration related tasks. You can also
@@ -34,13 +34,13 @@ The following constructions are available:
   ``<outputs>`` is one of: ``stdout``, ``stderr`` or ``outputs`` (for both
   ``stdout`` and ``stderr``)
 - ``(ignore-<outputs> <DSL>)`` to ignore the output, where
-  ``<outputs>`` is one of: ``stdout``, ``stderr`` or ``outputs``
+  ``<outputs>`` is one of: ``stdout``, ``stderr``, or ``outputs``
 - ``(with-stdin-from <file> <DSL>)`` to redirect the input from a file
 - ``(with-accepted-exit-codes <pred> <DSL>)`` specifies the list of expected exit codes
   for the programs executed in ``<DSL>``. ``<pred>`` is a predicate on integer
-  values, and is specified using the :doc:`predicate-language`. ``<DSL>`` can
+  values, and it’s specified using the :doc:`predicate-language`. ``<DSL>`` can
   only contain nested occurrences of ``run``, ``bash``, ``system``, ``chdir``,
-  ``setenv``, ``ignore-<outputs>``, ``with-stdin-from`` and
+  ``setenv``, ``ignore-<outputs>``, ``with-stdin-from``, and
   ``with-<outputs>-to``. This action is available since Dune 2.0.
 - ``(progn <DSL>...)`` to execute several commands in sequence
 - ``(concurrent <DSL>...)``` to execute several commands concurrently
@@ -48,10 +48,10 @@ The following constructions are available:
   **Warning:** The concurrency is limited by the `-j` flag passed to Dune.
   In particular, if Dune is running with `-j 1`, these commands will actually
   run sequentially, which may cause a deadlock if they talk to each other.
-- ``(echo <string>)`` to output a string on stdout
+- ``(echo <string>)`` to output a string on ``stdout``
 - ``(write-file <file> <string>)`` writes ``<string>`` to ``<file>``
 - ``(cat <file> ...)`` to sequentially print the contents of files to stdout
-- ``(copy <src> <dst>)`` to copy a file. If these files are OCaml sources you
+- ``(copy <src> <dst>)`` to copy a file. If these files are OCaml sources, you
   should follow the ``module_name.xxx.ml``
   :ref:`naming convention <merlin-filenames>` to preserve Merlin's
   functionality.
@@ -107,7 +107,7 @@ tools, they often use the filename given on the command line in error messages.
 As a result, if you execute the command from the original directory, it will
 only see the basename.
 
-To understand why this is important, let's consider this Dune file living in
+To understand why this is important, let's consider this ``dune`` file living in
 ``src/foo``:
 
 ::
@@ -124,14 +124,14 @@ Here the command that will be executed is:
     ocamllex -o blah.ml blah.mll
 
 And it will be executed in ``_build/<context>/src/foo``. As a result, if there
-is an error in the generated ``blah.ml`` file it will be reported as:
+is an error in the generated ``blah.ml`` file, it will be reported as:
 
 ::
 
     File "blah.ml", line 42, characters 5-10:
     Error: ...
 
-Which can be a problem, as you editor might think that ``blah.ml`` is at the root
+Which can be a problem, as your editor might think that ``blah.ml`` is at the root
 of your project. Instead, this is a better way to write it:
 
 ::

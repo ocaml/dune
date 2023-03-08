@@ -83,7 +83,7 @@ will match files that exist in the source tree as well as buildable targets, so
 for instance you can depend on ``*.cmi``.
 
 Dune supports globbing files in a single directory via ``(glob_files
-...)`` and, starting with Dune 3.0, in all sub-directories recursively via ``(glob_files_rec
+...)`` and, starting with Dune 3.0, in all subdirectories recursively via ``(glob_files_rec
 ...)``. The glob is interpreted as follows:
 
 - anything before the last ``/`` is taken as a literal path

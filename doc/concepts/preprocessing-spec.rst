@@ -87,7 +87,7 @@ dependencies together. Note that it is important that all these libraries are li
 ``-linkall``. Dune automatically uses ``-linkall`` when the ``(kind ...)``
 field is set to ``ppx_rewriter`` or ``ppx_deriver``.
 
-Per Module Preprocessing Specification
+Per-Module Preprocessing Specification
 --------------------------------------
 
 By default, a preprocessing specification applies to all modules in the
@@ -101,7 +101,7 @@ module-by-module basis by using the following syntax:
                  (<spec2> <module-list2>)
                  ...))
 
-Where ``<spec1>``, ``<spec2>``, etc. are preprocessing specifications
+Where ``<spec1>``, ``<spec2>``, etc., are preprocessing specifications
 and ``<module-list1>``, ``<module-list2>``, etc., are list of module
 names.
 
@@ -138,6 +138,6 @@ this feature, you must also declare a dependency on this package.
 Preprocessor Dependencies
 -------------------------
 
-If your preprocessor needs extra dependencies you should use the
+If your preprocessor needs extra dependencies, you should use the
 ``preprocessor_deps`` field available in the ``library``, ``executable``, and
 ``executables`` stanzas.

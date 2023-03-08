@@ -303,12 +303,11 @@ let collect_directory_targets ~init ~dir =
         | Coq_stanza.Theory.T m ->
           Coq_rules.coqdoc_directory_targets ~dir m
           |> Path.Build.Map.union acc ~f:(fun path loc1 loc2 ->
-                 User_error.raise
+                 User_error.raise ~loc:loc1
                    [ Pp.textf
-                       "the following both define the directory target: %s"
+                       "The following both define the same directory target: %s"
                        (Path.Build.to_string path)
-                   ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-                   ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+                   ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
                    ])
         | _ -> acc)
 

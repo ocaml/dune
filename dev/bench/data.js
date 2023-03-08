@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678316065686,
+  "lastUpdate": 1678319321015,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -8235,6 +8235,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.599692099786665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "44c01c1a413b700d4297efa83fc56c3e78b2c03d",
+          "message": "refactor: use `Pp.enumerate` in 2 places (#7252)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-08T15:29:58-08:00",
+          "tree_id": "4992d73585e05be46f12e0c49e654bb246f2a338",
+          "url": "https://github.com/ocaml/dune/commit/44c01c1a413b700d4297efa83fc56c3e78b2c03d"
+        },
+        "date": 1678319320040,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "32.57960347976667",
             "unit": "seconds"
           }
         ]

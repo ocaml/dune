@@ -68,4 +68,5 @@ This is controlled by:
 
 - ``dune --sandbox <...>`` CLI flag (see ``man dune-build``)
 - ``DUNE_SANDBOX`` environment (see ``man dune-build``)
-- ``(sandboxing_preference ..)`` field in the dune config (see ``man dune-config``)
+- ``(sandboxing_preference ..)`` field in the configuration file (see ``man
+  dune-config``)

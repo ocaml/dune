@@ -292,7 +292,7 @@ The argument of the ``flags`` field follows the
 Passing Special Arguments to the Test Executable
 ------------------------------------------------
 
-To control how the test executable is built, it’s possible to customize a subset
+To control how the test executable is built, it's possible to customize a subset
 of compilation options for an executable using the ``executable`` field. Dune
 gives you this ability by simply specifying command line arguments as flags.
 You can specify such flags by using ``flags`` field. For instance:

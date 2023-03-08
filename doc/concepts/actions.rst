@@ -38,7 +38,7 @@ The following constructions are available:
 - ``(with-stdin-from <file> <DSL>)`` to redirect the input from a file
 - ``(with-accepted-exit-codes <pred> <DSL>)`` specifies the list of expected exit codes
   for the programs executed in ``<DSL>``. ``<pred>`` is a predicate on integer
-  values, and it’s specified using the :doc:`predicate-language`. ``<DSL>`` can
+  values, and it's specified using the :doc:`predicate-language`. ``<DSL>`` can
   only contain nested occurrences of ``run``, ``bash``, ``system``, ``chdir``,
   ``setenv``, ``ignore-<outputs>``, ``with-stdin-from``, and
   ``with-<outputs>-to``. This action is available since Dune 2.0.
@@ -88,7 +88,7 @@ Most languages recognize such lines and update their current location
 to report errors in the original file rather than the
 copy. This is important because the copy exists only under the ``_build``
 directory, and in order for editors to jump to errors when parsing the
-build system’s output, errors must point to files that exist in
+build system's output, errors must point to files that exist in
 the source tree. In the beta versions of Dune, ``copy#`` was
 called ``copy-and-add-line-directive``. However, most of time, one
 wants this behavior rather than a bare copy, so it was renamed to

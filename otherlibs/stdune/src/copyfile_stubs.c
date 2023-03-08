@@ -50,7 +50,54 @@ CAMLprim value stdune_copyfile(value v_from, value v_to) {
   CAMLreturn(Val_unit);
 }
 
+CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
+  caml_failwith("sendfile: linux");
+}
+
+#elif __linux__
+
+#include <caml/threads.h>
+#include <caml/unixsupport.h>
+
+#include <sys/sendfile.h>
+#include <unistd.h>
+
+#define FD_val(value) Int_val(value)
+
+CAMLprim value stdune_copyfile(value v_from, value v_to) {
+  caml_failwith("copyfile: only on macos");
+}
+
+static int dune_sendfile(int in, int out, int length) {
+  int ret;
+  while (length > 0) {
+    ret = sendfile(out, in, NULL, length);
+    if (ret < 0) {
+      return ret;
+    }
+    length = length - ret;
+  }
+  return length;
+}
+
+CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
+  CAMLparam3(v_in, v_out, v_size);
+  caml_release_runtime_system();
+  /* TODO Use copy_file_range once we have a good mechanism to test for its
+   * existence */
+  int ret = dune_sendfile(FD_val(v_in), FD_val(v_out), Int_val(v_size));
+  caml_acquire_runtime_system();
+  if (ret < 0) {
+    uerror("sendfile", Nothing);
+  }
+  CAMLreturn(Val_unit);
+}
+
 #else
+
+CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
+  caml_failwith("sendfile: linux");
+}
 
 CAMLprim value stdune_copyfile(value v_from, value v_to) {
   caml_failwith("copyfile: only on macos");

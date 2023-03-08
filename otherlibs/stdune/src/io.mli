@@ -23,3 +23,5 @@ val portable_symlink : src:Path.t -> dst:Path.t -> unit
 
 (** Hardlink with fallback to copy on systems that don't support it. *)
 val portable_hardlink : src:Path.t -> dst:Path.t -> unit
+
+val set_copy_impl : [ `Portable | `Best ] -> unit

@@ -426,6 +426,7 @@ module Dune_config = struct
      | Clear_on_rebuild -> Console.reset ()
      | Clear_on_rebuild_and_flush_history -> Console.reset_flush_history ());
     Config.init (String.Map.of_list_exn t.experimental);
+    Stdune.Io.set_copy_impl Config.(get copy_file);
     Log.verbose :=
       match t.display with
       | Simple { verbosity = Verbose; _ } -> true

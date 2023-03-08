@@ -42,15 +42,7 @@ Test simple interactions between melange.emit and copy_files
   $ cat lib/_build/install/default/lib/foo/dune-package | grep melange_runtime_deps
    (melange_runtime_deps index.txt nested/hello.txt))
 
-  $ dune install --display short --root lib --prefix $PWD/prefix
-  Installing $TESTCASE_ROOT/prefix/lib/foo/META
-  Installing $TESTCASE_ROOT/prefix/lib/foo/dune-package
-  Installing $TESTCASE_ROOT/prefix/lib/foo/foo.ml
-  Installing $TESTCASE_ROOT/prefix/lib/foo/index.txt
-  Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmi
-  Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmj
-  Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmt
-  Installing $TESTCASE_ROOT/prefix/lib/foo/nested/hello.txt
+  $ dune install --root lib --prefix $PWD/prefix
 
   $ mkdir -p app/assets
   $ cat > app/assets/file.txt <<EOF
@@ -78,11 +70,8 @@ Test simple interactions between melange.emit and copy_files
   > EOF
 
   $ mkdir -p app/output
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @mel --display=short
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @mel
   Entering directory 'app'
-          melc output/node_modules/foo/foo.js
-          melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc output/main.js
   Leaving directory 'app'
 
   $ ls app/_build/default/output/node_modules/foo

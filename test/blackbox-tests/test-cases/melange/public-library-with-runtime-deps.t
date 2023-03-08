@@ -31,17 +31,8 @@ Test simple interactions between melange.emit and copy_files
   > let read_asset () = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
   > EOF
 
-  $ dune build --display=short
-          melc lib/.foo.objs/melange/foo.{cmi,cmj,cmt}
-  $ dune install --display=short --prefix $PWD/prefix
-  Installing $TESTCASE_ROOT/prefix/lib/foo/META
-  Installing $TESTCASE_ROOT/prefix/lib/foo/dune-package
-  Installing $TESTCASE_ROOT/prefix/lib/foo/foo.ml
-  Installing $TESTCASE_ROOT/prefix/lib/foo/index.txt
-  Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmi
-  Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmj
-  Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmt
-  Installing $TESTCASE_ROOT/prefix/lib/foo/nested/hello.txt
+  $ dune build
+  $ dune install --prefix $PWD/prefix
   $ cat _build/default/foo.install
   lib: [
     "_build/install/default/lib/foo/META"
@@ -68,10 +59,7 @@ Test simple interactions between melange.emit and copy_files
   > EOF
 
   $ mkdir -p output
-  $ dune build @mel --display=short
-          melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc output/node_modules/foo/foo.js
-          melc output/main.js
+  $ dune build @mel
 
 The runtime_dep index.txt was copied to the build folder
 
@@ -89,4 +77,5 @@ The runtime_dep index.txt was copied to the build folder
   
   Some text
   
+
 

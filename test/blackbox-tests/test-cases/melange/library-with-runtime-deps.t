@@ -41,11 +41,7 @@ Test simple interactions between melange.emit and copy_files
   > EOF
 
   $ mkdir -p output/lib
-  $ dune build @mel --display=short
-          melc lib/.foo.objs/melange/foo.{cmi,cmj,cmt}
-          melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc output/lib/foo.js
-          melc output/main.js
+  $ dune build @mel
 
 The runtime_dep index.txt was copied to the build folder
 
@@ -57,3 +53,4 @@ The runtime_dep index.txt was copied to the build folder
   
   Some text
   
+

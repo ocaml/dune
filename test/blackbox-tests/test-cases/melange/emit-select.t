@@ -17,7 +17,7 @@ using `(select ...)` in melange.emit
   > let message = "foo has no fake"
   > EOF
   $ cat >main.ml <<EOF
-  > (*let () = Js.log Bar.message*)
+  > let () = Js.log Bar.message
   > let () = Js.log Foo.message
   > EOF
   $ cat >dune <<EOF
@@ -25,16 +25,16 @@ using `(select ...)` in melange.emit
   >  (target output)
   >  (alias melange)
   >  (libraries
-  >  ;(select bar.ml from
-  >  ; (melange -> bar.melange.ml)
-  >  ; (!melange -> bar.native.ml))
+  >   (select bar.ml from
+  >    (melange -> bar.melange.ml)
+  >    (!melange -> bar.native.ml))
   >   (select foo.ml from
   >    (fakefoobar -> foo.fake.ml)
   >    (!fakefoobar -> foo.no_fake.ml))))
   > EOF
 
-  $ dune build @melange --display=short
-$ dune rules @melange --display=short
-  $ ls _build/default/output
-  $ ls _build/default
+  $ dune build @melange
+  $ node ./_build/default/output/main.js
+  hello from melange
+  foo has no fake
 

@@ -1,6 +1,11 @@
 open Import
 open Dune_lang.Decoder
 
+type kind =
+  | Required
+  | Optional
+  | Forbidden
+
 type t = Lib_dep.t list
 
 let check ~loc t =
@@ -9,7 +14,7 @@ let check ~loc t =
     | None -> Lib_name.Map.set acc name kind
     | Some kind' -> (
       match (kind, kind') with
-      | Lib_dep.Required, Required ->
+      | Required, Required ->
         User_error.raise ~loc
           [ Pp.textf "library %S is present twice" (Lib_name.to_string name) ]
       | (Optional | Forbidden), (Optional | Forbidden) -> acc
@@ -40,7 +45,7 @@ let check ~loc t =
                  Lib_name.Set.fold c.required ~init:acc ~f:(add Optional)
                in
                Lib_name.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
-      : Lib_dep.kind Lib_name.Map.t)
+      : kind Lib_name.Map.t)
 
 let decode ~allow_re_export =
   let+ loc = loc

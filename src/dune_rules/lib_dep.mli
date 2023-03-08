@@ -18,11 +18,6 @@ module Select : sig
   val to_dyn : t -> Dyn.t
 end
 
-type kind =
-  | Required
-  | Optional
-  | Forbidden
-
 type t =
   | Direct of (Loc.t * Lib_name.t)
   | Re_export of (Loc.t * Lib_name.t)

@@ -12,14 +12,6 @@ type for_ =
   | Executable
   | Library of Wrapped.t option
 
-module Lib_deps : sig
-  type nonrec t = Lib_dep.t list
-
-  val of_pps : Lib_name.t list -> t
-
-  val decode : for_ -> t Dune_lang.Decoder.t
-end
-
 module Buildable : sig
   type t =
     { loc : Loc.t

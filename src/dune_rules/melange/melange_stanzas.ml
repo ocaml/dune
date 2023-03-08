@@ -20,59 +20,6 @@ module Emit = struct
 
   type Stanza.t += T of t
 
-  let decode_lib =
-    let+ loc = loc
-    and+ t =
-      let allow_re_export = false in
-      repeat (Lib_dep.decode ~allow_re_export)
-    in
-    let add kind name acc =
-      match Lib_name.Map.find acc name with
-      | None -> Lib_name.Map.set acc name kind
-      | Some kind' -> (
-        match (kind, kind') with
-        | Lib_dep.Required, Required ->
-          User_error.raise ~loc
-            [ Pp.textf "library %S is present twice" (Lib_name.to_string name) ]
-        | (Optional | Forbidden), (Optional | Forbidden) -> acc
-        | Optional, Required | Required, Optional ->
-          User_error.raise ~loc
-            [ Pp.textf
-                "library %S is present both as an optional and required \
-                 dependency"
-                (Lib_name.to_string name)
-            ]
-        | Forbidden, Required | Required, Forbidden ->
-          User_error.raise ~loc
-            [ Pp.textf
-                "library %S is present both as a forbidden and required \
-                 dependency"
-                (Lib_name.to_string name)
-            ])
-    in
-    ignore
-      (List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
-           match x with
-           | Lib_dep.Direct (_, s) -> add Lib_dep.Required s acc
-           | Lib_dep.Re_export (_, name) ->
-             User_error.raise ~loc
-               [ Pp.textf
-                   "library %S is using re_export, which is not supported for \
-                    melange libraries"
-                   (Lib_name.to_string name)
-               ]
-           | Select { choices; _ } ->
-             List.fold_left choices ~init:acc
-               ~f:(fun acc (c : Lib_dep.Select.Choice.t) ->
-                 let acc =
-                   Lib_name.Set.fold c.required ~init:acc
-                     ~f:(add Lib_dep.Optional)
-                 in
-                 Lib_name.Set.fold c.forbidden ~init:acc
-                   ~f:(add Lib_dep.Forbidden)))
-        : Lib_dep.kind Lib_name.Map.t);
-    t
-
   let decode =
     let extension_field =
       let+ loc, extension = located string in
@@ -150,7 +97,8 @@ module Emit = struct
        and+ module_systems =
          field "module_systems" module_systems
            ~default:[ Melange.Module_system.default ]
-       and+ libraries = field "libraries" decode_lib ~default:[]
+       and+ libraries =
+         field "libraries" (Lib_deps.decode ~allow_re_export:false) ~default:[]
        and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ runtime_deps =
          field "runtime_deps" (repeat Dep_conf.decode) ~default:[]

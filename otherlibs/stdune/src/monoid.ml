@@ -173,7 +173,7 @@ module Commutative = struct
   module Make_commutative (M : S) = struct
     include M
 
-    type combine_is_commutative
+    type combine_is_commutative = unit
   end
 
   module type Basic = Monoid_intf.Commutative.Basic

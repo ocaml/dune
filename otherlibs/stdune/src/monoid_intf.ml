@@ -39,13 +39,13 @@ module Commutative = struct
   module type Basic = sig
     include Basic
 
-    type combine_is_commutative
+    type combine_is_commutative = unit
   end
 
   (** Like [S] but requires [combine] to be commutative. *)
   module type S = sig
     include S
 
-    type combine_is_commutative
+    type combine_is_commutative = unit
   end
 end

@@ -2,5 +2,4 @@
  (target multilib)
  (entries c)
  (libraries x)
- (alias melange)
- (module_system commonjs))
+ (alias melange))

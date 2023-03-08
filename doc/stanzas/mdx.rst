@@ -16,7 +16,7 @@ You can define an MDX stanza to specify which files you want checked.
 Note that this feature is still experimental and needs to be enabled in your
 ``dune-project`` with the following ``using`` stanza:
 
-.. code:: scheme
+.. code:: dune
 
   (using mdx 0.3)
 
@@ -25,7 +25,7 @@ Note that this feature is still experimental and needs to be enabled in your
 
 The syntax is as follows:
 
-.. code:: scheme
+.. code:: dune
 
   (mdx <optional-fields>)
 

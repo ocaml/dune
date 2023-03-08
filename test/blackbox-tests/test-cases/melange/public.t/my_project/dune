@@ -2,5 +2,4 @@
  (target output)
  (entries c)
  (alias melange)
- (libraries app)
- (module_system commonjs))
+ (libraries app))

@@ -112,13 +112,6 @@ module Obj_map : sig
   val find_exn : 'a t -> module_ -> 'a
 end
 
-module Obj_map_traversals : sig
-  val parallel_iter : 'a Obj_map.t -> f:(t -> 'a -> unit Memo.t) -> unit Memo.t
-
-  val parallel_map :
-    'a Obj_map.t -> f:(t -> 'a -> 'b Memo.t) -> 'b Obj_map.t Memo.t
-end
-
 val sources : t -> Path.t list
 
 val visibility : t -> Visibility.t

@@ -513,19 +513,6 @@ end = struct
     | Promote promote, (Some Automatically | None) ->
       Target_promotion.promote ~dir ~targets ~promote ~promote_source
 
-  let execution_parameters_of_dir =
-    let f path =
-      let+ dir = Source_tree.nearest_dir path
-      and+ ep = Execution_parameters.default in
-      Dune_project.update_execution_parameters (Source_tree.Dir.project dir) ep
-    in
-    let memo =
-      Memo.create "execution-parameters-of-dir"
-        ~input:(module Path.Source)
-        ~cutoff:Execution_parameters.equal f
-    in
-    Memo.exec memo
-
   let execute_rule_impl ~rule_kind rule =
     let { Rule.id = _; targets; dir; context; mode; action; info = _; loc } =
       rule
@@ -540,15 +527,15 @@ end = struct
       match Dpath.Target_dir.of_target dir with
       | Regular (With_context (_, dir))
       | Anonymous_action (With_context (_, dir)) ->
-        execution_parameters_of_dir dir
+        (Build_config.get ()).execution_parameters ~dir
       | _ -> Execution_parameters.default
     in
     (* Note: we do not run the below in parallel with the above: if we fail to
        compute action execution parameters, we have no use for the action and
-       might as well fail early, skipping unnecessary dependencies. The function
-       [Source_tree.execution_parameters_of_dir] is memoized, and the result is
-       not expected to change often, so we do not sacrifice too much performance
-       here by executing it sequentially. *)
+       might as well fail early, skipping unnecessary dependencies. The
+       function [(Build_config.get ()).execution_parameters] is likely
+       memoized, and the result is not expected to change often, so we do not
+       sacrifice too much performance here by executing it sequentially. *)
     let* action, deps = Action_builder.run action Eager in
     let wrap_fiber f =
       Memo.of_reproducible_fiber

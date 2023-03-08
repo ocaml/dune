@@ -11,8 +11,7 @@ into the melange.emit target folder
   $ cat > src/dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (alias melange)
-  >  (module_system commonjs))
+  >  (alias melange))
   > EOF
 
   $ touch public/img.png
@@ -26,8 +25,7 @@ Now try copying a file
   $ cat > src/dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (alias melange)
-  >  (module_system commonjs))
+  >  (alias melange))
   > 
   > (subdir
   >  output

@@ -6,7 +6,7 @@ library
 The ``library`` stanza must be used to describe OCaml libraries. The format of
 library stanzas is as follows:
 
-.. code:: scheme
+.. code:: dune
 
     (library
      (name <library-name>)

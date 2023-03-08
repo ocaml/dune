@@ -17,8 +17,13 @@ let synopsis =
        present"
   ]
 
-let print_line fmt =
-  Printf.ksprintf (fun s -> Console.print [ Pp.verbatim s ]) fmt
+let print_line ~(verbosity : Dune_engine.Display.t) fmt =
+  Printf.ksprintf
+    (fun s ->
+      match verbosity with
+      | Quiet -> ()
+      | _ -> Console.print [ Pp.verbatim s ])
+    fmt
 
 let interpret_destdir ~destdir path =
   match destdir with
@@ -136,11 +141,13 @@ module type File_operations = sig
   val remove_dir_if_exists : if_non_empty:rmdir_mode -> Path.t -> unit
 end
 
-module type Workspace = sig
-  val workspace : Workspace.t
-end
+module File_ops_dry_run (Verbosity : sig
+  val verbosity : Dune_engine.Display.t
+end) : File_operations = struct
+  open Verbosity
 
-module File_ops_dry_run : File_operations = struct
+  let print_line fmt = print_line ~verbosity fmt
+
   let copy_file ~src ~dst ~executable ~special_file:_ ~package:_ ~conf:_ =
     print_line "Copying %s to %s (executable: %b)"
       (Path.to_string_maybe_quoted src)
@@ -162,8 +169,14 @@ module File_ops_dry_run : File_operations = struct
       (Path.to_string_maybe_quoted path)
 end
 
-module File_ops_real (W : Workspace) : File_operations = struct
+module File_ops_real (W : sig
+  val verbosity : Dune_engine.Display.t
+
+  val workspace : Workspace.t
+end) : File_operations = struct
   open W
+
+  let print_line = print_line ~verbosity
 
   let get_vcs p = Dune_engine.Source_tree.nearest_vcs p
 
@@ -392,11 +405,16 @@ module Sections = struct
     | Only set -> Section.Set.mem set section
 end
 
-let file_operations ~dry_run ~workspace : (module File_operations) =
-  if dry_run then (module File_ops_dry_run)
+let file_operations ~verbosity ~dry_run ~workspace : (module File_operations) =
+  if dry_run then
+    (module File_ops_dry_run (struct
+      let verbosity = verbosity
+    end))
   else
     (module File_ops_real (struct
       let workspace = workspace
+
+      let verbosity = verbosity
     end))
 
 let package_is_vendored (pkg : Dune_engine.Package.t) =
@@ -571,21 +589,19 @@ let install_uninstall ~what =
         let* pkgs =
           match pkgs with
           | [] ->
-            Fiber.parallel_map (Package.Name.Map.values workspace.packages)
-              ~f:(fun pkg ->
-                package_is_vendored pkg >>| function
-                | true -> None
-                | false -> Some (Package.name pkg))
+            Package.Name.Map.values workspace.packages
+            |> Fiber.parallel_map ~f:(fun pkg ->
+                   package_is_vendored pkg >>| function
+                   | true -> None
+                   | false -> Some (Package.name pkg))
             >>| List.filter_opt
           | l -> Fiber.return l
         in
         let install_files, missing_install_files =
           List.concat_map pkgs ~f:(fun pkg ->
               let fn = resolve_package_install workspace pkg in
-              List.map contexts ~f:(fun ctx ->
-                  let fn =
-                    Path.append_source (Path.build ctx.Context.build_dir) fn
-                  in
+              List.map contexts ~f:(fun (ctx : Context.t) ->
+                  let fn = Path.append_source (Path.build ctx.build_dir) fn in
                   if Path.exists fn then Left (ctx, (pkg, fn)) else Right fn))
           |> List.partition_map ~f:Fun.id
         in
@@ -652,9 +668,13 @@ let install_uninstall ~what =
                 [ Pp.text "Option --prefix is needed with --relocation" ]
           else None
         in
-
+        let verbosity =
+          match config.display with
+          | Simple display -> display.verbosity
+          | Tui -> Quiet
+        in
         let open Fiber.O in
-        let (module Ops) = file_operations ~dry_run ~workspace in
+        let (module Ops) = file_operations ~verbosity ~dry_run ~workspace in
         let files_deleted_in = ref Path.Set.empty in
         let from_command_line =
           let open Install.Section.Paths.Roots in
@@ -718,7 +738,7 @@ let install_uninstall ~what =
                               | true ->
                                 Ops.remove_dir_if_exists ~if_non_empty:Fail dst
                               | false -> Ops.remove_file_if_exists dst);
-                              print_line "%s %s" msg
+                              print_line ~verbosity "%s %s" msg
                                 (Path.to_string_maybe_quoted dst);
                               Ops.mkdir_p dir;
                               let executable =

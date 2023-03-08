@@ -186,7 +186,7 @@ end = struct
         | Some opam -> (
           let+ version =
             Memo.of_reproducible_fiber
-              (Process.run_capture_line ~display:!Clflags.display Strict opam
+              (Process.run_capture_line ~display:Quiet Strict opam
                  [ "--version"; "--color=never" ])
           in
           match Scanf.sscanf version "%d.%d.%d" (fun a b c -> (a, b, c)) with
@@ -223,7 +223,7 @@ end = struct
       in
       let+ s =
         Memo.of_reproducible_fiber
-          (Process.run_capture ~display:!Clflags.display ~env Strict opam args)
+          (Process.run_capture ~display:Quiet ~env Strict opam args)
       in
       Dune_lang.Parser.parse_string ~fname:"<opam output>" ~mode:Single s
       |> Dune_lang.Decoder.(
@@ -313,8 +313,7 @@ let ocamlfind_printconf_path ~env ~ocamlfind ~toolchain =
   in
   let+ l =
     Memo.of_reproducible_fiber
-      (Process.run_capture_lines ~display:!Clflags.display ~env Strict ocamlfind
-         args)
+      (Process.run_capture_lines ~display:Quiet ~env Strict ocamlfind args)
   in
   List.map l ~f:Path.of_filename_relative_to_initial_cwd
 
@@ -376,7 +375,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         | Some s -> Memo.return s
         | None ->
           Memo.of_reproducible_fiber
-            (Process.run_capture_line ~display:!Clflags.display ~env Strict fn
+            (Process.run_capture_line ~display:Quiet ~env Strict fn
                [ "printconf"; "conf" ]))
         >>| Path.External.of_filename_relative_to_initial_cwd)
   in
@@ -484,8 +483,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       Memo.fork_and_join default_library_search_path (fun () ->
           let+ lines =
             Memo.of_reproducible_fiber
-              (Process.run_capture_lines ~display:!Clflags.display ~env Strict
-                 ocamlc [ "-config" ])
+              (Process.run_capture_lines ~display:Quiet ~env Strict ocamlc
+                 [ "-config" ])
           in
           ocaml_config_ok_exn
             (match Ocaml_config.Vars.of_lines lines with

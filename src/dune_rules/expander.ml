@@ -116,7 +116,7 @@ let dep p =
   let+ () = Action_builder.path p in
   [ Value.Path p ]
 
-let expand_version { scope; _ } ~source s =
+let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
   let value_from_version = function
     | None -> [ Value.String "" ]
     | Some s -> [ String s ]
@@ -129,7 +129,7 @@ let expand_version { scope; _ } ~source s =
   with
   | Some p -> Memo.return (value_from_version p.version)
   | None when Dune_project.dune_version project < (2, 9) ->
-    User_error.raise ~loc:source.Dune_lang.Template.Pform.loc
+    User_error.raise ~loc:source.loc
       [ Pp.textf "Package %S doesn't exist in the current project." s ]
       ~hints:
         [ Pp.text

@@ -1,0 +1,15 @@
+(library
+ (name foo_problem)
+ (foreign_stubs
+  (language c)
+  (names native_wrapper))
+ (no_dynlink)
+ (foreign_archives native)
+ (c_library_flags :standard -lnative -L.)
+;(c_library_flags :standard -lnative -L%{project_root}/problem)
+)
+
+(rule
+ (targets native_wrapper.c libnative.a)
+ (deps %{project_root}/native_wrapper.c %{project_root}/libnative.a)
+ (action (run cp %{deps} .)))

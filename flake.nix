@@ -1,7 +1,7 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    nix-overlays.url = "github:anmonteiro/nix-overlays";
+    nix-overlays.url = "github:nix-ocaml/nix-overlays";
     flake-utils.url = "github:numtide/flake-utils";
     ocamllsp.url = "git+https://www.github.com/ocaml/ocaml-lsp?submodules=1";
     opam-nix = {
@@ -12,7 +12,11 @@
       url = "github:ocaml/opam-repository";
       flake = false;
     };
-    melange.url = "github:melange-re/melange";
+    melange = {
+      url = "github:melange-re/melange";
+      inputs.nixpkgs.follows = "nix-overlays";
+      inputs.flake-utils.follows = "flake-utils";
+    };
   };
   outputs =
     { self

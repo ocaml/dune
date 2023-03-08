@@ -417,6 +417,9 @@ let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
   | Progn l ->
     let+ l = A.all (List.map l ~f:expand) in
     O.Progn l
+  | Concurrent l ->
+    let+ l = A.all (List.map l ~f:expand) in
+    O.Concurrent l
   | Echo xs ->
     let+ l = A.all (List.map xs ~f:E.strings) in
     let l = List.concat l in

@@ -142,8 +142,8 @@ let dep_graphs t = t.modules.dep_graphs
 
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
-    ?stdlib ~js_of_ocaml ~package ?public_lib_name ?vimpl ?modes
-    ?(bin_annot = true) ?loc () =
+    ?stdlib ~js_of_ocaml ~package ?public_lib_name ?vimpl ?modes ?bin_annot ?loc
+    () =
   let open Memo.O in
   let project = Scope.project scope in
   let requires_compile =
@@ -179,7 +179,12 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ; stdlib
     }
   in
-  let+ dep_graphs = Dep_rules.rules ocamldep_modules_data in
+  let+ dep_graphs = Dep_rules.rules ocamldep_modules_data
+  and+ bin_annot =
+    match bin_annot with
+    | Some b -> Memo.return b
+    | None -> Super_context.bin_annot super_context ~dir:(Obj_dir.dir obj_dir)
+  in
   { super_context
   ; scope
   ; expander
@@ -219,21 +224,21 @@ let for_alias_module t alias_module =
       Sandbox_config.needs_sandboxing
     else Sandbox_config.no_special_requirements
   in
-  let modules : modules =
+  let (modules, includes) : modules * Includes.t =
     match Modules.is_stdlib_alias t.modules.modules alias_module with
-    | false -> singleton_modules alias_module
+    | false -> (singleton_modules alias_module, Includes.empty)
     | true ->
       (* The stdlib alias module is different from the alias modules usually
          produced by Dune: it contains code and depends on a few other
          [CamlinnternalXXX] modules from the stdlib, so we need the full set of
          modules to compile it. *)
-      t.modules
+      (t.modules, t.includes)
   in
   { t with
     flags =
       Ocaml_flags.append_common flags
         [ "-w"; "-49"; "-nopervasives"; "-nostdlib" ]
-  ; includes = Includes.empty
+  ; includes
   ; stdlib = None
   ; sandbox
   ; modules

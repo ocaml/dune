@@ -11,13 +11,12 @@ Using flags field in melange.emit stanzas is not supported
   > (melange.emit
   >  (target output)
   >  (entries main)
-  >  (module_system commonjs)
   >  (flags -w -14-26))
   > EOF
 
   $ dune build @melange
-  File "dune", line 5, characters 2-7:
-  5 |  (flags -w -14-26))
+  File "dune", line 4, characters 2-7:
+  4 |  (flags -w -14-26))
         ^^^^^
   Error: Unknown field flags
   [1]
@@ -33,8 +32,7 @@ Adds a module that contains unused var (warning 26) and illegal backlash (warnin
   > (melange.emit
   >  (target output)
   >  (entries main)
-  >  (alias melange)
-  >  (module_system commonjs))
+  >  (alias melange))
   > EOF
 
 Trying to build triggers both warnings
@@ -57,7 +55,6 @@ Let's ignore them using compile_flags
   >  (target output)
   >  (entries main)
   >  (alias melange)
-  >  (module_system commonjs)
   >  (compile_flags -w -14-26))
   > EOF
 
@@ -71,8 +68,7 @@ Can also pass flags from the env stanza. Let's go back to failing state:
   > (melange.emit
   >  (target output)
   >  (entries main)
-  >  (alias melange)
-  >  (module_system commonjs))
+  >  (alias melange))
   > EOF
 
   $ dune build @melange
@@ -95,8 +91,7 @@ Adding env stanza with both warnings silenced allows the build to pass successfu
   > (melange.emit
   >  (alias melange)
   >  (target output)
-  >  (entries main)
-  >  (module_system commonjs))
+  >  (entries main))
   > EOF
 
   $ dune build @melange
@@ -113,8 +108,7 @@ Warning 102 (Melange only) is available if explicitly set
   > (melange.emit
   >  (target output)
   >  (entries main)
-  >  (compile_flags -w +a-70)
-  >  (module_system commonjs))
+  >  (compile_flags -w +a-70))
   > EOF
 
   $ dune build output/main.js
@@ -128,8 +122,7 @@ But it is disabled by default
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
-  >  (module_system commonjs))
+  >  (entries main))
   > EOF
 
   $ dune build output/main.js

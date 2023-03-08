@@ -466,12 +466,18 @@ module Unprocessed = struct
        } as t) sctx ~dir ~more_src_dirs ~expander =
     let open Action_builder.O in
     let+ config =
-      let* stdlib_dir =
+      let* stdlib_dir, extra_obj_dirs =
         Action_builder.of_memo
         @@
         match t.config.mode with
-        | `Ocaml -> Memo.return (Some stdlib_dir)
-        | `Melange -> Melange_binary.where sctx ~loc:None ~dir
+        | `Ocaml -> Memo.return (Some stdlib_dir, [])
+        | `Melange -> (
+          let open Memo.O in
+          let+ dirs = Melange_binary.where sctx ~loc:None ~dir in
+          match dirs with
+          | [] -> (None, [])
+          | [ stdlib_dir ] -> (Some stdlib_dir, [])
+          | stdlib_dir :: extra_obj_dirs -> (Some stdlib_dir, extra_obj_dirs))
       in
       let* flags = flags
       and* src_dirs, obj_dirs =
@@ -481,7 +487,10 @@ module Unprocessed = struct
               let+ dirs = src_dirs sctx lib in
               (lib, dirs))
           >>| List.fold_left
-                ~init:(Path.set_of_source_paths source_dirs, objs_dirs)
+                ~init:
+                  ( Path.set_of_source_paths source_dirs
+                  , Path.Set.union objs_dirs (Path.Set.of_list extra_obj_dirs)
+                  )
                 ~f:(fun (src_dirs, obj_dirs) (lib, more_src_dirs) ->
                   ( Path.Set.union src_dirs more_src_dirs
                   , let public_cmi_dir =

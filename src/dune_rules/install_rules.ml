@@ -155,13 +155,22 @@ end = struct
                   in
                   (sub_dir, dst)
               in
+              let sub_dir =
+                match sub_dir with
+                | None -> lib_subdir
+                | Some subdir ->
+                  Some
+                    (match lib_subdir with
+                    | None -> subdir
+                    | Some lib_subdir -> Filename.concat lib_subdir subdir)
+              in
               make_entry ?sub_dir Lib source ?dst))
     in
     let { Lib_config.has_native; ext_obj; _ } = lib_config in
     let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
       Dune_file.Mode_conf.Lib.Set.eval lib.modes ~has_native
     in
-    let module_files =
+    let* module_files =
       let inside_subdir f =
         match lib_subdir with
         | None -> f
@@ -202,18 +211,21 @@ end = struct
         let set_dir m =
           List.map ~f:(fun (cm_kind, p) -> (cm_dir m cm_kind, p))
         in
-        let modules_impl =
+        let+ modules_impl =
+          let+ bin_annot = Super_context.bin_annot sctx ~dir in
           List.concat_map installable_modules.impl ~f:(fun m ->
               let cmt_files =
-                List.concat_map Ml_kind.all ~f:(fun ml_kind ->
-                    let open Lib_mode.Cm_kind in
-                    List.concat_map
-                      [ (native || byte, Ocaml Cmi); (melange, Melange Cmi) ]
-                      ~f:(fun (condition, kind) ->
-                        if_ condition
-                          ( kind
-                          , Obj_dir.Module.cmt_file obj_dir m ~ml_kind
-                              ~cm_kind:kind )))
+                if bin_annot then
+                  List.concat_map Ml_kind.all ~f:(fun ml_kind ->
+                      let open Lib_mode.Cm_kind in
+                      List.concat_map
+                        [ (native || byte, Ocaml Cmi); (melange, Melange Cmi) ]
+                        ~f:(fun (condition, kind) ->
+                          if_ condition
+                            ( kind
+                            , Obj_dir.Module.cmt_file obj_dir m ~ml_kind
+                                ~cm_kind:kind )))
+                else []
               in
 
               common m @ cmt_files |> set_dir m)
@@ -382,40 +394,37 @@ end = struct
       Package.Name.Map_traversals.parallel_map packages
         ~f:(fun _name (pkg : Package.t) ->
           let init =
+            let file section local_file dst =
+              Install.Entry.make section local_file ~kind:`File ~dst
+              |> Install.Entry.Sourced.create
+            in
             let deprecated_meta_and_dune_files =
-              List.concat_map
-                (Package.Name.Map.to_list pkg.deprecated_package_names)
-                ~f:(fun (name, _) ->
-                  let meta_file =
-                    Package_paths.deprecated_meta_file ctx pkg name
-                  in
-                  let dune_package_file =
-                    Package_paths.deprecated_dune_package_file ctx pkg name
-                  in
-                  [ Install.Entry.Sourced.create
-                      (Install.Entry.make Lib_root meta_file ~kind:`File
-                         ~dst:
-                           (Package.Name.to_string name ^ "/" ^ Findlib.meta_fn))
-                  ; Install.Entry.Sourced.create
-                      (Install.Entry.make Lib_root dune_package_file ~kind:`File
-                         ~dst:
-                           (Package.Name.to_string name ^ "/" ^ Dune_package.fn))
-                  ])
+              Package.Name.Map.to_list pkg.deprecated_package_names
+              |> List.concat_map ~f:(fun (name, _) ->
+                     let meta_file =
+                       Package_paths.deprecated_meta_file ctx pkg name
+                     in
+                     let dune_package_file =
+                       Package_paths.deprecated_dune_package_file ctx pkg name
+                     in
+                     let file local_file install_fn =
+                       file Lib_root local_file
+                         (Package.Name.to_string name ^ "/" ^ install_fn)
+                     in
+                     [ file meta_file Findlib.meta_fn
+                     ; file dune_package_file Dune_package.fn
+                     ])
             in
             let meta_file = Package_paths.meta_file ctx pkg in
             let dune_package_file = Package_paths.dune_package_file ctx pkg in
-            Install.Entry.Sourced.create
-              (Install.Entry.make Lib meta_file ~kind:`File ~dst:Findlib.meta_fn)
-            :: Install.Entry.Sourced.create
-                 (Install.Entry.make Lib dune_package_file ~kind:`File
-                    ~dst:Dune_package.fn)
+            file Lib meta_file Findlib.meta_fn
+            :: file Lib dune_package_file Dune_package.fn
             ::
-            (if not pkg.has_opam_file then deprecated_meta_and_dune_files
-            else
+            (match pkg.has_opam_file with
+            | false -> deprecated_meta_and_dune_files
+            | true ->
               let opam_file = Package_paths.opam_file ctx pkg in
-              Install.Entry.Sourced.create
-                (Install.Entry.make Lib opam_file ~kind:`File ~dst:"opam")
-              :: deprecated_meta_and_dune_files)
+              file Lib opam_file "opam" :: deprecated_meta_and_dune_files)
           in
           let pkg_dir = Package.dir pkg in
           Source_tree.find_dir pkg_dir >>| function

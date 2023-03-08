@@ -68,7 +68,7 @@ val pp : t -> _ Pp.t
 module Produced : sig
   type 'a t = private
     { files : 'a Path.Build.Map.t
-    ; dirs : 'a String.Map.t Path.Build.Map.t
+    ; dirs : 'a Filename.Map.t Path.Build.Map.t
     }
 
   (** Expand [targets : Validated.t] by recursively traversing directory targets

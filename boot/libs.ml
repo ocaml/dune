@@ -51,12 +51,18 @@ let local_libraries =
   ; ("src/fswatch_win", Some "Fswatch_win", false, None)
   ; ("src/dune_file_watcher", Some "Dune_file_watcher", false, None)
   ; ("src/dune_engine", Some "Dune_engine", false, None)
+  ; ("src/dune_threaded_console", Some "Dune_threaded_console", false, None)
+  ; ("vendor/uutf", None, false, None)
+  ; ("vendor/notty/src", None, true, None)
+  ; ("vendor/notty/src-unix", None, true, None)
+  ; ("src/dune_tui", Some "Dune_tui", false, None)
   ; ("src/dune_config", Some "Dune_config", false, None)
   ; ("src/dune_rules", Some "Dune_rules", true, None)
   ; ("src/upgrader", Some "Dune_upgrader", false, None)
   ; ("vendor/cmdliner/src", None, false, None)
   ; ("otherlibs/build-info/src", Some "Build_info", false,
     Some "Build_info_data")
+  ; ("src/dune_rpc_client", Some "Dune_rpc_client", false, None)
   ; ("src/dune_rpc_impl", Some "Dune_rpc_impl", false, None)
   ]
 

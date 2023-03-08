@@ -234,13 +234,13 @@ end = struct
         Memo.return Appendable_list.empty
     and walk_children st_dir ~dir ~local =
       let+ l =
-        Memo.parallel_map
-          (Source_tree.Dir.sub_dirs st_dir |> String.Map.to_list)
-          ~f:(fun (basename, st_dir) ->
-            let* st_dir = Source_tree.Dir.sub_dir_as_t st_dir in
-            let dir = Path.Build.relative dir basename in
-            let local = basename :: local in
-            walk st_dir ~dir ~local)
+        Source_tree.Dir.sub_dirs st_dir
+        |> String.Map.to_list
+        |> Memo.parallel_map ~f:(fun (basename, st_dir) ->
+               let* st_dir = Source_tree.Dir.sub_dir_as_t st_dir in
+               let dir = Path.Build.relative dir basename in
+               let local = basename :: local in
+               walk st_dir ~dir ~local)
       in
       Appendable_list.concat l
     in

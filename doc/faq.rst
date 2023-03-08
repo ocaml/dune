@@ -80,7 +80,7 @@ non-fatal:
 - You can change the flags used by the ``dev`` profile by adding the following
   stanza to a ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
   (env
     (dev

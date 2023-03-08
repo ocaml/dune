@@ -35,18 +35,11 @@ let parse_module_names ~dir ~(unit : Module.t) ~modules words =
           ])
 
 let parse_compilation_units ~modules =
-  let obj_map =
-    Modules.obj_map modules ~f:(function
-      | Normal m -> m
-      | Imported_from_vlib m -> m
-      | Impl_of_virtual_module { intf = _; impl } -> impl)
-    |> Module.Obj_map.to_list_map ~f:(fun m _ -> (Module.obj_name m, m))
-    |> Module_name.Unique.Map.of_list_exn
-  in
-  Staged.stage
-    (List.filter_map ~f:(fun m ->
-         let obj_name = Module_name.Unique.of_string m in
-         Module_name.Unique.Map.find obj_map obj_name))
+  let obj_map = Modules.obj_map modules in
+  List.filter_map ~f:(fun m ->
+      let obj_name = Module_name.Unique.of_string m in
+      Module_name.Unique.Map.find obj_map obj_name
+      |> Option.map ~f:Modules.Sourced_module.to_module)
 
 let parse_deps_exn ~file lines =
   let invalid () =
@@ -135,13 +128,13 @@ let deps_of
   in
   let all_deps_file = Path.build all_deps_file in
   Action_builder.lines_of all_deps_file
-  |> Action_builder.map ~f:(Staged.unstage @@ parse_compilation_units ~modules)
+  |> Action_builder.map ~f:(parse_compilation_units ~modules)
   |> Action_builder.memoize (Path.to_string all_deps_file)
 
 let read_deps_of ~obj_dir ~modules ~ml_kind unit =
   let all_deps_file = Obj_dir.Module.dep obj_dir (Transitive (unit, ml_kind)) in
   Action_builder.lines_of (Path.build all_deps_file)
-  |> Action_builder.map ~f:(Staged.unstage @@ parse_compilation_units ~modules)
+  |> Action_builder.map ~f:(parse_compilation_units ~modules)
   |> Action_builder.memoize (Path.Build.to_string all_deps_file)
 
 let read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit =

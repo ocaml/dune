@@ -8,8 +8,7 @@ Test (entries) field can be left empty
   $ cat > dune <<EOF
   > (melange.emit
   >  (alias melange-dist)
-  >  (target dist)
-  >  (module_system commonjs))
+  >  (target dist))
   > EOF
 
 Create the dist folder

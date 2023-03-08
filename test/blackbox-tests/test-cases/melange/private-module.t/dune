@@ -1,5 +1,4 @@
 (melange.emit
  (target private-module)
  (entries foo)
- (libraries lib)
- (module_system commonjs))
+ (libraries lib))

@@ -20,7 +20,9 @@ let init ?(file = File.Default) () =
     match file with
     | No_log_file -> None
     | Out_channel s -> Some s
-    | This path -> Some (Io.open_out path)
+    | This path ->
+      Path.mkdir_p (Path.parent_exn path);
+      Some (Io.open_out path)
     | Default ->
       Path.ensure_build_dir_exists ();
       Some (Io.open_out (Path.relative Path.build_dir "log"))

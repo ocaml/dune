@@ -1,6 +1,9 @@
 (env
  (_
-  (binaries ../utils/dune_cmd.exe ../utils/dunepp.exe)))
+  (binaries
+   ../utils/dune_cmd.exe
+   ../utils/dunepp.exe
+   ../utils/melc_stdlib_prefix.exe)))
 
 (cram
  (applies_to pp-cwd)
@@ -118,11 +121,6 @@
  (executable
   (libraries stdune spawn)
   (name test)))
-
-(subdir
- actions
- (cram
-  (deps ../watching/helpers.sh bin/sub_process.exe)))
 
 (subdir
  cram

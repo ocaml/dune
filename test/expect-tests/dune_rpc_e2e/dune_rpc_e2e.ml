@@ -4,7 +4,7 @@ module Scheduler = Dune_engine.Scheduler
 module Dune_rpc = Dune_rpc_private
 module Request = Dune_rpc.Public.Request
 module Diagnostic = Dune_rpc.Diagnostic
-module Client = Dune_rpc_impl.Client
+module Client = Dune_rpc_client.Client
 module Session = Csexp_rpc.Session
 module Config = Dune_util.Config
 
@@ -26,7 +26,7 @@ let init_chan ~root_dir =
     | Error exn -> Exn.raise exn
     | Ok None -> Fiber.return None
     | Ok (Some where) -> (
-      let+ conn = Dune_rpc_impl.Client.Connection.connect where in
+      let+ conn = Client.Connection.connect where in
       match conn with
       | Ok s -> Some s
       | Error _ -> None)

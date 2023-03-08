@@ -6,7 +6,7 @@ type t
 
 val make :
      dir:Path.Build.t
-  -> per_module:Module.t list Action_builder.t Module.Obj_map.t
+  -> per_module:Module.t list Action_builder.t Module_name.Unique.Map.t
   -> t
 
 val deps_of : t -> Module.t -> Module.t list Action_builder.t

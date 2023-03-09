@@ -151,24 +151,24 @@ jobs:
 
       - name: Create watch synthetic benchmark
         working-directory: bench
-        run: ../_boot/dune.exe ./gen_synthetic_dune_watch.exe synthetic-watch
+        run: ../_boot/dune.exe exec ./gen_synthetic_dune_watch.exe -- synthetic-watch
 
       - name: Run synthetic watch benchmark
         working-directory: bench/synthetic-watch
-        run: ../gen-benchmark.sh '../run-synthetic-dune-watch.sh ../../_boot/dune.exe' '../../_boot/dune.exe build @all' 'synthetic watch build time (warm, ${{ runner.os }})' > synthetic-watch-benchmark-result.json
+        run: ../gen-benchmark.sh '../run-synthetic-dune-watch.sh ../../_boot/dune.exe' '../../_boot/dune.exe build @all' 'synthetic watch build time (warm, ${{ runner.os }})' > synthetic-benchmark-result.json
 
       - name: Print synthetic watch benchmark results
         working-directory: bench/synthetic-watch
         run: |
           cat bench.json
-          cat synthetic-watch-benchmark-result.json
+          cat synthetic-benchmark-result.json
 
-      - name: Store cold synthetic benchmark result
+      - name: Store synthetic watch benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: Synthetic Watch Benchmark
           tool: "customSmallerIsBetter"
-          output-file-path: bench/synthetic-watch/synthetic-watch-benchmark-result.json
+          output-file-path: bench/synthetic-watch/synthetic-benchmark-result.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
           # Ratio indicating how worse the current benchmark result is.

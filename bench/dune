@@ -12,3 +12,8 @@
  (modules gen_synthetic)
  (libraries unix)
  (name gen_synthetic))
+
+(executable
+ (modules gen_synthetic_dune_watch)
+ (libraries unix)
+ (name gen_synthetic_dune_watch))

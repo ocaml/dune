@@ -974,7 +974,8 @@ module Library = struct
     let instrumentation_backend = conf.instrumentation_backend in
     let entry_modules = Lib_info.Source.Local in
     let melange_runtime_deps =
-      Lib_info.Runtime_deps.Local (snd conf.melange_runtime_deps)
+      let loc, runtime_deps = conf.melange_runtime_deps in
+      Lib_info.Runtime_deps.Local (loc, runtime_deps)
     in
     Lib_info.create ~loc ~path_kind:Local ~name ~kind ~status ~src_dir
       ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems

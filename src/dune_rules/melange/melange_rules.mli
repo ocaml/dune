@@ -21,3 +21,5 @@ val setup_emit_js_rules :
 
 val eval_runtime_deps :
   expander:Expander.t -> Dep_conf.t list -> Path.Set.t Memo.t
+
+val raise_external_runtime_dep_error : loc:Loc.t -> Lib_name.t -> Path.t -> 'a

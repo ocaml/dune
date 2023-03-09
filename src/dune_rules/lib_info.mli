@@ -30,7 +30,7 @@ end
 
 module Runtime_deps : sig
   type 'a t =
-    | Local of Dep_conf.t list
+    | Local of Loc.t * Dep_conf.t list
     | External of 'a list
 end
 

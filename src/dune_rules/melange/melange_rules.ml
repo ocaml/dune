@@ -248,12 +248,39 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
   Buildable_rules.with_lib_deps ctx compile_info ~dir ~f
 
+let raise_external_runtime_dep_error ~loc lib_name path =
+  User_error.raise ~loc
+    [ Pp.textf
+        "Public library %s depends on external path `%s'. This is not allowed."
+        (Lib_name.to_string lib_name)
+        (Path.to_string path)
+    ]
+    ~hints:
+      [ Pp.textf
+          "Move the external dependency to the workspace and use a relative \
+           path."
+      ]
+
 module Runtime_deps = struct
-  let targets ~output deps =
+  let targets ~output ~for_ deps =
     Path.Set.fold ~init:([], []) deps ~f:(fun src (copy, non_copy) ->
         match output with
-        | `Public_library (lib_dir, output_dir) ->
-          ((src, lib_output_path ~output_dir ~lib_dir src) :: copy, non_copy)
+        | `Public_library (lib_dir, output_dir) -> (
+          match Path.as_external src with
+          | Some _ ->
+            let lib_info =
+              match for_ with
+              | `Library lib_info -> lib_info
+              | `Emit -> assert false
+            in
+            let loc =
+              match Lib_info.melange_runtime_deps lib_info with
+              | Local (loc, _) -> loc
+              | External _ -> Loc.none
+            in
+            raise_external_runtime_dep_error ~loc (Lib_info.name lib_info) src
+          | None ->
+            ((src, lib_output_path ~output_dir ~lib_dir src) :: copy, non_copy))
         | `Private_library_or_emit output_dir -> (
           match Path.as_in_build_dir src with
           | None -> (copy, src :: non_copy)
@@ -283,7 +310,7 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode
     | `Library lib_info -> (
       match Lib_info.melange_runtime_deps lib_info with
       | External paths -> Memo.return (Path.Set.of_list paths)
-      | Local dep_conf ->
+      | Local (_loc, dep_conf) ->
         let dir =
           let info = Lib_info.as_local_exn lib_info in
           Lib_info.src_dir info
@@ -291,7 +318,7 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode
         let* expander = Super_context.expander sctx ~dir in
         eval_runtime_deps ~expander dep_conf)
   in
-  let copy, non_copy = Runtime_deps.targets ~output runtime_dep_paths in
+  let copy, non_copy = Runtime_deps.targets ~output ~for_ runtime_dep_paths in
   let+ () =
     let loc = mel.loc in
     Memo.parallel_iter copy ~f:(fun (src, dst) ->

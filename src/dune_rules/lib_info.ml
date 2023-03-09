@@ -283,7 +283,7 @@ let dyn_of_native_archives path =
 
 module Runtime_deps = struct
   type 'a t =
-    | Local of Dep_conf.t list
+    | Local of Loc.t * Dep_conf.t list
     | External of 'a list
 
   let equal f x y =
@@ -294,13 +294,14 @@ module Runtime_deps = struct
 
   let map t ~f =
     match t with
-    | Local x -> Local x
+    | Local (loc, x) -> Local (loc, x)
     | External xs -> External (List.map ~f xs)
 
   let to_dyn f x =
     let open Dyn in
     match x with
-    | Local depconf -> variant "Local" (List.map ~f:Dep_conf.to_dyn depconf)
+    | Local (_loc, depconf) ->
+      variant "Local" (List.map ~f:Dep_conf.to_dyn depconf)
     | External x -> variant "External" (List.map ~f x)
 end
 

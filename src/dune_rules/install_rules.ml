@@ -196,18 +196,8 @@ end = struct
       in
       match Path.Set.to_list_map melange_runtime_deps ~f with
       | exception External_path path ->
-        User_error.raise ~loc
-          [ Pp.textf
-              "Public library %s depends on external path `%s'. This is not \
-               allowed."
-              (Lib_name.to_string (Lib_info.name info))
-              (Path.to_string path)
-          ]
-          ~hints:
-            [ Pp.textf
-                "Move the external dependency to the workspace and use a \
-                 relative path."
-            ]
+        Melange_rules.raise_external_runtime_dep_error ~loc (Lib_info.name info)
+          path
       | paths -> paths
     in
     let { Lib_config.has_native; ext_obj; _ } = lib_config in
@@ -612,7 +602,7 @@ end = struct
             and* melange_runtime_deps =
               match Lib_info.melange_runtime_deps info with
               | External _paths -> assert false
-              | Local dep_conf ->
+              | Local (_, dep_conf) ->
                 let+ melange_runtime_deps =
                   let* expander =
                     Super_context.expander sctx ~dir:lib_src_dir

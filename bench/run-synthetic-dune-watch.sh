@@ -43,8 +43,8 @@ stop_dune () {
 }
 
 echo Breaking build
-echo "let f() = 2" > ./internal/dir_1_1/m_1_1_1_1.ml
-echo "val f : unit -> int" > ./internal/dir_1_1/m_1_1_1_1.mli
+echo "let f() = 2" > ./internal/m_1_1_1_1.ml
+echo "val f : unit -> int" > ./internal/m_1_1_1_1.mli
 
 echo Starting dune
 start_dune
@@ -53,8 +53,8 @@ echo Checking for error
 until grep 'Had errors' .#dune-output > /dev/null; do sleep 0.1; done
 
 echo Found, fixing build
-echo "let f() = ()" > ./internal/dir_1_1/m_1_1_1_1.ml
-echo "val f : unit -> unit" > ./internal/dir_1_1/m_1_1_1_1.mli
+echo "let f() = ()" > ./internal/m_1_1_1_1.ml
+echo "val f : unit -> unit" > ./internal/m_1_1_1_1.mli
 
 echo Checking for success
 until grep 'Success' .#dune-output > /dev/null; do sleep 0.1; done

@@ -4,34 +4,33 @@ type lib =
   | Leaf
   | Internal
 
-let dir_cols = 4
+let subsets_per_library = 4
 
 let count n = Array.to_list (Array.init n (fun k -> k + 1))
 
-let write_directory base_dir dir_row dir_col =
+let write_subset base_dir library_index subset =
   let mod_rows = 10 in
   let mod_cols = 10 in
-
-  let dirname = sprintf "%s/dir_%d_%d" base_dir dir_row dir_col in
-  Unix.mkdir dirname 0o777;
 
   for row = 1 to mod_rows do
     for col = 1 to mod_cols do
       let deps =
         if row = 1 then
-          if dir_row = 1 then []
+          if library_index = 1 then []
           else
             List.flatten
               (List.map
                  (fun k ->
                    List.map
                      (fun j ->
-                       sprintf "M_%d_%d_%d_%d.f()" (dir_row - 1) j mod_rows k)
-                     (count dir_cols))
+                       sprintf "M_%d_%d_%d_%d.f()" (library_index - 1) j
+                         mod_rows k)
+                     (count subsets_per_library))
                  (count mod_cols))
         else
           List.map
-            (fun k -> sprintf "M_%d_%d_%d_%d.f()" dir_row dir_col (row - 1) k)
+            (fun k ->
+              sprintf "M_%d_%d_%d_%d.f()" library_index subset (row - 1) k)
             (count mod_cols)
       in
 
@@ -40,7 +39,7 @@ let write_directory base_dir dir_row dir_col =
       let str_deps = String.concat ";\n  " deps in
       let mod_text = sprintf "let f() =\n  %s\n" str_deps in
       let modname =
-        sprintf "%s/m_%d_%d_%d_%d" dirname dir_row dir_col row col
+        sprintf "%s/m_%d_%d_%d_%d" base_dir library_index subset row col
       in
       let f = open_out (sprintf "%s.ml" modname) in
       output_string f mod_text;
@@ -63,38 +62,30 @@ let write_lib ~base_dir ~lib ~dune =
   output_string f dune;
   let () = close_out f in
 
-  let row =
+  let library_index =
     match lib with
     | Leaf -> 2
     | Internal -> 1
   in
-  for col = 1 to dir_cols do
-    write_directory lib_dir row col
+  for subset = 1 to subsets_per_library do
+    write_subset lib_dir library_index subset
   done
 
 let write base_dir =
   let () = Unix.mkdir base_dir 0o777 in
 
-  let dune =
-    {|
-(include_subdirs unqualified)
-
+  let dune = {|
 (library
  (name leaf)
  (libraries internal))
-|}
-  in
+|} in
   write_lib ~base_dir ~lib:Leaf ~dune;
 
-  let dune =
-    {|
-(include_subdirs unqualified)
-
+  let dune = {|
 (library
  (name internal)
  (wrapped false))
-|}
-  in
+|} in
   write_lib ~base_dir ~lib:Internal ~dune
 
 let () =

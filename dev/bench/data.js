@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678404528842,
+  "lastUpdate": 1678404862809,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -10267,6 +10267,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.3803777479600003",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d5582c7d677b0d8afcc92f5c390d014cdac1a97f",
+          "message": "chore(nix): remove the opam2nix dependency on the default package (#7258)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-09T15:09:35-08:00",
+          "tree_id": "0e579760f62fdb226997e861522d4c545a9d5816",
+          "url": "https://github.com/ocaml/dune/commit/d5582c7d677b0d8afcc92f5c390d014cdac1a97f"
+        },
+        "date": 1678404861816,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "66.21187931645332",
             "unit": "seconds"
           }
         ]

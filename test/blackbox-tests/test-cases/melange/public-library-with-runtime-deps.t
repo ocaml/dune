@@ -78,4 +78,24 @@ The runtime_dep index.txt was copied to the build folder
   Some text
   
 
+Now try to depend on an external path in a public library
 
+  $ rm -rf dune
+  $ dune clean
+  $ cat > lib/dune <<EOF
+  > (library
+  >  (public_name foo)
+  >  (modes melange)
+  >  (melange.runtime_deps /etc/hosts))
+  > EOF
+
+$ dune build @check --display=short
+
+  $ dune build @install --display=short
+  File "lib/dune", line 4, characters 23-33:
+  4 |  (melange.runtime_deps /etc/hosts))
+                             ^^^^^^^^^^
+  Error: Public library foo depends on external path `/etc/hosts'. This is not
+  allowed.
+  Hint: Move the external dependency to the workspace and use a relative path.
+  [1]

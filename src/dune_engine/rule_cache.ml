@@ -315,9 +315,13 @@ module Shared = struct
     | None -> Fiber.return None
     | Some targets -> (
       let compute_digest ~executable path =
-        Stdune.Result.try_with (fun () ->
-            Digest.file_with_executable_bit ~executable path)
-        |> Fiber.return
+        let digest () = Digest.file_with_executable_bit ~executable path in
+        match Config.(get background_digests) with
+        | `Disabled -> Fiber.return (Stdune.Result.try_with digest)
+        | `Enabled -> (
+          Scheduler.async digest >>| function
+          | Ok _ as s -> s
+          | Error exn -> Error exn.exn)
       in
       Dune_cache.Local.store_artifacts ~mode ~rule_digest ~compute_digest
         targets

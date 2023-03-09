@@ -37,4 +37,7 @@ val copy_file : [ `Portable | `Best ] t
     Note that environment variables take precedence over the values passed here
     for easy overriding. *)
 
+(** Compute digests of files in a background thread *)
+val background_digests : Toggle.t t
+
 val init : (Loc.t * string) String.Map.t -> unit

@@ -40,4 +40,7 @@ val copy_file : [ `Portable | `Best ] t
 (** Compute digests of files in a background thread *)
 val background_digests : Toggle.t t
 
+(** Build and destroy sandboxes in background threads *)
+val background_sandboxes : Toggle.t t
+
 val init : (Loc.t * string) String.Map.t -> unit

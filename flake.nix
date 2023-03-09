@@ -1,9 +1,18 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    nix-overlays.url = "github:nix-ocaml/nix-overlays";
+    nix-overlays = {
+      url = "github:nix-ocaml/nix-overlays";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
     flake-utils.url = "github:numtide/flake-utils";
-    ocamllsp.url = "git+https://www.github.com/ocaml/ocaml-lsp?submodules=1";
+    ocamllsp = {
+      url = "git+https://www.github.com/ocaml/ocaml-lsp?submodules=1";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+      inputs.opam-repository.follows = "opam-repository";
+    };
     opam-nix = {
       url = "github:tweag/opam-nix";
       inputs.opam-repository.follows = "opam-repository";
@@ -49,18 +58,7 @@
       };
       pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
         (self: super: {
-          ocamlPackages = self.ocaml-ng.ocamlPackages_4_14.overrideScope' (oself: osuper: {
-            # Melange currently requires an unreleased version of dune. We'll
-            # be able to remove this once dune 3.8 has been released in nixpkgs
-            dune_3 = osuper.dune_3.overrideAttrs (_: {
-              src = super.fetchFromGitHub {
-                owner = "ocaml";
-                repo = "dune";
-                rev = "c7a0049e24e6d802a46f7ed34abf42bc525bf89d";
-                hash = "sha256-6TF0wYbRhoqoEdZRrT06Zu8l9gNUtJhCUoVunJQdiVo=";
-              };
-            });
-          });
+          ocamlPackages = self.ocaml-ng.ocamlPackages_4_14;
         })
         melange.overlays.default
       ];

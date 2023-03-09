@@ -1,4 +1,4 @@
-Test simple interactions between melange.emit and copy_files
+Test `melange.runtime_deps` in a public library in the workspace
 
   $ mkdir prefix
   $ cat > dune-project <<EOF

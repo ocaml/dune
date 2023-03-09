@@ -1,4 +1,4 @@
-Test simple interactions between melange.emit and copy_files
+Test `melange.runtime_deps` in a private library
 
   $ cat > dune-project <<EOF
   > (lang dune 3.7)

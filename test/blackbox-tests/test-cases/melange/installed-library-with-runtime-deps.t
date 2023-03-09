@@ -1,4 +1,4 @@
-Test simple interactions between melange.emit and copy_files
+Test `melange.runtime_deps` in a library that has been installed
 
   $ mkdir lib app prefix
   $ cat > lib/dune-project <<EOF

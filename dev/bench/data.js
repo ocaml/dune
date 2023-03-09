@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678334389440,
+  "lastUpdate": 1678334399855,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -10122,6 +10122,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "66.07233983574001",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3e99fc556abbedee00a95a0e38bddf5ab8980ac8",
+          "message": "test(memo): demonstrate loss of concurrency (#7251)\n\nReproduces the loss of concurrency observed in #5549 in a unit test\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-09T03:35:08Z",
+          "tree_id": "37f08e73bd140fe5885838d3c04a62db51c35199",
+          "url": "https://github.com/ocaml/dune/commit/3e99fc556abbedee00a95a0e38bddf5ab8980ac8"
+        },
+        "date": 1678334399000,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6147009206533334",
             "unit": "seconds"
           }
         ]

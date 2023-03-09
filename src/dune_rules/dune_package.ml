@@ -67,13 +67,9 @@ module Lib = struct
       | Local _ -> assert false
       | External paths ->
         let lib_dir = Obj_dir.dir obj_dir in
-        List.map
-          ~f:(fun p ->
-            let p =
-              Path.as_in_build_dir_exn p |> Path.Build.drop_build_context_exn
-            in
-            Path.append_source lib_dir p)
-          paths
+        List.map paths ~f:(fun p ->
+            Path.as_in_build_dir_exn p |> Path.Build.drop_build_context_exn
+            |> Path.append_source lib_dir)
     in
     let jsoo_runtime = Lib_info.jsoo_runtime info in
     let virtual_ = Option.is_some (Lib_info.virtual_ info) in

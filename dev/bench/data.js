@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678334399855,
+  "lastUpdate": 1678400550006,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -8351,6 +8351,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.560735836646664",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c82312b020bcee6f047ab588691ae02d0f0a5bf7",
+          "message": "chore: fix melange in the main default devShell (#7256)\n\n* chore: fix melange in the main default devShell\r\n* fix: simplify flake, get dune version from the melange overlay\r\n\r\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-09T13:50:47-08:00",
+          "tree_id": "d3407acc89f49bb9e0c4c8d7d9b318d27a1a146f",
+          "url": "https://github.com/ocaml/dune/commit/c82312b020bcee6f047ab588691ae02d0f0a5bf7"
+        },
+        "date": 1678400548224,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "45.70110720228001",
             "unit": "seconds"
           }
         ]

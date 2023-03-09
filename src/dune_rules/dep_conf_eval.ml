@@ -291,8 +291,10 @@ let unnamed_get_paths ~expander l =
      in
      Path.Set.of_list (List.concat paths))
   , List.fold_left l ~init:None ~f:(fun acc config ->
-        Some
-          (match acc with
-          | None ->
-            add_sandbox_config Sandbox_config.no_special_requirements config
-          | Some acc -> add_sandbox_config acc config)) )
+        match (acc, config) with
+        | None, Sandbox_config _ ->
+          Some
+            (add_sandbox_config
+               (Option.value ~default:Sandbox_config.no_special_requirements acc)
+               config)
+        | _, _ -> acc) )

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678320039903,
+  "lastUpdate": 1678320052912,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -9948,6 +9948,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "82.51484754191334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "c7a0049e24e6d802a46f7ed34abf42bc525bf89d",
+          "message": "fix(melange): two emit stanzas in a directory\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-08T15:31:10-08:00",
+          "tree_id": "10156b26142855e6044ee31b2f2131bae98be703",
+          "url": "https://github.com/ocaml/dune/commit/c7a0049e24e6d802a46f7ed34abf42bc525bf89d"
+        },
+        "date": 1678320051968,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.0822602418000002",
             "unit": "seconds"
           }
         ]

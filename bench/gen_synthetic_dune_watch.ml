@@ -4,10 +4,11 @@ type lib =
   | Leaf
   | Internal
 
+let dir_cols = 4
+
 let count n = Array.to_list (Array.init n (fun k -> k + 1))
 
 let write_directory base_dir dir_row dir_col =
-  let dir_cols = 10 in
   let mod_rows = 10 in
   let mod_cols = 10 in
 
@@ -67,7 +68,7 @@ let write_lib ~base_dir ~lib ~dune =
     | Leaf -> 2
     | Internal -> 1
   in
-  for col = 1 to 10 do
+  for col = 1 to dir_cols do
     write_directory lib_dir row col
   done
 

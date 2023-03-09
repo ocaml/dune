@@ -88,7 +88,24 @@
           });
     in
     {
-      packages.default = scope.dune;
+      packages = {
+        dune = scope.dune;
+        default = with pkgs; stdenv.mkDerivation rec {
+          pname = package;
+          version = "n/a";
+          src = ./.;
+          nativeBuildInputs = with ocamlPackages; [ ocaml findlib ];
+          buildInputs = lib.optionals stdenv.isDarwin [
+            darwin.apple_sdk.frameworks.CoreServices
+          ];
+          strictDeps = true;
+          buildFlags = [ "release" ];
+          dontAddPrefix = true;
+          dontAddStaticConfigureFlags = true;
+          configurePlatforms = [ ];
+          installFlags = [ "PREFIX=${placeholder "out"}" "LIBDIR=$(OCAMLFIND_DESTDIR)" ];
+        };
+      };
 
       devShells.doc =
         pkgs.mkShell {

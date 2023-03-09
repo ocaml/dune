@@ -281,8 +281,7 @@ let unnamed ?(sandbox = Sandbox_config.no_special_requirements) ~expander l =
         ())
   , List.fold_left l ~init:sandbox ~f:add_sandbox_config )
 
-let unnamed_get_paths ?(sandbox = Sandbox_config.no_special_requirements)
-    ~expander l =
+let unnamed_get_paths ~expander l =
   let expander = prepare_expander expander in
   ( (let+ paths =
        List.fold_left l ~init:(Action_builder.return []) ~f:(fun acc x ->
@@ -291,4 +290,9 @@ let unnamed_get_paths ?(sandbox = Sandbox_config.no_special_requirements)
            paths :: acc)
      in
      Path.Set.of_list (List.concat paths))
-  , List.fold_left l ~init:sandbox ~f:add_sandbox_config )
+  , List.fold_left l ~init:None ~f:(fun acc config ->
+        Some
+          (match acc with
+          | None ->
+            add_sandbox_config Sandbox_config.no_special_requirements config
+          | Some acc -> add_sandbox_config acc config)) )

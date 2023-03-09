@@ -561,8 +561,8 @@ end = struct
                  , Dune_package.Entry.Deprecated_library_name
                      { loc; old_public_name; new_public_name } ))
           | Library lib ->
+            let info = Lib.Local.info lib in
             let* dir_contents =
-              let info = Lib.Local.info lib in
               let dir = Lib_info.src_dir info in
               Dir_contents.get sctx ~dir
             in
@@ -590,8 +590,8 @@ end = struct
               Dir_contents.ocaml dir_contents
               >>| Ml_sources.modules ~for_:(Library name)
             and* melange_runtime_deps =
-              let info = Lib.info lib in
               match Lib_info.melange_runtime_deps info with
+              | External _paths -> assert false
               | Local dep_conf ->
                 let+ melange_runtime_deps =
                   let* expander =
@@ -600,7 +600,6 @@ end = struct
                   Melange_rules.eval_runtime_deps ~expander dep_conf
                 in
                 Path.Set.to_list melange_runtime_deps
-              | External _paths -> assert false
             in
             let+ sub_systems =
               Lib.to_dune_lib lib

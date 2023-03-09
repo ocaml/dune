@@ -36,7 +36,7 @@ let lib_output_path ~output_dir ~lib_dir src =
     |> Option.value_exn
     |> String.drop_prefix_if_exists ~prefix:"/"
   in
-  if dir = "" then output_dir else Path.relative output_dir dir
+  if dir = "" then output_dir else Path.Build.relative output_dir dir
 
 let make_js_name ~js_ext ~output m =
   let basename = Melange.js_basename m ^ js_ext in
@@ -45,10 +45,7 @@ let make_js_name ~js_ext ~output m =
     let src_dir =
       Module.file m ~ml_kind:Impl |> Option.value_exn |> Path.parent_exn
     in
-    let output_dir =
-      let output_dir = Path.build output_dir in
-      lib_output_path ~output_dir ~lib_dir src_dir |> Path.as_in_build_dir_exn
-    in
+    let output_dir = lib_output_path ~output_dir ~lib_dir src_dir in
     Path.Build.relative output_dir basename
   | `Private_library_or_emit target_dir ->
     let dst_dir =
@@ -252,35 +249,27 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
   Buildable_rules.with_lib_deps ctx compile_info ~dir ~f
 
 module Runtime_deps = struct
-  let to_action_builder ~expander dep_conf =
-    let runtime_deps, _sandbox =
-      Dep_conf_eval.unnamed_get_paths ~expander dep_conf
-    in
-    runtime_deps
-
   let targets ~output deps =
     Path.Set.fold ~init:([], []) deps ~f:(fun src (copy, non_copy) ->
         match output with
+        | `Public_library (lib_dir, output_dir) ->
+          ((src, lib_output_path ~output_dir ~lib_dir src) :: copy, non_copy)
         | `Private_library_or_emit output_dir -> (
           match Path.as_in_build_dir src with
           | None -> (copy, src :: non_copy)
           | Some src_build ->
             let target = Path.Build.drop_build_context_exn src_build in
             ((src, Path.Build.append_source output_dir target) :: copy, non_copy)
-          )
-        | `Public_library (lib_dir, output_dir) ->
-          let output_dir = Path.build output_dir in
-          ( ( src
-            , lib_output_path ~output_dir ~lib_dir src
-              |> Path.as_in_build_dir_exn )
-            :: copy
-          , non_copy ))
+          ))
 end
 
 let eval_runtime_deps ~expander (deps : Dep_conf.t list) =
+  let runtime_deps, sandbox = Dep_conf_eval.unnamed_get_paths ~expander deps in
+  Option.iter sandbox ~f:(fun _ ->
+      (* TODO loc *)
+      User_error.raise [ Pp.text "sandbox settings are not allowed" ]);
   let open Memo.O in
-  let builder = Runtime_deps.to_action_builder ~expander deps in
-  let+ paths, _ = Action_builder.run builder Eager in
+  let+ paths, _ = Action_builder.run runtime_deps Eager in
   paths
 
 let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode
@@ -293,14 +282,14 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode
       eval_runtime_deps ~expander mel.runtime_deps
     | `Library lib_info -> (
       match Lib_info.melange_runtime_deps lib_info with
+      | External paths -> Memo.return (Path.Set.of_list paths)
       | Local dep_conf ->
         let dir =
           let info = Lib_info.as_local_exn lib_info in
           Lib_info.src_dir info
         in
         let* expander = Super_context.expander sctx ~dir in
-        eval_runtime_deps ~expander dep_conf
-      | External paths -> Memo.return (Path.Set.of_list paths))
+        eval_runtime_deps ~expander dep_conf)
   in
   let copy, non_copy = Runtime_deps.targets ~output runtime_dep_paths in
   let+ () =

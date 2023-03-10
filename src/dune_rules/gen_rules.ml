@@ -295,21 +295,22 @@ let gen_rules sctx dir_contents cctxs expander
   cctxs
 
 let collect_directory_targets ~init ~dir =
-  Only_packages.stanzas_in_dir dir >>| function
-  | None -> init
+  Only_packages.stanzas_in_dir dir >>= function
+  | None -> Memo.return init
   | Some d ->
-    List.fold_left d.stanzas ~init ~f:(fun acc stanza ->
+    Memo.List.fold_left d.stanzas ~init ~f:(fun acc stanza ->
         match stanza with
         | Coq_stanza.Theory.T m ->
           Coq_rules.coqdoc_directory_targets ~dir m
-          |> Path.Build.Map.union acc ~f:(fun path loc1 loc2 ->
-                 User_error.raise ~loc:loc1
-                   [ Pp.textf
-                       "The following both define the same directory target: %s"
-                       (Path.Build.to_string path)
-                   ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
-                   ])
-        | _ -> acc)
+          >>| Path.Build.Map.union acc ~f:(fun path loc1 loc2 ->
+                  User_error.raise ~loc:loc1
+                    [ Pp.textf
+                        "The following both define the same directory target: \
+                         %s"
+                        (Path.Build.to_string path)
+                    ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
+                    ])
+        | _ -> Memo.return acc)
 
 let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
     (Loc.t * Compilation_context.t) list Memo.t =

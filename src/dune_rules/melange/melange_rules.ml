@@ -287,7 +287,7 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode
     let loc = mel.loc in
     Memo.parallel_iter copy ~f:(fun (src, dst) ->
         Super_context.add_rule ~loc ~dir ~mode sctx
-          (Action_builder.symlink ~src ~dst))
+          (Action_builder.copy ~src ~dst))
   and+ () =
     match mel.alias with
     | None -> Memo.return ()

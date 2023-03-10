@@ -6,14 +6,9 @@ Test that inter-module dependencies are tracked by melange.emit
   > EOF
 
   $ cat > dune <<EOF
-  > (library
-  >  (name a)
-  >  (modes melange))
   > (melange.emit
   >  (target dist)
-  >  (alias dist)
-  >  (entries)
-  >  (libraries a))
+  >  (alias dist))
   > EOF
 
   $ cat > foo.ml <<EOF
@@ -25,11 +20,11 @@ Test that inter-module dependencies are tracked by melange.emit
   > EOF
 
   $ dune build dist/bar.js --display short
-      ocamldep .a.objs/a__Bar.impl.d
-      ocamldep .a.objs/a__Foo.impl.d
-          melc .a.objs/melange/a.{cmi,cmj,cmt}
-          melc .a.objs/melange/a__Foo.{cmi,cmj,cmt}
-          melc .a.objs/melange/a__Bar.{cmi,cmj,cmt}
+      ocamldep .dist.mobjs/melange__Bar.impl.d
+      ocamldep .dist.mobjs/melange__Foo.impl.d
+          melc .dist.mobjs/melange/melange.{cmi,cmj,cmt}
+          melc .dist.mobjs/melange/melange__Foo.{cmi,cmj,cmt}
+          melc .dist.mobjs/melange/melange__Bar.{cmi,cmj,cmt}
           melc dist/bar.js
 
   $ node _build/default/dist/bar.js 2>&1 | grep 'Cannot find'

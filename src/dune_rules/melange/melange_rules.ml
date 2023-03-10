@@ -263,24 +263,32 @@ let raise_external_runtime_dep_error ~loc lib_name path =
 
 module Runtime_deps = struct
   let targets ~output ~for_ deps =
+    let raise_external_dep_error src =
+      let lib_info =
+        match for_ with
+        | `Library lib_info -> lib_info
+        | `Emit -> assert false
+      in
+      let loc =
+        match Lib_info.melange_runtime_deps lib_info with
+        | Local (loc, _) -> loc
+        | External _ -> Loc.none
+      in
+      raise_external_runtime_dep_error ~loc (Lib_info.name lib_info) src
+    in
+
     Path.Set.fold ~init:([], []) deps ~f:(fun src (copy, non_copy) ->
         match output with
         | `Public_library (lib_dir, output_dir) -> (
           match Path.as_external src with
-          | Some _ ->
-            let lib_info =
-              match for_ with
-              | `Library lib_info -> lib_info
-              | `Emit -> assert false
-            in
-            let loc =
-              match Lib_info.melange_runtime_deps lib_info with
-              | Local (loc, _) -> loc
-              | External _ -> Loc.none
-            in
-            raise_external_runtime_dep_error ~loc (Lib_info.name lib_info) src
           | None ->
-            ((src, lib_output_path ~output_dir ~lib_dir src) :: copy, non_copy))
+            ((src, lib_output_path ~output_dir ~lib_dir src) :: copy, non_copy)
+          | Some src_e -> (
+            match Path.as_external lib_dir with
+            | Some lib_dir_e
+              when Path.External.is_descendant src_e ~of_:lib_dir_e ->
+              ((src, lib_output_path ~output_dir ~lib_dir src) :: copy, non_copy)
+            | Some _ | None -> raise_external_dep_error src))
         | `Private_library_or_emit output_dir -> (
           match Path.as_in_build_dir src with
           | None -> (copy, src :: non_copy)

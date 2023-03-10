@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Always clean up the UI on exit. (#7271, fixes #7142 @rgrinberg)
+
 - Bootstrap: remove reliance on shell. Previously, we'd use the shell to get
   the number of processors. (#7274, @rgrinberg)
 

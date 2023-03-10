@@ -97,6 +97,8 @@ let finish () =
   let (module M : Backend_intf.S) = !Backend.main in
   M.finish ()
 
+let () = at_exit finish
+
 module Status_line = struct
   type t =
     | Live of (unit -> User_message.Style.t Pp.t)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678469088599,
+  "lastUpdate": 1678469099071,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -10470,6 +10470,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "66.88364988725334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "e52c89bc2939982426b2f3dc27d1e04631f76d01",
+          "message": "test(coq): duplicate theory in a dune file\n\nAppears to be bugged since the directory targets are being reported\nfirst.\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>\n\n<!-- ps-id: 028d7bfb-988a-44e2-ae57-72fcfeee8d5f -->",
+          "timestamp": "2023-03-10T17:51:32+01:00",
+          "tree_id": "6ea29e142e086ce099e456b41e048e639b9678dd",
+          "url": "https://github.com/ocaml/dune/commit/e52c89bc2939982426b2f3dc27d1e04631f76d01"
+        },
+        "date": 1678469098238,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.614109424506667",
             "unit": "seconds"
           }
         ]

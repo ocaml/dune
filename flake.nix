@@ -1,9 +1,18 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    nix-overlays.url = "github:nix-ocaml/nix-overlays";
+    nix-overlays = {
+      url = "github:nix-ocaml/nix-overlays";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
     flake-utils.url = "github:numtide/flake-utils";
-    ocamllsp.url = "git+https://www.github.com/ocaml/ocaml-lsp?submodules=1";
+    ocamllsp = {
+      url = "git+https://www.github.com/ocaml/ocaml-lsp?submodules=1";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+      inputs.opam-repository.follows = "opam-repository";
+    };
     opam-nix = {
       url = "github:tweag/opam-nix";
       inputs.opam-repository.follows = "opam-repository";
@@ -79,7 +88,24 @@
           });
     in
     {
-      packages.default = scope.dune;
+      packages = {
+        dune = scope.dune;
+        default = with pkgs; stdenv.mkDerivation rec {
+          pname = package;
+          version = "n/a";
+          src = ./.;
+          nativeBuildInputs = with ocamlPackages; [ ocaml findlib ];
+          buildInputs = lib.optionals stdenv.isDarwin [
+            darwin.apple_sdk.frameworks.CoreServices
+          ];
+          strictDeps = true;
+          buildFlags = [ "release" ];
+          dontAddPrefix = true;
+          dontAddStaticConfigureFlags = true;
+          configurePlatforms = [ ];
+          installFlags = [ "PREFIX=${placeholder "out"}" "LIBDIR=$(OCAMLFIND_DESTDIR)" ];
+        };
+      };
 
       devShells.doc =
         pkgs.mkShell {

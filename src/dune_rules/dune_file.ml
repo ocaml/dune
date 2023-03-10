@@ -29,66 +29,6 @@ type for_ =
   | Executable
   | Library of Wrapped.t option
 
-module Lib_deps = struct
-  type t = Lib_dep.t list
-
-  type kind =
-    | Required
-    | Optional
-    | Forbidden
-
-  let decode for_ =
-    let+ loc = loc
-    and+ t =
-      let allow_re_export =
-        match for_ with
-        | Library _ -> true
-        | Executable -> false
-      in
-      repeat (Lib_dep.decode ~allow_re_export)
-    in
-    let add kind name acc =
-      match Lib_name.Map.find acc name with
-      | None -> Lib_name.Map.set acc name kind
-      | Some kind' -> (
-        match (kind, kind') with
-        | Required, Required ->
-          User_error.raise ~loc
-            [ Pp.textf "library %S is present twice" (Lib_name.to_string name) ]
-        | (Optional | Forbidden), (Optional | Forbidden) -> acc
-        | Optional, Required | Required, Optional ->
-          User_error.raise ~loc
-            [ Pp.textf
-                "library %S is present both as an optional and required \
-                 dependency"
-                (Lib_name.to_string name)
-            ]
-        | Forbidden, Required | Required, Forbidden ->
-          User_error.raise ~loc
-            [ Pp.textf
-                "library %S is present both as a forbidden and required \
-                 dependency"
-                (Lib_name.to_string name)
-            ])
-    in
-    ignore
-      (List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
-           match x with
-           | Lib_dep.Re_export (_, s) | Lib_dep.Direct (_, s) ->
-             add Required s acc
-           | Select { choices; _ } ->
-             List.fold_left choices ~init:acc
-               ~f:(fun acc (c : Lib_dep.Select.Choice.t) ->
-                 let acc =
-                   Lib_name.Set.fold c.required ~init:acc ~f:(add Optional)
-                 in
-                 Lib_name.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
-        : kind Lib_name.Map.t);
-    t
-
-  let of_pps pps = List.map pps ~f:(fun pp -> Lib_dep.direct (Loc.none, pp))
-end
-
 module Buildable = struct
   type t =
     { loc : Loc.t
@@ -165,7 +105,13 @@ module Buildable = struct
               (Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
                  ~extra_info:"Use the (foreign_archives ...) field instead."
               >>> enter (maybe string))))
-    and+ libraries = field "libraries" (Lib_deps.decode for_) ~default:[]
+    and+ libraries =
+      let allow_re_export =
+        match for_ with
+        | Library _ -> true
+        | Executable -> false
+      in
+      field "libraries" (Lib_dep.L.decode ~allow_re_export) ~default:[]
     and+ flags = Ocaml_flags.Spec.decode
     and+ js_of_ocaml =
       field "js_of_ocaml" Js_of_ocaml.In_buildable.decode

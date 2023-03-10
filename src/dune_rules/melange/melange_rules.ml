@@ -203,7 +203,7 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
         ~opaque:Inherit_from_settings ~package:mel.package
         ~modes:
           { ocaml = { byte = None; native = None }
-          ; melange = Some (Requested Loc.none)
+          ; melange = Some (Requested mel.loc)
           }
     in
     let* () = Module_compilation.build_all cctx in
@@ -245,6 +245,7 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
         ~dialects:(Dune_project.dialects (Scope.project scope))
         ~modes:`Melange_emit )
   in
+  let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
   Buildable_rules.with_lib_deps ctx compile_info ~dir ~f
 
 module Runtime_deps = struct

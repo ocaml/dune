@@ -303,12 +303,11 @@ let collect_directory_targets ~init ~dir =
         | Coq_stanza.Theory.T m ->
           Coq_rules.coqdoc_directory_targets ~dir m
           |> Path.Build.Map.union acc ~f:(fun path loc1 loc2 ->
-                 User_error.raise
+                 User_error.raise ~loc:loc1
                    [ Pp.textf
-                       "the following both define the directory target: %s"
+                       "The following both define the same directory target: %s"
                        (Path.Build.to_string path)
-                   ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-                   ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+                   ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
                    ])
         | _ -> acc)
 
@@ -386,35 +385,24 @@ type for_melange =
     stanza : Melange_stanzas.Emit.t
   }
 
-let rec nearest_parent_melange_emit ~dir =
+(* Detect if [dir] is under the target directory of a melange.emit stanza. *)
+let rec under_melange_emit_target ~dir =
   match Path.Build.parent dir with
   | None -> Memo.return None
   | Some parent -> (
     let* stanzas = Only_packages.stanzas_in_dir parent in
     match stanzas with
-    | None -> nearest_parent_melange_emit ~dir:parent
+    | None -> under_melange_emit_target ~dir:parent
     | Some stanzas -> (
       match
         List.find_map stanzas.stanzas ~f:(function
-          | Melange_stanzas.Emit.T mel -> Some mel
+          | Melange_stanzas.Emit.T mel ->
+            let target_dir = Melange_rules.emit_target_dir ~dir:parent mel in
+            Option.some_if (Path.Build.equal target_dir dir) mel
           | _ -> None)
       with
-      | None -> nearest_parent_melange_emit ~dir:parent
+      | None -> under_melange_emit_target ~dir:parent
       | Some stanza -> Memo.return @@ Some { stanza_dir = parent; stanza }))
-
-(* Detect if [dir] is under the target directory of a melange.emit stanza. *)
-let rec under_melange_emit_target ~dir =
-  let* nearest_parent_melange_emit = nearest_parent_melange_emit ~dir in
-  match nearest_parent_melange_emit with
-  | None -> Memo.return None
-  | Some for_melange ->
-    let target_dir =
-      Melange_rules.emit_target_dir ~dir:for_melange.stanza_dir
-        for_melange.stanza
-    in
-    if Path.Build.is_descendant dir ~of_:target_dir then
-      Memo.return (Some for_melange)
-    else under_melange_emit_target ~dir:for_melange.stanza_dir
 
 let melange_emit_rules sctx { stanza_dir; stanza } =
   let rules =
@@ -436,10 +424,8 @@ let gen_melange_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
   with
   | false -> Memo.return None
   | true -> (
-    let+ parent_melange_emit_dir =
-      nearest_parent_melange_emit ~dir:stanza_dir
-    in
-    match parent_melange_emit_dir with
+    let+ parent_melange_emit = under_melange_emit_target ~dir:stanza_dir in
+    match parent_melange_emit with
     | None -> Some (melange_emit_rules sctx for_melange)
     | Some { stanza_dir = parent_melange_emit_dir; stanza = parent_stanza } ->
       let main_message = Pp.text "melange.emit stanzas cannot be nested" in
@@ -455,8 +441,8 @@ let gen_melange_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
       in
       User_error.raise ~loc:stanza.loc ~annots
         [ main_message
-        ; Pp.textf "- %s" (Loc.to_file_colon_line parent_stanza.loc)
-        ; Pp.textf "- %s" (Loc.to_file_colon_line stanza.loc)
+        ; Pp.enumerate ~f:Loc.pp_file_colon_line
+            [ parent_stanza.loc; stanza.loc ]
         ]
         ~hints:
           (let emit_dir = Path.Build.drop_build_context_exn stanza_dir in

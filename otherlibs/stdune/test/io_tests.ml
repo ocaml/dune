@@ -39,7 +39,5 @@ let%expect_test "copy file on a directory" =
   let dst = Path.relative dir "final" in
   Unix.mkdir (Path.to_string src) 0o755;
   Io.copy_file ~src ~dst ();
-  let dst = Path.to_string dst in
-  Format.printf "exists: %B; is directory: %B @." (Sys.file_exists dst)
-    (Sys.is_directory dst);
-  [%expect {| exists: true; is directory: true |}]
+  [%expect.unreachable]
+  [@@expect.uncaught_exn {| (Sys_error "Is a directory") |}]

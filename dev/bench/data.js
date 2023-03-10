@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678484221174,
+  "lastUpdate": 1678484235129,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -10731,6 +10731,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "81.94108803015997",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "82df8daf476d615681061b9d513710d2cb16daf6",
+          "message": "chore(docker): add perf to image (#7266)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-10T12:44:09-08:00",
+          "tree_id": "583fd28cd16e279964412f91f9e7b91fda8c4437",
+          "url": "https://github.com/ocaml/dune/commit/82df8daf476d615681061b9d513710d2cb16daf6"
+        },
+        "date": 1678484233985,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.1372471224800003",
             "unit": "seconds"
           }
         ]

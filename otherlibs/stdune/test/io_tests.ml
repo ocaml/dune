@@ -32,3 +32,14 @@ let%expect_test "copy file chmod" =
   [%expect {|
     foobarbaz
     permissions: 428 |}]
+
+let%expect_test "copy file on a directory" =
+  let dir = temp_dir () in
+  let src = Path.relative dir "initial" in
+  let dst = Path.relative dir "final" in
+  Unix.mkdir (Path.to_string src) 0o755;
+  Io.copy_file ~src ~dst ();
+  let dst = Path.to_string dst in
+  Format.printf "exists: %B; is directory: %B @." (Sys.file_exists dst)
+    (Sys.is_directory dst);
+  [%expect {| exists: true; is directory: true |}]

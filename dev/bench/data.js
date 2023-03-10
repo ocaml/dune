@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678471663983,
+  "lastUpdate": 1678480840512,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -8496,6 +8496,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.05452444876",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4c696272ad42bbb3f3f6603f52571b7cd92b8e3e",
+          "message": "chore(makefile): update OCaml to 4.14.1 (#7265)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-10T12:17:35-08:00",
+          "tree_id": "710714f31ae25e9ff9baa69d5e08558073d838af",
+          "url": "https://github.com/ocaml/dune/commit/4c696272ad42bbb3f3f6603f52571b7cd92b8e3e"
+        },
+        "date": 1678480838789,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.210326727853335",
             "unit": "seconds"
           }
         ]

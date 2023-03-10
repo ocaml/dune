@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678469099071,
+  "lastUpdate": 1678471280680,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -8467,6 +8467,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.188954251919995",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "eec2b08d68cfe8408e662b8e5e897d2c0b8d366d",
+          "message": "fix(coq): fix duplicate dir targets being detected before theories (#7263)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-03-10T09:40:51-08:00",
+          "tree_id": "286b637bce1c9d866d72a50b6822baa53ea1b01c",
+          "url": "https://github.com/ocaml/dune/commit/eec2b08d68cfe8408e662b8e5e897d2c0b8d366d"
+        },
+        "date": 1678471279657,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.05452444876",
             "unit": "seconds"
           }
         ]

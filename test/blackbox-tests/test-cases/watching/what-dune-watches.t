@@ -21,6 +21,6 @@ The pattern below excludes absolute files as Dune currently watches
 everything in the PATH, which is not very reproducible.
 
   $ sed -nE 's/inotify_add_watch\([0-9]*, "([^/].*)", .*\) (=.*)/watch \1 \2/p' ../log | sort -u
-  watch . = 2
+  watch . = 1
   watch _build/.sync = 1
-  watch src = 3
+  watch src = 2

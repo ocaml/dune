@@ -6,6 +6,12 @@ services:
     image: dune
     user: opam
     tty: true
+    privileged: true
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined
     stdin_open: true
     volumes:
       - ../:/home/opam/dune

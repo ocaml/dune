@@ -23,7 +23,7 @@
     };
     melange = {
       url = "github:melange-re/melange";
-      inputs.nixpkgs.follows = "nix-overlays";
+      inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };
   };
@@ -86,11 +86,10 @@
           (devPackages // {
             ocaml-base-compiler = "4.14.0";
           });
-      testBuildInputs =
-        (with pkgs;
-        [ patdiff file mercurial ]
-        ++ (if stdenv.isLinux then [ strace ] else [ ]));
-      testNativeBuildInputs = (with pkgs; [ nodejs-slim pkg-config opam ]);
+      testBuildInputs = with pkgs;
+        [ file mercurial ]
+        ++ lib.optionals stdenv.isLinux [ strace ];
+      testNativeBuildInputs = with pkgs; [ nodejs-slim pkg-config opam ];
     in
     {
       packages = {
@@ -140,7 +139,7 @@
           ];
         in
         pkgs.mkShell {
-          nativeBuildInputs = testNativeBuildInputs;
+          nativeBuildInputs = testNativeBuildInputs ++ [ ocamlformat ];
           inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
           buildInputs = testBuildInputs ++ (with pkgs.ocamlPackages; [
             merlin
@@ -152,6 +151,7 @@
             menhir
             odoc
             lwt
+            patdiff
           ]);
         };
 
@@ -166,6 +166,7 @@
 
       devShells.default =
         pkgs.mkShell {
+          dontDetectOcamlConflicts = true;
           nativeBuildInputs = testNativeBuildInputs;
           buildInputs = testBuildInputs ++ (with pkgs;
             [

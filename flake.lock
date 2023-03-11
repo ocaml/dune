@@ -85,7 +85,7 @@
         "melange-compiler-libs": "melange-compiler-libs",
         "nix-filter": "nix-filter",
         "nixpkgs": [
-          "nix-overlays"
+          "nixpkgs"
         ]
       },
       "locked": {

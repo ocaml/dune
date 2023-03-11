@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Bootstrap: remove reliance on shell. Previously, we'd use the shell to get
+  the number of processors. (#7274, @rgrinberg)
+
 - Bootstrap: correctly detect the number of processors by allowing `nproc` to be
   looked up in `$PATH` (#7272, @Alizter)
 

@@ -113,25 +113,7 @@
         };
       };
 
-      devShells.doc =
-        pkgs.mkShell {
-          buildInputs = (with pkgs;
-            [
-              sphinx
-              sphinx-autobuild
-              python310Packages.sphinx-copybutton
-              python310Packages.sphinx-rtd-theme
-            ]
-          );
-        };
-
-      devShells.fmt =
-        pkgs.mkShell {
-          nativeBuildInputs = [ ocamlformat ];
-          inputsFrom = [ pkgs.dune_3 ];
-        };
-
-      devShells.slim =
+      devShells =
         let
           pkgs = nix-overlays.legacyPackages.${system}.appendOverlays [
             (self: super: {
@@ -139,49 +121,78 @@
             })
             melange.overlays.default
           ];
+          mkSlim = { extraBuildInputs ? [ ] }:
+            pkgs.mkShell {
+              nativeBuildInputs = testNativeBuildInputs;
+              inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
+              buildInputs = testBuildInputs ++ (with pkgs.ocamlPackages; [
+                merlin
+                ppx_expect
+                ctypes
+                integers
+                mdx
+                cinaps
+                menhir
+                odoc
+                lwt
+                patdiff
+              ]);
+            };
         in
-        pkgs.mkShell {
-          nativeBuildInputs = testNativeBuildInputs;
-          inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
-          buildInputs = testBuildInputs ++ (with pkgs.ocamlPackages; [
-            merlin
-            ppx_expect
-            ctypes
-            integers
-            mdx
-            cinaps
-            menhir
-            odoc
-            lwt
-            patdiff
-          ]);
-        };
+        {
+          doc =
+            pkgs.mkShell {
+              buildInputs = (with pkgs;
+                [
+                  sphinx
+                  sphinx-autobuild
+                  python310Packages.sphinx-copybutton
+                  python310Packages.sphinx-rtd-theme
+                ]
+              );
+            };
 
-      devShells.coq =
-        pkgs.mkShell {
-          nativeBuildInputs = testNativeBuildInputs;
-          inputsFrom = [ pkgs.dune_3 ];
-          buildInputs = with pkgs; [
-            coq_8_16
-            coq_8_16.ocamlPackages.findlib
-          ];
-        };
+          devShells.fmt =
+            pkgs.mkShell {
+              nativeBuildInputs = [ ocamlformat ];
+              inputsFrom = [ pkgs.dune_3 ];
+            };
 
-      devShells.default =
-        pkgs.mkShell {
-          nativeBuildInputs = testNativeBuildInputs;
-          buildInputs = testBuildInputs ++ (with pkgs;
-            [
-              # dev tools
-              patdiff
-              ccls
-            ])
-            ++ [
-            ocamllsp.outputs.packages.${system}.ocaml-lsp-server
-            pkgs.ocamlPackages.melange
-            pkgs.ocamlPackages.mel
-          ] ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
-          inputsFrom = [ self.packages.${system}.dune ];
+          slim = mkSlim { };
+          slim-melange = mkSlim {
+            extraBuildInputs = [
+              pkgs.ocamlPackages.melange
+              pkgs.ocamlPackages.mel
+
+            ];
+          };
+
+          devShells.coq =
+            pkgs.mkShell {
+              nativeBuildInputs = testNativeBuildInputs;
+              inputsFrom = [ pkgs.dune_3 ];
+              buildInputs = with pkgs; [
+                coq_8_16
+                coq_8_16.ocamlPackages.findlib
+              ];
+            };
+
+          devShells.default =
+            pkgs.mkShell {
+              nativeBuildInputs = testNativeBuildInputs;
+              buildInputs = testBuildInputs ++ (with pkgs;
+                [
+                  # dev tools
+                  patdiff
+                  ccls
+                ])
+                ++ [
+                ocamllsp.outputs.packages.${system}.ocaml-lsp-server
+                pkgs.ocamlPackages.melange
+                pkgs.ocamlPackages.mel
+              ] ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
+              inputsFrom = [ self.packages.${system}.dune ];
+            };
         };
     });
 }

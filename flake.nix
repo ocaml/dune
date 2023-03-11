@@ -92,6 +92,8 @@
       testNativeBuildInputs = with pkgs; [ nodejs-slim pkg-config opam ];
     in
     {
+      formatter = pkgs.nixpkgs-fmt;
+
       packages = {
         dune = scope.dune;
         default = with pkgs; stdenv.mkDerivation rec {

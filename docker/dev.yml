@@ -13,6 +13,8 @@ services:
     security_opt:
       - seccomp:unconfined
     stdin_open: true
+    environment:
+      HISTFILE: /home/opam/dune/.git/.bash_history
     volumes:
       - ../:/home/opam/dune
       - _build:/home/opam/dune/_build/

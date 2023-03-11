@@ -33,7 +33,21 @@ let%expect_test "copy file chmod" =
     foobarbaz
     permissions: 428 |}]
 
-let%expect_test "copy file on a directory" =
+let%expect_test "copy file - no src" =
+  let dir = temp_dir () in
+  let src = Path.relative dir "initial" in
+  let dst = Path.relative dir "final" in
+  match Io.copy_file ~src ~dst () with
+  | () -> assert false
+  | exception Sys_error s ->
+    let s =
+      let _, exn = String.lsplit2_exn s ~on:':' in
+      sprintf "$PATH:%s" exn
+    in
+    print_endline s;
+    [%expect {| $PATH: No such file or directory |}]
+
+let%expect_test "copy file - src is a directory" =
   let dir = temp_dir () in
   let src = Path.relative dir "initial" in
   let dst = Path.relative dir "final" in
@@ -41,3 +55,20 @@ let%expect_test "copy file on a directory" =
   Io.copy_file ~src ~dst ();
   [%expect.unreachable]
   [@@expect.uncaught_exn {| (Sys_error "Is a directory") |}]
+
+let%expect_test "copy file - dst is a directory" =
+  let dir = temp_dir () in
+  let src = Path.relative dir "initial" in
+  let dst = Path.relative dir "final" in
+  Io.write_file src "foobarbaz";
+  Unix.mkdir (Path.to_string dst) 0o755;
+  Unix.sleepf 0.5;
+  match Io.copy_file ~src ~dst () with
+  | _ -> assert false
+  | exception Sys_error s ->
+    let s =
+      let _, exn = String.lsplit2_exn s ~on:':' in
+      sprintf "$DIR:%s" exn
+    in
+    print_endline s;
+    [%expect {| $DIR: Is a directory |}]

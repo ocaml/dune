@@ -115,6 +115,43 @@ let build_lib
     |> Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc)
 ;;
 
+(* Build an OCaml library. *)
+let build_js_lib
+      (lib : Library.t)
+      ~sctx
+      ~expander
+      ~flags
+      ~dir
+      ~cm_files
+      ~in_context
+      ~obj_dir
+      ~mode
+      config
+  =
+  let linkall =
+    match lib.kind with
+    | Ppx_deriver _ | Ppx_rewriter _ -> Action_builder.return true
+    | Normal ->
+      let standard = Action_builder.return [] in
+      let open Action_builder.O in
+      let+ library_flags =
+        Expander.expand_and_eval_set expander lib.library_flags ~standard
+      and+ ocaml_flags = Ocaml_flags.get flags (Ocaml Byte) in
+      List.exists library_flags ~f:(String.equal "-linkall")
+      || List.exists ocaml_flags ~f:(String.equal "-linkall")
+  in
+  Jsoo_rules.build_cma_js
+    sctx
+    ~dir
+    ~config
+    ~in_context
+    ~obj_dir
+    ~linkall
+    ~mode
+    cm_files
+    (Library.archive_basename lib ~ext:(Mode.compiled_lib_ext Mode.Byte))
+;;
+
 let gen_wrapped_compat_modules (lib : Library.t) cctx =
   let modules = Compilation_context.modules cctx in
   let transition_message =
@@ -438,39 +475,62 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
   let native_archives =
     Lib_info.eval_native_archives_exn lib_info ~modules:(Some modules)
   in
-  let* () =
-    let cm_files =
-      let excluded_modules =
-        (* ctypes type_gen and function_gen scripts should not be included in the
+  let cm_files =
+    let excluded_modules =
+      (* ctypes type_gen and function_gen scripts should not be included in the
            library. Otherwise they will spew stuff to stdout on library load. *)
-        match lib.buildable.ctypes with
-        | Some ctypes -> Ctypes_field.non_installable_modules ctypes
-        | None -> []
-      in
-      Cm_files.make ~excluded_modules ~obj_dir ~ext_obj ~modules ~top_sorted_modules ()
+      match lib.buildable.ctypes with
+      | Some ctypes -> Ctypes_field.non_installable_modules ctypes
+      | None -> []
     in
+    Cm_files.make ~excluded_modules ~obj_dir ~ext_obj ~modules ~top_sorted_modules ()
+  in
+  let* () =
     iter_modes_concurrently modes.ocaml ~f:(fun mode ->
       build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode ~cm_files)
   and* () =
     (* Build *.cma.js / *.wasma *)
-    Memo.when_ modes.ocaml.byte (fun () ->
-      let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
-      Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
-        let action_with_targets =
-          List.map Jsoo_rules.Config.all ~f:(fun config ->
-            Jsoo_rules.build_cm
-              sctx
-              ~dir
-              ~in_context:
-                (Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml
-                 |> Js_of_ocaml.Mode.Pair.select ~mode)
-              ~mode
-              ~config:(Some config)
-              ~src:(Path.build src)
-              ~obj_dir)
-        in
-        Memo.parallel_iter action_with_targets ~f:(fun rule ->
-          Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc rule)))
+    match `From_cmos with
+    | `From_cma ->
+      Memo.when_ modes.ocaml.byte (fun () ->
+        let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
+        Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
+          let action_with_targets =
+            List.map Jsoo_rules.Config.all ~f:(fun config ->
+              Jsoo_rules.build_cm
+                sctx
+                ~dir
+                ~in_context:
+                  (Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml
+                   |> Js_of_ocaml.Mode.Pair.select ~mode)
+                ~mode
+                ~config:(Some config)
+                ~src:(Path.build src)
+                ~obj_dir)
+          in
+          Memo.parallel_iter action_with_targets ~f:(fun rule ->
+            Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc rule)))
+    | `From_cmos ->
+      Memo.when_ modes.ocaml.byte (fun () ->
+        Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
+          let action_with_targets =
+            List.map Jsoo_rules.Config.all ~f:(fun config ->
+              build_js_lib
+                (lib : Library.t)
+                ~sctx
+                ~expander
+                ~flags
+                ~dir
+                ~cm_files
+                ~in_context:
+                  (Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml
+                   |> Js_of_ocaml.Mode.Pair.select ~mode)
+                ~obj_dir
+                ~mode
+                (Some config))
+          in
+          Memo.parallel_iter action_with_targets ~f:(fun rule ->
+            Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc rule)))
   in
   Memo.when_
     (Lib_info.dynlink_supported lib_info

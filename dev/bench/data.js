@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678576313661,
+  "lastUpdate": 1678576671618,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11746,6 +11746,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6244821570266668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "095d4a87e5e9d9acb176070fcb120ba1c8435bc7",
+          "message": "fix(nix): conflicting ocamlfind dependencies\n\nIn #7258, we removed opam2nix from the `default` package, but the\ndefault shell needs to depend on the correct one (now dune rather than\ndefault)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-11T23:53:00+01:00",
+          "tree_id": "2ef3707ca5f8b36d9a7a727e79f3a80ca46f6af0",
+          "url": "https://github.com/ocaml/dune/commit/095d4a87e5e9d9acb176070fcb120ba1c8435bc7"
+        },
+        "date": 1678576670630,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "70.88113397128",
             "unit": "seconds"
           }
         ]

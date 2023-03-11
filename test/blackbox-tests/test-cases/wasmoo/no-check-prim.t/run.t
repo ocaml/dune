@@ -16,19 +16,22 @@ Compilation using WasmOO
   wasm_of_ocaml .js/default/stdlib/stdlib.wasma
         ocamlc bin/.technologic.eobjs/byte/dune__exe.{cmi,cmo,cmt}
       ocamldep bin/.technologic.eobjs/dune__exe__Technologic.intf.d
+  wasm_of_ocaml lib/.x.objs/jsoo/default/x__.wasmo
       ocamlopt lib/.x.objs/native/x__Y.{cmx,o}
         ocamlc lib/.x.objs/byte/x.{cmi,cmo,cmt}
-  wasm_of_ocaml bin/.technologic.eobjs/jsoo/dune__exe.wasmo
+  wasm_of_ocaml lib/.x.objs/jsoo/default/x__Y.wasmo
+  wasm_of_ocaml bin/.technologic.eobjs/jsoo/default/dune__exe.wasmo
       ocamlopt lib/.x.objs/native/x.{cmx,o}
         ocamlc bin/.technologic.eobjs/byte/dune__exe__Technologic.{cmi,cmti}
         ocamlc lib/x.cma
+  wasm_of_ocaml lib/.x.objs/jsoo/default/x.wasmo
         ocamlc bin/.technologic.eobjs/byte/dune__exe__Z.{cmi,cmo,cmt}
       ocamlopt lib/x.{a,cmxa}
   wasm_of_ocaml lib/.x.objs/jsoo/default/x.wasma
         ocamlc bin/.technologic.eobjs/byte/dune__exe__Technologic.{cmo,cmt}
-  wasm_of_ocaml bin/.technologic.eobjs/jsoo/dune__exe__Z.wasmo
+  wasm_of_ocaml bin/.technologic.eobjs/jsoo/default/dune__exe__Z.wasmo
       ocamlopt lib/x.cmxs
-  wasm_of_ocaml bin/.technologic.eobjs/jsoo/dune__exe__Technologic.wasmo
+  wasm_of_ocaml bin/.technologic.eobjs/jsoo/default/dune__exe__Technologic.wasmo
   wasm_of_ocaml bin/technologic.bc.wasm.{js,assets}
   $ node ./_build/default/bin/technologic.bc.wasm.js
   buy it

@@ -184,6 +184,20 @@ jobs:
       - uses: cachix/install-nix-action@v18
       - run: nix build
 
+  nix-dev:
+    name: Nix Dev
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v18
+      - run: nix develop -c make test
+
   fmt:
     name: Format
     runs-on: ubuntu-latest

@@ -166,7 +166,6 @@
 
       devShells.default =
         pkgs.mkShell {
-          dontDetectOcamlConflicts = true;
           nativeBuildInputs = testNativeBuildInputs;
           buildInputs = testBuildInputs ++ (with pkgs;
             [
@@ -180,7 +179,7 @@
             pkgs.ocamlPackages.melange
             pkgs.ocamlPackages.mel
           ] ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
-          inputsFrom = [ self.packages.${system}.default ];
+          inputsFrom = [ self.packages.${system}.dune ];
         };
     });
 }

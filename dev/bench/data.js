@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678515695447,
+  "lastUpdate": 1678516399830,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -8670,6 +8670,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "32.68902143498",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a3bbd92ef265423de4c05371ea20576b974935e1",
+          "message": "refactor(stdune.io): share directory check (#7278)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-10T22:09:41-08:00",
+          "tree_id": "be8f37723ee34ec640bcfb1ee15842d9178f33b4",
+          "url": "https://github.com/ocaml/dune/commit/a3bbd92ef265423de4c05371ea20576b974935e1"
+        },
+        "date": 1678516398249,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.630771744700006",
             "unit": "seconds"
           }
         ]

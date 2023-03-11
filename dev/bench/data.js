@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678555685730,
+  "lastUpdate": 1678555696386,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11369,6 +11369,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "66.3336835869",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "848a5e764f108dc31a595343eb18fc76462761d9",
+          "message": "test: reproducibility of sigpipe.t (#7273)\n\nCreate the output file before running dune so that the final `cat` never\r\nfails.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\n\r\n<!-- ps-id: f95e7a20-622a-4e24-be18-25f119d68ef8 -->",
+          "timestamp": "2023-03-11T09:03:19-08:00",
+          "tree_id": "972841937b2710114e0de4b1547740159aa98bc7",
+          "url": "https://github.com/ocaml/dune/commit/848a5e764f108dc31a595343eb18fc76462761d9"
+        },
+        "date": 1678555695352,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6060317917000002",
             "unit": "seconds"
           }
         ]

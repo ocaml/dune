@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678563853873,
+  "lastUpdate": 1678564130600,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -8815,6 +8815,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "32.830353887293334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "b3a59e514b290f7135ceb572377f6f0d700e38d0",
+          "message": "fix(console): clean up console on exit\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\n\n<!-- ps-id: 12e55e26-139f-4c14-a1c8-62a97001fbed -->",
+          "timestamp": "2023-03-11T20:30:11+01:00",
+          "tree_id": "25947e4e5a327fc348182d2199c16ff2f81c7e98",
+          "url": "https://github.com/ocaml/dune/commit/b3a59e514b290f7135ceb572377f6f0d700e38d0"
+        },
+        "date": 1678564129206,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.00351708439333",
             "unit": "seconds"
           }
         ]

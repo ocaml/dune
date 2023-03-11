@@ -275,11 +275,9 @@ struct
               Printf.sprintf "error: %s: No such file or directory" src
             in
             raise (Sys_error message)
+          | { st_kind = S_DIR; _ } -> raise (Sys_error "Is a directory")
           | stats -> stats
         in
-        (match src_stats.st_kind with
-        | S_DIR -> raise (Sys_error "Is a directory")
-        | _ -> ());
         (try Copyfile.copyfile src dst with
         | Unix.Unix_error (Unix.EPERM, "unlink", _) ->
           let message = Printf.sprintf "%s: Is a directory" dst in

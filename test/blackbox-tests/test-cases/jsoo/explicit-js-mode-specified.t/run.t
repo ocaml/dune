@@ -28,7 +28,9 @@ specify js mode (#1940).
    js_of_ocaml .js/default/stdlib/stdlib.cma.js
    js_of_ocaml .js/default/stdlib/std_exit.cmo.js
    js_of_ocaml .b.eobjs/jsoo/b.cmo.js
+   js_of_ocaml .foo.objs/jsoo/default/foo.cmo.js
    js_of_ocaml b.bc.js
+   js_of_ocaml .foo.objs/jsoo/default/foo__C.cmo.js
    js_of_ocaml .foo.objs/jsoo/default/foo.cma.js
    js_of_ocaml .e.eobjs/jsoo/e.cmo.js
    js_of_ocaml e.bc.js

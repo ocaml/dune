@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Bootstrap: correctly detect the number of processors by allowing `nproc` to be
+  looked up in `$PATH` (#7272, @Alizter)
+
 - Speed up file copying on macos by using `clonefile` when available
   (@rgrinberg, #7210)
 

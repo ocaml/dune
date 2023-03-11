@@ -195,7 +195,7 @@ let exe = if Sys.win32 then ".exe" else ""
 
 let concurrency =
   let try_run_and_capture_line cmd =
-    let ic, oc, ec = Unix.open_process_full cmd [||] in
+    let ic, oc, ec = Unix.open_process_full cmd (Unix.environment ()) in
     let line =
       match input_line ic with
       | s -> Some s

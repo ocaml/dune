@@ -72,6 +72,7 @@ val foreign_lib_files
     declared in. *)
 val archive : t -> dir:Path.Build.t -> ext:Filename.Extension.t -> Path.Build.t
 
+val archive_basename : t -> ext:Filename.Extension.t -> string
 val best_name : t -> Lib_name.t
 val is_virtual : t -> bool
 val is_impl : t -> bool

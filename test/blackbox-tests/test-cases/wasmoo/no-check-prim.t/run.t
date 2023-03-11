@@ -16,6 +16,9 @@ Compilation using WasmOO
   bin/technologic.bc.wasm.assets
   bin/technologic.bc.wasm.js
   lib/.x.objs/jsoo/default/x.wasma
+  lib/.x.objs/jsoo/default/x.wasmo
+  lib/.x.objs/jsoo/default/x__.wasmo
+  lib/.x.objs/jsoo/default/x__Y.wasmo
   $ node ./_build/default/bin/technologic.bc.wasm.js
   buy it
   use it

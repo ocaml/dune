@@ -403,7 +403,27 @@ let iter_modes_concurrently (t : _ Ocaml.Mode.Dict.t) ~(f : Ocaml.Mode.t -> unit
   ()
 ;;
 
-let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~lib_info =
+let cm_files_for_lib (lib : Library.t) ~cctx =
+  let obj_dir = Compilation_context.obj_dir cctx in
+  let modules = Compilation_context.modules cctx in
+  let ext_obj = (Compilation_context.ocaml cctx).lib_config.ext_obj in
+  let top_sorted_modules =
+    let impl_only = Modules.With_vlib.impl_only modules in
+    Dep_graph.top_closed_implementations
+      (Compilation_context.dep_graphs cctx).impl
+      impl_only
+  in
+  let excluded_modules =
+    (* ctypes type_gen and function_gen scripts should not be included in the
+       library. Otherwise they will spew stuff to stdout on library load. *)
+    match lib.buildable.ctypes with
+    | Some ctypes -> Ctypes_field.non_installable_modules ctypes
+    | None -> []
+  in
+  Cm_files.make ~excluded_modules ~obj_dir ~ext_obj ~modules ~top_sorted_modules ()
+;;
+
+let setup_build_archives (lib : Library.t) ~cm_files ~cctx ~expander ~lib_info =
   let obj_dir = Compilation_context.obj_dir cctx in
   let flags = Compilation_context.flags cctx in
   let modules = Compilation_context.modules cctx in
@@ -447,16 +467,6 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
     match lib.kind with
     | Parameter -> Memo.return ()
     | Virtual | Dune_file _ ->
-      let cm_files =
-        let excluded_modules =
-          (* ctypes type_gen and function_gen scripts should not be included in the
-           library. Otherwise they will spew stuff to stdout on library load. *)
-          match lib.buildable.ctypes with
-          | Some ctypes -> Ctypes_field.non_installable_modules ctypes
-          | None -> []
-        in
-        Cm_files.make ~excluded_modules ~obj_dir ~ext_obj ~modules ~top_sorted_modules ()
-      in
       iter_modes_concurrently modes.ocaml ~f:(fun mode ->
         build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode ~cm_files)
   in
@@ -502,7 +512,6 @@ let cctx
     Parameterised_instances.instances ~sctx ~db:(Scope.libs scope) lib.buildable.libraries
   in
   let package = Library.package lib in
-  let js_of_ocaml = Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml in
   (* XXX(anmonteiro): `melange_package_name` is used to derive Melange's
      `--mel-package-name` argument. We only use the library name for public
      libraries / private libraries with `(package ..)` because we need Melange
@@ -527,7 +536,7 @@ let cctx
     ~parameters
     ~preprocessing:pp
     ~opaque:Inherit_from_settings
-    ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.map ~f:Option.some js_of_ocaml)
+    ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
     ~package
     ~melange_package_name
     ~modes
@@ -551,12 +560,7 @@ let library_rules
   let scope = Compilation_context.scope cctx in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let lib_config = (Compilation_context.ocaml cctx).lib_config in
-  let top_sorted_modules =
-    let impl_only = Modules.With_vlib.impl_only modules in
-    Dep_graph.top_closed_implementations
-      (Compilation_context.dep_graphs cctx).impl
-      impl_only
-  in
+  let cm_files = cm_files_for_lib lib ~cctx in
   let* expander = Super_context.expander sctx ~dir in
   let lib_info =
     Library.to_lib_info
@@ -569,7 +573,9 @@ let library_rules
     Compilation_mode.of_mode_set (Lib_info.modes lib_info)
   in
   let* () = Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir implements in
-  let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
+  let* () =
+    Check_rules.add_cycle_check sctx ~dir (Cm_files.top_sorted_modules cm_files)
+  in
   let* () = gen_wrapped_compat_modules lib cctx
   and* () = Module_compilation.build_all cctx
   and* () = Check_rules.add_obj_dir sctx ~obj_dir for_merlin in
@@ -580,7 +586,7 @@ let library_rules
   and+ () =
     Memo.when_
       (not (Library.is_virtual lib))
-      (fun () -> setup_build_archives lib ~lib_info ~top_sorted_modules ~cctx ~expander)
+      (fun () -> setup_build_archives lib ~lib_info ~cm_files ~cctx ~expander)
   and+ () =
     let vlib_stubs_o_files = Virtual_rules.stubs_o_files implements in
     Memo.when_

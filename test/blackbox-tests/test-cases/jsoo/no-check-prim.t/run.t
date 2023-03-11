@@ -14,6 +14,9 @@ Compilation using jsoo
   bin/.technologic.eobjs/jsoo/z.cmo.js
   bin/technologic.bc.js
   lib/.x.objs/jsoo/default/x.cma.js
+  lib/.x.objs/jsoo/default/x.cmo.js
+  lib/.x.objs/jsoo/default/x__.cmo.js
+  lib/.x.objs/jsoo/default/x__Y.cmo.js
   $ node ./_build/default/bin/technologic.bc.js
   buy it
   use it

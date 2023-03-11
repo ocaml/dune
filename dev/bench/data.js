@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678496616999,
+  "lastUpdate": 1678496944454,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -10876,6 +10876,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8046650195933334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1402ef79b486ec740adecd1572c8e421146cb9c4",
+          "message": "fix(boot): fix env vars when finding out concurrency (#7272)\n\nWe were passing an empty enviornment to Unix.open_process_full_cmd\r\nbefore. We now pass the full available Unix.environment since we are\r\nonly querying the concurrency by calling nproc or getconf.\r\n\r\nOn NixOS this was causing the bootstrap to default to a single\r\nprocessor since nproc wasn't available in the empty environment.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-03-10T16:45:05-08:00",
+          "tree_id": "627252095722073f3c929ba8841c945b7f494bb7",
+          "url": "https://github.com/ocaml/dune/commit/1402ef79b486ec740adecd1572c8e421146cb9c4"
+        },
+        "date": 1678496943627,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "64.61467923599334",
             "unit": "seconds"
           }
         ]

@@ -189,21 +189,41 @@ let path =
   | exception Not_found -> []
   | s -> split_path s
 
+let find_prog ~f =
+  let rec search = function
+    | [] -> None
+    | dir :: rest -> (
+      match f dir with
+      | None -> search rest
+      | Some fn -> Some (dir, fn))
+  in
+  search path
+
 let exe = if Sys.win32 then ".exe" else ""
 
 (** {2 Concurrency level} *)
 
 let concurrency =
-  let try_run_and_capture_line cmd =
-    let ic, oc, ec = Unix.open_process_full cmd (Unix.environment ()) in
-    let line =
-      match input_line ic with
-      | s -> Some s
-      | exception End_of_file -> None
-    in
-    match (Unix.close_process_full (ic, oc, ec), line) with
-    | WEXITED 0, Some s -> Some s
-    | _ -> None
+  let try_run_and_capture_line (prog, args) =
+    match
+      find_prog ~f:(fun dir ->
+          if Sys.file_exists (dir ^/ prog) then Some prog else None)
+    with
+    | None -> None
+    | Some (dir, prog) -> (
+      let path = dir ^/ prog in
+      let args = Array.of_list @@ (path :: args) in
+      let ic, oc, ec =
+        Unix.open_process_args_full path args (Unix.environment ())
+      in
+      let line =
+        match input_line ic with
+        | s -> Some s
+        | exception End_of_file -> None
+      in
+      match (Unix.close_process_full (ic, oc, ec), line) with
+      | WEXITED 0, Some s -> Some s
+      | _ -> None)
   in
   match concurrency with
   | Some n -> n
@@ -218,7 +238,10 @@ let concurrency =
         | n -> n)
     else
       let commands =
-        [ "nproc"; "getconf _NPROCESSORS_ONLN"; "getconf NPROCESSORS_ONLN" ]
+        [ ("nproc", [])
+        ; ("getconf", [ "_NPROCESSORS_ONLN" ])
+        ; ("getconf", [ "NPROCESSORS_ONLN" ])
+        ]
       in
       let rec loop = function
         | [] -> 1
@@ -546,15 +569,7 @@ end = struct
       let fn = dir ^/ prog ^ exe in
       if Sys.file_exists fn then Some fn else None
 
-  let find_prog prog =
-    let rec search = function
-      | [] -> None
-      | dir :: rest -> (
-        match best_prog dir prog with
-        | None -> search rest
-        | Some fn -> Some (dir, fn))
-    in
-    search path
+  let find_prog prog = find_prog ~f:(fun dir -> best_prog dir prog)
 
   let get_prog dir prog =
     match best_prog dir prog with

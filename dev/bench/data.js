@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678555349240,
+  "lastUpdate": 1678555633684,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -8757,6 +8757,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.544430228",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "71a950fc2d7a01c75d1745ce364f2aa370a7ba47",
+          "message": "doc: cleanup support seciton of readme and remove jbuilder mentions (#7283)\n\nIt has been quite a while since the jbuilder migration so I think we\r\ncan safely remove any mention of it in the README.md.\r\n\r\nI've also improved the support section pointing to GitHub discussions\r\nand issues. I am not sure the ocaml-core email is being checked by\r\nanybody so I have removed it.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-03-11T09:08:16-08:00",
+          "tree_id": "1b9f720fe9a374fa94b5ffe2d1db49a80fc33ecf",
+          "url": "https://github.com/ocaml/dune/commit/71a950fc2d7a01c75d1745ce364f2aa370a7ba47"
+        },
+        "date": 1678555632170,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.10160527210667",
             "unit": "seconds"
           }
         ]

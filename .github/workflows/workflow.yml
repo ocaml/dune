@@ -255,3 +255,17 @@ jobs:
         env:
           # We disable the Dune cache when running the tests
           DUNE_CACHE: disabled
+
+  nix-coq:
+    name: Nix Coq
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v18
+      - run: nix develop .#coq -c make test-coq

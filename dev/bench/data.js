@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678516957442,
+  "lastUpdate": 1678517305347,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11224,6 +11224,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.09396534256",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "50387d3bc8f095ae4ea0d681de775a46580c5899",
+          "message": "chore(nix): share test deps in all shells (#7275)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-10T22:23:21-08:00",
+          "tree_id": "2a6feeeb5777fbbddf5eadebb396436341d363c6",
+          "url": "https://github.com/ocaml/dune/commit/50387d3bc8f095ae4ea0d681de775a46580c5899"
+        },
+        "date": 1678517304731,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "68.89209300547999",
             "unit": "seconds"
           }
         ]

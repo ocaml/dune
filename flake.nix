@@ -89,7 +89,7 @@
       testBuildInputs = with pkgs;
         [ file mercurial ]
         ++ lib.optionals stdenv.isLinux [ strace ];
-      testNativeBuildInputs = with pkgs; [ nodejs-slim pkg-config opam ];
+      testNativeBuildInputs = with pkgs; [ nodejs-slim pkg-config opam ocamlformat ];
     in
     {
       packages = {
@@ -125,8 +125,8 @@
 
       devShells.fmt =
         pkgs.mkShell {
+          nativeBuildInputs = [ ocamlformat ];
           inputsFrom = [ pkgs.dune_3 ];
-          buildInputs = [ ocamlformat ];
         };
 
       devShells.slim =
@@ -139,7 +139,7 @@
           ];
         in
         pkgs.mkShell {
-          nativeBuildInputs = testNativeBuildInputs ++ [ ocamlformat ];
+          nativeBuildInputs = testNativeBuildInputs;
           inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
           buildInputs = testBuildInputs ++ (with pkgs.ocamlPackages; [
             merlin
@@ -157,6 +157,7 @@
 
       devShells.coq =
         pkgs.mkShell {
+          nativeBuildInputs = testNativeBuildInputs;
           inputsFrom = [ pkgs.dune_3 ];
           buildInputs = with pkgs; [
             coq_8_16

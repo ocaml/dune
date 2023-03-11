@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678503824026,
+  "lastUpdate": 1678503834680,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -10992,6 +10992,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "64.53667394314668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "57c8e78875d6ca90bc050bc5c6ebf52094f20953",
+          "message": "feature(boot): remove reliance on shell (#7274)\n\nPreviously, we'd run the shell to discover the number of processes by\r\nusing `Unix.open_process_full`. The shell isn't being used for anything,\r\nso we switch to executing the process directly.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-10T18:39:26-08:00",
+          "tree_id": "9a47839dbcec4fe5e2c7a7ec5b33e7b6576cde21",
+          "url": "https://github.com/ocaml/dune/commit/57c8e78875d6ca90bc050bc5c6ebf52094f20953"
+        },
+        "date": 1678503833669,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.5624546020733334",
             "unit": "seconds"
           }
         ]

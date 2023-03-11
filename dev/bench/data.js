@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678564130600,
+  "lastUpdate": 1678564181812,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11514,6 +11514,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.5975163261800003",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "00cf75ae1612c9f0fd8f9d57c32446da3f12d38d",
+          "message": "chore: pin but not install melange\n\nSo that we install melange along with the rest of the deps at once\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\n\n<!-- ps-id: 88ca4ba3-3e2a-4b53-b303-0cb2b596faba -->",
+          "timestamp": "2023-03-11T20:25:51+01:00",
+          "tree_id": "83dedfacae91c8a45e23901c35f6477eb321ae88",
+          "url": "https://github.com/ocaml/dune/commit/00cf75ae1612c9f0fd8f9d57c32446da3f12d38d"
+        },
+        "date": 1678564180554,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "64.86594959366",
             "unit": "seconds"
           }
         ]

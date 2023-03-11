@@ -4,7 +4,9 @@ let parse_path ?(sep = path_sep) s =
   String.split s ~on:sep
   |> List.filter_map ~f:(function
        | "" -> None
-       | p -> Some (Path.of_filename_relative_to_initial_cwd p))
+       (* Relative paths are ignored in PATH *)
+       | p when Filename.is_relative p -> None
+       | p -> Some (Path.of_string p))
 
 let cons_path p ~_PATH =
   let p = Path.to_absolute_filename p in

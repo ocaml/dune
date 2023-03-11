@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678570442762,
+  "lastUpdate": 1678570782477,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11659,6 +11659,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.5585839276266669",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "67d714edfab99366e32ff3a809a8456c7ff078f3",
+          "message": "fix(nix): fix duplicate packages warning\n\nafter https://github.com/NixOS/nixpkgs/pull/205646, Nix detects\nconflicting findlib libraries in the `$OCAMLPATH`. Because we use 2\nnixpkgs sources, patdiff was running into that case\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-11T22:15:28+01:00",
+          "tree_id": "4728bb430367e557addd09b8083ccbf77f5babc5",
+          "url": "https://github.com/ocaml/dune/commit/67d714edfab99366e32ff3a809a8456c7ff078f3"
+        },
+        "date": 1678570781795,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "67.12668165960666",
             "unit": "seconds"
           }
         ]

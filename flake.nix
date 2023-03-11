@@ -170,7 +170,6 @@
           buildInputs = testBuildInputs ++ (with pkgs;
             [
               # dev tools
-              coq_8_16
               patdiff
               ccls
             ])

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678583710362,
+  "lastUpdate": 1678583856846,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -9076,6 +9076,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.35587353498667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "73ead70ca2e3d0a029f8adae0817502b1b0dae5e",
+          "message": "fix(stdune): copy file error message on macos\n\nRemoe the additional \"error:\" prefix\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\n\n<!-- ps-id: 759a4dea-1244-4591-ad38-cecd44adea5b -->",
+          "timestamp": "2023-03-12T01:59:15+01:00",
+          "tree_id": "51cb81c219c70fef6cf17a503c9f053622276838",
+          "url": "https://github.com/ocaml/dune/commit/73ead70ca2e3d0a029f8adae0817502b1b0dae5e"
+        },
+        "date": 1678583855833,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.67195140998667",
             "unit": "seconds"
           }
         ]

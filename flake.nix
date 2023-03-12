@@ -23,7 +23,7 @@
     };
     melange = {
       url = "github:melange-re/melange";
-      inputs.nixpkgs.follows = "nix-overlays";
+      inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };
   };
@@ -86,6 +86,10 @@
           (devPackages // {
             ocaml-base-compiler = "4.14.0";
           });
+      testBuildInputs = with pkgs;
+        [ file mercurial ]
+        ++ lib.optionals stdenv.isLinux [ strace ];
+      testNativeBuildInputs = with pkgs; [ nodejs-slim pkg-config opam ];
     in
     {
       packages = {
@@ -135,11 +139,10 @@
           ];
         in
         pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [ pkg-config nodejs-slim ];
+          nativeBuildInputs = testNativeBuildInputs ++ [ ocamlformat ];
           inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
-          buildInputs = with pkgs.ocamlPackages; [
+          buildInputs = testBuildInputs ++ (with pkgs.ocamlPackages; [
             merlin
-            ocamlformat
             ppx_expect
             ctypes
             integers
@@ -148,7 +151,8 @@
             menhir
             odoc
             lwt
-          ];
+            patdiff
+          ]);
         };
 
       devShells.coq =
@@ -162,26 +166,20 @@
 
       devShells.default =
         pkgs.mkShell {
-          nativeBuildInputs = [ pkgs.opam ];
-          buildInputs = (with pkgs;
+          nativeBuildInputs = testNativeBuildInputs;
+          buildInputs = testBuildInputs ++ (with pkgs;
             [
               # dev tools
-              ocamlformat
               coq_8_16
-              nodejs-slim
               patdiff
-              pkg-config
-              file
               ccls
-              mercurial
-            ] ++ (if stdenv.isLinux then [ strace ] else [ ]))
-          ++ [
+            ])
+            ++ [
             ocamllsp.outputs.packages.${system}.ocaml-lsp-server
             pkgs.ocamlPackages.melange
             pkgs.ocamlPackages.mel
-          ]
-          ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
-          inputsFrom = [ self.packages.${system}.default ];
+          ] ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
+          inputsFrom = [ self.packages.${system}.dune ];
         };
     });
 }

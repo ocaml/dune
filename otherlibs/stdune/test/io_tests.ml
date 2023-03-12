@@ -32,3 +32,12 @@ let%expect_test "copy file chmod" =
   [%expect {|
     foobarbaz
     permissions: 428 |}]
+
+let%expect_test "copy file on a directory" =
+  let dir = temp_dir () in
+  let src = Path.relative dir "initial" in
+  let dst = Path.relative dir "final" in
+  Unix.mkdir (Path.to_string src) 0o755;
+  Io.copy_file ~src ~dst ();
+  [%expect.unreachable]
+  [@@expect.uncaught_exn {| (Sys_error "Is a directory") |}]

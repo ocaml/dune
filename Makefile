@@ -34,7 +34,7 @@ DEV_DEPS := \
 "dkml-workflows>=1.2.0" \
 patdiff
 
-TEST_OCAMLVERSION := 4.14.0
+TEST_OCAMLVERSION := 4.14.1
 
 -include Makefile.dev
 
@@ -74,8 +74,8 @@ dev-depext:
 
 .PHONY: melange
 melange:
-	opam pin add melange-compiler-libs https://github.com/melange-re/melange-compiler-libs.git#48ff923f2c25136de8ab96678f623f54cdac438c
-	opam pin add melange https://github.com/melange-re/melange.git#13edf6108d884e64cd510bce077ef2ce73de6a97
+	opam pin add -n melange-compiler-libs https://github.com/melange-re/melange-compiler-libs.git#48ff923f2c25136de8ab96678f623f54cdac438c
+	opam pin add -n melange https://github.com/melange-re/melange.git#13edf6108d884e64cd510bce077ef2ce73de6a97
 
 .PHONY: dev-deps
 dev-deps: melange

@@ -136,7 +136,7 @@
                 odoc
                 lwt
                 patdiff
-              ]);
+              ] ++ extraBuildInputs);
             };
         in
         {
@@ -163,7 +163,6 @@
             extraBuildInputs = [
               pkgs.ocamlPackages.melange
               pkgs.ocamlPackages.mel
-
             ];
           };
 

@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- RPC: Ignore SIGPIPE when clients suddenly disconnect on OSX (#7299, partially
+  fixes #6879, @rgrinberg)
+
 - Always clean up the UI on exit. (#7271, fixes #7142 @rgrinberg)
 
 - Bootstrap: remove reliance on shell. Previously, we'd use the shell to get

@@ -61,8 +61,10 @@ module Socket = struct
     let bind fd sock = Unix.bind fd sock
   end
 
-  module Mac : Unix_socket = struct
+  module Mac = struct
     external pthread_chdir : string -> unit = "dune_pthread_chdir" [@@noalloc]
+
+    external set_nosigpipe : Unix.file_descr -> unit = "dune_set_nosigpipe"
 
     let with_chdir fd ~socket ~f =
       let old = Sys.getcwd () in
@@ -114,6 +116,8 @@ module Socket = struct
   let bind = make ~original:U.bind ~backup:Sel.bind
 
   let connect = make ~original:U.connect ~backup:Sel.connect
+
+  let maybe_set_nosigpipe fd = if is_osx () then Mac.set_nosigpipe fd
 end
 
 let debug = Option.is_some (Env.get Env.initial "DUNE_RPC_DEBUG")
@@ -328,6 +332,7 @@ module Server = struct
         Worker.task async ~f:(fun () ->
             Transport.accept transport
             |> Option.map ~f:(fun client ->
+                   Socket.maybe_set_nosigpipe fd;
                    let in_ = Unix.in_channel_of_descr client in
                    let out = Unix.out_channel_of_descr client in
                    (in_, out)))

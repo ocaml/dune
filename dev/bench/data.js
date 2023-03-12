@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678581172591,
+  "lastUpdate": 1678581186239,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11949,6 +11949,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "81.50571394216666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "4a0efff885e4216ffca7aa3cecf7418a656fc230",
+          "message": "nix: remove coq from the main flake\n\nCoq has its own flake anyway.\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>\n\n<!-- ps-id: 3663fd3e-0ef5-4686-8ab4-77c28706648f -->",
+          "timestamp": "2023-03-12T01:03:27+01:00",
+          "tree_id": "04e1c771bae133130f1fee98722f5841d013ce8f",
+          "url": "https://github.com/ocaml/dune/commit/4a0efff885e4216ffca7aa3cecf7418a656fc230"
+        },
+        "date": 1678581185223,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.1695339775333333",
             "unit": "seconds"
           }
         ]

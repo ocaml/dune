@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678656248552,
+  "lastUpdate": 1678656258981,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -12558,6 +12558,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "65.98503882848668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "789264ff111a79e3a2d760bf1de55a286c4a0396",
+          "message": "fix(nix): use `extraBuildInputs` in `mkSlim`\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-12T22:00:17+01:00",
+          "tree_id": "350b3364a6cb94f78a52f4c78264a6a5eadb52f7",
+          "url": "https://github.com/ocaml/dune/commit/789264ff111a79e3a2d760bf1de55a286c4a0396"
+        },
+        "date": 1678656258127,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.5843485730066666",
             "unit": "seconds"
           }
         ]

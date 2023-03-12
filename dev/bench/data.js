@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678582252133,
+  "lastUpdate": 1678582487649,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -12181,6 +12181,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8162821245733332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f9a0e6f00bfc731df60f44a7544eecc7dfaa7778",
+          "message": "test(stdune): more copying tests (#7284)\n\ncover more error cases:\r\n- missing src\r\n- src is a directory\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-11T16:30:24-08:00",
+          "tree_id": "faa0dc353332556f05e605cd937e0aec1af2655e",
+          "url": "https://github.com/ocaml/dune/commit/f9a0e6f00bfc731df60f44a7544eecc7dfaa7778"
+        },
+        "date": 1678582486822,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "69.31656978473332",
             "unit": "seconds"
           }
         ]

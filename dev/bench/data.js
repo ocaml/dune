@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678656803431,
+  "lastUpdate": 1678657206151,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -12616,6 +12616,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.5843485730066666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "e5a98ee12081cf3571e5a6d4d1aa14ddf392eb0d",
+          "message": "fix(stdune): copy file error message consistency\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\n\n<!-- ps-id: 97fe8b6e-0238-496c-b1d2-0683b775adb5 -->",
+          "timestamp": "2023-03-12T22:11:15+01:00",
+          "tree_id": "a3d2a4f33bcd0f6c19ea09b866740081575d7819",
+          "url": "https://github.com/ocaml/dune/commit/e5a98ee12081cf3571e5a6d4d1aa14ddf392eb0d"
+        },
+        "date": 1678657204937,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "79.38522131396",
             "unit": "seconds"
           }
         ]

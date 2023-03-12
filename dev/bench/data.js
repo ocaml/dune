@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678582136870,
+  "lastUpdate": 1678582236836,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -12065,6 +12065,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.1695339775333333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "c5cadcf535fe099aa5cdc323f064a97cbd47e4c6",
+          "message": "nix: add ocamlformat to testNativeBuildInputs in flake\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>\n\n<!-- ps-id: 1b96f5c7-fea3-4927-a48b-1ccf8f009e8d -->",
+          "timestamp": "2023-03-12T01:25:02+01:00",
+          "tree_id": "4427ca414e329a846423b5c2df9318e0a966572b",
+          "url": "https://github.com/ocaml/dune/commit/c5cadcf535fe099aa5cdc323f064a97cbd47e4c6"
+        },
+        "date": 1678582236184,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "71.82194187894002",
             "unit": "seconds"
           }
         ]

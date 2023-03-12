@@ -1,5 +1,5 @@
 (melange.emit
  (target multilib)
- (entries c)
+ (modules c)
  (libraries x)
  (alias melange))

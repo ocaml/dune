@@ -9,7 +9,7 @@ Building a project with 2 melange.emit stanzas should add rules to both aliases
   >  (target dist)
   >  (alias mel)
   >  (promote (until-clean))
-  >  (entries)
+  >  (modules)
   >  (module_systems
   >   (commonjs js)))
   > 
@@ -17,7 +17,7 @@ Building a project with 2 melange.emit stanzas should add rules to both aliases
   >  (target dist-es6)
   >  (alias second)
   >  (promote (until-clean))
-  >  (entries)
+  >  (modules)
   >  (module_systems
   >   (es6 mjs)))
   > EOF

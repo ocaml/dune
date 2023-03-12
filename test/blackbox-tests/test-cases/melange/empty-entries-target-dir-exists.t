@@ -1,4 +1,4 @@
-Test (entries) field can be left empty
+Test (modules) field can be left empty
 
   $ cat > dune-project <<EOF
   > (lang dune 3.7)

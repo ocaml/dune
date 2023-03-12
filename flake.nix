@@ -92,6 +92,8 @@
       testNativeBuildInputs = with pkgs; [ nodejs-slim pkg-config opam ocamlformat ];
     in
     {
+      formatter = pkgs.nixpkgs-fmt;
+
       packages = {
         dune = scope.dune;
         default = with pkgs; stdenv.mkDerivation rec {
@@ -171,7 +173,6 @@
           buildInputs = testBuildInputs ++ (with pkgs;
             [
               # dev tools
-              coq_8_16
               patdiff
               ccls
             ])

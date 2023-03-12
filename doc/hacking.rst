@@ -152,8 +152,8 @@ This profile might need to be updated from time to time, since the bootstrapped
 version of Dune may become stale. This can be done by running the first command.
 
 We have the following shells for specific tasks:
-- You may also use `nix develop .#slim` for a dev environment with less
-  dependencies that is faster to build.
+- `nix develop .#slim` for a dev environment with fewer dependencies 
+   that is faster to build.
 - Building documentation requires `nix develop .#doc`.
 - For running the Coq tests, you can use `nix develop .#coq`. NB: Coq native is
   not currently installed so some of the tests will fail. Better to fallback to

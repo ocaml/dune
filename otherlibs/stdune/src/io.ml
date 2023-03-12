@@ -268,6 +268,14 @@ struct
       fun ?chmod ~src ~dst () ->
         let src = Path.to_string src in
         let dst = Path.to_string dst in
+        let src_stats =
+          match Unix.stat src with
+          | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
+            let message = Printf.sprintf "%s: No such file or directory" src in
+            raise (Sys_error message)
+          | { st_kind = S_DIR; _ } -> raise (Sys_error "Is a directory")
+          | stats -> stats
+        in
         (try Copyfile.copyfile src dst with
         | Unix.Unix_error (Unix.EPERM, "unlink", _) ->
           let message = Printf.sprintf "%s: Is a directory" dst in
@@ -279,7 +287,7 @@ struct
           raise (Sys_error message));
         match chmod with
         | None -> ()
-        | Some chmod -> (Unix.stat src).st_perm |> chmod |> Unix.chmod dst)
+        | Some chmod -> src_stats.st_perm |> chmod |> Unix.chmod dst)
 
   let file_line path n =
     with_file_in ~binary:false path ~f:(fun ic ->

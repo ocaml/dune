@@ -23,7 +23,7 @@
     };
     melange = {
       url = "github:melange-re/melange";
-      inputs.nixpkgs.follows = "nix-overlays";
+      inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };
   };
@@ -86,8 +86,14 @@
           (devPackages // {
             ocaml-base-compiler = "4.14.0";
           });
+      testBuildInputs = with pkgs;
+        [ file mercurial ]
+        ++ lib.optionals stdenv.isLinux [ strace ];
+      testNativeBuildInputs = with pkgs; [ nodejs-slim pkg-config opam ocamlformat ];
     in
     {
+      formatter = pkgs.nixpkgs-fmt;
+
       packages = {
         dune = scope.dune;
         default = with pkgs; stdenv.mkDerivation rec {
@@ -107,25 +113,7 @@
         };
       };
 
-      devShells.doc =
-        pkgs.mkShell {
-          buildInputs = (with pkgs;
-            [
-              sphinx
-              sphinx-autobuild
-              python310Packages.sphinx-copybutton
-              python310Packages.sphinx-rtd-theme
-            ]
-          );
-        };
-
-      devShells.fmt =
-        pkgs.mkShell {
-          inputsFrom = [ pkgs.dune_3 ];
-          buildInputs = [ ocamlformat ];
-        };
-
-      devShells.slim =
+      devShells =
         let
           pkgs = nix-overlays.legacyPackages.${system}.appendOverlays [
             (self: super: {
@@ -133,55 +121,78 @@
             })
             melange.overlays.default
           ];
+          mkSlim = { extraBuildInputs ? [ ] }:
+            pkgs.mkShell {
+              nativeBuildInputs = testNativeBuildInputs;
+              inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
+              buildInputs = testBuildInputs ++ (with pkgs.ocamlPackages; [
+                merlin
+                ppx_expect
+                ctypes
+                integers
+                mdx
+                cinaps
+                menhir
+                odoc
+                lwt
+                patdiff
+              ]);
+            };
         in
-        pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [ pkg-config nodejs-slim ];
-          inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
-          buildInputs = with pkgs.ocamlPackages; [
-            merlin
-            ocamlformat
-            ppx_expect
-            ctypes
-            integers
-            mdx
-            cinaps
-            menhir
-            odoc
-            lwt
-          ];
-        };
+        {
+          doc =
+            pkgs.mkShell {
+              buildInputs = (with pkgs;
+                [
+                  sphinx
+                  sphinx-autobuild
+                  python310Packages.sphinx-copybutton
+                  python310Packages.sphinx-rtd-theme
+                ]
+              );
+            };
 
-      devShells.coq =
-        pkgs.mkShell {
-          inputsFrom = [ pkgs.dune_3 ];
-          buildInputs = with pkgs; [
-            coq_8_16
-            coq_8_16.ocamlPackages.findlib
-          ];
-        };
+          fmt =
+            pkgs.mkShell {
+              nativeBuildInputs = [ ocamlformat ];
+              inputsFrom = [ pkgs.dune_3 ];
+            };
 
-      devShells.default =
-        pkgs.mkShell {
-          nativeBuildInputs = [ pkgs.opam ];
-          buildInputs = (with pkgs;
-            [
-              # dev tools
-              ocamlformat
-              coq_8_16
-              nodejs-slim
-              patdiff
-              pkg-config
-              file
-              ccls
-              mercurial
-            ] ++ (if stdenv.isLinux then [ strace ] else [ ]))
-          ++ [
-            ocamllsp.outputs.packages.${system}.ocaml-lsp-server
-            pkgs.ocamlPackages.melange
-            pkgs.ocamlPackages.mel
-          ]
-          ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
-          inputsFrom = [ self.packages.${system}.default ];
+          slim = mkSlim { };
+          slim-melange = mkSlim {
+            extraBuildInputs = [
+              pkgs.ocamlPackages.melange
+              pkgs.ocamlPackages.mel
+
+            ];
+          };
+
+          coq =
+            pkgs.mkShell {
+              nativeBuildInputs = testNativeBuildInputs;
+              inputsFrom = [ pkgs.dune_3 ];
+              buildInputs = with pkgs; [
+                coq_8_16
+                coq_8_16.ocamlPackages.findlib
+              ];
+            };
+
+          default =
+            pkgs.mkShell {
+              nativeBuildInputs = testNativeBuildInputs;
+              buildInputs = testBuildInputs ++ (with pkgs;
+                [
+                  # dev tools
+                  patdiff
+                  ccls
+                ])
+                ++ [
+                ocamllsp.outputs.packages.${system}.ocaml-lsp-server
+                pkgs.ocamlPackages.melange
+                pkgs.ocamlPackages.mel
+              ] ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
+              inputsFrom = [ self.packages.${system}.dune ];
+            };
         };
     });
 }

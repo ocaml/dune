@@ -16,7 +16,7 @@ val deps_of :
   -> unit Dune_engine.Action_builder.t
 
 val coqdoc_directory_targets :
-  dir:Path.Build.t -> Coq_stanza.Theory.t -> Loc.t Path.Build.Map.t
+  dir:Path.Build.t -> Coq_stanza.Theory.t -> Loc.t Path.Build.Map.t Memo.t
 
 (** ** Rules for Coq stanzas *)
 

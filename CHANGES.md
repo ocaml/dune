@@ -57,6 +57,9 @@ Unreleased
 - Allow `(stdlib ...)` to be used with `(wrapped false)` in library stanzas
   (#7139, @anmonteiro).
 
+- Make it possible to re-enable warning 40. Previously it was hard coded to
+  always be disabled (#..., @rgrinberg)
+
 3.7.0 (2023-02-17)
 ------------------
 

@@ -30,7 +30,7 @@ We call `$(opam switch show)` so that this test always uses an existing switch
     $TESTCASE_ROOT)
    (FLG
     (-w
-     @1..3@5..28@30..39@43@46..47@49..57@61..62-40
+     @1..3@5..28@30..39@43@46..47@49..57@61..62
      -strict-sequence
      -strict-formats
      -short-paths

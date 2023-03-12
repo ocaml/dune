@@ -56,18 +56,22 @@ let vendored_warnings = [ "-w"; "-a" ]
 
 let vendored_alerts = [ "-alert"; "-all" ]
 
-let default_warnings = "-40"
-
 let default_flags ~dune_version ~profile =
   if Profile.is_dev profile then
     [ "-w"
-    ; dev_mode_warnings ~dune_version ^ default_warnings
+    ; dev_mode_warnings ~dune_version
     ; "-strict-sequence"
     ; "-strict-formats"
     ; "-short-paths"
     ; "-keep-locs"
     ]
-  else [ "-w"; default_warnings ]
+  else if dune_version >= (3, 8) then []
+  else
+    (* this is some nonsense that accidentally made it into released
+       versions a long time go. We keep it for backwards compatibility. We
+       shouldn't be silencing warnings in release builds, they're already non
+       fatal. *)
+    [ "-w"; "-40" ]
 
 type 'a t' =
   { common : 'a

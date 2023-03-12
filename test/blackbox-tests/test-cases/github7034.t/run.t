@@ -17,7 +17,7 @@ It builds on its own (with a warning) when lang dune is 3.2 or below:
   Entering directory 'inner'
   (flags
    (-w
-    @1..3@5..28@30..39@43@46..47@49..57@61..62-40
+    @1..3@5..28@30..39@43@46..47@49..57@61..62
     -strict-sequence
     -strict-formats
     -short-paths
@@ -42,7 +42,7 @@ Note that in versions of lang dune above 3.2 this warning becomes an error:
   Entering directory 'inner'
   (flags
    (-w
-    @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
+    @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69
     -strict-sequence
     -strict-formats
     -short-paths
@@ -69,7 +69,7 @@ Building the outer project works when lang dune is 3.2 or below:
   Entering directory 'outer'
   (flags
    (-w
-    @1..3@5..28@30..39@43@46..47@49..57@61..62-40
+    @1..3@5..28@30..39@43@46..47@49..57@61..62
     -strict-sequence
     -strict-formats
     -short-paths
@@ -90,7 +90,7 @@ But when lang dune is 3.3 or higher the warning becomes an error:
   Entering directory 'outer'
   (flags
    (-w
-    @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
+    @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69
     -strict-sequence
     -strict-formats
     -short-paths

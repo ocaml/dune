@@ -19,6 +19,8 @@ Example:
 
 Dune will not resolve aliases in vendored directories. By default, it won't
 build all installable targets, run the tests, format, or lint the code located
-in such a directory while still building your project's dependencies. Libraries
-and executables in vendored directories will also be built with a ``-w -a`` flag
-to suppress all warnings and prevent pollution of your build output.
+in such a directory while still building your project's dependencies.
+
+Libraries and executables in vendored directories will have all warnings and
+alerts flags removed and replaced with a ``-w -a`` or ``-alert -all``` flag to
+suppress all warnings and alerts and prevent pollution of your build output.

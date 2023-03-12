@@ -98,12 +98,12 @@ But when lang dune is 3.3 or higher the warning becomes an error:
   Leaving directory 'outer'
   $ dune build --root=outer
   Entering directory 'outer'
-  File "vendored/inner/inner.ml", line 6, characters 11-18:
-  6 | type t = { x : int }
-                 ^^^^^^^
-  Error (warning 69 [unused-field]): unused record field x.
   Leaving directory 'outer'
-  [1]
+
+
+This now builds as expected. Fixed by #7304.
+
+Notes from before:
 
 This is unexpected as vendored projects should be built according to their
 declared dune-project rather than the dune-project of the outer project.

@@ -167,9 +167,31 @@ let map_common t ~f =
 
 let append_common t flags = map_common t ~f:(fun l -> l @ flags)
 
-let with_vendored_warnings t = append_common t vendored_warnings
+let filter_warnings l =
+  let rec loop acc = function
+    | [] -> List.rev acc
+    | "-w" :: _ :: rest -> loop acc rest
+    | "-w" :: [] -> List.rev acc
+    | "-warn-error" :: _ :: rest -> loop acc rest
+    | "-warn-error" :: [] -> List.rev acc
+    | a :: rest -> loop (a :: acc) rest
+  in
+  loop [] l
 
-let with_vendored_alerts t = append_common t vendored_alerts
+let with_vendored_warnings t =
+  append_common (map_common ~f:filter_warnings t) vendored_warnings
+
+let filter_alerts l =
+  let rec loop acc = function
+    | [] -> List.rev acc
+    | "-alert" :: _ :: rest -> loop acc rest
+    | "-alert" :: [] -> List.rev acc
+    | a :: rest -> loop (a :: acc) rest
+  in
+  loop [] l
+
+let with_vendored_alerts t =
+  append_common (map_common ~f:filter_alerts t) vendored_alerts
 
 let dump t =
   let+ common = t.common

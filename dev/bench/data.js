@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678580842668,
+  "lastUpdate": 1678580853956,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11891,6 +11891,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "71.20090494588668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "javier.chavarri@gmail.com",
+            "name": "Javier Chávarri",
+            "username": "jchavarri"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "7a6974cf1b9faa055f22d72c7b39f3df13212337",
+          "message": "chore: docs, consolidate rule streaming and production\n\nSigned-off-by: Javier Chávarri <javier.chavarri@gmail.com>",
+          "timestamp": "2023-03-12T01:01:35+01:00",
+          "tree_id": "48a94b5bfa9f6c778955e0f7fe0a5f25567faf63",
+          "url": "https://github.com/ocaml/dune/commit/7a6974cf1b9faa055f22d72c7b39f3df13212337"
+        },
+        "date": 1678580853300,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8603575485333332",
             "unit": "seconds"
           }
         ]

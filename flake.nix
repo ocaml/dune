@@ -152,7 +152,7 @@
               );
             };
 
-          devShells.fmt =
+          fmt =
             pkgs.mkShell {
               nativeBuildInputs = [ ocamlformat ];
               inputsFrom = [ pkgs.dune_3 ];
@@ -167,7 +167,7 @@
             ];
           };
 
-          devShells.coq =
+          coq =
             pkgs.mkShell {
               nativeBuildInputs = testNativeBuildInputs;
               inputsFrom = [ pkgs.dune_3 ];
@@ -177,7 +177,7 @@
               ];
             };
 
-          devShells.default =
+          default =
             pkgs.mkShell {
               nativeBuildInputs = testNativeBuildInputs;
               buildInputs = testBuildInputs ++ (with pkgs;

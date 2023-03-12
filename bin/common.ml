@@ -546,11 +546,12 @@ module Builder = struct
     let b = Buffer.create (2 * String.length s) in
     for i = 0 to String.length s - 1 do
       match s.[i] with
-      | '$' -> Buffer.add_string b {|\$|}
-      | '\\' -> Buffer.add_string b {|\\|}
+      | ('$' | '\\') as c ->
+        Buffer.add_char b '\\';
+        Buffer.add_char b c
       | c -> Buffer.add_char b c
     done;
-    String.of_bytes (Buffer.to_bytes b)
+    Buffer.contents b
 
   let term =
     let docs = copts_sect in

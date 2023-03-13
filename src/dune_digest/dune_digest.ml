@@ -64,7 +64,7 @@ let to_string_raw s = s
    or to different memory locations. *)
 let generic a =
   Metrics.Timer.record "generic_digest" ~f:(fun () ->
-      string (Marshal.to_string a [ No_sharing ]))
+      string (Stdlib.Hashtbl.hash a |> string_of_int))
 
 let path_with_executable_bit =
   (* We follow the digest scheme used by Jenga. *)

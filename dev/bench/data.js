@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678729435867,
+  "lastUpdate": 1678735212035,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -9308,6 +9308,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.11993693375334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "b444ea9f36511286a7ddb9c3e9ffef16fb03536b",
+          "message": "chore(nix): remove OCaml nix-overlays\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-13T20:01:46+01:00",
+          "tree_id": "790071e21212acb32eefc52f8ef86c9aabedd0e9",
+          "url": "https://github.com/ocaml/dune/commit/b444ea9f36511286a7ddb9c3e9ffef16fb03536b"
+        },
+        "date": 1678735210790,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.794725980066666",
             "unit": "seconds"
           }
         ]

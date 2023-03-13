@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678657219635,
+  "lastUpdate": 1678667493212,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -9192,6 +9192,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.715459426020004",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "0c0d37eca9d47c0d19620a976cd57971188abc0c",
+          "message": "Add repro for #7034\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-03-13T01:13:03+01:00",
+          "tree_id": "afc456c550342e2887e6da0c21b086f9f3148484",
+          "url": "https://github.com/ocaml/dune/commit/0c0d37eca9d47c0d19620a976cd57971188abc0c"
+        },
+        "date": 1678667491613,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.65215277272",
             "unit": "seconds"
           }
         ]

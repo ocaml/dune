@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678667838932,
+  "lastUpdate": 1678692756184,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -9221,6 +9221,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.65215277272",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "amokhov@janestreet.com",
+            "name": "Andrey Mokhov",
+            "username": "snowleopard"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "35e3958215e0fed860aecb24e977a46448950103",
+          "message": "Add commutative monoids (#7240)\n\nSigned-off-by: Andrey Mokhov <andrey.mokhov@gmail.com>",
+          "timestamp": "2023-03-13T15:13:27+08:00",
+          "tree_id": "ab05c6b45656466be6764df730b089744059bc34",
+          "url": "https://github.com/ocaml/dune/commit/35e3958215e0fed860aecb24e977a46448950103"
+        },
+        "date": 1678692755046,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.64377397316",
             "unit": "seconds"
           }
         ]

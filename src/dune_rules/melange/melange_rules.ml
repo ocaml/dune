@@ -248,41 +248,85 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
   Buildable_rules.with_lib_deps ctx compile_info ~dir ~f
 
+let raise_external_runtime_dep_error ~loc lib_name path =
+  User_error.raise ~loc
+    [ Pp.textf
+        "Public library %s depends on external path `%s'. This is not allowed."
+        (Lib_name.to_string lib_name)
+        (Path.to_string path)
+    ]
+    ~hints:
+      [ Pp.textf
+          "Move the external dependency to the workspace and use a relative \
+           path."
+      ]
+
 module Runtime_deps = struct
-  let to_action_builder ~expander dep_conf =
-    let runtime_deps, _sandbox =
-      Dep_conf_eval.unnamed_get_paths ~expander dep_conf
+  let targets ~output ~for_ deps =
+    let raise_external_dep_error src =
+      let lib_info =
+        match for_ with
+        | `Library lib_info -> lib_info
+        | `Emit -> assert false
+      in
+      let loc =
+        match Lib_info.melange_runtime_deps lib_info with
+        | Local (loc, _) -> loc
+        | External _ -> assert false
+      in
+      raise_external_runtime_dep_error ~loc (Lib_info.name lib_info) src
     in
-    runtime_deps
 
-  let eval ~expander (deps : Dep_conf.t list) =
-    let open Memo.O in
-    let builder = to_action_builder ~expander deps in
-    let+ paths, _ = Action_builder.run builder Eager in
-    paths
-
-  let targets ~output deps =
     Path.Set.fold ~init:([], []) deps ~f:(fun src (copy, non_copy) ->
         match output with
+        | `Public_library (lib_dir, output_dir) -> (
+          match Path.as_external src with
+          | None ->
+            ((src, lib_output_path ~output_dir ~lib_dir src) :: copy, non_copy)
+          | Some src_e -> (
+            match Path.as_external lib_dir with
+            | Some lib_dir_e
+              when Path.External.is_descendant src_e ~of_:lib_dir_e ->
+              ((src, lib_output_path ~output_dir ~lib_dir src) :: copy, non_copy)
+            | Some _ | None -> raise_external_dep_error src))
         | `Private_library_or_emit output_dir -> (
           match Path.as_in_build_dir src with
           | None -> (copy, src :: non_copy)
           | Some src_build ->
             let target = Path.Build.drop_build_context_exn src_build in
             ((src, Path.Build.append_source output_dir target) :: copy, non_copy)
-          )
-        | `Public_library (lib_dir, output_dir) ->
-          ((src, lib_output_path ~output_dir ~lib_dir src) :: copy, non_copy))
+          ))
 end
 
+let eval_runtime_deps ~expander (deps : Dep_conf.t list) =
+  let runtime_deps, sandbox = Dep_conf_eval.unnamed_get_paths ~expander deps in
+  Option.iter sandbox ~f:(fun _ ->
+      (* TODO loc *)
+      User_error.raise [ Pp.text "sandbox settings are not allowed" ]);
+  let open Memo.O in
+  let+ paths, _ = Action_builder.run runtime_deps Eager in
+  paths
+
 let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode
-    ~(mel : Melange_stanzas.Emit.t) ~output =
+    ~(mel : Melange_stanzas.Emit.t) ~output ~for_ =
   let open Memo.O in
   let* runtime_dep_paths =
-    let* expander = Super_context.expander sctx ~dir in
-    Runtime_deps.eval ~expander mel.runtime_deps
+    match for_ with
+    | `Emit ->
+      let* expander = Super_context.expander sctx ~dir in
+      eval_runtime_deps ~expander mel.runtime_deps
+    | `Library lib_info -> (
+      match Lib_info.melange_runtime_deps lib_info with
+      | External paths -> Memo.return (Path.Set.of_list paths)
+      | Local (_loc, dep_conf) ->
+        let dir =
+          let info = Lib_info.as_local_exn lib_info in
+          Lib_info.src_dir info
+        in
+        let* expander = Super_context.expander sctx ~dir in
+        eval_runtime_deps ~expander dep_conf)
   in
-  let copy, non_copy = Runtime_deps.targets ~output runtime_dep_paths in
+  let copy, non_copy = Runtime_deps.targets ~output ~for_ runtime_dep_paths in
   let+ () =
     let loc = mel.loc in
     Memo.parallel_iter copy ~f:(fun (src, dst) ->
@@ -338,6 +382,7 @@ let setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
   let obj_dir = Obj_dir.of_local obj_dir in
   let* () =
     setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~mel ~output
+      ~for_:`Emit
   in
   Memo.parallel_iter modules_for_js ~f:(fun m ->
       build_js ~dir ~loc ~pkg_name ~mode ~module_systems ~output ~obj_dir ~sctx
@@ -366,6 +411,11 @@ let setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
         in
         cmj_includes ~requires_link ~scope
       in
+      let output = output_of_lib ~target_dir lib in
+      let* () =
+        setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~mel ~output
+          ~for_:(`Library info)
+      in
       let* () =
         match Lib.implements lib with
         | None -> Memo.return ()
@@ -380,11 +430,9 @@ let setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
             in
             cmj_includes ~requires_link ~scope
           in
-          let output = output_of_lib ~target_dir lib in
           impl_only_modules_defined_in_this_lib sctx vlib
           >>= Memo.parallel_iter ~f:(build_js ~dir ~output ~includes)
       in
-      let output = output_of_lib ~target_dir lib in
       let* source_modules = impl_only_modules_defined_in_this_lib sctx lib in
       Memo.parallel_iter source_modules ~f:(build_js ~dir ~output ~includes))
 

@@ -358,6 +358,7 @@ end = struct
         let foreign_objects = Lib_info.Source.External [] in
         let plugins = plugins t in
         let jsoo_runtime = jsoo_runtime t in
+        let melange_runtime_deps = Lib_info.Runtime_deps.External [] in
         let preprocess = Preprocess.Per_module.no_preprocessing () in
         let virtual_ = None in
         let default_implementation = None in
@@ -446,7 +447,7 @@ end = struct
           ~jsoo_runtime ~preprocess ~enabled ~virtual_deps ~dune_version
           ~virtual_ ~implements ~default_implementation ~modes ~modules ~wrapped
           ~special_builtin_support ~exit_module:None
-          ~instrumentation_backend:None ~entry_modules
+          ~instrumentation_backend:None ~melange_runtime_deps ~entry_modules
       in
       Dune_package.Lib.of_findlib info
   end

@@ -225,6 +225,7 @@ val to_dune_lib :
      t
   -> modules:Modules.t
   -> foreign_objects:Path.t list
+  -> melange_runtime_deps:Path.t list
   -> dir:Path.t
   -> Dune_package.Lib.t Resolve.Memo.t
 

@@ -572,6 +572,7 @@ module Library = struct
     ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
+    ; melange_runtime_deps : Loc.t * Dep_conf.t list
     }
 
   let decode =
@@ -651,6 +652,11 @@ module Library = struct
          field_o "package"
            (Dune_lang.Syntax.since Stanza.syntax (2, 8)
            >>> located Stanza_common.Pkg.decode)
+       and+ melange_runtime_deps =
+         field "melange.runtime_deps"
+           (Dune_lang.Syntax.since Melange_stanzas.syntax (0, 1)
+           >>> located (repeat Dep_conf.decode))
+           ~default:(stanza_loc, [])
        in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
@@ -738,6 +744,7 @@ module Library = struct
        ; special_builtin_support
        ; enabled_if
        ; instrumentation_backend
+       ; melange_runtime_deps
        })
 
   let package t =
@@ -966,6 +973,10 @@ module Library = struct
     let special_builtin_support = conf.special_builtin_support in
     let instrumentation_backend = conf.instrumentation_backend in
     let entry_modules = Lib_info.Source.Local in
+    let melange_runtime_deps =
+      let loc, runtime_deps = conf.melange_runtime_deps in
+      Lib_info.Runtime_deps.Local (loc, runtime_deps)
+    in
     Lib_info.create ~loc ~path_kind:Local ~name ~kind ~status ~src_dir
       ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems
       ~requires ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
@@ -973,6 +984,7 @@ module Library = struct
       ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_ ~entry_modules
       ~implements ~default_implementation ~modes ~modules:Local ~wrapped
       ~special_builtin_support ~exit_module ~instrumentation_backend
+      ~melange_runtime_deps
 end
 
 module Plugin = struct

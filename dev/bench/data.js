@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678737106668,
+  "lastUpdate": 1678737118283,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -13167,6 +13167,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "71.53247453947999",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "21914b91f66a94e2cae33b9b19ea1521b6104d8a",
+          "message": "fix(rpc): ignore sigpipe on macos clients (#7299)\n\nRPC clients that suddenly disconnect will no longer raise sigpipe and\r\nmake dune terminate.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-13T12:26:10-07:00",
+          "tree_id": "8912e6faccd7d85a04c9ad3400af1070e1cda50f",
+          "url": "https://github.com/ocaml/dune/commit/21914b91f66a94e2cae33b9b19ea1521b6104d8a"
+        },
+        "date": 1678737117222,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.78266578318",
             "unit": "seconds"
           }
         ]

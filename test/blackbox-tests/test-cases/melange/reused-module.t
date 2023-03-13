@@ -10,7 +10,8 @@ Test error message for modules belonging to melange.emit and another stanza
   >  (name lib)
   >  (modes melange))
   > (melange.emit
-  >  (target output))
+  >  (target output)
+  >  (alias melange))
   > EOF
 
   $ cat > main.ml <<EOF

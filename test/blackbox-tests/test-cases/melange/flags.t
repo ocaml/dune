@@ -11,6 +11,7 @@ Using flags field in melange.emit stanzas is not supported
   > (melange.emit
   >  (target output)
   >  (entries main)
+  >  (alias melange)
   >  (flags -w -14-26))
   > EOF
 
@@ -108,6 +109,7 @@ Warning 102 (Melange only) is available if explicitly set
   > (melange.emit
   >  (target output)
   >  (entries main)
+  >  (alias melange)
   >  (compile_flags -w +a-70))
   > EOF
 
@@ -122,6 +124,7 @@ But it is disabled by default
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (alias melange)
   >  (entries main))
   > EOF
 

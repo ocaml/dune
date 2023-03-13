@@ -5,7 +5,7 @@ module Emit = struct
   type t =
     { loc : Loc.t
     ; target : string
-    ; alias : Alias.Name.t option
+    ; alias : Alias.Name.t
     ; module_systems : (Melange.Module_system.t * Filename.Extension.t) list
     ; modules : Stanza_common.Modules_settings.t
     ; libraries : Lib_dep.t list
@@ -92,7 +92,7 @@ module Emit = struct
                  ])
          in
          field "target" (plain_string (fun ~loc s -> of_string ~loc s))
-       and+ alias = field_o "alias" Alias.Name.decode
+       and+ alias = field "alias" Alias.Name.decode
        and+ module_systems =
          field "module_systems" module_systems
            ~default:[ Melange.Module_system.default ]

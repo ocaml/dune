@@ -79,6 +79,7 @@ If melange.emit stanza is found, but no rules are executed, build does not fail
   > (melange.emit
   >  (target output)
   >  (entries main_melange)
+  >  (alias melange)
   >  (libraries lib1))
   > EOF
 

@@ -41,7 +41,8 @@ All 3 entries (Foo, Foo__ and Bar) contain a ppx directive
   $ cat >dune <<EOF
   > (melange.emit
   >  (target "$target")
-  >  (entries main))
+  >  (entries main)
+  >  (alias melange))
   > EOF
 
   $ touch main.ml

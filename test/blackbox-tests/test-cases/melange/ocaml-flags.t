@@ -34,6 +34,7 @@ Update dune file to use ocamlc_flags
   > (melange.emit
   >  (target output)
   >  (entries main)
+  >  (alias melange)
   >  (ocamlc_flags -w -14-26))
   > EOF
 
@@ -52,6 +53,7 @@ Update dune file to use ocamlopt_flags
   > (melange.emit
   >  (target output)
   >  (entries main)
+  >  (alias melange)
   >  (ocamlopt_flags -w -14-26))
   > EOF
 

@@ -272,7 +272,7 @@ module Runtime_deps = struct
       let loc =
         match Lib_info.melange_runtime_deps lib_info with
         | Local (loc, _) -> loc
-        | External _ -> Loc.none
+        | External _ -> assert false
       in
       raise_external_runtime_dep_error ~loc (Lib_info.name lib_info) src
     in

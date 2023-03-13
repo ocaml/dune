@@ -1,5 +1,5 @@
 (melange.emit
  (target dist)
  (alias melange)
- (entries entry_module)
+ (modules entry_module)
  (libraries parent))

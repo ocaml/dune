@@ -107,9 +107,7 @@ module Emit = struct
        and+ compile_flags = Ordered_set_lang.Unexpanded.field "compile_flags"
        and+ allow_overlapping_dependencies =
          field_b "allow_overlapping_dependencies"
-       and+ modules =
-         Stanza_common.Modules_settings.decode ~modules_field_name:"entries"
-       in
+       and+ modules = Stanza_common.Modules_settings.decode in
        let preprocess =
          let init =
            let f libname = Preprocess.With_instrumentation.Ordinary libname in

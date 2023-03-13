@@ -271,9 +271,7 @@ struct
         let src_stats =
           match Unix.stat src with
           | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
-            let message =
-              Printf.sprintf "error: %s: No such file or directory" src
-            in
+            let message = Printf.sprintf "%s: No such file or directory" src in
             raise (Sys_error message)
           | { st_kind = S_DIR; _ } -> raise (Sys_error "Is a directory")
           | stats -> stats
@@ -283,9 +281,7 @@ struct
           let message = Printf.sprintf "%s: Is a directory" dst in
           raise (Sys_error message)
         | Unix.Unix_error (Unix.ENOENT, "realpath", _) ->
-          let message =
-            Printf.sprintf "error: %s: No such file or directory" src
-          in
+          let message = Printf.sprintf "%s: No such file or directory" src in
           raise (Sys_error message));
         match chmod with
         | None -> ()

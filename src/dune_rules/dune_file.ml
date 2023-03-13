@@ -96,8 +96,7 @@ module Buildable = struct
       located
         (only_in_library
            (field_o "cxx_names" (use_foreign >>> Ordered_set_lang.decode)))
-    and+ modules =
-      Stanza_common.Modules_settings.decode ~modules_field_name:"modules"
+    and+ modules = Stanza_common.Modules_settings.decode
     and+ self_build_stubs_archive_loc, self_build_stubs_archive =
       located
         (only_in_library

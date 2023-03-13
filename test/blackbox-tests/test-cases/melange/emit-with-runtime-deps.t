@@ -47,7 +47,7 @@ Creating the source directory makes it appear in the alias
   $ dune rules @mel | grep file.txt
   ((deps ((File (In_build_dir _build/default/assets/file.txt))))
    (targets ((files (default/output/assets/file.txt)) (directories ())))
-     (symlink ../../assets/file.txt output/assets/file.txt))))
+   (action (chdir _build/default (copy assets/file.txt output/assets/file.txt))))
 
   $ dune build @mel --display=short
           melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}

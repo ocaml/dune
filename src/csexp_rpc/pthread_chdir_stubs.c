@@ -10,6 +10,8 @@
 #if defined(__APPLE__)
 
 #include <sys/syscall.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -18,7 +20,6 @@ CAMLprim value dune_pthread_chdir_is_osx(value unit)
   CAMLparam1(unit);
   CAMLreturn(Val_true);
 }
-
 
 #ifndef SYS___pthread_chdir
 # define SYS___pthread_chdir 348
@@ -40,7 +41,22 @@ CAMLprim value dune_pthread_chdir(value dir) {
   CAMLreturn (Val_unit); 
 }
 
+CAMLprim value dune_set_nosigpipe(value v_socket) {
+  CAMLparam1(v_socket);
+  int socket = Int_val(v_socket);
+  int opt = 1;
+  int ret = setsockopt(socket, SOL_SOCKET, SO_NOSIGPIPE, &opt, sizeof(int));
+  if (ret < 0) {
+    uerror("setsockopt", Nothing);
+  }
+  CAMLreturn(Val_unit);
+}
+
 #else
+
+CAMLprim value dune_set_nosigpipe(value v_socket) {
+  caml_invalid_argument("only implemented on macos");
+}
 
 CAMLprim value dune_pthread_chdir_is_osx(value unit)
 {

@@ -32,7 +32,7 @@ let decode =
        field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.any
      and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
      and+ libraries =
-       field "libraries" (Dune_file.Lib_deps.decode Executable) ~default:[]
+       field "libraries" (Lib_dep.L.decode ~allow_re_export:false) ~default:[]
      and+ runtime_deps =
        field ~default:[] "runtime_deps"
          (Dune_lang.Syntax.since syntax (1, 1) >>> repeat Dep_conf.decode)

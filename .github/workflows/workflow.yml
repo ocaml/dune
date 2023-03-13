@@ -235,7 +235,7 @@ jobs:
       - run: nix develop .#doc -c make doc
 
   coq:
-    name: Coq 8.16.0
+    name: Coq 8.16.1
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -249,7 +249,7 @@ jobs:
           dune-cache: true
 
       - name: Install Coq
-        run: opam install coq.8.16.0 coq-native
+        run: opam install coq.8.16.1 coq-native
 
       - run: opam exec -- make test-coq
         env:

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678751214730,
+  "lastUpdate": 1678751649811,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -13312,6 +13312,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.60436508076",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7e27809863060fe315bfeebef262990b46e89e87",
+          "message": "refactor: rename pthread_chdir_stubs (#7310)\n\nit no longer just contains stubs for chdir\r\n\r\nalso take the opportunity to format it automatically\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-13T16:10:51-07:00",
+          "tree_id": "02ff87c75f5d23539847e101abd284af5c3b3012",
+          "url": "https://github.com/ocaml/dune/commit/7e27809863060fe315bfeebef262990b46e89e87"
+        },
+        "date": 1678751648617,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "85.81716073624666",
             "unit": "seconds"
           }
         ]

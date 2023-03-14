@@ -1,9 +1,19 @@
 let printf = Printf.printf
 
 let test string =
+  let watch_exclusions =
+    [ {|^_opam|}
+    ; {|/_opam|}
+    ; {|^\.#.*|}
+    ; {|/\.#.*|}
+    ; {|^#[^#]*#$|}
+    ; {|/#[^#]*#$|}
+    ; {|^4913$|}
+    ; {|/4913$|}
+    ]
+  in
   printf "should_exclude(%s) = %b\n" string
-    (Dune_file_watcher.For_tests.should_exclude string
-       Dune_config.standard_watch_exclusions)
+    (Dune_file_watcher.For_tests.should_exclude string ~watch_exclusions)
 
 let%expect_test _ =
   test "file.ml";

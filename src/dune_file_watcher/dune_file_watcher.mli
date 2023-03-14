@@ -80,5 +80,5 @@ val emit_sync : t -> Sync_id.t
 val add_watch : t -> Path.t -> (unit, [ `Does_not_exist ]) result
 
 module For_tests : sig
-  val should_exclude : string -> string list -> bool
+  val should_exclude : string -> watch_exclusions:string list -> bool
 end

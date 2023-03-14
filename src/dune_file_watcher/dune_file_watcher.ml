@@ -153,7 +153,7 @@ module Re = Dune_re
 let exclude_regex watch_exclusions =
   Re.compile (Re.alt (List.map watch_exclusions ~f:Re.Posix.re))
 
-let should_exclude path watch_exclusions =
+let should_exclude path ~watch_exclusions =
   Re.execp (exclude_regex watch_exclusions) path
 
 module For_tests = struct
@@ -163,7 +163,7 @@ end
 let process_inotify_event (event : Async_inotify_for_dune.Async_inotify.Event.t)
     watch_exclusions : Event.t list =
   let create_event_unless_excluded ~kind ~path =
-    match should_exclude path watch_exclusions with
+    match should_exclude path ~watch_exclusions with
     | true -> []
     | false ->
       let path = Path.of_string path in
@@ -598,7 +598,7 @@ let fswatch_win_callback ~(scheduler : Scheduler.t) ~sync_table
       String.concat ~sep:"/"
         (String.split_on_char ~sep:'\\' (String.lowercase_ascii filename))
     in
-    if not (should_exclude normalized_filename watch_exclusions) then
+    if not (should_exclude normalized_filename ~watch_exclusions) then
       scheduler.thread_safe_send_emit_events_job (fun () ->
           let kind =
             match Fswatch_win.Event.action event with

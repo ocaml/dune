@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678825066984,
+  "lastUpdate": 1678825164503,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -9511,6 +9511,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.47911317024667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "00fdccc5bdc423e5437c5ece0cff0316d31669aa",
+          "message": "test: move toplevel plugins to own dir (#7316)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-14T13:00:46-07:00",
+          "tree_id": "9d473a3d041916135fc9f531b67a0dde2b8245ca",
+          "url": "https://github.com/ocaml/dune/commit/00fdccc5bdc423e5437c5ece0cff0316d31669aa"
+        },
+        "date": 1678825163309,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.67868703714",
             "unit": "seconds"
           }
         ]

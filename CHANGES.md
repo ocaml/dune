@@ -7,6 +7,8 @@
 - Fix preludes not being recorded as dependencies in the `(mdx)` stanza (#7109,
   fixes #7077, @emillon).
 
+- Pass correct flags when compiling `stdlib.ml`. (#7241, @emillon)
+
 3.7.0.post1 (2023-02-21)
 ------------------------
 

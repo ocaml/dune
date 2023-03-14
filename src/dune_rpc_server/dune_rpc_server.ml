@@ -4,6 +4,30 @@ open Fiber.O
 
 module Session_id = Stdune.Id.Make ()
 
+type error =
+  { message : User_message.t
+  ; details : (string * Dyn.t) list
+  }
+
+exception Invalid_session of error
+
+let () =
+  Printexc.register_printer (function
+    | Invalid_session { message; details } ->
+      let message =
+        let paragraphs =
+          message.paragraphs
+          @ [ Pp.text "details:"; Dyn.pp (Dyn.record details) ]
+        in
+        { message with paragraphs }
+      in
+      Some (User_message.to_string message)
+    | _ -> None)
+
+let raise_invalid_session message details =
+  let message = User_message.make [ Pp.text message ] in
+  raise (Invalid_session { message; details })
+
 module Poller = struct
   module Id = Stdune.Id.Make ()
 
@@ -33,92 +57,135 @@ end)
 module Session = struct
   module Id = Session_id
 
+  module Close = struct
+    type t =
+      { ivar : unit Fiber.Ivar.t
+      ; mutable state : [ `Open | `Closed ]
+      }
+
+    let create () = { ivar = Fiber.Ivar.create (); state = `Open }
+
+    let to_dyn { state; ivar = _ } =
+      let name =
+        match state with
+        | `Open -> "Open"
+        | `Closed -> "Closed"
+      in
+      Dyn.variant name []
+
+    let close t =
+      match t.state with
+      | `Closed -> Fiber.return ()
+      | `Open ->
+        t.state <- `Closed;
+        Fiber.Ivar.fill t.ivar ()
+  end
+
   type 'a state =
-    | Uninitialized
+    | Uninitialized of Close.t
     | Initialized of
         { init : Initialize.Request.t
         ; state : 'a
-        ; closed : bool
+        ; close : Close.t
         }
 
   module Stage1 = struct
     type 'a t =
       { queries : Packet.t Fiber.Stream.In.t
       ; id : Id.t
+      ; mutable menu : Menu.t option
       ; send : Packet.t list option -> unit Fiber.t
       ; pool : Fiber.Pool.t
       ; mutable state : 'a state
-      ; mutable on_upgrade : (Menu.t -> unit) option
+      ; pending : (Dune_rpc_private.Id.t, Response.t Fiber.Ivar.t) Table.t
+            (** Pending requests sent to the client. When a response is
+                received, the ivar for the response will be filled. *)
       }
 
     let set t state =
       match t.state with
       | Initialized s -> t.state <- Initialized { s with state }
-      | Uninitialized -> Code_error.raise "set: state not available" []
+      | Uninitialized _ -> Code_error.raise "set: state not available" []
 
     let get t =
       match t.state with
       | Initialized s -> s.state
-      | Uninitialized -> Code_error.raise "get: state not available" []
-
-    let active t =
-      match t.state with
-      | Uninitialized -> true
-      | Initialized s -> s.closed
+      | Uninitialized _ -> Code_error.raise "get: state not available" []
 
     let initialize t =
       match t.state with
       | Initialized s -> s.init
-      | Uninitialized -> Code_error.raise "initialize: request not available" []
+      | Uninitialized _ ->
+        Code_error.raise "initialize: request not available" []
 
     let create ~queries ~send =
       { queries
       ; send
-      ; state = Uninitialized
+      ; menu = None
+      ; state = Uninitialized (Close.create ())
       ; id = Id.gen ()
-      ; on_upgrade = None
       ; pool = Fiber.Pool.create ()
+      ; pending = Table.create (module Dune_rpc_private.Id) 16
       }
+
+    let menu t = t.menu
 
     let request_close t = t.send None
 
     let close t =
       match t.state with
-      | Uninitialized -> assert false
-      | Initialized s -> t.state <- Initialized { s with closed = true }
-
-    let closed t =
-      match t.state with
-      | Uninitialized ->
-        Code_error.raise "closed: called on uninitialized session" []
-      | Initialized { closed; _ } -> closed
+      | Uninitialized c | Initialized { close = c; _ } -> Close.close c
 
     let id t = t.id
 
     let send t packets = t.send packets
+
+    let request t ((id, call) as req) =
+      match Table.find t.pending id with
+      | Some _ ->
+        Code_error.raise "request with this id is already pending"
+          [ ("id", Dune_rpc_private.Id.to_dyn id)
+          ; ("call", Dune_rpc_private.Call.to_dyn call)
+          ]
+      | None ->
+        let ivar = Fiber.Ivar.create () in
+        Table.add_exn t.pending id ivar;
+        let+ () =
+          Fiber.Pool.task t.pool ~f:(fun () -> send t (Some [ Request req ]))
+        in
+        ivar
+
+    let response t (id, response) =
+      match Table.find t.pending id with
+      | None -> raise_invalid_session "unexpected response" []
+      | Some ivar ->
+        Table.remove t.pending id;
+        Fiber.Ivar.fill ivar response
 
     let compare x y = Id.compare x.id y.id
 
     let dyn_of_state f =
       let open Dyn in
       function
-      | Uninitialized -> variant "Uninitialized" []
-      | Initialized { init; state; closed } ->
+      | Uninitialized close -> variant "Uninitialized" [ Close.to_dyn close ]
+      | Initialized { init; state; close } ->
         let record =
           record
             [ ("init", opaque init)
             ; ("state", f state)
-            ; ("closed", bool closed)
+            ; ("close", Close.to_dyn close)
             ]
         in
         variant "Initialized" [ record ]
 
-    let to_dyn f { id; state; queries = _; send = _; on_upgrade = _; pool = _ }
-        =
+    let to_dyn f
+        { id; state; queries = _; send = _; pool = _; pending = _; menu } =
       let open Dyn in
-      record [ ("id", Id.to_dyn id); ("state", dyn_of_state f state) ]
-
-    let register_upgrade_callback t f = t.on_upgrade <- Some f
+      record
+        [ ("id", Id.to_dyn id)
+        ; ("state", dyn_of_state f state)
+        ; ("menu", Dyn.option Menu.to_dyn menu)
+        ]
   end
 
   type 'a t =
@@ -131,15 +198,16 @@ module Session = struct
 
   let set t = Stage1.set t.base
 
-  let active t = Stage1.active t.base
-
   let initialize t = Stage1.initialize t.base
 
   let close t = Stage1.close t.base
 
-  let request_close t = Stage1.request_close t.base
+  let closed t =
+    match t.base.state with
+    | Uninitialized close | Initialized { close; _ } ->
+      Fiber.Ivar.read close.ivar
 
-  let closed t = Stage1.closed t.base
+  let request_close t = Stage1.request_close t.base
 
   let compare x y = Stage1.compare x.base y.base
 
@@ -149,8 +217,7 @@ module Session = struct
 
   let id t = t.base.id
 
-  let of_stage1 (base : _ Stage1.t) handler menu =
-    let () = Option.iter base.on_upgrade ~f:(fun f -> f menu) in
+  let of_stage1 (base : _ Stage1.t) handler =
     { base; handler; pollers = Dune_rpc_private.Id.Map.empty }
 
   let notification t decl n =
@@ -161,6 +228,29 @@ module Session = struct
       Fiber.return ()
     | Ok { Versioned.Staged.encode } ->
       send t (Some [ Notification (encode n) ])
+
+  let request t decl id req =
+    let* () = Fiber.return () in
+    match V.Handler.prepare_request t.handler decl with
+    | Error error ->
+      Code_error.raise "client doesn't support request"
+        [ ("id", Dune_rpc_private.Id.to_dyn id)
+        ; ("error", Dune_rpc_private.Version_error.to_dyn error)
+        ]
+    | Ok { Versioned.Staged.encode_req; decode_resp } -> (
+      let req = encode_req req in
+      let* ivar = Stage1.request t.base (id, req) in
+      let+ resp = Fiber.Ivar.read ivar in
+      match resp with
+      | Error error ->
+        Code_error.raise "client and server do not agree on version"
+          [ ("error", Response.Error.to_dyn error) ]
+      | Ok resp -> (
+        match decode_resp resp with
+        | Ok s -> s
+        | Error error ->
+          Code_error.raise "unexpected response"
+            [ ("error", Response.Error.to_dyn error) ]))
 
   let to_dyn f t =
     Dyn.Record
@@ -241,6 +331,7 @@ module H = struct
   type 'a base =
     { on_init : 'a Session.Stage1.t -> Initialize.Request.t -> 'a Fiber.t
     ; on_terminate : 'a Session.t -> unit Fiber.t
+    ; on_upgrade : 'a Session.t -> Menu.t -> unit Fiber.t
     ; version : int * int
     }
 
@@ -318,8 +409,14 @@ module H = struct
     Event.emit
       (Message { kind; meth_; stage = Stop })
       stats (Session.id session);
-    if Session.closed session then Fiber.return ()
-    else Session.send session (Some [ Response (id, response) ])
+    match
+      (match session.base.state with
+      | Initialized { close; _ } -> close
+      | Uninitialized close -> close)
+        .state
+    with
+    | `Closed -> Fiber.return ()
+    | `Open -> Session.send session (Some [ Response (id, response) ])
 
   let run_session (type a) (t : a t) stats (session : a Session.t) =
     let open Fiber.O in
@@ -327,8 +424,7 @@ module H = struct
       Fiber.Stream.In.parallel_iter (Session.queries session)
         ~f:(fun (message : Packet.t) ->
           match message with
-          | Response _ ->
-            Code_error.raise "the server is unable to make requests yet" []
+          | Response resp -> Session.Stage1.response session.base resp
           | Notification n ->
             Fiber.Pool.task session.base.pool
               ~f:(dispatch_notification t stats session n.method_ n)
@@ -337,7 +433,7 @@ module H = struct
               ~f:(dispatch_request t stats session r.method_ r id))
     in
     let* () = Session.request_close session in
-    let+ () = t.base.on_terminate session in
+    let* () = t.base.on_terminate session in
     Session.close session
 
   let negotiate_version (type a) (t : a stage1) stats
@@ -366,6 +462,9 @@ module H = struct
             Menu.select_common ~remote_versions:client_versions
               ~local_versions:t.known_versions
           with
+          | None ->
+            abort session
+              ~message:"Server and client have no method versions in common"
           | Some menu ->
             let response =
               Version_negotiation.(
@@ -373,14 +472,20 @@ module H = struct
             in
             let* () = session.send (Some [ Response (id, Ok response) ]) in
             let handler = t.to_handler menu in
-            run_session { base = t.base; handler } stats
-              (Session.of_stage1 session handler menu)
-          | None ->
-            abort session
-              ~message:"Server and client have no method versions in common")))
+            session.menu <- Some menu;
+            let session = Session.of_stage1 session handler in
+            let* () = t.base.on_upgrade session menu in
+            run_session { base = t.base; handler } stats session)))
 
   let handle (type a) (t : a stage1) stats (session : a Session.Stage1.t) =
     let open Fiber.O in
+    let* () = Fiber.return () in
+    let close =
+      match session.state with
+      | Uninitialized c -> c
+      | Initialized _ -> assert false
+    in
+    Fiber.finalize ~finally:(fun () -> Session.Close.close close) @@ fun () ->
     let* query = Fiber.Stream.In.read session.queries in
     match query with
     | None -> session.send None
@@ -401,9 +506,7 @@ module H = struct
               ~message:"The server and client use incompatible protocols."
           else
             let* a = t.base.on_init session init in
-            let () =
-              session.state <- Initialized { init; state = a; closed = false }
-            in
+            let () = session.state <- Initialized { init; state = a; close } in
             let* () =
               let response =
                 Ok
@@ -419,10 +522,11 @@ module H = struct
       { builder : 's Session.t V.Builder.t
       ; on_terminate : 's Session.t -> unit Fiber.t
       ; on_init : 's Session.Stage1.t -> Initialize.Request.t -> 's Fiber.t
+      ; on_upgrade : 's Session.t -> Menu.t -> unit Fiber.t
       ; version : int * int
       }
 
-    let to_handler { builder; on_terminate; on_init; version } =
+    let to_handler { builder; on_terminate; on_init; version; on_upgrade } =
       let to_handler menu =
         V.Builder.to_handler builder
           ~session_version:(fun s -> (Session.initialize s).dune_version)
@@ -433,10 +537,19 @@ module H = struct
         |> String.Map.of_list_map_exn ~f:(fun (name, gens) ->
                (name, Int.Set.of_list gens))
       in
-      { to_handler; base = { on_init; on_terminate; version }; known_versions }
+      { to_handler
+      ; base = { on_init; on_terminate; on_upgrade; version }
+      ; known_versions
+      }
 
-    let create ?(on_terminate = fun _ -> Fiber.return ()) ~on_init ~version () =
-      { builder = V.Builder.create (); on_init; on_terminate; version }
+    let create ?(on_terminate = fun _ -> Fiber.return ()) ~on_init
+        ?(on_upgrade = fun _ _ -> Fiber.return ()) ~version () =
+      { builder = V.Builder.create ()
+      ; on_init
+      ; on_terminate
+      ; version
+      ; on_upgrade
+      }
 
     let implement_request (t : _ t) = V.Builder.implement_request t.builder
 
@@ -445,6 +558,8 @@ module H = struct
 
     let declare_notification (t : _ t) =
       V.Builder.declare_notification t.builder
+
+    let declare_request (t : _ t) = V.Builder.declare_request t.builder
 
     module Long_poll = struct
       let implement_poll (t : _ t) (sub : _ Procedures.Poll.t) ~on_poll
@@ -545,15 +660,15 @@ let new_session (Server handler) stats ~queries ~send =
           Fiber.Pool.stop session.pool)
   end
 
-exception Invalid_session of Conv.error
-
 let create_sequence f ~version conv =
   let read () =
     let+ read = f () in
     Option.map read ~f:(fun sexp ->
         match Conv.of_sexp conv ~version sexp with
-        | Error e -> raise (Invalid_session e)
-        | Ok message -> message)
+        | Ok message -> message
+        | Error error ->
+          raise_invalid_session "unexpected csexp"
+            [ ("error", Conv.dyn_of_error error) ])
   in
   Fiber.Stream.In.create read
 

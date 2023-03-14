@@ -1,15 +1,14 @@
 Test (preprocess) field on melange.emit stanza
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.6)
+  > (lang dune 3.7)
   > (using melange 0.1)
   > EOF
 
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (alias app)
-  >  (module_system commonjs))
+  >  (alias app))
   > EOF
 
   $ cat > main.ml <<EOF

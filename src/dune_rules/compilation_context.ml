@@ -83,6 +83,7 @@ type t =
   ; sandbox : Sandbox_config.t
   ; package : Package.t option
   ; vimpl : Vimpl.t option
+  ; public_lib_name : Lib_name.t option
   ; modes : Lib_mode.Map.Set.t
   ; bin_annot : bool
   ; ocamldep_modules_data : Ocamldep.Modules_data.t
@@ -125,6 +126,8 @@ let set_sandbox t sandbox = { t with sandbox }
 
 let package t = t.package
 
+let public_lib_name t = t.public_lib_name
+
 let vimpl t = t.vimpl
 
 let modes t = t.modes
@@ -139,7 +142,8 @@ let dep_graphs t = t.modules.dep_graphs
 
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
-    ?stdlib ~js_of_ocaml ~package ?vimpl ?modes ?(bin_annot = true) ?loc () =
+    ?stdlib ~js_of_ocaml ~package ?public_lib_name ?vimpl ?modes ?bin_annot ?loc
+    () =
   let open Memo.O in
   let project = Scope.project scope in
   let requires_compile =
@@ -167,7 +171,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   let opaque = eval_opaque (Super_context.context super_context) opaque in
   let ocamldep_modules_data : Ocamldep.Modules_data.t =
     { dir = Obj_dir.dir obj_dir
-    ; sandbox
+    ; sandbox = Sandbox_config.no_special_requirements
     ; obj_dir
     ; sctx = super_context
     ; vimpl
@@ -175,7 +179,12 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ; stdlib
     }
   in
-  let+ dep_graphs = Dep_rules.rules ocamldep_modules_data in
+  let+ dep_graphs = Dep_rules.rules ocamldep_modules_data
+  and+ bin_annot =
+    match bin_annot with
+    | Some b -> Memo.return b
+    | None -> Super_context.bin_annot super_context ~dir:(Obj_dir.dir obj_dir)
+  in
   { super_context
   ; scope
   ; expander
@@ -192,6 +201,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   ; sandbox
   ; package
   ; vimpl
+  ; public_lib_name
   ; modes
   ; bin_annot
   ; ocamldep_modules_data
@@ -199,11 +209,16 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   }
 
 let for_alias_module t alias_module =
+  let keep_flags = Modules.is_stdlib_alias (modules t) alias_module in
   let flags =
-    let project = Scope.project t.scope in
-    let dune_version = Dune_project.dune_version project in
-    let profile = (Super_context.context t.super_context).profile in
-    Ocaml_flags.default ~dune_version ~profile
+    if keep_flags then
+      (* in the case of stdlib, these flags can be written by the user *)
+      t.flags
+    else
+      let project = Scope.project t.scope in
+      let dune_version = Dune_project.dune_version project in
+      let profile = (Super_context.context t.super_context).profile in
+      Ocaml_flags.default ~dune_version ~profile
   in
   let sandbox =
     let ctx = Super_context.context t.super_context in
@@ -214,21 +229,21 @@ let for_alias_module t alias_module =
       Sandbox_config.needs_sandboxing
     else Sandbox_config.no_special_requirements
   in
-  let modules : modules =
+  let (modules, includes) : modules * Includes.t =
     match Modules.is_stdlib_alias t.modules.modules alias_module with
-    | false -> singleton_modules alias_module
+    | false -> (singleton_modules alias_module, Includes.empty)
     | true ->
       (* The stdlib alias module is different from the alias modules usually
          produced by Dune: it contains code and depends on a few other
          [CamlinnternalXXX] modules from the stdlib, so we need the full set of
          modules to compile it. *)
-      t.modules
+      (t.modules, t.includes)
   in
   { t with
     flags =
       Ocaml_flags.append_common flags
         [ "-w"; "-49"; "-nopervasives"; "-nostdlib" ]
-  ; includes = Includes.empty
+  ; includes
   ; stdlib = None
   ; sandbox
   ; modules

@@ -330,9 +330,9 @@ module V1 : sig
         ?id:Id.t -> t -> 'a Sub.t -> ('a Stream.t, Version_error.t) result fiber
 
       module Batch : sig
-        type t
+        type client := t
 
-        type client
+        type t
 
         val create : client -> t
 
@@ -347,7 +347,6 @@ module V1 : sig
 
         val submit : t -> unit fiber
       end
-      with type client := t
 
       (** [connect ?on_handler session init ~f] connect to [session], initialize
           with [init] and call [f] once the client is initialized. [handler] is
@@ -379,7 +378,7 @@ module V1 : sig
       end
 
       module Ivar : sig
-        type 'a fiber
+        type 'a fiber := 'a t
 
         type 'a t
 
@@ -389,7 +388,6 @@ module V1 : sig
 
         val fill : 'a t -> 'a -> unit fiber
       end
-      with type 'a fiber := 'a t
     end) (Chan : sig
       type t
 

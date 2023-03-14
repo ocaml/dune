@@ -20,7 +20,9 @@ let init ?(file = File.Default) () =
     match file with
     | No_log_file -> None
     | Out_channel s -> Some s
-    | This path -> Some (Io.open_out path)
+    | This path ->
+      Path.mkdir_p (Path.parent_exn path);
+      Some (Io.open_out path)
     | Default ->
       Path.ensure_build_dir_exists ();
       Some (Io.open_out (Path.relative Path.build_dir "log"))
@@ -65,6 +67,8 @@ let command ~command_line ~output ~exit_status =
     (match (exit_status : Unix.process_status) with
     | WEXITED 0 -> ()
     | WEXITED n -> Printf.fprintf oc "[%d]\n" n
-    | WSIGNALED n -> Printf.fprintf oc "[got signal %s]\n" (Signal.name n)
+    | WSIGNALED n ->
+      let name = Signal.of_int n |> Signal.name in
+      Printf.fprintf oc "[got signal %s]\n" name
     | WSTOPPED _ -> assert false);
     flush oc

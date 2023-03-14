@@ -1,5 +1,5 @@
   $ dune build @install
-  $ dune install --prefix _install
+  $ dune install --prefix _install --display short
   Installing _install/lib/github4389/META
   Installing _install/lib/github4389/dune-package
   Installing _install/bin/main

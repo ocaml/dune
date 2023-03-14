@@ -63,7 +63,8 @@ module Run = struct
     in
     let with_print_errors f () =
       Fiber.with_error_handler f ~on_error:(fun exn ->
-          Format.eprintf "%a@." Exn_with_backtrace.pp_uncaught exn;
+          Dune_console.print
+            [ Pp.text "Uncaught RPC Error"; Exn_with_backtrace.pp exn ];
           Exn_with_backtrace.reraise exn)
     in
     let run () =
@@ -131,10 +132,7 @@ end)
 module Session_set = Session_comparable.Set
 
 module Clients = struct
-  type entry =
-    { session : Client.t Session.Stage1.t
-    ; mutable menu : Dune_rpc.Menu.t option
-    }
+  type entry = { session : Client.t Session.Stage1.t }
 
   type t = entry Session.Id.Map.t
 
@@ -142,9 +140,7 @@ module Clients = struct
 
   let add_session t (session : _ Session.Stage1.t) =
     let id = Session.Stage1.id session in
-    let result = { menu = None; session } in
-    Session.Stage1.register_upgrade_callback session (fun menu ->
-        result.menu <- Some menu);
+    let result = { session } in
     Session.Id.Map.add_exn t id result
 
   let remove_session t (session : _ Session.t) =
@@ -340,7 +336,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       let clients =
         Clients.to_list_map t.clients ~f:(fun _id (entry : Clients.entry) ->
             ( Initialize.Request.id (Session.Stage1.initialize entry.session)
-            , match entry.menu with
+            , match Session.Stage1.menu entry.session with
               | None -> Status.Menu.Uninitialized
               | Some menu -> Menu (Dune_rpc.Menu.to_list menu) ))
       in

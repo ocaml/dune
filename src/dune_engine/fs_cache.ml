@@ -82,28 +82,28 @@ end
 module Dir_contents : sig
   type t
 
-  val of_list : (string * File_kind.t) list -> t
+  val of_list : (Filename.t * File_kind.t) list -> t
 
-  val to_list : t -> (string * File_kind.t) list
+  val to_list : t -> (Filename.t * File_kind.t) list
 
-  val iter : t -> f:(string * File_kind.t -> unit) -> unit
+  val iter : t -> f:(Filename.t * File_kind.t -> unit) -> unit
 
   val equal : t -> t -> bool
 end = struct
-  (* CR-someday amokhov: Using a [String.Map] instead of a list would be better
+  (* CR-someday amokhov: Using a [Filename.Map] instead of a list would be better
      since we'll not need to worry about the invariant that the list is sorted
      and doesn't contain any duplicate file names. Using maps will likely be
      more costly, so we need to do some benchmarking before switching. *)
-  type t = (string * File_kind.t) list
+  type t = (Filename.t * File_kind.t) list
 
   let to_list t = t
 
   let iter t = List.iter t
 
   (* The names must be unique, so we don't care about comparing file kinds. *)
-  let of_list = List.sort ~compare:(fun (x, _) (y, _) -> String.compare x y)
+  let of_list = List.sort ~compare:(fun (x, _) (y, _) -> Filename.compare x y)
 
-  let equal = List.equal (Tuple.T2.equal String.equal File_kind.equal)
+  let equal = List.equal (Tuple.T2.equal Filename.equal File_kind.equal)
 end
 
 module Untracked = struct

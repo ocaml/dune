@@ -70,7 +70,7 @@ val debug_backtraces : bool Cmdliner.Term.t
 
 val config_from_config_file : Dune_config.Partial.t Cmdliner.Term.t
 
-val display_term : Dune_engine.Scheduler.Config.Display.t option Cmdliner.Term.t
+val display_term : Dune_config.Display.t option Cmdliner.Term.t
 
 val context_arg : doc:string -> Dune_engine.Context_name.t Cmdliner.Term.t
 
@@ -86,3 +86,13 @@ module Let_syntax : sig
   val ( and+ ) :
     'a Cmdliner.Term.t -> 'b Cmdliner.Term.t -> ('a * 'b) Cmdliner.Term.t
 end
+
+module Builder : sig
+  type t
+
+  val set_root : t -> string -> t
+
+  val term : t Cmdliner.Term.t
+end
+
+val build : Builder.t -> t

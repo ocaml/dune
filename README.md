@@ -25,6 +25,7 @@ The [example][example] directory contains examples of projects using Dune.
 [merlin]:         https://github.com/ocaml/merlin
 [opam]:           https://opam.ocaml.org
 [issues]:         https://github.com/ocaml/dune/issues
+[discussions]:    https://github.com/ocaml/dune/discussions
 [dune-release]:   https://github.com/ocamllabs/dune-release
 [video]:          https://youtu.be/BNZhmMAJarw
 
@@ -123,21 +124,8 @@ at compilation time.
 Support
 -------
 
-If you have questions about Dune, you can send an email to
-ocaml-core@googlegroups.com or [open a ticket on GitHub][issues].
-
-Migration from Jbuilder
------------------------
-
-Dune was formerly known as Jbuilder. Migration from Jbuilder to Dune is
-described in the [manual](http://dune.readthedocs.io/en/latest/migration.html).
-
-Status
-------
-
-Dune is fairly stable and used by the majority of packages on opam. Note that
-Dune retains backward compatibility with Jbuilder, and in particular, existing
-Jbuilder projects will continue to be buildable with Dune.
+If you have questions or issues about Dune, you can ask in [our GitHub
+discussions page][discussions] or [open a ticket on GitHub][issues].
 
 [workflow-badge]: https://github.com/ocaml/dune/actions/workflows/workflow.yml/badge.svg
 [workflow]:       https://github.com/ocaml/dune/actions/workflows/workflow.yml

@@ -23,7 +23,7 @@ val find : 'a t -> key -> 'a option
 
 val set : 'a t -> key -> 'a -> 'a t
 
-val set_map : 'a t -> key -> 'a Module_name.Map.t -> 'a t
+val set_map : 'a t -> key -> 'a Module_name.Map.t -> ('a t, 'a node) result
 
 val remove : 'a t -> key -> 'a t
 

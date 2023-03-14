@@ -235,10 +235,10 @@ Dune introduced them.
 
 Such languages must be enabled in the ``dune`` project file separately:
 
-.. code:: scheme
+.. code:: dune
 
-   (lang dune 3.7)
-   (using coq 0.2)
+   (lang dune 3.8)
+   (using coq 0.7)
 
 If such extensions are experimental, it's recommended that they pass
 ``~experimental:true``, and that their versions are below 1.0.
@@ -527,3 +527,36 @@ Good:
 .. code:: ocaml
 
    let (foo : _ Command.Args.t) = S []
+
+Benchmarking
+============
+
+Dune Bench
+----------
+
+You can benchmark Dune's performance by running `make bench`. This will run a
+subset of the Duniverse.
+
+Inline Benchmarks
+-----------------
+
+Certain performance-critical parts of Dune are benchmarked using the
+``inline_benchmarks`` library. These benchmarks are run when running the tests.
+Their outputs are currently not recorded and are only used to detect performance
+regressions.
+
+
+Build-Time Benchmarks
+---------------------
+
+We benchmark the build time of Dune in every PR. The times can be found here:
+
+https://autumn.ocamllabs.io/ocaml/dune?worker=autumn&image=bench.Dockerfile
+
+
+Melange Bench
+-------------
+
+We also benchmark a demo Melange project's build time:
+
+https://ocaml.github.io/dune/dev/bench/

@@ -61,8 +61,10 @@ module Socket = struct
     let bind fd sock = Unix.bind fd sock
   end
 
-  module Mac : Unix_socket = struct
+  module Mac = struct
     external pthread_chdir : string -> unit = "dune_pthread_chdir" [@@noalloc]
+
+    external set_nosigpipe : Unix.file_descr -> unit = "dune_set_nosigpipe"
 
     let with_chdir fd ~socket ~f =
       let old = Sys.getcwd () in
@@ -114,6 +116,8 @@ module Socket = struct
   let bind = make ~original:U.bind ~backup:Sel.bind
 
   let connect = make ~original:U.connect ~backup:Sel.connect
+
+  let maybe_set_nosigpipe fd = if is_osx () then Mac.set_nosigpipe fd
 end
 
 let debug = Option.is_some (Env.get Env.initial "DUNE_RPC_DEBUG")
@@ -260,11 +264,10 @@ module Server = struct
     let create fd sockaddr ~backlog =
       Unix.listen fd backlog;
       let r_interrupt_accept, w_interrupt_accept = Unix.pipe ~cloexec:true () in
-      Unix.set_nonblock r_interrupt_accept;
       let buf = Bytes.make 1 '0' in
       { fd; sockaddr; r_interrupt_accept; w_interrupt_accept; buf }
 
-    let rec accept t =
+    let accept t =
       match Unix.select [ t.r_interrupt_accept; t.fd ] [] [] (-1.0) with
       | r, [], [] ->
         let inter, accept =
@@ -276,11 +279,11 @@ module Server = struct
         if inter then None
         else if accept then (
           let fd, _ = Unix.accept ~cloexec:true t.fd in
+          Socket.maybe_set_nosigpipe fd;
           Unix.clear_nonblock fd;
           Some fd)
         else assert false
       | _, _, _ -> assert false
-      | exception Unix.Unix_error (Unix.EAGAIN, _, _) -> accept t
       | exception Unix.Unix_error (Unix.EBADF, _, _) -> None
 
     let stop t =

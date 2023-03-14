@@ -256,7 +256,7 @@ let load_gen ~load_requires dirs name =
     List.iter
       (fun p ->
         let file = Filename.concat directory p in
-        Dynlink.loadfile file)
+        Dune_site_backend.Linker.load file)
       plugins)
 
 let rec load_requires name =

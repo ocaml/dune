@@ -30,11 +30,21 @@ module Session : sig
   (** [get session a] sets the current state to [a].*)
   val set : 'a t -> 'a -> unit
 
-  val active : _ t -> bool
-
   (** [notification session n a] Send notification [a] defined by [n] to
       [session] *)
   val notification : _ t -> 'a Decl.Notification.witness -> 'a -> unit Fiber.t
+
+  (** [request t r id payload] sends a request [r] to [t] with [id] and
+      [payload].
+
+      Note that any request must be declared with [declare_request] before
+      sending it *)
+  val request :
+       _ t
+    -> ('a, 'b) Decl.Request.witness
+    -> Dune_rpc_private.Id.t
+    -> 'a
+    -> 'b Fiber.t
 
   val compare : 'a t -> 'a t -> Ordering.t
 
@@ -44,6 +54,8 @@ module Session : sig
 
   val has_poller : _ t -> Poller.t -> bool
 
+  val closed : _ t -> unit Fiber.t
+
   (** A ['a Session.Stage1.t] represents a session prior to version negotiation.
 
       Used during initialization. *)
@@ -52,26 +64,15 @@ module Session : sig
 
     val id : _ t -> Id.t
 
+    val menu : _ t -> Menu.t option
+
     val initialize : _ t -> Initialize.Request.t
-
-    val get : 'a t -> 'a
-
-    val set : 'a t -> 'a -> unit
-
-    val active : _ t -> bool
 
     val compare : 'a t -> 'a t -> Ordering.t
 
     val request_close : 'a t -> unit Fiber.t
 
     val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
-
-    (** Register a callback to be called once version negotiation has concluded.
-        At most one callback can be set at once; calling this function multiple
-        times for the same session will override previous invocations.
-
-        The registered callback is guaranteed to be called at most once. *)
-    val register_upgrade_callback : _ t -> (Menu.t -> unit) -> unit
   end
 end
 
@@ -91,6 +92,8 @@ module Handler : sig
          (** Initiation hook. It's guaranteed to be called before any
              requests/notifications. It's job is to initialize the session
              state. *)
+    -> ?on_upgrade:('a Session.t -> Menu.t -> unit Fiber.t)
+         (** called immediately after the client has finished negotitation *)
     -> version:int * int
          (** version of the rpc. it's expected to support all earlier versions *)
     -> unit
@@ -110,6 +113,10 @@ module Handler : sig
   (** [declare_notification handler decl] Declares that this server may send
       notifications according to metadata [decl]. *)
   val declare_notification : 's t -> 'a Decl.notification -> unit
+
+  (** [declare_request handle decl] declares that this server may send requests
+      according to the metadata [decl]. *)
+  val declare_request : 's t -> ('a, 'b) Decl.request -> unit
 
   val implement_long_poll :
        _ t

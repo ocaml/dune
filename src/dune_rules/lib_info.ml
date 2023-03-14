@@ -281,6 +281,30 @@ let dyn_of_native_archives path =
   | Needs_module_info f -> variant "Needs_module_info" [ path f ]
   | Files files -> variant "Files" [ (list path) files ]
 
+module Runtime_deps = struct
+  type 'a t =
+    | Local of Loc.t * Dep_conf.t list
+    | External of 'a list
+
+  let equal f x y =
+    match (x, y) with
+    | Local _, Local _ -> true
+    | External x, External y -> List.equal f x y
+    | _, _ -> false
+
+  let map t ~f =
+    match t with
+    | Local (loc, x) -> Local (loc, x)
+    | External xs -> External (List.map ~f xs)
+
+  let to_dyn f x =
+    let open Dyn in
+    match x with
+    | Local (_loc, depconf) ->
+      variant "Local" (List.map ~f:Dep_conf.to_dyn depconf)
+    | External x -> variant "External" (List.map ~f x)
+end
+
 (** {1 Lib_info_invariants}
 
     Many of the fields here are optional and are "entangled" in the sense that
@@ -305,7 +329,6 @@ type 'path t =
   ; native_archives : 'path native_archives
   ; foreign_dll_files : 'path list
   ; jsoo_runtime : 'path list
-  ; jsoo_archive : 'path option
   ; requires : Lib_dep.t list
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
   ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
@@ -325,6 +348,7 @@ type 'path t =
   ; exit_module : Module_name.t option
   ; instrumentation_backend : (Loc.t * Lib_name.t) option
   ; path_kind : 'path path
+  ; melange_runtime_deps : 'path Runtime_deps.t
   }
 
 let equal (type a) (t : a t)
@@ -344,7 +368,6 @@ let equal (type a) (t : a t)
     ; native_archives
     ; foreign_dll_files
     ; jsoo_runtime
-    ; jsoo_archive
     ; requires
     ; ppx_runtime_deps
     ; preprocess
@@ -364,6 +387,7 @@ let equal (type a) (t : a t)
     ; exit_module
     ; instrumentation_backend
     ; path_kind
+    ; melange_runtime_deps
     } =
   let path_equal : a -> a -> bool =
     match (path_kind : a path) with
@@ -385,7 +409,6 @@ let equal (type a) (t : a t)
   && equal_native_archives path_equal native_archives t.native_archives
   && List.equal path_equal foreign_dll_files t.foreign_dll_files
   && List.equal path_equal jsoo_runtime t.jsoo_runtime
-  && Option.equal path_equal jsoo_archive t.jsoo_archive
   && List.equal Lib_dep.equal requires t.requires
   && List.equal
        (Tuple.T2.equal Loc.equal Lib_name.equal)
@@ -419,6 +442,7 @@ let equal (type a) (t : a t)
   && Option.equal
        (Tuple.T2.equal Loc.equal Lib_name.equal)
        instrumentation_backend t.instrumentation_backend
+  && Runtime_deps.equal path_equal melange_runtime_deps t.melange_runtime_deps
   && Poly.equal path_kind t.path_kind
 
 let name t = t.name
@@ -455,6 +479,8 @@ let exit_module t = t.exit_module
 
 let instrumentation_backend t = t.instrumentation_backend
 
+let melange_runtime_deps t = t.melange_runtime_deps
+
 let plugins t = t.plugins
 
 let src_dir t = t.src_dir
@@ -481,8 +507,6 @@ let special_builtin_support t = t.special_builtin_support
 
 let jsoo_runtime t = t.jsoo_runtime
 
-let jsoo_archive t = t.jsoo_archive
-
 let main_module_name t = t.main_module_name
 
 let orig_src_dir t = t.orig_src_dir
@@ -500,7 +524,8 @@ let eval_native_archives_exn (type path) (t : path t) ~modules =
     if Modules.has_impl modules then [ f ] else []
 
 let for_dune_package t ~name ~ppx_runtime_deps ~requires ~foreign_objects
-    ~obj_dir ~implements ~default_implementation ~sub_systems ~modules =
+    ~obj_dir ~implements ~default_implementation ~sub_systems
+    ~melange_runtime_deps ~modules =
   let foreign_objects = Source.External foreign_objects in
   let orig_src_dir =
     match !Clflags.store_orig_src_dir with
@@ -519,6 +544,7 @@ let for_dune_package t ~name ~ppx_runtime_deps ~requires ~foreign_objects
     Files (eval_native_archives_exn t ~modules:(Some modules))
   in
   let modules = Source.External (Some modules) in
+  let melange_runtime_deps = Runtime_deps.External melange_runtime_deps in
   { t with
     ppx_runtime_deps
   ; name
@@ -531,6 +557,7 @@ let for_dune_package t ~name ~ppx_runtime_deps ~requires ~foreign_objects
   ; orig_src_dir
   ; native_archives
   ; modules
+  ; melange_runtime_deps
   }
 
 let user_written_deps t =
@@ -540,10 +567,10 @@ let user_written_deps t =
 let create ~loc ~path_kind ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
     ~version ~synopsis ~main_module_name ~sub_systems ~requires ~foreign_objects
     ~plugins ~archives ~ppx_runtime_deps ~foreign_archives ~native_archives
-    ~foreign_dll_files ~jsoo_runtime ~jsoo_archive ~preprocess ~enabled
-    ~virtual_deps ~dune_version ~virtual_ ~entry_modules ~implements
-    ~default_implementation ~modes ~modules ~wrapped ~special_builtin_support
-    ~exit_module ~instrumentation_backend =
+    ~foreign_dll_files ~jsoo_runtime ~preprocess ~enabled ~virtual_deps
+    ~dune_version ~virtual_ ~entry_modules ~implements ~default_implementation
+    ~modes ~modules ~wrapped ~special_builtin_support ~exit_module
+    ~instrumentation_backend ~melange_runtime_deps =
   { loc
   ; name
   ; kind
@@ -563,7 +590,6 @@ let create ~loc ~path_kind ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
   ; native_archives
   ; foreign_dll_files
   ; jsoo_runtime
-  ; jsoo_archive
   ; preprocess
   ; enabled
   ; virtual_deps
@@ -580,13 +606,14 @@ let create ~loc ~path_kind ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
   ; exit_module
   ; instrumentation_backend
   ; path_kind
+  ; melange_runtime_deps
   }
 
 type external_ = Path.t t
 
 type local = Path.Build.t t
 
-let map t ~path_kind ~f_path ~f_obj_dir =
+let map t ~path_kind ~f_path ~f_obj_dir ~f_melange_deps =
   let f = f_path in
   let list = List.map ~f in
   let mode_list = Mode.Dict.map ~f:list in
@@ -606,18 +633,21 @@ let map t ~path_kind ~f_path ~f_obj_dir =
   ; foreign_dll_files = List.map ~f t.foreign_dll_files
   ; native_archives
   ; jsoo_runtime = List.map ~f t.jsoo_runtime
-  ; jsoo_archive = Option.map ~f t.jsoo_archive
+  ; melange_runtime_deps =
+      Runtime_deps.map ~f:f_melange_deps t.melange_runtime_deps
   ; path_kind
   }
 
-let map_path t ~f = map t ~path_kind:External ~f_path:f ~f_obj_dir:Fun.id
+let map_path t ~f =
+  map t ~path_kind:External ~f_path:f ~f_obj_dir:Fun.id ~f_melange_deps:Fun.id
 
 let of_local =
   map ~path_kind:External ~f_path:Path.build ~f_obj_dir:Obj_dir.of_local
+    ~f_melange_deps:Path.build
 
 let as_local_exn =
   map ~path_kind:Local ~f_path:Path.as_in_build_dir_exn
-    ~f_obj_dir:Obj_dir.as_local_exn
+    ~f_obj_dir:Obj_dir.as_local_exn ~f_melange_deps:Path.as_in_build_dir_exn
 
 let to_dyn path
     { loc
@@ -640,7 +670,6 @@ let to_dyn path
     ; native_archives
     ; foreign_dll_files
     ; jsoo_runtime
-    ; jsoo_archive
     ; preprocess = _
     ; enabled
     ; virtual_deps
@@ -655,6 +684,7 @@ let to_dyn path
     ; special_builtin_support
     ; exit_module
     ; instrumentation_backend
+    ; melange_runtime_deps
     ; entry_modules
     } =
   let open Dyn in
@@ -676,7 +706,6 @@ let to_dyn path
     ; ("native_archives", dyn_of_native_archives path native_archives)
     ; ("foreign_dll_files", list path foreign_dll_files)
     ; ("jsoo_runtime", list path jsoo_runtime)
-    ; ("jsoo_archive", option path jsoo_archive)
     ; ("requires", list Lib_dep.to_dyn requires)
     ; ("ppx_runtime_deps", list (snd Lib_name.to_dyn) ppx_runtime_deps)
     ; ("enabled", Enabled_status.to_dyn enabled)
@@ -698,6 +727,7 @@ let to_dyn path
     ; ("exit_module", option Module_name.to_dyn exit_module)
     ; ( "instrumentation_backend"
       , option (snd Lib_name.to_dyn) instrumentation_backend )
+    ; ("melange_runtime_deps", Runtime_deps.to_dyn path melange_runtime_deps)
     ]
 
 let package t =

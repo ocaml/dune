@@ -1,5 +1,8 @@
 open Import
 module Action = Dune_lang.Action
+module Ml_kind = Ocaml.Ml_kind
+module Cm_kind = Ocaml.Cm_kind
+module Mode = Ocaml.Mode
 
 module File_kind = struct
   type t =
@@ -266,4 +269,6 @@ module DB = struct
   let to_dyn { by_name; _ } = String.Map.to_dyn to_dyn by_name
 
   let builtin = of_list [ ocaml; reason ]
+
+  let is_default t = t == builtin
 end

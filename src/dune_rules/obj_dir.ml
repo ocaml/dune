@@ -8,6 +8,8 @@ module Paths = struct
 
   let library_byte_dir ~obj_dir = Path.Build.relative obj_dir "byte"
 
+  let library_jsoo_dir ~obj_dir = Path.Build.relative obj_dir "jsoo"
+
   let library_melange_dir ~obj_dir = Path.Build.relative obj_dir "melange"
 
   let library_public_cmi_ocaml_dir ~obj_dir =
@@ -31,6 +33,7 @@ module External = struct
     ; private_dir : Path.t option
     ; public_cmi_ocaml_dir : Path.t option
     ; public_cmi_melange_dir : Path.t option
+    ; melange_dir : Path.t
     }
 
   let equal : t -> t -> bool = Poly.equal
@@ -42,30 +45,37 @@ module External = struct
     let public_cmi_ocaml_dir =
       if private_lib then Some (Path.relative dir ".public_cmi") else None
     in
+    let melange_dir = Path.relative dir Melange.Install.dir in
     let public_cmi_melange_dir =
-      if private_lib then Some (Path.relative dir ".public_cmi_melange")
+      if private_lib then Some (Path.relative melange_dir ".public_cmi_melange")
       else None
     in
     { public_dir = dir
     ; private_dir
     ; public_cmi_ocaml_dir
     ; public_cmi_melange_dir
+    ; melange_dir
     }
 
   let public_cmi_ocaml_dir t =
     Option.value ~default:t.public_dir t.public_cmi_ocaml_dir
 
   let public_cmi_melange_dir t =
-    Option.value ~default:t.public_dir t.public_cmi_melange_dir
+    Option.value ~default:t.melange_dir t.public_cmi_melange_dir
 
   let to_dyn
-      { public_dir; private_dir; public_cmi_ocaml_dir; public_cmi_melange_dir }
-      =
+      { public_dir
+      ; private_dir
+      ; public_cmi_ocaml_dir
+      ; melange_dir
+      ; public_cmi_melange_dir
+      } =
     let open Dyn in
     record
       [ ("public_dir", Path.to_dyn public_dir)
       ; ("private_dir", option Path.to_dyn private_dir)
       ; ("public_cmi_ocaml_dir", option Path.to_dyn public_cmi_ocaml_dir)
+      ; ("melange_dir", Path.to_dyn melange_dir)
       ; ("public_cmi_melange_dir", option Path.to_dyn public_cmi_melange_dir)
       ]
 
@@ -76,13 +86,15 @@ module External = struct
       Code_error.raise "External.cm_dir" [ ("t", to_dyn t) ]
     | Ocaml Cmi, Public, _ -> public_cmi_ocaml_dir t
     | Melange Cmi, Public, _ -> public_cmi_melange_dir t
-    | (Ocaml (Cmo | Cmx) | Melange Cmj), _, _ -> t.public_dir
+    | Melange Cmj, _, _ -> t.melange_dir
+    | Ocaml (Cmo | Cmx), _, _ -> t.public_dir
 
   let encode
       { public_dir
       ; private_dir
       ; public_cmi_ocaml_dir
-      ; public_cmi_melange_dir = _
+      ; public_cmi_melange_dir
+      ; melange_dir = _
       } =
     let open Dune_lang.Encoder in
     let extract d =
@@ -90,9 +102,11 @@ module External = struct
     in
     let private_dir = Option.map ~f:extract private_dir in
     let public_cmi_ocaml_dir = Option.map ~f:extract public_cmi_ocaml_dir in
+    let public_cmi_melange_dir = Option.map ~f:extract public_cmi_melange_dir in
     record_fields
       [ field_o "private_dir" string private_dir
-      ; field_o "public_cmi_dir" string public_cmi_ocaml_dir
+      ; field_o "public_cmi_ocaml_dir" string public_cmi_ocaml_dir
+      ; field_o "public_cmi_melange_dir" string public_cmi_melange_dir
       ]
 
   let decode ~dir =
@@ -100,22 +114,29 @@ module External = struct
     let open Dune_lang.Decoder in
     fields
       (let+ private_dir = field_o "private_dir" string
-       and+ public_cmi_ocaml_dir = field_o "public_cmi_dir" string in
+       and+ public_cmi_ocaml_dir = field_o "public_cmi_ocaml_dir" string
+       and+ public_cmi_melange_dir = field_o "public_cmi_melange_dir" string in
        let private_dir = Option.map ~f:(Path.relative dir) private_dir in
        let public_cmi_ocaml_dir =
          Option.map ~f:(Path.relative dir) public_cmi_ocaml_dir
        in
+       let public_cmi_melange_dir =
+         Option.map ~f:(Path.relative dir) public_cmi_melange_dir
+       in
        { public_dir
        ; private_dir
+       ; melange_dir = Path.relative dir Melange.Install.dir
        ; public_cmi_ocaml_dir
-       ; public_cmi_melange_dir = None
+       ; public_cmi_melange_dir
        })
 
   let byte_dir t = t.public_dir
 
+  let jsoo_dir t = t.public_dir
+
   let native_dir t = t.public_dir
 
-  let melange_dir t = t.public_dir
+  let melange_dir t = t.melange_dir
 
   let dir t = t.public_dir
 
@@ -127,6 +148,7 @@ module External = struct
 
   let all_cmis
       { public_dir
+      ; melange_dir = _
       ; private_dir
       ; public_cmi_ocaml_dir
       ; public_cmi_melange_dir = _
@@ -153,6 +175,7 @@ module Local = struct
     ; obj_dir : Path.Build.t
     ; native_dir : Path.Build.t
     ; byte_dir : Path.Build.t
+    ; jsoo_dir : Path.Build.t
     ; melange_dir : Path.Build.t
     ; public_cmi_ocaml_dir : Path.Build.t option
     ; public_cmi_melange_dir : Path.Build.t option
@@ -166,6 +189,7 @@ module Local = struct
       ; obj_dir
       ; native_dir
       ; byte_dir
+      ; jsoo_dir
       ; melange_dir
       ; public_cmi_ocaml_dir
       ; public_cmi_melange_dir
@@ -177,6 +201,7 @@ module Local = struct
       ; ("obj_dir", Path.Build.to_dyn obj_dir)
       ; ("native_dir", Path.Build.to_dyn native_dir)
       ; ("byte_dir", Path.Build.to_dyn byte_dir)
+      ; ("jsoo_dir", Path.Build.to_dyn jsoo_dir)
       ; ("melange_dir", Path.Build.to_dyn melange_dir)
       ; ("public_cmi_ocaml_dir", option Path.Build.to_dyn public_cmi_ocaml_dir)
       ; ( "public_cmi_melange_dir"
@@ -184,12 +209,13 @@ module Local = struct
       ; ("private_lib", bool private_lib)
       ]
 
-  let make ~dir ~obj_dir ~native_dir ~byte_dir ~melange_dir
+  let make ~dir ~obj_dir ~native_dir ~byte_dir ~jsoo_dir ~melange_dir
       ~public_cmi_ocaml_dir ~public_cmi_melange_dir ~private_lib =
     { dir
     ; obj_dir
     ; native_dir
     ; byte_dir
+    ; jsoo_dir
     ; melange_dir
     ; public_cmi_ocaml_dir
     ; public_cmi_melange_dir
@@ -211,6 +237,8 @@ module Local = struct
   let obj_dir t = t.obj_dir
 
   let byte_dir t = t.byte_dir
+
+  let jsoo_dir t = t.jsoo_dir
 
   let native_dir t = t.native_dir
 
@@ -245,6 +273,7 @@ module Local = struct
     make ~dir ~obj_dir
       ~native_dir:(Paths.library_native_dir ~obj_dir)
       ~byte_dir:(Paths.library_byte_dir ~obj_dir)
+      ~jsoo_dir:(Paths.library_jsoo_dir ~obj_dir)
       ~melange_dir:(Paths.library_melange_dir ~obj_dir)
       ~public_cmi_ocaml_dir ~public_cmi_melange_dir ~private_lib
 
@@ -253,6 +282,7 @@ module Local = struct
     make ~dir ~obj_dir
       ~native_dir:(Paths.library_native_dir ~obj_dir)
       ~byte_dir:(Paths.library_byte_dir ~obj_dir)
+      ~jsoo_dir:(Paths.library_jsoo_dir ~obj_dir)
       ~melange_dir:(Paths.library_melange_dir ~obj_dir)
       ~public_cmi_ocaml_dir:None ~public_cmi_melange_dir:None ~private_lib:false
 
@@ -261,6 +291,7 @@ module Local = struct
     make ~dir ~obj_dir
       ~native_dir:(Paths.library_native_dir ~obj_dir)
       ~byte_dir:(Paths.library_byte_dir ~obj_dir)
+      ~jsoo_dir:(Paths.library_jsoo_dir ~obj_dir)
       ~melange_dir:(Paths.library_melange_dir ~obj_dir)
       ~public_cmi_ocaml_dir:None ~public_cmi_melange_dir:None ~private_lib:false
 
@@ -334,6 +365,8 @@ let public_cmi_melange_dir =
 
 let byte_dir = get_path ~l:Local.byte_dir ~e:External.byte_dir
 
+let jsoo_dir = get_path ~l:Local.jsoo_dir ~e:External.jsoo_dir
+
 let native_dir = get_path ~l:Local.native_dir ~e:External.native_dir
 
 let melange_dir = get_path ~l:Local.melange_dir ~e:External.melange_dir
@@ -398,8 +431,8 @@ let make_melange_emit ~dir ~name = Local (Local.make_melange_emit ~dir ~name)
 
 let for_pp ~dir =
   Local
-    (Local.make ~dir ~obj_dir:dir ~native_dir:dir ~byte_dir:dir ~melange_dir:dir
-       ~public_cmi_ocaml_dir:None ~public_cmi_melange_dir:None
+    (Local.make ~dir ~obj_dir:dir ~native_dir:dir ~byte_dir:dir ~jsoo_dir:dir
+       ~melange_dir:dir ~public_cmi_ocaml_dir:None ~public_cmi_melange_dir:None
        ~private_lib:false)
 
 let to_local (t : Path.t t) =
@@ -505,15 +538,17 @@ module Module = struct
 
   module Dep = struct
     type t =
-      | Immediate of Module.File.t
+      | Immediate of Module.t * Ml_kind.t
       | Transitive of Module.t * Ml_kind.t
 
+    let make_name m kind ext =
+      let ext = sprintf ".%s.%s" (Ml_kind.to_string kind) ext in
+      let obj = Module.obj_name m in
+      Module_name.Unique.artifact_filename obj ~ext
+
     let basename = function
-      | Immediate f -> Path.basename (Module.File.path f) ^ ".d"
-      | Transitive (m, ml_kind) ->
-        let ext = sprintf ".%s.all-deps" (Ml_kind.to_string ml_kind) in
-        let obj = Module.obj_name m in
-        Module_name.Unique.artifact_filename obj ~ext
+      | Immediate (m, kind) -> make_name m kind "d"
+      | Transitive (m, kind) -> make_name m kind "all-deps"
   end
 
   let dep t dep =

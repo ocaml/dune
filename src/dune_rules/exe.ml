@@ -21,14 +21,14 @@ module Linkage = struct
   let byte_for_jsoo =
     { mode = Byte_for_jsoo
     ; ext = ".bc-for-jsoo"
-    ; flags = [ "-no-check-prims" ]
+    ; flags = [ "-no-check-prims"; "-noautolink" ]
     }
 
   let native = { mode = Native; ext = ".exe"; flags = [] }
 
   let is_native x = x.mode = Native
 
-  let is_js x = x.mode = Byte && x.ext = ".bc.js"
+  let is_js x = x.mode = Byte && x.ext = Js_of_ocaml.Ext.exe
 
   let is_byte x = x.mode = Byte && not (is_js x)
 
@@ -46,7 +46,7 @@ module Linkage = struct
     | Error _ -> custom context
     | Ok _ -> native
 
-  let js = { mode = Byte; ext = ".bc.js"; flags = [] }
+  let js = { mode = Byte; ext = Js_of_ocaml.Ext.exe; flags = [] }
 
   let is_plugin t =
     List.mem (List.map ~f:Mode.plugin_ext Mode.all) t.ext ~equal:String.equal
@@ -202,27 +202,22 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
       | Some p -> Promote p)
     action_with_targets
 
-let link_js ~name ~loc ~cm_files ~promote ~link_time_code_gen cctx =
+let link_js ~name ~loc ~obj_dir ~top_sorted_modules ~link_args ~promote
+    ~link_time_code_gen cctx =
   let in_context =
     CC.js_of_ocaml cctx |> Option.value ~default:Js_of_ocaml.In_context.default
   in
-  let other_cm =
-    let open Memo.O in
-    let+ { Link_time_code_gen.to_link; force_linkall = _ } =
-      Resolve.read_memo link_time_code_gen
-    in
-    List.map to_link ~f:(function
-      | Lib_flags.Lib_and_module.Lib lib -> `Lib lib
-      | Module (obj_dir, m) ->
-        let path =
-          Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml (Mode.cm_kind Byte))
-        in
-        `Mod path)
-  in
   let src = exe_path_from_name cctx ~name ~linkage:Linkage.byte_for_jsoo in
-  let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode:Mode.Byte in
-  Jsoo_rules.build_exe cctx ~loc ~in_context ~src ~cm:top_sorted_cms ~promote
-    ~link_time_code_gen:other_cm
+  let linkall =
+    Action_builder.bind link_args ~f:(fun cmd ->
+        let open Action_builder.O in
+        let+ l =
+          Command.expand_no_targets ~dir:(Path.build (CC.dir cctx)) cmd
+        in
+        List.exists l ~f:(String.equal "-linkall"))
+  in
+  Jsoo_rules.build_exe cctx ~loc ~obj_dir ~in_context ~src ~top_sorted_modules
+    ~promote ~link_time_code_gen ~linkall
 
 type dep_graphs = { for_exes : Module.t list Action_builder.t list }
 
@@ -263,7 +258,9 @@ let link_many ?(link_args = Action_builder.return Command.Args.empty) ?o_files
         let+ () =
           Memo.parallel_iter linkages ~f:(fun linkage ->
               if Linkage.is_js linkage then
-                link_js ~loc ~name ~cm_files ~promote cctx ~link_time_code_gen
+                let obj_dir = CC.obj_dir cctx in
+                link_js ~loc ~name ~obj_dir ~top_sorted_modules ~promote
+                  ~link_args cctx ~link_time_code_gen
               else
                 let* link_time_code_gen =
                   match Linkage.is_plugin linkage with

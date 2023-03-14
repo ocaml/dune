@@ -50,4 +50,7 @@ However if this boot library is public Dune will complain
   Error: Cannot have more than one boot theory in scope:
   - Coq at Coq/dune:1
   - Coq at B/Coq/dune:2
+  -> required by _build/default/B/Foo.dune-package
+  -> required by alias B/all
+  -> required by alias B/default
   [1]

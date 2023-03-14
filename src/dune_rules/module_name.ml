@@ -117,6 +117,7 @@ module Unique = struct
 
   module Map = Map
   module Set = Set
+  module Map_traversals = Map_traversals
 end
 
 module Path = struct
@@ -131,6 +132,8 @@ module Path = struct
   end
 
   include T
+
+  let equal x y = compare x y |> Ordering.is_eq
 
   let uncapitalize s = to_string s |> String.uncapitalize
 

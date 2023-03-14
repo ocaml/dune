@@ -29,7 +29,7 @@ module Lib = struct
     let _, components = Lib_name.split name in
     Path.Local.L.relative Path.Local.root components
 
-  let encode ~package_root { info; main_module_name } =
+  let encode ~package_root ~stublibs { info; main_module_name } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
     let path = Dpath.Local.encode ~dir:package_root in
@@ -62,6 +62,15 @@ module Lib = struct
       | External ms -> ms
       | Local -> None
     in
+    let melange_runtime_deps =
+      match Lib_info.melange_runtime_deps info with
+      | Local _ -> assert false
+      | External paths ->
+        let lib_dir = Obj_dir.dir obj_dir in
+        List.map paths ~f:(fun p ->
+            Path.as_in_build_dir_exn p |> Path.Build.drop_build_context_exn
+            |> Path.append_source lib_dir)
+    in
     let jsoo_runtime = Lib_info.jsoo_runtime info in
     let virtual_ = Option.is_some (Lib_info.virtual_ info) in
     let instrumentation_backend = Lib_info.instrumentation_backend info in
@@ -70,6 +79,14 @@ module Lib = struct
       | Lib_info.Files f -> f
       | Needs_module_info _ ->
         Code_error.raise "caller must set native archives to known value" []
+    in
+    let foreign_dll_files =
+      match stublibs with
+      | None -> []
+      | Some stublibs ->
+        List.map
+          ~f:(fun file -> Path.relative stublibs (Path.basename file))
+          (Lib_info.foreign_dll_files info)
     in
     record_fields
     @@ [ field "name" Lib_name.encode name
@@ -82,6 +99,7 @@ module Lib = struct
        ; paths "foreign_objects" foreign_objects
        ; field_i "foreign_archives" (Mode.Map.encode path)
            (Lib_info.foreign_archives info)
+       ; paths "foreign_dll_files" foreign_dll_files
        ; paths "native_archives" native_archives
        ; paths "jsoo_runtime" jsoo_runtime
        ; Lib_dep.L.field_encode requires ~name:"requires"
@@ -90,9 +108,10 @@ module Lib = struct
        ; field_o "default_implementation" (no_loc Lib_name.encode)
            default_implementation
        ; field_o "main_module_name" Module_name.encode main_module_name
-       ; field_l "modes" sexp (Mode.Dict.Set.encode modes.ocaml)
+       ; field_l "modes" sexp (Lib_mode.Map.Set.encode modes)
        ; field_l "obj_dir" sexp (Obj_dir.encode obj_dir)
-       ; field_o "modules" Modules.encode modules
+       ; field_o "modules" (Modules.encode ~src_dir:package_root) modules
+       ; paths "melange_runtime_deps" melange_runtime_deps
        ; field_o "special_builtin_support"
            Lib_info.Special_builtin_support.encode special_builtin_support
        ; field_o "instrumentation.backend" (no_loc Lib_name.encode)
@@ -131,7 +150,7 @@ module Lib = struct
        in
        let+ synopsis = field_o "synopsis" string
        and+ loc = loc
-       and+ modes = field_l "modes" Mode.decode
+       and+ modes = field_l "modes" Lib_mode.decode
        and+ kind = field "kind" Lib_kind.decode
        and+ archives = mode_paths "archives"
        and+ plugins = mode_paths "plugins"
@@ -148,16 +167,16 @@ module Lib = struct
          else
            let+ m = mode_paths "foreign_archives" in
            Mode.Map.Multi.create_for_all_modes m.byte
+       and+ foreign_dll_files = paths "foreign_dll_files"
        and+ native_archives = paths "native_archives"
        and+ jsoo_runtime = paths "jsoo_runtime"
+       and+ melange_runtime_deps = paths "melange_runtime_deps"
        and+ requires = field_l "requires" (Lib_dep.decode ~allow_re_export:true)
        and+ ppx_runtime_deps = libs "ppx_runtime_deps"
        and+ virtual_ = field_b "virtual"
        and+ sub_systems = Sub_system_info.record_parser ()
        and+ orig_src_dir = field_o "orig_src_dir" path
-       and+ modules =
-         let src_dir = Obj_dir.dir obj_dir in
-         field "modules" (Modules.decode ~src_dir)
+       and+ modules = field "modules" (Modules.decode ~src_dir:base)
        and+ special_builtin_support =
          field_o "special_builtin_support"
            (Dune_lang.Syntax.since Stanza.syntax (1, 10)
@@ -165,7 +184,7 @@ module Lib = struct
        and+ instrumentation_backend =
          field_o "instrumentation.backend" (located Lib_name.decode)
        in
-       let modes = Mode.Dict.Set.of_list modes in
+       let modes = Lib_mode.Map.Set.of_list modes in
        let entry_modules =
          Modules.entry_modules modules |> List.map ~f:Module.name
        in
@@ -180,7 +199,6 @@ module Lib = struct
          let version = None in
          let main_module_name = Lib_info.Inherited.This main_module_name in
          let foreign_objects = Lib_info.Source.External foreign_objects in
-         let jsoo_archive = None in
          let preprocess = Preprocess.Per_module.no_preprocessing () in
          let virtual_deps = [] in
          let dune_version = None in
@@ -191,17 +209,19 @@ module Lib = struct
            Some (Lib_info.Inherited.This (Modules.wrapped modules))
          in
          let entry_modules = Lib_info.Source.External (Ok entry_modules) in
-         let modes = { Lib_mode.Map.ocaml = modes; melange = false } in
          let modules = Lib_info.Source.External (Some modules) in
+         let melange_runtime_deps =
+           Lib_info.Runtime_deps.External melange_runtime_deps
+         in
          Lib_info.create ~path_kind:External ~loc ~name ~kind ~status ~src_dir
            ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name
            ~sub_systems ~requires ~foreign_objects ~plugins ~archives
            ~ppx_runtime_deps ~foreign_archives
-           ~native_archives:(Files native_archives) ~foreign_dll_files:[]
-           ~jsoo_runtime ~jsoo_archive ~preprocess ~enabled ~virtual_deps
-           ~dune_version ~virtual_ ~entry_modules ~implements
-           ~default_implementation ~modes ~modules ~wrapped
-           ~special_builtin_support ~exit_module:None ~instrumentation_backend
+           ~native_archives:(Files native_archives) ~foreign_dll_files
+           ~jsoo_runtime ~preprocess ~enabled ~virtual_deps ~dune_version
+           ~virtual_ ~entry_modules ~implements ~default_implementation ~modes
+           ~modules ~wrapped ~special_builtin_support ~exit_module:None
+           ~instrumentation_backend ~melange_runtime_deps
        in
        { info; main_module_name })
 
@@ -378,10 +398,13 @@ let encode ~dune_version { entries; name; version; dir; sections; sites; files }
   in
   let list s = Dune_lang.List s in
   let entries =
+    let stublibs = Section.Map.find sections Stublibs in
     Lib_name.Map.to_list_map entries ~f:(fun _name e ->
         match e with
         | Entry.Library lib ->
-          list (Dune_lang.atom "library" :: Lib.encode lib ~package_root:dir)
+          list
+            (Dune_lang.atom "library"
+            :: Lib.encode lib ~package_root:dir ~stublibs)
         | Deprecated_library_name d ->
           list
             (Dune_lang.atom "deprecated_library_name"

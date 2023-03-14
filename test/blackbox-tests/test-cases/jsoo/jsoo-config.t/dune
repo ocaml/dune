@@ -1,0 +1,6 @@
+(env
+  (_
+    (js_of_ocaml
+      (flags (:standard --quiet))
+      (compilation_mode separate)
+)))

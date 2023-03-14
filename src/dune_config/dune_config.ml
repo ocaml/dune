@@ -1,5 +1,6 @@
 open Stdune
 open Dune_lang.Decoder
+module Display = Display
 module Scheduler = Dune_engine.Scheduler
 module Sandbox_mode = Dune_engine.Sandbox_mode
 module Console = Dune_console
@@ -128,7 +129,7 @@ module type S = sig
   type 'a field
 
   type t =
-    { display : Scheduler.Config.Display.t field
+    { display : Display.t field
     ; concurrency : Concurrency.t field
     ; terminal_persistence : Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field
@@ -186,7 +187,7 @@ struct
       ; action_stderr_on_success
       } =
     Dyn.record
-      [ ("display", field Scheduler.Config.Display.to_dyn display)
+      [ ("display", field Display.to_dyn display)
       ; ("concurrency", field Concurrency.to_dyn concurrency)
       ; ( "terminal_persistence"
         , field Terminal_persistence.to_dyn terminal_persistence )
@@ -261,7 +262,7 @@ let hash = Poly.hash
 let equal a b = Poly.equal a b
 
 let default =
-  { display = { verbosity = Quiet; status_line = not Config.inside_dune }
+  { display = Simple { verbosity = Quiet; status_line = not Config.inside_dune }
   ; concurrency = (if Config.inside_dune then Fixed 1 else Auto)
   ; terminal_persistence = Clear_on_rebuild
   ; sandboxing_preference = []
@@ -278,7 +279,7 @@ let decode_generic ~min_dune_version =
     Dune_lang.Syntax.since Stanza.syntax ver
   in
   let field_o n v d = field_o n (check v >>> d) in
-  let+ display = field_o "display" (1, 0) (enum Scheduler.Config.Display.all)
+  let+ display = field_o "display" (1, 0) (enum Display.all)
   and+ concurrency = field_o "jobs" (1, 0) Concurrency.decode
   and+ terminal_persistence =
     field_o "terminal-persistence" (1, 0) Terminal_persistence.decode
@@ -369,11 +370,11 @@ let adapt_display config ~output_is_a_tty =
   (* Progress isn't meaningful if inside a terminal (or emacs), so disable it if
      the output is getting piped to a file or something. *)
   let config =
-    if
-      config.display.status_line && (not output_is_a_tty)
-      && not Config.inside_emacs
-    then { config with display = { config.display with status_line = false } }
-    else config
+    match config.display with
+    | Simple { verbosity; _ }
+      when (not output_is_a_tty) && not Config.inside_emacs ->
+      { config with display = Simple { verbosity; status_line = false } }
+    | _ -> config
   in
   (* Similarly, terminal clearing is meaningless if stderr doesn't support ANSI
      codes, so revert-back to Preserve in that case *)
@@ -381,9 +382,17 @@ let adapt_display config ~output_is_a_tty =
     { config with terminal_persistence = Terminal_persistence.Preserve }
   else config
 
-let init t =
-  Console.Backend.set (Scheduler.Config.Display.console_backend t.display);
-  Log.verbose := t.display.verbosity = Verbose
+let init t ~watch =
+  Console.Backend.set (Display.console_backend t.display);
+  (if watch then
+   match t.terminal_persistence with
+   | Preserve -> ()
+   | Clear_on_rebuild -> Console.reset ()
+   | Clear_on_rebuild_and_flush_history -> Console.reset_flush_history ());
+  Log.verbose :=
+    match t.display with
+    | Simple { verbosity = Verbose; _ } -> true
+    | _ -> false
 
 let auto_concurrency =
   lazy
@@ -401,7 +410,7 @@ let auto_concurrency =
       let rec loop = function
         | [] -> 1
         | (prog, args) :: rest -> (
-          match Bin.which ~path:(Env.path Env.initial) prog with
+          match Bin.which ~path:(Env_path.path Env.initial) prog with
           | None -> loop rest
           | Some prog -> (
             let prog = Path.to_string prog in
@@ -441,9 +450,8 @@ let for_scheduler (t : t) stats ~insignificant_changes ~signal_watcher =
       Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
       n
   in
-  { Scheduler.Config.concurrency
-  ; display = t.display
-  ; stats
-  ; insignificant_changes
-  ; signal_watcher
-  }
+  (Dune_engine.Clflags.display :=
+     match t.display with
+     | Tui -> Dune_engine.Display.Quiet
+     | Simple { verbosity; _ } -> verbosity);
+  { Scheduler.Config.concurrency; stats; insignificant_changes; signal_watcher }

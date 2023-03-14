@@ -45,6 +45,8 @@ val native_dir : 'path t -> 'path
 (** The private compiled byte file directories, and all cmi *)
 val byte_dir : 'path t -> 'path
 
+val jsoo_dir : 'path t -> 'path
+
 (** The private compiled melange file directories, and all cmi *)
 val melange_dir : 'path t -> 'path
 
@@ -142,7 +144,7 @@ module Module : sig
 
   module Dep : sig
     type t =
-      | Immediate of Module.File.t
+      | Immediate of Module.t * Ml_kind.t
       | Transitive of Module.t * Ml_kind.t
   end
 

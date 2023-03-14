@@ -139,6 +139,7 @@ type t =
   ; parsing_context : Univ_map.t
   ; implicit_transitive_deps : bool
   ; wrapped_executables : bool
+  ; map_workspace_root : bool
   ; executables_implicit_empty_intf : bool
   ; accept_alternative_dune_file_name : bool
   ; generate_opam_files : bool
@@ -184,8 +185,6 @@ let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
 
 let dialects t = t.dialects
 
-let set_dialects dialects t = { t with dialects }
-
 let explicit_js_mode t = t.explicit_js_mode
 
 let dune_version t = t.dune_version
@@ -203,6 +202,7 @@ let to_dyn
     ; packages
     ; implicit_transitive_deps
     ; wrapped_executables
+    ; map_workspace_root
     ; executables_implicit_empty_intf
     ; accept_alternative_dune_file_name
     ; generate_opam_files
@@ -229,6 +229,7 @@ let to_dyn
           (Package.Name.Map.to_list packages) )
     ; ("implicit_transitive_deps", bool implicit_transitive_deps)
     ; ("wrapped_executables", bool wrapped_executables)
+    ; ("map_workspace_root", bool map_workspace_root)
     ; ("executables_implicit_empty_intf", bool executables_implicit_empty_intf)
     ; ( "accept_alternative_dune_file_name"
       , bool accept_alternative_dune_file_name )
@@ -246,7 +247,7 @@ let to_dyn
 
 let find_extension_args t key = Univ_map.find t.extension_args key
 
-let is_extension_set t key = Option.is_some (find_extension_args t key)
+let is_extension_set t key = Univ_map.mem t.extension_args key
 
 include Dune_lang.Versioned_file.Make (struct
   type t = Stanza.Parser.t list
@@ -345,12 +346,6 @@ end
 
 module Melange_syntax = struct
   let name = "melange"
-
-  let t =
-    Dune_lang.Syntax.create ~name ~desc:"support for Melange compiler"
-      [ ((0, 1), `Since (3, 6)) ]
-
-  let () = Extension.register_simple t (return [])
 end
 
 let explicit_extensions_map explicit_extensions =
@@ -462,6 +457,8 @@ let implicit_transitive_deps_default ~lang:_ = true
 let wrapped_executables_default ~(lang : Lang.Instance.t) =
   lang.version >= (2, 0)
 
+let map_workspace_root_default ~(lang : Lang.Instance.t) = lang.version >= (3, 0)
+
 let executables_implicit_empty_intf_default ~(lang : Lang.Instance.t) =
   lang.version >= (3, 0)
 
@@ -514,6 +511,7 @@ let infer ~dir ?(info = Package.Info.empty) packages =
   in
   let implicit_transitive_deps = implicit_transitive_deps_default ~lang in
   let wrapped_executables = wrapped_executables_default ~lang in
+  let map_workspace_root = map_workspace_root_default ~lang in
   let executables_implicit_empty_intf =
     executables_implicit_empty_intf_default ~lang
   in
@@ -531,6 +529,7 @@ let infer ~dir ?(info = Package.Info.empty) packages =
   ; dune_version = lang.version
   ; implicit_transitive_deps
   ; wrapped_executables
+  ; map_workspace_root
   ; executables_implicit_empty_intf
   ; accept_alternative_dune_file_name = false
   ; stanza_parser
@@ -599,6 +598,7 @@ let encode : t -> Dune_lang.t list =
      ; packages
      ; implicit_transitive_deps
      ; wrapped_executables
+     ; map_workspace_root
      ; executables_implicit_empty_intf
      ; accept_alternative_dune_file_name
      ; generate_opam_files
@@ -644,6 +644,7 @@ let encode : t -> Dune_lang.t list =
           implicit_transitive_deps_default
       ; flag "wrapped_executables" wrapped_executables
           wrapped_executables_default
+      ; flag "map_workspace_root" map_workspace_root map_workspace_root_default
       ; flag "executables_implicit_empty_intf" executables_implicit_empty_intf
           executables_implicit_empty_intf_default
       ; flag "strict_package_deps" strict_package_deps
@@ -676,7 +677,9 @@ let encode : t -> Dune_lang.t list =
       ]
   in
   let dialects =
-    Dialect.DB.fold ~f:(fun d ls -> Dialect.encode d :: ls) ~init:[] dialects
+    if Dialect.DB.is_default dialects then []
+    else
+      Dialect.DB.fold ~f:(fun d ls -> Dialect.encode d :: ls) ~init:[] dialects
   in
   let formatting =
     Option.bind format_config ~f:Format_config.encode_opt |> Option.to_list
@@ -723,6 +726,9 @@ let parse ~dir ~lang ~file ~dir_status =
         and+ wrapped_executables =
           field_o_b "wrapped_executables"
             ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 11))
+        and+ map_workspace_root =
+          field_o_b "map_workspace_root"
+            ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 7))
         and+ _allow_approx_merlin =
           (* TODO DUNE3 remove this field from parsing *)
           let+ loc = loc
@@ -811,9 +817,10 @@ let parse ~dir ~lang ~file ~dir_status =
                    in
                    let related = [ message loc1; message loc2 ] in
                    User_message.Annots.singleton Compound_user_error.annot
-                     (Compound_user_error.make
-                        ~main:(User_message.make main_message)
-                        ~related)
+                     [ Compound_user_error.make
+                         ~main:(User_message.make main_message)
+                         ~related
+                     ]
                  in
                  User_error.raise ~annots
                    (main_message
@@ -891,6 +898,10 @@ let parse ~dir ~lang ~file ~dir_status =
             Option.value wrapped_executables
               ~default:(wrapped_executables_default ~lang)
           in
+          let map_workspace_root =
+            Option.value map_workspace_root
+              ~default:(map_workspace_root_default ~lang)
+          in
           let executables_implicit_empty_intf =
             Option.value executables_implicit_empty_intf
               ~default:(executables_implicit_empty_intf_default ~lang)
@@ -964,6 +975,7 @@ let parse ~dir ~lang ~file ~dir_status =
           ; parsing_context
           ; implicit_transitive_deps
           ; wrapped_executables
+          ; map_workspace_root
           ; executables_implicit_empty_intf
           ; accept_alternative_dune_file_name
           ; generate_opam_files
@@ -1020,6 +1032,8 @@ let set_parsing_context t parser =
 
 let wrapped_executables t = t.wrapped_executables
 
+let map_workspace_root t = t.map_workspace_root
+
 let executables_implicit_empty_intf t = t.executables_implicit_empty_intf
 
 let accept_alternative_dune_file_name t = t.accept_alternative_dune_file_name
@@ -1041,3 +1055,5 @@ let update_execution_parameters t ep =
   |> Execution_parameters.set_dune_version t.dune_version
   |> Execution_parameters.set_expand_aliases_in_sandbox
        t.expand_aliases_in_sandbox
+  |> Execution_parameters.set_add_workspace_root_to_build_path_prefix_map
+       t.map_workspace_root

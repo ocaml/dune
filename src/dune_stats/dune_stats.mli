@@ -9,6 +9,7 @@ type dst =
   | Custom of
       { write : string -> unit
       ; close : unit -> unit
+      ; flush : unit -> unit
       }
 
 val create : dst -> t
@@ -30,6 +31,8 @@ type event_data =
 val start : t option -> (unit -> event_data) -> event option
 
 val finish : event option -> unit
+
+val flush : t -> unit
 
 module Private : sig
   module Fd_count : sig

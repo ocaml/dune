@@ -1,5 +1,5 @@
 (library
  (name vlib)
  (wrapped false)
- (modes best melange)
+ (modes melange)
  (virtual_modules virt))

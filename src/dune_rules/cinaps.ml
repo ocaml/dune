@@ -8,17 +8,21 @@ type t =
   ; preprocessor_deps : Dep_conf.t list
   ; runtime_deps : Dep_conf.t list
   ; cinaps_version : Syntax.Version.t
+  ; alias : Alias.Name.t option
   }
 
 let name = "cinaps"
+
+let cinaps_alias = Alias.Name.of_string name
 
 type Stanza.t += T of t
 
 let syntax =
   Dune_lang.Syntax.create ~name ~desc:"the cinaps extension"
-    [ ((1, 0), `Since (1, 11)); ((1, 1), `Since (3, 5)) ]
-
-let alias = Alias.make (Alias.Name.of_string name)
+    [ ((1, 0), `Since (1, 11))
+    ; ((1, 1), `Since (3, 5))
+    ; ((1, 2), `Since (3, 7))
+    ]
 
 let decode =
   let open Dune_lang.Decoder in
@@ -28,11 +32,12 @@ let decode =
        field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.any
      and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
      and+ libraries =
-       field "libraries" (Dune_file.Lib_deps.decode Executable) ~default:[]
+       field "libraries" (Lib_dep.L.decode ~allow_re_export:false) ~default:[]
      and+ runtime_deps =
        field ~default:[] "runtime_deps"
          (Dune_lang.Syntax.since syntax (1, 1) >>> repeat Dep_conf.decode)
      and+ cinaps_version = Dune_lang.Syntax.get_exn syntax
+     and+ alias = field_o "alias" Alias.Name.decode
      (* TODO use this field? *)
      and+ _flags = Ocaml_flags.Spec.decode in
      { loc
@@ -42,6 +47,7 @@ let decode =
      ; preprocessor_deps
      ; runtime_deps
      ; cinaps_version
+     ; alias
      })
 
 let () =
@@ -84,7 +90,7 @@ let gen_rules sctx t ~dir ~scope =
   in
   let main_module_name = Module_name.of_string name in
   let module_ =
-    Module.generated ~kind:Impl main_module_name ~src_dir:cinaps_dir
+    Module.generated ~kind:Impl [ main_module_name ] ~src_dir:cinaps_dir
   in
   let cinaps_ml =
     Module.source ~ml_kind:Ml_kind.Impl module_
@@ -121,7 +127,7 @@ let gen_rules sctx t ~dir ~scope =
     Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Exe names)
       (Lib_dep.Direct (loc, Lib_name.of_string "cinaps.runtime") :: t.libraries)
       ~pps:(Preprocess.Per_module.pps t.preprocess)
-      ~dune_version ~merlin_ident
+      ~dune_version ~merlin_ident ~allow_overlaps:false ~forbidden_libraries:[]
   in
   let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name in
   let* cctx =
@@ -160,9 +166,14 @@ let gen_rules sctx t ~dir ~scope =
                      (Path.Build.extend_basename fn ~suffix:".cinaps-corrected"))
             ))
   in
-  let cinaps_alias = alias ~dir in
+  let cinaps_alias =
+    Alias.make ~dir @@ Option.value t.alias ~default:cinaps_alias
+  in
   let* () =
     Super_context.add_alias_action sctx ~dir ~loc:(Some loc) cinaps_alias action
   in
-  Rules.Produce.Alias.add_deps (Alias.runtest ~dir)
-    (Action_builder.alias cinaps_alias)
+  match t.alias with
+  | Some _ -> Memo.return ()
+  | None ->
+    Rules.Produce.Alias.add_deps (Alias.runtest ~dir)
+      (Action_builder.alias cinaps_alias)

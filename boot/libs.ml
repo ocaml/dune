@@ -1,6 +1,6 @@
 let executables = [ "main" ]
 
-let external_libraries = [ "unix"; "threads.posix" ]
+let external_libraries = [ "unix"; "threads" ]
 
 let local_libraries =
   [ ("otherlibs/ordering", Some "Ordering", false, None)
@@ -9,11 +9,11 @@ let local_libraries =
   ; ("otherlibs/stdune/dune_filesystem_stubs", Some "Dune_filesystem_stubs",
     false, None)
   ; ("vendor/csexp/src", Some "Csexp", false, None)
-  ; ("otherlibs/stdune", Some "Stdune", false, None)
+  ; ("otherlibs/stdune/src", Some "Stdune", false, None)
   ; ("src/dune_graph", Some "Dune_graph", false, None)
   ; ("vendor/incremental-cycles/src", Some "Incremental_cycles", false, None)
   ; ("src/dag", Some "Dag", false, None)
-  ; ("otherlibs/fiber", Some "Fiber", false, None)
+  ; ("otherlibs/fiber/src", Some "Fiber", false, None)
   ; ("src/dune_console", Some "Dune_console", false, None)
   ; ("src/memo", Some "Memo", false, None)
   ; ("src/dune_metrics", Some "Dune_metrics", false, None)
@@ -48,21 +48,28 @@ let local_libraries =
   ; ("vendor/ocaml-inotify/src", Some "Ocaml_inotify", false, None)
   ; ("src/async_inotify_for_dune", Some "Async_inotify_for_dune", false,
     None)
+  ; ("src/fswatch_win", Some "Fswatch_win", false, None)
   ; ("src/dune_file_watcher", Some "Dune_file_watcher", false, None)
   ; ("src/dune_engine", Some "Dune_engine", false, None)
+  ; ("src/dune_threaded_console", Some "Dune_threaded_console", false, None)
+  ; ("vendor/uutf", None, false, None)
+  ; ("vendor/notty/src", None, true, None)
+  ; ("vendor/notty/src-unix", None, true, None)
+  ; ("src/dune_tui", Some "Dune_tui", false, None)
   ; ("src/dune_config", Some "Dune_config", false, None)
   ; ("src/dune_rules", Some "Dune_rules", true, None)
   ; ("src/upgrader", Some "Dune_upgrader", false, None)
   ; ("vendor/cmdliner/src", None, false, None)
   ; ("otherlibs/build-info/src", Some "Build_info", false,
     Some "Build_info_data")
+  ; ("src/dune_rpc_client", Some "Dune_rpc_client", false, None)
   ; ("src/dune_rpc_impl", Some "Dune_rpc_impl", false, None)
   ]
 
 let link_flags =
   [ ("macosx",
     [ "-cclib"
-    ; "-framework Foundation"
+    ; "-framework CoreFoundation"
     ; "-cclib"
     ; "-framework CoreServices"
     ])

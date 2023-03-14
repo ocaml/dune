@@ -9,7 +9,8 @@
   threads.posix
   ocaml_inotify
   async_inotify_for_dune
-  dune_re)
+  dune_re
+  fswatch_win)
  (synopsis "Internal Dune library, do not use!")
  (instrumentation
   (backend bisect_ppx)))

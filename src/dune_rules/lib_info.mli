@@ -28,6 +28,12 @@ module Source : sig
     | External of 'a
 end
 
+module Runtime_deps : sig
+  type 'a t =
+    | Local of Loc.t * Dep_conf.t list
+    | External of 'a list
+end
+
 module Enabled_status : sig
   type t =
     | Normal
@@ -134,7 +140,7 @@ val synopsis : _ t -> string option
 
 val jsoo_runtime : 'path t -> 'path list
 
-val jsoo_archive : 'path t -> 'path option
+val melange_runtime_deps : 'path t -> 'path Runtime_deps.t
 
 val obj_dir : 'path t -> 'path Obj_dir.t
 
@@ -197,6 +203,7 @@ val for_dune_package :
   -> implements:(Loc.t * Lib_name.t) option
   -> default_implementation:(Loc.t * Lib_name.t) option
   -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
+  -> melange_runtime_deps:Path.t list
   -> modules:Modules.t
   -> Path.t t
 
@@ -228,7 +235,6 @@ val create :
   -> native_archives:'a native_archives
   -> foreign_dll_files:'a list
   -> jsoo_runtime:'a list
-  -> jsoo_archive:'a option
   -> preprocess:Preprocess.With_instrumentation.t Preprocess.Per_module.t
   -> enabled:Enabled_status.t
   -> virtual_deps:(Loc.t * Lib_name.t) list
@@ -243,6 +249,7 @@ val create :
   -> special_builtin_support:Special_builtin_support.t option
   -> exit_module:Module_name.t option
   -> instrumentation_backend:(Loc.t * Lib_name.t) option
+  -> melange_runtime_deps:'a Runtime_deps.t
   -> 'a t
 
 val package : _ t -> Package.Name.t option

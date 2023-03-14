@@ -11,9 +11,29 @@ module Version_error = struct
 
   let message t = t.message
 
+  let to_dyn { payload; message } =
+    Dyn.record
+      [ ("message", Dyn.string message)
+      ; ("payload", Dyn.(option Sexp.to_dyn) payload)
+      ]
+
   let create ?payload ~message () = { payload; message }
 
   exception E of t
+
+  let () =
+    Printexc.register_printer (function
+      | E { payload; message } ->
+        Some
+          (let messages =
+             match payload with
+             | None -> []
+             | Some payload -> [ Sexp.pp payload ]
+           in
+           Format.asprintf "%a@." Pp.to_fmt
+           @@ Pp.concat
+           @@ (Pp.textf "Version_error: %s" message :: messages))
+      | _ -> None)
 
   let to_response_error { payload; message } =
     Response.Error.create ~kind:Invalid_request ?payload ~message ()
@@ -40,6 +60,60 @@ let raise_version_bug ~method_ ~selected ~verb ~known =
    the key, because we only care about the keyset of the stored generation
    listing. *)
 type packed = T : 'a Method.Version.Map.t Univ_map.Key.t -> packed
+
+module type S = sig
+  type 'a fiber
+
+  module Handler : sig
+    type 'state t
+
+    val handle_request : 'state t -> 'state -> Request.t -> Response.t fiber
+
+    val handle_notification :
+      'state t -> 'state -> Call.t -> (unit, Response.Error.t) result fiber
+
+    val prepare_request :
+         'a t
+      -> ('req, 'resp) Decl.Request.witness
+      -> (('req, 'resp) Staged.request, Version_error.t) result
+
+    val prepare_notification :
+         'a t
+      -> 'payload Decl.Notification.witness
+      -> ('payload Staged.notification, Version_error.t) result
+  end
+
+  module Builder : sig
+    type 'state t
+
+    val to_handler :
+         'state t
+      -> session_version:('state -> Version.t)
+      -> menu:Menu.t
+      -> 'state Handler.t
+
+    val create : unit -> 'state t
+
+    val registered_procedures :
+      'a t -> (Method.Name.t * Method.Version.t list) list
+
+    val declare_notification : 'state t -> 'payload Decl.notification -> unit
+
+    val declare_request : 'state t -> ('req, 'resp) Decl.request -> unit
+
+    val implement_notification :
+         'state t
+      -> 'payload Decl.notification
+      -> ('state -> 'payload -> unit fiber)
+      -> unit
+
+    val implement_request :
+         'state t
+      -> ('req, 'resp) Decl.request
+      -> ('state -> 'req -> 'resp fiber)
+      -> unit
+  end
+end
 
 module Make (Fiber : Fiber_intf.S) = struct
   module Handler = struct

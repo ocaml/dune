@@ -52,7 +52,7 @@ type conf =
   }
 
 let mac_codesign_hook ~codesign path =
-  Process.run Strict codesign [ "-s"; "-"; Path.to_string path ]
+  Process.run ~display:Quiet Strict codesign [ "-s"; "-"; Path.to_string path ]
 
 let sign_hook_of_context (context : Context.t) =
   let config = context.ocaml_config in
@@ -415,8 +415,6 @@ end
 
 let buf_len = max_len
 
-let buf = Bytes.create buf_len
-
 type mode =
   | Test
   | Copy of
@@ -469,6 +467,7 @@ output the replacement        |                                             |
     v} *)
 let parse ~input ~mode =
   let open Fiber.O in
+  let buf = Bytes.create buf_len in
   let rec loop scanner_state ~beginning_of_data ~pos ~end_of_data ~status =
     let scanner_state = Scanner.run scanner_state ~buf ~pos ~end_of_data in
     let placeholder_start =

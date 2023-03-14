@@ -58,14 +58,18 @@ end = struct
   let rec exec = function
     | { commands = []; error } -> raise (User_error.E error)
     | { commands = { dir; metadata; prog; args } :: commands; error } ->
-      let* () = Process.run ~dir ~env:Env.initial Strict prog args ~metadata in
+      let* () =
+        Process.run ~display:Quiet ~dir ~env:Env.initial Strict prog args
+          ~metadata
+      in
       exec { commands; error }
 
   let rec capture = function
     | { commands = []; error } -> Fiber.return (Error error)
     | { commands = { dir; metadata; prog; args } :: commands; error } -> (
       let* output, code =
-        Process.run_capture ~dir ~env:Env.initial Return prog args ~metadata
+        Process.run_capture ~display:Quiet ~dir ~env:Env.initial Return prog
+          args ~metadata
       in
       match code with
       | 1 -> Fiber.return (Ok { Diff.output; loc = metadata.loc })
@@ -102,7 +106,7 @@ let prepare ~skip_trailing_cr annots path1 path2 =
   in
   let normal_diff () =
     let diff =
-      let which prog = Bin.which ~path:(Env.path Env.initial) prog in
+      let which prog = Bin.which ~path:(Env_path.path Env.initial) prog in
       match which "git" with
       | Some path ->
         let dir =
@@ -158,7 +162,7 @@ let prepare ~skip_trailing_cr annots path1 path2 =
   | None -> (
     if Config.inside_dune then fallback
     else
-      match Bin.which ~path:(Env.path Env.initial) "patdiff" with
+      match Bin.which ~path:(Env_path.path Env.initial) "patdiff" with
       | None -> normal_diff ()
       | Some prog ->
         run prog

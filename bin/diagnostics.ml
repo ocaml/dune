@@ -31,8 +31,9 @@ let format_diagnostic (err : Dune_rpc_private.Diagnostic.t) : User_message.t =
 let exec () =
   let open Fiber.O in
   let where = Rpc.active_server () in
+  let module Client = Dune_rpc_client.Client in
   let+ errors =
-    let* connect = Dune_rpc_impl.Client.Connection.connect_exn where in
+    let* connect = Client.Connection.connect_exn where in
     Dune_rpc_impl.Client.client connect
       (Dune_rpc_private.Initialize.Request.create
          ~id:(Dune_rpc_private.Id.make (Sexp.Atom "diagnostics_cmd")))

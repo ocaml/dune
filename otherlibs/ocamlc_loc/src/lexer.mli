@@ -4,16 +4,18 @@ type lines =
   | Single of int
   | Range of int * int
 
+type code =
+  { code : int
+  ; name : string
+  }
+
 type source =
-  | Code of
-      { code : int
-      ; name : string
-      }
+  | Code of code
   | Alert of string
 
 type severity =
   | Error of source option
-  | Warning of source
+  | Warning of code
   | Alert of
       { name : string
       ; source : string
@@ -41,6 +43,8 @@ type token =
 
 val severity : Lexing.lexbuf -> (severity * string) option
 
-val skip_excerpt : Lexing.lexbuf -> [ `Stop | `Continue ]
+val skip_excerpt_head : Lexing.lexbuf -> [ `Stop | `Continue ]
+
+val skip_excerpt_tail : Lexing.lexbuf -> [ `Stop | `Continue ]
 
 val token : Lexing.lexbuf -> token

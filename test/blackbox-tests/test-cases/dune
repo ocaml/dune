@@ -1,6 +1,9 @@
 (env
  (_
-  (binaries ../utils/dune_cmd.exe ../utils/dunepp.exe)))
+  (binaries
+   ../utils/dune_cmd.exe
+   ../utils/dunepp.exe
+   ../utils/melc_stdlib_prefix.exe)))
 
 (cram
  (applies_to pp-cwd)
@@ -120,11 +123,6 @@
   (name test)))
 
 (subdir
- actions
- (cram
-  (deps ../watching/helpers.sh bin/sub_process.exe)))
-
-(subdir
  cram
  (cram
   (applies_to hg-access)
@@ -145,3 +143,7 @@
  (applies_to link-time-transitive-deps)
  (deps
   (package dune-build-info)))
+
+(cram
+ (applies_to version-corruption)
+ (deps %{bin:od} %{bin:git} %{bin:cmp} %{bin:sed} %{bin:chmod}))

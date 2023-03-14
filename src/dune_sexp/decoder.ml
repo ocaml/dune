@@ -230,7 +230,7 @@ let result : type a k. k context -> a * k -> a =
         User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "This value is unused" ]
       | Some s ->
         User_error.raise ~loc:(Ast.loc sexp)
-          [ Pp.textf "Too many argument for %s" s ]))
+          [ Pp.textf "Too many arguments for %s" s ]))
   | Fields _ -> (
     match Name.Map.choose state.unparsed with
     | None -> v
@@ -682,7 +682,7 @@ let traverse l ~f ctx state =
     (List.fold_map ~init:state l ~f:(fun state x ->
          Tuple.T2.swap (f x ctx state)))
 
-let all = traverse ~f:(fun x -> x)
+let all = traverse ~f:Fun.id
 
 let fields_missing_need_exactly_one loc names =
   User_error.raise ~loc

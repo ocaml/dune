@@ -136,8 +136,9 @@ let rec dep expander = function
   | Source_tree s ->
     Other
       (let* path = Expander.expand_path expander s in
-       Action_builder.map ~f:Path.Set.to_list
-         (Action_builder.source_tree ~dir:path))
+       Dep.Set.source_tree_with_file_set path
+       |> Action_builder.dyn_memo_deps
+       |> Action_builder.map ~f:Path.Set.to_list)
   | Package p ->
     Other
       (let* pkg = Expander.expand_str expander p in
@@ -279,3 +280,21 @@ let unnamed ?(sandbox = Sandbox_config.no_special_requirements) ~expander l =
         and+ _x = to_action_builder (dep expander x) in
         ())
   , List.fold_left l ~init:sandbox ~f:add_sandbox_config )
+
+let unnamed_get_paths ~expander l =
+  let expander = prepare_expander expander in
+  ( (let+ paths =
+       List.fold_left l ~init:(Action_builder.return []) ~f:(fun acc x ->
+           let+ acc = acc
+           and+ paths = to_action_builder (dep expander x) in
+           paths :: acc)
+     in
+     Path.Set.of_list (List.concat paths))
+  , List.fold_left l ~init:None ~f:(fun acc config ->
+        match (acc, config) with
+        | None, Sandbox_config _ ->
+          Some
+            (add_sandbox_config
+               (Option.value ~default:Sandbox_config.no_special_requirements acc)
+               config)
+        | _, _ -> acc) )

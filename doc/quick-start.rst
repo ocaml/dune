@@ -4,7 +4,7 @@ Quickstart
 
 This document gives simple usage examples of Dune. You can also look at
 `examples <https://github.com/ocaml/dune/tree/master/example>`__ for complete
-examples of projects using Dune with [CRAM stanzas](https://ocaml.org/p/craml/1.0.0).
+examples of projects using Dune with `CRAM stanzas <https://ocaml.org/p/craml/1.0.0>`__.
 
 
 Install Dune
@@ -168,10 +168,10 @@ Building a Hello World Program From Scratch
 
 Create a new directory within a Dune project (:ref:`initializing-an-executable`).
 Since OCaml is a compiled language, first create a ``dune`` file in Nano, Vim, 
-or your preferred text editor. Declare the ``hello_world`` executable by including following stanza 
+or your preferred text editor. Declare the ``hello_world`` executable by including the following stanza 
 (shown below). Name this initial file ``dune`` and save it. 
 
-.. code:: scheme
+.. code:: dune
 
     (executable
      (name hello_world))
@@ -189,7 +189,7 @@ Next, build your new program in a shell using this command:
 
     dune build hello_world.exe
 
-The will create a directory called``_build`` and build the 
+This will create a directory called ``_build`` and build the 
 program: ``_build/default/hello_world.exe``. Note that
 native code executables will have the ``.exe`` extension on all platforms
 (including non-Windows systems). 
@@ -207,15 +207,17 @@ Voila! This should print "Hello, world!" in the command line.
 Please note: if you have Dune, opam, and OCaml installed, but you 
 get an error that the ``dune`` command isn't recognized, it will be necessary 
 to run ``eval $(opam env)`` to enable Dune in your directory. Find more 
-information in the `Dune ReadMe  <https://github.com/ocaml/dune>`.
+information in the `Dune ReadMe  <https://github.com/ocaml/dune>`__.
 
-Verify OCaml installation with ``ocaml -version``
-Verify opam installation with ``opam --version``
+If that didn't work, you should verify that OCaml and opam are installed correctly by
+running ``ocaml -version`` and ``opam --version``.
 
 If you still get an error that the ``dune`` command isn't recognized, try running 
 the following in this order:
-``opam switch create . ocaml-base-compiler``
-``opam install merlin ocp-indent dune utop``
+
+#. ``opam switch create . ocaml-base-compiler``
+#. ``opam install merlin ocp-indent dune utop``
+
 Then run ``eval $(opam env)`` again before trying to build and run 
 your new hello_world.exe program. 
 
@@ -227,7 +229,7 @@ Lwt is a concurrent library in OCaml.
 
 In a directory of your choice, write this ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
     (executable
      (name hello_world)
@@ -252,7 +254,7 @@ Building a Hello World Program Using Core and Jane Street PPXs
 
 Write this ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
     (executable
      (name hello_world)
@@ -283,7 +285,7 @@ Defining a Library Using Lwt and ``ocaml-re``
 
 Write this ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
     (library
      (name        mylib)
@@ -302,7 +304,7 @@ Building a Hello World Program in Bytecode
 
 In a directory of your choice, write this ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
     ;; This declares the hello_world executable implemented by hello_world.ml
     ;; to be build as native (.exe) or bytecode (.bc) version.
@@ -332,7 +334,7 @@ Setting the OCaml Compilation Flags Globally
 
 Write this ``dune`` file at the root of your project:
 
-.. code:: scheme
+.. code:: dune
 
     (env
      (dev
@@ -344,7 +346,7 @@ Write this ``dune`` file at the root of your project:
 can be selected from the command line with ``--profile foo`` or from a
 `dune-workspace` file by writing:
 
-.. code:: scheme
+.. code:: dune
 
     (profile foo)
 
@@ -353,22 +355,23 @@ Using Cppo
 
 Add this field to your ``library`` or ``executable`` stanzas:
 
-.. code:: lisp
+.. code:: dune
 
     (preprocess (action (run %{bin:cppo} -V OCAML:%{ocaml_version} %{input-file})))
 
 Additionally, if you want to include a ``config.h`` file, you need to
 declare the dependency to this file via:
 
-.. code:: scheme
+.. code:: dune
 
     (preprocessor_deps config.h)
 
 Using the ``.cppo.ml`` Style Like the ``ocamlbuild`` Plugin
+-----------------------------------------------------------
 
 Write this in your ``dune`` file:
 
-.. code:: lisp
+.. code:: dune
 
     (rule
      (targets foo.ml)
@@ -382,7 +385,7 @@ Assuming you have a file called ``mystubs.c``, that you need to pass
 ``-I/blah/include`` to compile it and ``-lblah`` at link time, write
 this ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
     (library
      (name            mylib)
@@ -400,7 +403,7 @@ Defining a Library with C Stubs using ``pkg-config``
 Same context as before, but using ``pkg-config`` to query the
 compilation and link flags. Write this ``dune`` file:
 
-.. code:: lisp
+.. code:: dune
 
     (library
      (name            mylib)
@@ -418,7 +421,7 @@ compilation and link flags. Write this ``dune`` file:
 
 Then create a ``config`` subdirectory and write this ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
     (executable
      (name discover)
@@ -456,7 +459,7 @@ Using a Custom Code Generator
 
 To generate a file ``foo.ml`` using a program from another directory:
 
-.. code:: lisp
+.. code:: dune
 
     (rule
      (targets foo.ml)
@@ -468,7 +471,7 @@ Defining Tests
 
 Write this in your ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
     (test (name my_test_program))
 
@@ -499,7 +502,7 @@ be built in bytecode.
 
 As a result, write this in your ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
     (executable
      (name       mytoplevel)
@@ -507,7 +510,7 @@ As a result, write this in your ``dune`` file:
      (link_flags (-linkall))
      (modes      byte))
 
-And write this in ``mytoplevel.ml``
+And write this in ``mytoplevel.ml``:
 
 .. code:: ocaml
 

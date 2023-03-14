@@ -8,6 +8,10 @@ type report =
   ; related : (loc * string) list
   }
 
+let dyn_of_code { code; name } =
+  let open Dyn in
+  record [ ("code", int code); ("name", string name) ]
+
 let dyn_of_source =
   let open Dyn in
   function
@@ -18,7 +22,7 @@ let dyn_of_severity =
   let open Dyn in
   function
   | Error w -> variant "Error" [ option dyn_of_source w ]
-  | Warning w -> variant "Warning" [ dyn_of_source w ]
+  | Warning w -> variant "Warning" [ dyn_of_code w ]
   | Alert { name; source } ->
     variant "Alert"
       [ record [ ("name", string name); ("source", string source) ] ]
@@ -104,15 +108,20 @@ let severity tokens =
       severity)
   | _ -> raise Unknown_format
 
-let rec skip_excerpt tokens =
-  match Tokens.peek tokens with
-  | Line { contents; indent = _ } -> (
-    match Lexer.skip_excerpt (Lexing.from_string contents) with
-    | `Continue ->
-      Tokens.junk tokens;
-      skip_excerpt tokens
-    | `Stop -> ())
-  | _ -> ()
+let skip_excerpt =
+  let make_skip_excerpt tokens self lex =
+    match Tokens.peek tokens with
+    | Line { contents; indent = _ } -> (
+      match lex (Lexing.from_string contents) with
+      | `Continue ->
+        Tokens.junk tokens;
+        self tokens
+      | `Stop -> ())
+    | _ -> ()
+  in
+  let rec tail tokens = make_skip_excerpt tokens tail Lexer.skip_excerpt_tail in
+  let head tokens = make_skip_excerpt tokens tail Lexer.skip_excerpt_head in
+  head
 
 let rec acc_message tokens min_indent acc =
   match Tokens.peek tokens with

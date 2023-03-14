@@ -1,4 +1,5 @@
 open Import
+open Ocaml
 
 (** Dialects
 
@@ -62,4 +63,6 @@ module DB : sig
   val to_dyn : t -> Dyn.t
 
   val builtin : t
+
+  val is_default : t -> bool
 end

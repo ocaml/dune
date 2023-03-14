@@ -73,7 +73,7 @@ dynamically-loading packages and their dependencies (using the OCaml Dynlink mod
 Adding the ability for an application to have plugins just requires adding
 ``findlib.dynload`` to the set of library dependencies:
 
-.. code:: scheme
+.. code:: dune
 
     (library
       (name mytool)
@@ -95,7 +95,7 @@ only once, so trying to load a package statically linked does nothing.
 
 A plugin creator just needs to link to your library:
 
-.. code:: scheme
+.. code:: dune
 
     (library
       (name mytool_plugin_a)
@@ -126,7 +126,7 @@ Classical PPX
 composed using Findlib. Even though this is useful to run some (usually old)
 PPXs that don't support drivers, Dune doesn't support preprocessing with
 PPX this way. However, a workaround exists using the `ppxfind
-<https://github.com/diml/ppxfind>`_ tool.
+<https://github.com/kandu/ppxfind>`_ tool.
 
 Profiling Dune
 ==============
@@ -222,7 +222,7 @@ Below is an example where we build ``my.cmxs`` containing ``foo.cmxa`` and
 ``d.cmx``. Note how we use a :ref:`library` stanza to set up the compilation of
 ``d.cmx``.
 
-.. code:: lisp
+.. code:: dune
 
     (library
      (name foo)

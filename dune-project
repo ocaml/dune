@@ -195,17 +195,10 @@ understood by dune language."))
 (package
  (name ocamlc-loc)
  (synopsis "Parse ocaml compiler output into structured form")
+ (conflicts
+  (ocaml-lsp-server (< 1.15.0)))
  (depends
   (ocaml (>= 4.08.0))
-  (dyn (= :version)))
- (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
-
-(package
- (name fiber)
- (synopsis "Structured concurrency library")
- (depends
-  (ocaml (>= 4.08.0))
-  (stdune (= :version))
   (dyn (= :version)))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 

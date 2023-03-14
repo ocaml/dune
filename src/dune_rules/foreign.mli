@@ -176,7 +176,7 @@ end
 module Source : sig
   type kind =
     | Stubs of Stubs.t
-    | Ctypes of Ctypes_stanza.t
+    | Ctypes of Ctypes_field.t
 
   type t = private
     { kind : kind
@@ -221,7 +221,7 @@ module Sources : sig
     val load :
          dune_version:Dune_lang.Syntax.Version.t
       -> dir:Path.Build.t
-      -> files:String.Set.t
+      -> files:Filename.Set.t
       -> t
   end
 end

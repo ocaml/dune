@@ -1,16 +1,14 @@
 open Import
-open Memo.O
 
 let def name dyn =
   let open Pp.O in
   Pp.box ~indent:2 (Pp.textf "let %s = " name ++ Dyn.pp dyn)
 
-let rule sctx compile (exes : Dune_file.Executables.t) () =
+let rule sctx ~requires_link (exes : Dune_file.Executables.t) =
+  let open Action_builder.O in
+  let* () = Action_builder.return () in
   let* locals, externals =
-    let+ libs =
-      Resolve.Memo.read_memo
-        (Memo.Lazy.force (Lib.Compile.requires_link compile))
-    in
+    let+ libs = Resolve.Memo.read (Memo.Lazy.force requires_link) in
     List.partition_map libs ~f:(fun lib ->
         match Lib.Local.of_lib lib with
         | Some x -> Left x
@@ -23,7 +21,7 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
     (* additional link flags keyed by the platform *)
     [ ( "macosx"
       , [ "-cclib"
-        ; "-framework Foundation"
+        ; "-framework CoreFoundation"
         ; "-cclib"
         ; "-framework CoreServices"
         ] )
@@ -42,6 +40,7 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
           | Some (Build_info { data_module; _ }) -> Some data_module
           | _ -> None
         in
+        let open Memo.O in
         let+ is_multi_dir =
           let+ dc = Dir_contents.get sctx ~dir in
           match Dir_contents.dirs dc with
@@ -49,7 +48,8 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
           | _ -> false
         in
         Dyn.Tuple
-          [ Path.Source.to_dyn (Path.Build.drop_build_context_exn dir)
+          [ Path.Build.drop_build_context_exn dir
+            |> Path.Source.to_local |> Path.Local.to_dyn
           ; Dyn.option Module_name.to_dyn
               (match Lib_info.main_module_name info with
               | From _ -> None
@@ -57,6 +57,7 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
           ; Dyn.Bool is_multi_dir
           ; Dyn.option Module_name.to_dyn special_builtin_support
           ])
+    |> Action_builder.of_memo
   in
   Format.asprintf "%a@." Pp.to_fmt
     (Pp.vbox
@@ -69,7 +70,12 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
           ; Pp.nop
           ; def "external_libraries"
               (List
-                 (List.map externals ~f:(fun x -> Lib.name x |> Lib_name.to_dyn)))
+                 (List.filter_map externals ~f:(fun x ->
+                      let name = Lib.name x in
+                      if
+                        Lib_name.equal name (Lib_name.of_string "threads.posix")
+                      then None
+                      else Some (Lib_name.to_dyn name))))
           ; Pp.nop
           ; def "local_libraries" (List locals)
           ; Pp.nop
@@ -78,9 +84,9 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
               list (pair string (list string)) link_flags)
           ]))
 
-let gen_rules sctx (exes : Dune_file.Executables.t) ~dir compile =
+let gen_rules sctx (exes : Dune_file.Executables.t) ~dir ~requires_link =
   Memo.Option.iter exes.bootstrap_info ~f:(fun fname ->
       Super_context.add_rule sctx ~loc:exes.buildable.loc ~dir
         (Action_builder.write_file_dyn
            (Path.Build.relative dir fname)
-           (Action_builder.of_memo (Memo.return () >>= rule sctx compile exes))))
+           (rule sctx ~requires_link exes)))

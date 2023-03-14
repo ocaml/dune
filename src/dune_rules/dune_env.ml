@@ -82,6 +82,7 @@ module Stanza = struct
     ; format_config : Format_config.t option
     ; error_on_use : User_message.t option
     ; warn_on_load : User_message.t option
+    ; bin_annot : bool option
     }
 
   let equal_config
@@ -98,6 +99,7 @@ module Stanza = struct
       ; format_config
       ; error_on_use
       ; warn_on_load
+      ; bin_annot
       } t =
     Ocaml_flags.Spec.equal flags t.flags
     && Foreign_language.Dict.equal Ordered_set_lang.Unexpanded.equal
@@ -113,6 +115,7 @@ module Stanza = struct
     && Js_of_ocaml.Env.equal js_of_ocaml t.js_of_ocaml
     && Option.equal User_message.equal error_on_use t.error_on_use
     && Option.equal User_message.equal warn_on_load t.warn_on_load
+    && Option.equal Bool.equal bin_annot t.bin_annot
 
   let hash_config = Poly.hash
 
@@ -131,6 +134,7 @@ module Stanza = struct
     ; format_config = None
     ; error_on_use = None
     ; warn_on_load = None
+    ; bin_annot = None
     }
 
   type pattern =
@@ -187,6 +191,9 @@ module Stanza = struct
     field "coq" ~default:Ordered_set_lang.Unexpanded.standard
       (Dune_lang.Syntax.since Stanza.syntax (2, 7) >>> fields coq_flags)
 
+  let bin_annot =
+    field_o "bin_annot" (Dune_lang.Syntax.since Stanza.syntax (3, 8) >>> bool)
+
   let config =
     let+ flags = Ocaml_flags.Spec.decode
     and+ foreign_flags = foreign_flags ~since:(Some (1, 7))
@@ -201,7 +208,8 @@ module Stanza = struct
     and+ odoc = odoc_field
     and+ js_of_ocaml = js_of_ocaml_field
     and+ coq = coq_field
-    and+ format_config = Format_config.field ~since:(2, 8) in
+    and+ format_config = Format_config.field ~since:(2, 8)
+    and+ bin_annot = bin_annot in
     { flags
     ; foreign_flags
     ; link_flags
@@ -215,6 +223,7 @@ module Stanza = struct
     ; format_config
     ; error_on_use = None
     ; warn_on_load = None
+    ; bin_annot
     }
 
   let rule =

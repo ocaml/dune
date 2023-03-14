@@ -15,9 +15,8 @@ let linkages (ctx : Context.t) ~(exes : Executables.t) ~explicit_js_mode =
              Exe.Linkage.of_user_config ctx ~loc mode)
     in
     let modes =
-      if not has_native then
-        List.filter modes ~f:(fun x -> not (Exe.Linkage.is_native x))
-      else modes
+      if has_native then modes
+      else List.filter modes ~f:(fun x -> not (Exe.Linkage.is_native x))
     in
     let modes =
       if L.Map.mem exes.modes L.js then Exe.Linkage.byte_for_jsoo :: modes
@@ -51,7 +50,7 @@ let programs ~modules ~(exes : Executables.t) =
             ]
       | None ->
         let msg =
-          match Ordered_set_lang.loc exes.buildable.modules with
+          match Ordered_set_lang.loc exes.buildable.modules.modules with
           | None ->
             Pp.textf "Module %S doesn't exist." (Module_name.to_string mod_name)
           | Some _ ->
@@ -102,7 +101,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     Dir_contents.ocaml dir_contents
     >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
   in
-  let* () = Check_rules.add_obj_dir sctx ~obj_dir in
+  let* () = Check_rules.add_obj_dir sctx ~obj_dir `Ocaml in
   let ctx = Super_context.context sctx in
   let project = Scope.project scope in
   let programs = programs ~modules ~exes in
@@ -192,7 +191,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     | None ->
       Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files
         ~promote:exes.promote ~embed_in_plugin_libraries ~sandbox
-    | Some _ctypes ->
+    | Some { version; _ } ->
       (* Ctypes stubgen builds utility .exe files that need to share modules
          with this compilation context. To support that, we extract the one-time
          run bits from [Exe.build_and_link_many] and run them here, then pass
@@ -200,7 +199,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
          dance is done to avoid triggering duplicate rule exceptions. *)
       let* () =
         let loc = fst (List.hd exes.Executables.names) in
-        Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir
+        Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir ~version
       in
       let* () = Module_compilation.build_all cctx in
       Exe.link_many ~programs ~linkages ~link_args ~o_files
@@ -220,6 +219,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
 let compile_info ~scope (exes : Dune_file.Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
+    (* TODO resolution should be delayed *)
     Resolve.Memo.read_memo
       (Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
          ~instrumentation_backend:
@@ -242,7 +242,10 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander
       ~compile_info ~embed_in_plugin_libraries:exes.embed_in_plugin_libraries
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir
-  and* () = Bootstrap_info.gen_rules sctx exes ~dir compile_info in
+  and* () =
+    let requires_link = Lib.Compile.requires_link compile_info in
+    Bootstrap_info.gen_rules sctx exes ~dir ~requires_link
+  in
   Buildable_rules.with_lib_deps
     (Super_context.context sctx)
     compile_info ~dir ~f

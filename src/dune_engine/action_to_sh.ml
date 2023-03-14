@@ -15,20 +15,22 @@ module Simplified = struct
     | Redirect_in of t list * Inputs.t * source
     | Pipe of t list list * Outputs.t
     | Sh of string
+    | Concurrent of t list list
 end
 
 open Simplified
 
 let echo s =
   let lines = String.split_lines s in
-  if not (String.is_suffix s ~suffix:"\n") then
+  if String.is_suffix s ~suffix:"\n" then
+    List.map lines ~f:(fun s -> Run ("echo", [ s ]))
+  else
     match List.rev lines with
     | [] -> [ Run ("echo", [ "-n" ]) ]
     | last :: rest ->
       List.fold_left rest
         ~init:[ Run ("echo", [ "-n"; last ]) ]
         ~f:(fun acc s -> Run ("echo", [ s ]) :: acc)
-  else List.map lines ~f:(fun s -> Run ("echo", [ s ]))
 
 let cat ps = Run ("cat", ps)
 
@@ -54,6 +56,7 @@ let simplify act =
     | Ignore (outputs, act) ->
       Redirect_out (block act, outputs, Dev_null) :: acc
     | Progn l -> List.fold_left l ~init:acc ~f:(fun acc act -> loop act acc)
+    | Concurrent l -> Concurrent (List.map ~f:block l) :: acc
     | Echo xs -> echo (String.concat xs ~sep:"")
     | Cat x -> cat x :: acc
     | Copy (x, y) -> Run ("cp", [ x; y ]) :: acc
@@ -170,6 +173,27 @@ and pp = function
            ; Pp.verbatim first_pipe
            ; Pp.concat ~sep:(Pp.verbatim " | ") (List.map l ~f:block)
            ; Pp.verbatim end_
+           ]))
+  | Concurrent t -> (
+    match t with
+    | [] -> Pp.verbatim "true"
+    | [ x ] -> block x
+    | x :: l ->
+      Pp.hovbox ~indent:2
+        (Pp.concat
+           [ Pp.char '('
+           ; Pp.space
+           ; block x
+           ; Pp.space
+           ; Pp.char '&'
+           ; Pp.space
+           ; Pp.concat ~sep:(Pp.verbatim "&") (List.map l ~f:block)
+           ; Pp.space
+           ; Pp.char '&'
+           ; Pp.space
+           ; Pp.verbatim "wait"
+           ; Pp.space
+           ; Pp.verbatim ")"
            ]))
 
 let rec pp_seq = function

@@ -52,7 +52,7 @@ Test embedding of build information
   > EOF
 
   $ dune build
-  $ dune install --prefix _install 2> /dev/null
+  $ dune install --prefix _install
 
 Inside _build, we have no version information:
 
@@ -84,7 +84,7 @@ Once installed, we have the version information:
 
 Check what the generated build info module looks like:
 
-  $ cat _build/default/c/.c.eobjs/build_info_data.ml-gen \
+  $ cat _build/default/c/.c.eobjs/build_info__Build_info_data.ml-gen \
   >   | sed 's/"dune-build-info".*/"dune-build-info", Some "XXX"/'
   let eval s =
     let s = Bytes.unsafe_to_string (Bytes.unsafe_of_string s) in
@@ -130,9 +130,9 @@ craft an example with a single placeholder to make the output stable:
   $ cp c/c.ml d/d.ml
 
   $ dune build d/d.install
-  $ dune install d --prefix _install --debug-artifact-substitution 2>&1|grep -v '^\(Installing\|Deleting\)'
+  $ dune install d --prefix _install --debug-artifact-substitution
   Found placeholder in _build/install/default/bin/d:
-  - placeholder: Vcs_describe "d"
+  - placeholder: Vcs_describe In_source_tree "d"
   - evaluates to: "1.0+d"
 
 Test substitution when promoting
@@ -149,7 +149,7 @@ Version is picked from dune-project if available
 
   $ echo '(version project-version)' >> c/dune-project
   $ dune build
-  $ dune install --prefix _install 2> /dev/null
+  $ dune install --prefix _install
   $ _install/bin/c | sed 's/build-info: .*/build-info: XXX/'
   project-version
   lib a: 1.0+a

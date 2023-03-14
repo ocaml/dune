@@ -1,8 +1,14 @@
 (executable
  (name bench)
+ (modules bench)
  (libraries dune_stats chrome_trace stdune fiber dune_engine dune_util))
 
 (rule
  (alias bench)
  (action
   (run ./bench.exe %{bin:dune})))
+
+(executable
+ (modules gen_synthetic)
+ (libraries unix)
+ (name gen_synthetic))

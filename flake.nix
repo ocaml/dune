@@ -1,9 +1,13 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    nix-overlays.url = "github:anmonteiro/nix-overlays";
     flake-utils.url = "github:numtide/flake-utils";
-    ocamllsp.url = "git+https://www.github.com/ocaml/ocaml-lsp?submodules=1";
+    ocamllsp = {
+      url = "git+https://www.github.com/ocaml/ocaml-lsp?submodules=1";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+      inputs.opam-repository.follows = "opam-repository";
+    };
     opam-nix = {
       url = "github:tweag/opam-nix";
       inputs.opam-repository.follows = "opam-repository";
@@ -12,7 +16,11 @@
       url = "github:ocaml/opam-repository";
       flake = false;
     };
-    melange.url = "github:melange-re/melange";
+    melange = {
+      url = "github:melange-re/melange";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
   };
   outputs =
     { self
@@ -22,7 +30,6 @@
     , ocamllsp
     , opam-repository
     , melange
-    , nix-overlays
     }@inputs:
     let package = "dune";
     in flake-utils.lib.eachDefaultSystem (system:
@@ -73,86 +80,112 @@
           (devPackages // {
             ocaml-base-compiler = "4.14.0";
           });
+      testBuildInputs = with pkgs;
+        [ file mercurial ]
+        ++ lib.optionals stdenv.isLinux [ strace ];
+      testNativeBuildInputs = with pkgs; [ nodejs-slim pkg-config opam ocamlformat ];
     in
     {
-      packages.default = scope.dune;
+      formatter = pkgs.nixpkgs-fmt;
 
-      devShells.doc =
-        pkgs.mkShell {
-          buildInputs = (with pkgs;
-            [
-              sphinx
-              sphinx-autobuild
-              python310Packages.sphinx-copybutton
-              python310Packages.sphinx-rtd-theme
-            ]
-          );
+      packages = {
+        dune = scope.dune;
+        default = with pkgs; stdenv.mkDerivation rec {
+          pname = package;
+          version = "n/a";
+          src = ./.;
+          nativeBuildInputs = with ocamlPackages; [ ocaml findlib ];
+          buildInputs = lib.optionals stdenv.isDarwin [
+            darwin.apple_sdk.frameworks.CoreServices
+          ];
+          strictDeps = true;
+          buildFlags = [ "release" ];
+          dontAddPrefix = true;
+          dontAddStaticConfigureFlags = true;
+          configurePlatforms = [ ];
+          installFlags = [ "PREFIX=${placeholder "out"}" "LIBDIR=$(OCAMLFIND_DESTDIR)" ];
         };
+      };
 
-      devShells.fmt =
-        pkgs.mkShell {
-          inputsFrom = [ pkgs.dune_3 ];
-          buildInputs = [ ocamlformat ];
-        };
-
-      devShells.slim =
+      devShells =
         let
-          pkgs = nix-overlays.legacyPackages.${system}.appendOverlays [
+          pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
             (self: super: {
               ocamlPackages = self.ocaml-ng.ocamlPackages_4_14;
             })
             melange.overlays.default
           ];
+          mkSlim = { extraBuildInputs ? [ ] }:
+            pkgs.mkShell {
+              nativeBuildInputs = testNativeBuildInputs;
+              inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
+              buildInputs = testBuildInputs ++ (with pkgs.ocamlPackages; [
+                merlin
+                ppx_expect
+                ctypes
+                integers
+                mdx
+                cinaps
+                menhir
+                odoc
+                lwt
+                patdiff
+              ] ++ extraBuildInputs);
+            };
         in
-        pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [ pkg-config nodejs-slim ];
-          inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
-          buildInputs = with pkgs.ocamlPackages; [
-            dune_3
-            merlin
-            ocamlformat
-            ppx_expect
-            ctypes
-            integers
-            mdx
-            cinaps
-            menhir
-            odoc
-            lwt
-          ];
-        };
+        {
+          doc =
+            pkgs.mkShell {
+              buildInputs = (with pkgs;
+                [
+                  sphinx
+                  sphinx-autobuild
+                  python310Packages.sphinx-copybutton
+                  python310Packages.sphinx-rtd-theme
+                ]
+              );
+            };
 
-      devShells.coq =
-        pkgs.mkShell {
-          inputsFrom = [ pkgs.dune_3 ];
-          buildInputs = with pkgs; [
-            coq_8_16
-            coq_8_16.ocamlPackages.findlib
-          ];
-        };
+          fmt =
+            pkgs.mkShell {
+              nativeBuildInputs = [ ocamlformat ];
+              inputsFrom = [ pkgs.dune_3 ];
+            };
 
-      devShells.default =
-        pkgs.mkShell {
-          nativeBuildInputs = [ pkgs.opam ];
-          buildInputs = (with pkgs;
-            [
-              # dev tools
-              ocamlformat
-              coq_8_16
-              nodejs-slim
-              patdiff
-              pkg-config
-              file
-              ccls
-              mercurial
-            ] ++ (if stdenv.isLinux then [ strace ] else [ ]))
-          ++ [
-            ocamllsp.outputs.packages.${system}.ocaml-lsp-server
-            pkgs.ocamlPackages.melange
-            pkgs.ocamlPackages.mel
-          ]
-          ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
-          inputsFrom = [ self.packages.${system}.default ];
+          slim = mkSlim { };
+          slim-melange = mkSlim {
+            extraBuildInputs = [
+              pkgs.ocamlPackages.melange
+              pkgs.ocamlPackages.mel
+            ];
+          };
+
+          coq =
+            pkgs.mkShell {
+              nativeBuildInputs = testNativeBuildInputs;
+              inputsFrom = [ pkgs.dune_3 ];
+              buildInputs = with pkgs; [
+                coq_8_16
+                coq_8_16.ocamlPackages.findlib
+              ];
+            };
+
+          default =
+            pkgs.mkShell {
+              nativeBuildInputs = testNativeBuildInputs;
+              buildInputs = testBuildInputs ++ (with pkgs;
+                [
+                  # dev tools
+                  patdiff
+                  ccls
+                ])
+                ++ [
+                ocamllsp.outputs.packages.${system}.ocaml-lsp-server
+                pkgs.ocamlPackages.melange
+                pkgs.ocamlPackages.mel
+              ] ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
+              inputsFrom = [ self.packages.${system}.dune ];
+            };
         };
     });
 }

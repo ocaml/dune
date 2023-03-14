@@ -29,71 +29,10 @@ type for_ =
   | Executable
   | Library of Wrapped.t option
 
-module Lib_deps = struct
-  type t = Lib_dep.t list
-
-  type kind =
-    | Required
-    | Optional
-    | Forbidden
-
-  let decode for_ =
-    let+ loc = loc
-    and+ t =
-      let allow_re_export =
-        match for_ with
-        | Library _ -> true
-        | Executable -> false
-      in
-      repeat (Lib_dep.decode ~allow_re_export)
-    in
-    let add kind name acc =
-      match Lib_name.Map.find acc name with
-      | None -> Lib_name.Map.set acc name kind
-      | Some kind' -> (
-        match (kind, kind') with
-        | Required, Required ->
-          User_error.raise ~loc
-            [ Pp.textf "library %S is present twice" (Lib_name.to_string name) ]
-        | (Optional | Forbidden), (Optional | Forbidden) -> acc
-        | Optional, Required | Required, Optional ->
-          User_error.raise ~loc
-            [ Pp.textf
-                "library %S is present both as an optional and required \
-                 dependency"
-                (Lib_name.to_string name)
-            ]
-        | Forbidden, Required | Required, Forbidden ->
-          User_error.raise ~loc
-            [ Pp.textf
-                "library %S is present both as a forbidden and required \
-                 dependency"
-                (Lib_name.to_string name)
-            ])
-    in
-    ignore
-      (List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
-           match x with
-           | Lib_dep.Re_export (_, s) | Lib_dep.Direct (_, s) ->
-             add Required s acc
-           | Select { choices; _ } ->
-             List.fold_left choices ~init:acc
-               ~f:(fun acc (c : Lib_dep.Select.Choice.t) ->
-                 let acc =
-                   Lib_name.Set.fold c.required ~init:acc ~f:(add Optional)
-                 in
-                 Lib_name.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
-        : kind Lib_name.Map.t);
-    t
-
-  let of_pps pps = List.map pps ~f:(fun pp -> Lib_dep.direct (Loc.none, pp))
-end
-
 module Buildable = struct
   type t =
     { loc : Loc.t
-    ; modules : Ordered_set_lang.t
-    ; modules_without_implementation : Ordered_set_lang.t
+    ; modules : Stanza_common.Modules_settings.t
     ; empty_module_interface_if_absent : bool
     ; libraries : Lib_dep.t list
     ; foreign_archives : (Loc.t * Foreign.Archive.t) list
@@ -105,8 +44,7 @@ module Buildable = struct
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.In_buildable.t
     ; allow_overlapping_dependencies : bool
-    ; ctypes : Ctypes_stanza.t option
-    ; root_module : (Loc.t * Module_name.t) option
+    ; ctypes : Ctypes_field.t option
     }
 
   let decode (for_ : for_) =
@@ -158,7 +96,7 @@ module Buildable = struct
       located
         (only_in_library
            (field_o "cxx_names" (use_foreign >>> Ordered_set_lang.decode)))
-    and+ modules = Stanza_common.modules_field "modules"
+    and+ modules = Stanza_common.Modules_settings.decode
     and+ self_build_stubs_archive_loc, self_build_stubs_archive =
       located
         (only_in_library
@@ -166,9 +104,13 @@ module Buildable = struct
               (Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
                  ~extra_info:"Use the (foreign_archives ...) field instead."
               >>> enter (maybe string))))
-    and+ modules_without_implementation =
-      Stanza_common.modules_field "modules_without_implementation"
-    and+ libraries = field "libraries" (Lib_deps.decode for_) ~default:[]
+    and+ libraries =
+      let allow_re_export =
+        match for_ with
+        | Library _ -> true
+        | Executable -> false
+      in
+      field "libraries" (Lib_dep.L.decode ~allow_re_export) ~default:[]
     and+ flags = Ocaml_flags.Spec.decode
     and+ js_of_ocaml =
       field "js_of_ocaml" Js_of_ocaml.In_buildable.decode
@@ -178,12 +120,9 @@ module Buildable = struct
     and+ version = Dune_lang.Syntax.get_exn Stanza.syntax
     and+ ctypes =
       field_o "ctypes"
-        (Dune_lang.Syntax.since Ctypes_stanza.syntax (0, 1)
-        >>> Ctypes_stanza.decode)
+        (Dune_lang.Syntax.since Ctypes_field.syntax (0, 1)
+        >>> Ctypes_field.decode)
     and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
-    and+ root_module =
-      field_o "root_module"
-        (Dune_lang.Syntax.since Stanza.syntax (2, 8) >>> Module_name.decode_loc)
     and+ empty_module_interface_if_absent =
       field_b "empty_module_interface_if_absent"
         ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
@@ -244,7 +183,6 @@ module Buildable = struct
     ; preprocessor_deps
     ; lint
     ; modules
-    ; modules_without_implementation
     ; empty_module_interface_if_absent
     ; foreign_stubs
     ; foreign_archives
@@ -254,7 +192,6 @@ module Buildable = struct
     ; js_of_ocaml
     ; allow_overlapping_dependencies
     ; ctypes
-    ; root_module
     }
 
   let has_foreign t =
@@ -455,7 +392,7 @@ module Mode_conf = struct
         ; ("native", return @@ Ocaml Native)
         ; ("best", return @@ Ocaml Best)
         ; ( "melange"
-          , Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1)
+          , Dune_lang.Syntax.since Melange_stanzas.syntax (0, 1)
             >>> return Melange )
         ]
 
@@ -466,6 +403,15 @@ module Mode_conf = struct
       | Melange -> "melange"
 
     let to_dyn t = Dyn.variant (to_string t) []
+
+    let equal x y =
+      match (x, y) with
+      | Ocaml o1, Ocaml o2 -> (
+        match compare o1 o2 with
+        | Eq -> true
+        | _ -> false)
+      | Ocaml _, _ | _, Ocaml _ -> false
+      | Melange, Melange -> true
 
     module Map = struct
       type nonrec 'a t =
@@ -501,6 +447,22 @@ module Mode_conf = struct
               | Some Inherited ->
                 (* this doesn't happen as inherited can't be manually specified *)
                 assert false))
+
+      let decode_osl ~stanza_loc project =
+        let+ modes = Ordered_set_lang.decode in
+        let modes =
+          Ordered_set_lang.eval modes
+            ~parse:(fun ~loc s ->
+              let mode =
+                Dune_lang.Decoder.parse decode
+                  (Dune_project.parsing_context project)
+                  (Atom (loc, Dune_lang.Atom.of_string s))
+              in
+              (mode, Kind.Requested loc))
+            ~eq:(fun (a, _) (b, _) -> equal a b)
+            ~standard:[ (Ocaml Best, Kind.Requested stanza_loc) ]
+        in
+        of_list modes
 
       let decode =
         let decode =
@@ -556,6 +518,30 @@ module Library = struct
     let field = field_o "wrapped" (located decode)
   end
 
+  module Modes = struct
+    let decode ~stanza_loc ~dune_version project =
+      let expected_version = (3, 8) in
+      if dune_version >= expected_version then
+        Mode_conf.Lib.Set.decode_osl ~stanza_loc project
+      else
+        (* Old behavior: if old parser succeeds, return that. Otherwise, if
+           parsing the ordered set language succeeds, ask the user to upgrade to
+           a supported version. Otherwise, fail with the first error. *)
+        try_
+          (Mode_conf.Lib.Set.decode >>| fun modes -> `Modes modes)
+          (fun exn ->
+            try_
+              ( Mode_conf.Lib.Set.decode_osl ~stanza_loc project >>| fun modes ->
+                if dune_version >= expected_version then `Modes modes
+                else `Upgrade )
+              (fun _ -> raise exn))
+        >>| function
+        | `Modes modes -> modes
+        | `Upgrade ->
+          Syntax.Error.since stanza_loc Stanza.syntax expected_version
+            ~what:"Ordered set language for modes"
+  end
+
   type visibility =
     | Public of Public_lib.t
     | Private of Package.t option
@@ -586,6 +572,7 @@ module Library = struct
     ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
+    ; melange_runtime_deps : Loc.t * Dep_conf.t list
     }
 
   let decode =
@@ -593,6 +580,7 @@ module Library = struct
       (let* stanza_loc = loc in
        let* wrapped = Wrapped.field in
        let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+       let* project = Dune_project.get_exn () in
        let+ buildable = Buildable.decode (Library (Option.map ~f:snd wrapped))
        and+ name = field_o "name" Lib_name.Local.decode_loc
        and+ public =
@@ -610,7 +598,8 @@ module Library = struct
        and+ virtual_deps =
          field "virtual_deps" (repeat (located Lib_name.decode)) ~default:[]
        and+ modes =
-         field "modes" Mode_conf.Lib.Set.decode
+         field "modes"
+           (Modes.decode ~stanza_loc ~dune_version project)
            ~default:(Mode_conf.Lib.Set.default stanza_loc)
        and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
        and+ optional = field_b "optional"
@@ -627,7 +616,6 @@ module Library = struct
        and+ sub_systems =
          let* () = return () in
          Sub_system_info.record_parser ()
-       and+ project = Dune_project.get_exn ()
        and+ virtual_modules =
          field_o "virtual_modules"
            (Dune_lang.Syntax.since Stanza.syntax (1, 7)
@@ -664,6 +652,11 @@ module Library = struct
          field_o "package"
            (Dune_lang.Syntax.since Stanza.syntax (2, 8)
            >>> located Stanza_common.Pkg.decode)
+       and+ melange_runtime_deps =
+         field "melange.runtime_deps"
+           (Dune_lang.Syntax.since Melange_stanzas.syntax (0, 1)
+           >>> located (repeat Dep_conf.decode))
+           ~default:(stanza_loc, [])
        in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
@@ -751,6 +744,7 @@ module Library = struct
        ; special_builtin_support
        ; enabled_if
        ; instrumentation_backend
+       ; melange_runtime_deps
        })
 
   let package t =
@@ -857,7 +851,7 @@ module Library = struct
             [Modules.t] and deciding. Unfortunately, [Obj_dir.t] is currently
             used in some places where [Modules.t] is not yet constructed. *)
          t.private_modules <> None
-        || t.buildable.root_module <> None)
+        || t.buildable.modules.root_module <> None)
       ~private_lib (snd t.name)
 
   let main_module_name t : Lib_info.Main_module_name.t =
@@ -865,7 +859,10 @@ module Library = struct
     | Some x, From _ -> From x
     | Some _, This _ (* cannot specify for wrapped for implements *)
     | None, From _ -> assert false (* cannot inherit for normal libs *)
-    | None, This (Simple false) -> This None
+    | None, This (Simple false) -> (
+      match t.stdlib with
+      | None -> This None
+      | Some _ -> This (Some (Module_name.of_local_lib_name t.name)))
     | None, This (Simple true | Yes_with_transition _) ->
       This (Some (Module_name.of_local_lib_name t.name))
 
@@ -920,13 +917,6 @@ module Library = struct
     in
     let foreign_dll_files = foreign_dll_files conf ~dir ~ext_dll in
     let exit_module = Option.bind conf.stdlib ~f:(fun x -> x.exit_module) in
-    let jsoo_archive =
-      (* XXX we shouldn't access the directory of the obj_dir directly. We
-         should use something like [Obj_dir.Archive.obj] instead *)
-      if modes.ocaml.byte then
-        Some (archive ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
-      else None
-    in
     let virtual_ =
       Option.map conf.virtual_modules ~f:(fun _ -> Lib_info.Source.Local)
     in
@@ -983,13 +973,18 @@ module Library = struct
     let special_builtin_support = conf.special_builtin_support in
     let instrumentation_backend = conf.instrumentation_backend in
     let entry_modules = Lib_info.Source.Local in
+    let melange_runtime_deps =
+      let loc, runtime_deps = conf.melange_runtime_deps in
+      Lib_info.Runtime_deps.Local (loc, runtime_deps)
+    in
     Lib_info.create ~loc ~path_kind:Local ~name ~kind ~status ~src_dir
       ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems
       ~requires ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
       ~foreign_archives ~native_archives ~foreign_dll_files ~jsoo_runtime
-      ~jsoo_archive ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_
-      ~entry_modules ~implements ~default_implementation ~modes ~modules:Local
-      ~wrapped ~special_builtin_support ~exit_module ~instrumentation_backend
+      ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_ ~entry_modules
+      ~implements ~default_implementation ~modes ~modules:Local ~wrapped
+      ~special_builtin_support ~exit_module ~instrumentation_backend
+      ~melange_runtime_deps
 end
 
 module Plugin = struct
@@ -1449,7 +1444,7 @@ module Executables = struct
         | Byte, Shared_object -> ".bc" ^ ext_dll
         | Native, Shared_object -> ext_dll
         | mode, Plugin -> Mode.plugin_ext mode
-        | Byte, Js -> ".bc.js"
+        | Byte, Js -> Js_of_ocaml.Ext.exe
         | Native, Js ->
           User_error.raise ~loc
             [ Pp.text "Javascript generation only supports bytecode!" ])
@@ -1592,9 +1587,7 @@ module Executables = struct
         (let+ loc = loc
          and+ fname = filename
          and+ project = Dune_project.get_exn () in
-         if
-           Option.is_none
-             (Dune_project.find_extension_args project bootstrap_info_extension)
+         if not (Dune_project.is_extension_set project bootstrap_info_extension)
          then
            User_error.raise ~loc
              [ Pp.text "This field is reserved for Dune itself" ];
@@ -1765,8 +1758,7 @@ module Rule = struct
     in
     let* project = Dune_project.get_exn () in
     let allow_directory_targets =
-      Option.is_some
-        (Dune_project.find_extension_args project directory_targets_extension)
+      Dune_project.is_extension_set project directory_targets_extension
     in
     String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
       (let+ loc = loc
@@ -2238,32 +2230,6 @@ module Deprecated_library_name = struct
        { Library_redirect.loc; project; old_name; new_public_name })
 end
 
-module Generate_sites_module = struct
-  type t =
-    { loc : Loc.t
-    ; module_ : Module_name.t
-    ; sourceroot : bool
-    ; relocatable : bool
-    ; sites : (Loc.t * Package.Name.t) list
-    ; plugins : (Loc.t * (Package.Name.t * (Loc.t * Section.Site.t))) list
-    }
-
-  let decode =
-    fields
-      (let+ loc = loc
-       and+ module_ = field "module" Module_name.decode
-       and+ sourceroot = field_b "sourceroot"
-       and+ relocatable = field_b "relocatable"
-       and+ sites =
-         field "sites" ~default:[] (repeat (located Package.Name.decode))
-       and+ plugins =
-         field "plugins" ~default:[]
-           (repeat
-              (located (pair Package.Name.decode (located Section.Site.decode))))
-       in
-       { loc; module_; sourceroot; relocatable; sites; plugins })
-end
-
 type Stanza.t +=
   | Library of Library.t
   | Foreign_library of Foreign.Library.t
@@ -2278,10 +2244,7 @@ type Stanza.t +=
   | Toplevel of Toplevel.t
   | Library_redirect of Library_redirect.Local.t
   | Deprecated_library_name of Deprecated_library_name.t
-  | Cram of Cram_stanza.t
-  | Generate_sites_module of Generate_sites_module.t
   | Plugin of Plugin.t
-  | Melange_emit of Melange_stanzas.Emit.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -2361,8 +2324,7 @@ module Stanzas = struct
         let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
         and+ t =
           let enable_qualified =
-            Option.is_some
-              (Dune_project.find_extension_args project Coq_stanza.key)
+            Dune_project.is_extension_set project Coq_stanza.key
           in
           Include_subdirs.decode ~enable_qualified
         and+ loc = loc in
@@ -2389,19 +2351,15 @@ module Stanzas = struct
                   "You can enable cram tests by adding (cram enable) to your \
                    dune-project file."
               ];
-        [ Cram t ] )
+        [ Cram_stanza.T t ] )
     ; ( "generate_sites_module"
       , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
-        and+ t = Generate_sites_module.decode in
-        [ Generate_sites_module t ] )
+        and+ t = Generate_sites_module_stanza.decode in
+        [ Generate_sites_module_stanza.T t ] )
     ; ( "plugin"
       , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
         and+ t = Plugin.decode in
         [ Plugin t ] )
-    ; ( "melange.emit"
-      , let+ () = Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1)
-        and+ t = Melange_stanzas.Emit.decode in
-        [ Melange_emit t ] )
     ]
 
   let () = Dune_project.Lang.register Stanza.syntax stanzas

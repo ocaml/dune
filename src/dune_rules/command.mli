@@ -108,3 +108,9 @@ end
     command in directory [dir]. *)
 val expand :
   dir:Path.t -> 'a Args.t -> string list Action_builder.With_targets.t
+
+(** [expand_no_targets ~dir args] interprets the command line arguments [args]
+    to produce corresponding strings, assuming they will be used as arguments to
+    run a command in directory [dir]. *)
+val expand_no_targets :
+  dir:Path.t -> Args.without_targets Args.t -> string list Action_builder.t

@@ -34,7 +34,8 @@ let to_dyn { main; related } =
     ; ("related", (list string) (List.map related ~f:User_message.to_string))
     ]
 
-let annot = User_message.Annots.Key.create ~name:"compound-user-error" to_dyn
+let annot =
+  User_message.Annots.Key.create ~name:"compound-user-error" (Dyn.list to_dyn)
 
 let make ~main ~related = create ~main ~related
 
@@ -60,16 +61,13 @@ let make_loc ~dir { Ocamlc_loc.path; chars; lines } : Loc.t =
   }
 
 let parse_output ~dir s =
-  let reports = Ocamlc_loc.parse s in
-  match reports with
-  | [] -> None
-  | report :: _ ->
-    (* We assume that there's at most one error coming from a command for now.*)
-    let make_message (loc, message) =
-      let loc = make_loc ~dir loc in
-      let message = Pp.verbatim message in
-      User_message.make ~loc [ message ]
-    in
-    let main = make_message (report.loc, report.message) in
-    let related = List.map report.related ~f:make_message in
-    Some (make ~main ~related)
+  Ocamlc_loc.parse s
+  |> List.map ~f:(fun (report : Ocamlc_loc.report) ->
+         let make_message (loc, message) =
+           let loc = make_loc ~dir loc in
+           let message = Pp.verbatim message in
+           User_message.make ~loc [ message ]
+         in
+         let main = make_message (report.loc, report.message) in
+         let related = List.map report.related ~f:make_message in
+         make ~main ~related)

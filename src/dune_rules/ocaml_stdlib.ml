@@ -4,6 +4,7 @@ type t =
   { modules_before_stdlib : Module_name.Set.t
   ; exit_module : Module_name.t option
   ; internal_modules : Glob.t
+  ; loc : Loc.t
   }
 
 let syntax =
@@ -24,8 +25,9 @@ let decode =
      and+ exit_module = field_o "exit_module" Module_name.decode
      and+ internal_modules =
        field "internal_modules" Glob.decode ~default:Dune_lang.Glob.empty
-     in
+     and+ loc = loc in
      { modules_before_stdlib = Module_name.Set.of_list modules_before_stdlib
      ; exit_module
      ; internal_modules
+     ; loc
      })

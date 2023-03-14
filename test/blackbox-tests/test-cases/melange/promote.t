@@ -1,17 +1,16 @@
 Test melange.emit promotion
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.6)
+  > (lang dune 3.7)
   > (using melange 0.1)
   > EOF
 
   $ cat > dune <<EOF
   > (melange.emit
   >  (alias dist)
-  >  (entries hello)
+  >  (modules hello)
   >  (promote (until-clean))
-  >  (target dist)
-  >  (module_system commonjs))
+  >  (target dist))
   > EOF
 
   $ cat > hello.ml <<EOF

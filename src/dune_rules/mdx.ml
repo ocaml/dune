@@ -2,6 +2,12 @@ open Import
 
 let mdx_version_required = "1.6.0"
 
+let color_always : _ Command.Args.t Lazy.t =
+  lazy
+    (if Lazy.force Ansi_color.stderr_supports_color then
+     S [ A "--color=always" ]
+    else S [])
+
 module Files = struct
   type t =
     { src : Path.Build.t
@@ -63,10 +69,12 @@ module Deps = struct
             mdx_version_required
         ]
 
-  let rule ~dir ~mdx_prog files =
-    Command.run ~dir:(Path.build dir) mdx_prog
-      [ A "deps"; Dep (Path.build files.Files.src) ]
-      ~stdout_to:files.Files.deps
+  let rule ~dir ~mdx_prog (files : Files.t) =
+    Command.run ~dir:(Path.build dir) mdx_prog ~stdout_to:files.deps
+      [ Command.Args.A "deps"
+      ; Lazy.force color_always
+      ; Dep (Path.build files.Files.src)
+      ]
 
   let path_escapes_dir str =
     try
@@ -137,13 +145,20 @@ module Prelude = struct
     in
     enter decode_env <|> decode_default
 
-  let to_args ~dir t : _ Command.Args.t list =
-    let bpath p = Path.build (Path.Build.append_local dir p) in
+  (** Generated program will read some files when it runs. *)
+  let runtime_deps ~dir t : _ Command.Args.t =
     match t with
-    | Default file -> [ A "--prelude"; Dep (bpath file) ]
+    | Default file | Env { env = _; file } ->
+      Hidden_deps
+        (Dep.Set.of_files [ Path.build (Path.Build.append_local dir file) ])
+
+  let to_args ~dir t : _ Command.Args.t list =
+    match t with
+    | Default file ->
+      [ A "--prelude"; Dep (Path.build (Path.Build.append_local dir file)) ]
     | Env { env; file } ->
       let arg = sprintf "%s:%s" env (Path.Local.to_string file) in
-      [ A "--prelude"; A arg; Hidden_deps (Dep.Set.of_files [ bpath file ]) ]
+      [ A "--prelude"; A arg; runtime_deps ~dir t ]
 end
 
 type t =
@@ -200,7 +215,7 @@ let decode =
      and+ libraries =
        field "libraries" ~default:[]
          (Dune_lang.Syntax.since syntax (0, 2)
-         >>> Dune_file.Lib_deps.decode Executable)
+         >>> Lib_dep.L.decode ~allow_re_export:false)
      and+ locks =
        Locks.field ~check:(Dune_lang.Syntax.since syntax (0, 3)) ()
      in
@@ -305,18 +320,27 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
       in
       let mdx_generic_deps = Bindings.to_list stanza.deps in
       let executable, command_line =
-        (*The old mdx stanza calls the [ocaml-mdx] executable, new ones the
-          generated executable *)
+        (* The old mdx stanza calls the [ocaml-mdx] executable, new ones the
+           generated executable *)
         let open Command.Args in
         match mdx_prog_gen with
-        | Some prog -> (Ok (Path.build prog), [ Dep (Path.build files.src) ])
+        | Some prog ->
+          ( Ok (Path.build prog)
+          , [ Dep (Path.build files.src)
+            ; S (List.map ~f:(Prelude.runtime_deps ~dir) stanza.preludes)
+            ] )
         | None ->
           let prelude_args =
             List.concat_map stanza.preludes ~f:(Prelude.to_args ~dir)
           in
           ( mdx_prog
-          , [ A "test" ] @ prelude_args
-            @ [ A "-o"; Target files.corrected; Dep (Path.build files.src) ] )
+          , [ A "test"
+            ; S prelude_args
+            ; Lazy.force color_always
+            ; A "-o"
+            ; Target files.corrected
+            ; Dep (Path.build files.src)
+            ] )
       in
       let deps, sandbox =
         Dep_conf_eval.unnamed ~expander (mdx_package_deps @ mdx_generic_deps)
@@ -365,13 +389,16 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
     in
     S args
   in
-  let prelude_args =
-    Command.Args.S (List.concat_map t.preludes ~f:(Prelude.to_args ~dir))
-  in
+  let open Command.Args in
+  let prelude_args = S (List.concat_map t.preludes ~f:(Prelude.to_args ~dir)) in
   (* We call mdx to generate the testing executable source *)
   let action =
     Command.run ~dir:(Path.build dir) mdx_prog ~stdout_to:file
-      [ A "dune-gen"; prelude_args; Resolve.Memo.args directory_args ]
+      [ A "dune-gen"
+      ; prelude_args
+      ; Resolve.Memo.args directory_args
+      ; Lazy.force color_always
+      ]
   in
   let open Memo.O in
   let* () = Super_context.add_rule sctx ~loc ~dir action in
@@ -379,7 +406,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
      field *)
   let obj_dir = Obj_dir.make_exe ~dir ~name in
   let main_module_name = Module_name.of_string name in
-  let module_ = Module.generated ~kind:Impl ~src_dir:dir main_module_name in
+  let module_ = Module.generated ~kind:Impl ~src_dir:dir [ main_module_name ] in
   let modules = Modules.singleton_exe module_ in
   let flags = Ocaml_flags.default ~dune_version ~profile:Release in
   let lib name = Lib_dep.Direct (loc, Lib_name.of_string name) in
@@ -387,6 +414,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
   let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd names) in
   let compile_info =
     Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Exe names)
+      ~allow_overlaps:false ~forbidden_libraries:[]
       (lib "mdx.test" :: lib "mdx.top" :: t.libraries)
       ~pps:[] ~dune_version ~merlin_ident
   in

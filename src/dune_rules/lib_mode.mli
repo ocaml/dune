@@ -2,6 +2,8 @@ type t =
   | Ocaml of Ocaml.Mode.t
   | Melange
 
+val decode : t Dune_sexp.Decoder.t
+
 module Cm_kind : sig
   type t =
     | Ocaml of Ocaml.Cm_kind.t
@@ -54,8 +56,14 @@ module Map : sig
   module Set : sig
     type nonrec t = bool t
 
+    val encode : t -> Dune_sexp.t list
+
+    val of_list : mode list -> t
+
     val to_dyn : t -> Dyn.t
 
     val equal : t -> t -> bool
+
+    val for_merlin : t -> [ `Ocaml | `Melange ]
   end
 end

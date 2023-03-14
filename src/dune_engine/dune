@@ -12,7 +12,6 @@
   incremental_cycles
   dag
   memo
-  xdg
   ocaml
   dune_re
   threads.posix
@@ -21,7 +20,6 @@
   dune_cache
   dune_cache_storage
   dune_glob
-  ocaml_config
   chrome_trace
   dune_stats
   dune_action_plugin

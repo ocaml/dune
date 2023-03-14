@@ -9,7 +9,7 @@ val to_dyn : t -> Dyn.t
 val equal : t -> t -> bool
 
 val lib :
-     src_dir:Path.Build.t
+     obj_dir:Path.Build.t
   -> main_module_name:Module_name.t option
   -> wrapped:Wrapped.t
   -> stdlib:Ocaml_stdlib.t option
@@ -18,7 +18,7 @@ val lib :
   -> modules:Module.t Module_trie.t
   -> t
 
-val encode : t -> Dune_lang.t
+val encode : t -> src_dir:Path.t -> Dune_lang.t
 
 val decode : src_dir:Path.t -> t Dune_lang.Decoder.t
 
@@ -45,17 +45,29 @@ val singleton_exe : Module.t -> t
 
 val fold_no_vlib : t -> init:'acc -> f:(Module.t -> 'acc -> 'acc) -> 'acc
 
+module Group : sig
+  type t
+
+  val alias : t -> Module.t
+
+  val lib_interface : t -> Module.t
+
+  val for_alias : t -> (Module_name.t * Module.t) list
+end
+
+val canonical_path : t -> Group.t -> Module.t -> Module_name.Path.t
+
 val fold_no_vlib_with_aliases :
      t
   -> init:'acc
   -> normal:(Module.t -> 'acc -> 'acc)
-  -> alias:(Module.t -> Module.t Module_name.Map.t -> 'acc -> 'acc)
+  -> alias:(Group.t -> 'acc -> 'acc)
   -> 'acc
 
-val exe_unwrapped : Module.Name_map.t -> t
+val exe_unwrapped : Module.t Module_trie.t -> obj_dir:Path.Build.t -> t
 
 val make_wrapped :
-     src_dir:Path.Build.t
+     obj_dir:Path.Build.t
   -> modules:Module.t Module_trie.t
   -> [ `Exe | `Melange ]
   -> t
@@ -78,12 +90,11 @@ module Sourced_module : sig
     | Normal of Module.t
     | Imported_from_vlib of Module.t
     | Impl_of_virtual_module of Module.t Ml_kind.Dict.t
+
+  val to_module : t -> Module.t
 end
 
-val obj_map : t -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t
-
-val obj_map_build :
-  t -> f:(Sourced_module.t -> 'a Memo.t) -> 'a Module.Obj_map.t Memo.t
+val obj_map : t -> Sourced_module.t Module_name.Unique.Map.t
 
 (** List of entry modules visible to users of the library. For wrapped
     libraries, this is always one module. For unwrapped libraries, this could be
@@ -99,7 +110,7 @@ val virtual_module_names : t -> Module_name.Path.Set.t
 
 val wrapped : t -> Wrapped.t
 
-val version_installed : t -> install_dir:Path.t -> t
+val version_installed : t -> src_root:Path.t -> install_dir:Path.t -> t
 
 val alias_for : t -> Module.t -> Module.t list
 
@@ -110,10 +121,6 @@ val local_open : t -> Module.t -> Module_name.t list
 val is_stdlib_alias : t -> Module.t -> bool
 
 val exit_module : t -> Module.t option
-
-(** [relocate_alias_module t ~src_dir] sets the source directory of the alias
-    module to [src_dir]. Only works if [t] is wrapped. *)
-val relocate_alias_module : t -> src_dir:Path.t -> t
 
 val as_singleton : t -> Module.t option
 

@@ -51,6 +51,9 @@ let get_installed_binaries ~(context : Context.t) stanzas =
                   let project = Scope.project scope in
                   let dune_version = Dune_project.dune_version project in
                   let+ pps =
+                    (* Instead of making the binary unavailable, this will just
+                       fail when loading artifacts. This is clearly bad but
+                       "optional" executables shouldn't be used. *)
                     Resolve.Memo.read_memo
                       (Preprocess.Per_module.with_instrumentation
                          exes.buildable.preprocess
@@ -63,7 +66,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
                   in
                   Lib.DB.resolve_user_written_deps (Scope.libs scope)
                     (`Exe exes.names) exes.buildable.libraries ~pps
-                    ~dune_version
+                    ~dune_version ~forbidden_libraries:exes.forbidden_libraries
                     ~allow_overlaps:
                       exes.buildable.allow_overlapping_dependencies
                     ~merlin_ident
@@ -86,8 +89,11 @@ let all =
       let artifacts =
         Memo.lazy_ @@ fun () ->
         let* public_libs = Scope.DB.public_libs context in
-        let* stanzas = Only_packages.filtered_stanzas context in
-        let+ local_bins = get_installed_binaries ~context stanzas in
+        let+ stanzas = Only_packages.filtered_stanzas context in
+        let local_bins =
+          Memo.lazy_ ~name:"get_installed_binaries" (fun () ->
+              get_installed_binaries ~context stanzas)
+        in
         Artifacts.create context ~public_libs ~local_bins
       in
       (context.name, artifacts))

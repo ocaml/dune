@@ -171,7 +171,7 @@ Testsuite for (toplevel that loads plugins).
   Installing _install/lib/top_with_plugins/register/registration.ml
   Installing _install/bin/top_with_plugins
   $ export OCAMLPATH=$PWD/_install/lib
-  $ ./_install/bin/top_with_plugins -no-version <<EOF
+  $ ./_install/bin/top_with_plugins -noinit -no-version <<EOF
   > 2+2;;
   > #quit;;
   > EOF

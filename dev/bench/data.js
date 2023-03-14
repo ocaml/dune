@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678827267258,
+  "lastUpdate": 1678827419374,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -9569,6 +9569,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.123133418773335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aafa99289d7f570f4a998aaa88364f06c073180f",
+          "message": "refactor(csexp_rpc): remove useless socket arg (#7318)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\n\r\n<!-- ps-id: ec04f08e-5c43-4325-af38-6b32ae471217 -->",
+          "timestamp": "2023-03-14T13:37:55-07:00",
+          "tree_id": "8ee35a42bf1da96c17f0a1458ce3fd08fac9d3b9",
+          "url": "https://github.com/ocaml/dune/commit/aafa99289d7f570f4a998aaa88364f06c073180f"
+        },
+        "date": 1678827417799,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.877083432473334",
             "unit": "seconds"
           }
         ]

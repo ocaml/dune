@@ -130,7 +130,6 @@ module Session = struct
     | Open of
         { out_channel : out_channel
         ; in_channel : in_channel
-        ; socket : bool
         ; writer : Worker.t
         ; reader : Worker.t
         }
@@ -140,13 +139,13 @@ module Session = struct
     ; mutable state : state
     }
 
-  let create ~socket in_channel out_channel =
+  let create in_channel out_channel =
     let id = Id.gen () in
     if debug then
       Log.info [ Pp.textf "RPC created new session %d" (Id.to_int id) ];
     let* reader = Worker.create () in
     let+ writer = Worker.create () in
-    let state = Open { in_channel; out_channel; reader; writer; socket } in
+    let state = Open { in_channel; out_channel; reader; writer } in
     { id; state }
 
   let string_of_packet = function
@@ -160,13 +159,9 @@ module Session = struct
   let close t =
     match t.state with
     | Closed -> ()
-    | Open { in_channel; out_channel; reader; writer; socket } ->
+    | Open { in_channel = _; out_channel; reader; writer } ->
       Worker.stop reader;
       Worker.stop writer;
-      (* with a socket, there's only one fd. We make sure to close it only once.
-         with dune rpc init, we have two separate fd's (stdin/stdout) so we must
-         close both. *)
-      if not socket then close_in_noerr in_channel;
       close_out_noerr out_channel;
       t.state <- Closed
 
@@ -223,12 +218,10 @@ module Session = struct
       | Some sexps ->
         Code_error.raise "attempting to write to a closed channel"
           [ ("sexp", Dyn.(list Sexp.to_dyn) sexps) ])
-    | Open { writer; out_channel; socket; _ } -> (
+    | Open { writer; out_channel; _ } -> (
       match sexps with
       | None ->
-        (if socket then
-         try
-           (* TODO this hack is temporary until we get rid of dune rpc init *)
+        (try
            Unix.shutdown
              (Unix.descr_of_out_channel out_channel)
              Unix.SHUTDOWN_ALL
@@ -357,7 +350,7 @@ module Server = struct
             ];
           Fiber.return None
         | Ok (Some (in_, out)) ->
-          let+ session = Session.create ~socket:true in_ out in
+          let+ session = Session.create in_ out in
           Some session
       in
       Fiber.Stream.In.create loop
@@ -429,7 +422,7 @@ module Client = struct
       | Error `Stopped -> assert false
       | Error (`Exn exn) -> Fiber.return (Error exn)
       | Ok (in_, out) ->
-        let+ res = Session.create ~socket:true in_ out in
+        let+ res = Session.create in_ out in
         Ok res)
 
   let connect_exn t =

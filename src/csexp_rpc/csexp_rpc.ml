@@ -279,6 +279,7 @@ module Server = struct
         if inter then None
         else if accept then (
           let fd, _ = Unix.accept ~cloexec:true t.fd in
+          Socket.maybe_set_nosigpipe fd;
           Unix.clear_nonblock fd;
           Some fd)
         else assert false
@@ -332,7 +333,6 @@ module Server = struct
         Worker.task async ~f:(fun () ->
             Transport.accept transport
             |> Option.map ~f:(fun client ->
-                   Socket.maybe_set_nosigpipe fd;
                    let in_ = Unix.in_channel_of_descr client in
                    let out = Unix.out_channel_of_descr client in
                    (in_, out)))

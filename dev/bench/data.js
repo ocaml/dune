@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678827610894,
+  "lastUpdate": 1678827622074,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -13805,6 +13805,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "67.79496804304665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "59cc644a039107e97d6d45dd8a046a26d15b8e22",
+          "message": "test: odoc improvements (#7305)\n\nmove odoc test to odoc/ dir\r\nmove odoc test stanzas to odoc/ dir\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-14T13:35:26-07:00",
+          "tree_id": "b444805a44904ecf08beb07a7163fdaf89a5ddc9",
+          "url": "https://github.com/ocaml/dune/commit/59cc644a039107e97d6d45dd8a046a26d15b8e22"
+        },
+        "date": 1678827621008,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6174934220266668",
             "unit": "seconds"
           }
         ]

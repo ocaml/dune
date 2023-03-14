@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678825399927,
+  "lastUpdate": 1678825409847,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -13631,6 +13631,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "65.76994447007333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6374c6fe43b044771b26ad461efbe4ba975a6842",
+          "message": "refactor(rpc): hide Session.create (#7317)\n\nIt was never used outside of the Csexp_rpc module\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-14T12:59:28-07:00",
+          "tree_id": "68a92befe23eca28d4215cdb67abd21bfb67b639",
+          "url": "https://github.com/ocaml/dune/commit/6374c6fe43b044771b26ad461efbe4ba975a6842"
+        },
+        "date": 1678825409399,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6080300050733334",
             "unit": "seconds"
           }
         ]

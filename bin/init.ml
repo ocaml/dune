@@ -49,12 +49,12 @@ let public_name_conv =
     in
     let open Result.O in
     let* atom = atom_parser s in
-    let* _ =
+    let+ () =
       match Lib_name.of_string_opt s with
       | None -> Error (err_msg ())
-      | Some s -> Ok s
+      | Some _ -> Ok ()
     in
-    Ok (Public_name atom)
+    Public_name atom
   in
   let printer ppf public_name =
     Format.pp_print_string ppf (public_name_to_string public_name)

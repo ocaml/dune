@@ -67,7 +67,7 @@ and B (transitive)
          make inconsistent assumptions over interface My_lib__D
   [1]
 
-Now replace modules with melange-ppx-less code
+Replacing modules with melange-ppx-less code fixes the issue
 
   $ cat > lib/b.ml <<EOF
   > let t = C.t
@@ -76,6 +76,28 @@ Now replace modules with melange-ppx-less code
   $ cat > lib/c.ml <<EOF
   > type t = D.t
   > let t: D.t = D.t
+  > EOF
+
+  $ dune build @mel
+
+Also, using disabling melange builtin ppx and using preprocess fixes the problem
+
+  $ cat > lib/b.ml <<EOF
+  > let t = [%bs.obj { a = C.t }]
+  > EOF
+
+  $ cat > lib/c.ml <<EOF
+  > type t = < a : D.t >
+  > let t: < a : D.t > = [%bs.obj { a = D.t }]
+  > EOF
+
+  $ cat > lib/dune <<EOF
+  > (library
+  >  (name my_lib)
+  >  (preprocess
+  >   (action (run melc --as-pp %{input-file})))
+  >  (melange.compile_flags :standard --bs-no-builtin-ppx)
+  >  (modes melange))
   > EOF
 
   $ dune build @mel

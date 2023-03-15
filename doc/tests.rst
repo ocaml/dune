@@ -363,7 +363,7 @@ backend is specified by four parameters:
 1. How to create the test runner
 2. How to build the test runner
 3. How to run the test runner
-4. Optionaly how to run the test runner to list partitions
+4. Optionally how to run the test runner to list partitions
 
 These four parameters can be specified inside the
 ``inline_tests.backend`` field, which accepts the following fields:

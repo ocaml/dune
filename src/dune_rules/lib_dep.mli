@@ -34,5 +34,13 @@ val re_export : Loc.t * Lib_name.t -> t
 val decode : allow_re_export:bool -> t Dune_lang.Decoder.t
 
 module L : sig
-  val field_encode : t list -> name:string -> Dune_lang.Encoder.field
+  type nonrec t = t list
+
+  val field_encode : t -> name:string -> Dune_lang.Encoder.field
+
+  val decode :
+       allow_re_export:bool
+    -> (t, Dune_lang.Decoder.values) Dune_lang.Decoder.parser
+
+  val of_pps : Lib_name.t list -> t
 end

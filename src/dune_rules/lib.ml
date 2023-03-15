@@ -1885,8 +1885,8 @@ module DB = struct
     instrumentation_backend t.lib_config.instrument_with (resolve t) libname
 end
 
-let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir :
-    Dune_package.Lib.t Resolve.Memo.t =
+let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects
+    ~melange_runtime_deps ~dir : Dune_package.Lib.t Resolve.Memo.t =
   let loc = Lib_info.loc info in
   let mangled_name lib =
     match Lib_info.status lib.info with
@@ -1940,7 +1940,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir :
   let info =
     Lib_info.for_dune_package info ~name ~ppx_runtime_deps ~requires
       ~foreign_objects ~obj_dir ~implements ~default_implementation ~sub_systems
-      ~modules
+      ~modules ~melange_runtime_deps
   in
   Dune_package.Lib.of_dune_lib ~info ~main_module_name
 

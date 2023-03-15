@@ -15,10 +15,9 @@ val unnamed :
 (** Evaluates unnamed dependency specifications. Returns the paths to the newly
     evaluated dependencies. *)
 val unnamed_get_paths :
-     ?sandbox:Sandbox_config.t
-  -> expander:Expander.t
+     expander:Expander.t
   -> Dep_conf.t list
-  -> Path.Set.t Action_builder.t * Sandbox_config.t
+  -> Path.Set.t Action_builder.t * Sandbox_config.t option
 
 (** Evaluates named dependency specifications. Return the action build that
     register dependencies as well as an expander that can be used to expand to

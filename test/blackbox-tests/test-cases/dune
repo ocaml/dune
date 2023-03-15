@@ -70,14 +70,6 @@
  (enabled_if
   (<> %{ocaml-config:system} win)))
 
-(subdir
- odoc
- (cram
-  ;; XXX (package odoc) doesn't seem to work for some reason
-  (deps %{bin:odoc})
-  (enabled_if
-   (<> %{ocaml_version} 4.02.3))))
-
 (cram
  (applies_to output-obj)
  (enabled_if

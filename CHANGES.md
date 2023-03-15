@@ -1,6 +1,19 @@
 Unreleased
 ----------
 
+- RPC: Ignore SIGPIPE when clients suddenly disconnect on OSX (#7299, partially
+  fixes #6879, @rgrinberg)
+
+- Always clean up the UI on exit. (#7271, fixes #7142 @rgrinberg)
+
+- Bootstrap: remove reliance on shell. Previously, we'd use the shell to get
+  the number of processors. (#7274, @rgrinberg)
+
+- Bootstrap: correctly detect the number of processors by allowing `nproc` to be
+  looked up in `$PATH` (#7272, @Alizter)
+
+- Pass correct flags when compiling `stdlib.ml`. (#7241, @emillon)
+
 - Speed up file copying on macos by using `clonefile` when available
   (@rgrinberg, #7210)
 

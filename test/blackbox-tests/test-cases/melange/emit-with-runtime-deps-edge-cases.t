@@ -32,7 +32,7 @@ Rules created for the assets in the output directory
   $ dune rules @mel | grep file.txt
   ((deps ((File (In_build_dir _build/default/a/assets/file.txt))))
    (targets ((files (default/a/output/a/assets/file.txt)) (directories ())))
-     (symlink ../../../assets/file.txt a/output/a/assets/file.txt))))
+    (chdir _build/default (copy a/assets/file.txt a/output/a/assets/file.txt))))
 
   $ dune build @mel --display=short
           melc a/.output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
@@ -52,8 +52,6 @@ The runtime_dep index.txt was copied to the build folder
   $ node _build/default/a/output/a/main.js
   hello from file
   
-
-
 
 
 
@@ -95,11 +93,10 @@ Need to create the source dir first for the alias to be picked up
   $ dune rules @mel | grep .txt
   ((deps ((File (In_build_dir _build/default/a/assets/file.txt))))
    (targets ((files (default/a/output/a/assets/file.txt)) (directories ())))
-     (symlink ../../../assets/file.txt a/output/a/assets/file.txt))))
+    (chdir _build/default (copy a/assets/file.txt a/output/a/assets/file.txt))))
   ((deps ((File (In_build_dir _build/default/a/assets/file.txt))))
     ((files (default/another/another-output/a/assets/file.txt))
-      ../../../../a/assets/file.txt
-      another/another-output/a/assets/file.txt))))
+     (copy a/assets/file.txt another/another-output/a/assets/file.txt))))
 
   $ dune build @mel --display=short
           melc a/.output.mobjs/melange/melange__Main.{cmi,cmj,cmt}

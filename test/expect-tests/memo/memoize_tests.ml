@@ -1979,3 +1979,43 @@ let%expect_test "Simple computation chain with a cutoff" =
     Memo graph: 3/1 restored/computed nodes, 3 traversed edges
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}]
+
+let%expect_test "loss of concurrency" =
+  let cell name =
+    Memo.lazy_cell ~cutoff:Unit.equal (fun () ->
+        (* this hackery needed to observe concurrency *)
+        Memo.of_reproducible_fiber
+        @@ Fiber.of_thunk (fun () ->
+               printfn "start %s" name;
+               let open Fiber.O in
+               let+ () = Scheduler.yield () in
+               printfn "finish %s" name))
+  in
+  let a = cell "a" in
+  let b = cell "b" in
+  let c =
+    Memo.lazy_cell (fun () ->
+        Memo.fork_and_join
+          (fun () -> Memo.Cell.read a)
+          (fun () -> Memo.Cell.read b))
+  in
+  let read x = run @@ Memo.map ~f:ignore @@ Memo.Cell.read x in
+  (* First we evaluate everything. Note that [a] and [b] are evalauted concurrently *)
+  read c;
+  [%expect {|
+    start a
+    start b
+    finish a
+    finish b |}];
+  (* Now we invalidate [a] and [b]. As a consequence [c] should be recomputed. *)
+  Memo.reset
+    (Memo.Invalidation.combine
+       (Memo.Cell.invalidate a ~reason:Test)
+       (Memo.Cell.invalidate b ~reason:Test));
+  (* Now we recompute [c]. Notice that [a] and [b] are no longer computed concurrently *)
+  read c;
+  [%expect {|
+    start a
+    finish a
+    start b
+    finish b |}]

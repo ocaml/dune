@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678895188118,
+  "lastUpdate": 1678895597608,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -13921,6 +13921,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6117482512066665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "846831c7cc2443db5f3aa0e12a43d9ba48cdd639",
+          "message": "fix(ci): restrict jsoo version (#7324)\n\nOur test suite is incompatible with 5.1.0.\r\nThis ensures it is not picked by CI.\r\nThis bound is to be removed once a fixed version has been released.\r\n\r\nSee ocsigen/js_of_ocaml#1430\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-03-15T16:24:37+01:00",
+          "tree_id": "e7c95f691bdf8c30aeb622b813faff546141dd7d",
+          "url": "https://github.com/ocaml/dune/commit/846831c7cc2443db5f3aa0e12a43d9ba48cdd639"
+        },
+        "date": 1678895596471,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "81.11108858141999",
             "unit": "seconds"
           }
         ]

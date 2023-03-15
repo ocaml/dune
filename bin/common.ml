@@ -1,4 +1,5 @@
 open Stdune
+open Dune_config_file
 module Config = Dune_util.Config
 module Console = Dune_console
 module Colors = Dune_rules.Colors

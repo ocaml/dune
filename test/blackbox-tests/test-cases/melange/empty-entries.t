@@ -8,7 +8,7 @@ Test (modules) field can be left empty
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (alias melange))
+  >  (alias mel))
   > EOF
 
   $ cat > hello.ml <<EOF
@@ -16,6 +16,6 @@ Test (modules) field can be left empty
   >   print_endline "hello"
   > EOF
 
-  $ dune build @melange
+  $ dune build @mel
   $ node _build/default/output/hello.js
   hello

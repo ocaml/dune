@@ -11,21 +11,21 @@ into the melange.emit target folder
   $ cat > src/dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (alias melange))
+  >  (alias mel))
   > EOF
 
   $ touch public/img.png
 
 Builds normally
 
-  $ dune build @melange
+  $ dune build @mel
 
 Now try copying a file
 
   $ cat > src/dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (alias melange))
+  >  (alias mel))
   > 
   > (subdir
   >  output
@@ -37,7 +37,7 @@ Now try copying a file
 
 It works:
 
-  $ dune build @melange
+  $ dune build @mel
 
 We add a module and it stays working:
 
@@ -45,4 +45,4 @@ We add a module and it stays working:
   > let () = Js.log "foo"
   > EOF
 
-  $ dune build @melange
+  $ dune build @mel

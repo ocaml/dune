@@ -3,7 +3,7 @@ Test that libs using `(include_subdirs unqualified) work well with
 
 Build js files
   $ output=inside/output
-  $ dune build @melange
+  $ dune build @mel
 
 The directory structure of the .js should mimic the directory structure of the
 source:

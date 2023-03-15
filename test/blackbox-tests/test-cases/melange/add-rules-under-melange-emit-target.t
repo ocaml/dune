@@ -7,7 +7,7 @@ Test that the target directory exists
 
   $ cat > dune <<EOF
   > (melange.emit
-  >  (alias melange)
+  >  (alias mel)
   >  (target output))
   > EOF
 
@@ -17,13 +17,13 @@ Create the target dir
   $ cat > output/dune <<EOF
   > (rule
   >  (with-stdout-to index.txt (echo "hello")))
-  > (alias (name melange) (deps index.txt))
+  > (alias (name mel) (deps index.txt))
   > EOF
   $ cat > hello.ml <<EOF
   > let () = Js.log "hello"
   > EOF
 
-  $ dune build @melange
+  $ dune build @mel
   $ ls _build/default/output
   hello.js
   index.txt
@@ -33,12 +33,12 @@ Target promotion works
   $ dune clean
   $ cat > dune <<EOF
   > (melange.emit
-  >  (alias melange)
+  >  (alias mel)
   >  (target output)
   >  (promote (until-clean)))
   > EOF
 
-  $ dune build @melange
+  $ dune build @mel
   $ ls _build/default/output
   hello.js
   index.txt

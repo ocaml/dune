@@ -115,8 +115,8 @@
             })
             melange.overlays.default
           ];
-          mkSlim = { extraBuildInputs ? [ ] }:
-            pkgs.mkShell {
+          mkSlim = { extraBuildInputs ? [ ], ... }@attrs:
+            pkgs.mkShell ({
               nativeBuildInputs = testNativeBuildInputs;
               inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
               buildInputs = testBuildInputs ++ (with pkgs.ocamlPackages; [
@@ -131,7 +131,7 @@
                 lwt
                 patdiff
               ] ++ extraBuildInputs);
-            };
+            } // attrs);
         in
         {
           doc =
@@ -154,6 +154,7 @@
 
           slim = mkSlim { };
           slim-melange = mkSlim {
+            DUNE_MELANGE_TEST = "enable";
             extraBuildInputs = [
               pkgs.ocamlPackages.melange
               pkgs.ocamlPackages.mel

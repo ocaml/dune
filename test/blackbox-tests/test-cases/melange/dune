@@ -1,11 +1,17 @@
 (cram
  (deps %{bin:node} %{bin:melc})
- (alias runtest-melange))
+ (alias runtest-melange)
+ (enabled_if
+  (= %{env:DUNE_MELANGE_TEST=disable} enable)))
 
 (cram
  (deps %{bin:rescript_syntax})
- (applies_to rescript_syntax))
+ (applies_to rescript_syntax)
+ (enabled_if
+  (= %{env:DUNE_MELANGE_TEST=disable} enable)))
 
 (cram
  (deps %{bin:melc_stdlib_prefix})
- (applies_to merlin))
+ (applies_to merlin)
+ (enabled_if
+  (= %{env:DUNE_MELANGE_TEST=disable} enable)))

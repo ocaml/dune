@@ -113,11 +113,10 @@ end = struct
       in
       Install.Entry.Sourced.create ~loc entry
     in
+    let lib_name = Library.best_name lib in
     let* installable_modules =
       let* ml_sources = Dir_contents.ocaml dir_contents in
-      let modules =
-        Ml_sources.modules ml_sources ~for_:(Library (Library.best_name lib))
-      in
+      let modules = Ml_sources.modules ml_sources ~for_:(Library lib_name) in
       let+ impl = Virtual_rules.impl sctx ~lib ~scope in
       let modules = Vimpl.impl_modules impl modules in
       Modules.split_by_lib modules
@@ -173,13 +172,11 @@ end = struct
       let loc, melange_runtime_deps = lib.melange_runtime_deps in
       let+ melange_runtime_deps =
         let* expander = Super_context.expander sctx ~dir:lib_src_dir in
-        Melange_rules.eval_runtime_deps ~expander melange_runtime_deps
+        Melange_rules.Runtime_deps.eval ~expander ~loc
+          ~paths:(Disallow_external lib_name) melange_runtime_deps
       in
-      let exception External_path of Path.t in
-      let f path =
-        match Path.as_in_build_dir path with
-        | None -> raise (External_path path)
-        | Some path ->
+      Path.Set.to_list_map melange_runtime_deps ~f:(fun path ->
+          let path = Path.as_in_build_dir_exn path in
           let sub_dir =
             let src_dir = Path.Build.parent_exn path in
             let sub_dir =
@@ -192,13 +189,7 @@ end = struct
             in
             in_sub_dir sub_dir
           in
-          make_entry ?sub_dir Lib path
-      in
-      match Path.Set.to_list_map melange_runtime_deps ~f with
-      | exception External_path path ->
-        Melange_rules.raise_external_runtime_dep_error ~loc (Lib_info.name info)
-          path
-      | paths -> paths
+          make_entry ?sub_dir Lib path)
     in
     let { Lib_config.has_native; ext_obj; _ } = lib_config in
     let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
@@ -602,12 +593,13 @@ end = struct
             and* melange_runtime_deps =
               match Lib_info.melange_runtime_deps info with
               | External _paths -> assert false
-              | Local (_, dep_conf) ->
+              | Local (loc, dep_conf) ->
                 let+ melange_runtime_deps =
                   let* expander =
                     Super_context.expander sctx ~dir:lib_src_dir
                   in
-                  Melange_rules.eval_runtime_deps ~expander dep_conf
+                  Melange_rules.Runtime_deps.eval ~expander ~loc
+                    ~paths:Allow_all dep_conf
                 in
                 Path.Set.to_list melange_runtime_deps
             in

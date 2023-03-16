@@ -434,7 +434,7 @@ let load_install_file path =
   let file = Io.Untracked.with_lexbuf_from_file path ~f:Opam_file.parse in
   let fail { filename = pos_fname; start; stop } msg =
     let position_of_loc (pos_lnum, pos_cnum) =
-      Lexing.{ pos_fname; pos_lnum; pos_bol = 0; pos_cnum }
+      { Lexing.pos_fname; pos_lnum; pos_bol = 0; pos_cnum }
     in
     let start = position_of_loc start in
     let stop = position_of_loc stop in

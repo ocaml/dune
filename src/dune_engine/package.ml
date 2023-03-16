@@ -72,6 +72,8 @@ module Id = struct
 end
 
 module Dependency = struct
+  let nopos pelem = { OpamParserTypes.FullPos.pelem; pos = Opam_file.nopos }
+
   module Op = struct
     type t =
       | Eq
@@ -99,11 +101,7 @@ module Dependency = struct
       | Lt -> string "Lt"
       | Neq -> string "Neq"
 
-    let to_relop : t -> OpamParserTypes.FullPos.relop =
-      let nopos pelem =
-        OpamParserTypes.FullPos.{ pelem; pos = Opam_file.nopos }
-      in
-      function
+    let to_relop : t -> OpamParserTypes.FullPos.relop = function
       | Eq -> nopos `Eq
       | Gte -> nopos `Geq
       | Lte -> nopos `Leq
@@ -132,11 +130,13 @@ module Dependency = struct
         let+ s = string in
         if String.is_prefix s ~prefix:":" then Var (String.drop s 1) else QVar s
 
-      let to_opam : t -> OpamParserTypes.FullPos.value =
-        let pos = Opam_file.nopos in
-        function
-        | QVar x -> { pelem = String x; pos }
-        | Var x -> { pelem = Ident x; pos }
+      let to_opam v =
+        let value_kind : OpamParserTypes.FullPos.value_kind =
+          match v with
+          | QVar x -> String x
+          | Var x -> Ident x
+        in
+        nopos value_kind
 
       let to_dyn = function
         | QVar v -> Dyn.String v
@@ -230,8 +230,6 @@ module Dependency = struct
     enter constrained
     <|> let+ name = Name.decode in
         { name; constraint_ = None }
-
-  let nopos pelem = OpamParserTypes.FullPos.{ pelem; pos = Opam_file.nopos }
 
   let rec opam_constraint : Constraint.t -> OpamParserTypes.FullPos.value =
     let open OpamParserTypes.FullPos in
@@ -774,8 +772,8 @@ let load_opam_file file name =
       let+ l =
         List.fold_left l.pelem ~init:(Some []) ~f:(fun acc v ->
             let* acc = acc in
-            match v.OpamParserTypes.FullPos.pelem with
-            | OpamParserTypes.FullPos.String s -> Some (s :: acc)
+            match (v : OpamParserTypes.FullPos.value).pelem with
+            | String s -> Some (s :: acc)
             | _ -> None)
       in
       List.rev l

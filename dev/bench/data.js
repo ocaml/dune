@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678952537467,
+  "lastUpdate": 1678952851214,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -14298,6 +14298,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.4215192015866664",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "20ad5e109e3879a54e988fd4f9b2922c7a6d5fb9",
+          "message": "fix(rules): merge allowed subdirs correctly for Redirect_to_parent rules (#7207)\n\n* fix(rules): merge allowed subdirs correctly for Redirect_to_parent rules",
+          "timestamp": "2023-03-16T00:18:54-07:00",
+          "tree_id": "99e07b91df680686e63c2b9e76e077def14e25b3",
+          "url": "https://github.com/ocaml/dune/commit/20ad5e109e3879a54e988fd4f9b2922c7a6d5fb9"
+        },
+        "date": 1678952849861,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "77.94778774714",
             "unit": "seconds"
           }
         ]

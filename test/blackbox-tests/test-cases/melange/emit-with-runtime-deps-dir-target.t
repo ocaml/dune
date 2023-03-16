@@ -9,8 +9,8 @@ Test simple interactions between melange.emit and copy_files
   $ cat > dune <<EOF
   > (rule (target (dir some_dir))
   >  (action
-  >   (progn (bash "mkdir %{target}")
-  >    (bash "echo hello from file inside dir target > %{target}/inside-dir-target.txt"))))
+  >   (progn (system "mkdir %{target}")
+  >    (system "echo hello from file inside dir target > %{target}/inside-dir-target.txt"))))
   > (melange.emit
   >  (alias mel)
   >  (target output)
@@ -31,9 +31,9 @@ Rules created for the assets in the output directory
   [1]
 
   $ dune build @mel --display=short
-          bash some_dir
+            sh some_dir
           melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          bash some_dir
+            sh some_dir
           melc output/main.js
   Error: Is a directory
   -> required by _build/default/output/some_dir

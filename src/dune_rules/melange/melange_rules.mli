@@ -19,7 +19,15 @@ val setup_emit_js_rules :
   -> Melange_stanzas.Emit.t
   -> unit Memo.t
 
-val eval_runtime_deps :
-  expander:Expander.t -> Dep_conf.t list -> Path.Set.t Memo.t
+module Runtime_deps : sig
+  type path_specification =
+    | Allow_all
+    | Disallow_external of Lib_name.t
 
-val raise_external_runtime_dep_error : loc:Loc.t -> Lib_name.t -> Path.t -> 'a
+  val eval :
+       loc:Loc.t
+    -> expander:Expander.t
+    -> paths:path_specification
+    -> Dep_conf.t list
+    -> Path.Set.t Memo.t
+end

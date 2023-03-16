@@ -248,21 +248,44 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
   Buildable_rules.with_lib_deps ctx compile_info ~dir ~f
 
-let raise_external_runtime_dep_error ~loc lib_name path =
-  User_error.raise ~loc
-    [ Pp.textf
-        "Public library %s depends on external path `%s'. This is not allowed."
-        (Lib_name.to_string lib_name)
-        (Path.to_string path)
-    ]
-    ~hints:
-      [ Pp.textf
-          "Move the external dependency to the workspace and use a relative \
-           path."
-      ]
-
 module Runtime_deps = struct
-  let targets ~output ~for_ deps =
+  type path_specification =
+    | Allow_all
+    | Disallow_external of Lib_name.t
+
+  let raise_disallowed_external_path ~loc lib_name path =
+    User_error.raise ~loc
+      [ Pp.textf
+          "Public library %s depends on external path `%s'. This is not \
+           allowed."
+          (Lib_name.to_string lib_name)
+          (Path.to_string path)
+      ]
+      ~hints:
+        [ Pp.textf
+            "Move the external dependency to the workspace and use a relative \
+             path."
+        ]
+
+  let eval ~loc ~expander ~paths:path_spec (deps : Dep_conf.t list) =
+    let runtime_deps, sandbox =
+      Dep_conf_eval.unnamed_get_paths ~expander deps
+    in
+    Option.iter sandbox ~f:(fun _ ->
+        User_error.raise ~loc [ Pp.text "sandbox settings are not allowed" ]);
+    let open Memo.O in
+    let+ paths, _ = Action_builder.run runtime_deps Lazy in
+    (match path_spec with
+    | Allow_all -> ()
+    | Disallow_external lib_name ->
+      Path.Set.iter paths ~f:(fun path ->
+          match Path.as_external path with
+          | None -> ()
+          | Some _ -> raise_disallowed_external_path ~loc lib_name path));
+    paths
+
+  let targets sctx ~dir ~output ~for_ (mel : Melange_stanzas.Emit.t) =
+    let open Memo.O in
     let raise_external_dep_error src =
       let lib_info =
         match for_ with
@@ -274,9 +297,25 @@ module Runtime_deps = struct
         | Local (loc, _) -> loc
         | External _ -> assert false
       in
-      raise_external_runtime_dep_error ~loc (Lib_info.name lib_info) src
+      raise_disallowed_external_path ~loc (Lib_info.name lib_info) src
     in
-
+    let+ deps =
+      match for_ with
+      | `Emit ->
+        let* expander = Super_context.expander sctx ~dir in
+        let loc, runtime_deps = mel.runtime_deps in
+        eval ~expander ~loc ~paths:Allow_all runtime_deps
+      | `Library lib_info -> (
+        match Lib_info.melange_runtime_deps lib_info with
+        | External paths -> Memo.return (Path.Set.of_list paths)
+        | Local (loc, dep_conf) ->
+          let dir =
+            let info = Lib_info.as_local_exn lib_info in
+            Lib_info.src_dir info
+          in
+          let* expander = Super_context.expander sctx ~dir in
+          eval ~expander ~loc ~paths:Allow_all dep_conf)
+    in
     Path.Set.fold ~init:([], []) deps ~f:(fun src (copy, non_copy) ->
         match output with
         | `Public_library (lib_dir, output_dir) -> (
@@ -298,35 +337,9 @@ module Runtime_deps = struct
           ))
 end
 
-let eval_runtime_deps ~expander (deps : Dep_conf.t list) =
-  let runtime_deps, sandbox = Dep_conf_eval.unnamed_get_paths ~expander deps in
-  Option.iter sandbox ~f:(fun _ ->
-      (* TODO loc *)
-      User_error.raise [ Pp.text "sandbox settings are not allowed" ]);
+let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
   let open Memo.O in
-  let+ paths, _ = Action_builder.run runtime_deps Lazy in
-  paths
-
-let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode
-    ~(mel : Melange_stanzas.Emit.t) ~output ~for_ =
-  let open Memo.O in
-  let* runtime_dep_paths =
-    match for_ with
-    | `Emit ->
-      let* expander = Super_context.expander sctx ~dir in
-      eval_runtime_deps ~expander mel.runtime_deps
-    | `Library lib_info -> (
-      match Lib_info.melange_runtime_deps lib_info with
-      | External paths -> Memo.return (Path.Set.of_list paths)
-      | Local (_loc, dep_conf) ->
-        let dir =
-          let info = Lib_info.as_local_exn lib_info in
-          Lib_info.src_dir info
-        in
-        let* expander = Super_context.expander sctx ~dir in
-        eval_runtime_deps ~expander dep_conf)
-  in
-  let copy, non_copy = Runtime_deps.targets ~output ~for_ runtime_dep_paths in
+  let* copy, non_copy = Runtime_deps.targets sctx ~dir ~output ~for_ mel in
   let+ () =
     let loc = mel.loc in
     Memo.parallel_iter copy ~f:(fun (src, dst) ->
@@ -381,8 +394,8 @@ let setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
   let output = `Private_library_or_emit target_dir in
   let obj_dir = Obj_dir.of_local obj_dir in
   let* () =
-    setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~mel ~output
-      ~for_:`Emit
+    setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_:`Emit
+      mel
   in
   Memo.parallel_iter modules_for_js ~f:(fun m ->
       build_js ~dir ~loc ~pkg_name ~mode ~module_systems ~output ~obj_dir ~sctx
@@ -413,8 +426,8 @@ let setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
       in
       let output = output_of_lib ~target_dir lib in
       let* () =
-        setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~mel ~output
-          ~for_:(`Library info)
+        setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output
+          ~for_:(`Library info) mel
       in
       let* () =
         match Lib.implements lib with

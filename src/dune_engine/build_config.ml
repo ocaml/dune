@@ -12,21 +12,36 @@ module Context_or_install = struct
 end
 
 module Rules = struct
+  module Build_only_sub_dirs = struct
+    type t = Subdir_set.t Path.Build.Map.t
+
+    let empty = Path.Build.Map.empty
+
+    let singleton ~dir sub_dirs = Path.Build.Map.singleton dir sub_dirs
+
+    let find t dir =
+      Path.Build.Map.find t dir |> Option.value ~default:Subdir_set.empty
+
+    let union a b =
+      Path.Build.Map.union a b ~f:(fun _ a b -> Some (Subdir_set.union a b))
+  end
+
   type t =
-    { build_dir_only_sub_dirs : Subdir_set.t
+    { build_dir_only_sub_dirs : Build_only_sub_dirs.t
     ; directory_targets : Loc.t Path.Build.Map.t
     ; rules : Rules.t Memo.t
     }
 
   let empty =
-    { build_dir_only_sub_dirs = Subdir_set.empty
+    { build_dir_only_sub_dirs = Path.Build.Map.empty
     ; directory_targets = Path.Build.Map.empty
     ; rules = Memo.return Rules.empty
     }
 
   let combine_exn r { build_dir_only_sub_dirs; directory_targets; rules } =
     { build_dir_only_sub_dirs =
-        Subdir_set.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
+        Build_only_sub_dirs.union r.build_dir_only_sub_dirs
+          build_dir_only_sub_dirs
     ; directory_targets =
         Path.Build.Map.union_exn r.directory_targets directory_targets
     ; rules =

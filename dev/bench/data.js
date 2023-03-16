@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678936322634,
+  "lastUpdate": 1678936682697,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -14095,6 +14095,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.5823222636066667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "745dca81e0adc6deab9e4bfaed33e985c80641dd",
+          "message": "chore(nix): upgrade melange that picks up `entries` -> `modules` rename (#7320)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-15T19:47:47-07:00",
+          "tree_id": "75416581c02cf21f49986b5f66c8b2eb4cd451c7",
+          "url": "https://github.com/ocaml/dune/commit/745dca81e0adc6deab9e4bfaed33e985c80641dd"
+        },
+        "date": 1678936682056,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "71.32070943852666",
             "unit": "seconds"
           }
         ]

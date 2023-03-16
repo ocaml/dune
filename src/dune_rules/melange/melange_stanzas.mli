@@ -2,10 +2,15 @@ open Import
 
 (** Stanza to produce JavaScript targets from Melange libraries *)
 module Emit : sig
+  type alias_with_libs =
+    { alias : Alias.Name.t
+    ; libs : Lib_dep.L.t
+    }
+
   type t =
     { loc : Loc.t
     ; target : string
-    ; alias : Alias.Name.t option
+    ; aliases : alias_with_libs list
     ; module_systems : (Melange.Module_system.t * string) list
     ; modules : Stanza_common.Modules_settings.t
     ; libraries : Lib_dep.t list

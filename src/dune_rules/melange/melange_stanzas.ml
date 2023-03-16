@@ -2,10 +2,15 @@ open Import
 open Dune_lang.Decoder
 
 module Emit = struct
+  type alias_with_libs =
+    { alias : Alias.Name.t
+    ; libs : Lib_dep.L.t
+    }
+
   type t =
     { loc : Loc.t
     ; target : string
-    ; alias : Alias.Name.t option
+    ; aliases : alias_with_libs list
     ; module_systems : (Melange.Module_system.t * Filename.Extension.t) list
     ; modules : Stanza_common.Modules_settings.t
     ; libraries : Lib_dep.t list
@@ -71,6 +76,30 @@ module Emit = struct
 
       module_systems
     in
+    let alias_decoder : (alias_with_libs, values) parser =
+      let alias_and_libs =
+        let* alias = field "alias" Alias.Name.decode in
+        let+ libs =
+          field "libraries"
+            (Lib_dep.L.decode ~allow_re_export:false)
+            ~default:[]
+        in
+        { alias; libs }
+      in
+      let alias =
+        let+ alias = Alias.Name.decode in
+        { alias; libs = [] }
+      in
+      peek_exn >>= function
+      | Quoted_string (loc, _) | Template { loc; _ } ->
+        User_error.raise ~loc
+          [ Pp.text
+              "Invalid format, <name> or (name <name>) (libraries <lib1> \
+               <lib2>) expected"
+          ]
+      | Atom _ -> alias
+      | List _ -> fields alias_and_libs
+    in
     fields
       (let+ loc = loc
        and+ target =
@@ -92,7 +121,7 @@ module Emit = struct
                  ])
          in
          field "target" (plain_string (fun ~loc s -> of_string ~loc s))
-       and+ alias = field_o "alias" Alias.Name.decode
+       and+ aliases = multi_field "alias" alias_decoder
        and+ module_systems =
          field "module_systems" module_systems
            ~default:[ Melange.Module_system.default ]
@@ -120,7 +149,7 @@ module Emit = struct
        in
        { loc
        ; target
-       ; alias
+       ; aliases
        ; module_systems
        ; modules
        ; libraries

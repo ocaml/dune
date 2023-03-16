@@ -31,7 +31,9 @@ Rules created for the assets in the output directory
   [1]
 
   $ dune build @mel --display=short
+          bash some_dir
           melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
+          bash some_dir
           melc output/main.js
   Error: Is a directory
   -> required by _build/default/output/some_dir

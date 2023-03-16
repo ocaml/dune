@@ -304,7 +304,7 @@ let eval_runtime_deps ~expander (deps : Dep_conf.t list) =
       (* TODO loc *)
       User_error.raise [ Pp.text "sandbox settings are not allowed" ]);
   let open Memo.O in
-  let+ paths, _ = Action_builder.run runtime_deps Eager in
+  let+ paths, _ = Action_builder.run runtime_deps Lazy in
   paths
 
 let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode

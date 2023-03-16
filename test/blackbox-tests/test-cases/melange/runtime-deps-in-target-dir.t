@@ -15,19 +15,10 @@
   >  (runtime_deps output/foo.txt))
   > EOF
 
-  $ dune build @melange 2>&1 | grep -A6 "internal dependency cycle"
-    ("internal dependency cycle",
-    { frames =
-        [ ("load-dir", In_build_dir "default/output")
-        ; ("build-file", In_build_dir "default/output/foo.txt")
-        ; ("<unnamed>", ())
-        ]
-    })
-
+  $ dune build @melange
 
   $ ls _build/default/output
-  ls: cannot access '_build/default/output': No such file or directory
-  [2]
+  foo.txt
+  output
   $ ls _build/default/output/output
-  ls: cannot access '_build/default/output/output': No such file or directory
-  [2]
+  foo.txt

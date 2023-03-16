@@ -53,11 +53,9 @@ The runtime_dep index.txt was copied to the build folder
   hello from file
   
 
-
-
 Test depending on non-existing paths
 
-  $ mkdir another
+  $ mkdir -p another/another-output/another
   $ dune clean
   $ cat > another/dune <<EOF
   > (melange.emit
@@ -66,9 +64,13 @@ Test depending on non-existing paths
   >  (runtime_deps doesnt-exist.txt))
   > EOF
 
-  $ dune build @non-existing-mel --display=short
+  $ dune build @non-existing-mel
+  File "another/dune", line 1, characters 0-98:
+  1 | (melange.emit
+  2 |  (alias non-existing-mel)
+  3 |  (target another-output)
+  4 |  (runtime_deps doesnt-exist.txt))
   Error: No rule found for another/doesnt-exist.txt
-  -> required by alias another/non-existing-mel
   [1]
 
 Test depending on paths that "escape" the melange.emit directory

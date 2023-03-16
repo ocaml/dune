@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678952976789,
+  "lastUpdate": 1678981860404,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -9772,6 +9772,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.75675455794",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c0c0acba6b4d0744198e0ce06dae0095ff0c6384",
+          "message": "Add monorepo benchmark (#7202)\n\n* Add monorepo benchmark\r\n\r\nThis adds a current-bench benchmark that measures the time it takes to\r\nbuild a large monorepo composed from opam packages.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-03-16T08:30:40-07:00",
+          "tree_id": "8c5741ec18ba2fe104c2774da6863ad1b8a68e0c",
+          "url": "https://github.com/ocaml/dune/commit/c0c0acba6b4d0744198e0ce06dae0095ff0c6384"
+        },
+        "date": 1678981858599,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.64421996734",
             "unit": "seconds"
           }
         ]

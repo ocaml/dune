@@ -10,6 +10,6 @@
   (re_export unix))
  (foreign_stubs
   (language c)
-  (names pthread_chdir_stubs))
+  (names csexp_rpc_stubs))
  (instrumentation
   (backend bisect_ppx)))

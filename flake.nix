@@ -1,11 +1,6 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    nix-overlays = {
-      url = "github:nix-ocaml/nix-overlays";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utils.follows = "flake-utils";
-    };
     flake-utils.url = "github:numtide/flake-utils";
     ocamllsp = {
       url = "git+https://www.github.com/ocaml/ocaml-lsp?submodules=1";
@@ -35,7 +30,6 @@
     , ocamllsp
     , opam-repository
     , melange
-    , nix-overlays
     }@inputs:
     let package = "dune";
     in flake-utils.lib.eachDefaultSystem (system:
@@ -115,7 +109,7 @@
 
       devShells =
         let
-          pkgs = nix-overlays.legacyPackages.${system}.appendOverlays [
+          pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
             (self: super: {
               ocamlPackages = self.ocaml-ng.ocamlPackages_4_14;
             })
@@ -136,7 +130,7 @@
                 odoc
                 lwt
                 patdiff
-              ]);
+              ] ++ extraBuildInputs);
             };
         in
         {
@@ -163,7 +157,6 @@
             extraBuildInputs = [
               pkgs.ocamlPackages.melange
               pkgs.ocamlPackages.mel
-
             ];
           };
 

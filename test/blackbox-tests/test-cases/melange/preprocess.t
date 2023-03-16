@@ -8,7 +8,7 @@ Test (preprocess) field on melange.emit stanza
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
+  >  (modules main)
   >  (alias melange)
   >  (preprocess
   >   (action

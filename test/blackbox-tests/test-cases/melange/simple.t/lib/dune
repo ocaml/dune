@@ -6,5 +6,5 @@
 (melange.emit
  (target simple)
  (alias melange)
- (entries x)
+ (modules x)
  (libraries lib))

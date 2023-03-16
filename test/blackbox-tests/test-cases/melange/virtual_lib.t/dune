@@ -1,5 +1,5 @@
 (melange.emit
  (target output)
  (alias melange)
- (entries mel)
+ (modules mel)
  (libraries impl_melange))

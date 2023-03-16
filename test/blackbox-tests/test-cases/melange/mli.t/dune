@@ -1,5 +1,5 @@
 (melange.emit
  (target mli)
- (entries x)
+ (modules x)
  (libraries lib)
  (alias melange))

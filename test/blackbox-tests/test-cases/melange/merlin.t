@@ -30,7 +30,7 @@
   Foo__
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
 
-All 3 entries (Foo, Foo__ and Bar) contain a ppx directive
+All 3 modules (Foo, Foo__ and Bar) contain a ppx directive
 
   $ dune ocaml merlin dump-config $PWD | grep -i "ppx"
    (FLG (-ppx "/MELC_COMPILER -as-ppx -bs-jsx 3"))
@@ -41,7 +41,7 @@ All 3 entries (Foo, Foo__ and Bar) contain a ppx directive
   $ cat >dune <<EOF
   > (melange.emit
   >  (target "$target")
-  >  (entries main))
+  >  (modules main))
   > EOF
 
   $ touch main.ml

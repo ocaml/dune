@@ -35,5 +35,5 @@ module Modules_settings : sig
     ; modules : Ordered_set_lang.t
     }
 
-  val decode : modules_field_name:string -> t Dune_lang.Decoder.fields_parser
+  val decode : t Dune_lang.Decoder.fields_parser
 end

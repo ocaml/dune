@@ -11,7 +11,7 @@ Create dune file that uses melange.compile_flags
   > (melange.emit
   >  (target output)
   >  (alias melange)
-  >  (entries main)
+  >  (modules main)
   >  (compile_flags -w -14-26))
   > EOF
 
@@ -33,7 +33,7 @@ Update dune file to use ocamlc_flags
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
+  >  (modules main)
   >  (ocamlc_flags -w -14-26))
   > EOF
 
@@ -51,7 +51,7 @@ Update dune file to use ocamlopt_flags
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
+  >  (modules main)
   >  (ocamlopt_flags -w -14-26))
   > EOF
 

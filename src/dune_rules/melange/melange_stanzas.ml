@@ -11,7 +11,7 @@ module Emit = struct
     ; libraries : Lib_dep.t list
     ; package : Package.t option
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
-    ; runtime_deps : Dep_conf.t list
+    ; runtime_deps : Loc.t * Dep_conf.t list
     ; preprocessor_deps : Dep_conf.t list
     ; promote : Rule.Promote.t option
     ; compile_flags : Ordered_set_lang.Unexpanded.t
@@ -72,8 +72,8 @@ module Emit = struct
       module_systems
     in
     fields
-      (let+ loc = loc
-       and+ target =
+      (let* loc = loc in
+       let+ target =
          let of_string ~loc s =
            match String.is_empty s with
            | true ->
@@ -100,16 +100,16 @@ module Emit = struct
          field "libraries" (Lib_dep.L.decode ~allow_re_export:false) ~default:[]
        and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ runtime_deps =
-         field "runtime_deps" (repeat Dep_conf.decode) ~default:[]
+         field "runtime_deps"
+           (located (repeat Dep_conf.decode))
+           ~default:(loc, [])
        and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
        and+ promote = field_o "promote" Rule_mode_decoder.Promote.decode
        and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
        and+ compile_flags = Ordered_set_lang.Unexpanded.field "compile_flags"
        and+ allow_overlapping_dependencies =
          field_b "allow_overlapping_dependencies"
-       and+ modules =
-         Stanza_common.Modules_settings.decode ~modules_field_name:"entries"
-       in
+       and+ modules = Stanza_common.Modules_settings.decode in
        let preprocess =
          let init =
            let f libname = Preprocess.With_instrumentation.Ordinary libname in

@@ -14,13 +14,27 @@ end
 
 module Rules : sig
   (** Rules for a given directory. This type is structured so that all generated
-      sub-directories (either directory targets or internal generated
+      sub-directories (either directory targets or internally generated
       directories such as [.ppx]) are known immediately, while the actual build
       rules are computed in a second stage. The staging is to avoid computation
       cycles created during the computation of the rules. *)
 
+  module Build_only_sub_dirs : sig
+    (** The set of either directory targets or internally generated directories,
+        indexed by their parent build directory. *)
+    type t
+
+    val empty : t
+
+    val singleton : dir:Path.Build.t -> Subdir_set.t -> t
+
+    val find : t -> Path.Build.t -> Subdir_set.t
+
+    val union : t -> t -> t
+  end
+
   type t =
-    { build_dir_only_sub_dirs : Subdir_set.t
+    { build_dir_only_sub_dirs : Build_only_sub_dirs.t
           (** Sub-directories that don't exist in the source tree but exists in
               the build directory. This is for internal directories such as
               [.dune] or [.ppx]. *)

@@ -101,7 +101,7 @@ module Dependency = struct
       | Lt -> string "Lt"
       | Neq -> string "Neq"
 
-    let to_relop : t -> OpamParserTypes.FullPos.relop = function
+    let to_relop = function
       | Eq -> nopos `Eq
       | Gte -> nopos `Geq
       | Lte -> nopos `Leq
@@ -249,12 +249,9 @@ module Dependency = struct
       nopos (Logop (nopos `Or, opam_constraint c, opam_constraint (And cs)))
     | And [] | Or [] -> Code_error.raise "opam_constraint" []
 
-  let opam_depend : t -> OpamParserTypes.FullPos.value =
-   fun { name; constraint_ } ->
+  let opam_depend { name; constraint_ } =
     let constraint_ = Option.map ~f:opam_constraint constraint_ in
-    let pkg : OpamParserTypes.FullPos.value =
-      nopos (OpamParserTypes.FullPos.String (Name.to_string name))
-    in
+    let pkg = nopos (OpamParserTypes.FullPos.String (Name.to_string name)) in
     match constraint_ with
     | None -> pkg
     | Some c -> nopos (OpamParserTypes.FullPos.Option (pkg, nopos [ c ]))
@@ -714,8 +711,7 @@ let deprecated_meta_file t name =
 
 let default name dir =
   let depends =
-    let open Dependency in
-    [ { name = Name.of_string "ocaml"; constraint_ = None }
+    [ { Dependency.name = Name.of_string "ocaml"; constraint_ = None }
     ; { name = Name.of_string "dune"; constraint_ = None }
     ]
   in
@@ -770,9 +766,10 @@ let load_opam_file file name =
     | String s -> Some [ s ]
     | List l ->
       let+ l =
-        List.fold_left l.pelem ~init:(Some []) ~f:(fun acc v ->
+        List.fold_left l.pelem ~init:(Some [])
+          ~f:(fun acc (v : OpamParserTypes.FullPos.value) ->
             let* acc = acc in
-            match (v : OpamParserTypes.FullPos.value).pelem with
+            match v.pelem with
             | String s -> Some (s :: acc)
             | _ -> None)
       in

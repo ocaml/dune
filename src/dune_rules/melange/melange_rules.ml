@@ -234,8 +234,13 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
         Action_builder.paths deps
       in
       let alias = Alias.make Melange_stanzas.Emit.implicit_alias ~dir in
-      let* () = Rules.Produce.Alias.add_deps alias emit_deps in
-      let* () = Rules.Produce.Alias.add_deps alias lib_deps in
+      let* () =
+        Rules.Produce.Alias.add_deps alias
+          (let open Action_builder.O in
+          let+ (), () = Action_builder.both emit_deps lib_deps in
+          ())
+      in
+
       match mel.alias with
       | None -> Memo.return ()
       | Some alias_name ->

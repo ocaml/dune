@@ -68,3 +68,34 @@ CAMLprim value dune_pthread_chdir(value unit) {
 }
 
 #endif
+
+#if __linux__
+
+#include <caml/threads.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+
+CAMLprim value dune_send(value v_fd, value v_bytes, value v_pos, value v_len) {
+  CAMLparam4(v_fd, v_bytes, v_pos, v_len);
+  int len = Long_val(v_len);
+  if (len > UNIX_BUFFER_SIZE) {
+    len = UNIX_BUFFER_SIZE;
+  }
+  int pos = Long_val(v_pos);
+  int fd = Int_val(v_fd);
+  char iobuf[UNIX_BUFFER_SIZE];
+  memmove(iobuf, &Byte(v_bytes, pos), len);
+  caml_release_runtime_system();
+  int ret = send(fd, iobuf, len, MSG_NOSIGNAL);
+  caml_acquire_runtime_system();
+  if (ret == -1) {
+    uerror("send", Nothing);
+  };
+  CAMLreturn(Val_int(ret));
+}
+#else
+CAMLprim value dune_send(value v_fd, value v_bytes, value v_pos, value v_len) {
+  caml_invalid_argument("sendmsg without sigpipe only available on linux");
+}
+#endif

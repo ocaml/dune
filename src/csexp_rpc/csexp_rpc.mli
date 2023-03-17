@@ -83,3 +83,7 @@ module Server : sig
 
   val listening_address : t -> Unix.sockaddr
 end
+
+module Private : sig
+  module Io_buffer : module type of Io_buffer
+end

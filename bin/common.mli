@@ -1,4 +1,5 @@
 open Dune_config_file
+open Stdune
 
 type t
 
@@ -44,7 +45,14 @@ val insignificant_changes : t -> [ `React | `Ignore ]
 
     Return the final configuration, which is the same as the one returned in the
     [config] field of [Dune_rules.Workspace.workspace ()]) *)
-val init : ?log_file:Dune_util.Log.File.t -> t -> Dune_config.t
+val init :
+     ?action_runner:
+       (   Dune_rpc_impl.Server.t
+        -> (Dune_engine.Action_exec.input -> Dune_engine.Action_runner.t option)
+           Staged.t)
+  -> ?log_file:Dune_util.Log.File.t
+  -> t
+  -> Dune_config.t
 
 (** [examples \[("description", "dune cmd foo"); ...\]] is an [EXAMPLES] manpage
     section of enumerated examples illustrating how to run the documented

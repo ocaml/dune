@@ -15,7 +15,11 @@ val to_dyn : t -> Dyn.t
 
 val sexp : t Conv.value
 
+val env_var : Env.Var.t
+
 val add_to_env : t -> Env.t -> Env.t
+
+val of_env : Env.t -> (t, [ `Exn of exn | `Missing ]) result
 
 module type S = sig
   type 'a fiber

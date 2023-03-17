@@ -531,8 +531,20 @@ let exec_until_all_deps_ready ~display ~ectx ~eenv t =
   let+ stages = loop ~eenv [] in
   { Exec_result.dynamic_deps_stages = List.rev stages }
 
-let exec ~targets ~root ~context ~env ~rule_loc ~build_deps
-    ~execution_parameters t =
+type input =
+  { targets :
+      Targets.Validated.t option (* Some Jane Street actions use [None] *)
+  ; root : Path.t
+  ; context : Build_context.t option
+  ; env : Env.t
+  ; rule_loc : Loc.t
+  ; execution_parameters : Execution_parameters.t
+  ; action : Action.t
+  }
+
+let exec
+    { targets; root; context; env; rule_loc; execution_parameters; action = t }
+    ~build_deps =
   let ectx =
     let metadata = Process.create_metadata ~purpose:(Build_job targets) () in
     { targets; metadata; context; rule_loc; build_deps }

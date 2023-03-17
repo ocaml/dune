@@ -30,7 +30,7 @@ Running:
 ```
 make dev
 ```
-bootstraps (if necessary) and does `./dune.exe build @install`.
+bootstraps (if necessary) and runs `./dune.exe build @install`.
 
 If you want to just run the bootstrapping step itself, build the
 ``_boot/dune.exe`` target with

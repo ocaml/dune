@@ -179,7 +179,13 @@ end = struct
               | Some ctypes -> Ctypes_field.generated_ml_and_c_files ctypes
             in
             Memo.return (select_deps_files @ ctypes_files)
-          | Melange_stanzas.Emit.T { libraries; _ } ->
+          | Melange_stanzas.Emit.T { aliases; _ } ->
+            let libraries =
+              List.concat
+                (List.map
+                   ~f:(fun aliases -> aliases.Melange_stanzas.Emit.libraries)
+                   aliases)
+            in
             let select_deps_files = select_deps_files libraries in
             Memo.return select_deps_files
           | _ -> Memo.return [])

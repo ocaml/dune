@@ -4,7 +4,7 @@ open Import
 module Emit : sig
   type alias_with_libs =
     { alias : Alias.Name.t
-    ; libs : Lib_dep.L.t
+    ; libraries : Lib_dep.L.t
     }
 
   type t =
@@ -13,7 +13,6 @@ module Emit : sig
     ; aliases : alias_with_libs list
     ; module_systems : (Melange.Module_system.t * string) list
     ; modules : Stanza_common.Modules_settings.t
-    ; libraries : Lib_dep.t list
     ; package : Package.t option
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; runtime_deps : Dep_conf.t list

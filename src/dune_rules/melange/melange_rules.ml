@@ -92,7 +92,7 @@ let cmj_includes ~(requires_link : Lib.t list Resolve.t) ~scope =
        ; Hidden_deps deps
        ]
 
-let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
+let compile_info ~scope ~libraries (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
@@ -105,7 +105,7 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   let merlin_ident = Merlin_ident.for_melange ~target:mel.target in
   Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Melange_emit mel.target)
     ~allow_overlaps:mel.allow_overlapping_dependencies ~forbidden_libraries:[]
-    mel.libraries ~pps ~dune_version ~merlin_ident
+    libraries ~pps ~dune_version ~merlin_ident
 
 let js_targets_of_modules modules ~module_systems ~output =
   List.map module_systems ~f:(fun (_, js_ext) ->
@@ -233,7 +233,8 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
         in
         Action_builder.paths deps
       in
-      let register_alias { Melange_stanzas.Emit.alias; libs = _TODO_use_this } =
+      let register_alias
+          { Melange_stanzas.Emit.alias; libraries = _TODO_use_this } =
         let alias = Alias.make alias ~dir in
         let* () = Rules.Produce.Alias.add_deps alias emit_deps in
         Rules.Produce.Alias.add_deps alias lib_deps
@@ -339,7 +340,8 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode
       Action_builder.paths
         (non_copy @ List.rev_map copy ~f:(fun (_, target) -> Path.build target))
     in
-    let register_alias { Melange_stanzas.Emit.alias; libs = _TODO_use_this } =
+    let register_alias
+        { Melange_stanzas.Emit.alias; libraries = _TODO_use_this } =
       let alias = Alias.make alias ~dir:target_dir in
       Rules.Produce.Alias.add_deps alias deps
     in

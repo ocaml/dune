@@ -4,7 +4,7 @@ open Dune_lang.Decoder
 module Emit = struct
   type alias_with_libs =
     { alias : Alias.Name.t
-    ; libs : Lib_dep.L.t
+    ; libraries : Lib_dep.L.t
     }
 
   type t =
@@ -13,7 +13,6 @@ module Emit = struct
     ; aliases : alias_with_libs list
     ; module_systems : (Melange.Module_system.t * Filename.Extension.t) list
     ; modules : Stanza_common.Modules_settings.t
-    ; libraries : Lib_dep.t list
     ; package : Package.t option
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; runtime_deps : Dep_conf.t list
@@ -79,26 +78,14 @@ module Emit = struct
     let alias_decoder : (alias_with_libs, values) parser =
       let alias_and_libs =
         let* alias = field "alias" Alias.Name.decode in
-        let+ libs =
+        let+ libraries =
           field "libraries"
             (Lib_dep.L.decode ~allow_re_export:false)
             ~default:[]
         in
-        { alias; libs }
+        { alias; libraries }
       in
-      let alias =
-        let+ alias = Alias.Name.decode in
-        { alias; libs = [] }
-      in
-      peek_exn >>= function
-      | Quoted_string (loc, _) | Template { loc; _ } ->
-        User_error.raise ~loc
-          [ Pp.text
-              "Invalid format, <name> or (name <name>) (libraries <lib1> \
-               <lib2>) expected"
-          ]
-      | Atom _ -> alias
-      | List _ -> fields alias_and_libs
+      fields alias_and_libs
     in
     fields
       (let+ loc = loc
@@ -125,8 +112,6 @@ module Emit = struct
        and+ module_systems =
          field "module_systems" module_systems
            ~default:[ Melange.Module_system.default ]
-       and+ libraries =
-         field "libraries" (Lib_dep.L.decode ~allow_re_export:false) ~default:[]
        and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ runtime_deps =
          field "runtime_deps" (repeat Dep_conf.decode) ~default:[]
@@ -152,7 +137,6 @@ module Emit = struct
        ; aliases
        ; module_systems
        ; modules
-       ; libraries
        ; package
        ; preprocess
        ; runtime_deps

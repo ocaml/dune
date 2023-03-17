@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679073318221,
+  "lastUpdate": 1679074724381,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -15257,6 +15257,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "41.06113519317333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "8b031d58633e5c9bac0a9fbced9fa27d719bb305",
+          "message": "test(coq): add coq_scrub_args.sh script\n\nAdded a script `coq_scrub_args.sh` which will scrub the output of\ncommon command printing. This is useful for checking that the correct\nflags are being passed and saves us from having to mess around with\nsed everytime we wish to test something like this.\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-03-17T18:19:28+01:00",
+          "tree_id": "d3c08dfc46410c191e138121bdb1d4fc0d875e8a",
+          "url": "https://github.com/ocaml/dune/commit/8b031d58633e5c9bac0a9fbced9fa27d719bb305"
+        },
+        "date": 1679074722101,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "41.570630739846656",
             "unit": "seconds"
           }
         ]

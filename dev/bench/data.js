@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679069990942,
+  "lastUpdate": 1679070200310,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -15025,6 +15025,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "33.66498990445333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8cdeba0ed881fdec2b369d584012d4f95242e323",
+          "message": "fix(rpc): ignore sigpipe on linux (#7319)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-17T09:09:07-07:00",
+          "tree_id": "9c21adffaadd084b20dc2d3d6965317f55dc9ceb",
+          "url": "https://github.com/ocaml/dune/commit/8cdeba0ed881fdec2b369d584012d4f95242e323"
+        },
+        "date": 1679070198869,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "30.590289170566667",
             "unit": "seconds"
           }
         ]

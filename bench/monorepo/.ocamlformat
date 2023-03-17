@@ -1,0 +1,12 @@
+version=0.24.1
+profile=conventional
+ocaml-version=4.08.0
+break-separators=before
+dock-collection-brackets=false
+doc-comments=before
+let-and=sparse
+type-decl=sparse
+cases-exp-indent=2
+break-cases=fit-or-vertical
+parse-docstrings=true
+module-item-spacing=sparse

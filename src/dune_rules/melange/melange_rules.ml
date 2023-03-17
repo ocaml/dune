@@ -345,22 +345,21 @@ end
 let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
   let open Memo.O in
   let* copy, non_copy = Runtime_deps.targets sctx ~dir ~output ~for_ mel in
+  let deps =
+    Action_builder.paths
+      (non_copy @ List.rev_map copy ~f:(fun (_, target) -> Path.build target))
+  in
   let+ () =
     let loc = mel.loc in
     Memo.parallel_iter copy ~f:(fun (src, dst) ->
         Super_context.add_rule ~loc ~dir ~mode sctx
           (Action_builder.copy ~src ~dst))
   and+ () =
-    let deps =
-      Action_builder.paths
-        (non_copy @ List.rev_map copy ~f:(fun (_, target) -> Path.build target))
+    let alias =
+      Alias.make Melange_stanzas.Emit.implicit_alias ~dir:target_dir
     in
-    let* () =
-      let alias =
-        Alias.make Melange_stanzas.Emit.implicit_alias ~dir:target_dir
-      in
-      Rules.Produce.Alias.add_deps alias deps
-    in
+    Rules.Produce.Alias.add_deps alias deps
+  and+ () =
     match mel.alias with
     | None -> Memo.return ()
     | Some alias_name ->

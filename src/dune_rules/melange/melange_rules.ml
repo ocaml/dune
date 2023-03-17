@@ -215,38 +215,38 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
     in
     let stdlib_dir = ctx.stdlib_dir in
     let+ () =
-      let target_dir = Path.Build.relative dir mel.target in
-      let module_systems = mel.module_systems in
-      let emit_deps =
-        js_targets_of_modules ~output:(`Private_library_or_emit target_dir)
-          ~module_systems modules
-        |> Action_builder.path_set
-      in
-      let lib_deps =
-        let open Action_builder.O in
-        let* deps =
-          Resolve.Memo.read
-          @@
-          let open Resolve.Memo.O in
-          Compilation_context.requires_link cctx
-          >>= js_targets_of_libs sctx ~module_systems ~target_dir
+      let emit_and_libs_deps =
+        let target_dir = Path.Build.relative dir mel.target in
+        let module_systems = mel.module_systems in
+        let emit_deps =
+          js_targets_of_modules ~output:(`Private_library_or_emit target_dir)
+            ~module_systems modules
+          |> Action_builder.path_set
         in
-        Action_builder.paths deps
+        let lib_deps =
+          let open Action_builder.O in
+          let* deps =
+            Resolve.Memo.read
+            @@
+            let open Resolve.Memo.O in
+            Compilation_context.requires_link cctx
+            >>= js_targets_of_libs sctx ~module_systems ~target_dir
+          in
+          Action_builder.paths deps
+        in
+        let open Action_builder.O in
+        let+ (), () = Action_builder.both emit_deps lib_deps in
+        ()
       in
-      let alias = Alias.make Melange_stanzas.Emit.implicit_alias ~dir in
       let* () =
-        Rules.Produce.Alias.add_deps alias
-          (let open Action_builder.O in
-          let+ (), () = Action_builder.both emit_deps lib_deps in
-          ())
+        let alias = Alias.make Melange_stanzas.Emit.implicit_alias ~dir in
+        Rules.Produce.Alias.add_deps alias emit_and_libs_deps
       in
-
       match mel.alias with
       | None -> Memo.return ()
       | Some alias_name ->
         let alias = Alias.make alias_name ~dir in
-        let* () = Rules.Produce.Alias.add_deps alias emit_deps in
-        Rules.Produce.Alias.add_deps alias lib_deps
+        Rules.Produce.Alias.add_deps alias emit_and_libs_deps
     in
     ( cctx
     , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules

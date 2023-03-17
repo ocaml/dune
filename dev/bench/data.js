@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679073303922,
+  "lastUpdate": 1679073318221,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -15081,6 +15081,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "83.95263312977333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "72d8172b408f97cc6efebd28eb348c2fa0dee879",
+          "message": "refactor(engine): remove source tree traversals (#7150)\n\nPreviously, the engine would know about directories for computing\r\nsource_tree, and recursive aliases.\r\n\r\nWith this PR, these operations are generalized to work over arbitrary\r\ndirectory traversals.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-17T09:39:49-07:00",
+          "tree_id": "63631fddb3edcc00aa9c8e89e7f07927bb942e82",
+          "url": "https://github.com/ocaml/dune/commit/72d8172b408f97cc6efebd28eb348c2fa0dee879"
+        },
+        "date": 1679073317026,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.230701481926667",
             "unit": "seconds"
           }
         ]

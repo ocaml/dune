@@ -228,6 +228,8 @@ type t = private
 
 include Path_intf.S with type t := t
 
+val as_outside_build_dir : t -> Outside_build_dir.t option
+
 val as_outside_build_dir_exn : t -> Outside_build_dir.t
 
 val destruct_build_dir :

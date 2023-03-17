@@ -950,6 +950,11 @@ let as_in_source_tree_exn t =
       "[as_in_source_tree_exn] called on something not in source tree"
       [ ("t", to_dyn t) ]
 
+let as_outside_build_dir : t -> Outside_build_dir.t option = function
+  | In_source_tree s -> Some (In_source_dir s)
+  | External s -> Some (External s)
+  | In_build_dir _ -> None
+
 let as_outside_build_dir_exn : t -> Outside_build_dir.t = function
   | In_source_tree s -> In_source_dir s
   | External s -> External s

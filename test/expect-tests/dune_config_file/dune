@@ -6,7 +6,6 @@
   dune_lang
   dune_config_file
   stdune
-  dune_engine
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679069636068,
+  "lastUpdate": 1679069980243,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -14878,6 +14878,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8260141944400001",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "695a4506a6f0a72023a509f8ef78734b17b5f23a",
+          "message": "Revert \"fix(ci): restrict jsoo version\" (#7342)\n\nThis reverts commit 846831c7cc2443db5f3aa0e12a43d9ba48cdd639.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-17T08:51:25-07:00",
+          "tree_id": "ae7ea767488f2005175054106784e24b04ecf11f",
+          "url": "https://github.com/ocaml/dune/commit/695a4506a6f0a72023a509f8ef78734b17b5f23a"
+        },
+        "date": 1679069979319,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "68.37261449159332",
             "unit": "seconds"
           }
         ]

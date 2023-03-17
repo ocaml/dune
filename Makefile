@@ -14,7 +14,7 @@ cinaps \
 core_bench \
 "csexp>=1.3.0" \
 js_of_ocaml \
-"js_of_ocaml-compiler<5.1.0" \
+js_of_ocaml-compiler \
 "mdx>=2.1.0" \
 menhir \
 ocamlfind \

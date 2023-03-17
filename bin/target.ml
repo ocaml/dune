@@ -1,9 +1,5 @@
 open Stdune
-module Log = Dune_util.Log
-module Context = Dune_rules.Context
-module Action_builder = Dune_engine.Action_builder
-module Build_system = Dune_engine.Build_system
-module Load_rules = Dune_engine.Load_rules
+open Import
 open Action_builder.O
 
 module Request = struct

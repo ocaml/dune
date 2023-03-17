@@ -8,6 +8,7 @@ module Persistent = Persistent
 module Stringlike = Stringlike
 module Stringlike_intf = Stringlike_intf
 module Value = Value
+include Dune_config_file
 
 include struct
   open Dune_engine

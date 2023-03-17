@@ -11,7 +11,7 @@ module Emit : sig
     ; libraries : Lib_dep.t list
     ; package : Package.t option
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
-    ; runtime_deps : Dep_conf.t list
+    ; runtime_deps : Loc.t * Dep_conf.t list
     ; preprocessor_deps : Dep_conf.t list
     ; promote : Rule.Promote.t option
     ; compile_flags : Ordered_set_lang.Unexpanded.t

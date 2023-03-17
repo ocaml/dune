@@ -69,7 +69,6 @@ Test `melange.runtime_deps` in a library that has been installed
   > let () = Js.log (Foo.read_asset ())
   > EOF
 
-  $ mkdir -p app/output
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @mel
   Entering directory 'app'
   Leaving directory 'app'

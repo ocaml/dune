@@ -40,7 +40,6 @@ Test `melange.runtime_deps` in a private library
   > let () = Js.log (Foo.read_asset ())
   > EOF
 
-  $ mkdir -p output/lib
   $ dune build @mel
 
 The runtime_dep index.txt was copied to the library build folder

@@ -29,7 +29,6 @@ Test simple interactions between melange.emit and copy_files
 
 Rules created for the assets in the output directory
 
-  $ mkdir a/output
   $ dune rules @mel | grep file.txt
   ((deps ((File (In_build_dir _build/default/a/assets/file.txt))))
    (targets ((files (default/a/output/a/assets/file.txt)) (directories ())))
@@ -49,14 +48,13 @@ The runtime_dep index.txt was copied to the build folder
   assets
   main.js
 
-
   $ node _build/default/a/output/a/main.js
   hello from file
   
 
 Test depending on non-existing paths
 
-  $ mkdir -p another/another-output/another
+  $ mkdir another
   $ dune clean
   $ cat > another/dune <<EOF
   > (melange.emit
@@ -95,7 +93,6 @@ Test depending on paths that "escape" the melange.emit directory
 
 Need to create the source dir first for the alias to be picked up
 
-  $ mkdir -p another/another-output/assets
   $ dune rules @mel | grep .txt
   ((deps ((File (In_build_dir _build/default/a/assets/file.txt))))
    (targets ((files (default/a/output/a/assets/file.txt)) (directories ())))
@@ -106,8 +103,8 @@ Need to create the source dir first for the alias to be picked up
 
   $ dune build @mel --display=short
           melc a/.output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc another/.another-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
           melc a/output/a/main.js
+          melc another/.another-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
           melc another/another-output/another/main.js
 
 Path ends ups being emitted "correctly", but outside the target dir.

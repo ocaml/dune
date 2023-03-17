@@ -7,14 +7,6 @@ Test `melange.runtime_deps` in a public library in the workspace
   > (using melange 0.1)
   > EOF
 
-  $ cat > dune <<EOF
-  > (melange.emit
-  >  (alias mel)
-  >  (target output)
-  >  (libraries foo)
-  >  (runtime_deps assets/file.txt))
-  > EOF
-
   $ mkdir -p lib/nested
   $ echo "Some text" > lib/index.txt
   $ echo "Some nested text" > lib/nested/hello.txt
@@ -49,6 +41,13 @@ Test `melange.runtime_deps` in a public library in the workspace
   $ cat > assets/file.txt <<EOF
   > hello from file
   > EOF
+  $ cat > dune <<EOF
+  > (melange.emit
+  >  (alias mel)
+  >  (target output)
+  >  (libraries foo)
+  >  (runtime_deps assets/file.txt))
+  > EOF
 
   $ cat > main.ml <<EOF
   > let dirname = [%bs.raw "__dirname"]
@@ -58,7 +57,6 @@ Test `melange.runtime_deps` in a public library in the workspace
   > let () = Js.log (Foo.read_asset ())
   > EOF
 
-  $ mkdir -p output
   $ dune build @mel
 
 The runtime_dep index.txt was copied to the build folder
@@ -77,8 +75,6 @@ The runtime_dep index.txt was copied to the build folder
   
   Some text
   
-
-
 Now try to depend on an external path in a public library
 
   $ dune clean
@@ -109,4 +105,3 @@ Try to depend on it via `melange.emit`
   allowed.
   Hint: Move the external dependency to the workspace and use a relative path.
   [1]
-

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679075998098,
+  "lastUpdate": 1679076494845,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -10062,6 +10062,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "43.49111681028666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8bea7ea00018f58112b3b8a68faa73cb87552412",
+          "message": "feature: add a thread pool (#7201)\n\nreplace the current implementation with an unbounded number of workers\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-17T10:46:10-07:00",
+          "tree_id": "cf2d1d281f98f277bc144c69678fd2e17e070c70",
+          "url": "https://github.com/ocaml/dune/commit/8bea7ea00018f58112b3b8a68faa73cb87552412"
+        },
+        "date": 1679076494098,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.328358889499995",
             "unit": "seconds"
           }
         ]

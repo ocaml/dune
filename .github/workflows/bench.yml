@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - perf/run-parse_compilation_units-once
+      - benchmark/add-synthetic-watch
 
 permissions:
   # deployments permission to deploy GitHub pages website
@@ -47,6 +47,37 @@ jobs:
           # Install hyperfine
           wget https://github.com/sharkdp/hyperfine/releases/download/v1.14.0/hyperfine_1.14.0_amd64.deb
           sudo dpkg -i hyperfine_1.14.0_amd64.deb
+
+      - name: Create watch synthetic benchmark
+        working-directory: bench
+        run: opam exec -- ../_boot/dune.exe exec ./gen_synthetic_dune_watch.exe -- synthetic-watch
+
+      - name: Run synthetic watch benchmark
+        working-directory: bench/synthetic-watch
+        run: ../gen-benchmark.sh 'opam exec -- ../run-synthetic-dune-watch.sh ../../_boot/dune.exe' 'opam exec -- ../../_boot/dune.exe build @all' 'synthetic watch build time (warm, ${{ runner.os }})' > synthetic-benchmark-result.json
+
+      - name: Print synthetic watch benchmark results
+        working-directory: bench/synthetic-watch
+        run: |
+          cat bench.json
+          cat synthetic-benchmark-result.json
+
+      - name: Store synthetic watch benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Synthetic Watch Benchmark
+          tool: "customSmallerIsBetter"
+          output-file-path: bench/synthetic-watch/synthetic-benchmark-result.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          # Ratio indicating how worse the current benchmark result is.
+          # 150% means if last build took 40s and current takes >60s, it will trigger an alert
+          alert-threshold: "150%"
+          fail-on-alert: true
+          # Enable alert commit comment
+          comment-on-alert: true
+          # Mention @jchavarri in the commit comment
+          alert-comment-cc-users: '@jchavarri'
 
       - name: Clone pupilfirst repo
         run: git clone https://github.com/jchavarri/pupilfirst.git

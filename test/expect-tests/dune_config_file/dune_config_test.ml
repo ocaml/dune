@@ -1,5 +1,5 @@
 open Dune_lang
-open Dune_tests_common
+open Dune_config_file
 
 let () = Printexc.record_backtrace false
 
@@ -14,7 +14,7 @@ let parse s =
   in
   Dune_lang.Decoder.parse decode Stdune.Univ_map.empty ast
   |> Dune_config.(superpose default)
-  |> Dune_config.to_dyn |> print_dyn
+  |> Dune_config.to_dyn |> Dune_tests_common.print_dyn
 
 let%expect_test "cache-check-probability 0.1" =
   parse "(cache-check-probability 0.1)";

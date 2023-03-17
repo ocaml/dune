@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679021789650,
+  "lastUpdate": 1679022259749,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -9888,6 +9888,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.03218512904001",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "corentin.leruth@gmail.com",
+            "name": "Corentin Leruth",
+            "username": "tatchi"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "557e5089782b2441a5b4dd9198d4ebff11299d85",
+          "message": "raise error when using describe pp command with staged_pps (#7167)\n\nSigned-off-by: Corentin Leruth <corentin.leruth@gmail.com>",
+          "timestamp": "2023-03-16T19:41:51-07:00",
+          "tree_id": "47f95224d1846aa25a8f83db8e2139d5fbb7ab89",
+          "url": "https://github.com/ocaml/dune/commit/557e5089782b2441a5b4dd9198d4ebff11299d85"
+        },
+        "date": 1679022257825,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.135718577253336",
             "unit": "seconds"
           }
         ]

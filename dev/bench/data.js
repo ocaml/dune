@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679020932038,
+  "lastUpdate": 1679021277151,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -9830,6 +9830,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.02812130647333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "22eab0558fd06cdb0c3ba7ae8cf0074fb7c17a55",
+          "message": "refactor: rename dune_config (#7333)\n\nRename dune_config to dune_config_file. We can still access the old\r\nnames by opening Dune_config.\r\n\r\nIn preparation for introducing a dune_config library that will introduce\r\na [Dune_config.Config] module.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-16T19:25:43-07:00",
+          "tree_id": "c56d6df09a65cf0d012a8e35a3d13848e14b3a3a",
+          "url": "https://github.com/ocaml/dune/commit/22eab0558fd06cdb0c3ba7ae8cf0074fb7c17a55"
+        },
+        "date": 1679021275519,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.897304929946664",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679074724381,
+  "lastUpdate": 1679074743525,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -15286,6 +15286,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "41.570630739846656",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "dfd5d29fffe5a1e85688ffb3941022983eae7525",
+          "message": "Update doc/hacking.rst\n\nCo-authored-by: Andrey Mokhov <andrey.mokhov@gmail.com>\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-03-17T18:23:18+01:00",
+          "tree_id": "9054e5f6d0a99a3a53726a54dc1dec1988e29e03",
+          "url": "https://github.com/ocaml/dune/commit/dfd5d29fffe5a1e85688ffb3941022983eae7525"
+        },
+        "date": 1679074741453,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "37.64113103032667",
             "unit": "seconds"
           }
         ]

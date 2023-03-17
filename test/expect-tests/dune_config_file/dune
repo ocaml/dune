@@ -1,10 +1,10 @@
 (library
- (name dune_config_test)
+ (name dune_config_file_test)
  (inline_tests)
  (libraries
   dune_tests_common
   dune_lang
-  dune_config
+  dune_config_file
   stdune
   dune_engine
   ;; This is because of the (implicit_transitive_deps false)

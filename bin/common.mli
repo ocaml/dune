@@ -1,3 +1,5 @@
+open Dune_config_file
+
 type t
 
 val capture_outputs : t -> bool

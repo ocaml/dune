@@ -1,5 +1,5 @@
 (library
- (name dune_config)
+ (name dune_config_file)
  (libraries
   stdune
   xdg

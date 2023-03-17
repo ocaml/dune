@@ -259,6 +259,25 @@ let progn ts =
 
 let dyn_of_memo_deps t = dyn_deps (dyn_of_memo t)
 
+module Alias_status = struct
+  module T = struct
+    type t =
+      | Defined
+      | Not_defined
+
+    let empty : t = Not_defined
+
+    let combine : t -> t -> t =
+     fun x y ->
+      match (x, y) with
+      | _, Defined | Defined, _ -> Defined
+      | Not_defined, Not_defined -> Not_defined
+  end
+
+  include T
+  include Monoid.Make (T)
+end
+
 let dep_on_alias_if_exists alias =
   of_thunk
     { f =
@@ -266,21 +285,23 @@ let dep_on_alias_if_exists alias =
           let open Memo.O in
           let* definition = Load_rules.alias_exists alias in
           match definition with
-          | false -> Memo.return (false, Dep.Map.empty)
+          | false -> Memo.return (Alias_status.Not_defined, Dep.Map.empty)
           | true ->
             let deps = Dep.Set.singleton (Dep.alias alias) in
             let+ deps = register_action_deps mode deps in
-            (true, deps))
+            (Alias_status.Defined, deps))
     }
 
-module Source_tree_map_reduce =
-  Source_tree.Dir.Make_map_reduce (Action_builder0) (Monoid.Exists)
+module Alias_rec (Traverse : sig
+  val traverse :
+       Path.Build.t
+    -> f:(path:Path.Build.t -> Alias_status.t t)
+    -> Alias_status.t t
+end) =
+struct
+  open Traverse
 
-let dep_on_alias_rec name context_name dir =
-  let build_dir = Context_name.build_dir context_name in
-  let f dir =
-    let path = Path.Build.append_source build_dir (Source_tree.Dir.path dir) in
-    dep_on_alias_if_exists (Alias.make ~dir:path name)
-  in
-  Source_tree_map_reduce.map_reduce dir
-    ~traverse:Sub_dirs.Status.Set.normal_only ~f
+  let dep_on_alias_rec name dir =
+    let f ~path = dep_on_alias_if_exists (Alias.make ~dir:path name) in
+    traverse dir ~f
+end

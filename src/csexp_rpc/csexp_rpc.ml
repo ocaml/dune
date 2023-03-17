@@ -128,7 +128,13 @@ module Session = struct
   type state =
     | Closed
     | Open of
-        { out_channel : out_channel
+        { out_buf : Io_buffer.t
+        ; fd : Unix.file_descr
+        ; (* A mutex for modifying [out_buf].
+
+             Needed as long as we use threads for async IO. Once we switch to
+             event based IO, we won't need this mutex anymore *)
+          write_mutex : Mutex.t
         ; in_channel : in_channel
         ; writer : Worker.t
         ; reader : Worker.t
@@ -139,13 +145,22 @@ module Session = struct
     ; mutable state : state
     }
 
-  let create in_channel out_channel =
+  let create fd in_channel =
     let id = Id.gen () in
     if debug then
       Log.info [ Pp.textf "RPC created new session %d" (Id.to_int id) ];
     let* reader = Worker.create () in
     let+ writer = Worker.create () in
-    let state = Open { in_channel; out_channel; reader; writer } in
+    let state =
+      Open
+        { fd
+        ; in_channel
+        ; out_buf = Io_buffer.create ~size:8192
+        ; write_mutex = Mutex.create ()
+        ; writer
+        ; reader
+        }
+    in
     { id; state }
 
   let string_of_packet = function
@@ -159,10 +174,11 @@ module Session = struct
   let close t =
     match t.state with
     | Closed -> ()
-    | Open { in_channel = _; out_channel; reader; writer } ->
+    | Open { write_mutex = _; fd = _; in_channel; out_buf = _; reader; writer }
+      ->
       Worker.stop reader;
       Worker.stop writer;
-      close_out_noerr out_channel;
+      close_in_noerr in_channel;
       t.state <- Closed
 
   let read t =
@@ -203,6 +219,30 @@ module Session = struct
       debug res;
       res
 
+  external send : Unix.file_descr -> Bytes.t -> int -> int -> int = "dune_send"
+
+  let write = if Sys.linux then send else Unix.single_write
+
+  let rec csexp_write_loop fd out_buf token write_mutex =
+    Mutex.lock write_mutex;
+    if Io_buffer.flushed out_buf token then Mutex.unlock write_mutex
+    else
+      (* We always make sure to try and write the entire buffer.
+          This should minimize the amount of [write] calls we need
+          to do *)
+      let written =
+        let bytes = Io_buffer.bytes out_buf in
+        let pos = Io_buffer.pos out_buf in
+        let len = Io_buffer.length out_buf in
+        try write fd bytes pos len
+        with exn ->
+          Mutex.unlock write_mutex;
+          reraise exn
+      in
+      Io_buffer.read out_buf written;
+      Mutex.unlock write_mutex;
+      csexp_write_loop fd out_buf token write_mutex
+
   let write t sexps =
     if debug then
       Log.info
@@ -218,21 +258,23 @@ module Session = struct
       | Some sexps ->
         Code_error.raise "attempting to write to a closed channel"
           [ ("sexp", Dyn.(list Sexp.to_dyn) sexps) ])
-    | Open { writer; out_channel; _ } -> (
+    | Open { writer; fd; out_buf; write_mutex; _ } -> (
       match sexps with
       | None ->
         (try
-           Unix.shutdown
-             (Unix.descr_of_out_channel out_channel)
-             Unix.SHUTDOWN_ALL
+           (* TODO this hack is temporary until we get rid of dune rpc init *)
+           Unix.shutdown fd Unix.SHUTDOWN_ALL
          with Unix.Unix_error (_, _, _) -> ());
         close t;
         Fiber.return ()
       | Some sexps -> (
         let+ res =
+          Mutex.lock write_mutex;
+          Io_buffer.write_csexps out_buf sexps;
+          let flush_token = Io_buffer.flush_token out_buf in
+          Mutex.unlock write_mutex;
           Worker.task writer ~f:(fun () ->
-              List.iter sexps ~f:(Csexp.to_channel out_channel);
-              flush out_channel)
+              csexp_write_loop fd out_buf flush_token write_mutex)
         in
         match res with
         | Ok () -> ()
@@ -327,8 +369,7 @@ module Server = struct
             Transport.accept transport
             |> Option.map ~f:(fun client ->
                    let in_ = Unix.in_channel_of_descr client in
-                   let out = Unix.out_channel_of_descr client in
-                   (in_, out)))
+                   (client, in_)))
       in
       let loop () =
         let* accept = accept () in
@@ -349,8 +390,8 @@ module Server = struct
                  accepted."
             ];
           Fiber.return None
-        | Ok (Some (in_, out)) ->
-          let+ session = Session.create in_ out in
+        | Ok (Some (fd, in_)) ->
+          let+ session = Session.create fd in_ in
           Some session
       in
       Fiber.Stream.In.create loop
@@ -413,9 +454,8 @@ module Client = struct
             let transport = Transport.create t.sockaddr in
             t.transport <- Some transport;
             let client = Transport.connect transport in
-            let out = Unix.out_channel_of_descr client in
             let in_ = Unix.in_channel_of_descr client in
-            (in_, out))
+            (client, in_))
       in
       Worker.stop async;
       match task with
@@ -432,4 +472,8 @@ module Client = struct
     | Error e -> Exn_with_backtrace.reraise e
 
   let stop t = Option.iter t.transport ~f:Transport.close
+end
+
+module Private = struct
+  module Io_buffer = Io_buffer
 end

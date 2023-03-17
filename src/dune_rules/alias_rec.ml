@@ -1,23 +1,31 @@
 open Import
 
 include Action_builder.Alias_rec (struct
-  module Map_reduce =
-    Source_tree.Dir.Make_map_reduce
-      (Action_builder)
-      (Action_builder.Alias_status)
-
   let traverse dir ~f =
-    let ctx_name, src_dir = Path.Build.extract_build_context_exn dir in
-    let build_dir = Context_name.build_dir (Context_name.of_string ctx_name) in
-    let f dir =
-      let path =
-        Path.Build.append_source build_dir (Source_tree.Dir.path dir)
-      in
-      f ~path
-    in
     let open Action_builder.O in
-    Source_tree.find_dir src_dir |> Action_builder.of_memo >>= function
-    | None -> Action_builder.return Action_builder.Alias_status.Not_defined
-    | Some src_dir ->
-      Map_reduce.map_reduce src_dir ~traverse:Sub_dirs.Status.Set.normal_only ~f
+    let rec map_reduce dir ~f =
+      let* should_traverse =
+        match Path.Build.drop_build_context dir with
+        | None -> Action_builder.return true
+        | Some src_dir -> (
+          Action_builder.of_memo (Source_tree.find_dir src_dir) >>| function
+          | Some src_dir -> (
+            match Source_tree.Dir.status src_dir with
+            | Normal -> true
+            | Vendored | Data_only -> false)
+          | None -> true)
+      in
+      match should_traverse with
+      | false -> Action_builder.return Action_builder.Alias_status.empty
+      | true ->
+        let* { Action_builder.Lookup_alias.alias_exists; allowed_subdirs } =
+          f dir
+        in
+        Action_builder.List.fold_left (String.Set.to_list allowed_subdirs)
+          ~init:alias_exists ~f:(fun alias_exists s ->
+            let+ alias_exists' = map_reduce (Path.Build.relative dir s) ~f in
+            Action_builder.Alias_status.combine alias_exists alias_exists')
+    in
+    let f path = f ~path in
+    map_reduce dir ~f
 end)

@@ -707,7 +707,7 @@ end = struct
                don't check directory targets as these are already checked
                earlier. *)
             (match
-               String.Set.choose
+               Filename.Set.choose
                  (Subdir_set.inter_set build_dir_only_sub_dirs target_filenames)
              with
             | None -> ()

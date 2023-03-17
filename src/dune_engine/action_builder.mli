@@ -113,7 +113,14 @@ end
 
 val alias : Alias.t -> unit t
 
-val dep_on_alias_if_exists : Alias.t -> Alias_status.t t
+module Lookup_alias : sig
+  type result =
+    { alias_exists : Alias_status.t
+    ; allowed_subdirs : Filename.Set.t
+    }
+end
+
+val dep_on_alias_if_exists : Alias.t -> Lookup_alias.result t
 
 module Alias_rec (_ : sig
   (* This API isn't fully baked yet. We might move it to the rules *)
@@ -123,7 +130,7 @@ module Alias_rec (_ : sig
       otherwise. *)
   val traverse :
        Path.Build.t
-    -> f:(path:Path.Build.t -> Alias_status.t t)
+    -> f:(path:Path.Build.t -> Lookup_alias.result t)
     -> Alias_status.t t
 end) : sig
   (** Depend on an alias recursively. Return [Defined] if the alias is defined

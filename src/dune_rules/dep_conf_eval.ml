@@ -27,9 +27,7 @@ let to_action_builder = function
   | Other x -> x
 
 let dep_on_alias_rec alias ~loc =
-  let ctx_name, src_dir =
-    Path.Build.extract_build_context_exn (Alias.dir alias)
-  in
+  let src_dir = Path.Build.drop_build_context_exn (Alias.dir alias) in
   Action_builder.of_memo (Source_tree.find_dir src_dir) >>= function
   | None ->
     Action_builder.fail
@@ -40,18 +38,19 @@ let dep_on_alias_rec alias ~loc =
                   (Path.Source.to_string_maybe_quoted src_dir)
               ])
       }
-  | Some dir ->
+  | Some _ -> (
     let name = Dune_engine.Alias.name alias in
-    let+ is_nonempty =
-      Action_builder.dep_on_alias_rec name (Context_name.of_string ctx_name) dir
-    in
-    if (not is_nonempty) && not (Alias.is_standard name) then
-      User_error.raise ~loc
-        [ Pp.text "This alias is empty."
-        ; Pp.textf "Alias %S is not defined in %s or any of its descendants."
-            (Alias.Name.to_string name)
-            (Path.Source.to_string_maybe_quoted src_dir)
-        ]
+    let+ alias_status = Alias_rec.dep_on_alias_rec name (Alias.dir alias) in
+    match alias_status with
+    | Defined -> ()
+    | Not_defined ->
+      if not (Alias.is_standard name) then
+        User_error.raise ~loc
+          [ Pp.text "This alias is empty."
+          ; Pp.textf "Alias %S is not defined in %s or any of its descendants."
+              (Alias.Name.to_string name)
+              (Path.Source.to_string_maybe_quoted src_dir)
+          ])
 
 let relative d s = Path.build (Path.Build.relative d s)
 
@@ -136,8 +135,12 @@ let rec dep expander = function
   | Source_tree s ->
     Other
       (let* path = Expander.expand_path expander s in
-       Dep.Set.source_tree_with_file_set path
-       |> Action_builder.dyn_memo_deps
+       let deps =
+         let open Memo.O in
+         let+ files = Source_deps.files path in
+         (files, Dep.Set.to_files_set_exn files)
+       in
+       Action_builder.dyn_memo_deps deps
        |> Action_builder.map ~f:Path.Set.to_list)
   | Package p ->
     Other

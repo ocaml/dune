@@ -515,7 +515,7 @@ module Builder = struct
     ; no_print_directory : bool
     ; store_orig_src_dir : bool
     ; default_target : Arg.Dep.t (* For build & runtest only *)
-    ; watch : Watch_mode_config.t
+    ; watch : Dune_rpc_impl.Watch_mode_config.t
     ; print_metrics : bool
     ; dump_memo_graph_file : string option
     ; dump_memo_graph_format : Graph.File_format.t
@@ -635,7 +635,7 @@ module Builder = struct
                      "Instead of terminating build after completion, wait \
                       continuously for file changes.")
            in
-           if watch then Some Watch_mode_config.Eager else None)
+           if watch then Some Dune_rpc_impl.Watch_mode_config.Eager else None)
           (let+ watch =
              Arg.(
                value & flag
@@ -644,11 +644,11 @@ module Builder = struct
                      "Similar to [--watch], but only start a build when \
                       instructed externally by an RPC.")
            in
-           if watch then Some Watch_mode_config.Passive else None)
+           if watch then Some Dune_rpc_impl.Watch_mode_config.Passive else None)
       in
       match res with
-      | None -> Watch_mode_config.No
-      | Some mode -> Watch_mode_config.Yes mode
+      | None -> Dune_rpc_impl.Watch_mode_config.No
+      | Some mode -> Yes mode
     and+ print_metrics =
       Arg.(
         value & flag
@@ -1120,7 +1120,7 @@ let build (builder : Builder.t) ~default_root_is_cwd =
          in
          let action_runner = Dune_engine.Action_runner.Rpc_server.create () in
          Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir
-           stats action_runner))
+           ~watch_mode_config:builder.watch stats action_runner))
   in
   if builder.store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if builder.print_metrics then (

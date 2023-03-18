@@ -206,6 +206,7 @@ type t =
   { config : Run.t
   ; pending_build_jobs :
       (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
+  ; watch_mode_config : Watch_mode_config.t
   ; mutable clients : Clients.t
   }
 
@@ -291,23 +292,35 @@ let handler (t : t Fdecl.t) action_runner_server : 'a Dune_rpc_server.Handler.t
     Handler.implement_request rpc Procedures.Public.ping (fun _ -> Fiber.return)
   in
   let () =
-    let build _ targets =
-      let ivar = Fiber.Ivar.create () in
-      let targets =
-        List.map targets ~f:(fun s ->
-            Dune_lang.Decoder.parse dep_parser
-              (Univ_map.set Univ_map.empty String_with_vars.decoding_env_key
-                 (* CR-someday aalekseyev: hardcoding the version here is not
-                    ideal, but it will do for now since this command is not
-                    stable and we're only using it in tests. *)
-                 (Pform.Env.initial (3, 0)))
-              (Dune_lang.Parser.parse_string ~fname:"dune rpc"
-                 ~mode:Dune_lang.Parser.Mode.Single s))
-      in
-      let* () =
-        Job_queue.write (Fdecl.get t).pending_build_jobs (targets, ivar)
-      in
-      Fiber.Ivar.read ivar
+    let build _session targets =
+      let server = Fdecl.get t in
+      match server.watch_mode_config with
+      | No -> assert false
+      | Yes Eager ->
+        let error =
+          Dune_rpc.Response.Error.create ~kind:Invalid_request
+            ~message:
+              "the rpc server is running with eager watch mode using --watch. \
+               to run builds through an rpc client, start the server using \
+               --passive-watch-mode"
+            ()
+        in
+        raise (Dune_rpc.Response.Error.E error)
+      | Yes Passive ->
+        let ivar = Fiber.Ivar.create () in
+        let targets =
+          List.map targets ~f:(fun s ->
+              Dune_lang.Decoder.parse dep_parser
+                (Univ_map.set Univ_map.empty String_with_vars.decoding_env_key
+                   (* CR-someday aalekseyev: hardcoding the version here is not
+                      ideal, but it will do for now since this command is not
+                      stable and we're only using it in tests. *)
+                   (Pform.Env.initial (3, 0)))
+                (Dune_lang.Parser.parse_string ~fname:"dune rpc"
+                   ~mode:Dune_lang.Parser.Mode.Single s))
+        in
+        let* () = Job_queue.write server.pending_build_jobs (targets, ivar) in
+        Fiber.Ivar.read ivar
     in
     Handler.implement_request rpc Decl.build build
   in
@@ -403,7 +416,8 @@ let handler (t : t Fdecl.t) action_runner_server : 'a Dune_rpc_server.Handler.t
     rpc;
   rpc
 
-let create ~lock_timeout ~registry ~root stats action_runner =
+let create ~lock_timeout ~registry ~root ~watch_mode_config stats action_runner
+    =
   let t = Fdecl.create Dyn.opaque in
   let pending_build_jobs = Job_queue.create () in
   let handler = Dune_rpc_server.make (handler t action_runner) in
@@ -439,7 +453,9 @@ let create ~lock_timeout ~registry ~root stats action_runner =
     ; server_ivar = Fiber.Ivar.create ()
     }
   in
-  let res = { config; pending_build_jobs; clients = Clients.empty } in
+  let res =
+    { config; pending_build_jobs; watch_mode_config; clients = Clients.empty }
+  in
   Fdecl.set t res;
   res
 

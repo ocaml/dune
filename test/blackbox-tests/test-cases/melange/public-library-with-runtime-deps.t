@@ -2,7 +2,7 @@ Test `melange.runtime_deps` in a public library in the workspace
 
   $ mkdir prefix
   $ cat > dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (package (name foo))
   > (using melange 0.1)
   > EOF

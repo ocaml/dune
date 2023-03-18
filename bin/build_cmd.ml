@@ -148,7 +148,7 @@ let runtest_term =
       (List.map dirs ~f:(fun dir ->
            let dir = Path.(relative root) (Common.prefix_target common dir) in
            Alias.in_dir ~name:Dune_engine.Alias.Name.runtest ~recursive:true
-             ~contexts:setup.contexts dir
+             ~scontexts:setup.scontexts dir
            |> Alias.request))
   in
   run_build_command ~common ~config ~request
@@ -209,7 +209,7 @@ let fmt =
     let request (setup : Import.Main.build_system) =
       let dir = Path.(relative root) (Common.prefix_target common ".") in
       Alias.in_dir ~name:Dune_engine.Alias.Name.fmt ~recursive:true
-        ~contexts:setup.contexts dir
+        ~scontexts:setup.scontexts dir
       |> Alias.request
     in
     run_build_command ~common ~config ~request

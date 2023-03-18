@@ -16,14 +16,14 @@ let implicit_default_alias dir =
     Source_tree.find_dir src_dir >>| function
     | None -> None
     | Some src_dir ->
+      let project = Source_tree.Dir.project src_dir in
       let default_alias =
-        let dune_version =
-          Source_tree.Dir.project src_dir |> Dune_project.dune_version
-        in
+        let dune_version = Dune_project.dune_version project in
         if dune_version >= (2, 0) then Alias.Name.all else Alias.Name.install
       in
       Some
-        (Action_builder.ignore (Alias_rec.dep_on_alias_rec default_alias dir)))
+        (Action_builder.ignore
+           (Alias_rec.dep_on_alias_rec ~project default_alias dir)))
 
 let execution_parameters =
   let f path =

@@ -26,11 +26,11 @@ let to_action_builder = function
     paths
   | Other x -> x
 
-let dep_on_alias_rec alias ~loc =
+let dep_on_alias_rec alias ~project ~loc =
   let name = Dune_engine.Alias.name alias in
   let alias_dir = Alias.dir alias in
   let src_dir = Path.Build.drop_build_context_exn alias_dir in
-  let+ alias_status = Alias_rec.dep_on_alias_rec name alias_dir in
+  let+ alias_status = Alias_rec.dep_on_alias_rec ~project name alias_dir in
   match alias_status with
   | Defined -> ()
   | Not_defined ->
@@ -109,9 +109,10 @@ let rec dep expander = function
        let+ () = Action_builder.alias a in
        [])
   | Alias_rec s ->
+    let project = Scope.project (Expander.scope expander) in
     Other
       (let* a = make_alias expander s in
-       let+ () = dep_on_alias_rec ~loc:(String_with_vars.loc s) a in
+       let+ () = dep_on_alias_rec ~project ~loc:(String_with_vars.loc s) a in
        [])
   | Glob_files glob_files ->
     Other

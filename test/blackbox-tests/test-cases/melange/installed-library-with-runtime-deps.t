@@ -2,7 +2,7 @@ Test `melange.runtime_deps` in a library that has been installed
 
   $ mkdir lib app prefix
   $ cat > lib/dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (package (name foo))
   > (using melange 0.1)
   > EOF
@@ -50,7 +50,7 @@ Test `melange.runtime_deps` in a library that has been installed
   > EOF
 
   $ cat > app/dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (package (name app))
   > (using melange 0.1)
   > EOF

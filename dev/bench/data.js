@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679097662292,
+  "lastUpdate": 1679098158439,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -10091,6 +10091,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.328358889499995",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4245029f2914bcfdca915e9916a5155a0afa95fb",
+          "message": "feature: add action runners (#6737)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-17T16:47:22-07:00",
+          "tree_id": "c854afadcc9812714d9415eca4c789aeb33a416e",
+          "url": "https://github.com/ocaml/dune/commit/4245029f2914bcfdca915e9916a5155a0afa95fb"
+        },
+        "date": 1679098156660,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.00519235772667",
             "unit": "seconds"
           }
         ]

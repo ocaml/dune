@@ -19,8 +19,10 @@ Test case: default flags
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   coqc -q
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -R . foo
+  foo.v
 
 TC: :standard
 
@@ -34,8 +36,10 @@ TC: :standard
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   coqc -q
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -R . foo
+  foo.v
 
 TC: override :standard
 
@@ -48,8 +52,10 @@ TC: override :standard
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   coqc
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -R . foo
+  foo.v
 
 TC: add to :standard
 
@@ -62,8 +68,10 @@ TC: add to :standard
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   coqc -q -type-in-type
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -R . foo
+  foo.v
 
 TC: extend in workspace + override standard
 
@@ -81,8 +89,10 @@ TC: extend in workspace + override standard
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   coqc -type-in-type
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -R . foo
+  foo.v
 
 TC: extend in workspace + override standard
 
@@ -94,8 +104,10 @@ TC: extend in workspace + override standard
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   coqc -q -type-in-type
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -R . foo
+  foo.v
 
 TC: extend in dune (env) + override standard
 
@@ -109,8 +121,10 @@ TC: extend in dune (env) + override standard
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   coqc -type-in-type
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -R . foo
+  foo.v
 
 TC: extend in dune (env) + standard
 
@@ -124,8 +138,10 @@ TC: extend in dune (env) + standard
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   coqc -q -type-in-type -type-in-type
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -R . foo
+  foo.v
 
 TC: extend in dune (env) + workspace + standard
 
@@ -144,5 +160,7 @@ TC: extend in dune (env) + workspace + standard
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   coqc -q -type-in-type -bt
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -R . foo
+  foo.v

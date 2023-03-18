@@ -18,21 +18,33 @@ https://github.com/ocaml/dune/pull/5457#issuecomment-1084161587).
   > (lang dune 3.0)
   > (using coq 0.3)
   > EOF
-  $ dune coq top --display short --toplevel echo dir/bar.v
+  $ dune coq top --display short --toplevel echo dir/bar.v | ../scrub_coq_args.sh
         coqdep dir/.basic.theory.d
           coqc dir/foo.{glob,vo}
-  -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R $TESTCASE_ROOT/_build/default/dir basic
-  $ dune coq top --display short --toplevel echo dir/bar.v
-  -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R $TESTCASE_ROOT/_build/default/dir basic
+  -topfile $TESTCASE_ROOT/_build/default/dir/bar.v
+  -w -deprecated-native-compiler-option
+  -w -native-compiler-disabled -native-compiler ondemand
+  -R coqtop/_build/default/dir basic
+  $ dune coq top --display short --toplevel echo dir/bar.v | ../scrub_coq_args.sh
+  -topfile $TESTCASE_ROOT/_build/default/dir/bar.v
+  -w -deprecated-native-compiler-option
+  -w -native-compiler-disabled -native-compiler ondemand
+  -R coqtop/_build/default/dir basic
   $ dune clean
-  $ (cd dir && dune coq top --root .. --display short --toplevel echo dir/bar.v)
+  $ (cd dir && dune coq top --root .. --display short --toplevel echo dir/bar.v) | ../scrub_coq_args.sh
   Entering directory '..'
         coqdep dir/.basic.theory.d
           coqc dir/foo.{glob,vo}
   Leaving directory '..'
-  -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R $TESTCASE_ROOT/_build/default/dir basic
-  $ (cd dir && dune coq top --root .. --display short --toplevel echo dir/bar.v)
+  -topfile $TESTCASE_ROOT/_build/default/dir/bar.v
+  -w -deprecated-native-compiler-option
+  -w -native-compiler-disabled -native-compiler ondemand
+  -R coqtop/_build/default/dir basic
+  $ (cd dir && dune coq top --root .. --display short --toplevel echo dir/bar.v) | ../scrub_coq_args.sh
   Entering directory '..'
   Leaving directory '..'
-  -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R $TESTCASE_ROOT/_build/default/dir basic
+  -topfile $TESTCASE_ROOT/_build/default/dir/bar.v
+  -w -deprecated-native-compiler-option
+  -w -native-compiler-disabled -native-compiler ondemand
+  -R coqtop/_build/default/dir basic
 

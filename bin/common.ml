@@ -969,7 +969,7 @@ let print_entering_message c =
         flush stdout;
         Console.print [ Pp.verbatim (sprintf "Leaving directory '%s'" dir) ]))
 
-let init ?log_file c =
+let init ?action_runner ?log_file c =
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
   Path.Build.set_build_dir
@@ -1016,9 +1016,17 @@ let init ?log_file c =
     [ Pp.textf "Shared cache: %s"
         (Dune_config.Cache.Enabled.to_string config.cache_enabled)
     ];
-  Dune_rules.Main.init ~stats:c.stats
+  let action_runner =
+    match action_runner with
+    | None -> None
+    | Some f -> (
+      match rpc c with
+      | `Forbid_builds -> Code_error.raise "action runners require building" []
+      | `Allow server -> Some (Staged.unstage @@ f server))
+  in
+  Dune_rules.Main.init ?action_runner ~stats:c.stats
     ~sandboxing_preference:config.sandboxing_preference ~cache_config
-    ~cache_debug_flags:c.builder.cache_debug_flags;
+    ~cache_debug_flags:c.builder.cache_debug_flags ();
   Only_packages.Clflags.set c.builder.only_packages;
   Dune_util.Report_error.print_memo_stacks := c.builder.debug_dep_path;
   Clflags.report_errors_config := c.builder.report_errors_config;
@@ -1110,8 +1118,9 @@ let build (builder : Builder.t) ~default_root_is_cwd =
            | Yes Passive -> Some 1.0
            | _ -> None
          in
+         let action_runner = Dune_engine.Action_runner.Rpc_server.create () in
          Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir
-           stats))
+           stats action_runner))
   in
   if builder.store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if builder.print_metrics then (

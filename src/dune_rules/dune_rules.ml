@@ -7,6 +7,7 @@ module Colors = Colors
 module Profile = Profile
 module Workspace = Workspace
 module Dune_package = Dune_package
+module Alias_rec = Alias_rec
 module Dep_conf = Dep_conf
 module Dir_contents = Dir_contents
 module Expander = Expander

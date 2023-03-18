@@ -1,8 +1,8 @@
 Unreleased
 ----------
 
-- RPC: Ignore SIGPIPE when clients suddenly disconnect on OSX (#7299, partially
-  fixes #6879, @rgrinberg)
+- RPC: Ignore SIGPIPE when clients suddenly disconnect (#7299, #7319, fixes
+  #6879, @rgrinberg)
 
 - Always clean up the UI on exit. (#7271, fixes #7142 @rgrinberg)
 

@@ -31,7 +31,9 @@ let term =
     Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
   in
   let config = Common.init common in
-  let prefix_target = Common.prefix_target common in
+  let coq_file_arg =
+    Common.prefix_target common coq_file_arg |> Path.Local.of_string
+  in
   let coqtop, argv, env =
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in
@@ -40,13 +42,13 @@ let term =
         let sctx = Import.Main.find_scontext_exn setup ~name:context in
         let context = Dune_rules.Super_context.context sctx in
         let coq_file_build =
-          let p = prefix_target coq_file_arg in
-          Path.Build.relative context.build_dir p
+          Path.Build.append_local context.build_dir coq_file_arg
         in
         let dir =
-          let dir = Filename.dirname coq_file_arg in
-          let p = prefix_target dir in
-          Path.Build.relative context.build_dir p
+          (match Path.Local.parent coq_file_arg with
+          | None -> Path.Local.root
+          | Some dir -> dir)
+          |> Path.Build.append_local context.build_dir
         in
         let* coqtop, args =
           Build_system.run_exn @@ fun () ->
@@ -72,7 +74,9 @@ let term =
                 ]
               in
               User_error.raise ~hints
-                [ Pp.textf "cannot find file: %s" coq_file_arg ]
+                [ Pp.textf "cannot find file: %s"
+                    (coq_file_arg |> Path.Local.to_string)
+                ]
           in
           let stanza =
             Dune_rules.Coq_sources.lookup_module coq_src coq_module
@@ -81,7 +85,9 @@ let term =
             match stanza with
             | None ->
               User_error.raise
-                [ Pp.textf "file not part of any stanza: %s" coq_file_arg ]
+                [ Pp.textf "file not part of any stanza: %s"
+                    (coq_file_arg |> Path.Local.to_string)
+                ]
             | Some (`Theory theory) ->
               ( Dune_rules.Coq_rules.coqtop_args_theory ~sctx ~dir
                   ~dir_contents:dc theory coq_module

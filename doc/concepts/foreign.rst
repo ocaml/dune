@@ -1,5 +1,5 @@
 Foreign Sources, Archives, and Objects
-=====================================
+======================================
 
 Dune provides basic support for including foreign source files as well
 as archives of foreign object files into OCaml projects via the

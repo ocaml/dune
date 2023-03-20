@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679098524340,
+  "lastUpdate": 1679322011599,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -15721,6 +15721,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "32.856120497519996",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c4fc52b3f1e68620d3a9712d46d4f710f0c09fb7",
+          "message": "Doc: fix default location of cache on Windows (#7356)\n\nSigned-off-by: Nicolás Ojeda Bär <n.oje.bar@gmail.com>",
+          "timestamp": "2023-03-20T15:06:35+01:00",
+          "tree_id": "54b9c616aa715efd1b625d36735db5ac4280079d",
+          "url": "https://github.com/ocaml/dune/commit/c4fc52b3f1e68620d3a9712d46d4f710f0c09fb7"
+        },
+        "date": 1679322009808,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "32.23289521992667",
             "unit": "seconds"
           }
         ]

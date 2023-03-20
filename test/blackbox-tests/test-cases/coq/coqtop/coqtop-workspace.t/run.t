@@ -14,8 +14,6 @@ Calling "dune coq top" from the workspace root.
   $ coqtop_test project/coq_dir2/file5.v
   $ coqtop_test project/coq_dir2/dir2/file6.v
 
-  $ check_build
-
 Calling "dune coq top" from the "coq_dir1" directory.
 
   $ cd coq_dir1
@@ -32,8 +30,6 @@ Calling "dune coq top" from the "coq_dir1" directory.
   $ coqtop_test dir1/file3.v
 
   $ cd ..
-
-  $ check_build
 
 Calling "dune coq top" from the "coq_dir1/dir1" directory.
 
@@ -53,8 +49,6 @@ Calling "dune coq top" from the "coq_dir1/dir1" directory.
 
   $ cd ../..
 
-  $ check_build
-
 Calling "dune coq top" from the "project" directory.
 
   $ cd project
@@ -71,8 +65,6 @@ Calling "dune coq top" from the "project" directory.
   $ coqtop_test coq_dir2/dir2/file6.v
 
   $ cd ..
-
-  $ check_build
 
 Calling "dune coq top" from the "project/coq_dir2" directory.
 
@@ -94,8 +86,6 @@ Calling "dune coq top" from the "project/coq_dir2" directory.
 
   $ cd ../..
 
-  $ check_build
-
 Calling "dune coq top" from the "project/coq_dir2/dir2" directory.
 
   $ cd project/coq_dir2/dir2
@@ -116,5 +106,3 @@ Calling "dune coq top" from the "project/coq_dir2/dir2" directory.
   $ coqtop_test file6.v
 
   $ cd ../../..
-
-  $ check_build

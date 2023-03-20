@@ -85,7 +85,7 @@ jobs:
       - run: opam install ./dune.opam --deps-only --with-test
 
       - name: Install system deps on macOS
-        run: brew install coreutils
+        run: brew install coreutils pkg-config file
         if: ${{ matrix.os == 'macos-latest' }}
 
       # dune doesn't have any additional dependencies so we can build it right
@@ -242,7 +242,7 @@ jobs:
       - run: nix develop .#doc -c make doc
 
   coq:
-    name: Coq 8.16.0
+    name: Coq 8.16.1
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -256,7 +256,7 @@ jobs:
           dune-cache: true
 
       - name: Install Coq
-        run: opam install coq.8.16.0 coq-native
+        run: opam install coq.8.16.1 coq-native
 
       - run: opam exec -- make test-coq
         env:

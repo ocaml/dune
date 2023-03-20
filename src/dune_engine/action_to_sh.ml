@@ -15,6 +15,7 @@ module Simplified = struct
     | Redirect_in of t list * Inputs.t * source
     | Pipe of t list list * Outputs.t
     | Sh of string
+    | Concurrent of t list list
 end
 
 open Simplified
@@ -55,6 +56,7 @@ let simplify act =
     | Ignore (outputs, act) ->
       Redirect_out (block act, outputs, Dev_null) :: acc
     | Progn l -> List.fold_left l ~init:acc ~f:(fun acc act -> loop act acc)
+    | Concurrent l -> Concurrent (List.map ~f:block l) :: acc
     | Echo xs -> echo (String.concat xs ~sep:"")
     | Cat x -> cat x :: acc
     | Copy (x, y) -> Run ("cp", [ x; y ]) :: acc
@@ -171,6 +173,27 @@ and pp = function
            ; Pp.verbatim first_pipe
            ; Pp.concat ~sep:(Pp.verbatim " | ") (List.map l ~f:block)
            ; Pp.verbatim end_
+           ]))
+  | Concurrent t -> (
+    match t with
+    | [] -> Pp.verbatim "true"
+    | [ x ] -> block x
+    | x :: l ->
+      Pp.hovbox ~indent:2
+        (Pp.concat
+           [ Pp.char '('
+           ; Pp.space
+           ; block x
+           ; Pp.space
+           ; Pp.char '&'
+           ; Pp.space
+           ; Pp.concat ~sep:(Pp.verbatim "&") (List.map l ~f:block)
+           ; Pp.space
+           ; Pp.char '&'
+           ; Pp.space
+           ; Pp.verbatim "wait"
+           ; Pp.space
+           ; Pp.verbatim ")"
            ]))
 
 let rec pp_seq = function

@@ -821,8 +821,8 @@ end = struct
   let projects_by_package =
     Memo.lazy_ (fun () ->
         let open Memo.O in
-        let+ conf = Dune_load.load () in
-        List.concat_map conf.projects ~f:(fun project ->
+        let+ { projects; _ } = Dune_load.load () in
+        List.concat_map projects ~f:(fun project ->
             Dune_project.packages project
             |> Package.Name.Map.values
             |> List.map ~f:(fun (pkg : Package.t) ->
@@ -1885,8 +1885,8 @@ module DB = struct
     instrumentation_backend t.lib_config.instrument_with (resolve t) libname
 end
 
-let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir :
-    Dune_package.Lib.t Resolve.Memo.t =
+let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects
+    ~melange_runtime_deps ~dir : Dune_package.Lib.t Resolve.Memo.t =
   let loc = Lib_info.loc info in
   let mangled_name lib =
     match Lib_info.status lib.info with
@@ -1902,7 +1902,9 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir :
   in
   let modules =
     let install_dir = Obj_dir.dir obj_dir in
-    Modules.version_installed modules ~install_dir
+    Modules.version_installed modules
+      ~src_root:(Lib_info.src_dir lib.info)
+      ~install_dir
   in
   let use_public_name ~lib_field ~info_field =
     match (info_field, lib_field) with
@@ -1938,7 +1940,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir :
   let info =
     Lib_info.for_dune_package info ~name ~ppx_runtime_deps ~requires
       ~foreign_objects ~obj_dir ~implements ~default_implementation ~sub_systems
-      ~modules
+      ~modules ~melange_runtime_deps
   in
   Dune_package.Lib.of_dune_lib ~info ~main_module_name
 

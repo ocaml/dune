@@ -25,7 +25,7 @@
   dune_cache
   build_path_prefix_map
   dune_engine
-  dune_config
+  dune_config_file
   unix)
  (synopsis "Internal Dune library, do not use!")
  (instrumentation

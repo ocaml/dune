@@ -6,7 +6,7 @@ include_subdirs
 The ``include_subdirs`` stanza is used to control how Dune considers
 subdirectories of the current directory. The syntax is as follows:
 
-.. code:: scheme
+.. code:: dune
 
      (include_subdirs <mode>)
 

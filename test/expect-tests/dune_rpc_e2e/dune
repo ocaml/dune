@@ -2,6 +2,7 @@
  (name dune_rpc_e2e)
  (modules dune_rpc_e2e)
  (libraries
+  dune_rpc_client
   dune_rpc_private
   dune_util
   stdune
@@ -30,6 +31,7 @@
  (libraries
   fiber
   stdune
+  dune_rpc_client
   dune_rpc_e2e
   dune_rpc_private
   dune_rpc_impl

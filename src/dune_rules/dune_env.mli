@@ -38,6 +38,7 @@ module Stanza : sig
     ; format_config : Format_config.t option
     ; error_on_use : User_message.t option
     ; warn_on_load : User_message.t option
+    ; bin_annot : bool option
     }
 
   type pattern =

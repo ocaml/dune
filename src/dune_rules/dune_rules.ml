@@ -7,6 +7,7 @@ module Colors = Colors
 module Profile = Profile
 module Workspace = Workspace
 module Dune_package = Dune_package
+module Alias_rec = Alias_rec
 module Dep_conf = Dep_conf
 module Dir_contents = Dir_contents
 module Expander = Expander
@@ -52,6 +53,7 @@ module Command = Command
 module Install = Install
 module Lib_name = Lib_name
 module Diff = Dune_lang.Action.Diff
+module Clflags = Clflags
 
 module Install_rules = struct
   let install_file = Install_rules.install_file

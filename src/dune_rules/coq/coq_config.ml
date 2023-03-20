@@ -49,6 +49,11 @@ module Value = struct
     | Int of int
     | Path of Path.t
     | String of string
+
+  let to_dyn = function
+    | Int i -> Dyn.Int i
+    | Path p -> Path.to_dyn p
+    | String s -> Dyn.String s
 end
 
 module Version = struct
@@ -105,7 +110,7 @@ module Version = struct
   let impl_version bin =
     let* _ = Build_system.build_file bin in
     Memo.of_reproducible_fiber
-    @@ Process.run_capture_line ~display:!Clflags.display Process.Strict bin
+    @@ Process.run_capture_line ~display:Quiet Process.Strict bin
          [ "--print-version" ]
 
   let version_memo =
@@ -148,14 +153,14 @@ end
 type t =
   { version_info : (Version.t, User_message.Style.t Pp.t) Result.t
   ; coqlib : Path.t
+  ; coqcorelib : Path.t
   ; coq_native_compiler_default : string
   }
 
 let impl_config bin =
   let* _ = Build_system.build_file bin in
   Memo.of_reproducible_fiber
-  @@ Process.run_capture_lines ~display:!Clflags.display Process.Return bin
-       [ "--config" ]
+  @@ Process.run_capture_lines ~display:Quiet Process.Return bin [ "--config" ]
 
 let config_memo = Memo.create "coq-config" ~input:(module Path) impl_config
 
@@ -178,10 +183,11 @@ let make_res ~(coqc : Action.Prog.t) =
       match Vars.of_lines config_lines with
       | Ok vars ->
         let coqlib = Vars.get_path vars "COQLIB" in
+        let coqcorelib = Vars.get_path vars "COQCORELIB" in
         let coq_native_compiler_default =
           Vars.get vars "COQ_NATIVE_COMPILER_DEFAULT"
         in
-        Ok { version_info; coqlib; coq_native_compiler_default }
+        Ok { version_info; coqlib; coqcorelib; coq_native_compiler_default }
       | Error msg ->
         User_error.raise
           Pp.
@@ -206,7 +212,8 @@ let make ~coqc =
         ; textf "Output:\n%s" (String.concat ~sep:"\n" config_lines)
         ]
 
-let by_name { version_info; coqlib; coq_native_compiler_default } name =
+let by_name { version_info; coqlib; coqcorelib; coq_native_compiler_default }
+    name =
   match name with
   | "version.major"
   | "version.minor"
@@ -215,6 +222,7 @@ let by_name { version_info; coqlib; coq_native_compiler_default } name =
   | "version"
   | "ocaml-version" -> Version.by_name version_info name
   | "coqlib" -> Some (Value.Path coqlib)
+  | "coqcorelib" -> Some (Value.Path coqcorelib)
   | "coq_native_compiler_default" ->
     Some (Value.String coq_native_compiler_default)
   | _ -> None

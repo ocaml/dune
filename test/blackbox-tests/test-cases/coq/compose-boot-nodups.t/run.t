@@ -4,4 +4,5 @@ Testing composition with two boot libraries
   Error: Cannot have more than one boot theory in scope:
   - B at B/dune:1
   - A at A/dune:1
+  -> required by alias default
   [1]

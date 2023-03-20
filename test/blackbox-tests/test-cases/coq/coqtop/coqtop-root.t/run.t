@@ -1,7 +1,10 @@
 All dune commands work when you run them in sub-directories, so this should be no exception.
 
-  $ dune coq top --toplevel=echo -- theories/foo.v
-  -topfile $TESTCASE_ROOT/_build/default/theories/foo.v -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R $TESTCASE_ROOT/_build/default/theories foo
+  $ dune coq top --toplevel=echo -- theories/foo.v | ../../scrub_coq_args.sh
+  -topfile $TESTCASE_ROOT/_build/default/theories/foo.v
+  -w -deprecated-native-compiler-option
+  -w -native-compiler-disabled -native-compiler ondemand
+  -R coqtop-root.t/_build/default/theories foo
   $ cd theories
 
 This test is currently broken due to the workspace resolution being faulty #5899.
@@ -14,5 +17,5 @@ This test is currently broken due to the workspace resolution being faulty #5899
   1 | (coq.theory
   2 |  (name foo))
   Error: 'coq.theory' is available only when coq is enabled in the dune-project
-  file. You must enable it using (using coq 0.7) in your dune-project file.
+  file. You must enable it using (using coq 0.8) in your dune-project file.
   [1]

@@ -28,13 +28,15 @@
   ; Kept to keep implicit_transitive_deps false working in 4.x
   threads.posix
   build_info
-  dune_config
+  dune_config_file
   chrome_trace
   dune_stats
   csexp
   csexp_rpc
   dune_rpc_impl
-  dune_rpc_private)
+  dune_rpc_private
+  dune_rpc_client
+  spawn)
  (bootstrap_info bootstrap-info))
 
 ; Installing the dune binary depends on the kind of build:

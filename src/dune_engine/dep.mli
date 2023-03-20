@@ -110,19 +110,24 @@ module Set : sig
   include
     Set.S with type elt = t and type 'a map := 'a Map.t and type t = unit Map.t
 
-  (** Return dependencies on all source files under a certain source directory.
+  module Source_tree (Union : sig
+    type 'a result
 
-      Dependency on a source_tree requires special care for empty directory, so
-      you should use this function rather than manually traverse the source
-      tree. *)
-  val source_tree : Path.t -> t Memo.t
+    val union_all :
+      Path.t -> f:(path:Path.t -> files:Filename.Set.t -> t) -> t result
+  end) : sig
+    (** Dependencies on all source files under a certain source directory.
 
-  (** Same as [source_tree] but also return the set of files as a set. Because
-      of the special care for empty directories, the set of dependencies
-      returned contains dependencies other than [File]. So extracting the set of
-      files from the dependency set is a bit awkward. This is why this function
-      exist. *)
-  val source_tree_with_file_set : Path.t -> (t * Path.Set.t) Memo.t
+        Dependency on a [files] requires special care for empty directories.
+        Empty directories need to be loaded so that we clean up stale artifacts
+        in such directories *)
+    val files : Path.t -> t Union.result
+  end
+
+  (** [to_files_set_exn t] returns the set of files in [t]. It will raise if [t]
+      contains anything other than files or the empty predicate. It is safe to
+      call on the value returned by [Source_tree.files] *)
+  val to_files_set_exn : t -> Path.Set.t
 
   val of_files : Path.t list -> t
 

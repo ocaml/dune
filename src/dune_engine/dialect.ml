@@ -1,5 +1,8 @@
 open Import
 module Action = Dune_lang.Action
+module Ml_kind = Ocaml.Ml_kind
+module Cm_kind = Ocaml.Cm_kind
+module Mode = Ocaml.Mode
 
 module File_kind = struct
   type t =

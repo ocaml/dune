@@ -73,7 +73,7 @@ dynamically-loading packages and their dependencies (using the OCaml Dynlink mod
 Adding the ability for an application to have plugins just requires adding
 ``findlib.dynload`` to the set of library dependencies:
 
-.. code:: scheme
+.. code:: dune
 
     (library
       (name mytool)
@@ -95,7 +95,7 @@ only once, so trying to load a package statically linked does nothing.
 
 A plugin creator just needs to link to your library:
 
-.. code:: scheme
+.. code:: dune
 
     (library
       (name mytool_plugin_a)
@@ -183,13 +183,14 @@ Variables for Artifacts
 -----------------------
 
 For specific situations where one needs to refer to individual compilation
-artifacts, special variables (see :ref:`variables`) are provided, so the
-user doesn't need to be aware of the particular naming conventions or directory
-layout implemented by Dune.
+artifacts, special variables (see :doc:`concepts/variables`) are provided, so
+the user doesn't need to be aware of the particular naming conventions or
+directory layout implemented by Dune.
 
-These variables can appear wherever a :ref:`deps-field` is expected and also
-inside :ref:`user-actions`. When used inside :ref:`user-actions`, they
-implicitly declare a dependency on the corresponding artifact.
+These variables can appear wherever a :doc:`concepts/dependency-spec` is
+expected and also inside :doc:`concepts/actions`. When used inside
+:doc:`concepts/actions`, they implicitly declare a dependency on the
+corresponding artifact.
 
 The variables have the form ``%{<ext>:<path>}``, where ``<path>`` is
 interpreted relative to the current directory:
@@ -222,7 +223,7 @@ Below is an example where we build ``my.cmxs`` containing ``foo.cmxa`` and
 ``d.cmx``. Note how we use a :ref:`library` stanza to set up the compilation of
 ``d.cmx``.
 
-.. code:: lisp
+.. code:: dune
 
     (library
      (name foo)

@@ -36,7 +36,7 @@ visible regardless if the stanzas were filtered.
 
   $ rm -rf _build
   $ dune build -p foo
-  $ dune install foo --prefix ./_install
+  $ dune install foo --prefix ./_install --display=short
   Installing _install/lib/foo/META
   Installing _install/lib/foo/bar/private_foo.a
   Installing _install/lib/foo/bar/private_foo.cma

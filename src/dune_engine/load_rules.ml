@@ -78,6 +78,7 @@ end
 let get_dir_triage ~dir =
   match Dpath.analyse_dir dir with
   | Source dir ->
+    let module Source_tree = (val (Build_config.get ()).source_tree) in
     let+ files = Source_tree.files_of dir in
     Dir_triage.Known (Source { files })
   | External dir_ext ->
@@ -469,12 +470,13 @@ end = struct
       | Unrestricted
       | Restricted of Path.Unspecified.w Dir_set.t Memo.Lazy.t
 
-    let corresponding_source_dir ~dir =
-      match Dpath.analyse_target dir with
-      | Install _ | Alias _ | Anonymous_action _ | Other _ -> Memo.return None
-      | Regular (_ctx, sub_dir) -> Source_tree.find_dir sub_dir
-
     let source_subdirs_of_build_dir ~dir =
+      let module Source_tree = (val (Build_config.get ()).source_tree) in
+      let corresponding_source_dir ~dir =
+        match Dpath.analyse_target dir with
+        | Install _ | Alias _ | Anonymous_action _ | Other _ -> Memo.return None
+        | Regular (_ctx, sub_dir) -> Source_tree.find_dir sub_dir
+      in
       corresponding_source_dir ~dir >>| function
       | None -> String.Set.empty
       | Some dir -> Source_tree.Dir.sub_dir_names dir
@@ -499,14 +501,15 @@ end = struct
 
   module Normal = struct
     type t =
-      { build_dir_only_sub_dirs : Subdir_set.t
+      { build_dir_only_sub_dirs : Build_config.Rules.Build_only_sub_dirs.t
       ; directory_targets : Loc.t Path.Build.Map.t
       ; rules : Rules.t Memo.Lazy.t
       }
 
     let combine_exn r { build_dir_only_sub_dirs; directory_targets; rules } =
       { build_dir_only_sub_dirs =
-          Subdir_set.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
+          Build_config.Rules.Build_only_sub_dirs.union r.build_dir_only_sub_dirs
+            build_dir_only_sub_dirs
       ; directory_targets =
           Path.Build.Map.union_exn r.directory_targets directory_targets
       ; rules =
@@ -523,6 +526,17 @@ end = struct
             Code_error.raise
               "[gen_rules] returned directory target in a directory that is \
                not a descendant of the directory it was called for"
+              [ ("dir", Path.Build.to_dyn dir)
+              ; ("example", Path.Build.to_dyn p)
+              ])
+
+    let check_all_sub_dirs_rule_dirs_are_descendant ~of_:dir
+        build_dir_only_sub_dirs =
+      Path.Build.Map.iteri build_dir_only_sub_dirs ~f:(fun p _sub_dirs ->
+          if not (Path.Build.is_descendant p ~of_:dir) then
+            Code_error.raise
+              "[gen_rules] returned sub-directories in a directory that is not \
+               a descendant of the directory it was called for"
               [ ("dir", Path.Build.to_dyn dir)
               ; ("example", Path.Build.to_dyn p)
               ])
@@ -566,6 +580,7 @@ end = struct
         { Build_config.Rules.build_dir_only_sub_dirs; directory_targets; rules }
         =
       check_all_directory_targets_are_descendant ~of_ directory_targets;
+      check_all_sub_dirs_rule_dirs_are_descendant ~of_ directory_targets;
       let rules =
         Memo.lazy_ (fun () ->
             let+ rules = rules in
@@ -658,6 +673,9 @@ end = struct
       Memo.return
         (Loaded.Build_under_directory_target { directory_target_ancestor })
     | Normal { rules; build_dir_only_sub_dirs; directory_targets } ->
+      let build_dir_only_sub_dirs =
+        Build_config.Rules.Build_only_sub_dirs.find build_dir_only_sub_dirs dir
+      in
       Path.Build.Map.iteri directory_targets ~f:(fun dir_target loc ->
           let name = Path.Build.basename dir_target in
           if
@@ -722,6 +740,7 @@ end = struct
         | Install _ -> Memo.return (None, String.Set.empty)
         | Context context_name ->
           let+ files, subdirs =
+            let module Source_tree = (val (Build_config.get ()).source_tree) in
             Source_tree.find_dir sub_dir >>| function
             | None -> (Path.Source.Set.empty, String.Set.empty)
             | Some dir ->
@@ -932,49 +951,6 @@ let get_rule_or_source path =
       let* loc = Current_rule_loc.get () in
       no_rule_found ~loc path)
 
-type target_type =
-  | File
-  | Directory
-
-module All_targets = struct
-  type t = target_type Path.Build.Map.t
-
-  include Monoid.Make (struct
-    type nonrec t = t
-
-    let empty = Path.Build.Map.empty
-
-    let combine = Path.Build.Map.union_exn
-  end)
-end
-
-module Source_tree_map_reduce =
-  Source_tree.Dir.Make_map_reduce (Memo) (All_targets)
-
-let all_direct_targets dir =
-  let* root =
-    match dir with
-    | None -> Source_tree.root ()
-    | Some dir -> Source_tree.nearest_dir dir
-  and* contexts = Memo.Lazy.force (Build_config.get ()).contexts in
-  Memo.parallel_map (Context_name.Map.values contexts) ~f:(fun ctx ->
-      Source_tree_map_reduce.map_reduce root ~traverse:Sub_dirs.Status.Set.all
-        ~f:(fun dir ->
-          load_dir
-            ~dir:
-              (Path.build
-                 (Path.Build.append_source ctx.build_dir
-                    (Source_tree.Dir.path dir)))
-          >>| function
-          | External _ | Source _ -> All_targets.empty
-          | Build { rules_here; _ } ->
-            All_targets.combine
-              (Path.Build.Map.map rules_here.by_file_targets ~f:(fun _ -> File))
-              (Path.Build.Map.map rules_here.by_directory_targets ~f:(fun _ ->
-                   Directory))
-          | Build_under_directory_target _ -> All_targets.empty))
-  >>| All_targets.reduce
-
 let get_alias_definition alias =
   lookup_alias alias >>= function
   | None ->
@@ -983,6 +959,10 @@ let get_alias_definition alias =
     User_error.raise ?loc
       [ Pp.text "No rule found for " ++ Alias.describe alias ]
   | Some x -> Memo.return x
+
+type target_type =
+  | File
+  | Directory
 
 type is_target =
   | No

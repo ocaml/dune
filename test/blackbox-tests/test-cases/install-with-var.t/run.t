@@ -11,7 +11,7 @@
   > EOF
 
   $ dune build @install
-  $ dune install --prefix install --libdir $PWD/install/lib
+  $ dune install --prefix install --libdir $PWD/install/lib --display short
   Installing $TESTCASE_ROOT/install/lib/foo/META
   Installing $TESTCASE_ROOT/install/lib/foo/dune-package
   Installing $TESTCASE_ROOT/install/lib/foo/opam

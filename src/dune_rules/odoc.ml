@@ -801,28 +801,34 @@ let has_rules ?(directory_targets = Path.Build.Map.empty) m =
   let rules = Rules.collect_unit (fun () -> m) in
   Memo.return
     (Build_config.Rules
-       { rules; build_dir_only_sub_dirs = Subdir_set.empty; directory_targets })
+       { rules
+       ; build_dir_only_sub_dirs = Build_config.Rules.Build_only_sub_dirs.empty
+       ; directory_targets
+       })
 
 let with_package pkg ~f =
   let pkg = Package.Name.of_string pkg in
   let* packages = Only_packages.get () in
   match Package.Name.Map.find packages pkg with
+  | Some pkg -> has_rules (f pkg)
   | None ->
     Memo.return
       (Build_config.Rules
          { rules = Memo.return Rules.empty
-         ; build_dir_only_sub_dirs = Subdir_set.empty
+         ; build_dir_only_sub_dirs =
+             Build_config.Rules.Build_only_sub_dirs.empty
          ; directory_targets = Path.Build.Map.empty
          })
-  | Some pkg -> has_rules (f pkg)
 
-let gen_rules sctx ~dir:_ rest =
+let gen_rules sctx ~dir rest =
   match rest with
   | [] ->
     Memo.return
       (Build_config.Rules
          { rules = Memo.return Rules.empty
-         ; build_dir_only_sub_dirs = Subdir_set.All
+         ; build_dir_only_sub_dirs =
+             Build_config.Rules.Build_only_sub_dirs.singleton ~dir
+               Subdir_set.All
          ; directory_targets = Path.Build.Map.empty
          })
   | [ "_html" ] ->

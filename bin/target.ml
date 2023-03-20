@@ -1,23 +1,72 @@
 open Stdune
-module Log = Dune_util.Log
-module Context = Dune_rules.Context
-module Action_builder = Dune_engine.Action_builder
-module Build_system = Dune_engine.Build_system
-module Load_rules = Dune_engine.Load_rules
+open Import
 open Action_builder.O
 
-(* CR-someday amokhov: Split [File] into [File] and [Dir] for clarity. *)
-type t =
-  | File of Path.t
-  | Alias of Alias.t
+module Request = struct
+  (* CR-someday amokhov: Split [File] into [File] and [Dir] for clarity. *)
+  type t =
+    | File of Path.t
+    | Alias of Alias.t
+end
 
 let request targets =
   List.fold_left targets ~init:(Action_builder.return ()) ~f:(fun acc target ->
       acc
       >>>
-      match target with
+      match (target : Request.t) with
       | File path -> Action_builder.path path
       | Alias a -> Alias.request a)
+
+module Target_type = struct
+  type t =
+    | File
+    | Directory
+end
+
+module All_targets = struct
+  type t = Target_type.t Path.Build.Map.t
+
+  include Monoid.Make (struct
+    type nonrec t = t
+
+    let empty = Path.Build.Map.empty
+
+    let combine = Path.Build.Map.union_exn
+  end)
+end
+
+module Source_tree = Dune_engine.Source_tree
+module Context_name = Dune_engine.Context_name
+module Sub_dirs = Dune_engine.Sub_dirs
+module Source_tree_map_reduce =
+  Source_tree.Dir.Make_map_reduce (Memo) (All_targets)
+module Build_config = Dune_engine.Build_config
+
+let all_direct_targets dir =
+  let open Memo.O in
+  let* root =
+    match dir with
+    | None -> Source_tree.root ()
+    | Some dir -> Source_tree.nearest_dir dir
+  and* contexts = Memo.Lazy.force (Build_config.get ()).contexts in
+  Memo.parallel_map (Context_name.Map.values contexts) ~f:(fun ctx ->
+      Source_tree_map_reduce.map_reduce root ~traverse:Sub_dirs.Status.Set.all
+        ~f:(fun dir ->
+          Dune_engine.Load_rules.load_dir
+            ~dir:
+              (Path.build
+                 (Path.Build.append_source ctx.build_dir
+                    (Source_tree.Dir.path dir)))
+          >>| function
+          | External _ | Source _ -> All_targets.empty
+          | Build { rules_here; _ } ->
+            All_targets.combine
+              (Path.Build.Map.map rules_here.by_file_targets ~f:(fun _ ->
+                   Target_type.File))
+              (Path.Build.Map.map rules_here.by_directory_targets ~f:(fun _ ->
+                   Target_type.Directory))
+          | Build_under_directory_target _ -> All_targets.empty))
+  >>| All_targets.reduce
 
 let target_hint (_setup : Dune_rules.Main.build_system) path =
   let open Memo.O in
@@ -34,9 +83,7 @@ let target_hint (_setup : Dune_rules.Main.build_system) path =
     | In_source_tree d -> d
     | In_build_dir d -> Path.Build.drop_build_context_exn d
   in
-  let+ candidates =
-    Load_rules.all_direct_targets (Some root) >>| Path.Build.Map.keys
-  in
+  let+ candidates = all_direct_targets (Some root) >>| Path.Build.Map.keys in
   let candidates =
     if Path.is_in_build_dir path then List.map ~f:Path.build candidates
     else
@@ -56,7 +103,8 @@ let target_hint (_setup : Dune_rules.Main.build_system) path =
   let candidates = String.Set.of_list candidates |> String.Set.to_list in
   User_message.did_you_mean (Path.to_string path) ~candidates
 
-let resolve_path path ~(setup : Dune_rules.Main.build_system) =
+let resolve_path path ~(setup : Dune_rules.Main.build_system) :
+    (Request.t list, _) result Memo.t =
   let open Memo.O in
   let checked = Util.check_path setup.contexts path in
   let can't_build path =
@@ -67,7 +115,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
     Dune_engine.Source_tree.dir_exists src >>| function
     | true ->
       Some
-        [ Alias
+        [ Request.Alias
             (Alias.in_dir ~name:Dune_engine.Alias.Name.default ~recursive:true
                ~contexts:setup.contexts path)
         ]
@@ -77,17 +125,18 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
     Memo.parallel_map setup.contexts ~f:(fun ctx ->
         let path = Path.append_source (Path.build ctx.Context.build_dir) src in
         Load_rules.is_target path >>| function
-        | Yes _ | Under_directory_target_so_cannot_say -> Some (File path)
+        | Yes _ | Under_directory_target_so_cannot_say ->
+          Some (Request.File path)
         | No -> None)
     >>| List.filter_opt
   in
   let matching_target () =
     Load_rules.is_target path >>| function
-    | Yes _ | Under_directory_target_so_cannot_say -> Some [ File path ]
+    | Yes _ | Under_directory_target_so_cannot_say -> Some [ Request.File path ]
     | No -> None
   in
   match checked with
-  | External _ -> Memo.return (Ok [ File path ])
+  | External _ -> Memo.return (Ok [ Request.File path ])
   | In_source_dir src -> (
     matching_targets src >>= function
     | [] -> (
@@ -128,7 +177,10 @@ let expand_path (root : Workspace_root.t)
 let resolve_alias root ~recursive sv ~(setup : Dune_rules.Main.build_system) =
   match Dune_lang.String_with_vars.text_only sv with
   | Some s ->
-    Ok [ Alias (Alias.of_string root ~recursive s ~contexts:setup.contexts) ]
+    Ok
+      [ Request.Alias
+          (Alias.of_string root ~recursive s ~contexts:setup.contexts)
+      ]
   | None -> Error [ Pp.text "alias cannot contain variables" ]
 
 let resolve_target root ~setup target =
@@ -161,7 +213,8 @@ let resolve_targets root (config : Dune_config.t)
     let+ targets =
       Action_builder.List.map user_targets ~f:(resolve_target root ~setup)
     in
-    if config.display.verbosity = Verbose then
+    (match config.display with
+    | Simple { verbosity = Verbose; _ } ->
       Log.info
         [ Pp.text "Actual targets:"
         ; Pp.enumerate
@@ -171,7 +224,8 @@ let resolve_targets root (config : Dune_config.t)
             ~f:(function
               | File p -> Pp.verbatim (Path.to_string_maybe_quoted p)
               | Alias a -> Alias.pp a)
-        ];
+        ]
+    | _ -> ());
     targets
 
 let resolve_targets_exn root config setup user_targets =
@@ -188,3 +242,7 @@ let resolve_targets_exn root config setup user_targets =
 let interpret_targets root config setup user_targets =
   let* () = Action_builder.return () in
   resolve_targets_exn root config setup user_targets >>= request
+
+type target_type = Target_type.t =
+  | File
+  | Directory

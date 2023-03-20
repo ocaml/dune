@@ -8,8 +8,7 @@ Test simple interactions between melange.emit and copy_files
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (alias mel)
-  >  (module_system commonjs))
+  >  (alias mel))
   > 
   > (copy_files
   >  (alias mel)
@@ -32,13 +31,13 @@ Test simple interactions between melange.emit and copy_files
   $ node _build/default/output/main.js
   hello from file
   
+
 Copy the file into the output folder, so we can use same path as in-source
 
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (alias mel)
-  >  (module_system commonjs))
+  >  (alias mel))
   > 
   > (subdir output
   >  (subdir assets
@@ -56,3 +55,4 @@ Copy the file into the output folder, so we can use same path as in-source
   $ node _build/default/output/main.js
   hello from file
   
+

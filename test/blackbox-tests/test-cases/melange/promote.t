@@ -8,10 +8,9 @@ Test melange.emit promotion
   $ cat > dune <<EOF
   > (melange.emit
   >  (alias dist)
-  >  (entries hello)
+  >  (modules hello)
   >  (promote (until-clean))
-  >  (target dist)
-  >  (module_system commonjs))
+  >  (target dist))
   > EOF
 
   $ cat > hello.ml <<EOF

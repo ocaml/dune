@@ -32,5 +32,6 @@
   lib-external-name-need-mangling
   exe-pkg_config-multiple-fd
   lib-return-errno
+  github-5561-name-mangle
   exe-pkg_config)
  (deps %{bin:pkg-config}))

@@ -26,14 +26,20 @@ invocation of ``ocamlopt`` or ``ocamlc`` via the ``bootstrap.ml`` OCaml script.
 and uses this binary to build everything else. As a convenience, ``dune.exe``
 at the root of the source tree executes this binary.
 
-``$ make dev`` takes care of bootstrapping if needed, but if you want to just
-run the bootstrapping step itself, build the ``dune.exe`` target with
+Running:
+```
+make dev
+```
+bootstraps (if necessary) and runs `./dune.exe build @install`.
+
+If you want to just run the bootstrapping step itself, build the
+``_boot/dune.exe`` target with
 
 .. code:: sh
 
-   make dev
+   make _boot/dune.exe
 
-Once you've bootstrapped dune, you should be using it to develop dune itself.
+Once you've bootstrapped Dune, you should be using it to develop Dune itself.
 Here are the most common commands you'll be running:
 
 .. code:: sh
@@ -235,10 +241,10 @@ Dune introduced them.
 
 Such languages must be enabled in the ``dune`` project file separately:
 
-.. code:: scheme
+.. code:: dune
 
-   (lang dune 3.7)
-   (using coq 0.2)
+   (lang dune 3.8)
+   (using coq 0.7)
 
 If such extensions are experimental, it's recommended that they pass
 ``~experimental:true``, and that their versions are below 1.0.

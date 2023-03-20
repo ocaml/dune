@@ -358,21 +358,23 @@ empty library with your chosen backend's name.
 
 In order to define a library as an inline tests backend, simply add an
 ``inline_tests.backend`` field to the library stanza. An inline tests
-backend is specified by three parameters:
+backend is specified by four parameters:
 
 1. How to create the test runner
 2. How to build the test runner
 3. How to run the test runner
+4. Optionally how to run the test runner to list partitions
 
-These three parameters can be specified inside the
+These four parameters can be specified inside the
 ``inline_tests.backend`` field, which accepts the following fields:
 
 .. code:: dune
 
-   (generate_runner   <action>)
-   (runner_libraries (<ocaml-libraries>))
-   (flags             <flags>)
-   (extends          (<backends>))
+   (generate_runner       <action>)
+   (runner_libraries     (<ocaml-libraries>))
+   (flags                 <flags>)
+   (list_partitions_flags <flags>)
+   (extends              (<backends>))
 
 For instance:
 
@@ -397,6 +399,11 @@ field.
 If your test runner needs specific flags, you should pass them in the
 ``flags`` field. You can use the ``%{library-name}`` variable in this
 field.
+
+If your test runner supports test partitions, you should pass the
+flags necessary for listing partitions in the
+``list_partitions_flags`` field. In such scenario, the ``flags`` field
+will also accepts a ``%{partition}`` variable.
 
 Finally, a backend can be an extension of another backend. In this
 case, you must specify this in the ``extends`` field. For instance,

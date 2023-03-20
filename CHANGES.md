@@ -62,6 +62,8 @@ Unreleased
 - Allow `(stdlib ...)` to be used with `(wrapped false)` in library stanzas
   (#7139, @anmonteiro).
 
+- Allow parallel execution of inline tests partitions (#7012, @hhugo)
+
 3.7.0 (2023-02-17)
 ------------------
 

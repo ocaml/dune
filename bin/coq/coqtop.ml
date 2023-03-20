@@ -31,7 +31,6 @@ let term =
     Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
   in
   let config = Common.init common in
-  let root = Common.root common in
   let prefix_target = Common.prefix_target common in
   let coqtop, argv, env =
     Scheduler.go ~common ~config (fun () ->
@@ -40,25 +39,6 @@ let term =
         let* setup = Memo.run setup in
         let sctx = Import.Main.find_scontext_exn setup ~name:context in
         let context = Dune_rules.Super_context.context sctx in
-        (* Try to compute a relative path if we got an absolute path. *)
-        let coq_file_arg =
-          if Filename.is_relative coq_file_arg then
-            Path.relative Path.root (root.reach_from_root_prefix ^ coq_file_arg)
-            |> Path.to_string
-          else
-            let cwd = Path.external_ Path.External.initial_cwd in
-            let file =
-              (* Best-effort symbolic link unfolding. *)
-              let file = Fpath.follow_symlinks coq_file_arg in
-              Option.value file ~default:coq_file_arg
-            in
-            let file = Path.of_filename_relative_to_initial_cwd file in
-            let cwd = Path.to_string cwd in
-            let file = Path.to_string file in
-            match String.drop_prefix ~prefix:(cwd ^ "/") file with
-            | None -> coq_file_arg
-            | Some s -> s
-        in
         let coq_file_build =
           let p = prefix_target coq_file_arg in
           Path.Build.relative context.build_dir p

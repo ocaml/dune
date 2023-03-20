@@ -69,12 +69,12 @@ let term =
             | Some m -> snd m
             | None ->
               let hints =
-                [ Pp.textf "is the file part of a stanza?"
-                ; Pp.textf "has the file been written to disk?"
+                [ Pp.textf "Is the file part of a stanza?"
+                ; Pp.textf "Has the file been written to disk?"
                 ]
               in
               User_error.raise ~hints
-                [ Pp.textf "cannot find file: %s"
+                [ Pp.textf "Cannot find file: %s"
                     (coq_file_arg |> Path.Local.to_string)
                 ]
           in
@@ -85,7 +85,7 @@ let term =
             match stanza with
             | None ->
               User_error.raise
-                [ Pp.textf "file not part of any stanza: %s"
+                [ Pp.textf "File not part of any stanza: %s"
                     (coq_file_arg |> Path.Local.to_string)
                 ]
             | Some (`Theory theory) ->

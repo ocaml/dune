@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679322858774,
+  "lastUpdate": 1679330142951,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -15837,6 +15837,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "32.23289521992667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cc174110c2dcab83b0068825870e1484cecef464",
+          "message": "Doc: split \"General concepts\" into several pages (#7232)\n\nAs discussed with @Alizter, this splits our giant \"General concepts\" page into\r\nsmaller ones.\r\n\r\nIn addition, this transforms references to the various sections into :doc:\r\nreferences to the documents themselves.\r\n\r\nThe content is mostly untouched, except:\r\n\r\n\"see the X section\" -> \"see X\" (now that it's not a section anymore)\r\nthere was a mixup between the \"sandboxing\" and \"dune action plugin\" references\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\nCo-authored-by: Christine Rose <christinerose@users.noreply.github.com>",
+          "timestamp": "2023-03-20T17:21:42+01:00",
+          "tree_id": "872414ea39310a1aa2495271c0ed34998d5d9223",
+          "url": "https://github.com/ocaml/dune/commit/cc174110c2dcab83b0068825870e1484cecef464"
+        },
+        "date": 1679330139793,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "33.378454295039994",
             "unit": "seconds"
           }
         ]

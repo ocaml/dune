@@ -22,8 +22,9 @@ Choose the one that is more convenient for you:
 * Run Dune with the ``--cache=enabled`` flag.
 
 By default, Dune stores the cache in your ``XDG_CACHE_HOME`` directory on \*nix
-systems and ``"HOME\\Local Settings\\Cache"`` on Windows. You can change the
-default location by setting the environment variable ``DUNE_CACHE_ROOT``.
+systems and ``%LOCALAPPDATA%\Microsoft\Windows\Temporary Internet Files\dune`` on Windows.
+You can change the default location by setting the environment variable
+``DUNE_CACHE_ROOT``.
 
 
 Cache Storage Mode

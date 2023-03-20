@@ -13,7 +13,7 @@ The syntax is as follows:
      <optional-fields>)
 
 ``<action>`` is what you run to produce the targets from the dependencies. See
-the :ref:`user-actions` section for more details.
+:doc:`concepts/actions` for more details.
 
 ``<optional-fields>`` are:
 
@@ -23,8 +23,8 @@ the :ref:`user-actions` section for more details.
   ``(targets)`` can be omitted if it can be inferred from the action. See
   `inferred rules`_.
 
-- ``(deps <deps-conf list>)`` specifies the dependencies of the rule. See the
-  :ref:`deps-field` section for more details.
+- ``(deps <deps-conf list>)`` specifies the dependencies of the rule. See
+  :doc:`concepts/dependency-spec` for more details.
 
 - ``(mode <mode>)`` specifies how to handle the targets. See `modes`_ for
   details.
@@ -32,7 +32,7 @@ the :ref:`user-actions` section for more details.
 - ``(fallback)`` is deprecated and is the same as ``(mode fallback)``.
 
 - ``(locks (<lock-names>))`` specifies that the action must be run while holding
-  the following locks. See the :ref:`locks` section for more details.
+  the following locks. See :doc:`concepts/locks` for more details.
 
 - ``(alias <alias-name>)`` specifies this rule's alias. Building this alias
   means building the targets of this rule.
@@ -44,8 +44,8 @@ the :ref:`user-actions` section for more details.
 
 - ``(enabled_if <blang expression>)`` specifies the Boolean condition that must
   be true for the rule to be considered. The condition is specified using the
-  :ref:`blang`, and the field allows for :ref:`variables` to appear in the
-  expressions.
+  :doc:`concepts/boolean-language`, and the field allows for
+  :doc:`concepts/variables` to appear in the expressions.
 
 Please note: contrary to makefiles or other build systems, user rules currently
 don't support patterns, such as a rule to produce ``%.y`` from ``%.x`` for any
@@ -77,8 +77,8 @@ using the ``mode`` field. The following modes are available:
     the current directory. This feature has been available since Dune 1.8.
   - ``(only <predicate>)`` means that only a subset of the targets should be
     promoted. The argument is similar to the argument of :ref:`(dirs ...)
-    <dune-subdirs>`, specified using the :ref:`predicate-lang`. This feature has
-    been available since Dune 1.10.
+    <dune-subdirs>`, specified using the :doc:`concepts/predicate-language`.
+    This feature has been available since Dune 1.10.
 
 There are two use cases for ``promote`` rules. The first one is when the
 generated code is easier to review than the generator, so it's easier to commit
@@ -92,7 +92,7 @@ are never ignored.
 Inferred Rules
 ~~~~~~~~~~~~~~
 
-When using the action DSL (see :ref:`user-actions`), the dependencies and
+When using the action DSL (see :doc:`concepts/actions`), the dependencies and
 targets are usually obvious.
 
 For instance:

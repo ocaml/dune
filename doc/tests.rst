@@ -129,7 +129,7 @@ as it cannot guess. You can do that by adding a ``backend``
 field:
 
 .. code:: dune
-	
+
    (library
     (name foo)
     (inline_tests (backend qtest.lib)))
@@ -220,7 +220,7 @@ promotion, which in turn makes the workflow even smoother.
 
 Running a Subset of the Test Suite
 ----------------------------------
-	
+
 You may also run a group of tests located under a directory with:
 
 .. code:: bash
@@ -260,7 +260,7 @@ Specifying Inline Test Dependencies
 
 If your tests are reading files, you must tell Dune by adding
 a ``deps`` field the ``inline_tests`` field. The argument of this
-``deps`` field follows the usual :ref:`deps-field`. For instance:
+``deps`` field follows the usual :doc:`concepts/dependency-spec`. For instance:
 
 .. code:: ocaml
 
@@ -285,13 +285,14 @@ as:
     (inline_tests (flags (-foo bar)))
     (preprocess (pps ppx_expect)))
 
-The argument of the ``flags`` field follows the :ref:`ordered-set-language`.
+The argument of the ``flags`` field follows the
+:doc:`concepts/ordered-set-language`.
 
 
 Passing Special Arguments to the Test Executable
 ------------------------------------------------
 
-To control how the test executable is built, it’s possible to customize a subset
+To control how the test executable is built, it's possible to customize a subset
 of compilation options for an executable using the ``executable`` field. Dune
 gives you this ability by simply specifying command line arguments as flags.
 You can specify such flags by using ``flags`` field. For instance:
@@ -306,8 +307,7 @@ You can specify such flags by using ``flags`` field. For instance:
       (flags (-foo bar))))
      (preprocess (pps ppx_expect))))
 
-The argument of the ``flags`` field follows the :ref:`ordered-set-language`.
-
+The argument of the ``flags`` field follows the :doc:`concepts/ordered-set-language`.
 
 Using Additional Libraries in the Test Runner
 ---------------------------------------------
@@ -337,9 +337,9 @@ are doing), forcing the linker to load your test module, since the test
 runner doesn't depend on anything itself. This field supports
 ``(:include ...)`` forms.
 
-.. code:: ocaml
+.. code:: dune
 
-	 (library
+   (library
     (name foo)
     (inline_tests
      (executable
@@ -376,17 +376,16 @@ These three parameters can be specified inside the
 
 For instance:
 
-``<action>`` follows the :ref:`user-actions` specification. It
-describes an action that should be executed in the library's directory 
-using this backend for their tests. It's expected that the
-action will produce some OCaml code on its standard output. This code will
-constitute the test runner. The action can use the following
-additional variables:
+``<action>`` follows the :doc:`concepts/actions` specification. It describes an
+action that should be executed in the library's directory using this backend
+for their tests. It's expected that the action will produce some OCaml code on
+its standard output. This code will constitute the test runner. The action can
+use the following additional variables:
 
-- ``%{library-name}`` — the name of the library being tested
-- ``%{impl-files}`` — the list of implementation files in the
+- ``%{library-name}`` --- the name of the library being tested
+- ``%{impl-files}`` --- the list of implementation files in the
   library, i.e., all the ``.ml`` and ``.re`` files
-- ``%{intf-files}`` — the list of interface files in the library,
+- ``%{intf-files}`` --- the list of interface files in the library,
   i.e., all the ``.mli`` and ``.rei`` files
 
 The ``runner_libraries`` field specifies what OCaml libraries the test
@@ -574,7 +573,7 @@ For example, here's an example of how we'd test the ``wc`` utility. ``wc.t``:
      $ cat >foo <<EOF
      > foo
      > bar
-	  > baz
+     > baz
      > EOF
 
    After creating the fixture, we want to verify that ``wc`` gives us the right
@@ -646,11 +645,11 @@ field:
     (applies_to * \ foo bar)
     (deps ../foo.exe))
 
-We use the :ref:`predicate-lang` to apply this stanza to all tests in this
-directory, except for ``foo.t`` and ``bar.t``. The ``applies_to`` field also
-accepts the special value ``:whole_subtree`` in order to apply the options to all tests
-in all subdirectories (recursively). This is useful to apply common options to
-an entire test suite.
+We use the :doc:`concepts/predicate-language` to apply this stanza to all tests
+in this directory, except for ``foo.t`` and ``bar.t``. The ``applies_to`` field
+also accepts the special value ``:whole_subtree`` in order to apply the options
+to all tests in all subdirectories (recursively). This is useful to apply
+common options to an entire test suite.
 
 The ``cram`` stanza accepts the following fields:
 
@@ -659,7 +658,7 @@ The ``cram`` stanza accepts the following fields:
   alias, every test ``foo.t`` is attached to the ``@runtest`` alias and gets its
   own ``@foo`` alias to make it convenient to run individually.
 - ``(locks (<lock-names>))`` specify that the tests must be run while
-  holding the following locks. See the :ref:`locks` section for more details.
+  holding the following locks. See :doc:`concepts/locks` for more details.
 - ``deps`` - dependencies of the test
 - ``(package <package-name>)`` - attach the tests selected by this stanza to the
   specified package
@@ -697,7 +696,7 @@ tests are executed in a clean environment. This is why all Cram tests are
 sandboxed. To respect sandboxing, every test should specify dependency on any
 artifact that might rely on using the ``deps`` field.
 
-See :ref:`dune-action-plugin` for details about the sandboxing mechanism.
+See :doc:`concepts/sandboxing` for details about the sandboxing mechanism.
 
 
 Test Output Sanitation

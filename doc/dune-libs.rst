@@ -168,6 +168,7 @@ all the binaries and everything that depends on them, such as tests. Instead,
 Dune leaves a placeholder inside the binary and fills it during installation or
 promotion.
 
+.. _dune-action-plugin:
 
 (Experimental) Dune Action Plugin
 =================================

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679341112168,
+  "lastUpdate": 1679341605551,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -10178,6 +10178,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.89964033055333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "hugo.heuzard@gmail.com",
+            "name": "hhugo",
+            "username": "hhugo"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "247664d098d6fe8e464f46169f9bf30006581d7b",
+          "message": "Run inline tests in parallel (#7012)\n\n* feature(inline-tests): partitions\r\n\r\nAllow specifying partitions of inline tests. Partitions in the same test\r\nsuite will be executed concurrently.\r\n\r\nSigned-off-by: Hugo Heuzard <hugo.heuzard@gmail.com>",
+          "timestamp": "2023-03-20T12:24:58-07:00",
+          "tree_id": "6c4134e0c5f5f1efc83fdc6008ad079f40e633c0",
+          "url": "https://github.com/ocaml/dune/commit/247664d098d6fe8e464f46169f9bf30006581d7b"
+        },
+        "date": 1679341604520,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.66236321636",
             "unit": "seconds"
           }
         ]

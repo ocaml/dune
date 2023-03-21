@@ -63,6 +63,7 @@ Welcome to Dune's Documentation!
    advanced/findlib-integration
    advanced/findlib-dynamic
    advanced/classical-ppx
+   advanced/profiling-dune
 
 .. toctree::
    :caption: Miscellaneous

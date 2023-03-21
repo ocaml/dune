@@ -144,7 +144,7 @@ let pool_run tasks =
            Fiber.parallel_iter tasks ~f:(fun (_ : int) ->
                Fiber.Pool.task pool ~f:Fiber.return)
          in
-         Fiber.Pool.stop pool))
+         Fiber.Pool.close pool))
   |> ignore
 
 (* some pools are used to run many fibers *)

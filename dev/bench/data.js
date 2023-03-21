@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679410369625,
+  "lastUpdate": 1679410384952,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16299,6 +16299,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "91.64312564704669",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9f925df484e78ba10e8833b301903526645ba6fd",
+          "message": "Document how to add DCO in a hook (#7363)\n\nFixes #7346\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-03-21T15:15:03+01:00",
+          "tree_id": "53b3a8d4ee76374ce36f11bf10561204e5db9b19",
+          "url": "https://github.com/ocaml/dune/commit/9f925df484e78ba10e8833b301903526645ba6fd"
+        },
+        "date": 1679410383794,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.4658303011533333",
             "unit": "seconds"
           }
         ]

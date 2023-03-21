@@ -60,6 +60,7 @@ Welcome to Dune's Documentation!
    :caption: Advanced topics
 
    advanced/meta-file-generation
+   advanced/findlib-integration
 
 .. toctree::
    :caption: Miscellaneous

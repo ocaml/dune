@@ -61,6 +61,7 @@ Welcome to Dune's Documentation!
 
    advanced/meta-file-generation
    advanced/findlib-integration
+   advanced/findlib-dynamic
 
 .. toctree::
    :caption: Miscellaneous

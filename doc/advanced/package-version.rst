@@ -1,5 +1,3 @@
-.. _package-version:
-
 Package Version
 ===============
 

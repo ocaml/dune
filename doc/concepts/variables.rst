@@ -119,7 +119,7 @@ In addition, ``(action ...)`` fields support the following special variables:
   package. Packages defined in the current scope have priority over the
   public packages. Public packages that don't install any libraries
   will not be detected. How Dune determines the version
-  of a package is described :ref:`here <package-version>`.
+  of a package is described :doc:`here <../advanced/package-version>`.
 - ``read:<path>`` expands to the contents of the given file.
 - ``read-lines:<path>`` expands to the list of lines in the given
   file.

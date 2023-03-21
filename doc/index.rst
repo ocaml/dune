@@ -66,6 +66,7 @@ Welcome to Dune's Documentation!
    advanced/profiling-dune
    advanced/package-version
    advanced/ocaml-syntax
+   advanced/variables-artifacts
 
 .. toctree::
    :caption: Miscellaneous

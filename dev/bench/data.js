@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679416360914,
+  "lastUpdate": 1679416773753,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16444,6 +16444,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.0721621661133334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "a8fb0aa31c493eb42b75841b1de47b03b71ff3ac",
+          "message": "doc:(dune_project): fix very minor typo\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>\n\n<!-- ps-id: 1590e881-d8ea-4eeb-afa2-80b3fc490b3c -->",
+          "timestamp": "2023-03-21T17:06:45+01:00",
+          "tree_id": "a31f539860168da5ada50c0765fa6d0197eb8929",
+          "url": "https://github.com/ocaml/dune/commit/a8fb0aa31c493eb42b75841b1de47b03b71ff3ac"
+        },
+        "date": 1679416772649,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "81.52277736371333",
             "unit": "seconds"
           }
         ]

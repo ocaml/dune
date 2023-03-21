@@ -1,6 +1,11 @@
 Unreleased
 ----------
 
+- `dune coq top` now correctly respects the project root when called from a
+  subdirectory. However, absolute filenames passed to `dune coq top` are no
+  longer supported (due to being buggy) (#7357, fixes #7344, @rlepigre and
+  @Alizter)
+
 - RPC: Ignore SIGPIPE when clients suddenly disconnect (#7299, #7319, fixes
   #6879, @rgrinberg)
 

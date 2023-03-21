@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679361472935,
+  "lastUpdate": 1679362095857,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -10265,6 +10265,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "32.54813430094",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "962222d0667d94cf9cf6909cf80ec99cd14159e0",
+          "message": "test: improve test configuration (#7358)\n\n- remove outsdated enabled_if since we don't test on old versions anymore\r\n- add missing dependencies on ppxlib\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-20T17:59:55-07:00",
+          "tree_id": "06d41911f228a4fb5f937bef749c6778d5f8044d",
+          "url": "https://github.com/ocaml/dune/commit/962222d0667d94cf9cf6909cf80ec99cd14159e0"
+        },
+        "date": 1679362093942,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "44.95595692033999",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679416786743,
+  "lastUpdate": 1679432836990,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17113,6 +17113,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "39.36967864257333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "d3e9b73f6305a62ae7c7a469373d504354a4384c",
+          "message": "chore: enable ocaml trunk job on ci\n\n<!-- ps-id: 686589c7-7eff-4313-b0eb-d8e1a7429d70 -->\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-03-21T21:53:08+01:00",
+          "tree_id": "ea99bd1f467b7e862b71e9193f6aed5b795fbfa6",
+          "url": "https://github.com/ocaml/dune/commit/d3e9b73f6305a62ae7c7a469373d504354a4384c"
+        },
+        "date": 1679432835475,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "33.439838807786664",
             "unit": "seconds"
           }
         ]

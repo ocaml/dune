@@ -57,6 +57,11 @@ Welcome to Dune's Documentation!
    tests
 
 .. toctree::
+   :caption: Advanced topics
+
+   advanced/meta-file-generation
+
+.. toctree::
    :caption: Miscellaneous
    :maxdepth: 3
 

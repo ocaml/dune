@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679341949464,
+  "lastUpdate": 1679358018373,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16069,6 +16069,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "32.33395366055333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "b1e0bbb3ce44f3df569d7669d946b735939b39c0",
+          "message": "dune coq top: fix capitialization in error messages\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-03-21T01:00:39+01:00",
+          "tree_id": "047518031c07995f0ae2263bea79dcb3c4fe38e5",
+          "url": "https://github.com/ocaml/dune/commit/b1e0bbb3ce44f3df569d7669d946b735939b39c0"
+        },
+        "date": 1679358016643,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "34.551392822593336",
             "unit": "seconds"
           }
         ]

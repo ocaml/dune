@@ -809,7 +809,7 @@ module Pool = Fiber.Pool
 let%expect_test "start & stop pool" =
   Scheduler.run
     (let pool = Pool.create () in
-     Pool.stop pool);
+     Pool.close pool);
   [%expect {| |}]
 
 let%expect_test "run 2 tasks" =
@@ -826,7 +826,7 @@ let%expect_test "run 2 tasks" =
        (fun () -> Pool.run pool)
        (fun () ->
          let* () = tasks () in
-         Pool.stop pool));
+         Pool.close pool));
   [%expect {|
     task 1
     task 2 |}]
@@ -844,7 +844,7 @@ let%expect_test "raise exception" =
            assert (e.exn = Exit);
            print_endline "Caught Exit"
          | _ -> assert false)
-       (fun () -> Pool.stop pool));
+       (fun () -> Pool.close pool));
   [%expect {| Caught Exit |}]
 
 let%expect_test "double run a pool" =
@@ -863,14 +863,14 @@ let%expect_test "double run a pool" =
 
 let%expect_test "run -> stop -> run a pool" =
   (* We shouldn't be able to call [Pool.run] again after we already called
-     [Pool.run] and [Pool.stop]. In other words, we can't reuse pools *)
+     [Pool.run] and [Pool.close]. In other words, we can't reuse pools *)
   (Scheduler.run
   @@
   let pool = Pool.create () in
   let* () =
     Fiber.fork_and_join_unit
       (fun () -> Pool.run pool)
-      (fun () -> Fiber.Pool.task pool ~f:(fun () -> Pool.stop pool))
+      (fun () -> Fiber.Pool.task pool ~f:(fun () -> Pool.close pool))
   in
   Pool.run pool);
   [%expect.unreachable]
@@ -881,7 +881,7 @@ let%expect_test "stop a pool and then run it" =
   (Scheduler.run
   @@
   let pool = Pool.create () in
-  let* () = Pool.stop pool in
+  let* () = Pool.close pool in
   Pool.run pool);
   [%expect {||}]
 
@@ -891,7 +891,7 @@ let%expect_test "pool - weird deadlock" =
   @@
   let pool = Pool.create () in
   let* () = Pool.task pool ~f:Fiber.return in
-  Fiber.fork_and_join_unit (fun () -> Pool.stop pool) (fun () -> Pool.run pool)
+  Fiber.fork_and_join_unit (fun () -> Pool.close pool) (fun () -> Pool.run pool)
   );
   [%expect {||}];
   (* but this does *)
@@ -900,7 +900,7 @@ let%expect_test "pool - weird deadlock" =
   let pool = Pool.create () in
   let* () = Pool.task pool ~f:Fiber.return in
   let* () = Pool.task pool ~f:Fiber.return in
-  Fiber.fork_and_join_unit (fun () -> Pool.stop pool) (fun () -> Pool.run pool)
+  Fiber.fork_and_join_unit (fun () -> Pool.close pool) (fun () -> Pool.run pool)
   );
   [%expect {||}]
 
@@ -909,7 +909,7 @@ let%expect_test "nested run in task" =
   @@
   let pool = Pool.create () in
   let* () = Pool.task pool ~f:(fun () -> Pool.run pool) in
-  Fiber.fork_and_join_unit (fun () -> Pool.stop pool) (fun () -> Pool.run pool)
+  Fiber.fork_and_join_unit (fun () -> Pool.close pool) (fun () -> Pool.run pool)
   );
   [%expect.unreachable]
   [@@expect.uncaught_exn
@@ -927,7 +927,7 @@ let%expect_test "nested tasks" =
               let+ () = Fiber.return () in
               print_endline "inner")
         in
-        Pool.stop pool)
+        Pool.close pool)
   in
   Pool.run pool);
   [%expect {|
@@ -938,7 +938,7 @@ let%expect_test "stopping inside a task" =
   (Scheduler.run
   @@
   let pool = Pool.create () in
-  let* () = Pool.task pool ~f:(fun () -> Pool.stop pool) in
+  let* () = Pool.task pool ~f:(fun () -> Pool.close pool) in
   Pool.run pool);
   [%expect {||}]
 

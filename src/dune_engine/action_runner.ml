@@ -121,7 +121,7 @@ module Rpc_server = struct
 
   let run t = Fiber.Pool.run t.pool
 
-  let stop t = Fiber.Pool.stop t.pool
+  let stop t = Fiber.Pool.close t.pool
 
   let close worker =
     match worker.status with

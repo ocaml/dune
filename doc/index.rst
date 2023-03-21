@@ -67,6 +67,7 @@ Welcome to Dune's Documentation!
    advanced/package-version
    advanced/ocaml-syntax
    advanced/variables-artifacts
+   advanced/custom-cmxs
 
 .. toctree::
    :caption: Miscellaneous

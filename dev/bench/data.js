@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679374060320,
+  "lastUpdate": 1679374073757,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16212,6 +16212,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "81.79502575574668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "eed25bfa40a2e397266b09bf66efd2be19c0e88a",
+          "message": "fsevents: move free to finalizer (#7312)\n\nturning off dune in watch mode on macos will no longer segfault\r\nsporadically\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-20T20:57:39-07:00",
+          "tree_id": "358ee5bfd182b32404acc754865054def8e05645",
+          "url": "https://github.com/ocaml/dune/commit/eed25bfa40a2e397266b09bf66efd2be19c0e88a"
+        },
+        "date": 1679374072663,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.0836767549133337",
             "unit": "seconds"
           }
         ]

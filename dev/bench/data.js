@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679362553711,
+  "lastUpdate": 1679362989543,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16417,6 +16417,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "43.80490859539333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "eb76f2ac9b1707aea5b4beca59faca509780e89d",
+          "message": "refactor(fiber): Pool.stop -> Pool.close (#7359)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-20T18:29:32-07:00",
+          "tree_id": "58cda8c86f48ef72178584f38fd7f6e673f0d7ba",
+          "url": "https://github.com/ocaml/dune/commit/eb76f2ac9b1707aea5b4beca59faca509780e89d"
+        },
+        "date": 1679362987282,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "32.25811684456",
             "unit": "seconds"
           }
         ]

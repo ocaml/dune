@@ -150,20 +150,20 @@ type t =
 
 module Re = Dune_re
 
-let exclude_regex watch_exclusions =
-  Re.compile (Re.alt (List.map watch_exclusions ~f:Re.Posix.re))
-
-let should_exclude path ~watch_exclusions =
-  Re.execp (exclude_regex watch_exclusions) path
+let create_should_exclude_predicate ~watch_exclusions =
+  let exclude_regex watch_exclusions =
+    Re.compile (Re.alt (List.map watch_exclusions ~f:Re.Posix.re))
+  in
+  Re.execp (exclude_regex watch_exclusions)
 
 module For_tests = struct
-  let should_exclude = should_exclude
+  let should_exclude = create_should_exclude_predicate
 end
 
 let process_inotify_event (event : Async_inotify_for_dune.Async_inotify.Event.t)
-    watch_exclusions : Event.t list =
+    should_exclude : Event.t list =
   let create_event_unless_excluded ~kind ~path =
-    match should_exclude path ~watch_exclusions with
+    match should_exclude path with
     | true -> []
     | false ->
       let path = Path.of_string path in
@@ -369,7 +369,7 @@ let spawn_external_watcher ~root ~backend ~watch_exclusions =
   ((r_stdout, parse_line, wait), pid)
 
 let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t)
-    watch_exclusions =
+    should_exclude =
   Inotify_lib.create ~spawn_thread:scheduler.spawn_thread
     ~modify_event_selector:`Closed_writable_fd
     ~send_emit_events_job_to_scheduler:(fun f ->
@@ -386,7 +386,7 @@ let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t)
                 | Moved _ | Queue_overflow -> None
               in
               match is_fs_sync_event_generated_by_dune with
-              | None -> process_inotify_event event watch_exclusions
+              | None -> process_inotify_event event should_exclude
               | Some path -> (
                 match Fs_sync.consume_event sync_table path with
                 | None -> []
@@ -475,12 +475,12 @@ let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
   scheduler.spawn_thread buffer_thread;
   res
 
-let create_inotifylib ~scheduler ~watch_exclusions =
+let create_inotifylib ~scheduler ~should_exclude =
   prepare_sync ();
   let sync_table = Table.create (module String) 64 in
   let inotify = create_inotifylib_watcher ~sync_table ~scheduler in
-  Inotify_lib.add (inotify watch_exclusions) (Lazy.force Fs_sync.special_dir);
-  { kind = Inotify (inotify watch_exclusions); sync_table }
+  Inotify_lib.add (inotify should_exclude) (Lazy.force Fs_sync.special_dir);
+  { kind = Inotify (inotify should_exclude); sync_table }
 
 let fsevents_callback ?exclusion_paths (scheduler : Scheduler.t) ~f events =
   let skip_path =
@@ -576,8 +576,8 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
   ; sync_table
   }
 
-let fswatch_win_callback ~(scheduler : Scheduler.t) ~sync_table
-    ~watch_exclusions event =
+let fswatch_win_callback ~(scheduler : Scheduler.t) ~sync_table ~should_exclude
+    event =
   let dir = Fswatch_win.Event.directory event in
   let filename = Filename.concat dir (Fswatch_win.Event.path event) in
   let localized_path =
@@ -598,7 +598,7 @@ let fswatch_win_callback ~(scheduler : Scheduler.t) ~sync_table
       String.concat ~sep:"/"
         (String.split_on_char ~sep:'\\' (String.lowercase_ascii filename))
     in
-    if not (should_exclude normalized_filename ~watch_exclusions) then
+    if not (should_exclude normalized_filename) then
       scheduler.thread_safe_send_emit_events_job (fun () ->
           let kind =
             match Fswatch_win.Event.action event with
@@ -609,7 +609,7 @@ let fswatch_win_callback ~(scheduler : Scheduler.t) ~sync_table
           [ Fs_memo_event { kind; path } ])
 
 let create_fswatch_win ~(scheduler : Scheduler.t) ~debounce_interval:sleep
-    ~watch_exclusions =
+    ~should_exclude =
   let sync_table = Table.create (module String) 64 in
   let t = Fswatch_win.create () in
   Fswatch_win.add t (Path.to_absolute_filename Path.root);
@@ -617,7 +617,7 @@ let create_fswatch_win ~(scheduler : Scheduler.t) ~debounce_interval:sleep
       while true do
         let events = Fswatch_win.wait t ~sleep in
         List.iter
-          ~f:(fswatch_win_callback ~scheduler ~sync_table ~watch_exclusions)
+          ~f:(fswatch_win_callback ~scheduler ~sync_table ~should_exclude)
           events
       done);
   { kind = Fswatch_win { t; scheduler }; sync_table }
@@ -631,14 +631,15 @@ let create_external ~root ~debounce_interval ~scheduler ~backend =
       ~backend
 
 let create_default ?fsevents_debounce ~watch_exclusions ~scheduler () =
+  let should_exclude = create_should_exclude_predicate ~watch_exclusions in
   match select_watcher_backend () with
   | `Fswatch _ as backend ->
     create_external ~scheduler ~root:Path.root
       ~debounce_interval:(Some 0.5 (* seconds *)) ~backend ~watch_exclusions
   | `Fsevents -> create_fsevents ?latency:fsevents_debounce ~scheduler ()
-  | `Inotify_lib -> create_inotifylib ~scheduler ~watch_exclusions
+  | `Inotify_lib -> create_inotifylib ~scheduler ~should_exclude
   | `Fswatch_win ->
-    create_fswatch_win ~scheduler ~watch_exclusions
+    create_fswatch_win ~scheduler ~should_exclude
       ~debounce_interval:500 (* milliseconds *)
 
 let wait_for_initial_watches_established_blocking t =

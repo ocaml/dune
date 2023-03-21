@@ -137,10 +137,10 @@ RUN opam install -y opam-monorepo ppx_sexp_conv ocamlfind ctypes ctypes-foreign 
 RUN mkdir -p $HOME/monorepo-bench
 
 # Download the monorepo benchmark and copy files into the benchmark project
-ENV MONOREPO_BENCHMARK_TAG=2023-03-17.1
+ENV MONOREPO_BENCHMARK_TAG=2023-03-21.0
 RUN wget https://github.com/ocaml-dune/ocaml-monorepo-benchmark/archive/refs/tags/$MONOREPO_BENCHMARK_TAG.tar.gz -O ocaml-monorepo-benchmark.tar.gz && tar xf ocaml-monorepo-benchmark.tar.gz && mv ocaml-monorepo-benchmark-$MONOREPO_BENCHMARK_TAG ocaml-monorepo-benchmark
 WORKDIR $HOME/monorepo-bench
-RUN mkdir -p monorepo && cp -r $HOME/ocaml-monorepo-benchmark/benchmark/dune $HOME/ocaml-monorepo-benchmark/benchmark/monorepo.ml monorepo && cp -r $HOME/ocaml-monorepo-benchmark/benchmark/monorepo-bench.opam $HOME/ocaml-monorepo-benchmark/benchmark/monorepo-bench.opam.locked $HOME/ocaml-monorepo-benchmark/benchmark/patches .
+RUN mkdir -p monorepo && cp -r $HOME/ocaml-monorepo-benchmark/benchmark/dune $HOME/ocaml-monorepo-benchmark/benchmark/monorepo.ml monorepo && cp -r $HOME/ocaml-monorepo-benchmark/benchmark/monorepo-bench.opam $HOME/ocaml-monorepo-benchmark/benchmark/monorepo-bench.opam.locked $HOME/ocaml-monorepo-benchmark/benchmark/patches $HOME/ocaml-monorepo-benchmark/benchmark/bench-patches .
 
 # Running `opam monorepo pull` with a large package set is very likely to fail on at least
 # one package in a non-deterministic manner. Repeating it several times reduces the chance

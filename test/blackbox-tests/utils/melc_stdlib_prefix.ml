@@ -16,8 +16,8 @@ let () =
     exit 2
   | Ok where ->
     let parts =
-      Bin.parse_path where
-      |> List.map ~f:(fun part ->
-             Format.asprintf "/MELC_STDLIB=%s" (Path.to_string part))
+      List.map (Bin.parse_path where) ~f:(fun part ->
+          Format.asprintf "/MELC_STDLIB=%s"
+            (part |> Path.parent_exn |> Path.to_string))
     in
     Format.printf "%s" (String.concat parts ~sep:":")

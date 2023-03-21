@@ -27,6 +27,7 @@ let local_libraries =
   ; ("otherlibs/dune-rpc/private", Some "Dune_rpc_private", false, None)
   ; ("vendor/build_path_prefix_map/src", Some "Build_path_prefix_map", false,
     None)
+  ; ("src/dune_config", Some "Dune_config", false, None)
   ; ("src/dune_util", Some "Dune_util", false, None)
   ; ("src/dune_lang", Some "Dune_lang", false, None)
   ; ("src/fiber_util", Some "Fiber_util", false, None)

@@ -151,10 +151,7 @@ type t =
 module Re = Dune_re
 
 let create_should_exclude_predicate ~watch_exclusions =
-  let exclude_regex watch_exclusions =
-    Re.compile (Re.alt (List.map watch_exclusions ~f:Re.Posix.re))
-  in
-  Re.execp (exclude_regex watch_exclusions)
+  Re.execp (Re.compile (Re.alt (List.map watch_exclusions ~f:Re.Posix.re)))
 
 module For_tests = struct
   let should_exclude = create_should_exclude_predicate
@@ -478,9 +475,11 @@ let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
 let create_inotifylib ~scheduler ~should_exclude =
   prepare_sync ();
   let sync_table = Table.create (module String) 64 in
-  let inotify = create_inotifylib_watcher ~sync_table ~scheduler in
-  Inotify_lib.add (inotify should_exclude) (Lazy.force Fs_sync.special_dir);
-  { kind = Inotify (inotify should_exclude); sync_table }
+  let inotify =
+    create_inotifylib_watcher ~sync_table ~scheduler should_exclude
+  in
+  Inotify_lib.add inotify (Lazy.force Fs_sync.special_dir);
+  { kind = Inotify inotify; sync_table }
 
 let fsevents_callback ?exclusion_paths (scheduler : Scheduler.t) ~f events =
   let skip_path =

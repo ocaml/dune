@@ -21,17 +21,17 @@ The pattern below excludes absolute files as Dune currently watches
 everything in the PATH, which is not very reproducible.
 
   $ sed -nE 's/inotify_add_watch\([0-9]*, "([^/].*)", .*\) (=.*)/watch \1 \2/p' ../log | sort -u
-  watch . = 1
+  watch . = 2
   watch _build/.sync = 1
-  watch src = 2
+  watch src = 3
 
 Since the pattern above is not reproducible, uncomment the next lines
 to see what it is really doing
 #  $ sed -nE 's/inotify_add_watch\([0-9]*, "(.*)", .*\) (=.*)/watch \1 \2/p' ../log | sort -u -k4n -k2 | sed "s,$OPAM_SWITCH_PREFIX,OPAM_SWITCH_PREFIX," | sed "s,$DUNE_SOURCEROOT,DUNE_SOURCEROOT,"
-#  watch . = 1
 #  watch _build/.sync = 1
-#  watch src = 2
-#  watch DUNE_SOURCEROOT/_build/default/test/blackbox-tests/test-cases/.bin = 3
-#  watch DUNE_SOURCEROOT/_build/install/default/bin = 4
-#  watch OPAM_SWITCH_PREFIX/bin = 5
-#  watch OPAM_SWITCH_PREFIX/lib/ocaml = 6
+#  watch . = 2
+#  watch src = 3
+#  watch DUNE_SOURCEROOT/_build/default/test/blackbox-tests/test-cases/.bin = 4
+#  watch DUNE_SOURCEROOT/_build/install/default/bin = 5
+#  watch OPAM_SWITCH_PREFIX/bin = 6
+#  watch OPAM_SWITCH_PREFIX/lib/ocaml = 7

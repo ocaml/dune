@@ -566,3 +566,24 @@ Melange Bench
 We also benchmark a demo Melange project's build time:
 
 https://ocaml.github.io/dune/dev/bench/
+
+Monorepo Benchmark
+------------------
+
+The file bench/monorepo/bench.Dockerfile sets up a Docker container for
+benchmarking Dune building a large monorepo constructed with
+`opam-monorepo <https://github.com/tarides/opam-monorepo>`_. The monorepo is
+constructed according to the files in
+https://github.com/ocaml-dune/ocaml-monorepo-benchmark/tree/main/benchmark.
+Build the Docker image from the root directory of this repo.
+
+E.g., run
+
+.. code:: sh
+
+   $ docker build . -f bench/monorepo/bench.Dockerfile --tag=dune-monorepo-benchmark
+   $ docker run -it dune-monorepo-benchmark bash --login
+
+From inside the container, run ``make bench`` to run the benchmark. The output of
+the benchmark is a JSON string in the format accepted by `current-bench
+<https://github.com/ocurrent/current-bench>`_.

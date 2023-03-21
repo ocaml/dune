@@ -51,7 +51,6 @@ Welcome to Dune's Documentation!
    jsoo
    lexical-conventions
    opam
-   advanced-topics
    toplevel-integration
    variants
    tests

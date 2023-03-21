@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679364938538,
+  "lastUpdate": 1679364949075,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16125,6 +16125,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "65.06316689898",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5ccc0ba9ccb997d67714bdc59bac54aae267ee90",
+          "message": "feature: introduce dune_config (#7349)\n\n[dune_config] is a library to help developers configure dune in a\r\nconsistent way. It does not aim to replace dune's existing configuration\r\ncapabilities which are meant to be stable and user facing. The type of\r\nconfiguration it plans to support is experimental, undocumented, and may\r\nbe removed without notice.\r\n\r\nFor ease of use, it's possible to set the configuration values using\r\nenvironment variables and the dune-config file. the former will take\r\nprecedence over the latter.\r\n\r\nAs a demonstration, I've added a single configuration value for\r\ndisabling dune's global lock. This isn't a safe thing to do, but I know\r\nthat @snowleopard has his own locking implementation at JST and\r\n@jchavarri needs it for a particular workflow.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-20T18:48:20-07:00",
+          "tree_id": "29ba2c46535519f4956503874aee359025c7e50a",
+          "url": "https://github.com/ocaml/dune/commit/5ccc0ba9ccb997d67714bdc59bac54aae267ee90"
+        },
+        "date": 1679364948048,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.57326430046",
             "unit": "seconds"
           }
         ]

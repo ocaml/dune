@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679412898450,
+  "lastUpdate": 1679413484158,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -10410,6 +10410,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "47.89044462096666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "88ee1734c97905561d56d69ea15ef03334c1bc52",
+          "message": "test: add repro case for #3431 (#7338)\n\nWhen we generate an opam formula that would require parentheses, they\r\nare not present.\r\nThis is actually a bug in opam-file-format:\r\nocaml/opam-file-format/issues#56.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-03-21T16:18:03+01:00",
+          "tree_id": "b6efdbbe0e2827067640343f03ff862a3ce404fe",
+          "url": "https://github.com/ocaml/dune/commit/88ee1734c97905561d56d69ea15ef03334c1bc52"
+        },
+        "date": 1679413482782,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.36078224406666",
             "unit": "seconds"
           }
         ]

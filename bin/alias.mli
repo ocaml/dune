@@ -5,13 +5,13 @@ type t = private
   { name : Dune_engine.Alias.Name.t
   ; recursive : bool
   ; dir : Path.Source.t
-  ; scontexts : Dune_rules.Super_context.t Context_name.Map.t
+  ; contexts : Dune_rules.Context.t list
   }
 
 val in_dir :
      name:Dune_engine.Alias.Name.t
   -> recursive:bool
-  -> scontexts:Dune_rules.Super_context.t Context_name.Map.t
+  -> contexts:Dune_rules.Context.t list
   -> Path.t
   -> t
 
@@ -19,7 +19,7 @@ val of_string :
      Workspace_root.t
   -> recursive:bool
   -> string
-  -> scontexts:Dune_rules.Super_context.t Context_name.Map.t
+  -> contexts:Dune_rules.Context.t list
   -> t
 
 val pp : t -> _ Pp.t

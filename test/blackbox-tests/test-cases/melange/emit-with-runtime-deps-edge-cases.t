@@ -103,8 +103,8 @@ Need to create the source dir first for the alias to be picked up
 
   $ dune build @mel --display=short
           melc a/.output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc a/output/a/main.js
           melc another/.another-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
+          melc a/output/a/main.js
           melc another/another-output/another/main.js
 
 Path ends ups being emitted "correctly", but outside the target dir.

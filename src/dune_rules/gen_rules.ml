@@ -406,7 +406,7 @@ let rec under_melange_emit_target ~dir =
       match
         List.find_map stanzas.stanzas ~f:(function
           | Melange_stanzas.Emit.T mel ->
-            let target_dir = Melange_rules.emit_target_dir ~dir:parent mel in
+            let target_dir = Melange_stanzas.Emit.target_dir ~dir:parent mel in
             Option.some_if (Path.Build.equal target_dir dir) mel
           | _ -> None)
       with
@@ -422,7 +422,8 @@ let melange_emit_rules sctx { stanza_dir; stanza } =
 
 let gen_melange_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
   match
-    Path.Build.equal dir (Melange_rules.emit_target_dir ~dir:stanza_dir stanza)
+    Path.Build.equal dir
+      (Melange_stanzas.Emit.target_dir ~dir:stanza_dir stanza)
   with
   | false -> Memo.return None
   | true -> (

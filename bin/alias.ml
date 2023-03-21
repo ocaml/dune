@@ -1,5 +1,4 @@
 open Stdune
-open Import
 open Dune_engine
 module Source_tree = Dune_rules.Source_tree
 
@@ -7,10 +6,10 @@ type t =
   { name : Dune_engine.Alias.Name.t
   ; recursive : bool
   ; dir : Path.Source.t
-  ; scontexts : Super_context.t Context_name.Map.t
+  ; contexts : Dune_rules.Context.t list
   }
 
-let pp { name; recursive; dir; scontexts = _ } =
+let pp { name; recursive; dir; contexts = _ } =
   let open Pp.O in
   let s =
     (if recursive then "@" else "@@")
@@ -20,34 +19,33 @@ let pp { name; recursive; dir; scontexts = _ } =
   let pp = Pp.verbatim "alias" ++ Pp.space ++ Pp.verbatim s in
   if recursive then Pp.verbatim "recursive" ++ Pp.space ++ pp else pp
 
-let in_dir ~name ~recursive ~scontexts dir =
-  let checked =
-    let contexts =
-      Context_name.Map.to_list_map scontexts ~f:(fun _ sctx ->
-          Super_context.context sctx)
-    in
-    Util.check_path contexts dir
-  in
+let in_dir ~name ~recursive ~contexts dir =
+  let checked = Util.check_path contexts dir in
   match checked with
   | External _ ->
     User_error.raise
       [ Pp.textf "@@ on the command line must be followed by a relative path" ]
-  | In_source_dir dir -> { dir; recursive; name; scontexts }
+  | In_source_dir dir -> { dir; recursive; name; contexts }
   | In_install_dir _ ->
     User_error.raise
       [ Pp.textf "Invalid alias: %s."
-          (Path.to_string_maybe_quoted (Path.build Dpath.Build.install_dir))
+          (Path.to_string_maybe_quoted
+             (Path.build Dune_engine.Dpath.Build.install_dir))
       ; Pp.textf "There are no aliases in %s." (Path.to_string_maybe_quoted dir)
       ]
   | In_build_dir (ctx, dir) ->
     { dir
     ; recursive
     ; name
-    ; scontexts =
-        Context_name.Map.(singleton ctx.name (find_exn scontexts ctx.name))
+    ; contexts =
+        [ List.find_exn contexts ~f:(fun c ->
+              Dune_engine.Context_name.equal
+                (Dune_rules.Context.name c)
+                ctx.name)
+        ]
     }
 
-let of_string (root : Workspace_root.t) ~recursive s ~scontexts =
+let of_string (root : Workspace_root.t) ~recursive s ~contexts =
   let path = Path.relative Path.root (root.reach_from_root_prefix ^ s) in
   if Path.is_root path then
     User_error.raise
@@ -56,66 +54,44 @@ let of_string (root : Workspace_root.t) ~recursive s ~scontexts =
   else
     let dir = Path.parent_exn path in
     let name = Dune_engine.Alias.Name.of_string (Path.basename path) in
-    in_dir ~name ~recursive ~scontexts dir
+    in_dir ~name ~recursive ~contexts dir
 
-let check_dir_exists_in_source ~project ~src_dir =
+let find_dir_specified_on_command_line ~dir =
   let open Memo.O in
-  let dune_version = Dune_project.dune_version project in
-  match Dune_lang.Syntax.Version.Infix.(dune_version >= (3, 8)) with
-  | true -> Memo.return ()
-  | false -> (
-    Source_tree.find_dir src_dir >>| function
-    | Some _ -> ()
-    | None ->
-      User_error.raise
-        [ Pp.textf
-            "Don't know about directory %s specified on the command line!"
-            (Path.Source.to_string_maybe_quoted src_dir)
-        ])
+  Source_tree.find_dir dir >>| function
+  | Some dir -> dir
+  | None ->
+    User_error.raise
+      [ Pp.textf "Don't know about directory %s specified on the command line!"
+          (Path.Source.to_string_maybe_quoted dir)
+      ]
 
-let project sctx ~dir =
-  Action_builder.of_memo
-    (let open Memo.O in
-    let+ expander = Super_context.expander sctx ~dir in
-    let scope = Dune_rules.Expander.scope expander in
-
-    Dune_rules.Scope.project scope)
-
-let dep_on_alias_multi_contexts ~dir:src_dir ~name ~scontexts =
+let dep_on_alias_multi_contexts ~dir ~name ~contexts =
+  ignore (find_dir_specified_on_command_line ~dir : _ Memo.t);
   let context_to_alias_expansion ctx =
-    let open Action_builder.O in
-    let dir =
-      let ctx_dir = Context_name.build_dir ctx in
-      Path.Build.(append_source ctx_dir src_dir)
-    in
-    let* project =
-      let sctx = Context_name.Map.find_exn scontexts ctx in
-      project sctx ~dir
-    in
-    ignore (check_dir_exists_in_source ~project ~src_dir : unit Memo.t);
+    let ctx_dir = Dune_engine.Context_name.build_dir ctx in
+    let dir = Path.Build.(append_source ctx_dir dir) in
     Action_builder.alias (Dune_engine.Alias.make ~dir name)
   in
-  Action_builder.all_unit
-    (List.map (Context_name.Map.keys scontexts) ~f:context_to_alias_expansion)
+  Action_builder.all_unit (List.map contexts ~f:context_to_alias_expansion)
 
-let dep_on_alias_rec_multi_contexts ~dir:src_dir ~name ~scontexts =
+let dep_on_alias_rec_multi_contexts ~dir:src_dir ~name ~contexts =
   let open Action_builder.O in
+  let* dir =
+    Action_builder.of_memo (find_dir_specified_on_command_line ~dir:src_dir)
+  in
   let+ alias_statuses =
     Action_builder.all
-      (List.map (Context_name.Map.keys scontexts) ~f:(fun ctx ->
+      (List.map contexts ~f:(fun ctx ->
            let dir =
-             Path.Build.append_source (Context_name.build_dir ctx) src_dir
+             Path.Build.append_source
+               (Context_name.build_dir ctx)
+               (Source_tree.Dir.path dir)
            in
-           let* project =
-             let sctx = Context_name.Map.find_exn scontexts ctx in
-             project sctx ~dir
-           in
-           ignore (check_dir_exists_in_source ~project ~src_dir : unit Memo.t);
-           Dune_rules.Alias_rec.dep_on_alias_rec ~project name dir))
+           Dune_rules.Alias_rec.dep_on_alias_rec name dir))
   in
   let is_nonempty =
-    List.exists alias_statuses
-      ~f:(fun (x : Dune_rules.Alias_rec.Alias_status.t) ->
+    List.exists alias_statuses ~f:(fun (x : Action_builder.Alias_status.t) ->
         match x with
         | Defined -> true
         | Not_defined -> false)
@@ -128,7 +104,8 @@ let dep_on_alias_rec_multi_contexts ~dir:src_dir ~name ~scontexts =
           (Path.Source.to_string_maybe_quoted src_dir)
       ]
 
-let request { name; recursive; dir; scontexts } =
+let request { name; recursive; dir; contexts } =
+  let contexts = List.map ~f:Dune_rules.Context.name contexts in
   (if recursive then dep_on_alias_rec_multi_contexts
   else dep_on_alias_multi_contexts)
-    ~dir ~name ~scontexts
+    ~dir ~name ~contexts

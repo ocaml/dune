@@ -117,7 +117,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) :
       Some
         [ Request.Alias
             (Alias.in_dir ~name:Dune_engine.Alias.Name.default ~recursive:true
-               ~scontexts:setup.scontexts path)
+               ~contexts:setup.contexts path)
         ]
     | false -> None
   in
@@ -179,7 +179,7 @@ let resolve_alias root ~recursive sv ~(setup : Dune_rules.Main.build_system) =
   | Some s ->
     Ok
       [ Request.Alias
-          (Alias.of_string root ~recursive s ~scontexts:setup.scontexts)
+          (Alias.of_string root ~recursive s ~contexts:setup.contexts)
       ]
   | None -> Error [ Pp.text "alias cannot contain variables" ]
 

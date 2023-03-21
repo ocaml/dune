@@ -1,5 +1,3 @@
-.. _ocaml-syntax:
-
 OCaml Syntax
 ============
 

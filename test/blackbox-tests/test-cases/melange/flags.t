@@ -10,14 +10,13 @@ Using flags field in melange.emit stanzas is not supported
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
-  >  (module_system commonjs)
+  >  (modules main)
   >  (flags -w -14-26))
   > EOF
 
   $ dune build @melange
-  File "dune", line 5, characters 2-7:
-  5 |  (flags -w -14-26))
+  File "dune", line 4, characters 2-7:
+  4 |  (flags -w -14-26))
         ^^^^^
   Error: Unknown field flags
   [1]
@@ -32,9 +31,8 @@ Adds a module that contains unused var (warning 26) and illegal backlash (warnin
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
-  >  (alias melange)
-  >  (module_system commonjs))
+  >  (modules main)
+  >  (alias melange))
   > EOF
 
 Trying to build triggers both warnings
@@ -55,9 +53,8 @@ Let's ignore them using compile_flags
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
+  >  (modules main)
   >  (alias melange)
-  >  (module_system commonjs)
   >  (compile_flags -w -14-26))
   > EOF
 
@@ -70,9 +67,8 @@ Can also pass flags from the env stanza. Let's go back to failing state:
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
-  >  (alias melange)
-  >  (module_system commonjs))
+  >  (modules main)
+  >  (alias melange))
   > EOF
 
   $ dune build @melange
@@ -95,8 +91,7 @@ Adding env stanza with both warnings silenced allows the build to pass successfu
   > (melange.emit
   >  (alias melange)
   >  (target output)
-  >  (entries main)
-  >  (module_system commonjs))
+  >  (modules main))
   > EOF
 
   $ dune build @melange
@@ -112,9 +107,8 @@ Warning 102 (Melange only) is available if explicitly set
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
-  >  (compile_flags -w +a-70)
-  >  (module_system commonjs))
+  >  (modules main)
+  >  (compile_flags -w +a-70))
   > EOF
 
   $ dune build output/main.js
@@ -128,8 +122,7 @@ But it is disabled by default
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
-  >  (module_system commonjs))
+  >  (modules main))
   > EOF
 
   $ dune build output/main.js

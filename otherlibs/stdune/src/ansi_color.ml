@@ -1,3 +1,66 @@
+module RGB8 : sig
+  type t
+
+  val to_dyn : t -> Dyn.t
+
+  val of_int : int -> t
+
+  val to_int : t -> int
+
+  (** This is only used internally. *)
+  val write_to_buffer : Buffer.t -> t -> unit
+end = struct
+  type t = char
+
+  let to_dyn t = Dyn.Int (int_of_char t)
+
+  let of_int t = char_of_int (t land 0xFF)
+
+  let to_int t = int_of_char t
+
+  let write_to_buffer buf c =
+    Buffer.add_string buf "38;5;";
+    int_of_char c |> Int.to_string |> Buffer.add_string buf
+end
+
+module RGB24 : sig
+  type t
+
+  val to_dyn : t -> Dyn.t
+
+  val red : t -> int
+
+  val green : t -> int
+
+  val blue : t -> int
+
+  val create : r:int -> g:int -> b:int -> t
+
+  (** This is only used internally. *)
+  val write_to_buffer : Buffer.t -> t -> unit
+end = struct
+  type t = int
+
+  let red t = Int.shift_right t 16 land 0xFF
+
+  let green t = Int.shift_right t 8 land 0xFF
+
+  let blue t = t land 0xFF
+
+  let to_dyn t = Dyn.list Dyn.int [ red t; green t; blue t ]
+
+  let create ~r ~g ~b =
+    ((r land 0xFF) lsl 16) lor ((g land 0xFF) lsl 8) lor (b land 0xFF)
+
+  let write_to_buffer buf t =
+    Buffer.add_string buf "38;2;";
+    red t |> Int.to_string |> Buffer.add_string buf;
+    Buffer.add_char buf ';';
+    green t |> Int.to_string |> Buffer.add_string buf;
+    Buffer.add_char buf ';';
+    blue t |> Int.to_string |> Buffer.add_string buf
+end
+
 module Style = struct
   type t =
     [ `Fg_default
@@ -17,6 +80,8 @@ module Style = struct
     | `Fg_bright_magenta
     | `Fg_bright_cyan
     | `Fg_bright_white
+    | `Fg_8_bit_color of RGB8.t
+    | `Fg_24_bit_color of RGB24.t
     | `Bg_default
     | `Bg_black
     | `Bg_red
@@ -34,54 +99,101 @@ module Style = struct
     | `Bg_bright_magenta
     | `Bg_bright_cyan
     | `Bg_bright_white
+    | `Bg_8_bit_color of RGB8.t
+    | `Bg_24_bit_color of RGB24.t
     | `Bold
     | `Dim
     | `Italic
     | `Underline
     ]
 
-  let to_ansi_code = function
-    | `Fg_default -> 39
-    | `Fg_black -> 30
-    | `Fg_red -> 31
-    | `Fg_green -> 32
-    | `Fg_yellow -> 33
-    | `Fg_blue -> 34
-    | `Fg_magenta -> 35
-    | `Fg_cyan -> 36
-    | `Fg_white -> 37
-    | `Fg_bright_black -> 90
-    | `Fg_bright_red -> 91
-    | `Fg_bright_green -> 92
-    | `Fg_bright_yellow -> 93
-    | `Fg_bright_blue -> 94
-    | `Fg_bright_magenta -> 95
-    | `Fg_bright_cyan -> 96
-    | `Fg_bright_white -> 97
-    | `Bg_default -> 49
-    | `Bg_black -> 40
-    | `Bg_red -> 41
-    | `Bg_green -> 42
-    | `Bg_yellow -> 43
-    | `Bg_blue -> 44
-    | `Bg_magenta -> 45
-    | `Bg_cyan -> 46
-    | `Bg_white -> 47
-    | `Bg_bright_black -> 100
-    | `Bg_bright_red -> 101
-    | `Bg_bright_green -> 102
-    | `Bg_bright_yellow -> 103
-    | `Bg_bright_blue -> 104
-    | `Bg_bright_magenta -> 105
-    | `Bg_bright_cyan -> 106
-    | `Bg_bright_white -> 107
-    | `Bold -> 1
-    | `Dim -> 2
-    | `Italic -> 3
-    | `Underline -> 4
+  let write_to_buffer buf : t -> unit = function
+    | `Fg_default -> Buffer.add_string buf "39"
+    | `Fg_black -> Buffer.add_string buf "30"
+    | `Fg_red -> Buffer.add_string buf "31"
+    | `Fg_green -> Buffer.add_string buf "32"
+    | `Fg_yellow -> Buffer.add_string buf "33"
+    | `Fg_blue -> Buffer.add_string buf "34"
+    | `Fg_magenta -> Buffer.add_string buf "35"
+    | `Fg_cyan -> Buffer.add_string buf "36"
+    | `Fg_white -> Buffer.add_string buf "37"
+    | `Fg_bright_black -> Buffer.add_string buf "90"
+    | `Fg_bright_red -> Buffer.add_string buf "91"
+    | `Fg_bright_green -> Buffer.add_string buf "92"
+    | `Fg_bright_yellow -> Buffer.add_string buf "93"
+    | `Fg_bright_blue -> Buffer.add_string buf "94"
+    | `Fg_bright_magenta -> Buffer.add_string buf "95"
+    | `Fg_bright_cyan -> Buffer.add_string buf "96"
+    | `Fg_bright_white -> Buffer.add_string buf "97"
+    | `Fg_8_bit_color c -> RGB8.write_to_buffer buf c
+    | `Fg_24_bit_color rgb -> RGB24.write_to_buffer buf rgb
+    | `Bg_default -> Buffer.add_string buf "49"
+    | `Bg_black -> Buffer.add_string buf "40"
+    | `Bg_red -> Buffer.add_string buf "41"
+    | `Bg_green -> Buffer.add_string buf "42"
+    | `Bg_yellow -> Buffer.add_string buf "43"
+    | `Bg_blue -> Buffer.add_string buf "44"
+    | `Bg_magenta -> Buffer.add_string buf "45"
+    | `Bg_cyan -> Buffer.add_string buf "46"
+    | `Bg_white -> Buffer.add_string buf "47"
+    | `Bg_bright_black -> Buffer.add_string buf "100"
+    | `Bg_bright_red -> Buffer.add_string buf "101"
+    | `Bg_bright_green -> Buffer.add_string buf "102"
+    | `Bg_bright_yellow -> Buffer.add_string buf "103"
+    | `Bg_bright_blue -> Buffer.add_string buf "104"
+    | `Bg_bright_magenta -> Buffer.add_string buf "105"
+    | `Bg_bright_cyan -> Buffer.add_string buf "106"
+    | `Bg_bright_white -> Buffer.add_string buf "107"
+    | `Bg_8_bit_color c -> RGB8.write_to_buffer buf c
+    | `Bg_24_bit_color rgb -> RGB24.write_to_buffer buf rgb
+    | `Bold -> Buffer.add_string buf "1"
+    | `Dim -> Buffer.add_string buf "2"
+    | `Italic -> Buffer.add_string buf "3"
+    | `Underline -> Buffer.add_string buf "4"
 
-  (* TODO use constructor names *)
-  let to_dyn s = Dyn.int (to_ansi_code s)
+  let to_dyn : t -> Dyn.t = function
+    | `Fg_default -> Dyn.variant "Fg_default" []
+    | `Fg_black -> Dyn.variant "Fg_black" []
+    | `Fg_red -> Dyn.variant "Fg_red" []
+    | `Fg_green -> Dyn.variant "Fg_green" []
+    | `Fg_yellow -> Dyn.variant "Fg_yellow" []
+    | `Fg_blue -> Dyn.variant "Fg_blue" []
+    | `Fg_magenta -> Dyn.variant "Fg_magenta" []
+    | `Fg_cyan -> Dyn.variant "Fg_cyan" []
+    | `Fg_white -> Dyn.variant "Fg_white" []
+    | `Fg_bright_black -> Dyn.variant "Fg_bright_black" []
+    | `Fg_bright_red -> Dyn.variant "Fg_bright_red" []
+    | `Fg_bright_green -> Dyn.variant "Fg_bright_green" []
+    | `Fg_bright_yellow -> Dyn.variant "Fg_bright_yellow" []
+    | `Fg_bright_blue -> Dyn.variant "Fg_bright_blue" []
+    | `Fg_bright_magenta -> Dyn.variant "Fg_bright_magenta" []
+    | `Fg_bright_cyan -> Dyn.variant "Fg_bright_cyan" []
+    | `Fg_bright_white -> Dyn.variant "Fg_bright_white" []
+    | `Fg_8_bit_color c -> Dyn.variant "Fg_8_bit_color" [ RGB8.to_dyn c ]
+    | `Fg_24_bit_color rgb -> Dyn.variant "Fg_24_bit_color" [ RGB24.to_dyn rgb ]
+    | `Bg_default -> Dyn.variant "Bg_default" []
+    | `Bg_black -> Dyn.variant "Bg_black" []
+    | `Bg_red -> Dyn.variant "Bg_red" []
+    | `Bg_green -> Dyn.variant "Bg_green" []
+    | `Bg_yellow -> Dyn.variant "Bg_yellow" []
+    | `Bg_blue -> Dyn.variant "Bg_blue" []
+    | `Bg_magenta -> Dyn.variant "Bg_magenta" []
+    | `Bg_cyan -> Dyn.variant "Bg_cyan" []
+    | `Bg_white -> Dyn.variant "Bg_white" []
+    | `Bg_bright_black -> Dyn.variant "Bg_bright_black" []
+    | `Bg_bright_red -> Dyn.variant "Bg_bright_red" []
+    | `Bg_bright_green -> Dyn.variant "Bg_bright_green" []
+    | `Bg_bright_yellow -> Dyn.variant "Bg_bright_yellow" []
+    | `Bg_bright_blue -> Dyn.variant "Bg_bright_blue" []
+    | `Bg_bright_magenta -> Dyn.variant "Bg_bright_magenta" []
+    | `Bg_bright_cyan -> Dyn.variant "Bg_bright_cyan" []
+    | `Bg_bright_white -> Dyn.variant "Bg_bright_white" []
+    | `Bg_8_bit_color c -> Dyn.variant "Bg_8_bit_color" [ RGB8.to_dyn c ]
+    | `Bg_24_bit_color rgb -> Dyn.variant "Bg_24_bit_color" [ RGB24.to_dyn rgb ]
+    | `Bold -> Dyn.variant "Bold" []
+    | `Dim -> Dyn.variant "Dim" []
+    | `Italic -> Dyn.variant "Italic" []
+    | `Underline -> Dyn.variant "Underline" []
 
   module Of_ansi_code = struct
     type code = t
@@ -92,10 +204,10 @@ module Style = struct
       | code
       ]
 
-    let to_ansi_code_exn = function
-      | `Clear -> 0
-      | `Unknown -> 0
-      | #code as t -> to_ansi_code (t :> code)
+    let write_to_buffer (buf : Buffer.t) = function
+      | `Clear -> Buffer.add_char buf '0'
+      | `Unknown -> Buffer.add_char buf '0'
+      | #code as t -> write_to_buffer buf (t :> code)
   end
 
   let of_ansi_code : int -> Of_ansi_code.t = function
@@ -157,7 +269,9 @@ module Style = struct
     | `Fg_bright_blue
     | `Fg_bright_magenta
     | `Fg_bright_cyan
-    | `Fg_bright_white -> false
+    | `Fg_bright_white
+    | `Fg_8_bit_color _
+    | `Fg_24_bit_color _ -> false
     | _ -> true
 
   let is_not_bg = function
@@ -177,15 +291,16 @@ module Style = struct
     | `Bg_bright_blue
     | `Bg_bright_magenta
     | `Bg_bright_cyan
-    | `Bg_bright_white -> false
+    | `Bg_bright_white
+    | `Bg_8_bit_color _
+    | `Bg_24_bit_color _ -> false
     | _ -> true
 
   let rec write_codes buf = function
     | [] -> ()
-    | [ t ] ->
-      Buffer.add_string buf (Int.to_string (Of_ansi_code.to_ansi_code_exn t))
+    | [ t ] -> Of_ansi_code.write_to_buffer buf t
     | t :: ts ->
-      Buffer.add_string buf (Int.to_string (Of_ansi_code.to_ansi_code_exn t));
+      Of_ansi_code.write_to_buffer buf t;
       Buffer.add_char buf ';';
       write_codes buf ts
 
@@ -228,7 +343,8 @@ let output_is_a_tty = lazy (Unix.isatty Unix.stderr)
 let stderr_supports_color = lazy (supports_color output_is_a_tty)
 
 let rec tag_handler buf current_styles ppf (styles : Style.t list) pp =
-  Format.pp_print_as ppf 0 (Style.escape_sequence_no_reset buf styles);
+  Format.pp_print_as ppf 0
+    (Style.escape_sequence_no_reset buf (styles :> Style.Of_ansi_code.t list));
   Pp.to_fmt_with_tags ppf pp
     ~tag_handler:(tag_handler buf (current_styles @ styles));
   Format.pp_print_as ppf 0
@@ -285,6 +401,55 @@ let index_from_any str start chars =
   in
   go start
 
+let rec parse_styles l (accu : Style.t list) =
+  (* This function takes a list of strings, taken from splitting an Ansi code on
+     ';', and adds the parsed styles to the already accumulated styles. There is
+     some non-trivial interaction with parsing here. For example, 8-bit and
+     24-bit color codes need some lookahead and default colours need to be able
+     to override other styles. *)
+  match l with
+  | [] -> accu (* Parsing 8-bit foreground colors *)
+  | "38" :: "5" :: s :: l ->
+    parse_styles l
+      (match Int.of_string s with
+      | None -> accu
+      | Some code -> `Fg_8_bit_color (RGB8.of_int code) :: accu)
+  (* Parsing 8-bit background colors *)
+  | "48" :: "5" :: s :: l ->
+    parse_styles l
+      (match Int.of_string s with
+      | None -> accu
+      | Some code -> `Bg_8_bit_color (RGB8.of_int code) :: accu)
+  (* Parsing 24-bit foreground colors *)
+  | "38" :: "2" :: r :: g :: b :: l ->
+    parse_styles l
+      (match (Int.of_string r, Int.of_string g, Int.of_string b) with
+      | Some r, Some g, Some b ->
+        `Fg_24_bit_color (RGB24.create ~r ~g ~b) :: accu
+      | _ -> accu)
+  (* Parsing 24-bit background colors *)
+  | "48" :: "2" :: r :: g :: b :: l ->
+    parse_styles l
+      (match (Int.of_string r, Int.of_string g, Int.of_string b) with
+      | Some r, Some g, Some b ->
+        `Bg_24_bit_color (RGB24.create ~r ~g ~b) :: accu
+      | _ -> accu)
+  | s :: l ->
+    parse_styles l
+      (match Int.of_string s with
+      | None -> accu
+      | Some code -> (
+        match Style.of_ansi_code code with
+        | `Clear -> []
+        | `Unknown -> accu
+        (* If the foreground is set to default, we filter out any
+           other foreground modifiers. Same for background. *)
+        | `Fg_default -> List.filter accu ~f:Style.is_not_fg
+        | `Bg_default -> List.filter accu ~f:Style.is_not_bg
+        | #Style.t as s -> s :: accu))
+
+let parse_styles styles l = parse_styles l (List.rev styles) |> List.rev
+
 let parse_line str styles =
   let len = String.length str in
   let add_chunk acc ~styles ~pos ~len =
@@ -317,20 +482,7 @@ let parse_line str styles =
               []
             else
               String.sub str ~pos:seq_start ~len:(seq_end - seq_start)
-              |> String.split ~on:';'
-              |> List.fold_left ~init:(List.rev styles) ~f:(fun styles s ->
-                     match Int.of_string s with
-                     | None -> styles
-                     | Some code -> (
-                       match Style.of_ansi_code code with
-                       | `Clear -> []
-                       | `Unknown -> styles
-                       (* If the foreground is set to default, we filter out any
-                          other foreground modifiers. Same for background. *)
-                       | `Fg_default -> List.filter styles ~f:Style.is_not_fg
-                       | `Bg_default -> List.filter styles ~f:Style.is_not_bg
-                       | #Style.t as s -> s :: styles))
-              |> List.rev
+              |> String.split ~on:';' |> parse_styles styles
           in
           loop styles (seq_end + 1) acc
         | Some (seq_end, _) -> loop styles (seq_end + 1) acc)

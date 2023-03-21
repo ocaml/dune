@@ -16,10 +16,12 @@ let make (module Base : S) : (module Dune_console.Backend) =
       ; status_line = None
       ; finished = false
       ; finish_requested = false
+      ; dirty = true
       }
 
     let finish () =
       Mutex.lock mutex;
+      state.dirty <- true;
       state.finish_requested <- true;
       while not state.finished do
         Condition.wait finish_cv mutex
@@ -28,11 +30,13 @@ let make (module Base : S) : (module Dune_console.Backend) =
 
     let print_user_message m =
       Mutex.lock mutex;
+      state.dirty <- true;
       Queue.push state.messages m;
       Mutex.unlock mutex
 
     let set_status_line sl =
       Mutex.lock mutex;
+      state.dirty <- true;
       state.status_line <- sl;
       Mutex.unlock mutex
 
@@ -40,6 +44,7 @@ let make (module Base : S) : (module Dune_console.Backend) =
 
     let reset () =
       Mutex.lock mutex;
+      state.dirty <- true;
       Queue.clear state.messages;
       state.status_line <- None;
       Base.reset ();
@@ -47,6 +52,7 @@ let make (module Base : S) : (module Dune_console.Backend) =
 
     let reset_flush_history () =
       Mutex.lock mutex;
+      state.dirty <- true;
       Queue.clear state.messages;
       state.status_line <- None;
       Base.reset_flush_history ();
@@ -84,9 +90,13 @@ let make (module Base : S) : (module Dune_console.Backend) =
            events and sleep for the remaining time. *)
         while true do
           Mutex.lock mutex;
-          Base.render state;
-          let finish_requested = state.finish_requested in
-          if finish_requested then raise_notrace Exit;
+          (match state.dirty with
+          | false -> ()
+          | true ->
+            Base.render state;
+            let finish_requested = state.finish_requested in
+            if finish_requested then raise_notrace Exit;
+            state.dirty <- false);
           Mutex.unlock mutex;
           let now = Unix.gettimeofday () in
           let elapsed = now -. !last in

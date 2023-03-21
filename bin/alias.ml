@@ -79,12 +79,22 @@ let dep_on_alias_rec_multi_contexts ~dir:src_dir ~name ~contexts =
   let* dir =
     Action_builder.of_memo (find_dir_specified_on_command_line ~dir:src_dir)
   in
-  let+ is_nonempty_list =
+  let+ alias_statuses =
     Action_builder.all
       (List.map contexts ~f:(fun ctx ->
-           Action_builder.dep_on_alias_rec name ctx dir))
+           let dir =
+             Path.Build.append_source
+               (Context_name.build_dir ctx)
+               (Source_tree.Dir.path dir)
+           in
+           Dune_rules.Alias_rec.dep_on_alias_rec name dir))
   in
-  let is_nonempty = List.exists is_nonempty_list ~f:Fun.id in
+  let is_nonempty =
+    List.exists alias_statuses ~f:(fun (x : Action_builder.Alias_status.t) ->
+        match x with
+        | Defined -> true
+        | Not_defined -> false)
+  in
   if (not is_nonempty) && not (Dune_engine.Alias.is_standard name) then
     User_error.raise
       [ Pp.textf "Alias %S specified on the command line is empty."

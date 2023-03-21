@@ -48,7 +48,7 @@ Allow directories to be installable
   ]
 
   $ mkdir ./installation
-  $ dune install --prefix ./installation
+  $ dune install --prefix ./installation --display short
   Installing installation/lib/foo/META
   Installing installation/lib/foo/dune-package
   Installing installation/lib/foo/renamed/x

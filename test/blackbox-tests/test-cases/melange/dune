@@ -5,3 +5,7 @@
 (cram
  (deps %{bin:rescript_syntax})
  (applies_to rescript_syntax))
+
+(cram
+ (deps %{bin:melc_stdlib_prefix})
+ (applies_to merlin))

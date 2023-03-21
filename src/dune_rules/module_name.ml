@@ -117,6 +117,7 @@ module Unique = struct
 
   module Map = Map
   module Set = Set
+  module Map_traversals = Map_traversals
 end
 
 module Path = struct

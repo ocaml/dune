@@ -254,14 +254,15 @@ descriptions by referencing them as the module specified in optional
 - Headers can be added to the generated C files:
 
    - ``(headers (include "include1" "include2" ...))`` adds ``#include
-     <include1>``, ``#include <include2>``. It uses the :ref:`ordered-set-language`.
+     <include1>``, ``#include <include2>``. It uses the
+     :doc:`concepts/ordered-set-language`.
    - ``(headers (preamble <preamble>)`` adds directly the preamble. Variables
      can be used in ``<preamble>`` such as ``%{read: }``.
 
 - Since the Dune's ``ctypes`` feature is still experimental, it could be useful to
   add additional dependencies in order to make sure that local
-  headers or libraries are available: ``(deps <deps-conf list>)``. See the
-  :ref:`deps-field` section for more details.
+  headers or libraries are available: ``(deps <deps-conf list>)``. See
+  :doc:`concepts/dependency-spec` for more details.
 
 ``<optional-function-description-fields>`` are:
 

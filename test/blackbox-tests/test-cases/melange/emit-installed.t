@@ -26,7 +26,7 @@ Test dependency on installed package
   Entering directory 'lib-a'
   Leaving directory 'lib-a'
 
-  $ dune install --root lib-a --prefix $PWD/prefix
+  $ dune install --root lib-a --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/a/META
   Installing $TESTCASE_ROOT/prefix/lib/a/a.ml
   Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
@@ -51,8 +51,7 @@ Test dependency on installed package
   > (melange.emit
   >  (target dist)
   >  (alias dist)
-  >  (libraries a)
-  >  (module_system commonjs))
+  >  (libraries a))
   > EOF
 
   $ cat > b/bar.ml <<EOF

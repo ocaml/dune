@@ -1,4 +1,5 @@
 open Stdune
+open Dune_config_file
 module Config = Dune_util.Config
 module Console = Dune_console
 module Colors = Dune_rules.Colors
@@ -299,10 +300,10 @@ let display_term =
      Option.some_if verbose Dune_config.Display.verbose)
     Arg.(
       let doc =
-        let all = Display.all |> List.map ~f:fst |> String.enumerate_one_of in
+        let all = Display.all |> List.map ~f:fst |> String.enumerate_or in
         sprintf
           "Control the display mode of Dune. See $(b,dune-config\\(5\\)) for \
-           more details. Valid values for this option are %s"
+           more details. Valid values for this option are %s."
           all
       in
       value
@@ -438,6 +439,7 @@ let shared_with_config_file =
   ; cache_storage_mode
   ; action_stdout_on_success
   ; action_stderr_on_success
+  ; experimental = None
   }
 
 module Cache_debug_flags = Dune_engine.Cache_debug_flags
@@ -514,7 +516,7 @@ module Builder = struct
     ; no_print_directory : bool
     ; store_orig_src_dir : bool
     ; default_target : Arg.Dep.t (* For build & runtest only *)
-    ; watch : Watch_mode_config.t
+    ; watch : Dune_rpc_impl.Watch_mode_config.t
     ; print_metrics : bool
     ; dump_memo_graph_file : string option
     ; dump_memo_graph_format : Graph.File_format.t
@@ -634,7 +636,7 @@ module Builder = struct
                      "Instead of terminating build after completion, wait \
                       continuously for file changes.")
            in
-           if watch then Some Watch_mode_config.Eager else None)
+           if watch then Some Dune_rpc_impl.Watch_mode_config.Eager else None)
           (let+ watch =
              Arg.(
                value & flag
@@ -643,11 +645,11 @@ module Builder = struct
                      "Similar to [--watch], but only start a build when \
                       instructed externally by an RPC.")
            in
-           if watch then Some Watch_mode_config.Passive else None)
+           if watch then Some Dune_rpc_impl.Watch_mode_config.Passive else None)
       in
       match res with
-      | None -> Watch_mode_config.No
-      | Some mode -> Watch_mode_config.Yes mode
+      | None -> Dune_rpc_impl.Watch_mode_config.No
+      | Some mode -> Yes mode
     and+ print_metrics =
       Arg.(
         value & flag
@@ -968,7 +970,7 @@ let print_entering_message c =
         flush stdout;
         Console.print [ Pp.verbatim (sprintf "Leaving directory '%s'" dir) ]))
 
-let init ?log_file c =
+let init ?action_runner ?log_file c =
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
   Path.Build.set_build_dir
@@ -1015,9 +1017,17 @@ let init ?log_file c =
     [ Pp.textf "Shared cache: %s"
         (Dune_config.Cache.Enabled.to_string config.cache_enabled)
     ];
-  Dune_rules.Main.init ~stats:c.stats
+  let action_runner =
+    match action_runner with
+    | None -> None
+    | Some f -> (
+      match rpc c with
+      | `Forbid_builds -> Code_error.raise "action runners require building" []
+      | `Allow server -> Some (Staged.unstage @@ f server))
+  in
+  Dune_rules.Main.init ?action_runner ~stats:c.stats
     ~sandboxing_preference:config.sandboxing_preference ~cache_config
-    ~cache_debug_flags:c.builder.cache_debug_flags;
+    ~cache_debug_flags:c.builder.cache_debug_flags ();
   Only_packages.Clflags.set c.builder.only_packages;
   Dune_util.Report_error.print_memo_stacks := c.builder.debug_dep_path;
   Clflags.report_errors_config := c.builder.report_errors_config;
@@ -1109,8 +1119,9 @@ let build (builder : Builder.t) ~default_root_is_cwd =
            | Yes Passive -> Some 1.0
            | _ -> None
          in
+         let action_runner = Dune_engine.Action_runner.Rpc_server.create () in
          Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir
-           stats))
+           ~watch_mode_config:builder.watch stats action_runner))
   in
   if builder.store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if builder.print_metrics then (

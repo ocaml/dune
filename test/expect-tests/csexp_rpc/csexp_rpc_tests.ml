@@ -49,7 +49,7 @@ let%expect_test "csexp server life cycle" =
   let run () =
     let server = server addr in
     let* sessions = Server.serve server in
-    let* client = client (Csexp_rpc.Server.listening_address server) in
+    let client = client (Csexp_rpc.Server.listening_address server) in
     Fiber.fork_and_join_unit
       (fun () ->
         let log fmt = Logger.log client_log fmt in

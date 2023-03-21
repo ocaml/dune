@@ -118,7 +118,7 @@ module Deps = struct
     | Ok (dirs, files) ->
       let open Memo.O in
       let dep_set = Dep.Set.of_files files in
-      let+ l = Memo.parallel_map dirs ~f:(fun dir -> Dep.Set.source_tree dir) in
+      let+ l = Memo.parallel_map dirs ~f:Source_deps.files in
       Ok (Dep.Set.union_all (dep_set :: l))
 end
 
@@ -215,7 +215,7 @@ let decode =
      and+ libraries =
        field "libraries" ~default:[]
          (Dune_lang.Syntax.since syntax (0, 2)
-         >>> Dune_file.Lib_deps.decode Executable)
+         >>> Lib_dep.L.decode ~allow_re_export:false)
      and+ locks =
        Locks.field ~check:(Dune_lang.Syntax.since syntax (0, 3)) ()
      in

@@ -28,8 +28,7 @@ custom version:
 
   $ dune build @install
 
-  $ dune install --prefix ./_install 2>&1 | grep -v Installing
-  [1]
+  $ dune install --prefix ./_install
 
   $ cat ./_install/lib/foobarlib/dune-package | \
   >   sed "s/(lang dune .*)/(lang dune <version>)/"

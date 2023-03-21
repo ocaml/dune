@@ -40,6 +40,7 @@ module Var : sig
     | Ignoring_promoted_rules
     | Input_file
     | Library_name
+    | Partition
     | Impl_files
     | Intf_files
     | Test

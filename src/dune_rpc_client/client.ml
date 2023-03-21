@@ -9,7 +9,7 @@ module Connection = struct
 
   let connect where =
     let sock = Where.to_socket where in
-    let* client = Csexp_rpc.Client.create sock in
+    let client = Csexp_rpc.Client.create sock in
     let+ res = Csexp_rpc.Client.connect client in
     match res with
     | Ok s -> Ok s

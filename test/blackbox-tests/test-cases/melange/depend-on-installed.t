@@ -21,7 +21,7 @@ Test dependency on installed package
   Entering directory 'a'
   Leaving directory 'a'
 
-  $ dune install --root a --prefix $PWD/prefix
+  $ dune install --root a --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/a/META
   Installing $TESTCASE_ROOT/prefix/lib/a/a.ml
   Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
@@ -63,7 +63,7 @@ Test dependency on installed package
           melc .b.objs/melange/b__Foo.{cmi,cmj,cmt}
   Leaving directory 'b'
 
-  $ dune install --root b --prefix $PWD/prefix
+  $ dune install --root b --prefix $PWD/prefix --display=short
   Installing $TESTCASE_ROOT/prefix/lib/b/META
   Installing $TESTCASE_ROOT/prefix/lib/b/b.ml
   Installing $TESTCASE_ROOT/prefix/lib/b/bar.ml
@@ -88,7 +88,6 @@ Test dependency on installed package
   $ cat > app/dune <<EOF
   > (melange.emit
   >  (target dist)
-  >  (module_system commonjs)
   >  (alias melange-dist)
   >  (libraries b))
   > EOF

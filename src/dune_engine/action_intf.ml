@@ -41,6 +41,7 @@ module type Ast = sig
     | Redirect_in of Inputs.t * path * t
     | Ignore of Outputs.t * t
     | Progn of t list
+    | Concurrent of t list
     | Echo of string list
     | Cat of path list
     | Copy of path * target
@@ -90,6 +91,8 @@ module type Helpers = sig
   val ignore_outputs : t -> t
 
   val progn : t list -> t
+
+  val concurrent : t list -> t
 
   val echo : string list -> t
 

@@ -1,6 +1,34 @@
 Unreleased
 ----------
 
+- RPC: Ignore SIGPIPE when clients suddenly disconnect (#7299, #7319, fixes
+  #6879, @rgrinberg)
+
+- Always clean up the UI on exit. (#7271, fixes #7142 @rgrinberg)
+
+- Bootstrap: remove reliance on shell. Previously, we'd use the shell to get
+  the number of processors. (#7274, @rgrinberg)
+
+- Bootstrap: correctly detect the number of processors by allowing `nproc` to be
+  looked up in `$PATH` (#7272, @Alizter)
+
+- Pass correct flags when compiling `stdlib.ml`. (#7241, @emillon)
+
+- Speed up file copying on macos by using `clonefile` when available
+  (@rgrinberg, #7210)
+
+- Adds support for loading plugins in toplevels (#6082, fixes #6081, 
+  @ivg, @richardlford)
+
+- Support commands that output 8-bit and 24-bit colors in the terminal (#7188,
+  @Alizter)
+
+- Speed up rule generation for libraries and executables with many modules
+  (#7187, @jchavarri)
+
+- Do not re-render UI on every frame if the UI doesn't change (#7186, fix
+  #7184, @rgrinberg)
+
 - Fix preludes not being recorded as dependencies in the `(mdx)` stanza (#7109,
   fixes #7077, @emillon).
 
@@ -15,6 +43,9 @@ Unreleased
 - Accept the Ordered Set Language for the `modes` field in `library` stanzas
   (#6611, @anmonteiro).
 
+- dune install now respects --display quiet mode (#7116, fixes #4573, fixes
+  #7106, @Alizter)
+
 - Stub shared libraries (dllXXX_stubs.so) in Dune-installed libraries could not
   be used as dependencies of libraries in the workspace (eg when compiling to
   bytecode and/or Javascript).  This is now fixed. (#7151, @nojb)
@@ -24,6 +55,17 @@ Unreleased
 
 - Bytecode executables built for JSOO are linked with `-noautolink` and no
   longer depend on the shared stubs of their dependent libraries (#7156, @nojb)
+
+- Added a new user action `(concurrent )` which is like `(progn )` but runs the
+  actions concurrently. (#6933, @Alizter)
+
+- Allow `(stdlib ...)` to be used with `(wrapped false)` in library stanzas
+  (#7139, @anmonteiro).
+
+- Allow parallel execution of inline tests partitions (#7012, @hhugo)
+
+- Fix segfault on MacOS when dune was being shutdown while in watch mode.
+  (#7312, fixes #6151, @gridbugs, @emillon)
 
 3.7.0 (2023-02-17)
 ------------------

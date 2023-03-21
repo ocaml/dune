@@ -183,13 +183,14 @@ Variables for Artifacts
 -----------------------
 
 For specific situations where one needs to refer to individual compilation
-artifacts, special variables (see :ref:`variables`) are provided, so the
-user doesn't need to be aware of the particular naming conventions or directory
-layout implemented by Dune.
+artifacts, special variables (see :doc:`concepts/variables`) are provided, so
+the user doesn't need to be aware of the particular naming conventions or
+directory layout implemented by Dune.
 
-These variables can appear wherever a :ref:`deps-field` is expected and also
-inside :ref:`user-actions`. When used inside :ref:`user-actions`, they
-implicitly declare a dependency on the corresponding artifact.
+These variables can appear wherever a :doc:`concepts/dependency-spec` is
+expected and also inside :doc:`concepts/actions`. When used inside
+:doc:`concepts/actions`, they implicitly declare a dependency on the
+corresponding artifact.
 
 The variables have the form ``%{<ext>:<path>}``, where ``<path>`` is
 interpreted relative to the current directory:

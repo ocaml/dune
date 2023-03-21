@@ -10,8 +10,7 @@ Test error message for modules belonging to melange.emit and another stanza
   >  (name lib)
   >  (modes melange))
   > (melange.emit
-  >  (target output)
-  >  (module_system commonjs))
+  >  (target output))
   > EOF
 
   $ cat > main.ml <<EOF

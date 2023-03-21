@@ -1,0 +1,21 @@
+#!/bin/sh
+
+mkdir -p $1/inner
+
+cat > $1/inner/dune << EOF
+(library
+ (public_name inner))
+EOF
+
+cat > $1/inner/inner.ml << EOF
+(* Warning 69 is "unused-field" *)
+[@@@ocaml.warning "+69"]
+
+(* This type is visible but opaque in the interface, so the field [x] is never
+   used. *)
+type t = { x : int }
+EOF
+
+cat > $1/inner/inner.mli << EOF
+type t
+EOF

@@ -29,7 +29,8 @@
   csexp_rpc
   dune_rpc_private
   dune_rpc_server
-  thread_worker
+  dune_rpc_client
+  dune_thread_pool
   spawn
   ocamlc_loc
   dune_file_watcher

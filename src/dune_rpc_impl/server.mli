@@ -6,7 +6,9 @@ val create :
      lock_timeout:float option
   -> registry:[ `Add | `Skip ]
   -> root:string
+  -> watch_mode_config:Watch_mode_config.t
   -> Dune_stats.t option
+  -> Dune_engine.Action_runner.Rpc_server.t
   -> t
 
 val listening_address : t -> Dune_rpc.Where.t
@@ -25,3 +27,5 @@ val stop : t -> unit Fiber.t
 val ready : t -> unit Fiber.t
 
 val run : t -> unit Fiber.t
+
+val action_runner : t -> Dune_engine.Action_runner.Rpc_server.t

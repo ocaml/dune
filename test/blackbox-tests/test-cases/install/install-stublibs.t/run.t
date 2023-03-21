@@ -18,7 +18,7 @@ Begin by installing a library with C stubs.
   > }
   > EOF
   $ dune build
-  $ dune install --prefix ./install
+  $ dune install --prefix ./install --display short
   Installing install/lib/libA/META
   Installing install/lib/libA/dune-package
   Installing install/lib/libA/libA.a

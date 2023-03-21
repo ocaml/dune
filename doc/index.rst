@@ -65,6 +65,7 @@ Welcome to Dune's Documentation!
    advanced/classical-ppx
    advanced/profiling-dune
    advanced/package-version
+   advanced/ocaml-syntax
 
 .. toctree::
    :caption: Miscellaneous

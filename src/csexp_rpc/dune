@@ -7,6 +7,7 @@
   dune_util
   csexp
   fiber
+  threads.posix
   (re_export unix))
  (foreign_stubs
   (language c)

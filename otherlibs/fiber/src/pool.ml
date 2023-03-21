@@ -46,7 +46,7 @@ let task t ~f k =
       t.runner <- Running;
       resume r () k)
 
-let stop t k =
+let close t k =
   match t.status with
   | Closed -> k ()
   | Open -> (

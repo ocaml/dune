@@ -383,8 +383,8 @@ adding the following field to the ``dune-project`` file:
 
 In this mode, Dune will populate the ``:standard`` set of C flags with the
 content of ``ocamlc_cflags`` and  ``ocamlc_cppflags``. These flags can be
-completed or overridden using the :ref:`ordered-set-language`. The value
-``true`` is the default for Dune 3.0.
+completed or overridden using the :doc:`concepts/ordered-set-language`. The
+value ``true`` is the default for Dune 3.0.
 
 .. _using:
 
@@ -614,8 +614,9 @@ the description of an opam switch, as follows:
   this way, its value will be used to resolve workspace binaries, including
   finding the compiler and related tools. These variables will also be passed as
   part of the environment to any program launched by Dune. For each variable,
-  the value is specified using the :ref:`ordered-set-language`. Relative paths
-  are interpreted with respect to the workspace root. See :ref:`finding-root`.
+  the value is specified using the :doc:`concepts/ordered-set-language`.
+  Relative paths are interpreted with respect to the workspace root. See
+  :ref:`finding-root`.
 
 - ``(fdo <target_exe>)`` builds this context with feedback-direct optimizations.
   It requires `OCamlFDO <https://github.com/gretay-js/ocamlfdo>`__.

@@ -96,13 +96,14 @@ type t =
   ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t
   ; execution_parameters : dir:Path.Source.t -> Execution_parameters.t Memo.t
   ; source_tree : (module Source_tree)
+  ; action_runner : Action_exec.input -> Action_runner.t option
   }
 
 let t = Fdecl.create Dyn.opaque
 
-let set ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
-    ~sandboxing_preference ~rule_generator ~implicit_default_alias
-    ~execution_parameters ~source_tree =
+let set ~action_runner ~stats ~contexts ~promote_source ~cache_config
+    ~cache_debug_flags ~sandboxing_preference ~rule_generator
+    ~implicit_default_alias ~execution_parameters ~source_tree =
   let contexts =
     Memo.lazy_ ~name:"Build_config.set" (fun () ->
         let open Memo.O in
@@ -127,6 +128,7 @@ let set ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
     ; implicit_default_alias
     ; execution_parameters
     ; source_tree
+    ; action_runner
     }
 
 let get () = Fdecl.get t

@@ -1,3 +1,6 @@
+open Dune_config_file
+open Stdune
+
 type t
 
 val capture_outputs : t -> bool
@@ -26,7 +29,7 @@ val dump_memo_graph_format : t -> Dune_graph.Graph.File_format.t
 
 val dump_memo_graph_with_timing : t -> bool
 
-val watch : t -> Watch_mode_config.t
+val watch : t -> Dune_rpc_impl.Watch_mode_config.t
 
 val file_watcher : t -> Dune_engine.Scheduler.Run.file_watcher
 
@@ -42,7 +45,14 @@ val insignificant_changes : t -> [ `React | `Ignore ]
 
     Return the final configuration, which is the same as the one returned in the
     [config] field of [Dune_rules.Workspace.workspace ()]) *)
-val init : ?log_file:Dune_util.Log.File.t -> t -> Dune_config.t
+val init :
+     ?action_runner:
+       (   Dune_rpc_impl.Server.t
+        -> (Dune_engine.Action_exec.input -> Dune_engine.Action_runner.t option)
+           Staged.t)
+  -> ?log_file:Dune_util.Log.File.t
+  -> t
+  -> Dune_config.t
 
 (** [examples \[("description", "dune cmd foo"); ...\]] is an [EXAMPLES] manpage
     section of enumerated examples illustrating how to run the documented

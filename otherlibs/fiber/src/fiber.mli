@@ -379,15 +379,15 @@ module Pool : sig
       [Code_error]. *)
   val task : t -> f:(unit -> unit fiber) -> unit fiber
 
-  (** [stop pool] stops the pool from receiving new tasks. After this function
+  (** [close pool] stops the pool from receiving new tasks. After this function
       is called, [task pool ~f] will fail to submit new tasks.
 
       Note that stopping the pool does not prevent already queued tasks from
       running.
 
-      [stop pool] subsequent calls to [stop] ignored. In other words, this
+      [close pool] subsequent calls to [close] ignored. In other words, this
       function is idempotent *)
-  val stop : t -> unit fiber
+  val close : t -> unit fiber
 
   (** [run pool] Runs all tasks submitted to [pool] in parallel. Errors raised
       by such tasks must be caught here.*)

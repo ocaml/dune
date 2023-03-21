@@ -1,5 +1,6 @@
 open Import
 open Fiber.O
+open Dune_thread_pool
 
 module Config = struct
   include Config
@@ -796,6 +797,7 @@ type t =
   ; fs_syncs : unit Fiber.Ivar.t Dune_file_watcher.Sync_id.Table.t
   ; wait_for_build_input_change : unit Fiber.Ivar.t option ref
   ; cancel : Fiber.Cancel.t
+  ; thread_pool : Thread_pool.t
   }
 
 let t : t Fiber.Var.t = Fiber.Var.create ()
@@ -920,6 +922,8 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
              be an [option]. We use a dummy cancellation rather than an option
              to keep the code simpler. *)
           Fiber.Cancel.create ()
+      ; thread_pool =
+          Thread_pool.create ~spawn_thread ~min_workers:4 ~max_workers:50
       } )
 
 module Run_once : sig
@@ -1048,47 +1052,27 @@ end = struct
     | Ok -> res
 end
 
-module Worker = struct
-  type t =
-    { worker : Thread_worker.t
-    ; events : Event.Queue.t
-    }
+let async f =
+  let* t = t () in
+  let ivar = Fiber.Ivar.create () in
+  let f () =
+    let res = Exn_with_backtrace.try_with f in
+    Event.Queue.send_worker_task_completed t.events (Fiber.Fill (ivar, res))
+  in
+  Thread_pool.task t.thread_pool ~f;
+  Event.Queue.register_worker_task_started t.events;
+  Fiber.Ivar.read ivar
 
-  let stop t = Thread_worker.stop t.worker
+let () =
+  Fdecl.set Csexp_rpc.scheduler
+    (module struct
+      let async f = async f
+    end)
 
-  let create () =
-    let+ scheduler = t () in
-    let worker =
-      let signal_watcher = scheduler.config.signal_watcher in
-      Thread_worker.create ~spawn_thread:(Thread.spawn ~signal_watcher)
-    in
-    { worker; events = scheduler.events }
-
-  let task (t : t) ~f =
-    let ivar = Fiber.Ivar.create () in
-    let f () =
-      let res = Exn_with_backtrace.try_with f in
-      Event.Queue.send_worker_task_completed t.events (Fiber.Fill (ivar, res))
-    in
-    match Thread_worker.add_work t.worker ~f with
-    | Error `Stopped -> Fiber.return (Error `Stopped)
-    | Ok () -> (
-      Event.Queue.register_worker_task_started t.events;
-      let+ res = Fiber.Ivar.read ivar in
-      match res with
-      | Error exn -> Error (`Exn exn)
-      | Ok e -> Ok e)
-
-  let task_exn t ~f =
-    let+ res = task t ~f in
-    match res with
-    | Ok a -> a
-    | Error `Stopped ->
-      Code_error.raise "Scheduler.Worker.task_exn: worker stopped" []
-    | Error (`Exn e) -> Exn_with_backtrace.reraise e
-end
-
-let () = Fdecl.set Csexp_rpc.worker (module Worker)
+let async_exn f =
+  async f >>| function
+  | Error exn -> Exn_with_backtrace.reraise exn
+  | Ok e -> e
 
 let flush_file_watcher t =
   match t.file_watcher with

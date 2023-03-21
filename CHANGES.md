@@ -1,8 +1,8 @@
 Unreleased
 ----------
 
-- RPC: Ignore SIGPIPE when clients suddenly disconnect on OSX (#7299, partially
-  fixes #6879, @rgrinberg)
+- RPC: Ignore SIGPIPE when clients suddenly disconnect (#7299, #7319, fixes
+  #6879, @rgrinberg)
 
 - Always clean up the UI on exit. (#7271, fixes #7142 @rgrinberg)
 
@@ -61,6 +61,11 @@ Unreleased
 
 - Allow `(stdlib ...)` to be used with `(wrapped false)` in library stanzas
   (#7139, @anmonteiro).
+
+- Allow parallel execution of inline tests partitions (#7012, @hhugo)
+
+- Fix segfault on MacOS when dune was being shutdown while in watch mode.
+  (#7312, fixes #6151, @gridbugs, @emillon)
 
 3.7.0 (2023-02-17)
 ------------------

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679358891518,
+  "lastUpdate": 1679359788519,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16185,6 +16185,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "34.551392822593336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "javier.chavarri@gmail.com",
+            "name": "Javier Chávarri",
+            "username": "jchavarri"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "d920ff4e9bb0cab87b50ba968383ecc6a50e6c95",
+          "message": "test(rpc): add test with server in eager mode\n\nSigned-off-by: Javier Chávarri <javier.chavarri@gmail.com>",
+          "timestamp": "2023-03-20T17:36:34-07:00",
+          "tree_id": "d8228291c6dbbf85af549247bff950e8343f7fd7",
+          "url": "https://github.com/ocaml/dune/commit/d920ff4e9bb0cab87b50ba968383ecc6a50e6c95"
+        },
+        "date": 1679359787452,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "31.061128806013333",
             "unit": "seconds"
           }
         ]

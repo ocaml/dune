@@ -51,10 +51,22 @@ Welcome to Dune's Documentation!
    jsoo
    lexical-conventions
    opam
-   advanced-topics
    toplevel-integration
    variants
    tests
+
+.. toctree::
+   :caption: Advanced topics
+
+   advanced/meta-file-generation
+   advanced/findlib-integration
+   advanced/findlib-dynamic
+   advanced/classical-ppx
+   advanced/profiling-dune
+   advanced/package-version
+   advanced/ocaml-syntax
+   advanced/variables-artifacts
+   advanced/custom-cmxs
 
 .. toctree::
    :caption: Miscellaneous

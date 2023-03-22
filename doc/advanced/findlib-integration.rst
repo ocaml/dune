@@ -25,8 +25,6 @@ set of predicates:
   it's linked as part of a driver or meant to add a ``-ppx`` argument
   to the compiler, choose the former behavior.
 
-Note that Dune does not read *installed* ``META`` files for libraries
-distributed with the compiler (as these files are not installed by the compiler
-itself, but installed by `ocamlfind` and aren't always 
-accurate). Instead, Dune uses its own internal database for this information.
-
+Libraries installed by the compiler are a special case: when the OCaml compiler
+is older than version 5.0, it does not include ``META`` files. In that
+situation, Dune uses its own internal database.

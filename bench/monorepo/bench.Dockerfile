@@ -167,7 +167,10 @@ RUN . ~/.profile && dune build bin/main.exe --release
 
 # Copy the remaininder of the files needed for the monorepo benchmark
 WORKDIR $HOME/monorepo-bench
-ADD --chown=user:users bench/monorepo .
+COPY --chown=user:users bench/monorepo/bench.ml .
+COPY --chown=user:users bench/monorepo/Makefile .
+COPY --chown=user:users bench/monorepo/dune .
+COPY --chown=user:users bench/monorepo/dune-project .
 
 # Apply some custom packages to some packages
 RUN bash -c 'for f in patches/*; do p=$(basename ${f%.diff}); patch -p1 -d duniverse/$p < $f; done'

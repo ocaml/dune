@@ -64,6 +64,9 @@ Unreleased
 
 - Allow parallel execution of inline tests partitions (#7012, @hhugo)
 
+- Fix segfault on MacOS when dune was being shutdown while in watch mode.
+  (#7312, fixes #6151, @gridbugs, @emillon)
+
 3.7.0 (2023-02-17)
 ------------------
 

@@ -300,10 +300,10 @@ let display_term =
      Option.some_if verbose Dune_config.Display.verbose)
     Arg.(
       let doc =
-        let all = Display.all |> List.map ~f:fst |> String.enumerate_one_of in
+        let all = Display.all |> List.map ~f:fst |> String.enumerate_or in
         sprintf
           "Control the display mode of Dune. See $(b,dune-config\\(5\\)) for \
-           more details. Valid values for this option are %s"
+           more details. Valid values for this option are %s."
           all
       in
       value

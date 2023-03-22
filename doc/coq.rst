@@ -660,6 +660,11 @@ actually passed to the toplevel. These options are computed based on the options
 that would be passed to the Coq compiler if it was invoked on the Coq file
 ``<file>``.
 
+In certain situations, it is desirable to not rebuild dependencies for a ``.v``
+files but still pass the correct flags to the toplevel. For this reason, a
+``--no-build`` flag can be passed to ``dune coq top`` which will skip any
+building of dependencies.
+
 Limitations
 ~~~~~~~~~~~
 

@@ -29,6 +29,10 @@ let term =
     Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"COQFILE"))
   and+ extra_args =
     Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
+  and+ no_rebuild =
+    Arg.(
+      value & flag
+      & info [ "no-build" ] ~doc:"Don't rebuild dependencies before executing.")
   in
   let config = Common.init common in
   let coq_file_arg =
@@ -103,24 +107,26 @@ let term =
               , "DuneExtraction"
               , extr.buildable.mode )
           in
+          (* Run coqdep *)
           let* (_ : unit * Dep.Fact.t Dep.Map.t) =
             let deps_of =
-              let mode =
-                match mode with
-                | None -> Dune_rules.Coq_mode.VoOnly
-                | Some mode -> mode
-              in
-              Dune_rules.Coq_rules.deps_of ~dir ~use_stdlib ~wrapper_name ~mode
-                ~coq_lang_version coq_module
+              if no_rebuild then Action_builder.return ()
+              else
+                let mode =
+                  match mode with
+                  | None -> Dune_rules.Coq_mode.VoOnly
+                  | Some mode -> mode
+                in
+                Dune_rules.Coq_rules.deps_of ~dir ~use_stdlib ~wrapper_name
+                  ~mode ~coq_lang_version coq_module
             in
             Action_builder.(run deps_of) Eager
           in
+          (* Get args *)
           let* (args, _) : string list * Dep.Fact.t Dep.Map.t =
-            let* args =
-              let dir = Path.external_ Path.External.initial_cwd in
-              let+ args = args in
-              Dune_rules.Command.expand ~dir (S args)
-            in
+            let* args = args in
+            let dir = Path.external_ Path.External.initial_cwd in
+            let args = Dune_rules.Command.expand ~dir (S args) in
             Action_builder.run args.build Eager
           in
           let* prog =

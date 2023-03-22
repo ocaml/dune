@@ -23,6 +23,9 @@ Unreleased
   longer supported (due to being buggy) (#7357, fixes #7344, @rlepigre and
   @Alizter)
 
+- Added a `--no-build` option to `dune coq top` for avoiding rebuilds (#7380,
+  fixes #7355, @Alizter)
+
 - RPC: Ignore SIGPIPE when clients suddenly disconnect (#7299, #7319, fixes
   #6879, @rgrinberg)
 

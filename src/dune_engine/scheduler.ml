@@ -1,6 +1,7 @@
 open Import
 open Fiber.O
 open Dune_thread_pool
+open Dune_async_io
 
 module Config = struct
   type t =
@@ -137,7 +138,11 @@ module Event : sig
 
     val send_worker_task_completed : t -> Fiber.fill -> unit
 
+    val send_worker_tasks_completed : t -> Fiber.fill list -> unit
+
     val register_worker_task_started : t -> unit
+
+    val cancel_work_task_started : t -> unit
 
     val send_file_watcher_task :
       t -> (unit -> Dune_file_watcher.Event.t list) -> unit
@@ -225,6 +230,9 @@ end = struct
 
     let register_worker_task_started q =
       q.pending_worker_tasks <- q.pending_worker_tasks + 1
+
+    let cancel_work_task_started q =
+      q.pending_worker_tasks <- q.pending_worker_tasks - 1
 
     let add_event q f =
       Mutex.lock q.mutex;
@@ -383,6 +391,10 @@ end = struct
 
     let send_worker_task_completed q event =
       add_event q (fun q -> Queue.push q.worker_tasks_completed event)
+
+    let send_worker_tasks_completed q events =
+      add_event q (fun q ->
+          List.iter events ~f:(Queue.push q.worker_tasks_completed))
 
     let send_invalidation_events q events =
       add_event q (fun q ->
@@ -1035,6 +1047,20 @@ end = struct
   let run t f : _ result =
     let fiber =
       set t (fun () ->
+          let module Scheduler = struct
+            let spawn_thread = spawn_thread
+
+            let register_job_started () =
+              Event.Queue.register_worker_task_started t.events
+
+            let fill_jobs jobs =
+              Event.Queue.send_worker_tasks_completed t.events jobs
+
+            let cancel_job_started () =
+              Event.Queue.cancel_work_task_started t.events
+          end in
+          Async_io.with_io (module (Scheduler : Async_io.Scheduler))
+          @@ fun () ->
           Fiber.map_reduce_errors
             (module Monoid.Unit)
             f
@@ -1069,12 +1095,6 @@ let async f =
   Thread_pool.task t.thread_pool ~f;
   Event.Queue.register_worker_task_started t.events;
   Fiber.Ivar.read ivar
-
-let () =
-  Fdecl.set Csexp_rpc.scheduler
-    (module struct
-      let async f = async f
-    end)
 
 let async_exn f =
   async f >>| function

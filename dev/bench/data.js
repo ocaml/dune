@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679497449312,
+  "lastUpdate": 1679497945127,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -10584,6 +10584,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.38873817037333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7cd8b42c62ae489363e9ceb34df664d669478b88",
+          "message": "doc: dune reads META files from the compiler (#7377)\n\nThis is the case since #5916 (3.4.0).\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-03-22T15:49:38+01:00",
+          "tree_id": "9e979407c6535d6c9a7edca2636b63fbbb6192eb",
+          "url": "https://github.com/ocaml/dune/commit/7cd8b42c62ae489363e9ceb34df664d669478b88"
+        },
+        "date": 1679497944177,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.99922821557333",
             "unit": "seconds"
           }
         ]

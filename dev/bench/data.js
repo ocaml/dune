@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679525398176,
+  "lastUpdate": 1679525755292,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16966,6 +16966,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.809884888106667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "ddf85a80ec713b15615b0a247b60069a07f00c2c",
+          "message": "doc: fix jobs field in config\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-03-22T23:21:40+01:00",
+          "tree_id": "05c8f8b0624c085cc45af2f6ef56f89b3050f842",
+          "url": "https://github.com/ocaml/dune/commit/ddf85a80ec713b15615b0a247b60069a07f00c2c"
+        },
+        "date": 1679525754608,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "70.39836567432666",
             "unit": "seconds"
           }
         ]

@@ -18,27 +18,19 @@ val make :
   -> lib_name:Lib_name.Local.t option
   -> Pp_spec.t
 
-(** Get a path to a cached ppx driver with some extra flags for cookies. *)
-val get_ppx_driver :
-     Super_context.t
-  -> loc:Loc.t
-  -> expander:Expander.t
-  -> scope:Scope.t
-  -> lib_name:Lib_name.Local.t option
-  -> flags:String_with_vars.t list
-  -> (Loc.t * Lib_name.t) list
-  -> (Path.Build.t * string list) Action_builder.t
-
 val gen_rules : Super_context.t -> string list -> unit Memo.t
 
 val action_for_pp_with_target :
-     sandbox:Sandbox_config.t
+     dir:Path.Build.t
+  -> sandbox:Sandbox_config.t
   -> loc:Loc.t
   -> expander:Expander.t
   -> action:Action_unexpanded.t
   -> src:Path.Build.t
   -> target:Path.Build.t
-  -> Action.Full.t Action_builder.With_targets.t
+  -> lib_name:Lib_name.Local.t option
+  -> ml_kind:Ml_kind.t
+  -> Action.Full.t Action_builder.With_targets.t Memo.t
 
 val ppx_exe :
   Context.t -> scope:Scope.t -> Lib_name.t -> Path.Build.t Resolve.Memo.t

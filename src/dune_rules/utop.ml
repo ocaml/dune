@@ -143,7 +143,7 @@ let setup sctx ~dir =
   in
   let preprocessing =
     let preprocess = Module_name.Per_item.for_all pps in
-    Preprocessing.make sctx ~dir ~expander ~lib_name:None
+    Pp_spec_rules.make sctx ~dir ~expander ~lib_name:None
       ~lint:Dune_file.Lint.no_lint ~preprocess ~preprocessor_deps:[]
       ~instrumentation_deps:[]
   in

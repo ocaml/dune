@@ -1,5 +1,7 @@
 Unreleased
 ----------
+- Allow preprocessing actions to be run before ppx (#7373, fixes #171,
+  @anmonteiro)
 
 - When a rule's action is interrupted, delete any leftover directory targets.
   This is consistent with how we treat file targets. (@rgrinberg, 7564)

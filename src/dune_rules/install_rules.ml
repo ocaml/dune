@@ -53,7 +53,7 @@ end = struct
     | Ppx_rewriter _ ->
       let name = Dune_file.Library.best_name lib in
       let+ ppx_exe =
-        Resolve.Memo.read_memo (Preprocessing.ppx_exe sctx ~scope name)
+        Resolve.Memo.read_memo (Pp_spec_rules.ppx_exe sctx ~scope name)
       in
       [ ppx_exe ]
 

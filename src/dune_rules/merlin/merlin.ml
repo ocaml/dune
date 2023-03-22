@@ -376,7 +376,7 @@ module Unprocessed = struct
       |> List.map ~f:quote_if_needed
       |> String.concat ~sep:" "
 
-  let pp_flag_of_action ~expander ~loc ~action :
+  let pp_flag_of_action ~expander ~loc ~action ~lib_name :
       Processed.pp_flag option Action_builder.t =
     match (action : Dune_lang.Action.t) with
     | Run (exe, args) -> (
@@ -393,6 +393,8 @@ module Unprocessed = struct
           let chdir = (Expander.context expander).build_dir in
           Action_unexpanded.expand_no_targets ~loc ~expander ~deps:[] ~chdir
             ~what:"preprocessing actions" action
+            ~lib_name (* TODO: Need ml_kind for merlin support  *)
+            ~ml_kind:None
         in
         let pp_of_action exe args =
           match exe with
@@ -416,13 +418,13 @@ module Unprocessed = struct
         (Super_context.context sctx).version
     with
     | Action (loc, (action : Dune_lang.Action.t)) ->
-      pp_flag_of_action ~expander ~loc ~action
+      pp_flag_of_action ~expander ~loc ~action ~lib_name
     | No_preprocessing -> Action_builder.return None
     | Pps { loc; pps; flags; staged = _ } ->
       let open Action_builder.O in
       let+ exe, flags =
         let scope = Expander.scope expander in
-        Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name ~flags ~scope
+        Ppx_driver.get_ppx_driver sctx ~loc ~expander ~lib_name ~flags ~scope
           pps
       in
       let args =

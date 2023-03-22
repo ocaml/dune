@@ -98,7 +98,7 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
             in
             let pp_spec =
               Staged.unstage
-                (Preprocessing.pped_modules_map preprocess
+                (Pp_spec_rules.pped_modules_map preprocess
                    (Super_context.context sctx).version)
             in
             Dir_contents.ocaml dir_contents

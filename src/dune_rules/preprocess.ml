@@ -2,37 +2,15 @@ open Import
 open Dune_lang.Decoder
 
 module Pps_and_flags = struct
+  module Pps_and_flags = Dune_lang.Action.Pps_and_flags
+
   let decode =
-    let+ loc = loc
-    and+ l, flags =
-      until_keyword "--" ~before:String_with_vars.decode
-        ~after:(repeat String_with_vars.decode)
-    and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-    let pps, more_flags =
-      List.partition_map l ~f:(fun s ->
-          match String_with_vars.is_prefix ~prefix:"-" s with
-          | Yes -> Right s
-          | No | Unknown _ -> (
-            let loc = String_with_vars.loc s in
-            match String_with_vars.text_only s with
-            | None ->
-              User_error.raise ~loc
-                [ Pp.text "No variables allowed in ppx library names" ]
-            | Some txt -> Left (loc, Lib_name.parse_string_exn (loc, txt))))
+    let+ { pps; flags; loc = _ } = Pps_and_flags.decode in
+    let pps =
+      List.map pps ~f:(fun (loc, lib) ->
+          (loc, Lib_name.parse_string_exn (loc, lib)))
     in
-    let all_flags = more_flags @ Option.value flags ~default:[] in
-    if syntax_version < (1, 10) then
-      List.iter
-        ~f:(fun flag ->
-          if String_with_vars.has_pforms flag then
-            Dune_lang.Syntax.Error.since
-              (String_with_vars.loc flag)
-              Stanza.syntax (1, 10) ~what:"Using variables in pps flags")
-        all_flags;
-    if pps = [] then
-      User_error.raise ~loc
-        [ Pp.text "You must specify at least one ppx rewriter." ];
-    (pps, all_flags)
+    (pps, flags)
 end
 
 module Pps = struct

@@ -99,7 +99,8 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     let* (action : _ Action_builder.With_targets.t) =
       let chdir = Expander.dir expander in
       Action_unexpanded.expand (snd rule.action) ~loc:(fst rule.action) ~chdir
-        ~expander ~deps:rule.deps ~targets ~targets_dir:dir
+        ~expander ~deps:rule.deps ~targets ~targets_dir:dir ~lib_name:None
+        ~ml_kind:None
     in
     let action =
       if rule.patch_back_source_tree then
@@ -249,7 +250,8 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
         in
         let chdir = Expander.dir expander in
         Action_unexpanded.expand_no_targets action ~loc:action_loc ~expander
-          ~chdir ~deps:alias_conf.deps ~what:"aliases"
+          ~chdir ~deps:alias_conf.deps ~what:"aliases" ~lib_name:None
+          ~ml_kind:None
       in
       let* action = interpret_and_add_locks ~expander alias_conf.locks action in
       Alias_rules.add sctx ~loc action ~alias)

@@ -129,11 +129,14 @@ include Sub_system.Register_end_point (struct
          let action =
            let open Action_builder.With_targets.O in
            let+ actions =
+             let lib_name = Some lib_name in
+             let ml_kind = Some Ml_kind.Impl in
              List.filter_map backends ~f:(fun (backend : Backend.t) ->
                  Option.map backend.info.generate_runner
                    ~f:(fun (loc, action) ->
                      Action_unexpanded.expand_no_targets action ~loc ~expander
-                       ~chdir:dir ~deps:[] ~what:"inline test generators"))
+                       ~chdir:dir ~deps:[] ~what:"inline test generators"
+                       ~lib_name ~ml_kind))
              |> Action_builder.all |> Action_builder.with_no_targets
            in
            Action.Full.reduce actions

@@ -117,7 +117,7 @@ let gen_rules sctx t ~dir ~scope =
          ])
   and* expander = Super_context.expander sctx ~dir in
   let preprocess =
-    Preprocessing.make sctx ~dir ~expander
+    Pp_spec_rules.make sctx ~dir ~expander
       ~lint:(Preprocess.Per_module.no_preprocessing ())
       ~preprocess:t.preprocess ~preprocessor_deps:t.preprocessor_deps
       ~instrumentation_deps:[] ~lib_name:None

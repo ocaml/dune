@@ -140,6 +140,7 @@ end
 module Ml_kind = struct
   let flag t = Ml_kind.choose ~impl:(Args.A "-impl") ~intf:(A "-intf") t
 
-  let ppx_driver_flag t =
-    Ml_kind.choose ~impl:(Args.A "--impl") ~intf:(A "--intf") t
+  let ppx_driver_flag_raw t = Ml_kind.choose ~impl:"--impl" ~intf:"--intf" t
+
+  let ppx_driver_flag t = Args.A (ppx_driver_flag_raw t)
 end

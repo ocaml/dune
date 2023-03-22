@@ -82,6 +82,19 @@ module Action_expander : sig
 
     val prog_and_args : String_with_vars.t -> (Action.Prog.t * string list) t
 
+    val ppx :
+         dir:Path.Build.t
+      -> context:Context.t
+      -> expander:Expander.t
+      -> scope:Scope.t
+      -> loc:Loc.t
+      -> lib_name:Lib_name.Local.t option
+      -> ml_kind:Ml_kind.t
+      -> src:String_with_vars.t
+      -> (Loc.t * string) list
+      -> String_with_vars.t list
+      -> (Action.Prog.t * string list) t
+
     module At_rule_eval_stage : sig
       (* Expansion that happens at the time the rule is constructed rather than
          at the time the rule is being executed. As a result, the result can be
@@ -368,15 +381,70 @@ end = struct
       register_dep b env acc ~f:(function
         | Ok p, _ -> Some p
         | Error _, _ -> None)
+
+    let ppx ~dir ~context ~expander ~scope ~loc ~lib_name ~ml_kind ~src pps
+        flags env acc =
+      let open Memo.O in
+      let* src, acc = dep src env acc in
+      let b =
+        let open Action_builder.O in
+        let corrected_suffix = ".ppx-corrected" in
+        let+ exe, ppx_flags, args =
+          Action_builder.memoize
+            ~cutoff:
+              (Tuple.T3.equal Path.Build.equal (List.equal String.equal)
+                 (List.equal String.equal))
+            "ppx driver and flags"
+            (let* () = Action_builder.return () in
+             let* exe, driver, flags =
+               let pps =
+                 List.map pps ~f:(fun (loc, lib) ->
+                     (loc, Lib_name.parse_string_exn (loc, lib)))
+               in
+               Ppx_driver.ppx_exe_driver_and_flags ~context ~expander ~loc
+                 ~lib_name ~flags ~scope pps
+             in
+             let+ ppx_flags =
+               let info = Ppx_driver.Driver.info driver in
+               Ppx_driver.driver_flags expander ~corrected_suffix
+                 ~driver_flags:info.flags
+                 ~standard:(Action_builder.return [ "--as-ppx" ])
+             in
+             (exe, ppx_flags, flags))
+        and+ src =
+          src >>| function
+          | External p -> Path.External.to_string p
+          | In_source_tree _ -> assert false
+          | In_build_dir b -> Path.reach (Path.build b) ~from:(Path.build dir)
+        in
+        let ml_kind_flag = Command.Ml_kind.ppx_driver_flag_raw ml_kind in
+        ( Ok (Path.build exe)
+        , List.concat [ ppx_flags; [ ml_kind_flag; src ]; args ] )
+      in
+      register_dep b env acc ~f:(function
+        | Ok p, _ -> Some p
+        | Error _, _ -> None)
   end
 end
 
-let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
+let rec check_ppx_is_last as_ =
+  match (as_ : Dune_lang.Action.t list) with
+  | Ppx ({ loc; _ }, _) :: _ :: _ ->
+    User_error.raise ~loc
+      [ Pp.text
+          "The (ppx ..) action is currently only supported in the last \
+           position."
+      ]
+  | [] -> ()
+  | _ :: xs -> check_ppx_is_last xs
+
+let rec expand (t : Dune_lang.Action.t) ~dir ~expander ~lib_name ~ml_kind :
+    Action.t Action_expander.t =
   let module A = Action_expander in
   let module E = Action_expander.E in
   let open Action_expander.O in
   let module O (* [O] for "outcome" *) = Action in
-  let expand = expand ~context in
+  let expand = expand ~expander ~dir ~lib_name ~ml_kind in
   let expand_run prog args =
     let+ args = A.all (List.map args ~f:E.strings)
     and+ prog, more_args = E.prog_and_args prog in
@@ -416,6 +484,7 @@ let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
     let+ t = expand t in
     O.Ignore (outputs, t)
   | Progn l ->
+    check_ppx_is_last l;
     let+ l = A.all (List.map l ~f:expand) in
     O.Progn l
   | Concurrent l ->
@@ -439,7 +508,7 @@ let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
   | Copy_and_add_line_directive (x, y) ->
     let+ x = E.dep x
     and+ y = E.target y in
-    Copy_line_directive.action context ~src:x ~dst:y
+    Copy_line_directive.action (Expander.context expander) ~src:x ~dst:y
   | System x ->
     let+ x = E.string x in
     O.System x
@@ -480,8 +549,25 @@ let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
   | Cram script ->
     let+ script = E.dep script in
     Cram_exec.action script
+  | Ppx ({ pps; flags; loc }, input_file) -> (
+    match ml_kind with
+    | None ->
+      (* TODO(anmonteiro): support [ml_kind] coming from (rule ...) stanzas *)
+      User_error.raise ~loc
+        [ Pp.text
+            "The `ppx' action isn't currently available in (rule ...) stanzas."
+        ]
+    | Some ml_kind ->
+      let+ prog, args =
+        let context = Expander.context expander in
+        let scope = Expander.scope expander in
+        E.ppx ~dir ~context ~expander ~scope ~loc ~lib_name ~ml_kind
+          ~src:input_file pps flags
+      in
+      O.Run (prog, args))
 
-let expand_no_targets t ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
+let expand_no_targets t ~loc ~chdir ~deps:deps_written_by_user ~expander ~what
+    ~lib_name ~ml_kind =
   let open Action_builder.O in
   let deps_builder, expander, sandbox =
     Dep_conf_eval.named ~expander deps_written_by_user
@@ -490,8 +576,7 @@ let expand_no_targets t ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
     Expander.set_expanding_what expander (User_action_without_targets { what })
   in
   let* { Action_builder.With_targets.build; targets } =
-    let context = Expander.context expander in
-    expand ~context t
+    expand ~dir:chdir ~expander ~lib_name ~ml_kind t
     |> Action_expander.run ~chdir ~targets_dir:None ~expander
     |> Action_builder.of_memo
   in
@@ -508,9 +593,13 @@ let expand_no_targets t ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
   let action = Action.Chdir (Path.build chdir, action) in
   Action.Full.make action ~sandbox
 
-let expand t ~loc ~chdir ~deps:deps_written_by_user ~targets_dir
-    ~targets:targets_written_by_user ~expander =
+let expand ?what t ~loc ~chdir ~deps:deps_written_by_user ~targets_dir
+    ~targets:targets_written_by_user ~expander ~lib_name ~ml_kind =
   let open Action_builder.O in
+  let what =
+    Option.value what
+      ~default:(Expander.Expanding_what.User_action targets_written_by_user)
+  in
   let deps_builder, expander, sandbox =
     Dep_conf_eval.named ~expander deps_written_by_user
   in
@@ -532,12 +621,9 @@ let expand t ~loc ~chdir ~deps:deps_written_by_user ~targets_dir
                          ~f:(fun (target, (_ : Targets_spec.Kind.t)) ->
                            Path.build target))))))
   in
-  let expander =
-    Expander.set_expanding_what expander (User_action targets_written_by_user)
-  in
+  let expander = Expander.set_expanding_what expander what in
   let+! { Action_builder.With_targets.build; targets } =
-    let context = Expander.context expander in
-    expand ~context t
+    expand ~expander ~dir:chdir ~lib_name ~ml_kind t
     |> Action_expander.run ~chdir ~targets_dir:(Some targets_dir) ~expander
   in
   let targets =

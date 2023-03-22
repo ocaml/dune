@@ -18,13 +18,16 @@ val remove_locs : t -> t
     - All the targets are in [targets_dir]
     - The [targets] mode is respected *)
 val expand :
-     t
+     ?what:Expander.Expanding_what.t
+  -> t
   -> loc:Loc.t
   -> chdir:Path.Build.t
   -> deps:Dep_conf.t Bindings.t
   -> targets_dir:Path.Build.t
   -> targets:Path.Build.t Targets_spec.t
   -> expander:Expander.t
+  -> lib_name:Lib_name.Local.t option
+  -> ml_kind:Ml_kind.t option
   -> Action.Full.t Action_builder.With_targets.t Memo.t
 
 (** [what] as the same meaning as the argument of
@@ -36,4 +39,6 @@ val expand_no_targets :
   -> deps:Dep_conf.t Bindings.t
   -> expander:Expander.t
   -> what:string
+  -> lib_name:Lib_name.Local.t option
+  -> ml_kind:Ml_kind.t option
   -> Action.Full.t Action_builder.t

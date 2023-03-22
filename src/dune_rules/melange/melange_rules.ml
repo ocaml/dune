@@ -361,7 +361,7 @@ let setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
              (Lib.DB.instrumentation_backend (Scope.libs scope)))
     in
     let pped_map =
-      Staged.unstage (Preprocessing.pped_modules_map preprocess version)
+      Staged.unstage (Pp_spec_rules.pped_modules_map preprocess version)
     in
     Modules.map_user_written modules ~f:(fun m -> Memo.return @@ pped_map m)
   in

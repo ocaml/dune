@@ -92,13 +92,17 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
         | [] -> Action_builder.return ()
         | extra_deps -> depend_on_files extra_deps
       in
+      let open Memo.O in
+      let+ pp_action =
+        Pp_spec_rules.action_for_pp_with_target ~dir
+          ~sandbox:Sandbox_config.default ~loc ~expander ~action ~ml_kind:kind
+          ~src:input ~target:output ~lib_name:None
+      in
       let open Action_builder.With_targets.O in
-      Action_builder.with_no_targets extra_deps
-      >>> Preprocessing.action_for_pp_with_target
-            ~sandbox:Sandbox_config.default ~loc ~expander ~action ~src:input
-            ~target:output
+      Action_builder.with_no_targets extra_deps >>> pp_action
     in
     Memo.Option.iter formatter ~f:(fun action ->
+        let* action = action in
         Super_context.add_rule sctx ~mode:Standard ~loc ~dir action
         >>> add_diff sctx loc alias_formatted ~dir ~input:(Path.build input)
               ~output)

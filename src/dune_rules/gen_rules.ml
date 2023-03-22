@@ -562,7 +562,7 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
       (match rest with
       | [] -> S.All
       | _ -> S.empty)
-      (fun () -> Preprocessing.gen_rules sctx rest)
+      (fun () -> Pp_spec_rules.gen_rules sctx rest)
   | _ -> (
     let* under_melange_emit_target = under_melange_emit_target ~dir in
     let src_dir = Path.Build.drop_build_context_exn dir in

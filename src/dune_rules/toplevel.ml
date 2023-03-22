@@ -70,8 +70,8 @@ let pp_flags t =
   match t.preprocess with
   | Pps { loc; pps; flags; staged = _ } ->
     let+ exe, flags =
-      Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:None ~flags
-        ~scope pps
+      Ppx_driver.get_ppx_driver sctx ~loc ~expander ~lib_name:None ~flags ~scope
+        pps
     in
     let ppx =
       Dyn.list Dyn.string
@@ -163,7 +163,7 @@ module Stanza = struct
     in
     let preprocessing =
       let preprocess = Module_name.Per_item.for_all toplevel.pps in
-      Preprocessing.make sctx ~dir ~expander ~lib_name:None
+      Pp_spec_rules.make sctx ~dir ~expander ~lib_name:None
         ~lint:Dune_file.Lint.no_lint ~preprocess ~preprocessor_deps:[]
         ~instrumentation_deps:[]
     in

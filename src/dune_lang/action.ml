@@ -72,6 +72,47 @@ module File_perm = struct
     | Executable -> 0o777
 end
 
+module Pps_and_flags = struct
+  type t =
+    { pps : (Loc.t * string) list
+    ; flags : String_with_vars.t list
+    ; loc : Loc.t
+    }
+
+  let decode =
+    let open Decoder in
+    let+ loc = loc
+    and+ l, flags =
+      until_keyword "--" ~before:String_with_vars.decode
+        ~after:(repeat String_with_vars.decode)
+    and+ syntax_version = Syntax.get_exn Stanza.syntax in
+    let pps, more_flags =
+      List.partition_map l ~f:(fun s ->
+          match String_with_vars.is_prefix ~prefix:"-" s with
+          | Yes -> Right s
+          | No | Unknown _ -> (
+            let loc = String_with_vars.loc s in
+            match String_with_vars.text_only s with
+            | None ->
+              User_error.raise ~loc
+                [ Pp.text "No variables allowed in ppx library names" ]
+            | Some txt -> Left (loc, txt)))
+    in
+    let all_flags = more_flags @ Option.value flags ~default:[] in
+    if syntax_version < (1, 10) then
+      List.iter
+        ~f:(fun flag ->
+          if String_with_vars.has_pforms flag then
+            Syntax.Error.since
+              (String_with_vars.loc flag)
+              Stanza.syntax (1, 10) ~what:"Using variables in pps flags")
+        all_flags;
+    if pps = [] then
+      User_error.raise ~loc
+        [ Pp.text "You must specify at least one ppx rewriter." ];
+    { pps; flags = all_flags; loc }
+end
+
 type t =
   | Run of String_with_vars.t * String_with_vars.t list
   | With_accepted_exit_codes of int Predicate_lang.t * t
@@ -99,6 +140,7 @@ type t =
   | No_infer of t
   | Pipe of Outputs.t * t list
   | Cram of String_with_vars.t
+  | Ppx of Pps_and_flags.t * String_with_vars.t
 
 let is_dev_null t = String_with_vars.is_pform t (Var Dev_null)
 
@@ -270,6 +312,11 @@ let decode =
           , Syntax.since Stanza.syntax (2, 7)
             >>> let+ script = sw in
                 Cram script )
+        ; ( "ppx"
+          , Syntax.since Stanza.syntax (3, 8)
+            >>> let+ pps_and_flags = enter Pps_and_flags.decode
+                and+ input_file = sw in
+                Ppx (pps_and_flags, input_file) )
         ])
 
 let rec encode =
@@ -327,6 +374,13 @@ let rec encode =
       (atom (sprintf "pipe-%s" (Outputs.to_string outputs))
       :: List.map l ~f:encode)
   | Cram script -> List [ atom "cram"; sw script ]
+  | Ppx ({ pps; flags; loc = _ }, input_file) ->
+    List
+      [ atom "ppx"
+      ; List
+          (List.map pps ~f:(fun (_loc, lib) -> atom lib) @ List.map flags ~f:sw)
+      ; sw input_file
+      ]
 
 (* In [Action_exec] we rely on one-to-one mapping between the cwd-relative paths
    seen by the action and [Path.t] seen by dune.
@@ -359,7 +413,8 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Write_file _
     | Mkdir _
     | Diff _
-    | Cram _ -> false
+    | Cram _
+    | Ppx _ -> false
     | Pipe (_, ts) | Progn ts | Concurrent ts ->
       List.fold_left ts ~init:false ~f:(fun acc t ->
           let have_dyn = loop t in
@@ -403,6 +458,8 @@ let rec map_string_with_vars t ~f =
   | No_infer t -> No_infer (map_string_with_vars t ~f)
   | Pipe (o, ts) -> Pipe (o, List.map ts ~f:(map_string_with_vars ~f))
   | Cram sw -> Cram (f sw)
+  | Ppx (pps, input_file) ->
+    Ppx ({ pps with flags = List.map ~f pps.flags }, f input_file)
 
 let remove_locs = map_string_with_vars ~f:String_with_vars.remove_locs
 

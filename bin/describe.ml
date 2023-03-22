@@ -279,7 +279,7 @@ module Crawl = struct
       Staged.unstage
       @@
       let version = (Super_context.context sctx).version in
-      Preprocessing.pped_modules_map
+      Pp_spec_rules.pped_modules_map
         (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
         version
     in
@@ -336,7 +336,7 @@ module Crawl = struct
             Staged.unstage
             @@
             let version = (Super_context.context sctx).version in
-            Preprocessing.pped_modules_map
+            Pp_spec_rules.pped_modules_map
               (Preprocess.Per_module.without_instrumentation
                  (Lib_info.preprocess info))
               version

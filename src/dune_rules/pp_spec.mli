@@ -1,5 +1,5 @@
 (** A specification for preprocessing modules. To setup rules based on this
-    specification, use [Preprocessing] *)
+    specification, use [Preprocessing_rules] *)
 
 type t
 

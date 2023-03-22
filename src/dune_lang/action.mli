@@ -65,6 +65,16 @@ module File_perm : sig
   val to_unix_perm : t -> int
 end
 
+module Pps_and_flags : sig
+  type t =
+    { pps : (Loc.t * string) list
+    ; flags : String_with_vars.t list
+    ; loc : Loc.t
+    }
+
+  val decode : (t, Decoder.values) Decoder.parser
+end
+
 type t =
   | Run of String_with_vars.t * String_with_vars.t list
   | With_accepted_exit_codes of int Predicate_lang.t * t
@@ -92,6 +102,7 @@ type t =
   | No_infer of t
   | Pipe of Outputs.t * t list
   | Cram of String_with_vars.t
+  | Ppx of Pps_and_flags.t * String_with_vars.t
 
 include Conv.S with type t := t
 

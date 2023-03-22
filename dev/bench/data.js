@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679488944365,
+  "lastUpdate": 1679491310757,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17461,6 +17461,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "31.933671085226667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1f0bf68dd69d910fb3cef967e8364ec2aeea407d",
+          "message": "Doc: split \"advanced topics\" page (#7365)\n\nThis is the exact same as #7232 but for our other collection page: \"advanced\r\ntopics\".\r\n\r\nSee #7325 for the general plan of how to get to a better place in terms of\r\ndocumentation.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\nCo-authored-by: Christine Rose <christinerose@users.noreply.github.com>",
+          "timestamp": "2023-03-22T14:07:11+01:00",
+          "tree_id": "2dad56d962ec5593e640296e5c1b0e0b0afa7be5",
+          "url": "https://github.com/ocaml/dune/commit/1f0bf68dd69d910fb3cef967e8364ec2aeea407d"
+        },
+        "date": 1679491309056,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "36.374246967413335",
             "unit": "seconds"
           }
         ]

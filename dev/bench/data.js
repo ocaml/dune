@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679433683453,
+  "lastUpdate": 1679488033331,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17229,6 +17229,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "33.439838807786664",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "86623eba482cb490bcacea58c63bfbc2fc5d4c5c",
+          "message": "Only copy specific files into monorepo image\n\nThis prevents incompatible artifacts inside a _build directory from\nmaking their way into the docker image.\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-03-22T13:04:13+01:00",
+          "tree_id": "706035a9c0d3a9826c2385e273aa902bf1a03c2d",
+          "url": "https://github.com/ocaml/dune/commit/86623eba482cb490bcacea58c63bfbc2fc5d4c5c"
+        },
+        "date": 1679488031858,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "32.37176596821333",
             "unit": "seconds"
           }
         ]

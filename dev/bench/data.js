@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679598068042,
+  "lastUpdate": 1679598079287,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17430,6 +17430,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "69.88893092933334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "71855677+jonahbeckford@users.noreply.github.com",
+            "name": "jonahbeckford",
+            "username": "jonahbeckford"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8ec05b3f64d8a54c77b8a7be00661b2d0269dac6",
+          "message": "User-configured watch exclusions (#7216)\n\n* User-configured watch exclusions\r\n\r\nThis PR allows the command line option `--exclude-from-watch` to exclude directories from dune build --watch.\r\n\r\nSigned-off-by: Jonah Beckford <71855677+jonahbeckford@users.noreply.github.com>\r\nSigned-off-by: jonahbeckford <71855677+jonahbeckford@users.noreply.github.com>\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-23T11:32:01-07:00",
+          "tree_id": "ea6798932923bf39de1c5a6f86da46d2c72f56e0",
+          "url": "https://github.com/ocaml/dune/commit/8ec05b3f64d8a54c77b8a7be00661b2d0269dac6"
+        },
+        "date": 1679598078611,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8230059031866668",
             "unit": "seconds"
           }
         ]

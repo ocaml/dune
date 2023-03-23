@@ -324,7 +324,7 @@ module Make (Sexp : Sexp) = struct
           incr len_len
         done;
         acc + !len_len + 1 + len
-      | List l -> List.fold_left loop acc l
+      | List l -> 2 + List.fold_left loop acc l
     in
     fun t -> loop 0 t
 

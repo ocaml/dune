@@ -60,6 +60,8 @@ end
 
 let blocked_signals : Signal.t list = [ Int; Quit; Term ]
 
+let kill_signal = if Sys.win32 then Signal.Kill else Term
+
 module Thread : sig
   val spawn : signal_watcher:[ `Yes | `No ] -> (unit -> 'a) -> unit
 
@@ -411,6 +413,7 @@ end = struct
 end
 
 let kill_process_group pid signal =
+  let signal = Signal.to_int signal in
   match Sys.win32 with
   | false -> (
     (* Send to the entire process group so that any child processes created by
@@ -447,7 +450,7 @@ module Process_watcher : sig
   val is_running : t -> Pid.t -> bool
 
   (** Send the following signal to all running processes. *)
-  val killall : t -> int -> unit
+  val killall : t -> Signal.t -> unit
 end = struct
   type process_state =
     | Running of job
@@ -847,7 +850,7 @@ let wait_for_process t pid =
   let+ res, outcome =
     Fiber.Cancel.with_handler t.cancel
       ~on_cancel:(fun () ->
-        Process_watcher.killall t.process_watcher Sys.sigkill;
+        Process_watcher.killall t.process_watcher kill_signal;
         Fiber.return ())
       (fun () ->
         let ivar = Fiber.Ivar.create () in
@@ -874,7 +877,7 @@ type saw_shutdown =
   | Got_shutdown
 
 let kill_and_wait_for_all_processes t =
-  Process_watcher.killall t.process_watcher Sys.sigkill;
+  Process_watcher.killall t.process_watcher kill_signal;
   let saw_signal = ref Ok in
   while Event.Queue.pending_jobs t.events > 0 do
     match Event.Queue.next t.events with
@@ -1299,8 +1302,8 @@ let wait_for_process_with_timeout t pid ~timeout ~is_process_group_leader =
           let+ res = Alarm_clock.await sleep in
           if res = `Finished && Process_watcher.is_running t.process_watcher pid
           then
-            if is_process_group_leader then kill_process_group pid Sys.sigkill
-            else Unix.kill (Pid.to_int pid) Sys.sigkill)
+            if is_process_group_leader then kill_process_group pid kill_signal
+            else Unix.kill (Pid.to_int pid) (Signal.to_int kill_signal))
         (fun () ->
           let+ res = wait_for_process t pid in
           Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;

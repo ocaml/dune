@@ -44,7 +44,13 @@ let watch, collect_events =
   create_file beginning_of_test_file;
   create_file end_of_test_file;
   let fswatch = Fswatch_win.create () in
-  let watch dir = Fswatch_win.add fswatch dir in
+  let watch dir =
+    let dir =
+      if Filename.is_relative dir then Filename.concat (Sys.getcwd ()) dir
+      else dir
+    in
+    Fswatch_win.add fswatch dir
+  in
   watch markdir;
   let rec collect_events acc = function
     | [] ->

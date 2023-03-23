@@ -151,6 +151,8 @@ type t =
 module Re = Dune_re
 
 let create_should_exclude_predicate ~watch_exclusions =
+  (* TODO we should really take the predicate directly and not depend on
+     regular expressions in our file watching component *)
   Re.execp (Re.compile (Re.alt (List.map watch_exclusions ~f:Re.Posix.re)))
 
 module For_tests = struct

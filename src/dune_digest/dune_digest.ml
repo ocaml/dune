@@ -1,8 +1,8 @@
 open Stdune
+open Dune_xxh
 
 type t = string
 
-module D = Stdlib.Digest
 module Set = String.Set
 module Map = String.Map
 module Metrics = Dune_metrics
@@ -14,15 +14,24 @@ module type Digest_impl = sig
 end
 
 module Direct_impl : Digest_impl = struct
-  let file = D.file
+  let file f =
+    let f = Unix.openfile f [ O_RDONLY ] 0 in
+    try
+      let res = Xxh.XXH3_128bits.file f in
+      Unix.close f;
+      res
+    with exn ->
+      let exn = Exn_with_backtrace.capture exn in
+      Unix.close f;
+      Exn_with_backtrace.reraise exn
 
-  let string = D.string
+  let string s = Xxh.XXH3_128bits.string s
 end
 
 module Mutable_impl = struct
-  let file_ref = ref D.file
+  let file_ref = ref Direct_impl.file
 
-  let string_ref = ref D.string
+  let string_ref = ref Direct_impl.string
 
   let file f = !file_ref f
 
@@ -41,14 +50,14 @@ let equal = String.equal
 
 let file p = Impl.file (Path.to_string p)
 
-let compare x y = Ordering.of_int (D.compare x y)
+let compare = String.compare
 
-let to_string = D.to_hex
+let to_string = Stdlib.Digest.to_hex
 
 let to_dyn s = Dyn.variant "digest" [ String (to_string s) ]
 
 let from_hex s =
-  match D.from_hex s with
+  match Stdlib.Digest.from_hex s with
   | s -> Some s
   | exception Invalid_argument _ -> None
 
@@ -100,7 +109,7 @@ module Path_digest_result = struct
 
   let equal x y =
     match (x, y) with
-    | Ok x, Ok y -> D.equal x y
+    | Ok x, Ok y -> String.equal x y
     | Ok _, _ | _, Ok _ -> false
     | Unexpected_kind, Unexpected_kind -> true
     | Unexpected_kind, _ | _, Unexpected_kind -> false
@@ -114,7 +123,7 @@ exception
     | `Unexpected_kind
     ]
 
-let directory_digest_version = 2
+let directory_digest_version = 3
 
 let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) :
     Path_digest_result.t =

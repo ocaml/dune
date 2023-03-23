@@ -1,5 +1,5 @@
 (library
  (name dune_digest)
- (libraries dune_metrics stdune)
+ (libraries dune_metrics dune_xxh stdune)
  (instrumentation
   (backend bisect_ppx)))

@@ -17,6 +17,7 @@ let local_libraries =
   ; ("src/dune_console", Some "Dune_console", false, None)
   ; ("src/memo", Some "Memo", false, None)
   ; ("src/dune_metrics", Some "Dune_metrics", false, None)
+  ; ("vendor/xxh", Some "Dune_xxh", false, None)
   ; ("src/dune_digest", Some "Dune_digest", false, None)
   ; ("src/dune_sexp", Some "Dune_sexp", false, None)
   ; ("src/ocaml-config", Some "Ocaml_config", false, None)

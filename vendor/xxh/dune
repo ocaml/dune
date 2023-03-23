@@ -1,0 +1,14 @@
+(foreign_library
+ (archive_name xxhash)
+ (language c)
+ (names xxhash))
+
+(library
+ (name dune_xxh)
+ ;; TODO split unix into a separate library
+ (libraries unix)
+ (foreign_archives xxhash)
+ (foreign_stubs
+  (language c)
+  (names xxh_stubs)
+  (flags -O3)))

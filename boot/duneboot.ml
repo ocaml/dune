@@ -710,6 +710,7 @@ end
 module Library = struct
   module File_kind = struct
     type t =
+      | Header
       | C
       | Ml
       | Mli
@@ -721,6 +722,7 @@ module Library = struct
       let fn = Filename.basename fn in
       let i = try String.index fn '.' with Not_found -> String.length fn in
       match String.sub fn ~pos:i ~len:(String.length fn - i) with
+      | ".h" -> Some Header
       | ".c" -> Some C
       | ".ml" -> Some Ml
       | ".mli" -> Some Mli
@@ -756,6 +758,7 @@ module Library = struct
       in
       match kind with
       | C -> base ^ ".c"
+      | Header -> base ^ ".h"
       | _ -> (
         let ext =
           match kind with
@@ -812,7 +815,7 @@ module Library = struct
     let modules =
       List.fold_left files ~init:StringSet.empty ~f:(fun acc (fn, kind) ->
           match (kind : File_kind.t) with
-          | C -> acc
+          | Header | C -> acc
           | Ml | Mli | Mll | Mly ->
             let module_name =
               let fn = Filename.basename fn in
@@ -834,7 +837,7 @@ module Library = struct
             let mangled = Wrapper.mangle_filename wrapper fn kind in
             let dst = build_dir ^/ mangled in
             match kind with
-            | C ->
+            | Header | C ->
               copy fn dst;
               Fiber.return [ mangled ]
             | Ml | Mli ->

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679538105822,
+  "lastUpdate": 1679538540429,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17053,6 +17053,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8372571755933331",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b5487f046c8855571d1f289fc240902a17501ef7",
+          "message": "Windows watch mode: fix a small race condition, re-enable tests (#7190)\n\nSigned-off-by: Nicolás Ojeda Bär <n.oje.bar@gmail.com>",
+          "timestamp": "2023-03-23T02:54:22+01:00",
+          "tree_id": "a7abb0449f2622b0b4e6bbd2d56cb572b241ffbb",
+          "url": "https://github.com/ocaml/dune/commit/b5487f046c8855571d1f289fc240902a17501ef7"
+        },
+        "date": 1679538539165,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "85.68333445998667",
             "unit": "seconds"
           }
         ]

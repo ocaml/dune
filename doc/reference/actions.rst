@@ -9,9 +9,9 @@ in ``src/foo/dune`` will be run from ``$build/<context>/src/foo``.
 
 The argument of ``(action ...)`` fields is a small DSL that's interpreted by
 Dune directly and doesn't require an external shell. All atoms in the DSL
-support :doc:`variables`. Moreover, you don't need to specify dependencies
-explicitly for the special ``%{<kind>:...}`` forms; these are recognized and
-automatically handled by Dune.
+support :doc:`../concepts/variables`. Moreover, you don't need to specify
+dependencies explicitly for the special ``%{<kind>:...}`` forms; these are
+recognized and automatically handled by Dune.
 
 The DSL is currently quite limited, so if you want to do something complicated,
 it's recommended to write a small OCaml program and use the DSL to invoke it.
@@ -62,13 +62,14 @@ The following constructions are available:
 - ``(bash <cmd>)`` to execute a command using ``/bin/bash``. This is obviously
   not very portable.
 - ``(diff <file1> <file2>)`` is similar to ``(run diff <file1> <file2>)`` but
-  is better and allows promotion. See :doc:`promotion` for more details.
+  is better and allows promotion. See :doc:`../concepts/promotion` for more
+  details.
 - ``(diff? <file1> <file2>)`` is similar to ``(diff <file1>
   <file2>)`` except that ``<file2>`` should be produced by a part of the
   same action rather than be a dependency, is optional and will
   be consumed by ``diff?``.
 - ``(cmp <file1> <file2>)`` is similar to ``(run cmp <file1> <file2>)`` but
-  allows promotion. See :doc:`promotion` for more details.
+  allows promotion. See :doc:`../concepts/promotion` for more details.
 - ``(no-infer <DSL>)`` to perform an action without inference of dependencies
   and targets. This is useful if you are generating dependencies in a way
   that Dune doesn't know about, for instance by calling an external build system.

@@ -255,7 +255,7 @@ descriptions by referencing them as the module specified in optional
 
    - ``(headers (include "include1" "include2" ...))`` adds ``#include
      <include1>``, ``#include <include2>``. It uses the
-     :doc:`concepts/ordered-set-language`.
+     :doc:`reference/ordered-set-language`.
    - ``(headers (preamble <preamble>)`` adds directly the preamble. Variables
      can be used in ``<preamble>`` such as ``%{read: }``.
 

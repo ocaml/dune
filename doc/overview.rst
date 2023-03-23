@@ -128,6 +128,13 @@ Terminology
      -  ``dev`` which is the default profile when none is set explicitly, it has
         stricter warnings than the ``release`` one
 
+   dialect
+     An alternative frontend to OCaml (such as ReasonML). It is described
+     by a pair of file extensions, one corresponding to interfaces and one to
+     implementations. It can use the standard OCaml syntax, or it can specify an
+     action to convert from a custom syntax to a binary OCaml abstract syntax
+     tree. It can also specify a custom formatter.
+
 Project Layout
 ==============
 

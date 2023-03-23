@@ -74,8 +74,8 @@ dev-depext:
 
 .PHONY: melange
 melange:
-	opam pin add -n melange-compiler-libs https://github.com/melange-re/melange-compiler-libs.git#48ff923f2c25136de8ab96678f623f54cdac438c
-	opam pin add -n melange https://github.com/melange-re/melange.git#a8f50420a548f8323f8be3d9f66ce71336e314fc
+	opam pin add -n melange-compiler-libs https://github.com/melange-re/melange-compiler-libs.git#7263bea2285499f5da857f2bb374345a5178791e
+	opam pin add -n melange https://github.com/melange-re/melange.git#68c6eff82ed056feed809d6cc82558e8697b965b
 
 .PHONY: dev-deps
 dev-deps: melange

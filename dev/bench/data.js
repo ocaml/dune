@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679589441311,
+  "lastUpdate": 1679590008843,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -10700,6 +10700,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.66574950374667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "85cacf6b3a0bdd8aa67fe449d158f4f6200e1e0c",
+          "message": "Document style conventions for qualifying modules (#7378)\n\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-03-23T09:20:51-07:00",
+          "tree_id": "f696dcefbd547cf044cf2f402d656502b801dca2",
+          "url": "https://github.com/ocaml/dune/commit/85cacf6b3a0bdd8aa67fe449d158f4f6200e1e0c"
+        },
+        "date": 1679590007494,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.45626651877333",
             "unit": "seconds"
           }
         ]

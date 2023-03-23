@@ -69,8 +69,9 @@ Dump-dot-merlin includes the melange flags
   S /MELC_STDLIB/runtime
   S $TESTCASE_ROOT
   # FLG -ppx '/MELC_COMPILER -as-ppx'
-  # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs
+  # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g
   
+
 
 
 
@@ -130,7 +131,8 @@ Melange ppx should appear after user ppx, so that Merlin applies the former firs
      -strict-sequence
      -strict-formats
      -short-paths
-     -keep-locs)))
+     -keep-locs
+     -g)))
   Foo
   ((STDLIB /MELC_STDLIB/runtime/melange)
    (EXCLUDE_QUERY_DIR)
@@ -151,7 +153,8 @@ Melange ppx should appear after user ppx, so that Merlin applies the former firs
      -strict-sequence
      -strict-formats
      -short-paths
-     -keep-locs)))
+     -keep-locs
+     -g)))
   Fooppx
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)

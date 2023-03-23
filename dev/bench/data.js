@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679592865094,
+  "lastUpdate": 1679592877062,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17343,6 +17343,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "69.80916032643334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "javier.chavarri@gmail.com",
+            "name": "Javier Chávarri",
+            "username": "jchavarri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9bd607053e8257e65ad7142b96c98926041a9004",
+          "message": "melange: don't pass -bs-jsx flag to merlin (#7354)\n\nSigned-off-by: Javier Chávarri <javier.chavarri@gmail.com>",
+          "timestamp": "2023-03-23T10:05:55-07:00",
+          "tree_id": "55bbd869d3d4d23d3e7ef5dcb8e983c210069338",
+          "url": "https://github.com/ocaml/dune/commit/9bd607053e8257e65ad7142b96c98926041a9004"
+        },
+        "date": 1679592876377,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8375689742333332",
             "unit": "seconds"
           }
         ]

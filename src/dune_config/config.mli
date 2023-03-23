@@ -10,11 +10,18 @@ open Stdune
     is the configuration option's name in uppercase *)
 type 'a t
 
+module Toggle : sig
+  type t =
+    [ `Enabled
+    | `Disabled
+    ]
+end
+
 (** [get t] return the value of the configuration for [t] *)
 val get : 'a t -> 'a
 
 (** should dune acquire the global lock before building *)
-val global_lock : [ `Enabled | `Disabled ] t
+val global_lock : Toggle.t t
 
 (** Before any configuration value is accessed, this function must be called
     with all the configuration values from the relevant config file

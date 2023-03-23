@@ -9,6 +9,7 @@ type mkdir_result =
 
 let mkdir ?(perms = 0o777) t_s =
   try
+    let t_s = if String.is_suffix t_s ~suffix:"/" then t_s else t_s ^ "/" in
     Unix.mkdir t_s perms;
     Created
   with

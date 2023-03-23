@@ -109,6 +109,7 @@ let%expect_test "run an action runner and dispatch one job to it" =
     ; stats = None
     ; insignificant_changes = `Ignore
     ; signal_watcher = `No
+    ; watch_exclusions = []
     }
   in
   Scheduler.Run.go config ~timeout:2.0 ~on_event run;

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679605233156,
+  "lastUpdate": 1679605571667,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17488,6 +17488,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8230059031866668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "19a1760a9d23ca36f75b857ef5746e2ae74c0a07",
+          "message": "doc: improve readme\n\n- Added various badges\n- Used dune.build logo (scales for mobile too)\n- Cleared up some wording\n\n<!-- ps-id: 950ef835-8f7f-4b7e-bcbe-56fa276a5aa6 -->\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-03-23T21:35:31+01:00",
+          "tree_id": "4f455b11e7034ad075b5e8d5bd6c1169a2c25ffe",
+          "url": "https://github.com/ocaml/dune/commit/19a1760a9d23ca36f75b857ef5746e2ae74c0a07"
+        },
+        "date": 1679605570512,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "67.62275848693334",
             "unit": "seconds"
           }
         ]

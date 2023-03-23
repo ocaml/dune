@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679584235613,
+  "lastUpdate": 1679584246134,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17169,6 +17169,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "67.35727048314665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "791d5dd9bba7131e0fc2be0e87687c7e85e3d5ff",
+          "message": "doc: add directives to document stanzas and fields (#6980)\n\nThis is about creating a sphinx domain, a plugin that knows about the\r\nobjects that dune manipulates.\r\n\r\nThis has 3 advantages:\r\n\r\n- the documentation gets more structured and looks better\r\n- some indexes are generated (one for stanzas and one for fields)\r\n- it is possible to cross-reference directly to a specific stanza or field\r\n\r\nIn terms of markup, this looks like the following:\r\n\r\n    .. dune:stanza:: mdx\r\n\r\n       Set up rules to use with mdx. When the ``runtest`` alias is evaluated, the\r\n       reference file will be compared to the output of the mdx tool.\r\n\r\n       .. dune:field:: files\r\n          :param: <globs>\r\n\r\n          The files that are checked. Defaults to ``*.md``\r\n\r\nThis is slightly longer than before but this is more structured. It is\r\npossible to configure a default domain so that .. stanza:: and ..\r\nfield:: are recognized instead.\r\n\r\nThis commit only deals with stanzas for `dune-project` to start.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\nCo-authored-by: Christine Rose <christinerose@users.noreply.github.com>",
+          "timestamp": "2023-03-23T15:42:50+01:00",
+          "tree_id": "257d03eb6934b8b6db84ad2badac5686dedc4d94",
+          "url": "https://github.com/ocaml/dune/commit/791d5dd9bba7131e0fc2be0e87687c7e85e3d5ff"
+        },
+        "date": 1679584245403,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6358222390133335",
             "unit": "seconds"
           }
         ]

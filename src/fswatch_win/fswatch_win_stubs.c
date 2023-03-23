@@ -67,6 +67,7 @@ struct fsenv {
   HANDLE completionPort;
   HANDLE signal;
   HANDLE thread;
+  HANDLE afterAdd;
 };
 
 struct watch {
@@ -359,6 +360,7 @@ static DWORD WINAPI watch_thread(struct fsenv* fsenv) {
         struct watch *w = add_watch(fsenv, key, &watches);
         if (w != NULL && read_changes(w) == 0) remove_watch(w, &watches);
       }
+      SetEvent(fsenv->afterAdd);
     } else if (overlapped == (LPOVERLAPPED)SHUTDOWN) {
       DEBUG("shutting down");
       shuttingDown = TRUE;
@@ -399,15 +401,25 @@ value fswatch_win_create(value v_unit) {
     unix_error("CreateEvent", err);
   }
 
+  HANDLE afterAdd = CreateEvent(NULL, FALSE, FALSE, NULL);
+  if (afterAdd == NULL) {
+    DWORD err = GetLastError();
+    CloseHandle(signal);
+    CloseHandle(completionPort);
+    unix_error("CreateEvent", err);
+  }
+
   struct fsenv* fsenv = caml_stat_alloc(sizeof(struct fsenv));
   fsenv->events = NULL;
   fsenv->completionPort = completionPort;
   fsenv->signal = signal;
+  fsenv->afterAdd = afterAdd;
 
   HANDLE thread = CreateThread(NULL, 0, &watch_thread, fsenv, 0, NULL);
   if (thread == NULL) {
     DWORD err = GetLastError();
     caml_stat_free(fsenv);
+    CloseHandle(afterAdd);
     CloseHandle(signal);
     CloseHandle(completionPort);
     unix_error("CreateThread", err);
@@ -433,6 +445,11 @@ value fswatch_win_add(value v_fsenv, value v_path) {
     unix_error("PostQueuedCompletionStatus", GetLastError());
   }
 
+  caml_release_runtime_system();
+  DWORD res = WaitForSingleObject(fsenv->afterAdd, INFINITE);
+  caml_acquire_runtime_system();
+  if (res != WAIT_OBJECT_0) unix_error("WaitForSingleObject", GetLastError());
+
   return Val_unit;
 }
 
@@ -443,10 +460,8 @@ value fswatch_win_wait(value v_fsenv, value v_debounce) {
     caml_invalid_argument("Fswatch_win.wait: already shut down");
 
   caml_release_runtime_system();
-
   DWORD res = WaitForSingleObject(fsenv->signal, INFINITE);
   if (res == WAIT_OBJECT_0 && Int_val(v_debounce) > 0) Sleep(Int_val(v_debounce));
-
   caml_acquire_runtime_system();
 
   if (res != WAIT_OBJECT_0)
@@ -480,6 +495,7 @@ value fswatch_win_shutdown(value v_fsenv) {
   CloseHandle(fsenv->thread);
   CloseHandle(fsenv->completionPort);
   CloseHandle(fsenv->signal);
+  CloseHandle(fsenv->afterAdd);
 
   for (struct events *e = pop_events(fsenv); e; e = e->next) {
     free(e->path);

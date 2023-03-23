@@ -440,8 +440,49 @@ Good:
   ``foo``.
 
 - Avoid optional arguments. They increase brevity at the expense of readability
-  and are annoying to grep. Further more, they encourage callers not to think
+  and are annoying to grep. Furthermore, they encourage callers not to think
   at all about these optional arguments even if they often should.
+
+- Avoid qualifying modules when accessing fields of records or constructors.
+  Avoid it altogether if possible, or add a type annotation if
+  necessary.
+
+Bad:
+
+.. code:: ocaml
+
+    let result = A.b () in
+    match result.A.field with
+    | B.Constructor -> ...
+
+Good:
+
+.. code:: ocaml
+
+    let result : A.t = A.b () in
+    match (result.field : B.t) with
+    | Constructor -> ...
+
+- When constructing records, use the qualified names in in the record. Do not
+  open the record. The local open syntax pulls in all kinds of names from the
+  opened module and might shadow the values that you're trying to put into the
+  record, leading to difficult debugging.
+
+Bad; if ``A.value`` exists, it will pick that over ``value``:
+
+.. code:: ocaml
+
+    let value = 42 in
+    let record = A.{ field = value; other } in
+    ...
+
+Good:
+
+.. code:: ocaml
+
+    let value = 42 in
+    let record = { A.field = value; other } in
+    ...
 
 - Stage functions explicitly with the ``Staged`` module.
 

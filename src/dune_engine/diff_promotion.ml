@@ -54,7 +54,14 @@ module File = struct
 
   let register_intermediate ~source_file ~correction_file =
     let staging = in_staging_area source_file in
-    Path.mkdir_p (Path.build (Option.value_exn (Path.Build.parent staging)));
+    let build_path =
+      Path.build (Option.value_exn (Path.Build.parent staging))
+    in
+    (match (Path.With_check.mkdir_p build_path : Fpath.mkdir_p_result) with
+    | Already_exists | Created -> ()
+    | Not_a_directory ->
+      Path.rm_rf build_path;
+      Path.mkdir_p build_path);
     Unix.rename
       (Path.Build.to_string correction_file)
       (Path.Build.to_string staging);

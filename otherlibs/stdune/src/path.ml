@@ -1115,11 +1115,11 @@ let ensure_build_dir_exists () =
     let p = External.to_string p in
     match Fpath.mkdir ~perms p with
     | Created | Already_exists -> ()
-    | Missing_parent_directory ->
+    | Not_a_directory | Missing_parent_directory ->
       User_error.raise
         [ Pp.textf
             "Cannot create external build directory %s. Make sure that the \
-             parent dir %s exists."
+             parent dir %s exists or that it is a directory."
             p (Filename.dirname p)
         ])
 
@@ -1294,4 +1294,14 @@ module Expert = struct
     match t with
     | External e -> Option.value ~default:t (try_localize_external e)
     | _ -> t
+end
+
+module With_check = struct
+  let mkdir_p ?perms path : Fpath.mkdir_p_result =
+    let file = to_string path in
+    match Fpath.mkdir_p ?perms file with
+    | Created -> Created
+    | Already_exists ->
+      if Sys.is_directory file then Already_exists else Not_a_directory
+    | Not_a_directory -> Not_a_directory
 end

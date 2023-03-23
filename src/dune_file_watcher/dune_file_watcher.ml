@@ -353,7 +353,11 @@ let prepare_sync () =
   | Cleared -> ()
   | Directory_does_not_exist -> (
     match Fpath.mkdir_p dir with
-    | Already_exists | Created -> ())
+    | Already_exists | Created -> ()
+    | Not_a_directory ->
+      Code_error.raise
+        "Dune_file_watcher.prepare_sync: path to dir exists and is not a dir" []
+    )
 
 let spawn_external_watcher ~root ~backend ~watch_exclusions =
   prepare_sync ();

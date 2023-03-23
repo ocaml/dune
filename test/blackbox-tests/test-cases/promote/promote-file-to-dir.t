@@ -33,11 +33,9 @@ Run the cram test, should fail and file should be promoted
   File "my_cram.t/run.t", line 1, characters 0-0:
   Error: Files _build/default/my_cram.t/run.t and
   _build/default/my_cram.t/run.t.corrected differ.
-  Error:
-  rename(_build/.sandbox/0245365c460757194b9738dd89cd8dd2/default/my_cram.t/run.t.corrected): Not a directory
-  -> required by alias runtest
   [1]
 
 We cannot promote:
 
   $ dune promote
+  Promoting _build/default/my_cram.t/run.t.corrected to my_cram.t/run.t.

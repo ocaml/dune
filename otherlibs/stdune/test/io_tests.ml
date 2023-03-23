@@ -82,4 +82,11 @@ let%expect_test "making a directory for an existing file" =
   [%expect {| |}];
   Path.mkdir_p fn;
   (* This in turn does not error *)
-  [%expect {| |}]
+  [%expect {| |}];
+  (* The solution is to use a mkdir with an extra syscall that will check if the
+     path is a file or a directory *)
+  (match (Path.With_check.mkdir_p fn : Fpath.mkdir_p_result) with
+  | Created -> ()
+  | Already_exists -> Printf.printf "already exists"
+  | Not_a_directory -> Printf.printf "not a directory");
+  [%expect {| not a directory |}]

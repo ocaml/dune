@@ -454,3 +454,7 @@ module Expert : sig
       spitting absolute paths *)
   val try_localize_external : t -> t
 end
+
+module With_check : sig
+  val mkdir_p : ?perms:int -> t -> Fpath.mkdir_p_result
+end

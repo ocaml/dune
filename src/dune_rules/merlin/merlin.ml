@@ -351,7 +351,11 @@ module Unprocessed = struct
       Path.Set.singleton
       @@ obj_dir_of_lib `Private mode (Obj_dir.of_local obj_dir)
     in
-    let flags = Ocaml_flags.common flags in
+    let flags =
+      match mode with
+      | `Ocaml -> Ocaml_flags.common flags
+      | `Melange -> Ocaml_flags.get flags Melange
+    in
     let extensions = Dialect.DB.extensions_for_merlin dialects in
     let config =
       { stdlib_dir

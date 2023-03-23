@@ -44,6 +44,7 @@ module Dep_rules = Dep_rules
 module Dep_graph = Dep_graph
 module Preprocess = Preprocess
 module Preprocessing = Preprocessing
+module Coq_mode = Coq_mode
 module Coq_rules = Coq_rules
 module Coq_module = Coq_module
 module Coq_sources = Coq_sources

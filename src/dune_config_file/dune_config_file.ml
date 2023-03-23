@@ -267,6 +267,23 @@ module Dune_config = struct
         let field f = f
       end)
 
+  let standard_watch_exclusions =
+    [ {|^_opam|}
+    ; {|/_opam|}
+    ; {|^_esy|}
+    ; {|/_esy|}
+    ; {|^\.#.*|} (* Such files can be created by Emacs and also Dune itself. *)
+    ; {|/\.#.*|}
+    ; {|~$|}
+    ; {|^#[^#]*#$|}
+    ; {|/#[^#]*#$|}
+    ; {|^4913$|} (* https://github.com/neovim/neovim/issues/3460 *)
+    ; {|/4913$|}
+    ; {|/.git|}
+    ; {|/.hg|}
+    ; {|:/windows|}
+    ]
+
   let hash = Poly.hash
 
   let equal a b = Poly.equal a b
@@ -460,7 +477,8 @@ module Dune_config = struct
         in
         loop commands)
 
-  let for_scheduler (t : t) stats ~insignificant_changes ~signal_watcher =
+  let for_scheduler (t : t) ~watch_exclusions stats ~insignificant_changes
+      ~signal_watcher =
     let concurrency =
       match t.concurrency with
       | Fixed i -> i
@@ -477,5 +495,6 @@ module Dune_config = struct
     ; stats
     ; insignificant_changes
     ; signal_watcher
+    ; watch_exclusions
     }
 end

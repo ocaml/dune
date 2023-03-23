@@ -530,6 +530,7 @@ module Builder = struct
     ; separate_error_messages : bool
     ; require_dune_project_file : bool
     ; insignificant_changes : [ `React | `Ignore ]
+    ; watch_exclusions : string list
     ; build_dir : string
     ; store_digest_preimage : bool
     ; root : string option
@@ -537,6 +538,20 @@ module Builder = struct
     }
 
   let set_root t root = { t with root = Some root }
+
+  (** Cmdliner documentation markup language
+      (https://erratique.ch/software/cmdliner/doc/tool_man.html#doclang)
+      requires that dollar signs (ex. $(tname)) and backslashes are escaped. *)
+  let docmarkup_escape s =
+    let b = Buffer.create (2 * String.length s) in
+    for i = 0 to String.length s - 1 do
+      match s.[i] with
+      | ('$' | '\\') as c ->
+        Buffer.add_char b '\\';
+        Buffer.add_char b c
+      | c -> Buffer.add_char b c
+    done;
+    Buffer.contents b
 
   let term =
     let docs = copts_sect in
@@ -765,6 +780,28 @@ module Builder = struct
                ])
             Automatic
         & info [ "file-watcher" ] ~doc)
+    and+ watch_exclusions =
+      let std_exclusions = Dune_config.standard_watch_exclusions in
+      let doc =
+        let escaped_std_exclusions =
+          List.map ~f:docmarkup_escape std_exclusions
+        in
+        "Adds a POSIX regular expression that will exclude matching \
+         directories from $(b,`dune build --watch`). The option $(opt) can be \
+         repeated to add multiple exclusions. Semicolons can be also used as a \
+         separator. If no exclusions are provided, then a standard set of \
+         exclusions is used; however, if $(i,one or more) $(opt) are used, \
+         $(b,none) of the standard exclusions are used. The standard \
+         exclusions are: "
+        ^ String.concat ~sep:" " escaped_std_exclusions
+      in
+      let arg =
+        Arg.(
+          value
+          & opt_all (list ~sep:';' string) [ std_exclusions ]
+          & info [ "watch-exclusions" ] ~docs ~docv:"REGEX" ~doc)
+      in
+      Term.(const List.flatten $ arg)
     and+ wait_for_filesystem_clock =
       Arg.(
         value & flag
@@ -853,6 +890,7 @@ module Builder = struct
     ; require_dune_project_file
     ; insignificant_changes =
         (if react_to_insignificant_changes then `React else `Ignore)
+    ; watch_exclusions
     ; build_dir = Option.value ~default:default_build_dir build_dir
     ; store_digest_preimage
     ; root
@@ -904,6 +942,8 @@ let signal_watcher t =
   | `Forbid_builds ->
     (* if we aren't building anything, then we don't mind interrupting dune immediately *)
     `No
+
+let watch_exclusions t = t.builder.watch_exclusions
 
 let stats t = t.stats
 

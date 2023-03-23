@@ -1,8 +1,9 @@
 let printf = Printf.printf
 
 let test string =
-  printf "should_exclude(%s) = %s\n" string
-    (Dune_file_watcher.For_tests.should_exclude string |> Bool.to_string)
+  printf "should_exclude(%s) = %b\n" string
+    (Dune_file_watcher.For_tests.should_exclude string
+       ~watch_exclusions:Dune_config_file.Dune_config.standard_watch_exclusions)
 
 let%expect_test _ =
   test "file.ml";

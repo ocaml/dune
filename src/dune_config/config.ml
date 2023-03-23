@@ -22,6 +22,18 @@ let all = ref []
 
 let register t = all := E t :: !all
 
+module Toggle = struct
+  type t =
+    [ `Enabled
+    | `Disabled
+    ]
+
+  let of_string = function
+    | "enabled" -> Ok `Enabled
+    | "disabled" -> Ok `Disabled
+    | _ -> Error (sprintf "only %S and %S are allowed" "enabled" "disabled")
+end
+
 let init values =
   if !initialized then Code_error.raise "Config.init: already initialized" [];
   let all =
@@ -56,14 +68,7 @@ let init values =
 
 let global_lock =
   let t =
-    { name = "global_lock"
-    ; of_string =
-        (function
-        | "enabled" -> Ok `Enabled
-        | "disabled" -> Ok `Disabled
-        | _ -> Error (sprintf "only %S and %S are allowed" "enabled" "disabled"))
-    ; value = `Enabled
-    }
+    { name = "global_lock"; of_string = Toggle.of_string; value = `Enabled }
   in
   register t;
   t

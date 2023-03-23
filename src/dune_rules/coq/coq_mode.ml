@@ -10,11 +10,13 @@ type t =
   | Legacy
   | VoOnly
   | Native
+  | VosOnly
 
 let decode ~coq_syntax =
   Dune_lang.Decoder.(
     enum'
       [ ("vo", return VoOnly)
+      ; ("vos", return VosOnly)
       ; ( "native"
         , Dune_sexp.Syntax.deprecated_in coq_syntax (0, 7)
             ~extra_info:

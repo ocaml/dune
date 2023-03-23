@@ -1,6 +1,11 @@
 Unreleased
 ----------
 
+- Preliminary support for Coq compiled intefaces (`.vos` files) enabled via
+  `(mode vos)` in `coq.theory` stanzas. This can be used in combination with
+  `dune coq top` to obtain fast re-building of dependencies (with no checking
+  of proofs) prior to stepping into a file. (#7406, @rlepigre)
+
 - Fix `dune install` when cross compiling (#7410, fixes #6191, @anmonteiro,
   @rizo)
 

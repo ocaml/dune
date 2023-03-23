@@ -81,7 +81,7 @@ let term =
           let stanza =
             Dune_rules.Coq_sources.lookup_module coq_src coq_module
           in
-          let args, use_stdlib, coq_lang_version, wrapper_name =
+          let args, use_stdlib, coq_lang_version, wrapper_name, mode =
             match stanza with
             | None ->
               User_error.raise
@@ -93,17 +93,24 @@ let term =
                   ~dir_contents:dc theory coq_module
               , theory.buildable.use_stdlib
               , theory.buildable.coq_lang_version
-              , Dune_rules.Coq_lib_name.wrapper (snd theory.name) )
+              , Dune_rules.Coq_lib_name.wrapper (snd theory.name)
+              , theory.buildable.mode )
             | Some (`Extraction extr) ->
               ( Dune_rules.Coq_rules.coqtop_args_extraction ~sctx ~dir extr
                   coq_module
               , extr.buildable.use_stdlib
               , extr.buildable.coq_lang_version
-              , "DuneExtraction" )
+              , "DuneExtraction"
+              , extr.buildable.mode )
           in
           let* (_ : unit * Dep.Fact.t Dep.Map.t) =
             let deps_of =
-              Dune_rules.Coq_rules.deps_of ~dir ~use_stdlib ~wrapper_name
+              let mode =
+                match mode with
+                | None -> Dune_rules.Coq_mode.VoOnly
+                | Some mode -> mode
+              in
+              Dune_rules.Coq_rules.deps_of ~dir ~use_stdlib ~wrapper_name ~mode
                 ~coq_lang_version coq_module
             in
             Action_builder.(run deps_of) Eager

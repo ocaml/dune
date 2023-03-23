@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Dune in watch mode no longer builds concurrent rules in serial (#7395
+  @rgrinberg, @jchavarri)
+
 - `dune coq top` now correctly respects the project root when called from a
   subdirectory. However, absolute filenames passed to `dune coq top` are no
   longer supported (due to being buggy) (#7357, fixes #7344, @rlepigre and

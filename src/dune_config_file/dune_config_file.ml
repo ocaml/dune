@@ -477,8 +477,8 @@ module Dune_config = struct
         in
         loop commands)
 
-  let for_scheduler (t : t) ?(watch_exclusions = standard_watch_exclusions)
-      stats ~insignificant_changes ~signal_watcher =
+  let for_scheduler (t : t) ~watch_exclusions stats ~insignificant_changes
+      ~signal_watcher =
     let concurrency =
       match t.concurrency with
       | Fixed i -> i

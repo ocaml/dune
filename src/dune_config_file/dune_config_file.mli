@@ -128,13 +128,10 @@ module Dune_config : sig
   (** [for_scheduler config ?watch_exclusions stats_opt ~insignificant_changes
       ~signal_watcher]
       creates a configuration for a scheduler from the user-visible Dune
-      [config].
-
-      [watch_exclusions] defaults to {!standard_watch_exclusions} if not
-      specified. *)
+      [config]. *)
   val for_scheduler :
        t
-    -> ?watch_exclusions:string list
+    -> watch_exclusions:string list
     -> Dune_stats.t option
     -> insignificant_changes:[ `React | `Ignore ]
     -> signal_watcher:[ `Yes | `No ]

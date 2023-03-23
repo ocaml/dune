@@ -514,7 +514,7 @@ module Unprocessed = struct
           | Error _ -> []
           | Ok path ->
             [ Processed.Pp_kind.to_flag Ppx
-            ; Processed.serialize_path path ^ " -as-ppx -bs-jsx 3"
+            ; Processed.serialize_path path ^ " -as-ppx"
             ])
       in
       { Processed.stdlib_dir

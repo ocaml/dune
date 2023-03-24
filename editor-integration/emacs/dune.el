@@ -429,14 +429,22 @@ For customization purposes, use `dune-mode-hook'."
 
 DIRECTORY defaults to `default-directory' if not provided."
   (let
-      ((dir (or directory default-directory)))
-    (while
-	(and dir
-	     (not
-	      (file-exists-p
-	       (file-name-concat dir "dune-project"))))
-      (setq dir (file-name-parent-directory dir)))
-    dir))
+      (root
+       workspace
+       (dir (or directory default-directory)))
+    (while dir
+      (cond
+       ((file-exists-p
+	 (file-name-concat dir "dune-workspace"))
+	(setq workspace t
+	      root dir))
+       ((and
+	 (not workspace)
+	 (file-exists-p
+	  (file-name-concat dir "dune-project")))
+	(setq root dir)))
+       (setq dir (file-name-parent-directory dir)))
+    root))
 
 (provide 'dune)
 

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679677111007,
+  "lastUpdate": 1679677602490,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -10932,6 +10932,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.65011159128667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "70f10da79950e44b4625735b497c7bdeadfcc2bf",
+          "message": "Add longer descriptions to tests to verify multi-line behavior (#7402)\n\n* Add longer descriptions to tests to verify multi-line behavior\r\n\r\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-03-24T17:45:04+01:00",
+          "tree_id": "ca2a8386958e9a1626458ffe37e55527256008ec",
+          "url": "https://github.com/ocaml/dune/commit/70f10da79950e44b4625735b497c7bdeadfcc2bf"
+        },
+        "date": 1679677600541,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.347335494333336",
             "unit": "seconds"
           }
         ]

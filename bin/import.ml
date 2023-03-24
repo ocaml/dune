@@ -38,7 +38,15 @@ include struct
   open Cmdliner
   module Term = Term
   module Manpage = Manpage
-  module Cmd = Cmd
+
+  module Cmd = struct
+    include Cmd
+
+    let default_exits = List.map ~f:Exit_code.info Exit_code.all
+
+    let info ?docs ?doc ?man ?envs ?version name =
+      info ?docs ?doc ?man ?envs ?version ~exits:default_exits name
+  end
 end
 
 module Digest = Dune_digest

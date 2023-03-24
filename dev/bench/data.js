@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679673537877,
+  "lastUpdate": 1679673945911,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17836,6 +17836,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.62929321914",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "11173927c28e068cf5adb5a7acbfb0d826a45122",
+          "message": "chore: update csexp (#7399)\n\npulls the [Csexp.serialised_length] fix\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-24T08:33:33-07:00",
+          "tree_id": "390b819de00b23292b75d603edb11968e4b4e818",
+          "url": "https://github.com/ocaml/dune/commit/11173927c28e068cf5adb5a7acbfb0d826a45122"
+        },
+        "date": 1679673944161,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "80.40651661203333",
             "unit": "seconds"
           }
         ]

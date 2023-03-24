@@ -6,6 +6,7 @@ build:
     python: "3.10"
 
 sphinx:
+  fail_on_warning: true
   configuration: doc/conf.py
 
 python:

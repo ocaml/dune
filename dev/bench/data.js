@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679681359573,
+  "lastUpdate": 1679690332842,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -19230,6 +19230,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "34.749686984166665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0a834a603ab015379ce3274fc2b3fc7a3ab41eed",
+          "message": "fix: io buffer free space computation (#7393)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-24T13:22:25-07:00",
+          "tree_id": "7490610df0e8d3ac11e8dd4877efab4e5cb76e30",
+          "url": "https://github.com/ocaml/dune/commit/0a834a603ab015379ce3274fc2b3fc7a3ab41eed"
+        },
+        "date": 1679690330360,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "38.233559352259995",
             "unit": "seconds"
           }
         ]

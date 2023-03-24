@@ -87,7 +87,7 @@ type what =
 
 let commands = [ ("config", Man config); ("topics", List_topics) ]
 
-let doc = "Additional Dune help"
+let doc = "Additional Dune help."
 
 let man =
   [ `S "DESCRIPTION"

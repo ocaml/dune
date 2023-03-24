@@ -156,9 +156,7 @@ let runtest_term =
 let runtest = Cmd.v runtest_info runtest_term
 
 let build =
-  let doc =
-    "Build the given targets, or all installable targets if none are given."
-  in
+  let doc = "Build the given targets, or the default ones if none are given." in
   let man =
     [ `S "DESCRIPTION"
     ; `P {|Targets starting with a $(b,@) are interpreted as aliases.|}

@@ -1,13 +1,13 @@
 open Stdune
 open Import
 
-let doc = "Dump internal rules."
+let doc = "Dump rules."
 
 let man =
   [ `S "DESCRIPTION"
   ; `P
-      {|Dump Dune internal rules for the given targets.
-           If no targets are given, dump all the internal rules.|}
+      {|Dump Dune rules for the given targets.
+           If no targets are given, dump all the rules.|}
   ; `P
       {|By default the output is a list of S-expressions,
            one S-expression per rule. Each S-expression is of the form:|}

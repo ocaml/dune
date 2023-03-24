@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679680721409,
+  "lastUpdate": 1679681359573,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -19201,6 +19201,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "35.06529431106667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9b53ef8dabfd657eca35a48cdd3c2fa655d3257b",
+          "message": "melange: add the \"melange\" library automatically to melange.emit (#7362)\n\n* melange: add the \"melange\" library automatically to `melange.emit`\r\n\r\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-24T10:55:05-07:00",
+          "tree_id": "a4a87b8c48b5382507ed52defba7a31f3bb0f396",
+          "url": "https://github.com/ocaml/dune/commit/9b53ef8dabfd657eca35a48cdd3c2fa655d3257b"
+        },
+        "date": 1679681357417,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "34.749686984166665",
             "unit": "seconds"
           }
         ]

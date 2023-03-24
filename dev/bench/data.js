@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679637757905,
+  "lastUpdate": 1679638333515,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -10845,6 +10845,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.92457957832667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "kit.ty.kate@disroot.org",
+            "name": "Kate",
+            "username": "kit-ty-kate"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "af02feb02e7c9cb9d1c66390f294f0d4603728a7",
+          "message": "Add missing lower-bound constraint to the OCaml compiler (#7396)\n\nSigned-off-by: Kate <kit-ty-kate@outlook.com>",
+          "timestamp": "2023-03-23T22:41:49-07:00",
+          "tree_id": "00456b3e1bf491aa02fa27d6c618acfcecb81d26",
+          "url": "https://github.com/ocaml/dune/commit/af02feb02e7c9cb9d1c66390f294f0d4603728a7"
+        },
+        "date": 1679638331266,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.64220645398",
             "unit": "seconds"
           }
         ]

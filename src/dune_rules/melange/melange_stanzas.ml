@@ -2,13 +2,17 @@ open Import
 open Dune_lang.Decoder
 
 module Emit = struct
+  type alias_with_libs =
+    { alias : Alias.Name.t
+    ; libraries : Lib_dep.L.t
+    }
+
   type t =
     { loc : Loc.t
     ; target : string
-    ; alias : Alias.Name.t option
+    ; aliases : alias_with_libs list
     ; module_systems : (Melange.Module_system.t * Filename.Extension.t) list
     ; modules : Stanza_common.Modules_settings.t
-    ; libraries : Lib_dep.t list
     ; package : Package.t option
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; runtime_deps : Loc.t * Dep_conf.t list
@@ -71,6 +75,18 @@ module Emit = struct
 
       module_systems
     in
+    let alias_decoder : (alias_with_libs, values) parser =
+      let alias_and_libs =
+        let* alias = field "alias" Alias.Name.decode in
+        let+ libraries =
+          field "libraries"
+            (Lib_dep.L.decode ~allow_re_export:false)
+            ~default:[]
+        in
+        { alias; libraries }
+      in
+      fields alias_and_libs
+    in
     fields
       (let* loc = loc in
        let+ target =
@@ -92,12 +108,10 @@ module Emit = struct
                  ])
          in
          field "target" (plain_string (fun ~loc s -> of_string ~loc s))
-       and+ alias = field_o "alias" Alias.Name.decode
+       and+ aliases = multi_field "alias" alias_decoder
        and+ module_systems =
          field "module_systems" module_systems
            ~default:[ Melange.Module_system.default ]
-       and+ libraries =
-         field "libraries" (Lib_dep.L.decode ~allow_re_export:false) ~default:[]
        and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ runtime_deps =
          field "runtime_deps"
@@ -122,10 +136,9 @@ module Emit = struct
        in
        { loc
        ; target
-       ; alias
+       ; aliases
        ; module_systems
        ; modules
-       ; libraries
        ; package
        ; preprocess
        ; runtime_deps

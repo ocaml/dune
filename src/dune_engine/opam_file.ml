@@ -1,5 +1,5 @@
 open Import
-open OpamParserTypes.FullPos
+open OpamParserTypes
 
 type t = opamfile
 
@@ -17,79 +17,55 @@ let parse =
 let parse_value = parse_gen OpamBaseParser.value
 
 let get_field t name =
-  List.find_map t.file_contents ~f:(fun value ->
-      match value.pelem with
-      | Variable (var, value) when var.pelem = name -> Some value
-      | _ -> None)
+  List.find_map t.file_contents ~f:(function
+    | Variable (_, var, value) when name = var -> Some value
+    | _ -> None)
 
 let absolutify_positions ~file_contents t =
+  let open OpamParserTypes in
   let bols = ref [ 0 ] in
   String.iteri file_contents ~f:(fun i ch ->
       if ch = '\n' then bols := (i + 1) :: !bols);
   let bols = Array.of_list (List.rev !bols) in
-  let map_pos
-      { filename; start = start_line, start_col; stop = stop_line, stop_col } =
-    let start = (start_line, bols.(start_line - 1) + start_col) in
-    let stop = (stop_line, bols.(stop_line - 1) + stop_col) in
-    { filename; start; stop }
-  in
-  let repos pelem pos = { pelem; pos = map_pos pos } in
+  let map_pos (fname, line, col) = (fname, line, bols.(line - 1) + col) in
   let rec map_value = function
-    | { pelem = Bool x; pos } -> repos (Bool x) pos
-    | { pelem = Int x; pos } -> repos (Int x) pos
-    | { pelem = String x; pos } -> repos (String x) pos
-    | { pelem = Relop (x, y, z); pos } ->
-      repos (Relop (x, map_value y, map_value z)) pos
-    | { pelem = Prefix_relop (x, y); pos } ->
-      repos (Prefix_relop (x, map_value y)) pos
-    | { pelem = Logop (x, y, z); pos } ->
-      repos (Logop (x, map_value y, map_value z)) pos
-    | { pelem = Pfxop (x, y); pos } -> repos (Pfxop (x, map_value y)) pos
-    | { pelem = Ident x; pos } -> repos (Ident x) pos
-    | { pelem = List xs; pos } ->
-      let pelem = List.map xs.pelem ~f:map_value in
-      let xs = { pelem; pos = map_pos xs.pos } in
-      repos (List xs) pos
-    | { pelem = Group xs; pos } ->
-      let pelem = List.map xs.pelem ~f:map_value in
-      let xs = { pelem; pos = map_pos xs.pos } in
-      repos (Group xs) pos
-    | { pelem = Option (x, ys); pos } ->
-      let pelem = List.map ys.pelem ~f:map_value in
-      let ys = { pelem; pos = map_pos ys.pos } in
-      repos (Option (map_value x, ys)) pos
-    | { pelem = Env_binding (x, y, z); pos } ->
-      repos (Env_binding (map_value x, y, map_value z)) pos
+    | Bool (pos, x) -> Bool (map_pos pos, x)
+    | Int (pos, x) -> Int (map_pos pos, x)
+    | String (pos, x) -> String (map_pos pos, x)
+    | Relop (pos, x, y, z) -> Relop (map_pos pos, x, map_value y, map_value z)
+    | Prefix_relop (pos, x, y) -> Prefix_relop (map_pos pos, x, map_value y)
+    | Logop (pos, x, y, z) -> Logop (map_pos pos, x, map_value y, map_value z)
+    | Pfxop (pos, x, y) -> Pfxop (map_pos pos, x, map_value y)
+    | Ident (pos, x) -> Ident (map_pos pos, x)
+    | List (pos, x) -> List (map_pos pos, List.map x ~f:map_value)
+    | Group (pos, x) -> Group (map_pos pos, List.map x ~f:map_value)
+    | Option (pos, x, y) ->
+      Option (map_pos pos, map_value x, List.map y ~f:map_value)
+    | Env_binding (pos, x, y, z) ->
+      Env_binding (map_pos pos, map_value x, y, map_value z)
   in
   let rec map_section s =
-    let { pelem; pos } = s.section_items in
-    let pelem = List.map pelem ~f:map_item in
-    let pos = map_pos pos in
-    let section_items = { pelem; pos } in
-    { s with section_items }
+    { s with section_items = List.map s.section_items ~f:map_item }
   and map_item = function
-    | { pelem = Section s; pos } -> repos (Section (map_section s)) pos
-    | { pelem = Variable (s, v); pos } -> repos (Variable (s, map_value v)) pos
+    | Section (pos, s) -> Section (map_pos pos, map_section s)
+    | Variable (pos, s, v) -> Variable (map_pos pos, s, map_value v)
   in
   { file_contents = List.map t.file_contents ~f:map_item
   ; file_name = t.file_name
   }
 
-let nopos : pos = { filename = ""; start = (0, 0); stop = (0, 0) }
-(* Null position *)
+let nopos : OpamParserTypes.pos = ("", 0, 0) (* Null position *)
 
 let existing_variables t =
   List.fold_left ~init:String.Set.empty t.file_contents ~f:(fun acc l ->
-      match l.pelem with
-      | Section _ -> acc
-      | Variable (var, _) -> String.Set.add acc var.pelem)
+      match l with
+      | Section (_, _) -> acc
+      | Variable (_, var, _) -> String.Set.add acc var)
 
 module Create = struct
-  let string s = { pelem = String s; pos = nopos }
+  let string s = String (nopos, s)
 
-  let list f xs =
-    let elems = { pelem = List.map ~f xs; pos = nopos } in
-    { pelem = List elems; pos = nopos }
+  let list f xs = List (nopos, List.map ~f xs)
 
   let string_list xs = list string xs
 
@@ -153,9 +129,7 @@ module Create = struct
 
   let of_bindings vars ~file =
     let file_contents =
-      List.map vars ~f:(fun (var, value) ->
-          let var = { pelem = var; pos = nopos } in
-          { pelem = Variable (var, value); pos = nopos })
+      List.map vars ~f:(fun (var, value) -> Variable (nopos, var, value))
     in
     let file_name = Path.to_string file in
     { file_contents; file_name }

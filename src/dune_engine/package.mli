@@ -71,7 +71,7 @@ module Dependency : sig
     ; constraint_ : Constraint.t option
     }
 
-  val opam_depend : t -> OpamParserTypes.FullPos.value
+  val opam_depend : t -> OpamParserTypes.value
 
   val to_dyn : t -> Dyn.t
 

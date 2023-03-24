@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*                                                                        *)
-(*    Copyright 2012-2019 OCamlPro                                        *)
+(*    Copyright 2012-2015 OCamlPro                                        *)
 (*    Copyright 2012 INRIA                                                *)
 (*                                                                        *)
 (*  All rights reserved. This file is distributed under the terms of the  *)
@@ -40,7 +40,7 @@ let pfxop = function
   | "?" -> `Defined
   | x -> error "%S is not a valid prefix operator" x
 
-let env_update_op : string -> env_update_op = function
+let env_update_op = function
   | "=" -> Eq
   | "+=" -> PlusEq
   | "=+" -> EqPlus
@@ -48,13 +48,6 @@ let env_update_op : string -> env_update_op = function
   | ":=" -> ColonEq
   | "=:" -> EqColon
   | x -> error "%S is not a valid environment update operator" x
-
-module FullPos = struct
-  let relop = relop
-  let logop = logop
-  let pfxop = pfxop
-  let env_update_op = env_update_op
-end
 
 let char_for_backslash = function
   | 'n' -> '\010'
@@ -81,19 +74,10 @@ let char_for_hexadecimal_code lexbuf i =
              else d2 - 48 in
   Char.chr (val1 * 16 + val2)
 
-(* Some hash-consing for strings *)
-module HS =
-  Weak.Make(struct include String let hash = Hashtbl.hash let equal = (=) end)
-let hm = HS.create 317
-
-
 let buffer_rule r lb =
-  let pos = lb.Lexing.lex_start_p in
   let b = Buffer.create 64 in
   r b lb ;
-  (* buffer start position, instead of last lexem position *)
-  lb.Lexing.lex_start_p <- pos;
-  HS.merge hm (Buffer.contents b)
+  Buffer.contents b
 }
 
 let eol = '\r'? '\n'
@@ -131,20 +115,13 @@ rule token = parse
 | "true" { BOOL true }
 | "false"{ BOOL false }
 | int    { INT (int_of_string (Lexing.lexeme lexbuf)) }
-| ident  { IDENT (HS.merge hm (Lexing.lexeme lexbuf)) }
-| relop  { RELOP (FullPos.relop (Lexing.lexeme lexbuf)) }
+| ident  { IDENT (Lexing.lexeme lexbuf) }
+| relop  { RELOP (relop (Lexing.lexeme lexbuf)) }
 | '&'    { AND }
 | '|'    { OR }
-| pfxop  { PFXOP (FullPos.pfxop (Lexing.lexeme lexbuf)) }
-| envop  { ENVOP (FullPos.env_update_op (Lexing.lexeme lexbuf)) }
+| pfxop  { PFXOP (pfxop (Lexing.lexeme lexbuf)) }
+| envop  { ENVOP (env_update_op (Lexing.lexeme lexbuf)) }
 | eof    { EOF }
-(* OpamBaseParser can't directly access OpamLexer.Error so it uses these
-   constants (which would parse that way) to extract the exception values.
- *)
-| "opam-version: \"2.1\"\nopam-version: \"z\"" eof
-         { error "opam-version cannot be repeated" }
-| "version: \"42\"\nopam-version: \"2.1\"" eof
-         { error "opam-version must be the first non-comment line" }
 | _      { let token = Lexing.lexeme lexbuf in
            error "'%s' is not a valid token" token }
 

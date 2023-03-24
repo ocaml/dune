@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679680710253,
+  "lastUpdate": 1679680721409,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -18039,6 +18039,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "70.07691245546",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cdc7973b841217047a7bf85382706109faa2ab17",
+          "message": "doc: mention correct exit codes in the manpage (#7405)\n\nFixes #7296\r\n\r\nThis passes the correct `~exits` docs to cmdliner.\r\nIn addition this adds a tiny abstraction layer to exit codes so that\r\nwe keep this in sync.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-03-24T18:29:45+01:00",
+          "tree_id": "8ef48132236b518b3026774ec3fe160872447cb3",
+          "url": "https://github.com/ocaml/dune/commit/cdc7973b841217047a7bf85382706109faa2ab17"
+        },
+        "date": 1679680720712,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8028640006533332",
             "unit": "seconds"
           }
         ]

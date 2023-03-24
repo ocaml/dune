@@ -8,6 +8,7 @@ Test (modules) field can be left empty
   $ cat > dune <<EOF
   > (melange.emit
   >  (alias melange-dist)
+  >  (emit_stdlib false)
   >  (target dist))
   > EOF
 

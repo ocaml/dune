@@ -72,8 +72,6 @@ module Id = struct
 end
 
 module Dependency = struct
-  let nopos pelem = { OpamParserTypes.FullPos.pelem; pos = Opam_file.nopos }
-
   module Op = struct
     type t =
       | Eq
@@ -101,13 +99,13 @@ module Dependency = struct
       | Lt -> string "Lt"
       | Neq -> string "Neq"
 
-    let to_relop = function
-      | Eq -> nopos `Eq
-      | Gte -> nopos `Geq
-      | Lte -> nopos `Leq
-      | Gt -> nopos `Gt
-      | Lt -> nopos `Lt
-      | Neq -> nopos `Neq
+    let to_relop : t -> OpamParserTypes.relop = function
+      | Eq -> `Eq
+      | Gte -> `Geq
+      | Lte -> `Leq
+      | Gt -> `Gt
+      | Lt -> `Lt
+      | Neq -> `Neq
 
     let encode x =
       let f (_, op) = equal x op in
@@ -130,13 +128,11 @@ module Dependency = struct
         let+ s = string in
         if String.is_prefix s ~prefix:":" then Var (String.drop s 1) else QVar s
 
-      let to_opam v =
-        let value_kind : OpamParserTypes.FullPos.value_kind =
-          match v with
-          | QVar x -> String x
-          | Var x -> Ident x
-        in
-        nopos value_kind
+      let to_opam : t -> OpamParserTypes.value =
+        let nopos = Opam_file.nopos in
+        function
+        | QVar x -> String (nopos, x)
+        | Var x -> Ident (nopos, x)
 
       let to_dyn = function
         | QVar v -> Dyn.String v
@@ -231,30 +227,34 @@ module Dependency = struct
     <|> let+ name = Name.decode in
         { name; constraint_ = None }
 
-  let rec opam_constraint : Constraint.t -> OpamParserTypes.FullPos.value =
-    let open OpamParserTypes.FullPos in
+  let rec opam_constraint : Constraint.t -> OpamParserTypes.value =
+    let nopos = Opam_file.nopos in
     function
     | Bvar v -> Constraint.Var.to_opam v
     | Uop (op, x) ->
-      nopos (Prefix_relop (Op.to_relop op, Constraint.Var.to_opam x))
+      Prefix_relop (nopos, Op.to_relop op, Constraint.Var.to_opam x)
     | Bop (op, x, y) ->
-      nopos
-        (Relop
-           (Op.to_relop op, Constraint.Var.to_opam x, Constraint.Var.to_opam y))
+      Relop
+        ( nopos
+        , Op.to_relop op
+        , Constraint.Var.to_opam x
+        , Constraint.Var.to_opam y )
     | And [ c ] -> opam_constraint c
     | And (c :: cs) ->
-      nopos (Logop (nopos `And, opam_constraint c, opam_constraint (And cs)))
+      Logop (nopos, `And, opam_constraint c, opam_constraint (And cs))
     | Or [ c ] -> opam_constraint c
     | Or (c :: cs) ->
-      nopos (Logop (nopos `Or, opam_constraint c, opam_constraint (And cs)))
+      Logop (nopos, `Or, opam_constraint c, opam_constraint (And cs))
     | And [] | Or [] -> Code_error.raise "opam_constraint" []
 
-  let opam_depend { name; constraint_ } =
-    let constraint_ = Option.map ~f:opam_constraint constraint_ in
-    let pkg = nopos (OpamParserTypes.FullPos.String (Name.to_string name)) in
-    match constraint_ with
-    | None -> pkg
-    | Some c -> nopos (OpamParserTypes.FullPos.Option (pkg, nopos [ c ]))
+  let opam_depend : t -> OpamParserTypes.value =
+    let nopos = Opam_file.nopos in
+    fun { name; constraint_ } ->
+      let constraint_ = Option.map ~f:opam_constraint constraint_ in
+      let pkg : OpamParserTypes.value = String (nopos, Name.to_string name) in
+      match constraint_ with
+      | None -> pkg
+      | Some c -> Option (nopos, pkg, [ c ])
 
   let to_dyn { name; constraint_ } =
     let open Dyn in
@@ -711,7 +711,8 @@ let deprecated_meta_file t name =
 
 let default name dir =
   let depends =
-    [ { Dependency.name = Name.of_string "ocaml"; constraint_ = None }
+    let open Dependency in
+    [ { name = Name.of_string "ocaml"; constraint_ = None }
     ; { name = Name.of_string "dune"; constraint_ = None }
     ]
   in
@@ -755,22 +756,21 @@ let load_opam_file file name =
   let get_one name =
     let* opam = opam in
     let* value = Opam_file.get_field opam name in
-    match value.pelem with
-    | String s -> Some s
+    match value with
+    | String (_, s) -> Some s
     | _ -> None
   in
   let get_many name =
     let* opam = opam in
     let* value = Opam_file.get_field opam name in
-    match value.pelem with
-    | String s -> Some [ s ]
-    | List l ->
+    match value with
+    | String (_, s) -> Some [ s ]
+    | List (_, l) ->
       let+ l =
-        List.fold_left l.pelem ~init:(Some [])
-          ~f:(fun acc (v : OpamParserTypes.FullPos.value) ->
+        List.fold_left l ~init:(Some []) ~f:(fun acc v ->
             let* acc = acc in
-            match v.pelem with
-            | String s -> Some (s :: acc)
+            match v with
+            | OpamParserTypes.String (_, s) -> Some (s :: acc)
             | _ -> None)
       in
       List.rev l

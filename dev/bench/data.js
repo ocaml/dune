@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679669964767,
+  "lastUpdate": 1679669975334,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17778,6 +17778,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "66.98369213384666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "755007e41acd412846b4d5df6f158fc21af6ae63",
+          "message": "Revert \"Update opam-file-format to 2.1.5 (#7328)\" (#7401)\n\nThis reverts commit 649031728346482a83441c26c0bbe06ecd89cce2.\r\n\r\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-03-24T15:29:56+01:00",
+          "tree_id": "30511d7821dea9c27edd7f11a97feb28e2ff7714",
+          "url": "https://github.com/ocaml/dune/commit/755007e41acd412846b4d5df6f158fc21af6ae63"
+        },
+        "date": 1679669974556,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.62929321914",
             "unit": "seconds"
           }
         ]

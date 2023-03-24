@@ -10,9 +10,9 @@ The `dune build` should generate the opam file
   > (source (github mirage/ocaml-cohttp))
   > (license ISC)
   > (authors "Anil Madhavapeddy" "Rudi Grinberg")
-  > ;
+  > 
   > (generate_opam_files true)
-  > ;
+  > 
   > (package
   >   (name cohttp)
   >   (synopsis "An OCaml library for HTTP clients and servers")
@@ -25,7 +25,7 @@ The `dune build` should generate the opam file
   >     (uri (< 2.0.0))
   >     (fieldslib (> v0.12))
   >     (fieldslib (< v0.13))))
-  > ;
+  > 
   > (package
   >   (name cohttp-async)
   >   (synopsis "HTTP client and server for the Async library")
@@ -38,7 +38,7 @@ The `dune build` should generate the opam file
   >     (conduit-async (>= 1.0.3))
   >     (async (>= v0.10.0))
   >     (async (< v0.12))))
-  > ;
+  > 
   > (package
   >   (name cohttp-lwt)
   >   (synopsis "HTTP client and server for the Lwt library")

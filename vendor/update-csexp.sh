@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=0e1b2044c8d1ff187c27cec3e46d9cde14892650
+version=e6c4768e10c61bcb04d09748744dad55602149c6
 
 set -e -o pipefail
 

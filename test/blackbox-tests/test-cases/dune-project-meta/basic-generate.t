@@ -30,7 +30,7 @@ The `dune build` should generate the opam file
   >   (name cohttp-async)
   >   (synopsis "HTTP client and server for the Async library")
   >   (description "\
-  > A _really_long multi line description that spans across lines to
+  > A really long multi line description that spans across lines to
   > make sure that the rendering of long strings stays compatible.
   > ")
   >   (depends
@@ -43,8 +43,8 @@ The `dune build` should generate the opam file
   >   (name cohttp-lwt)
   >   (synopsis "HTTP client and server for the Lwt library")
   >   (description "
-  > A _really_long multi line description that does not escape the
-  > first new-line, so it should generate an empty line.
+  > A really long description that is supposed to start with a
+  > newline since it doesn't escape the line break.
   > ")
   >   (depends
   >     (cohttp (>= 1.0.2))
@@ -99,7 +99,7 @@ The `dune build` should generate the opam file
   dev-repo: "git+https://github.com/mirage/ocaml-cohttp.git"
   synopsis: "HTTP client and server for the Async library"
   description: """
-  A _really_long multi line description that spans across lines to
+  A really long multi line description that spans across lines to
   make sure that the rendering of long strings stays compatible.
   """
   depends: [
@@ -127,8 +127,8 @@ The `dune build` should generate the opam file
   synopsis: "HTTP client and server for the Lwt library"
   description: """
   
-  A _really_long multi line description that does not escape the
-  first new-line, so it should generate an empty line.
+  A really long description that is supposed to start with a
+  newline since it doesn't escape the line break.
   """
   depends: [
     "cohttp" {>= "1.0.2"}

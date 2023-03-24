@@ -424,6 +424,20 @@ For customization purposes, use `dune-mode-hook'."
   (compile (format "%s build @@runtest" dune-command))
   (dune-promote))
 
+(defun dune-root (&optional directory)
+  "Return the root directory of the dune project of DIRECTORY.
+
+DIRECTORY defaults to `default-directory' if not provided."
+  (let
+      ((dir (or directory default-directory)))
+    (while
+	(and dir
+	     (not
+	      (file-exists-p
+	       (file-name-concat dir "dune-project"))))
+      (setq dir (file-name-parent-directory dir)))
+    dir))
+
 (provide 'dune)
 
 ;;; dune.el ends here

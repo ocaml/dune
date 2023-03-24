@@ -429,44 +429,37 @@ let gen_install_file entries =
       pr "]");
   Buffer.contents buf
 
-let pos_of_opam_value : OpamParserTypes.value -> OpamParserTypes.pos = function
-  | Bool (pos, _) -> pos
-  | Int (pos, _) -> pos
-  | String (pos, _) -> pos
-  | Relop (pos, _, _, _) -> pos
-  | Prefix_relop (pos, _, _) -> pos
-  | Logop (pos, _, _, _) -> pos
-  | Pfxop (pos, _, _) -> pos
-  | Ident (pos, _) -> pos
-  | List (pos, _) -> pos
-  | Group (pos, _) -> pos
-  | Option (pos, _, _) -> pos
-  | Env_binding (pos, _, _, _) -> pos
-
 let load_install_file path =
-  let open OpamParserTypes in
+  let open OpamParserTypes.FullPos in
   let file = Io.Untracked.with_lexbuf_from_file path ~f:Opam_file.parse in
-  let fail (fname, line, col) msg =
-    let pos : Lexing.position =
-      { pos_fname = fname; pos_lnum = line; pos_bol = 0; pos_cnum = col }
+  let fail { filename = pos_fname; start; stop } msg =
+    let position_of_loc (pos_lnum, pos_cnum) =
+      { Lexing.pos_fname; pos_lnum; pos_bol = 0; pos_cnum }
     in
-    User_error.raise ~loc:{ start = pos; stop = pos } [ Pp.text msg ]
+    let start = position_of_loc start in
+    let stop = position_of_loc stop in
+    User_error.raise ~loc:{ start; stop } [ Pp.text msg ]
   in
   List.concat_map file.file_contents ~f:(function
-    | Variable (pos, section, files) -> (
-      match Section.of_string section with
+    | { pelem = Variable (section, files); pos } -> (
+      match Section.of_string section.pelem with
       | None -> fail pos "Unknown install section"
       | Some section -> (
         match files with
-        | List (_, l) ->
+        | { pelem = List l; _ } ->
           let install_file src dst =
             let src = Path.of_string src in
             Entry.of_install_file ~src ~dst ~section
           in
-          List.map l ~f:(function
-            | String (_, src) -> install_file src None
-            | Option (_, String (_, src), [ String (_, dst) ]) ->
-              install_file src (Some dst)
-            | v -> fail (pos_of_opam_value v) "Invalid value in .install file")
-        | v -> fail (pos_of_opam_value v) "Invalid value for install section"))
-    | Section (pos, _) -> fail pos "Sections are not allowed in .install file")
+          List.map l.pelem ~f:(function
+            | { pelem = String src; _ } -> install_file src None
+            | { pelem =
+                  Option
+                    ( { pelem = String src; _ }
+                    , { pelem = [ { pelem = String dst; _ } ]; _ } )
+              ; _
+              } -> install_file src (Some dst)
+            | { pelem = _; pos } -> fail pos "Invalid value in .install file")
+        | { pelem = _; pos } -> fail pos "Invalid value for install section"))
+    | { pelem = Section _; pos } ->
+      fail pos "Sections are not allowed in .install file")

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679690332842,
+  "lastUpdate": 1679709583586,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -19259,6 +19259,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "38.233559352259995",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fe3c98fae85de5542534f5e7e96a9d12f0838da4",
+          "message": "fix(melange): Tell merlin about stdlib sources (#7375)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-24T18:46:09-07:00",
+          "tree_id": "1926cc89befc7471ffabe8be5364a622d328eb62",
+          "url": "https://github.com/ocaml/dune/commit/fe3c98fae85de5542534f5e7e96a9d12f0838da4"
+        },
+        "date": 1679709581425,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "32.031809788366665",
             "unit": "seconds"
           }
         ]

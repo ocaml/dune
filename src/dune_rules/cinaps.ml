@@ -9,6 +9,7 @@ type t =
   ; runtime_deps : Dep_conf.t list
   ; cinaps_version : Syntax.Version.t
   ; alias : Alias.Name.t option
+  ; link_flags : Link_flags.Spec.t
   }
 
 let name = "cinaps"
@@ -38,6 +39,7 @@ let decode =
          (Dune_lang.Syntax.since syntax (1, 1) >>> repeat Dep_conf.decode)
      and+ cinaps_version = Dune_lang.Syntax.get_exn syntax
      and+ alias = field_o "alias" Alias.Name.decode
+     and+ link_flags = Link_flags.Spec.decode ~since:(Some (3, 8))
      (* TODO use this field? *)
      and+ _flags = Ocaml_flags.Spec.decode in
      { loc
@@ -48,6 +50,7 @@ let decode =
      ; runtime_deps
      ; cinaps_version
      ; alias
+     ; link_flags
      })
 
 let () =
@@ -139,7 +142,17 @@ let gen_rules sctx t ~dir ~scope =
       ~js_of_ocaml:None ~package:None
   in
   let* (_ : Exe.dep_graphs) =
-    Exe.build_and_link cctx
+    let link_args =
+      let open Action_builder.O in
+      let* link_flags =
+        Action_builder.of_memo (Super_context.link_flags sctx ~dir t.link_flags)
+      in
+      let+ link_args =
+        Link_flags.get ~use_standard_cxx_flags:false link_flags
+      in
+      Command.Args.As link_args
+    in
+    Exe.build_and_link cctx ~link_args
       ~program:{ name; main_module_name; loc }
       ~linkages:[ Exe.Linkage.native_or_custom (Super_context.context sctx) ]
       ~promote:None

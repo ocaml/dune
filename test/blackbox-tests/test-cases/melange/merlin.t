@@ -59,10 +59,10 @@ Dump-dot-merlin includes the melange flags
 
   $ dune ocaml dump-dot-merlin $PWD
   EXCLUDE_QUERY_DIR
-  STDLIB /MELC_STDLIB
-  B /MELC_STDLIB
-  B /MELC_STDLIB
-  B /MELC_STDLIB
+  STDLIB /MELC_STDLIB/runtime/melange
+  B /MELC_STDLIB/belt/melange
+  B /MELC_STDLIB/melange
+  B /MELC_STDLIB/runtime/melange
   B $TESTCASE_ROOT/_build/default/.output.mobjs/melange
   S /MELC_STDLIB
   S /MELC_STDLIB/belt
@@ -110,7 +110,7 @@ Melange ppx should appear after user ppx, so that Merlin applies the former firs
 
   $ dune ocaml merlin dump-config $PWD | grep -v "(B "  | grep -v "(S "
   Bar
-  ((STDLIB /MELC_STDLIB)
+  ((STDLIB /MELC_STDLIB/runtime/melange)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
@@ -132,7 +132,7 @@ Melange ppx should appear after user ppx, so that Merlin applies the former firs
      -short-paths
      -keep-locs)))
   Foo
-  ((STDLIB /MELC_STDLIB)
+  ((STDLIB /MELC_STDLIB/runtime/melange)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)

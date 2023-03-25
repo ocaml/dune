@@ -6,6 +6,7 @@
   unix
   csexp
   stdune
+  dune_config
   dune_console
   dyn
   fiber

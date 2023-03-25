@@ -23,6 +23,10 @@ val get : 'a t -> 'a
 (** should dune acquire the global lock before building *)
 val global_lock : Toggle.t t
 
+(** whether dune should add cutoff to various memoized functions where it
+    reduces concurrency *)
+val cutoffs_that_reduce_concurrency_in_watch_mode : Toggle.t t
+
 (** Before any configuration value is accessed, this function must be called
     with all the configuration values from the relevant config file
     ([dune-workspace], or [dune-config]).

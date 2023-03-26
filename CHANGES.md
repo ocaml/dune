@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix `dune install` when cross compiling (#7410, fixes #6191, @anmonteiro,
+  @rizo)
+
 - Dune in watch mode no longer builds concurrent rules in serial (#7395
   @rgrinberg, @jchavarri)
 

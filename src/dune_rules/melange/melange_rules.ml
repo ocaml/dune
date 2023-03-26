@@ -218,12 +218,12 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
       let emit_and_libs_deps =
         let target_dir = Path.Build.relative dir mel.target in
         let module_systems = mel.module_systems in
-        let emit_deps =
+        let open Action_builder.O in
+        let+ () =
           js_targets_of_modules ~output:(`Private_library_or_emit target_dir)
             ~module_systems modules
           |> Action_builder.path_set
-        in
-        let lib_deps =
+        and+ () =
           let open Action_builder.O in
           let* deps =
             Resolve.Memo.read
@@ -234,8 +234,6 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
           in
           Action_builder.paths deps
         in
-        let open Action_builder.O in
-        let+ (), () = Action_builder.both emit_deps lib_deps in
         ()
       in
       let* () =

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679858493260,
+  "lastUpdate": 1679858573707,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -18271,6 +18271,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.5714701163533331",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "d76950a530aff2ed1fc13c2feb4ebe8a2808fbe3",
+          "message": "fix(melange): account for melange.compile_flags when generating merlin config\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-26T11:56:15-07:00",
+          "tree_id": "49219104f7591c2191271cfa028517e98f06d533",
+          "url": "https://github.com/ocaml/dune/commit/d76950a530aff2ed1fc13c2feb4ebe8a2808fbe3"
+        },
+        "date": 1679858572523,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.75199517147334",
             "unit": "seconds"
           }
         ]

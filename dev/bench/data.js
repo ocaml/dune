@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679860529001,
+  "lastUpdate": 1679860876025,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -18358,6 +18358,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.5977153515666664",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "7533eb9910d773a3c644a8e82e5bb686a3b4cf00",
+          "message": "fix(x-compilation): only install the context passed to -x\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-26T12:34:28-07:00",
+          "tree_id": "228d4cb1d96893ed6ca648d8fb8236ac0ae6e154",
+          "url": "https://github.com/ocaml/dune/commit/7533eb9910d773a3c644a8e82e5bb686a3b4cf00"
+        },
+        "date": 1679860875511,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "68.6083740477",
             "unit": "seconds"
           }
         ]

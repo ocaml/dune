@@ -6,9 +6,18 @@ Installing a library with `-x foo` should install the library for that context
 
   $ dune build @install -x foo
 
-  $ dune install --dry-run --prefix prefix --display short -p repro -x foo
-  Error: The following <package>.install are missing:
-  - _build/default/repro.install
-  - _build/default.foo/repro.install
-  Hint: try running: dune build [-p <pkg>] @install
-  [1]
+  $ dune install --dry-run --prefix prefix --display short -p repro -x foo 2>&1 | grep "Installing"
+  Installing prefix/foo-sysroot/lib/repro/META
+  Installing prefix/foo-sysroot/lib/repro/dune-package
+  Installing prefix/foo-sysroot/lib/repro/foo.ml
+  Installing prefix/foo-sysroot/lib/repro/repro.a
+  Installing prefix/foo-sysroot/lib/repro/repro.cma
+  Installing prefix/foo-sysroot/lib/repro/repro.cmi
+  Installing prefix/foo-sysroot/lib/repro/repro.cmt
+  Installing prefix/foo-sysroot/lib/repro/repro.cmx
+  Installing prefix/foo-sysroot/lib/repro/repro.cmxa
+  Installing prefix/foo-sysroot/lib/repro/repro.ml
+  Installing prefix/foo-sysroot/lib/repro/repro__Foo.cmi
+  Installing prefix/foo-sysroot/lib/repro/repro__Foo.cmt
+  Installing prefix/foo-sysroot/lib/repro/repro__Foo.cmx
+  Installing prefix/foo-sysroot/lib/repro/repro.cmxs

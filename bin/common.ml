@@ -913,6 +913,8 @@ let watch t = t.builder.watch
 
 let x t = t.builder.workspace_config.x
 
+let only_packages t = t.builder.only_packages
+
 let print_metrics t = t.builder.print_metrics
 
 let dump_memo_graph_file t = t.builder.dump_memo_graph_file

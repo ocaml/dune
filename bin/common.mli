@@ -5,6 +5,8 @@ type t
 
 val x : t -> Dune_engine.Context_name.t option
 
+val only_packages : t -> Dune_rules.Only_packages.Clflags.t
+
 val capture_outputs : t -> bool
 
 val root : t -> Workspace_root.t

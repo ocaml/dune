@@ -17,12 +17,12 @@
 
 dune install / uninstall should not output any messages by default:
 
-  $ dune install --prefix prefix -p foo
-  $ dune uninstall --prefix prefix -p foo
+  $ dune install --prefix prefix foo
+  $ dune uninstall --prefix prefix foo
 
 and for comparison here is the output with --display short:
 
-  $ dune install --prefix another_prefix -p foo --display short
+  $ dune install --prefix another_prefix foo --display short
   Installing another_prefix/lib/foo/META
   Installing another_prefix/lib/foo/dune-package
   Installing another_prefix/lib/foo/foo.a
@@ -33,7 +33,7 @@ and for comparison here is the output with --display short:
   Installing another_prefix/lib/foo/foo.cmxa
   Installing another_prefix/lib/foo/foo.ml
   Installing another_prefix/lib/foo/foo.cmxs
-  $ dune uninstall --prefix another_prefix -p foo --display short
+  $ dune uninstall --prefix another_prefix foo --display short
   Deleting another_prefix/lib/foo/META
   Deleting another_prefix/lib/foo/dune-package
   Deleting another_prefix/lib/foo/foo.a

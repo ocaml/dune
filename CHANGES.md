@@ -1,6 +1,10 @@
 Unreleased
 ----------
 
+- Disable `-p PKG` for `dune install`. I was previously a no-op, and it now
+  provides an informative error message making that explicit (#7419,
+  @anmonteiro)
+
 - Fix `dune install` when cross compiling (#7410, fixes #6191, @anmonteiro,
   @rizo)
 

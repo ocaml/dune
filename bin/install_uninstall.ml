@@ -598,16 +598,29 @@ let install_uninstall ~what =
                     (Dune_engine.Context_name.to_string name)
                 ])
         in
+
         let* pkgs =
-          match pkgs with
-          | [] ->
-            Package.Name.Map.values workspace.packages
-            |> Fiber.parallel_map ~f:(fun pkg ->
-                   package_is_vendored pkg >>| function
-                   | true -> None
-                   | false -> Some (Package.name pkg))
-            >>| List.filter_opt
-          | l -> Fiber.return l
+          match Common.only_packages common with
+          | Restrict { names; command_line_option = _ } ->
+            let names =
+              Package.Name.Set.to_list_map names ~f:Package.Name.to_string
+            in
+            User_error.raise
+              [ Pp.textf "`-p PKGS' has no effect in `dune install'" ]
+              ~hints:
+                [ Pp.textf "try running: dune install %s"
+                    (String.concat ~sep:" " names)
+                ]
+          | No_restriction -> (
+            match pkgs with
+            | [] ->
+              Package.Name.Map.values workspace.packages
+              |> Fiber.parallel_map ~f:(fun pkg ->
+                     package_is_vendored pkg >>| function
+                     | true -> None
+                     | false -> Some (Package.name pkg))
+              >>| List.filter_opt
+            | l -> Fiber.return l)
         in
         let install_files, missing_install_files =
           List.concat_map pkgs ~f:(fun pkg ->

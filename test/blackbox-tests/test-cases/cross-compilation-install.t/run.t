@@ -6,7 +6,7 @@ Installing a library with `-x foo` should install the library for that context
 
   $ dune build @install -x foo
 
-  $ dune install --dry-run --prefix prefix --display short -p repro -x foo 2>&1 | grep "Installing"
+  $ dune install --dry-run --prefix prefix --display short repro -x foo 2>&1 | grep "Installing"
   Installing prefix/foo-sysroot/lib/repro/META
   Installing prefix/foo-sysroot/lib/repro/dune-package
   Installing prefix/foo-sysroot/lib/repro/foo.ml

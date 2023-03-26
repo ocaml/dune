@@ -245,12 +245,10 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
         in
         ()
       in
-      let* () =
+      match mel.alias with
+      | None ->
         let alias = Alias.make Melange_stanzas.Emit.implicit_alias ~dir in
         Rules.Produce.Alias.add_deps alias emit_and_libs_deps
-      in
-      match mel.alias with
-      | None -> Memo.return ()
       | Some alias_name ->
         let alias = Alias.make alias_name ~dir in
         Rules.Produce.Alias.add_deps alias emit_and_libs_deps
@@ -367,13 +365,12 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
         Super_context.add_rule ~loc ~dir ~mode sctx
           (Action_builder.copy ~src ~dst))
   and+ () =
-    let alias =
-      Alias.make Melange_stanzas.Emit.implicit_alias ~dir:target_dir
-    in
-    Rules.Produce.Alias.add_deps alias deps
-  and+ () =
     match mel.alias with
-    | None -> Memo.return ()
+    | None ->
+      let alias =
+        Alias.make Melange_stanzas.Emit.implicit_alias ~dir:target_dir
+      in
+      Rules.Produce.Alias.add_deps alias deps
     | Some alias_name ->
       let alias = Alias.make alias_name ~dir:target_dir in
       Rules.Produce.Alias.add_deps alias deps

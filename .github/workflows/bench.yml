@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - benchmark/add-synthetic-watch
+      - bench/fix-melange-bench
 
 permissions:
   # deployments permission to deploy GitHub pages website
@@ -92,8 +92,9 @@ jobs:
           yarn install
           opam install -y reason
           opam pin add -y graphql_ppx https://github.com/jchavarri/graphql-ppx.git\#2598910886f1d2d3869406ae7eb787341d8dce6b
-          opam pin add -y melange https://github.com/melange-re/melange.git\#2dec6b553c36027b6550ee323f264f7d4662d966
-          rm -rf node_modules/melange && ln -sfn $(opam var melange:lib)/runtime node_modules/melange
+          opam pin add -y melange.dev https://github.com/melange-re/melange.git\#227b7cb862c4a81f74c19fa051a75005918a18ff
+          opam pin add -y reactjs-jsx-ppx.dev https://github.com/melange-re/melange.git\#227b7cb862c4a81f74c19fa051a75005918a18ff
+          opam pin add -y rescript-syntax.dev https://github.com/melange-re/melange.git\#227b7cb862c4a81f74c19fa051a75005918a18ff
 
       - name: Run pupilfirst benchmark
         working-directory: pupilfirst

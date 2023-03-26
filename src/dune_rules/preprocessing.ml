@@ -720,7 +720,8 @@ let pp_one_module sctx ~lib_name ~scope ~preprocessor_deps
                         >>| Action.Full.add_sandbox sandbox))))
 
 let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
-    ~instrumentation_deps ~lib_name ~scope =
+    ~instrumentation_deps ~lib_name =
+  let scope = Expander.scope_host expander in
   let preprocessor_deps = preprocessor_deps @ instrumentation_deps in
   let preprocess =
     Module_name.Per_item.map preprocess ~f:(fun pp ->

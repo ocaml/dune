@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679858241201,
+  "lastUpdate": 1679858483354,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -18213,6 +18213,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.0333725120266664",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f065be7ebc9bd016ae8caae6a2b7a62fb892a28e",
+          "message": "test: depend on odoc in all odoc tests (#7411)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-26T11:55:13-07:00",
+          "tree_id": "4f735e770c8b12167bde813093302bf37638cc1e",
+          "url": "https://github.com/ocaml/dune/commit/f065be7ebc9bd016ae8caae6a2b7a62fb892a28e"
+        },
+        "date": 1679858482644,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.06381949450666",
             "unit": "seconds"
           }
         ]

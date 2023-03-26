@@ -440,8 +440,49 @@ Good:
   ``foo``.
 
 - Avoid optional arguments. They increase brevity at the expense of readability
-  and are annoying to grep. Further more, they encourage callers not to think
+  and are annoying to grep. Furthermore, they encourage callers not to think
   at all about these optional arguments even if they often should.
+
+- Avoid qualifying modules when accessing fields of records or constructors.
+  Avoid it altogether if possible, or add a type annotation if
+  necessary.
+
+Bad:
+
+.. code:: ocaml
+
+    let result = A.b () in
+    match result.A.field with
+    | B.Constructor -> ...
+
+Good:
+
+.. code:: ocaml
+
+    let result : A.t = A.b () in
+    match (result.field : B.t) with
+    | Constructor -> ...
+
+- When constructing records, use the qualified names in in the record. Do not
+  open the record. The local open syntax pulls in all kinds of names from the
+  opened module and might shadow the values that you're trying to put into the
+  record, leading to difficult debugging.
+
+Bad; if ``A.value`` exists, it will pick that over ``value``:
+
+.. code:: ocaml
+
+    let value = 42 in
+    let record = A.{ field = value; other } in
+    ...
+
+Good:
+
+.. code:: ocaml
+
+    let value = 42 in
+    let record = { A.field = value; other } in
+    ...
 
 - Stage functions explicitly with the ``Staged`` module.
 
@@ -566,3 +607,24 @@ Melange Bench
 We also benchmark a demo Melange project's build time:
 
 https://ocaml.github.io/dune/dev/bench/
+
+Monorepo Benchmark
+------------------
+
+The file bench/monorepo/bench.Dockerfile sets up a Docker container for
+benchmarking Dune building a large monorepo constructed with
+`opam-monorepo <https://github.com/tarides/opam-monorepo>`_. The monorepo is
+constructed according to the files in
+https://github.com/ocaml-dune/ocaml-monorepo-benchmark/tree/main/benchmark.
+Build the Docker image from the root directory of this repo.
+
+E.g., run
+
+.. code:: sh
+
+   $ docker build . -f bench/monorepo/bench.Dockerfile --tag=dune-monorepo-benchmark
+   $ docker run -it dune-monorepo-benchmark bash --login
+
+From inside the container, run ``make bench`` to run the benchmark. The output of
+the benchmark is a JSON string in the format accepted by `current-bench
+<https://github.com/ocurrent/current-bench>`_.

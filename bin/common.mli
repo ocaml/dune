@@ -3,6 +3,8 @@ open Stdune
 
 type t
 
+val x : t -> Dune_engine.Context_name.t option
+
 val capture_outputs : t -> bool
 
 val root : t -> Workspace_root.t
@@ -19,6 +21,8 @@ val forbid_builds : t -> t
 
 val signal_watcher : t -> [ `Yes | `No ]
 
+val watch_exclusions : t -> string list
+
 val stats : t -> Dune_stats.t option
 
 val print_metrics : t -> bool
@@ -29,7 +33,7 @@ val dump_memo_graph_format : t -> Dune_graph.Graph.File_format.t
 
 val dump_memo_graph_with_timing : t -> bool
 
-val watch : t -> Watch_mode_config.t
+val watch : t -> Dune_rpc_impl.Watch_mode_config.t
 
 val file_watcher : t -> Dune_engine.Scheduler.Run.file_watcher
 

@@ -7,6 +7,7 @@ module Backend = struct
     { loc : Loc.t
     ; runner_libraries : (Loc.t * Lib_name.t) list
     ; flags : Ordered_set_lang.Unexpanded.t
+    ; list_partitions_flags : Ordered_set_lang.Unexpanded.t option
     ; generate_runner : (Loc.t * Action_unexpanded.t) option
     ; extends : (Loc.t * Lib_name.t) list
     }
@@ -30,12 +31,22 @@ module Backend = struct
        and+ runner_libraries =
          field "runner_libraries" (repeat (located Lib_name.decode)) ~default:[]
        and+ flags = Ordered_set_lang.Unexpanded.field "flags"
+       and+ list_partitions_flags =
+         field_o "list_partitions_flags"
+           (Dune_lang.Syntax.since Stanza.syntax (3, 8)
+           >>> Ordered_set_lang.Unexpanded.decode)
        and+ generate_runner =
          field_o "generate_runner" (located Dune_lang.Action.decode)
        and+ extends =
          field "extends" (repeat (located Lib_name.decode)) ~default:[]
        in
-       { loc; runner_libraries; flags; generate_runner; extends })
+       { loc
+       ; runner_libraries
+       ; flags
+       ; list_partitions_flags
+       ; generate_runner
+       ; extends
+       })
 
   let encode t =
     let open Dune_lang.Encoder in
@@ -44,6 +55,11 @@ module Backend = struct
     , record_fields
       @@ [ field_l "runner_libraries" lib t.runner_libraries
          ; field_i "flags" Ordered_set_lang.Unexpanded.encode t.flags
+         ; field_i "list_partitions_flags"
+             (function
+               | None -> []
+               | Some x -> Ordered_set_lang.Unexpanded.encode x)
+             t.list_partitions_flags
          ; field_o "generate_runner" Dune_lang.Action.encode
              (Option.map t.generate_runner ~f:snd)
          ; field_l "extends" lib t.extends
@@ -76,6 +92,12 @@ module Mode_conf = struct
 
   include T
   open Dune_lang.Decoder
+
+  let to_string = function
+    | Byte -> "byte"
+    | Javascript -> "js"
+    | Native -> "native"
+    | Best -> "best"
 
   let decode =
     enum

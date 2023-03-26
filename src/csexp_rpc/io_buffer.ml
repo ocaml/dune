@@ -30,7 +30,10 @@ let maybe_resize_to_fit t write_size =
   if capacity < write_size then (
     let bytes =
       let new_size =
-        let needed = buf_len + write_size - capacity in
+        let needed =
+          let free_space = capacity + t.pos_r in
+          buf_len + max 0 (write_size - free_space)
+        in
         max (min max_buffer_size (buf_len * 2)) needed
       in
       Bytes.create new_size

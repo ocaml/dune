@@ -300,10 +300,10 @@ let display_term =
      Option.some_if verbose Dune_config.Display.verbose)
     Arg.(
       let doc =
-        let all = Display.all |> List.map ~f:fst |> String.enumerate_one_of in
+        let all = Display.all |> List.map ~f:fst |> String.enumerate_or in
         sprintf
           "Control the display mode of Dune. See $(b,dune-config\\(5\\)) for \
-           more details. Valid values for this option are %s"
+           more details. Valid values for this option are %s."
           all
       in
       value
@@ -439,6 +439,7 @@ let shared_with_config_file =
   ; cache_storage_mode
   ; action_stdout_on_success
   ; action_stderr_on_success
+  ; experimental = None
   }
 
 module Cache_debug_flags = Dune_engine.Cache_debug_flags
@@ -515,7 +516,7 @@ module Builder = struct
     ; no_print_directory : bool
     ; store_orig_src_dir : bool
     ; default_target : Arg.Dep.t (* For build & runtest only *)
-    ; watch : Watch_mode_config.t
+    ; watch : Dune_rpc_impl.Watch_mode_config.t
     ; print_metrics : bool
     ; dump_memo_graph_file : string option
     ; dump_memo_graph_format : Graph.File_format.t
@@ -529,6 +530,7 @@ module Builder = struct
     ; separate_error_messages : bool
     ; require_dune_project_file : bool
     ; insignificant_changes : [ `React | `Ignore ]
+    ; watch_exclusions : string list
     ; build_dir : string
     ; store_digest_preimage : bool
     ; root : string option
@@ -536,6 +538,20 @@ module Builder = struct
     }
 
   let set_root t root = { t with root = Some root }
+
+  (** Cmdliner documentation markup language
+      (https://erratique.ch/software/cmdliner/doc/tool_man.html#doclang)
+      requires that dollar signs (ex. $(tname)) and backslashes are escaped. *)
+  let docmarkup_escape s =
+    let b = Buffer.create (2 * String.length s) in
+    for i = 0 to String.length s - 1 do
+      match s.[i] with
+      | ('$' | '\\') as c ->
+        Buffer.add_char b '\\';
+        Buffer.add_char b c
+      | c -> Buffer.add_char b c
+    done;
+    Buffer.contents b
 
   let term =
     let docs = copts_sect in
@@ -635,7 +651,7 @@ module Builder = struct
                      "Instead of terminating build after completion, wait \
                       continuously for file changes.")
            in
-           if watch then Some Watch_mode_config.Eager else None)
+           if watch then Some Dune_rpc_impl.Watch_mode_config.Eager else None)
           (let+ watch =
              Arg.(
                value & flag
@@ -644,11 +660,11 @@ module Builder = struct
                      "Similar to [--watch], but only start a build when \
                       instructed externally by an RPC.")
            in
-           if watch then Some Watch_mode_config.Passive else None)
+           if watch then Some Dune_rpc_impl.Watch_mode_config.Passive else None)
       in
       match res with
-      | None -> Watch_mode_config.No
-      | Some mode -> Watch_mode_config.Yes mode
+      | None -> Dune_rpc_impl.Watch_mode_config.No
+      | Some mode -> Yes mode
     and+ print_metrics =
       Arg.(
         value & flag
@@ -764,6 +780,28 @@ module Builder = struct
                ])
             Automatic
         & info [ "file-watcher" ] ~doc)
+    and+ watch_exclusions =
+      let std_exclusions = Dune_config.standard_watch_exclusions in
+      let doc =
+        let escaped_std_exclusions =
+          List.map ~f:docmarkup_escape std_exclusions
+        in
+        "Adds a POSIX regular expression that will exclude matching \
+         directories from $(b,`dune build --watch`). The option $(opt) can be \
+         repeated to add multiple exclusions. Semicolons can be also used as a \
+         separator. If no exclusions are provided, then a standard set of \
+         exclusions is used; however, if $(i,one or more) $(opt) are used, \
+         $(b,none) of the standard exclusions are used. The standard \
+         exclusions are: "
+        ^ String.concat ~sep:" " escaped_std_exclusions
+      in
+      let arg =
+        Arg.(
+          value
+          & opt_all (list ~sep:';' string) [ std_exclusions ]
+          & info [ "watch-exclusions" ] ~docs ~docv:"REGEX" ~doc)
+      in
+      Term.(const List.flatten $ arg)
     and+ wait_for_filesystem_clock =
       Arg.(
         value & flag
@@ -852,6 +890,7 @@ module Builder = struct
     ; require_dune_project_file
     ; insignificant_changes =
         (if react_to_insignificant_changes then `React else `Ignore)
+    ; watch_exclusions
     ; build_dir = Option.value ~default:default_build_dir build_dir
     ; store_digest_preimage
     ; root
@@ -871,6 +910,8 @@ let capture_outputs t = t.builder.capture_outputs
 let root t = t.root
 
 let watch t = t.builder.watch
+
+let x t = t.builder.workspace_config.x
 
 let print_metrics t = t.builder.print_metrics
 
@@ -903,6 +944,8 @@ let signal_watcher t =
   | `Forbid_builds ->
     (* if we aren't building anything, then we don't mind interrupting dune immediately *)
     `No
+
+let watch_exclusions t = t.builder.watch_exclusions
 
 let stats t = t.stats
 
@@ -1120,7 +1163,7 @@ let build (builder : Builder.t) ~default_root_is_cwd =
          in
          let action_runner = Dune_engine.Action_runner.Rpc_server.create () in
          Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir
-           stats action_runner))
+           ~watch_mode_config:builder.watch stats action_runner))
   in
   if builder.store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if builder.print_metrics then (

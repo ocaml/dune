@@ -8,7 +8,7 @@ Build js files
 The directory structure of the .js should mimic the directory structure of the
 source:
 
-  $ find _build/default/$output -iname "*.js" | sort
+  $ find _build/default/$output -iname "*.js" | grep -v melange | sort
   _build/default/inside/output/inside/app/b.js
   _build/default/inside/output/inside/app/lib.js
   _build/default/inside/output/inside/app/lib/a.js

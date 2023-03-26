@@ -165,6 +165,7 @@ let config =
   ; stats = None
   ; insignificant_changes = `React
   ; signal_watcher = `No
+  ; watch_exclusions = []
   }
 
 let run run =

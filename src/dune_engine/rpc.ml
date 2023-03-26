@@ -19,11 +19,11 @@ let stop ({ state; server; pool } as t) =
   let* () = Fiber.return () in
   match state with
   | `Stopped -> Fiber.return ()
-  | `Awaiting_start -> Fiber.Pool.stop pool
+  | `Awaiting_start -> Fiber.Pool.close pool
   | `Running ->
     t.state <- `Stopped;
     Fiber.fork_and_join_unit
-      (fun () -> Fiber.Pool.stop pool)
+      (fun () -> Fiber.Pool.close pool)
       (fun () -> server.stop)
 
 let with_background_rpc server f =

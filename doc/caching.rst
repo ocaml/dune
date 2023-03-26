@@ -22,8 +22,9 @@ Choose the one that is more convenient for you:
 * Run Dune with the ``--cache=enabled`` flag.
 
 By default, Dune stores the cache in your ``XDG_CACHE_HOME`` directory on \*nix
-systems and ``"HOME\\Local Settings\\Cache"`` on Windows. You can change the
-default location by setting the environment variable ``DUNE_CACHE_ROOT``.
+systems and ``%LOCALAPPDATA%\Microsoft\Windows\Temporary Internet Files\dune`` on Windows.
+You can change the default location by setting the environment variable
+``DUNE_CACHE_ROOT``.
 
 
 Cache Storage Mode
@@ -94,4 +95,4 @@ Some build rules are inherently not reproducible because they involve running
 non-deterministic commands that, for example, depend on the current time or
 download files from the Internet. To prevent Dune from caching such rules, mark
 them as non-reproducible by using ``(deps (universe))``. Please see
-:ref:`deps-field`.
+:doc:`concepts/dependency-spec`.

@@ -1,4 +1,5 @@
 open Stdune
+module Config = Dune_config.Config
 
 let lock_file = Path.Build.(relative root ".lock")
 
@@ -57,34 +58,40 @@ end
 let locked = ref false
 
 let lock_exn ~timeout =
-  if not !locked then
-    let res =
-      match timeout with
-      | None -> Lock.lock ()
-      | Some timeout -> (
-        match
-          with_timeout ~timeout (fun () ->
-              match Lock.lock () with
-              | `Success -> `Stop
-              | `Failure -> `Continue)
-        with
-        | `Timed_out -> `Failure
-        | `Success -> `Success)
-    in
-    match res with
-    | `Success -> locked := true
-    | `Failure ->
-      User_error.raise
-        [ Pp.textf
-            "A running dune%s instance has locked the build directory. If this \
-             is not the case, please delete %s"
-            (match Io.read_file (Path.build lock_file) with
-            | exception _ -> ""
-            | pid -> sprintf " (pid: %s)" pid)
-            (Path.Build.to_string_maybe_quoted lock_file)
-        ]
+  match Config.(get global_lock) with
+  | `Disabled -> ()
+  | `Enabled -> (
+    if not !locked then
+      let res =
+        match timeout with
+        | None -> Lock.lock ()
+        | Some timeout -> (
+          match
+            with_timeout ~timeout (fun () ->
+                match Lock.lock () with
+                | `Success -> `Stop
+                | `Failure -> `Continue)
+          with
+          | `Timed_out -> `Failure
+          | `Success -> `Success)
+      in
+      match res with
+      | `Success -> locked := true
+      | `Failure ->
+        User_error.raise
+          [ Pp.textf
+              "A running dune%s instance has locked the build directory. If \
+               this is not the case, please delete %s"
+              (match Io.read_file (Path.build lock_file) with
+              | exception _ -> ""
+              | pid -> sprintf " (pid: %s)" pid)
+              (Path.Build.to_string_maybe_quoted lock_file)
+          ])
 
 let unlock () =
-  if !locked then (
-    Lock.unlock ();
-    locked := false)
+  match Config.(get global_lock) with
+  | `Disabled -> ()
+  | `Enabled ->
+    if !locked then (
+      Lock.unlock ();
+      locked := false)

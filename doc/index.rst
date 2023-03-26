@@ -17,13 +17,27 @@ Welcome to Dune's Documentation!
    overview
    quick-start
    dune-files
-   concepts
    usage
 
 .. toctree::
    :caption: Reference
    :maxdepth: 3
 
+   concepts/scopes
+   concepts/ordered-set-language
+   concepts/boolean-language
+   concepts/predicate-language
+   concepts/variables
+   concepts/library-dependencies
+   concepts/preprocessing-spec
+   concepts/dependency-spec
+   concepts/ocaml-flags
+   concepts/actions
+   concepts/sandboxing
+   concepts/locks
+   concepts/promotion
+   concepts/package-spec
+   concepts/foreign
    formatting
    coq
    cross-compilation
@@ -37,10 +51,22 @@ Welcome to Dune's Documentation!
    jsoo
    lexical-conventions
    opam
-   advanced-topics
    toplevel-integration
    variants
    tests
+
+.. toctree::
+   :caption: Advanced topics
+
+   advanced/meta-file-generation
+   advanced/findlib-integration
+   advanced/findlib-dynamic
+   advanced/classical-ppx
+   advanced/profiling-dune
+   advanced/package-version
+   advanced/ocaml-syntax
+   advanced/variables-artifacts
+   advanced/custom-cmxs
 
 .. toctree::
    :caption: Miscellaneous

@@ -287,6 +287,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Deps
       | Input_file
       | Library_name
+      | Partition
       | Impl_files
       | Intf_files
       | Inline_tests

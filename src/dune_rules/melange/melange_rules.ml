@@ -103,9 +103,18 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
     >>| Preprocess.Per_module.pps
   in
   let merlin_ident = Merlin_ident.for_melange ~target:mel.target in
+  let libraries =
+    match mel.emit_stdlib with
+    | true ->
+      let builtin_melange_dep =
+        Lib_dep.Direct (mel.loc, Lib_name.of_string "melange")
+      in
+      builtin_melange_dep :: mel.libraries
+    | false -> mel.libraries
+  in
   Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Melange_emit mel.target)
     ~allow_overlaps:mel.allow_overlapping_dependencies ~forbidden_libraries:[]
-    mel.libraries ~pps ~dune_version ~merlin_ident
+    libraries ~pps ~dune_version ~merlin_ident
 
 let js_targets_of_modules modules ~module_systems ~output =
   List.map module_systems ~f:(fun (_, js_ext) ->

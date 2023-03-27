@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679935486755,
+  "lastUpdate": 1679935979542,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11222,6 +11222,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.44554971382",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "16a7e883ef2b2283f8a636fbf2c8bade3da92754",
+          "message": "fix(x-compilation): find host ppx dependencies in the host context (#7415)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-27T09:31:39-07:00",
+          "tree_id": "8c4de48a43685db9f1f720b8ceeabee4cd0fad0c",
+          "url": "https://github.com/ocaml/dune/commit/16a7e883ef2b2283f8a636fbf2c8bade3da92754"
+        },
+        "date": 1679935978735,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.06555989583333",
             "unit": "seconds"
           }
         ]

@@ -189,7 +189,7 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
       Dir_contents.ocaml dir_contents
       >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
     in
-    let* () = Check_rules.add_obj_dir sctx ~obj_dir `Melange in
+    let* () = Check_rules.add_obj_dir sctx ~obj_dir Melange in
     let* modules, pp =
       Buildable_rules.modules_rules sctx
         (Melange

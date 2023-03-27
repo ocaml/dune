@@ -17,8 +17,8 @@ let add_obj_dir sctx ~obj_dir mode =
       let dir =
         Path.build
           (match mode with
-          | `Melange -> Obj_dir.melange_dir obj_dir
-          | `Ocaml -> Obj_dir.byte_dir obj_dir)
+          | Lib_mode.Melange -> Obj_dir.melange_dir obj_dir
+          | Ocaml _ -> Obj_dir.byte_dir obj_dir)
       in
       File_selector.create ~dir dev_files
     in

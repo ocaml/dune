@@ -124,10 +124,71 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         Option.some_if (List.exists linkages ~f:Exe.Linkage.is_js) js_of_ocaml
       else Some js_of_ocaml
     in
+    let project = Scope.project scope in
+    let requires_compile =
+      if Dune_project.implicit_transitive_deps project then
+        Memo.Lazy.force requires_link
+      else requires_compile
+    in
+    let lib_to_entry_modules_map =
+      Resolve.Memo.bind requires_compile ~f:(fun reqs ->
+          let r =
+            List.map reqs ~f:(fun req ->
+                let req_entry_mods =
+                  match Lib.Local.of_lib req with
+                  | None -> Memo.return []
+                  | Some libl -> Odoc.entry_modules_by_lib sctx libl
+                in
+                Resolve.Memo.map (req_entry_mods |> Resolve.Memo.lift_memo)
+                  ~f:(fun req_entry_mods' -> (req, req_entry_mods')))
+          in
+          r |> Resolve.Memo.all)
+      |> Resolve.Memo.read
+    in
+ 
+    let lib_top_module_map =
+      Resolve.Memo.bind requires_compile ~f:(fun reqs ->
+          List.map reqs ~f:(fun req ->
+              let req_entry_mods =
+                match Lib.Local.of_lib req with
+                | None -> Memo.return []
+                | Some libl -> Odoc.entry_modules_by_lib sctx libl
+              in
+              Resolve.Memo.bind (req_entry_mods |> Resolve.Memo.lift_memo)
+                ~f:(fun req_entry_mods' ->
+                  List.map req_entry_mods' ~f:(fun req_entry_mod ->
+                      let transitive_closure =
+                        Lib.closure [ req ]
+                          ~linking:
+                            (Dune_project.implicit_transitive_deps project)
+                      in
+                      Resolve.Memo.bind transitive_closure ~f:(fun libst ->
+                          let transitive_modules =
+                            List.fold_left libst ~init:(Memo.return [])
+                              ~f:(fun acc libt ->
+                                let libt_entry_mods =
+                                  match Lib.Local.of_lib libt with
+                                  | None -> Memo.return []
+                                  | Some libl ->
+                                    Odoc.entry_modules_by_lib sctx libl
+                                in
+                                let open Memo.O in
+                                let* acc' = acc in
+                                let+ entry_mods = libt_entry_mods in
+                                List.append acc' entry_mods)
+                          in
+                          Memo.map transitive_modules ~f:(fun mds ->
+                              (Module.name req_entry_mod, mds))
+                          |> Resolve.Memo.lift_memo))
+                  |> Resolve.Memo.all))
+          |> Resolve.Memo.all)
+      |> Resolve.Memo.read
+    in
+     
     Compilation_context.create () ~loc:exes.buildable.loc ~super_context:sctx
       ~expander ~scope ~obj_dir ~modules ~flags ~requires_link ~requires_compile
       ~preprocessing:pp ~js_of_ocaml ~opaque:Inherit_from_settings
-      ~package:exes.package
+      ~package:exes.package ~lib_top_module_map ~lib_to_entry_modules_map
   in
   let stdlib_dir = ctx.Context.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in

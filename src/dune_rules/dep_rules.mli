@@ -5,13 +5,13 @@ open Import
 val for_module :
      Ocamldep.Modules_data.t
   -> Module.t
-  -> Module.t list Action_builder.t Ml_kind.Dict.t Memo.t
+  -> Module_dep.t list Action_builder.t Ml_kind.Dict.t Memo.t
 
 val immediate_deps_of :
      Module.t
   -> Modules.t
   -> Path.Build.t Obj_dir.t
   -> Ml_kind.t
-  -> Module.t list Action_builder.t
+  -> Module_dep.t list Action_builder.t
 
 val rules : Ocamldep.Modules_data.t -> Dep_graph.t Ml_kind.Dict.t Memo.t

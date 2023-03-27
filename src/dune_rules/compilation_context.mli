@@ -39,6 +39,8 @@ val create :
   -> ?modes:Dune_file.Mode_conf.Set.Details.t Lib_mode.Map.t
   -> ?bin_annot:bool
   -> ?loc:Loc.t
+  -> ?lib_top_module_map: (Module_name.t * Module.t list ) list list Action_builder.t
+  -> ?lib_to_entry_modules_map: (Lib.t * Module.t  list  ) list Action_builder.t
   -> unit
   -> t Memo.t
 
@@ -68,7 +70,9 @@ val requires_link : t -> Lib.t list Resolve.Memo.t
 val requires_compile : t -> Lib.t list Resolve.Memo.t
 
 val includes :
-  t -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
+     t
+  -> md:Module.t
+  -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
 val preprocessing : t -> Pp_spec.t
 

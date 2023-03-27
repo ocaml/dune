@@ -3,7 +3,7 @@ open Action_builder.O
 
 type t =
   { dir : Path.Build.t
-  ; per_module : Module.t list Action_builder.t Module_name.Unique.Map.t
+  ; per_module : Module_dep.t list Action_builder.t Module_name.Unique.Map.t
   }
 
 let make ~dir ~per_module = { dir; per_module }
@@ -12,20 +12,17 @@ let deps_of t (m : Module.t) =
   match Module_name.Unique.Map.find t.per_module (Module.obj_name m) with
   | Some x -> x
   | None ->
-    Code_error.raise "Ocamldep.Dep_graph.deps_of"
-      [ ("dir", Path.Build.to_dyn t.dir)
-      ; ( "modules"
-        , Dyn.(list Module_name.Unique.to_dyn)
-            (Module_name.Unique.Map.keys t.per_module) )
-      ; ("m", Module.to_dyn m)
-      ]
+    (* Not raising here due to call introduced in [Module_compilation] *)
+    Action_builder.return []
 
 module Top_closure = Top_closure.Make (Module_name.Unique.Set) (Action_builder)
 
 let top_closed t modules =
   let+ res =
     Top_closure.top_closure modules ~key:Module.obj_name ~deps:(fun m ->
-        Module_name.Unique.Map.find_exn t.per_module (Module.obj_name m))
+        Action_builder.map
+          (Module_name.Unique.Map.find_exn t.per_module (Module.obj_name m))
+          ~f:(fun md -> List.filter_map md ~f:Module_dep.filter_local))
   in
   match res with
   | Ok modules -> modules

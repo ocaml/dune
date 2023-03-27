@@ -14,6 +14,7 @@ module Lib = Lib
 module Lib_flags = Lib_flags
 module Lib_info = Lib_info
 module Modules = Modules
+module Module_dep = Module_dep
 module Module_compilation = Module_compilation
 module Exe_rules = Exe_rules
 module Lib_rules = Lib_rules

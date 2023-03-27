@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679933775436,
+  "lastUpdate": 1679934276522,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11135,6 +11135,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.67557092243333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3ecbd392e0fe7ea47360709b19c595bebcc0e3ad",
+          "message": "doc: remove \"known issues\" page (#7387)\n\nThe part about parallel invocations is not correct anymore, and the\r\nmli-only modules part does not seem important enough to have its own\r\npage.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-03-27T18:03:12+02:00",
+          "tree_id": "8dc0a3119c0e957fae20106739f8894f9b753058",
+          "url": "https://github.com/ocaml/dune/commit/3ecbd392e0fe7ea47360709b19c595bebcc0e3ad"
+        },
+        "date": 1679934275578,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.71855997435333",
             "unit": "seconds"
           }
         ]

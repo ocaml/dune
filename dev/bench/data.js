@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679941266471,
+  "lastUpdate": 1679941851464,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11251,6 +11251,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.06555989583333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8ef70575cd44a4a17b73dcb28d2bdd967db2e188",
+          "message": "test(x-compilation): demonstrate Dune doesn't search default toolchain paths (#7424)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-27T11:05:12-07:00",
+          "tree_id": "644c9821da2977a37d14eb2c53f7e2d9066bdb0b",
+          "url": "https://github.com/ocaml/dune/commit/8ef70575cd44a4a17b73dcb28d2bdd967db2e188"
+        },
+        "date": 1679941849546,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "44.07653745444666",
             "unit": "seconds"
           }
         ]

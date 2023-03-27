@@ -4,6 +4,10 @@
 Cross-Compilation
 *****************
 
+.. TODO(diataxis)
+
+   This can be turned into an how-to guide.
+
 Dune allows for cross-compilation by defining build contexts with multiple
 targets. Targets are specified by adding a ``targets`` field to the build
 context definition.

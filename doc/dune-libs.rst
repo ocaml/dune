@@ -2,6 +2,8 @@
 Dune Libraries
 **************
 
+.. TODO(diataxis) Move into :doc:`reference/dune-libs`
+
 .. _configurator:
 
 Configurator

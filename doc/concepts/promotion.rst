@@ -1,6 +1,10 @@
 Diffing and Promotion
 =====================
 
+.. TODO(diataxis)
+   - howto: diffing and promotion
+   - reference: diffing
+
 ``(diff <file1> <file2>)`` is very similar to ``(run diff <file1>
 <file2>)``. In particular it behaves in the same way:
 

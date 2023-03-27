@@ -256,13 +256,19 @@ module Crawl = struct
 
   (** Builds the list of modules *)
   let modules ~obj_dir
-      ~(deps_of : Module.t -> Module.t list Ml_kind.Dict.t Action_builder.t)
+      ~(deps_of : Module.t -> Module_dep.t list Ml_kind.Dict.t Action_builder.t)
       (modules_ : Modules.t) : Descr.Mod.t list Memo.t =
     Modules.fold_no_vlib ~init:(Memo.return []) modules_ ~f:(fun m macc ->
         let* acc = macc in
         let deps = deps_of m in
         let+ { Ml_kind.Dict.intf = deps_for_intf; impl = deps_for_impl }, _ =
           Dune_engine.Action_builder.run deps Eager
+        in
+        let deps_for_intf =
+          List.filter_map ~f:Module_dep.filter_local deps_for_intf
+        in
+        let deps_for_impl =
+          List.filter_map ~f:Module_dep.filter_local deps_for_impl
         in
         module_ ~obj_dir ~deps_for_intf ~deps_for_impl m :: acc)
 

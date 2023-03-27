@@ -51,19 +51,23 @@ let deps_of_module ({ modules; _ } as md) ~ml_kind m =
   match Module.kind m with
   | Wrapped_compat ->
     let interface_module =
-      match Modules.lib_interface modules with
-      | Some m -> m
-      | None -> Modules.compat_for_exn modules m
+      Module_dep.Local
+        (match Modules.lib_interface modules with
+        | Some m -> m
+        | None -> Modules.compat_for_exn modules m)
     in
     List.singleton interface_module |> Action_builder.return |> Memo.return
   | _ -> (
     let+ deps = Ocamldep.deps_of md ~ml_kind m in
     match Modules.alias_for modules m with
-    | [] -> deps
+    | [] ->
+      let open Action_builder.O in
+      let+ deps = deps in
+      deps
     | aliases ->
       let open Action_builder.O in
       let+ deps = deps in
-      aliases @ deps)
+      List.map ~f:Module_dep.to_local aliases @ deps)
 
 let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind
     sourced_module =
@@ -81,7 +85,10 @@ let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind
     let+ deps =
       ooi_deps md ~dune_version ~vlib_obj_map ~ml_kind sourced_module
     in
-    Action_builder.map deps ~f:(List.map ~f:Modules.Sourced_module.to_module)
+    Action_builder.map deps
+      ~f:
+        (List.map ~f:(fun m ->
+             Modules.Sourced_module.to_module m |> Module_dep.to_local))
   | Some lib ->
     let modules = Vimpl.vlib_modules vimpl in
     let info = Lib.Local.info lib in
@@ -135,7 +142,8 @@ let immediate_deps_of unit modules obj_dir ml_kind =
       | Some m -> m
       | None -> Modules.compat_for_exn modules unit
     in
-    List.singleton interface_module |> Action_builder.return
+    List.singleton (Module_dep.to_local interface_module)
+    |> Action_builder.return
   | _ ->
     if has_single_file modules then Action_builder.return []
     else Ocamldep.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit
@@ -150,13 +158,12 @@ let for_module md module_ =
 
 let rules md =
   let modules = md.modules in
-  match Modules.as_singleton modules with
-  | Some m -> Memo.return (Dep_graph.Ml_kind.dummy m)
-  | None ->
-    dict_of_func_concurrently (fun ~ml_kind ->
-        let+ per_module =
-          Modules.obj_map modules
-          |> Module_name.Unique.Map_traversals.parallel_map
-               ~f:(fun _obj_name m -> deps_of md ~ml_kind m)
-        in
-        Dep_graph.make ~dir:md.dir ~per_module)
+  (* Force calling ocamldep even for singletons
+     since we want lib dependencies to be in the graph *)
+  dict_of_func_concurrently (fun ~ml_kind ->
+      let+ per_module =
+        Modules.obj_map modules
+        |> Module_name.Unique.Map_traversals.parallel_map ~f:(fun _obj_name m ->
+               deps_of md ~ml_kind m)
+      in
+      Dep_graph.make ~dir:md.dir ~per_module)

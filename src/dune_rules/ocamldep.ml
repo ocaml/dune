@@ -15,31 +15,35 @@ end
 open Modules_data
 
 let parse_module_names ~dir ~(unit : Module.t) ~modules words =
-  List.concat_map words ~f:(fun m ->
-      let m = Module_name.of_string m in
-      match Modules.find_dep modules ~of_:unit m with
-      | Ok s -> s
+  List.concat_map words ~f:(fun mns ->
+      let mname = Module_name.of_string mns in
+      match Modules.find_dep modules ~of_:unit mname with
+      | Ok [] ->
+        [ Module_dep.External (Module_dep.External_name.of_string mns) ]
+      | Ok s -> List.map s ~f:(fun x -> Module_dep.Local x)
       | Error `Parent_cycle ->
         User_error.raise
           [ Pp.textf "Module %s in directory %s depends on %s."
               (Module_name.to_string (Module.name unit))
               (Path.to_string_maybe_quoted (Path.build dir))
-              (Module_name.to_string m)
+              (Module_name.to_string mname)
           ; Pp.textf "This doesn't make sense to me."
           ; Pp.nop
           ; Pp.textf
               "%s is the main module of the library and is the only module \
                exposed outside of the library. Consequently, it should be the \
                one depending on all the other modules in the library."
-              (Module_name.to_string m)
+              (Module_name.to_string mname)
           ])
 
 let parse_compilation_units ~modules =
   let obj_map = Modules.obj_map modules in
   List.filter_map ~f:(fun m ->
       let obj_name = Module_name.Unique.of_string m in
-      Module_name.Unique.Map.find obj_map obj_name
-      |> Option.map ~f:Modules.Sourced_module.to_module)
+      match Module_name.Unique.Map.find obj_map obj_name with
+      | Some m -> Some (Module_dep.Local (Modules.Sourced_module.to_module m))
+      | None ->
+        Some (Module_dep.External (Module_dep.External_name.of_string m)))
 
 let parse_deps_exn ~file lines =
   let invalid () =
@@ -87,8 +91,10 @@ let deps_of
         ]
       >>| Action.Full.add_sandbox sandbox)
   in
-  let+ () =
+  let lines = Action_builder.lines_of (Path.build ocamldep_output) in
+  let+ _ =
     let produce_all_deps =
+      let open Action_builder.O in
       let transitive_deps modules =
         let transive_dep m =
           let ml_kind m =
@@ -104,16 +110,27 @@ let deps_of
         in
         List.filter_map modules ~f:transive_dep
       in
-      let open Action_builder.O in
       let paths =
-        let+ lines = Action_builder.lines_of (Path.build ocamldep_output) in
+        let+ lines = lines in
         let immediate_deps =
-          parse_deps_exn ~file:(Module.File.path source) lines
-          |> parse_module_names ~dir:md.dir ~unit ~modules
+          let parsed = parse_deps_exn ~file:(Module.File.path source) lines in
+          parsed |> parse_module_names ~dir:md.dir ~unit ~modules
         in
-        ( transitive_deps immediate_deps
-        , List.map immediate_deps ~f:(fun m ->
-              Module.obj_name m |> Module_name.Unique.to_string) )
+        let local =
+          List.filter_map immediate_deps ~f:(fun m ->
+              match m with
+              | Module_dep.Local m -> Some m
+              | _ -> None)
+        in
+        let transitive = transitive_deps local in
+        let mods_name_uniq =
+          List.map immediate_deps ~f:(fun m ->
+              match m with
+              | Module_dep.Local m ->
+                Module.obj_name m |> Module_name.Unique.to_string
+              | External s -> Module_dep.External_name.to_string s)
+        in
+        (transitive, mods_name_uniq)
       in
       Action_builder.with_file_targets ~file_targets:[ all_deps_file ]
         (let+ sources, extras =
@@ -123,13 +140,19 @@ let deps_of
          in
          Action.Merge_files_into (sources, extras, all_deps_file))
     in
-    Action_builder.With_targets.map ~f:Action.Full.make produce_all_deps
-    |> Super_context.add_rule sctx ~dir
+    let rule =
+      Action_builder.With_targets.map ~f:Action.Full.make produce_all_deps
+    in
+    let+ () = Super_context.add_rule sctx ~dir rule in
+    produce_all_deps
   in
   let all_deps_file = Path.build all_deps_file in
-  Action_builder.lines_of all_deps_file
-  |> Action_builder.map ~f:(parse_compilation_units ~modules)
-  |> Action_builder.memoize (Path.to_string all_deps_file)
+  let md_l =
+    Action_builder.map
+      ~f:(fun x -> parse_compilation_units ~modules x)
+      (Action_builder.lines_of all_deps_file)
+  in
+  (Action_builder.memoize (Path.to_string all_deps_file)) md_l
 
 let read_deps_of ~obj_dir ~modules ~ml_kind unit =
   let all_deps_file = Obj_dir.Module.dep obj_dir (Transitive (unit, ml_kind)) in

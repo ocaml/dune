@@ -72,3 +72,13 @@ let global_lock =
   in
   register t;
   t
+
+let cutoffs_that_reduce_concurrency_in_watch_mode =
+  let t =
+    { name = "cutoffs_that_reduce_concurrency_in_watch_mode"
+    ; of_string = Toggle.of_string
+    ; value = `Disabled
+    }
+  in
+  register t;
+  t

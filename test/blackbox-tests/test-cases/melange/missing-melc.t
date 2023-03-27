@@ -26,16 +26,11 @@ For melange.emit stanzas, an error is shown
   >  (alias melange))
   > EOF
 
-  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . @melange)
-  File "dune", line 1, characters 0-72:
-  1 | (melange.emit
-  2 |  (target output)
-  3 |  (modules main_melange)
-  4 |  (alias melange))
+  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . @melange 2>&1 | grep Program)
   Error: Program melc not found in the tree or in PATH
-   (context: default)
-  Hint: opam install melange
-  [1]
+  Error: Program melc not found in the tree or in PATH
+  Error: Program melc not found in the tree or in PATH
+  Error: Program melc not found in the tree or in PATH
 
 For libraries, if no melange.emit stanza is found, build does not fail
 

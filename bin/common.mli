@@ -3,6 +3,8 @@ open Stdune
 
 type t
 
+val x : t -> Dune_engine.Context_name.t option
+
 val capture_outputs : t -> bool
 
 val root : t -> Workspace_root.t

@@ -8,6 +8,7 @@ Test that the target directory exists
   $ cat > dune <<EOF
   > (melange.emit
   >  (alias melange)
+  >  (emit_stdlib false)
   >  (target output))
   > EOF
 
@@ -35,6 +36,7 @@ Target promotion works
   > (melange.emit
   >  (alias melange)
   >  (target output)
+  >  (emit_stdlib false)
   >  (promote (until-clean)))
   > EOF
 

@@ -72,3 +72,14 @@ let%expect_test "copy file - dst is a directory" =
     in
     print_endline s;
     [%expect {| $DIR: Is a directory |}]
+
+let%expect_test "making a directory for an existing file" =
+  let dir = temp_dir () in
+  let fn = Path.relative dir "foo" in
+  Io.write_file fn "";
+  (* This does not error, but it will if it ends with a "/" on MacOS *)
+  ignore (Fpath.mkdir (Path.to_string fn));
+  [%expect {| |}];
+  Path.mkdir_p fn;
+  (* This in turn does not error *)
+  [%expect {| |}]

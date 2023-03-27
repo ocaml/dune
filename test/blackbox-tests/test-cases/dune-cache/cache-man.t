@@ -33,11 +33,9 @@ Here we observe the documentation for the dune cache commands.
   
          0   on success.
   
-         123 on indiscriminate errors reported on standard error.
+         1   if an error happened.
   
-         124 on command line parsing errors.
-  
-         125 on unexpected internal errors (bugs).
+         130 if it was interrupted by a signal.
   
   SEE ALSO
          dune(1)
@@ -73,11 +71,9 @@ Testing the output of `dune cache size --machine-readable`
   
          0   on success.
   
-         123 on indiscriminate errors reported on standard error.
+         1   if an error happened.
   
-         124 on command line parsing errors.
-  
-         125 on unexpected internal errors (bugs).
+         130 if it was interrupted by a signal.
   
   SEE ALSO
          dune(1)
@@ -114,11 +110,9 @@ Testing the output of dune cache trim.
   
          0   on success.
   
-         123 on indiscriminate errors reported on standard error.
+         1   if an error happened.
   
-         124 on command line parsing errors.
-  
-         125 on unexpected internal errors (bugs).
+         130 if it was interrupted by a signal.
   
   EXAMPLES
          Trimming the Dune cache to 1 GB.

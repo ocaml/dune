@@ -12,6 +12,7 @@
   > (melange.emit
   >  (target output)
   >  (alias melange)
+  >  (emit_stdlib false)
   >  (runtime_deps output/foo.txt))
   > EOF
 

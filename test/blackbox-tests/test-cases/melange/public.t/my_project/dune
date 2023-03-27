@@ -1,5 +1,5 @@
 (melange.emit
  (target output)
  (modules c)
- (alias melange)
+ (alias mel)
  (libraries app))

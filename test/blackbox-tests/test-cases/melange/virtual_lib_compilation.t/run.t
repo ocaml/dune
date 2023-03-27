@@ -23,7 +23,7 @@ Melange can't produce a `.cmj` solely from a virtual module `.cmi`, because it
 needs to consult the `.cmj` files of dependencies to know where the require
 call should be emitted
 
-  $ dune build @melange --display=short 2>&1 | grep -v 'node_modules/melange'
+  $ dune build @mel --display=short 2>&1 | grep -v 'node_modules/melange'
       ocamldep impl_melange/.impl_melange.objs/virt.impl.d
           melc vlib/.vlib.objs/melange/virt.{cmi,cmti}
           melc vlib/.vlib.objs/melange/vlib_impl.{cmi,cmj,cmt} (exit 2)

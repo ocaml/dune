@@ -224,28 +224,34 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
     in
     let stdlib_dir = ctx.stdlib_dir in
     let+ () =
-      let target_dir = Path.Build.relative dir mel.target in
-      match mel.alias with
-      | None -> Memo.return ()
-      | Some alias_name ->
+      let emit_and_libs_deps =
+        let target_dir = Path.Build.relative dir mel.target in
         let module_systems = mel.module_systems in
-        let deps =
+        let open Action_builder.O in
+        let+ () =
           js_targets_of_modules ~output:(`Private_library_or_emit target_dir)
             ~module_systems modules
           |> Action_builder.path_set
+        and+ () =
+          let open Action_builder.O in
+          let* deps =
+            Resolve.Memo.read
+            @@
+            let open Resolve.Memo.O in
+            Compilation_context.requires_link cctx
+            >>= js_targets_of_libs sctx ~module_systems ~target_dir
+          in
+          Action_builder.paths deps
         in
+        ()
+      in
+      match mel.alias with
+      | None ->
+        let alias = Alias.make Melange_stanzas.Emit.implicit_alias ~dir in
+        Rules.Produce.Alias.add_deps alias emit_and_libs_deps
+      | Some alias_name ->
         let alias = Alias.make alias_name ~dir in
-        let* () = Rules.Produce.Alias.add_deps alias deps in
-        (let open Action_builder.O in
-        let* deps =
-          Resolve.Memo.read
-          @@
-          let open Resolve.Memo.O in
-          Compilation_context.requires_link cctx
-          >>= js_targets_of_libs sctx ~module_systems ~target_dir
-        in
-        Action_builder.paths deps)
-        |> Rules.Produce.Alias.add_deps alias
+        Rules.Produce.Alias.add_deps alias emit_and_libs_deps
     in
     ( cctx
     , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
@@ -349,6 +355,10 @@ end
 let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
   let open Memo.O in
   let* copy, non_copy = Runtime_deps.targets sctx ~dir ~output ~for_ mel in
+  let deps =
+    Action_builder.paths
+      (non_copy @ List.rev_map copy ~f:(fun (_, target) -> Path.build target))
+  in
   let+ () =
     let loc = mel.loc in
     Memo.parallel_iter copy ~f:(fun (src, dst) ->
@@ -356,13 +366,12 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
           (Action_builder.copy ~src ~dst))
   and+ () =
     match mel.alias with
-    | None -> Memo.return ()
-    | Some alias_name ->
-      let deps =
-        Action_builder.paths
-          (non_copy
-          @ List.rev_map copy ~f:(fun (_, target) -> Path.build target))
+    | None ->
+      let alias =
+        Alias.make Melange_stanzas.Emit.implicit_alias ~dir:target_dir
       in
+      Rules.Produce.Alias.add_deps alias deps
+    | Some alias_name ->
       let alias = Alias.make alias_name ~dir:target_dir in
       Rules.Produce.Alias.add_deps alias deps
   in

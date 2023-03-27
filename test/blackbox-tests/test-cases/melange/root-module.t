@@ -57,7 +57,7 @@ The same for melange.emit:
 
   $ cat > dune <<EOF
   > (melange.emit
-  >  (alias melange)
+  >  (alias mel)
   >  (target output)
   >  (libraries lib1)
   >  (root_module root))
@@ -81,6 +81,6 @@ Use root_module to fix:
   $ cat >foo.ml <<EOF
   > print_endline Root.Lib1.greeting
   > EOF
-  $ dune build @melange
+  $ dune build @mel
   $ node _build/default/output/foo.js
   Hello World

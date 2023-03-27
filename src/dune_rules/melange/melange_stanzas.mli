@@ -21,6 +21,8 @@ module Emit : sig
 
   type Stanza.t += T of t
 
+  val implicit_alias : Alias.Name.t
+
   val decode : t Dune_lang.Decoder.t
 end
 

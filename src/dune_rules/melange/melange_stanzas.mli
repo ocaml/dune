@@ -5,7 +5,7 @@ module Emit : sig
   type t =
     { loc : Loc.t
     ; target : string
-    ; alias : Alias.Name.t option
+    ; aliases : Alias.Name.t list
     ; module_systems : (Melange.Module_system.t * string) list
     ; modules : Stanza_common.Modules_settings.t
     ; emit_stdlib : bool

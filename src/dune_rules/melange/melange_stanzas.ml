@@ -5,7 +5,7 @@ module Emit = struct
   type t =
     { loc : Loc.t
     ; target : string
-    ; alias : Alias.Name.t option
+    ; aliases : Alias.Name.t list
     ; module_systems : (Melange.Module_system.t * Filename.Extension.t) list
     ; modules : Stanza_common.Modules_settings.t
     ; emit_stdlib : bool
@@ -94,6 +94,7 @@ module Emit = struct
          in
          field "target" (plain_string (fun ~loc s -> of_string ~loc s))
        and+ alias = field_o "alias" Alias.Name.decode
+       and+ aliases = field_o "aliases" (repeat Alias.Name.decode)
        and+ module_systems =
          field "module_systems" module_systems
            ~default:[ Melange.Module_system.default ]
@@ -122,9 +123,21 @@ module Emit = struct
              Preprocess.Per_module.add_instrumentation accu
                ~loc:loc_instrumentation ~flags ~deps backend)
        in
+       let aliases =
+         match (alias, aliases) with
+         | Some alias, None -> [ alias ]
+         | None, Some aliases -> aliases
+         | None, None -> []
+         | Some _, Some _ ->
+           User_error.raise ~loc
+             [ Pp.text
+                 "The 'alias' and 'aliases' fields are mutually exclusive. \
+                  Please use only the 'aliases' field."
+             ]
+       in
        { loc
        ; target
-       ; alias
+       ; aliases
        ; module_systems
        ; modules
        ; emit_stdlib

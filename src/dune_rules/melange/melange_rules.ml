@@ -225,27 +225,25 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
     let stdlib_dir = ctx.stdlib_dir in
     let+ () =
       let target_dir = Path.Build.relative dir mel.target in
-      match mel.alias with
-      | None -> Memo.return ()
-      | Some alias_name ->
-        let module_systems = mel.module_systems in
-        let deps =
-          js_targets_of_modules ~output:(`Private_library_or_emit target_dir)
-            ~module_systems modules
-          |> Action_builder.path_set
-        in
-        let alias = Alias.make alias_name ~dir in
-        let* () = Rules.Produce.Alias.add_deps alias deps in
-        (let open Action_builder.O in
-        let* deps =
-          Resolve.Memo.read
-          @@
-          let open Resolve.Memo.O in
-          Compilation_context.requires_link cctx
-          >>= js_targets_of_libs sctx ~module_systems ~target_dir
-        in
-        Action_builder.paths deps)
-        |> Rules.Produce.Alias.add_deps alias
+      Memo.parallel_iter mel.aliases ~f:(fun alias_name ->
+          let module_systems = mel.module_systems in
+          let deps =
+            js_targets_of_modules ~output:(`Private_library_or_emit target_dir)
+              ~module_systems modules
+            |> Action_builder.path_set
+          in
+          let alias = Alias.make alias_name ~dir in
+          let* () = Rules.Produce.Alias.add_deps alias deps in
+          (let open Action_builder.O in
+          let* deps =
+            Resolve.Memo.read
+            @@
+            let open Resolve.Memo.O in
+            Compilation_context.requires_link cctx
+            >>= js_targets_of_libs sctx ~module_systems ~target_dir
+          in
+          Action_builder.paths deps)
+          |> Rules.Produce.Alias.add_deps alias)
     in
     ( cctx
     , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
@@ -355,16 +353,14 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
         Super_context.add_rule ~loc ~dir ~mode sctx
           (Action_builder.copy ~src ~dst))
   and+ () =
-    match mel.alias with
-    | None -> Memo.return ()
-    | Some alias_name ->
-      let deps =
-        Action_builder.paths
-          (non_copy
-          @ List.rev_map copy ~f:(fun (_, target) -> Path.build target))
-      in
-      let alias = Alias.make alias_name ~dir:target_dir in
-      Rules.Produce.Alias.add_deps alias deps
+    Memo.parallel_iter mel.aliases ~f:(fun alias_name ->
+        let deps =
+          Action_builder.paths
+            (non_copy
+            @ List.rev_map copy ~f:(fun (_, target) -> Path.build target))
+        in
+        let alias = Alias.make alias_name ~dir:target_dir in
+        Rules.Produce.Alias.add_deps alias deps)
   in
   ()
 

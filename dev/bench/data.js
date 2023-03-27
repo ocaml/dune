@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679935140380,
+  "lastUpdate": 1679935151542,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -18677,6 +18677,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "65.03228060509333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "353fa34549832596d18c8fc213bc4b15dd6c5013",
+          "message": "refactor(merlin): remove `Ocaml_flags.common` and use `Lib_mode.t` ac… (#7422)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-27T09:12:16-07:00",
+          "tree_id": "50c94a0000e2758e6fb3058265a054c75316c975",
+          "url": "https://github.com/ocaml/dune/commit/353fa34549832596d18c8fc213bc4b15dd6c5013"
+        },
+        "date": 1679935150450,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6068936829933333",
             "unit": "seconds"
           }
         ]

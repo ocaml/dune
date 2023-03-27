@@ -16,7 +16,7 @@ let%expect_test _ =
                   let events = job () in
                   events_buffer := !events_buffer @ events))
         }
-      ()
+      ~watch_exclusions:[] ()
   in
   let try_to_get_events () =
     critical_section mutex ~f:(fun () ->

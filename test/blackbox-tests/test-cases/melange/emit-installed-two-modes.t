@@ -54,11 +54,10 @@ Test dependency on installed package
   > let x = Js.log A.Foo.x
   > EOF
 
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @dist --display=short
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @dist --display=short 2>&1 | grep -v melange
   Entering directory 'b'
           melc dist/node_modules/a/a.js
           melc dist/node_modules/a/foo.js
-          melc .dist.mobjs/melange/melange__Bar.{cmi,cmj,cmt}
           melc dist/bar.js
   Leaving directory 'b'
 

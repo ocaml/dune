@@ -9,6 +9,7 @@ let default =
   ; stats = None
   ; insignificant_changes = `React
   ; signal_watcher = `No
+  ; watch_exclusions = []
   }
 
 let go ?(timeout = 0.3) ?(config = default) f =

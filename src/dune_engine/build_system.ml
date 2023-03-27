@@ -279,7 +279,7 @@ and Exported : sig
   (* The below two definitions are useless, but if we remove them we get an
      "Undefined_recursive_module" exception. *)
 
-  val build_file_memo : (Path.t, Digest.t * target_kind) Memo.Table.t
+  val build_file_memo : (Path.t, Digest.t * target_kind) Memo.Table.t Lazy.t
     [@@warning "-32"]
 
   val build_alias_memo : (Alias.t, Dep.Fact.Files.t) Memo.Table.t
@@ -1035,13 +1035,21 @@ end = struct
   end
 
   let build_file_memo =
-    let cutoff = Tuple.T2.equal Digest.equal target_kind_equal in
-    Memo.create "build-file" ~input:(module Path) ~cutoff build_file_impl
+    lazy
+      (let cutoff =
+         match
+           Dune_config.Config.(
+             get cutoffs_that_reduce_concurrency_in_watch_mode)
+         with
+         | `Disabled -> None
+         | `Enabled -> Some (Tuple.T2.equal Digest.equal target_kind_equal)
+       in
+       Memo.create "build-file" ~input:(module Path) ?cutoff build_file_impl)
 
-  let build_file path = Memo.exec build_file_memo path >>| fst
+  let build_file path = Memo.exec (Lazy.force build_file_memo) path >>| fst
 
   let build_dir path =
-    let+ digest, kind = Memo.exec build_file_memo path in
+    let+ digest, kind = Memo.exec (Lazy.force build_file_memo) path in
     match kind with
     | Dir_target { generated_file_digests } -> (digest, generated_file_digests)
     | File_target ->

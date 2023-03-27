@@ -85,6 +85,7 @@ let%expect_test "csexp server life cycle" =
     ; stats = None
     ; insignificant_changes = `React
     ; signal_watcher = `No
+    ; watch_exclusions = []
     }
   in
   Scheduler.Run.go config run ~on_event:(fun _ _ -> ());

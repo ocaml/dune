@@ -38,7 +38,15 @@ include struct
   open Cmdliner
   module Term = Term
   module Manpage = Manpage
-  module Cmd = Cmd
+
+  module Cmd = struct
+    include Cmd
+
+    let default_exits = List.map ~f:Exit_code.info Exit_code.all
+
+    let info ?docs ?doc ?man ?envs ?version name =
+      info ?docs ?doc ?man ?envs ?version ~exits:default_exits name
+  end
 end
 
 module Digest = Dune_digest
@@ -151,8 +159,9 @@ module Scheduler = struct
     let config =
       let insignificant_changes = Common.insignificant_changes common in
       let signal_watcher = Common.signal_watcher common in
+      let watch_exclusions = Common.watch_exclusions common in
       Dune_config.for_scheduler dune_config stats ~insignificant_changes
-        ~signal_watcher
+        ~signal_watcher ~watch_exclusions
     in
     let f =
       match Common.rpc common with
@@ -174,8 +183,9 @@ module Scheduler = struct
     let config =
       let signal_watcher = Common.signal_watcher common in
       let insignificant_changes = Common.insignificant_changes common in
+      let watch_exclusions = Common.watch_exclusions common in
       Dune_config.for_scheduler dune_config stats ~insignificant_changes
-        ~signal_watcher
+        ~signal_watcher ~watch_exclusions
     in
     let file_watcher = Common.file_watcher common in
     let run () =

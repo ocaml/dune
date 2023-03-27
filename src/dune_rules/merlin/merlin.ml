@@ -351,7 +351,11 @@ module Unprocessed = struct
       Path.Set.singleton
       @@ obj_dir_of_lib `Private mode (Obj_dir.of_local obj_dir)
     in
-    let flags = Ocaml_flags.common flags in
+    let flags =
+      match mode with
+      | `Ocaml -> Ocaml_flags.common flags
+      | `Melange -> Ocaml_flags.get flags Melange
+    in
     let extensions = Dialect.DB.extensions_for_merlin dialects in
     let config =
       { stdlib_dir
@@ -466,18 +470,38 @@ module Unprocessed = struct
        } as t) sctx ~dir ~more_src_dirs ~expander =
     let open Action_builder.O in
     let+ config =
-      let* stdlib_dir, extra_obj_dirs =
+      let* stdlib_dir =
         Action_builder.of_memo
         @@
         match t.config.mode with
-        | `Ocaml -> Memo.return (Some stdlib_dir, [])
+        | `Ocaml -> Memo.return (Some stdlib_dir)
         | `Melange -> (
           let open Memo.O in
           let+ dirs = Melange_binary.where sctx ~loc:None ~dir in
           match dirs with
-          | [] -> (None, [])
-          | [ stdlib_dir ] -> (Some stdlib_dir, [])
-          | stdlib_dir :: extra_obj_dirs -> (Some stdlib_dir, extra_obj_dirs))
+          | [] -> None
+          | stdlib_dir :: _ -> Some stdlib_dir)
+      in
+      let* requires =
+        match t.config.mode with
+        | `Ocaml -> Action_builder.return requires
+        | `Melange ->
+          Action_builder.of_memo
+            (let open Memo.O in
+            let scope = Expander.scope expander in
+            let libs = Scope.libs scope in
+            Lib.DB.find libs (Lib_name.of_string "melange") >>= function
+            | Some lib ->
+              let+ libs =
+                let linking =
+                  Dune_project.implicit_transitive_deps (Scope.project scope)
+                in
+                Lib.closure [ lib ] ~linking |> Resolve.Memo.peek >>| function
+                | Ok libs -> libs
+                | Error _ -> []
+              in
+              Lib.Set.union requires (Lib.Set.of_list libs)
+            | None -> Memo.return requires)
       in
       let* flags = flags
       and* src_dirs, obj_dirs =
@@ -487,10 +511,7 @@ module Unprocessed = struct
               let+ dirs = src_dirs sctx lib in
               (lib, dirs))
           >>| List.fold_left
-                ~init:
-                  ( Path.set_of_source_paths source_dirs
-                  , Path.Set.union objs_dirs (Path.Set.of_list extra_obj_dirs)
-                  )
+                ~init:(Path.set_of_source_paths source_dirs, objs_dirs)
                 ~f:(fun (src_dirs, obj_dirs) (lib, more_src_dirs) ->
                   ( Path.Set.union src_dirs more_src_dirs
                   , let public_cmi_dir =
@@ -514,7 +535,7 @@ module Unprocessed = struct
           | Error _ -> []
           | Ok path ->
             [ Processed.Pp_kind.to_flag Ppx
-            ; Processed.serialize_path path ^ " -as-ppx -bs-jsx 3"
+            ; Processed.serialize_path path ^ " -as-ppx"
             ])
       in
       { Processed.stdlib_dir

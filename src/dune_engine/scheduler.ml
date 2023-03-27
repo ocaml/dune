@@ -10,6 +10,7 @@ module Config = struct
     ; stats : Dune_stats.t option
     ; insignificant_changes : [ `Ignore | `React ]
     ; signal_watcher : [ `Yes | `No ]
+    ; watch_exclusions : string list
     }
 end
 
@@ -1234,7 +1235,7 @@ module Run = struct
                ; thread_safe_send_emit_events_job =
                    (fun job -> Event_queue.send_file_watcher_task events job)
                }
-             ())
+             ~watch_exclusions:config.watch_exclusions ())
     in
     let t = prepare ~file_watcher in
     let initial_invalidation = Fs_memo.init ~dune_file_watcher:file_watcher in

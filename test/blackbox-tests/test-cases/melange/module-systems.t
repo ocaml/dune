@@ -9,6 +9,7 @@ Parses the full form (<module-system> <extension>)
   > (melange.emit
   >  (alias mel)
   >  (target output)
+  >  (emit_stdlib false)
   >  (module_systems
   >   (commonjs bs.js)
   >   (es6 mjs)))
@@ -40,6 +41,7 @@ Parses the simplified form and defaults extension to `.js`
   > (melange.emit
   >  (alias mel)
   >  (target output)
+  >  (emit_stdlib false)
   >  (module_systems
   >   commonjs
   >   (es6 mjs)))
@@ -63,6 +65,7 @@ Defaults to commonjs / `.js` if no config present at all
   $ cat > dune <<EOF
   > (melange.emit
   >  (alias mel)
+  >  (emit_stdlib false)
   >  (target output))
   > EOF
   $ cat > main.ml <<EOF
@@ -82,12 +85,13 @@ Errors out if extension starts with dot
   > (melange.emit
   >  (target output)
   >  (alias melange)
+  >  (emit_stdlib false)
   >  (module_systems (commonjs .bs.js)))
   > EOF
 
   $ dune build @mel --display=short
-  File "dune", line 4, characters 27-33:
-  4 |  (module_systems (commonjs .bs.js)))
+  File "dune", line 5, characters 27-33:
+  5 |  (module_systems (commonjs .bs.js)))
                                  ^^^^^^
   Error: extension must not start with '.'
   [1]
@@ -99,6 +103,7 @@ Errors if the same extension is present multiple times
   > (melange.emit
   >  (alias mel)
   >  (target output)
+  >  (emit_stdlib false)
   >  (module_systems commonjs es6))
   > EOF
   $ cat > main.ml <<EOF
@@ -106,12 +111,12 @@ Errors if the same extension is present multiple times
   > EOF
 
   $ dune build @mel --display=short
-  File "dune", line 4, characters 26-29:
-  4 |  (module_systems commonjs es6))
+  File "dune", line 5, characters 26-29:
+  5 |  (module_systems commonjs es6))
                                 ^^^
   Error: JavaScript extension .js appears more than once:
-  - dune:4
-  - dune:4
+  - dune:5
+  - dune:5
   Extensions must be unique per melange.emit stanza
   Hint: specify different extensions with (module_systems (<system1>
   <extension1>) (<system2> <extension2>))
@@ -121,6 +126,7 @@ Errors if the same extension is present multiple times
   > (melange.emit
   >  (alias mel)
   >  (target output)
+  >  (emit_stdlib false)
   >  (module_systems (commonjs bs.js) commonjs (es6 bs.js)))
   > EOF
   $ cat > main.ml <<EOF
@@ -128,12 +134,12 @@ Errors if the same extension is present multiple times
   > EOF
 
   $ dune build @mel --display=short
-  File "dune", line 4, characters 48-53:
-  4 |  (module_systems (commonjs bs.js) commonjs (es6 bs.js)))
+  File "dune", line 5, characters 48-53:
+  5 |  (module_systems (commonjs bs.js) commonjs (es6 bs.js)))
                                                       ^^^^^
   Error: JavaScript extension .bs.js appears more than once:
-  - dune:4
-  - dune:4
+  - dune:5
+  - dune:5
   Extensions must be unique per melange.emit stanza
   Hint: specify different extensions with (module_systems (<system1>
   <extension1>) (<system2> <extension2>))

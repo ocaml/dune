@@ -9,6 +9,7 @@ Test melange.emit promotion
   > (melange.emit
   >  (alias dist)
   >  (modules hello)
+  >  (emit_stdlib false)
   >  (promote (until-clean))
   >  (target dist))
   > EOF

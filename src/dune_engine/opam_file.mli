@@ -2,10 +2,10 @@
 
 open Import
 
-type value := OpamParserTypes.FullPos.value
+type value := OpamParserTypes.value
 
 (** Type of opam files *)
-type t = OpamParserTypes.FullPos.opamfile
+type t = OpamParserTypes.opamfile
 
 (** Extracts a field *)
 val get_field : t -> string -> value option
@@ -19,7 +19,7 @@ val parse_value : Lexing.lexbuf -> value
 (** Replace all [pos] value by a triplet [(fname, line, absolute_offset)] *)
 val absolutify_positions : file_contents:string -> t -> t
 
-val nopos : OpamParserTypes.FullPos.pos
+val nopos : OpamParserTypes.pos
 
 val existing_variables : t -> String.Set.t
 

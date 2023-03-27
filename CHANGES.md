@@ -1,6 +1,12 @@
 Unreleased
 ----------
 
+- Fix `dune install` when cross compiling (#7410, fixes #6191, @anmonteiro,
+  @rizo)
+
+- Dune in watch mode no longer builds concurrent rules in serial (#7395
+  @rgrinberg, @jchavarri)
+
 - `dune coq top` now correctly respects the project root when called from a
   subdirectory. However, absolute filenames passed to `dune coq top` are no
   longer supported (due to being buggy) (#7357, fixes #7344, @rlepigre and
@@ -30,6 +36,8 @@ Unreleased
 
 - Speed up rule generation for libraries and executables with many modules
   (#7187, @jchavarri)
+
+- Add `--watch-exclusions` to Dune build options (#7216, @jonahbeckford)
 
 - Do not re-render UI on every frame if the UI doesn't change (#7186, fix
   #7184, @rgrinberg)

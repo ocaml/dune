@@ -1,7 +1,7 @@
 Unreleased
 ----------
 
-- Disable `-p PKG` for `dune install`. I was previously a no-op, and it now
+- Disable `-p PKG` for `dune install`. It was previously a no-op, and it now
   provides an informative error message making that explicit (#7419,
   @anmonteiro)
 

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679934810665,
+  "lastUpdate": 1679934964304,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11193,6 +11193,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.03513090048667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "javier.chavarri@gmail.com",
+            "name": "Javier Chávarri",
+            "username": "jchavarri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0ddd37842a399f39a10023caf4e27f66107da927",
+          "message": "melange: add implicit alias (#7327)\n\n* melange: add implicit alias\r\n\r\nSigned-off-by: Javier Chávarri <javier.chavarri@gmail.com>",
+          "timestamp": "2023-03-27T09:14:46-07:00",
+          "tree_id": "c91ff020b6f1e5a67760cf8cb8ea155f68f11fb9",
+          "url": "https://github.com/ocaml/dune/commit/0ddd37842a399f39a10023caf4e27f66107da927"
+        },
+        "date": 1679934962355,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.44554971382",
             "unit": "seconds"
           }
         ]

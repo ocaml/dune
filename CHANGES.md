@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Load the host context `findlib.conf` when cross-compiling (#7428, fixes
+  #1701, @rgrinberg, @anmonteiro)
+
 - Resolve `ppx_runtime_libraries` in the target context when cross compiling
   (#7450, fixes #2794, @anmonteiro)
 

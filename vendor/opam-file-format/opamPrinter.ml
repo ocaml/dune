@@ -426,8 +426,7 @@ module FullPos = struct
     | Bool b -> Format.fprintf fmt "%b" b
     | String s ->
       if String.contains s '\n'
-      then Format.fprintf fmt "\"\"\"%s%s\"\"\""
-          (if s.[0] = '\n' then "" else "\\\n")
+      then Format.fprintf fmt "\"\"\"\n%s\"\"\""
           (escape_string ~triple:true s)
       else Format.fprintf fmt "\"%s\"" (escape_string s)
     | List l ->

@@ -33,7 +33,7 @@ let local_libraries =
   ; ("src/fiber_util", Some "Fiber_util", false, None)
   ; ("src/dune_cache_storage", Some "Dune_cache_storage", false, None)
   ; ("src/dune_cache", Some "Dune_cache", false, None)
-  ; ("vendor/opam-file-format/src", None, false, None)
+  ; ("vendor/opam-file-format", None, false, None)
   ; ("otherlibs/action-plugin/src", Some "Dune_action_plugin", false, None)
   ; ("otherlibs/chrome-trace/src", Some "Chrome_trace", false, None)
   ; ("vendor/spawn/src", Some "Spawn", false, None)

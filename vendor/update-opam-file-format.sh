@@ -1,20 +1,26 @@
 #!/bin/bash
 
-version=2.1.5
+version=426a63dadaba7f47435c9b01d8cb932c548ff2e2
+name=opam-file-format
 
 set -e -o pipefail
 
 TMP="$(mktemp -d)"
 trap "rm -rf $TMP" EXIT
 
-rm -rf opam-file-format
-mkdir -p opam-file-format/src
+rm -rf $name
+mkdir -p $name/
 
-(cd $TMP && opam source opam-file-format.$version)
+(
+    cd $TMP
+    git clone https://github.com/ocaml-dune/$name.git
+    cd $name
+    git checkout $version
+)
 
-SRC=$TMP/opam-file-format.$version
+SRC=$TMP/$name
 
-cp -v $SRC/src/*.{ml,mli,mll,mly} opam-file-format/src
+cp -v $SRC/src/*.{ml,mli,mll,mly} $SRC/LICENSE $name/
 
-git checkout opam-file-format/src/dune
+git checkout $name/dune
 git add -A .

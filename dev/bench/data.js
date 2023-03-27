@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679945909684,
+  "lastUpdate": 1679946246932,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -18967,6 +18967,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.0706433544066667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7fb0dbcdf489113ff3f7b94375036dec5210c72d",
+          "message": "test: move cross compilation tests to test-cases/custom-cross-compilation (#7426)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-27T12:16:48-07:00",
+          "tree_id": "ff0cc38476161a3156ce487f2a3699414ac66916",
+          "url": "https://github.com/ocaml/dune/commit/7fb0dbcdf489113ff3f7b94375036dec5210c72d"
+        },
+        "date": 1679946245970,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "66.58255217052",
             "unit": "seconds"
           }
         ]

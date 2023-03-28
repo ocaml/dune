@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679946257740,
+  "lastUpdate": 1679987279850,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20593,6 +20593,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.088523137293333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3ab367e8f50321ab66ffe02693b526c2a3fa0a7a",
+          "message": "chore(nix): add bare opam shell (#7429)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-27T23:54:28-07:00",
+          "tree_id": "cd28f2333338681b6e6c3bcfaefc193aacf4f54d",
+          "url": "https://github.com/ocaml/dune/commit/3ab367e8f50321ab66ffe02693b526c2a3fa0a7a"
+        },
+        "date": 1679987278006,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.814279941666666",
             "unit": "seconds"
           }
         ]

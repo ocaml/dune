@@ -285,8 +285,11 @@ let exe_link_only ~dir ~shared_cctx ~sandbox program ~deps =
     Command.Args.empty
   in
   let program = program_of_module_and_dir ~dir program in
-  Exe.link_many ~link_args ~programs:[ program ]
-    ~linkages:[ Exe.Linkage.native ] ~promote:None shared_cctx ~sandbox
+  let linkage =
+    Exe.Linkage.native_or_custom (Compilation_context.context shared_cctx)
+  in
+  Exe.link_many ~link_args ~programs:[ program ] ~linkages:[ linkage ]
+    ~promote:None shared_cctx ~sandbox
 
 let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx ~version =
   let ctypes = Option.value_exn buildable.ctypes in

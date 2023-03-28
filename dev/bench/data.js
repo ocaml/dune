@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680000791332,
+  "lastUpdate": 1680001120643,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -19141,6 +19141,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8405008178733333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "cab7bbe6624d4654e42cbd49f2a12300a537837f",
+          "message": "Update doc/hacking.rst\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-03-28T12:32:18+02:00",
+          "tree_id": "abf144d8891db3038509fb831088c7a03413e7f2",
+          "url": "https://github.com/ocaml/dune/commit/cab7bbe6624d4654e42cbd49f2a12300a537837f"
+        },
+        "date": 1680001119704,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.14826408128",
             "unit": "seconds"
           }
         ]

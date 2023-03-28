@@ -95,8 +95,12 @@ let%expect_test "turn on dune watch and wait until the connection is listed" =
                 | Ok r -> (
                   if List.is_non_empty (Registry.Refresh.removed r) then
                     Code_error.raise "removed should be empty" [];
-                  if List.is_non_empty (Registry.Refresh.errored r) then
-                    Code_error.raise "errored should be empty" [];
+                  (match Registry.Refresh.errored r with
+                  | [] -> ()
+                  | errors ->
+                    List.map errors ~f:(fun (name, exn) ->
+                        (name, Exn.to_dyn exn))
+                    |> Code_error.raise "errored should be empty");
                   match Registry.Refresh.added r with
                   | [ a ] -> Some a
                   | [] -> None

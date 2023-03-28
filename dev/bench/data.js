@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680025649911,
+  "lastUpdate": 1680026099798,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11425,6 +11425,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.42374490434667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4373767e38a666b3f252bea9dcf79a0765ed8a86",
+          "message": "refactor: move source tree to rules (#7427)\n\nThis moves the Source_tree and (almost) all other rules related modules\r\nto the rules where they belong\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-28T10:29:28-07:00",
+          "tree_id": "c3d0c0e0cb662f802ea45cc483354d806b8ba663",
+          "url": "https://github.com/ocaml/dune/commit/4373767e38a666b3f252bea9dcf79a0765ed8a86"
+        },
+        "date": 1680026097164,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "44.315830629253334",
             "unit": "seconds"
           }
         ]

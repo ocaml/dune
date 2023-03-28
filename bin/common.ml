@@ -5,7 +5,7 @@ module Console = Dune_console
 module Colors = Dune_rules.Colors
 module Clflags = Dune_engine.Clflags
 module Graph = Dune_graph.Graph
-module Package = Dune_engine.Package
+module Package = Dune_rules.Package
 module Profile = Dune_rules.Profile
 module Cmd = Cmdliner.Cmd
 module Term = Cmdliner.Term
@@ -1088,7 +1088,7 @@ let init ?action_runner ?log_file c =
   Dune_rules.Clflags.promote_install_files := c.builder.promote_install_files;
   Clflags.always_show_command_line := c.builder.always_show_command_line;
   Dune_rules.Clflags.ignore_promoted_rules := c.builder.ignore_promoted_rules;
-  Clflags.on_missing_dune_project_file :=
+  Dune_rules.Clflags.on_missing_dune_project_file :=
     if c.builder.require_dune_project_file then Error else Warn;
   Dune_util.Log.info
     [ Pp.textf "Workspace root: %s"

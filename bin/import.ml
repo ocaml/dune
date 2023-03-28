@@ -6,7 +6,6 @@ include struct
   module Build_config = Build_config
   module Build_system = Build_system
   module Load_rules = Load_rules
-  module Package = Package
   module Hooks = Hooks
   module Action_builder = Action_builder
   module Action = Action
@@ -14,11 +13,8 @@ include struct
   module Action_to_sh = Action_to_sh
   module Dpath = Dpath
   module Findlib = Dune_rules.Findlib
-  module Dune_package = Dune_rules.Dune_package
   module Install = Dune_rules.Install
-  module Section = Section
   module Diff_promotion = Diff_promotion
-  module Dune_project = Dune_project
   module Cached_digest = Cached_digest
   module Targets = Targets
 end
@@ -30,8 +26,14 @@ include struct
   module Config = Dune_util.Config
   module Lib_name = Lib_name
   module Workspace = Workspace
+  module Package = Package
+  module Section = Section
+  module Dune_project = Dune_project
   module Profile = Profile
+  module Dune_package = Dune_package
   module Resolve = Resolve
+  module Sub_dirs = Sub_dirs
+  module Source_tree = Source_tree
 end
 
 include struct

@@ -54,6 +54,14 @@ module Install = Install
 module Lib_name = Lib_name
 module Diff = Dune_lang.Action.Diff
 module Clflags = Clflags
+module Dune_project = Dune_project
+module Source_tree = Source_tree
+module Sub_dirs = Sub_dirs
+module Vcs = Vcs
+module Package = Package
+module Section = Section
+module Subst_config = Subst_config
+module Dialect = Dialect
 
 module Install_rules = struct
   let install_file = Install_rules.install_file

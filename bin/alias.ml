@@ -1,5 +1,6 @@
 open Stdune
 open Dune_engine
+module Source_tree = Dune_rules.Source_tree
 
 type t =
   { name : Dune_engine.Alias.Name.t

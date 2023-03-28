@@ -1,7 +1,7 @@
 open Stdune
 open Import
-module Sub_dirs = Dune_engine.Sub_dirs
-module Vcs = Dune_engine.Vcs
+module Vcs = Dune_rules.Vcs
+module Subst_config = Dune_rules.Subst_config
 
 let is_a_source_file path =
   (match Path.extension path with
@@ -298,7 +298,7 @@ let subst vcs =
           ]
   in
   (match Dune_project.subst_config dune_project.project with
-  | Dune_engine.Subst_config.Disabled ->
+  | Subst_config.Disabled ->
     User_error.raise
       [ Pp.text
           "dune subst has been disabled in this project. Any use of it is \
@@ -309,7 +309,7 @@ let subst vcs =
             "If you wish to re-enable it, change to (subst enabled) in the \
              dune-project file."
         ]
-  | Dune_engine.Subst_config.Enabled -> ());
+  | Subst_config.Enabled -> ());
   let info =
     let loc, name =
       match dune_project.name with

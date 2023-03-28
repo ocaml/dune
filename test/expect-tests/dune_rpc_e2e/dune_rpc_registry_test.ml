@@ -50,6 +50,7 @@ let run =
     ; stats = None
     ; insignificant_changes = `React
     ; signal_watcher = `No
+    ; watch_exclusions = []
     }
   in
   fun run ->

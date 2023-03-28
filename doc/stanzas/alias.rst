@@ -19,14 +19,14 @@ The syntax is as follows:
 
 .. _alias-fields:
 
-``<deps-conf list>`` specifies the dependencies of the alias. See the
-:ref:`deps-field` section for more details.
+``<deps-conf list>`` specifies the dependencies of the alias. See
+:doc:`concepts/dependency-spec` for more details.
 
 ``<optional-fields>`` are:
 
-- ``<action>``, an action for constructing the alias. See the
-  :ref:`user-actions` section for more details. Note that this is removed in
-  Dune 2.0, so users must port their code to use the ``rule`` stanza with the
+- ``<action>``, an action for constructing the alias. See
+  :doc:`concepts/actions` for more details. Note that this is removed in Dune
+  2.0, so users must port their code to use the ``rule`` stanza with the
   ``alias`` field instead.
 
 - ``(package <name>)`` indicates that this alias stanza is part of package
@@ -34,12 +34,12 @@ The syntax is as follows:
   command line, either with ``--only-packages <pkgs>`` or ``-p <pkgs>``.
 
 - ``(locks (<lock-names>))`` specifies that the action must be run while holding
-  the following locks. See the :ref:`locks` section for more details.
+  the following locks. See :doc:`concepts/locks` for more details.
 
 - ``(enabled_if <blang expression>)`` specifies the Boolean condition that must
   be true for the tests to run. The condition is specified using the
-  :ref:`blang`, and the field allows for :ref:`variables` to appear in the
-  expressions.
+  :doc:`concepts/boolean-language`, and the field allows for
+  :doc:`concepts/variables` to appear in the expressions.
 
 The typical use of the ``alias`` stanza is to define tests:
 

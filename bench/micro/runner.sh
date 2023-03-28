@@ -4,6 +4,7 @@ case "$1" in
   "dune" ) test="dune_bench"; main="main";;
   "fiber" ) test="fiber_bench"; main="fiber_bench_main";;
   "memo" ) test="memo_bench"; main="memo_bench_main";;
+  "thread_pool" ) test="thread_pool"; main="thread_pool_bench_main";;
 esac
 shift;
 export BENCH_LIB="$test"

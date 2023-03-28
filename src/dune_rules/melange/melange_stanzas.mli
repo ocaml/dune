@@ -8,10 +8,11 @@ module Emit : sig
     ; alias : Alias.Name.t option
     ; module_systems : (Melange.Module_system.t * string) list
     ; modules : Stanza_common.Modules_settings.t
+    ; emit_stdlib : bool
     ; libraries : Lib_dep.t list
     ; package : Package.t option
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
-    ; runtime_deps : Dep_conf.t list
+    ; runtime_deps : Loc.t * Dep_conf.t list
     ; preprocessor_deps : Dep_conf.t list
     ; promote : Rule.Promote.t option
     ; compile_flags : Ordered_set_lang.Unexpanded.t
@@ -19,6 +20,8 @@ module Emit : sig
     }
 
   type Stanza.t += T of t
+
+  val implicit_alias : Alias.Name.t
 
   val decode : t Dune_lang.Decoder.t
 end

@@ -87,7 +87,7 @@ Terminology
      from this directory. Moreover, scopes are separate from your project's
      dependencies. The scope also determines where private items are visible.
      Private items include libraries or binaries that will not be installed.
-     See :ref:`scopes` for more details.
+     See :doc:`concepts/scopes` for more details.
 
    build context
      A specific configuration written in a :ref:`dune-workspace` file, which
@@ -127,6 +127,13 @@ Terminology
      -  ``release`` which is the profile used for opam releases
      -  ``dev`` which is the default profile when none is set explicitly, it has
         stricter warnings than the ``release`` one
+
+   dialect
+     An alternative frontend to OCaml (such as ReasonML). It is described
+     by a pair of file extensions, one corresponding to interfaces and one to
+     implementations. It can use the standard OCaml syntax, or it can specify an
+     action to convert from a custom syntax to a binary OCaml abstract syntax
+     tree. It can also specify a custom formatter.
 
 Project Layout
 ==============

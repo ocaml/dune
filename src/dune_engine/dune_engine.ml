@@ -49,3 +49,6 @@ module Compound_user_error = Compound_user_error
 module Reflection = Reflection
 module No_io = No_io
 module Rpc = Rpc
+module Dune_rpc_client = Dune_rpc_client
+module Action_runner = Action_runner
+module Action_exec = Action_exec

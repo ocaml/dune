@@ -12,21 +12,36 @@ module Context_or_install = struct
 end
 
 module Rules = struct
+  module Build_only_sub_dirs = struct
+    type t = Subdir_set.t Path.Build.Map.t
+
+    let empty = Path.Build.Map.empty
+
+    let singleton ~dir sub_dirs = Path.Build.Map.singleton dir sub_dirs
+
+    let find t dir =
+      Path.Build.Map.find t dir |> Option.value ~default:Subdir_set.empty
+
+    let union a b =
+      Path.Build.Map.union a b ~f:(fun _ a b -> Some (Subdir_set.union a b))
+  end
+
   type t =
-    { build_dir_only_sub_dirs : Subdir_set.t
+    { build_dir_only_sub_dirs : Build_only_sub_dirs.t
     ; directory_targets : Loc.t Path.Build.Map.t
     ; rules : Rules.t Memo.t
     }
 
   let empty =
-    { build_dir_only_sub_dirs = Subdir_set.empty
+    { build_dir_only_sub_dirs = Path.Build.Map.empty
     ; directory_targets = Path.Build.Map.empty
     ; rules = Memo.return Rules.empty
     }
 
   let combine_exn r { build_dir_only_sub_dirs; directory_targets; rules } =
     { build_dir_only_sub_dirs =
-        Subdir_set.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
+        Build_only_sub_dirs.union r.build_dir_only_sub_dirs
+          build_dir_only_sub_dirs
     ; directory_targets =
         Path.Build.Map.union_exn r.directory_targets directory_targets
     ; rules =
@@ -81,13 +96,14 @@ type t =
   ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t
   ; execution_parameters : dir:Path.Source.t -> Execution_parameters.t Memo.t
   ; source_tree : (module Source_tree)
+  ; action_runner : Action_exec.input -> Action_runner.t option
   }
 
 let t = Fdecl.create Dyn.opaque
 
-let set ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
-    ~sandboxing_preference ~rule_generator ~implicit_default_alias
-    ~execution_parameters ~source_tree =
+let set ~action_runner ~stats ~contexts ~promote_source ~cache_config
+    ~cache_debug_flags ~sandboxing_preference ~rule_generator
+    ~implicit_default_alias ~execution_parameters ~source_tree =
   let contexts =
     Memo.lazy_ ~name:"Build_config.set" (fun () ->
         let open Memo.O in
@@ -112,6 +128,7 @@ let set ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
     ; implicit_default_alias
     ; execution_parameters
     ; source_tree
+    ; action_runner
     }
 
 let get () = Fdecl.get t

@@ -684,4 +684,4 @@ configuration. These are:
 - ``%{coq:coq_native_compiler_default}`` the output of
   ``COQ_NATIVE_COMPILER_DEFAULT`` from ``coqc -config``.
 
-See :ref:`variables` for more information on variables supported by Dune.
+See :doc:`concepts/variables` for more information on variables supported by Dune.

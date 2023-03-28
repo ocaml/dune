@@ -8,6 +8,7 @@ module Config : sig
     ; stats : Dune_stats.t option
     ; insignificant_changes : [ `Ignore | `React ]
     ; signal_watcher : [ `Yes | `No ]
+    ; watch_exclusions : string list
     }
 end
 
@@ -74,23 +75,11 @@ module Run : sig
     -> 'a
 end
 
-module Worker : sig
-  (** A worker is a thread that runs submitted tasks *)
-  type t
+(** [async f] runs [f] inside a background thread pool *)
+val async : (unit -> 'a) -> ('a, Exn_with_backtrace.t) result Fiber.t
 
-  val create : unit -> t Fiber.t
-
-  val task :
-       t
-    -> f:(unit -> 'a)
-    -> ('a, [ `Exn of Exn_with_backtrace.t | `Stopped ]) result Fiber.t
-
-  (** Should be used for tasks never raise and always complete before stop is
-      called *)
-  val task_exn : t -> f:(unit -> 'a) -> 'a Fiber.t
-
-  val stop : t -> unit
-end
+(** [async_exn f] runs [f] inside a background thread pool *)
+val async_exn : (unit -> 'a) -> 'a Fiber.t
 
 type t
 

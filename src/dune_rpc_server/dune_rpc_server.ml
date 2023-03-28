@@ -657,7 +657,7 @@ let new_session (Server handler) stats ~queries ~send =
         (fun () -> Fiber.Pool.run session.pool)
         (fun () ->
           let* () = H.handle handler stats session in
-          Fiber.Pool.stop session.pool)
+          Fiber.Pool.close session.pool)
   end
 
 let create_sequence f ~version conv =

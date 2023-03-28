@@ -11,6 +11,7 @@ Test simple interactions between melange.emit and copy_files
   > (melange.emit
   >  (alias mel)
   >  (target output)
+  >  (emit_stdlib false)
   >  (runtime_deps assets/file.txt assets/file.txt))
   > EOF
 
@@ -32,7 +33,7 @@ Rules created for the assets in the output directory
   $ dune rules @mel | grep file.txt
   ((deps ((File (In_build_dir _build/default/a/assets/file.txt))))
    (targets ((files (default/a/output/a/assets/file.txt)) (directories ())))
-     (symlink ../../../assets/file.txt a/output/a/assets/file.txt))))
+    (chdir _build/default (copy a/assets/file.txt a/output/a/assets/file.txt))))
 
   $ dune build @mel --display=short
           melc a/.output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
@@ -53,24 +54,26 @@ The runtime_dep index.txt was copied to the build folder
   hello from file
   
 
-
-
-
-
 Test depending on non-existing paths
 
-  $ mkdir another
+  $ mkdir -p another/another-output/another
   $ dune clean
   $ cat > another/dune <<EOF
   > (melange.emit
   >  (alias non-existing-mel)
   >  (target another-output)
+  >  (emit_stdlib false)
   >  (runtime_deps doesnt-exist.txt))
   > EOF
 
-  $ dune build @non-existing-mel --display=short
+  $ dune build @non-existing-mel
+  File "another/dune", line 1, characters 0-119:
+  1 | (melange.emit
+  2 |  (alias non-existing-mel)
+  3 |  (target another-output)
+  4 |  (emit_stdlib false)
+  5 |  (runtime_deps doesnt-exist.txt))
   Error: No rule found for another/doesnt-exist.txt
-  -> required by alias another/non-existing-mel
   [1]
 
 Test depending on paths that "escape" the melange.emit directory
@@ -80,6 +83,7 @@ Test depending on paths that "escape" the melange.emit directory
   > (melange.emit
   >  (alias mel)
   >  (target another-output)
+  >  (emit_stdlib false)
   >  (runtime_deps ../a/assets/file.txt))
   > EOF
   $ cat > another/main.ml <<EOF
@@ -95,11 +99,10 @@ Need to create the source dir first for the alias to be picked up
   $ dune rules @mel | grep .txt
   ((deps ((File (In_build_dir _build/default/a/assets/file.txt))))
    (targets ((files (default/a/output/a/assets/file.txt)) (directories ())))
-     (symlink ../../../assets/file.txt a/output/a/assets/file.txt))))
+    (chdir _build/default (copy a/assets/file.txt a/output/a/assets/file.txt))))
   ((deps ((File (In_build_dir _build/default/a/assets/file.txt))))
     ((files (default/another/another-output/a/assets/file.txt))
-      ../../../../a/assets/file.txt
-      another/another-output/a/assets/file.txt))))
+     (copy a/assets/file.txt another/another-output/a/assets/file.txt))))
 
   $ dune build @mel --display=short
           melc a/.output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
@@ -120,6 +123,7 @@ Test depending on external paths
   > (melange.emit
   >  (alias mel)
   >  (target external-output)
+  >  (emit_stdlib false)
   >  (runtime_deps /etc/hosts))
   > EOF
   $ cat > external/main.ml <<EOF

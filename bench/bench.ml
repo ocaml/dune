@@ -130,6 +130,7 @@ let () =
     ; stats = None
     ; insignificant_changes = `React
     ; signal_watcher = `No
+    ; watch_exclusions = []
     }
   in
   let clean, zero =

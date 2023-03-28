@@ -1,0 +1,4 @@
+(library
+ (name test_lib1)
+ (libraries fake_backend_runner)
+ (inline_tests (backend fake_backend_1)))

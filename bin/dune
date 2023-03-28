@@ -28,7 +28,7 @@
   ; Kept to keep implicit_transitive_deps false working in 4.x
   threads.posix
   build_info
-  dune_config
+  dune_config_file
   chrome_trace
   dune_stats
   csexp

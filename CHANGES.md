@@ -1,6 +1,23 @@
 Unreleased
 ----------
 
+- Fix `dune install` when cross compiling (#7410, fixes #6191, @anmonteiro,
+  @rizo)
+
+- Find `pps` dependencies in the host context when cross-compiling,  (#7410,
+  fixes #4156, @anmonteiro)
+
+- Dune in watch mode no longer builds concurrent rules in serial (#7395
+  @rgrinberg, @jchavarri)
+
+- `dune coq top` now correctly respects the project root when called from a
+  subdirectory. However, absolute filenames passed to `dune coq top` are no
+  longer supported (due to being buggy) (#7357, fixes #7344, @rlepigre and
+  @Alizter)
+
+- RPC: Ignore SIGPIPE when clients suddenly disconnect (#7299, #7319, fixes
+  #6879, @rgrinberg)
+
 - Always clean up the UI on exit. (#7271, fixes #7142 @rgrinberg)
 
 - Bootstrap: remove reliance on shell. Previously, we'd use the shell to get
@@ -8,6 +25,8 @@ Unreleased
 
 - Bootstrap: correctly detect the number of processors by allowing `nproc` to be
   looked up in `$PATH` (#7272, @Alizter)
+
+- Pass correct flags when compiling `stdlib.ml`. (#7241, @emillon)
 
 - Speed up file copying on macos by using `clonefile` when available
   (@rgrinberg, #7210)
@@ -20,6 +39,8 @@ Unreleased
 
 - Speed up rule generation for libraries and executables with many modules
   (#7187, @jchavarri)
+
+- Add `--watch-exclusions` to Dune build options (#7216, @jonahbeckford)
 
 - Do not re-render UI on every frame if the UI doesn't change (#7186, fix
   #7184, @rgrinberg)
@@ -56,6 +77,11 @@ Unreleased
 
 - Allow `(stdlib ...)` to be used with `(wrapped false)` in library stanzas
   (#7139, @anmonteiro).
+
+- Allow parallel execution of inline tests partitions (#7012, @hhugo)
+
+- Fix segfault on MacOS when dune was being shutdown while in watch mode.
+  (#7312, fixes #6151, @gridbugs, @emillon)
 
 3.7.0 (2023-02-17)
 ------------------

@@ -56,7 +56,7 @@ no plan to add support for them in the future.
 - ``(deps <deps-conf list>)`` specifies extra instrumentation dependencies, for
   instance, if it reads a generated file. The dependencies are only applied
   when the instrumentation is actually enabled. The specification of
-  dependencies is described in the :ref:`deps-field` section.
+  dependencies is described in :doc:`concepts/dependency-spec`.
 
 Enabling/Disabling Instrumentation
 ==================================

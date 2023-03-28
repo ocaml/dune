@@ -65,6 +65,8 @@ type t =
 
 let scope t = t.scope
 
+let scope_host t = t.scope_host
+
 let artifacts t = t.bin_artifacts_host
 
 let dir t = t.dir
@@ -287,6 +289,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Deps
       | Input_file
       | Library_name
+      | Partition
       | Impl_files
       | Intf_files
       | Inline_tests

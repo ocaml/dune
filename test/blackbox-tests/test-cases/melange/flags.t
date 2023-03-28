@@ -10,11 +10,11 @@ Using flags field in melange.emit stanzas is not supported
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
+  >  (modules main)
   >  (flags -w -14-26))
   > EOF
 
-  $ dune build @melange
+  $ dune build @mel
   File "dune", line 4, characters 2-7:
   4 |  (flags -w -14-26))
         ^^^^^
@@ -31,13 +31,13 @@ Adds a module that contains unused var (warning 26) and illegal backlash (warnin
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
-  >  (alias melange))
+  >  (modules main)
+  >  (alias mel))
   > EOF
 
 Trying to build triggers both warnings
 
-  $ dune build @melange
+  $ dune build @mel
   File "main.ml", line 1, characters 9-11:
   1 | let t = "\e\n" in
                ^^
@@ -53,12 +53,12 @@ Let's ignore them using compile_flags
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
-  >  (alias melange)
+  >  (modules main)
+  >  (alias mel)
   >  (compile_flags -w -14-26))
   > EOF
 
-  $ dune build @melange
+  $ dune build @mel
   $ node _build/default/output/main.js
   hello
 
@@ -67,11 +67,11 @@ Can also pass flags from the env stanza. Let's go back to failing state:
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
-  >  (alias melange))
+  >  (modules main)
+  >  (alias mel))
   > EOF
 
-  $ dune build @melange
+  $ dune build @mel
   File "main.ml", line 1, characters 9-11:
   1 | let t = "\e\n" in
                ^^
@@ -89,12 +89,12 @@ Adding env stanza with both warnings silenced allows the build to pass successfu
   >  (_
   >   (melange.compile_flags -w -14-26)))
   > (melange.emit
-  >  (alias melange)
+  >  (alias mel)
   >  (target output)
-  >  (entries main))
+  >  (modules main))
   > EOF
 
-  $ dune build @melange
+  $ dune build @mel
   $ node _build/default/output/main.js
   hello
 
@@ -107,7 +107,7 @@ Warning 102 (Melange only) is available if explicitly set
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
+  >  (modules main)
   >  (compile_flags -w +a-70))
   > EOF
 
@@ -122,7 +122,7 @@ But it is disabled by default
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main))
+  >  (modules main))
   > EOF
 
   $ dune build output/main.js

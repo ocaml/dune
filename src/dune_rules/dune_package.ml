@@ -62,6 +62,15 @@ module Lib = struct
       | External ms -> ms
       | Local -> None
     in
+    let melange_runtime_deps =
+      match Lib_info.melange_runtime_deps info with
+      | Local _ -> assert false
+      | External paths ->
+        let lib_dir = Obj_dir.dir obj_dir in
+        List.map paths ~f:(fun p ->
+            Path.as_in_build_dir_exn p |> Path.Build.drop_build_context_exn
+            |> Path.append_source lib_dir)
+    in
     let jsoo_runtime = Lib_info.jsoo_runtime info in
     let virtual_ = Option.is_some (Lib_info.virtual_ info) in
     let instrumentation_backend = Lib_info.instrumentation_backend info in
@@ -102,6 +111,7 @@ module Lib = struct
        ; field_l "modes" sexp (Lib_mode.Map.Set.encode modes)
        ; field_l "obj_dir" sexp (Obj_dir.encode obj_dir)
        ; field_o "modules" (Modules.encode ~src_dir:package_root) modules
+       ; paths "melange_runtime_deps" melange_runtime_deps
        ; field_o "special_builtin_support"
            Lib_info.Special_builtin_support.encode special_builtin_support
        ; field_o "instrumentation.backend" (no_loc Lib_name.encode)
@@ -160,6 +170,7 @@ module Lib = struct
        and+ foreign_dll_files = paths "foreign_dll_files"
        and+ native_archives = paths "native_archives"
        and+ jsoo_runtime = paths "jsoo_runtime"
+       and+ melange_runtime_deps = paths "melange_runtime_deps"
        and+ requires = field_l "requires" (Lib_dep.decode ~allow_re_export:true)
        and+ ppx_runtime_deps = libs "ppx_runtime_deps"
        and+ virtual_ = field_b "virtual"
@@ -199,6 +210,9 @@ module Lib = struct
          in
          let entry_modules = Lib_info.Source.External (Ok entry_modules) in
          let modules = Lib_info.Source.External (Some modules) in
+         let melange_runtime_deps =
+           Lib_info.Runtime_deps.External melange_runtime_deps
+         in
          Lib_info.create ~path_kind:External ~loc ~name ~kind ~status ~src_dir
            ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name
            ~sub_systems ~requires ~foreign_objects ~plugins ~archives
@@ -207,7 +221,7 @@ module Lib = struct
            ~jsoo_runtime ~preprocess ~enabled ~virtual_deps ~dune_version
            ~virtual_ ~entry_modules ~implements ~default_implementation ~modes
            ~modules ~wrapped ~special_builtin_support ~exit_module:None
-           ~instrumentation_backend
+           ~instrumentation_backend ~melange_runtime_deps
        in
        { info; main_module_name })
 

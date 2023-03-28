@@ -23,7 +23,7 @@ details.
   details.
 
 - ``(enabled_if <blang expression>)`` conditionally disables this stanza. The
-  condition is specified using the :ref:`blang`.
+  condition is specified using the :doc:`concepts/boolean-language`.
 
 The short form:
 
@@ -38,5 +38,5 @@ is equivalent to:
     (copy_files (files <glob>))
 
 The difference between ``copy_files`` and ``copy_files#`` is the same as the
-difference between the ``copy`` and ``copy#`` actions. See the
-:ref:`user-actions` section for more details.
+difference between the ``copy`` and ``copy#`` actions. See
+:doc:`concepts/actions` section for more details.

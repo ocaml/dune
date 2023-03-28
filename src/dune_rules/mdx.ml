@@ -118,7 +118,7 @@ module Deps = struct
     | Ok (dirs, files) ->
       let open Memo.O in
       let dep_set = Dep.Set.of_files files in
-      let+ l = Memo.parallel_map dirs ~f:(fun dir -> Dep.Set.source_tree dir) in
+      let+ l = Memo.parallel_map dirs ~f:Source_deps.files in
       Ok (Dep.Set.union_all (dep_set :: l))
 end
 

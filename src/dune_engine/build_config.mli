@@ -14,13 +14,27 @@ end
 
 module Rules : sig
   (** Rules for a given directory. This type is structured so that all generated
-      sub-directories (either directory targets or internal generated
+      sub-directories (either directory targets or internally generated
       directories such as [.ppx]) are known immediately, while the actual build
       rules are computed in a second stage. The staging is to avoid computation
       cycles created during the computation of the rules. *)
 
+  module Build_only_sub_dirs : sig
+    (** The set of either directory targets or internally generated directories,
+        indexed by their parent build directory. *)
+    type t
+
+    val empty : t
+
+    val singleton : dir:Path.Build.t -> Subdir_set.t -> t
+
+    val find : t -> Path.Build.t -> Subdir_set.t
+
+    val union : t -> t -> t
+  end
+
   type t =
-    { build_dir_only_sub_dirs : Subdir_set.t
+    { build_dir_only_sub_dirs : Build_only_sub_dirs.t
           (** Sub-directories that don't exist in the source tree but exists in
               the build directory. This is for internal directories such as
               [.dune] or [.ppx]. *)
@@ -96,12 +110,14 @@ type t = private
   ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t
   ; execution_parameters : dir:Path.Source.t -> Execution_parameters.t Memo.t
   ; source_tree : (module Source_tree)
+  ; action_runner : Action_exec.input -> Action_runner.t option
   }
 
 (** Initialise the build system. This must be called before running the build
     system and only once. *)
 val set :
-     stats:Dune_stats.t option
+     action_runner:(Action_exec.input -> Action_runner.t option)
+  -> stats:Dune_stats.t option
   -> contexts:Build_context.t list Memo.Lazy.t
   -> promote_source:
        (   chmod:(int -> int)

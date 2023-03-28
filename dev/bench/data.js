@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680024688969,
+  "lastUpdate": 1680025252948,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11396,6 +11396,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.29746758269334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "4608e1b8cae5563ae6f8fe9505cf3275302d8333",
+          "message": "Update to our vendored copy of opam-file-format\n\nThis copy is a fork of opam-file-format.2.1.6 with out patches applied.\n\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-03-28T10:16:28-07:00",
+          "tree_id": "6025944741498da61ead78a8daa253baafd2f297",
+          "url": "https://github.com/ocaml/dune/commit/4608e1b8cae5563ae6f8fe9505cf3275302d8333"
+        },
+        "date": 1680025250855,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.42374490434667",
             "unit": "seconds"
           }
         ]

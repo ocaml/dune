@@ -152,6 +152,7 @@ This profile might need to be updated from time to time, since the bootstrapped
 version of Dune may become stale. This can be done by running the first command.
 
 We have the following shells for specific tasks:
+
 - `nix develop .#slim` for a dev environment with fewer dependencies 
    that is faster to build.
 - Building documentation requires `nix develop .#doc`.

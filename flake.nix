@@ -159,6 +159,16 @@
               pkgs.ocamlPackages.mel
             ];
           };
+          slim-opam = with pkgs; mkShell {
+            nativeBuildInputs = lib.remove pkgs.ocamlformat testNativeBuildInputs;
+            buildInputs = lib.optionals stdenv.isDarwin [
+              darwin.apple_sdk.frameworks.CoreServices
+            ];
+            meta = {
+              description = "provides a shell with just `opam` and minimal \
+              (external) dependencies to run the testsuite.";
+            };
+          };
 
           coq =
             pkgs.mkShell {

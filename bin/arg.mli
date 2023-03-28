@@ -1,5 +1,4 @@
 open Stdune
-open Dune_engine
 open Dune_rules
 
 include module type of struct
@@ -36,7 +35,7 @@ end
 
 val bytes : int64 conv
 
-val context_name : Context_name.t conv
+val context_name : Dune_engine.Context_name.t conv
 
 val dep : Dep.t conv
 

@@ -16,16 +16,10 @@ include struct
   module Rule = Rule
   module Rules = Rules
   module Action_builder = Action_builder
-  module Source_tree = Source_tree
-  module Dialect = Dialect
-  module Dune_project = Dune_project
   module Build_system = Build_system
   module Context_name = Context_name
-  module Package = Package
   module Dpath = Dpath
   module Alias = Alias
-  module Section = Section
-  module Opam_file = Opam_file
   module File_selector = File_selector
   module Dep = Dep
   module Build_config = Build_config
@@ -35,20 +29,14 @@ include struct
   module Action = Action
   module Compound_user_error = Compound_user_error
   module Fs_cache = Fs_cache
-  module Format_config = Format_config
   module Process = Process
   module Execution_parameters = Execution_parameters
   module Build_context = Build_context
   module Targets = Targets
   module Utils = Utils
-  module Sub_dirs = Sub_dirs
-  module Subst_config = Subst_config
   module Load_rules = Load_rules
-  module Subdir_set = Subdir_set
-  module Include_stanza = Include_stanza
-  module Cram_test = Cram_test
-  module Vcs = Vcs
   module Response_file = Response_file
+  module Subdir_set = Subdir_set
 end
 
 include Ocaml

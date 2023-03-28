@@ -1,12 +1,13 @@
 (** Initialize dune components *)
 
-open! Stdune
+open Stdune
+open Import
 
 (** The context in which the initialization is executed *)
 module Init_context : sig
   type t =
     { dir : Path.t
-    ; project : Dune_engine.Dune_project.t
+    ; project : Dune_project.t
     }
 
   val make : string option -> t Memo.t

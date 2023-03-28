@@ -165,7 +165,7 @@ let build_c ~(kind : Foreign_language.t) ~sctx ~dir ~expander ~include_flags
       let has_standard = Ordered_set_lang.Unexpanded.has_standard flags in
       let+ is_vendored =
         match Path.Build.drop_build_context dir with
-        | Some src_dir -> Dune_engine.Source_tree.is_vendored src_dir
+        | Some src_dir -> Source_tree.is_vendored src_dir
         | None -> Memo.return false
       in
       if

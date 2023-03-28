@@ -28,11 +28,4 @@ let force = ref false
 
 let always_show_command_line = ref false
 
-type on_missing_dune_project_file =
-  | Error
-  | Warn
-  | Ignore
-
-let on_missing_dune_project_file = ref Warn
-
 let display = ref Display.Quiet

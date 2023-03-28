@@ -178,7 +178,7 @@ end) : File_operations = struct
 
   let print_line = print_line ~verbosity
 
-  let get_vcs p = Dune_engine.Source_tree.nearest_vcs p
+  let get_vcs p = Source_tree.nearest_vcs p
 
   type load_special_file_result =
     { need_version : bool
@@ -204,7 +204,7 @@ end) : File_operations = struct
           in
           match packages with
           | None -> Fiber.return None
-          | Some vcs -> Memo.run (Dune_engine.Vcs.describe vcs)
+          | Some vcs -> Memo.run (Dune_rules.Vcs.describe vcs)
         else Fiber.return None
       in
       let ppf = Format.formatter_of_out_channel oc in
@@ -246,7 +246,7 @@ end) : File_operations = struct
       Some { need_version = true; callback }
 
   let replace_sites
-      ~(get_location : Dune_engine.Section.t -> Package.Name.t -> Stdune.Path.t)
+      ~(get_location : Dune_rules.Section.t -> Package.Name.t -> Stdune.Path.t)
       dp =
     match
       List.find_map dp ~f:(function
@@ -417,9 +417,9 @@ let file_operations ~verbosity ~dry_run ~workspace : (module File_operations) =
       let verbosity = verbosity
     end))
 
-let package_is_vendored (pkg : Dune_engine.Package.t) =
+let package_is_vendored (pkg : Package.t) =
   let dir = Package.dir pkg in
-  Memo.run (Dune_engine.Source_tree.is_vendored dir)
+  Memo.run (Source_tree.is_vendored dir)
 
 type what =
   | Install

@@ -1,6 +1,5 @@
 open! Stdune
 open Import
-module Dune_section = Dune_engine.Section
 
 (* The path after the man section mangling done by opam-installer. This roughly
    follows [add_man_section_dir] in [src/format/opamFile.ml] in opam. *)
@@ -107,7 +106,7 @@ module Section_with_site = struct
   let decode =
     let open Dune_lang.Decoder in
     sum
-      ((Dune_section.enum_decoder
+      ((Section.enum_decoder
        |> List.map ~f:(fun (k, d) -> (k, return (Section d))))
       @ [ ( "site"
           , Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)

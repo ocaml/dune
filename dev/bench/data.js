@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680120220173,
+  "lastUpdate": 1680123257766,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -22217,6 +22217,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.263457677359998",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d3f34c547b26e920c1dc4ba92bfd626294df61b5",
+          "message": "Fix cinaps (link_flags) support version check (#7446)\n\nSigned-off-by: Nicolás Ojeda Bär <n.oje.bar@gmail.com>",
+          "timestamp": "2023-03-29T22:40:43+02:00",
+          "tree_id": "e4134990ae4f87dbff45e02bd5ae2c0ca9bc488e",
+          "url": "https://github.com/ocaml/dune/commit/d3f34c547b26e920c1dc4ba92bfd626294df61b5"
+        },
+        "date": 1680123255850,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.817901344853336",
             "unit": "seconds"
           }
         ]

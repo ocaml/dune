@@ -337,9 +337,14 @@ let invalidate_path_and_its_parent path =
    directory should be added to or removed from the result. *)
 let handle_fs_event ({ kind; path } : Dune_file_watcher.Fs_memo_event.t) :
     Memo.Invalidation.t =
-  let path = Path.as_outside_build_dir_exn path in
-  match kind with
-  | File_changed -> Watcher.invalidate path
-  | Created | Deleted | Unknown -> invalidate_path_and_its_parent path
+  match Path.destruct_build_dir path with
+  | `Inside _ ->
+    (* This can occur on MacOS when [PATH=.:$PATH] for example *)
+    Platform.assert_os Darwin;
+    Memo.Invalidation.empty
+  | `Outside path -> (
+    match kind with
+    | File_changed -> Watcher.invalidate path
+    | Created | Deleted | Unknown -> invalidate_path_and_its_parent path)
 
 let init = Watcher.init

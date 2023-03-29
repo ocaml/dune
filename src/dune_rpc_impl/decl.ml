@@ -53,6 +53,35 @@ module Build = struct
   let decl = Decl.Request.make ~method_:"build" ~generations:[ v1 ]
 end
 
+module Watch_mode_event_long_poll = struct
+  type event = Build_complete
+
+  type error = Event_no_longer_stored
+
+  type t = (event, error) result
+
+  let sexp =
+    let open Conv in
+    let build_complete =
+      constr "build_complete" unit (fun () -> Ok Build_complete)
+    in
+    let event_no_longer_stored =
+      constr "event_no_longer_stored" unit (fun () ->
+          Error Event_no_longer_stored)
+    in
+    let variants = [ econstr build_complete; econstr event_no_longer_stored ] in
+    sum variants (function
+      | Ok Build_complete -> case () build_complete
+      | Error Event_no_longer_stored -> case () event_no_longer_stored)
+
+  let v1 = Decl.Request.make_current_gen ~req:Conv.int ~resp:sexp ~version:1
+
+  let decl =
+    Decl.Request.make ~method_:"watch_mode_event_long_poll" ~generations:[ v1 ]
+end
+
 let build = Build.decl
 
 let status = Status.decl
+
+let watch_mode_event_long_poll = Watch_mode_event_long_poll.decl

@@ -25,6 +25,17 @@ module Status : sig
   val sexp : (t, Conv.values) Conv.t
 end
 
+module Watch_mode_event_long_poll : sig
+  type event = Build_complete
+
+  type error = Event_no_longer_stored
+
+  type t = (event, error) result
+end
+
 val build : (string list, Build_outcome.t) Decl.Request.t
 
 val status : (unit, Status.t) Decl.Request.t
+
+val watch_mode_event_long_poll :
+  (int, Watch_mode_event_long_poll.t) Decl.Request.t

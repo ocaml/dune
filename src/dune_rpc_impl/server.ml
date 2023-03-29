@@ -208,6 +208,7 @@ type t =
       (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
   ; watch_mode_config : Watch_mode_config.t
   ; mutable clients : Clients.t
+  ; event_queue : Decl.Watch_mode_event_long_poll.event Dune_util.Event_queue.t
   }
 
 let ready (t : t) =
@@ -223,8 +224,8 @@ let stop (t : t) =
       | None -> ()
       | Some server -> Csexp_rpc.Server.stop server)
 
-let handler (t : t Fdecl.t) action_runner_server : 'a Dune_rpc_server.Handler.t
-    =
+let handler (t : t Fdecl.t) action_runner_server event_queue :
+    'a Dune_rpc_server.Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
     let client = () in
@@ -290,6 +291,17 @@ let handler (t : t Fdecl.t) action_runner_server : 'a Dune_rpc_server.Handler.t
   in
   let () =
     Handler.implement_request rpc Procedures.Public.ping (fun _ -> Fiber.return)
+  in
+  let () =
+    Handler.implement_request rpc Decl.watch_mode_event_long_poll
+      (fun _ seqno ->
+        match Dune_util.Event_queue.event_fiber event_queue ~seqno with
+        | Error `Event_no_longer_stored ->
+          Fiber.return
+            (Error Decl.Watch_mode_event_long_poll.Event_no_longer_stored)
+        | Ok fiber ->
+          let+ event = fiber in
+          Ok event)
   in
   let () =
     let build _session targets =
@@ -420,7 +432,8 @@ let create ~lock_timeout ~registry ~root ~watch_mode_config stats action_runner
     =
   let t = Fdecl.create Dyn.opaque in
   let pending_build_jobs = Job_queue.create () in
-  let handler = Dune_rpc_server.make (handler t action_runner) in
+  let event_queue = Dune_util.Event_queue.create ~max_stored_events:20 in
+  let handler = Dune_rpc_server.make (handler t action_runner event_queue) in
   let pool = Fiber.Pool.create () in
   let where = Where.default () in
   Global_lock.lock_exn ~timeout:lock_timeout;
@@ -454,7 +467,12 @@ let create ~lock_timeout ~registry ~root ~watch_mode_config stats action_runner
     }
   in
   let res =
-    { config; pending_build_jobs; watch_mode_config; clients = Clients.empty }
+    { config
+    ; pending_build_jobs
+    ; watch_mode_config
+    ; clients = Clients.empty
+    ; event_queue
+    }
   in
   Fdecl.set t res;
   res
@@ -474,3 +492,5 @@ let action_runner t = t.config.action_runner
 let pending_build_action t =
   Job_queue.read t.pending_build_jobs
   |> Fiber.map ~f:(fun (targets, ivar) -> Build (targets, ivar))
+
+let event_queue t = t.event_queue

@@ -11,6 +11,7 @@
   dune_sexp
   dune_config
   memo
+  fiber
   (re_export unix))
  (instrumentation
   (backend bisect_ppx)))

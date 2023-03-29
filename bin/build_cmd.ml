@@ -22,11 +22,37 @@ let with_metrics ~common f =
                 (String.Map.to_list (Metrics.Timer.aggregated_timers ())))));
       Fiber.return ())
 
+module Report_event = struct
+  type t =
+    { opt_event_queue :
+        Dune_rpc_impl.Decl.Watch_mode_event_long_poll.event
+        Dune_util.Event_queue.t
+        option
+    }
+
+  let of_common common =
+    let opt_event_queue =
+      match Common.rpc common with
+      | `Allow server -> Some (Dune_rpc_impl.Server.event_queue server)
+      | `Forbid_builds -> None
+    in
+    { opt_event_queue }
+
+  let report_event t event =
+    match t.opt_event_queue with
+    | Some event_queue -> Dune_util.Event_queue.add_event event_queue ~event
+    | None -> Fiber.return ()
+
+  let build_complete t =
+    report_event t Dune_rpc_impl.Decl.Watch_mode_event_long_poll.Build_complete
+end
+
 let run_build_system ~common ~request =
   let run ~(toplevel : unit Memo.Lazy.t) =
     with_metrics ~common (fun () ->
         Build_system.run (fun () -> Memo.Lazy.force toplevel))
   in
+  let report_event = Report_event.of_common common in
   let open Fiber.O in
   Fiber.finalize
     (fun () ->
@@ -73,6 +99,7 @@ let run_build_system ~common ~request =
       in
       res)
     ~finally:(fun () ->
+      let* () = Report_event.build_complete report_event in
       Hooks.End_of_build.run ();
       Fiber.return ())
 

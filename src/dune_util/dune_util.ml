@@ -8,6 +8,7 @@ module Value = Value
 module Build_path_prefix_map = Build_path_prefix_map0
 module Flock = Flock
 module Global_lock = Global_lock
+module Event_queue = Event_queue
 open Stdune
 
 let xdg =

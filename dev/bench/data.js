@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680068144883,
+  "lastUpdate": 1680068209037,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -21405,6 +21405,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.020647625200002",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9ff9ddd6e2d0b768972374726ae175e726eeade0",
+          "message": "chore(nix): add `meta.decription` fields to our nix shells (#7438)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-29T05:22:59Z",
+          "tree_id": "f031098efb54fb215a25d7a2eb55c03801df5a14",
+          "url": "https://github.com/ocaml/dune/commit/9ff9ddd6e2d0b768972374726ae175e726eeade0"
+        },
+        "date": 1680068207014,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "25.57145965804",
             "unit": "seconds"
           }
         ]

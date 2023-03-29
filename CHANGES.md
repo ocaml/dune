@@ -31,7 +31,7 @@ Unreleased
 - Speed up file copying on macos by using `clonefile` when available
   (@rgrinberg, #7210)
 
-- Adds support for loading plugins in toplevels (#6082, fixes #6081, 
+- Adds support for loading plugins in toplevels (#6082, fixes #6081,
   @ivg, @richardlford)
 
 - Support commands that output 8-bit and 24-bit colors in the terminal (#7188,
@@ -82,6 +82,9 @@ Unreleased
 
 - Fix segfault on MacOS when dune was being shutdown while in watch mode.
   (#7312, fixes #6151, @gridbugs, @emillon)
+
+- Support `(link_flags ...)` in `(cinaps ...)` stanza. (#7423, fixes #7416,
+  @nojb)
 
 3.7.0 (2023-02-17)
 ------------------

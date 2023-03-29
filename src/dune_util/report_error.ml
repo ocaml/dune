@@ -135,7 +135,7 @@ let format_memo_stack pps =
                    (Pp.seq (Pp.verbatim "-> ")
                       (Pp.seq (Pp.text "required by ") pp))))))
 
-let report { Exn_with_backtrace.exn; backtrace } =
+let gen_report exn backtrace =
   let exn, memo_stack =
     match exn with
     | Memo.Error.E err -> (Memo.Error.get err, Memo.Error.stack err)
@@ -156,10 +156,13 @@ let report { Exn_with_backtrace.exn; backtrace } =
     let msg =
       if responsible = User && not !report_backtraces_flag then msg
       else
-        append msg
-          (List.map
-             (Printexc.raw_backtrace_to_string backtrace |> String.split_lines)
-             ~f:(fun line -> Pp.box ~indent:2 (Pp.text line)))
+        match backtrace with
+        | None -> msg
+        | Some backtrace ->
+          append msg
+            (List.map
+               (Printexc.raw_backtrace_to_string backtrace |> String.split_lines)
+               ~f:(fun line -> Pp.box ~indent:2 (Pp.text line)))
     in
     let memo_stack =
       if !print_memo_stacks || needs_stack_trace then memo_stack
@@ -195,3 +198,8 @@ let report { Exn_with_backtrace.exn; backtrace } =
       | Developer -> append msg (i_must_not_crash ())
     in
     Console.print_user_message msg
+
+let report { Exn_with_backtrace.exn; backtrace } =
+  gen_report exn (Some backtrace)
+
+let report_exception exn = gen_report exn None

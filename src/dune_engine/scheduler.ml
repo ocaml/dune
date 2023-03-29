@@ -62,7 +62,7 @@ end
 let blocked_signals : Signal.t list = [ Int; Quit; Term ]
 
 module Thread : sig
-  val spawn : signal_watcher:[ `Yes | `No ] -> (unit -> 'a) -> unit
+  val spawn : signal_watcher:[ `Yes | `No ] -> (unit -> unit) -> unit
 
   val delay : float -> unit
 
@@ -89,6 +89,9 @@ end = struct
       Thread.create f x
 
   let spawn ~signal_watcher f =
+    let f () =
+      try f () with exn -> Dune_util.Report_error.report_exception exn
+    in
     let (_ : Thread.t) = create ~signal_watcher f () in
     ()
 end

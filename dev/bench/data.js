@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680109798811,
+  "lastUpdate": 1680109809951,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20127,6 +20127,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "66.21645883109333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "57bc4c50ac9c01408db7ee25ed47eb8702d59c8c",
+          "message": "refactor(engine): remove unused imports (#7437)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-29T09:17:08-07:00",
+          "tree_id": "e43103e496b1e318d26ea5146b0b13f7830a3006",
+          "url": "https://github.com/ocaml/dune/commit/57bc4c50ac9c01408db7ee25ed47eb8702d59c8c"
+        },
+        "date": 1680109808804,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6159488955399999",
             "unit": "seconds"
           }
         ]

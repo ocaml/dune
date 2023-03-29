@@ -50,8 +50,9 @@ Here is a complete list of supported subfields:
   command line. This behavior can be disabled since Dune 2.8 via the
   ``dune-project`` option :ref:`always-add-cflags`.
 - ``include_dirs`` are tracked as dependencies and passed to the compiler
-  via the ``-I`` flag. You can use :doc:`variables` in this field and refer to
-  a library source directory using the ``(lib library-name)`` syntax.
+  via the ``-I`` flag. You can use :doc:`../concepts/variables` in this field
+  and refer to a library source directory using the ``(lib library-name)``
+  syntax.
   Additionally, the syntax ``(include filename)`` can be used to specify a file
   containing additional arguments to ``(include_dirs ...)``. The named file can
   either contain a single path to be added to this list of include directories,
@@ -206,5 +207,5 @@ one in its `:standard` set:
 - In the env definition of a `dune` file
 - In a `foreign_` field of an executable or a library
 
-The ``%{cc}`` :doc:`variable <variables>` will contain the flags from the first
-three levels only.
+The ``%{cc}`` :doc:`variable <../concepts/variables>` will contain the flags
+from the first three levels only.

@@ -53,6 +53,7 @@ let local_libraries =
   ; ("src/fswatch_win", Some "Fswatch_win", false, None)
   ; ("src/dune_file_watcher", Some "Dune_file_watcher", false, None)
   ; ("src/dune_engine", Some "Dune_engine", false, None)
+  ; ("src/dune_vcs", Some "Dune_vcs", false, None)
   ; ("src/dune_threaded_console", Some "Dune_threaded_console", false, None)
   ; ("vendor/uutf", None, false, None)
   ; ("vendor/notty/src", None, true, None)

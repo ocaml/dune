@@ -204,7 +204,7 @@ end) : File_operations = struct
           in
           match packages with
           | None -> Fiber.return None
-          | Some vcs -> Memo.run (Dune_rules.Vcs.describe vcs)
+          | Some vcs -> Memo.run (Vcs.describe vcs)
         else Fiber.return None
       in
       let ppf = Format.formatter_of_out_channel oc in

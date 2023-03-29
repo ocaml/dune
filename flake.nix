@@ -115,8 +115,9 @@
             })
             melange.overlays.default
           ];
-          mkSlim = { extraBuildInputs ? [ ] }:
+          mkSlim = { extraBuildInputs ? [ ], meta ? null }:
             pkgs.mkShell {
+              inherit meta;
               nativeBuildInputs = testNativeBuildInputs;
               inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
               buildInputs = testBuildInputs ++ (with pkgs.ocamlPackages; [
@@ -144,30 +145,47 @@
                   python310Packages.sphinx-rtd-theme
                 ]
               );
+              meta.description = ''
+                Provides a shell environment suitable for building the Dune
+                documentation website (e.g. `make doc`).
+              '';
             };
 
           fmt =
             pkgs.mkShell {
               nativeBuildInputs = [ ocamlformat ];
               inputsFrom = [ pkgs.dune_3 ];
+              meta.description = ''
+                Provides a shell environment suitable for formatting the Dune
+                codebase source code (e.g. with `make fmt`).
+              '';
             };
 
-          slim = mkSlim { };
+          slim = mkSlim {
+            meta.description = ''
+              Provides a minimal shell environment built purely from nixpkgs
+              that can run the testsuite (except the coq / melange tests).
+            '';
+          };
           slim-melange = mkSlim {
             extraBuildInputs = [
               pkgs.ocamlPackages.melange
               pkgs.ocamlPackages.mel
             ];
+            meta.description = ''
+              Provides a minimal shell environment built purely from nixpkgs
+              that can run the testsuite (except the coq tests).
+            '';
           };
           slim-opam = with pkgs; mkShell {
             nativeBuildInputs = lib.remove pkgs.ocamlformat testNativeBuildInputs;
             buildInputs = lib.optionals stdenv.isDarwin [
               darwin.apple_sdk.frameworks.CoreServices
             ];
-            meta = {
-              description = "provides a shell with just `opam` and minimal \
-              (external) dependencies to run the testsuite.";
-            };
+            meta.description = ''
+              provides a shell with just `opam` and minimal (external)
+              dependencies to run the testsuite.";
+            '';
           };
 
           coq =
@@ -178,6 +196,10 @@
                 coq_8_16
                 coq_8_16.ocamlPackages.findlib
               ];
+              meta.description = ''
+                Provides a minimal shell environment built purely from nixpkgs
+                that can build Dune and the Coq testsuite.
+              '';
             };
 
           default =
@@ -195,6 +217,10 @@
                 pkgs.ocamlPackages.mel
               ] ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
               inputsFrom = [ self.packages.${system}.dune ];
+              meta.description = ''
+                Provides a shell environment built with opam2nix, where `dune`
+                is provided and built using the source code in this repo.
+              '';
             };
         };
     });

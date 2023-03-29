@@ -16,10 +16,7 @@ val remove_locs : t -> t
     and targets, and verifies invariants such as:
 
     - All the targets are in [targets_dir]
-    - The [targets] mode is respected
-
-    [foreign_flags] has to be passed because it depends on [Super_context].
-    Fetching it directly would introduce a dependency cycle. *)
+    - The [targets] mode is respected *)
 val expand :
      t
   -> loc:Loc.t

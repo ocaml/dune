@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680119883499,
+  "lastUpdate": 1680120210054,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20185,6 +20185,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6159488955399999",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fb0ba64b5e800a9f2918cde962288c0a36edc511",
+          "message": "refactor: use Filename in Vcs module (#7447)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-29T12:36:42-07:00",
+          "tree_id": "c6036297ba2e2581556a8e75f650ed4d754767c5",
+          "url": "https://github.com/ocaml/dune/commit/fb0ba64b5e800a9f2918cde962288c0a36edc511"
+        },
+        "date": 1680120209364,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "64.77369970518667",
             "unit": "seconds"
           }
         ]

@@ -8,7 +8,7 @@ Test unmangling of js files
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (alias melange))
+  >  (alias mel))
   > EOF
 
 Using uppercase produces uppercase artifacts
@@ -27,6 +27,6 @@ Using lowercase produces uppercase artifacts
   > print_endline "hello"
   > EOF
 
-  $ dune build @melange
+  $ dune build @mel
   $ node _build/default/output/lower.js
   hello

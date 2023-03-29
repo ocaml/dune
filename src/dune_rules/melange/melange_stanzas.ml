@@ -21,6 +21,8 @@ module Emit = struct
 
   type Stanza.t += T of t
 
+  let implicit_alias = Alias.Name.of_string "melange"
+
   let decode =
     let extension_field =
       let+ loc, extension = located string in

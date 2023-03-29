@@ -2,4 +2,4 @@
  (target multilib)
  (modules c)
  (libraries x)
- (alias melange))
+ (alias mel))

@@ -1,4 +1,7 @@
-open Import
+open Stdune
+module Utils = Dune_engine.Utils
+module Process = Dune_engine.Process
+module Config = Dune_util.Config
 
 module Kind = struct
   type t =

@@ -11,12 +11,12 @@
   $ cat > dune << EOF
   > (melange.emit
   >  (target output)
-  >  (alias melange)
+  >  (alias mel)
   >  (emit_stdlib false)
   >  (runtime_deps output/foo.txt))
   > EOF
 
-  $ dune build @melange
+  $ dune build @mel
 
   $ ls _build/default/output
   foo.txt

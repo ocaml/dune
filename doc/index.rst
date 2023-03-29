@@ -74,5 +74,4 @@ Welcome to Dune's Documentation!
 
    faq
    goals
-   known-issues
    hacking

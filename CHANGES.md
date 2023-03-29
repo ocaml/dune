@@ -4,6 +4,9 @@ Unreleased
 - Fix `dune install` when cross compiling (#7410, fixes #6191, @anmonteiro,
   @rizo)
 
+- Find `pps` dependencies in the host context when cross-compiling,  (#7410,
+  fixes #4156, @anmonteiro)
+
 - Dune in watch mode no longer builds concurrent rules in serial (#7395
   @rgrinberg, @jchavarri)
 

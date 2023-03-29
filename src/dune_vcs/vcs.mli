@@ -1,6 +1,6 @@
 (** VCS handling *)
 
-open Import
+open Stdune
 
 module Kind : sig
   type t =

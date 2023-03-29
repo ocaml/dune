@@ -19,7 +19,7 @@ in the same dune file, but require different ppx specifications
      --as-ppx
      --cookie
      'library-name="usesppx1"'"))
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))
   Usesppx2
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
@@ -33,4 +33,4 @@ in the same dune file, but require different ppx specifications
      --as-ppx
      --cookie
      'library-name="usesppx2"'"))
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))

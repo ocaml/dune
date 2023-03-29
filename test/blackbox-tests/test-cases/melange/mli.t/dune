@@ -2,4 +2,4 @@
  (target mli)
  (modules x)
  (libraries lib)
- (alias melange))
+ (alias mel))

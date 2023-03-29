@@ -18,8 +18,7 @@ module Kind = struct
 
   let of_dir_contents files =
     if String.Set.mem files Workspace.filename then Some Dune_workspace
-    else if String.Set.mem files Dune_engine.Dune_project.filename then
-      Some Dune_project
+    else if String.Set.mem files Dune_project.filename then Some Dune_project
     else None
 end
 

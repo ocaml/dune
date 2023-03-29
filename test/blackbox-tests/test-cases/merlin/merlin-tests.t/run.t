@@ -24,7 +24,7 @@ CRAM sanitization
    (FLG
     (-pp
      $TESTCASE_ROOT/_build/default/pp/pp.exe))
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))
 
   $ dune build ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
   $ dune ocaml merlin dump-config $PWD/lib
@@ -43,7 +43,7 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="bar"'"))
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))
   File
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
@@ -60,7 +60,7 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="bar"'"))
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))
   Foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
@@ -80,7 +80,7 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="foo"'"))
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))
   Privmod
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
@@ -101,7 +101,7 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="foo"'"))
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))
 
 Make sure a ppx directive is generated (if not, the [grep ppx] step fails)
   $ dune ocaml merlin dump-config $PWD/lib | grep ppx > /dev/null
@@ -121,7 +121,7 @@ Make sure pp flag is correct and variables are expanded
     (-pp
      "$TESTCASE_ROOT/_build/default/pp/pp.exe
      -nothing"))
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))
 
 Check hash of executables names if more than one
   $ dune build ./exes/.merlin-conf/exe-x-6562915302827c6dce0630390bfa68b7
@@ -139,7 +139,8 @@ Check hash of executables names if more than one
      -strict-sequence
      -strict-formats
      -short-paths
-     -keep-locs)))
+     -keep-locs
+     -g)))
   Y
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
@@ -153,4 +154,5 @@ Check hash of executables names if more than one
      -strict-sequence
      -strict-formats
      -short-paths
-     -keep-locs)))
+     -keep-locs
+     -g)))

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680101112330,
+  "lastUpdate": 1680101692347,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11599,6 +11599,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.246203809473336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "54b453911498df24bc0f80ee64ae231b9003b485",
+          "message": "doc: add a reference list of commands in the CLI (#7403)\n\nThe goal is to have a list somewhere, but not something exhaustive.\r\nThe reference documentation is delegated to the installed manpages.\r\nSome internal commands have been omitted.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\nCo-authored-by: Ali Caglayan <alizter@gmail.com>\r\nCo-authored-by: Christine Rose <christinerose@users.noreply.github.com>",
+          "timestamp": "2023-03-29T16:26:11+02:00",
+          "tree_id": "3a2f931e9bb9455fe2d2f6b2fb2a8f7fc047f196",
+          "url": "https://github.com/ocaml/dune/commit/54b453911498df24bc0f80ee64ae231b9003b485"
+        },
+        "date": 1680101691159,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "43.15827735766666",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680098282407,
+  "lastUpdate": 1680098782821,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11570,6 +11570,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.85948936572",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f9e7a675bebb70fcf36df0eb243870134c0a9c51",
+          "message": "doc: move DSL sections from concepts to Reference (#7388)\n\nAs noted in #7325, these documents only contain reference info, so move\r\nthem to the corresponding directory.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-03-29T15:44:39+02:00",
+          "tree_id": "3ccbbacad0af9164937c9c7570d995e94b1de75c",
+          "url": "https://github.com/ocaml/dune/commit/f9e7a675bebb70fcf36df0eb243870134c0a9c51"
+        },
+        "date": 1680098782012,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.246203809473336",
             "unit": "seconds"
           }
         ]

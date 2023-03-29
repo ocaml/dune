@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680077035079,
+  "lastUpdate": 1680077541195,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11541,6 +11541,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.92443501074",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4162b3e4754f347887a8b850ddc84d436a8b236c",
+          "message": "Add (link_flags ...) to (cinaps) stanza (#7423)\n\nSigned-off-by: Nicolás Ojeda Bär <n.oje.bar@gmail.com>",
+          "timestamp": "2023-03-29T09:51:03+02:00",
+          "tree_id": "6e5fca9b65738510a9b4b6a63fa7a0897085bc35",
+          "url": "https://github.com/ocaml/dune/commit/4162b3e4754f347887a8b850ddc84d436a8b236c"
+        },
+        "date": 1680077540150,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.85948936572",
             "unit": "seconds"
           }
         ]

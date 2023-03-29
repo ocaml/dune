@@ -160,7 +160,7 @@ let prepare ~skip_trailing_cr annots path1 path2 =
                       cmd)
               ]))
   | None -> (
-    if Config.inside_dune then fallback
+    if Execution_env.inside_dune then fallback
     else
       match Bin.which ~path:(Env_path.path Env.initial) "patdiff" with
       | None -> normal_diff ()

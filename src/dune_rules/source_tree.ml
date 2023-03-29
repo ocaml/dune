@@ -398,7 +398,7 @@ end
 
 let ancestor_vcs =
   Memo.lazy_ ~name:"ancestor_vcs" (fun () ->
-      if Config.inside_dune then Memo.return None
+      if Execution_env.inside_dune then Memo.return None
       else
         let rec loop dir =
           if Fpath.is_root dir then None

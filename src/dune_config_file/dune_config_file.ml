@@ -10,6 +10,7 @@ module Dune_config = struct
   module Pform = Dune_lang.Pform
   module Log = Dune_util.Log
   module Config = Dune_config.Config
+  module Execution_env = Dune_util.Execution_env
 
   (* the configuration file use the same version numbers as dune-project files for
      simplicity *)
@@ -291,8 +292,8 @@ module Dune_config = struct
   let default =
     { display =
         Simple
-          { verbosity = Quiet; status_line = not Dune_util.Config.inside_dune }
-    ; concurrency = (if Dune_util.Config.inside_dune then Fixed 1 else Auto)
+          { verbosity = Quiet; status_line = not Execution_env.inside_dune }
+    ; concurrency = (if Execution_env.inside_dune then Fixed 1 else Auto)
     ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
     ; cache_enabled = Disabled
@@ -407,7 +408,7 @@ module Dune_config = struct
     let config =
       match config.display with
       | Simple { verbosity; _ }
-        when (not output_is_a_tty) && not Dune_util.Config.inside_emacs ->
+        when (not output_is_a_tty) && not Execution_env.inside_emacs ->
         { config with display = Simple { verbosity; status_line = false } }
       | _ -> config
     in

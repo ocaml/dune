@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680124133967,
+  "lastUpdate": 1680130627805,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -22333,6 +22333,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.817901344853336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rodolphe@bedrocksystems.com",
+            "name": "Rodolphe Lepigre",
+            "username": "rlepigre"
+          },
+          "committer": {
+            "email": "e+git@x80.org",
+            "name": "Emilio Jesús Gallego Arias",
+            "username": "ejgallego"
+          },
+          "distinct": true,
+          "id": "ad088a5da41f415ceb96a53c09531d0440db12f7",
+          "message": "[coq] support for vos builds.\n\nThis is configured using a new [vos] mode, that can be configured\nin the [coq.theory] stanza.\n\nSigned-off-by: Rodolphe Lepigre <rodolphe@bedrocksystems.com>",
+          "timestamp": "2023-03-30T00:39:11+02:00",
+          "tree_id": "21250a846394d56b4695aed5ffe6879b9f3cccf5",
+          "url": "https://github.com/ocaml/dune/commit/ad088a5da41f415ceb96a53c09531d0440db12f7"
+        },
+        "date": 1680130626118,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.713519878046668",
             "unit": "seconds"
           }
         ]

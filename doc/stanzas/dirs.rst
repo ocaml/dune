@@ -6,7 +6,7 @@ dirs
 .. versionadded:: 1.6
 
 The ``dirs`` stanza allows specifying the subdirectories Dune will include in a
-build. The syntax is based on Dune's :doc:`concepts/predicate-language` and
+build. The syntax is based on Dune's :doc:`reference/predicate-language` and
 allows the following operations:
 
 - The special value ``:standard`` which refers to the default set of used

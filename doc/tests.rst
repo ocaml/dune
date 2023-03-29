@@ -286,7 +286,7 @@ as:
     (preprocess (pps ppx_expect)))
 
 The argument of the ``flags`` field follows the
-:doc:`concepts/ordered-set-language`.
+:doc:`reference/ordered-set-language`.
 
 
 Passing Special Arguments to the Test Executable
@@ -307,7 +307,7 @@ You can specify such flags by using ``flags`` field. For instance:
       (flags (-foo bar))))
      (preprocess (pps ppx_expect))))
 
-The argument of the ``flags`` field follows the :doc:`concepts/ordered-set-language`.
+The argument of the ``flags`` field follows the :doc:`reference/ordered-set-language`.
 
 Using Additional Libraries in the Test Runner
 ---------------------------------------------
@@ -378,7 +378,7 @@ These four parameters can be specified inside the
 
 For instance:
 
-``<action>`` follows the :doc:`concepts/actions` specification. It describes an
+``<action>`` follows the :doc:`reference/actions` specification. It describes an
 action that should be executed in the library's directory using this backend
 for their tests. It's expected that the action will produce some OCaml code on
 its standard output. This code will constitute the test runner. The action can
@@ -652,7 +652,7 @@ field:
     (applies_to * \ foo bar)
     (deps ../foo.exe))
 
-We use the :doc:`concepts/predicate-language` to apply this stanza to all tests
+We use the :doc:`reference/predicate-language` to apply this stanza to all tests
 in this directory, except for ``foo.t`` and ``bar.t``. The ``applies_to`` field
 also accepts the special value ``:whole_subtree`` in order to apply the options
 to all tests in all subdirectories (recursively). This is useful to apply

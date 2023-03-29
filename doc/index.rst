@@ -20,24 +20,24 @@ Welcome to Dune's Documentation!
    usage
 
 .. toctree::
-   :caption: Reference
+   :caption: Reference Guides
    :maxdepth: 3
 
+   reference/ordered-set-language
+   reference/boolean-language
+   reference/predicate-language
+   reference/library-dependencies
+   reference/actions
+   reference/foreign
    concepts/scopes
-   concepts/ordered-set-language
-   concepts/boolean-language
-   concepts/predicate-language
    concepts/variables
-   concepts/library-dependencies
    concepts/preprocessing-spec
    concepts/dependency-spec
    concepts/ocaml-flags
-   concepts/actions
    concepts/sandboxing
    concepts/locks
    concepts/promotion
    concepts/package-spec
-   concepts/foreign
    formatting
    coq
    cross-compilation

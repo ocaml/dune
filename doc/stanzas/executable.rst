@@ -60,7 +60,7 @@ files for executables. See `executables_implicit_empty_intf`_.
   specifies the package the executables are part of it.
 
 - ``(libraries <library-dependencies>)`` specifies the library dependencies. See
-  :doc:`concepts/library-dependencies` for more details.
+  :doc:`reference/library-dependencies` for more details.
 
 - ``(link_flags <flags>)`` specifies additional flags to pass to the linker.
   This field supports ``(:include ...)`` forms.
@@ -112,7 +112,7 @@ files for executables. See `executables_implicit_empty_intf`_.
 
 - ``(foreign_stubs <foreign-stubs-spec>)`` specifies foreign source files, e.g.,
   C or C++ stubs, to be linked into the executable. See
-  :doc:`concepts/foreign` for more details.
+  :doc:`reference/foreign` for more details.
 
 - ``(foreign_archives <foreign-archives-list>)`` specifies archives of foreign
   object files to be linked into the executable. See the section
@@ -257,7 +257,7 @@ options using ``(js_of_ocaml (<js_of_ocaml-options>))``.
 - ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
   runtime files.
 
-``<flags>`` is specified in the :doc:`concepts/ordered-set-language`.
+``<flags>`` is specified in the :doc:`reference/ordered-set-language`.
 
 The default value for ``(flags ...)`` depends on the selected build profile. The
 build profile ``dev`` (the default) will enable sourcemap and the pretty

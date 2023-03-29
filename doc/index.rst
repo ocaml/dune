@@ -29,6 +29,7 @@ Welcome to Dune's Documentation!
    reference/library-dependencies
    reference/actions
    reference/foreign
+   reference/cli
    concepts/scopes
    concepts/variables
    concepts/preprocessing-spec

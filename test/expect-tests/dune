@@ -62,7 +62,7 @@
   dune_tests_common
   stdune
   dune_util
-  dune_rules
+  dune_vcs
   dune_engine
   fiber
   memo

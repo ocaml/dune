@@ -352,10 +352,10 @@ let automatic_sub_dirs_map =
 
 let automatic_subdirs components =
   match List.last components with
-  | None -> String.Set.of_keys automatic_sub_dirs_map
+  | None -> Filename.Set.of_keys automatic_sub_dirs_map
   | Some comp ->
-    if String.Map.mem automatic_sub_dirs_map comp then String.Set.empty
-    else String.Set.of_keys automatic_sub_dirs_map
+    if Filename.Map.mem automatic_sub_dirs_map comp then Filename.Set.empty
+    else Filename.Set.of_keys automatic_sub_dirs_map
 
 let gen_rules_for_automatic_sub_dir ~sctx ~dir kind =
   match kind with
@@ -491,7 +491,7 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
         Cxx_rules.rules ~sctx ~dir)
   | [ ".dune" ] ->
     has_rules ~dir
-      (S.These (String.Set.of_list [ "ccomp" ]))
+      (S.These (Filename.Set.of_list [ "ccomp" ]))
       (fun () -> Context.gen_configurator_rules (Super_context.context sctx))
   | ".js" :: rest ->
     has_rules ~dir
@@ -590,13 +590,13 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
                 List.filter_map stanzas.stanzas ~f:(function
                   | Melange_stanzas.Emit.T mel -> Some mel.target
                   | _ -> None)
-                |> String.Set.of_list
-                |> String.Set.union automatic_subdirs
+                |> Filename.Set.of_list
+                |> Filename.Set.union automatic_subdirs
             in
             match components with
             | [] ->
-              String.Set.union subdirs
-                (String.Set.of_list
+              Filename.Set.union subdirs
+                (Filename.Set.of_list
                    [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ])
             | _ -> subdirs
           in

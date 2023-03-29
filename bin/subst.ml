@@ -1,6 +1,6 @@
 open Stdune
 open Import
-module Vcs = Dune_rules.Vcs
+module Vcs = Dune_vcs.Vcs
 module Subst_config = Dune_rules.Subst_config
 
 let is_a_source_file path =

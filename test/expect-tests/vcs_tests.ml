@@ -1,8 +1,8 @@
 open Stdune
 open Fiber.O
+open Dune_vcs
 open! Dune_tests_common
 module Config = Dune_util.Config
-module Vcs = Dune_rules.Vcs
 module Process = Dune_engine.Process
 module Scheduler = Dune_engine.Scheduler
 

@@ -20,6 +20,7 @@
   dune_cache_storage
   dune_graph
   dune_rules
+  dune_vcs
   dune_engine
   dune_util
   dune_upgrader

@@ -45,10 +45,9 @@ Check that the version guard is correct.
   Shared cache: disabled
   Workspace root:
   $TESTCASE_ROOT
-  File "dune", line 1, characters 0-45:
-  1 | (cinaps
-  2 |  (files *.ml)
+  File "dune", line 3, characters 1-22:
   3 |  (link_flags -linkall))
-  Error: Field 'cinaps' is only available since version 1.3 of the cinaps
+       ^^^^^^^^^^^^^^^^^^^^^
+  Error: 'link_flags' is only available since version 1.3 of the cinaps
   extension. Please update your dune-project file to have (using cinaps 1.3).
   [1]

@@ -41,8 +41,8 @@ let decode =
      and+ cinaps_version = Dune_lang.Syntax.get_exn syntax
      and+ alias = field_o "alias" Alias.Name.decode
      and+ link_flags =
-       Dune_lang.Syntax.since syntax (1, 3)
-       >>> Link_flags.Spec.decode ~since:None
+       Link_flags.Spec.decode
+         ~check:(Some (Dune_lang.Syntax.since syntax (1, 3)))
      (* TODO use this field? *)
      and+ _flags = Ocaml_flags.Spec.decode in
      { loc

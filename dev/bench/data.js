@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680104037412,
+  "lastUpdate": 1680104599890,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11628,6 +11628,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "43.15827735766666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "781a9e546b12b10c33ca66c0bfe840a736604b90",
+          "message": "chore: delete invalid comment\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-29T17:18:49+02:00",
+          "tree_id": "8f1595586ca840e66393ffa0ef1f760c13377f54",
+          "url": "https://github.com/ocaml/dune/commit/781a9e546b12b10c33ca66c0bfe840a736604b90"
+        },
+        "date": 1680104598697,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.92548709391334",
             "unit": "seconds"
           }
         ]

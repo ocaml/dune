@@ -23,6 +23,7 @@ let syntax =
     [ ((1, 0), `Since (1, 11))
     ; ((1, 1), `Since (3, 5))
     ; ((1, 2), `Since (3, 7))
+    ; ((1, 3), `Since (3, 8))
     ]
 
 let decode =
@@ -39,7 +40,9 @@ let decode =
          (Dune_lang.Syntax.since syntax (1, 1) >>> repeat Dep_conf.decode)
      and+ cinaps_version = Dune_lang.Syntax.get_exn syntax
      and+ alias = field_o "alias" Alias.Name.decode
-     and+ link_flags = Link_flags.Spec.decode ~since:(Some (3, 8))
+     and+ link_flags =
+       Link_flags.Spec.decode
+         ~check:(Some (Dune_lang.Syntax.since syntax (1, 3)))
      (* TODO use this field? *)
      and+ _flags = Ocaml_flags.Spec.decode in
      { loc

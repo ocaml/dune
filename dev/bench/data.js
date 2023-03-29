@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680059857048,
+  "lastUpdate": 1680059868217,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -19518,6 +19518,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "70.01483211756",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f21ce1755666767a4f62dfccca2e21f8586dc7aa",
+          "message": "refactor: dune vcs (#7436)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-28T19:49:32-07:00",
+          "tree_id": "e9c115b7ea113f4407b9de4d7d3b57170855fa6a",
+          "url": "https://github.com/ocaml/dune/commit/f21ce1755666767a4f62dfccca2e21f8586dc7aa"
+        },
+        "date": 1680059867537,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.7880699630266665",
             "unit": "seconds"
           }
         ]

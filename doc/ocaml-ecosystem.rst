@@ -1,4 +1,4 @@
-The OCaml ecosystem
+The OCaml Ecosystem
 ===================
 
 The OCaml ecosystem is not monolithic: the compiler and tools are not

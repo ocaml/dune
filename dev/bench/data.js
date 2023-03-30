@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680131467584,
+  "lastUpdate": 1680169653032,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -22449,6 +22449,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.713519878046668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "026413c5c4f0ba16d4863d9de6895f3dddec3be9",
+          "message": "fix: Allow `package` in any location in `rule` (#7445)\n\nWhile fixing the package associations in ocaml/opam#5496 I realized that the package stanza is only accepted when it is at the end of the rule stanza.\r\n\r\n* Add test that `packages` needs to be last, or it will be rejected\r\n\r\n    File \"dune\", line 12, characters 3-10:\r\n    12 |   (package a)\r\n            ^^^^^^^\r\n    Error: Unknown action or rule field.\r\n    [1]\r\n\r\nSigned-off-by: Marek Kubica <marek@tarides.com>\r\nCo-authored-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-03-30T11:33:22+02:00",
+          "tree_id": "caaae7f9a7b2a2f3fc82c3ebd28e31a451a05983",
+          "url": "https://github.com/ocaml/dune/commit/026413c5c4f0ba16d4863d9de6895f3dddec3be9"
+        },
+        "date": 1680169650269,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.50027495582667",
             "unit": "seconds"
           }
         ]

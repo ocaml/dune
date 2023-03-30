@@ -10,6 +10,9 @@
 - Doc: prevent the use of sphinx 6. On readthedocs, this prevents the necessary
   JS from being loaded.
 
+- Allow `(package ...)` in any position within `(rule ...)` stanza (#7445,
+  @Leonidas-from-XIV)
+
 3.7.0 (2023-02-17)
 ------------------
 

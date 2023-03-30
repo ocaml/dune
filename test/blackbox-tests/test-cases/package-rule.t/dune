@@ -1,0 +1,12 @@
+(test
+ (name test)
+ (modules test test_a test_b)
+ (package a))
+
+(rule
+  (action (copy test_temp.ml test_a.ml))
+  (package a))
+
+(rule
+  (package a)
+  (action (copy test_temp.ml test_b.ml)))

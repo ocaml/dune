@@ -7,7 +7,7 @@ history and roles of the various pieces of this ecosystem. The goal of this
 page is to give a quick overview of the situation and of the role that Dune
 plays in it.
 
-The compiler distribution: compiling and linking
+The Compiler Distribution: Compiling and Linking
 ------------------------------------------------
 
 The compiler distribution contains "core" tools including the compilers
@@ -15,7 +15,7 @@ The compiler distribution contains "core" tools including the compilers
 and ``.mli``) into executables and libraries. Dependencies between compiled
 objects only exist at the module level, so this is a low-level tool.
 
-Findlib: metadata for libraries
+Findlib: Metadata for libraries
 -------------------------------
 
 Findlib is a tool that defines the concept of library, so that libraries can
@@ -26,7 +26,7 @@ Findlib ships an executable named ``ocamlfind`` that can be used as a wrapper
 on top of the compilers, to perform tasks such as producing an executable from
 compiled object files and external libraries.
 
-OPAM: a collection of software projects
+OPAM: a Collection of Software Projects
 ---------------------------------------
 
 OPAM is a package manager. It is used to determine which packages are
@@ -46,7 +46,7 @@ opam-repository which is maintained as a public git repository. Publishing a
 package on opam (to make sure that external users can use your project)
 consists in adding its definition to opam-repository.
 
-Dune: giving structure to your source tree
+Dune: Giving Structure to your Source Tree
 ------------------------------------------
 
 Dune is a build system. It is used to orchestrate the compilation of source
@@ -55,7 +55,7 @@ files into executables and libraries.
 Assuming you have a development switch set up, you communicate to dune how your
 project is organized in terms of executables, libraries and tests. It is then able to assemble the source files of your projects with the dependencies installed in an opam switch, to create compiled assets for your project.
 
-How Dune integrates with the ecosystem
+How Dune Integrates with the Ecosystem
 --------------------------------------
 
 Dune is designed to integrate with this set of tools:
@@ -72,7 +72,7 @@ Dune is designed to integrate with this set of tools:
   ``@install`` and ``@runtest`` alias so that the dune abstractions map to the
   opam ones.
 
-Dune is opinionated
+Dune is Opinionated
 -------------------
 
 As described above, the OCaml ecosystem does not have a centralized toolchain.

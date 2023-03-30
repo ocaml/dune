@@ -91,6 +91,9 @@ Unreleased
 - Support `(link_flags ...)` in `(cinaps ...)` stanza. (#7423, fixes #7416,
   @nojb)
 
+- Allow `(package ...)` in any position within `(rule ...)` stanza (#7445,
+  @Leonidas-from-XIV)
+
 3.7.0 (2023-02-17)
 ------------------
 

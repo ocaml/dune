@@ -1728,6 +1728,7 @@ module Rule = struct
       ; ("aliases", Field)
       ; ("alias", Field)
       ; ("enabled_if", Field)
+      ; ("package", Field)
       ]
 
   let short_form =

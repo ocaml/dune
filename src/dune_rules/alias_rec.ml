@@ -41,18 +41,19 @@ end
 
 module In_melange_target_dir = struct
   let dep_on_alias_rec =
-    let rec map_reduce dir ~f =
+    let rec fold dir ~f =
       let open Action_builder.O in
       let* { Lookup_alias.alias_status; allowed_build_only_subdirs } = f dir in
       (* TODO there should be traversals that don't require this conversion *)
       Filename.Set.to_list allowed_build_only_subdirs
+      (* TODO: do this in parallel *)
       |> Action_builder.List.fold_left ~init:alias_status
            ~f:(fun alias_status s ->
-             Path.Build.relative dir s |> map_reduce ~f
+             fold (Path.Build.relative dir s) ~f
              >>| Action_builder.Alias_status.combine alias_status)
     in
     fun dir ~f:dep_on_alias_if_exists ->
-      map_reduce dir ~f:(fun path -> dep_on_alias_if_exists ~path)
+      fold dir ~f:(fun path -> dep_on_alias_if_exists ~path)
 end
 
 module Alias_rec (Traverse : sig

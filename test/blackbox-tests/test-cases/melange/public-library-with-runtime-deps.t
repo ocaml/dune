@@ -46,6 +46,7 @@ Test `melange.runtime_deps` in a public library in the workspace
   >  (alias mel)
   >  (target output)
   >  (libraries foo)
+  >  (emit_stdlib false)
   >  (runtime_deps assets/file.txt))
   > EOF
 
@@ -75,9 +76,16 @@ The runtime_dep index.txt was copied to the build folder
   
   Some text
   
-Now try to depend on an external path in a public library
+
+The same does not work for non-recursive aliases
 
   $ dune clean
+  $ dune build @@mel
+  $ ls _build/default/output
+  main.js
+  node_modules
+
+Now try to depend on an external path in a public library
   $ cat > lib/dune <<EOF
   > (library
   >  (public_name foo)

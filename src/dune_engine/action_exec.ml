@@ -242,7 +242,7 @@ let compare_files = function
   | Text -> Io.compare_text_files
 
 let diff_eq_files { Diff.optional; mode; file1; file2 } =
-  let file1 = if Path.Untracked.exists file1 then file1 else Config.dev_null in
+  let file1 = if Path.Untracked.exists file1 then file1 else Dev_null.path in
   let file2 = Path.build file2 in
   (optional && not (Path.Untracked.exists file2))
   || compare_files mode file1 file2 = Eq
@@ -280,7 +280,7 @@ let rec exec t ~display ~ectx ~eenv =
     redirect_out t ~display ~ectx ~eenv outputs ~perm fn
   | Redirect_in (inputs, fn, t) -> redirect_in t ~display ~ectx ~eenv inputs fn
   | Ignore (outputs, t) ->
-    redirect_out t ~display ~ectx ~eenv ~perm:Normal outputs Config.dev_null
+    redirect_out t ~display ~ectx ~eenv ~perm:Normal outputs Dev_null.path
   | Progn ts -> exec_list ts ~display ~ectx ~eenv
   | Concurrent ts ->
     Fiber.parallel_map ts ~f:(exec ~display ~ectx ~eenv)

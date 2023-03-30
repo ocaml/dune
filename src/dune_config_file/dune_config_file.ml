@@ -453,10 +453,8 @@ module Dune_config = struct
               let fdr, fdw = Unix.pipe () ~cloexec:true in
               match
                 Spawn.spawn ~prog ~argv:(prog :: args)
-                  ~stdin:(Lazy.force Dune_util.Config.dev_null_in)
-                  ~stdout:fdw
-                  ~stderr:(Lazy.force Dune_util.Config.dev_null_out)
-                  ()
+                  ~stdin:(Lazy.force Dev_null.in_) ~stdout:fdw
+                  ~stderr:(Lazy.force Dev_null.out) ()
               with
               | exception Unix.Unix_error _ ->
                 Unix.close fdw;

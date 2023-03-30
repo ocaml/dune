@@ -77,7 +77,7 @@ let run_git t args =
   let res =
     Process.run_capture (git_accept ()) ~display:Quiet (prog t) args ~dir:t.root
       ~env:Env.initial
-      ~stderr_to:(Process.Io.file Config.dev_null Out)
+      ~stderr_to:(Process.Io.file Dev_null.path Out)
   in
   let open Fiber.O in
   let+ res = res in

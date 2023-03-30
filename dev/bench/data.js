@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680219598267,
+  "lastUpdate": 1680220052281,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20533,6 +20533,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8723675478266666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cea675b70627131db42e43e24eaf61a605c21848",
+          "message": "refactor: move /dev/null related stuff (#7442)\n\nNow it lives in [Stdune.Dev_null] rather than [Dune_util.Config]\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-30T16:04:28-07:00",
+          "tree_id": "690f992edc66a8ab981288ba15944ca786fc22c4",
+          "url": "https://github.com/ocaml/dune/commit/cea675b70627131db42e43e24eaf61a605c21848"
+        },
+        "date": 1680220051449,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "89.84915814752667",
             "unit": "seconds"
           }
         ]

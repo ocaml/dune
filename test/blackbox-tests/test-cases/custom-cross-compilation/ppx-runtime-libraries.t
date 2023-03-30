@@ -57,12 +57,4 @@ In the ppx, removing `ppx_runtime_libraries` makes the test pass
   $ touch lib2/lib2.ml
 
   $ dune build @install -x foo
-  Error: Conflict between the following libraries:
-  - "ppx-cross.lib1" in _build/default.foo/lib1
-  - "ppx-cross.lib1" in _build/default/lib1
-  -> required by _build/default.foo/lib2/.lib2.objs/byte/lib2.cmt
-  -> required by _build/install/default.foo/lib/ppx-cross/lib2/lib2.cmt
-  -> required by _build/default.foo/ppx-cross-foo.install
-  -> required by alias install (context default.foo)
-  [1]
 

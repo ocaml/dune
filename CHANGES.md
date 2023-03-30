@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Resolve `ppx_runtime_libraries` in the target context when cross compiling
+  (#7450, fixes #2794, @anmonteiro)
+
 - Use `$PKG_CONFIG`, when set, to find the `pkg-config` binary  (#7469, fixes
   #2572, @anmonteiro)
 

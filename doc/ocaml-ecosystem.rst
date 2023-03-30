@@ -26,10 +26,10 @@ Findlib ships an executable named ``ocamlfind`` that can be used as a wrapper
 on top of the compilers, to perform tasks such as producing an executable from
 compiled object files and external libraries.
 
-OPAM: a Collection of Software Projects
+Opam: a Collection of Software Projects
 ---------------------------------------
 
-OPAM is a package manager. It is used to determine which packages are
+Opam is a package manager. It is used to determine which packages are
 necessary, and how to fetch and build them. Packages can contain libraries,
 executables, and other kinds of files.
 
@@ -52,7 +52,7 @@ Dune: Giving Structure to your Source Tree
 Dune is a build system. It is used to orchestrate the compilation of source
 files into executables and libraries.
 
-Assuming you have a development switch set up, you communicate to dune how your
+Assuming you have a development switch set up, you communicate to Dune how your
 project is organized in terms of executables, libraries and tests. It is then able to assemble the source files of your projects with the dependencies installed in an opam switch, to create compiled assets for your project.
 
 How Dune Integrates with the Ecosystem
@@ -63,13 +63,13 @@ Dune is designed to integrate with this set of tools:
 - by knowing how the compilers operate, it knows which build commands should be
   re-executed if some source files change.
 - it outputs metadata like dependency information into ``META`` files that
-  findlib is able to use. This ensures that a project that does not use dune
+  Findlib is able to use. This ensures that a project that does not use Dune
   can use a library that has been produced by Dune. Conversely, it can read
   these files to determine dependency information for dependencies that have
   not been produced by Dune.
 - it is able to generate opam files with filenames consistents with how opam
   looks for them. The generated files use build commands that make use of the
-  ``@install`` and ``@runtest`` alias so that the dune abstractions map to the
+  ``@install`` and ``@runtest`` alias so that the Dune abstractions map to the
   opam ones.
 
 Dune is Opinionated

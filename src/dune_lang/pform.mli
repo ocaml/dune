@@ -2,6 +2,42 @@ open Stdune
 open Dune_sexp
 
 module Var : sig
+  module Pkg : sig
+    module Section : sig
+      type t =
+        | Lib
+        | Libexec
+        | Bin
+        | Sbin
+        | Toplevel
+        | Share
+        | Etc
+        | Doc
+        | Stublibs
+        | Man
+        | Misc
+
+      val of_string : string -> t option
+    end
+
+    type t =
+      | Switch
+      | Os_version
+      | Os_distribution
+      | Os_family
+      | Build
+      | Prefix
+      | User
+      | Group
+      | Jobs
+      | Arch
+      | Section_dir of Section.t
+
+    val compare : t -> t -> Ordering.t
+
+    val to_dyn : t -> Dyn.t
+  end
+
   type t =
     | User_var of string
     | Nothing
@@ -47,6 +83,7 @@ module Var : sig
     | Corrected_suffix
     | Inline_tests
     | Toolchain
+    | Pkg of Pkg.t
 
   val compare : t -> t -> Ordering.t
 
@@ -89,6 +126,7 @@ module Macro : sig
     | Coq_config
     | Env
     | Artifact of Artifact.t
+    | Pkg
 
   val compare : t -> t -> Ordering.t
 
@@ -123,6 +161,8 @@ module Env : sig
 
   (** Decoding environment *)
   type t
+
+  val pkg : Syntax.Version.t -> t
 
   val initial : Syntax.Version.t -> t
 

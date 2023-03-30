@@ -10,7 +10,7 @@ module Spec : sig
   val equal : t -> t -> bool
 
   val decode :
-    since:Dune_lang.Syntax.Version.t option -> t Dune_lang.Decoder.fields_parser
+    check:unit Dune_lang.Decoder.t option -> t Dune_lang.Decoder.fields_parser
 
   val standard : t
 end

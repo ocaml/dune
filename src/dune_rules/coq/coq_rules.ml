@@ -132,6 +132,16 @@ let coqc_native_flags ~sctx ~dir ~theories_deps ~theory_dirs
       ; "-native-compiler"
       ; "ondemand"
       ]
+  | VosOnly ->
+    Command.Args.As
+      [ "-vos"
+      ; "-w"
+      ; "-deprecated-native-compiler-option"
+      ; "-w"
+      ; "-native-compiler-disabled"
+      ; "-native-compiler"
+      ; "ondemand"
+      ]
   | Native ->
     let args =
       let open Action_builder.O in
@@ -294,7 +304,7 @@ let setup_coqdep_for_theory_rule ~sctx ~dir ~loc ~theories_deps ~wrapper_name
   let file_flags =
     [ Command.Args.S
         (coqc_file_flags ~dir ~theories_deps ~wrapper_name ~boot_type ~ml_flags)
-    ; As [ "-dyndep"; "opt" ]
+    ; As [ "-dyndep"; "opt"; "-vos" ]
     ; Deps sources
     ]
   in
@@ -350,10 +360,15 @@ let get_dep_map ~dir ~wrapper_name : Path.t list Dep_map.t Action_builder.t =
       ; ("entry 2", Dyn.list Path.to_dyn r2)
       ]
 
-let deps_of ~dir ~boot_type ~wrapper_name coq_module =
+let deps_of ~dir ~boot_type ~wrapper_name ~mode coq_module =
   let open Action_builder.O in
   let vo_target =
-    Path.Build.set_extension ~ext:".vo" (Coq_module.source coq_module)
+    let ext =
+      match mode with
+      | Coq_mode.VosOnly -> ".vos"
+      | _ -> ".vo"
+    in
+    Path.Build.set_extension ~ext (Coq_module.source coq_module)
   in
   get_dep_map ~dir ~wrapper_name >>= fun dep_map ->
   match Dep_map.find dep_map (Path.build vo_target) with
@@ -397,6 +412,12 @@ let generic_coq_args ~sctx ~dir ~wrapper_name ~boot_type ~mode ~coq_prog
     Command.Args.dyn coq_flags (* stanza flags *)
   in
   let coq_native_flags =
+    let mode =
+      (* Tweak the modes for coqtop since it has no "-vos" option *)
+      match (mode, coq_prog) with
+      | Coq_mode.VosOnly, `Coqtop -> Coq_mode.VoOnly
+      | _ -> mode
+    in
     coqc_native_flags ~sctx ~dir ~theories_deps ~theory_dirs ~mode
   in
   let file_flags =
@@ -429,7 +450,7 @@ let setup_coqc_rule ~loc ~dir ~sctx ~coqc_dir ~file_targets ~stanza_flags
     generic_coq_args ~sctx ~dir ~wrapper_name ~boot_type ~stanza_flags ~ml_flags
       ~theories_deps ~theory_dirs ~mode ~coq_prog:`Coqc coq_module
   in
-  let deps_of = deps_of ~dir ~boot_type ~wrapper_name coq_module in
+  let deps_of = deps_of ~dir ~boot_type ~wrapper_name ~mode coq_module in
   let open Action_builder.With_targets.O in
   Super_context.add_rule ~loc ~dir sctx
     (Action_builder.with_no_targets deps_of
@@ -807,10 +828,10 @@ let coqtop_args_extraction ~sctx ~dir (s : Coq_stanza.Extraction.t) coq_module =
     ~theory_dirs:Path.Build.Set.empty coq_module
 
 (* Version for export *)
-let deps_of ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module =
+let deps_of ~dir ~use_stdlib ~wrapper_name ~mode ~coq_lang_version coq_module =
   let open Action_builder.O in
   let* boot_type =
     Action_builder.of_memo
       (boot_type ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module)
   in
-  deps_of ~dir ~boot_type ~wrapper_name coq_module
+  deps_of ~dir ~boot_type ~wrapper_name ~mode coq_module

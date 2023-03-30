@@ -152,6 +152,12 @@ The semantics of the fields are:
   Previous versions of Dune before 3.7 would disable the native rules depending
   on whether or not the ``dev`` profile was selected.
 
+- From version :ref:`Coq lang 0.8<coq-lang>` onwards, ``(mode vos)`` makes it
+  so that only Coq compiled interface files are produced for the theory. This
+  is mainly useful in conjunction with ``dune coq top``, since this makes the
+  compilation of dependencies much faster (thought the proofs they contain are
+  not checked).
+
 Coq Dependencies
 ~~~~~~~~~~~~~~~~
 

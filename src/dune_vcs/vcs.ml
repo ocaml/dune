@@ -9,8 +9,8 @@ module Kind = struct
     | Hg
 
   let of_dir_contents files =
-    if String.Set.mem files ".git" then Some Git
-    else if String.Set.mem files ".hg" then Some Hg
+    if Filename.Set.mem files ".git" then Some Git
+    else if Filename.Set.mem files ".hg" then Some Hg
     else None
 
   let to_dyn t =

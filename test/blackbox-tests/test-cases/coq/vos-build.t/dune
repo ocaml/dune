@@ -1,0 +1,10 @@
+(coq.theory
+ (name basic)
+ (package base)
+ (modules :standard)
+ (mode vos)
+ (synopsis "Test Coq library"))
+
+(rule
+ (alias default)
+ (action (echo "%{read:base.install}")))

@@ -111,16 +111,9 @@ module Alias_status : sig
   include Monoid.S with type t := t
 end
 
-module Lookup_alias : sig
-  type t =
-    { alias_status : Alias_status.t
-    ; allowed_build_only_subdirs : Filename.Set.t
-    }
-end
-
 val alias : Alias.t -> unit t
 
-val dep_on_alias_if_exists : Alias.t -> Lookup_alias.t t
+val dep_on_alias_if_exists : Alias.t -> Alias_status.t t
 
 module Alias_rec (_ : sig
   (* This API isn't fully baked yet. We might move it to the rules *)
@@ -130,7 +123,7 @@ module Alias_rec (_ : sig
       otherwise. *)
   val traverse :
        Path.Build.t
-    -> f:(path:Path.Build.t -> Lookup_alias.t t)
+    -> f:(path:Path.Build.t -> Alias_status.t t)
     -> Alias_status.t t
 end) : sig
   (** Depend on an alias recursively. Return [Defined] if the alias is defined

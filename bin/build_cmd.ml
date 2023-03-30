@@ -236,11 +236,11 @@ let fmt =
 ;;
 
 let doc =
-  let doc = "Build the documentation of an OCaml project" in
+  let doc = "Build and view the documentation of an OCaml project" in
   let man =
     [ `S "DESCRIPTION"
     ; `P
-        {|$(b,dune ocaml doc) build and open the documention of an ocaml project.|}
+        {|$(b,dune ocaml doc) builds and then opens the documention of an OCaml project in the users default browser.|}
     ; `Blocks Common.help_secs
     ]
   in
@@ -265,6 +265,11 @@ let doc =
       let absolute_toplevel_index_path =
         Path.(toplevel_index_path |> build |> to_absolute_filename)
       in
+      Dune_console.print
+        [ Pp.textf "Docs built. Index can be found here: %s\n"
+            absolute_toplevel_index_path
+        ];
+
       let url = Printf.sprintf {|file://%s|} absolute_toplevel_index_path in
       let cmd =
         let open Option.O in
@@ -287,10 +292,12 @@ let doc =
           (Path.to_absolute_filename cmd)
           args ~env:Env.initial
       | None ->
-        Printf.printf "Docs built. Index can be found here: %s\n"
-          absolute_toplevel_index_path
+        Dune_console.print
+          [ Pp.text
+              "No browser could be found, you will have to open the \
+               documentation yourself.\n"
+          ]
     in
-
     run_build_command ~common ~config ~request
   in
   Cmd.v info term

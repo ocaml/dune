@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680230311196,
+  "lastUpdate": 1680230658653,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20620,6 +20620,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.3778119627866667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "43983fa2e5770308b79360c84524edb249f021f2",
+          "message": "feat(alias_rec): look up aliases in all directories, not just source dirs  (#7334)\n\n\r\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\nCo-authored-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-30T19:17:25-07:00",
+          "tree_id": "763166dab5c20348786bff82e7f8bb0c4b693c92",
+          "url": "https://github.com/ocaml/dune/commit/43983fa2e5770308b79360c84524edb249f021f2"
+        },
+        "date": 1680230657677,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "68.65624997326",
             "unit": "seconds"
           }
         ]

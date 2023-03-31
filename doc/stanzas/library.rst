@@ -77,7 +77,7 @@ order to declare a multi-directory library, you need to use the
 
 - ``(preprocess <preprocess-spec>)`` specifies how to preprocess files when
   needed. The default is ``no_preprocessing``, and other options are described
-  in :doc:`concepts/preprocessing-spec`.
+  in :doc:`reference/preprocessing-spec`.
 
 - ``(preprocessor_deps (<deps-conf list>))`` specifies extra preprocessor
   dependencies preprocessor, i.e., if the preprocessor reads a generated file.

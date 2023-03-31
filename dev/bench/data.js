@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680274315304,
+  "lastUpdate": 1680274743950,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20794,6 +20794,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8145598322600003",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "bfbc453f5d47fcf2b50ec3260e0252900651cfba",
+          "message": "fix: watch mode when PATH contains CWD\n\nOn MacOS, PATH=.:PWD would add build paths to the list of directories\nbeing watched. Fsevents only reports absolute paths, so we need to try\nand convert them to build/source/external paths. On Linux, watching .\nwould produce relative (source paths), so this issue wouldn't occur.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-31T07:26:28-07:00",
+          "tree_id": "ea2ba8debd93d97a8f173b340cd4cf19fc897a82",
+          "url": "https://github.com/ocaml/dune/commit/bfbc453f5d47fcf2b50ec3260e0252900651cfba"
+        },
+        "date": 1680274742686,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "84.57792589035334",
             "unit": "seconds"
           }
         ]

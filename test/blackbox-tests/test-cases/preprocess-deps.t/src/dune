@@ -1,0 +1,5 @@
+(library
+  (name f)
+  (preprocess
+    (per_module 
+      ((action (run ./gen/gen.exe %{input-file})) f))))

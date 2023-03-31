@@ -6,6 +6,9 @@ Unreleased
   `dune coq top` to obtain fast re-building of dependencies (with no checking
   of proofs) prior to stepping into a file. (#7406, @rlepigre)
 
+- Fix dune crashing on MacOS in watch mode whenever `$PATH` contains `$PWD`
+  (#7441, fixes #6907, @rgrinberg)
+
 - Fix `dune install` when cross compiling (#7410, fixes #6191, @anmonteiro,
   @rizo)
 

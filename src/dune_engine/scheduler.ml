@@ -3,8 +3,6 @@ open Fiber.O
 open Dune_thread_pool
 
 module Config = struct
-  include Config
-
   type t =
     { concurrency : int
     ; stats : Dune_stats.t option
@@ -232,7 +230,7 @@ end = struct
       Mutex.unlock q.mutex
 
     let yield_if_there_are_pending_events q =
-      if Config.inside_dune || not q.got_event then Fiber.return ()
+      if Execution_env.inside_dune || not q.got_event then Fiber.return ()
       else
         match q.yield with
         | Some ivar -> Fiber.Ivar.read ivar

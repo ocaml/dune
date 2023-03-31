@@ -16,6 +16,6 @@ type t =
   | Twice
 
 let default : t =
-  match Dune_util.Config.inside_dune with
+  match Dune_util.Execution_env.inside_dune with
   | true -> Deterministic
   | false -> Early

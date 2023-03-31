@@ -84,7 +84,7 @@ let create ~default_is_cwd ~specified_by_user =
     | Some dn -> Some { Candidate.kind = Explicit; dir = dn; to_cwd = [] }
     | None -> (
       let cwd = { Candidate.kind = Cwd; dir = "."; to_cwd = [] } in
-      if Dune_util.Config.inside_dune then Some cwd
+      if Dune_util.Execution_env.inside_dune then Some cwd
       else
         match find () with
         | Some s -> Some s

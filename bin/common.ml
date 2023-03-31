@@ -1,6 +1,6 @@
 open Stdune
 open Dune_config_file
-module Config = Dune_util.Config
+module Execution_env = Dune_util.Execution_env
 module Console = Dune_console
 module Colors = Dune_rules.Colors
 module Clflags = Dune_engine.Clflags
@@ -115,7 +115,7 @@ module Options_implied_by_dash_p = struct
     | No_config -> Dune_config.Partial.empty
     | This fname -> Dune_config.load_config_file fname
     | Default ->
-      if Dune_util.Config.inside_dune then Dune_config.Partial.empty
+      if Execution_env.inside_dune then Dune_config.Partial.empty
       else Dune_config.load_user_config_file ()
 
   let packages =
@@ -987,7 +987,7 @@ let print_entering_message c =
        through such an editor will be able to use the "jump to error" feature of
        their editor. *)
     let dir =
-      match Config.inside_dune with
+      match Execution_env.inside_dune with
       | false -> cwd
       | true -> (
         let descendant_simple p ~of_ =

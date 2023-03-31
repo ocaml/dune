@@ -6,7 +6,6 @@ module Request = Dune_rpc.Public.Request
 module Diagnostic = Dune_rpc.Diagnostic
 module Client = Dune_rpc_client.Client
 module Session = Csexp_rpc.Session
-module Config = Dune_util.Config
 
 (* enable to debug process stdout/stderr *)
 let debug = false

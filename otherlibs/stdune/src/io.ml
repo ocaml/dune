@@ -253,8 +253,6 @@ struct
        it does COW when edited. It will also default back to regular copying if
        it fails for w/e reason *)
     external copyfile : string -> string -> unit = "stdune_copyfile"
-
-    external available : unit -> bool = "stdune_is_darwin"
   end
 
   let copy_file ?chmod ~src ~dst () =
@@ -262,9 +260,9 @@ struct
       ~f:(fun (ic, oc) -> copy_channels ic oc)
 
   let copy_file =
-    match Copyfile.available () with
-    | false -> copy_file
-    | true -> (
+    match Platform.OS.value with
+    | Linux | Other -> copy_file
+    | Darwin -> (
       fun ?chmod ~src ~dst () ->
         let src = Path.to_string src in
         let dst = Path.to_string dst in

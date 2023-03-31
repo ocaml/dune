@@ -412,7 +412,6 @@ let main_module_name t =
   match main_module_name with
   | This mmn -> Resolve.Memo.return mmn
   | From _ -> (
-    let open Resolve.Memo.O in
     let+ vlib = Memo.return (Option.value_exn t.implements) in
     let main_module_name = Lib_info.main_module_name vlib.info in
     match main_module_name with
@@ -759,7 +758,6 @@ end = struct
 end
 
 let instrumentation_backend instrument_with resolve libname =
-  let open Resolve.Memo.O in
   if not (List.mem ~equal:Lib_name.equal instrument_with (snd libname)) then
     Resolve.Memo.return None
   else
@@ -1464,7 +1462,6 @@ end = struct
     in
     (* For each virtual library we know which vlibs will be implemented when
        enabling its default implementation. *)
-    let open Resolve.Memo.O in
     fun libraries ->
       let* status, () =
         R.run
@@ -1813,7 +1810,6 @@ module DB = struct
     in
     let requires_link =
       Memo.Lazy.create (fun () ->
-          let open Resolve.Memo.O in
           let* forbidden_libraries =
             let* l =
               Resolve.Memo.List.map forbidden_libraries ~f:(fun (loc, name) ->
@@ -1919,7 +1915,6 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects
     | Some _, None | None, Some _ -> assert false
     | None, None -> Resolve.Memo.return None
     | Some (loc, _), Some field ->
-      let open Resolve.Memo.O in
       let+ field = field in
       Some (loc, mangled_name field)
   in

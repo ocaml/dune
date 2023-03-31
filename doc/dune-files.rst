@@ -763,16 +763,16 @@ where ``<setting>`` is one of:
 - ``copy`` copies entries to the cache. This is less efficient than using hard
   links.
 
-.. _concurrency:
+.. _jobs:
 
-concurrency
------------
+jobs
+----
 
 Maximum number of concurrent jobs Dune is allowed to have.
 
 .. code:: scheme
 
-    (concurrency <setting>)
+    (jobs <setting>)
 
 where ``<setting>`` is one of:
 

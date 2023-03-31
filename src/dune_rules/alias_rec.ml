@@ -1,4 +1,13 @@
 open Import
+
+(* The implementation of recursive aliases in [dune_rules] differs from that in
+   [dune_engine] (see [Action_builder.Alias_rec.dep_on_alias_rec]) because:
+
+     - the engine only traverses directories that exist in the source tree;
+     - melange target directories (that don't exist in source) may have
+       runtime_deps rules created under them; in this case, dune needs to
+       traverse allowed build-only sub-directories. *)
+
 module Alias_status = Action_builder.Alias_status
 
 module Lookup_alias = struct

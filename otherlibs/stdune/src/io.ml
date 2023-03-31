@@ -261,7 +261,7 @@ struct
 
   let copy_file =
     match Platform.OS.value with
-    | Linux | Other -> copy_file
+    | Linux | Windows | Other -> copy_file
     | Darwin -> (
       fun ?chmod ~src ~dst () ->
         let src = Path.to_string src in

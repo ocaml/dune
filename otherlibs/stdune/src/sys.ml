@@ -1,10 +1,5 @@
 include Stdlib.Sys
 
-let linux =
-  match Platform.OS.value with
-  | Linux -> true
-  | _ -> false
-
 let force_remove =
   if win32 then (fun fn ->
     try remove fn

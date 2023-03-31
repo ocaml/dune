@@ -340,12 +340,12 @@ let fswatch_backend () =
     User_error.raise [ Pp.text "Please install fswatch to enable watch mode." ]
 
 let select_watcher_backend () =
-  if Sys.linux then (
-    assert (Ocaml_inotify.Inotify.supported_by_the_os ());
-    `Inotify_lib)
-  else if Fsevents.available () then `Fsevents
-  else if Sys.win32 then `Fswatch_win
-  else fswatch_backend ()
+  if Fsevents.available () then `Fsevents
+  else if Ocaml_inotify.Inotify.supported_by_the_os () then `Inotify_lib
+  else
+    match Platform.OS.value with
+    | Windows -> `Fswatch_win
+    | Linux | Darwin | Other -> fswatch_backend ()
 
 let prepare_sync () =
   let dir = Lazy.force Fs_sync.special_dir in

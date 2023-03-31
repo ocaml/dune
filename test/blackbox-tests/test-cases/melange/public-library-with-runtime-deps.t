@@ -2,17 +2,9 @@ Test `melange.runtime_deps` in a public library in the workspace
 
   $ mkdir prefix
   $ cat > dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (package (name foo))
   > (using melange 0.1)
-  > EOF
-
-  $ cat > dune <<EOF
-  > (melange.emit
-  >  (alias mel)
-  >  (target output)
-  >  (libraries foo)
-  >  (runtime_deps assets/file.txt))
   > EOF
 
   $ mkdir -p lib/nested
@@ -49,6 +41,14 @@ Test `melange.runtime_deps` in a public library in the workspace
   $ cat > assets/file.txt <<EOF
   > hello from file
   > EOF
+  $ cat > dune <<EOF
+  > (melange.emit
+  >  (alias mel)
+  >  (target output)
+  >  (libraries foo)
+  >  (emit_stdlib false)
+  >  (runtime_deps assets/file.txt))
+  > EOF
 
   $ cat > main.ml <<EOF
   > let dirname = [%bs.raw "__dirname"]
@@ -58,7 +58,6 @@ Test `melange.runtime_deps` in a public library in the workspace
   > let () = Js.log (Foo.read_asset ())
   > EOF
 
-  $ mkdir -p output
   $ dune build @mel
 
 The runtime_dep index.txt was copied to the build folder
@@ -78,10 +77,15 @@ The runtime_dep index.txt was copied to the build folder
   Some text
   
 
-
-Now try to depend on an external path in a public library
+The same does not work for non-recursive aliases
 
   $ dune clean
+  $ dune build @@mel
+  $ ls _build/default/output
+  main.js
+  node_modules
+
+Now try to depend on an external path in a public library
   $ cat > lib/dune <<EOF
   > (library
   >  (public_name foo)
@@ -109,4 +113,3 @@ Try to depend on it via `melange.emit`
   allowed.
   Hint: Move the external dependency to the workspace and use a relative path.
   [1]
-

@@ -467,12 +467,11 @@ let setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
       let* source_modules = impl_only_modules_defined_in_this_lib sctx lib in
       Memo.parallel_iter source_modules ~f:(build_js ~dir ~output ~includes))
 
-let emit_target_dir (emit : Melange_stanzas.Emit.t) ~dir =
-  Path.Build.relative dir emit.target
-
 let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
   let open Memo.O in
-  let target_dir = emit_target_dir ~dir:(Dir_contents.dir dir_contents) mel in
+  let target_dir =
+    Melange_stanzas.Emit.target_dir ~dir:(Dir_contents.dir dir_contents) mel
+  in
   let mode =
     match mel.promote with
     | None -> Rule.Mode.Standard

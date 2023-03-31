@@ -1,7 +1,7 @@
 Test simple interactions between melange.emit and copy_files
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > (using directory-targets 0.1)
   > EOF
@@ -25,17 +25,11 @@ Test simple interactions between melange.emit and copy_files
   > let () = Js.log file_content
   > EOF
 
-Rules created for the assets in the output directory
-
-  $ mkdir output
-  $ dune rules @mel | grep file.txt
-  [1]
-
   $ dune build @mel --display=short
-            sh some_dir
           melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-            sh some_dir
           melc output/main.js
+            sh some_dir
+            sh some_dir
   Error: Is a directory
   -> required by _build/default/output/some_dir
   -> required by alias output/mel

@@ -2,7 +2,7 @@ Test `melange.runtime_deps` in a library that has been installed
 
   $ mkdir lib app prefix
   $ cat > lib/dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (package (name foo))
   > (using melange 0.1)
   > EOF
@@ -50,7 +50,7 @@ Test `melange.runtime_deps` in a library that has been installed
   > EOF
 
   $ cat > app/dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (package (name app))
   > (using melange 0.1)
   > EOF
@@ -69,7 +69,6 @@ Test `melange.runtime_deps` in a library that has been installed
   > let () = Js.log (Foo.read_asset ())
   > EOF
 
-  $ mkdir -p app/output
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @mel
   Entering directory 'app'
   Leaving directory 'app'

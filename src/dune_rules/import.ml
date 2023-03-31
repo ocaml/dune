@@ -3,7 +3,7 @@ include Dune_vcs
 open Dune_util
 module Digest = Dune_digest
 module Console = Dune_console
-module Config = Config
+module Execution_env = Execution_env
 module Log = Log
 module Persistent = Persistent
 module Stringlike = Stringlike

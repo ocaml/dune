@@ -20,11 +20,12 @@ include struct
   module Targets = Targets
 end
 
+module Execution_env = Dune_util.Execution_env
+
 include struct
   open Dune_rules
   module Super_context = Super_context
   module Context = Context
-  module Config = Dune_util.Config
   module Lib_name = Lib_name
   module Workspace = Workspace
   module Package = Package
@@ -99,7 +100,7 @@ module Scheduler = struct
   include Dune_engine.Scheduler
 
   let maybe_clear_screen ~details_hum (dune_config : Dune_config.t) =
-    match Dune_util.Config.inside_dune with
+    match Execution_env.inside_dune with
     | true -> (* Don't print anything here to make tests less verbose *) ()
     | false -> (
       match dune_config.terminal_persistence with

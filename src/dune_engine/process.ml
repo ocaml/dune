@@ -530,7 +530,7 @@ end = struct
       || (* We want to show command lines in the CI, but not when running inside
             dune. Otherwise tests would yield different result whether they are
             executed locally or in the CI. *)
-      (Config.inside_ci && not Config.inside_dune)
+      (Execution_env.inside_ci && not Execution_env.inside_dune)
     in
     let add_command_line paragraphs =
       if show_command then

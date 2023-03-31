@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680273084594,
+  "lastUpdate": 1680273437556,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20707,6 +20707,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.7279505903333334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "294cab31419d396cb8379ddccfb2e70a5be6afa5",
+          "message": "refactor: rename [Dune_util.Config] (#7456)\n\nThere's no real configuration in this module, just environment variables\r\nthat determine the execution environment.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\n\r\n<!-- ps-id: 54514bc9-9b09-4c64-b92a-70ad3ecbe7da -->",
+          "timestamp": "2023-03-31T07:09:56-07:00",
+          "tree_id": "5f578ee4f9bdb8f2593ee5b0cffbabc5feba06e9",
+          "url": "https://github.com/ocaml/dune/commit/294cab31419d396cb8379ddccfb2e70a5be6afa5"
+        },
+        "date": 1680273436657,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "70.11234187356",
             "unit": "seconds"
           }
         ]

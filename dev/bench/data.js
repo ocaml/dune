@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680274757763,
+  "lastUpdate": 1680302610345,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23029,6 +23029,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.830903338066665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e14082f989fa41e1732a082bbade530ba1115c7d",
+          "message": "refactor: delete unused opens in lib.ml (#7458)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-03-31T22:25:13Z",
+          "tree_id": "97dab232c2b02bfbf47b324337f712982893bea5",
+          "url": "https://github.com/ocaml/dune/commit/e14082f989fa41e1732a082bbade530ba1115c7d"
+        },
+        "date": 1680302607874,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.61478243796",
             "unit": "seconds"
           }
         ]

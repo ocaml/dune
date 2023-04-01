@@ -267,6 +267,8 @@ module Mode_conf = struct
       | Native
       | Best
 
+    let all = [ Byte; Native; Best ]
+
     let compare x y =
       match (x, y) with
       | Byte, Byte -> Eq
@@ -334,6 +336,14 @@ module Mode_conf = struct
             | Some Inherited ->
               (* this doesn't happen as inherited can't be manually specified *)
               assert false))
+
+    let to_list (t : t) : (mode_conf * Kind.t) list =
+      let get mode_conf =
+        match Map.find t mode_conf with
+        | None -> None
+        | Some k -> Some (mode_conf, k)
+      in
+      List.filter_map ~f:get all
 
     let decode =
       let decode =
@@ -450,19 +460,20 @@ module Mode_conf = struct
 
       let decode_osl ~stanza_loc project =
         let+ modes = Ordered_set_lang.decode in
-        let modes =
-          Ordered_set_lang.eval modes
-            ~parse:(fun ~loc s ->
-              let mode =
-                Dune_lang.Decoder.parse decode
-                  (Dune_project.parsing_context project)
-                  (Atom (loc, Dune_lang.Atom.of_string s))
-              in
-              (mode, Kind.Requested loc))
-            ~eq:(fun (a, _) (b, _) -> equal a b)
-            ~standard:[ (Ocaml Best, Kind.Requested stanza_loc) ]
+        let standard =
+          Set.default stanza_loc |> Set.to_list
+          |> List.map ~f:(fun (m, k) -> (Ocaml m, k))
         in
-        of_list modes
+        Ordered_set_lang.eval modes ~standard
+          ~eq:(fun (a, _) (b, _) -> equal a b)
+          ~parse:(fun ~loc s ->
+            let mode =
+              Dune_lang.Decoder.parse decode
+                (Dune_project.parsing_context project)
+                (Atom (loc, Dune_lang.Atom.of_string s))
+            in
+            (mode, Kind.Requested loc))
+        |> of_list
 
       let decode =
         let decode =

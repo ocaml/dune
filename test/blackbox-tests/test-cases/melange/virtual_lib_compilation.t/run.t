@@ -3,10 +3,10 @@ Test virtual lib in an exe / melange environment
 The native build passes
 
   $ dune exec ./ml.exe --display=short
-      ocamldep impl_ml/.impl_ml.objs/virt.impl.d
       ocamldep vlib/.vlib.objs/shared.impl.d
       ocamldep vlib/.vlib.objs/virt.intf.d
       ocamldep vlib/.vlib.objs/vlib_impl.impl.d
+      ocamldep impl_ml/.impl_ml.objs/virt.impl.d
         ocamlc vlib/.vlib.objs/byte/virt.{cmi,cmti}
         ocamlc vlib/.vlib.objs/byte/vlib_impl.{cmi,cmo,cmt}
       ocamlopt vlib/.vlib.objs/native/vlib_impl.{cmx,o}
@@ -24,8 +24,8 @@ needs to consult the `.cmj` files of dependencies to know where the require
 call should be emitted
 
   $ dune build @mel --display=short 2>&1 | grep -v 'node_modules/melange'
-      ocamldep impl_melange/.impl_melange.objs/virt.impl.d
           melc vlib/.vlib.objs/melange/virt.{cmi,cmti}
+      ocamldep impl_melange/.impl_melange.objs/virt.impl.d
           melc vlib/.vlib.objs/melange/vlib_impl.{cmi,cmj,cmt} (exit 2)
   File "vlib/vlib_impl.ml", line 1:
   Error: Virt not found, it means either the module does not exist or it is a namespace

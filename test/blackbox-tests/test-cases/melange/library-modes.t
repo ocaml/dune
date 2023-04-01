@@ -60,7 +60,4 @@ Now let's make the library compatible with melange
   $ dune build @dist
 
   $ dune build main.bc
-  File "_none_", line 1:
-  Error: Module `Mylib' is unavailable (required by `Dune__exe__Main')
-  [1]
 

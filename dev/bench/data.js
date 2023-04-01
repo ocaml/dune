@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680315961471,
+  "lastUpdate": 1680315972230,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20997,6 +20997,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "65.70151566188001",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e70afff6c7f5fabd4050e61dd386a5998696e03a",
+          "message": "refactor: stop using Sys.linux (#7468)\n\nThere's now a [Platform] module\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-03-31T18:50:16-07:00",
+          "tree_id": "461cfed681abcd7bd577318585d16d732b54b43a",
+          "url": "https://github.com/ocaml/dune/commit/e70afff6c7f5fabd4050e61dd386a5998696e03a"
+        },
+        "date": 1680315971172,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.59439382158",
             "unit": "seconds"
           }
         ]

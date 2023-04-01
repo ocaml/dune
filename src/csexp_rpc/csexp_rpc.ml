@@ -188,7 +188,10 @@ module Session = struct
 
   external send : Unix.file_descr -> Bytes.t -> int -> int -> int = "dune_send"
 
-  let write = if Sys.linux then send else Unix.single_write
+  let write =
+    match Platform.OS.value with
+    | Linux -> send
+    | _ -> Unix.single_write
 
   let rec csexp_write_loop fd out_buf token write_mutex =
     Mutex.lock write_mutex;

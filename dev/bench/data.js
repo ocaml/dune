@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680460334310,
+  "lastUpdate": 1680460964291,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -11976,6 +11976,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.320868154286664",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "yilin.wei10@gmail.com",
+            "name": "Yilin Wei",
+            "username": "yilinwei"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e53368337be3c353fd654bdbead322605fc875c5",
+          "message": "adding function to emacs editor integration to get project root. (#7407)\n\n* adding function to emacs editor integration to get project root.\r\n\r\nAdd a helper function for user scripts to get the root directory\r\nof the current dune project.\r\n\r\nSigned-off-by: Yilin Wei <yilin@kebab-ca.se>",
+          "timestamp": "2023-04-02T11:15:53-07:00",
+          "tree_id": "b97b98f6245ba14fc497d06babf04a703ec77295",
+          "url": "https://github.com/ocaml/dune/commit/e53368337be3c353fd654bdbead322605fc875c5"
+        },
+        "date": 1680460963021,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "46.64894542884667",
             "unit": "seconds"
           }
         ]

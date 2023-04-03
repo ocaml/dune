@@ -1740,15 +1740,15 @@ module Rule = struct
           ~hints:
             (User_message.did_you_mean s
                ~candidates:(String.Map.keys atom_table))
-      | Some Field -> (
-        match s with
-        | "package" ->
-          let* () =
+      | Some Field ->
+        let* () =
+          match s with
+          | "package" ->
             Dune_lang.Syntax.since ~what:"'package' in short-form 'rule'"
               Stanza.syntax (3, 8)
-          in
-          fields long_form
-        | _ -> fields long_form)
+          | _ -> return ()
+        in
+        fields long_form
       | Some Action -> short_form)
     | sexp ->
       User_error.raise ~loc:(Dune_lang.Ast.loc sexp)

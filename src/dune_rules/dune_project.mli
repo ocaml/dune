@@ -201,6 +201,8 @@ val encode : t -> Dune_lang.t list
 
 val dune_site_extension : unit Extension.t
 
+val opam_file_location : t -> [ `Relative_to_project | `Inside_opam_directory ]
+
 module Melange_syntax : sig
   val name : string
 end

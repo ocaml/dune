@@ -278,24 +278,50 @@ module Alias_status = struct
   include Monoid.Make (T)
 end
 
+module Lookup_alias = struct
+  type t =
+    { alias_status : Alias_status.t
+    ; allowed_build_only_subdirs : Filename.Set.t
+    }
+
+  let of_dir_set ~status dirs =
+    let allowed_build_only_subdirs =
+      match Dir_set.toplevel_subdirs dirs with
+      | Infinite -> Filename.Set.empty
+      | Finite sub_dirs -> sub_dirs
+    in
+    { alias_status = status; allowed_build_only_subdirs }
+end
+
 let dep_on_alias_if_exists alias =
   of_thunk
     { f =
         (fun mode ->
           let open Memo.O in
-          let* definition = Load_rules.alias_exists alias in
-          match definition with
-          | false -> Memo.return (Alias_status.Not_defined, Dep.Map.empty)
-          | true ->
-            let deps = Dep.Set.singleton (Dep.alias alias) in
-            let+ deps = register_action_deps mode deps in
-            (Alias_status.Defined, deps))
+          Load_rules.load_dir ~dir:(Path.build (Alias.dir alias)) >>= function
+          | Source _ | External _ ->
+            Code_error.raise "Alias in a non-build dir"
+              [ ("alias", Alias.to_dyn alias) ]
+          | Build { aliases; allowed_subdirs; rules_here = _ } -> (
+            match Alias.Name.Map.find aliases (Alias.name alias) with
+            | None ->
+              Memo.return
+                ( Lookup_alias.of_dir_set ~status:Not_defined allowed_subdirs
+                , Dep.Map.empty )
+            | Some _ ->
+              let deps = Dep.Set.singleton (Dep.alias alias) in
+              let+ deps = register_action_deps mode deps in
+              (Lookup_alias.of_dir_set ~status:Defined allowed_subdirs, deps))
+          | Build_under_directory_target _ ->
+            Memo.return
+              ( Lookup_alias.of_dir_set ~status:Not_defined Dir_set.empty
+              , Dep.Map.empty ))
     }
 
 module Alias_rec (Traverse : sig
   val traverse :
        Path.Build.t
-    -> f:(path:Path.Build.t -> Alias_status.t t)
+    -> f:(path:Path.Build.t -> Lookup_alias.t t)
     -> Alias_status.t t
 end) =
 struct

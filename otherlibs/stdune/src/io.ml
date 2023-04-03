@@ -372,7 +372,9 @@ let portable_hardlink ~src ~dst =
          filter out the duplicates first. *)
       Path.unlink dst;
       Path.link src dst
-    | Unix.Unix_error (Unix.EMLINK, _, _) ->
+    | Unix.Unix_error (Unix.EMLINK, _, _)
+    | Unix.Unix_error (Unix.EUNKNOWNERR -1142, _, _)
+    (* Needed for OCaml < 5.1 *) ->
       (* If we can't make a new hard link because we reached the limit on the
          number of hard links per file, we fall back to copying. We expect that
          this happens very rarely (probably only for empty files). *)

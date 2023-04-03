@@ -49,8 +49,10 @@ The equivalent of a ``-pp <command>`` option passed to the OCaml compiler is
 Using PPX Rewriters
 -------------------
 
-If ``(pps <ppx-rewriters-and-flags>)`` is used, the corresponding rewriters are set up using the "fast pipeline" (using a separate preprocessing step).
-If ``(staged_pps <ppx-rewriters-and-flags>)`` is used, they are set up using the "classic pipeline" (using the ``-ppx`` command-line argument).
+If ``(pps <ppx-rewriters-and-flags>)`` is used, the corresponding rewriters are
+set up using the "fast pipeline" (using a separate preprocessing step).
+If ``(staged_pps <ppx-rewriters-and-flags>)`` is used, they are set up using
+the "classic pipeline" (using the ``-ppx`` command-line argument).
 
 The distinction between these pipelines is explained in
 :doc:`../explanation/preprocessing`.

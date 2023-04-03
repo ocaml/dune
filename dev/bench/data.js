@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680543324752,
+  "lastUpdate": 1680559761110,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23609,6 +23609,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.715340571953334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "e+git@x80.org",
+            "name": "Emilio Jesús Gallego Arias",
+            "username": "ejgallego"
+          },
+          "distinct": true,
+          "id": "7bed96dcdade97cfe48ae9820ed3681a955f2383",
+          "message": "dune coq top: add --no-build option to avoid building dependencies\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-04-03T23:55:36+02:00",
+          "tree_id": "f1732ca25f49de16df136a438481167651e6a11f",
+          "url": "https://github.com/ocaml/dune/commit/7bed96dcdade97cfe48ae9820ed3681a955f2383"
+        },
+        "date": 1680559758477,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.43315386348",
             "unit": "seconds"
           }
         ]

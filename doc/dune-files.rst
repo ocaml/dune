@@ -110,7 +110,7 @@ dialect
          consists of valid OCaml code), then the dialect will be formatted as
          any other OCaml code. Otherwise no special formatting will be done.
 
-         .. seealso:: :ref:`formatting-main`
+         .. seealso:: :doc:`howto/formatting`
 
    .. dune:field:: interface
 
@@ -223,7 +223,7 @@ formatting
      The list of `<languages>` can be either ``dune`` (formatting of dune
      files) or a :term:`dialect` name.
 
-   .. seealso:: :ref:`formatting-main`
+   .. seealso:: :doc:`howto/formatting`
 
 .. _generate_opam_files:
 

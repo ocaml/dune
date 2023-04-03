@@ -20,6 +20,11 @@ Welcome to Dune's Documentation!
    usage
 
 .. toctree::
+   :caption: How-to Guides
+
+   howto/formatting
+
+.. toctree::
    :caption: Reference Guides
    :maxdepth: 3
 
@@ -40,7 +45,6 @@ Welcome to Dune's Documentation!
    concepts/locks
    concepts/promotion
    concepts/package-spec
-   formatting
    coq
    cross-compilation
    foreign-code

@@ -4,6 +4,9 @@
 - Fix segfault on MacOS when dune was being shutdown while in watch mode.
   (#7312, fixes #6151, @gridbugs, @emillon)
 
+- Fix preludes not being recorded as dependencies in the `(mdx)` stanza (#7109,
+  fixes #7077, @emillon).
+
 3.7.0.post1 (2023-02-21)
 ------------------------
 

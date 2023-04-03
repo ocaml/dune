@@ -53,6 +53,15 @@ module Build = struct
   let decl = Decl.Request.make ~method_:"build" ~generations:[ v1 ]
 end
 
+module Watch_mode_wait = struct
+  let v1 =
+    Decl.Request.make_current_gen ~req:Conv.unit ~resp:Conv.unit ~version:1
+
+  let decl = Decl.Request.make ~method_:"watch_mode_wait" ~generations:[ v1 ]
+end
+
 let build = Build.decl
 
 let status = Status.decl
+
+let watch_mode_wait = Watch_mode_wait.decl

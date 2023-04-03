@@ -73,6 +73,13 @@ let run_build_system ~common ~request =
       in
       res)
     ~finally:(fun () ->
+      let* () =
+        match Common.rpc common with
+        | `Allow server ->
+          Dune_rpc_impl.Server.Watch_mode_waiters.wake_all
+            (Dune_rpc_impl.Server.watch_mode_waiters server)
+        | `Forbid_builds -> Fiber.return ()
+      in
       Hooks.End_of_build.run ();
       Fiber.return ())
 

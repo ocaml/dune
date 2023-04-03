@@ -1,5 +1,11 @@
 open Import
 
+module Watch_mode_waiters : sig
+  type t
+
+  val wake_all : t -> unit Fiber.t
+end
+
 type t
 
 val create :
@@ -29,3 +35,5 @@ val ready : t -> unit Fiber.t
 val run : t -> unit Fiber.t
 
 val action_runner : t -> Dune_engine.Action_runner.Rpc_server.t
+
+val watch_mode_waiters : t -> Watch_mode_waiters.t

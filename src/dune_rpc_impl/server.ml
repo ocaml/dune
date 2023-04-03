@@ -202,12 +202,33 @@ end = struct
           Fiber.return ())
 end
 
+module Watch_mode_waiters = struct
+  (* Mutable collection of ivars used to delay returning the "watch_mode_wait"
+     RPC until a build has complete *)
+  type t = unit Fiber.Ivar.t list ref
+
+  let create () = ref []
+
+  let add_waiter t =
+    let ivar = Fiber.Ivar.create () in
+    t := ivar :: !t;
+    Fiber.Ivar.read ivar
+
+  let wake_all t =
+    let fiber =
+      Fiber.parallel_iter !t ~f:(fun ivar -> Fiber.Ivar.fill ivar ())
+    in
+    t := [];
+    fiber
+end
+
 type t =
   { config : Run.t
   ; pending_build_jobs :
       (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
   ; watch_mode_config : Watch_mode_config.t
   ; mutable clients : Clients.t
+  ; watch_mode_waiters : Watch_mode_waiters.t
   }
 
 let ready (t : t) =
@@ -223,8 +244,8 @@ let stop (t : t) =
       | None -> ()
       | Some server -> Csexp_rpc.Server.stop server)
 
-let handler (t : t Fdecl.t) action_runner_server : 'a Dune_rpc_server.Handler.t
-    =
+let handler (t : t Fdecl.t) action_runner_server watch_mode_waiters :
+    'a Dune_rpc_server.Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
     let client = () in
@@ -290,6 +311,10 @@ let handler (t : t Fdecl.t) action_runner_server : 'a Dune_rpc_server.Handler.t
   in
   let () =
     Handler.implement_request rpc Procedures.Public.ping (fun _ -> Fiber.return)
+  in
+  let () =
+    Handler.implement_request rpc Decl.watch_mode_wait (fun _ () ->
+        Watch_mode_waiters.add_waiter watch_mode_waiters)
   in
   let () =
     let build _session targets =
@@ -420,7 +445,10 @@ let create ~lock_timeout ~registry ~root ~watch_mode_config stats action_runner
     =
   let t = Fdecl.create Dyn.opaque in
   let pending_build_jobs = Job_queue.create () in
-  let handler = Dune_rpc_server.make (handler t action_runner) in
+  let watch_mode_waiters = Watch_mode_waiters.create () in
+  let handler =
+    Dune_rpc_server.make (handler t action_runner watch_mode_waiters)
+  in
   let pool = Fiber.Pool.create () in
   let where = Where.default () in
   Global_lock.lock_exn ~timeout:lock_timeout;
@@ -454,7 +482,12 @@ let create ~lock_timeout ~registry ~root ~watch_mode_config stats action_runner
     }
   in
   let res =
-    { config; pending_build_jobs; watch_mode_config; clients = Clients.empty }
+    { config
+    ; pending_build_jobs
+    ; watch_mode_config
+    ; clients = Clients.empty
+    ; watch_mode_waiters
+    }
   in
   Fdecl.set t res;
   res
@@ -474,3 +507,5 @@ let action_runner t = t.config.action_runner
 let pending_build_action t =
   Job_queue.read t.pending_build_jobs
   |> Fiber.map ~f:(fun (targets, ivar) -> Build (targets, ivar))
+
+let watch_mode_waiters t = t.watch_mode_waiters

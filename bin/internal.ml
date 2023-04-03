@@ -10,4 +10,8 @@ let latest_lang_version =
 
 let group =
   Cmd.group (Cmd.info "internal")
-    [ Internal_dump.command; latest_lang_version; Internal_action_runner.group ]
+    [ Internal_dump.command
+    ; latest_lang_version
+    ; Internal_action_runner.group
+    ; Internal_watch_mode_wait.command
+    ]

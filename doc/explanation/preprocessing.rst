@@ -4,10 +4,15 @@ How Preprocessing Works
 Preprocessing consists in transforming source code before it is compiled. The
 goal of this document is to explain how this works in Dune.
 
-The OCaml compilers provide two options for specifying a preprocessing step.
-The ``-pp`` option is used to invoke a textual preprocessor (something that
-reads text and returns text). The ``-ppx`` option is used to invoke a `ppx
-rewriter` (a function that takes an AST and outputs an AST).
+Dune supports two ways of applying preprocessors, the "classic pipeline" (used
+with ``(staged_pps)``), and the "fast pipeline" (used for all other
+:doc:`preprocessing specifications <../reference/preprocessing-spec>` including
+``(pps)``).
+
+The OCaml compilers provide options for specifying a preprocessing step. The
+``-pp`` option is used to invoke a textual preprocessor (something that reads
+text and returns text). The ``-ppx`` option is used to invoke a `ppx rewriter`
+(a function that takes an AST and outputs an AST).
 
 This is the "classic pipeline": preprocessing is part of the compilation
 itself. This is simple, but has a problem: in order to compute the dependencies
@@ -36,10 +41,11 @@ the preprocessed code is reused between dependency analysis and different kinds
 of compilation. Also, when several preprocessors use ``ppxlib``, they can be
 combined in preprocessing program that traverses the AST only once.
 
-However, some specific code generators or preprocessors require feedback from
-the compilation phase. This is the case for PPX rewriters using the OCaml
-typer, for instance. As a result, they need to be used with the classic
-pipeline, even if it is slower.
+However, some specific code generators or preprocessors require to have direct
+access to the compilation artefacts of their dependencies. As a result, they
+need to be used with the classic pipeline, even if it is slower. Note that a
+PPX is able to know if it was called as part of ``ocamldep -ppx`` or ``ocamlopt
+-ppx``, so it can act differently in each phase.
 
 Dune chooses the pipeline to use depending depending on the
 :doc:`../reference/preprocessing-spec` used. It will use the fast pipeline,

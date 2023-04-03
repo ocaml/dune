@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680461406110,
+  "lastUpdate": 1680520042099,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23377,6 +23377,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "28.629522773746668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a2ac22214a31f55a99b432e238d2f192145f0b9",
+          "message": "Fix EMLINK on Windows (again) (#7472)\n\nSigned-off-by: Nicolás Ojeda Bär <n.oje.bar@gmail.com>",
+          "timestamp": "2023-04-03T12:50:53+02:00",
+          "tree_id": "103dea2b7fd9b6c5425351f83a286e6328f2291c",
+          "url": "https://github.com/ocaml/dune/commit/3a2ac22214a31f55a99b432e238d2f192145f0b9"
+        },
+        "date": 1680520038753,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "29.218440422326665",
             "unit": "seconds"
           }
         ]

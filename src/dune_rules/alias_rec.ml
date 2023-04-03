@@ -9,50 +9,15 @@ open Import
        traverse allowed build-only sub-directories. *)
 
 module Alias_status = Action_builder.Alias_status
-
-module Lookup_alias = struct
-  type t =
-    { alias_status : Alias_status.t
-    ; allowed_build_only_subdirs : Filename.Set.t
-    }
-
-  let of_dir_set ~status dirs =
-    let allowed_build_only_subdirs =
-      match Dir_set.toplevel_subdirs dirs with
-      | Infinite -> Filename.Set.empty
-      | Finite sub_dirs -> sub_dirs
-    in
-    { alias_status = status; allowed_build_only_subdirs }
-end
-
-module In_source_tree = struct
-  let dep_on_alias_if_exists alias =
-    let open Action_builder.O in
-    Action_builder.of_memo
-    @@ Load_rules.load_dir ~dir:(Path.build (Alias.dir alias))
-    >>= function
-    | Source _ | External _ ->
-      Code_error.raise "Alias in a non-build dir"
-        [ ("alias", Alias.to_dyn alias) ]
-    | Build { aliases; allowed_subdirs; rules_here = _ } -> (
-      match Alias.Name.Map.find aliases (Alias.name alias) with
-      | None ->
-        Action_builder.return
-          (Lookup_alias.of_dir_set ~status:Not_defined allowed_subdirs)
-      | Some _ ->
-        Action_builder.alias alias
-        >>> Action_builder.return
-              (Lookup_alias.of_dir_set ~status:Defined allowed_subdirs))
-    | Build_under_directory_target _ ->
-      Action_builder.return
-      @@ Lookup_alias.of_dir_set ~status:Not_defined Dir_set.empty
-end
+module Alias_build_info = Action_builder.Alias_build_info
 
 module In_melange_target_dir = struct
   let dep_on_alias_rec =
     let rec fold dir ~f =
       let open Action_builder.O in
-      let* { Lookup_alias.alias_status; allowed_build_only_subdirs } = f dir in
+      let* { Alias_build_info.alias_status; allowed_build_only_subdirs } =
+        f dir
+      in
       (* TODO there should be traversals that don't require this conversion *)
       Filename.Set.to_list allowed_build_only_subdirs
       (* TODO: do this in parallel *)
@@ -65,23 +30,7 @@ module In_melange_target_dir = struct
       fold dir ~f:(fun path -> dep_on_alias_if_exists ~path)
 end
 
-module Alias_rec (Traverse : sig
-  val traverse :
-       Path.Build.t
-    -> f:(path:Path.Build.t -> Lookup_alias.t Action_builder.t)
-    -> Alias_status.t Action_builder.t
-end) =
-struct
-  open Traverse
-
-  let dep_on_alias_rec name dir =
-    let f ~path =
-      In_source_tree.dep_on_alias_if_exists (Alias.make ~dir:path name)
-    in
-    traverse dir ~f
-end
-
-include Alias_rec (struct
+include Action_builder.Alias_rec (struct
   module Map_reduce =
     Source_tree.Dir.Make_map_reduce
       (Action_builder)
@@ -98,7 +47,7 @@ include Alias_rec (struct
         let build_path =
           Path.Build.append_source build_dir (Source_tree.Dir.path dir)
         in
-        let* { Lookup_alias.alias_status = found_in_source
+        let* { Alias_build_info.alias_status = found_in_source
              ; allowed_build_only_subdirs = _
              } =
           f ~path:build_path

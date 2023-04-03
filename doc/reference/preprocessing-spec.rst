@@ -1,3 +1,5 @@
+.. highlight:: dune
+
 Preprocessing Specification
 ===========================
 
@@ -32,16 +34,14 @@ action that reads the file given as a dependency named ``input-file`` and
 outputs the preprocessed file on its standard output.
 
 More precisely, ``(preprocess (action <action>))`` acts as if
-you had set up a rule for every file of the form:
+you had set up a rule for every file of the form::
 
-.. code:: dune
-
-   (rule
-    (target file.pp.ml)
-    (deps file.ml)
-    (action
-     (with-stdout-to %{target}
-      (chdir %{workspace_root} <action>))))
+  (rule
+   (target file.pp.ml)
+   (deps file.ml)
+   (action
+    (with-stdout-to %{target}
+     (chdir %{workspace_root} <action>))))
 
 The equivalent of a ``-pp <command>`` option passed to the OCaml compiler is
 ``(system "<command> %{input-file}")``.
@@ -67,11 +67,9 @@ of a library.
 
 If you want to pass command line flags that don't start with a ``-``, you can
 separate library names from flags using ``--``. So for instance from the
-following ``preprocess`` field:
+following ``preprocess`` field::
 
-.. code:: dune
-
-   (preprocess (pps ppx1 -foo ppx2 -- -bar 42))
+  (preprocess (pps ppx1 -foo ppx2 -- -bar 42))
 
 The list of libraries will be ``ppx1`` and ``ppx2``, and the command line
 arguments will be: ``-foo -bar 42``.
@@ -99,16 +97,12 @@ Per-Module Preprocessing Specification
 
 By default, a preprocessing specification applies to all modules in the
 library/set of executables. It's possible to select the preprocessing on a
-module-by-module basis by using the ``(per-module ...)`` syntax.
+module-by-module basis by using the ``(per-module ...)`` syntax. For instance::
 
-For instance:
-
- .. code:: dune
-
-    (preprocess
-     (per_module
-      (((action (run ./pp.sh X=1 %{input-file})) foo bar))
-      (((action (run ./pp.sh X=2 %{input-file})) baz))))
+  (preprocess
+   (per_module
+    (((action (run ./pp.sh X=1 %{input-file})) foo bar))
+    (((action (run ./pp.sh X=2 %{input-file})) baz))))
 
 The modules ``Foo`` and ``Bar`` will be preprocessed with ``pp.sh X=1``, and
 ``Baz`` will be preprocessed with ``pp.sh X=2``.

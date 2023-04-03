@@ -97,6 +97,9 @@ Unreleased
 - Allow `(package ...)` in any position within `(rule ...)` stanza (#7445,
   @Leonidas-from-XIV)
 
+- Handle "Too many links" errors when using Dune cache on Windows.  The fix in
+  3.7.0 for this same issue was not effective due to a typo. (#7472, @nojb)
+
 3.7.0 (2023-02-17)
 ------------------
 

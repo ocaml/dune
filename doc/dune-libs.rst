@@ -66,7 +66,7 @@ example:
 Usually, the module above would be named ``discover.ml``. The next step is to
 invoke it as an executable and tell Dune about the targets that it produces:
 
-.. code-block:: lisp
+.. code-block:: dune
 
   (executable
    (name discover)
@@ -79,7 +79,7 @@ invoke it as an executable and tell Dune about the targets that it produces:
 Another common pattern is to produce a flags file with Configurator and then
 use this flag file using ``:include``:
 
-.. code-block:: lisp
+.. code-block:: dune
 
   (library
    (name mylib)

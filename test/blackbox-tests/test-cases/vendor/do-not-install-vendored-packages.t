@@ -30,5 +30,5 @@ vendored package that shouldn't be installed.
 
 The following command should produce no output:
 
-  $ dune install --prefix _install 2>&1 | grep bar
+  $ dune install --prefix _install --display short 2>&1 | grep bar
   [1]

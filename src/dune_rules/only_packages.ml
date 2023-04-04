@@ -32,9 +32,9 @@ let conf =
       match Clflags.t () with
       | No_restriction -> Memo.return None
       | Restrict { names; command_line_option } ->
-        let* conf = Dune_load.load () in
+        let* { packages; _ } = Dune_load.load () in
         Package.Name.Set.iter names ~f:(fun pkg_name ->
-            if not (Package.Name.Map.mem conf.packages pkg_name) then
+            if not (Package.Name.Map.mem packages pkg_name) then
               let pkg_name = Package.Name.to_string pkg_name in
               User_error.raise
                 [ Pp.textf "I don't know about package %s (passed through %s)"
@@ -43,23 +43,23 @@ let conf =
                 ~hints:
                   (User_message.did_you_mean pkg_name
                      ~candidates:
-                       (Package.Name.Map.keys conf.packages
+                       (Package.Name.Map.keys packages
                        |> List.map ~f:Package.Name.to_string)));
-        Memo.sequential_map (Package.Name.Map.to_list conf.packages)
-          ~f:(fun (name, pkg) ->
-            let+ vendored =
-              Dune_engine.Source_tree.is_vendored (Package.dir pkg)
-            in
-            let included = Package.Name.Set.mem names name in
-            if vendored && included then
-              User_error.raise
-                [ Pp.textf
-                    "Package %s is vendored and so will never be masked. It is \
-                     redundant to pass it to %s."
-                    (Package.Name.to_string name)
-                    command_line_option
-                ];
-            Option.some_if (vendored || included) (name, pkg))
+        Package.Name.Map.to_list packages
+        |> Memo.parallel_map ~f:(fun (name, pkg) ->
+               let+ vendored =
+                 Dune_engine.Source_tree.is_vendored (Package.dir pkg)
+               in
+               let included = Package.Name.Set.mem names name in
+               if vendored && included then
+                 User_error.raise
+                   [ Pp.textf
+                       "Package %s is vendored and so will never be masked. It \
+                        is redundant to pass it to %s."
+                       (Package.Name.to_string name)
+                       command_line_option
+                   ];
+               Option.some_if (vendored || included) (name, pkg))
         >>| List.filter_opt >>| Package.Name.Map.of_list_exn >>| Option.some)
 
 let get_mask () = Memo.Lazy.force conf

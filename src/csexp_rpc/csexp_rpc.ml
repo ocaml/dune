@@ -260,11 +260,10 @@ module Server = struct
     let create fd sockaddr ~backlog =
       Unix.listen fd backlog;
       let r_interrupt_accept, w_interrupt_accept = Unix.pipe ~cloexec:true () in
-      if not Sys.win32 then Unix.set_nonblock r_interrupt_accept;
       let buf = Bytes.make 1 '0' in
       { fd; sockaddr; r_interrupt_accept; w_interrupt_accept; buf }
 
-    let rec accept t =
+    let accept t =
       match Unix.select [ t.r_interrupt_accept; t.fd ] [] [] (-1.0) with
       | r, [], [] ->
         let inter, accept =
@@ -280,7 +279,6 @@ module Server = struct
           Some fd)
         else assert false
       | _, _, _ -> assert false
-      | exception Unix.Unix_error (Unix.EAGAIN, _, _) -> accept t
       | exception Unix.Unix_error (Unix.EBADF, _, _) -> None
 
     let stop t =

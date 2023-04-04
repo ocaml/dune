@@ -145,13 +145,20 @@ module Prelude = struct
     in
     enter decode_env <|> decode_default
 
-  let to_args ~dir t : _ Command.Args.t list =
-    let bpath p = Path.build (Path.Build.append_local dir p) in
+  (** Generated program will read some files when it runs. *)
+  let runtime_deps ~dir t : _ Command.Args.t =
     match t with
-    | Default file -> [ A "--prelude"; Dep (bpath file) ]
+    | Default file | Env { env = _; file } ->
+      Hidden_deps
+        (Dep.Set.of_files [ Path.build (Path.Build.append_local dir file) ])
+
+  let to_args ~dir t : _ Command.Args.t list =
+    match t with
+    | Default file ->
+      [ A "--prelude"; Dep (Path.build (Path.Build.append_local dir file)) ]
     | Env { env; file } ->
       let arg = sprintf "%s:%s" env (Path.Local.to_string file) in
-      [ A "--prelude"; A arg; Hidden_deps (Dep.Set.of_files [ bpath file ]) ]
+      [ A "--prelude"; A arg; runtime_deps ~dir t ]
 end
 
 type t =
@@ -317,7 +324,11 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
            generated executable *)
         let open Command.Args in
         match mdx_prog_gen with
-        | Some prog -> (Ok (Path.build prog), [ Dep (Path.build files.src) ])
+        | Some prog ->
+          ( Ok (Path.build prog)
+          , [ Dep (Path.build files.src)
+            ; S (List.map ~f:(Prelude.runtime_deps ~dir) stanza.preludes)
+            ] )
         | None ->
           let prelude_args =
             List.concat_map stanza.preludes ~f:(Prelude.to_args ~dir)
@@ -395,7 +406,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
      field *)
   let obj_dir = Obj_dir.make_exe ~dir ~name in
   let main_module_name = Module_name.of_string name in
-  let module_ = Module.generated ~kind:Impl ~src_dir:dir main_module_name in
+  let module_ = Module.generated ~kind:Impl ~src_dir:dir [ main_module_name ] in
   let modules = Modules.singleton_exe module_ in
   let flags = Ocaml_flags.default ~dune_version ~profile:Release in
   let lib name = Lib_dep.Direct (loc, Lib_name.of_string name) in

@@ -412,7 +412,7 @@ module Clflags = struct
     { x : Context_name.t option
     ; profile : Profile.t option
     ; instrument_with : Lib_name.t list option
-    ; workspace_file : Path.t option
+    ; workspace_file : Path.Outside_build_dir.t option
     ; config_from_command_line : Dune_config.Partial.t
     ; config_from_config_file : Dune_config.Partial.t
     }
@@ -430,7 +430,7 @@ module Clflags = struct
       [ ("x", option Context_name.to_dyn x)
       ; ("profile", option Profile.to_dyn profile)
       ; ("instrument_with", option (list Lib_name.to_dyn) instrument_with)
-      ; ("workspace_file", option Path.to_dyn workspace_file)
+      ; ("workspace_file", option Path.Outside_build_dir.to_dyn workspace_file)
       ; ( "config_from_command_line"
         , Dune_config.Partial.to_dyn config_from_command_line )
       ; ( "config_from_config_file"
@@ -646,24 +646,22 @@ let workspace_step1 =
     let* workspace_file =
       match clflags.workspace_file with
       | None ->
-        let p = Path.of_string filename in
-        let+ exists = Fs_memo.file_exists (Path.as_outside_build_dir_exn p) in
+        let p = Path.Outside_build_dir.of_string filename in
+        let+ exists = Fs_memo.file_exists p in
         Option.some_if exists p
       | Some p -> (
-        Fs_memo.file_exists (Path.as_outside_build_dir_exn p) >>| function
+        Fs_memo.file_exists p >>| function
         | true -> Some p
         | false ->
           User_error.raise
             [ Pp.textf "Workspace file %s does not exist"
-                (Path.to_string_maybe_quoted p)
+                (Path.Outside_build_dir.to_string_maybe_quoted p)
             ])
     in
     let clflags = { clflags with workspace_file } in
     match workspace_file with
     | None -> Memo.return (default_step1 clflags)
-    | Some p ->
-      let p = Path.as_outside_build_dir_exn p in
-      load_step1 clflags p
+    | Some p -> load_step1 clflags p
   in
   let memo = Memo.lazy_ ~name:"workspaces-internal" f in
   fun () -> Memo.Lazy.force memo

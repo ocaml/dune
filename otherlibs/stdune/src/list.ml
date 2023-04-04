@@ -22,7 +22,7 @@ let filter_map l ~f =
   in
   loop [] l
 
-let filter_opt l = filter_map ~f:(fun x -> x) l
+let filter_opt l = filter_map ~f:Fun.id l
 
 let filteri l ~f =
   let rec filteri l i =
@@ -117,6 +117,11 @@ let destruct_last =
     | x :: xs -> loop (x :: acc) xs
   in
   fun xs -> loop [] xs
+
+let remove_last_exn t =
+  match destruct_last t with
+  | Some (t, _) -> t
+  | None -> Code_error.raise "remove_last_exn: empty list" []
 
 let sort t ~compare = sort t ~cmp:(fun a b -> Ordering.to_int (compare a b))
 

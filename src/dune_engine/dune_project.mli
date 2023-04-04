@@ -134,7 +134,7 @@ end
     project description is inferred from the opam files. *)
 val load :
      dir:Path.Source.t
-  -> files:String.Set.t
+  -> files:Filename.Set.t
   -> infer_from_opam_files:bool
   -> dir_status:Sub_dirs.Status.t
   -> t option Memo.t
@@ -153,7 +153,7 @@ val anonymous :
   -> t
 
 (** "dune-project" *)
-val filename : string
+val filename : Filename.t
 
 (** Default language version to use for projects that don't have a
     [dune-project] file. The default value is the latest version of the dune
@@ -179,6 +179,8 @@ val implicit_transitive_deps : t -> bool
 val dune_version : t -> Dune_lang.Syntax.Version.t
 
 val wrapped_executables : t -> bool
+
+val map_workspace_root : t -> bool
 
 val executables_implicit_empty_intf : t -> bool
 

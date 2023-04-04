@@ -7,8 +7,8 @@ module Common = struct
 
     let main_module_name = field "main_module_name" Module_name.encode
 
-    let modules ?(name = "modules") modules =
-      field_l name Fun.id (Module.Name_map.encode modules)
+    let modules ?(name = "modules") ~src_dir modules =
+      field_l name Fun.id (Module.Name_map.encode modules ~src_dir)
   end
 
   module Decode = struct
@@ -30,12 +30,12 @@ module Stdlib = struct
     ; main_module_name : Module_name.t
     }
 
-  let encode { modules; unwrapped; exit_module; main_module_name } =
+  let encode ~src_dir { modules; unwrapped; exit_module; main_module_name } =
     let open Dune_lang.Encoder in
     let module E = Common.Encode in
     record_fields
       [ E.main_module_name main_module_name
-      ; E.modules modules
+      ; E.modules modules ~src_dir
       ; field_o "exit_module" Module_name.encode exit_module
       ; field_l "unwrapped" Module_name.encode
           (Module_name.Set.to_list unwrapped)
@@ -49,7 +49,7 @@ module Stdlib = struct
        and+ modules = modules ~src_dir ()
        and+ exit_module = field_o "exit_module" Module_name.decode
        and+ unwrapped =
-         field ~default:[] "unwrapped" (repeat (enter Module_name.decode))
+         field ~default:[] "unwrapped" (repeat Module_name.decode)
        in
        let unwrapped = Module_name.Set.of_list unwrapped in
        { modules; main_module_name; exit_module; unwrapped })
@@ -94,16 +94,20 @@ module Stdlib = struct
     | None -> false
     | Some n -> n = name
 
-  let make ~(stdlib : Ocaml_stdlib.t) ~modules ~main_module_name =
+  let make ~(stdlib : Ocaml_stdlib.t) ~modules ~wrapped ~main_module_name =
     let modules =
-      Module_name.Map.map modules ~f:(fun m ->
-          if
-            Module.name m = main_module_name || special_compiler_module stdlib m
-          then m
-          else
-            let path = [ main_module_name; Module.name m ] in
-            let m = Module.set_path m path in
-            Module.set_obj_name m (Module_name.Path.wrap path))
+      match wrapped with
+      | Wrapped.Simple true | Yes_with_transition _ ->
+        Module_name.Map.map modules ~f:(fun m ->
+            if
+              Module.name m = main_module_name
+              || special_compiler_module stdlib m
+            then m
+            else
+              let path = [ main_module_name; Module.name m ] in
+              let m = Module.set_path m path in
+              Module.set_obj_name m (Module_name.Path.wrap path))
+      | Simple false -> modules
     in
     let unwrapped = stdlib.modules_before_stdlib in
     let exit_module = stdlib.exit_module in
@@ -187,7 +191,7 @@ module Mangle = struct
       |> Option.some
     | Unwrapped -> None
 
-  let make_alias_module (t : t) ~has_lib_interface ~src_dir ~interface path =
+  let make_alias_module (t : t) ~has_lib_interface ~obj_dir ~interface path =
     let kind : Module.Kind.t = Alias path in
     let prefix, has_lib_interface =
       let prefix = prefix t in
@@ -207,13 +211,20 @@ module Mangle = struct
       | None -> base
       | Some prefix -> prefix :: base
     in
-    let name =
+    let path =
       if has_lib_interface then
-        Module_name.Unique.to_name ~loc:Loc.none obj_name
-      else interface
+        [ Module_name.Unique.to_name ~loc:Loc.none obj_name ]
+      else path @ [ interface ]
     in
-    let path = if has_lib_interface then [ name ] else path @ [ interface ] in
-    Module.generated ~path ~obj_name ~kind ~src_dir name
+    let install_as =
+      if has_lib_interface then None
+      else
+        Some
+          (Path.Local.L.relative Path.Local.root
+             (List.map ~f:Module_name.uncapitalize path)
+          |> Path.Local.set_extension ~ext:".ml")
+    in
+    Module.generated ?install_as path ~obj_name ~kind ~src_dir:obj_dir
 
   let wrap_module t m ~interface =
     let is_lib_interface =
@@ -227,11 +238,10 @@ module Mangle = struct
       match t with
       | Exe | Melange -> (Option.value_exn prefix).public :: path
       | Unwrapped ->
-        if is_lib_interface then List.rev path |> List.tl |> List.rev else path
+        if is_lib_interface then List.remove_last_exn path else path
       | Lib _ ->
         let path =
-          if is_lib_interface then List.rev path |> List.tl |> List.rev
-          else path
+          if is_lib_interface then List.remove_last_exn path else path
         in
         Visibility.Map.find (Option.value_exn prefix) (Module.visibility m)
         :: path
@@ -253,7 +263,7 @@ module Group = struct
   let alias t = t.alias
 
   module Of_trie = struct
-    let of_trie ~src_dir ~mangle ~interface ~rev_path trie =
+    let of_trie ~obj_dir ~mangle ~interface ~rev_path trie =
       let rec loop interface rev_path trie =
         let has_lib_interface =
           match Module_name.Map.find trie interface with
@@ -261,7 +271,7 @@ module Group = struct
           | Some (Leaf _) -> true
         in
         { alias =
-            Mangle.make_alias_module mangle ~has_lib_interface ~src_dir
+            Mangle.make_alias_module mangle ~has_lib_interface ~obj_dir
               ~interface (List.rev rev_path)
         ; name = interface
         ; modules =
@@ -278,22 +288,13 @@ module Group = struct
       loop interface rev_path trie
   end
 
-  let of_trie (trie : Module.t Module_trie.t) ~mangle ~src_dir : t =
+  let of_trie (trie : Module.t Module_trie.t) ~mangle ~obj_dir : t =
     let prefix =
       Mangle.prefix mangle
       |> Option.map ~f:(fun (p : _ Visibility.Map.t) -> p.public)
     in
-    Of_trie.of_trie ~src_dir ~mangle ~interface:(Option.value_exn prefix)
+    Of_trie.of_trie ~obj_dir ~mangle ~interface:(Option.value_exn prefix)
       ~rev_path:[] trie
-
-  let rec relocate_alias_module t ~src_dir =
-    { t with
-      alias = Module.set_src_dir ~src_dir t.alias
-    ; modules =
-        Module_name.Map.map t.modules ~f:(function
-          | Module m -> Module m
-          | Group g -> Group (relocate_alias_module g ~src_dir))
-    }
 
   let rec fold { alias; modules; name = _ } ~f ~init =
     let init = f alias init in
@@ -368,20 +369,20 @@ module Group = struct
     let+ modules = repeat node in
     Module_name.Map.of_list_exn modules
 
-  let rec encode { alias; modules; name } =
+  let rec encode { alias; modules; name } ~src_dir =
     let open Dune_lang.Encoder in
     record_fields
-      [ field_l "alias" sexp (Module.encode alias)
+      [ field_l "alias" sexp (Module.encode ~src_dir alias)
       ; field "name" Module_name.encode name
-      ; field_l "modules" Fun.id (encode_modules modules)
+      ; field_l "modules" Fun.id (encode_modules ~src_dir modules)
       ]
 
-  and encode_modules modules =
+  and encode_modules modules ~src_dir =
     Module_name.Map.to_list_map modules ~f:(fun _ t ->
         Dune_lang.List
           (match t with
-          | Group g -> Dune_lang.atom "group" :: encode g
-          | Module m -> Dune_lang.atom "module" :: Module.encode m))
+          | Group g -> Dune_lang.atom "group" :: encode ~src_dir g
+          | Module m -> Dune_lang.atom "module" :: Module.encode ~src_dir m))
 
   let parents_modules acc modules m =
     let rec loop acc modules = function
@@ -534,12 +535,12 @@ module Unwrapped = struct
 
   let to_dyn t = Module_name.Map.to_dyn Group.dyn_of_node t
 
-  let of_trie trie ~mangle ~src_dir =
+  let of_trie trie ~mangle ~obj_dir =
     Module_name.Map.mapi trie ~f:(fun name (m : 'a Module_trie.node) ->
         match m with
         | Map trie ->
           let group =
-            Group.Of_trie.of_trie trie ~mangle ~src_dir ~interface:name
+            Group.Of_trie.of_trie trie ~mangle ~obj_dir ~interface:name
               ~rev_path:[ name ]
           in
           Group.Group group
@@ -627,12 +628,12 @@ module Wrapped = struct
 
   let group_of_alias t m = Group.group_of_alias t.group m
 
-  let encode { group; wrapped_compat; wrapped; toplevel_module = _ } =
+  let encode { group; wrapped_compat; wrapped; toplevel_module = _ } ~src_dir =
     let open Dune_lang.Encoder in
     let module E = Common.Encode in
     record_fields
-      [ field_l "group" Fun.id (Group.encode group)
-      ; E.modules ~name:"wrapped_compat" wrapped_compat
+      [ field_l "group" Fun.id (Group.encode ~src_dir group)
+      ; E.modules ~name:"wrapped_compat" ~src_dir wrapped_compat
       ; field "wrapped" Wrapped.encode wrapped
       ]
 
@@ -674,7 +675,7 @@ module Wrapped = struct
     ; wrapped_compat = Module_name.Map.map wrapped_compat ~f
     }
 
-  let make ~src_dir ~lib_name ~implements ~modules ~main_module_name ~wrapped =
+  let make ~obj_dir ~lib_name ~implements ~modules ~main_module_name ~wrapped =
     let mangle =
       Mangle.of_lib ~main_module_name ~lib_name ~implements ~modules
     in
@@ -690,11 +691,11 @@ module Wrapped = struct
                | Private -> None
                | Public -> Some (Module.wrapped_compat m))
     in
-    let group = Group.of_trie modules ~mangle ~src_dir in
+    let group = Group.of_trie modules ~mangle ~obj_dir in
     { group; wrapped_compat; wrapped; toplevel_module = `Exported }
 
-  let make_exe_or_melange ~src_dir ~modules mangle =
-    let group = Group.of_trie modules ~mangle ~src_dir in
+  let make_exe_or_melange ~obj_dir ~modules mangle =
+    let group = Group.of_trie modules ~mangle ~obj_dir in
     { group
     ; wrapped_compat = Module_name.Map.empty
     ; wrapped = Simple true
@@ -726,10 +727,6 @@ module Wrapped = struct
   let group_interfaces (t : t) m = Group.group_interfaces t.group m
 
   let alias_for t m = Group.alias_for t.group m
-
-  let relocate_alias_module t ~src_dir =
-    let group = Group.relocate_alias_module t.group ~src_dir in
-    { t with group }
 end
 
 type t =
@@ -746,14 +743,14 @@ and impl =
 
 let equal (x : t) (y : t) = Poly.equal x y
 
-let rec encode t =
+let rec encode t ~src_dir =
   let open Dune_lang in
   match t with
-  | Singleton m -> List (atom "singleton" :: Module.encode m)
-  | Unwrapped m -> List (atom "unwrapped" :: Unwrapped.encode m)
-  | Wrapped m -> List (atom "wrapped" :: Wrapped.encode m)
-  | Stdlib m -> List (atom "stdlib" :: Stdlib.encode m)
-  | Impl { impl; _ } -> encode impl
+  | Singleton m -> List (atom "singleton" :: Module.encode m ~src_dir)
+  | Unwrapped m -> List (atom "unwrapped" :: Unwrapped.encode m ~src_dir)
+  | Wrapped m -> List (atom "wrapped" :: Wrapped.encode m ~src_dir)
+  | Stdlib m -> List (atom "stdlib" :: Stdlib.encode m ~src_dir)
+  | Impl { impl; _ } -> encode impl ~src_dir
 
 let singleton m = Singleton m
 
@@ -801,24 +798,24 @@ let rec main_module_name = function
   | Stdlib w -> Some w.main_module_name
   | Impl { vlib; impl = _ } -> main_module_name vlib
 
-let lib ~src_dir ~main_module_name ~wrapped ~stdlib ~lib_name ~implements
+let lib ~obj_dir ~main_module_name ~wrapped ~stdlib ~lib_name ~implements
     ~modules =
   let make_wrapped main_module_name =
     Wrapped
-      (Wrapped.make ~src_dir ~lib_name ~implements ~modules ~main_module_name
+      (Wrapped.make ~obj_dir ~lib_name ~implements ~modules ~main_module_name
          ~wrapped)
   in
   match stdlib with
   | Some stdlib ->
     let main_module_name = Option.value_exn main_module_name in
     let modules = Module_trie.to_map modules in
-    Stdlib (Stdlib.make ~stdlib ~modules ~main_module_name)
+    Stdlib (Stdlib.make ~stdlib ~modules ~wrapped ~main_module_name)
   | None -> (
     match (wrapped, main_module_name, Module_trie.as_singleton modules) with
     | Simple false, _, Some m -> Singleton m
     | Simple false, _, None ->
       let mangle = Mangle.Unwrapped in
-      Unwrapped (Unwrapped.of_trie modules ~mangle ~src_dir)
+      Unwrapped (Unwrapped.of_trie modules ~mangle ~obj_dir)
     | (Yes_with_transition _ | Simple true), Some main_module_name, Some m ->
       if Module.name m = main_module_name && not implements then Singleton m
       else make_wrapped main_module_name
@@ -891,11 +888,11 @@ let make_singleton m mangle =
 
 let singleton_exe m = make_singleton m Exe
 
-let exe_unwrapped modules ~src_dir =
+let exe_unwrapped modules ~obj_dir =
   let mangle = Mangle.Unwrapped in
-  Unwrapped (Unwrapped.of_trie modules ~mangle ~src_dir)
+  Unwrapped (Unwrapped.of_trie modules ~mangle ~obj_dir)
 
-let make_wrapped ~src_dir ~modules kind =
+let make_wrapped ~obj_dir ~modules kind =
   let mangle : Mangle.t =
     match kind with
     | `Exe -> Exe
@@ -903,7 +900,7 @@ let make_wrapped ~src_dir ~modules kind =
   in
   match Module_trie.as_singleton modules with
   | Some m -> make_singleton m mangle
-  | None -> Wrapped (Wrapped.make_exe_or_melange ~src_dir ~modules mangle)
+  | None -> Wrapped (Wrapped.make_exe_or_melange ~obj_dir ~modules mangle)
 
 let rec impl_only = function
   | Stdlib w -> Stdlib.impl_only w
@@ -1049,8 +1046,8 @@ let rec map_user_written t ~f =
     let+ vlib = map_user_written t.vlib ~f in
     Impl { t with vlib }
 
-let version_installed t ~install_dir =
-  let f = Module.set_src_dir ~src_dir:install_dir in
+let version_installed t ~src_root ~install_dir =
+  let f = Module.version_installed ~src_root ~install_dir in
   let rec loop = function
     | Singleton m -> Singleton (f m)
     | Unwrapped m -> Unwrapped (Unwrapped.map ~f m)
@@ -1152,11 +1149,6 @@ let exit_module = function
   | Stdlib w -> Stdlib.exit_module w
   | _ -> None
 
-let relocate_alias_module t ~src_dir =
-  match t with
-  | Wrapped t -> Wrapped (Wrapped.relocate_alias_module t ~src_dir)
-  | s -> s
-
 let as_singleton = function
   | Singleton m -> Some m
   | _ -> None
@@ -1177,7 +1169,7 @@ let canonical_path t (group : Group.t) m =
          the last component.
 
          For example: foo/foo.ml would has the path [ "Foo"; "Foo" ] *)
-      path |> List.rev |> List.tl |> List.rev
+      List.remove_last_exn path
   in
   match t with
   | Impl { impl = Wrapped w; _ } | Wrapped w -> w.group.name :: path

@@ -7,7 +7,7 @@ module Kind : sig
     | Git
     | Hg
 
-  val of_dir_contents : String.Set.t -> t option
+  val of_dir_contents : Filename.Set.t -> t option
 end
 
 type t =

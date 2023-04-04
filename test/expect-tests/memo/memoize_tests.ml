@@ -86,7 +86,7 @@ let%expect_test _ =
 let print_deps memo input =
   let open Dyn in
   Memo.For_tests.get_deps memo input
-  |> option (list (pair (option string) (fun x -> x)))
+  |> option (list (pair (option string) Fun.id))
   |> print_dyn
 
 let%expect_test _ =
@@ -156,11 +156,9 @@ let%expect_test _ =
     !stack
     |> List.map ~f:(fun st ->
            let open Dyn in
-           pair (option string)
-             (fun x -> x)
+           pair (option string) Fun.id
              (Memo.Stack_frame.name st, Memo.Stack_frame.input st))
-    |> Dyn.list (fun x -> x)
-    |> print_dyn;
+    |> Dyn.list Fun.id |> print_dyn;
     [%expect
       {|
       - 2
@@ -260,7 +258,7 @@ struct
 
   let deps () =
     let open Dyn in
-    let conv = option (list (pair (option string) (fun x -> x))) in
+    let conv = option (list (pair (option string) Fun.id)) in
     pair conv conv
       ( Memo.For_tests.get_deps f1_def "foo"
       , Memo.For_tests.get_deps f2_def "foo" )

@@ -52,7 +52,7 @@ Test embedding of build information
   > EOF
 
   $ dune build
-  $ dune install --prefix _install 2> /dev/null
+  $ dune install --prefix _install
 
 Inside _build, we have no version information:
 
@@ -130,7 +130,7 @@ craft an example with a single placeholder to make the output stable:
   $ cp c/c.ml d/d.ml
 
   $ dune build d/d.install
-  $ dune install d --prefix _install --debug-artifact-substitution 2>&1|grep -v '^\(Installing\|Deleting\)'
+  $ dune install d --prefix _install --debug-artifact-substitution
   Found placeholder in _build/install/default/bin/d:
   - placeholder: Vcs_describe In_source_tree "d"
   - evaluates to: "1.0+d"
@@ -149,7 +149,7 @@ Version is picked from dune-project if available
 
   $ echo '(version project-version)' >> c/dune-project
   $ dune build
-  $ dune install --prefix _install 2> /dev/null
+  $ dune install --prefix _install
   $ _install/bin/c | sed 's/build-info: .*/build-info: XXX/'
   project-version
   lib a: 1.0+a

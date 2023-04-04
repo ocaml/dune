@@ -91,7 +91,7 @@ module Clflags : sig
     { x : Context_name.t option
     ; profile : Profile.t option
     ; instrument_with : Lib_name.t list option
-    ; workspace_file : Path.t option
+    ; workspace_file : Path.Outside_build_dir.t option
     ; config_from_command_line : Dune_config.Partial.t
     ; config_from_config_file : Dune_config.Partial.t
     }
@@ -101,7 +101,7 @@ module Clflags : sig
 end
 
 (** Default name of workspace files *)
-val filename : string
+val filename : Filename.t
 
 val workspace : unit -> t Memo.t
 

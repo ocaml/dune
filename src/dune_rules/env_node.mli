@@ -28,6 +28,7 @@ val make :
   -> default_env:Env.t
   -> default_bin_artifacts:Artifacts.Bin.t
   -> default_cxx_link_flags:string list Action_builder.t
+  -> default_bin_annot:bool
   -> t
 
 val scope : t -> Scope.t
@@ -57,3 +58,5 @@ val menhir_flags : t -> string list Action_builder.t
 val format_config : t -> Format_config.t Memo.t
 
 val set_format_config : t -> Format_config.t -> t
+
+val bin_annot : t -> bool Memo.t

@@ -26,6 +26,7 @@ type t =
   ; js_of_ocaml : string list Action_builder.t Js_of_ocaml.Env.t Memo.Lazy.t
   ; coq : Coq.t Action_builder.t Memo.Lazy.t
   ; format_config : Format_config.t Memo.Lazy.t
+  ; bin_annot : bool Memo.Lazy.t
   }
 
 let scope t = t.scope
@@ -58,6 +59,8 @@ let odoc t = Memo.Lazy.force t.odoc
 
 let coq t = Memo.Lazy.force t.coq
 
+let bin_annot t = Memo.Lazy.force t.bin_annot
+
 let expand_str_lazy expander sw =
   match String_with_vars.text_only sw with
   | Some s -> Memo.return s
@@ -68,7 +71,7 @@ let expand_str_lazy expander sw =
 
 let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     ~expander_for_artifacts ~default_context_flags ~default_env
-    ~default_bin_artifacts ~default_cxx_link_flags =
+    ~default_bin_artifacts ~default_cxx_link_flags ~default_bin_annot =
   let open Memo.O in
   let config = Dune_env.Stanza.find config_stanza ~profile in
   let inherited ~field ~root extend =
@@ -220,6 +223,10 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
           []
       | Some x -> Memo.return x)
   in
+  let bin_annot =
+    inherited ~field:bin_annot ~root:default_bin_annot (fun default ->
+        Memo.return (Option.value ~default config.bin_annot))
+  in
   { scope
   ; ocaml_flags
   ; foreign_flags
@@ -233,4 +240,5 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   ; odoc
   ; coq
   ; format_config
+  ; bin_annot
   }

@@ -30,6 +30,8 @@ let default_context_flags (ctx : Context.t) ~project =
 module Env_tree : sig
   type t
 
+  val force_bin_artifacts : t -> unit Memo.t
+
   val context : t -> Context.t
 
   val get_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
@@ -60,6 +62,9 @@ end = struct
     ; bin_artifacts : Artifacts.Bin.t
     ; get_node : Path.Build.t -> Env_node.t Memo.t
     }
+
+  let force_bin_artifacts { bin_artifacts; _ } =
+    Artifacts.Bin.force bin_artifacts
 
   let context t = t.context
 
@@ -156,6 +161,7 @@ end = struct
       ~profile:t.context.profile ~expander ~expander_for_artifacts
       ~default_context_flags ~default_env:t.context_env
       ~default_bin_artifacts:t.bin_artifacts ~default_cxx_link_flags
+      ~default_bin_annot:true
 
   (* Here we jump through some hoops to construct [t] as well as create a
      memoization table that has access to [t] and is used in [t.get_node].
@@ -340,6 +346,8 @@ let coq t ~dir = Env_tree.get_node t ~dir >>= Env_node.coq
 
 let format_config t ~dir = Env_tree.get_node t ~dir >>= Env_node.format_config
 
+let bin_annot t ~dir = Env_tree.get_node t ~dir >>= Env_node.bin_annot
+
 let dump_env t ~dir =
   let ocaml_flags = Env_tree.get_node t ~dir >>= Env_node.ocaml_flags in
   let foreign_flags = Env_tree.get_node t ~dir >>| Env_node.foreign_flags in
@@ -489,7 +497,7 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
           Env_node.make ~dir ~scope ~inherit_from ~config_stanza ~profile
             ~expander ~expander_for_artifacts ~default_context_flags
             ~default_env:context_env ~default_bin_artifacts:artifacts.bin
-            ~default_cxx_link_flags
+            ~default_cxx_link_flags ~default_bin_annot:true
         in
         make ~config_stanza:context.env_nodes.context
           ~inherit_from:
@@ -502,7 +510,7 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
     ~bin_artifacts:artifacts.bin ~context_env
 
 let all =
-  Memo.lazy_ (fun () ->
+  Memo.lazy_ ~name:"Super_context.all" (fun () ->
       let open Memo.O in
       let* packages = Only_packages.get ()
       and* contexts = Context.DB.all () in
@@ -537,6 +545,11 @@ let find name =
   let open Memo.O in
   let+ all = Memo.Lazy.force all in
   Context_name.Map.find all name
+
+let all_init_deferred () =
+  let* all = Memo.Lazy.force all in
+  Context_name.Map.values all
+  |> Memo.parallel_iter ~f:Env_tree.force_bin_artifacts
 
 module As_memo_key = struct
   type nonrec t = t

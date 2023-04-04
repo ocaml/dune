@@ -49,21 +49,39 @@ let copy_interface ~sctx ~dir ~obj_dir ~cm_kind m =
              (Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind))
            ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:cmi_kind)))
 
-let melange_args (cm_kind : Lib_mode.Cm_kind.t) lib_name module_ =
+let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t)
+    module_ =
   match cm_kind with
   | Ocaml (Cmi | Cmo | Cmx) | Melange Cmi -> []
   | Melange Cmj ->
-    let bs_package_name =
-      match lib_name with
-      | None -> []
+    let bs_package_name, bs_package_output =
+      let package_output =
+        Module.file ~ml_kind:Impl module_ |> Option.value_exn |> Path.parent_exn
+      in
+      match Compilation_context.public_lib_name cctx with
+      | None -> ([], package_output)
       | Some lib_name ->
-        [ Command.Args.A "--bs-package-name"; A (Lib_name.to_string lib_name) ]
-    in
-    let package_output =
-      Module.file ~ml_kind:Impl module_ |> Option.value_exn |> Path.parent_exn
+        let dir =
+          let package_output = Path.as_in_build_dir_exn package_output in
+          let lib_root_dir =
+            Path.Build.to_string (Compilation_context.dir cctx)
+          in
+          let src_dir = Path.Build.to_string package_output in
+          let build_dir =
+            (Compilation_context.super_context cctx |> Super_context.context)
+              .build_dir
+          in
+          String.drop_prefix src_dir ~prefix:lib_root_dir
+          |> Option.value_exn
+          |> String.drop_prefix_if_exists ~prefix:"/"
+          |> Path.Build.relative build_dir
+        in
+
+        ( [ Command.Args.A "--bs-package-name"; A (Lib_name.to_string lib_name) ]
+        , Path.build dir )
     in
     Command.Args.A "--bs-stop-after-cmj" :: A "--bs-package-output"
-    :: Command.Args.Path package_output :: A "--bs-module-name"
+    :: Command.Args.Path bs_package_output :: A "--bs-module-name"
     :: A (Melange.js_basename module_)
     :: bs_package_name
 
@@ -238,10 +256,7 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
           ; Command.Args.as_any
               (Lib_mode.Cm_kind.Map.get (CC.includes cctx) cm_kind)
           ; As extra_args
-          ; S
-              (melange_args cm_kind
-                 (Compilation_context.public_lib_name cctx)
-                 m)
+          ; S (melange_args cctx cm_kind m)
           ; A "-no-alias-deps"
           ; opaque_arg
           ; As (Fdo.phase_flags phase)

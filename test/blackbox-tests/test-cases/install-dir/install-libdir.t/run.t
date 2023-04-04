@@ -4,7 +4,7 @@
 `dune install` should handle destination directories that don't exist
 
   $ dune build @install
-  $ dune install --prefix install --libdir $PWD/install/lib 2>&1 | dune_cmd sanitize
+  $ dune install --prefix install --libdir $PWD/install/lib --display short 2>&1 | dune_cmd sanitize
   Installing $TESTCASE_ROOT/install/lib/foo/META
   Installing $TESTCASE_ROOT/install/lib/foo/dune-package
   Installing $TESTCASE_ROOT/install/lib/foo/foo$ext_lib
@@ -22,7 +22,7 @@
   Installing install/man/man3/another-man-page.3
 
 Even if it is possible to ask for different libexecdir than libdir, the installed .cmxs will not be found
-  $ dune install --prefix install2 --libdir $PWD/install2/lib --libexecdir $PWD/install2/libexec 2>&1 | dune_cmd sanitize
+  $ dune install --prefix install2 --libdir $PWD/install2/lib --libexecdir $PWD/install2/libexec --display short 2>&1 | dune_cmd sanitize
   Installing $TESTCASE_ROOT/install2/lib/foo/META
   Installing $TESTCASE_ROOT/install2/lib/foo/dune-package
   Installing $TESTCASE_ROOT/install2/lib/foo/foo$ext_lib
@@ -41,7 +41,7 @@ Even if it is possible to ask for different libexecdir than libdir, the installe
 
 If prefix is passed, the default for libdir is `$prefix/lib`:
 
-  $ dune install --prefix install --dry-run 2>&1 | dune_cmd sanitize
+  $ dune install --prefix install --dry-run --display short 2>&1 | dune_cmd sanitize
   Removing (if it exists) install/lib/foo/META
   Installing install/lib/foo/META
   Creating directory install/lib/foo
@@ -106,8 +106,8 @@ If prefix is passed, the default for libdir is `$prefix/lib`:
 If prefix is not passed, libdir defaults to the opam-prefix/lib directory:
 
   $ (export OCAMLFIND_DESTDIR=/OCAMLFIND_DESTDIR
-  >  dune install --dry-run 2>&1 | dune_cmd sanitize
-  >  dune uninstall --dry-run 2>&1 | dune_cmd sanitize)
+  >  dune install --dry-run --display short 2>&1 | dune_cmd sanitize
+  >  dune uninstall --dry-run --display short 2>&1 | dune_cmd sanitize)
   Removing (if it exists) /OPAM_PREFIX/lib/foo/META
   Installing /OPAM_PREFIX/lib/foo/META
   Creating directory /OPAM_PREFIX/lib/foo
@@ -192,8 +192,8 @@ If prefix is not passed, libdir defaults to the opam-prefix/lib directory:
 If only libdir is passed, binaries are installed under prefix/bin and libraries
 in libdir:
 
-  $ dune install --libdir /LIBDIR --dry-run 2>&1 | dune_cmd sanitize
-  > dune uninstall --libdir /LIBDIR --dry-run
+  $ dune install --libdir /LIBDIR --dry-run --display short 2>&1 | dune_cmd sanitize
+  > dune uninstall --libdir /LIBDIR --dry-run --display short
   Removing (if it exists) /LIBDIR/foo/META
   Installing /LIBDIR/foo/META
   Creating directory /LIBDIR/foo
@@ -278,7 +278,7 @@ in libdir:
 The DESTDIR var is supported. When set, it is prepended to the prefix.
 This is the case when the prefix is implicit:
 
-  $ DESTDIR=DESTDIR dune install --dry-run 2>&1 | dune_cmd sanitize
+  $ DESTDIR=DESTDIR dune install --dry-run --display short 2>&1 | dune_cmd sanitize
   Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/META
   Installing DESTDIR/OPAM_PREFIX/lib/foo/META
   Creating directory DESTDIR/OPAM_PREFIX/lib/foo
@@ -342,7 +342,7 @@ This is the case when the prefix is implicit:
 
 But also when the prefix is explicit:
 
-  $ DESTDIR=DESTDIR dune install --prefix prefix --dry-run 2>&1 | dune_cmd sanitize
+  $ DESTDIR=DESTDIR dune install --prefix prefix --dry-run --display short 2>&1 | dune_cmd sanitize
   Removing (if it exists) DESTDIR/prefix/lib/foo/META
   Installing DESTDIR/prefix/lib/foo/META
   Creating directory DESTDIR/prefix/lib/foo
@@ -406,7 +406,7 @@ But also when the prefix is explicit:
 
 DESTDIR can also be passed as a command line flag.
 
-  $ dune install --destdir DESTDIR --prefix prefix --dry-run 2>&1 | dune_cmd sanitize
+  $ dune install --destdir DESTDIR --prefix prefix --dry-run --display short 2>&1 | dune_cmd sanitize
   Removing (if it exists) DESTDIR/prefix/lib/foo/META
   Installing DESTDIR/prefix/lib/foo/META
   Creating directory DESTDIR/prefix/lib/foo

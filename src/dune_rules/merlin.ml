@@ -543,10 +543,10 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
       (Action_builder.path (Path.build merlin_file))
   in
   let action =
-    let merlin = Unprocessed.process t sctx ~dir ~more_src_dirs ~expander in
-    Action_builder.With_targets.write_file_dyn merlin_file
-      (Action_builder.with_no_targets
-         (Action_builder.map ~f:Processed.Persist.to_string merlin))
+    Unprocessed.process t sctx ~dir ~more_src_dirs ~expander
+    |> Action_builder.map ~f:Processed.Persist.to_string
+    |> Action_builder.with_no_targets
+    |> Action_builder.With_targets.write_file_dyn merlin_file
   in
   Super_context.add_rule sctx ~dir action
 

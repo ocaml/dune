@@ -13,7 +13,7 @@ when using Dune executables. For promotion, it works only if the generated
 modules are solely in the executable (or library statically linked) promoted;
 generated modules in plugins won't work.
 
-.. code:: lisp
+.. code:: dune
 
    (generate_sites_module
     (module <name>)

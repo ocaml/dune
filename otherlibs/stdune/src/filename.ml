@@ -21,3 +21,10 @@ let analyze_program_name fn =
   else if String.contains fn '/' || (Stdlib.Sys.win32 && String.contains fn '\\')
   then Relative_to_current_dir
   else In_path
+
+let compare = String.compare
+
+let equal = String.equal
+
+module Set = String.Set
+module Map = String.Map

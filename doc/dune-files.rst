@@ -12,9 +12,9 @@ parameters. The first line of ``dune-project`` must be a ``lang`` stanza with no
 extra whitespace or comments. The ``lang`` stanza controls the names and
 contents of all configuration files read by Dune and looks like:
 
-.. code:: scheme
+.. code:: dune
 
-   (lang dune 3.7)
+   (lang dune 3.8)
 
 Additionally, they can contains the following stanzas.
 
@@ -29,7 +29,7 @@ with ``dune`` files that have the executable permission in a directory in the
 The feature must be enabled explicitly by adding the following field to
 ``dune-project``:
 
-.. code:: scheme
+.. code:: dune
 
    (accept_alternative_dune_file_name)
 
@@ -43,7 +43,7 @@ cram
 Enable or disable Cram-style tests for the project. See :ref:`cram-tests` for
 details.
 
-.. code:: scheme
+.. code:: dune
 
    (cram <status>)
 
@@ -67,7 +67,7 @@ alias, see :ref:`formatting-main`.
 When not using a custom syntax or formatting action, a dialect is nothing but a
 way to specify custom file extensions for OCaml code.
 
-.. code:: scheme
+.. code:: dune
 
     (dialect
      (name <name>)
@@ -121,7 +121,7 @@ to detect unused values in these modules.
 Starting from Dune 2.9, an option is available to automatically generate empty
 interface files for executables and tests that don't already have them:
 
-.. code:: scheme
+.. code:: dune
 
     (executables_implicit_empty_intf true)
 
@@ -134,7 +134,7 @@ expand_aliases_in_sandbox
 When a sandboxed action depends on an alias, copy the expansion of the alias
 inside the sandbox. For instance, in the following example:
 
-.. code:: scheme
+.. code:: dune
 
     (alias
      (name foo)
@@ -158,7 +158,7 @@ This wasn't very precise and didn't interact well with the ``@all`` alias.
 
 You can opt out of this behavior by using:
 
-.. code:: scheme
+.. code:: dune
 
     (explicit_js_mode)
 
@@ -178,7 +178,7 @@ formatting
 Starting in Dune 2.0, :ref:`formatting-main` is automatically enabled. This can
 be controlled by using
 
-.. code:: scheme
+.. code:: dune
 
     (formatting <setting>)
 
@@ -198,7 +198,7 @@ Dune is able to use metadata specified in the ``dune-project`` file to generate
 ``.opam`` files (see :ref:`opam-generation`). To enable this integration, add
 the following field to the ``dune-project`` file:
 
-.. code:: scheme
+.. code:: dune
 
    (generate_opam_files true)
 
@@ -253,7 +253,7 @@ implicit_transitive_deps
 By default, Dune allows transitive dependencies of dependencies used when
 compiling OCaml; however, this setting can be controlled per project:
 
-.. code:: scheme
+.. code:: dune
 
     (implicit_transitive_deps <bool>)
 
@@ -271,7 +271,7 @@ define a library ``foo_more`` that extends ``foo``, we might want ``foo_more``
 users to immediately have ``foo`` available as well. To do this, we must define
 the dependency on ``foo`` as re-exported:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name foo_more)
@@ -283,7 +283,7 @@ name
 Sets the name of the project. It's used by :ref:`dune subst <dune-subst>` and
 error messages.
 
-.. code:: scheme
+.. code:: dune
 
     (name <name>)
 
@@ -293,7 +293,7 @@ package
 -------
 
 Package specific information is specified in the ``(package <package-fields>)``
-stanza. It contains the following fields:
+stanza. It can contain the following fields:
 
 - ``(name <string>)`` is the name of the package. This must be specified.
 
@@ -303,9 +303,9 @@ stanza. It contains the following fields:
 
 - ``(depends <dep-specification>)`` are package dependencies.
 
-- ``(conflicts <dep-specification)`` are package conflicts.
+- ``(conflicts <dep-specification>)`` are package conflicts.
 
-- ``(depopts <dep-specification)`` are optional package dependencies.
+- ``(depopts <dep-specification>)`` are optional package dependencies.
 
 - ``(tags <tags>)`` are the list of tags for the package.
 
@@ -323,8 +323,8 @@ stanza. It contains the following fields:
 - ``(sites (<section> <name>) ...)`` define a site named ``<name>`` in the
   section ``<section>``.
 
-Adding libraries to different packages is done via the ``public_name`` field.
-See :ref:`library` section for details.
+Adding libraries to different packages is done via the ``public_name`` and
+``package`` fields. See :ref:`library` section for details.
 
 The list of dependencies :token:`dep_specification` is modelled after opam's own
 language. The syntax is a list of the following elements:
@@ -357,7 +357,7 @@ subst
 Starting in Dune 3.0, :ref:`dune-subst` can be explicitly disabled or enabled.
 By default it is enabled and controlled by using:
 
-.. code:: scheme
+.. code:: dune
 
     (subst <setting>)
 
@@ -377,7 +377,7 @@ Since Dune 2.8, it's possible to deactivate the systematic prepending of flags
 coming from ``ocamlc -config`` to the C compiler command line. This is done
 adding the following field to the ``dune-project`` file:
 
-.. code:: scheme
+.. code:: dune
 
     (use_standard_c_and_cxx_flags true)
 
@@ -395,7 +395,7 @@ The language of configuration files read by Dune can be extended to support
 additional stanzas (e.g., ``menhir``, ``coq.theory``, ``mdx``). This is done by
 adding a line in the ``dune-project`` file, such as:
 
-.. code:: scheme
+.. code:: dune
 
     (using <plugin> <version>)
 
@@ -411,7 +411,7 @@ version
 
 Sets the version of the project:
 
-.. code:: scheme
+.. code:: dune
 
     (version <version>)
 
@@ -429,13 +429,37 @@ names will be visible in the debugger.
 Starting from Dune 1.11, an option is available to turn on/off name mangling for
 executables on a per-project basis:
 
-.. code:: scheme
+.. code:: dune
 
     (wrapped_executables <bool>)
 
 Starting with Dune 2.0, Dune mangles compilation units of executables by
 default. However, this can still be turned off using ``(wrapped_executables
 false)``
+
+.. _map-workspace-root:
+
+map_workspace_root
+-------------------
+
+.. versionadded:: 3.7
+
+The desirable output of tools will not contain references to the
+file system location from which they were built. Starting from Dune 3.0,
+Dune has mapped references to the workspace directory to "/workspace_root".
+
+An option is available to turn on/off mapping
+of the workspace on a per-project basis:
+
+.. code:: dune
+
+    (map_workspace_root <bool>)
+
+This can be turned off using 
+``(map_workspace_root false)``
+Note that when this mapping is enabled, the debug information produced
+by the bytecode compiler is incorrect, as the location information
+is lost.
 
 .. _dune-files:
 
@@ -449,7 +473,7 @@ The syntax of ``dune`` files is described in :ref:`metadata-format` section.
 
 ``dune`` files are composed of stanzas, as shown below:
 
-.. code:: lisp
+.. code:: dune
 
     (library
      (name mylib)
@@ -514,9 +538,9 @@ simply running:
 The ``dune-workspace`` file uses the S-expression syntax. This is what a typical
 ``dune-workspace`` file looks like:
 
-.. code:: scheme
+.. code:: dune
 
-    (lang dune 3.7)
+    (lang dune 3.8)
     (context (opam (switch 4.07.1)))
     (context (opam (switch 4.08.1)))
     (context (opam (switch 4.11.1)))
@@ -526,7 +550,7 @@ The rest of this section describe the stanzas available.
 Note that an empty ``dune-workspace`` file is interpreted the same as one
 containing exactly:
 
-.. code:: scheme
+.. code:: dune
 
     (lang dune 3.2)
     (context default)
@@ -556,7 +580,7 @@ The ``(context ...)`` stanza declares a build context. The argument can be
 either ``default`` or ``(default)`` for the default build context, or it can be
 the description of an opam switch, as follows:
 
-.. code:: scheme
+.. code:: dune
 
     (context (opam (switch <opam-switch-name>)
                    <optional-fields>))
@@ -572,7 +596,7 @@ the description of an opam switch, as follows:
 
 - ``(merlin)`` instructs Dune to use this build context for Merlin.
 
-- ``(profile <profile>)`` sets a different profile for a build context. This has
+- ``(profile <profile>)`` sets a different profile for a :term:`build context`. This has
   precedence over the command-line option ``--profile``.
 
 - ``(env <env>)`` sets the environment for a particular context. This is of
@@ -630,7 +654,7 @@ profile
 The build profile can be selected in the ``dune-workspace`` file by write a
 ``(profile ...)`` stanza. For instance:
 
-.. code:: scheme
+.. code:: dune
 
     (profile release)
 
@@ -668,7 +692,7 @@ action_stdout_on_success
 Specifies how Dune should handle the standard output of actions when they succeed.
 This can be used to reduce the noise of large builds.
 
-.. code:: scheme
+.. code:: dune
 
     (action_stdout_on_success <setting>)
 
@@ -688,7 +712,7 @@ cache
 Specifies whether Dune is allowed to store and fetch build targets from the Dune
 cache.
 
-.. code:: scheme
+.. code:: dune
 
     (cache <setting>)
 
@@ -709,7 +733,7 @@ check, in which Dune will re-execute randomly chosen build rules and compare
 their results with those stored in the cache. If the results differ, the rule is
 not reproducible, and Dune will print out a corresponding warning.
 
-.. code:: scheme
+.. code:: dune
 
     (cache-check-probability <number>)
 
@@ -724,7 +748,7 @@ cache-storage-mode
 
 Specify the mechanism used by the Dune cache for storage.
 
-.. code:: scheme
+.. code:: dune
 
     (cache-storage-mode <setting>)
 
@@ -746,7 +770,7 @@ concurrency
 
 Maximum number of concurrent jobs Dune is allowed to have.
 
-.. code:: scheme
+.. code:: dune
 
     (concurrency <setting>)
 
@@ -764,7 +788,7 @@ display
 
 Specify the amount of Dune’s verbosity.
 
-.. code:: scheme
+.. code:: dune
 
     (display <setting>)
 
@@ -789,7 +813,7 @@ sandboxing_preference
 The preferred sandboxing setting. Individual rules may specify different
 preferences. Dune will try to utilize a setting satisfying both conditions.
 
-.. code:: scheme
+.. code:: dune
 
     (sandboxing_preference <setting> <setting> ...)
 
@@ -810,7 +834,7 @@ terminal-persistence
 
 Specifies how Dune handles the terminal when a rebuild is triggered in watch mode.
 
-.. code:: scheme
+.. code:: dune
 
     (terminal-persistence <setting>)
 

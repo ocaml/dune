@@ -67,6 +67,15 @@ type done_or_more_deps =
      subdirectories that contains targets having the same name. *)
   | Need_more_deps of (DAP.Dependency.Set.t * Dynamic_dep.Set.t)
 
+let done_or_more_deps_union x y =
+  match (x, y) with
+  | Done, Done -> Done
+  | Done, Need_more_deps x | Need_more_deps x, Done -> Need_more_deps x
+  | Need_more_deps (deps1, dyn_deps1), Need_more_deps (deps2, dyn_deps2) ->
+    Need_more_deps
+      ( DAP.Dependency.Set.union deps1 deps2
+      , Dynamic_dep.Set.union dyn_deps1 dyn_deps2 )
+
 type exec_context =
   { targets : Targets.Validated.t option
   ; context : Build_context.t option
@@ -273,6 +282,9 @@ let rec exec t ~display ~ectx ~eenv =
   | Ignore (outputs, t) ->
     redirect_out t ~display ~ectx ~eenv ~perm:Normal outputs Config.dev_null
   | Progn ts -> exec_list ts ~display ~ectx ~eenv
+  | Concurrent ts ->
+    Fiber.parallel_map ts ~f:(exec ~display ~ectx ~eenv)
+    >>| List.fold_left ~f:done_or_more_deps_union ~init:Done
   | Echo strs ->
     let+ () = exec_echo eenv.stdout_to (String.concat strs ~sep:" ") in
     Done

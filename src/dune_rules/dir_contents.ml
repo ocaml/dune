@@ -105,8 +105,7 @@ let build_mlds_map stanzas ~dir ~files =
       let+ mlds =
         let+ mlds = Memo.Lazy.force mlds in
         Ordered_set_lang.Unordered_string.eval doc.mld_files ~standard:mlds
-          ~key:(fun x -> x)
-          ~parse:(fun ~loc s ->
+          ~key:Fun.id ~parse:(fun ~loc s ->
             match String.Map.find mlds s with
             | Some s -> s
             | None ->
@@ -235,13 +234,13 @@ end = struct
         Memo.return Appendable_list.empty
     and walk_children st_dir ~dir ~local =
       let+ l =
-        Memo.parallel_map
-          (Source_tree.Dir.sub_dirs st_dir |> String.Map.to_list)
-          ~f:(fun (basename, st_dir) ->
-            let* st_dir = Source_tree.Dir.sub_dir_as_t st_dir in
-            let dir = Path.Build.relative dir basename in
-            let local = basename :: local in
-            walk st_dir ~dir ~local)
+        Source_tree.Dir.sub_dirs st_dir
+        |> String.Map.to_list
+        |> Memo.parallel_map ~f:(fun (basename, st_dir) ->
+               let* st_dir = Source_tree.Dir.sub_dir_as_t st_dir in
+               let dir = Path.Build.relative dir basename in
+               let local = basename :: local in
+               walk st_dir ~dir ~local)
       in
       Appendable_list.concat l
     in
@@ -332,8 +331,7 @@ end = struct
                        ; foreign_sources =
                            Memo.lazy_ (fun () ->
                                Foreign_sources.make d.stanzas ~dune_version
-                                 ~lib_config:ctx.lib_config ~include_subdirs
-                                 ~dirs
+                                 ~lib_config:ctx.lib_config ~dirs
                                |> Memo.return)
                        ; coq =
                            Memo.lazy_ (fun () ->
@@ -393,7 +391,7 @@ end = struct
             let dune_version = Dune_project.dune_version d.project in
             let foreign_sources =
               Memo.lazy_ (fun () ->
-                  Foreign_sources.make d.stanzas ~dune_version ~include_subdirs
+                  Foreign_sources.make d.stanzas ~dune_version
                     ~lib_config:ctx.lib_config ~dirs
                   |> Memo.return)
             in

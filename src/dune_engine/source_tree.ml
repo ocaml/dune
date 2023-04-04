@@ -140,8 +140,8 @@ let filter_source_files =
 module Readdir : sig
   type t = private
     { path : Path.Source.t
-    ; files : String.Set.t
-    ; dirs : (string * Path.Source.t * File.t) list
+    ; files : Filename.Set.t
+    ; dirs : (Filename.t * Path.Source.t * File.t) list
     }
 
   val empty : Path.Source.t -> t
@@ -153,26 +153,26 @@ module Readdir : sig
 end = struct
   type t =
     { path : Path.Source.t
-    ; files : String.Set.t
-    ; dirs : (string * Path.Source.t * File.t) list
+    ; files : Filename.Set.t
+    ; dirs : (Filename.t * Path.Source.t * File.t) list
     }
 
   let equal =
     let dirs_equal (s1, p1, f1) (s2, p2, f2) =
-      String.equal s1 s2 && Path.Source.equal p1 p2 && File.compare f1 f2 = Eq
+      Filename.equal s1 s2 && Path.Source.equal p1 p2 && File.compare f1 f2 = Eq
     in
     fun x y ->
       Path.Source.equal x.path y.path
-      && String.Set.equal x.files y.files
+      && Filename.Set.equal x.files y.files
       && List.equal dirs_equal x.dirs y.dirs
 
-  let empty path = { path; files = String.Set.empty; dirs = [] }
+  let empty path = { path; files = Filename.Set.empty; dirs = [] }
 
   let _to_dyn { path; files; dirs } =
     let open Dyn in
     record
       [ ("path", Path.Source.to_dyn path)
-      ; ("files", String.Set.to_dyn files)
+      ; ("files", Filename.Set.to_dyn files)
       ; ("dirs", list (triple string Path.Source.to_dyn File.to_dyn) dirs)
       ]
 
@@ -185,7 +185,7 @@ end = struct
 
   let filter_files t project =
     let+ f = !filter_source_files project in
-    { t with files = String.Set.filter t.files ~f:(fun fn -> f t.path fn) }
+    { t with files = Filename.Set.filter t.files ~f:(fun fn -> f t.path fn) }
 
   let of_source_path_impl path =
     Fs_memo.dir_contents (In_source_dir path) >>= function
@@ -227,7 +227,7 @@ end = struct
               else Left fn)
         >>| List.filter_partition_map ~f:Fun.id
       in
-      { path; files = String.Set.of_list files; dirs } |> Result.ok
+      { path; files = Filename.Set.of_list files; dirs } |> Result.ok
 
   (* Having a cutoff here speeds up incremental rebuilds quite a bit when a
      directory contents is invalidated but the result stays the same. *)
@@ -257,7 +257,7 @@ module Dirs_visited : sig
 
     val find : t -> Path.Source.t -> dirs_visited
 
-    val add : t -> dirs_visited -> string * Path.Source.t * File.t -> t
+    val add : t -> dirs_visited -> Filename.t * Path.Source.t * File.t -> t
   end
 end = struct
   type t = Path.Source.t File.Map.t
@@ -265,12 +265,12 @@ end = struct
   let singleton path file = File.Map.singleton file path
 
   module Per_fn = struct
-    type nonrec t = t String.Map.t
+    type nonrec t = t Filename.Map.t
 
-    let init = String.Map.empty
+    let init = Filename.Map.empty
 
     let find t path =
-      String.Map.find t (Path.Source.basename path)
+      Filename.Map.find t (Path.Source.basename path)
       |> Option.value ~default:File.Map.empty
 
     let add (acc : t) dirs_visited (fn, path, file) =
@@ -288,7 +288,7 @@ end = struct
                     (Path.Source.to_string_maybe_quoted path)
                 ])
         in
-        String.Map.add_exn acc fn new_dirs_visited
+        Filename.Map.add_exn acc fn new_dirs_visited
   end
 end
 
@@ -313,8 +313,8 @@ module Dir0 = struct
     }
 
   and contents =
-    { files : String.Set.t
-    ; sub_dirs : sub_dir String.Map.t
+    { files : Filename.Set.t
+    ; sub_dirs : sub_dir Filename.Map.t
     ; dune_file : Dune_file.t option
     }
 
@@ -350,8 +350,8 @@ module Dir0 = struct
   and dyn_of_contents { files; sub_dirs; dune_file } =
     let open Dyn in
     record
-      [ ("files", String.Set.to_dyn files)
-      ; ("sub_dirs", String.Map.to_dyn dyn_of_sub_dir sub_dirs)
+      [ ("files", Filename.Set.to_dyn files)
+      ; ("sub_dirs", Filename.Map.to_dyn dyn_of_sub_dir sub_dirs)
       ; ("dune_file", Dyn.(option opaque dune_file))
       ; ("project", Opaque)
       ]
@@ -381,11 +381,11 @@ module Dir0 = struct
 
   let file_paths t =
     Path.Source.Set.of_listing ~dir:t.path
-      ~filenames:(String.Set.to_list (files t))
+      ~filenames:(Filename.Set.to_list (files t))
 
   let sub_dir_names t =
-    String.Map.foldi (sub_dirs t) ~init:String.Set.empty ~f:(fun s _ acc ->
-        String.Set.add acc s)
+    Filename.Map.foldi (sub_dirs t) ~init:Filename.Set.empty ~f:(fun s _ acc ->
+        Filename.Set.add acc s)
 
   let sub_dir_paths t =
     String.Map.foldi (sub_dirs t) ~init:Path.Source.Set.empty ~f:(fun s _ acc ->
@@ -405,7 +405,7 @@ let ancestor_vcs =
           else
             let dir = Filename.dirname dir in
             match
-              Sys.readdir dir |> Array.to_list |> String.Set.of_list
+              Sys.readdir dir |> Array.to_list |> Filename.Set.of_list
               |> Vcs.Kind.of_dir_contents
             with
             | Some kind -> Some { Vcs.kind; root = Path.of_string dir }
@@ -428,12 +428,12 @@ end = struct
     (** Get all the sub directories of [path].*)
     val all :
          dirs_visited:Dirs_visited.t
-      -> dirs:(string * Path.Source.t * File.t) list
+      -> dirs:(Filename.t * Path.Source.t * File.t) list
       -> sub_dirs:Predicate_lang.Glob.t Sub_dirs.Status.Map.t
       -> parent_status:Sub_dirs.Status.t
       -> dune_file:Dune_file.t option (** to interpret [(subdir ..)] stanzas *)
       -> path:Path.Source.t
-      -> Dirs_visited.Per_fn.t * Dir0.sub_dir String.Map.t
+      -> Dirs_visited.Per_fn.t * Dir0.sub_dir Filename.Map.t
   end = struct
     let status ~status_map ~(parent_status : Sub_dirs.Status.t) dir :
         Sub_dirs.Status.t option =
@@ -455,7 +455,7 @@ end = struct
       let status_map =
         Sub_dirs.eval sub_dirs ~dirs:(List.map ~f:(fun (a, _, _) -> a) dirs)
       in
-      List.fold_left dirs ~init:(Dirs_visited.Per_fn.init, String.Map.empty)
+      List.fold_left dirs ~init:(Dirs_visited.Per_fn.init, Filename.Map.empty)
         ~f:(fun (dirs_visited_acc, subdirs) ((fn, path, _) as dir) ->
           match status ~status_map ~parent_status fn with
           | None -> (dirs_visited_acc, subdirs)
@@ -464,7 +464,7 @@ end = struct
               Dirs_visited.Per_fn.add dirs_visited_acc dirs_visited dir
             in
             let sub_dir = make_subdir ~dir_status ~virtual_:false path in
-            let subdirs = String.Map.add_exn subdirs fn sub_dir in
+            let subdirs = Filename.Map.add_exn subdirs fn sub_dir in
             (dirs_visited_acc, subdirs))
 
     let virtual_ ~sub_dirs ~parent_status ~dune_file ~init ~path =
@@ -479,7 +479,7 @@ end = struct
             match status ~status_map ~parent_status fn with
             | None -> acc
             | Some dir_status ->
-              String.Map.update acc fn ~f:(function
+              Filename.Map.update acc fn ~f:(function
                 (* Physical directories have already been added so they are
                    skipped here.*)
                 | Some _ as r -> r
@@ -537,9 +537,9 @@ end = struct
       if dir_status = Data_only then None
       else if
         Dune_project.accept_alternative_dune_file_name project
-        && String.Set.mem files Dune_file.alternative_fname
+        && Filename.Set.mem files Dune_file.alternative_fname
       then Some Dune_file.alternative_fname
-      else if String.Set.mem files Dune_file.fname then Some Dune_file.fname
+      else if Filename.Set.mem files Dune_file.fname then Some Dune_file.fname
       else None
     in
     let* from_parent =
@@ -579,8 +579,8 @@ end = struct
   let get_vcs ~default:vcs ~readdir:{ Readdir.path; files; dirs } =
     match
       Vcs.Kind.of_dir_contents
-        (String.Set.union files
-           (String.Set.of_list_map dirs ~f:(fun (name, _, _) -> name)))
+        (Filename.Set.union files
+           (Filename.Set.of_list_map dirs ~f:(fun (name, _, _) -> name)))
     with
     | None -> vcs
     | Some kind -> Dir0.This { Vcs.kind; root = Path.(append_source root) path }
@@ -633,7 +633,7 @@ end = struct
         let* dir_status, virtual_ =
           let basename = Path.Source.basename path in
           let+ sub_dir =
-            String.Map.find parent_dir.contents.sub_dirs basename
+            Filename.Map.find parent_dir.contents.sub_dirs basename
           in
           let status =
             let status = sub_dir.sub_dir_status in
@@ -702,7 +702,7 @@ let find_dir path = Memoized.find_dir path
 let rec nearest_dir t = function
   | [] -> Memo.return t
   | comp :: components -> (
-    match String.Map.find (Dir0.sub_dirs t) comp with
+    match Filename.Map.find (Dir0.sub_dirs t) comp with
     | None -> Memo.return t
     | Some sub_dir ->
       let* sub_dir = Dir0.sub_dir_as_t sub_dir in
@@ -723,13 +723,13 @@ let files_of path =
   find_dir path >>| function
   | None -> Path.Source.Set.empty
   | Some dir ->
-    Dir0.files dir |> String.Set.to_list
+    Dir0.files dir |> Filename.Set.to_list
     |> Path.Source.Set.of_list_map ~f:(Path.Source.relative path)
 
 let file_exists path =
   find_dir (Path.Source.parent_exn path) >>| function
   | None -> false
-  | Some dir -> String.Set.mem (Dir0.files dir) (Path.Source.basename path)
+  | Some dir -> Filename.Set.mem (Dir0.files dir) (Path.Source.basename path)
 
 let dir_exists path = find_dir path >>| Option.is_some
 
@@ -746,7 +746,7 @@ module Dir = struct
       | true ->
         let+ here = f t
         and+ in_sub_dirs =
-          M.List.map (String.Map.values t.contents.sub_dirs) ~f:(fun s ->
+          M.List.map (Filename.Map.values t.contents.sub_dirs) ~f:(fun s ->
               let* t = M.of_memo (sub_dir_as_t s) in
               map_reduce t ~traverse ~f)
         in
@@ -758,14 +758,14 @@ module Dir = struct
     | false -> Memo.return []
     | true ->
       let file_tests =
-        String.Set.to_list t.contents.files
+        Filename.Set.to_list t.contents.files
         |> List.filter_map ~f:(fun s ->
                if Cram_test.is_cram_suffix s then
                  Some (Ok (Cram_test.File (Path.Source.relative t.path s)))
                else None)
       in
       let+ dir_tests =
-        Memo.parallel_map (String.Map.to_list t.contents.sub_dirs)
+        Memo.parallel_map (Filename.Map.to_list t.contents.sub_dirs)
           ~f:(fun (name, sub_dir) ->
             match Cram_test.is_cram_suffix name with
             | false -> Memo.return None
@@ -781,10 +781,10 @@ module Dir = struct
                 Cram_test.Dir { file; dir }
               in
               let files = contents.contents.files in
-              if String.Set.is_empty files then None
+              if Filename.Set.is_empty files then None
               else
                 Some
-                  (if String.Set.mem files fname then Ok test
+                  (if Filename.Set.mem files fname then Ok test
                   else Error (Missing_run_t test)))
         >>| List.filter_opt
       in

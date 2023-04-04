@@ -382,8 +382,13 @@ let adapt_display config ~output_is_a_tty =
     { config with terminal_persistence = Terminal_persistence.Preserve }
   else config
 
-let init t =
+let init t ~watch =
   Console.Backend.set (Display.console_backend t.display);
+  (if watch then
+   match t.terminal_persistence with
+   | Preserve -> ()
+   | Clear_on_rebuild -> Console.reset ()
+   | Clear_on_rebuild_and_flush_history -> Console.reset_flush_history ());
   Log.verbose := t.display.verbosity = Verbose
 
 let auto_concurrency =

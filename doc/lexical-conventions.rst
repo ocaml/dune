@@ -20,7 +20,7 @@ The Dune language only has end of line comments. A semicolon introduces end of
 line comments and span up to the end of the current line. The system ignores
 everything from the semicolon to the end of the line. For instance:
 
-.. code::
+.. code:: dune
 
    ; This is a comment
 
@@ -63,7 +63,7 @@ Additionally, you can use a backslash just before the end of the line. This
 skips the newline leading up to the next non-space character. For instance, the
 following two strings represent the same text:
 
-.. code::
+.. code:: dune
 
    "abcdef"
    "abc\
@@ -87,7 +87,7 @@ will be ignored).
 
 For instance:
 
-.. code::
+.. code:: dune
 
    "\| this is a block
    "\| of text
@@ -108,7 +108,7 @@ Lists are sequences of values enclosed by parentheses. For instance
 Lists can be nested, allowing arbitrary representation for complex
 descriptions. For instance:
 
-.. code::
+.. code:: dune
 
    (html
     (head (title "Hello world!"))

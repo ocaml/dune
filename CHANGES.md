@@ -1,4 +1,4 @@
-3.7.1 (unreleased)
+3.7.1 (2023-04-04)
 ------------------
 
 - Fix segfault on MacOS when dune was being shutdown while in watch mode.

@@ -21,6 +21,8 @@ module Style : sig
     | Debug
     | Success
     | Ansi_styles of Ansi_color.Style.t list
+
+  val compare : t -> t -> Ordering.t
 end
 
 module Annots : sig

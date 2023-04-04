@@ -22,7 +22,16 @@ module Map = Map
 module Option = Option
 module Or_exn = Or_exn
 module Ordering = Ordering
-module Pp = Pp
+
+module Pp = struct
+  include Pp
+
+  (** This version of [Pp.compare] uses [Ordering.t] rather than returning an [int]. *)
+  let compare ~compare x y =
+    Ordering.of_int (Pp.compare (fun a b -> Ordering.to_int (compare a b)) x y)
+  ;;
+end
+
 module Result = Result
 module Set = Set
 module Signal = Signal

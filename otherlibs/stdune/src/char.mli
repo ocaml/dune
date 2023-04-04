@@ -9,3 +9,4 @@ val is_digit : t -> bool
 val is_lowercase_hex : t -> bool
 
 val hash : t -> int
+val compare : t -> t -> Ordering.t

@@ -4,6 +4,7 @@ module RGB8 : sig
   val to_dyn : t -> Dyn.t
   val of_int : int -> t
   val to_int : t -> int
+  val compare : t -> t -> Ordering.t
 
   (** This is only used internally. *)
   val write_to_buffer : Buffer.t -> t -> unit
@@ -13,6 +14,7 @@ end = struct
   let to_dyn t = Dyn.Int (int_of_char t)
   let of_int t = char_of_int (t land 0xFF)
   let to_int t = int_of_char t
+  let compare t1 t2 = Char.compare t1 t2
 
   let write_to_buffer buf c =
     Buffer.add_string buf "38;5;";
@@ -24,6 +26,7 @@ module RGB24 : sig
   type t
 
   val to_dyn : t -> Dyn.t
+  val compare : t -> t -> Ordering.t
   val red : t -> int
   val green : t -> int
   val blue : t -> int
@@ -34,6 +37,7 @@ module RGB24 : sig
 end = struct
   type t = int
 
+  let compare = Int.compare
   let red t = Int.shift_right t 16 land 0xFF
   let green t = Int.shift_right t 8 land 0xFF
   let blue t = t land 0xFF
@@ -184,6 +188,134 @@ module Style = struct
     | `Dim -> Dyn.variant "Dim" []
     | `Italic -> Dyn.variant "Italic" []
     | `Underline -> Dyn.variant "Underline" []
+  ;;
+
+  let compare (t1 : t) (t2 : t) : Ordering.t =
+    match t1, t2 with
+    | `Fg_default, `Fg_default -> Eq
+    | `Fg_default, _ -> Lt
+    | _, `Fg_default -> Gt
+    | `Fg_black, `Fg_black -> Eq
+    | `Fg_black, _ -> Lt
+    | _, `Fg_black -> Gt
+    | `Fg_red, `Fg_red -> Eq
+    | `Fg_red, _ -> Lt
+    | _, `Fg_red -> Gt
+    | `Fg_green, `Fg_green -> Eq
+    | `Fg_green, _ -> Lt
+    | _, `Fg_green -> Gt
+    | `Fg_yellow, `Fg_yellow -> Eq
+    | `Fg_yellow, _ -> Lt
+    | _, `Fg_yellow -> Gt
+    | `Fg_blue, `Fg_blue -> Eq
+    | `Fg_blue, _ -> Lt
+    | _, `Fg_blue -> Gt
+    | `Fg_magenta, `Fg_magenta -> Eq
+    | `Fg_magenta, _ -> Lt
+    | _, `Fg_magenta -> Gt
+    | `Fg_cyan, `Fg_cyan -> Eq
+    | `Fg_cyan, _ -> Lt
+    | _, `Fg_cyan -> Gt
+    | `Fg_white, `Fg_white -> Eq
+    | `Fg_white, _ -> Lt
+    | _, `Fg_white -> Gt
+    | `Fg_bright_black, `Fg_bright_black -> Eq
+    | `Fg_bright_black, _ -> Lt
+    | _, `Fg_bright_black -> Gt
+    | `Fg_bright_red, `Fg_bright_red -> Eq
+    | `Fg_bright_red, _ -> Lt
+    | _, `Fg_bright_red -> Gt
+    | `Fg_bright_green, `Fg_bright_green -> Eq
+    | `Fg_bright_green, _ -> Lt
+    | _, `Fg_bright_green -> Gt
+    | `Fg_bright_yellow, `Fg_bright_yellow -> Eq
+    | `Fg_bright_yellow, _ -> Lt
+    | _, `Fg_bright_yellow -> Gt
+    | `Fg_bright_blue, `Fg_bright_blue -> Eq
+    | `Fg_bright_blue, _ -> Lt
+    | _, `Fg_bright_blue -> Gt
+    | `Fg_bright_magenta, `Fg_bright_magenta -> Eq
+    | `Fg_bright_magenta, _ -> Lt
+    | _, `Fg_bright_magenta -> Gt
+    | `Fg_bright_cyan, `Fg_bright_cyan -> Eq
+    | `Fg_bright_cyan, _ -> Lt
+    | _, `Fg_bright_cyan -> Gt
+    | `Fg_bright_white, `Fg_bright_white -> Eq
+    | `Fg_bright_white, _ -> Lt
+    | _, `Fg_bright_white -> Gt
+    | `Fg_8_bit_color c1, `Fg_8_bit_color c2 -> RGB8.compare c1 c2
+    | `Fg_8_bit_color _, _ -> Lt
+    | _, `Fg_8_bit_color _ -> Gt
+    | `Fg_24_bit_color c1, `Fg_24_bit_color c2 -> RGB24.compare c1 c2
+    | `Fg_24_bit_color _, _ -> Lt
+    | _, `Fg_24_bit_color _ -> Gt
+    | `Bg_default, `Bg_default -> Eq
+    | `Bg_default, _ -> Lt
+    | _, `Bg_default -> Gt
+    | `Bg_black, `Bg_black -> Eq
+    | `Bg_black, _ -> Lt
+    | _, `Bg_black -> Gt
+    | `Bg_red, `Bg_red -> Eq
+    | `Bg_red, _ -> Lt
+    | _, `Bg_red -> Gt
+    | `Bg_green, `Bg_green -> Eq
+    | `Bg_green, _ -> Lt
+    | _, `Bg_green -> Gt
+    | `Bg_yellow, `Bg_yellow -> Eq
+    | `Bg_yellow, _ -> Lt
+    | _, `Bg_yellow -> Gt
+    | `Bg_blue, `Bg_blue -> Eq
+    | `Bg_blue, _ -> Lt
+    | _, `Bg_blue -> Gt
+    | `Bg_magenta, `Bg_magenta -> Eq
+    | `Bg_magenta, _ -> Lt
+    | _, `Bg_magenta -> Gt
+    | `Bg_cyan, `Bg_cyan -> Eq
+    | `Bg_cyan, _ -> Lt
+    | _, `Bg_cyan -> Gt
+    | `Bg_white, `Bg_white -> Eq
+    | `Bg_white, _ -> Lt
+    | _, `Bg_white -> Gt
+    | `Bg_bright_black, `Bg_bright_black -> Eq
+    | `Bg_bright_black, _ -> Lt
+    | _, `Bg_bright_black -> Gt
+    | `Bg_bright_red, `Bg_bright_red -> Eq
+    | `Bg_bright_red, _ -> Lt
+    | _, `Bg_bright_red -> Gt
+    | `Bg_bright_green, `Bg_bright_green -> Eq
+    | `Bg_bright_green, _ -> Lt
+    | _, `Bg_bright_green -> Gt
+    | `Bg_bright_yellow, `Bg_bright_yellow -> Eq
+    | `Bg_bright_yellow, _ -> Lt
+    | _, `Bg_bright_yellow -> Gt
+    | `Bg_bright_blue, `Bg_bright_blue -> Eq
+    | `Bg_bright_blue, _ -> Lt
+    | _, `Bg_bright_blue -> Gt
+    | `Bg_bright_magenta, `Bg_bright_magenta -> Eq
+    | `Bg_bright_magenta, _ -> Lt
+    | _, `Bg_bright_magenta -> Gt
+    | `Bg_bright_cyan, `Bg_bright_cyan -> Eq
+    | `Bg_bright_cyan, _ -> Lt
+    | _, `Bg_bright_cyan -> Gt
+    | `Bg_bright_white, `Bg_bright_white -> Eq
+    | `Bg_bright_white, _ -> Lt
+    | _, `Bg_bright_white -> Gt
+    | `Bg_8_bit_color c1, `Bg_8_bit_color c2 -> RGB8.compare c1 c2
+    | `Bg_8_bit_color _, _ -> Lt
+    | _, `Bg_8_bit_color _ -> Gt
+    | `Bg_24_bit_color c1, `Bg_24_bit_color c2 -> RGB24.compare c1 c2
+    | `Bg_24_bit_color _, _ -> Lt
+    | _, `Bg_24_bit_color _ -> Gt
+    | `Bold, `Bold -> Eq
+    | `Bold, _ -> Lt
+    | _, `Bold -> Gt
+    | `Dim, `Dim -> Eq
+    | `Dim, _ -> Lt
+    | _, `Dim -> Gt
+    | `Italic, `Italic -> Eq
+    | `Italic, _ -> Lt
+    | _, `Italic -> Gt
+    | `Underline, `Underline -> Eq
   ;;
 
   module Of_ansi_code = struct

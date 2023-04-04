@@ -68,6 +68,7 @@ module Style : sig
     ]
 
   val to_dyn : t -> Dyn.t
+  val compare : t -> t -> Ordering.t
 
   (** Ansi escape sequence that set the terminal style to exactly these styles *)
   val escape_sequence : t list -> string

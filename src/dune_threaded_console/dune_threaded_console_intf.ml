@@ -27,19 +27,25 @@ module type S = sig
       the user interface. *)
   val render : state -> unit
 
-  (** [handle_user_events ~now ~time_budget mutex] is called by the main thread
-      to handle user events such as keypresses. The function should return the
-      time at which the next event should be handled. A [mutex] is provided in
-      order to lock the state of the UI. [time_budget] indicates an approximate
-      amount of time that should be spent in this function. This is useful for
-      things like waiting for user input.
+  (** [handle_user_events ~now ~time_budget ~mutex state] is called by the main
+      thread to handle user events such as keypresses. The function should
+      return the time at which the next event should be handled. A [mutex] is
+      provided in order to lock the state of the UI. [time_budget] indicates an
+      approximate amount of time that should be spent in this function. This is
+      useful for things like waiting for user input. The current [state] is also
+      provided so that any user events affect the staate can do so.
 
       [time_budget] should be as accurate as possible, but if it's not, the only
       consequence would be modifying the rendering rate. If [time_budget] is an
       underestimation of the actual amount of time spent, we will render faster
       than the desired frame rate. If it is an overestimation, we will render
       slower. *)
-  val handle_user_events : now:float -> time_budget:float -> Mutex.t -> state -> float
+  val handle_user_events
+    :  now:float
+    -> time_budget:float
+    -> mutex:Mutex.t
+    -> state
+    -> float
 
   (** [reset] is called by the main thread to reset the user interface. *)
   val reset : unit -> unit

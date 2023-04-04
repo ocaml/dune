@@ -152,6 +152,7 @@ type t =
   ; strict_package_deps : bool
   ; cram : bool
   ; expand_aliases_in_sandbox : bool
+  ; opam_file_location : [ `Relative_to_project | `Inside_opam_directory ]
   }
 
 let equal = ( == )
@@ -215,6 +216,7 @@ let to_dyn
     ; strict_package_deps
     ; cram
     ; expand_aliases_in_sandbox
+    ; opam_file_location
     } =
   let open Dyn in
   record
@@ -243,6 +245,10 @@ let to_dyn
     ; ("strict_package_deps", bool strict_package_deps)
     ; ("cram", bool cram)
     ; ("expand_aliases_in_sandbox", bool expand_aliases_in_sandbox)
+    ; ( "opam_file_location"
+      , match opam_file_location with
+        | `Relative_to_project -> variant "Relative_to_project" []
+        | `Inside_opam_directory -> variant "Inside_opam_directory" [] )
     ]
 
 let find_extension_args t key = Univ_map.find t.extension_args key
@@ -451,6 +457,8 @@ let get_exn () =
 
 let filename = "dune-project"
 
+let opam_file_location_default ~lang:_ = `Relative_to_project
+
 let implicit_transitive_deps_default ~lang:_ = true
 
 let wrapped_executables_default ~(lang : Lang.Instance.t) =
@@ -520,6 +528,7 @@ let infer ~dir ?(info = Package.Info.empty) packages =
   let expand_aliases_in_sandbox = expand_aliases_in_sandbox_default ~lang in
   let root = dir in
   let file_key = File_key.make ~root ~name in
+  let opam_file_location = opam_file_location_default ~lang in
   { name
   ; packages
   ; root
@@ -545,6 +554,7 @@ let infer ~dir ?(info = Package.Info.empty) packages =
   ; strict_package_deps
   ; cram
   ; expand_aliases_in_sandbox
+  ; opam_file_location
   }
 
 module Toggle = struct
@@ -622,6 +632,7 @@ let encode : t -> Dune_lang.t list =
      ; project_file = _
      ; root = _
      ; expand_aliases_in_sandbox
+     ; opam_file_location = _
      } ->
   let open Dune_lang.Encoder in
   let lang = Lang.get_exn "dune" in
@@ -700,6 +711,20 @@ let encode : t -> Dune_lang.t list =
   @ formatting @ dialects @ packages @ subst_config
 
 module Memo_package_name = Memo.Make_map_traversals (Package.Name.Map)
+
+let forbid_opam_files_relative_to_project opam_file_location packages =
+  match opam_file_location with
+  | `Relative_to_project -> ()
+  | `Inside_opam_directory ->
+    if not (Package.Name.Map.is_empty packages) then
+      User_error.raise
+        [ Pp.text
+            "When (opam_file_location inside_opam_directory) is set, all opam \
+             files must live in the opam/ subdirecotry. The following opam \
+             files must be moved:"
+        ; Pp.enumerate (Package.Name.Map.values packages)
+            ~f:(fun ((loc : Loc.t), _) -> Pp.text loc.start.pos_fname)
+        ]
 
 let parse ~dir ~(lang : Lang.Instance.t) ~file ~dir_status =
   String_with_vars.set_decoding_env
@@ -781,10 +806,23 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file ~dir_status =
         and+ expand_aliases_in_sandbox =
           field_o_b "expand_aliases_in_sandbox"
             ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
+        and+ opam_file_location =
+          field_o "opam_file_location"
+            (Dune_lang.Syntax.since Stanza.syntax (3, 8)
+            >>> enum
+                  [ ("relative_to_project", `Relative_to_project)
+                  ; ("inside_opam_directory", `Inside_opam_directory)
+                  ])
         in
-        fun opam_packages ->
+        fun (opam_packages : (Loc.t * Package.t Memo.t) Package.Name.Map.t) ->
+          let opam_file_location =
+            Option.value opam_file_location
+              ~default:(opam_file_location_default ~lang)
+          in
           let open Memo.O in
           let+ packages =
+            forbid_opam_files_relative_to_project opam_file_location
+              opam_packages;
             if List.is_empty packages then
               Package.Name.Map.to_list opam_packages
               |> Memo.parallel_map ~f:(fun (name, (_loc, pkg)) ->
@@ -792,81 +830,87 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file ~dir_status =
                      let+ pkg = pkg in
                      (name, pkg))
               |> Memo.map ~f:Package.Name.Map.of_list_exn
-            else
-              ((match (packages, name) with
-               | [ p ], Some (Named name) ->
-                 if Package.Name.to_string (Package.name p) <> name then
-                   User_error.raise ~loc:p.loc
-                     [ Pp.textf
-                         "when a single package is defined, it must have the \
-                          same name as the project name: %s"
-                         name
-                     ]
-               | _, _ -> ());
-               let package_defined_twice name loc1 loc2 =
-                 let main_message =
-                   [ Pp.textf "Package name %s is defined twice:"
-                       (Package.Name.to_string name)
-                   ]
-                 in
-                 let name = Package.Name.to_string name in
-                 let annots =
-                   let message loc =
-                     User_message.make ~loc [ Pp.textf "package named %s" name ]
-                   in
-                   let related = [ message loc1; message loc2 ] in
-                   User_message.Annots.singleton Compound_user_error.annot
-                     [ Compound_user_error.make
-                         ~main:(User_message.make main_message)
-                         ~related
-                     ]
-                 in
-                 User_error.raise ~annots
-                   (main_message
-                   @ [ Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-                     ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-                     ])
-               in
-               let deprecated_package_names =
-                 List.fold_left packages ~init:Package.Name.Map.empty
-                   ~f:(fun acc { Package.deprecated_package_names; _ } ->
-                     Package.Name.Map.union acc deprecated_package_names
-                       ~f:package_defined_twice)
-               in
-               List.iter packages ~f:(fun p ->
-                   let name = Package.name p in
-                   match
-                     Package.Name.Map.find deprecated_package_names name
-                   with
-                   | None -> ()
-                   | Some loc -> package_defined_twice name loc p.loc);
-               match
-                 Package.Name.Map.of_list_map packages ~f:(fun p ->
-                     (Package.name p, p))
-               with
-               | Error (_, _, p) ->
-                 let name = Package.name p in
-                 User_error.raise ~loc:p.loc
-                   [ Pp.textf "package %s is already defined"
-                       (Package.Name.to_string name)
-                   ]
-               | Ok packages ->
-                 Package.Name.Map.merge packages opam_packages
-                   ~f:(fun _name dune opam ->
-                     match (dune, opam) with
-                     | _, None -> dune
-                     | Some p, Some _ -> Some { p with has_opam_file = true }
-                     | None, Some (loc, _) ->
-                       User_error.raise ~loc
-                         [ Pp.text
-                             "This opam file doesn't have a corresponding \
-                              (package ...) stanza in the dune-project file. \
-                              Since you have at least one other (package ...) \
-                              stanza in your dune-project file, you must a \
-                              (package ...) stanza for each opam package in \
-                              your project."
-                         ]))
-              |> Memo.return
+            else (
+              (match (packages, name) with
+              | [ p ], Some (Named name) ->
+                if Package.Name.to_string (Package.name p) <> name then
+                  User_error.raise ~loc:p.loc
+                    [ Pp.textf
+                        "when a single package is defined, it must have the \
+                         same name as the project name: %s"
+                        name
+                    ]
+              | _, _ -> ());
+              let package_defined_twice name loc1 loc2 =
+                let main_message =
+                  [ Pp.textf "Package name %s is defined twice:"
+                      (Package.Name.to_string name)
+                  ]
+                in
+                let name = Package.Name.to_string name in
+                let annots =
+                  let message loc =
+                    User_message.make ~loc [ Pp.textf "package named %s" name ]
+                  in
+                  let related = [ message loc1; message loc2 ] in
+                  User_message.Annots.singleton Compound_user_error.annot
+                    [ Compound_user_error.make
+                        ~main:(User_message.make main_message)
+                        ~related
+                    ]
+                in
+                User_error.raise ~annots
+                  (main_message
+                  @ [ Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+                    ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+                    ])
+              in
+              let deprecated_package_names =
+                List.fold_left packages ~init:Package.Name.Map.empty
+                  ~f:(fun acc { Package.deprecated_package_names; _ } ->
+                    Package.Name.Map.union acc deprecated_package_names
+                      ~f:package_defined_twice)
+              in
+              List.iter packages ~f:(fun p ->
+                  let name = Package.name p in
+                  match Package.Name.Map.find deprecated_package_names name with
+                  | None -> ()
+                  | Some loc -> package_defined_twice name loc p.loc);
+              match
+                Package.Name.Map.of_list_map packages ~f:(fun p ->
+                    (Package.name p, p))
+              with
+              | Error (_, _, p) ->
+                let name = Package.name p in
+                User_error.raise ~loc:p.loc
+                  [ Pp.textf "package %s is already defined"
+                      (Package.Name.to_string name)
+                  ]
+              | Ok packages -> (
+                Memo.return
+                @@
+                match opam_file_location with
+                | `Inside_opam_directory ->
+                  Package.Name.Map.map packages ~f:(fun p ->
+                      let dir = Path.Source.relative dir "opam" in
+                      Package.set_inside_opam_dir p ~dir)
+                | `Relative_to_project ->
+                  Package.Name.Map.merge packages opam_packages
+                    ~f:(fun _name dune opam ->
+                      match (dune, opam) with
+                      | _, None -> dune
+                      | Some p, Some _ ->
+                        Some { p with Package.has_opam_file = Exists true }
+                      | None, Some (loc, _) ->
+                        User_error.raise ~loc
+                          [ Pp.text
+                              "This opam file doesn't have a corresponding \
+                               (package ...) stanza in the dune-project file. \
+                               Since you have at least one other (package ...) \
+                               stanza in your dune-project file, you must a \
+                               (package ...) stanza for each opam package in \
+                               your project."
+                          ])))
           in
           let packages =
             Package.Name.Map.map packages ~f:(fun p ->
@@ -986,6 +1030,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file ~dir_status =
           ; strict_package_deps
           ; cram
           ; expand_aliases_in_sandbox
+          ; opam_file_location
           }))
 
 let load_dune_project ~dir opam_packages ~dir_status : t Memo.t =
@@ -1056,3 +1101,5 @@ let update_execution_parameters t ep =
        t.expand_aliases_in_sandbox
   |> Execution_parameters.set_add_workspace_root_to_build_path_prefix_map
        t.map_workspace_root
+
+let opam_file_location t = t.opam_file_location

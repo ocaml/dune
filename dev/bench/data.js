@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680652734790,
+  "lastUpdate": 1680652747661,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -21606,6 +21606,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "80.31784844258665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "adcdd090b4360bef63e7f8eb770b7b33cecb80bc",
+          "message": "feature: allow opam files in opam/ (#7483)\n\nWhen we set (opam_file_location inside_opam_directory), we are allowed\r\nto put all the opam file in the opam/ directory relative to the project.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-04T16:16:15-07:00",
+          "tree_id": "3554c7b36ae62f6a2ae520285803792374a670d5",
+          "url": "https://github.com/ocaml/dune/commit/adcdd090b4360bef63e7f8eb770b7b33cecb80bc"
+        },
+        "date": 1680652746657,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.9898983759933333",
             "unit": "seconds"
           }
         ]

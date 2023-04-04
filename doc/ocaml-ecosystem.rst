@@ -10,21 +10,24 @@ plays in it.
 The OCaml Compiler Distribution: Compiling and Linking
 ------------------------------------------------------
 
-The OCaml compiler distribution contains "core" tools including the compilers
-(``ocamlc`` and ``ocamlopt``). They turn source files (with extensions ``.ml``
-and ``.mli``) into executables and libraries. Dependencies between compiled
-objects only exist at the module level, so this is a low-level tool.
+The `OCaml compiler distribution <https://github.com/ocaml/ocaml>`_ contains
+"core" tools including the compilers (``ocamlc`` and ``ocamlopt``). They turn
+source files (with extensions ``.ml`` and ``.mli``) into executables and
+libraries. Dependencies between compiled objects only exist at the module
+level, so this is a low-level tool.
 
 Findlib: Metadata for Libraries
 -------------------------------
 
-Findlib is a tool that defines the concept of library, so that libraries can
+Findlib_ is a tool that defines the concept of library, so that libraries can
 depend on other libraries on top of the notion of module. Definitions of
 libraries, and other pieces of metadata, are stored in ``META`` files.
 
 Findlib ships an executable named ``ocamlfind`` that can be used as a wrapper
 on top of the compilers to perform tasks such as producing an executable from
 compiled object files and external libraries.
+
+.. _findlib: https://github.com/ocaml/ocamlfind
 
 Opam: a Collection of Software Projects
 ---------------------------------------

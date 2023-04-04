@@ -103,10 +103,10 @@ let make (module Base : S) : (module Dune_console.Backend) =
           let elapsed = now -. !last in
           let new_time =
             if elapsed >= frame_rate then
-              Base.handle_user_events ~now ~time_budget:0.0 mutex state
+              Base.handle_user_events ~now ~time_budget:0.0 ~mutex state
             else
               let delta = frame_rate -. elapsed in
-              Base.handle_user_events ~now ~time_budget:delta mutex state
+              Base.handle_user_events ~now ~time_budget:delta ~mutex state
           in
           last := new_time
         done
@@ -136,7 +136,7 @@ let progress () =
       (* The current console doesn't react to user events so we just sleep until
           the next loop iteration. Because it doesn't react to user input, it cannot
           modify the UI state, and as a consequence doesn't need the mutex. *)
-      let handle_user_events ~now ~time_budget _mutex _state =
+      let handle_user_events ~now ~time_budget ~mutex:_ _ =
         Unix.sleepf time_budget;
         now +. time_budget
     end)

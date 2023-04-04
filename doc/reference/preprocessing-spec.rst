@@ -19,12 +19,12 @@ possible values for its argument are:
 no_preprocessing
 ----------------
 
-Whtn ``no_preprocessing`` is passed, files are given as-is to the compiler.
+When ``no_preprocessing`` is passed, files are given as-is to the compiler.
 This is the default behavior.
 
 .. _preprocessing-actions:
 
-Preprocessing with Actions
+Preprocessing With Actions
 --------------------------
 
 In ``(action <action>)``, ``<action>`` uses the same DSL as described in
@@ -62,7 +62,7 @@ Arguments to PPX Rewriters
 
 In ``(pps <ppx-rewriters-and-flags>)`` and ``(staged_pps
 <ppx-rewriters-and-flags>)``, ``<ppx-rewriters-and-flags>`` is a sequence where
-each element is either a command line flag if starting with a ``-`` or the name
+each element is either a command line flag if it starts with a ``-`` or the name
 of a library.
 
 If you want to pass command line flags that don't start with a ``-``, you can

@@ -4,7 +4,7 @@ How Preprocessing Works
 Preprocessing consists in transforming source code before it is compiled. The
 goal of this document is to explain how this works in Dune.
 
-Dune supports two ways of applying preprocessors, the "classic pipeline" (used
+Dune supports two separate ways of applying preprocessors, the "classic pipeline" (used
 with ``(staged_pps)``), and the "fast pipeline" (used for all other
 :doc:`preprocessing specifications <../reference/preprocessing-spec>` including
 ``(pps)``).
@@ -27,7 +27,7 @@ The classic pipeline has the following steps:
 - compilation
 
 Dune supports a "fast pipeline" where the preprocessor is invoked separately
-from the compiler and its output is saved. Then, the preprocessed code is
+from the compiler and its output is saved. Afterwards the preprocessed code is
 compiled directly.
 
 The fast pipeline has the following steps:
@@ -41,15 +41,15 @@ the preprocessed code is reused between dependency analysis and different kinds
 of compilation. Also, when several preprocessors use ``ppxlib``, they can be
 combined in preprocessing program that traverses the AST only once.
 
-However, some specific code generators or preprocessors require to have direct
-access to the compilation artefacts of their dependencies. As a result, they
+However, some specific code generators or preprocessors require direct
+access to the compilation artefacts of their dependencies. Therefore they
 need to be used with the classic pipeline, even if it is slower. Note that a
 PPX is able to know if it was called as part of ``ocamldep -ppx`` or ``ocamlopt
 -ppx``, so it can act differently in each phase.
 
-Dune chooses the pipeline to use depending depending on the
-:doc:`../reference/preprocessing-spec` used. It will use the fast pipeline,
-except if ``(staged_pps)`` is used. In that case, the classic pipeline is used.
+Dune chooses which pipeline to use depending on the
+provided :doc:`../reference/preprocessing-spec`. It will select the fast pipeline,
+unless ``(staged_pps)`` is used. In that case, the classic pipeline is used.
 
 In the case of the fast pipeline, a single executable is built and accepts
 arguments for all preprocessors.

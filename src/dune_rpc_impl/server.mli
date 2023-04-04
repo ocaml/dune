@@ -29,3 +29,5 @@ val ready : t -> unit Fiber.t
 val run : t -> unit Fiber.t
 
 val action_runner : t -> Dune_engine.Action_runner.Rpc_server.t
+
+val report_build_complete : t -> unit

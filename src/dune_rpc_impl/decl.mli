@@ -28,3 +28,5 @@ end
 val build : (string list, Build_outcome.t) Decl.Request.t
 
 val status : (unit, Status.t) Decl.Request.t
+
+val build_count : (unit, int) Decl.Request.t

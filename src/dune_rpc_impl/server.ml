@@ -208,6 +208,7 @@ type t =
       (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
   ; watch_mode_config : Watch_mode_config.t
   ; mutable clients : Clients.t
+  ; build_count : int ref
   }
 
 let ready (t : t) =
@@ -223,8 +224,8 @@ let stop (t : t) =
       | None -> ()
       | Some server -> Csexp_rpc.Server.stop server)
 
-let handler (t : t Fdecl.t) action_runner_server : 'a Dune_rpc_server.Handler.t
-    =
+let handler (t : t Fdecl.t) action_runner_server build_count :
+    'a Dune_rpc_server.Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
     let client = () in
@@ -322,7 +323,9 @@ let handler (t : t Fdecl.t) action_runner_server : 'a Dune_rpc_server.Handler.t
         let* () = Job_queue.write server.pending_build_jobs (targets, ivar) in
         Fiber.Ivar.read ivar
     in
-    Handler.implement_request rpc Decl.build build
+    let () = Handler.implement_request rpc Decl.build build in
+    Handler.implement_request rpc Decl.build_count (fun _ () ->
+        Fiber.return !build_count)
   in
   let () =
     let rec cancel_pending_jobs () =
@@ -420,7 +423,8 @@ let create ~lock_timeout ~registry ~root ~watch_mode_config stats action_runner
     =
   let t = Fdecl.create Dyn.opaque in
   let pending_build_jobs = Job_queue.create () in
-  let handler = Dune_rpc_server.make (handler t action_runner) in
+  let build_count = ref 0 in
+  let handler = Dune_rpc_server.make (handler t action_runner build_count) in
   let pool = Fiber.Pool.create () in
   let where = Where.default () in
   Global_lock.lock_exn ~timeout:lock_timeout;
@@ -454,7 +458,12 @@ let create ~lock_timeout ~registry ~root ~watch_mode_config stats action_runner
     }
   in
   let res =
-    { config; pending_build_jobs; watch_mode_config; clients = Clients.empty }
+    { config
+    ; pending_build_jobs
+    ; watch_mode_config
+    ; clients = Clients.empty
+    ; build_count
+    }
   in
   Fdecl.set t res;
   res
@@ -474,3 +483,5 @@ let action_runner t = t.config.action_runner
 let pending_build_action t =
   Job_queue.read t.pending_build_jobs
   |> Fiber.map ~f:(fun (targets, ivar) -> Build (targets, ivar))
+
+let report_build_complete t = t.build_count := !(t.build_count) + 1

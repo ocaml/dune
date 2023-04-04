@@ -53,6 +53,15 @@ module Build = struct
   let decl = Decl.Request.make ~method_:"build" ~generations:[ v1 ]
 end
 
+module Build_count = struct
+  let v1 =
+    Decl.Request.make_current_gen ~req:Conv.unit ~resp:Conv.int ~version:1
+
+  let decl = Decl.Request.make ~method_:"build_count" ~generations:[ v1 ]
+end
+
 let build = Build.decl
 
 let status = Status.decl
+
+let build_count = Build_count.decl

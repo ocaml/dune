@@ -73,6 +73,9 @@ let run_build_system ~common ~request =
       in
       res)
     ~finally:(fun () ->
+      (match Common.rpc common with
+      | `Allow server -> Dune_rpc_impl.Server.report_build_complete server
+      | `Forbid_builds -> ());
       Hooks.End_of_build.run ();
       Fiber.return ())
 

@@ -1,4 +1,4 @@
-(lang dune 3.5)
+(lang dune 3.8)
 ;          ^^^
 ; When changing the version, don't forget to regenerate *.opam files
 ; by running [dune build].
@@ -9,6 +9,8 @@
 (accept_alternative_dune_file_name)
 
 (strict_package_deps false)
+
+(opam_file_location inside_opam_directory)
 
 ; Reserved for Dune itself. This is to help with the bootstrap
 (using dune-bootstrap-info 0.1)

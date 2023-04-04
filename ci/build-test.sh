@@ -60,7 +60,7 @@ git config --global user.name 'github-actions[bot]'
 git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
 echo ======== Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
-opamrun install ./dune.opam --deps-only --with-test
+opamrun install ./opam/dune.opam --deps-only --with-test
 
 case "$dkml_host_abi" in
 darwin_*)
@@ -98,7 +98,7 @@ windows_*)
     fi
 
     echo ======== Install deps on Win32
-    opamrun install ./dune-configurator.opam --deps-only --with-test --yes
+    opamrun install ./opam/dune-configurator.opam --deps-only --with-test --yes
 
     echo ======== Run test suite on Win32
     opamrun exec -- make test-windows
@@ -121,4 +121,4 @@ windows_*)
 esac
 
 echo ======== Build configurator
-opamrun install ./dune-configurator.opam --yes
+opamrun install ./opam/dune-configurator.opam --yes

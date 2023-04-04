@@ -1,6 +1,4 @@
 open Import
-module Toplevel_rules = Toplevel.Stanza
-open Dune_file
 open Memo.O
 
 module For_stanza : sig
@@ -20,7 +18,7 @@ module For_stanza : sig
     -> scope:Scope.t
     -> dir_contents:Dir_contents.t
     -> expander:Expander.t
-    -> files_to_install:(Install_conf.t -> unit Memo.t)
+    -> files_to_install:(Dune_file.Install_conf.t -> unit Memo.t)
     -> ( Merlin.t list
        , (Loc.t * Compilation_context.t) list
        , Path.Build.t list
@@ -64,9 +62,11 @@ end = struct
   let of_stanza stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander
       ~files_to_install =
     let dir = ctx_dir in
+    let toplevel_setup = Toplevel.Stanza.setup in
+    let open Dune_file in
     match stanza with
     | Toplevel toplevel ->
-      let+ () = Toplevel_rules.setup ~sctx ~dir ~toplevel in
+      let+ () = toplevel_setup ~sctx ~dir ~toplevel in
       empty_none
     | Library lib ->
       let* () =
@@ -212,10 +212,11 @@ let gen_rules sctx dir_contents cctxs expander
     let expand_str = Expander.No_deps.expand_str expander in
     let files_and_dirs =
       let* files_expanded =
-        Install_conf.expand_files install_conf ~expand_str ~dir:ctx_dir
+        Dune_file.Install_conf.expand_files install_conf ~expand_str
+          ~dir:ctx_dir
       in
       let+ dirs_expanded =
-        Install_conf.expand_dirs install_conf ~expand_str ~dir:ctx_dir
+        Dune_file.Install_conf.expand_dirs install_conf ~expand_str ~dir:ctx_dir
       in
       List.map (files_expanded @ dirs_expanded) ~f:(fun fb ->
           File_binding.Expanded.src fb |> Path.build)

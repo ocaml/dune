@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680569985996,
+  "lastUpdate": 1680570413990,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -21403,6 +21403,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.7673107504533334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6282035fbe9ff242381e6979b7a1645977c45431",
+          "message": "refactor: stop qualifying Lang.Instance.t (#7482)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-03T17:33:11-07:00",
+          "tree_id": "cc15f78f499fc34bba3607c0429b9515822d3a11",
+          "url": "https://github.com/ocaml/dune/commit/6282035fbe9ff242381e6979b7a1645977c45431"
+        },
+        "date": 1680570413151,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "84.47132386204667",
             "unit": "seconds"
           }
         ]

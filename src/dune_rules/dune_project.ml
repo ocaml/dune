@@ -391,8 +391,7 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
           match ext with
           | Selected ext -> Active ext.version
           | Not_selected (Packed e) ->
-            Inactive
-              { lang = e.syntax; dune_lang_ver = lang.Lang.Instance.version }
+            Inactive { lang = e.syntax; dune_lang_ver = lang.version }
         in
         Univ_map.set acc (Dune_lang.Syntax.key syntax) status)
   in
@@ -702,9 +701,9 @@ let encode : t -> Dune_lang.t list =
 
 module Memo_package_name = Memo.Make_map_traversals (Package.Name.Map)
 
-let parse ~dir ~lang ~file ~dir_status =
+let parse ~dir ~(lang : Lang.Instance.t) ~file ~dir_status =
   String_with_vars.set_decoding_env
-    (Pform.Env.initial lang.Lang.Instance.version)
+    (Pform.Env.initial lang.version)
     (fields
        (let+ name = field_o "name" Name.decode
         and+ version = field_o "version" string
@@ -718,8 +717,8 @@ let parse ~dir ~lang ~file ~dir_status =
              and+ parse_args = capture in
              (* We don't parse the arguments quite yet as we want to set the
                 version of extensions before parsing them. *)
-             Extension.instantiate ~dune_lang_ver:lang.Lang.Instance.version
-               ~loc ~parse_args name ver)
+             Extension.instantiate ~dune_lang_ver:lang.version ~loc ~parse_args
+               name ver)
         and+ implicit_transitive_deps =
           field_o_b "implicit_transitive_deps"
             ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 7))

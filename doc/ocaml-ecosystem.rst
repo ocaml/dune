@@ -55,7 +55,7 @@ files into executables and libraries.
 Assuming you have a development switch set up, you communicate to Dune about how your
 project is organized in terms of executables, libraries, and tests. It is then able to assemble the source files of your projects, with the dependencies installed in an opam switch, to create compiled assets for your project.
 
-How Dune Integrates with the Ecosystem
+How Dune Integrates With the Ecosystem
 --------------------------------------
 
 Dune is designed to integrate with the set of tools mentioned above:

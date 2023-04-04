@@ -26,7 +26,7 @@ jobs:
           - ubuntu-latest
           - windows-latest
         # Please keep the list in sync with the minimal version of OCaml in
-        # dune-project, dune.opam.template and bootstrap.ml
+        # dune-project, opam/dune.opam.template and bootstrap.ml
         #
         # We don't run tests on all versions of the Windows environment and on
         # 4.02.x and 4.07.x in other environments
@@ -80,9 +80,12 @@ jobs:
         run: |
           git config --global user.name github-actions[bot]
           git config --global user.email github-actions[bot]@users.noreply.github.com
+          
+      - name: Pin opam packages
+        run: opam pin . --no-action -y
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
-      - run: opam install ./dune.opam --deps-only --with-test
+      - run: opam install dune --deps-only --with-test
 
       - name: Install system deps on macOS
         run: brew install coreutils pkg-config file
@@ -102,7 +105,7 @@ jobs:
         if: ${{ matrix.os != 'windows-latest' && matrix.skip_test == false }}
 
       - name: Install deps on Win32
-        run: opam install ./dune-configurator.opam --deps-only --with-test
+        run: opam install dune-configurator --deps-only --with-test
         if: ${{ matrix.os == 'windows-latest' && matrix.skip_test == false }}
 
       - name: Run test suite on Unix
@@ -114,7 +117,7 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' && matrix.skip_test == false }}
 
       - name: Build configurator
-        run: opam install ./dune-configurator.opam
+        run: opam install dune-configurator
         if: ${{ matrix.configurator == true }}
 
   dkml-current:
@@ -191,7 +194,7 @@ jobs:
           git config --global user.email github-actions[bot]@users.noreply.github.com
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
-      - run: opam install ./dune.opam --deps-only --with-test
+      - run: opam install dune --deps-only --with-test
 
       - name: Install deps on Unix
         run: |

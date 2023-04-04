@@ -4,7 +4,7 @@ The OCaml Ecosystem
 The OCaml ecosystem is not monolithic: the compiler and tools are not
 maintained by the same entities. As such, it can be difficult to understand the
 history and roles of the various pieces of this ecosystem. The goal of this
-page is to give a quick overview of the situation and of the role that Dune
+page is to give a quick overview of the situation and the role that Dune
 plays in it.
 
 The OCaml Compiler Distribution: Compiling and Linking
@@ -58,7 +58,7 @@ project is organized in terms of executables, libraries, and tests. It is then a
 How Dune Integrates With the Ecosystem
 --------------------------------------
 
-Dune is designed to integrate with the set of tools mentioned above:
+Dune is designed to integrate with the tools mentioned above:
 
 - By knowing how the OCaml compilers operate, it knows which build commands should be
   re-executed if some source files change.

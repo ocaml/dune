@@ -40,15 +40,13 @@ In the above project, two modules have their implementation generated:
 Formatting the codebase should not trigger the generation of missing modules
   $ dune build @fmt
 
-Ad expected, Dune did not try to generate the missing implem for [Parser_raw] 
-  $ ls -a _build/default/parser_raw.ml
-  ls: _build/default/parser_raw.ml: No such file or directory
-  [1]
+As expected, Dune did not try to generate the missing implem for [Parser_raw] 
+  $ dune_cmd exists _build/default/parser_raw.ml
+  false
 
-Ad expected, Dune did not try to generate the missing implem for [Other_gen]
-  $ ls -a _build/default/other_gen.ml
-  ls: _build/default/other_gen.ml: No such file or directory
-  [1]
+As expected, Dune did not try to generate the missing implem for [Other_gen]
+  $ dune_cmd exists _build/default/other_gen.ml
+  false
 
   $ dune clean
 
@@ -69,10 +67,9 @@ We format again.
   [1]
 
 FIXME: unexpectedly, Dune generated the missing parser
-  $ ls -a _build/default/parser_raw.ml
-  _build/default/parser_raw.ml
+  $ dune_cmd exists _build/default/parser_raw.ml
+  true
 
-Ad expected, Dune did not try to generate the missing implem for [Other_gen]
-  $ ls -a _build/default/other_gen.ml
-  ls: _build/default/other_gen.ml: No such file or directory
-  [1]
+As expected, Dune did not try to generate the missing implem for [Other_gen]
+  $ dune_cmd exists _build/default/other_gen.ml
+  false

@@ -8,7 +8,7 @@ page is to give a quick overview of the situation and of the role that Dune
 plays in it.
 
 The OCaml Compiler Distribution: Compiling and Linking
-------------------------------------------------
+------------------------------------------------------
 
 The OCaml compiler distribution contains "core" tools including the compilers
 (``ocamlc`` and ``ocamlopt``). They turn source files (with extensions ``.ml``

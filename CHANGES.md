@@ -9,6 +9,9 @@
 
 - Pass correct flags when compiling `stdlib.ml`. (#7241, @emillon)
 
+- Handle "Too many links" errors when using Dune cache on Windows.  The fix in
+  3.7.0 for this same issue was not effective due to a typo. (#7472, @nojb)
+
 3.7.0.post1 (2023-02-21)
 ------------------------
 

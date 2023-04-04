@@ -7,15 +7,15 @@ history and roles of the various pieces of this ecosystem. The goal of this
 page is to give a quick overview of the situation and of the role that Dune
 plays in it.
 
-The Compiler Distribution: Compiling and Linking
+The OCaml Compiler Distribution: Compiling and Linking
 ------------------------------------------------
 
-The compiler distribution contains "core" tools including the compilers
+The OCaml compiler distribution contains "core" tools including the compilers
 (``ocamlc`` and ``ocamlopt``). They turn source files (with extensions ``.ml``
 and ``.mli``) into executables and libraries. Dependencies between compiled
 objects only exist at the module level, so this is a low-level tool.
 
-Findlib: Metadata for libraries
+Findlib: Metadata for Libraries
 -------------------------------
 
 Findlib is a tool that defines the concept of library, so that libraries can
@@ -41,7 +41,7 @@ Opam manages collections of installed packages, called switches. Using your
 project's dependencies (names and version constraints), it is able to create a
 switch that you'll be using to develop your project.
 
-Public definition of packages are available in a database called
+Public definitions of packages are available in a database called
 ``opam-repository`` which is maintained as a public Git repository. Publishing a
 package on opam (to make sure that external users can use your project)
 consists in adding its definition to ``opam-repository``.
@@ -58,12 +58,12 @@ project is organized in terms of executables, libraries, and tests. It is then a
 How Dune Integrates with the Ecosystem
 --------------------------------------
 
-Dune is designed to integrate with this set of tools:
+Dune is designed to integrate with the set of tools mentioned above:
 
-- By knowing how the compilers operate, it knows which build commands should be
+- By knowing how the OCaml compilers operate, it knows which build commands should be
   re-executed if some source files change.
 - It outputs metadata like dependency information into ``META`` files that
-  Findlib is able to use. This ensures that even if a project does not use Dune, it
+  Findlib is able to make use of. This ensures that even if a project does not use Dune, it
   can use a library that has been produced by Dune. Conversely, it can read
   these files to determine dependency information for dependencies that have
   not been produced by Dune.

@@ -67,10 +67,10 @@ Dune is designed to integrate with the set of tools mentioned above:
   can use a library that has been produced by Dune. Conversely, it can read
   these files to determine dependency information for dependencies that have
   not been produced by Dune.
-- It is able to generate opam files with filenames consistents with how opam
+- It is able to generate opam files with filenames consistent with how opam
   looks for them. The generated files use build commands that make use of the
-  ``@install`` and ``@runtest`` alias so that the Dune abstractions map to the
-  opam ones.
+  ``@install`` and ``@runtest`` :term:`aliases <alias>` so that the Dune
+  abstractions map to the opam ones.
 
 Dune is Opinionated
 -------------------
@@ -83,7 +83,7 @@ Dune tries to simplify the picture by reducing the difference between these
 objects:
 
 - By default, a library will only expose a single top-level module named after
-  the library.
+  the library (this is called a wrapped library).
 - A library can only be installed in the package of the same name. This means
   that the names found in ``dune-project`` and ``opam`` files (package names)
   are consistent with the names found in ``dune`` files (library names).

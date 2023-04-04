@@ -86,4 +86,6 @@ objects:
   the library (this is called a wrapped library).
 - A library can only be installed in the package of the same name. This means
   that the names found in ``dune-project`` and ``opam`` files (package names)
-  are consistent with the names found in ``dune`` files (library names).
+  are consistent with the names found in ``dune`` files (library names). More
+  precisely, libraries ``foo``, ``foo.bar`` and ``foo.baz`` are part of the
+  ``foo`` package.

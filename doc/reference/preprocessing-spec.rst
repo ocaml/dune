@@ -101,8 +101,8 @@ module-by-module basis by using the ``(per-module ...)`` syntax. For instance::
 
   (preprocess
    (per_module
-    (((action (run ./pp.sh X=1 %{input-file})) foo bar))
-    (((action (run ./pp.sh X=2 %{input-file})) baz))))
+    ((action (run ./pp.sh X=1 %{input-file})) foo bar)
+    ((action (run ./pp.sh X=2 %{input-file})) baz)))
 
 The modules ``Foo`` and ``Bar`` will be preprocessed with ``pp.sh X=1``, and
 ``Baz`` will be preprocessed with ``pp.sh X=2``.

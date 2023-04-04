@@ -39,7 +39,7 @@ The fast pipeline has the following steps:
 It has several advantages: it only invokes the preprocessor once per file, and
 the preprocessed code is reused between dependency analysis and different kinds
 of compilation. Also, when several preprocessors use ``ppxlib``, they can be
-combined in preprocessing program that traverses the AST only once.
+combined in a preprocessing program that traverses the AST only once.
 
 However, some specific code generators or preprocessors require direct
 access to the compilation artefacts of their dependencies. Therefore they

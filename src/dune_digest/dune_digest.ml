@@ -2,6 +2,8 @@ open Stdune
 
 type t = string
 
+external md5_fd : Unix.file_descr -> string = "dune_md5_fd"
+
 module D = Stdlib.Digest
 module Set = String.Set
 module Map = String.Map
@@ -14,13 +16,21 @@ module type Digest_impl = sig
 end
 
 module Direct_impl : Digest_impl = struct
-  let file = D.file
+  let file file =
+    let fd =
+      match Unix.openfile file [ Unix.O_RDONLY ] 0 with
+      | fd -> fd
+      | exception Unix.Unix_error (Unix.EACCES, _, _) ->
+        raise (Sys_error (sprintf "%s: Permission denied" file))
+      | exception exn -> reraise exn
+    in
+    Exn.protectx fd ~f:md5_fd ~finally:Unix.close
 
   let string = D.string
 end
 
 module Mutable_impl = struct
-  let file_ref = ref D.file
+  let file_ref = ref Direct_impl.file
 
   let string_ref = ref D.string
 

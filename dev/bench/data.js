@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680711581228,
+  "lastUpdate": 1680711941256,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -22621,6 +22621,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.851938568126667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e33a394e75a4116690e506d66ae8115941c056ce",
+          "message": "fix: (opam_file_location inside_opam_directory) .install files (#7493)\n\nbuild .install files in teh correct location\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-05T08:52:33-07:00",
+          "tree_id": "b56be8251580ba2d918c095f7bb35498fa5ffd1a",
+          "url": "https://github.com/ocaml/dune/commit/e33a394e75a4116690e506d66ae8115941c056ce"
+        },
+        "date": 1680711939969,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "80.94960710147332",
             "unit": "seconds"
           }
         ]

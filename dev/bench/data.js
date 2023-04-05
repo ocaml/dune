@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680712336348,
+  "lastUpdate": 1680712347077,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -22737,6 +22737,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "65.23685519836667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5ac536a9c5a613a645c5f9c8efe1b1acb84683e4",
+          "message": "refactor: remove some nesting from parsing (#7501)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-05T09:05:35-07:00",
+          "tree_id": "00b38c625177b1f6156e4d1a6803acefdf5e7929",
+          "url": "https://github.com/ocaml/dune/commit/5ac536a9c5a613a645c5f9c8efe1b1acb84683e4"
+        },
+        "date": 1680712345921,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.5975060889333335",
             "unit": "seconds"
           }
         ]

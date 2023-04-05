@@ -2,7 +2,7 @@ open Import
 
 type t =
   { has_native : bool
-  ; ext_lib : string
+  ; ext_lib : Filename.Extension.t
   ; ext_obj : string
   ; os_type : Ocaml_config.Os_type.t
   ; architecture : string

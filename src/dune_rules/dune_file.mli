@@ -294,7 +294,12 @@ module Executables : sig
 
     val to_dyn : t -> Dyn.t
 
-    val extension : t -> loc:Loc.t -> ext_obj:string -> ext_dll:string -> string
+    val extension :
+         t
+      -> loc:Loc.t
+      -> ext_obj:Filename.Extension.t
+      -> ext_dll:Filename.Extension.t
+      -> string
 
     module Map : Map.S with type key = t
   end

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680696743047,
+  "lastUpdate": 1680697207889,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -12295,6 +12295,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "43.579008449546656",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5899ff6eb19c32d9ea8aadbbb842a745efabc7db",
+          "message": "doc: add \"the ocaml ecosystem\" (#7366)\n\n* doc: add \"the ocaml ecosystem\"\r\n\r\nThe goal of this document is to explain what the OCaml ecosystem looks\r\nlike and how dune fits in there.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\nCo-authored-by: Christine Rose <christinerose@users.noreply.github.com>\r\nCo-authored-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-04-05T13:58:12+02:00",
+          "tree_id": "e909c1ad06adce2983609b69e032fb037781da6b",
+          "url": "https://github.com/ocaml/dune/commit/5899ff6eb19c32d9ea8aadbbb842a745efabc7db"
+        },
+        "date": 1680697207200,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.661524836573335",
             "unit": "seconds"
           }
         ]

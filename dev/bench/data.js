@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680657354121,
+  "lastUpdate": 1680657402971,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -21780,6 +21780,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6302923362",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1fcb65c44f542ab4afc0a4db2b5f066481491a78",
+          "message": "test: reproduce bug with (opam_file_location inside_opam_directory) (#7492)\n\nWhen this mode is set, the .install file is now generate in the opam/\r\ndir/\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-04T17:43:36-07:00",
+          "tree_id": "bd6c5592b381d622c8db0a615cec577b410a8d35",
+          "url": "https://github.com/ocaml/dune/commit/1fcb65c44f542ab4afc0a4db2b5f066481491a78"
+        },
+        "date": 1680657401766,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "82.29979724298666",
             "unit": "seconds"
           }
         ]

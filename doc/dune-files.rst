@@ -669,7 +669,8 @@ dune
 ``dune`` files are the main part of Dune. They are used to describe libraries,
 executables, tests, and everything Dune needs to know about.
 
-The syntax of ``dune`` files is described in :ref:`metadata-format` section.
+The syntax of ``dune`` files is described in
+:doc:`reference/lexical-conventions`.
 
 ``dune`` files are composed of stanzas, as shown below:
 

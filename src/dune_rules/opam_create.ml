@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 let default_build_command =
   let before_1_11 =
@@ -281,7 +282,23 @@ let generate project pkg ~template =
     | None -> ""
     | Some (_, s) -> s)
 
-let add_rule sctx ~project ~pkg =
+let add_alias_rule sctx ~project ~pkg =
+  let build_dir = (Super_context.context sctx).build_dir in
+  let dir = Path.Build.append_source build_dir (Dune_project.root project) in
+  let opam_path = Path.Build.append_source build_dir (Package.opam_file pkg) in
+  let aliases =
+    [ Alias.install ~dir
+    ; Alias.runtest ~dir
+    ; Alias.check ~dir (* check doesn't pick up the promote target? *)
+    ]
+  in
+  let deps = Path.Set.singleton (Path.build opam_path) in
+  Memo.parallel_iter aliases ~f:(fun alias ->
+      (* TODO slow. we should be calling these functions only once, rather than
+         once per package *)
+      Rules.Produce.Alias.add_deps alias (Action_builder.path_set deps))
+
+let add_opam_file_rule sctx ~project ~pkg =
   let open Action_builder.O in
   let build_dir = (Super_context.context sctx).build_dir in
   let opam_path = Path.Build.append_source build_dir (Package.opam_file pkg) in
@@ -290,24 +307,25 @@ let add_rule sctx ~project ~pkg =
      generate project pkg ~template)
     |> Action_builder.write_file_dyn opam_path
   in
-  let dir = Path.Build.append_source build_dir (Package.dir pkg) in
+  let dir = Path.Build.append_source build_dir (Dune_project.root project) in
   let mode =
     Rule.Mode.Promote { lifetime = Unlimited; into = None; only = None }
   in
-  let open Memo.O in
-  let* () = Super_context.add_rule sctx ~mode ~dir opam_rule in
-  let aliases =
-    [ Alias.install ~dir
-    ; Alias.runtest ~dir
-    ; Alias.check ~dir (* check doesn't pick up the promote target? *)
-    ]
-  in
-  let deps = Path.Set.singleton (Path.build opam_path) in
-  Memo.sequential_iter aliases ~f:(fun alias ->
-      Rules.Produce.Alias.add_deps alias (Action_builder.path_set deps))
+  Super_context.add_rule sctx ~mode ~dir opam_rule
+
+let add_opam_file_rules sctx project =
+  Memo.when_ (Dune_project.generate_opam_files project) (fun () ->
+      let packages = Dune_project.packages project in
+      Package.Name.Map_traversals.parallel_iter packages
+        ~f:(fun _name (pkg : Package.t) ->
+          add_opam_file_rule sctx ~project ~pkg))
 
 let add_rules sctx project =
   Memo.when_ (Dune_project.generate_opam_files project) (fun () ->
       let packages = Dune_project.packages project in
       Package.Name.Map_traversals.parallel_iter packages
-        ~f:(fun _name (pkg : Package.t) -> add_rule sctx ~project ~pkg))
+        ~f:(fun _name (pkg : Package.t) ->
+          let* () = add_alias_rule sctx ~project ~pkg in
+          match Dune_project.opam_file_location project with
+          | `Inside_opam_directory -> Memo.return ()
+          | `Relative_to_project -> add_opam_file_rule sctx ~project ~pkg))

@@ -1,5 +1,12 @@
 open Import
 
+let pkg_config_binary sctx ~dir =
+  let open Memo.O in
+  let+ env = Super_context.env_node sctx ~dir >>= Env_node.external_env in
+  match Env.get env "PKG_CONFIG" with
+  | None -> "pkg-config"
+  | Some s -> s
+
 module Query = struct
   type t =
     | Libs of string
@@ -28,7 +35,9 @@ module Query = struct
     let open Action_builder.O in
     let* bin =
       Action_builder.of_memo
-      @@ Super_context.resolve_program sctx ~loc:None ~dir "pkg-config"
+        (let open Memo.O in
+        let* pkg_config = pkg_config_binary sctx ~dir in
+        Super_context.resolve_program sctx ~loc:None ~dir pkg_config)
     in
     match bin with
     | Error _ -> Action_builder.return (default t)
@@ -42,7 +51,10 @@ end
 let gen_rule sctx ~loc ~dir query =
   let open Memo.O in
   let* bin =
-    Super_context.resolve_program sctx ~loc:(Some loc) ~dir "pkg-config"
+    let open Memo.O in
+    let* pkg_config = pkg_config_binary sctx ~dir in
+
+    Super_context.resolve_program sctx ~loc:(Some loc) ~dir pkg_config
   in
   match bin with
   | Error _ -> Memo.return @@ Error `Not_found

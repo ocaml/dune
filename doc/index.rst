@@ -60,6 +60,7 @@ Welcome to Dune's Documentation!
    :caption: Explanations
 
    explanation/preprocessing
+   explanation/ocaml-ecosystem
 
 .. toctree::
    :caption: Advanced topics

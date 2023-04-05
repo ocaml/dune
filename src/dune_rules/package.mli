@@ -140,6 +140,10 @@ module Info : sig
   val superpose : t -> t -> t
 end
 
+type opam_file =
+  | Exists of bool
+  | Look_inside_opam_dir
+
 type t =
   { id : Id.t
   ; loc : Loc.t
@@ -150,7 +154,7 @@ type t =
   ; depopts : Dependency.t list
   ; info : Info.t
   ; version : string option
-  ; has_opam_file : bool
+  ; has_opam_file : opam_file
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Section.t Section.Site.Map.t
@@ -162,6 +166,8 @@ val equal : t -> t -> bool
 val name : t -> Name.t
 
 val dir : t -> Path.Source.t
+
+val set_inside_opam_dir : t -> dir:Path.Source.t -> t
 
 val file : dir:Path.t -> name:Name.t -> Path.t
 

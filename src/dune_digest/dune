@@ -2,7 +2,10 @@
  (name dune_digest)
  (libraries dune_metrics stdune)
  (foreign_stubs
-  (names dune_digest_stubs)
+  (flags :standard -DCAML_NAME_SPACE
+         -DBLAKE3_NO_SSE2 -DBLAKE3_NO_SSE41 -DBLAKE3_NO_AVX2 -DBLAKE3_NO_AVX512
+         -DBLAKE3_USE_NEON=0)
+  (names dune_digest_stubs blake3 blake3_portable blake3_dispatch)
   (language c))
  (instrumentation
   (backend bisect_ppx)))

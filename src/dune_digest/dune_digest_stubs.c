@@ -10,6 +10,8 @@
 #include <caml/md5.h>
 #undef CAML_INTERNALS
 
+#include "blake3.h"
+
 /* yanked from:
  * https://github.com/janestreet/core/blob/master/core/src/md5_stubs.c
  */
@@ -47,3 +49,53 @@ CAMLprim value dune_md5_fd(value v_fd) {
   caml_MD5Final(&Byte_u(v_res, 0), &ctx);
   CAMLreturn(v_res);
 }
+
+const int blake_hash_len = 16;
+
+CAMLprim value dune_blake3_string(value v_string) {
+  CAMLparam1(v_string);
+  CAMLlocal1(v_res);
+  int len = caml_string_length(v_string);
+  blake3_hasher ctx;
+  blake3_hasher_init(&ctx);
+  blake3_hasher_update(&ctx, &Byte_u(v_string, 0), len);
+  v_res = caml_alloc_string(blake_hash_len);
+  blake3_hasher_finalize(&ctx, &Byte_u(v_res, 0), blake_hash_len);
+  CAMLreturn(v_res);
+}
+
+CAMLprim value dune_blake3_fd(value v_fd) {
+  CAMLparam1(v_fd);
+  CAMLlocal1(v_res);
+#ifdef _WIN32
+  int fd = win_CRT_fd_of_filedescr(v_fd);
+#else
+  int fd = Int_val(v_fd);
+#endif
+  caml_release_runtime_system();
+  blake3_hasher ctx;
+  blake3_hasher_init(&ctx);
+  {
+    char buffer[UNIX_BUFFER_SIZE];
+
+    intnat bytes_read;
+    while (1) {
+      bytes_read = read(fd, buffer, sizeof(buffer));
+      if (bytes_read == 0) {
+        break;
+      } else if (bytes_read < 0) {
+        if (errno == EINTR)
+          continue;
+        caml_acquire_runtime_system();
+        uerror("read", Nothing);
+      } else {
+        blake3_hasher_update(&ctx, buffer, bytes_read);
+      }
+    }
+  }
+  caml_acquire_runtime_system();
+  v_res = caml_alloc_string(blake_hash_len);
+  blake3_hasher_finalize(&ctx, &Byte_u(v_res, 0), blake_hash_len);
+  CAMLreturn(v_res);
+}
+

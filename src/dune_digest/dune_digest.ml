@@ -2,7 +2,9 @@ open Stdune
 
 type t = string
 
-external md5_fd : Unix.file_descr -> string = "dune_md5_fd"
+external blake3_fd : Unix.file_descr -> string = "dune_blake3_fd"
+
+external blake3_string : string -> string = "dune_blake3_string"
 
 module D = Stdlib.Digest
 module Set = String.Set
@@ -24,15 +26,15 @@ module Direct_impl : Digest_impl = struct
         raise (Sys_error (sprintf "%s: Permission denied" file))
       | exception exn -> reraise exn
     in
-    Exn.protectx fd ~f:md5_fd ~finally:Unix.close
+    Exn.protectx fd ~f:blake3_fd ~finally:Unix.close
 
-  let string = D.string
+  let string = blake3_string
 end
 
 module Mutable_impl = struct
   let file_ref = ref Direct_impl.file
 
-  let string_ref = ref D.string
+  let string_ref = ref Direct_impl.string
 
   let file f = !file_ref f
 

@@ -23,6 +23,7 @@ Welcome to Dune's Documentation!
    :caption: Reference Guides
    :maxdepth: 3
 
+   reference/lexical-conventions
    reference/ordered-set-language
    reference/boolean-language
    reference/predicate-language
@@ -50,7 +51,6 @@ Welcome to Dune's Documentation!
    sites
    instrumentation
    jsoo
-   lexical-conventions
    opam
    toplevel-integration
    variants

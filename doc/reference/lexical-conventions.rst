@@ -1,4 +1,4 @@
-.. _metadata-format:
+.. highlight:: dune
 
 *******************
 Lexical Conventions
@@ -18,11 +18,9 @@ Comments
 
 The Dune language only has end of line comments. A semicolon introduces end of
 line comments and span up to the end of the current line. The system ignores
-everything from the semicolon to the end of the line. For instance:
+everything from the semicolon to the end of the line. For instance::
 
-.. code:: dune
-
-   ; This is a comment
+  ; This is a comment
 
 Atoms
 =====
@@ -57,17 +55,15 @@ and interprets the following escape sequences:
 - ``\xHH``, a backslash followed by two hexadecimal characters to
   represent the character with ASCII code ``HH`` in hexadecimal
 - ``\\``, a double backslash to represent a single backslash
-- ``\%{`` to represent ``%{`` (see :doc:`concepts/variables`)
+- ``\%{`` to represent ``%{`` (see :doc:`../concepts/variables`)
 
 Additionally, you can use a backslash just before the end of the line. This
 skips the newline leading up to the next non-space character. For instance, the
-following two strings represent the same text:
+following two strings represent the same text::
 
-.. code:: dune
-
-   "abcdef"
-   "abc\
-      def"
+  "abcdef"
+  "abc\
+     def"
 
 In most places where Dune expects a string, it will also accept an atom. As a
 result, it's possible to write most Dune configuration files using very few
@@ -85,12 +81,10 @@ Dune reads it as a continuation of the same string. For readability, either
 leave the text following the delimiter empty or start it with a space (that
 will be ignored).
 
-For instance:
+For instance::
 
-.. code:: dune
-
-   "\| this is a block
-   "\| of text
+  "\| this is a block
+  "\| of text
 
 represents the same text as the string ``"this is a block\nof text"``.
 
@@ -106,11 +100,9 @@ Lists are sequences of values enclosed by parentheses. For instance
 ``z``. Lists can be empty, for instance: ``()``.
 
 Lists can be nested, allowing arbitrary representation for complex
-descriptions. For instance:
+descriptions. For instance::
 
-.. code:: dune
-
-   (html
-    (head (title "Hello world!"))
-    (body
-      This is a simple example of using S-expressions))
+  (html
+   (head (title "Hello world!"))
+   (body
+     This is a simple example of using S-expressions))

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680710919643,
+  "lastUpdate": 1680711214479,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -12469,6 +12469,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.00106206441333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "773ca51d6fd649b3b4f25035efcc00099d1b1dd8",
+          "message": "refactor: use Filename.Extension.t (#7495)\n\nUse it in type signature whenever possible\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-05T08:51:50-07:00",
+          "tree_id": "029b7ab77d24c1a32ef90953200cc638ef8821fc",
+          "url": "https://github.com/ocaml/dune/commit/773ca51d6fd649b3b4f25035efcc00099d1b1dd8"
+        },
+        "date": 1680711213336,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.60118610766",
             "unit": "seconds"
           }
         ]

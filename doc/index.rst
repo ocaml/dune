@@ -30,9 +30,9 @@ Welcome to Dune's Documentation!
    reference/actions
    reference/foreign
    reference/cli
+   reference/preprocessing-spec
    concepts/scopes
    concepts/variables
-   concepts/preprocessing-spec
    concepts/dependency-spec
    concepts/ocaml-flags
    concepts/sandboxing
@@ -55,6 +55,11 @@ Welcome to Dune's Documentation!
    toplevel-integration
    variants
    tests
+
+.. toctree::
+   :caption: Explanations
+
+   explanation/preprocessing
 
 .. toctree::
    :caption: Advanced topics

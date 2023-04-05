@@ -11,3 +11,5 @@ val generate :
   Dune_project.t -> Package.t -> template:(Path.t * string) option -> string
 
 val add_rules : Super_context.t -> Dune_project.t -> unit Memo.t
+
+val add_opam_file_rules : Super_context.t -> Dune_project.t -> unit Memo.t

@@ -591,8 +591,7 @@ end = struct
               let+ foreign_sources =
                 Dir_contents.foreign_sources dir_contents
               in
-              foreign_sources
-              |> Foreign_sources.for_lib ~name
+              Foreign_sources.for_lib ~name foreign_sources
               |> Foreign.Sources.object_files ~dir
                    ~ext_obj:ctx.lib_config.ext_obj
               |> List.map ~f:Path.build

@@ -65,8 +65,7 @@ let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
   if not (Executables.has_foreign exes) then Memo.return @@ Mode.Map.empty
   else
     let what =
-      if List.is_empty exes.buildable.Buildable.foreign_stubs then "archives"
-      else "stubs"
+      if List.is_empty exes.buildable.foreign_stubs then "archives" else "stubs"
     in
     if List.exists linkages ~f:Exe.Linkage.is_byte then
       User_error.raise ~loc:exes.buildable.loc

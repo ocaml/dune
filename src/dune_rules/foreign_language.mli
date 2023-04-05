@@ -47,6 +47,6 @@ end
 
 val source_extensions : (t * (int * int)) String.Map.t
 
-val header_extension : string
+val header_extension : Filename.Extension.t
 
 val has_foreign_extension : fn:string -> bool

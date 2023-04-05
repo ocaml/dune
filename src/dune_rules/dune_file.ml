@@ -1188,7 +1188,10 @@ module Executables = struct
       -> (t, fields) Dune_lang.Decoder.parser
 
     val install_conf :
-      t -> ext:string -> enabled_if:Blang.t -> Install_conf.t option
+         t
+      -> ext:Filename.Extension.t
+      -> enabled_if:Blang.t
+      -> Install_conf.t option
   end = struct
     type public =
       { public_names : (Loc.t * string option) list

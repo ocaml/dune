@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680702013850,
+  "lastUpdate": 1680702527795,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -12411,6 +12411,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.147687965386666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "52d035317d08522434b4dd4b11a8bf93fbc51871",
+          "message": "doc: move lexical conventions to reference (#7499)\n\n* doc: move lexical-conventions to reference\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-04-05T15:26:45+02:00",
+          "tree_id": "f5ad47b12cd1537446674bf9f35c721a565165de",
+          "url": "https://github.com/ocaml/dune/commit/52d035317d08522434b4dd4b11a8bf93fbc51871"
+        },
+        "date": 1680702526625,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.15786668198666",
             "unit": "seconds"
           }
         ]

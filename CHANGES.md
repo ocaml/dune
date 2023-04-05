@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Use `$PKG_CONFIG`, when set, to find the `pkg-config` binary  (#7469, fixes
+  #2572, @anmonteiro)
+
 - Preliminary support for Coq compiled intefaces (`.vos` files) enabled via
   `(mode vos)` in `coq.theory` stanzas. This can be used in combination with
   `dune coq top` to obtain fast re-building of dependencies (with no checking

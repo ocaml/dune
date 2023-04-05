@@ -544,6 +544,10 @@ module Info = struct
     }
 end
 
+type opam_file =
+  | Exists of bool
+  | Look_inside_opam_dir
+
 type t =
   { id : Id.t
   ; loc : Loc.t
@@ -554,7 +558,7 @@ type t =
   ; depopts : Dependency.t list
   ; info : Info.t
   ; version : string option
-  ; has_opam_file : bool
+  ; has_opam_file : opam_file
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Section.t Section.Site.Map.t
@@ -569,6 +573,9 @@ let hash t = Id.hash t.id
 let name t = t.id.name
 
 let dir t = t.id.dir
+
+let set_inside_opam_dir t ~dir =
+  { t with id = { t.id with Id.dir }; has_opam_file = Look_inside_opam_dir }
 
 let encode (name : Name.t)
     { id = _
@@ -659,12 +666,18 @@ let decode ~dir =
      ; depopts
      ; info
      ; version
-     ; has_opam_file = false
+     ; has_opam_file = Exists false
      ; tags
      ; deprecated_package_names
      ; sites
      ; allow_empty
      }
+
+let dyn_of_opam_file =
+  let open Dyn in
+  function
+  | Exists b -> variant "Exists" [ bool b ]
+  | Look_inside_opam_dir -> variant "Look_inside_opam_dir" []
 
 let to_dyn
     { id
@@ -691,7 +704,7 @@ let to_dyn
     ; ("conflicts", list Dependency.to_dyn conflicts)
     ; ("depopts", list Dependency.to_dyn depopts)
     ; ("info", Info.to_dyn info)
-    ; ("has_opam_file", Bool has_opam_file)
+    ; ("has_opam_file", dyn_of_opam_file has_opam_file)
     ; ("tags", list string tags)
     ; ("version", option string version)
     ; ( "deprecated_package_names"
@@ -724,7 +737,7 @@ let default name dir =
   ; conflicts = []
   ; info = Info.empty
   ; depopts = []
-  ; has_opam_file = false
+  ; has_opam_file = Exists false
   ; tags = [ "topics"; "to describe"; "your"; "project" ]
   ; deprecated_package_names = Name.Map.empty
   ; sites = Section.Site.Map.empty
@@ -796,7 +809,7 @@ let load_opam_file file name =
       }
   ; synopsis = get_one "synopsis"
   ; description = get_one "description"
-  ; has_opam_file = true
+  ; has_opam_file = Exists true
   ; tags = Option.value (get_many "tags") ~default:[]
   ; deprecated_package_names = Name.Map.empty
   ; sites = Section.Site.Map.empty

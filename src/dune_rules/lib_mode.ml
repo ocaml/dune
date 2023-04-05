@@ -132,7 +132,7 @@ module Map = struct
 
     let for_merlin { ocaml = { byte; native = _ }; melange } =
       match (byte, melange) with
-      | false, true -> `Melange
-      | _, _ -> `Ocaml
+      | false, true -> Melange
+      | _, _ -> Ocaml Byte
   end
 end

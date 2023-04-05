@@ -253,8 +253,6 @@ struct
        it does COW when edited. It will also default back to regular copying if
        it fails for w/e reason *)
     external copyfile : string -> string -> unit = "stdune_copyfile"
-
-    external available : unit -> bool = "stdune_is_darwin"
   end
 
   let copy_file ?chmod ~src ~dst () =
@@ -262,9 +260,9 @@ struct
       ~f:(fun (ic, oc) -> copy_channels ic oc)
 
   let copy_file =
-    match Copyfile.available () with
-    | false -> copy_file
-    | true -> (
+    match Platform.OS.value with
+    | Linux | Windows | Other -> copy_file
+    | Darwin -> (
       fun ?chmod ~src ~dst () ->
         let src = Path.to_string src in
         let dst = Path.to_string dst in
@@ -374,7 +372,9 @@ let portable_hardlink ~src ~dst =
          filter out the duplicates first. *)
       Path.unlink dst;
       Path.link src dst
-    | Unix.Unix_error (Unix.EMLINK, _, _) ->
+    | Unix.Unix_error (Unix.EMLINK, _, _)
+    | Unix.Unix_error (Unix.EUNKNOWNERR -1142, _, _)
+    (* Needed for OCaml < 5.1 *) ->
       (* If we can't make a new hard link because we reached the limit on the
          number of hard links per file, we fall back to copying. We expect that
          this happens very rarely (probably only for empty files). *)

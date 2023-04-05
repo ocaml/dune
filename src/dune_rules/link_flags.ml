@@ -16,12 +16,8 @@ module Spec = struct
     let standard = Ordered_set_lang.Unexpanded.standard in
     { link_flags = standard; link_flags_cxx = standard }
 
-  let decode ~since =
+  let decode ~check =
     let open Dune_lang.Decoder in
-    let check =
-      Option.map since ~f:(fun since ->
-          Dune_lang.Syntax.since Stanza.syntax since)
-    in
     let+ flags = Ordered_set_lang.Unexpanded.field "link_flags" ?check in
     { link_flags = flags; link_flags_cxx = flags }
 

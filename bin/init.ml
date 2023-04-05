@@ -207,7 +207,7 @@ let project =
      print_completion "project" common.name
 
 let group =
-  let doc = "Command group for initializing dune components" in
+  let doc = "Command group for initializing Dune components." in
   let synopsis =
     Common.command_synopsis
       [ "init proj NAME [PATH] [OPTION]... "

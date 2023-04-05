@@ -501,15 +501,11 @@ end
 module Opam_files = struct
   let get () =
     let open Memo.O in
-    let+ project =
-      Dune_engine.Source_tree.root () >>| Dune_engine.Source_tree.Dir.project
-    in
-    let packages =
-      Dune_project.packages project |> Dune_engine.Package.Name.Map.values
-    in
+    let+ project = Source_tree.root () >>| Source_tree.Dir.project in
+    let packages = Dune_project.packages project |> Package.Name.Map.values in
     Dyn.List
       (List.map packages ~f:(fun pkg ->
-           let opam_file = Path.source (Dune_engine.Package.opam_file pkg) in
+           let opam_file = Path.source (Package.opam_file pkg) in
            let contents =
              if not (Dune_project.generate_opam_files project) then
                Io.read_file opam_file
@@ -711,7 +707,9 @@ module Preprocess = struct
     let dump_file =
       Path.map_extension pp_file ~f:(fun ext ->
           let dialect =
-            Dialect.DB.find_by_extension (Dune_project.dialects project) ext
+            Dune_rules.Dialect.DB.find_by_extension
+              (Dune_project.dialects project)
+              ext
           in
           match dialect with
           | None ->
@@ -757,16 +755,14 @@ module Preprocess = struct
     Build_system.file_exists pp_file >>= function
     | true ->
       let* () = Build_system.build_file pp_file in
-      let+ project =
-        Dune_engine.Source_tree.root () >>| Dune_engine.Source_tree.Dir.project
-      in
+      let+ project = Source_tree.root () >>| Source_tree.Dir.project in
       Ok (project, pp_file)
     | false -> (
       Build_system.file_exists file_in_build_dir >>= function
       | true -> (
         let* dir =
-          Dune_engine.Source_tree.nearest_dir (Path.Source.of_string file)
-          >>| Dune_engine.Source_tree.Dir.path >>| Path.source
+          Source_tree.nearest_dir (Path.Source.of_string file)
+          >>| Source_tree.Dir.path >>| Path.source
         in
         let* dune_file =
           External_lib_deps.Dune_load.Dune_files.in_dir (dir |> in_build_dir)

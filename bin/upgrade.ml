@@ -1,13 +1,13 @@
 open! Stdune
 open Import
 
-let doc = "Upgrade jbuilder projects to dune"
+let doc = "Upgrade projects across major Dune versions."
 
 let man =
   [ `S "DESCRIPTION"
   ; `P
-      {|$(b,dune upgrade) upgrade all the jbuilder projects
-         in the workspace to Dune|}
+      "$(b,dune upgrade) upgrades all the projects in the workspace to the \
+       latest major version of Dune"
   ; `Blocks Common.help_secs
   ]
 

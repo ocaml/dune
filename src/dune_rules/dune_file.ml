@@ -267,6 +267,8 @@ module Mode_conf = struct
       | Native
       | Best
 
+    let all = [ Byte; Native; Best ]
+
     let compare x y =
       match (x, y) with
       | Byte, Byte -> Eq
@@ -334,6 +336,14 @@ module Mode_conf = struct
             | Some Inherited ->
               (* this doesn't happen as inherited can't be manually specified *)
               assert false))
+
+    let to_list (t : t) : (mode_conf * Kind.t) list =
+      let get mode_conf =
+        match Map.find t mode_conf with
+        | None -> None
+        | Some k -> Some (mode_conf, k)
+      in
+      List.filter_map ~f:get all
 
     let decode =
       let decode =
@@ -450,19 +460,20 @@ module Mode_conf = struct
 
       let decode_osl ~stanza_loc project =
         let+ modes = Ordered_set_lang.decode in
-        let modes =
-          Ordered_set_lang.eval modes
-            ~parse:(fun ~loc s ->
-              let mode =
-                Dune_lang.Decoder.parse decode
-                  (Dune_project.parsing_context project)
-                  (Atom (loc, Dune_lang.Atom.of_string s))
-              in
-              (mode, Kind.Requested loc))
-            ~eq:(fun (a, _) (b, _) -> equal a b)
-            ~standard:[ (Ocaml Best, Kind.Requested stanza_loc) ]
+        let standard =
+          Set.default stanza_loc |> Set.to_list
+          |> List.map ~f:(fun (m, k) -> (Ocaml m, k))
         in
-        of_list modes
+        Ordered_set_lang.eval modes ~standard
+          ~eq:(fun (a, _) (b, _) -> equal a b)
+          ~parse:(fun ~loc s ->
+            let mode =
+              Dune_lang.Decoder.parse decode
+                (Dune_project.parsing_context project)
+                (Atom (loc, Dune_lang.Atom.of_string s))
+            in
+            (mode, Kind.Requested loc))
+        |> of_list
 
       let decode =
         let decode =
@@ -1550,7 +1561,7 @@ module Executables = struct
       field "link_executables" ~default:true
         (Dune_lang.Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
     and+ link_deps = field "link_deps" (repeat Dep_conf.decode) ~default:[]
-    and+ link_flags = Link_flags.Spec.decode ~since:None
+    and+ link_flags = Link_flags.Spec.decode ~check:None
     and+ modes =
       field "modes" Link_mode.Map.decode
         ~default:(Link_mode.Map.default_for_exes ~version:dune_version)
@@ -1728,6 +1739,7 @@ module Rule = struct
       ; ("aliases", Field)
       ; ("alias", Field)
       ; ("enabled_if", Field)
+      ; ("package", Field)
       ]
 
   let short_form =
@@ -1989,7 +2001,7 @@ module Tests = struct
        String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
          (let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
           let+ buildable = Buildable.decode Executable
-          and+ link_flags = Link_flags.Spec.decode ~since:None
+          and+ link_flags = Link_flags.Spec.decode ~check:None
           and+ names = names
           and+ package = field_o "package" Stanza_common.Pkg.decode
           and+ locks = Locks.field ()

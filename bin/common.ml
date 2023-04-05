@@ -1,11 +1,11 @@
 open Stdune
 open Dune_config_file
-module Config = Dune_util.Config
+module Execution_env = Dune_util.Execution_env
 module Console = Dune_console
 module Colors = Dune_rules.Colors
 module Clflags = Dune_engine.Clflags
 module Graph = Dune_graph.Graph
-module Package = Dune_engine.Package
+module Package = Dune_rules.Package
 module Profile = Dune_rules.Profile
 module Cmd = Cmdliner.Cmd
 module Term = Cmdliner.Term
@@ -115,7 +115,7 @@ module Options_implied_by_dash_p = struct
     | No_config -> Dune_config.Partial.empty
     | This fname -> Dune_config.load_config_file fname
     | Default ->
-      if Dune_util.Config.inside_dune then Dune_config.Partial.empty
+      if Execution_env.inside_dune then Dune_config.Partial.empty
       else Dune_config.load_user_config_file ()
 
   let packages =
@@ -987,7 +987,7 @@ let print_entering_message c =
        through such an editor will be able to use the "jump to error" feature of
        their editor. *)
     let dir =
-      match Config.inside_dune with
+      match Execution_env.inside_dune with
       | false -> cwd
       | true -> (
         let descendant_simple p ~of_ =
@@ -1088,7 +1088,7 @@ let init ?action_runner ?log_file c =
   Dune_rules.Clflags.promote_install_files := c.builder.promote_install_files;
   Clflags.always_show_command_line := c.builder.always_show_command_line;
   Dune_rules.Clflags.ignore_promoted_rules := c.builder.ignore_promoted_rules;
-  Clflags.on_missing_dune_project_file :=
+  Dune_rules.Clflags.on_missing_dune_project_file :=
     if c.builder.require_dune_project_file then Error else Warn;
   Dune_util.Log.info
     [ Pp.textf "Workspace root: %s"

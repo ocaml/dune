@@ -50,3 +50,17 @@
  (allow_overlapping_dependencies)
  (modules thread_pool_bench_main)
  (libraries thread_pool_bench core_bench.inline_benchmarks))
+
+(library
+ (name digest_bench)
+ (modules digest_bench)
+ (library_flags -linkall)
+ (preprocess
+  (pps ppx_bench))
+ (libraries dune_digest stdune unix core_bench.inline_benchmarks))
+
+(executable
+ (name digest_bench_main)
+ (allow_overlapping_dependencies)
+ (modules digest_bench_main)
+ (libraries digest_bench core_bench.inline_benchmarks))

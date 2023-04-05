@@ -147,4 +147,4 @@ val stats : unit -> Dune_stats.t option Fiber.t
     benchmarking the watch mode of Dune. *)
 val wait_for_build_input_change : unit -> unit Fiber.t
 
-val spawn_thread : (unit -> 'a) -> unit
+val spawn_thread : (unit -> unit) -> unit

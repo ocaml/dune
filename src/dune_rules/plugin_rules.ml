@@ -6,7 +6,7 @@ let meta_file ~dir { name; libraries = _; site = _, (pkg, site); _ } =
   Path.Build.L.relative dir
     [ ".site"
     ; Package.Name.to_string pkg
-    ; Dune_engine.Section.Site.to_string site
+    ; Section.Site.to_string site
     ; Package.Name.to_string name
     ; Findlib.meta_fn
     ]

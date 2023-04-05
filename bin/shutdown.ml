@@ -21,7 +21,7 @@ let exec common =
        ~id:(Dune_rpc_private.Id.make (Sexp.Atom "shutdown_cmd")))
 
 let info =
-  let doc = "cancel and shutdown any builds in the current workspace" in
+  let doc = "Cancel and shutdown any builds in the current workspace." in
   Cmd.info "shutdown" ~doc
 
 let term =

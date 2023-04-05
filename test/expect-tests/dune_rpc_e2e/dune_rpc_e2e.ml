@@ -6,7 +6,6 @@ module Request = Dune_rpc.Public.Request
 module Diagnostic = Dune_rpc.Diagnostic
 module Client = Dune_rpc_client.Client
 module Session = Csexp_rpc.Session
-module Config = Dune_util.Config
 
 (* enable to debug process stdout/stderr *)
 let debug = false
@@ -94,8 +93,7 @@ let run ?env ~prog ~argv () =
     let argv = prog :: argv in
     let env = Option.map ~f:Spawn.Env.of_list env in
     Spawn.spawn ~prog ~argv ~stdout:stdout_w ~stderr:stderr_w
-      ~stdin:(Lazy.force Config.dev_null_in)
-      ?env ()
+      ~stdin:(Lazy.force Dev_null.in_) ?env ()
     |> Pid.of_int
   in
   Unix.close stdout_w;

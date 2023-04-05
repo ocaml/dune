@@ -620,7 +620,12 @@ module Pkg_config = struct
     }
 
   let get c =
-    Option.map (which c "pkg-config") ~f:(fun pkg_config ->
+    let pkg_config_exe_name =
+      match Sys.getenv "PKG_CONFIG" with
+      | s -> s
+      | exception Not_found -> "pkg-config"
+    in
+    Option.map (which c pkg_config_exe_name) ~f:(fun pkg_config ->
         { pkg_config; configurator = c })
 
   type package_conf =

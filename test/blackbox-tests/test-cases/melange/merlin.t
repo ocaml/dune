@@ -168,4 +168,5 @@ Melange ppx should appear after user ppx, so that Merlin applies the former firs
      -strict-sequence
      -strict-formats
      -short-paths
-     -keep-locs)))
+     -keep-locs
+     -g)))

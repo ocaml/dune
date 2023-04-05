@@ -5,6 +5,6 @@
 
 (melange.emit
  (target output)
- (alias melange)
+ (alias mel)
  (modules mel)
  (libraries vlib impl_melange))

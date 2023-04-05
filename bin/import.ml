@@ -1,12 +1,12 @@
 open Stdune
 include Dune_config_file
+include Dune_vcs
 
 include struct
   open Dune_engine
   module Build_config = Build_config
   module Build_system = Build_system
   module Load_rules = Load_rules
-  module Package = Package
   module Hooks = Hooks
   module Action_builder = Action_builder
   module Action = Action
@@ -14,24 +14,28 @@ include struct
   module Action_to_sh = Action_to_sh
   module Dpath = Dpath
   module Findlib = Dune_rules.Findlib
-  module Dune_package = Dune_rules.Dune_package
   module Install = Dune_rules.Install
-  module Section = Section
   module Diff_promotion = Diff_promotion
-  module Dune_project = Dune_project
   module Cached_digest = Cached_digest
   module Targets = Targets
 end
+
+module Execution_env = Dune_util.Execution_env
 
 include struct
   open Dune_rules
   module Super_context = Super_context
   module Context = Context
-  module Config = Dune_util.Config
   module Lib_name = Lib_name
   module Workspace = Workspace
+  module Package = Package
+  module Section = Section
+  module Dune_project = Dune_project
   module Profile = Profile
+  module Dune_package = Dune_package
   module Resolve = Resolve
+  module Sub_dirs = Sub_dirs
+  module Source_tree = Source_tree
 end
 
 include struct
@@ -96,7 +100,7 @@ module Scheduler = struct
   include Dune_engine.Scheduler
 
   let maybe_clear_screen ~details_hum (dune_config : Dune_config.t) =
-    match Dune_util.Config.inside_dune with
+    match Execution_env.inside_dune with
     | true -> (* Don't print anything here to make tests less verbose *) ()
     | false -> (
       match dune_config.terminal_persistence with

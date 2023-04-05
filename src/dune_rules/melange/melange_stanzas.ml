@@ -21,6 +21,8 @@ module Emit = struct
 
   type Stanza.t += T of t
 
+  let implicit_alias = Alias.Name.of_string "melange"
+
   let decode =
     let extension_field =
       let+ loc, extension = located string in
@@ -137,6 +139,8 @@ module Emit = struct
        ; compile_flags
        ; allow_overlapping_dependencies
        })
+
+  let target_dir (emit : t) ~dir = Path.Build.relative dir emit.target
 end
 
 let syntax =

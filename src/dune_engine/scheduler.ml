@@ -3,8 +3,6 @@ open Fiber.O
 open Dune_thread_pool
 
 module Config = struct
-  include Config
-
   type t =
     { concurrency : int
     ; stats : Dune_stats.t option
@@ -62,7 +60,7 @@ end
 let blocked_signals : Signal.t list = [ Int; Quit; Term ]
 
 module Thread : sig
-  val spawn : signal_watcher:[ `Yes | `No ] -> (unit -> 'a) -> unit
+  val spawn : signal_watcher:[ `Yes | `No ] -> (unit -> unit) -> unit
 
   val delay : float -> unit
 
@@ -89,6 +87,9 @@ end = struct
       Thread.create f x
 
   let spawn ~signal_watcher f =
+    let f () =
+      try f () with exn -> Dune_util.Report_error.report_exception exn
+    in
     let (_ : Thread.t) = create ~signal_watcher f () in
     ()
 end
@@ -229,7 +230,7 @@ end = struct
       Mutex.unlock q.mutex
 
     let yield_if_there_are_pending_events q =
-      if Config.inside_dune || not q.got_event then Fiber.return ()
+      if Execution_env.inside_dune || not q.got_event then Fiber.return ()
       else
         match q.yield with
         | Some ivar -> Fiber.Ivar.read ivar

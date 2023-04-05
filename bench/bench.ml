@@ -1,6 +1,5 @@
 open Stdune
 module Process = Dune_engine.Process
-module Config = Dune_util.Config
 
 module Json = struct
   include Chrome_trace.Json

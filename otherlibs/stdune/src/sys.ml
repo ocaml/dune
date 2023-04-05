@@ -1,11 +1,5 @@
 include Stdlib.Sys
 
-let linux =
-  match Io.String_path.read_file "/proc/sys/kernel/ostype" |> String.trim with
-  | "Linux" -> true
-  | _ -> false
-  | exception Sys_error _ -> false
-
 let force_remove =
   if win32 then (fun fn ->
     try remove fn

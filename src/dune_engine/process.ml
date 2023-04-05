@@ -98,8 +98,8 @@ module Io = struct
   let null (type a) (mode : a mode) : a t =
     let fd =
       match mode with
-      | In -> Config.dev_null_in
-      | Out -> Config.dev_null_out
+      | In -> Dev_null.in_
+      | Out -> Dev_null.out
     in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
     { kind = Null; fd; channel; status = Keep_open }
@@ -168,7 +168,7 @@ let create_metadata ?loc ?(annots = default_metadata.annots) ?name
 let io_to_redirection_path (kind : Io.kind) =
   match kind with
   | Terminal _ -> None
-  | Null -> Some (Path.to_string Config.dev_null)
+  | Null -> Some (Path.to_string Dev_null.path)
   | File fn -> Some (Path.to_string fn)
 
 let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
@@ -530,7 +530,7 @@ end = struct
       || (* We want to show command lines in the CI, but not when running inside
             dune. Otherwise tests would yield different result whether they are
             executed locally or in the CI. *)
-      (Config.inside_ci && not Config.inside_dune)
+      (Execution_env.inside_ci && not Execution_env.inside_dune)
     in
     let add_command_line paragraphs =
       if show_command then

@@ -84,7 +84,7 @@ Errors out if extension starts with dot
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (alias melange)
+  >  (alias mel)
   >  (emit_stdlib false)
   >  (module_systems (commonjs .bs.js)))
   > EOF

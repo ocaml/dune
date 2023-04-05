@@ -10,7 +10,7 @@ you can specify OCaml compilation flags using the following fields:
 - ``(ocamlopt_flags <flags>)`` to specify flags passed to ``ocamlopt`` only
 
 For all these fields, ``<flags>`` is specified in the
-:doc:`ordered-set-language`.
+:doc:`../reference/ordered-set-language`.
 These fields all support ``(:include ...)`` forms.
 
 The default value for ``(flags ...)`` is taken from the environment,

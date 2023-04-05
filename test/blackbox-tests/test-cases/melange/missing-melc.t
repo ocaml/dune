@@ -23,10 +23,10 @@ For melange.emit stanzas, an error is shown
   > (melange.emit
   >  (target output)
   >  (modules main_melange)
-  >  (alias melange))
+  >  (alias mel))
   > EOF
 
-  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . @melange 2>&1 | grep Program)
+  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . @mel 2>&1 | grep Program)
   Error: Program melc not found in the tree or in PATH
   Error: Program melc not found in the tree or in PATH
   Error: Program melc not found in the tree or in PATH

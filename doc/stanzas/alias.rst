@@ -25,7 +25,7 @@ The syntax is as follows:
 ``<optional-fields>`` are:
 
 - ``<action>``, an action for constructing the alias. See
-  :doc:`concepts/actions` for more details. Note that this is removed in Dune
+  :doc:`reference/actions` for more details. Note that this is removed in Dune
   2.0, so users must port their code to use the ``rule`` stanza with the
   ``alias`` field instead.
 
@@ -38,7 +38,7 @@ The syntax is as follows:
 
 - ``(enabled_if <blang expression>)`` specifies the Boolean condition that must
   be true for the tests to run. The condition is specified using the
-  :doc:`concepts/boolean-language`, and the field allows for
+  :doc:`reference/boolean-language`, and the field allows for
   :doc:`concepts/variables` to appear in the expressions.
 
 The typical use of the ``alias`` stanza is to define tests:

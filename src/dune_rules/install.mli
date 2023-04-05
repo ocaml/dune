@@ -17,10 +17,10 @@ end
     package, and sites of possibly other packages *)
 module Section_with_site : sig
   type t =
-    | Section of Dune_engine.Section.t
+    | Section of Section.t
     | Site of
-        { pkg : Dune_engine.Package.Name.t
-        ; site : Dune_engine.Section.Site.t
+        { pkg : Package.Name.t
+        ; site : Section.Site.t
         ; loc : Loc.t
         }
 
@@ -34,7 +34,9 @@ module Section_with_site : sig
 end
 
 module Section : sig
-  type t = Dune_engine.Section.t
+  type t = Section.t
+
+  module Site : module type of Section.Site
 
   include Comparable_intf.S with type key := t
 
@@ -76,17 +78,14 @@ module Section : sig
 
     type t
 
-    val make : package:Dune_engine.Package.Name.t -> roots:Path.t Roots.t -> t
+    val make : package:Package.Name.t -> roots:Path.t Roots.t -> t
 
     val install_path : t -> section -> Dst.t -> Path.t
 
     val get : t -> section -> Path.t
 
     val get_local_location :
-         Dune_engine.Context_name.t
-      -> section
-      -> Dune_engine.Package.Name.t
-      -> Path.t
+      Context_name.t -> section -> Package.Name.t -> Path.t
   end
 end
 
@@ -130,8 +129,8 @@ module Entry : sig
        Section_with_site.t
     -> ?dst:string
     -> (   loc:Loc.t
-        -> pkg:Dune_engine.Package.Name.t
-        -> site:Dune_engine.Section.Site.t
+        -> pkg:Package.Name.t
+        -> site:Section.Site.t
         -> Section.t Memo.t)
     -> kind:[ `File | `Directory ]
     -> Path.Build.t

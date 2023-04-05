@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680699285701,
+  "lastUpdate": 1680699345612,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -22186,6 +22186,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.7364392929066668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "321fce370f141789e80b2f6dcb6a72e3dbbe6a4c",
+          "message": "doc: improve synopsis for all commands (#7404)\n\nThere are several improvements in there:\r\n\r\n- build: do not mention \"installable targets\"\r\n- ensure all command groups are documented\r\n- rules: dune rules dumps all rules, not just internal ones\r\n- upgrade: is not specific to jbuilder\r\n- use a fixed style of command docs (Capital, dot)\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-04-05T14:27:27+02:00",
+          "tree_id": "4e770101b1e7e80e6ea67db193d9fdf820b14ff9",
+          "url": "https://github.com/ocaml/dune/commit/321fce370f141789e80b2f6dcb6a72e3dbbe6a4c"
+        },
+        "date": 1680699344841,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "70.18777698914667",
             "unit": "seconds"
           }
         ]

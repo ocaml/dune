@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680697562050,
+  "lastUpdate": 1680697572213,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -22070,6 +22070,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "69.55999003842665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "5031221+voodoos@users.noreply.github.com",
+            "name": "Ulysse",
+            "username": "voodoos"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e7ad1707c9ebed68fc2495db944236967d0c5542",
+          "message": "Test for issue #7454: fmt triggers menhir (#7455)\n\n* Add a test illustrating issue #7454\r\n\r\nSigned-off-by: Ulysse Gérard <thevoodoos@gmail.com>\r\nCo-authored-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-04-05T13:59:30+02:00",
+          "tree_id": "86075e435f6a0d418f238830d53dc04dfd0e0fb9",
+          "url": "https://github.com/ocaml/dune/commit/e7ad1707c9ebed68fc2495db944236967d0c5542"
+        },
+        "date": 1680697571450,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "68.03205268036668",
             "unit": "seconds"
           }
         ]

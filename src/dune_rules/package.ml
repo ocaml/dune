@@ -66,6 +66,9 @@ module Id = struct
 
   let name t = t.name
 
+  let default_opam_file { name; dir } =
+    Path.Source.relative dir (Name.opam_fn name)
+
   module C = Comparable.Make (T)
   module Set = C.Set
   module Map = C.Map
@@ -550,6 +553,7 @@ type opam_file =
 
 type t =
   { id : Id.t
+  ; opam_file : Path.Source.t
   ; loc : Loc.t
   ; synopsis : string option
   ; description : string option
@@ -575,7 +579,10 @@ let name t = t.id.name
 let dir t = t.id.dir
 
 let set_inside_opam_dir t ~dir =
-  { t with id = { t.id with Id.dir }; has_opam_file = Look_inside_opam_dir }
+  { t with
+    has_opam_file = Look_inside_opam_dir
+  ; opam_file = Path.Source.relative dir (Name.opam_fn t.id.name)
+  }
 
 let encode (name : Name.t)
     { id = _
@@ -592,6 +599,7 @@ let encode (name : Name.t)
     ; deprecated_package_names
     ; sites
     ; allow_empty
+    ; opam_file = _
     } =
   let open Dune_lang.Encoder in
   let fields =
@@ -657,6 +665,7 @@ let decode ~dir =
      and+ lang_version = Dune_lang.Syntax.get_exn Stanza.syntax in
      let allow_empty = lang_version < (3, 0) || allow_empty in
      let id = { Id.name; dir } in
+     let opam_file = Id.default_opam_file id in
      { id
      ; loc
      ; synopsis
@@ -671,6 +680,7 @@ let decode ~dir =
      ; deprecated_package_names
      ; sites
      ; allow_empty
+     ; opam_file
      }
 
 let dyn_of_opam_file =
@@ -694,6 +704,7 @@ let to_dyn
     ; deprecated_package_names
     ; sites
     ; allow_empty
+    ; opam_file = _
     } =
   let open Dyn in
   record
@@ -713,7 +724,7 @@ let to_dyn
     ; ("allow_empty", Bool allow_empty)
     ]
 
-let opam_file t = Path.Source.relative t.id.dir (Name.opam_fn t.id.name)
+let opam_file t = t.opam_file
 
 let meta_file t = Path.Source.relative t.id.dir (Name.meta_fn t.id.name)
 
@@ -728,7 +739,8 @@ let default name dir =
     ; { name = Name.of_string "dune"; constraint_ = None }
     ]
   in
-  { id = { name; dir }
+  let id = { Id.name; dir } in
+  { id
   ; loc = Loc.none
   ; version = None
   ; synopsis = Some "A short synopsis"
@@ -742,6 +754,7 @@ let default name dir =
   ; deprecated_package_names = Name.Map.empty
   ; sites = Section.Site.Map.empty
   ; allow_empty = false
+  ; opam_file = Id.default_opam_file id
   }
 
 let load_opam_file file name =
@@ -814,6 +827,7 @@ let load_opam_file file name =
   ; deprecated_package_names = Name.Map.empty
   ; sites = Section.Site.Map.empty
   ; allow_empty = true
+  ; opam_file = Id.default_opam_file id
   }
 
 let equal = Poly.equal

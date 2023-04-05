@@ -568,13 +568,19 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
           gen_melange_emit_rules_or_empty_redirect sctx ~dir ~opam_file_rules
             ~allowed_subdirs under_melange_emit_target))
     | Some source_dir -> (
+      let allowed_subdirs =
+        match
+          inside_opam_directory ~nearest_src_dir:source_dir ~src_dir components
+        with
+        | `Project_root -> Filename.Set.add automatic_subdirs "opam"
+        | `Outside | `Inside -> automatic_subdirs
+      in
       (* This interprets "rule" and "copy_files" stanzas. *)
-      Dir_contents.triage sctx ~dir
-      >>= function
+      Dir_contents.triage sctx ~dir >>= function
       | Group_part _ ->
         gen_melange_emit_rules_or_empty_redirect sctx
-          ~opam_file_rules:(Memo.return Rules.empty) ~dir
-          ~allowed_subdirs:automatic_subdirs under_melange_emit_target
+          ~opam_file_rules:(Memo.return Rules.empty) ~dir ~allowed_subdirs
+          under_melange_emit_target
       | Standalone_or_root { directory_targets; contents } -> (
         let rules =
           let* () = Memo.Lazy.force Context.force_configurator_files in
@@ -628,13 +634,13 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
             let+ subdirs =
               let+ stanzas = Only_packages.stanzas_in_dir dir in
               match stanzas with
-              | None -> automatic_subdirs
+              | None -> allowed_subdirs
               | Some stanzas ->
                 List.filter_map stanzas.stanzas ~f:(function
                   | Melange_stanzas.Emit.T mel -> Some mel.target
                   | _ -> None)
                 |> Filename.Set.of_list
-                |> Filename.Set.union automatic_subdirs
+                |> Filename.Set.union allowed_subdirs
             in
             match components with
             | [] ->
@@ -645,14 +651,14 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
           in
           Build_config.Rules (build_config subdirs)
         | Some for_melange -> (
-          let build_config = build_config automatic_subdirs in
+          let build_config = build_config allowed_subdirs in
           let+ melange_rules = gen_melange_emit_rules sctx ~dir for_melange in
           match melange_rules with
           | None -> Build_config.Redirect_to_parent build_config
           | Some emit ->
             Build_config.Rules
               (Build_config.Rules.combine_exn build_config
-                 (rules_for ~dir ~allowed_subdirs:automatic_subdirs emit))))))
+                 (rules_for ~dir ~allowed_subdirs emit))))))
 
 let with_context ctx ~f =
   Super_context.find ctx >>= function

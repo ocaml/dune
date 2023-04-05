@@ -146,6 +146,7 @@ type opam_file =
 
 type t =
   { id : Id.t
+  ; opam_file : Path.Source.t
   ; loc : Loc.t
   ; synopsis : string option
   ; description : string option

@@ -14,7 +14,7 @@ First the case when opam/ doesn't exist in the source
   $ ls opam/foobar.opam
   opam/foobar.opam
 
-Now we test the case whenever opam is a sourec directory
+Now we test the case whenever opam is a source directory
 
   $ rm opam/foobar.opam
   $ dune build @check

@@ -5,9 +5,8 @@ Generating .install files when opam files are in opam/ dir
   > (generate_opam_files true)
   > (opam_file_location inside_opam_directory)
   > (package
+  >  (allow_empty)
   >  (name foobar))
   > EOF
 
   $ dune build foobar.install
-  Error: Don't know how to build foobar.install
-  [1]

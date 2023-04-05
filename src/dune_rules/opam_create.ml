@@ -112,6 +112,7 @@ let package_fields
     ; loc = _
     ; deprecated_package_names = _
     ; sites = _
+    ; opam_file = _
     ; allow_empty = _
     } ~project =
   let open Opam_file.Create in

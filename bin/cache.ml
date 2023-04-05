@@ -5,7 +5,7 @@ open Import
 
 let trim =
   let info =
-    let doc = "Trim the Dune cache" in
+    let doc = "Trim the Dune cache." in
     let man =
       [ `P "Trim the Dune cache to a specified size or by a specified amount."
       ; `S "EXAMPLES"
@@ -54,7 +54,7 @@ let trim =
 
 let size =
   let info =
-    let doc = "Query the size of the Dune cache" in
+    let doc = "Query the size of the Dune cache." in
     let man =
       [ `P
           "Compute the total size of files in the Dune cache which are not \
@@ -80,7 +80,7 @@ let size =
 
 let command =
   let info =
-    let doc = "Manage the shared cache of build artifacts" in
+    let doc = "Manage Dune's shared cache of build artifacts." in
     let man =
       [ `S "DESCRIPTION"
       ; `P

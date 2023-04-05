@@ -1,6 +1,6 @@
 open Import
 
-let info = Cmd.info "ocaml"
+let info = Cmd.info "ocaml" ~doc:"Command group related to OCaml."
 
 let group =
   Cmdliner.Cmd.group info

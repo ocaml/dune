@@ -2,7 +2,7 @@ open Stdune
 open Import
 module Utop = Dune_rules.Utop
 
-let doc = "Load library in utop"
+let doc = "Load library in utop."
 
 let man =
   [ `S "DESCRIPTION"

@@ -2,7 +2,7 @@ Here we observe the documentation for the dune cache commands.
 
   $ dune cache --help=plain
   NAME
-         dune-cache - Manage the shared cache of build artifacts
+         dune-cache - Manage Dune's shared cache of build artifacts.
   
   SYNOPSIS
          dune cache COMMAND …
@@ -14,10 +14,10 @@ Here we observe the documentation for the dune cache commands.
   
   COMMANDS
          size [--machine-readable] [OPTION]…
-             Query the size of the Dune cache
+             Query the size of the Dune cache.
   
          trim [--size=BYTES] [--trimmed-size=BYTES] [OPTION]…
-             Trim the Dune cache
+             Trim the Dune cache.
   
   COMMON OPTIONS
          --help[=FMT] (default=auto)
@@ -44,7 +44,7 @@ Testing the output of `dune cache size --machine-readable`
 
   $ dune cache size --help=plain
   NAME
-         dune-cache-size - Query the size of the Dune cache
+         dune-cache-size - Query the size of the Dune cache.
   
   SYNOPSIS
          dune cache size [--machine-readable] [OPTION]…
@@ -82,7 +82,7 @@ Testing the output of dune cache trim.
 
   $ dune cache trim --help=plain
   NAME
-         dune-cache-trim - Trim the Dune cache
+         dune-cache-trim - Trim the Dune cache.
   
   SYNOPSIS
          dune cache trim [--size=BYTES] [--trimmed-size=BYTES] [OPTION]…

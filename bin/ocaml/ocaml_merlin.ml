@@ -177,7 +177,7 @@ module Dump_config = struct
   let info =
     Cmd.info
       ~doc:
-        "Prints the entire content of the merlin configuration for the given \
+        "Print the entire content of the merlin configuration for the given \
          folder in a user friendly form. This is for testing and debugging \
          purposes only and should not be considered as a stable output."
       "dump-config"
@@ -192,7 +192,7 @@ module Dump_config = struct
   let command = Cmd.v info term
 end
 
-let doc = "Start a merlin configuration server"
+let doc = "Start a merlin configuration server."
 
 let man =
   [ `S "DESCRIPTION"
@@ -252,7 +252,8 @@ module Dump_dot_merlin = struct
 end
 
 let group =
-  Cmdliner.Cmd.group (Cmd.info "merlin")
+  Cmdliner.Cmd.group
+    (Cmd.info "merlin" ~doc:"Command group related to merlin")
     [ Dump_config.command
     ; Cmd.v (start_session_info "start-session") start_session_term
     ]

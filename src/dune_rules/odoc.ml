@@ -536,20 +536,15 @@ let odoc_artefacts sctx target =
         let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
         String.Map.add_exn mlds "index" gen_mld
     in
-    String.Map.values mlds
-    |> List.map ~f:(fun mld ->
-           Mld.create mld |> Mld.odoc_file ~doc_dir:dir
-           |> create_odoc ctx ~target)
+    String.Map.to_list_map mlds ~f:(fun _ mld ->
+        Mld.create mld |> Mld.odoc_file ~doc_dir:dir |> create_odoc ctx ~target)
   | Lib lib ->
     let info = Lib.Local.info lib in
     let obj_dir = Lib_info.obj_dir info in
-    let* modules = entry_modules_by_lib sctx lib in
-    List.map
-      ~f:(fun m ->
+    let+ modules = entry_modules_by_lib sctx lib in
+    List.map modules ~f:(fun m ->
         let odoc_file = Obj_dir.Module.odoc obj_dir m in
         create_odoc ctx ~target odoc_file)
-      modules
-    |> Memo.return
 
 let setup_lib_odocl_rules_def =
   let module Input = struct

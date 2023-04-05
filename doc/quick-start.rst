@@ -108,7 +108,8 @@ which you can dive deeper into Dune's capabilities:
   an executable manually and :ref:`executable` for details.
 * The ``project_name.opam`` file will be freshly generated from the
   ``dune-project`` file whenever you build your project. You shouldn't need to
-  worry about this, but you can see :ref:`opam-generation` for details.
+  worry about this, but you can see :doc:`explanation/opam-integration` for
+  details.
 * The ``dune`` files in each directory specify the component to be built with
   the files in that directory. For details on ``dune`` files, see :ref:`dune-files`.
 

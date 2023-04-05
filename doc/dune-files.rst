@@ -242,7 +242,7 @@ generate_opam_files
 
       (generate_opam_files)
 
-   .. seealso:: :ref:`opam-generation`
+   .. seealso:: :doc:`howto/opam-file-generation`
 
 Dune uses the following global fields to set the metadata for all packages
 defined in the project:

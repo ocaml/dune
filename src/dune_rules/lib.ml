@@ -823,8 +823,7 @@ end = struct
         let+ { projects; _ } = Dune_load.load () in
         List.concat_map projects ~f:(fun project ->
             Dune_project.packages project
-            |> Package.Name.Map.values
-            |> List.map ~f:(fun (pkg : Package.t) ->
+            |> Package.Name.Map.to_list_map ~f:(fun _ (pkg : Package.t) ->
                    let name = Package.name pkg in
                    (name, project)))
         |> Package.Name.Map.of_list_exn)

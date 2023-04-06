@@ -331,6 +331,44 @@ For automatically updated builds, you can install sphinx-autobuild, and run
 Nix users may drop into a development shell with the necessary dependencies for
 building docs ``nix develop .#doc``.
 
+Vendoring
+=========
+
+Dune vendors some code that it uses internally. This is done to make installing
+dune easy as it requires nothing but an OCaml compiler as well as to prevent
+circular dependencies. Before vendoring, make sure that the license of the code
+allows it to be included in dune.
+
+The vendored code lives in the ``vendor/`` subdirectory. To vendor new code,
+create a shell script ``update-<library>.sh``, that will be launched from the
+``vendor/`` folder to download and unpack the source and copy the necessary
+source files into the ``vendor/<library>`` folder. Try to keep the amount of
+source code imported minimal, e.g. leave out ``dune-project`` files, For the
+most part it should be enough to copy ``.ml`` and ``.mli`` files. Make sure to
+also include the license if there is such a file in the code to be vendored to
+stay compliant.
+
+As these sources get vendored not as sub-projects but parts of dune, you need
+to deal with ``public_name``. The preferred way is to remove the
+``public_name`` and only use the private name. If that is not possible, the
+library can be renamed into ``dune-private-libs.<library>``.
+
+To deal with the modified ``dune`` files in ``update-<library>.sh`` scripts,
+you can commit the modified files to ``dune`` and make the
+``update-<library>.sh`` script to use ``git checkout`` to restore the ``dune``
+file.
+
+For larger modifications, it is better to fork the upstream project in the
+ocaml-dune_ organisation and then vendor the forked copy in dune. This makes
+the changes better visible and easier to update from upstream in the long run
+while keeping our custom patches in sync. The changes to the ``dune`` files are
+to be kept in the Dune repository.
+
+It is preferable to cut out as many dependencies as possible, e.g. ones that
+are only necessary on older OCaml versions or build-time dependencies.
+
+.. _ocaml-dune: https://github.com/ocaml-dune/
+
 General Guidelines
 ==================
 

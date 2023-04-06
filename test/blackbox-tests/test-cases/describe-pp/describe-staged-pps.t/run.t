@@ -1,8 +1,11 @@
 It should fail with a message that `describe pp` doesn't support `staged_pps`.
 
-  $ dune describe pp src/main.ml
-  File "src/dune", line 4, characters 2-25:
-  4 |   (staged_pps ppx_suffix)))
-        ^^^^^^^^^^^^^^^^^^^^^^^
-  Error: describe pp command doesn't work with staged_pps
-  [1]
+  $ dune describe pp src/main_both.ml
+  let prefixed = "my_custom_prefix_hello"
+  let suffixed = "hello_my_custom_suffix"
+
+  $ dune describe pp src/main_prefix.ml
+  let prefixed = "prefixed_hello"
+
+  $ dune describe pp src/main_suffix.ml
+  let suffixed = "hello_my_custom_suffix"

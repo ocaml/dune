@@ -533,6 +533,11 @@ module External_lib_deps = struct
     module Scope = Scope
     module Dune_file = Dune_file
     module Dune_load = Dune_load
+    module Preprocessing = Preprocessing
+    module Expander = Expander
+    module Module_name = Module_name
+    module Ml_sources = Ml_sources
+    module Dir_contents = Dir_contents
   end
 
   module Kind = struct
@@ -747,60 +752,132 @@ module Preprocess = struct
     let file_in_build_dir =
       if String.is_empty file then
         User_error.raise [ Pp.textf "no file is given" ]
-      else Path.of_string file |> in_build_dir |> Path.build
+      else Path.of_string file |> in_build_dir
     in
     let pp_file =
-      file_in_build_dir |> Path.map_extension ~f:(fun ext -> ".pp" ^ ext)
+      file_in_build_dir |> Path.Build.map_extension ~f:(fun ext -> ".pp" ^ ext)
     in
-    Build_system.file_exists pp_file >>= function
+    let* project = Source_tree.root () >>| Source_tree.Dir.project in
+    let* pp_file_exists = Build_system.file_exists (Path.build pp_file) in
+    match pp_file_exists with
     | true ->
-      let* () = Build_system.build_file pp_file in
-      let+ project = Source_tree.root () >>| Source_tree.Dir.project in
-      Ok (project, pp_file)
+      let pp_file = Path.build pp_file in
+      let+ () = Build_system.build_file pp_file in
+      Ok (`Pp_file (project, pp_file))
     | false -> (
-      Build_system.file_exists file_in_build_dir >>= function
+      let* file_exists =
+        Build_system.file_exists (Path.build file_in_build_dir)
+      in
+      match file_exists with
+      | false ->
+        User_error.raise
+          [ Pp.textf "%s does not exist"
+              (Path.Build.to_string file_in_build_dir)
+          ]
       | true -> (
-        let* dir =
-          Source_tree.nearest_dir (Path.Source.of_string file)
-          >>| Source_tree.Dir.path >>| Path.source
+        let module_name =
+          let open Option.O in
+          let* name =
+            let fname = Path.Build.basename file_in_build_dir in
+            let name = Filename.remove_extension fname in
+            if String.equal fname name then None else Some name
+          in
+          External_lib_deps.Module_name.of_string_opt name
         in
-        let* dune_file =
-          External_lib_deps.Dune_load.Dune_files.in_dir (dir |> in_build_dir)
+        let* stanza =
+          let drop_rules f =
+            let+ res, _ =
+              Memo.Implicit_output.collect Dune_engine.Rules.implicit_output f
+            in
+            res
+          in
+          match module_name with
+          | None -> Memo.return None
+          | Some module_name ->
+            Path.Build.parent file_in_build_dir
+            |> Memo.Option.bind ~f:(fun dir ->
+                   let* dir_contents =
+                     drop_rules @@ fun () ->
+                     External_lib_deps.Dir_contents.get super_context ~dir
+                   in
+                   let* ocaml =
+                     External_lib_deps.Dir_contents.ocaml dir_contents
+                   in
+                   let stanza =
+                     match
+                       External_lib_deps.Ml_sources.find_origin ocaml
+                         module_name
+                     with
+                     | Some
+                         (External_lib_deps.Ml_sources.Origin.Executables exes)
+                       -> Some (`Executables exes)
+                     | Some (Library lib) -> Some (`Library lib)
+                     | None | Some (Melange _) -> None
+                   in
+                   Memo.return stanza)
         in
-        let staged_pps =
-          Option.bind dune_file ~f:(fun dune_file ->
-              dune_file.stanzas
-              |> List.fold_left ~init:None ~f:(fun acc stanza ->
-                     match stanza with
-                     | Dune_rules.Dune_file.Library lib -> (
-                       let preprocess =
-                         Dune_rules.Preprocess.Per_module.(
-                           lib.buildable.preprocess |> single_preprocess)
-                       in
-                       match preprocess with
-                       | External_lib_deps.Preprocess.Pps
-                           ({ staged = true; _ } as pps) -> Some pps
-                       | _ -> acc)
-                     | _ -> acc))
+        let* staged_pps =
+          match stanza with
+          | None -> Memo.return None
+          | Some (`Executables { buildable; _ })
+          | Some (`Library { buildable; _ }) -> (
+            let preprocess =
+              Dune_rules.Preprocess.Per_module.(
+                without_instrumentation buildable.preprocess
+                |> single_preprocess)
+            in
+            match preprocess with
+            | External_lib_deps.Preprocess.Pps
+                { loc; pps; flags; staged = true } ->
+              let* scope =
+                External_lib_deps.Scope.DB.find_by_project context project
+              in
+              let* expander =
+                Super_context.expander ~dir:context.build_dir super_context
+              in
+              let request =
+                External_lib_deps.Preprocessing.get_ppx_driver super_context
+                  ~loc ~expander ~lib_name:None ~flags ~scope pps
+              in
+              let* result = Action_builder.run request Eager in
+              Memo.return (Some result)
+            | No_preprocessing | Action _ | Future_syntax _ | Pps _ ->
+              Memo.return None)
         in
+        let file_in_build_dir = Path.build file_in_build_dir in
         match staged_pps with
         | None ->
           let+ () = Build_system.build_file file_in_build_dir in
           Error file_in_build_dir
-        | Some { loc; _ } ->
-          User_error.raise ~loc
-            [ Pp.text "describe pp command doesn\'t work with staged_pps" ])
-      | false ->
-        User_error.raise
-          [ Pp.textf "%s does not exist" (Path.to_string file_in_build_dir) ])
+        | Some staged_pps ->
+          let (ppx_exe, flags), (_ : Dep.Fact.t Dep.Map.t) = staged_pps in
+          let* () =
+            Build_system.build_file
+              (Path.of_string (Path.Build.to_string ppx_exe))
+          and* () = Build_system.build_file file_in_build_dir in
+          Memo.return (Ok (`Ppx_exe ((ppx_exe, flags), file_in_build_dir)))))
 
   let run super_context file =
     let open Memo.O in
     let* result = get_pped_file super_context file in
     match result with
     | Error file -> Io.cat file |> Memo.return
-    | Ok (project, file) ->
+    | Ok (`Pp_file (project, file)) ->
       pp_with_ocamlc super_context project file
+      |> Memo.of_non_reproducible_fiber
+    | Ok (`Ppx_exe ((exe, flags), file)) ->
+      let open Dune_engine in
+      Process.run ~display:!Clflags.display
+        ~env:(Super_context.context_env super_context)
+        Process.Strict (Super_context.context super_context).ocaml.ocamlc
+        [ "-stop-after"
+        ; "parsing"
+        ; "-dsource"
+        ; "-ppx"
+        ; Printf.sprintf "%s -as-ppx %s" (Path.Build.to_string exe)
+            (flags |> String.concat ~sep:" ")
+        ; Path.to_string file
+        ]
       |> Memo.of_non_reproducible_fiber
 end
 

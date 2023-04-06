@@ -159,6 +159,8 @@ Unreleased
 - Bump minimum version of the dune language for the melange syntax extension
   from 3.7 to 3.8 (#7665, @jchavarri)
 
+- `describe pp` command now supports `staged_pps` (#7522, @tatchi)
+
 3.7.1 (2023-04-04)
 ------------------
 

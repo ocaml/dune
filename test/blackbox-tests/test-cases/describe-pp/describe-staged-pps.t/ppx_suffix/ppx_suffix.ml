@@ -1,8 +1,10 @@
 open Ppxlib
 
+let suffix_arg = ref "suffixed"
+
 let expand ~ctxt s =
   let loc = Expansion_context.Extension.extension_point_loc ctxt in
-  Ast_builder.Default.estring ~loc (s ^ "_suffixed")
+  Ast_builder.Default.estring ~loc (s ^ "_" ^ !suffix_arg)
 
 let my_extension =
   Extension.V3.declare "add_suffix" Extension.Context.expression
@@ -10,4 +12,9 @@ let my_extension =
     expand
 
 let rule = Ppxlib.Context_free.Rule.extension my_extension
-let () = Driver.register_transformation ~rules:[ rule ] "add_suffix"
+
+let () = 
+  Ppxlib.Driver.add_arg "-suffix"
+    (Arg.Set_string suffix_arg)
+    ~doc:"choose your custom suffix";
+  Driver.register_transformation ~rules:[ rule ] "add_suffix"

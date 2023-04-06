@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680801178708,
+  "lastUpdate": 1680801190243,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23259,6 +23259,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "71.1166496358",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e1bcaa8d8ff11fd4faecf88f86339986559d5c85",
+          "message": "chore(bench): increase digest sizes (#7507)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-06T09:45:41-07:00",
+          "tree_id": "cfea3fe269fe4954f909a7cba21f5123c3df7d3e",
+          "url": "https://github.com/ocaml/dune/commit/e1bcaa8d8ff11fd4faecf88f86339986559d5c85"
+        },
+        "date": 1680801189524,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8564177043733334",
             "unit": "seconds"
           }
         ]

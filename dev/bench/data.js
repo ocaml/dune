@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680797690986,
+  "lastUpdate": 1680798028651,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23056,6 +23056,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.568419655626667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "851e3575f4273549617abbd7e3872e55d60ec3a8",
+          "message": "Add documentation on how to vendor code (#7500)\n\n* Add documentation on how to vendor code",
+          "timestamp": "2023-04-06T08:53:30-07:00",
+          "tree_id": "e998218bb68c181495991742aa81b8a0704c251d",
+          "url": "https://github.com/ocaml/dune/commit/851e3575f4273549617abbd7e3872e55d60ec3a8"
+        },
+        "date": 1680798027763,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "66.70820428786668",
             "unit": "seconds"
           }
         ]

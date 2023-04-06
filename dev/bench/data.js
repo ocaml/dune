@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680800320862,
+  "lastUpdate": 1680800776727,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -12672,6 +12672,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.65772962774666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0423c14a2076d31bd99f08113807a8a52d5be3dc",
+          "message": "chore: fix thread pool benchmark (#7506)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-06T09:45:20-07:00",
+          "tree_id": "49d68f9de3f9a864d87029ca67bd75593042a720",
+          "url": "https://github.com/ocaml/dune/commit/0423c14a2076d31bd99f08113807a8a52d5be3dc"
+        },
+        "date": 1680800775699,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.262233944433326",
             "unit": "seconds"
           }
         ]

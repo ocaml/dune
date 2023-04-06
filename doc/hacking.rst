@@ -336,13 +336,17 @@ Vendoring
 
 Dune vendors some code that it uses internally. This is done to make installing
 dune easy as it requires nothing but an OCaml compiler as well as to prevent
-circular dependencies.
+circular dependencies. Before vendoring, make sure that the license of the code
+allows it to be included in dune.
 
 The vendored code lives in the ``vendor/`` subdirectory. To vendor new code,
 create a shell script ``update-<library>.sh``, that will be launched from the
 ``vendor/`` folder to download and unpack the source and copy the necessary
 source files into the ``vendor/<library>`` folder. Try to keep the amount of
-source code imported minimal, e.g. leave out ``dune-project`` files.
+source code imported minimal, e.g. leave out ``dune-project`` files, For the
+most part it should be enough to copy ``.ml`` and ``.mli`` files. Make sure to
+also include the license if there is such a file in the code to be vendored to
+stay compliant.
 
 As these sources get vendored not as sub-projects but parts of dune, you need
 to deal with ``public_name``. The preferred way is to remove the

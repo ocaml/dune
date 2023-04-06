@@ -17,11 +17,11 @@ let drop_source_extension fn ~dune_version =
   Option.some_if (dune_version >= version) (obj, language)
 
 let possible_sources ~language obj ~dune_version =
-  List.filter_map (String.Map.to_list Foreign_language.source_extensions)
-    ~f:(fun (ext, (lang, version)) ->
-      Option.some_if
-        (Foreign_language.equal lang language && dune_version >= version)
-        (obj ^ "." ^ ext))
+  String.Map.to_list Foreign_language.source_extensions
+  |> List.filter_map ~f:(fun (ext, (lang, version)) ->
+         Option.some_if
+           (Foreign_language.equal lang language && dune_version >= version)
+           (obj ^ "." ^ ext))
 
 let add_mode_suffix mode s =
   match mode with
@@ -290,8 +290,8 @@ module Sources = struct
   type t = (Loc.t * Source.t) String.Map.t
 
   let object_files t ~dir ~ext_obj =
-    String.Map.keys t
-    |> List.map ~f:(fun c -> Path.Build.relative dir (c ^ ext_obj))
+    String.Map.to_list_map t ~f:(fun c _ ->
+        Path.Build.relative dir (c ^ ext_obj))
 
   let has_cxx_sources (t : t) =
     String.Map.exists t ~f:(fun (_loc, source) ->

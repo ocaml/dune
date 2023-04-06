@@ -270,9 +270,10 @@ executables
 
 There is a very subtle difference in the naming of these stanzas. One is
 ``executables``, plural, and the other is ``executable``, singular. The
-``executables`` stanza is the same as the ``executable`` stanza except that it's
-used to describe several executables sharing the same configuration, so the
+``executables`` stanza is very similar as the ``executable`` stanza but can be
+used to to describe several executables sharing the same configuration, so the
 plural ``executables`` stanza is used to describe more than one executable.
+
 
 It shares the same fields as the ``executable`` stanza, except that instead of
 ``(name ...)`` and ``(public_name ...)`` you must use the plural versions as
@@ -286,3 +287,32 @@ well:
   executable. The list of names must be of the same length as the list in the
   ``(names ...)`` field. Moreover, you can use ``-`` for executables that
   shouldn't be installed.
+
+However, using ``executables`` the executables defined in the stanza are
+allowed to share modules.
+
+Given modules ``Foo``, ``Bar`` and ``Baz`` the usage of ``executables`` can
+simplify the code:
+
+.. code:: dune
+
+          (executables
+            (names foo bar))
+
+Instead of the more complex
+
+.. code:: dune
+
+          (library
+            (name baz)
+            (modules baz))
+          
+          (executable
+            (name foo)
+            (modules foo)
+            (libraries baz))
+          
+          (executable
+            (name bar)
+            (modules bar)
+            (libraries baz))

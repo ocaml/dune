@@ -124,10 +124,33 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         Option.some_if (List.exists linkages ~f:Exe.Linkage.is_js) js_of_ocaml
       else Some js_of_ocaml
     in
+    let project = Scope.project scope in
+    let requires_compile =
+      if Dune_project.implicit_transitive_deps project then
+        Memo.Lazy.force requires_link
+      else requires_compile
+    in
+    let* lib_top_module_lst =
+      Resolve.Memo.bind requires_compile ~f:(fun libs ->
+          let md_lib_l =
+            List.map libs ~f:(fun lib ->
+                let modules =
+                  match Lib.Local.of_lib lib with
+                  | None -> Memo.return []
+                  | Some lib -> Odoc.entry_modules_by_lib sctx lib
+                in
+                Memo.map modules ~f:(fun mds -> (lib, mds))
+                |> Resolve.Memo.lift_memo)
+            |> Resolve.Memo.all
+          in
+          md_lib_l)
+      |> Resolve.Memo.read_memo
+    in
+    let lib_top_module_map = Lib.Map.of_list_exn lib_top_module_lst in
     Compilation_context.create () ~loc:exes.buildable.loc ~super_context:sctx
       ~expander ~scope ~obj_dir ~modules ~flags ~requires_link ~requires_compile
       ~preprocessing:pp ~js_of_ocaml ~opaque:Inherit_from_settings
-      ~package:exes.package
+      ~package:exes.package ~lib_top_module_map
   in
   let stdlib_dir = ctx.Context.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in

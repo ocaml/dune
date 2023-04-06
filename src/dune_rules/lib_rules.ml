@@ -467,10 +467,34 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     | Public p -> Some (Public_lib.name p)
     | Private _ -> None
   in
+  let project = Scope.project scope in
+  let requires_compile =
+    if Dune_project.implicit_transitive_deps project then
+      Memo.Lazy.force requires_link
+    else requires_compile
+  in
+  let* lib_top_module_lst =
+    Resolve.Memo.bind requires_compile ~f:(fun libs ->
+        let md_lib_l =
+          List.map libs ~f:(fun lib ->
+              let modules =
+                match Lib.Local.of_lib lib with
+                | None -> Memo.return []
+                | Some lib -> Odoc.entry_modules_by_lib sctx lib
+              in
+              Memo.map modules ~f:(fun mds -> (lib, mds))
+              |> Resolve.Memo.lift_memo)
+          |> Resolve.Memo.all
+        in
+        md_lib_l)
+    |> Resolve.Memo.read_memo
+  in
+  let lib_top_module_map = Lib.Map.of_list_exn lib_top_module_lst in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
     ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
     ~opaque:Inherit_from_settings ~js_of_ocaml:(Some js_of_ocaml)
     ?stdlib:lib.stdlib ~package ?vimpl ?public_lib_name ~modes
+    ~lib_top_module_map
 
 let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
     ~dir_contents ~compile_info =

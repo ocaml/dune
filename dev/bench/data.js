@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680796291382,
+  "lastUpdate": 1680796622410,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -22969,6 +22969,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.7671782897400001",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dda00373f73a2a02030240aeb39c9d65f56b69e7",
+          "message": "Update vendored code to add the LICENSE files (#7504)\n\nThis adds the missing license files as well as updates the scripts to\r\ncopy the license going forward.\r\n\r\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-04-06T08:29:59-07:00",
+          "tree_id": "d2a75d3651e4554885c39f45ff350fa2f9f7927a",
+          "url": "https://github.com/ocaml/dune/commit/dda00373f73a2a02030240aeb39c9d65f56b69e7"
+        },
+        "date": 1680796621567,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.37010456268",
             "unit": "seconds"
           }
         ]

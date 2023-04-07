@@ -34,3 +34,38 @@ Now we demonstrate that header paths get squashed when installed
   $ dune build mypkg.install && cat _build/default/mypkg.install | grep ".h"
     "_build/install/default/lib/mypkg/bar.h"
     "_build/install/default/lib/mypkg/foo.h"
+
+Now we try to use the installed headers:
+
+  $ dune install --prefix _install mypkg
+  $ export OCAMLPATH=$PWD/_install/lib:$OCAMLPATH
+
+  $ mkdir subdir
+  $ cd subdir
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.8)
+  > EOF
+
+  $ cat >dune <<EOF
+  > (executable
+  >  (name bar)
+  >  (foreign_stubs
+  >   (language c)
+  >   (include_dirs (lib mypkg))
+  >   (names foo)))
+  > EOF
+  $ touch bar.ml
+  $ cat >foo.c <<EOF
+  > #include <foo.h>
+  > #include <inc/bar.h>
+  > EOF
+  $ dune build bar.exe
+  File "dune", line 6, characters 9-12:
+  6 |   (names foo)))
+               ^^^
+  foo.c:2:10: fatal error: inc/bar.h: No such file or directory
+      2 | #include <inc/bar.h>
+        |          ^~~~~~~~~~~
+  compilation terminated.
+  [1]

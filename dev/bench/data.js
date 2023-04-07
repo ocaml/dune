@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680905822188,
+  "lastUpdate": 1680906390275,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -13020,6 +13020,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.054619002559996",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aec2ac3f2b6b2f2303d5c197544750907724bfda",
+          "message": "test: make installed-headers reproducible (#7518)\n\nwe don't need the error message. knowing the compilation command fails\r\nis enough\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-07T14:58:12-07:00",
+          "tree_id": "fc164c8c72898370943d86e22057e946e775b6b0",
+          "url": "https://github.com/ocaml/dune/commit/aec2ac3f2b6b2f2303d5c197544750907724bfda"
+        },
+        "date": 1680906388882,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.693430216533336",
             "unit": "seconds"
           }
         ]

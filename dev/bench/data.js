@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680880616741,
+  "lastUpdate": 1680881028401,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23839,6 +23839,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.0108629006866665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "17308d3a4639349ea3e4d5aaa4bfd3be1c8502a6",
+          "message": "doc: turn \"Automatic Formatting\" into a how-to (#7479)\n\nSee #7325 for details about the new structure.\r\n\r\nThe ideas used here are:\r\n\r\n- the document is here to address a specific need of the user\r\n- it needs concrete steps\r\n- we don't need to document the previous versions and the history of the\r\n  feature\r\n- we can cross-reference the various documents\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\nCo-authored-by: Christine Rose <christinerose@users.noreply.github.com>\r\nCo-authored-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-04-07T16:51:41+02:00",
+          "tree_id": "101568b03b1da658e540b6c9528b30579eeb30b0",
+          "url": "https://github.com/ocaml/dune/commit/17308d3a4639349ea3e4d5aaa4bfd3be1c8502a6"
+        },
+        "date": 1680881027282,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "80.71497556515334",
             "unit": "seconds"
           }
         ]

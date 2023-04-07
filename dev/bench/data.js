@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680834801940,
+  "lastUpdate": 1680834815357,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23520,6 +23520,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "81.75289442146666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0ae12e34f385f9de18322a33862bcb0a8719c4b0",
+          "message": "refactor: more foreign source cleanups (#7508)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-06T19:01:13-07:00",
+          "tree_id": "75e7558fd7f5e56db72784fccc8e4b5e7e731898",
+          "url": "https://github.com/ocaml/dune/commit/0ae12e34f385f9de18322a33862bcb0a8719c4b0"
+        },
+        "date": 1680834814167,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.0954233960266664",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680893473375,
+  "lastUpdate": 1680893979398,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -12933,6 +12933,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "43.54601256725999",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6bebcd083dfeb809564ea92329168221b18d5504",
+          "message": "chore: update cmdliner (#7487)\n\nFix the terminal detection\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-07T11:37:57-07:00",
+          "tree_id": "e5ddde69d3c5dad96a7fe48b4a730567c3cf7eb5",
+          "url": "https://github.com/ocaml/dune/commit/6bebcd083dfeb809564ea92329168221b18d5504"
+        },
+        "date": 1680893978410,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.22549283163334",
             "unit": "seconds"
           }
         ]

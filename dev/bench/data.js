@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680903185602,
+  "lastUpdate": 1680903196382,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -24129,6 +24129,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "68.75488149067333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8b7133d10480bf585f17ffaba3b0e482eec21ff0",
+          "message": "x-compilation: take host findlib.conf into account when cross-compiling (#7428)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>\r\nCo-authored-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-07T14:06:25-07:00",
+          "tree_id": "864bfed7310796578e72d84ba5f2b385af9dad6e",
+          "url": "https://github.com/ocaml/dune/commit/8b7133d10480bf585f17ffaba3b0e482eec21ff0"
+        },
+        "date": 1680903195748,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.7470089254",
             "unit": "seconds"
           }
         ]

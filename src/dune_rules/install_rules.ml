@@ -368,7 +368,8 @@ end = struct
           let section = i.section in
           let expand_str = Expander.No_deps.expand_str expander in
           let* files_expanded =
-            Dune_file.Install_conf.expand_files i ~expand_str ~dir
+            Install_entry.File.to_file_bindings_expanded i.files ~expand_str
+              ~dir
           in
           let* files =
             Memo.List.map files_expanded ~f:(fun fb ->
@@ -383,7 +384,7 @@ end = struct
                 Install.Entry.Sourced.create ~loc entry)
           in
           let* dirs_expanded =
-            Dune_file.Install_conf.expand_dirs i ~expand_str ~dir
+            Install_entry.Dir.to_file_bindings_expanded i.dirs ~expand_str ~dir
           in
           let+ files_from_dirs =
             Memo.List.map dirs_expanded ~f:(fun fb ->

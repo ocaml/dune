@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680837161511,
+  "lastUpdate": 1680837603643,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23578,6 +23578,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.0954233960266664",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "691d383a812d0aba06bf9faa85453515ed2d0926",
+          "message": "test: installed headers and dir preservation (#7511)\n\nDemonstrate that we cannot install headers with the same basename if\r\nthey exist in different directories.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-06T19:46:30-07:00",
+          "tree_id": "467c23c817c3f4ec7cf2198f206a7220fe1bdaf2",
+          "url": "https://github.com/ocaml/dune/commit/691d383a812d0aba06bf9faa85453515ed2d0926"
+        },
+        "date": 1680837602535,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "87.58802813383333",
             "unit": "seconds"
           }
         ]

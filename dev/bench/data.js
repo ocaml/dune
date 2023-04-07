@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680834561862,
+  "lastUpdate": 1680834573625,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23462,6 +23462,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "72.17146432121332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4be2ef03a00ef94e7617f99639b87660f6788f70",
+          "message": "test: foreign stubs and include directories (#7510)\n\ndemonstrate the weirdness of depending on a header file without making\r\nit available.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-06T19:01:40-07:00",
+          "tree_id": "543f5a39f7e5cd3442b6877be0493f12e2ce0724",
+          "url": "https://github.com/ocaml/dune/commit/4be2ef03a00ef94e7617f99639b87660f6788f70"
+        },
+        "date": 1680834572971,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8639296424933331",
             "unit": "seconds"
           }
         ]

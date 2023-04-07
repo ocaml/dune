@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680844909293,
+  "lastUpdate": 1680845201245,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -26770,6 +26770,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.510282774013334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "distinct": true,
+          "id": "ab74a71dc04380ed592462f982ceb4dd6371203f",
+          "message": "fix(x-compilation): delay evaluation of `ppx_runtime_deps` until context is known\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-04-06T22:11:09-07:00",
+          "tree_id": "c171364715d878cb2dbc84e2bb52e27b73bfba72",
+          "url": "https://github.com/ocaml/dune/commit/ab74a71dc04380ed592462f982ceb4dd6371203f"
+        },
+        "date": 1680845197711,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.563833394286664",
             "unit": "seconds"
           }
         ]

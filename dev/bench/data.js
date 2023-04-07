@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680845201245,
+  "lastUpdate": 1680845424316,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -12846,6 +12846,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "46.94287793583334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5503de282b2ef53d75581a37fd03d1bf7fb22956",
+          "message": "test: use installed headers (#7513)\n\nUse installed headers with a non flattened directory structure\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-06T22:08:23-07:00",
+          "tree_id": "f016080a45ed616526602d1b1b59e64400f10550",
+          "url": "https://github.com/ocaml/dune/commit/5503de282b2ef53d75581a37fd03d1bf7fb22956"
+        },
+        "date": 1680845423511,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.38290169066",
             "unit": "seconds"
           }
         ]

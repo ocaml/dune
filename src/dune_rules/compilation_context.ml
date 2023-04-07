@@ -5,8 +5,9 @@ module Includes = struct
 
   let patched = true
 
-  let filter_with_odeps libs deps md
-      (lib_top_module_map : Module.t list Lib.Map.t) =
+  let filter_with_odeps libs deps
+      (lib_top_module_map : Module.t list Module_name.Map.t)
+      (lib_to_entry_modules_mapin : Module.t list Lib.Map.t) =
     let open Resolve.Memo.O in
     let+ module_deps, _ = deps in
     let external_dep_names =
@@ -20,36 +21,45 @@ module Includes = struct
     in
     (* Find a more general way to compare [ocamldep] output to Lib_name (?) *)
     List.filter libs ~f:(fun lib ->
-        if Lib.is_local lib then
-          let lib' = Lib.Local.of_lib_exn lib in
-          let top_modules =
-            (match Lib.Map.find lib_top_module_map lib with
-            | Some modules -> modules
-            | None -> [])
-            |> List.map ~f:(fun m -> Module.name m |> Module_name.to_string)
-          in
-          if List.is_non_empty top_modules then (
-            let res =
-              List.exists top_modules ~f:(fun top_mod_name ->
-                  exists_in_odeps top_mod_name)
-            in
-            if not res then
-              (*              let top_closed  =  Lib.de in
- *)
-              Dune_util.Log.info
-                [ Pp.textf "Removing %s for module %s is private %b size %d\n"
-                    (List.hd top_modules)
-                    (Module.name md |> Module_name.to_string)
-                    (Lib.Local.info lib' |> Lib_info.status
-                   |> Lib_info.Status.is_private)
-                    (List.length top_modules)
-                ];
-            res)
-          else true
+        let entry_module_names =
+          (match Lib.Map.find lib_to_entry_modules_mapin lib with
+          | Some modules -> modules
+          | None -> [])
+          |> List.map ~f:(fun m -> Module.name m)
+        in
+        if List.is_non_empty entry_module_names then
+          List.exists entry_module_names ~f:(fun entry_module_name ->
+              let top_c_modules =
+                match
+                  Module_name.Map.find lib_top_module_map entry_module_name
+                with
+                | Some modules -> modules
+                | None -> []
+              in
+              (* First, check if one of the top closed modules matches any of ocamldep outputs *)
+              List.exists top_c_modules ~f:(fun top_c_mod ->
+                  exists_in_odeps
+                    (Module.name top_c_mod |> Module_name.to_string))
+              (* Secondly, for each ocamldep outut X, see if current [entry_module_name] is in top closed modules of X  *)
+              || List.exists external_dep_names ~f:(fun odep_output ->
+                     let odep_module_name = Module_name.of_string odep_output in
+                     let top_c_modules =
+                       match
+                         Module_name.Map.find lib_top_module_map
+                           odep_module_name
+                       with
+                       | Some modules -> modules
+                       | None -> []
+                     in
+                     List.exists top_c_modules ~f:(fun top_c_mod ->
+                         Module_name.equal entry_module_name
+                           (Module.name top_c_mod))))
         else true)
 
-  let make ?(lib_top_module_map = Lib.Map.empty) () ~project ~opaque ~requires
+  let make ?(lib_top_module_map = Module_name.Map.empty)
+      ?(lib_to_entry_modules_map = Lib.Map.empty) () ~project ~opaque ~requires
       ~md ~dep_graphs =
+    ignore lib_to_entry_modules_map;
     let open Lib_mode.Cm_kind.Map in
     let open Resolve.Memo.O in
     let iflags libs mode = Lib_flags.L.include_flags ~project libs mode in
@@ -68,7 +78,10 @@ module Includes = struct
       Command.Args.memo
         (Resolve.Memo.args
            (let* libs = requires in
-            let+ libs' = filter_with_odeps libs deps md lib_top_module_map in
+            let+ libs' =
+              filter_with_odeps libs deps lib_top_module_map
+                lib_to_entry_modules_map
+            in
             let libs = if patched then libs' else libs in
             Command.Args.S
               [ iflags libs mode
@@ -80,7 +93,10 @@ module Includes = struct
       Command.Args.memo
         (Resolve.Memo.args
            (let* libs = requires in
-            let+ libs' = filter_with_odeps libs deps md lib_top_module_map in
+            let+ libs' =
+              filter_with_odeps libs deps lib_top_module_map
+                lib_to_entry_modules_map
+            in
             let libs = if patched then libs' else libs in
             Command.Args.S
               [ iflags libs (Ocaml Native)
@@ -205,7 +221,8 @@ let dep_graphs t = t.modules.dep_graphs
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
     ?stdlib ~js_of_ocaml ~package ?public_lib_name ?vimpl ?modes ?bin_annot ?loc
-    ?(lib_top_module_map = Lib.Map.empty) () =
+    ?(lib_top_module_map = Module_name.Map.empty)
+    ?(lib_to_entry_modules_map = Lib.Map.empty) () =
   let open Memo.O in
   let project = Scope.project scope in
   let requires_compile =
@@ -249,7 +266,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   in
   let includes =
     Includes.make ~project ~opaque ~requires:requires_compile ~dep_graphs
-      ~lib_top_module_map ()
+      ~lib_top_module_map ~lib_to_entry_modules_map ()
   in
   { super_context
   ; scope

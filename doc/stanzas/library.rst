@@ -102,7 +102,17 @@ order to declare a multi-directory library, you need to use the
 
 - ``(install_c_headers (<names>))`` - if your library has public C header files
   that must be installed, you must list them in this field, without the ``.h``
-  extension.
+  extension. You should favor the ``public_headers`` field starting from 3.8.
+
+- ``(public_headers (<files>))`` - if your library has public C header files
+  that must be installed, you must list them in this field. This field accepts
+  globs in the form of ``(glob_files_rec <glob>)`` and ``(glob_files <glob>)``
+  fields to specify multiple files.
+
+  The advantage of this field over ``install_c_headers`` is that it preserves
+  the directory structures of the headers relative to the library stanza.
+  Additionally, it allows to specify the extensions of the header files, which
+  allows alternative extensions such as ``.hh`` or ``.hpp``.
 
 - ``(modes <modes>)`` is for modes which should be built by default. The most
   common use for this feature is to disable native compilation when writing

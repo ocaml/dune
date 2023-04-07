@@ -1,6 +1,10 @@
 Unreleased
 ----------
 
+- Introduce a `public_headers` field on libraries. This field is like
+  `install_c_headers`, but it allows to choose the extension and choose the
+  paths for the installed headers. (#7512, @rgrinberg)
+
 - Load the host context `findlib.conf` when cross-compiling (#7428, fixes
   #1701, @rgrinberg, @anmonteiro)
 

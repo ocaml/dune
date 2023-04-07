@@ -5,10 +5,22 @@ in the default findlib.conf
   $ export OCAMLFIND_CONF=$PWD/etc/findlib.conf
   $ cat >etc/findlib.conf <<EOF
   > path="$PWD/prefix/lib"
+  > ocamldep="$PWD/notocamldep"
   > EOF
   $ cat >etc/findlib.conf.d/foo.conf <<EOF
   > path(foo)=""
+  > ocamldep(foo)="$PWD/notocamldep-foo"
   > EOF
+
+  $ cat >notocamldep <<EOF
+  > #!/usr/bin/env sh
+  > ocamldep "\$@"
+  > EOF
+  $ cat >notocamldep-foo <<EOF
+  > #!/usr/bin/env sh
+  > ocamldep "\$@"
+  > EOF
+  $ chmod +x notocamldep notocamldep-foo
 
   $ mkdir lib
   $ cat > lib/dune-project <<EOF
@@ -61,19 +73,27 @@ ocamlfind can find it
 
 Dune should be able to find it too
 
-  $ dune build --root=app @install -x foo
-  Entering directory 'app'
-  File "dune", line 6, characters 12-18:
-  6 |  (libraries libdep))
-                  ^^^^^^
-  Error: Library "libdep" not found.
-  -> required by _build/default/.gen.eobjs/byte/dune__exe__Gen.cmi
-  -> required by _build/default/.gen.eobjs/native/dune__exe__Gen.cmx
-  -> required by _build/default/gen.exe
-  -> required by _build/default.foo/foo.ml
-  -> required by _build/install/default.foo/lib/repro/foo.ml
-  -> required by _build/default.foo/repro-foo.install
-  -> required by alias install (context default.foo)
-  Leaving directory 'app'
-  [1]
+  $ dune build --root=app @install -x foo --verbose 2>&1 | grep notocamldep-foo
+           "$TESTCASE_ROOT/notocamldep-foo"
+             "$TESTCASE_ROOT/notocamldep-foo"
+  Running[8]: (cd _build/default.foo && $TESTCASE_ROOT/notocamldep-foo -modules -impl foo.ml) > _build/default.foo/.repro.objs/repro__Foo.impl.d
 
+Library is built in the target context
+
+  $ ls app/_build/default.foo
+  META.repro
+  foo.ml
+  repro-foo.install
+  repro.a
+  repro.cma
+  repro.cmxa
+  repro.cmxs
+  repro.dune-package
+  repro.ml-gen
+
+Executable was built in the host context
+
+  $ ls app/_build/default
+  gen.exe
+  gen.ml
+  gen.mli

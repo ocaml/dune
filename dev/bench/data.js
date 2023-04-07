@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680901162786,
+  "lastUpdate": 1680901724995,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -12962,6 +12962,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.22549283163334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4586d3a03c22b600f0fd8fe7d8c929e433e939a0",
+          "message": "test: unintentionally visible headers (#7517)\n\nWhen we have two libraries in the same package, depending on the parent\r\nlibrary makes the headers of the sub libraries visible.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-07T13:44:53-07:00",
+          "tree_id": "d885d507510e35181c0f49389e2dfc70607134e1",
+          "url": "https://github.com/ocaml/dune/commit/4586d3a03c22b600f0fd8fe7d8c929e433e939a0"
+        },
+        "date": 1680901723876,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.271115589919994",
             "unit": "seconds"
           }
         ]

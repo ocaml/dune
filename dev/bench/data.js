@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1680970574085,
+  "lastUpdate": 1680971069546,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -13078,6 +13078,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.67246857888667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "corentin.leruth@gmail.com",
+            "name": "Corentin Leruth",
+            "username": "tatchi"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "5adc577977f32b07f1d1fa026df4f0bbb8342455",
+          "message": "resolve: fix function's name in comment\n\nSigned-off-by: Corentin Leruth <corentin.leruth@gmail.com>",
+          "timestamp": "2023-04-08T18:02:50+02:00",
+          "tree_id": "52c8a544139cbea7a7a1d7781a4ceeaedcd279af",
+          "url": "https://github.com/ocaml/dune/commit/5adc577977f32b07f1d1fa026df4f0bbb8342455"
+        },
+        "date": 1680971068626,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.38984184089333",
             "unit": "seconds"
           }
         ]

@@ -61,22 +61,20 @@ module File = struct
                      ~f:(expand_str_with_check_for_local_path ~expand_str)))
   end
 
-  include
-    Recursive_include.Make
-      (Without_include)
-      (struct
-        let include_keyword = "include"
+  type t = Without_include.t Recursive_include.t
 
-        let include_allowed_in_versions = `Since (3, 5)
+  let decode =
+    Recursive_include.decode ~base_term:Without_include.decode
+      ~include_keyword:"include" ~non_sexp_behaviour:`User_error
+      ~include_allowed_in_versions:(`Since (3, 5))
 
-        let non_sexp_behaviour = `User_error
-      end)
+  let expand_include = Recursive_include.expand_include
 
   let expand_include_multi ts ~expand_str ~dir =
     Memo.List.concat_map ts ~f:(expand_include ~expand_str ~dir)
 
   let of_file_binding file_binding =
-    of_base (Without_include.File_binding file_binding)
+    Recursive_include.of_base (Without_include.File_binding file_binding)
 
   let to_file_bindings_unexpanded ts ~expand_str ~dir =
     expand_include_multi ts ~expand_str ~dir
@@ -94,19 +92,16 @@ module File = struct
 end
 
 module Dir = struct
-  include
-    Recursive_include.Make
-      (File_binding.Unexpanded)
-      (struct
-        let include_keyword = "include"
+  let decode =
+    Recursive_include.decode ~base_term:File_binding.Unexpanded.decode
+      ~include_keyword:"include" ~non_sexp_behaviour:`User_error
+      ~include_allowed_in_versions:(`Since (3, 5))
 
-        let include_allowed_in_versions = `Since (3, 5)
-
-        let non_sexp_behaviour = `User_error
-      end)
+  type t = File_binding.Unexpanded.t Recursive_include.t
 
   let to_file_bindings_expanded ts ~expand_str ~dir =
-    Memo.List.concat_map ts ~f:(expand_include ~expand_str ~dir)
+    Memo.List.concat_map ts
+      ~f:(Recursive_include.expand_include ~expand_str ~dir)
     |> Memo.bind
          ~f:
            (Memo.List.map

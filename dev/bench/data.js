@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681059134630,
+  "lastUpdate": 1681059468492,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -24448,6 +24448,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.79587221264",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "corentin.leruth@gmail.com",
+            "name": "Corentin Leruth",
+            "username": "tatchi"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9225322bdb49d8c8b9655beed407b6281f573b5e",
+          "message": "refactor(top_module): add module's name to error (#7523)\n\nSigned-off-by: Corentin Leruth <corentin.leruth@gmail.com>",
+          "timestamp": "2023-04-09T09:31:02-07:00",
+          "tree_id": "2a1712a4692f3be2a1ff5b6d0ceff3e5571b89e7",
+          "url": "https://github.com/ocaml/dune/commit/9225322bdb49d8c8b9655beed407b6281f573b5e"
+        },
+        "date": 1681059467532,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.81425142378",
             "unit": "seconds"
           }
         ]

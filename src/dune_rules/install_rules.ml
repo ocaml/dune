@@ -110,7 +110,7 @@ end = struct
             | None -> subdir
             | Some lib_subdir -> Filename.concat lib_subdir subdir)
       in
-      fun section ?sub_dir ?dst fn ->
+      fun section ?(loc = loc) ?sub_dir ?dst fn ->
         let entry =
           Install.Entry.make section fn ~kind:`File
             ~dst:
@@ -268,8 +268,9 @@ end = struct
     in
     let+ execs = lib_ppxs ctx ~scope ~lib in
     let install_c_headers =
-      List.map lib.install_c_headers ~f:(fun base ->
-          Path.Build.relative dir (base ^ Foreign_language.header_extension))
+      List.rev_map lib.install_c_headers ~f:(fun (loc, base) ->
+          Path.Build.relative dir (base ^ Foreign_language.header_extension)
+          |> make_entry ~loc Lib)
     in
     List.concat
       [ sources
@@ -281,7 +282,7 @@ end = struct
       ; List.map dll_files ~f:(fun a ->
             let entry = Install.Entry.make ~kind:`File Stublibs a in
             Install.Entry.Sourced.create ~loc entry)
-      ; List.map ~f:(make_entry Lib) install_c_headers
+      ; install_c_headers
       ]
 
   let keep_if expander ~scope stanza =

@@ -17,8 +17,8 @@ Headers with the same filename cannot be installed together:
 
   $ dune build mypkg.install && cat _build/default/mypkg.install | grep ".h"
   Error: Multiple rules generated for _build/install/default/lib/mypkg/foo.h:
-  - dune:1
-  - dune:1
+  - dune:3
+  - dune:3
   -> required by _build/default/mypkg.install
   [1]
 

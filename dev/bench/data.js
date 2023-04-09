@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681065954604,
+  "lastUpdate": 1681065964649,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -24564,6 +24564,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "64.79038946993334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8ff370b1fd8f62bcbf0fa2304a57fd56d0989520",
+          "message": "refactor: always use in_sub_dir in make_entry (#7525)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-09T11:19:46-07:00",
+          "tree_id": "5f3373a50b36b2b5245fc0736e3714dabcbd911c",
+          "url": "https://github.com/ocaml/dune/commit/8ff370b1fd8f62bcbf0fa2304a57fd56d0989520"
+        },
+        "date": 1681065963952,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.5889255016733335",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681140614412,
+  "lastUpdate": 1681141015300,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -24709,6 +24709,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.9866512994666665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a5fd306a4e24c7bd67330b411b3e5662b7e03039",
+          "message": "refactor: move glob definition to dep conf (#7529)\n\nDep_conf should be standalone so that we can eventually move it to\r\nDune_lang\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-10T08:04:33-07:00",
+          "tree_id": "7b091566ff3794b8514a6abb84899320cedcf8b8",
+          "url": "https://github.com/ocaml/dune/commit/a5fd306a4e24c7bd67330b411b3e5662b7e03039"
+        },
+        "date": 1681141014134,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "79.16558095548667",
             "unit": "seconds"
           }
         ]

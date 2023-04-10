@@ -2150,7 +2150,7 @@ module Stanzas = struct
 
   type Stanza.t += Include of Loc.t * string
 
-  type constructors = (string * Stanza.t list Dune_lang.Decoder.t) list
+  type constructors = Stanza.Parser.t list
 
   let stanzas : constructors =
     [ ( "library"

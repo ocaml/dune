@@ -159,8 +159,6 @@ let equal = ( == )
 
 let hash = Poly.hash
 
-let parsing_context t = t.parsing_context
-
 let packages t = t.packages
 
 let version t = t.version

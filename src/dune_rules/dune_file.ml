@@ -468,8 +468,9 @@ module Mode_conf = struct
           ~eq:(fun (a, _) (b, _) -> equal a b)
           ~parse:(fun ~loc s ->
             let mode =
-              Dune_lang.Decoder.parse decode
-                (Dune_project.parsing_context project)
+              Dune_lang.Decoder.parse
+                (Dune_project.set_parsing_context project decode)
+                Univ_map.empty
                 (Atom (loc, Dune_lang.Atom.of_string s))
             in
             (mode, Kind.Requested loc))

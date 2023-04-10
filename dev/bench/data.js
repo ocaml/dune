@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681065964649,
+  "lastUpdate": 1681085596491,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -28017,6 +28017,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.36905723463333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "258058c6803525261df9d330d9eca2a4b0a8adc2",
+          "message": "fix: improve locations for [installed_c_headers] (#7527)\n\nUse exact locations for [installed_c_headers] entry rules\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-09T16:54:04-07:00",
+          "tree_id": "ce55fe036f1766991a30dfbbdd3a2054c7aee73f",
+          "url": "https://github.com/ocaml/dune/commit/258058c6803525261df9d330d9eca2a4b0a8adc2"
+        },
+        "date": 1681085593083,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "24.91052746086",
             "unit": "seconds"
           }
         ]

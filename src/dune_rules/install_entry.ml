@@ -14,7 +14,7 @@ module File = struct
   module Without_include = struct
     type t =
       | File_binding of File_binding.Unexpanded.t
-      | Glob_files of Glob_files.t
+      | Glob_files of Dep_conf.Glob_files.t
 
     let decode =
       let open Dune_lang.Decoder in
@@ -28,10 +28,10 @@ module File = struct
           sum
             [ ( "glob_files"
               , let+ glob = version_check >>> String_with_vars.decode in
-                { Glob_files.glob; recursive = false } )
+                { Dep_conf.Glob_files.glob; recursive = false } )
             ; ( "glob_files_rec"
               , let+ glob = version_check >>> String_with_vars.decode in
-                { Glob_files.glob; recursive = true } )
+                { Dep_conf.Glob_files.glob; recursive = true } )
             ]
         in
         Glob_files glob_files
@@ -44,7 +44,7 @@ module File = struct
       | Glob_files glob_files ->
         let open Memo.O in
         let+ paths =
-          Glob_files.Expand.memo glob_files ~f:expand_str ~base_dir:dir
+          Glob_files_expand.memo glob_files ~f:expand_str ~base_dir:dir
         in
         let glob_loc = String_with_vars.loc glob_files.glob in
         List.map paths ~f:(fun path ->

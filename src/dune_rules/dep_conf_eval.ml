@@ -125,7 +125,7 @@ let rec dep expander = function
        [])
   | Glob_files glob_files ->
     Other
-      (Glob_files.Expand.action_builder glob_files
+      (Glob_files_expand.action_builder glob_files
          ~f:(Expander.expand_str expander)
          ~base_dir:(Expander.dir expander)
       >>| List.map ~f:(fun path ->

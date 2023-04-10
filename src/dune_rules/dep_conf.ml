@@ -1,6 +1,13 @@
 open Import
 open Dune_lang.Decoder
 
+module Glob_files = struct
+  type t =
+    { glob : String_with_vars.t
+    ; recursive : bool
+    }
+end
+
 type t =
   | File of String_with_vars.t
   | Alias of String_with_vars.t

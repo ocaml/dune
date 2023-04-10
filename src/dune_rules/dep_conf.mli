@@ -1,4 +1,18 @@
+(* TODO move to Dune_lang *)
+
 open Import
+
+module Glob_files : sig
+  (** A glob stored in a [String_with_vars.t] and functions for expanding the
+      glob to a list of files, after resolving pforms in the
+      [String_with_vars.t]. Globs can be recursive (indicated by the [recursive]
+      field), meaning that all descendant directories of the starting directory
+      will be searched for files matching the glob. *)
+  type t =
+    { glob : String_with_vars.t
+    ; recursive : bool
+    }
+end
 
 type t =
   | File of String_with_vars.t

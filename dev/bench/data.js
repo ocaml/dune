@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681241533275,
+  "lastUpdate": 1681241944394,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -25057,6 +25057,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.1591831036199998",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "578bbb5c1ca8183f5657457d5f29ae8f6b4e7b10",
+          "message": "refactor: Use Stanza.Parser.t alias (#7532)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-11T12:05:49-07:00",
+          "tree_id": "69b30bb88d602885bf4a690a3f602f994b2b5765",
+          "url": "https://github.com/ocaml/dune/commit/578bbb5c1ca8183f5657457d5f29ae8f6b4e7b10"
+        },
+        "date": 1681241943150,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "81.05879789128",
             "unit": "seconds"
           }
         ]

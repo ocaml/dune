@@ -270,16 +270,16 @@ let doc =
             absolute_toplevel_index_path
         ];
 
-      let url = Printf.sprintf {|file://%s|} absolute_toplevel_index_path in
+      let url = Printf.sprintf "file://%s" absolute_toplevel_index_path in
       let cmd =
         let open Option.O in
         let path = Env_path.path Env.initial in
         let* cmd_name, args =
-          match Ocaml_config.system doc_ctx.ocaml_config with
-          | "macosx" -> Some ("open", [ "-u" ])
-          | "linux" -> Some ("xdg-open", [])
-          | "windows" -> Some ("start", [])
-          | _ -> None
+          match Platform.OS.value with
+          | Platform.OS.Darwin -> Some ("open", [ "-u" ])
+          | Platform.OS.Linux -> Some ("xdg-open", [])
+          | Platform.OS.Windows -> Some ("start", [])
+          | Platform.OS.Other -> None
         in
         let+ p = Bin.which ~path cmd_name in
         ( p

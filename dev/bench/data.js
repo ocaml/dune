@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681226508474,
+  "lastUpdate": 1681226927122,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -24970,6 +24970,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.0309165341066664",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3650952b38ca325fcbb13f1538c5812b726a4fcc",
+          "message": "refactor: remove Dune_project.parsing_context (#7530)\n\nDune_project.set_parsing_context already exists\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-11T07:56:12-07:00",
+          "tree_id": "fc055609a6f8a7160fe6bc746e46c4966c29d3b0",
+          "url": "https://github.com/ocaml/dune/commit/3650952b38ca325fcbb13f1538c5812b726a4fcc"
+        },
+        "date": 1681226926048,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "82.63054048683334",
             "unit": "seconds"
           }
         ]

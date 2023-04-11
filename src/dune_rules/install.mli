@@ -146,6 +146,8 @@ module Entry : sig
     'a t -> paths:Section.Paths.t -> prefix:Path.t -> 'a t
 
   val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
+
+  val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 end
 
 (** Same as Entry, but the destination can be in the site of a package *)

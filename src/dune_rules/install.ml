@@ -397,6 +397,21 @@ module Entry = struct
     ; dst = Dst.of_install_file ~section ~src_basename:(Path.basename src) dst
     ; kind = `File
     }
+
+  let dyn_of_kind =
+    let open Dyn in
+    function
+    | `File -> variant "File" []
+    | `Directory -> variant "Directory" []
+
+  let to_dyn f { src; kind; dst; section } =
+    let open Dyn in
+    record
+      [ ("src", f src)
+      ; ("kind", dyn_of_kind kind)
+      ; ("dst", Dst.to_dyn dst)
+      ; ("section", Section.to_dyn section)
+      ]
 end
 
 module Entry_with_site = struct

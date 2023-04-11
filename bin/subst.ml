@@ -135,12 +135,7 @@ module Dune_project = struct
 
   let load ~dir ~files ~infer_from_opam_files =
     let open Memo.O in
-    let+ project =
-      (* dir_status only affects warning status, but it will not matter here.
-         dune subst will fail with a hard error if the name is missing *)
-      let dir_status = Sub_dirs.Status.Normal in
-      Dune_project.load ~dir ~files ~infer_from_opam_files ~dir_status
-    in
+    let+ project = Dune_project.load ~dir ~files ~infer_from_opam_files in
     let open Option.O in
     let* project = project in
     let file =

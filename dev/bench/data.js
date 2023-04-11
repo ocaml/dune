@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681221779545,
+  "lastUpdate": 1681222379133,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -13252,6 +13252,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "44.520980383693335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4fa0bfa14aea49b5f1a6714290b1b6ad4b374ce9",
+          "message": "Only enable `package` in short-form rules on dune lang 3.8+ (#7476)\n\n* Only enable `package` on dune lang 3.8+\r\n\r\nCloses #7471\r\n\r\nSigned-off-by: Marek Kubica <marek@tarides.com>\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\nCo-authored-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-04-11T15:47:13+02:00",
+          "tree_id": "923a22aaa865079168a9e3f10762e1863e4d9308",
+          "url": "https://github.com/ocaml/dune/commit/4fa0bfa14aea49b5f1a6714290b1b6ad4b374ce9"
+        },
+        "date": 1681222378089,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.763986732599996",
             "unit": "seconds"
           }
         ]

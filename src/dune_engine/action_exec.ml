@@ -556,13 +556,9 @@ let exec
       with
       | false -> env
       | true ->
-        Dune_util.Build_path_prefix_map.extend_build_path_prefix_map env
+        Dune_util.Build_path_prefix_map0.extend_build_map_for_context env
           `New_rules_have_precedence
-          [ Some
-              { source = Path.to_absolute_filename root
-              ; target = "/workspace_root"
-              }
-          ]
+          (Path.to_absolute_filename root)
     in
     { working_dir = Path.root
     ; env

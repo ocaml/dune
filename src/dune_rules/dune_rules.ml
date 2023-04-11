@@ -65,6 +65,14 @@ module Dialect = Dialect
 
 module Install_rules = struct
   let install_file = Install_rules.install_file
+
+  module Stanzas_to_entries = Install_rules.Stanzas_to_entries
+end
+
+module Prefix_map_rules = struct
+  module All_sctx = Prefix_map_rules.All_sctx
+  module Build_map = Prefix_map_rules.Build_map
+  module Inverse_map = Prefix_map_rules.Inverse_map
 end
 
 (* Only for tests *)

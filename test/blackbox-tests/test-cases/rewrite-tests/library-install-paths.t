@@ -1,4 +1,4 @@
-Test the rewriting of a minimal library, and show that it does not conform to
+Test the rewriting of a minimal library, to detect whether it conforms to
 the locations where the artifacts are installed.
 
   $ cat > dune-project <<EOF
@@ -29,15 +29,13 @@ the locations where the artifacts are installed.
   > EOF
 
 In the following, we want the rewrite to give /install_root/lib/minlib/run.ml.
-It currently gives /workspace_root/lib/run.mm and so does not match the regular
-expression. The grep count should be 1 rather than 0, and the exit code from
-the grep 0.
+If it does, the grep counts will be 1.
 
   $ dune build --display short @all 2>&2 | dune_cmd sanitize
         ocamlc lib/.minlib.objs/byte/minlib.{cmi,cmo,cmt}
       ocamldep lib/.minlib.objs/minlib__Run.impl.d
             sh lib/x
-  0
+  1
       ocamlopt lib/.minlib.objs/native/minlib.{cmx,o}
         ocamlc lib/.minlib.objs/byte/minlib__Run.{cmi,cmo,cmt}
       ocamlopt lib/.minlib.objs/native/minlib__Run.{cmx,o}

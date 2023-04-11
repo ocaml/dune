@@ -6,7 +6,7 @@
 
   $ dune ocaml merlin dump-config $PWD
   Foo
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /install_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.eobjs/byte)
@@ -27,7 +27,7 @@
 
   $ dune ocaml merlin dump-config $PWD/foo
   Bar
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /install_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/foo/.foo.objs/byte)
@@ -43,7 +43,7 @@
      -keep-locs
      -g)))
   Foo
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /install_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/foo/.foo.objs/byte)

@@ -26,6 +26,8 @@ include struct
   open Dune_rules
   module Super_context = Super_context
   module Context = Context
+  module Install_rules = Install_rules
+  module Prefix_map_rules = Prefix_map_rules
   module Lib_name = Lib_name
   module Workspace = Workspace
   module Package = Package
@@ -57,6 +59,7 @@ module Digest = Dune_digest
 module Metrics = Dune_metrics
 module Console = Dune_console
 module Stanza = Dune_lang.Stanza
+module Build_path_prefix_map = Build_path_prefix_map
 module Log = Dune_util.Log
 module Dune_rpc = Dune_rpc_private
 module Graph = Dune_graph.Graph

@@ -804,6 +804,191 @@ module Preprocess = struct
       |> Memo.of_non_reproducible_fiber
 end
 
+(** Computation and testing of the BUILD_PATH_PREFIX_MAP code. *)
+module Process_build_path_prefix_maps = struct
+  module Bppm = Build_path_prefix_map
+
+  let multi_item_to_dyn ((source, targets) : string * String.Set.t) =
+    Dyn.record
+      [ ("source", String source); ("targets", String.Set.to_dyn targets) ]
+
+  let multi_to_dyn multi =
+    String.Map.to_list multi |> Dyn.list multi_item_to_dyn
+
+  let multis_to_dyn multis =
+    Dyn.record
+      (String.Map.foldi multis ~init:[] ~f:(fun ctx_name multi acc ->
+           (ctx_name, multi_to_dyn multi) :: acc))
+
+  let check_one_one (maps : Dune_rules.Prefix_map_rules.Build_map.t) =
+    String.Map.foldi maps ~init:String.Map.empty ~f:(fun context map acc1 ->
+        let src_targets =
+          Stdlib.List.fold_left
+            (fun acc opt_pair ->
+              match opt_pair with
+              | None -> acc
+              | Some { Bppm.source; target } ->
+                String.Map.update acc source ~f:(function
+                  | None -> Some (String.Set.singleton target)
+                  | Some old_set -> Some (String.Set.add old_set target)))
+            String.Map.empty map
+        in
+        let multi_list =
+          List.filter (String.Map.to_list src_targets)
+            ~f:(fun (_source, targets) -> String.Set.cardinal targets > 1)
+        in
+        let multi = String.Map.of_list_exn multi_list in
+        String.Map.add_exn acc1 context multi)
+
+  let check_consistency (full_map : Bppm.map String.Map.t) abbrev_maps
+      (multis : String.Set.t String.Map.t String.Map.t) =
+    Dyn.Record
+      (String.Map.foldi full_map ~init:[] ~f:(fun ctx_name map acc1 ->
+           match String.Map.find abbrev_maps ctx_name with
+           | None -> (ctx_name, Dyn.string "Missing abbrev map") :: acc1
+           | Some abbrev_map -> (
+             match String.Map.find multis ctx_name with
+             | None -> (ctx_name, Dyn.string "Missing mulis map") :: acc1
+             | Some multi ->
+               let inconsistencies =
+                 Stdlib.List.fold_left
+                   (fun acc opt_pair ->
+                     match opt_pair with
+                     | None -> acc
+                     | Some { Bppm.source; target } -> (
+                       let abbrev_target = Bppm.rewrite abbrev_map source in
+                       if abbrev_target = target then acc
+                       else
+                         match String.Map.find multi source with
+                         | Some targets ->
+                           if String.Set.mem targets abbrev_target then acc
+                           else
+                             Dyn.variant "multi not in set"
+                               [ Dyn.record
+                                   [ ("source", Dyn.string source)
+                                   ; ("full_target", Dyn.string target)
+                                   ; ("abbrev_target", Dyn.string abbrev_target)
+                                   ; ( "targets"
+                                     , Dyn.list Dyn.string
+                                         (String.Set.to_list targets) )
+                                   ]
+                               ]
+                             :: acc
+                         | None ->
+                           Dyn.record
+                             [ ("source", Dyn.string source)
+                             ; ("full_target", Dyn.string target)
+                             ; ("abbr_target", Dyn.string abbrev_target)
+                             ]
+                           :: acc))
+                   [] map
+               in
+               (ctx_name, Dyn.List inconsistencies) :: acc1)))
+
+  let rewrite_find_first_existing prefix_map path =
+    match Build_path_prefix_map.rewrite_all prefix_map path with
+    | [] -> if Sys.file_exists path then Some path else None
+    | matches -> List.find ~f:Sys.file_exists matches
+
+  let check_inverse (full_map : Bppm.map String.Map.t) inverse_maps
+      (multis : String.Set.t String.Map.t String.Map.t) scontexts =
+    Dyn.Record
+      (String.Map.foldi full_map ~init:[] ~f:(fun ctx_name map acc1 ->
+           match String.Map.find inverse_maps ctx_name with
+           | None -> (ctx_name, Dyn.string "Missing inverse map") :: acc1
+           | Some inverse_map -> (
+             match String.Map.find multis ctx_name with
+             | None -> (ctx_name, Dyn.string "Missing mulis map") :: acc1
+             | Some _multi ->
+               let open Dune_engine in
+               let (ctxn : Context_name.t) = Context_name.of_string ctx_name in
+               let sctx = Context_name.Map.find_exn scontexts ctxn in
+               let context = Super_context.context sctx in
+               let src_dir = Sys.getcwd () in
+               let build_dir =
+                 context.build_dir |> Path.Build.to_string
+                 |> Filename.concat src_dir
+               in
+               let inconsistencies =
+                 Stdlib.List.fold_left
+                   (fun acc opt_pair ->
+                     match opt_pair with
+                     | None -> acc
+                     | Some { Bppm.source; target } -> (
+                       match rewrite_find_first_existing inverse_map target with
+                       | None ->
+                         Dyn.record
+                           [ ("target", Dyn.string target)
+                           ; ("full_src", Dyn.string source)
+                           ; ("missing_inverse_src", Dyn.string "no_match")
+                           ]
+                         :: acc
+                       | Some inverse_source ->
+                         if
+                           inverse_source = source
+                           || inverse_source = Filename.concat src_dir source
+                           || inverse_source = Filename.concat build_dir source
+                           || source = ""
+                         then acc
+                         else
+                           (*
+                         match String.Map.find multi source with
+                         | Some _targets -> acc
+                         | None ->
+                        *)
+                           Dyn.record
+                             [ ("target", Dyn.string target)
+                             ; ("full_src", Dyn.string source)
+                             ; ("inverse_src", Dyn.string inverse_source)
+                             ]
+                           :: acc))
+                   [] map
+               in
+               (ctx_name, Dyn.List inconsistencies) :: acc1)))
+
+  let run (setup : Dune_rules.Main.build_system) =
+    let open Memo.O in
+    let scontexts = setup.scontexts in
+    let* sctxs_to_entries =
+      Prefix_map_rules.All_sctx.all_sctx_to_entries scontexts
+    in
+    let full_maps =
+      Prefix_map_rules.Build_map.build_all_maps_full scontexts sctxs_to_entries
+    in
+    let multis = check_one_one full_maps in
+    let abbrev_maps =
+      Prefix_map_rules.Build_map.build_all_maps scontexts sctxs_to_entries
+    in
+    let inconsistency = check_consistency full_maps abbrev_maps multis in
+    let inverse_src_maps =
+      Prefix_map_rules.Build_map.build_inverse_source_maps scontexts
+        sctxs_to_entries
+    in
+    let src_inverse_inconsistency =
+      check_inverse full_maps inverse_src_maps multis scontexts
+    in
+
+    let map_size maps =
+      String.Map.fold maps ~init:0 ~f:(fun map acc -> acc + List.length map)
+    in
+
+    let res =
+      Dyn.Record
+        [ ("full_maps", Prefix_map_rules.Build_map.to_dyn full_maps)
+        ; ("full_maps_size", Dyn.Int (map_size full_maps))
+        ; ("multi_targets", multis |> multis_to_dyn)
+        ; ("inconsistency", inconsistency)
+        ; ("abbrev_maps", Prefix_map_rules.Build_map.to_dyn abbrev_maps)
+        ; ("abbrev_maps_size", Dyn.Int (map_size abbrev_maps))
+        ; ( "inverse_src_maps"
+          , Prefix_map_rules.Build_map.to_dyn inverse_src_maps )
+        ; ("inverse_src_maps_size", Dyn.Int (map_size inverse_src_maps))
+        ; ("src_inverse_inconsistency", src_inverse_inconsistency)
+        ]
+    in
+    Memo.return (Some res)
+end
+
 (* What to describe. To determine what to describe, we convert the positional
    arguments of the command line to a list of atoms and we parse it using the
    regular [Dune_lang.Decoder].
@@ -817,6 +1002,7 @@ module What = struct
     | External_lib_deps
     | Opam_files
     | Pp of string
+    | Build_path_prefix_map
 
   (** By default, describe the whole workspace *)
   let default = Workspace { dirs = None }
@@ -853,6 +1039,10 @@ module What = struct
       , "Print out external libraries needed to build the project. It's an \
          approximated set of libraries."
       , return External_lib_deps )
+    ; ( "build-path-prefix-map"
+      , []
+      , "Build BUILD_PATH_PREFIX_MAP"
+      , return Build_path_prefix_map )
     ]
 
   (* The list of documentation strings (one for each command) *)
@@ -925,6 +1115,7 @@ module What = struct
       let open Memo.O in
       let+ () = Preprocess.run super_context file in
       None
+    | Build_path_prefix_map -> Process_build_path_prefix_maps.run setup
 end
 
 module Options = struct

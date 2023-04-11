@@ -9,7 +9,7 @@ up a project with instrumentation and testing checking the merlin config.
   $ dune build --instrument-with hello ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
   $ dune ocaml merlin dump-config $PWD/lib
   Bar
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /install_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -23,7 +23,7 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/ppx)
    (FLG (-w -40 -g)))
   File
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /install_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -38,16 +38,16 @@ up a project with instrumentation and testing checking the merlin config.
    (FLG (-open Bar))
    (FLG (-w -40 -g)))
   Foo
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /install_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
-   (B lib/findlib)
-   (B /OCAMLC_WHERE)
+   (B /install_root/lib/findlib)
+   (B /install_root/lib/ocaml)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
    (B
     $TESTCASE_ROOT/_build/default/ppx/.hello.objs/byte)
-   (S lib/findlib)
-   (S /OCAMLC_WHERE)
+   (S /install_root/lib/findlib)
+   (S /install_root/lib/ocaml)
    (S
     $TESTCASE_ROOT/lib)
    (S
@@ -56,16 +56,16 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/ppx)
    (FLG (-w -40 -g)))
   Privmod
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /install_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
-   (B lib/findlib)
-   (B /OCAMLC_WHERE)
+   (B /install_root/lib/findlib)
+   (B /install_root/lib/ocaml)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
    (B
     $TESTCASE_ROOT/_build/default/ppx/.hello.objs/byte)
-   (S lib/findlib)
-   (S /OCAMLC_WHERE)
+   (S /install_root/lib/findlib)
+   (S /install_root/lib/ocaml)
    (S
     $TESTCASE_ROOT/lib)
    (S

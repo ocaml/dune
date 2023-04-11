@@ -24,6 +24,7 @@
   dune_engine
   dune_util
   dune_upgrader
+  build_path_prefix_map
   cmdliner
   threads
   ; Kept to keep implicit_transitive_deps false working in 4.x

@@ -84,13 +84,15 @@ module Section : sig
 
     val get : t -> section -> Path.t
 
+    val get_location_from_prefix : Path.t -> section -> Package.Name.t -> Path.t
+
     val get_local_location :
       Context_name.t -> section -> Package.Name.t -> Path.t
   end
 end
 
 module Entry : sig
-  type 'src t = private
+  type 'src t =
     { src : 'src
     ; kind : [ `File | `Directory ]
     ; dst : Dst.t

@@ -234,13 +234,16 @@ module Section = struct
       | Man -> t.man
       | Misc -> Code_error.raise "Install.Paths.get" []
 
+    let get_location_from_prefix prefix section package_name =
+      let roots = Roots.opam_from_prefix prefix in
+      let paths = make ~package:package_name ~roots in
+      get paths section
+
     let get_local_location context section package_name =
       (* check that we get the good path *)
       let install_dir = Local_install_path.dir ~context in
       let install_dir = Path.build install_dir in
-      let roots = Roots.opam_from_prefix install_dir in
-      let paths = make ~package:package_name ~roots in
-      get paths section
+      get_location_from_prefix install_dir section package_name
 
     let install_path t section p =
       Path.relative (get t section) (Dst.to_string p)

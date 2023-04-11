@@ -31,4 +31,4 @@ Dune ocaml-merlin also accepts paths relative to the current directory
 
   $ dune ocaml merlin dump-config "." --root=".." | head -n 2
   Foo
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /install_root/lib/ocaml)

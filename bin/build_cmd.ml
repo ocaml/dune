@@ -50,7 +50,10 @@ let run_build_system ~common ~request =
         Memo.Lazy.Expert.create ~name:"toplevel" (fun () ->
             let open Memo.O in
             let+ (), (_ : Dep.Fact.t Dep.Map.t) =
-              Action_builder.run request Eager
+              let* setup = setup in
+              let scontexts = setup.scontexts in
+              Prefix_map_rules.Build_map.build_and_save_maps scontexts
+              >>> Action_builder.run request Eager
             in
             ())
       in

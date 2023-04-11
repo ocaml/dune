@@ -23,7 +23,7 @@ If Merlin field is absent, default context is chosen
 
   $ dune ocaml merlin dump-config "$PWD"
   Foo
-  ((STDLIB OPAM_PREFIX)
+  ((STDLIB /install_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -61,7 +61,7 @@ If Merlin field is present, this context is chosen
 
   $ dune ocaml merlin dump-config "$PWD"
   Foo
-  ((STDLIB OPAM_PREFIX)
+  ((STDLIB /install_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/cross/.foo.objs/byte)

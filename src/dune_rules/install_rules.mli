@@ -9,3 +9,8 @@ val symlink_rules :
 (** Generate rules for [.dune-package], [META.<package-name>] files. and
     [<package-name>.install] files. *)
 val gen_project_rules : Super_context.t -> Dune_project.t -> unit Memo.t
+
+module Stanzas_to_entries : sig
+  val stanzas_to_entries :
+    Super_context.t -> Install.Entry.Sourced.t list Package.Name.Map.t Memo.t
+end

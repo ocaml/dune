@@ -1,3 +1,18 @@
+(**************************************************************************)
+(*                                                                        *)
+(*                                 OCaml                                  *)
+(*                                                                        *)
+(*            Gabriel Scherer, projet Parsifal, INRIA Saclay              *)
+(*                                                                        *)
+(*   Copyright 2017 Institut National de Recherche en Informatique et     *)
+(*     en Automatique.                                                    *)
+(*                                                                        *)
+(*   All rights reserved.  This file is distributed under the terms of    *)
+(*   the GNU Lesser General Public License version 2.1, with the          *)
+(*   special exception on linking described in the file LICENSE.          *)
+(*                                                                        *)
+(**************************************************************************)
+
 type path = string
 type path_prefix = string
 type error_message = string
@@ -77,28 +92,44 @@ let decode_map str =
   in
   let pairs = String.split_on_char ':' str in
   match List.map decode_or_empty pairs with
-  | exception (Shortcut err) -> Error err
+  | exception (Shortcut err) -> 
+    Error (Printf.sprintf "Bppm.decode_map, error=%s, str=%s" err str)
   | map -> Ok map
 
-let rewrite_opt prefix_map path =
-  let is_prefix = function
-    | None -> false
-    | Some { target = _; source } ->
-      String.length source <= String.length path
-      && String.equal source (String.sub path 0 (String.length source))
-  in
-  match
-    List.find is_prefix
-      (* read key/value pairs from right to left, as the spec demands *)
-      (List.rev prefix_map)
-  with
-  | exception Not_found -> None
+let make_target path : pair option -> path option = function
   | None -> None
-  | Some { source; target } ->
+  | Some { target; source } ->
+    let is_prefix =
+      String.length source <= String.length path
+        && String.equal source (String.sub path 0 (String.length source)) in
+    if is_prefix then
       Some (target ^ (String.sub path (String.length source)
                        (String.length path - String.length source)))
+    else None
+
+(* Because List.find_map is not available until 4.10.0 *)
+let rec find_map f = function
+  | [] -> None
+  | x :: l ->
+     begin match f x with
+       | Some _ as result -> result
+       | None -> find_map f l
+     end
+
+let rewrite_first prefix_map path =
+  find_map (make_target path) (List.rev prefix_map)
+
+let rewrite_all prefix_map path =
+  List.filter_map (make_target path) (List.rev prefix_map)
 
 let rewrite prefix_map path =
-  match rewrite_opt prefix_map path with
+  match rewrite_first prefix_map path with
   | None -> path
   | Some path -> path
+
+let map_pair (f: path_prefix -> path_prefix) { target; source } =
+  { target= f target; source= f source }
+
+let map_map (f: path_prefix -> path_prefix) map : map =
+  List.map (fun (opt_pair: pair option) ->
+    Option.map (map_pair f) opt_pair) map

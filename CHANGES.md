@@ -46,8 +46,6 @@ Unreleased
 - Bootstrap: correctly detect the number of processors by allowing `nproc` to be
   looked up in `$PATH` (#7272, @Alizter)
 
-- Pass correct flags when compiling `stdlib.ml`. (#7241, @emillon)
-
 - Speed up file copying on macos by using `clonefile` when available
   (@rgrinberg, #7210)
 
@@ -64,9 +62,6 @@ Unreleased
 
 - Do not re-render UI on every frame if the UI doesn't change (#7186, fix
   #7184, @rgrinberg)
-
-- Fix preludes not being recorded as dependencies in the `(mdx)` stanza (#7109,
-  fixes #7077, @emillon).
 
 - Make coq_db creation in scope lazy (@ejgallego, #7133)
 
@@ -100,14 +95,22 @@ Unreleased
 
 - Allow parallel execution of inline tests partitions (#7012, @hhugo)
 
-- Fix segfault on MacOS when dune was being shutdown while in watch mode.
-  (#7312, fixes #6151, @gridbugs, @emillon)
-
 - Support `(link_flags ...)` in `(cinaps ...)` stanza. (#7423, fixes #7416,
   @nojb)
 
 - Allow `(package ...)` in any position within `(rule ...)` stanza (#7445,
   @Leonidas-from-XIV)
+
+3.7.1 (2023-04-04)
+------------------
+
+- Fix segfault on MacOS when dune was being shutdown while in watch mode.
+  (#7312, fixes #6151, @gridbugs, @emillon)
+
+- Fix preludes not being recorded as dependencies in the `(mdx)` stanza (#7109,
+  fixes #7077, @emillon).
+
+- Pass correct flags when compiling `stdlib.ml`. (#7241, @emillon)
 
 - Handle "Too many links" errors when using Dune cache on Windows.  The fix in
   3.7.0 for this same issue was not effective due to a typo. (#7472, @nojb)

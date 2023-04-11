@@ -1588,6 +1588,7 @@ module Rule = struct
   type action_or_field =
     | Action
     | Field
+    | Since of Syntax.Version.t * action_or_field
 
   let atom_table =
     String.Map.of_list_exn
@@ -1622,7 +1623,7 @@ module Rule = struct
       ; ("aliases", Field)
       ; ("alias", Field)
       ; ("enabled_if", Field)
-      ; ("package", Field)
+      ; ("package", Since ((3, 8), Field))
       ]
 
   let short_form =
@@ -1731,6 +1732,14 @@ module Rule = struct
        })
 
   let decode =
+    let rec interpret atom = function
+      | Field -> fields long_form
+      | Action -> short_form
+      | Since (version, inner) ->
+        let what = Printf.sprintf "'%s' in short-form 'rule'" atom in
+        let* () = Dune_lang.Syntax.since ~what Stanza.syntax version in
+        interpret atom inner
+    in
     peek_exn >>= function
     | List (_, Atom (loc, A s) :: _) -> (
       match String.Map.find atom_table s with
@@ -1740,8 +1749,7 @@ module Rule = struct
           ~hints:
             (User_message.did_you_mean s
                ~candidates:(String.Map.keys atom_table))
-      | Some Field -> fields long_form
-      | Some Action -> short_form)
+      | Some w -> interpret s w)
     | sexp ->
       User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
         [ Pp.textf "S-expression of the form (<atom> ...) expected" ]

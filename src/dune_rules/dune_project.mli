@@ -78,8 +78,6 @@ val equal : t -> t -> bool
 
 val hash : t -> int
 
-val parsing_context : t -> Univ_map.t
-
 (** Return the path of the project file. *)
 val file : t -> Path.Source.t
 

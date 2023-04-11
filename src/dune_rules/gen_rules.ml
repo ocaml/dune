@@ -208,15 +208,16 @@ let define_all_alias ~dir ~project ~js_targets =
 
 let gen_rules sctx dir_contents cctxs expander
     { Dune_file.dir = src_dir; stanzas; project } ~dir:ctx_dir =
-  let files_to_install install_conf =
+  let files_to_install (install_conf : Dune_file.Install_conf.t) =
     let expand_str = Expander.No_deps.expand_str expander in
     let files_and_dirs =
       let* files_expanded =
-        Dune_file.Install_conf.expand_files install_conf ~expand_str
-          ~dir:ctx_dir
+        Install_entry.File.to_file_bindings_expanded install_conf.files
+          ~expand_str ~dir:ctx_dir
       in
       let+ dirs_expanded =
-        Dune_file.Install_conf.expand_dirs install_conf ~expand_str ~dir:ctx_dir
+        Install_entry.Dir.to_file_bindings_expanded install_conf.dirs
+          ~expand_str ~dir:ctx_dir
       in
       List.map (files_expanded @ dirs_expanded) ~f:(fun fb ->
           File_binding.Expanded.src fb |> Path.build)

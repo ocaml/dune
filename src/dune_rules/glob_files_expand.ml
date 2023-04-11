@@ -1,10 +1,5 @@
 open! Import
 
-type t =
-  { glob : String_with_vars.t
-  ; recursive : bool
-  }
-
 (* Returns a list containing all descendant directories of the directory whose
    path is the concatenation of [relative_dir] onto [base_dir]. E.g., if
    [base_dir] is "foo/bar" and [relative_dir] is "baz/qux", then this function
@@ -112,56 +107,54 @@ module Without_vars = struct
           [ (File_selector.of_glob ~dir:(Path.of_string dir) glob, dir) ]
 end
 
-module Expand = struct
-  module Expand
-      (M : Memo.S) (C : sig
-        val collect_files : loc:Loc.t -> File_selector.t -> Path.Set.t M.t
-      end) =
-  struct
-    let expand_vars { glob; recursive } ~f ~base_dir =
-      let open M.O in
-      let loc = String_with_vars.loc glob in
-      let+ glob_str = f glob in
-      let parent_str, pattern_str =
-        split_glob_string_into_parent_and_pattern glob_str
-      in
-      let glob = Glob.of_string_exn loc pattern_str in
-      let dir : Glob_dir.t =
-        if Filename.is_relative parent_str then
-          Relative { relative_dir = parent_str; base_dir }
-        else Absolute parent_str
-      in
-      { Without_vars.glob; dir; recursive }
-
-    let expand t ~f ~base_dir =
-      let open M.O in
-      let loc = String_with_vars.loc t.glob in
-      let* without_vars = expand_vars t ~f ~base_dir in
-      Without_vars.file_selectors_with_relative_dirs without_vars ~loc
-      |> M.of_memo
-      >>= M.List.concat_map ~f:(fun (file_selector, relative_dir) ->
-              C.collect_files ~loc file_selector
-              >>| Path.Set.to_list_map ~f:(replace_path_dir relative_dir))
-      >>| List.sort ~compare:String.compare
-  end
-
-  let action_builder =
-    let module Action_builder =
-      Expand
-        (Action_builder)
-        (struct
-          let collect_files = Action_builder.paths_matching
-        end)
+module Expand
+    (M : Memo.S) (C : sig
+      val collect_files : loc:Loc.t -> File_selector.t -> Path.Set.t M.t
+    end) =
+struct
+  let expand_vars { Dep_conf.Glob_files.glob; recursive } ~f ~base_dir =
+    let open M.O in
+    let loc = String_with_vars.loc glob in
+    let+ glob_str = f glob in
+    let parent_str, pattern_str =
+      split_glob_string_into_parent_and_pattern glob_str
     in
-    Action_builder.expand
-
-  let memo =
-    let module Memo =
-      Expand
-        (Memo)
-        (struct
-          let collect_files ~loc:_ = Build_system.eval_pred
-        end)
+    let glob = Glob.of_string_exn loc pattern_str in
+    let dir : Glob_dir.t =
+      if Filename.is_relative parent_str then
+        Relative { relative_dir = parent_str; base_dir }
+      else Absolute parent_str
     in
-    Memo.expand
+    { Without_vars.glob; dir; recursive }
+
+  let expand (t : Dep_conf.Glob_files.t) ~f ~base_dir =
+    let open M.O in
+    let loc = String_with_vars.loc t.glob in
+    let* without_vars = expand_vars t ~f ~base_dir in
+    Without_vars.file_selectors_with_relative_dirs without_vars ~loc
+    |> M.of_memo
+    >>= M.List.concat_map ~f:(fun (file_selector, relative_dir) ->
+            C.collect_files ~loc file_selector
+            >>| Path.Set.to_list_map ~f:(replace_path_dir relative_dir))
+    >>| List.sort ~compare:String.compare
 end
+
+let action_builder =
+  let module Action_builder =
+    Expand
+      (Action_builder)
+      (struct
+        let collect_files = Action_builder.paths_matching
+      end)
+  in
+  Action_builder.expand
+
+let memo =
+  let module Memo =
+    Expand
+      (Memo)
+      (struct
+        let collect_files ~loc:_ = Build_system.eval_pred
+      end)
+  in
+  Memo.expand

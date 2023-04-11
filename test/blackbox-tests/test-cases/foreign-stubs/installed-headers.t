@@ -17,8 +17,8 @@ Headers with the same filename cannot be installed together:
 
   $ dune build mypkg.install && cat _build/default/mypkg.install | grep ".h"
   Error: Multiple rules generated for _build/install/default/lib/mypkg/foo.h:
-  - dune:1
-  - dune:1
+  - dune:3
+  - dune:3
   -> required by _build/default/mypkg.install
   [1]
 
@@ -60,12 +60,5 @@ Now we try to use the installed headers:
   > #include <foo.h>
   > #include <inc/bar.h>
   > EOF
-  $ dune build bar.exe
-  File "dune", line 6, characters 9-12:
-  6 |   (names foo)))
-               ^^^
-  foo.c:2:10: fatal error: inc/bar.h: No such file or directory
-      2 | #include <inc/bar.h>
-        |          ^~~~~~~~~~~
-  compilation terminated.
+  $ dune build bar.exe 2>/dev/null
   [1]

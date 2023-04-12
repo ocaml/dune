@@ -538,6 +538,7 @@ module External_lib_deps = struct
     module Module_name = Module_name
     module Ml_sources = Ml_sources
     module Dir_contents = Dir_contents
+    module Top_module = Top_module
   end
 
   module Kind = struct
@@ -775,52 +776,15 @@ module Preprocess = struct
               (Path.Build.to_string file_in_build_dir)
           ]
       | true -> (
-        let module_name =
-          let open Option.O in
-          let* name =
-            let fname = Path.Build.basename file_in_build_dir in
-            let name = Filename.remove_extension fname in
-            if String.equal fname name then None else Some name
-          in
-          External_lib_deps.Module_name.of_string_opt name
-        in
         let* stanza =
-          let drop_rules f =
-            let+ res, _ =
-              Memo.Implicit_output.collect Dune_engine.Rules.implicit_output f
-            in
-            res
-          in
-          match module_name with
-          | None -> Memo.return None
-          | Some module_name ->
-            Path.Build.parent file_in_build_dir
-            |> Memo.Option.bind ~f:(fun dir ->
-                   let* dir_contents =
-                     drop_rules @@ fun () ->
-                     External_lib_deps.Dir_contents.get super_context ~dir
-                   in
-                   let* ocaml =
-                     External_lib_deps.Dir_contents.ocaml dir_contents
-                   in
-                   let stanza =
-                     match
-                       External_lib_deps.Ml_sources.find_origin ocaml
-                         module_name
-                     with
-                     | Some
-                         (External_lib_deps.Ml_sources.Origin.Executables exes)
-                       -> Some (`Executables exes)
-                     | Some (Library lib) -> Some (`Library lib)
-                     | None | Some (Melange _) -> None
-                   in
-                   Memo.return stanza)
+          External_lib_deps.Top_module.find_lib_or_exe super_context
+            (file |> Path.Source.of_string)
         in
         let* staged_pps =
           match stanza with
           | None -> Memo.return None
-          | Some (`Executables { buildable; _ })
-          | Some (`Library { buildable; _ }) -> (
+          | Some (`Executables { buildable; _ }, _, _, _)
+          | Some (`Library { buildable; _ }, _, _, _) -> (
             let preprocess =
               Dune_rules.Preprocess.Per_module.(
                 without_instrumentation buildable.preprocess

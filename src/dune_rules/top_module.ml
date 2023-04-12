@@ -13,7 +13,7 @@ let drop_rules f =
   in
   res
 
-let find_module sctx src =
+let find_lib_or_exe sctx src =
   let src =
     Path.Build.append_source (Super_context.context sctx).build_dir src
   in
@@ -31,37 +31,39 @@ let find_module sctx src =
   | None -> Memo.return None
   | Some module_name -> (
     let* dir_contents = drop_rules @@ fun () -> Dir_contents.get sctx ~dir in
-    let* ocaml = Dir_contents.ocaml dir_contents in
-    let stanza =
-      match Ml_sources.find_origin ocaml module_name with
-      | Some (Executables exes) -> Some (`Executables exes)
-      | Some (Library lib) -> Some (`Library lib)
-      | None | Some (Melange _) -> None
+    let+ ocaml = Dir_contents.ocaml dir_contents in
+    match Ml_sources.find_origin ocaml module_name with
+    | Some (Executables exes) ->
+      Some (`Executables exes, module_name, dir, dir_contents)
+    | Some (Library lib) -> Some (`Library lib, module_name, dir, dir_contents)
+    | None | Some (Melange _) -> None)
+
+let find_module sctx src =
+  let* stanza = find_lib_or_exe sctx src in
+  match stanza with
+  | None -> Memo.return None
+  | Some (stanza, module_name, dir, dir_contents) ->
+    let* scope = Scope.DB.find_by_dir dir in
+    let* expander = Super_context.expander sctx ~dir in
+    let+ cctx, merlin =
+      drop_rules @@ fun () ->
+      match stanza with
+      | `Executables exes ->
+        Exe_rules.rules ~sctx ~dir ~dir_contents ~scope ~expander exes
+      | `Library lib ->
+        Lib_rules.rules lib ~sctx ~dir_contents ~dir ~expander ~scope
     in
-    match stanza with
-    | None -> Memo.return None
-    | Some stanza ->
-      let* scope = Scope.DB.find_by_dir dir in
-      let* expander = Super_context.expander sctx ~dir in
-      let+ cctx, merlin =
-        drop_rules @@ fun () ->
-        match stanza with
-        | `Executables exes ->
-          Exe_rules.rules ~sctx ~dir ~dir_contents ~scope ~expander exes
-        | `Library lib ->
-          Lib_rules.rules lib ~sctx ~dir_contents ~dir ~expander ~scope
-      in
-      let modules = Compilation_context.modules cctx in
-      let module_ =
-        match Modules.find modules module_name with
-        | Some m -> m
-        | None ->
-          User_error.raise
-            [ Pp.textf "Could not find module corresponding to source file %s"
-                (Path.Build.to_string_maybe_quoted src)
-            ]
-      in
-      Some (module_, cctx, merlin))
+    let modules = Compilation_context.modules cctx in
+    let module_ =
+      match Modules.find modules module_name with
+      | Some m -> m
+      | None ->
+        User_error.raise
+          [ Pp.textf "Could not find module corresponding to source file %s"
+              (Path.Source.to_string_maybe_quoted src)
+          ]
+    in
+    Some (module_, cctx, merlin)
 
 let module_deps cctx module_ =
   let dep_graph =

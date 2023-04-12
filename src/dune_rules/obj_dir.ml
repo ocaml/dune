@@ -540,6 +540,7 @@ module Module = struct
     type t =
       | Immediate of Module.t * Ml_kind.t
       | Transitive of Module.t * Ml_kind.t
+      | Ext of Module.t * Ml_kind.t
 
     let make_name m kind ext =
       let ext = sprintf ".%s.%s" (Ml_kind.to_string kind) ext in
@@ -549,6 +550,7 @@ module Module = struct
     let basename = function
       | Immediate (m, kind) -> make_name m kind "d"
       | Transitive (m, kind) -> make_name m kind "all-deps"
+      | Ext (m, kind) -> make_name m kind "ext-deps"
   end
 
   let dep t dep =

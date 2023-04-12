@@ -36,14 +36,19 @@ let parse_module_names ~dir ~(unit : Module.t) ~modules words =
               (Module_name.to_string mname)
           ])
 
-let parse_compilation_units ~modules =
-  let obj_map = Modules.obj_map modules in
-  List.filter_map ~f:(fun m ->
+let parse_compilation_units ~modules x y =
+  let loc =
+    let obj_map = Modules.obj_map modules in
+    List.filter_map x ~f:(fun m ->
       let obj_name = Module_name.Unique.of_string m in
       match Module_name.Unique.Map.find obj_map obj_name with
       | Some m -> Some (Module_dep.Local (Modules.Sourced_module.to_module m))
       | None ->
         Some (Module_dep.External (Module_dep.External_name.of_string m)))
+  in
+  List.append loc
+    (List.map y ~f:(fun s ->
+         Module_dep.External (Module_dep.External_name.of_string s)))
 
 let parse_deps_exn ~file lines =
   let invalid () =
@@ -72,6 +77,7 @@ let deps_of
   let dep = Obj_dir.Module.dep obj_dir in
   let context = Super_context.context sctx in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
+  let ext_deps_file = dep (Ext (unit, ml_kind)) in
   let ocamldep_output = dep (Immediate (unit, ml_kind)) in
   let open Memo.O in
   let* () =
@@ -92,7 +98,7 @@ let deps_of
       >>| Action.Full.add_sandbox sandbox)
   in
   let lines = Action_builder.lines_of (Path.build ocamldep_output) in
-  let+ _ =
+  let* _ =
     let produce_all_deps =
       let open Action_builder.O in
       let transitive_deps modules =
@@ -124,11 +130,11 @@ let deps_of
         in
         let transitive = transitive_deps local in
         let mods_name_uniq =
-          List.map immediate_deps ~f:(fun m ->
+          List.filter_map immediate_deps ~f:(fun m ->
               match m with
               | Module_dep.Local m ->
-                Module.obj_name m |> Module_name.Unique.to_string
-              | External s -> Module_dep.External_name.to_string s)
+                Some (Module.obj_name m |> Module_name.Unique.to_string)
+              | External _ -> None)
         in
         (transitive, mods_name_uniq)
       in
@@ -146,18 +152,77 @@ let deps_of
     let+ () = Super_context.add_rule sctx ~dir rule in
     produce_all_deps
   in
+  let+ _ =
+    let produce_all_deps_ext =
+      let open Action_builder.O in
+      let transitive_deps modules =
+        let transive_dep m =
+          let ml_kind m =
+            match Module.kind m with
+            | Alias _ -> None
+            | _ ->
+              if Module.has m ~ml_kind:Intf then Some Ml_kind.Intf
+              else Some Impl
+          in
+          ml_kind m
+          |> Option.map ~f:(fun ml_kind ->
+                 Path.build (dep (Ext (m, ml_kind)))) 
+        in
+        List.filter_map modules ~f:transive_dep
+      in
+      let paths =
+        let+ lines = lines in
+        let immediate_deps =
+          let parsed = parse_deps_exn ~file:(Module.File.path source) lines in
+          parsed |> parse_module_names ~dir:md.dir ~unit ~modules
+        in
+        let local =
+          List.filter_map immediate_deps ~f:(fun m -> (* Maybe have kind in external dep *)
+              match m with
+              | Module_dep.Local m -> Some m
+              | _ -> None)
+        in
+        let transitive = transitive_deps local in
+        let mods_name_uniq =
+          List.filter_map immediate_deps ~f:(fun m ->
+              match m with
+              | Module_dep.Local _ -> None
+              | External s -> Some (Module_dep.External_name.to_string s))
+        in
+        (transitive, mods_name_uniq)
+      in
+      Action_builder.with_file_targets ~file_targets:[ ext_deps_file ]
+        (let+ sources, extras =
+           Action_builder.dyn_paths
+             (let+ sources, extras = paths in
+              ((sources, extras), sources))
+         in
+         Action.Merge_files_into (sources, extras, ext_deps_file))
+    in
+    let rule_ext =
+      Action_builder.With_targets.map ~f:Action.Full.make produce_all_deps_ext
+    in
+    let+ () = Super_context.add_rule sctx ~dir rule_ext in
+    produce_all_deps_ext
+  in
+
   let all_deps_file = Path.build all_deps_file in
+  let ext_deps_file = Path.build ext_deps_file in
   let md_l =
-    Action_builder.map
-      ~f:(fun x -> parse_compilation_units ~modules x)
+    Action_builder.map2
+      ~f:(fun x y -> parse_compilation_units ~modules x y)
       (Action_builder.lines_of all_deps_file)
+      (Action_builder.lines_of ext_deps_file)
   in
   (Action_builder.memoize (Path.to_string all_deps_file)) md_l
 
 let read_deps_of ~obj_dir ~modules ~ml_kind unit =
   let all_deps_file = Obj_dir.Module.dep obj_dir (Transitive (unit, ml_kind)) in
-  Action_builder.lines_of (Path.build all_deps_file)
-  |> Action_builder.map ~f:(parse_compilation_units ~modules)
+  let ext_deps_file = Obj_dir.Module.dep obj_dir (Ext (unit, ml_kind)) in
+  Action_builder.map2
+    (Action_builder.lines_of (Path.build all_deps_file))
+    (Action_builder.lines_of (Path.build ext_deps_file))
+    ~f:(fun x y -> parse_compilation_units ~modules x y)
   |> Action_builder.memoize (Path.Build.to_string all_deps_file)
 
 let read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit =

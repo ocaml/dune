@@ -5,7 +5,7 @@ module Includes = struct
 
   let patched = true
 
-  let filter_with_odeps libs deps =
+  let filter_with_odeps libs deps md =
     let open Resolve.Memo.O in
     let+ ((module_deps, lib_top_module_map), lib_to_entry_modules_mapin), _ =
       deps
@@ -25,42 +25,61 @@ module Includes = struct
           Dune_util.Log.info [ Pp.textf "Comparing %s %s \n" lib_name odep ];
           String.equal lib_name odep || String.is_prefix ~prefix:odep lib_name)
     in
-    (* Find a more general way to compare [ocamldep] output to Lib_name (?) *)
-    List.filter libs ~f:(fun lib ->
-        let entry_module_names =
-          (match Lib.Map.find lib_to_entry_modules_map lib with
-          | Some modules -> modules
-          | None -> [])
-          |> List.map ~f:(fun m -> Module.name m)
-        in
-        if List.is_non_empty entry_module_names then
-          List.exists entry_module_names ~f:(fun entry_module_name ->
-              let top_c_modules =
-                match
-                  Module_name.Map.find lib_top_module_map entry_module_name
-                with
-                | Some modules -> modules
-                | None -> []
-              in
-              (* First, check if one of the top closed modules matches any of ocamldep outputs *)
-              List.exists top_c_modules ~f:(fun top_c_mod ->
-                  exists_in_odeps
-                    (Module.name top_c_mod |> Module_name.to_string))
-              (* Secondly, for each ocamldep outut X, see if current [entry_module_name] is in top closed modules of X  *)
-              || List.exists external_dep_names ~f:(fun odep_output ->
-                     let odep_module_name = Module_name.of_string odep_output in
-                     let top_c_modules =
-                       match
-                         Module_name.Map.find lib_top_module_map
-                           odep_module_name
-                       with
-                       | Some modules -> modules
-                       | None -> []
-                     in
-                     List.exists top_c_modules ~f:(fun top_c_mod ->
-                         Module_name.equal entry_module_name
-                           (Module.name top_c_mod))))
-        else true)
+    (* FIXME: menhir mocks? we skip for now *)
+    if
+      String.ends_with
+        (Module.name md |> Module_name.to_string)
+        ~suffix:"__mock"
+    then libs
+    else
+      (* Find a more general way to compare [ocamldep] output to Lib_name (?) *)
+      List.filter libs ~f:(fun lib ->
+          let entry_module_names =
+            (match Lib.Map.find lib_to_entry_modules_map lib with
+            | Some modules -> modules
+            | None -> [])
+            |> List.map ~f:(fun m -> Module.name m)
+          in
+          if List.is_non_empty entry_module_names then
+            List.exists entry_module_names ~f:(fun entry_module_name ->
+                let top_c_modules =
+                  match
+                    Module_name.Map.find lib_top_module_map entry_module_name
+                  with
+                  | Some modules -> modules
+                  | None -> []
+                in
+                let keep =
+                  (* First, check if one of the top closed modules matches any of ocamldep outputs *)
+                  List.exists top_c_modules ~f:(fun top_c_mod ->
+                      exists_in_odeps
+                        (Module.name top_c_mod |> Module_name.to_string))
+                  (* Secondly, for each ocamldep outut X, see if current [entry_module_name] is in top closed modules of X  *)
+                  || List.exists external_dep_names ~f:(fun odep_output ->
+                         let odep_module_name =
+                           Module_name.of_string odep_output
+                         in
+                         let top_c_modules =
+                           match
+                             Module_name.Map.find lib_top_module_map
+                               odep_module_name
+                           with
+                           | Some modules -> modules
+                           | None -> []
+                         in
+                         List.exists top_c_modules ~f:(fun top_c_mod ->
+                             Module_name.equal entry_module_name
+                               (Module.name top_c_mod)))
+                in
+                if not keep then
+                  Dune_util.Log.info
+                    [ Pp.textf "Removing %s for module %s \n"
+                        (Lib.name lib |> Lib_name.to_string)
+                        (Module.name md |> Module_name.to_string)
+                    ];
+
+                keep)
+          else true)
 
   let make ?(lib_top_module_map = Action_builder.return [])
       ?(lib_to_entry_modules_map = Action_builder.return []) () ~project ~opaque
@@ -93,7 +112,7 @@ module Includes = struct
       Command.Args.memo
         (Resolve.Memo.args
            (let* libs = requires in
-            let+ libs' = filter_with_odeps libs deps in
+            let+ libs' = filter_with_odeps libs deps md in
             let libs = if patched then libs' else libs in
             Command.Args.S
               [ iflags libs mode
@@ -105,7 +124,7 @@ module Includes = struct
       Command.Args.memo
         (Resolve.Memo.args
            (let* libs = requires in
-            let+ libs' = filter_with_odeps libs deps in
+            let+ libs' = filter_with_odeps libs deps md in
             let libs = if patched then libs' else libs in
             Command.Args.S
               [ iflags libs (Ocaml Native)

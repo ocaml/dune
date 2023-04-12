@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681326399614,
+  "lastUpdate": 1681326409746,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -25260,6 +25260,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "65.97777274634",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "74f79707c8e08652ef5988ac77a61608a3f3b414",
+          "message": "refactor: move warnings outside of dune project (#7531)\n\nvendored_dirs is going to be interpreted per context, so it's wrong to\r\ndo it when parsing dune projects (which are the same for all contexts)\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-12T11:40:05-07:00",
+          "tree_id": "562dce5c651dd399f496e273754da2ab06e6b1a3",
+          "url": "https://github.com/ocaml/dune/commit/74f79707c8e08652ef5988ac77a61608a3f3b414"
+        },
+        "date": 1681326409060,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6070095582",
             "unit": "seconds"
           }
         ]

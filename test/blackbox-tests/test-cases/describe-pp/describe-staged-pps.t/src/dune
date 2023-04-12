@@ -1,5 +1,4 @@
 (library
- (modules main_both)
  (name main)
  (preprocess
   (staged_pps
@@ -7,15 +6,3 @@
    "-prefix my_custom_prefix"
    ppx_suffix
    "-suffix my_custom_suffix")))
-
-(library
- (modules main_prefix)
- (name main_prefix)
- (preprocess
-  (staged_pps ppx_prefix)))
-
-(executable
- (modules main_suffix)
- (name main_suffix)
- (preprocess
-  (staged_pps ppx_suffix "-suffix my_custom_suffix")))

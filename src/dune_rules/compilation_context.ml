@@ -5,11 +5,17 @@ module Includes = struct
 
   let patched = true
 
-  let filter_with_odeps libs deps
-      (lib_top_module_map : Module.t list Module_name.Map.t)
-      (lib_to_entry_modules_mapin : Module.t list Lib.Map.t) =
+  let filter_with_odeps libs deps =
     let open Resolve.Memo.O in
-    let+ module_deps, _ = deps in
+    let+ ((module_deps, lib_top_module_map), lib_to_entry_modules_mapin), _ =
+      deps
+    in
+    let lib_top_module_map =
+      Module_name.Map.of_list_exn (List.concat lib_top_module_map)
+    in
+    let lib_to_entry_modules_map =
+      Lib.Map.of_list_exn lib_to_entry_modules_mapin
+    in
     let external_dep_names =
       List.filter_map ~f:Module_dep.filter_external module_deps
       |> List.map ~f:Module_dep.External_name.to_string
@@ -22,7 +28,7 @@ module Includes = struct
     (* Find a more general way to compare [ocamldep] output to Lib_name (?) *)
     List.filter libs ~f:(fun lib ->
         let entry_module_names =
-          (match Lib.Map.find lib_to_entry_modules_mapin lib with
+          (match Lib.Map.find lib_to_entry_modules_map lib with
           | Some modules -> modules
           | None -> [])
           |> List.map ~f:(fun m -> Module.name m)
@@ -56,9 +62,9 @@ module Includes = struct
                            (Module.name top_c_mod))))
         else true)
 
-  let make ?(lib_top_module_map = Module_name.Map.empty)
-      ?(lib_to_entry_modules_map = Lib.Map.empty) () ~project ~opaque ~requires
-      ~md ~dep_graphs =
+  let make ?(lib_top_module_map = Action_builder.return [])
+      ?(lib_to_entry_modules_map = Action_builder.return []) () ~project ~opaque
+      ~requires ~md ~dep_graphs =
     ignore lib_to_entry_modules_map;
     let open Lib_mode.Cm_kind.Map in
     let open Resolve.Memo.O in
@@ -68,20 +74,26 @@ module Includes = struct
       let dep_graph_intf = Ml_kind.Dict.get dep_graphs Ml_kind.Intf in
       let module_deps_impl = Dep_graph.deps_of dep_graph_impl md in
       let module_deps_intf = Dep_graph.deps_of dep_graph_intf md in
-      Action_builder.run
-        (Action_builder.map2 module_deps_impl module_deps_intf
-           ~f:(fun inft impl -> List.append inft impl))
-        Action_builder.Eager
+      let cmb_itf_impl =
+        Action_builder.map2 module_deps_impl module_deps_intf
+          ~f:(fun inft impl -> List.append inft impl)
+      in
+      let cmb_top =
+        Action_builder.map2 cmb_itf_impl lib_top_module_map ~f:(fun mods map ->
+            (mods, map))
+      in
+      let cmb_entry =
+        Action_builder.map2 cmb_top lib_to_entry_modules_map ~f:(fun mods map ->
+            (mods, map))
+      in
+      Action_builder.run cmb_entry Action_builder.Eager
       |> Resolve.Memo.lift_memo
     in
     let make_includes_args ~mode groups =
       Command.Args.memo
         (Resolve.Memo.args
            (let* libs = requires in
-            let+ libs' =
-              filter_with_odeps libs deps lib_top_module_map
-                lib_to_entry_modules_map
-            in
+            let+ libs' = filter_with_odeps libs deps in
             let libs = if patched then libs' else libs in
             Command.Args.S
               [ iflags libs mode
@@ -93,10 +105,7 @@ module Includes = struct
       Command.Args.memo
         (Resolve.Memo.args
            (let* libs = requires in
-            let+ libs' =
-              filter_with_odeps libs deps lib_top_module_map
-                lib_to_entry_modules_map
-            in
+            let+ libs' = filter_with_odeps libs deps in
             let libs = if patched then libs' else libs in
             Command.Args.S
               [ iflags libs (Ocaml Native)
@@ -221,8 +230,8 @@ let dep_graphs t = t.modules.dep_graphs
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
     ?stdlib ~js_of_ocaml ~package ?public_lib_name ?vimpl ?modes ?bin_annot ?loc
-    ?(lib_top_module_map = Module_name.Map.empty)
-    ?(lib_to_entry_modules_map = Lib.Map.empty) () =
+    ?(lib_top_module_map = Action_builder.return [])
+    ?(lib_to_entry_modules_map = Action_builder.return []) () =
   let open Memo.O in
   let project = Scope.project scope in
   let requires_compile =

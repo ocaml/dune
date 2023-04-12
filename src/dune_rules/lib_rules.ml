@@ -473,8 +473,8 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
       Memo.Lazy.force requires_link
     else requires_compile
   in
-  let* lib_to_entry_modules =
-    Resolve.Memo.map requires_compile ~f:(fun reqs ->
+  let lib_to_entry_modules_map =
+    Resolve.Memo.bind requires_compile ~f:(fun reqs ->
         let r =
           List.map reqs ~f:(fun req ->
               let req_entry_mods =
@@ -482,19 +482,14 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
                 | None -> Memo.return []
                 | Some libl -> Odoc.entry_modules_by_lib sctx libl
               in
-              let res =
-                Resolve.Memo.map (req_entry_mods |> Resolve.Memo.lift_memo)
-                  ~f:(fun req_entry_mods' -> (req, req_entry_mods'))
-              in
-              res)
+              Resolve.Memo.map (req_entry_mods |> Resolve.Memo.lift_memo)
+                ~f:(fun req_entry_mods' -> (req, req_entry_mods')))
         in
         r |> Resolve.Memo.all)
-    |> Resolve.Memo.read_memo
+    |> Resolve.Memo.read
   in
-  let* lib_to_entry_modules = lib_to_entry_modules |> Resolve.Memo.read_memo in
-  let lib_to_entry_modules_map = Lib.Map.of_list_exn lib_to_entry_modules in
 
-  let* lib_top_module_lst =
+  let lib_top_module_map =
     Resolve.Memo.bind requires_compile ~f:(fun reqs ->
         List.map reqs ~f:(fun req ->
             let req_entry_mods =
@@ -529,11 +524,9 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
                         |> Resolve.Memo.lift_memo))
                 |> Resolve.Memo.all))
         |> Resolve.Memo.all)
-    |> Resolve.Memo.read_memo
+    |> Resolve.Memo.read
   in
-  let lib_top_module_map =
-    Module_name.Map.of_list_exn (List.concat lib_top_module_lst)
-  in
+
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
     ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
     ~opaque:Inherit_from_settings ~js_of_ocaml:(Some js_of_ocaml)

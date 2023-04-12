@@ -134,7 +134,6 @@ val load :
      dir:Path.Source.t
   -> files:Filename.Set.t
   -> infer_from_opam_files:bool
-  -> dir_status:Sub_dirs.Status.t
   -> t option Memo.t
 
 (** Create an anonymous project at the given directory
@@ -200,6 +199,8 @@ val encode : t -> Dune_lang.t list
 val dune_site_extension : unit Extension.t
 
 val opam_file_location : t -> [ `Relative_to_project | `Inside_opam_directory ]
+
+val allow_approximate_merlin : t -> Loc.t option
 
 module Melange_syntax : sig
   val name : string

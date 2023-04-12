@@ -602,7 +602,7 @@ end = struct
     in
     let* project =
       Dune_project.load ~dir:path ~files:readdir.files
-        ~infer_from_opam_files:true ~dir_status
+        ~infer_from_opam_files:true
       >>| function
       | None -> Dune_project.anonymous ~dir:path ()
       | Some p -> p
@@ -662,7 +662,7 @@ end = struct
           else
             let+ project =
               Dune_project.load ~dir:path ~files:readdir.files
-                ~infer_from_opam_files:false ~dir_status
+                ~infer_from_opam_files:false
             in
             Option.value project ~default:parent_dir.project
         in

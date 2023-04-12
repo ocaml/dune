@@ -150,6 +150,7 @@ type t =
   ; format_config : Format_config.t option
   ; subst_config : Subst_config.t option
   ; strict_package_deps : bool
+  ; allow_approximate_merlin : Loc.t option
   ; cram : bool
   ; expand_aliases_in_sandbox : bool
   ; opam_file_location : [ `Relative_to_project | `Inside_opam_directory ]
@@ -212,6 +213,7 @@ let to_dyn
     ; format_config
     ; subst_config
     ; strict_package_deps
+    ; allow_approximate_merlin
     ; cram
     ; expand_aliases_in_sandbox
     ; opam_file_location
@@ -242,6 +244,7 @@ let to_dyn
     ; ("subst_config", option Subst_config.to_dyn subst_config)
     ; ("strict_package_deps", bool strict_package_deps)
     ; ("cram", bool cram)
+    ; ("allow_approximate_merlin", opaque allow_approximate_merlin)
     ; ("expand_aliases_in_sandbox", bool expand_aliases_in_sandbox)
     ; ( "opam_file_location"
       , match opam_file_location with
@@ -528,6 +531,7 @@ let infer ~dir ?(info = Package.Info.empty) packages =
   let file_key = File_key.make ~root ~name in
   let opam_file_location = opam_file_location_default ~lang in
   { name
+  ; allow_approximate_merlin = None
   ; packages
   ; root
   ; info
@@ -599,6 +603,7 @@ let anonymous ~dir ?info ?(packages = Package.Name.Map.empty) () =
 
 let encode : t -> Dune_lang.t list =
  fun { name
+     ; allow_approximate_merlin = _
      ; version
      ; dune_version
      ; info
@@ -825,7 +830,7 @@ let parse_packages (name : Name.t option) ~info ~dir ~version packages
       in
       { p with version; info })
 
-let parse ~dir ~(lang : Lang.Instance.t) ~file ~dir_status =
+let parse ~dir ~(lang : Lang.Instance.t) ~file =
   String_with_vars.set_decoding_env (Pform.Env.initial lang.version)
   @@ fields
   @@ let+ name = field_o "name" Name.decode
@@ -851,28 +856,14 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file ~dir_status =
      and+ map_workspace_root =
        field_o_b "map_workspace_root"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 7))
-     and+ _allow_approx_merlin =
-       (* TODO DUNE3 remove this field from parsing *)
+     and+ allow_approximate_merlin =
+       (* TODO DUNE4 remove this field from parsing *)
        let+ loc = loc
-       and+ f =
-         field_o_b "allow_approximate_merlin"
+       and+ field =
+         field_b "allow_approximate_merlin"
            ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 9))
        in
-       let vendored =
-         match dir_status with
-         | Sub_dirs.Status.Vendored -> true
-         | _ -> false
-       in
-       if
-         Option.is_some f
-         && Dune_lang.Syntax.Version.Infix.(lang.version >= (2, 8))
-         && not vendored
-       then
-         Dune_lang.Syntax.Warning.deprecated_in
-           ~extra_info:
-             "It is useless since the Merlin configurations are not ambiguous \
-              anymore."
-           loc lang.syntax (2, 8) ~what:"This field"
+       Option.some_if field loc
      and+ executables_implicit_empty_intf =
        field_o_b "executables_implicit_empty_intf"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9))
@@ -983,23 +974,6 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file ~dir_status =
            ~f:(fun dialects (loc, dialect) ->
              Dialect.DB.add dialects ~loc dialect)
        in
-       let () =
-         match name with
-         | Named _ -> ()
-         | Anonymous _ ->
-           if
-             dune_version >= (2, 8)
-             && generate_opam_files
-             && dir_status = Sub_dirs.Status.Normal
-           then
-             let loc = Loc.in_file (Path.source file) in
-             User_warning.emit ~loc
-               [ Pp.text
-                   "Project name is not specified. Add a (name <project-name>) \
-                    field to your dune-project file to make sure that $ dune \
-                    subst works in release or pinned builds"
-               ]
-       in
        { name
        ; file_key
        ; root
@@ -1023,22 +997,22 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file ~dir_status =
        ; format_config
        ; subst_config
        ; strict_package_deps
+       ; allow_approximate_merlin
        ; cram
        ; expand_aliases_in_sandbox
        ; opam_file_location
        }
 
-let load_dune_project ~dir opam_packages ~dir_status : t Memo.t =
+let load_dune_project ~dir opam_packages : t Memo.t =
   let file = Path.Source.relative dir filename in
   let open Memo.O in
   let* f =
     Fs_memo.with_lexbuf_from_file (In_source_dir file) ~f:(fun lexbuf ->
-        parse_contents lexbuf ~f:(fun lang ->
-            parse ~dir ~lang ~file ~dir_status))
+        parse_contents lexbuf ~f:(fun lang -> parse ~dir ~lang ~file))
   in
   f opam_packages
 
-let load ~dir ~files ~infer_from_opam_files ~dir_status : t option Memo.t =
+let load ~dir ~files ~infer_from_opam_files : t option Memo.t =
   let open Memo.O in
   let opam_packages =
     String.Set.fold files ~init:[] ~f:(fun fn acc ->
@@ -1052,7 +1026,7 @@ let load ~dir ~files ~infer_from_opam_files ~dir_status : t option Memo.t =
     |> Package.Name.Map.of_list_exn
   in
   if String.Set.mem files filename then
-    let+ project = load_dune_project ~dir opam_packages ~dir_status in
+    let+ project = load_dune_project ~dir opam_packages in
     Some project
   else if
     Path.Source.is_root dir
@@ -1084,6 +1058,8 @@ let dune_site_extension =
   Extension.register_unit Section.dune_site_syntax (return [])
 
 let strict_package_deps t = t.strict_package_deps
+
+let allow_approximate_merlin t = t.allow_approximate_merlin
 
 let cram t = t.cram
 

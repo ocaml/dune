@@ -7,8 +7,20 @@ module Includes = struct
 
   let filter_with_odeps libs deps md =
     let open Resolve.Memo.O in
-    let+ ((module_deps, lib_top_module_map), lib_to_entry_modules_mapin), _ =
+    let+ ( ( ((module_deps, lib_top_module_map), lib_to_entry_modules_mapin)
+           , flags )
+         , _ ) =
       deps
+    in
+    let rec flag_open_present entry_lib_name l =
+      match l with
+      | flag :: entry_name :: t ->
+        if
+          String.equal flag "-open"
+          && String.is_prefix ~prefix:entry_lib_name entry_name
+        then true
+        else flag_open_present entry_lib_name t
+      | _ -> false
     in
     let lib_top_module_map =
       Module_name.Map.of_list_exn (List.concat lib_top_module_map)
@@ -22,7 +34,7 @@ module Includes = struct
     in
     let exists_in_odeps lib_name =
       List.exists external_dep_names ~f:(fun odep ->
-          Dune_util.Log.info [ Pp.textf "Comparing %s %s \n" lib_name odep ];
+          (*  Dune_util.Log.info [ Pp.textf "Comparing %s %s \n" lib_name odep ]; *)
           String.equal lib_name odep || String.is_prefix ~prefix:odep lib_name)
     in
     (* FIXME: menhir mocks? we skip for now *)
@@ -42,49 +54,57 @@ module Includes = struct
           in
           if List.is_non_empty entry_module_names then
             List.exists entry_module_names ~f:(fun entry_module_name ->
-                let top_c_modules =
-                  match
-                    Module_name.Map.find lib_top_module_map entry_module_name
-                  with
-                  | Some modules -> modules
-                  | None -> []
-                in
-                let keep =
-                  (* First, check if one of the top closed modules matches any of ocamldep outputs *)
-                  List.exists top_c_modules ~f:(fun top_c_mod ->
-                      exists_in_odeps
-                        (Module.name top_c_mod |> Module_name.to_string))
-                  (* Secondly, for each ocamldep outut X, see if current [entry_module_name] is in top closed modules of X  *)
-                  || List.exists external_dep_names ~f:(fun odep_output ->
-                         let odep_module_name =
-                           Module_name.of_string odep_output
-                         in
-                         let top_c_modules =
-                           match
-                             Module_name.Map.find lib_top_module_map
-                               odep_module_name
-                           with
-                           | Some modules -> modules
-                           | None -> []
-                         in
-                         List.exists top_c_modules ~f:(fun top_c_mod ->
-                             Module_name.equal entry_module_name
-                               (Module.name top_c_mod)))
-                in
-                if not keep then
-                  Dune_util.Log.info
-                    [ Pp.textf "Removing %s for module %s \n"
-                        (Lib.name lib |> Lib_name.to_string)
-                        (Module.name md |> Module_name.to_string)
-                    ];
-
-                keep)
+                if
+                  not
+                    (flag_open_present
+                       (Module_name.to_string entry_module_name)
+                       flags)
+                then
+                  let top_c_modules =
+                    match
+                      Module_name.Map.find lib_top_module_map entry_module_name
+                    with
+                    | Some modules -> modules
+                    | None -> []
+                  in
+                  let keep =
+                    (* First, check if one of the top closed modules matches any of ocamldep outputs *)
+                    List.exists top_c_modules ~f:(fun top_c_mod ->
+                        exists_in_odeps
+                          (Module.name top_c_mod |> Module_name.to_string))
+                    (* Secondly, for each ocamldep outut X, see if current [entry_module_name] is in top closed modules of X  *)
+                    || List.exists external_dep_names ~f:(fun odep_output ->
+                           let odep_module_name =
+                             Module_name.of_string odep_output
+                           in
+                           let top_c_modules =
+                             match
+                               Module_name.Map.find lib_top_module_map
+                                 odep_module_name
+                             with
+                             | Some modules -> modules
+                             | None -> []
+                           in
+                           List.exists top_c_modules ~f:(fun top_c_mod ->
+                               Module_name.equal entry_module_name
+                                 (Module.name top_c_mod)))
+                  in
+                  keep
+                else true)
           else true)
 
   let make ?(lib_top_module_map = Action_builder.return [])
       ?(lib_to_entry_modules_map = Action_builder.return []) () ~project ~opaque
-      ~requires ~md ~dep_graphs =
+      ~requires ~md ~dep_graphs ~flags =
     ignore lib_to_entry_modules_map;
+    ignore flags;
+    let flags =
+      Action_builder.map2
+        (Ocaml_flags.get flags (Lib_mode.Ocaml Byte))
+        (Ocaml_flags.get flags (Lib_mode.Ocaml Native))
+        ~f:List.append
+    in
+
     let open Lib_mode.Cm_kind.Map in
     let open Resolve.Memo.O in
     let iflags libs mode = Lib_flags.L.include_flags ~project libs mode in
@@ -105,7 +125,10 @@ module Includes = struct
         Action_builder.map2 cmb_top lib_to_entry_modules_map ~f:(fun mods map ->
             (mods, map))
       in
-      Action_builder.run cmb_entry Action_builder.Eager
+      let cmb_flags =
+        Action_builder.map2 cmb_entry flags ~f:(fun mods map -> (mods, map))
+      in
+      Action_builder.run cmb_flags Action_builder.Eager
       |> Resolve.Memo.lift_memo
     in
     let make_includes_args ~mode groups =
@@ -294,7 +317,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   in
   let includes =
     Includes.make ~project ~opaque ~requires:requires_compile ~dep_graphs
-      ~lib_top_module_map ~lib_to_entry_modules_map ()
+      ~lib_top_module_map ~lib_to_entry_modules_map ~flags ()
   in
   { super_context
   ; scope
@@ -371,6 +394,12 @@ let for_root_module t root_module =
   }
 
 let for_module_generated_at_link_time cctx ~requires ~module_ =
+  let flags =
+    let project = Scope.project cctx.scope in
+    let dune_version = Dune_project.dune_version project in
+    let profile = (Super_context.context cctx.super_context).profile in
+    Ocaml_flags.default ~profile ~dune_version
+  in
   let opaque =
     (* Cmi's of link time generated modules are compiled with -opaque, hence
        their implementation must also be compiled with -opaque *)
@@ -385,7 +414,7 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
   let dep_graphs = Ml_kind.Dict.make ~intf:dummy ~impl:dummy in
   let includes =
     Includes.make ~dep_graphs ~project:(Scope.project cctx.scope) ~opaque
-      ~requires ()
+      ~requires ~flags ()
   in
   { cctx with
     opaque

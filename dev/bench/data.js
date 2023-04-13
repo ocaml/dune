@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681402643206,
+  "lastUpdate": 1681402973492,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -25431,6 +25431,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.07950492498",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cc2206cda07a79712e1d6d87482aa5787d1841ad",
+          "message": "refactor: Make [Either.t] equal [Stdlib.Either.t] (#7535)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-13T08:54:54-07:00",
+          "tree_id": "72ab8c55fc27b9a8dc457bfaa8502dceef6d9d3a",
+          "url": "https://github.com/ocaml/dune/commit/cc2206cda07a79712e1d6d87482aa5787d1841ad"
+        },
+        "date": 1681402972645,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "70.15853714779333",
             "unit": "seconds"
           }
         ]

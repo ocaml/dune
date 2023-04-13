@@ -16,7 +16,7 @@ source tree if (generate_opam_files true) is enabled.
 
   $ dune build foo.install
   $ grep opam _build/default/foo.install
-  [1]
+    "_build/install/default/lib/foo/opam"
 
   $ dune build @check
   $ dune build foo.install

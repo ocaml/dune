@@ -10,16 +10,14 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
 
 module Package_paths = struct
   let opam_file (ctx : Context.t) (pkg : Package.t) =
-    match pkg.has_opam_file with
-    | Exists false -> Memo.return None
-    | Exists true ->
-      Memo.return
-      @@ Some (Path.Build.append_source ctx.build_dir (Package.opam_file pkg))
-    | Look_inside_opam_dir -> (
-      let opam_file = Package.opam_file pkg in
-      Source_tree.file_exists opam_file >>| function
-      | true -> Some (Path.Build.append_source ctx.build_dir opam_file)
-      | false -> None)
+    let opam_file = Package.opam_file pkg in
+    let exists =
+      match pkg.has_opam_file with
+      | Exists b -> b
+      | Generated -> true
+    in
+    if exists then Some (Path.Build.append_source ctx.build_dir opam_file)
+    else None
 
   let meta_file (ctx : Context.t) pkg =
     Path.Build.append_source ctx.build_dir (Package.meta_file pkg)
@@ -419,7 +417,7 @@ end = struct
     let+ init =
       Package.Name.Map_traversals.parallel_map packages
         ~f:(fun _name (pkg : Package.t) ->
-          let* opam_file = Package_paths.opam_file ctx pkg in
+          let opam_file = Package_paths.opam_file ctx pkg in
           let init =
             let file section local_file dst =
               Install.Entry.make section local_file ~kind:`File ~dst

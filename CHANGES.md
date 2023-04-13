@@ -101,6 +101,10 @@ Unreleased
 - Allow `(package ...)` in any position within `(rule ...)` stanza (#7445,
   @Leonidas-from-XIV)
 
+- Always include `opam` files in the generated `.install` file. Previously, it
+  would not be included whenever `(generate_opam_files true)` was set and the
+  `.install` file wasn't yet generated. (#7547, @rgrinberg)
+
 3.7.1 (2023-04-04)
 ------------------
 

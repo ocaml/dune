@@ -549,7 +549,7 @@ end
 
 type opam_file =
   | Exists of bool
-  | Look_inside_opam_dir
+  | Generated
 
 type t =
   { id : Id.t
@@ -579,10 +579,7 @@ let name t = t.id.name
 let dir t = t.id.dir
 
 let set_inside_opam_dir t ~dir =
-  { t with
-    has_opam_file = Look_inside_opam_dir
-  ; opam_file = Path.Source.relative dir (Name.opam_fn t.id.name)
-  }
+  { t with opam_file = Path.Source.relative dir (Name.opam_fn t.id.name) }
 
 let encode (name : Name.t)
     { id = _
@@ -687,7 +684,7 @@ let dyn_of_opam_file =
   let open Dyn in
   function
   | Exists b -> variant "Exists" [ bool b ]
-  | Look_inside_opam_dir -> variant "Look_inside_opam_dir" []
+  | Generated -> variant "Generated" []
 
 let to_dyn
     { id

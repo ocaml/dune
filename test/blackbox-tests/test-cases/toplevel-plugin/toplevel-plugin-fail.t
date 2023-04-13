@@ -153,6 +153,7 @@ This is not allowed in toplevels, so it fails.
   $ dune install --prefix _install --display short
   Installing _install/lib/top-plugin1/META
   Installing _install/lib/top-plugin1/dune-package
+  Installing _install/lib/top-plugin1/opam
   Installing _install/lib/top-plugin1/plugin1_impl/plugin1_impl.cma
   Installing _install/lib/top-plugin1/plugin1_impl/plugin1_impl.cmi
   Installing _install/lib/top-plugin1/plugin1_impl/plugin1_impl.cmt
@@ -160,6 +161,7 @@ This is not allowed in toplevels, so it fails.
   Installing _install/lib/top_with_plugins/top_plugins/plugin1/META
   Installing _install/lib/top-plugin2/META
   Installing _install/lib/top-plugin2/dune-package
+  Installing _install/lib/top-plugin2/opam
   Installing _install/lib/top-plugin2/plugin2_impl/plugin2_impl.cma
   Installing _install/lib/top-plugin2/plugin2_impl/plugin2_impl.cmi
   Installing _install/lib/top-plugin2/plugin2_impl/plugin2_impl.cmt

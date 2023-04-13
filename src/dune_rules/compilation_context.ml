@@ -4,6 +4,7 @@ module Includes = struct
   type t = Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
   let make ~project ~opaque ~requires : _ Lib_mode.Cm_kind.Map.t =
+    (* TODO : some of the requires can filtered out using [ocamldep] info *)
     let open Resolve.Memo.O in
     let iflags libs mode = Lib_flags.L.include_flags ~project libs mode in
     let make_includes_args ~mode groups =

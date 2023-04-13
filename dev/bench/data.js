@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681420809272,
+  "lastUpdate": 1681421167895,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -25750,6 +25750,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8082126068",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e64f1981cbfce55fcb3b58091607b1d29fbb8a3d",
+          "message": "fix: correctly generate .install files (#7547)\n\nPreviously, the contents of the .install file would depend on whether\r\nthe .opam install file would be present in the source.\r\n\r\nThis check is wrong whenever we generate the .opam file ourselves. This\r\ncommit checks if we are generating the .opam file.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-13T13:58:40-07:00",
+          "tree_id": "c53886c5051edde5b382155de0c00a7ec0510b4a",
+          "url": "https://github.com/ocaml/dune/commit/e64f1981cbfce55fcb3b58091607b1d29fbb8a3d"
+        },
+        "date": 1681421167200,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "71.27860530743999",
             "unit": "seconds"
           }
         ]

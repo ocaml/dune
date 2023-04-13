@@ -40,11 +40,11 @@ let parse_compilation_units ~modules x y =
   let loc =
     let obj_map = Modules.obj_map modules in
     List.filter_map x ~f:(fun m ->
-      let obj_name = Module_name.Unique.of_string m in
-      match Module_name.Unique.Map.find obj_map obj_name with
-      | Some m -> Some (Module_dep.Local (Modules.Sourced_module.to_module m))
-      | None ->
-        Some (Module_dep.External (Module_dep.External_name.of_string m)))
+        let obj_name = Module_name.Unique.of_string m in
+        match Module_name.Unique.Map.find obj_map obj_name with
+        | Some m -> Some (Module_dep.Local (Modules.Sourced_module.to_module m))
+        | None ->
+          Some (Module_dep.External (Module_dep.External_name.of_string m)))
   in
   List.append loc
     (List.map y ~f:(fun s ->
@@ -165,8 +165,7 @@ let deps_of
               else Some Impl
           in
           ml_kind m
-          |> Option.map ~f:(fun ml_kind ->
-                 Path.build (dep (Ext (m, ml_kind)))) 
+          |> Option.map ~f:(fun ml_kind -> Path.build (dep (Ext (m, ml_kind))))
         in
         List.filter_map modules ~f:transive_dep
       in
@@ -177,7 +176,8 @@ let deps_of
           parsed |> parse_module_names ~dir:md.dir ~unit ~modules
         in
         let local =
-          List.filter_map immediate_deps ~f:(fun m -> (* Maybe have kind in external dep *)
+          List.filter_map immediate_deps ~f:(fun m ->
+              (* Maybe have kind in external dep *)
               match m with
               | Module_dep.Local m -> Some m
               | _ -> None)

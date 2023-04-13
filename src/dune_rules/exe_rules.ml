@@ -144,7 +144,6 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
           r |> Resolve.Memo.all)
       |> Resolve.Memo.read
     in
- 
     let lib_top_module_map =
       Resolve.Memo.bind requires_compile ~f:(fun reqs ->
           List.map reqs ~f:(fun req ->
@@ -183,7 +182,6 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
           |> Resolve.Memo.all)
       |> Resolve.Memo.read
     in
-     
     Compilation_context.create () ~loc:exes.buildable.loc ~super_context:sctx
       ~expander ~scope ~obj_dir ~modules ~flags ~requires_link ~requires_compile
       ~preprocessing:pp ~js_of_ocaml ~opaque:Inherit_from_settings

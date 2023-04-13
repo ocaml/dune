@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681425195154,
+  "lastUpdate": 1681425555222,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -25837,6 +25837,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8136016967466666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1c62a2d4c84bf01016f45b683f828a0c22a86b4f",
+          "message": "fix: preserve directory hierarchy for installed headers (#7512)\n\nThis field works like install_c_headers except it allows full file names\r\nand allows to customize the destination paths\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-13T15:11:19-07:00",
+          "tree_id": "207b30a05109fcc34451d494c1e8f94cf0ade379",
+          "url": "https://github.com/ocaml/dune/commit/1c62a2d4c84bf01016f45b683f828a0c22a86b4f"
+        },
+        "date": 1681425554262,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "71.21049368974666",
             "unit": "seconds"
           }
         ]

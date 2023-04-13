@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681402106056,
+  "lastUpdate": 1681402147153,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -29086,6 +29086,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.65390279982",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "06e2fe1186cec297bfad9470107e57706fcb1bcc",
+          "message": "refactor: use records in recursive include (#7521)\n\nWe need to be able to customize the [include_allowed_in_versions] on a\r\nper caller basis. This is easier when the config is in a record rather\r\nthan a functor.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-13T08:56:04-07:00",
+          "tree_id": "682279c08e4146ed210808ef5aac721a8e982a6c",
+          "url": "https://github.com/ocaml/dune/commit/06e2fe1186cec297bfad9470107e57706fcb1bcc"
+        },
+        "date": 1681402145063,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.7872869788",
             "unit": "seconds"
           }
         ]

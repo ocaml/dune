@@ -4,6 +4,7 @@ module Includes = struct
   type t = Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
   let make ~project ~opaque ~requires : _ Lib_mode.Cm_kind.Map.t =
+    (* TODO : some of the requires can filtered out using [ocamldep] info *)
     let open Resolve.Memo.O in
     let iflags libs mode = Lib_flags.L.include_flags ~project libs mode in
     let make_includes_args ~mode groups =
@@ -209,11 +210,16 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   }
 
 let for_alias_module t alias_module =
+  let keep_flags = Modules.is_stdlib_alias (modules t) alias_module in
   let flags =
-    let project = Scope.project t.scope in
-    let dune_version = Dune_project.dune_version project in
-    let profile = (Super_context.context t.super_context).profile in
-    Ocaml_flags.default ~dune_version ~profile
+    if keep_flags then
+      (* in the case of stdlib, these flags can be written by the user *)
+      t.flags
+    else
+      let project = Scope.project t.scope in
+      let dune_version = Dune_project.dune_version project in
+      let profile = (Super_context.context t.super_context).profile in
+      Ocaml_flags.default ~dune_version ~profile
   in
   let sandbox =
     let ctx = Super_context.context t.super_context in

@@ -8,9 +8,9 @@ executable stanzas is as follows:
 
 .. code:: dune
 
-    (executable
-     (name <name>)
-     <optional-fields>)
+   (executable
+    (name <name>)
+    <optional-fields>)
 
 ``<name>`` is a module name that contains the executable's main entry point.
 There can be additional modules in the current directory; you only need to
@@ -50,9 +50,9 @@ files for executables. See `executables_implicit_empty_intf`_.
 
    .. code:: dune
 
-       (install
-        (section bin)
-        (files (<name>.exe as <public-name>)))
+      (install
+       (section bin)
+       (files (<name>.exe as <public-name>)))
 
 .. _shared-exe-fields:
 
@@ -60,14 +60,14 @@ files for executables. See `executables_implicit_empty_intf`_.
   specifies the package the executables are part of it.
 
 - ``(libraries <library-dependencies>)`` specifies the library dependencies. See
-  the section about :ref:`library-deps` for more details.
+  :doc:`reference/library-dependencies` for more details.
 
 - ``(link_flags <flags>)`` specifies additional flags to pass to the linker.
   This field supports ``(:include ...)`` forms.
 
 - ``(link_deps (<deps-conf list>))`` specifies the dependencies used only by the
-  linker, i.e., when using a version script. See the :ref:`deps-field` section
-  for more details.
+  linker, i.e., when using a version script. See
+  :doc:`concepts/dependency-spec` for more details.
 
 - ``(modules <modules>)`` specifies which modules in the current directory Dune
   should consider when building this executable. Modules not listed here will be
@@ -90,8 +90,8 @@ files for executables. See `executables_implicit_empty_intf`_.
 
 - ``js_of_ocaml``: See the section about :ref:`jsoo-field`
 
-- ``flags``, ``ocamlc_flags``, and ``ocamlopt_flags``: See the section about
-  specifying :ref:`ocaml-flags`.
+- ``flags``, ``ocamlc_flags``, and ``ocamlopt_flags``: See
+  :doc:`concepts/ocaml-flags`.
 
 - ``(modules_without_implementation <modules>)`` is the same as the
   corresponding field of `library`_.
@@ -111,8 +111,8 @@ files for executables. See `executables_implicit_empty_intf`_.
   them.
 
 - ``(foreign_stubs <foreign-stubs-spec>)`` specifies foreign source files, e.g.,
-  C or C++ stubs, to be linked into the executable. See the section
-  :ref:`foreign-sources-and-archives` for more details.
+  C or C++ stubs, to be linked into the executable. See
+  :doc:`reference/foreign` for more details.
 
 - ``(foreign_archives <foreign-archives-list>)`` specifies archives of foreign
   object files to be linked into the executable. See the section
@@ -172,9 +172,9 @@ executables and native shared objects:
 
 .. code:: dune
 
-          (executables
-            (names a b c)
-            (modes (byte exe) (native shared_object)))
+   (executables
+     (names a b c)
+     (modes (byte exe) (native shared_object)))
 
 Additionally, you can use the following shorthands:
 
@@ -191,10 +191,10 @@ For instance, the following ``modes`` fields are all equivalent:
 
 .. code:: dune
 
-          (modes (exe object shared_object))
-          (modes ((best exe)
-                  (best object)
-                  (best shared_object)))
+   (modes (exe object shared_object))
+   (modes ((best exe)
+           (best object)
+           (best shared_object)))
 
 Lastly, use the special mode ``byte_complete`` for building a bytecode
 executable as a native self-contained executable, i.e., an executable that
@@ -257,7 +257,7 @@ options using ``(js_of_ocaml (<js_of_ocaml-options>))``.
 - ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
   runtime files.
 
-``<flags>`` is specified in the :ref:`ordered-set-language`.
+``<flags>`` is specified in the :doc:`reference/ordered-set-language`.
 
 The default value for ``(flags ...)`` depends on the selected build profile. The
 build profile ``dev`` (the default) will enable sourcemap and the pretty
@@ -270,9 +270,10 @@ executables
 
 There is a very subtle difference in the naming of these stanzas. One is
 ``executables``, plural, and the other is ``executable``, singular. The
-``executables`` stanza is the same as the ``executable`` stanza except that it's
-used to describe several executables sharing the same configuration, so the
+``executables`` stanza is very similar as the ``executable`` stanza but can be
+used to to describe several executables sharing the same configuration, so the
 plural ``executables`` stanza is used to describe more than one executable.
+
 
 It shares the same fields as the ``executable`` stanza, except that instead of
 ``(name ...)`` and ``(public_name ...)`` you must use the plural versions as
@@ -286,3 +287,32 @@ well:
   executable. The list of names must be of the same length as the list in the
   ``(names ...)`` field. Moreover, you can use ``-`` for executables that
   shouldn't be installed.
+
+However, using ``executables`` the executables defined in the stanza are
+allowed to share modules.
+
+Given modules ``Foo``, ``Bar`` and ``Baz`` the usage of ``executables`` can
+simplify the code:
+
+.. code:: dune
+
+   (executables
+     (names foo bar))
+
+Instead of the more complex
+
+.. code:: dune
+
+   (library
+     (name baz)
+     (modules baz))
+   
+   (executable
+     (name foo)
+     (modules foo)
+     (libraries baz))
+   
+   (executable
+     (name bar)
+     (modules bar)
+     (libraries baz))

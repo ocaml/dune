@@ -2,10 +2,10 @@ open! Stdune
 
 (* XXX explicit export because we want to get rid of the dependency on the
    engine *)
-module Dune_project = Dune_engine.Dune_project
-module Source_tree = Dune_engine.Source_tree
+module Dune_project = Dune_rules.Dune_project
+module Source_tree = Dune_rules.Source_tree
 module Console = Dune_console
-module Sub_dirs = Dune_engine.Sub_dirs
+module Sub_dirs = Dune_rules.Sub_dirs
 
 type rename_and_edit =
   { original_file : Path.Source.t

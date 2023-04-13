@@ -6,7 +6,6 @@ module Request = Dune_rpc.Public.Request
 module Diagnostic = Dune_rpc.Diagnostic
 module Client = Dune_rpc_client.Client
 module Session = Csexp_rpc.Session
-module Config = Dune_util.Config
 
 (* enable to debug process stdout/stderr *)
 let debug = false
@@ -70,14 +69,12 @@ let run_client ?handler f =
           notification_exn client Dune_rpc.Public.Notification.shutdown ()))
 
 let read_lines in_ =
-  let* reader = Scheduler.Worker.create () in
   let in_ = Unix.in_channel_of_descr in_ in
   let rec loop acc =
-    let* res = Scheduler.Worker.task reader ~f:(fun () -> input_line in_) in
+    let* res = Scheduler.async (fun () -> input_line in_) in
     match res with
     | Ok a -> loop (a :: acc)
-    | Error `Stopped -> assert false
-    | Error (`Exn e) ->
+    | Error e ->
       (match e.exn with
       | End_of_file -> ()
       | _ ->
@@ -86,7 +83,6 @@ let read_lines in_ =
       Fiber.return (String.concat (List.rev acc) ~sep:"\n")
   in
   let+ res = loop [] in
-  Scheduler.Worker.stop reader;
   close_in_noerr in_;
   res
 
@@ -97,8 +93,7 @@ let run ?env ~prog ~argv () =
     let argv = prog :: argv in
     let env = Option.map ~f:Spawn.Env.of_list env in
     Spawn.spawn ~prog ~argv ~stdout:stdout_w ~stderr:stderr_w
-      ~stdin:(Lazy.force Config.dev_null_in)
-      ?env ()
+      ~stdin:(Lazy.force Dev_null.in_) ?env ()
     |> Pid.of_int
   in
   Unix.close stdout_w;
@@ -168,6 +163,7 @@ let config =
   ; stats = None
   ; insignificant_changes = `React
   ; signal_watcher = `No
+  ; watch_exclusions = []
   }
 
 let run run =

@@ -235,7 +235,8 @@ let no_rule_found ~loc fn =
   in
   let hints ctx =
     let candidates =
-      Context_name.Map.keys contexts |> List.map ~f:Context_name.to_string
+      Context_name.Map.to_list_map contexts ~f:(fun name _ ->
+          Context_name.to_string name)
     in
     User_message.did_you_mean (Context_name.to_string ctx) ~candidates
   in
@@ -501,14 +502,15 @@ end = struct
 
   module Normal = struct
     type t =
-      { build_dir_only_sub_dirs : Subdir_set.t
+      { build_dir_only_sub_dirs : Build_config.Rules.Build_only_sub_dirs.t
       ; directory_targets : Loc.t Path.Build.Map.t
       ; rules : Rules.t Memo.Lazy.t
       }
 
     let combine_exn r { build_dir_only_sub_dirs; directory_targets; rules } =
       { build_dir_only_sub_dirs =
-          Subdir_set.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
+          Build_config.Rules.Build_only_sub_dirs.union r.build_dir_only_sub_dirs
+            build_dir_only_sub_dirs
       ; directory_targets =
           Path.Build.Map.union_exn r.directory_targets directory_targets
       ; rules =
@@ -525,6 +527,17 @@ end = struct
             Code_error.raise
               "[gen_rules] returned directory target in a directory that is \
                not a descendant of the directory it was called for"
+              [ ("dir", Path.Build.to_dyn dir)
+              ; ("example", Path.Build.to_dyn p)
+              ])
+
+    let check_all_sub_dirs_rule_dirs_are_descendant ~of_:dir
+        build_dir_only_sub_dirs =
+      Path.Build.Map.iteri build_dir_only_sub_dirs ~f:(fun p _sub_dirs ->
+          if not (Path.Build.is_descendant p ~of_:dir) then
+            Code_error.raise
+              "[gen_rules] returned sub-directories in a directory that is not \
+               a descendant of the directory it was called for"
               [ ("dir", Path.Build.to_dyn dir)
               ; ("example", Path.Build.to_dyn p)
               ])
@@ -568,6 +581,7 @@ end = struct
         { Build_config.Rules.build_dir_only_sub_dirs; directory_targets; rules }
         =
       check_all_directory_targets_are_descendant ~of_ directory_targets;
+      check_all_sub_dirs_rule_dirs_are_descendant ~of_ directory_targets;
       let rules =
         Memo.lazy_ (fun () ->
             let+ rules = rules in
@@ -660,6 +674,9 @@ end = struct
       Memo.return
         (Loaded.Build_under_directory_target { directory_target_ancestor })
     | Normal { rules; build_dir_only_sub_dirs; directory_targets } ->
+      let build_dir_only_sub_dirs =
+        Build_config.Rules.Build_only_sub_dirs.find build_dir_only_sub_dirs dir
+      in
       Path.Build.Map.iteri directory_targets ~f:(fun dir_target loc ->
           let name = Path.Build.basename dir_target in
           if

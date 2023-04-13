@@ -1,6 +1,5 @@
 open Stdune
 module Process = Dune_engine.Process
-module Config = Dune_util.Config
 
 module Json = struct
   include Chrome_trace.Json
@@ -130,6 +129,7 @@ let () =
     ; stats = None
     ; insignificant_changes = `React
     ; signal_watcher = `No
+    ; watch_exclusions = []
     }
   in
   let clean, zero =

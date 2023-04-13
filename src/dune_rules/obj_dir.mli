@@ -123,9 +123,10 @@ module Module : sig
       has no implementation.*)
   val cm_file_exn : 'path t -> Module.t -> kind:Lib_mode.Cm_kind.t -> 'path
 
-  val o_file : 'path t -> Module.t -> ext_obj:string -> 'path option
+  val o_file :
+    'path t -> Module.t -> ext_obj:Filename.Extension.t -> 'path option
 
-  val o_file_exn : 'path t -> Module.t -> ext_obj:string -> 'path
+  val o_file_exn : 'path t -> Module.t -> ext_obj:Filename.Extension.t -> 'path
 
   val cm_public_file_exn :
     'path t -> Module.t -> kind:Lib_mode.Cm_kind.t -> 'path
@@ -136,7 +137,8 @@ module Module : sig
   val odoc : 'path t -> Module.t -> 'path
 
   module L : sig
-    val o_files : 'path t -> Module.t list -> ext_obj:string -> Path.t list
+    val o_files :
+      'path t -> Module.t list -> ext_obj:Filename.Extension.t -> Path.t list
 
     val cm_files :
       'path t -> Module.t list -> kind:Lib_mode.Cm_kind.t -> Path.t list

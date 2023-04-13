@@ -34,4 +34,5 @@ We call `$(opam switch show)` so that this test always uses an existing switch
      -strict-sequence
      -strict-formats
      -short-paths
-     -keep-locs)))
+     -keep-locs
+     -g)))

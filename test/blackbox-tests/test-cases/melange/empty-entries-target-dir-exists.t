@@ -1,4 +1,4 @@
-Test (entries) field can be left empty
+Test (modules) field can be left empty
 
   $ cat > dune-project <<EOF
   > (lang dune 3.7)
@@ -8,8 +8,8 @@ Test (entries) field can be left empty
   $ cat > dune <<EOF
   > (melange.emit
   >  (alias melange-dist)
-  >  (target dist)
-  >  (module_system commonjs))
+  >  (emit_stdlib false)
+  >  (target dist))
   > EOF
 
 Create the dist folder

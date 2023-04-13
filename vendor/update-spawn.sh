@@ -20,6 +20,7 @@ mkdir -p spawn/src
 SRC=$TMP/spawn
 
 cp -v $SRC/src/spawn{.ml,.mli,_stubs.c} spawn/src
+cp -v $SRC/LICENSE.md spawn/
 
 git checkout spawn/src/dune
 git add -A .

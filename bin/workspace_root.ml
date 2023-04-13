@@ -18,8 +18,7 @@ module Kind = struct
 
   let of_dir_contents files =
     if String.Set.mem files Workspace.filename then Some Dune_workspace
-    else if String.Set.mem files Dune_engine.Dune_project.filename then
-      Some Dune_project
+    else if String.Set.mem files Dune_project.filename then Some Dune_project
     else None
 end
 
@@ -85,7 +84,7 @@ let create ~default_is_cwd ~specified_by_user =
     | Some dn -> Some { Candidate.kind = Explicit; dir = dn; to_cwd = [] }
     | None -> (
       let cwd = { Candidate.kind = Cwd; dir = "."; to_cwd = [] } in
-      if Dune_util.Config.inside_dune then Some cwd
+      if Dune_util.Execution_env.inside_dune then Some cwd
       else
         match find () with
         | Some s -> Some s

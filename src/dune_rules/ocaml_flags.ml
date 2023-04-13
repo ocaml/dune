@@ -167,13 +167,9 @@ let map_common t ~f =
 
 let append_common t flags = map_common t ~f:(fun l -> l @ flags)
 
-let prepend_common flags t = map_common t ~f:(fun l -> flags @ l)
-
 let with_vendored_warnings t = append_common t vendored_warnings
 
 let with_vendored_alerts t = append_common t vendored_alerts
-
-let common t = t.common
 
 let dump t =
   let+ common = t.common

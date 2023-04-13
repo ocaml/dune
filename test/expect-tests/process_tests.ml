@@ -9,6 +9,7 @@ let go =
     ; stats = None
     ; insignificant_changes = `React
     ; signal_watcher = `Yes
+    ; watch_exclusions = []
     }
   in
   Scheduler.Run.go config ~file_watcher:No_watcher ~on_event:(fun _ _ -> ())

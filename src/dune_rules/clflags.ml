@@ -9,3 +9,10 @@ let display = Dune_engine.Clflags.display
 let capture_outputs = Dune_engine.Clflags.capture_outputs
 
 let debug_artifact_substitution = ref false
+
+type on_missing_dune_project_file =
+  | Error
+  | Warn
+  | Ignore
+
+let on_missing_dune_project_file = ref Warn

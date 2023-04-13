@@ -64,6 +64,6 @@ module Map : sig
 
     val equal : t -> t -> bool
 
-    val for_merlin : t -> [ `Ocaml | `Melange ]
+    val for_merlin : t -> mode
   end
 end

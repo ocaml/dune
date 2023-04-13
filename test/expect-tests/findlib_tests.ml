@@ -128,30 +128,44 @@ let%expect_test _ =
     } |}]
 
 let conf () =
-  Findlib.Config.load
-    (Path.Outside_build_dir.relative db_path "../toolchain")
-    ~toolchain:"tlc" ~context:"<context>"
-  |> Memo.run
-  |> Test_scheduler.(run (create ()))
+  let memo =
+    let open Memo.O in
+    Findlib.Config.discover_from_env
+      ~which:(fun _ -> assert false)
+      ~ocamlpath:[]
+      ~env:
+        (Env.initial
+        |> Env.add ~var:"OCAMLFIND_CONF"
+             ~value:
+               (Path.Outside_build_dir.relative db_path "../toolchain"
+               |> Path.Outside_build_dir.to_string))
+      ~findlib_toolchain:(Some "tlc")
+    >>| Option.value_exn
+  in
+  Memo.run memo |> Test_scheduler.(run (create ()))
 
 let%expect_test _ =
   let conf = conf () in
   print_dyn (Findlib.Config.to_dyn conf);
   [%expect
     {|
-    { vars =
-        map
-          { "FOO_BAR" :
-              { set_rules =
-                  [ { preds_required = set { "env"; "tlc" }
-                    ; preds_forbidden = set {}
-                    ; value = "my variable"
-                    }
-                  ]
-              ; add_rules = []
+    { config =
+        { vars =
+            map
+              { "FOO_BAR" :
+                  { set_rules =
+                      [ { preds_required = set { "env"; "tlc" }
+                        ; preds_forbidden = set {}
+                        ; value = "my variable"
+                        }
+                      ]
+                  ; add_rules = []
+                  }
               }
-          }
-    ; preds = set { "tlc" }
+        ; preds = set { "tlc" }
+        }
+    ; ocamlpath = []
+    ; toolchain = Some "tlc"
     } |}];
   print_dyn (Env.to_dyn (Findlib.Config.env conf));
   [%expect {| map { "FOO_BAR" : "my variable" } |}]

@@ -197,7 +197,9 @@ module Stanza = struct
   let config =
     let+ flags = Ocaml_flags.Spec.decode
     and+ foreign_flags = foreign_flags ~since:(Some (1, 7))
-    and+ link_flags = Link_flags.Spec.decode ~since:(Some (3, 0))
+    and+ link_flags =
+      Link_flags.Spec.decode
+        ~check:(Some (Dune_lang.Syntax.since Stanza.syntax (3, 0)))
     and+ env_vars = env_vars_field
     and+ binaries =
       field ~default:[] "binaries"

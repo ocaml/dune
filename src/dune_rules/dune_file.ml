@@ -29,66 +29,6 @@ type for_ =
   | Executable
   | Library of Wrapped.t option
 
-module Lib_deps = struct
-  type t = Lib_dep.t list
-
-  type kind =
-    | Required
-    | Optional
-    | Forbidden
-
-  let decode for_ =
-    let+ loc = loc
-    and+ t =
-      let allow_re_export =
-        match for_ with
-        | Library _ -> true
-        | Executable -> false
-      in
-      repeat (Lib_dep.decode ~allow_re_export)
-    in
-    let add kind name acc =
-      match Lib_name.Map.find acc name with
-      | None -> Lib_name.Map.set acc name kind
-      | Some kind' -> (
-        match (kind, kind') with
-        | Required, Required ->
-          User_error.raise ~loc
-            [ Pp.textf "library %S is present twice" (Lib_name.to_string name) ]
-        | (Optional | Forbidden), (Optional | Forbidden) -> acc
-        | Optional, Required | Required, Optional ->
-          User_error.raise ~loc
-            [ Pp.textf
-                "library %S is present both as an optional and required \
-                 dependency"
-                (Lib_name.to_string name)
-            ]
-        | Forbidden, Required | Required, Forbidden ->
-          User_error.raise ~loc
-            [ Pp.textf
-                "library %S is present both as a forbidden and required \
-                 dependency"
-                (Lib_name.to_string name)
-            ])
-    in
-    ignore
-      (List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
-           match x with
-           | Lib_dep.Re_export (_, s) | Lib_dep.Direct (_, s) ->
-             add Required s acc
-           | Select { choices; _ } ->
-             List.fold_left choices ~init:acc
-               ~f:(fun acc (c : Lib_dep.Select.Choice.t) ->
-                 let acc =
-                   Lib_name.Set.fold c.required ~init:acc ~f:(add Optional)
-                 in
-                 Lib_name.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
-        : kind Lib_name.Map.t);
-    t
-
-  let of_pps pps = List.map pps ~f:(fun pp -> Lib_dep.direct (Loc.none, pp))
-end
-
 module Buildable = struct
   type t =
     { loc : Loc.t
@@ -156,8 +96,7 @@ module Buildable = struct
       located
         (only_in_library
            (field_o "cxx_names" (use_foreign >>> Ordered_set_lang.decode)))
-    and+ modules =
-      Stanza_common.Modules_settings.decode ~modules_field_name:"modules"
+    and+ modules = Stanza_common.Modules_settings.decode
     and+ self_build_stubs_archive_loc, self_build_stubs_archive =
       located
         (only_in_library
@@ -165,7 +104,13 @@ module Buildable = struct
               (Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
                  ~extra_info:"Use the (foreign_archives ...) field instead."
               >>> enter (maybe string))))
-    and+ libraries = field "libraries" (Lib_deps.decode for_) ~default:[]
+    and+ libraries =
+      let allow_re_export =
+        match for_ with
+        | Library _ -> true
+        | Executable -> false
+      in
+      field "libraries" (Lib_dep.L.decode ~allow_re_export) ~default:[]
     and+ flags = Ocaml_flags.Spec.decode
     and+ js_of_ocaml =
       field "js_of_ocaml" Js_of_ocaml.In_buildable.decode
@@ -322,6 +267,8 @@ module Mode_conf = struct
       | Native
       | Best
 
+    let all = [ Byte; Native; Best ]
+
     let compare x y =
       match (x, y) with
       | Byte, Byte -> Eq
@@ -389,6 +336,14 @@ module Mode_conf = struct
             | Some Inherited ->
               (* this doesn't happen as inherited can't be manually specified *)
               assert false))
+
+    let to_list (t : t) : (mode_conf * Kind.t) list =
+      let get mode_conf =
+        match Map.find t mode_conf with
+        | None -> None
+        | Some k -> Some (mode_conf, k)
+      in
+      List.filter_map ~f:get all
 
     let decode =
       let decode =
@@ -505,19 +460,21 @@ module Mode_conf = struct
 
       let decode_osl ~stanza_loc project =
         let+ modes = Ordered_set_lang.decode in
-        let modes =
-          Ordered_set_lang.eval modes
-            ~parse:(fun ~loc s ->
-              let mode =
-                Dune_lang.Decoder.parse decode
-                  (Dune_project.parsing_context project)
-                  (Atom (loc, Dune_lang.Atom.of_string s))
-              in
-              (mode, Kind.Requested loc))
-            ~eq:(fun (a, _) (b, _) -> equal a b)
-            ~standard:[ (Ocaml Best, Kind.Requested stanza_loc) ]
+        let standard =
+          Set.default stanza_loc |> Set.to_list
+          |> List.map ~f:(fun (m, k) -> (Ocaml m, k))
         in
-        of_list modes
+        Ordered_set_lang.eval modes ~standard
+          ~eq:(fun (a, _) (b, _) -> equal a b)
+          ~parse:(fun ~loc s ->
+            let mode =
+              Dune_lang.Decoder.parse
+                (Dune_project.set_parsing_context project decode)
+                Univ_map.empty
+                (Atom (loc, Dune_lang.Atom.of_string s))
+            in
+            (mode, Kind.Requested loc))
+        |> of_list
 
       let decode =
         let decode =
@@ -605,7 +562,7 @@ module Library = struct
     { name : Loc.t * Lib_name.Local.t
     ; visibility : visibility
     ; synopsis : string option
-    ; install_c_headers : string list
+    ; install_c_headers : (Loc.t * string) list
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
     ; modes : Mode_conf.Lib.Set.t
     ; kind : Lib_kind.t
@@ -627,6 +584,7 @@ module Library = struct
     ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
+    ; melange_runtime_deps : Loc.t * Dep_conf.t list
     }
 
   let decode =
@@ -641,7 +599,7 @@ module Library = struct
          field_o "public_name" (Public_lib.decode ~allow_deprecated_names:false)
        and+ synopsis = field_o "synopsis" string
        and+ install_c_headers =
-         field "install_c_headers" (repeat string) ~default:[]
+         field "install_c_headers" (repeat (located string)) ~default:[]
        and+ ppx_runtime_libraries =
          field "ppx_runtime_libraries"
            (repeat (located Lib_name.decode))
@@ -706,6 +664,11 @@ module Library = struct
          field_o "package"
            (Dune_lang.Syntax.since Stanza.syntax (2, 8)
            >>> located Stanza_common.Pkg.decode)
+       and+ melange_runtime_deps =
+         field "melange.runtime_deps"
+           (Dune_lang.Syntax.since Melange_stanzas.syntax (0, 1)
+           >>> located (repeat Dep_conf.decode))
+           ~default:(stanza_loc, [])
        in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
@@ -793,6 +756,7 @@ module Library = struct
        ; special_builtin_support
        ; enabled_if
        ; instrumentation_backend
+       ; melange_runtime_deps
        })
 
   let package t =
@@ -1021,6 +985,10 @@ module Library = struct
     let special_builtin_support = conf.special_builtin_support in
     let instrumentation_backend = conf.instrumentation_backend in
     let entry_modules = Lib_info.Source.Local in
+    let melange_runtime_deps =
+      let loc, runtime_deps = conf.melange_runtime_deps in
+      Lib_info.Runtime_deps.Local (loc, runtime_deps)
+    in
     Lib_info.create ~loc ~path_kind:Local ~name ~kind ~status ~src_dir
       ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems
       ~requires ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
@@ -1028,6 +996,7 @@ module Library = struct
       ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_ ~entry_modules
       ~implements ~default_implementation ~modes ~modules:Local ~wrapped
       ~special_builtin_support ~exit_module ~instrumentation_backend
+      ~melange_runtime_deps
 end
 
 module Plugin = struct
@@ -1051,126 +1020,10 @@ module Plugin = struct
 end
 
 module Install_conf = struct
-  (* Expands a [String_with_vars.t] with a given function, returning the result
-     unless the result is an absolute path in which case a user error is raised. *)
-  let expand_str_with_check_for_local_path ~expand_str sw =
-    Memo.map (expand_str sw) ~f:(fun str ->
-        (if not (Filename.is_relative str) then
-         let loc = String_with_vars.loc sw in
-         User_error.raise ~loc
-           [ Pp.textf "Absolute paths are not allowed in the install stanza." ]);
-        str)
-
-  module File_entry = struct
-    module Without_include = struct
-      type t =
-        | File_binding of File_binding.Unexpanded.t
-        | Glob_files of Glob_files.t
-
-      let decode =
-        let open Dune_lang.Decoder in
-        let file_binding_decode =
-          let+ file_binding = File_binding.Unexpanded.decode in
-          File_binding file_binding
-        in
-        let glob_files_decode =
-          let version_check = Dune_lang.Syntax.since Stanza.syntax (3, 6) in
-          let+ glob_files =
-            sum
-              [ ( "glob_files"
-                , let+ glob = version_check >>> String_with_vars.decode in
-                  { Glob_files.glob; recursive = false } )
-              ; ( "glob_files_rec"
-                , let+ glob = version_check >>> String_with_vars.decode in
-                  { Glob_files.glob; recursive = true } )
-              ]
-          in
-          Glob_files glob_files
-        in
-        file_binding_decode <|> glob_files_decode
-
-      let to_file_bindings_unexpanded t ~expand_str ~dir =
-        match t with
-        | File_binding file_binding -> Memo.return [ file_binding ]
-        | Glob_files glob_files ->
-          let open Memo.O in
-          let+ paths =
-            Glob_files.Expand.memo glob_files ~f:expand_str ~base_dir:dir
-          in
-          let glob_loc = String_with_vars.loc glob_files.glob in
-          List.map paths ~f:(fun path ->
-              let src = (glob_loc, path) in
-              File_binding.Unexpanded.make ~src ~dst:src)
-
-      let to_file_bindings_expanded t ~expand_str ~dir =
-        to_file_bindings_unexpanded t ~expand_str ~dir
-        |> Memo.bind
-             ~f:
-               (Memo.List.map
-                  ~f:
-                    (File_binding.Unexpanded.expand ~dir
-                       ~f:(expand_str_with_check_for_local_path ~expand_str)))
-    end
-
-    include
-      Recursive_include.Make
-        (Without_include)
-        (struct
-          let include_keyword = "include"
-
-          let include_allowed_in_versions = `Since (3, 5)
-
-          let non_sexp_behaviour = `User_error
-        end)
-
-    let expand_include_multi ts ~expand_str ~dir =
-      Memo.List.concat_map ts ~f:(expand_include ~expand_str ~dir)
-
-    let of_file_binding file_binding =
-      of_base (Without_include.File_binding file_binding)
-
-    let to_file_bindings_unexpanded ts ~expand_str ~dir =
-      expand_include_multi ts ~expand_str ~dir
-      |> Memo.bind
-           ~f:
-             (Memo.List.concat_map
-                ~f:
-                  (Without_include.to_file_bindings_unexpanded ~expand_str ~dir))
-
-    let to_file_bindings_expanded ts ~expand_str ~dir =
-      expand_include_multi ts ~expand_str ~dir
-      |> Memo.bind
-           ~f:
-             (Memo.List.concat_map
-                ~f:(Without_include.to_file_bindings_expanded ~expand_str ~dir))
-  end
-
-  module Dir_entry = struct
-    include
-      Recursive_include.Make
-        (File_binding.Unexpanded)
-        (struct
-          let include_keyword = "include"
-
-          let include_allowed_in_versions = `Since (3, 5)
-
-          let non_sexp_behaviour = `User_error
-        end)
-
-    let to_file_bindings_expanded ts ~expand_str ~dir =
-      Memo.List.concat_map ts ~f:(expand_include ~expand_str ~dir)
-      |> Memo.bind
-           ~f:
-             (Memo.List.map
-                ~f:
-                  (File_binding.Unexpanded.expand ~dir
-                     ~f:(expand_str_with_check_for_local_path ~expand_str)))
-  end
-
   type t =
     { section : Install.Section_with_site.t
-    ; files : File_entry.t list
-    ; dirs : Dir_entry.t list
+    ; files : Install_entry.File.t list
+    ; dirs : Install_entry.Dir.t list
     ; package : Package.t
     ; enabled_if : Blang.t
     }
@@ -1179,11 +1032,11 @@ module Install_conf = struct
     fields
       (let+ loc = loc
        and+ section = field "section" Install.Section_with_site.decode
-       and+ files = field_o "files" (repeat File_entry.decode)
+       and+ files = field_o "files" (repeat Install_entry.File.decode)
        and+ dirs =
          field_o "dirs"
            (Dune_lang.Syntax.since Stanza.syntax (3, 5)
-           >>> repeat Dir_entry.decode)
+           >>> repeat Install_entry.Dir.decode)
        and+ package = Stanza_common.Pkg.field ~stanza:"install"
        and+ enabled_if =
          let allowed_vars = Enabled_if.common_vars ~since:(2, 6) in
@@ -1198,10 +1051,6 @@ module Install_conf = struct
        in
 
        { section; dirs; files; package; enabled_if })
-
-  let expand_files t = File_entry.to_file_bindings_expanded t.files
-
-  let expand_dirs t = Dir_entry.to_file_bindings_expanded t.dirs
 end
 
 module Executables = struct
@@ -1220,7 +1069,10 @@ module Executables = struct
       -> (t, fields) Dune_lang.Decoder.parser
 
     val install_conf :
-      t -> ext:string -> enabled_if:Blang.t -> Install_conf.t option
+         t
+      -> ext:Filename.Extension.t
+      -> enabled_if:Blang.t
+      -> Install_conf.t option
   end = struct
     type public =
       { public_names : (Loc.t * string option) list
@@ -1361,7 +1213,7 @@ module Executables = struct
           let files =
             List.map2 t.names public_names ~f:(fun (locn, name) (locp, pub) ->
                 Option.map pub ~f:(fun pub ->
-                    Install_conf.File_entry.of_file_binding
+                    Install_entry.File.of_file_binding
                       (File_binding.Unexpanded.make
                          ~src:(locn, name ^ ext)
                          ~dst:(locp, pub))))
@@ -1593,7 +1445,7 @@ module Executables = struct
       field "link_executables" ~default:true
         (Dune_lang.Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
     and+ link_deps = field "link_deps" (repeat Dep_conf.decode) ~default:[]
-    and+ link_flags = Link_flags.Spec.decode ~since:None
+    and+ link_flags = Link_flags.Spec.decode ~check:None
     and+ modes =
       field "modes" Link_mode.Map.decode
         ~default:(Link_mode.Map.default_for_exes ~version:dune_version)
@@ -1737,6 +1589,7 @@ module Rule = struct
   type action_or_field =
     | Action
     | Field
+    | Since of Syntax.Version.t * action_or_field
 
   let atom_table =
     String.Map.of_list_exn
@@ -1771,6 +1624,7 @@ module Rule = struct
       ; ("aliases", Field)
       ; ("alias", Field)
       ; ("enabled_if", Field)
+      ; ("package", Since ((3, 8), Field))
       ]
 
   let short_form =
@@ -1879,6 +1733,14 @@ module Rule = struct
        })
 
   let decode =
+    let rec interpret atom = function
+      | Field -> fields long_form
+      | Action -> short_form
+      | Since (version, inner) ->
+        let what = Printf.sprintf "'%s' in short-form 'rule'" atom in
+        let* () = Dune_lang.Syntax.since ~what Stanza.syntax version in
+        interpret atom inner
+    in
     peek_exn >>= function
     | List (_, Atom (loc, A s) :: _) -> (
       match String.Map.find atom_table s with
@@ -1888,8 +1750,7 @@ module Rule = struct
           ~hints:
             (User_message.did_you_mean s
                ~candidates:(String.Map.keys atom_table))
-      | Some Field -> fields long_form
-      | Some Action -> short_form)
+      | Some w -> interpret s w)
     | sexp ->
       User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
         [ Pp.textf "S-expression of the form (<atom> ...) expected" ]
@@ -2032,7 +1893,7 @@ module Tests = struct
        String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
          (let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
           let+ buildable = Buildable.decode Executable
-          and+ link_flags = Link_flags.Spec.decode ~since:None
+          and+ link_flags = Link_flags.Spec.decode ~check:None
           and+ names = names
           and+ package = field_o "package" Stanza_common.Pkg.decode
           and+ locks = Locks.field ()
@@ -2298,7 +2159,7 @@ module Stanzas = struct
 
   type Stanza.t += Include of Loc.t * string
 
-  type constructors = (string * Stanza.t list Dune_lang.Decoder.t) list
+  type constructors = Stanza.Parser.t list
 
   let stanzas : constructors =
     [ ( "library"

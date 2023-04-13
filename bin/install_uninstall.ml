@@ -73,7 +73,7 @@ module Workspace = struct
        and+ contexts = Context.DB.all () in
        { packages = conf.packages; contexts })
 
-  let package_install_file t pkg =
+  let package_install_file t ~findlib_toolchain pkg =
     match Package.Name.Map.find t.packages pkg with
     | None -> Error ()
     | Some p ->
@@ -82,11 +82,11 @@ module Workspace = struct
       Ok
         (Path.Source.relative dir
            (Dune_rules.Install_rules.install_file ~package:name
-              ~findlib_toolchain:None))
+              ~findlib_toolchain))
 end
 
-let resolve_package_install workspace pkg =
-  match Workspace.package_install_file workspace pkg with
+let resolve_package_install workspace ~findlib_toolchain pkg =
+  match Workspace.package_install_file workspace ~findlib_toolchain pkg with
   | Ok path -> path
   | Error () ->
     let pkg = Package.Name.to_string pkg in
@@ -178,7 +178,7 @@ end) : File_operations = struct
 
   let print_line = print_line ~verbosity
 
-  let get_vcs p = Dune_engine.Source_tree.nearest_vcs p
+  let get_vcs p = Source_tree.nearest_vcs p
 
   type load_special_file_result =
     { need_version : bool
@@ -204,7 +204,7 @@ end) : File_operations = struct
           in
           match packages with
           | None -> Fiber.return None
-          | Some vcs -> Memo.run (Dune_engine.Vcs.describe vcs)
+          | Some vcs -> Memo.run (Vcs.describe vcs)
         else Fiber.return None
       in
       let ppf = Format.formatter_of_out_channel oc in
@@ -246,7 +246,7 @@ end) : File_operations = struct
       Some { need_version = true; callback }
 
   let replace_sites
-      ~(get_location : Dune_engine.Section.t -> Package.Name.t -> Stdune.Path.t)
+      ~(get_location : Dune_rules.Section.t -> Package.Name.t -> Stdune.Path.t)
       dp =
     match
       List.find_map dp ~f:(function
@@ -417,9 +417,9 @@ let file_operations ~verbosity ~dry_run ~workspace : (module File_operations) =
       let verbosity = verbosity
     end))
 
-let package_is_vendored (pkg : Dune_engine.Package.t) =
+let package_is_vendored (pkg : Package.t) =
   let dir = Package.dir pkg in
-  Memo.run (Dune_engine.Source_tree.is_vendored dir)
+  Memo.run (Source_tree.is_vendored dir)
 
 type what =
   | Install
@@ -434,7 +434,9 @@ let cmd_what = function
   | Uninstall -> "uninstall"
 
 let install_uninstall ~what =
-  let doc = Format.asprintf "%a packages." pp_what what in
+  let doc =
+    Format.asprintf "%a packages defined in the workspace." pp_what what
+  in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let absolute_path =
     Arg.conv'
@@ -573,7 +575,19 @@ let install_uninstall ~what =
         let* workspace = Workspace.get () in
         let contexts =
           match context with
-          | None -> workspace.contexts
+          | None -> (
+            match Common.x common with
+            | Some findlib_toolchain ->
+              let contexts =
+                List.filter workspace.contexts ~f:(fun (ctx : Context.t) ->
+                    match ctx.findlib_toolchain with
+                    | None -> false
+                    | Some ctx_findlib_toolchain ->
+                      Dune_engine.Context_name.equal ctx_findlib_toolchain
+                        findlib_toolchain)
+              in
+              contexts
+            | None -> workspace.contexts)
           | Some name -> (
             match
               List.find workspace.contexts ~f:(fun c ->
@@ -599,9 +613,14 @@ let install_uninstall ~what =
         in
         let install_files, missing_install_files =
           List.concat_map pkgs ~f:(fun pkg ->
-              let fn = resolve_package_install workspace pkg in
               List.map contexts ~f:(fun (ctx : Context.t) ->
-                  let fn = Path.append_source (Path.build ctx.build_dir) fn in
+                  let fn =
+                    let fn =
+                      resolve_package_install workspace
+                        ~findlib_toolchain:ctx.findlib_toolchain pkg
+                    in
+                    Path.append_source (Path.build ctx.build_dir) fn
+                  in
                   if Path.exists fn then Left (ctx, (pkg, fn)) else Right fn))
           |> List.partition_map ~f:Fun.id
         in
@@ -668,7 +687,11 @@ let install_uninstall ~what =
                 [ Pp.text "Option --prefix is needed with --relocation" ]
           else None
         in
-        let verbosity = config.display.verbosity in
+        let verbosity =
+          match config.display with
+          | Simple display -> display.verbosity
+          | Tui -> Quiet
+        in
         let open Fiber.O in
         let (module Ops) = file_operations ~verbosity ~dry_run ~workspace in
         let files_deleted_in = ref Path.Set.empty in
@@ -751,7 +774,10 @@ let install_uninstall ~what =
                           Fiber.return entry)
                   in
                   if create_install_files then
-                    let fn = resolve_package_install workspace package in
+                    let fn =
+                      resolve_package_install workspace
+                        ~findlib_toolchain:context.findlib_toolchain package
+                    in
                     Io.write_file (Path.source fn)
                       (Install.gen_install_file entries)))
         in

@@ -1,7 +1,7 @@
 open! Stdune
 open Import
 
-let doc = "Removed command."
+let doc = "Moved to dune describe external-lib-deps."
 
 let man =
   [ `S "DESCRIPTION"
@@ -23,6 +23,8 @@ let term =
      and+ _ = Arg.(value & pos_all dep [] & Arg.info [] ~docv:"TARGET")
      and+ _ = Arg.(value & flag & info [ "unstable-by-dir" ] ~doc:{|unused|})
      and+ _ = Arg.(value & flag & info [ "sexp" ] ~doc:{|unused|}) in
-     `Error (false, "This subcommand is no longer implemented.")
+     `Error
+       ( false
+       , "This subcommand has been moved to dune describe external-lib-deps." )
 
 let command = Cmd.v info term

@@ -12,14 +12,6 @@ type for_ =
   | Executable
   | Library of Wrapped.t option
 
-module Lib_deps : sig
-  type nonrec t = Lib_dep.t list
-
-  val of_pps : Lib_name.t list -> t
-
-  val decode : for_ -> t Dune_lang.Decoder.t
-end
-
 module Buildable : sig
   type t =
     { loc : Loc.t
@@ -155,7 +147,7 @@ module Library : sig
     { name : Loc.t * Lib_name.Local.t
     ; visibility : visibility
     ; synopsis : string option
-    ; install_c_headers : string list
+    ; install_c_headers : (Loc.t * string) list
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
     ; modes : Mode_conf.Lib.Set.t
     ; kind : Lib_kind.t
@@ -182,6 +174,7 @@ module Library : sig
     ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
+    ; melange_runtime_deps : Loc.t * Dep_conf.t list
     }
 
   val sub_dir : t -> string option
@@ -239,39 +232,13 @@ module Plugin : sig
 end
 
 module Install_conf : sig
-  module File_entry : sig
-    type t
-
-    val to_file_bindings_unexpanded :
-         t list
-      -> expand_str:(String_with_vars.t -> string Memo.t)
-      -> dir:Path.Build.t
-      -> File_binding.Unexpanded.t list Memo.t
-  end
-
-  module Dir_entry : sig
-    type t
-  end
-
   type t =
     { section : Install.Section_with_site.t
-    ; files : File_entry.t list
-    ; dirs : Dir_entry.t list
+    ; files : Install_entry.File.t list
+    ; dirs : Install_entry.Dir.t list
     ; package : Package.t
     ; enabled_if : Blang.t
     }
-
-  val expand_files :
-       t
-    -> expand_str:(String_with_vars.t -> string Memo.t)
-    -> dir:Path.Build.t
-    -> File_binding.Expanded.t list Memo.t
-
-  val expand_dirs :
-       t
-    -> expand_str:(String_with_vars.t -> string Memo.t)
-    -> dir:Path.Build.t
-    -> File_binding.Expanded.t list Memo.t
 end
 
 module Executables : sig
@@ -301,7 +268,12 @@ module Executables : sig
 
     val to_dyn : t -> Dyn.t
 
-    val extension : t -> loc:Loc.t -> ext_obj:string -> ext_dll:string -> string
+    val extension :
+         t
+      -> loc:Loc.t
+      -> ext_obj:Filename.Extension.t
+      -> ext_dll:Filename.Extension.t
+      -> string
 
     module Map : Map.S with type key = t
   end

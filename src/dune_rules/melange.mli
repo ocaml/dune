@@ -5,6 +5,8 @@ module Module_system : sig
     | Es6
     | CommonJs
 
+  val default : t * Filename.Extension.t
+
   val to_string : t -> string
 end
 

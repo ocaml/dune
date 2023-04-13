@@ -31,8 +31,7 @@ Test dependency on installed package
   > (melange.emit
   >  (target dist)
   >  (alias dist)
-  >  (libraries aa_fe.melange)
-  >  (module_system commonjs))
+  >  (libraries aa_fe.melange))
   > EOF
 
   $ cat > bar.ml <<EOF

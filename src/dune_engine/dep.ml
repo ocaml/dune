@@ -1,5 +1,4 @@
 open Import
-open Memo.O
 
 (* CR-someday amokhov: We probably want to add a new variant [Dir] to provide
    first-class support for depending on directory targets. *)
@@ -315,44 +314,33 @@ module Set = struct
     file_selector
       (File_selector.create ~dir File_selector.Predicate_with_id.false_)
 
-  module Source_tree_map_reduce =
-    Source_tree.Dir.Make_map_reduce (Memo) (Monoid.Union (M))
+  module Source_tree (Union : sig
+    type 'a result
 
-  let source_tree dir =
-    let prefix_with, dir = Path.extract_build_context_dir_exn dir in
-    Source_tree.find_dir dir >>= function
-    | None -> Memo.return empty
-    | Some dir ->
-      Source_tree_map_reduce.map_reduce dir ~traverse:Sub_dirs.Status.Set.all
-        ~f:(fun dir ->
-          let files = Source_tree.Dir.files dir in
-          let path =
-            Path.append_source prefix_with (Source_tree.Dir.path dir)
-          in
+    val union_all :
+      Path.t -> f:(path:Path.t -> files:Filename.Set.t -> t) -> t result
+  end) =
+  struct
+    let files dir =
+      Union.union_all dir ~f:(fun ~path ~files ->
           match String.Set.is_empty files with
-          | true -> Memo.return (singleton (dir_without_files_dep path))
+          | true -> singleton (dir_without_files_dep path)
           | false ->
-            let paths =
-              String.Set.fold files ~init:Path.Set.empty ~f:(fun fn acc ->
-                  Path.Set.add acc (Path.relative path fn))
-            in
-            Memo.return (add_paths empty paths))
+            Filename.Set.fold files ~init:empty ~f:(fun fn acc ->
+                add acc (File (Path.relative path fn))))
+  end
 
-  let source_tree_with_file_set dir =
-    let+ t = source_tree dir in
-    let paths =
-      fold t ~init:Path.Set.empty ~f:(fun dep acc ->
-          match dep with
-          | File f -> Path.Set.add acc f
-          | File_selector fs ->
-            assert (
-              File_selector.Predicate_with_id.equal
-                (File_selector.predicate fs)
-                File_selector.Predicate_with_id.false_);
-            acc
-          | _ -> assert false)
-    in
-    (t, paths)
+  let to_files_set_exn t =
+    fold t ~init:Path.Set.empty ~f:(fun dep acc ->
+        match dep with
+        | File f -> Path.Set.add acc f
+        | File_selector fs ->
+          assert (
+            File_selector.Predicate_with_id.equal
+              (File_selector.predicate fs)
+              File_selector.Predicate_with_id.false_);
+          acc
+        | _ -> assert false)
 
   let digest t =
     fold t ~init:[] ~f:(fun dep acc : Stable_for_digest.t list ->

@@ -1,8 +1,10 @@
 open Stdune
-open Dune_engine
 open Fiber.O
+open Dune_vcs
 open! Dune_tests_common
-module Config = Dune_util.Config
+module Execution_env = Dune_util.Execution_env
+module Process = Dune_engine.Process
+module Scheduler = Dune_engine.Scheduler
 
 let () = init ()
 
@@ -44,7 +46,7 @@ let run (vcs : Vcs.t) args =
        Env.add Env.initial ~var:"GIT_DIR"
          ~value:(Filename.concat (Path.to_absolute_filename vcs.root) ".git"))
     ~dir:vcs.root
-    ~stdout_to:(Process.Io.file Config.dev_null Process.Io.Out)
+    ~stdout_to:(Process.Io.file Dev_null.path Process.Io.Out)
 
 type action =
   | Init
@@ -116,6 +118,7 @@ let run kind script =
     ; stats = None
     ; insignificant_changes = `React
     ; signal_watcher = `No
+    ; watch_exclusions = []
     }
   in
   Scheduler.Run.go

@@ -47,6 +47,7 @@ module Backend = struct
       and+ extends = Memo.return t.extends in
       { Info.loc = t.info.loc
       ; flags = t.info.flags
+      ; list_partitions_flags = t.info.list_partitions_flags
       ; generate_runner = t.info.generate_runner
       ; runner_libraries =
           List.map2 t.info.runner_libraries runner_libraries
@@ -186,14 +187,93 @@ include Sub_system.Register_end_point (struct
         ~program:{ name; main_module_name = Module.name main_module; loc }
         ~linkages ~link_args ~promote:None
     in
-    let flags =
+    let partitions_flags : string list Action_builder.t option =
+      match
+        List.filter_map backends ~f:(fun backend ->
+            backend.info.list_partitions_flags)
+      with
+      | [] -> None
+      | flags ->
+        let flags =
+          let open Action_builder.O in
+          let+ l =
+            let expander =
+              let bindings =
+                Pform.Map.singleton (Pform.Var Library_name)
+                  [ Value.String (Lib_name.Local.to_string (snd lib.name)) ]
+              in
+              Expander.add_bindings expander ~bindings
+            in
+            List.map flags
+              ~f:
+                (Expander.expand_and_eval_set expander
+                   ~standard:(Action_builder.return []))
+            |> Action_builder.all
+          in
+          List.concat l
+        in
+        Some flags
+    in
+    let sandbox =
+      let project = Scope.project scope in
+      if Dune_project.dune_version project < (3, 5) then
+        Sandbox_config.no_special_requirements
+      else Sandbox_config.needs_sandboxing
+    in
+    let deps, sandbox = Dep_conf_eval.unnamed ~sandbox info.deps ~expander in
+    let action (mode : Mode_conf.t) (flags : string list Action_builder.t) :
+        Action.t Action_builder.t =
+      (* [action] needs to run from [dir] as we use [dir] to resolve
+         the exe path in case of a custom [runner] *)
+      let ext =
+        match mode with
+        | Native | Best -> ".exe"
+        | Javascript -> Js_of_ocaml.Ext.exe
+        | Byte -> ".bc"
+      in
+      let custom_runner =
+        match mode with
+        | Native | Best | Byte -> None
+        | Javascript -> Some Jsoo_rules.runner
+      in
+      let exe = Path.build (Path.Build.relative inline_test_dir (name ^ ext)) in
+      let open Action_builder.O in
+      let+ action =
+        match custom_runner with
+        | None ->
+          let+ flags = flags in
+          Action.run (Ok exe) flags
+        | Some runner -> (
+          let* prog =
+            Action_builder.of_memo
+              (Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner)
+          and* flags = flags in
+          let action =
+            Action.run prog (Path.reach exe ~from:(Path.build dir) :: flags)
+          in
+          (* jeremiedimino: it feels like this pattern should be pushed
+             into [resolve_program] directly *)
+          match prog with
+          | Error _ -> Action_builder.return action
+          | Ok p -> Action_builder.path p >>> Action_builder.return action)
+      and+ () = deps
+      and+ () = Action_builder.path exe in
+      action
+    in
+    let flags partition : string list Action_builder.t =
       let flags =
-        List.map backends ~f:(fun backend -> backend.Backend.info.flags)
+        List.map backends ~f:(fun (backend : Backend.t) -> backend.info.flags)
         @ [ info.flags ]
       in
       let bindings =
-        Pform.Map.singleton (Var Library_name)
+        Pform.Map.singleton (Pform.Var Library_name)
           [ Value.String (Lib_name.Local.to_string (snd lib.name)) ]
+      in
+      let bindings =
+        match partition with
+        | None -> bindings
+        | Some p ->
+          Pform.Map.add_exn bindings (Pform.Var Partition) [ Value.String p ]
       in
       let expander = Expander.add_bindings expander ~bindings in
       let open Action_builder.O in
@@ -211,16 +291,23 @@ include Sub_system.Register_end_point (struct
       (module Mode_conf.Set)
       info.modes
       ~f:(fun (mode : Mode_conf.t) ->
-        let ext =
-          match mode with
-          | Native | Best -> ".exe"
-          | Javascript -> Js_of_ocaml.Ext.exe
-          | Byte -> ".bc"
+        let partition_file =
+          Path.Build.relative inline_test_dir
+            ("partitions-" ^ Mode_conf.to_string mode)
         in
-        let custom_runner =
-          match mode with
-          | Native | Best | Byte -> None
-          | Javascript -> Some Jsoo_rules.runner
+        let* () =
+          match partitions_flags with
+          | None -> Memo.return ()
+          | Some partitions_flags ->
+            Super_context.add_rule sctx ~dir ~loc
+              (let action =
+                 let open Action_builder.O in
+                 let+ action = action mode partitions_flags in
+                 (* action is expected to run from dir *)
+                 Action.Full.make ~sandbox
+                   (Action.chdir (Path.build dir) action)
+               in
+               Action_builder.with_stdout_to partition_file action)
         in
         let* runtest_alias =
           match mode with
@@ -229,51 +316,31 @@ include Sub_system.Register_end_point (struct
         in
         Super_context.add_alias_action sctx ~dir ~loc:(Some info.loc)
           (Alias.make ~dir runtest_alias)
-          (let exe =
-             Path.build (Path.Build.relative inline_test_dir (name ^ ext))
-           in
-           let open Action_builder.O in
-           let deps, sandbox =
-             let sandbox =
-               let project = Scope.project scope in
-               if Dune_project.dune_version project < (3, 5) then
-                 Sandbox_config.no_special_requirements
-               else Sandbox_config.needs_sandboxing
-             in
-             Dep_conf_eval.unnamed ~sandbox info.deps ~expander
-           in
-           let+ () = deps
-           and+ () = Action_builder.paths source_files
-           and+ () = Action_builder.path exe
-           and+ action =
-             match custom_runner with
-             | None ->
-               let+ flags = flags in
-               Action.run (Ok exe) flags
-             | Some runner -> (
-               let* prog =
-                 Action_builder.of_memo
-                   (Super_context.resolve_program ~dir sctx ~loc:(Some loc)
-                      runner)
-               and* flags = flags in
-               let action =
-                 Action.run prog (Path.reach exe ~from:(Path.build dir) :: flags)
-               in
-               (* jeremiedimino: it feels like this pattern should be pushed
-                  into [resolve_program] directly *)
-               match prog with
-               | Error _ -> Action_builder.return action
-               | Ok p -> Action_builder.path p >>> Action_builder.return action)
-           in
-           let run_tests = Action.chdir (Path.build dir) action in
-           Action.Full.make ~sandbox
-           @@ Action.progn
-                (run_tests
-                :: List.map source_files ~f:(fun fn ->
-                       Action.diff ~optional:true fn
-                         (Path.Build.extend_basename
-                            (Path.as_in_build_dir_exn fn)
-                            ~suffix:".corrected")))))
+          (let open Action_builder.O in
+          let+ actions =
+            let* partitions_flags =
+              match partitions_flags with
+              | None -> Action_builder.return [ None ]
+              | Some _ ->
+                let+ partitions =
+                  Action_builder.lines_of (Path.build partition_file)
+                in
+                List.map ~f:(fun x -> Some x) partitions
+            in
+            List.map partitions_flags ~f:(fun p -> action mode (flags p))
+            |> Action_builder.all
+          and+ () = Action_builder.paths source_files in
+          let run_tests =
+            Action.chdir (Path.build dir) (Action.concurrent actions)
+          in
+          let diffs =
+            List.map source_files ~f:(fun fn ->
+                Path.as_in_build_dir_exn fn
+                |> Path.Build.extend_basename ~suffix:".corrected"
+                |> Action.diff ~optional:true fn)
+            |> Action.concurrent
+          in
+          Action.Full.make ~sandbox @@ Action.progn [ run_tests; diffs ]))
 
   let gen_rules c ~(info : Info.t) ~backends =
     let open Memo.O in

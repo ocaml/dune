@@ -13,3 +13,8 @@
 (executable
  (modules dunepp)
  (name dunepp))
+
+(executable
+ (modules melc_stdlib_prefix)
+ (name melc_stdlib_prefix)
+ (libraries stdune))

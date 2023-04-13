@@ -26,14 +26,20 @@ invocation of ``ocamlopt`` or ``ocamlc`` via the ``bootstrap.ml`` OCaml script.
 and uses this binary to build everything else. As a convenience, ``dune.exe``
 at the root of the source tree executes this binary.
 
-``$ make dev`` takes care of bootstrapping if needed, but if you want to just
-run the bootstrapping step itself, build the ``dune.exe`` target with
+Running:
+```
+make dev
+```
+bootstraps (if necessary) and runs `./dune.exe build @install`.
+
+If you want to just run the bootstrapping step itself, build the
+``_boot/dune.exe`` target with
 
 .. code:: sh
 
-   make dev
+   make _boot/dune.exe
 
-Once you've bootstrapped dune, you should be using it to develop dune itself.
+Once you've bootstrapped Dune, you should be using it to develop Dune itself.
 Here are the most common commands you'll be running:
 
 .. code:: sh
@@ -145,8 +151,16 @@ nix develop nix/profiles/dune
 This profile might need to be updated from time to time, since the bootstrapped
 version of Dune may become stale. This can be done by running the first command.
 
-You may also use `nix develop .#slim` for a dev environment with less
-dependencies that is faster to build.
+We have the following shells for specific tasks:
+
+- ``nix develop .#slim`` for a dev environment with fewer dependencies that is
+  faster to build.
+- ``nix develop .#slim-melange``: same as above, but additionally includes the
+  ``melange`` and ``mel`` packages
+- Building documentation requires ``nix develop .#doc``.
+- For running the Coq tests, you can use ``nix develop .#coq``. NB: Coq native
+  is not currently installed; this will cause some of the tests to fail. It's
+  currently better to fallback to opam in this case.
 
 Releasing Dune
 ==============
@@ -317,6 +331,44 @@ For automatically updated builds, you can install sphinx-autobuild, and run
 Nix users may drop into a development shell with the necessary dependencies for
 building docs ``nix develop .#doc``.
 
+Vendoring
+=========
+
+Dune vendors some code that it uses internally. This is done to make installing
+dune easy as it requires nothing but an OCaml compiler as well as to prevent
+circular dependencies. Before vendoring, make sure that the license of the code
+allows it to be included in dune.
+
+The vendored code lives in the ``vendor/`` subdirectory. To vendor new code,
+create a shell script ``update-<library>.sh``, that will be launched from the
+``vendor/`` folder to download and unpack the source and copy the necessary
+source files into the ``vendor/<library>`` folder. Try to keep the amount of
+source code imported minimal, e.g. leave out ``dune-project`` files, For the
+most part it should be enough to copy ``.ml`` and ``.mli`` files. Make sure to
+also include the license if there is such a file in the code to be vendored to
+stay compliant.
+
+As these sources get vendored not as sub-projects but parts of dune, you need
+to deal with ``public_name``. The preferred way is to remove the
+``public_name`` and only use the private name. If that is not possible, the
+library can be renamed into ``dune-private-libs.<library>``.
+
+To deal with the modified ``dune`` files in ``update-<library>.sh`` scripts,
+you can commit the modified files to ``dune`` and make the
+``update-<library>.sh`` script to use ``git checkout`` to restore the ``dune``
+file.
+
+For larger modifications, it is better to fork the upstream project in the
+ocaml-dune_ organisation and then vendor the forked copy in dune. This makes
+the changes better visible and easier to update from upstream in the long run
+while keeping our custom patches in sync. The changes to the ``dune`` files are
+to be kept in the Dune repository.
+
+It is preferable to cut out as many dependencies as possible, e.g. ones that
+are only necessary on older OCaml versions or build-time dependencies.
+
+.. _ocaml-dune: https://github.com/ocaml-dune/
+
 General Guidelines
 ==================
 
@@ -434,8 +486,49 @@ Good:
   ``foo``.
 
 - Avoid optional arguments. They increase brevity at the expense of readability
-  and are annoying to grep. Further more, they encourage callers not to think
+  and are annoying to grep. Furthermore, they encourage callers not to think
   at all about these optional arguments even if they often should.
+
+- Avoid qualifying modules when accessing fields of records or constructors.
+  Avoid it altogether if possible, or add a type annotation if
+  necessary.
+
+Bad:
+
+.. code:: ocaml
+
+    let result = A.b () in
+    match result.A.field with
+    | B.Constructor -> ...
+
+Good:
+
+.. code:: ocaml
+
+    let result : A.t = A.b () in
+    match (result.field : B.t) with
+    | Constructor -> ...
+
+- When constructing records, use the qualified names in in the record. Do not
+  open the record. The local open syntax pulls in all kinds of names from the
+  opened module and might shadow the values that you're trying to put into the
+  record, leading to difficult debugging.
+
+Bad; if ``A.value`` exists, it will pick that over ``value``:
+
+.. code:: ocaml
+
+    let value = 42 in
+    let record = A.{ field = value; other } in
+    ...
+
+Good:
+
+.. code:: ocaml
+
+    let value = 42 in
+    let record = { A.field = value; other } in
+    ...
 
 - Stage functions explicitly with the ``Staged`` module.
 
@@ -560,3 +653,24 @@ Melange Bench
 We also benchmark a demo Melange project's build time:
 
 https://ocaml.github.io/dune/dev/bench/
+
+Monorepo Benchmark
+------------------
+
+The file bench/monorepo/bench.Dockerfile sets up a Docker container for
+benchmarking Dune building a large monorepo constructed with
+`opam-monorepo <https://github.com/tarides/opam-monorepo>`_. The monorepo is
+constructed according to the files in
+https://github.com/ocaml-dune/ocaml-monorepo-benchmark/tree/main/benchmark.
+Build the Docker image from the root directory of this repo.
+
+E.g., run
+
+.. code:: sh
+
+   $ docker build . -f bench/monorepo/bench.Dockerfile --tag=dune-monorepo-benchmark
+   $ docker run -it dune-monorepo-benchmark bash --login
+
+From inside the container, run ``make bench`` to run the benchmark. The output of
+the benchmark is a JSON string in the format accepted by `current-bench
+<https://github.com/ocurrent/current-bench>`_.

@@ -17,11 +17,11 @@ let drop_source_extension fn ~dune_version =
   Option.some_if (dune_version >= version) (obj, language)
 
 let possible_sources ~language obj ~dune_version =
-  List.filter_map (String.Map.to_list Foreign_language.source_extensions)
-    ~f:(fun (ext, (lang, version)) ->
-      Option.some_if
-        (Foreign_language.equal lang language && dune_version >= version)
-        (obj ^ "." ^ ext))
+  String.Map.to_list Foreign_language.source_extensions
+  |> List.filter_map ~f:(fun (ext, (lang, version)) ->
+         Option.some_if
+           (Foreign_language.equal lang language && dune_version >= version)
+           (obj ^ "." ^ ext))
 
 let add_mode_suffix mode s =
   match mode with
@@ -119,16 +119,14 @@ module Stubs = struct
   end
 
   module Include_dir = struct
-    include
-      Recursive_include.Make
-        (Include_dir_without_include)
-        (struct
-          let include_keyword = "include"
+    type t = Include_dir_without_include.t Recursive_include.t
 
-          let include_allowed_in_versions = `Since (3, 5)
+    let decode =
+      Recursive_include.decode ~base_term:Include_dir_without_include.decode
+        ~include_keyword:"include" ~non_sexp_behaviour:`Parse_as_base_term
+        ~include_allowed_in_versions:(`Since (3, 5))
 
-          let non_sexp_behaviour = `Parse_as_base_term
-        end)
+    let expand_include = Recursive_include.expand_include
 
     module Without_include = Include_dir_without_include
   end
@@ -290,8 +288,8 @@ module Sources = struct
   type t = (Loc.t * Source.t) String.Map.t
 
   let object_files t ~dir ~ext_obj =
-    String.Map.keys t
-    |> List.map ~f:(fun c -> Path.Build.relative dir (c ^ ext_obj))
+    String.Map.to_list_map t ~f:(fun c _ ->
+        Path.Build.relative dir (c ^ ext_obj))
 
   let has_cxx_sources (t : t) =
     String.Map.exists t ~f:(fun (_loc, source) ->

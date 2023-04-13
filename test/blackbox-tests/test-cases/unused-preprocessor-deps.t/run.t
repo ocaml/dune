@@ -4,7 +4,6 @@ Should warn.
   $ touch a.ml b.ml
 
   $ echo "(lang dune 1.11)" > dune-project
-  $ echo "(allow_approximate_merlin)" >> dune-project
   $ dune build
   File "dune", line 5, characters 1-39:
   5 |  (preprocessor_deps does-not-exist.txt))

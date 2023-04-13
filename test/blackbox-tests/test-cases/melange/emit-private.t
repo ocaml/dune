@@ -38,17 +38,15 @@ Test dependency on a private library in the same package as melange.emit
   >  (target dist)
   >  (alias dist)
   >  (libraries a)
-  >  (package a)
-  >  (module_system commonjs))
+  >  (package a))
   > EOF
 
   $ cat > b/bar.ml <<EOF
   > let x = Js.log A.Foo.x
   > EOF
 
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build @dist --display=short
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build @dist --display=short 2>&1 | grep -v melange
           melc b/dist/a/a.js
-          melc b/.dist.mobjs/melange/melange__Bar.{cmi,cmj,cmt}
           melc b/dist/a/foo.js
           melc b/dist/b/bar.js
 

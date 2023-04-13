@@ -8,6 +8,7 @@ let config =
   ; stats = None
   ; insignificant_changes = `React
   ; signal_watcher = `No
+  ; watch_exclusions = []
   }
 
 let%expect_test "create and wait for timer" =

@@ -8,7 +8,8 @@ Test melange.emit promotion
   $ cat > dune <<EOF
   > (melange.emit
   >  (alias dist)
-  >  (entries hello)
+  >  (modules hello)
+  >  (emit_stdlib false)
   >  (promote (until-clean))
   >  (target dist))
   > EOF

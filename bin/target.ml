@@ -1,9 +1,5 @@
 open Stdune
-module Log = Dune_util.Log
-module Context = Dune_rules.Context
-module Action_builder = Dune_engine.Action_builder
-module Build_system = Dune_engine.Build_system
-module Load_rules = Dune_engine.Load_rules
+open Import
 open Action_builder.O
 
 module Request = struct
@@ -39,9 +35,9 @@ module All_targets = struct
   end)
 end
 
-module Source_tree = Dune_engine.Source_tree
+module Source_tree = Dune_rules.Source_tree
 module Context_name = Dune_engine.Context_name
-module Sub_dirs = Dune_engine.Sub_dirs
+module Sub_dirs = Dune_rules.Sub_dirs
 module Source_tree_map_reduce =
   Source_tree.Dir.Make_map_reduce (Memo) (All_targets)
 module Build_config = Dune_engine.Build_config
@@ -116,7 +112,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) :
     Error hint
   in
   let as_source_dir src =
-    Dune_engine.Source_tree.dir_exists src >>| function
+    Source_tree.dir_exists src >>| function
     | true ->
       Some
         [ Request.Alias

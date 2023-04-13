@@ -10,8 +10,8 @@ Create dune file that uses melange.compile_flags
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (alias melange)
-  >  (entries main)
+  >  (alias mel)
+  >  (modules main)
   >  (compile_flags -w -14-26))
   > EOF
 
@@ -24,7 +24,7 @@ The code in main contains unused var (warning 26) and illegal backlash (warning 
 
 Building does not fail, warnings are silenced
 
-  $ dune build @melange
+  $ dune build @mel
   $ node _build/default/output/main.js
   hello
 
@@ -33,7 +33,7 @@ Update dune file to use ocamlc_flags
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
+  >  (modules main)
   >  (ocamlc_flags -w -14-26))
   > EOF
 
@@ -51,7 +51,7 @@ Update dune file to use ocamlopt_flags
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
+  >  (modules main)
   >  (ocamlopt_flags -w -14-26))
   > EOF
 

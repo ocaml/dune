@@ -55,7 +55,11 @@ let find_module sctx src =
       let module_ =
         match Modules.find modules module_name with
         | Some m -> m
-        | None -> User_error.raise [ Pp.textf "module not found" ]
+        | None ->
+          User_error.raise
+            [ Pp.textf "Could not find module corresponding to source file %s"
+                (Path.Build.to_string_maybe_quoted src)
+            ]
       in
       Some (module_, cctx, merlin))
 

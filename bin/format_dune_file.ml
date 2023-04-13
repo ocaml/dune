@@ -1,7 +1,7 @@
 open Import
 open Stdune
 
-let doc = "Format dune files"
+let doc = "Format dune files."
 
 let man =
   [ `S "DESCRIPTION"

@@ -36,7 +36,7 @@ Where ``<optional-fields>`` are:
   defaults to ``*.md``.
 
 - ``(deps <deps-conf list>)`` to specify the dependencies of your documentation
-  code blocks. See the :ref:`deps-field` section for more details.
+  code blocks. See :doc:`concepts/dependency-spec` for more details.
 
 - ``(preludes <files>)`` are the prelude files you want to pass to MDX. See
   `MDX's documentation <https://github.com/realworldocaml/mdx>`__ for more
@@ -55,7 +55,7 @@ Where ``<optional-fields>`` are:
   some dependencies.
 
 - ``(locks <lock-names>)`` specifies that the action of running the tests
-  holds the specified locks.  See the :ref:`locks` section for more details.
+  holds the specified locks. See :doc:`concepts/locks` for more details.
 
 Upgrading from Version 0.1
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -242,7 +242,7 @@ let compare_files = function
   | Text -> Io.compare_text_files
 
 let diff_eq_files { Diff.optional; mode; file1; file2 } =
-  let file1 = if Path.Untracked.exists file1 then file1 else Config.dev_null in
+  let file1 = if Path.Untracked.exists file1 then file1 else Dev_null.path in
   let file2 = Path.build file2 in
   (optional && not (Path.Untracked.exists file2))
   || compare_files mode file1 file2 = Eq
@@ -280,7 +280,7 @@ let rec exec t ~display ~ectx ~eenv =
     redirect_out t ~display ~ectx ~eenv outputs ~perm fn
   | Redirect_in (inputs, fn, t) -> redirect_in t ~display ~ectx ~eenv inputs fn
   | Ignore (outputs, t) ->
-    redirect_out t ~display ~ectx ~eenv ~perm:Normal outputs Config.dev_null
+    redirect_out t ~display ~ectx ~eenv ~perm:Normal outputs Dev_null.path
   | Progn ts -> exec_list ts ~display ~ectx ~eenv
   | Concurrent ts ->
     Fiber.parallel_map ts ~f:(exec ~display ~ectx ~eenv)
@@ -531,8 +531,20 @@ let exec_until_all_deps_ready ~display ~ectx ~eenv t =
   let+ stages = loop ~eenv [] in
   { Exec_result.dynamic_deps_stages = List.rev stages }
 
-let exec ~targets ~root ~context ~env ~rule_loc ~build_deps
-    ~execution_parameters t =
+type input =
+  { targets :
+      Targets.Validated.t option (* Some Jane Street actions use [None] *)
+  ; root : Path.t
+  ; context : Build_context.t option
+  ; env : Env.t
+  ; rule_loc : Loc.t
+  ; execution_parameters : Execution_parameters.t
+  ; action : Action.t
+  }
+
+let exec
+    { targets; root; context; env; rule_loc; execution_parameters; action = t }
+    ~build_deps =
   let ectx =
     let metadata = Process.create_metadata ~purpose:(Build_job targets) () in
     { targets; metadata; context; rule_loc; build_deps }

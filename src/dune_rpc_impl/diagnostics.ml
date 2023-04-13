@@ -8,8 +8,6 @@ module Id = Dune_rpc.Id
 module Diagnostic = Dune_rpc.Diagnostic
 module Conv = Dune_rpc.Conv
 module Dep_conf = Dune_rules.Dep_conf
-module Source_tree = Dune_engine.Source_tree
-module Dune_project = Dune_engine.Dune_project
 module Compound_user_error = Dune_engine.Compound_user_error
 
 let absolutize_paths ~dir (loc : Loc.t) =

@@ -261,7 +261,7 @@ let add_alias_action t alias ~dir ~loc action =
 
 let build_dir_is_vendored build_dir =
   match Path.Build.drop_build_context build_dir with
-  | Some src_dir -> Dune_engine.Source_tree.is_vendored src_dir
+  | Some src_dir -> Source_tree.is_vendored src_dir
   | None -> Memo.return false
 
 let with_vendored_flags ~ocaml_version flags =

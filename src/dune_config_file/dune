@@ -1,0 +1,20 @@
+(library
+ (name dune_config_file)
+ (libraries
+  stdune
+  xdg
+  dune_config
+  dune_console
+  dune_threaded_console
+  dune_lang
+  dune_cache
+  dune_cache_storage
+  dune_engine
+  dune_rpc_private
+  dune_stats
+  dune_tui
+  dune_util
+  spawn)
+ (synopsis "Internal Dune library, do not use!")
+ (instrumentation
+  (backend bisect_ppx)))

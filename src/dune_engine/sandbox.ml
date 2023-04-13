@@ -130,12 +130,14 @@ let create ~mode ~dune_stats ~rule_loc ~deps ~rule_dir ~rule_digest
     (* Only supported on Linux because we rely on the mtime changing to detect
        when a file changes. This doesn't work on OSX for instance as the file
        system granularity is 1s, which is too coarse. *)
-    if not Sys.linux then
+    (match Platform.OS.value with
+    | Linux -> ()
+    | _ ->
       User_error.raise ~loc:rule_loc
         [ Pp.textf
             "(mode patch-back-source-tree) is only supported on Linux at the \
              moment."
-        ];
+        ]);
     (* We expect this call to [snapshot t] to return the same set of files as
        [deps], given that's exactly what we just copied in the sandbox. So in
        theory, we could iterate over [deps] rather than scan the file system.

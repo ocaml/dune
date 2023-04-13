@@ -56,9 +56,8 @@ let modules_rules ~preprocess ~preprocessor_deps ~lint
         (Preprocess.Per_module.instrumentation_deps preprocess
            ~instrumentation_backend)
     in
-    Preprocessing.make sctx ~dir ~scope
-      ~preprocess:preprocess_with_instrumentation ~expander ~preprocessor_deps
-      ~instrumentation_deps ~lint ~lib_name
+    Preprocessing.make sctx ~dir ~preprocess:preprocess_with_instrumentation
+      ~expander ~preprocessor_deps ~instrumentation_deps ~lint ~lib_name
   in
   let add_empty_intf =
     let default = empty_module_interface_if_absent in

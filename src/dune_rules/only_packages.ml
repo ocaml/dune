@@ -47,9 +47,7 @@ let conf =
                        |> List.map ~f:Package.Name.to_string)));
         Package.Name.Map.to_list packages
         |> Memo.parallel_map ~f:(fun (name, pkg) ->
-               let+ vendored =
-                 Dune_engine.Source_tree.is_vendored (Package.dir pkg)
-               in
+               let+ vendored = Source_tree.is_vendored (Package.dir pkg) in
                let included = Package.Name.Set.mem names name in
                if vendored && included then
                  User_error.raise

@@ -1,7 +1,7 @@
 open Stdune
 open Import
 
-let doc = "Execute the Coq toplevel with the local configuration."
+let doc = "Execute a Coq toplevel with the local configuration."
 
 let man =
   [ `S "DESCRIPTION"
@@ -29,10 +29,15 @@ let term =
     Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"COQFILE"))
   and+ extra_args =
     Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
+  and+ no_rebuild =
+    Arg.(
+      value & flag
+      & info [ "no-build" ] ~doc:"Don't rebuild dependencies before executing.")
   in
   let config = Common.init common in
-  let root = Common.root common in
-  let prefix_target = Common.prefix_target common in
+  let coq_file_arg =
+    Common.prefix_target common coq_file_arg |> Path.Local.of_string
+  in
   let coqtop, argv, env =
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in
@@ -40,33 +45,14 @@ let term =
         let* setup = Memo.run setup in
         let sctx = Import.Main.find_scontext_exn setup ~name:context in
         let context = Dune_rules.Super_context.context sctx in
-        (* Try to compute a relative path if we got an absolute path. *)
-        let coq_file_arg =
-          if Filename.is_relative coq_file_arg then
-            Path.relative Path.root (root.reach_from_root_prefix ^ coq_file_arg)
-            |> Path.to_string
-          else
-            let cwd = Path.external_ Path.External.initial_cwd in
-            let file =
-              (* Best-effort symbolic link unfolding. *)
-              let file = Fpath.follow_symlinks coq_file_arg in
-              Option.value file ~default:coq_file_arg
-            in
-            let file = Path.of_filename_relative_to_initial_cwd file in
-            let cwd = Path.to_string cwd in
-            let file = Path.to_string file in
-            match String.drop_prefix ~prefix:(cwd ^ "/") file with
-            | None -> coq_file_arg
-            | Some s -> s
-        in
         let coq_file_build =
-          let p = prefix_target coq_file_arg in
-          Path.Build.relative context.build_dir p
+          Path.Build.append_local context.build_dir coq_file_arg
         in
         let dir =
-          let dir = Filename.dirname coq_file_arg in
-          let p = prefix_target dir in
-          Path.Build.relative context.build_dir p
+          (match Path.Local.parent coq_file_arg with
+          | None -> Path.Local.root
+          | Some dir -> dir)
+          |> Path.Build.append_local context.build_dir
         in
         let* coqtop, args =
           Build_system.run_exn @@ fun () ->
@@ -87,47 +73,60 @@ let term =
             | Some m -> snd m
             | None ->
               let hints =
-                [ Pp.textf "is the file part of a stanza?"
-                ; Pp.textf "has the file been written to disk?"
+                [ Pp.textf "Is the file part of a stanza?"
+                ; Pp.textf "Has the file been written to disk?"
                 ]
               in
               User_error.raise ~hints
-                [ Pp.textf "cannot find file: %s" coq_file_arg ]
+                [ Pp.textf "Cannot find file: %s"
+                    (coq_file_arg |> Path.Local.to_string)
+                ]
           in
           let stanza =
             Dune_rules.Coq_sources.lookup_module coq_src coq_module
           in
-          let args, use_stdlib, coq_lang_version, wrapper_name =
+          let args, use_stdlib, coq_lang_version, wrapper_name, mode =
             match stanza with
             | None ->
               User_error.raise
-                [ Pp.textf "file not part of any stanza: %s" coq_file_arg ]
+                [ Pp.textf "File not part of any stanza: %s"
+                    (coq_file_arg |> Path.Local.to_string)
+                ]
             | Some (`Theory theory) ->
               ( Dune_rules.Coq_rules.coqtop_args_theory ~sctx ~dir
                   ~dir_contents:dc theory coq_module
               , theory.buildable.use_stdlib
               , theory.buildable.coq_lang_version
-              , Dune_rules.Coq_lib_name.wrapper (snd theory.name) )
+              , Dune_rules.Coq_lib_name.wrapper (snd theory.name)
+              , theory.buildable.mode )
             | Some (`Extraction extr) ->
               ( Dune_rules.Coq_rules.coqtop_args_extraction ~sctx ~dir extr
                   coq_module
               , extr.buildable.use_stdlib
               , extr.buildable.coq_lang_version
-              , "DuneExtraction" )
+              , "DuneExtraction"
+              , extr.buildable.mode )
           in
+          (* Run coqdep *)
           let* (_ : unit * Dep.Fact.t Dep.Map.t) =
             let deps_of =
-              Dune_rules.Coq_rules.deps_of ~dir ~use_stdlib ~wrapper_name
-                ~coq_lang_version coq_module
+              if no_rebuild then Action_builder.return ()
+              else
+                let mode =
+                  match mode with
+                  | None -> Dune_rules.Coq_mode.VoOnly
+                  | Some mode -> mode
+                in
+                Dune_rules.Coq_rules.deps_of ~dir ~use_stdlib ~wrapper_name
+                  ~mode ~coq_lang_version coq_module
             in
             Action_builder.(run deps_of) Eager
           in
+          (* Get args *)
           let* (args, _) : string list * Dep.Fact.t Dep.Map.t =
-            let* args =
-              let dir = Path.external_ Path.External.initial_cwd in
-              let+ args = args in
-              Dune_rules.Command.expand ~dir (S args)
-            in
+            let* args = args in
+            let dir = Path.external_ Path.External.initial_cwd in
+            let args = Dune_rules.Command.expand ~dir (S args) in
             Action_builder.run args.build Eager
           in
           let* prog =

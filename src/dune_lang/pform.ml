@@ -40,6 +40,7 @@ module Var = struct
     | Ignoring_promoted_rules
     | Input_file
     | Library_name
+    | Partition
     | Impl_files
     | Intf_files
     | Test
@@ -91,6 +92,7 @@ module Var = struct
         | Ignoring_promoted_rules -> "Ignoring_promoted_rules"
         | Input_file -> "Input_file"
         | Library_name -> "Library_name"
+        | Partition -> "Partition"
         | Impl_files -> "Impl_files"
         | Intf_files -> "Intf_files"
         | Test -> "Test"
@@ -298,6 +300,7 @@ let encode_to_latest_dune_lang_version t =
       | Ignoring_promoted_rules -> Some "ignoring_promoted_rules"
       | Input_file -> Some "input_file"
       | Library_name -> Some "library-name"
+      | Partition -> Some "partition"
       | Impl_files -> Some "impl-files"
       | Intf_files -> Some "intf-files"
       | Test -> Some "test"
@@ -482,6 +485,7 @@ module Env = struct
         ; ( "ignoring_promoted_rules"
           , since ~version:(1, 10) Var.Ignoring_promoted_rules )
         ; ("library-name", No_info Library_name)
+        ; ("partition", since ~version:(3, 8) Var.Partition)
         ; ("impl-files", No_info Impl_files)
         ; ("intf-files", No_info Intf_files)
         ; ("test", No_info Test)

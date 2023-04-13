@@ -299,7 +299,7 @@ module T = struct
     ; (* [requires] is contains all required libraries, including the ones
          mentioned in [re_exports]. *)
       requires : t list Resolve.t
-    ; ppx_runtime_deps : t list Resolve.t
+    ; ppx_runtime_deps_host : t list Resolve.t Memo.Lazy.t
     ; pps : t list Resolve.t
     ; resolved_selects : Resolved_select.t list Resolve.t
     ; implements : t Resolve.t option
@@ -353,6 +353,30 @@ module Hidden = struct
     { lib = info; reason = "unsatisfied 'exist_if'"; path }
 end
 
+module Private_deps = struct
+  type t =
+    | From_same_project of [ `Public | `Private_package ]
+    | Allow_all
+
+  let equal a b =
+    match (a, b) with
+    | Allow_all, Allow_all
+    | From_same_project `Public, From_same_project `Public
+    | From_same_project `Private_package, From_same_project `Private_package ->
+      true
+    | _ -> false
+
+  let check t ~loc ~lib =
+    match t with
+    | Allow_all -> Ok lib
+    | From_same_project kind -> (
+      match Lib_info.status lib.info with
+      | Private (_, Some _) -> Ok lib
+      | Private (_, None) ->
+        Error (Error.private_deps_not_allowed ~kind ~loc lib.info)
+      | _ -> Ok lib)
+end
+
 module Status = struct
   type t =
     | Found of lib
@@ -372,7 +396,10 @@ end
 
 type db =
   { parent : db option
+  ; host : db Memo.Lazy.t option
   ; resolve : Lib_name.t -> resolve_result Memo.t
+  ; resolve_ppx_runtime_deps :
+      (Path.t Lib_info.t * Private_deps.t, t list Resolve.t) Memo.Table.t
   ; all : Lib_name.t list Memo.Lazy.t
   ; lib_config : Lib_config.t
   }
@@ -398,7 +425,7 @@ let implements t = Option.map ~f:Memo.return t.implements
 
 let requires t = Memo.return t.requires
 
-let ppx_runtime_deps t = Memo.return t.ppx_runtime_deps
+let ppx_runtime_deps t = Memo.Lazy.force t.ppx_runtime_deps_host
 
 let pps t = Memo.return t.pps
 
@@ -411,7 +438,6 @@ let main_module_name t =
   match main_module_name with
   | This mmn -> Resolve.Memo.return mmn
   | From _ -> (
-    let open Resolve.Memo.O in
     let+ vlib = Memo.return (Option.value_exn t.implements) in
     let main_module_name = Lib_info.main_module_name vlib.info in
     match main_module_name with
@@ -603,20 +629,6 @@ end = struct
         { stack = x :: t.stack; seen = Id.Set.add t.seen x; implements_via }
 end
 
-type private_deps =
-  | From_same_project of [ `Public | `Private_package ]
-  | Allow_all
-
-let check_private_deps lib ~loc ~(private_deps : private_deps) =
-  match private_deps with
-  | Allow_all -> Ok lib
-  | From_same_project kind -> (
-    match Lib_info.status lib.info with
-    | Private (_, Some _) -> Ok lib
-    | Private (_, None) ->
-      Error (Error.private_deps_not_allowed ~kind ~loc lib.info)
-    | _ -> Ok lib)
-
 module Vlib : sig
   (** Make sure that for every virtual library in the list there is at most one
       corresponding implementation.
@@ -758,7 +770,6 @@ end = struct
 end
 
 let instrumentation_backend instrument_with resolve libname =
-  let open Resolve.Memo.O in
   if not (List.mem ~equal:Lib_name.equal instrument_with (snd libname)) then
     Resolve.Memo.return None
   else
@@ -777,7 +788,10 @@ module rec Resolve_names : sig
   val find_internal : db -> Lib_name.t -> Status.t Memo.t
 
   val resolve_dep :
-    db -> Loc.t * Lib_name.t -> private_deps:private_deps -> lib Resolve.Memo.t
+       db
+    -> Loc.t * Lib_name.t
+    -> private_deps:Private_deps.t
+    -> lib Resolve.Memo.t
 
   val resolve_name : db -> Lib_name.t -> Status.t Memo.t
 
@@ -786,7 +800,7 @@ module rec Resolve_names : sig
   val resolve_simple_deps :
        db
     -> (Loc.t * Lib_name.t) list
-    -> private_deps:private_deps
+    -> private_deps:Private_deps.t
     -> t list Resolve.Memo.t
 
   type resolved =
@@ -799,7 +813,7 @@ module rec Resolve_names : sig
   val resolve_deps_and_add_runtime_deps :
        db
     -> Lib_dep.t list
-    -> private_deps:private_deps
+    -> private_deps:Private_deps.t
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t option
     -> resolved Memo.t
@@ -824,8 +838,7 @@ end = struct
         let+ { projects; _ } = Dune_load.load () in
         List.concat_map projects ~f:(fun project ->
             Dune_project.packages project
-            |> Package.Name.Map.values
-            |> List.map ~f:(fun (pkg : Package.t) ->
+            |> Package.Name.Map.to_list_map ~f:(fun _ (pkg : Package.t) ->
                    let name = Package.name pkg in
                    (name, project)))
         |> Package.Name.Map.of_list_exn)
@@ -833,13 +846,13 @@ end = struct
   let instantiate_impl (db, name, info, hidden) =
     let open Memo.O in
     let unique_id = Id.make ~name ~path:(Lib_info.src_dir info) in
-    let status = Lib_info.status info in
     let private_deps =
-      match status with
+      match Lib_info.status info with
       (* [Allow_all] is used for libraries that are installed because we don't
          have to check it again. It has been checked when compiling the
          libraries before their installation *)
-      | Installed_private | Private (_, None) | Installed -> Allow_all
+      | Installed_private | Private (_, None) | Installed ->
+        Private_deps.Allow_all
       | Private (_, Some _) -> From_same_project `Private_package
       | Public (_, _) -> From_same_project `Public
     in
@@ -949,16 +962,17 @@ end = struct
           let+ impl = impl in
           impl :: requires)
     in
-    let* ppx_runtime_deps =
-      Lib_info.ppx_runtime_deps info |> resolve_simple_deps db ~private_deps
-    in
-    let src_dir = Lib_info.src_dir info in
     let map_error x =
+      let src_dir = Lib_info.src_dir info in
       Resolve.push_stack_frame x ~human_readable_description:(fun () ->
           Dep_path.Entry.Lib.pp { name; path = src_dir })
     in
+    let ppx_runtime_deps_host =
+      Memo.lazy_ (fun () ->
+          Memo.exec db.resolve_ppx_runtime_deps (info, private_deps)
+          |> Memo.map ~f:map_error)
+    in
     let requires = map_error requires in
-    let ppx_runtime_deps = map_error ppx_runtime_deps in
     let* project =
       let status = Lib_info.status info in
       match Lib_info.Status.project status with
@@ -979,7 +993,7 @@ end = struct
         ; name
         ; unique_id
         ; requires
-        ; ppx_runtime_deps
+        ; ppx_runtime_deps_host
         ; pps
         ; resolved_selects
         ; re_exports
@@ -995,27 +1009,25 @@ end = struct
         })
     in
     let t = Lazy.force t in
-    let res =
-      let hidden =
-        match hidden with
-        | Some _ -> hidden
-        | None -> (
-          let enabled = Lib_info.enabled info in
-          match enabled with
-          | Normal -> None
-          | Disabled_because_of_enabled_if -> Some "unsatisfied 'enabled_if'"
-          | Optional ->
-            (* TODO this could be made lazier *)
-            let requires = Resolve.is_ok requires in
-            let ppx_runtime_deps = Resolve.is_ok t.ppx_runtime_deps in
-            if requires && ppx_runtime_deps then None
-            else Some "optional with unavailable dependencies")
-      in
+    let+ hidden =
       match hidden with
-      | None -> Status.Found t
-      | Some reason -> Hidden (Hidden.of_lib t ~reason)
+      | Some _ -> Memo.return hidden
+      | None -> (
+        let enabled = Lib_info.enabled info in
+        match enabled with
+        | Normal -> Memo.return None
+        | Disabled_because_of_enabled_if ->
+          Memo.return (Some "unsatisfied 'enabled_if'")
+        | Optional ->
+          (* TODO this could be made lazier *)
+          let requires = Resolve.is_ok requires in
+          let+ ppx_runtime_deps = ppx_runtime_deps t >>| Resolve.is_ok in
+          if requires && ppx_runtime_deps then None
+          else Some "optional with unavailable dependencies")
     in
-    Memo.return res
+    match hidden with
+    | None -> Status.Found t
+    | Some reason -> Hidden (Hidden.of_lib t ~reason)
 
   let memo =
     let module Input = struct
@@ -1045,7 +1057,7 @@ end = struct
     let open Memo.O in
     find_internal db name >>= function
     | Found lib ->
-      Resolve.Memo.of_result (check_private_deps lib ~loc ~private_deps)
+      Resolve.Memo.of_result (Private_deps.check private_deps ~loc ~lib)
     | Not_found -> Error.not_found ~loc ~name
     | Invalid why -> Resolve.Memo.of_result (Error why)
     | Hidden h -> Hidden.error h ~loc ~name
@@ -1286,8 +1298,20 @@ end = struct
       in
       let pps =
         let* pps =
+          let open Memo.O in
+          let* db_host =
+            match db.host with
+            | None -> Memo.return db
+            | Some host ->
+              (* PPXes run in the host context, so their dependencies have to
+                 be resolved accordingly. *)
+              Memo.Lazy.force host
+          in
           Resolve.Memo.List.map pps ~f:(fun (loc, name) ->
-              let* lib = resolve_dep db (loc, name) ~private_deps:Allow_all in
+              let open Resolve.Memo.O in
+              let* lib =
+                resolve_dep db_host (loc, name) ~private_deps:Allow_all
+              in
               match (allow_only_ppx_deps, Lib_info.kind lib.info) with
               | true, Normal -> Error.only_ppx_deps_allowed ~loc lib.info
               | _ -> Resolve.Memo.return lib)
@@ -1297,12 +1321,25 @@ end = struct
       in
       let runtime_deps =
         let* pps = pps in
-        Resolve.List.concat_map pps ~f:(fun pp ->
-            let open Resolve.O in
-            let* ppx_runtime_deps = pp.ppx_runtime_deps in
+        Resolve.Memo.List.concat_map pps ~f:(fun pp ->
+            let* ppx_runtime_deps =
+              match db.host with
+              | None -> ppx_runtime_deps pp
+              | Some _host ->
+                (* (ppx_runtime_libraries ...) run in the target context, so
+                   these dependencies need to be resolved here rather than at
+                   instantiation of the ppx library (in the host context). *)
+                Memo.exec db.resolve_ppx_runtime_deps (pp.info, private_deps)
+                |> Memo.map ~f:(fun x ->
+                       Resolve.push_stack_frame x
+                         ~human_readable_description:(fun () ->
+                           Dep_path.Entry.Lib.pp
+                             { name = pp.name; path = Lib_info.src_dir pp.info }))
+            in
             Resolve.List.map ppx_runtime_deps ~f:(fun dep ->
-                check_private_deps ~loc ~private_deps dep |> Resolve.of_result))
-        |> Memo.return
+                Private_deps.check private_deps ~lib:dep ~loc
+                |> Resolve.of_result)
+            |> Memo.return)
       in
       { runtime_deps; pps }
 
@@ -1456,7 +1493,6 @@ end = struct
     in
     (* For each virtual library we know which vlibs will be implemented when
        enabling its default implementation. *)
-    let open Resolve.Memo.O in
     fun libraries ->
       let* status, () =
         R.run
@@ -1629,7 +1665,7 @@ let descriptive_closure (l : lib list) ~with_pps : lib list Memo.t =
         let* todo =
           if with_pps then register_work todo lib.pps else Memo.return todo
         in
-        let* todo = register_work todo lib.ppx_runtime_deps in
+        let* todo = ppx_runtime_deps lib >>= register_work todo in
         let* todo = register_work todo lib.requires in
         work todo acc
   in
@@ -1729,12 +1765,47 @@ module DB = struct
 
   type t = db
 
-  let create ~parent ~resolve ~all ~lib_config () =
-    { parent; resolve; all = Memo.lazy_ all; lib_config }
+  let create =
+    let module Input = struct
+      type t = Path.t Lib_info.t * Private_deps.t
 
-  let create_from_findlib findlib =
+      let to_dyn = Dyn.opaque
+
+      let hash x = Poly.hash x
+
+      let equal (t, private_deps) (t', private_deps') =
+        equal t t' && Private_deps.equal private_deps private_deps'
+    end in
+    let resolve_ppx_runtime_deps db =
+      let resolve_ppx_runtime_deps_impl (info, private_deps) =
+        Resolve_names.resolve_simple_deps (Lazy.force db)
+          (Lib_info.ppx_runtime_deps info)
+          ~private_deps
+      in
+      Memo.create "lib-resolve-ppx-runtime-libraries"
+        ~input:(module Input)
+        resolve_ppx_runtime_deps_impl
+        ~human_readable_description:(fun (info, _private_deps) ->
+          Dep_path.Entry.Lib.pp
+            { name = Lib_info.name info; path = Lib_info.src_dir info })
+    in
+    (* TODO: unneeded unit argument *)
+    fun ~parent ~host ~resolve ~all ~lib_config () ->
+      let rec db =
+        lazy
+          { parent
+          ; host
+          ; resolve
+          ; resolve_ppx_runtime_deps = resolve_ppx_runtime_deps db
+          ; all = Memo.lazy_ all
+          ; lib_config
+          }
+      in
+      Lazy.force db
+
+  let create_from_findlib ~host findlib =
     let lib_config = Findlib.lib_config findlib in
-    create () ~parent:None ~lib_config
+    create () ~parent:None ~host ~lib_config
       ~resolve:(fun name ->
         let open Memo.O in
         Findlib.find findlib name >>| function
@@ -1750,12 +1821,12 @@ module DB = struct
         let open Memo.O in
         Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.name)
 
-  let installed (context : Context.t) =
+  let installed (context : Context.t) ~host =
     let open Memo.O in
     let+ findlib =
       Findlib.create ~paths:context.findlib_paths ~lib_config:context.lib_config
     in
-    create_from_findlib findlib
+    create_from_findlib ~host findlib
 
   let find t name =
     let open Memo.O in
@@ -1805,7 +1876,6 @@ module DB = struct
     in
     let requires_link =
       Memo.Lazy.create (fun () ->
-          let open Resolve.Memo.O in
           let* forbidden_libraries =
             let* l =
               Resolve.Memo.List.map forbidden_libraries ~f:(fun (loc, name) ->
@@ -1885,8 +1955,8 @@ module DB = struct
     instrumentation_backend t.lib_config.instrument_with (resolve t) libname
 end
 
-let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir :
-    Dune_package.Lib.t Resolve.Memo.t =
+let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects
+    ~melange_runtime_deps ~dir : Dune_package.Lib.t Resolve.Memo.t =
   let loc = Lib_info.loc info in
   let mangled_name lib =
     match Lib_info.status lib.info with
@@ -1911,7 +1981,6 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir :
     | Some _, None | None, Some _ -> assert false
     | None, None -> Resolve.Memo.return None
     | Some (loc, _), Some field ->
-      let open Resolve.Memo.O in
       let+ field = field in
       Some (loc, mangled_name field)
   in
@@ -1926,7 +1995,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir :
     use_public_name
       ~info_field:(Lib_info.default_implementation info)
       ~lib_field:(Option.map ~f:Memo.Lazy.force lib.default_implementation)
-  and+ ppx_runtime_deps = Memo.return lib.ppx_runtime_deps
+  and+ ppx_runtime_deps = ppx_runtime_deps lib
   and+ requires = Memo.return lib.requires
   and+ re_exports = Memo.return lib.re_exports in
   let ppx_runtime_deps = add_loc ppx_runtime_deps in
@@ -1940,7 +2009,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir :
   let info =
     Lib_info.for_dune_package info ~name ~ppx_runtime_deps ~requires
       ~foreign_objects ~obj_dir ~implements ~default_implementation ~sub_systems
-      ~modules
+      ~modules ~melange_runtime_deps
   in
   Dune_package.Lib.of_dune_lib ~info ~main_module_name
 

@@ -1,13 +1,14 @@
 Test simple interactions between melange.emit and copy_files
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 
   $ cat > dune <<EOF
   > (melange.emit
   >  (alias mel)
+  >  (emit_stdlib false)
   >  (target output)
   >  (runtime_deps assets/file.txt (glob_files_rec ./globbed/*.txt)))
   > EOF
@@ -36,18 +37,19 @@ Rules created for the assets in the output directory
   _build/default/output/assets/file.txt
   $ dune clean
 
-Not attached to alias because `output/` doesn't exist in the source dir
+Alias is found even if source dir "output" isn't present
 
-  $ dune rules @mel | grep file.txt
-  [1]
-
-Creating the source directory makes it appear in the alias
-
-  $ mkdir output
   $ dune rules @mel | grep file.txt
   ((deps ((File (In_build_dir _build/default/assets/file.txt))))
    (targets ((files (default/output/assets/file.txt)) (directories ())))
-     (symlink ../../assets/file.txt output/assets/file.txt))))
+   (action (chdir _build/default (copy assets/file.txt output/assets/file.txt))))
+
+Creating the source directory makes it appear in the alias
+
+  $ dune rules @mel | grep file.txt
+  ((deps ((File (In_build_dir _build/default/assets/file.txt))))
+   (targets ((files (default/output/assets/file.txt)) (directories ())))
+   (action (chdir _build/default (copy assets/file.txt output/assets/file.txt))))
 
   $ dune build @mel --display=short
           melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
@@ -74,10 +76,6 @@ The runtime_dep index.txt was copied to the build folder
   a.txt
   b.txt
 
-
   $ node _build/default/output/main.js
   hello from file
   
-
-
-

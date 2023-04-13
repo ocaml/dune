@@ -50,20 +50,10 @@ CAMLprim value stdune_copyfile(value v_from, value v_to) {
   CAMLreturn(Val_unit);
 }
 
-CAMLprim value stdune_is_darwin(value v_unit) {
-  CAMLparam1(v_unit);
-  CAMLreturn(Val_true);
-}
-
 #else
 
 CAMLprim value stdune_copyfile(value v_from, value v_to) {
   caml_failwith("copyfile: only on macos");
-}
-
-CAMLprim value stdune_is_darwin(value v_unit) {
-  CAMLparam1(v_unit);
-  CAMLreturn(Val_false);
 }
 
 #endif

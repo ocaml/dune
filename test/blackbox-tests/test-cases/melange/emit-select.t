@@ -23,7 +23,7 @@ using `(select ...)` in melange.emit
   $ cat >dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (alias melange)
+  >  (alias mel)
   >  (libraries
   >   (select bar.ml from
   >    (melange -> bar.melange.ml)
@@ -33,7 +33,7 @@ using `(select ...)` in melange.emit
   >    (!fakefoobar -> foo.no_fake.ml))))
   > EOF
 
-  $ dune build @melange
+  $ dune build @mel
   $ node ./_build/default/output/main.js
   hello from melange
   foo has no fake

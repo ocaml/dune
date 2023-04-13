@@ -65,8 +65,7 @@ let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
   if not (Executables.has_foreign exes) then Memo.return @@ Mode.Map.empty
   else
     let what =
-      if List.is_empty exes.buildable.Buildable.foreign_stubs then "archives"
-      else "stubs"
+      if List.is_empty exes.buildable.foreign_stubs then "archives" else "stubs"
     in
     if List.exists linkages ~f:Exe.Linkage.is_byte then
       User_error.raise ~loc:exes.buildable.loc
@@ -101,7 +100,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     Dir_contents.ocaml dir_contents
     >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
   in
-  let* () = Check_rules.add_obj_dir sctx ~obj_dir `Ocaml in
+  let* () = Check_rules.add_obj_dir sctx ~obj_dir (Ocaml Byte) in
   let ctx = Super_context.context sctx in
   let project = Scope.project scope in
   let programs = programs ~modules ~exes in

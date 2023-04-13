@@ -152,6 +152,12 @@ The semantics of the fields are:
   Previous versions of Dune before 3.7 would disable the native rules depending
   on whether or not the ``dev`` profile was selected.
 
+- From version :ref:`Coq lang 0.8<coq-lang>` onwards, ``(mode vos)`` makes it
+  so that only Coq compiled interface files are produced for the theory. This
+  is mainly useful in conjunction with ``dune coq top``, since this makes the
+  compilation of dependencies much faster (thought the proofs they contain are
+  not checked).
+
 Coq Dependencies
 ~~~~~~~~~~~~~~~~
 
@@ -654,6 +660,11 @@ actually passed to the toplevel. These options are computed based on the options
 that would be passed to the Coq compiler if it was invoked on the Coq file
 ``<file>``.
 
+In certain situations, it is desirable to not rebuild dependencies for a ``.v``
+files but still pass the correct flags to the toplevel. For this reason, a
+``--no-build`` flag can be passed to ``dune coq top`` which will skip any
+building of dependencies.
+
 Limitations
 ~~~~~~~~~~~
 
@@ -684,4 +695,4 @@ configuration. These are:
 - ``%{coq:coq_native_compiler_default}`` the output of
   ``COQ_NATIVE_COMPILER_DEFAULT`` from ``coqc -config``.
 
-See :ref:`variables` for more information on variables supported by Dune.
+See :doc:`concepts/variables` for more information on variables supported by Dune.

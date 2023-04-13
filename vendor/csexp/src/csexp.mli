@@ -34,24 +34,24 @@ module type S = sig
       [s]. It is an error for [s] to contain a S-expression followed by more
       data. In case of error, the offset of the error as well as an error
       message is returned. *)
-  val parse_string : string -> (sexp, int * string) Result.t
+  val parse_string : string -> (sexp, int * string) result
 
   (** [parse_string s] parses a sequence of S-expressions encoded in canonical
       form in [s] *)
-  val parse_string_many : string -> (sexp list, int * string) Result.t
+  val parse_string_many : string -> (sexp list, int * string) result
 
   (** Read exactly one canonical S-expressions from the given channel. Note that
       this function never raises [End_of_file]. Instead, it returns [Error]. *)
-  val input : in_channel -> (sexp, string) Result.t
+  val input : in_channel -> (sexp, string) result
 
   (** Same as [input] but returns [Ok None] if the end of file has already been
       reached. If some more characters are available but the end of file is
       reached before reading a complete S-expression, this function returns
       [Error]. *)
-  val input_opt : in_channel -> (sexp option, string) Result.t
+  val input_opt : in_channel -> (sexp option, string) result
 
   (** Read many S-expressions until the end of input is reached. *)
-  val input_many : in_channel -> (sexp list, string) Result.t
+  val input_many : in_channel -> (sexp list, string) result
 
   (** {2 Serialising} *)
 
@@ -148,7 +148,9 @@ module type S = sig
 
         For instance, the prefix "1:x((1:y1:z)" will be represented as:
 
-        {[ Sexp (List [ Atom "y"; Atom "z" ], Open (Sexp (Atom "x", Empty))) ]}
+        {[
+          Sexp (List [ Atom "y"; Atom "z" ], Open (Sexp (Atom "x", Empty)))
+        ]}
 
         The {!Stack} module offers various primitives to open or close
         parentheses or insert an atom. And for convenience it provides a
@@ -234,8 +236,8 @@ module type S = sig
             let rec loop s pos len lexer stack =
               if pos = len then (
                 Lexer.feed_eoi lexer;
-                Stack.to_list stack
-              ) else
+                Stack.to_list stack)
+              else
                 match Lexer.feed lexer (String.unsafe_get s pos) with
                 | Atom atom_len ->
                   let atom = extract_atom s (pos + 1) atom_len in
@@ -300,8 +302,8 @@ module type S = sig
             # to_list (Sexp (Atom "y", Sexp (Atom "x", Empty)));;
             - : Stack.t list = [Atom "x"; Atom "y"]
           ]}
-          @raise Parse_error if the stack contains open parentheses that has not
-          been closed. *)
+          @raise Parse_error
+            if the stack contains open parentheses that has not been closed. *)
       val to_list : t -> sexp list
 
       (** Add a left parenthesis. *)
@@ -353,18 +355,18 @@ module type S = sig
       val bind : 'a t -> ('a -> 'b t) -> 'b t
     end
 
-    val read_string : t -> int -> (string, string) Result.t Monad.t
+    val read_string : t -> int -> (string, string) result Monad.t
 
-    val read_char : t -> (char, string) Result.t Monad.t
+    val read_char : t -> (char, string) result Monad.t
   end
   [@@deprecated "Use Parser module instead"]
 
   [@@@warning "-3"]
 
   module Make_parser (Input : Input) : sig
-    val parse : Input.t -> (sexp, string) Result.t Input.Monad.t
+    val parse : Input.t -> (sexp, string) result Input.Monad.t
 
-    val parse_many : Input.t -> (sexp list, string) Result.t Input.Monad.t
+    val parse_many : Input.t -> (sexp list, string) result Input.Monad.t
   end
   [@@deprecated "Use Parser module instead"]
 end

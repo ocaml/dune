@@ -1,7 +1,7 @@
 open Stdune
 open Import
-module Sub_dirs = Dune_engine.Sub_dirs
-module Vcs = Dune_engine.Vcs
+module Vcs = Dune_vcs.Vcs
+module Subst_config = Dune_rules.Subst_config
 
 let is_a_source_file path =
   (match Path.extension path with
@@ -135,12 +135,7 @@ module Dune_project = struct
 
   let load ~dir ~files ~infer_from_opam_files =
     let open Memo.O in
-    let+ project =
-      (* dir_status only affects warning status, but it will not matter here.
-         dune subst will fail with a hard error if the name is missing *)
-      let dir_status = Sub_dirs.Status.Normal in
-      Dune_project.load ~dir ~files ~infer_from_opam_files ~dir_status
-    in
+    let+ project = Dune_project.load ~dir ~files ~infer_from_opam_files in
     let open Option.O in
     let* project = project in
     let file =
@@ -298,7 +293,7 @@ let subst vcs =
           ]
   in
   (match Dune_project.subst_config dune_project.project with
-  | Dune_engine.Subst_config.Disabled ->
+  | Subst_config.Disabled ->
     User_error.raise
       [ Pp.text
           "dune subst has been disabled in this project. Any use of it is \
@@ -309,7 +304,7 @@ let subst vcs =
             "If you wish to re-enable it, change to (subst enabled) in the \
              dune-project file."
         ]
-  | Dune_engine.Subst_config.Enabled -> ());
+  | Subst_config.Enabled -> ());
   let info =
     let loc, name =
       match dune_project.name with
@@ -437,8 +432,8 @@ let term =
   Log.init_disabled ();
   Dune_engine.Scheduler.Run.go
     ~on_event:(fun _ _ -> ())
-    (Dune_config.for_scheduler config None ~insignificant_changes:`React
-       ~signal_watcher:`No)
+    (Dune_config.for_scheduler config ~watch_exclusions:[] None
+       ~insignificant_changes:`React ~signal_watcher:`No)
     subst
 
 let command = Cmd.v info term

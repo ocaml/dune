@@ -446,8 +446,7 @@ let find_cmd cmds =
 
 let pp_to_pager print ppf v =
   let pager =
-    let cmds = ["less"," -R"; "more", ""] in
-    (* Fundamentally env var lookups should try to cut the exec name. *)
+    let cmds = ["less", ""; "more", ""] in
     let cmds = try (Sys.getenv "PAGER", "") :: cmds with Not_found -> cmds in
     let cmds = try (Sys.getenv "MANPAGER", "") :: cmds with Not_found -> cmds in
     find_cmd cmds
@@ -455,7 +454,10 @@ let pp_to_pager print ppf v =
   match pager with
   | None -> print `Plain ppf v
   | Some (pager, opts) ->
-      let pager = pager ^ opts in
+      let pager = match Sys.win32 with
+      | false -> "LESS=FRX " ^ pager ^ opts
+      | true -> "set LESS=FRX && " ^ pager ^ opts
+      in
       let groffer =
         let cmds =
           ["mandoc", " -m man -K utf-8 -T utf8";

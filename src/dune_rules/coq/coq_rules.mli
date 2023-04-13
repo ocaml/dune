@@ -11,12 +11,13 @@ val deps_of :
      dir:Path.Build.t
   -> use_stdlib:bool
   -> wrapper_name:string
+  -> mode:Coq_mode.t
   -> coq_lang_version:Dune_sexp.Syntax.Version.t
   -> Coq_module.t
   -> unit Dune_engine.Action_builder.t
 
 val coqdoc_directory_targets :
-  dir:Path.Build.t -> Coq_stanza.Theory.t -> Loc.t Path.Build.Map.t
+  dir:Path.Build.t -> Coq_stanza.Theory.t -> Loc.t Path.Build.Map.t Memo.t
 
 (** ** Rules for Coq stanzas *)
 

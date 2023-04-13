@@ -2,7 +2,7 @@ Here we observe the documentation for the dune cache commands.
 
   $ dune cache --help=plain
   NAME
-         dune-cache - Manage the shared cache of build artifacts
+         dune-cache - Manage Dune's shared cache of build artifacts.
   
   SYNOPSIS
          dune cache COMMAND …
@@ -14,10 +14,10 @@ Here we observe the documentation for the dune cache commands.
   
   COMMANDS
          size [--machine-readable] [OPTION]…
-             Query the size of the Dune cache
+             Query the size of the Dune cache.
   
          trim [--size=BYTES] [--trimmed-size=BYTES] [OPTION]…
-             Trim the Dune cache
+             Trim the Dune cache.
   
   COMMON OPTIONS
          --help[=FMT] (default=auto)
@@ -33,11 +33,9 @@ Here we observe the documentation for the dune cache commands.
   
          0   on success.
   
-         123 on indiscriminate errors reported on standard error.
+         1   if an error happened.
   
-         124 on command line parsing errors.
-  
-         125 on unexpected internal errors (bugs).
+         130 if it was interrupted by a signal.
   
   SEE ALSO
          dune(1)
@@ -46,7 +44,7 @@ Testing the output of `dune cache size --machine-readable`
 
   $ dune cache size --help=plain
   NAME
-         dune-cache-size - Query the size of the Dune cache
+         dune-cache-size - Query the size of the Dune cache.
   
   SYNOPSIS
          dune cache size [--machine-readable] [OPTION]…
@@ -73,11 +71,9 @@ Testing the output of `dune cache size --machine-readable`
   
          0   on success.
   
-         123 on indiscriminate errors reported on standard error.
+         1   if an error happened.
   
-         124 on command line parsing errors.
-  
-         125 on unexpected internal errors (bugs).
+         130 if it was interrupted by a signal.
   
   SEE ALSO
          dune(1)
@@ -86,7 +82,7 @@ Testing the output of dune cache trim.
 
   $ dune cache trim --help=plain
   NAME
-         dune-cache-trim - Trim the Dune cache
+         dune-cache-trim - Trim the Dune cache.
   
   SYNOPSIS
          dune cache trim [--size=BYTES] [--trimmed-size=BYTES] [OPTION]…
@@ -114,11 +110,9 @@ Testing the output of dune cache trim.
   
          0   on success.
   
-         123 on indiscriminate errors reported on standard error.
+         1   if an error happened.
   
-         124 on command line parsing errors.
-  
-         125 on unexpected internal errors (bugs).
+         130 if it was interrupted by a signal.
   
   EXAMPLES
          Trimming the Dune cache to 1 GB.

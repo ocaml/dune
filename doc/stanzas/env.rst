@@ -20,7 +20,7 @@ profile will be used to modify the environment in this directory. You can use
 
 Fields supported in ``<settings>`` are:
 
-- any OCaml flags field. See :ref:`ocaml-flags` for more details.
+- any OCaml flags field. See :doc:`concepts/ocaml-flags` for more details.
 
 - ``(link_flags <flags>)`` specifies flags to OCaml when linking an executable.
   See :ref:`executables stanza <shared-exe-fields>`.

@@ -19,7 +19,7 @@ module Includes = struct
           String.equal flag "-open"
           && String.is_prefix ~prefix:entry_lib_name entry_name
         then true
-        else flag_open_present entry_lib_name t
+        else flag_open_present entry_lib_name (entry_name :: t)
       | _ -> false
     in
     let lib_top_module_map =

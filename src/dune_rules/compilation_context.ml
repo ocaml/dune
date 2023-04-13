@@ -59,7 +59,7 @@ module Includes = struct
                     (flag_open_present
                        (Module_name.to_string entry_module_name)
                        flags)
-                then
+                then (
                   let top_c_modules =
                     match
                       Module_name.Map.find lib_top_module_map entry_module_name
@@ -89,7 +89,27 @@ module Includes = struct
                                Module_name.equal entry_module_name
                                  (Module.name top_c_mod)))
                   in
-                  keep
+                  if not keep then
+                    Dune_util.Log.info
+                      [ Pp.textf
+                          "Removing %s aka %s for module %s \n\n\
+                           ~Odep_list: %s\n\n\
+                           ~Top_c_modules: %s\n\
+                           ~Flags : %s\n\
+                           \\n\n\
+                          \                         \n\
+                          \                         •\n\
+                           ------------------"
+                          (Lib.name lib |> Lib_name.to_string)
+                          (Module_name.to_string entry_module_name)
+                          (Module.name md |> Module_name.to_string)
+                          (String.concat external_dep_names ~sep:" , ")
+                          (List.map top_c_modules ~f:(fun m ->
+                               Module.name m |> Module_name.to_string)
+                          |> String.concat ~sep:", ")
+                          (String.concat flags ~sep:",")
+                      ];
+                  keep)
                 else true)
           else true)
 
@@ -100,8 +120,11 @@ module Includes = struct
     ignore flags;
     let flags =
       Action_builder.map2
-        (Ocaml_flags.get flags (Lib_mode.Ocaml Byte))
-        (Ocaml_flags.get flags (Lib_mode.Ocaml Native))
+        (Action_builder.map2
+           (Ocaml_flags.get flags (Lib_mode.Ocaml Byte))
+           (Ocaml_flags.get flags (Lib_mode.Ocaml Native))
+           ~f:List.append)
+        (Ocaml_flags.get flags Lib_mode.Melange)
         ~f:List.append
     in
 

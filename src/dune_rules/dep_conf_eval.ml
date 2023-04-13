@@ -85,6 +85,8 @@ let add_sandbox_config acc (dep : Dep_conf.t) =
 
 let rec dep expander = function
   | Include s ->
+    (* TODO this is wrong. we shouldn't allow bindings here if we are in an
+       unnamed expansion *)
     let deps = expand_include ~expander s in
     Other
       (let* deps = deps in

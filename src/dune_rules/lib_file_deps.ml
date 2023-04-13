@@ -57,3 +57,35 @@ let deps_with_exts =
   Dep.Set.union_map ~f:(fun (lib, groups) -> deps_of_lib lib ~groups)
 
 let deps libs ~groups = Dep.Set.union_map libs ~f:(deps_of_lib ~groups)
+
+type path_specification =
+  | Allow_all
+  | Disallow_external of Lib_name.t
+
+let raise_disallowed_external_path ~loc lib_name path =
+  User_error.raise ~loc
+    [ Pp.textf
+        "Public library %s depends on external path `%s'. This is not allowed."
+        (Lib_name.to_string lib_name)
+        (Path.to_string path)
+    ]
+    ~hints:
+      [ Pp.textf
+          "Move the external dependency to the workspace and use a relative \
+           path."
+      ]
+
+let eval ~loc ~expander ~paths:path_spec (deps : Dep_conf.t list) =
+  let runtime_deps, sandbox = Dep_conf_eval.unnamed_get_paths ~expander deps in
+  Option.iter sandbox ~f:(fun _ ->
+      User_error.raise ~loc [ Pp.text "sandbox settings are not allowed" ]);
+  let open Memo.O in
+  let+ paths, _ = Action_builder.run runtime_deps Lazy in
+  (match path_spec with
+  | Allow_all -> ()
+  | Disallow_external lib_name ->
+    Path.Set.iter paths ~f:(fun path ->
+        match Path.as_external path with
+        | None -> ()
+        | Some _ -> raise_disallowed_external_path ~loc lib_name path));
+  paths

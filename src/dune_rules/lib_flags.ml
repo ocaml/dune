@@ -152,7 +152,37 @@ module L = struct
     in
     remove_stdlib dirs ts
 
-  let c_include_flags ts = to_iflags (c_include_paths ts)
+  let c_include_flags ts sctx =
+    let open Memo.O in
+    let local, external_ =
+      List.fold_left ts ~init:([], Dep.Set.empty)
+        ~f:(fun (local, external_) lib ->
+          let info = Lib.info lib in
+          match Lib_info.public_headers info with
+          | External paths ->
+            (local, Dep.Set.union external_ (Dep.Set.of_files paths))
+          | Local (_loc, public_headers) ->
+            let dir = Path.as_in_build_dir_exn @@ Lib_info.src_dir info in
+            let headers =
+              let+ expander = Super_context.expander sctx ~dir in
+              let deps, sandbox =
+                Dep_conf_eval.unnamed ~expander public_headers
+              in
+              assert (
+                Sandbox_config.equal sandbox
+                  Sandbox_config.no_special_requirements);
+              deps
+            in
+            (headers :: local, external_))
+    in
+    let local =
+      let open Action_builder.O in
+      let* bindings = Action_builder.of_memo @@ Memo.all_concurrently local in
+      let+ () = Action_builder.all_unit bindings in
+      Command.Args.empty
+    in
+    Command.Args.S
+      [ Dyn local; Hidden_deps external_; to_iflags (c_include_paths ts) ]
 
   let toplevel_include_paths ts =
     let with_dlls =

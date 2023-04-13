@@ -281,7 +281,7 @@ let dyn_of_native_archives path =
   | Needs_module_info f -> variant "Needs_module_info" [ path f ]
   | Files files -> variant "Files" [ (list path) files ]
 
-module Runtime_deps = struct
+module File_deps = struct
   type 'a t =
     | Local of Loc.t * Dep_conf.t list
     | External of 'a list
@@ -325,6 +325,7 @@ type 'path t =
   ; archives : 'path list Mode.Dict.t
   ; plugins : 'path list Mode.Dict.t
   ; foreign_objects : 'path list Source.t
+  ; public_headers : 'path File_deps.t
   ; foreign_archives : 'path Mode.Map.Multi.t
   ; native_archives : 'path native_archives
   ; foreign_dll_files : 'path list
@@ -348,7 +349,7 @@ type 'path t =
   ; exit_module : Module_name.t option
   ; instrumentation_backend : (Loc.t * Lib_name.t) option
   ; path_kind : 'path path
-  ; melange_runtime_deps : 'path Runtime_deps.t
+  ; melange_runtime_deps : 'path File_deps.t
   }
 
 let equal (type a) (t : a t)
@@ -364,6 +365,7 @@ let equal (type a) (t : a t)
     ; archives
     ; plugins
     ; foreign_objects
+    ; public_headers
     ; foreign_archives
     ; native_archives
     ; foreign_dll_files
@@ -405,6 +407,7 @@ let equal (type a) (t : a t)
   && Mode.Dict.equal (List.equal path_equal) archives t.archives
   && Mode.Dict.equal (List.equal path_equal) plugins t.plugins
   && Source.equal (List.equal path_equal) foreign_objects t.foreign_objects
+  && File_deps.equal path_equal public_headers t.public_headers
   && Mode.Map.Multi.equal ~equal:path_equal foreign_archives t.foreign_archives
   && equal_native_archives path_equal native_archives t.native_archives
   && List.equal path_equal foreign_dll_files t.foreign_dll_files
@@ -442,7 +445,7 @@ let equal (type a) (t : a t)
   && Option.equal
        (Tuple.T2.equal Loc.equal Lib_name.equal)
        instrumentation_backend t.instrumentation_backend
-  && Runtime_deps.equal path_equal melange_runtime_deps t.melange_runtime_deps
+  && File_deps.equal path_equal melange_runtime_deps t.melange_runtime_deps
   && Poly.equal path_kind t.path_kind
 
 let name t = t.name
@@ -474,6 +477,8 @@ let native_archives t = t.native_archives
 let foreign_dll_files t = t.foreign_dll_files
 
 let foreign_objects t = t.foreign_objects
+
+let public_headers t = t.public_headers
 
 let exit_module t = t.exit_module
 
@@ -525,7 +530,7 @@ let eval_native_archives_exn (type path) (t : path t) ~modules =
 
 let for_dune_package t ~name ~ppx_runtime_deps ~requires ~foreign_objects
     ~obj_dir ~implements ~default_implementation ~sub_systems
-    ~melange_runtime_deps ~modules =
+    ~melange_runtime_deps ~public_headers ~modules =
   let foreign_objects = Source.External foreign_objects in
   let orig_src_dir =
     match !Clflags.store_orig_src_dir with
@@ -544,7 +549,8 @@ let for_dune_package t ~name ~ppx_runtime_deps ~requires ~foreign_objects
     Files (eval_native_archives_exn t ~modules:(Some modules))
   in
   let modules = Source.External (Some modules) in
-  let melange_runtime_deps = Runtime_deps.External melange_runtime_deps in
+  let melange_runtime_deps = File_deps.External melange_runtime_deps in
+  let public_headers = File_deps.External public_headers in
   { t with
     ppx_runtime_deps
   ; name
@@ -558,6 +564,7 @@ let for_dune_package t ~name ~ppx_runtime_deps ~requires ~foreign_objects
   ; native_archives
   ; modules
   ; melange_runtime_deps
+  ; public_headers
   }
 
 let user_written_deps t =
@@ -566,11 +573,11 @@ let user_written_deps t =
 
 let create ~loc ~path_kind ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
     ~version ~synopsis ~main_module_name ~sub_systems ~requires ~foreign_objects
-    ~plugins ~archives ~ppx_runtime_deps ~foreign_archives ~native_archives
-    ~foreign_dll_files ~jsoo_runtime ~preprocess ~enabled ~virtual_deps
-    ~dune_version ~virtual_ ~entry_modules ~implements ~default_implementation
-    ~modes ~modules ~wrapped ~special_builtin_support ~exit_module
-    ~instrumentation_backend ~melange_runtime_deps =
+    ~public_headers ~plugins ~archives ~ppx_runtime_deps ~foreign_archives
+    ~native_archives ~foreign_dll_files ~jsoo_runtime ~preprocess ~enabled
+    ~virtual_deps ~dune_version ~virtual_ ~entry_modules ~implements
+    ~default_implementation ~modes ~modules ~wrapped ~special_builtin_support
+    ~exit_module ~instrumentation_backend ~melange_runtime_deps =
   { loc
   ; name
   ; kind
@@ -583,6 +590,7 @@ let create ~loc ~path_kind ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
   ; requires
   ; main_module_name
   ; foreign_objects
+  ; public_headers
   ; plugins
   ; archives
   ; ppx_runtime_deps
@@ -629,12 +637,13 @@ let map t ~path_kind ~f_path ~f_obj_dir ~f_melange_deps =
   ; archives = mode_list t.archives
   ; plugins = mode_list t.plugins
   ; foreign_objects = Source.map ~f:(List.map ~f) t.foreign_objects
+  ; public_headers = File_deps.map ~f t.public_headers
   ; foreign_archives = Mode.Map.Multi.map t.foreign_archives ~f
   ; foreign_dll_files = List.map ~f t.foreign_dll_files
   ; native_archives
   ; jsoo_runtime = List.map ~f t.jsoo_runtime
   ; melange_runtime_deps =
-      Runtime_deps.map ~f:f_melange_deps t.melange_runtime_deps
+      File_deps.map ~f:f_melange_deps t.melange_runtime_deps
   ; path_kind
   }
 
@@ -663,6 +672,7 @@ let to_dyn path
     ; requires
     ; main_module_name
     ; foreign_objects
+    ; public_headers
     ; plugins
     ; archives
     ; ppx_runtime_deps
@@ -702,6 +712,7 @@ let to_dyn path
     ; ("archives", Mode.Dict.to_dyn (list path) archives)
     ; ("plugins", Mode.Dict.to_dyn (list path) plugins)
     ; ("foreign_objects", Source.to_dyn (list path) foreign_objects)
+    ; ("public_headers", File_deps.to_dyn path public_headers)
     ; ("foreign_archives", Mode.Map.Multi.to_dyn path foreign_archives)
     ; ("native_archives", dyn_of_native_archives path native_archives)
     ; ("foreign_dll_files", list path foreign_dll_files)
@@ -727,7 +738,7 @@ let to_dyn path
     ; ("exit_module", option Module_name.to_dyn exit_module)
     ; ( "instrumentation_backend"
       , option (snd Lib_name.to_dyn) instrumentation_backend )
-    ; ("melange_runtime_deps", Runtime_deps.to_dyn path melange_runtime_deps)
+    ; ("melange_runtime_deps", File_deps.to_dyn path melange_runtime_deps)
     ]
 
 let package t =

@@ -39,7 +39,7 @@ module Includes = struct
     in
     (* FIXME: menhir mocks? we skip for now *)
     if
-      String.ends_with
+      String.is_suffix
         (Module.name md |> Module_name.to_string)
         ~suffix:"__mock"
     then libs

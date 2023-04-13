@@ -730,7 +730,7 @@ let forbid_opam_files_relative_to_project opam_file_location packages =
         ]
 
 let parse_packages (name : Name.t option) ~info ~dir ~version packages
-    opam_file_location opam_packages =
+    opam_file_location ~generate_opam_files opam_packages =
   let open Memo.O in
   let+ packages =
     forbid_opam_files_relative_to_project opam_file_location opam_packages;
@@ -799,18 +799,26 @@ let parse_packages (name : Name.t option) ~info ~dir ~version packages
       | Ok packages -> (
         Memo.return
         @@
+        let generated_opam_file =
+          if generate_opam_files then fun p ->
+            { p with Package.has_opam_file = Generated }
+          else Fun.id
+        in
         match opam_file_location with
         | `Inside_opam_directory ->
           Package.Name.Map.map packages ~f:(fun p ->
               let dir = Path.Source.relative dir "opam" in
-              Package.set_inside_opam_dir p ~dir)
+              let p = Package.set_inside_opam_dir p ~dir in
+              generated_opam_file p)
         | `Relative_to_project ->
           Package.Name.Map.merge packages opam_packages
             ~f:(fun _name dune opam ->
               match (dune, opam) with
-              | _, None -> dune
+              | None, None -> assert false
+              | Some p, None -> Some (generated_opam_file p)
               | Some p, Some _ ->
-                Some { p with Package.has_opam_file = Exists true }
+                let p = { p with Package.has_opam_file = Exists true } in
+                Some (generated_opam_file p)
               | None, Some (loc, _) ->
                 User_error.raise ~loc
                   [ Pp.text
@@ -907,10 +915,13 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
          Option.value opam_file_location
            ~default:(opam_file_location_default ~lang)
        in
+       let generate_opam_files =
+         Option.value ~default:false generate_opam_files
+       in
        let open Memo.O in
        let+ packages =
          parse_packages name ~info ~dir ~version packages opam_file_location
-           opam_packages
+           ~generate_opam_files opam_packages
        in
        let name =
          match name with
@@ -944,9 +955,6 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        let dune_version = lang.version in
        let explicit_js_mode =
          Option.value explicit_js_mode ~default:(explicit_js_mode_default ~lang)
-       in
-       let generate_opam_files =
-         Option.value ~default:false generate_opam_files
        in
        let use_standard_c_and_cxx_flags =
          match use_standard_c_and_cxx_flags with

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681500605807,
+  "lastUpdate": 1681500828039,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30507,6 +30507,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.932361630533332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ba2a35b12b32e19e0c232bbe311f48515aa21f5c",
+          "message": "refactor: remove some cruft from Source_tree (#7550)\n\nThe soure tree contained some hacks for janestreet specific\r\ncustomization. We no longer share this module, so these hooks aren't\r\nnecessary.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-14T12:21:11-07:00",
+          "tree_id": "bd92d88b52eede6779fed83810e326ae8ec5be06",
+          "url": "https://github.com/ocaml/dune/commit/ba2a35b12b32e19e0c232bbe311f48515aa21f5c"
+        },
+        "date": 1681500825932,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.84211629204667",
             "unit": "seconds"
           }
         ]

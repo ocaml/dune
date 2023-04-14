@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681468896754,
+  "lastUpdate": 1681468908793,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -26301,6 +26301,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "73.01584741763334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "855cf35b84ff177a801456381ae131165475208f",
+          "message": "doc: turn opam.rst into 3 guides (#7515)\n\nFixes #4090\r\n\r\n`opam.rst` is split into several documents:\r\n\r\n- a reference document about how Dune knows about packages (detect their\r\n  existence and attaches various files to them)\r\n- an explanation about how Dune integrates with opam, and explains the\r\n  generated files\r\n- an how-to guide explaining how to generate opam files from\r\n  `dune-project`\r\n\r\nFollow-up work:\r\n\r\n- when similarly recycling `scopes.rst`, the content in there is going\r\n  to be merged into `reference/packages.rst` to mention scopes.\r\n- add xrefs to stanza names\r\n- add a page about releasing with `dune-release`.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\nCo-authored-by: Christine Rose <christinerose@users.noreply.github.com>",
+          "timestamp": "2023-04-14T12:12:37+02:00",
+          "tree_id": "f743b442bc7e1244f3da1370b3f7c4dca826326c",
+          "url": "https://github.com/ocaml/dune/commit/855cf35b84ff177a801456381ae131165475208f"
+        },
+        "date": 1681468907945,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8852458648133334",
             "unit": "seconds"
           }
         ]

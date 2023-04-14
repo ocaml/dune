@@ -14,6 +14,14 @@ module Public : sig
   val promote : (Path.t, unit) Decl.Request.t
 
   val build_dir : (unit, Path.t) Decl.Request.t
+
+  (** Returns the count of the number of builds that have completed since the
+      RPC server started. This is intended to be used to find out when builds
+      are completed by dune when it's running in watch mode (which also runs an
+      RPC server) for the purposes of synchronizing multiple successive changes
+      to files to trigger rebuilds in non-interactive settings such as
+      benchmarks and tests. *)
+  val build_count : (unit, int) Decl.Request.t
 end
 
 module Server_side : sig

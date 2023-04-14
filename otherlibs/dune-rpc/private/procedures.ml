@@ -56,6 +56,13 @@ module Public = struct
     let decl = Decl.Request.make ~method_:"build_dir" ~generations:[ v1 ]
   end
 
+  module Build_count = struct
+    let v1 =
+      Decl.Request.make_current_gen ~req:Conv.unit ~resp:Conv.int ~version:1
+
+    let decl = Decl.Request.make ~method_:"build_count" ~generations:[ v1 ]
+  end
+
   let ping = Ping.decl
 
   let diagnostics = Diagnostics.decl
@@ -67,6 +74,8 @@ module Public = struct
   let promote = Promote.decl
 
   let build_dir = Build_dir.decl
+
+  let build_count = Build_count.decl
 end
 
 module Server_side = struct

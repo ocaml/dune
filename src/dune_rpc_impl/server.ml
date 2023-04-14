@@ -208,6 +208,7 @@ type t =
       (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
   ; watch_mode_config : Watch_mode_config.t
   ; mutable clients : Clients.t
+  ; mutable build_count : int
   }
 
 let ready (t : t) =
@@ -412,6 +413,11 @@ let handler (t : t Fdecl.t) action_runner_server : 'a Dune_rpc_server.Handler.t
     let f _ () = Fiber.return Path.Build.(to_string root) in
     Handler.implement_request rpc Procedures.Public.build_dir f
   in
+  let () =
+    Handler.implement_request rpc Procedures.Public.build_count (fun _ () ->
+        let server = Fdecl.get t in
+        Fiber.return server.build_count)
+  in
   Dune_engine.Action_runner.Rpc_server.implement_handler action_runner_server
     rpc;
   rpc
@@ -454,7 +460,12 @@ let create ~lock_timeout ~registry ~root ~watch_mode_config stats action_runner
     }
   in
   let res =
-    { config; pending_build_jobs; watch_mode_config; clients = Clients.empty }
+    { config
+    ; pending_build_jobs
+    ; watch_mode_config
+    ; clients = Clients.empty
+    ; build_count = 0
+    }
   in
   Fdecl.set t res;
   res
@@ -474,3 +485,5 @@ let action_runner t = t.config.action_runner
 let pending_build_action t =
   Job_queue.read t.pending_build_jobs
   |> Fiber.map ~f:(fun (targets, ivar) -> Build (targets, ivar))
+
+let report_build_complete t = t.build_count <- t.build_count + 1

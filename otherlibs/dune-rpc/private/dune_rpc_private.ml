@@ -26,6 +26,8 @@ module Public = struct
     let promote = Procedures.Public.promote.decl
 
     let build_dir = Procedures.Public.build_dir.decl
+
+    let build_count = Procedures.Public.build_count.decl
   end
 
   module Notification = struct
@@ -623,6 +625,7 @@ module Client = struct
       Builder.declare_request t Procedures.Public.format_dune_file;
       Builder.declare_request t Procedures.Public.promote;
       Builder.declare_request t Procedures.Public.build_dir;
+      Builder.declare_request t Procedures.Public.build_count;
       Builder.implement_notification t Procedures.Server_side.abort (fun () ->
           handler.abort);
       Builder.implement_notification t Procedures.Server_side.log (fun () ->

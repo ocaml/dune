@@ -108,6 +108,12 @@ let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
   let { Eager_watch_mode_build_complete_trace.before; after } =
     Eager_watch_mode_build_complete_trace.create common
   in
+  let after () =
+    after ();
+    match Common.rpc common with
+    | `Allow server -> Dune_rpc_impl.Server.report_build_complete server
+    | `Forbid_builds -> ()
+  in
   Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config
     (fun () ->
       Scheduler.Run.poll_hooks ~before ~after

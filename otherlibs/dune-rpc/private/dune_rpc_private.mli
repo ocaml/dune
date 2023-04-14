@@ -227,6 +227,8 @@ module Procedures : sig
     val promote : (Path.t, unit) Decl.Request.t
 
     val build_dir : (unit, Path.t) Decl.Request.t
+
+    val build_count : (unit, int) Decl.Request.t
   end
 
   module Server_side : sig
@@ -280,6 +282,8 @@ module Public : sig
     val promote : (Path.t, unit) t
 
     val build_dir : (unit, Path.t) t
+
+    val build_count : (unit, int) t
   end
 
   module Notification : sig

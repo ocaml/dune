@@ -104,7 +104,7 @@ module Emit = struct
        and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ runtime_deps =
          field "runtime_deps"
-           (located (repeat Dep_conf.decode))
+           (located (repeat Dep_conf.decode_no_files))
            ~default:(loc, [])
        and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
        and+ promote = field_o "promote" Rule_mode_decoder.Promote.decode

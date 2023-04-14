@@ -92,7 +92,8 @@ let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
     Mode.Map.Multi.add_all o_files All foreign_o_files
 
 let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
-    ~embed_in_plugin_libraries (exes : Dune_file.Executables.t) =
+    ~lib_to_entry_modules_map ~lib_top_module_map ~embed_in_plugin_libraries
+    (exes : Dune_file.Executables.t) =
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
   let* modules, obj_dir =
@@ -128,59 +129,6 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       if Dune_project.implicit_transitive_deps project then
         Memo.Lazy.force requires_link
       else requires_compile
-    in
-    let lib_to_entry_modules_map =
-      Resolve.Memo.bind requires_compile ~f:(fun reqs ->
-          let r =
-            List.map reqs ~f:(fun req ->
-                let req_entry_mods =
-                  match Lib.Local.of_lib req with
-                  | None -> Memo.return []
-                  | Some libl -> Odoc.entry_modules_by_lib sctx libl
-                in
-                Resolve.Memo.map (req_entry_mods |> Resolve.Memo.lift_memo)
-                  ~f:(fun req_entry_mods' -> (req, req_entry_mods')))
-          in
-          r |> Resolve.Memo.all)
-      |> Resolve.Memo.read
-    in
-    let lib_top_module_map =
-      Resolve.Memo.bind requires_compile ~f:(fun reqs ->
-          List.map reqs ~f:(fun req ->
-              let req_entry_mods =
-                match Lib.Local.of_lib req with
-                | None -> Memo.return []
-                | Some libl -> Odoc.entry_modules_by_lib sctx libl
-              in
-              Resolve.Memo.bind (req_entry_mods |> Resolve.Memo.lift_memo)
-                ~f:(fun req_entry_mods' ->
-                  List.map req_entry_mods' ~f:(fun req_entry_mod ->
-                      let transitive_closure =
-                        Lib.closure [ req ]
-                          ~linking:
-                            (Dune_project.implicit_transitive_deps project)
-                      in
-                      Resolve.Memo.bind transitive_closure ~f:(fun libst ->
-                          let transitive_modules =
-                            List.fold_left libst ~init:(Memo.return [])
-                              ~f:(fun acc libt ->
-                                let libt_entry_mods =
-                                  match Lib.Local.of_lib libt with
-                                  | None -> Memo.return []
-                                  | Some libl ->
-                                    Odoc.entry_modules_by_lib sctx libl
-                                in
-                                let open Memo.O in
-                                let* acc' = acc in
-                                let+ entry_mods = libt_entry_mods in
-                                List.append acc' entry_mods)
-                          in
-                          Memo.map transitive_modules ~f:(fun mds ->
-                              (Module.name req_entry_mod, mds))
-                          |> Resolve.Memo.lift_memo))
-                  |> Resolve.Memo.all))
-          |> Resolve.Memo.all)
-      |> Resolve.Memo.read
     in
     Compilation_context.create () ~loc:exes.buildable.loc ~super_context:sctx
       ~expander ~scope ~obj_dir ~modules ~flags ~requires_link ~requires_compile
@@ -292,12 +240,14 @@ let compile_info ~scope (exes : Dune_file.Executables.t) =
     ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
     ~forbidden_libraries:exes.forbidden_libraries ~merlin_ident
 
-let rules ~sctx ~dir ~dir_contents ~scope ~expander
-    (exes : Dune_file.Executables.t) =
+let rules ?(lib_to_entry_modules_map = Action_builder.return [])
+    ?(lib_top_module_map = Action_builder.return []) ~sctx ~dir ~dir_contents
+    ~scope ~expander (exes : Dune_file.Executables.t) =
   let* compile_info = compile_info ~scope exes in
   let f () =
     executables_rules exes ~sctx ~dir ~dir_contents ~scope ~expander
       ~compile_info ~embed_in_plugin_libraries:exes.embed_in_plugin_libraries
+      ~lib_to_entry_modules_map ~lib_top_module_map
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir
   and* () =

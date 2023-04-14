@@ -80,6 +80,19 @@ let deps_of
   let ext_deps_file = dep (Ext (unit, ml_kind)) in
   let ocamldep_output = dep (Immediate (unit, ml_kind)) in
   let open Memo.O in
+  let transitive_deps modules d =
+    let transive_dep m =
+      let ml_kind m =
+        match Module.kind m with
+        | Alias _ -> None
+        | _ ->
+          if Module.has m ~ml_kind:Intf then Some Ml_kind.Intf else Some Impl
+      in
+      ml_kind m
+      |> Option.map ~f:(fun ml_kind -> Path.build (dep (d (m, ml_kind))))
+    in
+    List.filter_map modules ~f:transive_dep
+  in
   let* () =
     Super_context.add_rule sctx ~dir
       (let open Action_builder.With_targets.O in
@@ -98,114 +111,70 @@ let deps_of
       >>| Action.Full.add_sandbox sandbox)
   in
   let lines = Action_builder.lines_of (Path.build ocamldep_output) in
-  let* _ =
-    let produce_all_deps =
-      let open Action_builder.O in
-      let transitive_deps modules =
-        let transive_dep m =
-          let ml_kind m =
-            match Module.kind m with
-            | Alias _ -> None
-            | _ ->
-              if Module.has m ~ml_kind:Intf then Some Ml_kind.Intf
-              else Some Impl
-          in
-          ml_kind m
-          |> Option.map ~f:(fun ml_kind ->
-                 Path.build (dep (Transitive (m, ml_kind))))
-        in
-        List.filter_map modules ~f:transive_dep
-      in
-      let paths =
-        let+ lines = lines in
-        let immediate_deps =
-          let parsed = parse_deps_exn ~file:(Module.File.path source) lines in
-          parsed |> parse_module_names ~dir:md.dir ~unit ~modules
-        in
-        let local =
-          List.filter_map immediate_deps ~f:(fun m ->
-              match m with
-              | Module_dep.Local m -> Some m
-              | _ -> None)
-        in
-        let transitive = transitive_deps local in
-        let mods_name_uniq =
-          List.filter_map immediate_deps ~f:(fun m ->
-              match m with
-              | Module_dep.Local m ->
-                Some (Module.obj_name m |> Module_name.Unique.to_string)
-              | External _ -> None)
-        in
-        (transitive, mods_name_uniq)
-      in
-      Action_builder.with_file_targets ~file_targets:[ all_deps_file ]
-        (let+ sources, extras =
-           Action_builder.dyn_paths
-             (let+ sources, extras = paths in
-              ((sources, extras), sources))
-         in
-         Action.Merge_files_into (sources, extras, all_deps_file))
+  let make_paths f filter =
+    let open Action_builder.O in
+    let+ lines = lines in
+    let immediate_deps =
+      let parsed = parse_deps_exn ~file:(Module.File.path source) lines in
+      parsed |> parse_module_names ~dir:md.dir ~unit ~modules
     in
+    let local =
+      List.filter_map immediate_deps ~f:(fun m ->
+          (* Maybe have kind in external dep *)
+          match m with
+          | Module_dep.Local m -> Some m
+          | _ -> None)
+    in
+    let mods_name_uniq = List.filter_map immediate_deps ~f:filter in
+    let ext = transitive_deps local f in
+    (ext, mods_name_uniq)
+  in
+  let make_with_file_targets paths file =
+    let open Action_builder.O in
+    Action_builder.with_file_targets ~file_targets:[ file ]
+      (let+ sources, extras =
+         Action_builder.dyn_paths
+           (let+ sources, extras = paths in
+            ((sources, extras), sources))
+       in
+       Action.Merge_files_into (sources, extras, file))
+  in
+  let add_rule produce_all_deps =
     let rule =
       Action_builder.With_targets.map ~f:Action.Full.make produce_all_deps
     in
     let+ () = Super_context.add_rule sctx ~dir rule in
     produce_all_deps
   in
+  let* _ =
+    let produce_all_deps =
+      let paths =
+        make_paths
+          (fun (a, b) -> Transitive (a, b))
+          (fun m ->
+            match m with
+            | Module_dep.Local m ->
+              Some (Module.obj_name m |> Module_name.Unique.to_string)
+            | External _ -> None)
+      in
+      make_with_file_targets paths all_deps_file
+    in
+    add_rule produce_all_deps
+  in
   let+ _ =
     let produce_all_deps_ext =
-      let open Action_builder.O in
-      let transitive_deps modules =
-        let transive_dep m =
-          let ml_kind m =
-            match Module.kind m with
-            | Alias _ -> None
-            | _ ->
-              if Module.has m ~ml_kind:Intf then Some Ml_kind.Intf
-              else Some Impl
-          in
-          ml_kind m
-          |> Option.map ~f:(fun ml_kind -> Path.build (dep (Ext (m, ml_kind))))
-        in
-        List.filter_map modules ~f:transive_dep
-      in
       let paths =
-        let+ lines = lines in
-        let immediate_deps =
-          let parsed = parse_deps_exn ~file:(Module.File.path source) lines in
-          parsed |> parse_module_names ~dir:md.dir ~unit ~modules
-        in
-        let local =
-          List.filter_map immediate_deps ~f:(fun m ->
-              (* Maybe have kind in external dep *)
-              match m with
-              | Module_dep.Local m -> Some m
-              | _ -> None)
-        in
-        let transitive = transitive_deps local in
-        let mods_name_uniq =
-          List.filter_map immediate_deps ~f:(fun m ->
-              match m with
-              | Module_dep.Local _ -> None
-              | External s -> Some (Module_dep.External_name.to_string s))
-        in
-        (transitive, mods_name_uniq)
+        make_paths
+          (fun (a, b) -> Ext (a, b))
+          (fun m ->
+            match m with
+            | Module_dep.Local _ -> None
+            | External s -> Some (Module_dep.External_name.to_string s))
       in
-      Action_builder.with_file_targets ~file_targets:[ ext_deps_file ]
-        (let+ sources, extras =
-           Action_builder.dyn_paths
-             (let+ sources, extras = paths in
-              ((sources, extras), sources))
-         in
-         Action.Merge_files_into (sources, extras, ext_deps_file))
+      make_with_file_targets paths ext_deps_file
     in
-    let rule_ext =
-      Action_builder.With_targets.map ~f:Action.Full.make produce_all_deps_ext
-    in
-    let+ () = Super_context.add_rule sctx ~dir rule_ext in
-    produce_all_deps_ext
+    add_rule produce_all_deps_ext
   in
-
   let all_deps_file = Path.build all_deps_file in
   let ext_deps_file = Path.build ext_deps_file in
   let md_l =

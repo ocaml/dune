@@ -129,14 +129,6 @@ module Dune_file = struct
     { path = file; kind; plain }
 end
 
-let filter_source_files =
-  let is_temp_file fn =
-    String.is_prefix fn ~prefix:".#"
-    || String.is_suffix fn ~suffix:".swp"
-    || String.is_suffix fn ~suffix:"~"
-  in
-  ref (fun _ -> Memo.return (fun _dir fn -> not (is_temp_file fn)))
-
 module Readdir : sig
   type t = private
     { path : Path.Source.t
@@ -145,8 +137,6 @@ module Readdir : sig
     }
 
   val empty : Path.Source.t -> t
-
-  val filter_files : t -> Dune_project.t -> t Memo.t
 
   val of_source_path :
     Path.Source.t -> (t, Unix_error.Detailed.t) Result.t Memo.t
@@ -183,9 +173,10 @@ end = struct
     | S_CHR | S_BLK | S_FIFO | S_SOCK -> true
     | _ -> false
 
-  let filter_files t project =
-    let+ f = !filter_source_files project in
-    { t with files = Filename.Set.filter t.files ~f:(fun fn -> f t.path fn) }
+  let is_temp_file fn =
+    String.is_prefix fn ~prefix:".#"
+    || String.is_suffix fn ~suffix:".swp"
+    || String.is_suffix fn ~suffix:"~"
 
   let of_source_path_impl path =
     Fs_memo.dir_contents (In_source_dir path) >>= function
@@ -209,6 +200,7 @@ end = struct
         Memo.parallel_map dir_contents ~f:(fun (fn, kind) ->
             let path = Path.Source.relative path fn in
             if Path.Source.is_in_build_dir path then Memo.return List.Skip
+            else if is_temp_file fn then Memo.return List.Skip
             else
               let+ is_directory, file =
                 match kind with
@@ -603,7 +595,6 @@ end = struct
       | None -> Dune_project.anonymous ~dir:path ()
       | Some p -> p
     in
-    let* readdir = Readdir.filter_files readdir project in
     let vcs = get_vcs ~default:Ancestor_vcs ~readdir in
     let* dirs_visited =
       File.of_source_path (In_source_dir path) >>| function
@@ -662,7 +653,6 @@ end = struct
             in
             Option.value project ~default:parent_dir.project
         in
-        let* readdir = Readdir.filter_files readdir project in
         let vcs = get_vcs ~default:parent_dir.vcs ~readdir in
         let* contents, visited =
           contents readdir ~dirs_visited ~project ~dir_status

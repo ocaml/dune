@@ -36,7 +36,7 @@ order to declare a multi-directory library, you need to use the
   installed by Dune. The public name must start with the package name it's part
   of and optionally followed by a dot, then anything else you want. The package
   name must also be one of the packages that Dune knows about, as determined by
-  the :ref:`opam-files`
+  the logic described in :doc:`../reference/packages`.
 
 - ``(package <package>)`` installs a private library under the specified
   package. Such a library is now usable by public libraries defined in the same

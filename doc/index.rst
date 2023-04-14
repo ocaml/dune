@@ -23,6 +23,7 @@ Welcome to Dune's Documentation!
    :caption: How-to Guides
 
    howto/formatting
+   howto/opam-file-generation
 
 .. toctree::
    :caption: Reference Guides
@@ -37,6 +38,7 @@ Welcome to Dune's Documentation!
    reference/foreign
    reference/cli
    reference/preprocessing-spec
+   reference/packages
    concepts/scopes
    concepts/variables
    concepts/dependency-spec
@@ -55,7 +57,6 @@ Welcome to Dune's Documentation!
    sites
    instrumentation
    jsoo
-   opam
    toplevel-integration
    variants
    tests
@@ -65,6 +66,7 @@ Welcome to Dune's Documentation!
 
    explanation/preprocessing
    explanation/ocaml-ecosystem
+   explanation/opam-integration
 
 .. toctree::
    :caption: Advanced topics

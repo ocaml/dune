@@ -57,6 +57,16 @@ module Run : sig
       will not start. *)
   val poll : step -> unit Fiber.t
 
+  (** [poll_hooks ~before ~after once] behaves the same as [poll once] except
+      that the hooks [before] and [after] are called respectively before and
+      after each invocation of [once].
+
+      If any source files change in the middle of an iteration, the iteration is
+      restarted but neither [before] nor [after] are called again. [after] is
+      only called after an iteration has run to completion. *)
+  val poll_hooks :
+    before:(unit -> unit) -> after:(unit -> unit) -> step -> unit Fiber.t
+
   (** [poll_passive] is similar to [poll], but it can be used to drive the
       polling loop explicitly instead of starting new iterations automatically.
 

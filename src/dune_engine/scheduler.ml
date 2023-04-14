@@ -1182,15 +1182,19 @@ module Run = struct
         Dune_stats.emit stats event;
         Dune_stats.flush stats)
 
-  let poll step =
+  let poll_hooks ~before ~after step =
     let* t = poll_init () in
     let rec loop () =
+      before ();
       let* _res = poll_iter t step in
       run_when_idle t.config.stats;
+      after ();
       let* () = wait_for_build_input_change t in
       loop ()
     in
     loop ()
+
+  let poll = poll_hooks ~before:(fun () -> ()) ~after:(fun () -> ())
 
   let poll_passive ~get_build_request =
     let* t = poll_init () in

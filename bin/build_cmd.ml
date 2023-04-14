@@ -76,9 +76,42 @@ let run_build_system ~common ~request =
       Hooks.End_of_build.run ();
       Fiber.return ())
 
+module Eager_watch_mode_build_complete_trace = struct
+  (* Functions to call before and after a build in eager watch mode for the
+     purposes of adding an entry to the trace file (the argument to
+     --trace-file). The entries in the trace file will represent the time
+     between each invocation of the build system while dune is running in eager
+     watch mode. Builds that were restarted due to a source file changing
+     part-way through the build are considered to be single builds. *)
+  type t =
+    { before : unit -> unit
+    ; after : unit -> unit
+    }
+
+  let name = "eager_watch_mode_build_complete"
+
+  let create common =
+    let build_stats_event = ref None in
+    let before () =
+      build_stats_event :=
+        Dune_stats.start (Common.stats common) (fun () ->
+            { args = None; cat = None; name })
+    in
+    let after () =
+      Dune_stats.finish !build_stats_event;
+      build_stats_event := None
+    in
+    { before; after }
+end
+
 let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
+  let { Eager_watch_mode_build_complete_trace.before; after } =
+    Eager_watch_mode_build_complete_trace.create common
+  in
   Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config
-    (fun () -> Scheduler.Run.poll (run_build_system ~common ~request))
+    (fun () ->
+      Scheduler.Run.poll_hooks ~before ~after
+        (run_build_system ~common ~request))
 
 let run_build_command_poll_passive ~(common : Common.t) ~config ~request:_ :
     unit =

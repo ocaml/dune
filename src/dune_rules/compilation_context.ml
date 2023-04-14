@@ -3,8 +3,6 @@ open Import
 module Includes = struct
   type t = Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
-  let patched = true
-
   let filter_with_odeps libs deps md =
     let open Resolve.Memo.O in
     let+ ( ( ((module_deps, lib_top_module_map), lib_to_entry_modules_mapin)
@@ -37,7 +35,7 @@ module Includes = struct
           (*  Dune_util.Log.info [ Pp.textf "Comparing %s %s \n" lib_name odep ]; *)
           String.equal lib_name odep || String.is_prefix ~prefix:odep lib_name)
     in
-    (* FIXME: menhir mocks? we skip for now *)
+    (* FIXME: menhir mocks (i.e melange-compiler-libs.0.0.1-414) ? we skip for now  *)
     if
       String.is_suffix
         (Module.name md |> Module_name.to_string)
@@ -59,7 +57,7 @@ module Includes = struct
                     (flag_open_present
                        (Module_name.to_string entry_module_name)
                        flags)
-                then (
+                then
                   let top_c_modules =
                     match
                       Module_name.Map.find lib_top_module_map entry_module_name
@@ -89,35 +87,33 @@ module Includes = struct
                                Module_name.equal entry_module_name
                                  (Module.name top_c_mod)))
                   in
-                  if not keep then
-                    Dune_util.Log.info
-                      [ Pp.textf
-                          "Removing %s aka %s for module %s \n\n\
-                           ~Odep_list: %s\n\n\
-                           ~Top_c_modules: %s\n\
-                           ~Flags : %s\n\
-                           \\n\n\
-                          \                         \n\
-                          \                         •\n\
-                           ------------------"
-                          (Lib.name lib |> Lib_name.to_string)
-                          (Module_name.to_string entry_module_name)
-                          (Module.name md |> Module_name.to_string)
-                          (String.concat external_dep_names ~sep:" , ")
-                          (List.map top_c_modules ~f:(fun m ->
-                               Module.name m |> Module_name.to_string)
-                          |> String.concat ~sep:", ")
-                          (String.concat flags ~sep:",")
-                      ];
-                  keep)
+                  (* if not keep then
+                     Dune_util.Log.info
+                       [ Pp.textf
+                           "Removing %s aka %s for module %s \n\n\
+                            ~Odep_list: %s\n\n\
+                            ~Top_c_modules: %s\n\
+                            ~Flags : %s\n\
+                            \\n\n\
+                           \                         \n\
+                           \                         •\n\
+                            ------------------"
+                           (Lib.name lib |> Lib_name.to_string)
+                           (Module_name.to_string entry_module_name)
+                           (Module.name md |> Module_name.to_string)
+                           (String.concat external_dep_names ~sep:" , ")
+                           (List.map top_c_modules ~f:(fun m ->
+                                Module.name m |> Module_name.to_string)
+                           |> String.concat ~sep:", ")
+                           (String.concat flags ~sep:",")
+                       ]; *)
+                  keep
                 else true)
           else true)
 
   let make ?(lib_top_module_map = Action_builder.return [])
       ?(lib_to_entry_modules_map = Action_builder.return []) () ~project ~opaque
       ~requires ~md ~dep_graphs ~flags =
-    ignore lib_to_entry_modules_map;
-    ignore flags;
     let flags =
       Action_builder.map2
         (Action_builder.map2
@@ -158,8 +154,7 @@ module Includes = struct
       Command.Args.memo
         (Resolve.Memo.args
            (let* libs = requires in
-            let+ libs' = filter_with_odeps libs deps md in
-            let libs = if patched then libs' else libs in
+            let+ libs = filter_with_odeps libs deps md in
             Command.Args.S
               [ iflags libs mode
               ; Hidden_deps (Lib_file_deps.deps libs ~groups)
@@ -170,8 +165,7 @@ module Includes = struct
       Command.Args.memo
         (Resolve.Memo.args
            (let* libs = requires in
-            let+ libs' = filter_with_odeps libs deps md in
-            let libs = if patched then libs' else libs in
+            let+ libs = filter_with_odeps libs deps md in
             Command.Args.S
               [ iflags libs (Ocaml Native)
               ; Hidden_deps

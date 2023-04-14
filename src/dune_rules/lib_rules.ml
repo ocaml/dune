@@ -560,9 +560,7 @@ let rules ?(lib_to_entry_modules_map = Action_builder.return [])
     ?(lib_top_module_map = Action_builder.return []) (lib : Library.t) ~sctx
     ~dir_contents ~dir ~expander ~scope =
   let buildable = lib.buildable in
-  let* local_lib, compile_info =
-  compile_info lib scope
-in
+  let* local_lib, compile_info = compile_info lib scope in
   let local_lib = Lib.Local.of_lib_exn local_lib in
   let f () =
     let* source_modules =

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681468908793,
+  "lastUpdate": 1681498381775,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30333,6 +30333,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.088672079286667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "98541a5b27a296250cc000a543e1a4f377900f33",
+          "message": "feature: md5'ing files without global lock (#7488)\n\nDirectly md5 the files in C. This allows us to release the runtime lock\r\nwhile md5'ing large files, which allows other OCaml threads to make\r\nprogress.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-14T11:39:51-07:00",
+          "tree_id": "00d922e4174f94e61ddd8c3afd37adc0528a0755",
+          "url": "https://github.com/ocaml/dune/commit/98541a5b27a296250cc000a543e1a4f377900f33"
+        },
+        "date": 1681498378550,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.930711013479996",
             "unit": "seconds"
           }
         ]

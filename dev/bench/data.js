@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681500948803,
+  "lastUpdate": 1681500959979,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -26475,6 +26475,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "67.79787479878",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d39a0d7e0ae25e29c29207810900d240900ee0be",
+          "message": "feature: optimize file copying on linux (#7257)\n\nUse sendfile to copy files on Linux.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-14T12:09:00-07:00",
+          "tree_id": "ce13857b16e92a9d0677aab5659bb0544ec586e0",
+          "url": "https://github.com/ocaml/dune/commit/d39a0d7e0ae25e29c29207810900d240900ee0be"
+        },
+        "date": 1681500959288,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.79475079508",
             "unit": "seconds"
           }
         ]

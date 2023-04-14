@@ -57,6 +57,12 @@ the "classic pipeline" (using the ``-ppx`` command-line argument).
 The distinction between these pipelines is explained in
 :doc:`../explanation/preprocessing`.
 
+PPX rewriters need to be compiled as a driver to be used by Dune. To run PPXs
+that do not support this (usually old ones), it is possible to use the ppxfind_
+tool.
+
+.. _ppxfind: https://github.com/kandu/ppxfind
+
 Arguments to PPX Rewriters
 --------------------------
 

@@ -332,10 +332,43 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
 
 (* To be called once per project, when we are generating the rules for the root
    directory of the project *)
-let gen_project_rules sctx project =
+let gen_project_rules sctx project : unit Memo.t =
   let+ () = Opam_create.add_rules sctx project
   and+ () = Install_rules.gen_project_rules sctx project
-  and+ () = Odoc.gen_project_rules sctx project in
+  and+ () = Odoc.gen_project_rules sctx project
+  and+ () =
+    let version = (2, 8) in
+    match Dune_project.allow_approximate_merlin project with
+    | None -> Memo.return ()
+    | Some _ when Dune_project.dune_version project < version -> Memo.return ()
+    | Some loc ->
+      let+ vendored = Source_tree.is_vendored (Dune_project.root project) in
+      if not vendored then
+        Dune_lang.Syntax.Warning.deprecated_in
+          ~extra_info:
+            "It is useless since the Merlin configurations are not ambiguous \
+             anymore."
+          loc Stanza.syntax version ~what:"This field"
+  and+ () =
+    match Dune_project.name project with
+    | Named _ -> Memo.return ()
+    | Anonymous _ -> (
+      match
+        Dune_project.dune_version project >= (2, 8)
+        && Dune_project.generate_opam_files project
+      with
+      | false -> Memo.return ()
+      | true ->
+        let+ vendored = Source_tree.is_vendored (Dune_project.root project) in
+        if not vendored then
+          let loc = Loc.in_file (Path.source (Dune_project.file project)) in
+          User_warning.emit ~loc
+            [ Pp.text
+                "Project name is not specified. Add a (name <project-name>) \
+                 field to your dune-project file to make sure that $ dune \
+                 subst works in release or pinned builds"
+            ])
+  in
   ()
 
 let inside_opam_directory ~nearest_src_dir ~src_dir components =

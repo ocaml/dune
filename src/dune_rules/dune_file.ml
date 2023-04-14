@@ -563,6 +563,7 @@ module Library = struct
     ; visibility : visibility
     ; synopsis : string option
     ; install_c_headers : (Loc.t * string) list
+    ; public_headers : Loc.t * Dep_conf.t list
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
     ; modes : Mode_conf.Lib.Set.t
     ; kind : Lib_kind.t
@@ -600,6 +601,11 @@ module Library = struct
        and+ synopsis = field_o "synopsis" string
        and+ install_c_headers =
          field "install_c_headers" (repeat (located string)) ~default:[]
+       and+ public_headers =
+         field "public_headers"
+           (Dune_lang.Syntax.since Stanza.syntax (3, 8)
+           >>> located (repeat Dep_conf.decode_no_files))
+           ~default:(stanza_loc, [])
        and+ ppx_runtime_libraries =
          field "ppx_runtime_libraries"
            (repeat (located Lib_name.decode))
@@ -735,6 +741,7 @@ module Library = struct
        ; visibility
        ; synopsis
        ; install_c_headers
+       ; public_headers
        ; ppx_runtime_libraries
        ; modes
        ; kind
@@ -987,15 +994,19 @@ module Library = struct
     let entry_modules = Lib_info.Source.Local in
     let melange_runtime_deps =
       let loc, runtime_deps = conf.melange_runtime_deps in
-      Lib_info.Runtime_deps.Local (loc, runtime_deps)
+      Lib_info.File_deps.Local (loc, runtime_deps)
+    in
+    let public_headers =
+      let loc, public_headers = conf.public_headers in
+      Lib_info.File_deps.Local (loc, public_headers)
     in
     Lib_info.create ~loc ~path_kind:Local ~name ~kind ~status ~src_dir
       ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems
-      ~requires ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
-      ~foreign_archives ~native_archives ~foreign_dll_files ~jsoo_runtime
-      ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_ ~entry_modules
-      ~implements ~default_implementation ~modes ~modules:Local ~wrapped
-      ~special_builtin_support ~exit_module ~instrumentation_backend
+      ~requires ~foreign_objects ~public_headers ~plugins ~archives
+      ~ppx_runtime_deps ~foreign_archives ~native_archives ~foreign_dll_files
+      ~jsoo_runtime ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_
+      ~entry_modules ~implements ~default_implementation ~modes ~modules:Local
+      ~wrapped ~special_builtin_support ~exit_module ~instrumentation_backend
       ~melange_runtime_deps
 end
 

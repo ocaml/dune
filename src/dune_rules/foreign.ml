@@ -119,16 +119,14 @@ module Stubs = struct
   end
 
   module Include_dir = struct
-    include
-      Recursive_include.Make
-        (Include_dir_without_include)
-        (struct
-          let include_keyword = "include"
+    type t = Include_dir_without_include.t Recursive_include.t
 
-          let include_allowed_in_versions = `Since (3, 5)
+    let decode =
+      Recursive_include.decode ~base_term:Include_dir_without_include.decode
+        ~include_keyword:"include" ~non_sexp_behaviour:`Parse_as_base_term
+        ~include_allowed_in_versions:(`Since (3, 5))
 
-          let non_sexp_behaviour = `Parse_as_base_term
-        end)
+    let expand_include = Recursive_include.expand_include
 
     module Without_include = Include_dir_without_include
   end

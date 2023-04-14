@@ -142,7 +142,7 @@ end
 
 type opam_file =
   | Exists of bool
-  | Look_inside_opam_dir
+  | Generated
 
 type t =
   { id : Id.t

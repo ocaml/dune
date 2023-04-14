@@ -165,8 +165,8 @@ module Init_context = struct
   let make path =
     let open Memo.O in
     let+ project =
-      Dune_project.load ~dir:Path.Source.root ~files:String.Set.empty
-        ~infer_from_opam_files:true ~dir_status:Normal
+      Dune_project.load ~dir:Path.Source.root ~files:Filename.Set.empty
+        ~infer_from_opam_files:true
       >>| function
       | Some p -> p
       | None -> Dune_project.anonymous ~dir:Path.Source.root ()

@@ -1956,7 +1956,8 @@ module DB = struct
 end
 
 let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects
-    ~melange_runtime_deps ~dir : Dune_package.Lib.t Resolve.Memo.t =
+    ~melange_runtime_deps ~public_headers ~dir :
+    Dune_package.Lib.t Resolve.Memo.t =
   let loc = Lib_info.loc info in
   let mangled_name lib =
     match Lib_info.status lib.info with
@@ -2009,7 +2010,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects
   let info =
     Lib_info.for_dune_package info ~name ~ppx_runtime_deps ~requires
       ~foreign_objects ~obj_dir ~implements ~default_implementation ~sub_systems
-      ~modules ~melange_runtime_deps
+      ~modules ~melange_runtime_deps ~public_headers
   in
   Dune_package.Lib.of_dune_lib ~info ~main_module_name
 

@@ -387,10 +387,6 @@ module Dir0 = struct
     Filename.Map.foldi (sub_dirs t) ~init:Filename.Set.empty ~f:(fun s _ acc ->
         Filename.Set.add acc s)
 
-  let sub_dir_paths t =
-    String.Map.foldi (sub_dirs t) ~init:Path.Source.Set.empty ~f:(fun s _ acc ->
-        Path.Source.Set.add acc (Path.Source.relative t.path s))
-
   let sub_dir_as_t (s : sub_dir) =
     let+ t = Memo.Cell.read s.sub_dir_as_t in
     (Option.value_exn t).dir
@@ -602,7 +598,7 @@ end = struct
     in
     let* project =
       Dune_project.load ~dir:path ~files:readdir.files
-        ~infer_from_opam_files:true ~dir_status
+        ~infer_from_opam_files:true
       >>| function
       | None -> Dune_project.anonymous ~dir:path ()
       | Some p -> p
@@ -662,7 +658,7 @@ end = struct
           else
             let+ project =
               Dune_project.load ~dir:path ~files:readdir.files
-                ~infer_from_opam_files:false ~dir_status
+                ~infer_from_opam_files:false
             in
             Option.value project ~default:parent_dir.project
         in

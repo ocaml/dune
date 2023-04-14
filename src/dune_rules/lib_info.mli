@@ -28,7 +28,7 @@ module Source : sig
     | External of 'a
 end
 
-module Runtime_deps : sig
+module File_deps : sig
   type 'a t =
     | Local of Loc.t * Dep_conf.t list
     | External of 'a list
@@ -120,6 +120,8 @@ val foreign_dll_files : 'path t -> 'path list
 
 val foreign_objects : 'path t -> 'path list Source.t
 
+val public_headers : 'path t -> 'path File_deps.t
+
 (** The library has a module that must be linked at the end. This is used for
     the [Std_exit] module of the stdlib. *)
 val exit_module : _ t -> Module_name.t option
@@ -140,7 +142,7 @@ val synopsis : _ t -> string option
 
 val jsoo_runtime : 'path t -> 'path list
 
-val melange_runtime_deps : 'path t -> 'path Runtime_deps.t
+val melange_runtime_deps : 'path t -> 'path File_deps.t
 
 val obj_dir : 'path t -> 'path Obj_dir.t
 
@@ -204,6 +206,7 @@ val for_dune_package :
   -> default_implementation:(Loc.t * Lib_name.t) option
   -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
   -> melange_runtime_deps:Path.t list
+  -> public_headers:Path.t list
   -> modules:Modules.t
   -> Path.t t
 
@@ -228,6 +231,7 @@ val create :
   -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
   -> requires:Lib_dep.t list
   -> foreign_objects:'a list Source.t
+  -> public_headers:'a File_deps.t
   -> plugins:'a list Mode.Dict.t
   -> archives:'a list Mode.Dict.t
   -> ppx_runtime_deps:(Loc.t * Lib_name.t) list
@@ -249,7 +253,7 @@ val create :
   -> special_builtin_support:Special_builtin_support.t option
   -> exit_module:Module_name.t option
   -> instrumentation_backend:(Loc.t * Lib_name.t) option
-  -> melange_runtime_deps:'a Runtime_deps.t
+  -> melange_runtime_deps:'a File_deps.t
   -> 'a t
 
 val package : _ t -> Package.Name.t option

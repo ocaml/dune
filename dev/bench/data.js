@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681463180900,
+  "lastUpdate": 1681463194155,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -26214,6 +26214,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "80.15948158478",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9c553c8529d5136bb7b483315c573726b96bbdea",
+          "message": "doc: merge classical-ppx into preprocessing-spec (#7538)\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-04-14T10:17:59+02:00",
+          "tree_id": "38138092ab526bcac5388e92232e8cb6d9bf0485",
+          "url": "https://github.com/ocaml/dune/commit/9c553c8529d5136bb7b483315c573726b96bbdea"
+        },
+        "date": 1681463193055,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.04054531406",
             "unit": "seconds"
           }
         ]

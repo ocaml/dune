@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681432106574,
+  "lastUpdate": 1681432116695,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -25953,6 +25953,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "64.13711307403999",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9c9dc18304ce44768972ab77428463f279dab07e",
+          "message": "refactor: add missing mli (#7549)\n\nadd source_deps.mli\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-13T17:02:18-07:00",
+          "tree_id": "f6a2967f3228417990f0ec4605499f23621517da",
+          "url": "https://github.com/ocaml/dune/commit/9c9dc18304ce44768972ab77428463f279dab07e"
+        },
+        "date": 1681432116022,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.55522103962",
             "unit": "seconds"
           }
         ]

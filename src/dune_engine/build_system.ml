@@ -471,8 +471,11 @@ end = struct
         if capture_stdout then Action.with_stdout_to stamp_file action
         else Action.progn [ action; Action.write_file stamp_file "" ]
     in
-    Action.chdirs action
-    |> Path.Build.Set.iter ~f:(fun p -> Path.mkdir_p (Path.build p));
+    let* () =
+      Targets.maybe_async (fun () ->
+          Action.chdirs action
+          |> Path.Build.Set.iter ~f:(fun p -> Path.mkdir_p (Path.build p)))
+    in
     let root =
       match context with
       | None -> Path.Build.root
@@ -505,8 +508,7 @@ end = struct
           let+ produced_targets =
             match sandbox with
             | None ->
-              Fiber.return
-                (Targets.Produced.produced_after_rule_executed_exn ~loc targets)
+              Targets.Produced.produced_after_rule_executed_exn ~loc targets
             | Some sandbox ->
               (* The stamp file for anonymous actions is always created outside
                  the sandbox, so we can't move it. *)
@@ -577,7 +579,9 @@ end = struct
     wrap_fiber (fun () ->
         let open Fiber.O in
         report_evaluated_rule_exn config;
-        Path.mkdir_p (Path.build dir);
+        let* () =
+          Targets.maybe_async (fun () -> Path.mkdir_p (Path.build dir))
+        in
         let is_action_dynamic = Action.is_dynamic action.action in
         let sandbox_mode =
           match Action.is_useful_to_sandbox action.action with
@@ -646,12 +650,16 @@ end = struct
           | None ->
             (* Step II. Remove stale targets both from the digest table and from
                the build directory. *)
-            Path.Build.Set.iter targets.files ~f:(fun file ->
-                Cached_digest.remove file;
-                Path.Build.unlink_no_err file);
-            Path.Build.Set.iter targets.dirs ~f:(fun dir ->
-                Cached_digest.remove dir;
-                Path.rm_rf (Path.build dir));
+            let () =
+              Path.Build.Set.iter targets.files ~f:Cached_digest.remove;
+              Path.Build.Set.iter targets.dirs ~f:Cached_digest.remove
+            in
+            let* () =
+              Targets.maybe_async (fun () ->
+                  Path.Build.Set.iter targets.files ~f:Path.Build.unlink_no_err;
+                  Path.Build.Set.iter targets.dirs ~f:(fun dir ->
+                      Path.rm_rf (Path.build dir)))
+            in
             let* produced_targets, dynamic_deps_stages =
               (* Step III. Try to restore artifacts from the shared cache. *)
               match

@@ -47,4 +47,7 @@ val background_digests : Toggle.t t
 (** Build and destroy sandboxes in background threads *)
 val background_sandboxes : Toggle.t t
 
+(** Run file operations when executing rules in background threads *)
+val background_file_system_operations_in_rule_execution : Toggle.t t
+
 val init : (Loc.t * string) String.Map.t -> unit

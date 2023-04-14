@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681462725170,
+  "lastUpdate": 1681462735856,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -26127,6 +26127,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "66.38061994579334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aebbd4681f242b08f32123ab4df309e559fd3754",
+          "message": "doc: add some info about writing docs (#7537)\n\nSigned-off-by: Etienne Millon <me@emillon.org>\r\nCo-authored-by: Ali Caglayan <alizter@gmail.com>\r\nCo-authored-by: Christine Rose <christinerose@users.noreply.github.com>",
+          "timestamp": "2023-04-14T10:31:27+02:00",
+          "tree_id": "c5532cf820f9e20914abf4d7cc6beda63672f3bf",
+          "url": "https://github.com/ocaml/dune/commit/aebbd4681f242b08f32123ab4df309e559fd3754"
+        },
+        "date": 1681462734910,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.5896159478533332",
             "unit": "seconds"
           }
         ]

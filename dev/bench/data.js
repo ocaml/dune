@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681593402432,
+  "lastUpdate": 1681599024418,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30913,6 +30913,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.150638403686667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "distinct": true,
+          "id": "b5c814e33d0d370b20c9f6269633625b8244feb2",
+          "message": "fix: plugin loading\n\nLoading using the findlib loader was broken in 3.7.0. This PR restores\nthe functionality\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-04-15T15:27:25-07:00",
+          "tree_id": "3581cf2bad436020f70e6dc183896401f8c1408a",
+          "url": "https://github.com/ocaml/dune/commit/b5c814e33d0d370b20c9f6269633625b8244feb2"
+        },
+        "date": 1681599021808,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "20.78507559287333",
             "unit": "seconds"
           }
         ]

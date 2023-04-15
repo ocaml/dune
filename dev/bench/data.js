@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681589055221,
+  "lastUpdate": 1681592581511,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30797,6 +30797,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.824517930573336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7592a6f969401a2d8cc398185ee93e06f4bde13e",
+          "message": "fix: add locations to link time code gen (#7558)\n\nimproves library resolution errors for dynlink and findlib\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-15T13:50:40-07:00",
+          "tree_id": "82a99addd5595c47aa83f25a5b03048a9fe3f23b",
+          "url": "https://github.com/ocaml/dune/commit/7592a6f969401a2d8cc398185ee93e06f4bde13e"
+        },
+        "date": 1681592578917,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.150638403686667",
             "unit": "seconds"
           }
         ]

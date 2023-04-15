@@ -80,7 +80,7 @@ let set_local_env_var t ~var ~value =
 
 let set_dir t ~dir = { t with dir }
 
-let set_scope t ~scope = { t with scope }
+let set_scope t ~scope ~scope_host = { t with scope; scope_host }
 
 let set_bin_artifacts t ~bin_artifacts_host = { t with bin_artifacts_host }
 

@@ -53,17 +53,6 @@ Create ppx1, ppx2 and exe:
   > EOF
   $ touch project/exe/the_exe.ml
 
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root project --display short ./exe/the_exe.exe
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root project ./exe/the_exe.exe
   Entering directory 'project'
-  File "ppx/ppx2/dune", line 4, characters 18-22:
-  4 |  (preprocess (pps ppx1)) ; changing to the-ppx.ppx1 makes it work
-                        ^^^^
-  Error: Library "ppx1" not found.
-  -> required by _build/default/ppx/ppx2/ppx2.pp.ml
-  -> required by _build/default/ppx/ppx2/.ppx2.objs/byte/ppx2.cmi
-  -> required by _build/default/exe/.the_exe.eobjs/byte/dune__exe__The_exe.cmi
-  -> required by
-     _build/default/exe/.the_exe.eobjs/native/dune__exe__The_exe.cmx
-  -> required by _build/default/exe/the_exe.exe
   Leaving directory 'project'
-  [1]

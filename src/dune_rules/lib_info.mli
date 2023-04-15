@@ -154,7 +154,7 @@ val main_module_name : _ t -> Main_module_name.t
 
 val wrapped : _ t -> Wrapped.t Inherited.t option
 
-val special_builtin_support : _ t -> Special_builtin_support.t option
+val special_builtin_support : _ t -> (Loc.t * Special_builtin_support.t) option
 
 val modes : _ t -> Lib_mode.Map.Set.t
 
@@ -250,7 +250,7 @@ val create :
   -> modes:Lib_mode.Map.Set.t
   -> modules:Modules.t option Source.t
   -> wrapped:Wrapped.t Inherited.t option
-  -> special_builtin_support:Special_builtin_support.t option
+  -> special_builtin_support:(Loc.t * Special_builtin_support.t) option
   -> exit_module:Module_name.t option
   -> instrumentation_backend:(Loc.t * Lib_name.t) option
   -> melange_runtime_deps:'a File_deps.t

@@ -345,7 +345,7 @@ type 'path t =
   ; main_module_name : Main_module_name.t
   ; modes : Lib_mode.Map.Set.t
   ; modules : Modules.t option Source.t
-  ; special_builtin_support : Special_builtin_support.t option
+  ; special_builtin_support : (Loc.t * Special_builtin_support.t) option
   ; exit_module : Module_name.t option
   ; instrumentation_backend : (Loc.t * Lib_name.t) option
   ; path_kind : 'path path
@@ -439,8 +439,9 @@ let equal (type a) (t : a t)
   && Main_module_name.equal main_module_name t.main_module_name
   && Lib_mode.Map.Set.equal modes t.modes
   && Source.equal (Option.equal Modules.equal) modules t.modules
-  && Option.equal Special_builtin_support.equal special_builtin_support
-       t.special_builtin_support
+  && Option.equal
+       (Tuple.T2.equal Loc.equal Special_builtin_support.equal)
+       special_builtin_support t.special_builtin_support
   && Option.equal Module_name.equal exit_module t.exit_module
   && Option.equal
        (Tuple.T2.equal Loc.equal Lib_name.equal)
@@ -734,7 +735,7 @@ let to_dyn path
     ; ("modes", Lib_mode.Map.Set.to_dyn modes)
     ; ("modules", Source.to_dyn (Dyn.option Modules.to_dyn) modules)
     ; ( "special_builtin_support"
-      , option Special_builtin_support.to_dyn special_builtin_support )
+      , option (snd Special_builtin_support.to_dyn) special_builtin_support )
     ; ("exit_module", option Module_name.to_dyn exit_module)
     ; ( "instrumentation_backend"
       , option (snd Lib_name.to_dyn) instrumentation_backend )

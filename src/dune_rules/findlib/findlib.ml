@@ -478,12 +478,12 @@ end = struct
           requires t |> List.map ~f:(fun name -> Lib_dep.direct (add_loc name))
         in
         let ppx_runtime_deps = List.map ~f:add_loc (ppx_runtime_deps t) in
-        let special_builtin_support : Lib_info.Special_builtin_support.t option
-            =
+        let special_builtin_support :
+            (Loc.t * Lib_info.Special_builtin_support.t) option =
           (* findlib has been around for much longer than dune, so it is
              acceptable to have a special case in dune for findlib. *)
           match Lib_name.to_string t.name with
-          | "findlib.dynload" -> Some Findlib_dynload
+          | "findlib.dynload" -> Some (loc, Findlib_dynload)
           | _ -> None
         in
         let foreign_objects = Lib_info.Source.External [] in

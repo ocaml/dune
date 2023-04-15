@@ -172,7 +172,8 @@ module Library : sig
     ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
     ; stdlib : Ocaml_stdlib.t option
-    ; special_builtin_support : Lib_info.Special_builtin_support.t option
+    ; special_builtin_support :
+        (Loc.t * Lib_info.Special_builtin_support.t) option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
     ; melange_runtime_deps : Loc.t * Dep_conf.t list

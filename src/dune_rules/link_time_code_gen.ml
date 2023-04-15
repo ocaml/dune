@@ -237,7 +237,7 @@ let handle_special_libs cctx =
       match Lib_info.special_builtin_support (Lib.info lib) with
       | None ->
         process_libs libs ~to_link_rev:(Lib lib :: to_link_rev) ~force_linkall
-      | Some special -> (
+      | Some (loc, special) -> (
         match special with
         | Build_info { data_module; api_version } ->
           let& module_ =
@@ -260,10 +260,9 @@ let handle_special_libs cctx =
                findlib. That's why it's ok to use a dummy location. *)
             let* db = Scope.DB.public_libs ctx in
             let open Resolve.Memo.O in
-            let+ dynlink =
-              Lib.DB.resolve db (Loc.none, Lib_name.of_string "dynlink")
+            let+ dynlink = Lib.DB.resolve db (loc, Lib_name.of_string "dynlink")
             and+ findlib =
-              Lib.DB.resolve db (Loc.none, Lib_name.of_string "findlib")
+              Lib.DB.resolve db (loc, Lib_name.of_string "findlib")
             in
             [ dynlink; findlib ]
           in

@@ -118,7 +118,8 @@ module Lib = struct
        ; field_o "modules" (Modules.encode ~src_dir:package_root) modules
        ; paths "melange_runtime_deps" melange_runtime_deps
        ; field_o "special_builtin_support"
-           Lib_info.Special_builtin_support.encode special_builtin_support
+           Lib_info.Special_builtin_support.encode
+           (Option.map ~f:snd special_builtin_support)
        ; field_o "instrumentation.backend" (no_loc Lib_name.encode)
            instrumentation_backend
        ]
@@ -186,7 +187,7 @@ module Lib = struct
        and+ special_builtin_support =
          field_o "special_builtin_support"
            (Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>> Lib_info.Special_builtin_support.decode)
+           >>> located Lib_info.Special_builtin_support.decode)
        and+ instrumentation_backend =
          field_o "instrumentation.backend" (located Lib_name.decode)
        in

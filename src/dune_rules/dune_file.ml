@@ -509,7 +509,8 @@ module Library = struct
     let make ~wrapped ~implements ~special_builtin_support :
         t Lib_info.Inherited.t =
       (match (wrapped, special_builtin_support) with
-      | Some (loc, Yes_with_transition _), Some _ ->
+      | Some (loc, Yes_with_transition _), Some (_loc, _) ->
+        (* TODO use _loc *)
         User_error.raise ~loc
           [ Pp.text
               "Cannot have transition modules for libraries with special \
@@ -582,7 +583,8 @@ module Library = struct
     ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
     ; stdlib : Ocaml_stdlib.t option
-    ; special_builtin_support : Lib_info.Special_builtin_support.t option
+    ; special_builtin_support :
+        (Loc.t * Lib_info.Special_builtin_support.t) option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
     ; melange_runtime_deps : Loc.t * Dep_conf.t list
@@ -657,7 +659,7 @@ module Library = struct
        and+ special_builtin_support =
          field_o "special_builtin_support"
            (Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>> Lib_info.Special_builtin_support.decode)
+           >>> located Lib_info.Special_builtin_support.decode)
        and+ enabled_if =
          let open Enabled_if in
          let allowed_vars = Only Lib_config.allowed_in_enabled_if in

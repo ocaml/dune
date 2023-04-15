@@ -10,5 +10,5 @@ val create :
        (** [spawn_thread f] launches [f] in a thread *)
   -> t
 
-(** [task t ~f] runs [f] inside the pool [f] *)
+(** [task t ~f] runs [f] inside the pool [f]. [f] must not raise. *)
 val task : t -> f:(unit -> unit) -> unit

@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix plugin loading with findlib. The functionality was broken in 3.7.0.
+  (#7556, @anmonteiro)
+
 - Introduce a `public_headers` field on libraries. This field is like
   `install_c_headers`, but it allows to choose the extension and choose the
   paths for the installed headers. (#7512, @rgrinberg)

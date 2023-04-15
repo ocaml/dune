@@ -5,16 +5,18 @@ type t = Link_time_code_gen_type.t =
   ; force_linkall : bool
   }
 
-let generate_and_compile_module cctx ~precompiled_cmi ~name ~lib ~code ~requires
-    =
+let generate_and_compile_module cctx ~precompiled_cmi ~obj_name ~name ~lib ~code
+    ~requires =
   let sctx = Compilation_context.super_context cctx in
   let open Memo.O in
   let* module_ =
     let+ modules = Dir_contents.modules_of_lib sctx lib in
     let obj_name =
-      Option.map modules ~f:(fun modules ->
-          let mli_only = Modules.find modules name |> Option.value_exn in
-          Module.obj_name mli_only)
+      match obj_name with
+      | Some _ -> obj_name
+      | None ->
+        Option.map modules ~f:(fun modules ->
+            Modules.find modules name |> Option.value_exn |> Module.obj_name)
     in
     let src_dir =
       let obj_dir = Compilation_context.obj_dir cctx in
@@ -242,6 +244,7 @@ let handle_special_libs cctx =
         | Build_info { data_module; api_version } ->
           let& module_ =
             generate_and_compile_module cctx ~name:data_module ~lib
+              ~obj_name:None
               ~code:
                 (Action_builder.of_memo
                    (build_info_code cctx ~libs:all_libs ~api_version))
@@ -267,8 +270,11 @@ let handle_special_libs cctx =
             [ dynlink; findlib ]
           in
           let& module_ =
-            generate_and_compile_module cctx ~lib
-              ~name:(Module_name.of_string "findlib_initl")
+            let name = Module_name.of_string "findlib_initl" in
+            let obj_name =
+              Some (Module_name.Unique.of_name_assuming_needs_no_mangling name)
+            in
+            generate_and_compile_module ~obj_name cctx ~lib ~name
               ~code:
                 (Action_builder.return
                    (findlib_init_code
@@ -290,7 +296,8 @@ let handle_special_libs cctx =
             else Action_builder.return (dune_site_code ())
           in
           let& module_ =
-            generate_and_compile_module cctx ~name:data_module ~lib ~code
+            generate_and_compile_module cctx ~obj_name:None ~name:data_module
+              ~lib ~code
               ~requires:(Resolve.Memo.return [ lib ])
               ~precompiled_cmi:true
           in

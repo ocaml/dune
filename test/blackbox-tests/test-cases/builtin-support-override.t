@@ -7,10 +7,20 @@ Create a library called `findlib.dynload`
   > EOF
   $ cat > findlib/dune <<EOF
   > (library
-  >   (name findlib_dynload)
-  >   (public_name findlib.dynload)
-  >   (wrapped false)
-  >   (special_builtin_support findlib_dynload))
+  >  (name findlib_dynload)
+  >  (public_name findlib.dynload)
+  >  (wrapped false)
+  >  (libraries findlib dynlink)
+  >  (modules fl_dynload)
+  >  (special_builtin_support findlib_dynload))
+  > (library
+  >  (public_name findlib)
+  >  (modules findlib))
+  > EOF
+  $ cat >findlib/findlib.ml <<EOF
+  > type x = Record_core
+  > let record_package _ _ = assert false
+  > let record_package_predicates _ _ = assert false
   > EOF
   $ touch findlib/fl_dynload.ml
 
@@ -34,7 +44,4 @@ Create a library called `findlib.dynload`
   > EOF
   $ touch exe/the_exe.ml
 
-  $ dune build --display short ./exe/the_exe.exe 2>&1 | grep crash
-  I must not crash.  Uncertainty is the mind-killer. Exceptions are the
-
-
+  $ dune build

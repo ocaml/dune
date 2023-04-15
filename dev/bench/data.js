@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681589042610,
+  "lastUpdate": 1681589055221,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -26649,6 +26649,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "77.17603591076",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "06628ac1aca04b9ff04169b8b7cc9026ab11c902",
+          "message": "refactor: expander cosmetic fixes (#7557)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-15T12:33:35-07:00",
+          "tree_id": "b3c356ab54f0da2a7accd14c135159ec2dc108aa",
+          "url": "https://github.com/ocaml/dune/commit/06628ac1aca04b9ff04169b8b7cc9026ab11c902"
+        },
+        "date": 1681589054509,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.0325842576466666",
             "unit": "seconds"
           }
         ]

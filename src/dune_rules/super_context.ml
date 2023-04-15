@@ -85,9 +85,22 @@ end = struct
 
   let external_env t ~dir = get_node t ~dir >>= Env_node.external_env
 
+  let scope_host ~scope (context : Context.t) =
+    match context.for_host with
+    | None -> Memo.return scope
+    | Some host ->
+      let dir =
+        let root = Scope.root scope in
+        let src = Path.Build.drop_build_context_exn root in
+        Path.Build.append_source host.build_dir src
+      in
+      Scope.DB.find_by_dir dir
+
   let expander_for_artifacts ~scope ~external_env ~root_expander ~dir =
+    let+ scope_host = scope_host ~scope (Expander.context root_expander) in
     Expander.extend_env root_expander ~env:external_env
-    |> Expander.set_scope ~scope |> Expander.set_dir ~dir
+    |> Expander.set_scope ~scope ~scope_host
+    |> Expander.set_dir ~dir
 
   let extend_expander t ~dir ~expander_for_artifacts =
     let* bin_artifacts_host = bin_artifacts_host t ~dir in
@@ -104,7 +117,7 @@ end = struct
     let* node = get_node t ~dir in
     let* external_env = external_env t ~dir in
     let scope = Env_node.scope node in
-    let expander_for_artifacts =
+    let* expander_for_artifacts =
       expander_for_artifacts ~scope ~external_env ~root_expander:t.root_expander
         ~dir
     in
@@ -145,7 +158,7 @@ end = struct
     let default_context_flags = default_context_flags t.context ~project in
     let expander_for_artifacts =
       Memo.lazy_ (fun () ->
-          let+ external_env = external_env t ~dir in
+          let* external_env = external_env t ~dir in
           expander_for_artifacts ~scope ~root_expander:t.root_expander
             ~external_env ~dir)
     in

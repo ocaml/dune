@@ -18,8 +18,3 @@ val promote :
 
 (** The set of files created in the source tree that need to be deleted. *)
 val files_in_source_tree_to_delete : unit -> Path.Source.Set.t
-
-val delete_stale_dot_merlin_file :
-     dir:Path.Build.t
-  -> source_files_to_ignore:Path.Source.Set.t
-  -> Path.Source.Set.t

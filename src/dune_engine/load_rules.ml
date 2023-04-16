@@ -754,10 +754,6 @@ end = struct
                 source_files_to_ignore
               |> Path.Source.Set.of_list
             in
-            let source_files_to_ignore =
-              Target_promotion.delete_stale_dot_merlin_file ~dir
-                ~source_files_to_ignore
-            in
             Path.Source.Set.diff files source_files_to_ignore
           in
           let subdirs = Filename.Set.diff subdirs source_dirnames_to_ignore in

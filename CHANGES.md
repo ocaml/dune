@@ -1,6 +1,10 @@
 Unreleased
 ----------
 
+- Remove some compatibility code for old version of dune that generated
+  `.merlin` files. Now dune will never remove `.merlin` files automatically
+  (#7562)
+
 - Add additional metadata to the traces provided by `--trace-file` whenever
   `--trace-extended` is passed (#7778, @rleshchinskiy)
 

@@ -98,8 +98,8 @@ The resulting layout in ``_build/default/output`` will be as follows:
   - ``commonjs`` will follow `CommonJS modules <https://nodejs.org/api/modules.html>`_,
     and will produce `require` calls and export values with ``module.exports``.
 
-  - If no extension is specified, the resulting JavaScript files will use ``.js``.
-    You can specify a different extension with a pair
+  - If no extension is specified, the resulting JavaScript files will use
+    ``.js``. You can specify a different extension with a pair
     ``(<module_system> <extension>)``, e.g. ``(module_systems (es6 mjs))``.
 
   - Multiple module systems can be used in the same field as long as their
@@ -130,11 +130,11 @@ The resulting layout in ``_build/default/output`` will be as follows:
 - ``(package <package>)`` allows the user to define the JavaScript package to
   which the artifacts produced by the ``melange.emit`` stanza will belong.
 
-- ``(runtime_deps <paths-to-deps>)`` specifies dependencies that should be copied to
-  the build folder together with the ``.js`` files generated from the sources.
-  These runtime dependencies can include assets like CSS files, images, fonts,
-  external JavaScript files, etc. ``runtime_deps`` adhere to the
-  formats in :doc:`concepts/dependency-spec`. For example
+- ``(runtime_deps <paths-to-deps>)`` specifies dependencies that should be
+  copied to the build folder together with the ``.js`` files generated from the
+  sources. These runtime dependencies can include assets like CSS files, images,
+  fonts, external JavaScript files, etc. ``runtime_deps`` adhere to the formats
+  in :doc:`concepts/dependency-spec`. For example
   ``(runtime_deps ./path/to/file.css (glob_file_rec ./fonts/*))``.
 
 - ``(emit_stdlib <bool>)`` allows the user to specify whether the Melange
@@ -143,7 +143,8 @@ The resulting layout in ``_build/default/output`` will be as follows:
   and runtime JavaScript files won't be produced in the target directory.
 
 - ``(promote <options>)`` promotes the generated ``.js`` files to the
-  source tree. The options are the same as for the :ref:`rule promote mode <promote>`.
+  source tree. The options are the same as for the
+  :ref:`rule promote mode <promote>`.
   Adding ``(promote (until-clean))`` to a ``melange.emit`` stanza will cause
   Dune to copy the ``.js`` files to the source tree and ``dune clean`` to
   delete them.
@@ -225,10 +226,11 @@ unnecessary folders in ``node_modules``, it is recommended to explicitly
 include only the folders that are relevant for Melange builds.
 
 This can be accomplished by combining :ref:`subdir` and :ref:`dune-subdirs`
-stanzas in a ``dune`` file next to the ``node_modules`` folder.  The 
+stanzas in a ``dune`` file next to the ``node_modules`` folder. The 
 :ref:`dune-vendored_dirs` stanza can be used to avoid warnings in Melange
 libraries during the application build. The :ref:`dune-data_only_dirs` stanza
-can be useful as well if you need to override the build rules in one of the packages.
+can be useful as well if you need to override the build rules in one of the
+packages.
 
 .. code:: dune
 

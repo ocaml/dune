@@ -101,11 +101,11 @@ The resulting layout in ``_build/default/output`` will be as follows:
     You can specify a different extension with a pair
     ``(<module_system> <extension>)``, e.g. ``(module_systems (es6 mjs))``.
 
-  - Multiple module systems can be used in the same field, as long as their
-    extensions are different, for example
+  - Multiple module systems can be used in the same field as long as their
+    extensions are different. For example,
     ``(module_systems commonjs (es6 mjs))`` will produce one set of JavaScript
-    files using CommonJS and ``.js`` extension, and another using ES6 and
-    ``.mjs`` extension.
+    files using CommonJS and the ``.js`` extension, and another using ES6 and
+    the ``.mjs`` extension.
 
 - ``(modules <modules>)`` specifies what modules will be built with Melange. By
   default, if this field is not defined, Dune will use all the ``.ml/.re`` files

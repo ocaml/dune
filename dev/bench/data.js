@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681618585864,
+  "lastUpdate": 1681619079072,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -13918,6 +13918,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.943243607973336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "82c670eac095b305d9d0def10b7c19c0e697303e",
+          "message": "refactor: link time code gen cleanups (#7559)\n\n* tighten up the scopes of variables\r\n* make the code generation a little lazier by delaying it until the\r\n  rules are executed\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-15T21:03:22-07:00",
+          "tree_id": "3d95b361838c6cd116a1f6b95402584250e10841",
+          "url": "https://github.com/ocaml/dune/commit/82c670eac095b305d9d0def10b7c19c0e697303e"
+        },
+        "date": 1681619078354,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.80233451524",
             "unit": "seconds"
           }
         ]

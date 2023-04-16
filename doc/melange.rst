@@ -22,8 +22,8 @@ JavaScript files by defining a :ref:`melange-emit` stanza. Dune libraries can be
 used with Melange by adding ``melange`` to ``(modes ...)`` in the
 :ref:`library` stanza.
 
-To enable Melange support in a Dune project, specify the Melange language
-version in the :ref:`dune-project` file. Adding
+Melange support is still experimental in Dune and needs to be enabled 
+in the :ref:`dune-project` file:
 
 .. code:: dune
 

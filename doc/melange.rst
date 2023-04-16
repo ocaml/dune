@@ -246,8 +246,8 @@ Simple Project
 
 Let's look at building a simple project with Melange and Dune.
 
-First, make sure that the :ref:`dune-project` file contains a
-``(using melange 0.1)`` stanza:
+First, make sure that the :ref:`dune-project` file specifies at least
+version 3.8 of the dune language and the Melange extension is enabled:
 
 .. code:: dune
 

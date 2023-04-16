@@ -143,7 +143,8 @@ The resulting layout in ``_build/default/output`` will be as follows:
 
 - ``(emit_stdlib <bool>)`` allows the user to specify whether the Melange
   standard library should be included as a dependency of the stanza or not. The
-  default is ``true``.
+  default is ``true``. If this option is ``false``, the Melange standard library
+  and runtime JavaScript files won't be produced in the target directory.
 
 - ``(promote <options>)`` promotes the generated ``.js`` files to the
   source tree. The options are the same as for the :ref:`rule promote mode <promote>`.

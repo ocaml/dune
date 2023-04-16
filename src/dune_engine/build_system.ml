@@ -215,18 +215,28 @@ let rec with_locks ~f = function
       (Table.find_or_add State.locks m ~f:(fun _ -> Fiber.Mutex.create ()))
       ~f:(fun () -> with_locks ~f mutexes)
 
-(* All file targets of non-sandboxed actions that are currently being executed.
-   On exit, we need to delete them as they might contain garbage. There is no
-   [pending_dir_targets] since actions with directory targets are sandboxed. *)
-let pending_file_targets = ref Path.Build.Set.empty
+module Pending_targets = struct
+  (* All file and directory targets of non-sandboxed actions that are currently
+     being executed. On exit, we need to delete them as they might contain
+     garbage. *)
+
+  let t = ref Targets.empty
+
+  let remove targets =
+    t := Targets.diff !t (Targets.Validated.unvalidate targets)
+
+  let add targets =
+    t := Targets.combine !t (Targets.Validated.unvalidate targets)
+
+  let () =
+    Hooks.End_of_build.always (fun () ->
+        let targets = !t in
+        t := Targets.empty;
+        Targets.iter targets ~file:Path.Build.unlink_no_err ~dir:(fun p ->
+            Path.rm_rf (Path.build p)))
+end
 
 let () = Hooks.End_of_build.always Metrics.reset
-
-let () =
-  Hooks.End_of_build.always (fun () ->
-      let fns = !pending_file_targets in
-      pending_file_targets := Path.Build.Set.empty;
-      Path.Build.Set.iter fns ~f:(fun p -> Path.Build.unlink_no_err p))
 
 type rule_execution_result =
   { deps : Dep.Fact.t Dep.Map.t
@@ -440,8 +450,7 @@ end = struct
       | None ->
         (* If the action is not sandboxed, we use [pending_file_targets] to
            clean up the build directory if the action is interrupted. *)
-        pending_file_targets :=
-          Path.Build.Set.union targets.files !pending_file_targets;
+        Pending_targets.add targets;
         None
     in
     let action =
@@ -513,8 +522,7 @@ end = struct
     | Some sandbox -> Sandbox.destroy sandbox
     | None ->
       (* All went well, these targets are no longer pending. *)
-      pending_file_targets :=
-        Path.Build.Set.diff !pending_file_targets targets.files);
+      Pending_targets.remove targets);
     exec_result
 
   let promote_targets ~rule_mode ~dir ~targets ~promote_source =

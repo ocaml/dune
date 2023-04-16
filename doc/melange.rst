@@ -32,6 +32,18 @@ in the :ref:`dune-project` file:
 Once that's in place, you can use the Melange mode in :ref:`library` stanzas
 ``melange.emit`` stanzas.
 
+Libraries
+=========
+
+Adding Melange support to Dune libraries is done as follows:
+
+- ``(modes melange)``: adding ``melange`` to  ``modes`` is required. This
+   field also supports the :doc:`reference/ordered-set-language`.
+
+- ``(melange.runtime_deps <deps>)``: optionally, define any runtime dependencies
+  using ``melange.runtime_deps``. This field is analog to the ``runtime_deps``
+  field used in ``melange.emit`` stanzas.
+
 .. _melange-emit:
 
 melange.emit
@@ -173,18 +185,6 @@ The resulting layout in ``_build/default/output`` will be as follows:
 
 - ``(allow_overlapping_dependencies)`` is the same as the corresponding field of
   :ref:`library`.
-
-Libraries
-=========
-
-Adding Melange support to Dune libraries is done as follows:
-
-- ``(modes melange)``: adding ``melange`` to  ``modes`` is required. This
-   field also supports the :doc:`reference/ordered-set-language`.
-
-- ``(melange.runtime_deps <deps>)``: optionally, define any runtime dependencies
-  using ``melange.runtime_deps``. This field is analog to the ``runtime_deps``
-  field used in ``melange.emit`` stanzas.
 
 Recommended Practices
 =====================

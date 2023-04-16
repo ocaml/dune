@@ -37,9 +37,9 @@ Once that's in place, you can use the Melange mode in :ref:`library` stanzas
 melange.emit
 ============
 
-The ``melange.emit`` stanza allows the user to generate JavaScript from Melange
-libraries and modules. It's similar to the OCaml :ref:`executable` stanza, but
-for Melange projects:
+The ``melange.emit`` stanza allows the user to produce JavaScript files
+from Melange libraries and entry-point modules. It's similar to the OCaml
+:ref:`executable` stanza, with the exception that there is no linking step.
 
 .. code:: dune
 

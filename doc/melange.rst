@@ -153,7 +153,7 @@ The resulting layout in ``_build/default/output`` will be as follows:
   delete them.
 
 - ``(preprocess <preprocess-spec>)`` specifies how to preprocess files when
-  needed. The default is ``no_preprocessing``, and other options are described
+  needed. The default is ``no_preprocessing``. Additional options are described
   in the :doc:`reference/preprocessing-spec` section.
 
 - ``(preprocessor_deps (<deps-conf list>))`` specifies extra preprocessor

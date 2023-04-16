@@ -120,7 +120,7 @@ The resulting layout in ``_build/default/output`` will be as follows:
   Melange libraries can only use the simple form, like
   ``(libraries foo pkg.bar)``. Keep in mind the following limitations:
 
-  - The ``re_export`` and ``select`` forms are not supported.
+  - The ``re_export`` form is not supported.
 
   - All the libraries included in ``<library-dependencies>`` have to support
     ``melange`` mode (see the section about libraries below).

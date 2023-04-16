@@ -92,8 +92,7 @@ The resulting layout in ``_build/default/output`` will be as follows:
   and ``commonjs``.
 
   - ``es6`` will follow `JavaScript modules <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules>`_,
-    and will produce imports like ``import * from 'foo'`` and exports like
-    ``export let ....``
+    and will produce ``import`` and ``export`` statements.
 
   - ``commonjs`` will follow `CommonJS modules <https://nodejs.org/api/modules.html>`_,
     and will produce imports like ``require('foo')`` and exports like

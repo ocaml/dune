@@ -165,10 +165,10 @@ The resulting layout in ``_build/default/output`` will be as follows:
   ``melc``, the main Melange executable.
   ``<flags>`` is described in detail in the
   :doc:`reference/ordered-set-language` section. It also supports
-  ``(:include ...)`` forms. The default value for this field is taken from the
-  environment therefore it's recommended to write
-  ``(compile_flags ...)`` fields as follows:
-  ``(compile_flags :standard <my options>)``
+  ``(:include ...)`` forms. The value for this field can also be taken
+  from ``env`` stanzas. It's therefore recommended to add flags
+  with e.g. ``(compile_flags :standard <my options>)`` rather than
+  replace them.
 
 - ``(root_module <module>)`` specifies a ``root_module`` that collects all
   listed dependencies in ``libraries``. See the documentation for

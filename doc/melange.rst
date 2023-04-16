@@ -195,13 +195,10 @@ Recommended Practices
 Keep Bundles Small by Reducing the Number of ``melange.emit`` Stanzas
 ---------------------------------------------------------------------
 
-It is recommended to define a single ``melange.emit`` stanza for each project,
-or if that is not possible, at least minimize the number of ``melange.emit``
-stanzas defined.
-
-The reason is that using multiple ``melange.emit`` stanzas will lead to multiple
-copies of the JavaScript files generated for library code. For example, if
-there are two ``melange.emit`` stanzas defined as follows:
+It is recommended to minimize the number of ``melange.emit`` stanzas
+that a project defines: using multiple ``melange.emit`` stanzas will cause
+multiple copies of the JavaScript files to be generated if the same libraries
+are used across them. As an example:
 
 .. code:: dune
 

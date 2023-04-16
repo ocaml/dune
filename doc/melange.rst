@@ -133,7 +133,7 @@ The resulting layout in ``_build/default/output`` will be as follows:
   that are part of the ``melange.emit`` stanza belong to the same resulting
   JavaScript package.
 
-- ``(runtime_deps <paths-to-deps>)`` specifies which files should be copied to
+- ``(runtime_deps <paths-to-deps>)`` specifies dependencies that should be copied to
   the build folder together with the ``.js`` files generated from the sources.
   These runtime dependencies can include assets like CSS files, images, fonts,
   hand-written JavaScript files, etc. Several dependencies can be defined in the

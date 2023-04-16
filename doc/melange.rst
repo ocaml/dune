@@ -136,7 +136,7 @@ The resulting layout in ``_build/default/output`` will be as follows:
 - ``(runtime_deps <paths-to-deps>)`` specifies dependencies that should be copied to
   the build folder together with the ``.js`` files generated from the sources.
   These runtime dependencies can include assets like CSS files, images, fonts,
-  hand-written JavaScript files, etc. Several dependencies can be defined in the
+  external JavaScript files, etc. Several dependencies can be defined in the
   same field using any of the available formats in the
   :doc:`concepts/dependency-spec`. For example
   ``(runtime_deps ./path/to/file.css (glob_file_rec ./fonts/*))``.

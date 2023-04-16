@@ -52,14 +52,14 @@ module Archive : sig
     val lib_file :
          t
       -> dir:Path.Build.t
-      -> ext_lib:string
+      -> ext_lib:Filename.Extension.t
       -> mode:Mode.Select.t
       -> Path.Build.t
 
     val dll_file :
          t
       -> dir:Path.Build.t
-      -> ext_dll:string
+      -> ext_dll:Filename.Extension.t
       -> mode:Mode.Select.t
       -> Path.Build.t
   end
@@ -77,14 +77,14 @@ module Archive : sig
   val lib_file :
        archive:t
     -> dir:Path.Build.t
-    -> ext_lib:string
+    -> ext_lib:Filename.Extension.t
     -> mode:Mode.Select.t
     -> Path.Build.t
 
   val dll_file :
        archive:t
     -> dir:Path.Build.t
-    -> ext_dll:string
+    -> ext_dll:Filename.Extension.t
     -> mode:Mode.Select.t
     -> Path.Build.t
 end
@@ -192,11 +192,11 @@ module Source : sig
   (** The name of the corresponding object file; for example, [name] for a
       source file [some/path/name.cpp] of [name_mode] if the stub is
       mode-specific. *)
-  val object_name : t -> string
+  val object_name : t -> Filename.t
 
   (** The name of the corresponding object file without the mode suffix. This is
       useful for messages where the internally suffixed name would be confusing. *)
-  val user_object_name : t -> string
+  val user_object_name : t -> Filename.t
 
   val make : kind -> path:Path.Build.t -> t
 end
@@ -206,7 +206,7 @@ module Sources : sig
   type t = (Loc.t * Source.t) String.Map.t
 
   val object_files :
-    t -> dir:Path.Build.t -> ext_obj:string -> Path.Build.t list
+    t -> dir:Path.Build.t -> ext_obj:Filename.Extension.t -> Path.Build.t list
 
   val has_cxx_sources : t -> bool
 
@@ -236,5 +236,6 @@ module Objects : sig
 
   val decode : t Dune_lang.Decoder.t
 
-  val build_paths : t -> ext_obj:string -> dir:Path.Build.t -> Path.t list
+  val build_paths :
+    t -> ext_obj:Filename.Extension.t -> dir:Path.Build.t -> Path.t list
 end

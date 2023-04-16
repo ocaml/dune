@@ -1,7 +1,7 @@
 open Stdune
 open Import
 
-let doc = "Execute the Coq toplevel with the local configuration."
+let doc = "Execute a Coq toplevel with the local configuration."
 
 let man =
   [ `S "DESCRIPTION"

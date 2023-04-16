@@ -468,8 +468,9 @@ module Mode_conf = struct
           ~eq:(fun (a, _) (b, _) -> equal a b)
           ~parse:(fun ~loc s ->
             let mode =
-              Dune_lang.Decoder.parse decode
-                (Dune_project.parsing_context project)
+              Dune_lang.Decoder.parse
+                (Dune_project.set_parsing_context project decode)
+                Univ_map.empty
                 (Atom (loc, Dune_lang.Atom.of_string s))
             in
             (mode, Kind.Requested loc))
@@ -508,7 +509,8 @@ module Library = struct
     let make ~wrapped ~implements ~special_builtin_support :
         t Lib_info.Inherited.t =
       (match (wrapped, special_builtin_support) with
-      | Some (loc, Yes_with_transition _), Some _ ->
+      | Some (loc, Yes_with_transition _), Some (_loc, _) ->
+        (* TODO use _loc *)
         User_error.raise ~loc
           [ Pp.text
               "Cannot have transition modules for libraries with special \
@@ -561,7 +563,8 @@ module Library = struct
     { name : Loc.t * Lib_name.Local.t
     ; visibility : visibility
     ; synopsis : string option
-    ; install_c_headers : string list
+    ; install_c_headers : (Loc.t * string) list
+    ; public_headers : Loc.t * Dep_conf.t list
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
     ; modes : Mode_conf.Lib.Set.t
     ; kind : Lib_kind.t
@@ -580,7 +583,8 @@ module Library = struct
     ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
     ; stdlib : Ocaml_stdlib.t option
-    ; special_builtin_support : Lib_info.Special_builtin_support.t option
+    ; special_builtin_support :
+        (Loc.t * Lib_info.Special_builtin_support.t) option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
     ; melange_runtime_deps : Loc.t * Dep_conf.t list
@@ -598,7 +602,12 @@ module Library = struct
          field_o "public_name" (Public_lib.decode ~allow_deprecated_names:false)
        and+ synopsis = field_o "synopsis" string
        and+ install_c_headers =
-         field "install_c_headers" (repeat string) ~default:[]
+         field "install_c_headers" (repeat (located string)) ~default:[]
+       and+ public_headers =
+         field "public_headers"
+           (Dune_lang.Syntax.since Stanza.syntax (3, 8)
+           >>> located (repeat Dep_conf.decode_no_files))
+           ~default:(stanza_loc, [])
        and+ ppx_runtime_libraries =
          field "ppx_runtime_libraries"
            (repeat (located Lib_name.decode))
@@ -650,7 +659,7 @@ module Library = struct
        and+ special_builtin_support =
          field_o "special_builtin_support"
            (Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>> Lib_info.Special_builtin_support.decode)
+           >>> located Lib_info.Special_builtin_support.decode)
        and+ enabled_if =
          let open Enabled_if in
          let allowed_vars = Only Lib_config.allowed_in_enabled_if in
@@ -734,6 +743,7 @@ module Library = struct
        ; visibility
        ; synopsis
        ; install_c_headers
+       ; public_headers
        ; ppx_runtime_libraries
        ; modes
        ; kind
@@ -986,15 +996,19 @@ module Library = struct
     let entry_modules = Lib_info.Source.Local in
     let melange_runtime_deps =
       let loc, runtime_deps = conf.melange_runtime_deps in
-      Lib_info.Runtime_deps.Local (loc, runtime_deps)
+      Lib_info.File_deps.Local (loc, runtime_deps)
+    in
+    let public_headers =
+      let loc, public_headers = conf.public_headers in
+      Lib_info.File_deps.Local (loc, public_headers)
     in
     Lib_info.create ~loc ~path_kind:Local ~name ~kind ~status ~src_dir
       ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems
-      ~requires ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
-      ~foreign_archives ~native_archives ~foreign_dll_files ~jsoo_runtime
-      ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_ ~entry_modules
-      ~implements ~default_implementation ~modes ~modules:Local ~wrapped
-      ~special_builtin_support ~exit_module ~instrumentation_backend
+      ~requires ~foreign_objects ~public_headers ~plugins ~archives
+      ~ppx_runtime_deps ~foreign_archives ~native_archives ~foreign_dll_files
+      ~jsoo_runtime ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_
+      ~entry_modules ~implements ~default_implementation ~modes ~modules:Local
+      ~wrapped ~special_builtin_support ~exit_module ~instrumentation_backend
       ~melange_runtime_deps
 end
 
@@ -1019,126 +1033,10 @@ module Plugin = struct
 end
 
 module Install_conf = struct
-  (* Expands a [String_with_vars.t] with a given function, returning the result
-     unless the result is an absolute path in which case a user error is raised. *)
-  let expand_str_with_check_for_local_path ~expand_str sw =
-    Memo.map (expand_str sw) ~f:(fun str ->
-        (if not (Filename.is_relative str) then
-         let loc = String_with_vars.loc sw in
-         User_error.raise ~loc
-           [ Pp.textf "Absolute paths are not allowed in the install stanza." ]);
-        str)
-
-  module File_entry = struct
-    module Without_include = struct
-      type t =
-        | File_binding of File_binding.Unexpanded.t
-        | Glob_files of Glob_files.t
-
-      let decode =
-        let open Dune_lang.Decoder in
-        let file_binding_decode =
-          let+ file_binding = File_binding.Unexpanded.decode in
-          File_binding file_binding
-        in
-        let glob_files_decode =
-          let version_check = Dune_lang.Syntax.since Stanza.syntax (3, 6) in
-          let+ glob_files =
-            sum
-              [ ( "glob_files"
-                , let+ glob = version_check >>> String_with_vars.decode in
-                  { Glob_files.glob; recursive = false } )
-              ; ( "glob_files_rec"
-                , let+ glob = version_check >>> String_with_vars.decode in
-                  { Glob_files.glob; recursive = true } )
-              ]
-          in
-          Glob_files glob_files
-        in
-        file_binding_decode <|> glob_files_decode
-
-      let to_file_bindings_unexpanded t ~expand_str ~dir =
-        match t with
-        | File_binding file_binding -> Memo.return [ file_binding ]
-        | Glob_files glob_files ->
-          let open Memo.O in
-          let+ paths =
-            Glob_files.Expand.memo glob_files ~f:expand_str ~base_dir:dir
-          in
-          let glob_loc = String_with_vars.loc glob_files.glob in
-          List.map paths ~f:(fun path ->
-              let src = (glob_loc, path) in
-              File_binding.Unexpanded.make ~src ~dst:src)
-
-      let to_file_bindings_expanded t ~expand_str ~dir =
-        to_file_bindings_unexpanded t ~expand_str ~dir
-        |> Memo.bind
-             ~f:
-               (Memo.List.map
-                  ~f:
-                    (File_binding.Unexpanded.expand ~dir
-                       ~f:(expand_str_with_check_for_local_path ~expand_str)))
-    end
-
-    include
-      Recursive_include.Make
-        (Without_include)
-        (struct
-          let include_keyword = "include"
-
-          let include_allowed_in_versions = `Since (3, 5)
-
-          let non_sexp_behaviour = `User_error
-        end)
-
-    let expand_include_multi ts ~expand_str ~dir =
-      Memo.List.concat_map ts ~f:(expand_include ~expand_str ~dir)
-
-    let of_file_binding file_binding =
-      of_base (Without_include.File_binding file_binding)
-
-    let to_file_bindings_unexpanded ts ~expand_str ~dir =
-      expand_include_multi ts ~expand_str ~dir
-      |> Memo.bind
-           ~f:
-             (Memo.List.concat_map
-                ~f:
-                  (Without_include.to_file_bindings_unexpanded ~expand_str ~dir))
-
-    let to_file_bindings_expanded ts ~expand_str ~dir =
-      expand_include_multi ts ~expand_str ~dir
-      |> Memo.bind
-           ~f:
-             (Memo.List.concat_map
-                ~f:(Without_include.to_file_bindings_expanded ~expand_str ~dir))
-  end
-
-  module Dir_entry = struct
-    include
-      Recursive_include.Make
-        (File_binding.Unexpanded)
-        (struct
-          let include_keyword = "include"
-
-          let include_allowed_in_versions = `Since (3, 5)
-
-          let non_sexp_behaviour = `User_error
-        end)
-
-    let to_file_bindings_expanded ts ~expand_str ~dir =
-      Memo.List.concat_map ts ~f:(expand_include ~expand_str ~dir)
-      |> Memo.bind
-           ~f:
-             (Memo.List.map
-                ~f:
-                  (File_binding.Unexpanded.expand ~dir
-                     ~f:(expand_str_with_check_for_local_path ~expand_str)))
-  end
-
   type t =
     { section : Install.Section_with_site.t
-    ; files : File_entry.t list
-    ; dirs : Dir_entry.t list
+    ; files : Install_entry.File.t list
+    ; dirs : Install_entry.Dir.t list
     ; package : Package.t
     ; enabled_if : Blang.t
     }
@@ -1147,11 +1045,11 @@ module Install_conf = struct
     fields
       (let+ loc = loc
        and+ section = field "section" Install.Section_with_site.decode
-       and+ files = field_o "files" (repeat File_entry.decode)
+       and+ files = field_o "files" (repeat Install_entry.File.decode)
        and+ dirs =
          field_o "dirs"
            (Dune_lang.Syntax.since Stanza.syntax (3, 5)
-           >>> repeat Dir_entry.decode)
+           >>> repeat Install_entry.Dir.decode)
        and+ package = Stanza_common.Pkg.field ~stanza:"install"
        and+ enabled_if =
          let allowed_vars = Enabled_if.common_vars ~since:(2, 6) in
@@ -1166,10 +1064,6 @@ module Install_conf = struct
        in
 
        { section; dirs; files; package; enabled_if })
-
-  let expand_files t = File_entry.to_file_bindings_expanded t.files
-
-  let expand_dirs t = Dir_entry.to_file_bindings_expanded t.dirs
 end
 
 module Executables = struct
@@ -1188,7 +1082,10 @@ module Executables = struct
       -> (t, fields) Dune_lang.Decoder.parser
 
     val install_conf :
-      t -> ext:string -> enabled_if:Blang.t -> Install_conf.t option
+         t
+      -> ext:Filename.Extension.t
+      -> enabled_if:Blang.t
+      -> Install_conf.t option
   end = struct
     type public =
       { public_names : (Loc.t * string option) list
@@ -1329,7 +1226,7 @@ module Executables = struct
           let files =
             List.map2 t.names public_names ~f:(fun (locn, name) (locp, pub) ->
                 Option.map pub ~f:(fun pub ->
-                    Install_conf.File_entry.of_file_binding
+                    Install_entry.File.of_file_binding
                       (File_binding.Unexpanded.make
                          ~src:(locn, name ^ ext)
                          ~dst:(locp, pub))))
@@ -1705,6 +1602,7 @@ module Rule = struct
   type action_or_field =
     | Action
     | Field
+    | Since of Syntax.Version.t * action_or_field
 
   let atom_table =
     String.Map.of_list_exn
@@ -1739,7 +1637,7 @@ module Rule = struct
       ; ("aliases", Field)
       ; ("alias", Field)
       ; ("enabled_if", Field)
-      ; ("package", Field)
+      ; ("package", Since ((3, 8), Field))
       ]
 
   let short_form =
@@ -1848,6 +1746,14 @@ module Rule = struct
        })
 
   let decode =
+    let rec interpret atom = function
+      | Field -> fields long_form
+      | Action -> short_form
+      | Since (version, inner) ->
+        let what = Printf.sprintf "'%s' in short-form 'rule'" atom in
+        let* () = Dune_lang.Syntax.since ~what Stanza.syntax version in
+        interpret atom inner
+    in
     peek_exn >>= function
     | List (_, Atom (loc, A s) :: _) -> (
       match String.Map.find atom_table s with
@@ -1857,8 +1763,7 @@ module Rule = struct
           ~hints:
             (User_message.did_you_mean s
                ~candidates:(String.Map.keys atom_table))
-      | Some Field -> fields long_form
-      | Some Action -> short_form)
+      | Some w -> interpret s w)
     | sexp ->
       User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
         [ Pp.textf "S-expression of the form (<atom> ...) expected" ]
@@ -2267,7 +2172,7 @@ module Stanzas = struct
 
   type Stanza.t += Include of Loc.t * string
 
-  type constructors = (string * Stanza.t list Dune_lang.Decoder.t) list
+  type constructors = Stanza.Parser.t list
 
   let stanzas : constructors =
     [ ( "library"

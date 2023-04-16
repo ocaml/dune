@@ -331,6 +331,102 @@ For automatically updated builds, you can install sphinx-autobuild, and run
 Nix users may drop into a development shell with the necessary dependencies for
 building docs ``nix develop .#doc``.
 
+Structure
+---------
+
+For structure, we use the `Diátaxis framework`_. The core idea is that
+documents should fit in one of the following categories:
+
+.. _Diátaxis framework: https://diataxis.fr/
+
+- Tutorials, focused on learning
+- How-to guides, focused on task solving
+- Reference, focused on information
+- Explanations, focused on understanding
+
+Most features do not need a document in each category, but the important part
+is that a single document should not try to be in several categories at once.
+
+ReStructured Text
+-----------------
+
+For code blocks containing Dune files, use ``.. code:: dune`` and indent with 3
+spaces. Use formatting consistent with how Dune formats Dune files (most
+importantly, do not leave orphan closing parentheses).
+
+In a document that only contains Dune code blocks, it is possible to use the
+``.. highlight:: dune`` directive to have ``dune`` be the default lexer, and
+then it is possible to use the ``::`` shortcut to end a line with a single
+``:`` and start a code block. See the source of
+:doc:`reference/lexical-conventions` for an example.
+
+For links, prefer references that use ``:doc:`` (link to a whole document) or
+``:term:`` (link to a definition in the glossary) to ``:ref:``.
+
+Style
+-----
+
+Use American spelling.
+
+Use `Title Case`_ for titles and headings (every word except "little words"
+like of, and, or, etc.).
+
+.. _Title Case: https://apastyle.apa.org/style-grammar-guidelines/capitalization/title-case
+
+For project names, use the following capitalization:
+
+- **Dune** is the project, ``dune`` is the command. Files are called ``dune``
+  files.
+- ``dune-project`` should always be written in monospace.
+- **OCaml**
+- **OCamlFormat**, and ``ocamlformat`` is the command.
+- ``odoc``, always in monospace.
+- **opam**. Can be capitalised as Opam in titles and at the beginning of sentences only, as the official name is formatted opam. The command is ``opam``.
+- **esy**. Can be capitalised as Esy.
+- **Nix**. The command is ``nix``.
+- **Js_of_ocaml** can be abbreviated **JSOO**.
+- **MDX**, rather than mdx or Mdx
+- **PPX,** rather than ppx or Ppx; ``ppxlib``
+- **UTop,** rather than utop or Utop.
+
+Vendoring
+=========
+
+Dune vendors some code that it uses internally. This is done to make installing
+dune easy as it requires nothing but an OCaml compiler as well as to prevent
+circular dependencies. Before vendoring, make sure that the license of the code
+allows it to be included in dune.
+
+The vendored code lives in the ``vendor/`` subdirectory. To vendor new code,
+create a shell script ``update-<library>.sh``, that will be launched from the
+``vendor/`` folder to download and unpack the source and copy the necessary
+source files into the ``vendor/<library>`` folder. Try to keep the amount of
+source code imported minimal, e.g. leave out ``dune-project`` files, For the
+most part it should be enough to copy ``.ml`` and ``.mli`` files. Make sure to
+also include the license if there is such a file in the code to be vendored to
+stay compliant.
+
+As these sources get vendored not as sub-projects but parts of dune, you need
+to deal with ``public_name``. The preferred way is to remove the
+``public_name`` and only use the private name. If that is not possible, the
+library can be renamed into ``dune-private-libs.<library>``.
+
+To deal with the modified ``dune`` files in ``update-<library>.sh`` scripts,
+you can commit the modified files to ``dune`` and make the
+``update-<library>.sh`` script to use ``git checkout`` to restore the ``dune``
+file.
+
+For larger modifications, it is better to fork the upstream project in the
+ocaml-dune_ organisation and then vendor the forked copy in dune. This makes
+the changes better visible and easier to update from upstream in the long run
+while keeping our custom patches in sync. The changes to the ``dune`` files are
+to be kept in the Dune repository.
+
+It is preferable to cut out as many dependencies as possible, e.g. ones that
+are only necessary on older OCaml versions or build-time dependencies.
+
+.. _ocaml-dune: https://github.com/ocaml-dune/
+
 General Guidelines
 ==================
 

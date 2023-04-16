@@ -434,7 +434,9 @@ let cmd_what = function
   | Uninstall -> "uninstall"
 
 let install_uninstall ~what =
-  let doc = Format.asprintf "%a packages." pp_what what in
+  let doc =
+    Format.asprintf "%a packages defined in the workspace." pp_what what
+  in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let absolute_path =
     Arg.conv'

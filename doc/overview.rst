@@ -39,8 +39,9 @@ provides a few additional ones that separate it from the crowd:
 -  Release directly from any revision: Dune needs no setup stage. To release
    your project, simply point to a specific Git tag (named revision). Of course,
    you can add some release steps if you'd like, but it isn't necessary. For
-   more information, please refer to `dune-release
-   <https://github.com/tarides/dune-release>`_.
+   more information, please refer to dune-release_.
+
+.. _dune-release: https://github.com/tarides/dune-release
 
 The first section below defines some terms used in this manual. The second
 section specifies the Dune metadata format, and the third one describes how to
@@ -134,6 +135,12 @@ Terminology
      implementations. It can use the standard OCaml syntax, or it can specify an
      action to convert from a custom syntax to a binary OCaml abstract syntax
      tree. It can also specify a custom formatter.
+
+   placeholder substitution
+     A build step in which placeholders such as ``%%VERSION%%`` in source files
+     are replaced by concrete values such as ``1.2.3``. It is performed by
+     :ref:`dune-subst` for development versions and dune-release_ for
+     releases.
 
 Project Layout
 ==============

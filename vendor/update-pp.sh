@@ -20,6 +20,7 @@ mkdir -p pp/src
 SRC=$TMP/pp
 
 cp -v $SRC/src/pp.{ml,mli} pp/src
+cp -v $SRC/LICENSE.md pp/
 
 git checkout pp/src/dune
 git add -A .

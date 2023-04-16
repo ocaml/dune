@@ -74,6 +74,22 @@ Test depending on non-existing paths
   Error: No rule found for another/doesnt-exist.txt
   [1]
 
+Test depend on non-file dependencies
+
+  $ cat > another/dune <<EOF
+  > (melange.emit
+  >  (alias non-existing-mel)
+  >  (target another-output)
+  >  (emit_stdlib false)
+  >  (runtime_deps (sandbox none)))
+  > EOF
+  $ dune build @non-existing-mel
+  File "another/dune", line 5, characters 15-29:
+  5 |  (runtime_deps (sandbox none)))
+                     ^^^^^^^^^^^^^^
+  Error: only files are allowed in this position
+  [1]
+
 Test depending on paths that "escape" the melange.emit directory
 
   $ dune clean

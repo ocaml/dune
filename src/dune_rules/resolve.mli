@@ -49,7 +49,7 @@
 
     {[
       let open Memo.O in
-      let* libs = Resolve.get libs in
+      let* libs = Resolve.read_memo libs in
       gen_rules libs
     ]}
 

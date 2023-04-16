@@ -1,6 +1,22 @@
 Unreleased
 ----------
 
+- Fix plugin loading with findlib. The functionality was broken in 3.7.0.
+  (#7556, @anmonteiro)
+
+- Introduce a `public_headers` field on libraries. This field is like
+  `install_c_headers`, but it allows to choose the extension and choose the
+  paths for the installed headers. (#7512, @rgrinberg)
+
+- Load the host context `findlib.conf` when cross-compiling (#7428, fixes
+  #1701, @rgrinberg, @anmonteiro)
+
+- Resolve `ppx_runtime_libraries` in the target context when cross compiling
+  (#7450, fixes #2794, @anmonteiro)
+
+- Use `$PKG_CONFIG`, when set, to find the `pkg-config` binary  (#7469, fixes
+  #2572, @anmonteiro)
+
 - Preliminary support for Coq compiled intefaces (`.vos` files) enabled via
   `(mode vos)` in `coq.theory` stanzas. This can be used in combination with
   `dune coq top` to obtain fast re-building of dependencies (with no checking
@@ -37,8 +53,6 @@ Unreleased
 - Bootstrap: correctly detect the number of processors by allowing `nproc` to be
   looked up in `$PATH` (#7272, @Alizter)
 
-- Pass correct flags when compiling `stdlib.ml`. (#7241, @emillon)
-
 - Speed up file copying on macos by using `clonefile` when available
   (@rgrinberg, #7210)
 
@@ -55,9 +69,6 @@ Unreleased
 
 - Do not re-render UI on every frame if the UI doesn't change (#7186, fix
   #7184, @rgrinberg)
-
-- Fix preludes not being recorded as dependencies in the `(mdx)` stanza (#7109,
-  fixes #7077, @emillon).
 
 - Make coq_db creation in scope lazy (@ejgallego, #7133)
 
@@ -91,14 +102,26 @@ Unreleased
 
 - Allow parallel execution of inline tests partitions (#7012, @hhugo)
 
-- Fix segfault on MacOS when dune was being shutdown while in watch mode.
-  (#7312, fixes #6151, @gridbugs, @emillon)
-
 - Support `(link_flags ...)` in `(cinaps ...)` stanza. (#7423, fixes #7416,
   @nojb)
 
 - Allow `(package ...)` in any position within `(rule ...)` stanza (#7445,
   @Leonidas-from-XIV)
+
+- Always include `opam` files in the generated `.install` file. Previously, it
+  would not be included whenever `(generate_opam_files true)` was set and the
+  `.install` file wasn't yet generated. (#7547, @rgrinberg)
+
+3.7.1 (2023-04-04)
+------------------
+
+- Fix segfault on MacOS when dune was being shutdown while in watch mode.
+  (#7312, fixes #6151, @gridbugs, @emillon)
+
+- Fix preludes not being recorded as dependencies in the `(mdx)` stanza (#7109,
+  fixes #7077, @emillon).
+
+- Pass correct flags when compiling `stdlib.ml`. (#7241, @emillon)
 
 - Handle "Too many links" errors when using Dune cache on Windows.  The fix in
   3.7.0 for this same issue was not effective due to a typo. (#7472, @nojb)

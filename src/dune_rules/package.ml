@@ -66,6 +66,9 @@ module Id = struct
 
   let name t = t.name
 
+  let default_opam_file { name; dir } =
+    Path.Source.relative dir (Name.opam_fn name)
+
   module C = Comparable.Make (T)
   module Set = C.Set
   module Map = C.Map
@@ -544,8 +547,13 @@ module Info = struct
     }
 end
 
+type opam_file =
+  | Exists of bool
+  | Generated
+
 type t =
   { id : Id.t
+  ; opam_file : Path.Source.t
   ; loc : Loc.t
   ; synopsis : string option
   ; description : string option
@@ -554,7 +562,7 @@ type t =
   ; depopts : Dependency.t list
   ; info : Info.t
   ; version : string option
-  ; has_opam_file : bool
+  ; has_opam_file : opam_file
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Section.t Section.Site.Map.t
@@ -569,6 +577,9 @@ let hash t = Id.hash t.id
 let name t = t.id.name
 
 let dir t = t.id.dir
+
+let set_inside_opam_dir t ~dir =
+  { t with opam_file = Path.Source.relative dir (Name.opam_fn t.id.name) }
 
 let encode (name : Name.t)
     { id = _
@@ -585,6 +596,7 @@ let encode (name : Name.t)
     ; deprecated_package_names
     ; sites
     ; allow_empty
+    ; opam_file = _
     } =
   let open Dune_lang.Encoder in
   let fields =
@@ -650,6 +662,7 @@ let decode ~dir =
      and+ lang_version = Dune_lang.Syntax.get_exn Stanza.syntax in
      let allow_empty = lang_version < (3, 0) || allow_empty in
      let id = { Id.name; dir } in
+     let opam_file = Id.default_opam_file id in
      { id
      ; loc
      ; synopsis
@@ -659,12 +672,19 @@ let decode ~dir =
      ; depopts
      ; info
      ; version
-     ; has_opam_file = false
+     ; has_opam_file = Exists false
      ; tags
      ; deprecated_package_names
      ; sites
      ; allow_empty
+     ; opam_file
      }
+
+let dyn_of_opam_file =
+  let open Dyn in
+  function
+  | Exists b -> variant "Exists" [ bool b ]
+  | Generated -> variant "Generated" []
 
 let to_dyn
     { id
@@ -681,6 +701,7 @@ let to_dyn
     ; deprecated_package_names
     ; sites
     ; allow_empty
+    ; opam_file = _
     } =
   let open Dyn in
   record
@@ -691,7 +712,7 @@ let to_dyn
     ; ("conflicts", list Dependency.to_dyn conflicts)
     ; ("depopts", list Dependency.to_dyn depopts)
     ; ("info", Info.to_dyn info)
-    ; ("has_opam_file", Bool has_opam_file)
+    ; ("has_opam_file", dyn_of_opam_file has_opam_file)
     ; ("tags", list string tags)
     ; ("version", option string version)
     ; ( "deprecated_package_names"
@@ -700,7 +721,7 @@ let to_dyn
     ; ("allow_empty", Bool allow_empty)
     ]
 
-let opam_file t = Path.Source.relative t.id.dir (Name.opam_fn t.id.name)
+let opam_file t = t.opam_file
 
 let meta_file t = Path.Source.relative t.id.dir (Name.meta_fn t.id.name)
 
@@ -715,7 +736,8 @@ let default name dir =
     ; { name = Name.of_string "dune"; constraint_ = None }
     ]
   in
-  { id = { name; dir }
+  let id = { Id.name; dir } in
+  { id
   ; loc = Loc.none
   ; version = None
   ; synopsis = Some "A short synopsis"
@@ -724,11 +746,12 @@ let default name dir =
   ; conflicts = []
   ; info = Info.empty
   ; depopts = []
-  ; has_opam_file = false
+  ; has_opam_file = Exists false
   ; tags = [ "topics"; "to describe"; "your"; "project" ]
   ; deprecated_package_names = Name.Map.empty
   ; sites = Section.Site.Map.empty
   ; allow_empty = false
+  ; opam_file = Id.default_opam_file id
   }
 
 let load_opam_file file name =
@@ -796,11 +819,12 @@ let load_opam_file file name =
       }
   ; synopsis = get_one "synopsis"
   ; description = get_one "description"
-  ; has_opam_file = true
+  ; has_opam_file = Exists true
   ; tags = Option.value (get_many "tags") ~default:[]
   ; deprecated_package_names = Name.Map.empty
   ; sites = Section.Site.Map.empty
   ; allow_empty = true
+  ; opam_file = Id.default_opam_file id
   }
 
 let equal = Poly.equal

@@ -20,9 +20,16 @@ Welcome to Dune's Documentation!
    usage
 
 .. toctree::
+   :caption: How-to Guides
+
+   howto/formatting
+   howto/opam-file-generation
+
+.. toctree::
    :caption: Reference Guides
    :maxdepth: 3
 
+   reference/lexical-conventions
    reference/ordered-set-language
    reference/boolean-language
    reference/predicate-language
@@ -31,6 +38,7 @@ Welcome to Dune's Documentation!
    reference/foreign
    reference/cli
    reference/preprocessing-spec
+   reference/packages
    concepts/scopes
    concepts/variables
    concepts/dependency-spec
@@ -39,7 +47,6 @@ Welcome to Dune's Documentation!
    concepts/locks
    concepts/promotion
    concepts/package-spec
-   formatting
    coq
    cross-compilation
    foreign-code
@@ -50,8 +57,6 @@ Welcome to Dune's Documentation!
    sites
    instrumentation
    jsoo
-   lexical-conventions
-   opam
    toplevel-integration
    variants
    tests
@@ -60,6 +65,8 @@ Welcome to Dune's Documentation!
    :caption: Explanations
 
    explanation/preprocessing
+   explanation/ocaml-ecosystem
+   explanation/opam-integration
 
 .. toctree::
    :caption: Advanced topics
@@ -67,7 +74,6 @@ Welcome to Dune's Documentation!
    advanced/meta-file-generation
    advanced/findlib-integration
    advanced/findlib-dynamic
-   advanced/classical-ppx
    advanced/profiling-dune
    advanced/package-version
    advanced/ocaml-syntax

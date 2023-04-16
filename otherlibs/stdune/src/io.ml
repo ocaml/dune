@@ -72,6 +72,126 @@ let copy_channels =
   in
   loop
 
+let setup_copy ?(chmod = Fun.id) ~src ~dst () =
+  let ic = open_in src in
+  let oc =
+    try
+      let perm = (Unix.fstat (Unix.descr_of_in_channel ic)).st_perm |> chmod in
+      Stdlib.open_out_gen
+        [ Open_wronly; Open_creat; Open_trunc; Open_binary ]
+        perm dst
+    with exn ->
+      close_in ic;
+      Exn.reraise exn
+  in
+  (ic, oc)
+
+module Copyfile = struct
+  (* Bindings to mac's fast copy function. It's similar to a hardlink, except
+     it does COW when edited. It will also default back to regular copying if
+     it fails for w/e reason *)
+  external copyfile : string -> string -> unit = "stdune_copyfile"
+
+  external sendfile : src:Unix.file_descr -> dst:Unix.file_descr -> int -> unit
+    = "stdune_sendfile"
+
+  let available =
+    match Platform.OS.value with
+    | Darwin -> `Copyfile
+    | Linux -> `Sendfile
+    | Windows | Other -> `Nothing
+
+  let sendfile =
+    let setup_copy ?(chmod = Fun.id) ~src ~dst () =
+      match Unix.openfile src [ O_RDONLY ] 0 with
+      | exception Unix.Unix_error (Unix.ENOENT, _, _) -> Error `Src_missing
+      | fd_src -> (
+        match Unix.fstat fd_src with
+        | exception exn ->
+          Unix.close fd_src;
+          Error (`Exn (Exn_with_backtrace.capture exn))
+        | src_stat -> (
+          match src_stat.st_kind with
+          | S_DIR -> Error `Src_is_a_dir
+          | _ ->
+            let open Result.O in
+            let+ fd_dst, src_size =
+              match
+                let dst_perm = chmod src_stat.st_perm in
+                Unix.openfile dst [ O_WRONLY; O_CREAT; O_TRUNC ] dst_perm
+              with
+              | fd_dst -> Ok (fd_dst, src_stat.st_size)
+              | exception exn -> (
+                Unix.close fd_src;
+                match exn with
+                | Unix.Unix_error (Unix.EISDIR, _, _) -> Error `Dst_is_a_dir
+                | _ -> Error (`Exn (Exn_with_backtrace.capture exn)))
+            in
+            (fd_src, fd_dst, src_size)))
+    in
+    fun ?chmod ~src ~dst () ->
+      (* All of this exception translation is done for now to maintain the
+         same error messages as the other file copying functions.
+
+         Eventually, we should stop using exceptions for signalling these
+         errors. But that's a bit of a large change since there's a lot of
+         exception catching to audit. *)
+      match setup_copy ?chmod ~src ~dst () with
+      | Error (`Exn exn) -> Exn_with_backtrace.reraise exn
+      | Error `Src_is_a_dir -> raise (Sys_error "Is a directory")
+      | Error `Dst_is_a_dir ->
+        let message = Printf.sprintf "%s: Is a directory" dst in
+        raise (Sys_error message)
+      | Error `Src_missing ->
+        let message = Printf.sprintf "%s: No such file or directory" src in
+        raise (Sys_error message)
+      | Ok (fd_src, fd_dst, src_size) ->
+        Exn.protectx (fd_src, fd_dst, src_size)
+          ~f:(fun (src, dst, src_size) -> sendfile ~src ~dst src_size)
+          ~finally:(fun (src, dst, _) ->
+            Unix.close src;
+            Unix.close dst)
+
+  let copyfile ?chmod ~src ~dst () =
+    let src_stats =
+      match Unix.stat src with
+      | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
+        let message = Printf.sprintf "%s: No such file or directory" src in
+        raise (Sys_error message)
+      | { st_kind = S_DIR; _ } -> raise (Sys_error "Is a directory")
+      | stats -> stats
+    in
+    (try copyfile src dst with
+    | Unix.Unix_error (Unix.EPERM, "unlink", _) ->
+      let message = Printf.sprintf "%s: Is a directory" dst in
+      raise (Sys_error message)
+    | Unix.Unix_error (Unix.ENOENT, "realpath", _) ->
+      let message = Printf.sprintf "%s: No such file or directory" src in
+      raise (Sys_error message));
+    match chmod with
+    | None -> ()
+    | Some chmod -> src_stats.st_perm |> chmod |> Unix.chmod dst
+
+  let copy_file_portable ?chmod ~src ~dst () =
+    Exn.protectx (setup_copy ?chmod ~src ~dst ()) ~finally:close_both
+      ~f:(fun (ic, oc) -> copy_channels ic oc)
+
+  let copy_file_best =
+    match available with
+    | `Sendfile -> sendfile
+    | `Copyfile -> copyfile
+    | `Nothing -> copy_file_portable
+
+  let copy_file_impl = ref `Best
+
+  let copy_file ?chmod ~src ~dst () =
+    match !copy_file_impl with
+    | `Portable -> copy_file_portable ?chmod ~src ~dst ()
+    | `Best -> copy_file_best ?chmod ~src ~dst ()
+end
+
+let set_copy_impl m = Copyfile.copy_file_impl := m
+
 module Make (Path : sig
   type t
 
@@ -232,58 +352,15 @@ struct
     let s2 = read_file fn2 in
     String.compare s1 s2
 
-  let setup_copy ?(chmod = Fun.id) ~src ~dst () =
-    let ic = open_in src in
-    let oc =
-      try
-        let perm =
-          (Unix.fstat (Unix.descr_of_in_channel ic)).st_perm |> chmod
-        in
-        Stdlib.open_out_gen
-          [ Open_wronly; Open_creat; Open_trunc; Open_binary ]
-          perm (Path.to_string dst)
-      with exn ->
-        close_in ic;
-        Exn.reraise exn
-    in
-    (ic, oc)
-
-  module Copyfile = struct
-    (* Bindings to mac's fast copy function. It's similar to a hardlink, except
-       it does COW when edited. It will also default back to regular copying if
-       it fails for w/e reason *)
-    external copyfile : string -> string -> unit = "stdune_copyfile"
-  end
+  let setup_copy ?chmod ~src ~dst () =
+    let src = Path.to_string src in
+    let dst = Path.to_string dst in
+    setup_copy ?chmod ~src ~dst ()
 
   let copy_file ?chmod ~src ~dst () =
-    Exn.protectx (setup_copy ?chmod ~src ~dst ()) ~finally:close_both
-      ~f:(fun (ic, oc) -> copy_channels ic oc)
-
-  let copy_file =
-    match Platform.OS.value with
-    | Linux | Windows | Other -> copy_file
-    | Darwin -> (
-      fun ?chmod ~src ~dst () ->
-        let src = Path.to_string src in
-        let dst = Path.to_string dst in
-        let src_stats =
-          match Unix.stat src with
-          | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
-            let message = Printf.sprintf "%s: No such file or directory" src in
-            raise (Sys_error message)
-          | { st_kind = S_DIR; _ } -> raise (Sys_error "Is a directory")
-          | stats -> stats
-        in
-        (try Copyfile.copyfile src dst with
-        | Unix.Unix_error (Unix.EPERM, "unlink", _) ->
-          let message = Printf.sprintf "%s: Is a directory" dst in
-          raise (Sys_error message)
-        | Unix.Unix_error (Unix.ENOENT, "realpath", _) ->
-          let message = Printf.sprintf "%s: No such file or directory" src in
-          raise (Sys_error message));
-        match chmod with
-        | None -> ()
-        | Some chmod -> src_stats.st_perm |> chmod |> Unix.chmod dst)
+    let src = Path.to_string src in
+    let dst = Path.to_string dst in
+    Copyfile.copy_file ?chmod ~src ~dst ()
 
   let file_line path n =
     with_file_in ~binary:false path ~f:(fun ic ->
@@ -316,11 +393,15 @@ end
 
 include Make (Path)
 
-module String_path = Make (struct
-  type t = string
+module String_path = struct
+  include Make (struct
+    type t = string
 
-  let to_string x = x
-end)
+    let to_string x = x
+  end)
+
+  let copy_file = Copyfile.copyfile
+end
 
 let portable_symlink ~src ~dst =
   if Stdlib.Sys.win32 then copy_file ~src ~dst ()

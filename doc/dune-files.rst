@@ -110,7 +110,7 @@ dialect
          consists of valid OCaml code), then the dialect will be formatted as
          any other OCaml code. Otherwise no special formatting will be done.
 
-         .. seealso:: :ref:`formatting-main`
+         .. seealso:: :doc:`howto/formatting`
 
    .. dune:field:: interface
 
@@ -223,7 +223,7 @@ formatting
      The list of `<languages>` can be either ``dune`` (formatting of dune
      files) or a :term:`dialect` name.
 
-   .. seealso:: :ref:`formatting-main`
+   .. seealso:: :doc:`howto/formatting`
 
 .. _generate_opam_files:
 
@@ -242,7 +242,7 @@ generate_opam_files
 
       (generate_opam_files)
 
-   .. seealso:: :ref:`opam-generation`
+   .. seealso:: :doc:`howto/opam-file-generation`
 
 Dune uses the following global fields to set the metadata for all packages
 defined in the project:
@@ -669,7 +669,8 @@ dune
 ``dune`` files are the main part of Dune. They are used to describe libraries,
 executables, tests, and everything Dune needs to know about.
 
-The syntax of ``dune`` files is described in :ref:`metadata-format` section.
+The syntax of ``dune`` files is described in
+:doc:`reference/lexical-conventions`.
 
 ``dune`` files are composed of stanzas, as shown below:
 

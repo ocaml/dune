@@ -85,6 +85,8 @@ let add_sandbox_config acc (dep : Dep_conf.t) =
 
 let rec dep expander = function
   | Include s ->
+    (* TODO this is wrong. we shouldn't allow bindings here if we are in an
+       unnamed expansion *)
     let deps = expand_include ~expander s in
     Other
       (let* deps = deps in
@@ -125,7 +127,7 @@ let rec dep expander = function
        [])
   | Glob_files glob_files ->
     Other
-      (Glob_files.Expand.action_builder glob_files
+      (Glob_files_expand.action_builder glob_files
          ~f:(Expander.expand_str expander)
          ~base_dir:(Expander.dir expander)
       >>| List.map ~f:(fun path ->

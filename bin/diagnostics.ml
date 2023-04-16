@@ -52,7 +52,7 @@ let exec () =
   | Error e -> Rpc.raise_rpc_error e
 
 let info =
-  let doc = "fetch and return errors from the current build" in
+  let doc = "Fetch and return errors from the current build." in
   Cmd.info "diagnostics" ~doc
 
 let term =

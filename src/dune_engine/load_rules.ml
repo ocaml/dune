@@ -235,7 +235,8 @@ let no_rule_found ~loc fn =
   in
   let hints ctx =
     let candidates =
-      Context_name.Map.keys contexts |> List.map ~f:Context_name.to_string
+      Context_name.Map.to_list_map contexts ~f:(fun name _ ->
+          Context_name.to_string name)
     in
     User_message.did_you_mean (Context_name.to_string ctx) ~candidates
   in

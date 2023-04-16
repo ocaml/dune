@@ -20,6 +20,7 @@ mkdir -p csexp/src
 SRC=$TMP/csexp
 
 cp -v $SRC/src/csexp.{ml,mli} csexp/src
+cp -v $SRC/LICENSE.md csexp/
 
 git checkout csexp/src/dune
 git add -A .

@@ -149,7 +149,7 @@ The resulting layout in ``_build/default/output`` will be as follows:
 - ``(promote <options>)`` promotes the generated ``.js`` files to the
   source tree. The options are the same as for the :ref:`rule promote mode <promote>`.
   Adding ``(promote (until-clean))`` to a ``melange.emit`` stanza will cause
-  Dune to copy the ``.js`` files to the source tree and use ``dune clean`` to
+  Dune to copy the ``.js`` files to the source tree and ``dune clean`` to
   delete them.
 
 - ``(preprocess <preprocess-spec>)`` specifies how to preprocess files when

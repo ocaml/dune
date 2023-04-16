@@ -187,8 +187,7 @@ Adding Melange support to Dune libraries is done as follows:
 
 - ``(melange.runtime_deps <deps>)``: optionally, define any runtime dependencies
   using ``melange.runtime_deps``. This field is analog to the ``runtime_deps``
-  field used in ``melange.emit`` stanzas. An example:
-  ``(melange.runtime_deps ./path/to/file.css (glob_file_rec ./fonts/*))``.
+  field used in ``melange.emit`` stanzas.
 
 Recommended Practices
 =====================

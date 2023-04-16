@@ -9,12 +9,13 @@ JavaScript Compilation With Melange
 Introduction
 ============
 
-`Melange <https://github.com/melange-re/melange>`_ is a compiler from OCaml to
-JavaScript. Unlike Js_of_ocaml, Melange works by translating the OCaml
-compiler's internal Lambda representation to JS files. This produces a single
-JavaScript file for each OCaml module. Melange can be installed with
-`opam, Esy, or Nix <https://github.com/melange-re/melange#installation>`_
-package managers.
+`Melange <https://github.com/melange-re/melange>`_ compiles OCaml to
+JavaScript. It produces one JavaScript file per OCaml module. Melange can
+be installed with opam:
+
+.. code:: bash
+
+   $ opam install melange
 
 Dune can build projects using Melange, and it allows the user to generate
 JavaScript files by defining a :ref:`melange-emit` stanza. Dune libraries can be

@@ -97,7 +97,7 @@ The resulting layout in ``_build/default/output`` will be as follows:
   - ``commonjs`` will follow `CommonJS modules <https://nodejs.org/api/modules.html>`_,
     and will produce `require` calls and export values with ``module.exports``.
 
-  - If no extension is defined, the JavaScript files generated will use ``.js``.
+  - If no extension is specified, the resulting JavaScript files will use ``.js``.
     One can specify a different extension by expanding the field, for
     example ``(module_systems (es6 mjs))``.
 

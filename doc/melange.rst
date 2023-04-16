@@ -182,15 +182,8 @@ Libraries
 
 Adding Melange support to Dune libraries is done as follows:
 
-- ``(modes melange)``: it is required to add ``melange`` to the library
-  ``modes`` field.
-
-  - If the library has no ``modes`` field defined yet, one can use the
-    :doc:`reference/ordered-set-language` to do so: ``(modes :standard melange)``
-
-  - If the library already had some value for the ``modes`` field, ``melange``
-    mode can be appended to the list of modes, for example:
-    ``(modes byte native melange)``
+- ``(modes melange)``: adding ``melange`` to  ``modes`` is required. This
+   field also supports the :doc:`reference/ordered-set-language`.
 
 - ``(melange.runtime_deps <deps>)``: optionally, define any runtime dependencies
   using ``melange.runtime_deps``. This field is analog to the ``runtime_deps``

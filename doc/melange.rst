@@ -280,7 +280,7 @@ file structure:
   ├── dune-project
   └── hello.ml
 
-The resulting ``.js`` target can now be run:
+The resulting JavaScript can now be run:
 
 .. code:: bash
 

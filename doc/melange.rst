@@ -17,7 +17,7 @@ be installed with opam:
 
    $ opam install melange
 
-Dune can build projects using Melange, and it allows the user to generate
+Dune can build projects using Melange, and it allows the user to produce
 JavaScript files by defining a :ref:`melange-emit` stanza. Dune libraries can be
 used with Melange by leveraging the ``(modes melange)`` field in the
 :ref:`library` stanza.

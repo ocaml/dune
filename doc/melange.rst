@@ -114,7 +114,7 @@ The resulting layout in ``_build/default/output`` will be as follows:
   restrict this list by using an explicit ``(modules <modules>)`` field.
   ``<modules>`` uses the :doc:`reference/ordered-set-language`, where elements
   are module names and don't need to start with an uppercase letter. For
-  instance, to exclude module ``Foo``, use ``(modules (:standard \ foo))``.
+  instance, to exclude module ``Foo``, use ``(modules :standard \ foo)``.
 
 - ``(libraries <library-dependencies>)`` specifies Melange library dependencies.
   Melange libraries can only use the simple form, like

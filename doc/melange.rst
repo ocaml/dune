@@ -210,8 +210,9 @@ are used across them. As an example:
    (target app2)
    (libraries foo))
    
-The JavaScript artifacts for library ``foo`` will end up duplicated in the
-``_build`` folder, both in ``_build/default/app1`` and ``_build/default/app2``.
+The JavaScript artifacts for library ``foo`` will be emitted twice in the 
+``_build`` folder. They will be present under ``_build/default/app1``
+and ``_build/default/app2``.
 
 This can have unexpected impact on bundle size when using tools like Webpack or
 Esbuild, as these tools will not be able to see shared library code as such,

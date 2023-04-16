@@ -127,19 +127,14 @@ The resulting layout in ``_build/default/output`` will be as follows:
     the ``melange`` mode (see the section about libraries below).
 
 
-- ``(package <package>)`` allows the user to define the JavaScript package
-   that the artifacts produced by ``melange.emit`` belong to. This
-  is useful when the ``libraries`` field includes a public library, as it helps
-  making sure that the modules from the ``libraries`` and the ``modules`` fields
-  that are part of the ``melange.emit`` stanza belong to the same resulting
-  JavaScript package.
+- ``(package <package>)`` allows the user to define the JavaScript package to
+  which the artifacts produced by the ``melange.emit`` stanza will belong.
 
 - ``(runtime_deps <paths-to-deps>)`` specifies dependencies that should be copied to
   the build folder together with the ``.js`` files generated from the sources.
   These runtime dependencies can include assets like CSS files, images, fonts,
-  external JavaScript files, etc. Several dependencies can be defined in the
-  same field using any of the available formats in the
-  :doc:`concepts/dependency-spec`. For example
+  external JavaScript files, etc. ``runtime_deps`` adhere to the
+  formats in :doc:`concepts/dependency-spec`. For example
   ``(runtime_deps ./path/to/file.css (glob_file_rec ./fonts/*))``.
 
 - ``(emit_stdlib <bool>)`` allows the user to specify whether the Melange
@@ -276,7 +271,8 @@ file structure:
   .
   ├── _build
   │   └── default
-  │       └── hello.js
+  │       └── output
+  │           └── hello.js
   ├── dune
   ├── dune-project
   └── hello.ml

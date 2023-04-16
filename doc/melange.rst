@@ -123,7 +123,7 @@ The resulting layout in ``_build/default/output`` will be as follows:
   - The ``re_export`` form is not supported.
 
   - All the libraries included in ``<library-dependencies>`` have to support
-    ``melange`` mode (see the section about libraries below).
+    the ``melange`` mode (see the section about libraries below).
 
 
 - ``(package <package>)`` allows the user to define the JavaScript package to

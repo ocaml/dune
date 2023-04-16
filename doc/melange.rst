@@ -161,8 +161,8 @@ The resulting layout in ``_build/default/output`` will be as follows:
   The dependency specification is described in the :doc:`concepts/dependency-spec`
   section.
 
-- ``(compile_flags <flags>)`` specifies compilation flags to be passed to
-  ``melc``, the Melange compiler that produces the ``.js`` artifacts.
+- ``(compile_flags <flags>)`` specifies compilation flags specific to
+  ``melc``, the main Melange executable.
   ``<flags>`` is described in detail in the
   :doc:`reference/ordered-set-language` section. It also supports
   ``(:include ...)`` forms. The default value for this field is taken from the

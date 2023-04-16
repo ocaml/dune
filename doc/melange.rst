@@ -226,7 +226,7 @@ Faster Builds with ``subdir`` and ``dirs`` Stanzas
 Melange libraries might be installed from the ``npm`` package repository,
 together with other JavaScript packages. To avoid having Dune inspect
 unnecessary folders in ``node_modules``, it is recommended to explicitly
-include those folders that are relevant for Melange builds.
+include only the folders that are relevant for Melange builds.
 
 This can be accomplished by combining :ref:`subdir` and :ref:`dune-subdirs`
 stanzas in a ``dune`` file and by co-locating this file together with the

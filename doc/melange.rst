@@ -261,7 +261,7 @@ Next, write a :ref:`dune<dune-files>` file with a :ref:`melange-emit` stanza:
   (melange.emit
    (target output))
 
-Finally, add a ``.ml`` source file to build:
+Finally, add a source file to build:
 
 .. code:: bash
 

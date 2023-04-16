@@ -98,8 +98,8 @@ The resulting layout in ``_build/default/output`` will be as follows:
     and will produce `require` calls and export values with ``module.exports``.
 
   - If no extension is specified, the resulting JavaScript files will use ``.js``.
-    One can specify a different extension by expanding the field, for
-    example ``(module_systems (es6 mjs))``.
+    You can specify a different extension with a pair
+    ``(<module_system> <extension>)``, e.g. ``(module_systems (es6 mjs))``.
 
   - Multiple module systems can be used in the same field, as long as their
     extensions are different, for example

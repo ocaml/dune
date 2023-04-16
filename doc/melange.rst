@@ -29,8 +29,8 @@ in the :ref:`dune-project` file:
 
     (using melange 0.1)
 
-to a :ref:`dune-project` file enables the use of ``melange.emit`` stanzas and
-the ``(modes melange)`` field in :ref:`library` stanzas.
+Once that's in place, you can use the Melange mode in :ref:`library` stanzas
+``melange.emit`` stanzas.
 
 .. _melange-emit:
 

@@ -180,8 +180,7 @@ The resulting layout in ``_build/default/output`` will be as follows:
 Libraries
 =========
 
-Melange is compatible with Dune libraries that support it. When adding support
-for Melange in libraries, two fields are involved:
+Adding Melange support to Dune libraries is done as follows:
 
 - ``(modes melange)``: it is required to add ``melange`` to the library
   ``modes`` field.

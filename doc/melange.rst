@@ -6,6 +6,11 @@
 JavaScript Compilation With Melange
 ***********************************
 
+.. warning::
+
+   Melange support is not officially released, and any bugs or missing
+   functionality should be reported as a GitHub issue.
+
 Introduction
 ============
 
@@ -38,7 +43,7 @@ Libraries
 Adding Melange support to Dune libraries is done as follows:
 
 - ``(modes melange)``: adding ``melange`` to  ``modes`` is required. This
-   field also supports the :doc:`reference/ordered-set-language`.
+  field also supports the :doc:`reference/ordered-set-language`.
 
 - ``(melange.runtime_deps <deps>)``: optionally, define any runtime dependencies
   using ``melange.runtime_deps``. This field is analog to the ``runtime_deps``
@@ -48,8 +53,6 @@ Adding Melange support to Dune libraries is done as follows:
 
 melange.emit
 ============
-
-.. versionadded:: 3.8
 
 The ``melange.emit`` stanza allows the user to produce JavaScript files
 from Melange libraries and entry-point modules. It's similar to the OCaml

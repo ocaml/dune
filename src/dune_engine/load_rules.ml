@@ -207,7 +207,8 @@ let remove_old_artifacts ~dir ~(rules_here : Loaded.rules_here)
             match subdirs_to_keep with
             | All -> ()
             | These set ->
-              if not (String.Set.mem set fn) then Path.rm_rf (Path.build path))
+              if not (Filename.Set.mem set fn) then Path.rm_rf (Path.build path)
+            )
           | _ -> Path.unlink (Path.build path))
 
 (* We don't remove files in there as we don't know upfront if they are stale or
@@ -224,7 +225,7 @@ let remove_old_sub_dirs_in_anonymous_actions_dir ~dir
           match subdirs_to_keep with
           | All -> ()
           | These set ->
-            if not (String.Set.mem set fn) then Path.rm_rf (Path.build path))
+            if not (Filename.Set.mem set fn) then Path.rm_rf (Path.build path))
         | _ -> ())
 
 let no_rule_found ~loc fn =
@@ -348,7 +349,7 @@ end = struct
   let compile_rules ~dir ~source_dirs rules =
     let file_targets, directory_targets =
       let check_for_source_dir_conflict rule target =
-        if String.Set.mem source_dirs (Path.Build.basename target) then
+        if Filename.Set.mem source_dirs (Path.Build.basename target) then
           report_rule_src_dir_conflict dir target rule
       in
       List.map rules ~f:(fun rule ->
@@ -479,12 +480,12 @@ end = struct
         | Regular (_ctx, sub_dir) -> Source_tree.find_dir sub_dir
       in
       corresponding_source_dir ~dir >>| function
-      | None -> String.Set.empty
+      | None -> Filename.Set.empty
       | Some dir -> Source_tree.Dir.sub_dir_names dir
 
     let allowed_dirs ~dir ~subdir : restriction Memo.t =
       let+ subdirs = source_subdirs_of_build_dir ~dir in
-      if String.Set.mem subdirs subdir then Unrestricted
+      if Filename.Set.mem subdirs subdir then Unrestricted
       else
         Restricted
           (Memo.Lazy.create ~name:"allowed_dirs" (fun () ->
@@ -693,22 +694,22 @@ end = struct
       (* Compute the set of sources and targets promoted to the source tree that
          must not be copied to the build directory. *)
       let source_files_to_ignore, source_dirnames_to_ignore =
-        List.fold_left rules ~init:(Path.Build.Set.empty, String.Set.empty)
+        List.fold_left rules ~init:(Path.Build.Set.empty, Filename.Set.empty)
           ~f:(fun (acc_files, acc_dirnames) { Rule.targets; mode; loc; _ } ->
             let target_filenames =
               Path.Build.Set.to_list_map ~f:Path.Build.basename targets.files
-              |> String.Set.of_list
+              |> Filename.Set.of_list
             in
             let target_dirnames =
               Path.Build.Set.to_list_map ~f:Path.Build.basename targets.dirs
-              |> String.Set.of_list
+              |> Filename.Set.of_list
             in
             (* Check if this rule defines any file targets that conflict with
                internal Dune directories listed in [build_dir_only_sub_dirs]. We
                don't check directory targets as these are already checked
                earlier. *)
             (match
-               String.Set.choose
+               Filename.Set.choose
                  (Subdir_set.inter_set build_dir_only_sub_dirs target_filenames)
              with
             | None -> ()
@@ -717,7 +718,7 @@ end = struct
             match mode with
             | Ignore_source_files ->
               ( Path.Build.Set.union acc_files targets.files
-              , String.Set.union acc_dirnames target_dirnames )
+              , Filename.Set.union acc_dirnames target_dirnames )
             | Promote { only; _ } ->
               (* Note that the [only] predicate applies to the files inside the
                  directory targets rather than to directory names themselves. *)
@@ -732,18 +733,18 @@ end = struct
                   Path.Build.Set.filter targets.files ~f:is_promoted
               in
               ( Path.Build.Set.union acc_files target_files
-              , String.Set.union acc_dirnames target_dirnames )
+              , Filename.Set.union acc_dirnames target_dirnames )
             | Standard | Fallback -> (acc_files, acc_dirnames))
       in
       (* Take into account the source files *)
       let* to_copy, source_dirs =
         match context_or_install with
-        | Install _ -> Memo.return (None, String.Set.empty)
+        | Install _ -> Memo.return (None, Filename.Set.empty)
         | Context context_name ->
           let+ files, subdirs =
             let module Source_tree = (val (Build_config.get ()).source_tree) in
             Source_tree.find_dir sub_dir >>| function
-            | None -> (Path.Source.Set.empty, String.Set.empty)
+            | None -> (Path.Source.Set.empty, Filename.Set.empty)
             | Some dir ->
               (Source_tree.Dir.file_paths dir, Source_tree.Dir.sub_dir_names dir)
           in
@@ -759,7 +760,7 @@ end = struct
             in
             Path.Source.Set.diff files source_files_to_ignore
           in
-          let subdirs = String.Set.diff subdirs source_dirnames_to_ignore in
+          let subdirs = Filename.Set.diff subdirs source_dirnames_to_ignore in
           if Path.Source.Set.is_empty files then (None, subdirs)
           else
             let ctx_path = Context_name.build_dir context_name in
@@ -817,7 +818,7 @@ end = struct
         let subdirs_to_keep =
           match build_dir_only_sub_dirs with
           | All -> Subdir_set.All
-          | These set -> These (String.Set.union source_dirs set)
+          | These set -> These (Filename.Set.union source_dirs set)
         in
         let+ allowed_grand_descendants_of_parent =
           match allowed_by_parent with

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681760953040,
+  "lastUpdate": 1681761454930,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -13976,6 +13976,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.208671806699996",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8c31282da084b6686d10738d5ac211fe25d688bd",
+          "message": "refactor: use Filename.Set in rule loading (#7561)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-17T12:36:07-07:00",
+          "tree_id": "9d0bf41da95424e86a2c55aadca95a03a45b3d61",
+          "url": "https://github.com/ocaml/dune/commit/8c31282da084b6686d10738d5ac211fe25d688bd"
+        },
+        "date": 1681761453990,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.620945997613326",
             "unit": "seconds"
           }
         ]

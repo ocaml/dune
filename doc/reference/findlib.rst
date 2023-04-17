@@ -38,7 +38,7 @@ Libraries installed by the compiler are a special case: when the OCaml compiler
 is older than version 5.0, it does not include ``META`` files. In that
 situation, Dune uses its own internal database.
 
-How Dune Generates ``META`` files
+How Dune Generates ``META`` Files
 ---------------------------------
 
 When Dune builds a library, it generates a corresponding ``META`` file

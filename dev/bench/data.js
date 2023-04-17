@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681755967365,
+  "lastUpdate": 1681756456558,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -13947,6 +13947,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.80233451524",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "distinct": true,
+          "id": "9f1249084bfe357496034d7d994fd8ae358fca08",
+          "message": "fix: use the current scope in expander if there's no cross-context\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-04-17T11:09:38-07:00",
+          "tree_id": "d7a120e36563de7a637a1ca4fb5f78925fa554fd",
+          "url": "https://github.com/ocaml/dune/commit/9f1249084bfe357496034d7d994fd8ae358fca08"
+        },
+        "date": 1681756455386,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.208671806699996",
             "unit": "seconds"
           }
         ]

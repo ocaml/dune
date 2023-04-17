@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681761812604,
+  "lastUpdate": 1681763674676,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -31377,6 +31377,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.063432925833336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "df3c8543ac1fe2c042fbab7a6b6dd24428c16aab",
+          "message": "fix: delete stale directory targets (#7564)\n\nFor unsandboxed rules, directory targets weren't being cleared when\r\nrunning rules were interrupted. This PR treats files and directories in\r\nthe same way.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-17T13:16:09-07:00",
+          "tree_id": "7f1c951660bbc0eec5a939a1cfa847fba57b033c",
+          "url": "https://github.com/ocaml/dune/commit/df3c8543ac1fe2c042fbab7a6b6dd24428c16aab"
+        },
+        "date": 1681763671610,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "34.07194331605999",
             "unit": "seconds"
           }
         ]

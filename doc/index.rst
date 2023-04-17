@@ -39,6 +39,7 @@ Welcome to Dune's Documentation!
    reference/cli
    reference/preprocessing-spec
    reference/packages
+   reference/findlib
    concepts/scopes
    concepts/variables
    concepts/dependency-spec
@@ -71,8 +72,6 @@ Welcome to Dune's Documentation!
 .. toctree::
    :caption: Advanced topics
 
-   advanced/meta-file-generation
-   advanced/findlib-integration
    advanced/findlib-dynamic
    advanced/profiling-dune
    advanced/package-version

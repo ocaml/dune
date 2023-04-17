@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681619436701,
+  "lastUpdate": 1681755967365,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -31145,6 +31145,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.26128215284",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "distinct": true,
+          "id": "9f1249084bfe357496034d7d994fd8ae358fca08",
+          "message": "fix: use the current scope in expander if there's no cross-context\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-04-17T11:09:38-07:00",
+          "tree_id": "d7a120e36563de7a637a1ca4fb5f78925fa554fd",
+          "url": "https://github.com/ocaml/dune/commit/9f1249084bfe357496034d7d994fd8ae358fca08"
+        },
+        "date": 1681755964411,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.332683332066665",
             "unit": "seconds"
           }
         ]

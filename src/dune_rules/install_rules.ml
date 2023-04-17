@@ -458,7 +458,7 @@ end = struct
           | Some dir ->
             let pkg_dir = Path.Build.append_source ctx.build_dir pkg_dir in
             Source_tree.Dir.files dir
-            |> String.Set.fold ~init ~f:(fun fn acc ->
+            |> Filename.Set.fold ~init ~f:(fun fn acc ->
                    if is_odig_doc_file fn then
                      let odig_file = Path.Build.relative pkg_dir fn in
                      let entry = Install.Entry.make Doc ~kind:`File odig_file in

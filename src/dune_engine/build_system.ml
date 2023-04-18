@@ -892,7 +892,8 @@ end = struct
       | Some digest -> (digest, File_target)
       | None -> (
         match
-          Cached_digest.build_file ~allow_dirs:true ~allow_broken_symlinks:false
+          (* TODO: handle broken symlinks *)
+          Cached_digest.build_file ~allow_dirs:false ~allow_broken_symlinks:true
             path
         with
         | Ok digest ->

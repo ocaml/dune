@@ -235,9 +235,9 @@ let refresh_without_removing_write_permissions ~allow_dirs
       | exception Unix.Unix_error (ENOENT, _, _) -> (
         (* Test if this is a broken symlink for better error messages. *)
         match Path.Untracked.lstat_exn path with
-        | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
         | stats when allow_broken_symlinks ->
           refresh stats ~allow_dirs ~allow_broken_symlinks path
+        | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
         | _stats_so_must_be_a_symlink -> Broken_symlink))
 
 (* CR-someday amokhov: We do [lstat] followed by [stat] only because we do not
@@ -339,9 +339,13 @@ let peek_file ~allow_dirs ~allow_broken_symlinks path =
             digest_result))
 
 let peek_or_refresh_file ~allow_dirs ~allow_broken_symlinks path =
+  Printf.printf "peek_or_refresh_file:\n - bs: %b\n - path: %s\n"
+    allow_broken_symlinks
+    (Path.to_dyn path |> Dyn.to_string);
   match peek_file ~allow_dirs ~allow_broken_symlinks path with
   | Some digest_result -> digest_result
   | None ->
+    Printf.printf "refresh_without_removing case\n";
     refresh_without_removing_write_permissions ~allow_dirs
       ~allow_broken_symlinks path
 

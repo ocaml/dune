@@ -22,7 +22,12 @@ module Direct_impl : Digest_impl = struct
       | fd -> fd
       | exception Unix.Unix_error (Unix.EACCES, _, _) ->
         raise (Sys_error (sprintf "%s: Permission denied" file))
-      | exception exn -> reraise exn
+      | exception exn ->
+        (* TODO Somehow have a workaround for broken symlinks *)
+        (* Try again for broken symlinks before failing. We need to use O_PATH
+           and O_NOFOLLOW here but Unix from OCaml stdlib doesn't have those :( *)
+        Printf.printf "exn: %s\n" (Printexc.to_string exn);
+        reraise exn
     in
     Exn.protectx fd ~f:md5_fd ~finally:Unix.close
 
@@ -130,6 +135,12 @@ let path_with_stats ~allow_dirs ~allow_broken_symlinks path
     (stats : Stats_for_digest.t) : Path_digest_result.t =
   let rec loop path (stats : Stats_for_digest.t) =
     match stats.st_kind with
+    | S_LNK when allow_broken_symlinks ->
+      Printf.printf "here\n";
+      Dune_filesystem_stubs.Unix_error.Detailed.catch
+        (file_with_executable_bit ~executable:false)
+        path
+      |> Path_digest_result.of_result
     | S_LNK ->
       let executable =
         Path.Permissions.test Path.Permissions.execute stats.st_perm

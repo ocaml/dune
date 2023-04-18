@@ -11,7 +11,7 @@ let%expect_test "directory digest version" =
   let dir = Temp.create Dir ~prefix:"digest-tests" ~suffix:"" in
   let stats = { Digest.Stats_for_digest.st_kind = S_DIR; st_perm = 1 } in
   (match
-     Digest.path_with_stats ~allow_dirs:true ~allow_broken_symlinks:false dir
+     Digest.path_with_stats ~allow_dirs:true ~allow_broken_symlinks:true dir
        stats
    with
   | Ok digest ->

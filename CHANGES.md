@@ -158,7 +158,7 @@ Unreleased
 
 - In `(executable)`, `(public_name -)` is now equivalent to no `(public_name)`.
   This is consistent with how `(executables)` handles this field.
-  (#...., fixes #5852, @emillon)
+  (#7576 , fixes #5852, @emillon)
 
 3.7.0 (2023-02-17)
 ------------------

@@ -73,8 +73,8 @@ module Compile : sig
 
   module Resolved_select : sig
     type t =
-      { src_fn : string Resolve.t
-      ; dst_fn : string
+      { src_fn : Filename.t Resolve.t
+      ; dst_fn : Filename.t
       }
   end
 

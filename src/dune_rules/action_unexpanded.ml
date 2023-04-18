@@ -491,7 +491,6 @@ let expand_no_targets t ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
   in
   let* { Action_builder.With_targets.build; targets } =
     let context = Expander.context expander in
-    (* ignore chdir; *)
     expand ~context t
     |> Action_expander.run ~chdir ~targets_dir:None ~expander
     |> Action_builder.of_memo

@@ -126,3 +126,11 @@ module V1 = struct
 
   let connect_chan = connect_chan
 end
+
+module Private = struct
+  open Dune_rpc_private
+  module Client = Client.Make (Fiber) (Chan)
+  module Where = Where.Make (Fiber) (IO)
+
+  let connect_chan = connect_chan
+end

@@ -47,7 +47,8 @@ module Includes = struct
           let implements =
             Option.is_some (Lib_info.implements (Lib.info lib))
           in
-          if implements then true
+          let virtual_ = Option.is_some (Lib_info.virtual_ (Lib.info lib)) in
+          if implements || virtual_ then true
           else
             let entry_module_names =
               (match Lib.Map.find lib_to_entry_modules_map lib with
@@ -62,7 +63,7 @@ module Includes = struct
                       (flag_open_present
                          (Module_name.to_string entry_module_name)
                          flags)
-                  then (
+                  then
                     let top_c_modules =
                       match
                         Module_name.Map.find lib_top_module_map
@@ -93,9 +94,8 @@ module Includes = struct
                                  Module_name.equal entry_module_name
                                    (Module.name top_c_mod)))
                     in
-                     
-                      
-                    keep)
+
+                    keep
                   else true)
             else true)
 

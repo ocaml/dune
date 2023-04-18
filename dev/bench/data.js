@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681764411162,
+  "lastUpdate": 1681821035806,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -31435,6 +31435,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "34.07194331605999",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b7136676eecd775d21d55d2726fbd156172819c1",
+          "message": "doc: add a lexer for opam files (#7574)\n\nIt does not cover the whole opam syntax but is good enough to support\r\nthe few examples we have.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-04-18T14:13:22+02:00",
+          "tree_id": "580487b83f581826120a365216e35e77b25b8f94",
+          "url": "https://github.com/ocaml/dune/commit/b7136676eecd775d21d55d2726fbd156172819c1"
+        },
+        "date": 1681821032510,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "27.88190141552",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
-Unreleased
-----------
+3.8.0~alpha1 (2023-04-18)
+-------------------------
 
 - When a rule's action is interrupted, delete any leftover directory targets.
   This is consistent with how we treat file targets. (@rgrinberg, 7564)

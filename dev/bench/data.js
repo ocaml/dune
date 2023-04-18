@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681852336167,
+  "lastUpdate": 1681852728705,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -27519,6 +27519,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8858427531599997",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d7d21b3c67e50a8cf625a4d9c15a18ba6402a18f",
+          "message": "copy_file_portable: use binary mode to avoid corruption (#7579)\n\nSigned-off-by: nojebar <nicolas.ojeda.bar@lexifi.com>",
+          "timestamp": "2023-04-18T22:45:22+02:00",
+          "tree_id": "944caf080df6c385da0b7301803e5b7a7220bafb",
+          "url": "https://github.com/ocaml/dune/commit/d7d21b3c67e50a8cf625a4d9c15a18ba6402a18f"
+        },
+        "date": 1681852727578,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "75.40453939075333",
             "unit": "seconds"
           }
         ]

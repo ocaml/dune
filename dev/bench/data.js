@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681822107382,
+  "lastUpdate": 1681822344563,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -14063,6 +14063,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "46.68947536889334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "85bd731d4820dafd68083336372b845a8bc40915",
+          "message": "doc: fix missing bracket (#7575)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>\r\nCo-authored-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-04-18T14:26:27+02:00",
+          "tree_id": "fef2e4e92689268185e81715a87b596855c573d3",
+          "url": "https://github.com/ocaml/dune/commit/85bd731d4820dafd68083336372b845a8bc40915"
+        },
+        "date": 1681822343011,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "43.64582238414667",
             "unit": "seconds"
           }
         ]

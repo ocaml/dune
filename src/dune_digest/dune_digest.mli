@@ -57,6 +57,9 @@ end
     - If it's a directory and [allow_dirs = true], the function computes the
       digest of all contained filename/digest pairs, recursively.
 
+    - If it's a broken symlink and [allow_broken_symlinks = true], the function
+      computes the digest of the symlink rather than failing.
+
     - Otherwise, the function returns [Unexpected_kind].
 
     Note that this interface is prone to races: the provided [Stats_for_digest]
@@ -64,7 +67,11 @@ end
     even though you've just successfully run [Path.stat] on it. The call sites
     are expected to gracefully handle such races. *)
 val path_with_stats :
-  allow_dirs:bool -> Path.t -> Stats_for_digest.t -> Path_digest_result.t
+     allow_dirs:bool
+  -> allow_broken_symlinks:bool
+  -> Path.t
+  -> Stats_for_digest.t
+  -> Path_digest_result.t
 
 (** Digest a file taking the [executable] bit into account. Should not be called
     on a directory. *)

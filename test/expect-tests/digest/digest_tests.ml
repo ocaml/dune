@@ -10,7 +10,10 @@ let%expect_test "directory digest version" =
   let expected = "a743ec66ce913ff6587a3816a8acc6ea" in
   let dir = Temp.create Dir ~prefix:"digest-tests" ~suffix:"" in
   let stats = { Digest.Stats_for_digest.st_kind = S_DIR; st_perm = 1 } in
-  (match Digest.path_with_stats ~allow_dirs:true dir stats with
+  (match
+     Digest.path_with_stats ~allow_dirs:true ~allow_broken_symlinks:false dir
+       stats
+   with
   | Ok digest ->
     let digest = Digest.to_string digest in
     if String.equal digest expected then print_endline "[PASS]"
@@ -29,7 +32,10 @@ let%expect_test "directories with symlinks" =
   Path.mkdir_p sub;
   Unix.symlink "bar" (Path.to_string (Path.relative dir "foo"));
   Unix.symlink "bar" (Path.to_string (Path.relative sub "foo"));
-  (match Digest.path_with_stats ~allow_dirs:true dir stats with
+  (match
+     Digest.path_with_stats ~allow_dirs:true ~allow_broken_symlinks:false dir
+       stats
+   with
   | Ok _ -> print_endline "[PASS]"
   | Unexpected_kind -> print_endline "[FAIL] unexpected kind"
   | Unix_error _ -> print_endline "[FAIL] unable to calculate digest");

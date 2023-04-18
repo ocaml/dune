@@ -22,23 +22,38 @@ end
 (** Digest the contents of a build artifact.
 
     If [allow_dirs = false], this function returns [Unexpected_kind] if the path
-    points to a directory. *)
-val build_file : allow_dirs:bool -> Path.Build.t -> Digest_result.t
+    points to a directory.
+
+    If [allow_broken_symlinks = false], this function returns [Ok] for broken
+    symlinks. *)
+val build_file :
+     allow_dirs:bool
+  -> allow_broken_symlinks:bool
+  -> Path.Build.t
+  -> Digest_result.t
 
 (** Same as [build_file], but forces the digest of the file to be re-computed.
 
     If [remove_write_permissions] is true, also remove write permissions on the
-    file. *)
+    file.
+
+    If [allow_broken_symlinks = false], this function returns [Ok] for broken
+    symlinks. *)
 val refresh :
      allow_dirs:bool
   -> remove_write_permissions:bool
+  -> allow_broken_symlinks:bool
   -> Path.Build.t
   -> Digest_result.t
 
 module Untracked : sig
   (** Digest the contents of a source or external file. This function doesn't
-      track the source file. For a tracked version, see [fs_memo.mli]. *)
-  val source_or_external_file : Path.t -> Digest_result.t
+      track the source file. For a tracked version, see [fs_memo.mli].
+
+      If [allow_broken_symlinks = false], this function returns [Ok] for broken
+      symlinks. *)
+  val source_or_external_file :
+    allow_broken_symlinks:bool -> Path.t -> Digest_result.t
 
   (** Invalidate the cached [stat] value. This causes the subsequent call to
       [source_or_external_file] to incur an additional [stat] call. *)

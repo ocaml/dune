@@ -198,9 +198,9 @@ module Digest_result = struct
     | Error exn -> Variant ("Error", [ String (Printexc.to_string exn) ])
 end
 
-let digest_path_with_stats ~allow_dirs path stats =
+let digest_path_with_stats ~allow_dirs ~allow_broken_symlinks path stats =
   match
-    Digest.path_with_stats ~allow_dirs path
+    Digest.path_with_stats ~allow_dirs ~allow_broken_symlinks path
       (Digest.Stats_for_digest.of_unix_stats stats)
   with
   | Ok digest -> Digest_result.Ok digest
@@ -208,11 +208,13 @@ let digest_path_with_stats ~allow_dirs path stats =
   | Unix_error (ENOENT, _, _) -> No_such_file
   | Unix_error other_error -> Unix_error other_error
 
-let refresh ~allow_dirs stats path =
+let refresh ~allow_dirs ~allow_broken_symlinks stats path =
   (* Note that by the time we reach this point, [stats] may become stale due to
      concurrent processes modifying the [path], so this function can actually
      return [No_such_file] even if the caller managed to obtain the [stats]. *)
-  let result = digest_path_with_stats ~allow_dirs path stats in
+  let result =
+    digest_path_with_stats ~allow_dirs ~allow_broken_symlinks path stats
+  in
   Digest_result.iter result ~f:(fun digest -> set_with_stat path digest stats);
   result
 
@@ -224,15 +226,18 @@ let catch_fs_errors f =
   | exception exn -> Error exn
 
 (* Here we make only one [stat] call on the happy path. *)
-let refresh_without_removing_write_permissions ~allow_dirs path =
+let refresh_without_removing_write_permissions ~allow_dirs
+    ~allow_broken_symlinks path =
   catch_fs_errors (fun () ->
       match Path.Untracked.stat_exn path with
-      | stats -> refresh stats ~allow_dirs path
+      | stats -> refresh stats ~allow_dirs ~allow_broken_symlinks path
       | exception Unix.Unix_error (ELOOP, _, _) -> Cyclic_symlink
       | exception Unix.Unix_error (ENOENT, _, _) -> (
         (* Test if this is a broken symlink for better error messages. *)
         match Path.Untracked.lstat_exn path with
         | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
+        | stats when allow_broken_symlinks ->
+          refresh stats ~allow_dirs ~allow_broken_symlinks path
         | _stats_so_must_be_a_symlink -> Broken_symlink))
 
 (* CR-someday amokhov: We do [lstat] followed by [stat] only because we do not
@@ -240,7 +245,8 @@ let refresh_without_removing_write_permissions ~allow_dirs path =
    be outside of the build directory and not under out control. It seems like it
    should be possible to avoid paying for two system calls ([lstat] and [stat])
    here, e.g., by telling the subsequent [chmod] to not follow symlinks. *)
-let refresh_and_remove_write_permissions ~allow_dirs path =
+let refresh_and_remove_write_permissions ~allow_dirs ~allow_broken_symlinks path
+    =
   catch_fs_errors (fun () ->
       match Path.Untracked.lstat_exn path with
       | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
@@ -248,28 +254,39 @@ let refresh_and_remove_write_permissions ~allow_dirs path =
         match stats.st_kind with
         | S_LNK -> (
           match Path.Untracked.stat_exn path with
-          | stats -> refresh stats ~allow_dirs:false path
+          | stats -> refresh stats ~allow_dirs:false ~allow_broken_symlinks path
           | exception Unix.Unix_error (ELOOP, _, _) -> Cyclic_symlink
-          | exception Unix.Unix_error (ENOENT, _, _) -> Broken_symlink)
+          | exception Unix.Unix_error (ENOENT, _, _) -> (
+            (* When we have a broken symlink we fallback on [Unix.lstat] if we
+               allow for them. *)
+            match Path.Untracked.lstat_exn path with
+            | stats when allow_broken_symlinks ->
+              refresh stats ~allow_dirs:false ~allow_broken_symlinks path
+            | _ -> Broken_symlink))
         | S_REG ->
           let perm =
             Path.Permissions.remove Path.Permissions.write stats.st_perm
           in
           Path.chmod ~mode:perm path;
           (* we know it's a file, so we don't allow directories for safety *)
-          refresh ~allow_dirs:false { stats with st_perm = perm } path
+          refresh ~allow_dirs:false ~allow_broken_symlinks
+            { stats with st_perm = perm }
+            path
         | _ ->
           (* CR-someday amokhov: Shall we proceed if [stats.st_kind = S_DIR]?
              What about stranger kinds like [S_SOCK]? *)
-          refresh ~allow_dirs stats path))
+          refresh ~allow_dirs ~allow_broken_symlinks stats path))
 
-let refresh ~allow_dirs ~remove_write_permissions path =
+let refresh ~allow_dirs ~remove_write_permissions ~allow_broken_symlinks path =
   let path = Path.build path in
   match remove_write_permissions with
-  | false -> refresh_without_removing_write_permissions ~allow_dirs path
-  | true -> refresh_and_remove_write_permissions ~allow_dirs path
+  | false ->
+    refresh_without_removing_write_permissions ~allow_dirs
+      ~allow_broken_symlinks path
+  | true ->
+    refresh_and_remove_write_permissions ~allow_dirs ~allow_broken_symlinks path
 
-let peek_file ~allow_dirs path =
+let peek_file ~allow_dirs ~allow_broken_symlinks path =
   let cache = Lazy.force cache in
   match Path.Table.find cache.table path with
   | None -> None
@@ -297,7 +314,10 @@ let peek_file ~allow_dirs path =
             x.stats_checked <- cache.checked_key;
             Ok x.digest
           | Gt | Lt ->
-            let digest_result = digest_path_with_stats ~allow_dirs path stats in
+            let digest_result =
+              digest_path_with_stats ~allow_dirs ~allow_broken_symlinks path
+                stats
+            in
             Digest_result.iter digest_result ~f:(fun digest ->
                 if !Clflags.debug_digests then
                   Console.print
@@ -318,13 +338,15 @@ let peek_file ~allow_dirs path =
                 x.stats_checked <- cache.checked_key);
             digest_result))
 
-let peek_or_refresh_file ~allow_dirs path =
-  match peek_file ~allow_dirs path with
+let peek_or_refresh_file ~allow_dirs ~allow_broken_symlinks path =
+  match peek_file ~allow_dirs ~allow_broken_symlinks path with
   | Some digest_result -> digest_result
-  | None -> refresh_without_removing_write_permissions ~allow_dirs path
+  | None ->
+    refresh_without_removing_write_permissions ~allow_dirs
+      ~allow_broken_symlinks path
 
-let build_file ~allow_dirs path =
-  peek_or_refresh_file ~allow_dirs (Path.build path)
+let build_file ~allow_dirs ~allow_broken_symlinks path =
+  peek_or_refresh_file ~allow_dirs ~allow_broken_symlinks (Path.build path)
 
 let remove path =
   let path = Path.build path in

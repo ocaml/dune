@@ -891,7 +891,10 @@ end = struct
       match Path.Build.Map.find targets path with
       | Some digest -> (digest, File_target)
       | None -> (
-        match Cached_digest.build_file ~allow_dirs:true path with
+        match
+          Cached_digest.build_file ~allow_dirs:true ~allow_broken_symlinks:false
+            path
+        with
         | Ok digest ->
           (digest, Dir_target { generated_file_digests = targets })
           (* Must be a directory target *)

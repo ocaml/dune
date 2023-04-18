@@ -127,7 +127,8 @@ module Workspace_local = struct
     | Ok targets -> (
       match
         Targets.Produced.Option.mapi targets ~f:(fun target () ->
-            Cached_digest.build_file ~allow_dirs:true target
+            Cached_digest.build_file ~allow_dirs:true
+              ~allow_broken_symlinks:false target
             |> Cached_digest.Digest_result.to_option)
       with
       | Some produced_targets -> Hit produced_targets
@@ -368,7 +369,9 @@ module Shared = struct
         Execution_parameters.should_remove_write_permissions_on_generated_files
           exec_params
       in
+      (* TODO: handle broken symlinks *)
       Cached_digest.refresh ~allow_dirs:true ~remove_write_permissions
+        ~allow_broken_symlinks:false
     in
     match
       Targets.Produced.Option.mapi produced_targets ~f:(fun target () ->

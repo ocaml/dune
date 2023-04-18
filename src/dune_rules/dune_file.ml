@@ -1103,17 +1103,19 @@ module Executables = struct
 
     let has_public_name t = Option.is_some t.public
 
-    let public_name =
+    let public_name ~dash_is_none =
       located string >>| fun (loc, s) ->
       ( loc
       , match s with
-        | "-" -> None
+        | "-" -> if dash_is_none then None else Some s
         | s -> Some s )
 
     let multi_fields =
       map_validate
         (let+ names = field_o "names" (repeat1 (located string))
-         and+ pub_names = field_o "public_names" (repeat1 public_name) in
+         and+ pub_names =
+           field_o "public_names" (repeat1 (public_name ~dash_is_none:true))
+         in
          (names, pub_names))
         ~f:(fun (names, public_names) ->
           match (names, public_names) with
@@ -1130,10 +1132,12 @@ module Executables = struct
           | names, public_names -> Ok (names, public_names))
 
     let single_fields =
+      let* dune_syntax = Dune_lang.Syntax.get_exn Stanza.syntax in
+      let dash_is_none = dune_syntax >= (3, 8) in
       let+ name = field_o "name" (located string)
-      and+ public_name = field_o "public_name" (located string) in
+      and+ public_name = field_o "public_name" (public_name ~dash_is_none) in
       ( Option.map name ~f:List.singleton
-      , Option.map public_name ~f:(fun (loc, s) -> [ (loc, Some s) ]) )
+      , Option.map public_name ~f:List.singleton )
 
     let pluralize s ~multi = if multi then s ^ "s" else s
 

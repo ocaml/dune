@@ -35,7 +35,7 @@ You can declare the package as::
 
   (package
    (name frobnitz)
-   (depends lwt fmt)
+   (depends lwt fmt))
 
 Also add common metadata using ``(authors)``, ``(maintainers)``, ``(license)``,
 ``(source)``, as well as a ``(synopsis)`` and a ``(description)`` for

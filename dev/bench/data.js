@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681829740848,
+  "lastUpdate": 1681830070705,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -27345,6 +27345,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.16429920018",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f53a731fc3abbafa4c482c9967cbd5a334439be4",
+          "message": "refactor: simplify cwd when expanding actions (#7572)\n\nAdd an explicit chdir argument when expanding actions.\r\n\r\nThis makes it unnecessary to have Preprocesisng.chdir and the other\r\npost-processing Chdir actions.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-18T07:25:29-07:00",
+          "tree_id": "4a2030bc5c9f233c38c2089ac0f03468ff80c195",
+          "url": "https://github.com/ocaml/dune/commit/f53a731fc3abbafa4c482c9967cbd5a334439be4"
+        },
+        "date": 1681830069658,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.07094738772001",
             "unit": "seconds"
           }
         ]

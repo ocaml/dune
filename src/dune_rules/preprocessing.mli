@@ -31,8 +31,6 @@ val get_ppx_driver :
 
 val gen_rules : Super_context.t -> string list -> unit Memo.t
 
-val chdir : Action_unexpanded.t -> Action_unexpanded.t
-
 val action_for_pp_with_target :
      sandbox:Sandbox_config.t
   -> loc:Loc.t

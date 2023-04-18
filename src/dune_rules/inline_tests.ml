@@ -129,13 +129,12 @@ include Sub_system.Register_end_point (struct
          let action =
            let open Action_builder.With_targets.O in
            let+ actions =
-             Action_builder.with_no_targets
-               (Action_builder.all
-                  (List.filter_map backends ~f:(fun (backend : Backend.t) ->
-                       Option.map backend.info.generate_runner
-                         ~f:(fun (loc, action) ->
-                           Action_unexpanded.expand_no_targets action ~loc
-                             ~expander ~deps:[] ~what:"inline test generators"))))
+             List.filter_map backends ~f:(fun (backend : Backend.t) ->
+                 Option.map backend.info.generate_runner
+                   ~f:(fun (loc, action) ->
+                     Action_unexpanded.expand_no_targets action ~loc ~expander
+                       ~chdir:dir ~deps:[] ~what:"inline test generators"))
+             |> Action_builder.all |> Action_builder.with_no_targets
            in
            Action.Full.reduce actions
            |> Action.Full.map ~f:(Action.with_stdout_to target)
@@ -258,7 +257,7 @@ include Sub_system.Register_end_point (struct
           | Ok p -> Action_builder.path p >>> Action_builder.return action)
       and+ () = deps
       and+ () = Action_builder.path exe in
-      action
+      Action.chdir (Path.build dir) action
     in
     let flags partition : string list Action_builder.t =
       let flags =
@@ -299,15 +298,11 @@ include Sub_system.Register_end_point (struct
           match partitions_flags with
           | None -> Memo.return ()
           | Some partitions_flags ->
-            Super_context.add_rule sctx ~dir ~loc
-              (let action =
-                 let open Action_builder.O in
-                 let+ action = action mode partitions_flags in
-                 (* action is expected to run from dir *)
-                 Action.Full.make ~sandbox
-                   (Action.chdir (Path.build dir) action)
-               in
-               Action_builder.with_stdout_to partition_file action)
+            let open Action_builder.O in
+            action mode partitions_flags
+            >>| Action.Full.make ~sandbox
+            |> Action_builder.with_stdout_to partition_file
+            |> Super_context.add_rule sctx ~dir ~loc
         in
         let* runtest_alias =
           match mode with
@@ -330,9 +325,7 @@ include Sub_system.Register_end_point (struct
             List.map partitions_flags ~f:(fun p -> action mode (flags p))
             |> Action_builder.all
           and+ () = Action_builder.paths source_files in
-          let run_tests =
-            Action.chdir (Path.build dir) (Action.concurrent actions)
-          in
+          let run_tests = Action.concurrent actions in
           let diffs =
             List.map source_files ~f:(fun fn ->
                 Path.as_in_build_dir_exn fn

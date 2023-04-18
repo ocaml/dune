@@ -1,24 +1,24 @@
 How Dune integrates with opam
 =============================
 
-When instructed to do so (see :doc:`../howto/opam-file-generation`), Dune generates opam files with the following instructions:
+.. highlight:: opam
 
-.. code::
+When instructed to do so (see :doc:`../howto/opam-file-generation`), Dune generates opam files with the following instructions::
 
-   build: [
-     ["dune" "subst"] {dev}
-     [
-       "dune"
-       "build"
-       "-p"
-       name
-       "-j"
-       jobs
-       "@install"
-       "@runtest" {with-test}
-       "@doc" {with-doc}
-     ]
-   ]
+  build: [
+    ["dune" "subst"] {dev}
+    [
+      "dune"
+      "build"
+      "-p"
+      name
+      "-j"
+      jobs
+      "@install"
+      "@runtest" {with-test}
+      "@doc" {with-doc}
+    ]
+  ]
 
 Let's see what this means in detail.
 
@@ -61,9 +61,7 @@ The ``-p`` flag, shorthand for ``--release-of-packages``, is Dune's public inter
 The Targets We're Building
 --------------------------
 
-The targets are specified as:
-
-.. code::
+The targets are specified as::
 
   "@install"
   "@runtest" {with-test}
@@ -88,12 +86,10 @@ Concretely, in the next table, if the opam command on the left is executed, the 
 
 This filtering mechanism is also used to declare dependencies.
 If a package is using ``lwt`` and ``alcotest``, but the latter only in its test
-suite, its ``depends:`` field is:
+suite, its ``depends:`` field is::
 
-.. code::
-
-   "lwt"
-   "alcotest" {with-test}
+  "lwt"
+  "alcotest" {with-test}
 
 This is expanded to just ``"lwt"`` in ``opam install pkg``, but to ``"lwt"
 "alcotest"`` in ``opam install pkg --with-test``.

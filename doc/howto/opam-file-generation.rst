@@ -1,6 +1,8 @@
 How to Generate Opam Files from ``dune-project``
 ================================================
 
+.. highlight:: dune
+
 This guide will show you how to configure Dune so that it generates opam files.
 
 Declaring Package Dependencies
@@ -46,7 +48,7 @@ following the rules in :ref:`package`.
 
 For example, if your opam file looks like:
 
-.. code::
+.. code:: opam
 
    opam-version: 2.0
    authors: ["Anil Madhavapeddy" "Rudi Grinberg"]

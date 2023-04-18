@@ -502,6 +502,8 @@ And we we can run the tests:
 
   $ dune runtest --root test_lib_proj --display short
   Entering directory 'test_lib_proj'
+      ocamldep test/.test_lib_proj.eobjs/dune__exe__Test_lib_proj.impl.d
+      ocamldep test/.test_lib_proj.eobjs/dune__exe__Test_lib_proj.intf.d
         ocamlc test/.test_lib_proj.eobjs/byte/dune__exe__Test_lib_proj.{cmi,cmti}
       ocamlopt test/.test_lib_proj.eobjs/native/dune__exe__Test_lib_proj.{cmx,o}
       ocamlopt test/test_lib_proj.exe

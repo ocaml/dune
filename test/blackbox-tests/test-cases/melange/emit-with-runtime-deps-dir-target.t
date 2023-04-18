@@ -26,6 +26,7 @@ Test simple interactions between melange.emit and copy_files
   > EOF
 
   $ dune build @mel --display=short
+      ocamldep .output.mobjs/melange__Main.impl.d
           melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
           melc output/main.js
             sh some_dir

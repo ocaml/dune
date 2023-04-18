@@ -70,5 +70,7 @@ Test the argument syntax
 Test that going through the -ppx option of the compiler works
 
   $ dune build test_ppx_staged.cma
+  tool name: ocamldep
+  args:--as-ppx -arg1 -arg2 -arg3=Oreo -foo bar Snickerdoodle --cookie france="Petit Beurre" --cookie italy="Biscotti" --cookie library-name="test_ppx_staged"
   tool name: ocamlc
   args:--as-ppx -arg1 -arg2 -arg3=Oreo -foo bar Snickerdoodle --cookie france="Petit Beurre" --cookie italy="Biscotti" --cookie library-name="test_ppx_staged"

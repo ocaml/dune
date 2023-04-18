@@ -15,3 +15,5 @@ necessary.
 
 We check to see if ocamldep artifacts have been created:
   $ find _build/default -name "*.all-deps" -or -name "*.d"
+  _build/default/.foo.eobjs/dune__exe__Foo.impl.all-deps
+  _build/default/.foo.eobjs/dune__exe__Foo.impl.d

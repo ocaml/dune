@@ -30,9 +30,9 @@ elsewhere.
   File "dune", line 5, characters 7-10:
   5 |  (name foo))
              ^^^
-  Error: No rule found for .foo.eobjs/native/dune__exe__Foo.cmx
+  Error: No rule found for .foo.eobjs/dune__exe__Foo.impl.all-deps
   File "dune", line 5, characters 7-10:
   5 |  (name foo))
              ^^^
-  Error: No rule found for .foo.eobjs/native/dune__exe__Foo.o
+  Error: No rule found for .foo.eobjs/dune__exe__Foo.impl.ext-deps
   [1]

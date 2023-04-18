@@ -15,6 +15,7 @@ Custom alias for the cinaps
 
   $ dune build @foo --display short
         cinaps .cinaps.a7811055/cinaps.ml-gen
+      ocamldep .cinaps.a7811055/.cinaps.eobjs/dune__exe__Cinaps.impl.d
         ocamlc .cinaps.a7811055/.cinaps.eobjs/byte/dune__exe__Cinaps.{cmi,cmo,cmt}
       ocamlopt .cinaps.a7811055/.cinaps.eobjs/native/dune__exe__Cinaps.{cmx,o}
       ocamlopt .cinaps.a7811055/cinaps.exe

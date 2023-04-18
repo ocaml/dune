@@ -19,14 +19,15 @@ prefixed and unprefixed modules are built.
   $ ./sdune clean
   $ ./sdune build --display short @t1
       ocamldep .a1.objs/a1__A.impl.d
-        ocamlc .b.eobjs/byte/dune__exe__B.{cmi,cmo,cmt}
-        ocamlc .c1.objs/byte/c.{cmi,cmo,cmt}
+      ocamldep .b.eobjs/dune__exe__B.impl.d
+      ocamldep .c1.objs/c.impl.d
       ocamldep .c2.objs/c2__D.impl.d
         ocamlc .a1.objs/byte/a1.{cmi,cmo,cmt}
+        ocamlc .b.eobjs/byte/dune__exe__B.{cmi,cmo,cmt}
+        ocamlc .c1.objs/byte/c.{cmi,cmo,cmt}
         ocamlc .c2.objs/byte/c2.{cmi,cmo,cmt}
         ocamlc .a1.objs/byte/a1__A.{cmi,cmo,cmt}
         ocamlc .c2.objs/byte/c2__D.{cmi,cmo,cmt}
-
 Command line version.
 
   $ ./sdune build --verbose %{cmo:a} %{cmo:b} %{cmo:c} 2>&1 | grep -A100 'Actual targets'
@@ -182,6 +183,7 @@ public library defined in a subdirectory.
 
   $ ./sdune clean
   $ ./sdune build --display short @t10
+      ocamldep .c1.objs/c.impl.d
         ocamlc .c1.objs/byte/c.{cmi,cmo,cmt}
         ocamlc c1.cma
 
@@ -225,7 +227,6 @@ of a (rule).
       ocamlopt plugin.{a,cmxa}
       ocamlopt .dummy.objs/native/dummy__X3.{cmx,o}
       ocamlopt my.cmxs
-
 The following (failing) test shows that the variables cannot yet be used in the (deps)
 field of a (rule).
 

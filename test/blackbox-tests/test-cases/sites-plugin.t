@@ -72,27 +72,29 @@ Test sites plugins (example from the manual)
 
   $ dune build --display short @all 2>&1 | dune_cmd sanitize
       ocamldep .app.eobjs/dune__exe__App.impl.d
-        ocamlc .registration.objs/byte/registration.{cmi,cmo,cmt}
+      ocamldep .registration.objs/registration.impl.d
       ocamlopt .app.eobjs/native/dune_site__Dune_site_data.{cmx,o}
       ocamlopt .app.eobjs/native/dune_site_plugins__Dune_site_plugins_data.{cmx,o}
+      ocamldep plugin/.plugin1_impl.objs/plugin1_impl.impl.d
       ocamldep .app.eobjs/dune__exe__Sites.impl.d
+        ocamlc .registration.objs/byte/registration.{cmi,cmo,cmt}
+        ocamlc .app.eobjs/byte/dune__exe.{cmi,cmo,cmt}
+      ocamldep .app.eobjs/dune__exe__App.intf.d
       ocamlopt .registration.objs/native/registration.{cmx,o}
         ocamlc plugin/.plugin1_impl.objs/byte/plugin1_impl.{cmi,cmo,cmt}
         ocamlc registration.cma
-        ocamlc .app.eobjs/byte/dune__exe.{cmi,cmo,cmt}
-      ocamldep .app.eobjs/dune__exe__App.intf.d
-      ocamlopt registration.{a,cmxa}
-      ocamlopt plugin/.plugin1_impl.objs/native/plugin1_impl.{cmx,o}
-        ocamlc plugin/plugin1_impl.cma
       ocamlopt .app.eobjs/native/dune__exe.{cmx,o}
         ocamlc .app.eobjs/byte/dune__exe__Sites.{cmi,cmo,cmt}
         ocamlc .app.eobjs/byte/dune__exe__App.{cmi,cmti}
-      ocamlopt registration.cmxs
-      ocamlopt plugin/plugin1_impl.{a,cmxa}
+      ocamlopt registration.{a,cmxa}
+      ocamlopt plugin/.plugin1_impl.objs/native/plugin1_impl.{cmx,o}
+        ocamlc plugin/plugin1_impl.cma
       ocamlopt .app.eobjs/native/dune__exe__Sites.{cmx,o}
       ocamlopt .app.eobjs/native/dune__exe__App.{cmx,o}
-      ocamlopt plugin/plugin1_impl.cmxs
+      ocamlopt registration.cmxs
+      ocamlopt plugin/plugin1_impl.{a,cmxa}
       ocamlopt app.exe
+      ocamlopt plugin/plugin1_impl.cmxs
   $ dune exec ./app.exe
   Registration of Plugin1
   Main app starts...

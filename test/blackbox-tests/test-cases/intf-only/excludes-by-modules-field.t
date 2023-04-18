@@ -19,6 +19,7 @@ field
   > EOF
 
   $ dune build --display short
+      ocamldep .foo.objs/y.impl.d
         ocamlc .foo.objs/byte/y.{cmi,cmo,cmt} (exit 2)
   File "y.ml", line 1, characters 16-17:
   1 | module type F = X

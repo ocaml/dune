@@ -3,6 +3,7 @@ Test virtual lib in an exe / melange environment
 The native build passes
 
   $ dune exec ./ml.exe --display=short
+      ocamldep .ml.eobjs/dune__exe__Ml.impl.d
       ocamldep vlib/.vlib.objs/shared.impl.d
       ocamldep vlib/.vlib.objs/virt.intf.d
       ocamldep vlib/.vlib.objs/vlib_impl.impl.d

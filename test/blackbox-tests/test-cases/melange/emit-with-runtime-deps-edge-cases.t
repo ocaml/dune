@@ -35,6 +35,7 @@ Rules created for the assets in the output directory
     (chdir _build/default (copy a/assets/file.txt a/output/a/assets/file.txt))))
 
   $ dune build @mel --display=short
+      ocamldep a/.output.mobjs/melange__Main.impl.d
           melc a/.output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
           melc a/output/a/main.js
 
@@ -102,6 +103,8 @@ Need to create the source dir first for the alias to be picked up
      (copy a/assets/file.txt another/another-output/a/assets/file.txt))))
 
   $ dune build @mel --display=short
+      ocamldep a/.output.mobjs/melange__Main.impl.d
+      ocamldep another/.another-output.mobjs/melange__Main.impl.d
           melc a/.output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
           melc another/.another-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
           melc a/output/a/main.js
@@ -131,6 +134,7 @@ Test depending on external paths
   > EOF
 
   $ dune build @mel --display=short
+      ocamldep external/.external-output.mobjs/melange__Main.impl.d
           melc external/.external-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
           melc external/external-output/external/main.js
 

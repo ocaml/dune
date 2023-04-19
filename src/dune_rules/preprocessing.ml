@@ -461,9 +461,6 @@ let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~flags pps =
   in
   (exe, driver, flags)
 
-let workspace_root_var =
-  String_with_vars.virt_pform __POS__ (Var Workspace_root)
-
 let promote_correction fn build ~suffix =
   let open Action_builder.O in
   let+ act = build in
@@ -484,20 +481,18 @@ let promote_correction_with_target fn build ~suffix =
                  (Path.Build.extend_basename fn ~suffix))))
     ]
 
-let chdir action = Action_unexpanded.Chdir (workspace_root_var, action)
-
 let sandbox_of_setting = function
   | `Set_by_user d | `Default d -> d
 
 let action_for_pp ~sandbox ~loc ~expander ~action ~src =
-  let action = chdir action in
+  let chdir = (Expander.context expander).build_dir in
   let bindings =
     Pform.Map.singleton (Var Input_file) [ Value.Path (Path.build src) ]
   in
   let expander = Expander.add_bindings expander ~bindings in
   let open Action_builder.O in
   Action_builder.path (Path.build src)
-  >>> Action_unexpanded.expand_no_targets action ~loc ~expander ~deps:[]
+  >>> Action_unexpanded.expand_no_targets action ~chdir ~loc ~expander ~deps:[]
         ~what:"preprocessing actions"
   >>| Action.Full.add_sandbox sandbox
 

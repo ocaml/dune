@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681894612821,
+  "lastUpdate": 1681934511115,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -32247,6 +32247,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "26.595913454766663",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a04e8381cd541c137afc2f8ac31da7599d917ea6",
+          "message": "refactor: move Dune_util.Value (#7585)\n\nMove the [Value] module to [Dune_lang]. Logically this represents values\r\nthat may be expanded by our percent forms so it belongs to the frontend.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-19T12:49:24-07:00",
+          "tree_id": "ffbb9f42a1dc054db63bb6ebffe8317f979addff",
+          "url": "https://github.com/ocaml/dune/commit/a04e8381cd541c137afc2f8ac31da7599d917ea6"
+        },
+        "date": 1681934508842,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.673192247753335",
             "unit": "seconds"
           }
         ]

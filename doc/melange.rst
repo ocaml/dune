@@ -221,7 +221,7 @@ as it would be replicated across the paths of the different stanzas
 ``target`` folders.
 
 
-Faster Builds with ``subdir`` and ``dirs`` Stanzas
+Faster Builds With ``subdir`` and ``dirs`` Stanzas
 --------------------------------------------------
 
 Melange libraries might be installed from the ``npm`` package repository,

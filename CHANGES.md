@@ -125,6 +125,9 @@ Unreleased
 - On nix+macos, pass `-f` to the codesign hook to avoid errors when the binary
   is already signed (#7183, fixes #6265, @greedy)
 
+- Fix bug where RPC clients built with dune-rpc-lwt would crash when closing
+  their connection to the server (#7581, @gridbugs)
+
 3.7.1 (2023-04-04)
 ------------------
 

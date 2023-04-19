@@ -8,7 +8,6 @@ module Log = Log
 module Persistent = Persistent
 module Stringlike = Stringlike
 module Stringlike_intf = Stringlike_intf
-module Value = Value
 include Dune_config_file
 
 include struct
@@ -51,4 +50,5 @@ module Glob = Dune_lang.Glob
 module Diff = Dune_lang.Action.Diff
 module Outputs = Dune_lang.Action.Outputs
 module Syntax = Dune_sexp.Syntax
+module Value = Dune_lang.Value
 include Dune_engine.No_io

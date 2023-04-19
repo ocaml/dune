@@ -50,13 +50,10 @@ end = struct
      Cygwin environment both paths are lowarcased before the comparison *)
   let make_relative_to_root p =
     let p = Path.to_absolute_filename p in
-    let prefix, p =
-      let prefix = Path.(to_absolute_filename root) in
-      if Sys.win32 || Sys.cygwin then
-        (String.lowercase_ascii prefix, String.lowercase_ascii p)
-      else (prefix, p)
-    in
-    String.drop_prefix ~prefix p
+    let prefix = Path.(to_absolute_filename root) in
+    (if Sys.win32 || Sys.cygwin then String.Caseless.drop_prefix
+    else String.drop_prefix)
+      ~prefix p
     (* After dropping the prefix we need to remove the leading path separator *)
     |> Option.map ~f:(fun s -> String.drop s 1)
 

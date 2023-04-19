@@ -115,6 +115,9 @@ Unreleased
   would not be included whenever `(generate_opam_files true)` was set and the
   `.install` file wasn't yet generated. (#7547, @rgrinberg)
 
+- Fix regression where Merlin was unable to handle filenames with uppercase
+  letters under Windows. (#7577, @nojb)
+
 3.7.1 (2023-04-04)
 ------------------
 

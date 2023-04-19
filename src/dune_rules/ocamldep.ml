@@ -129,6 +129,12 @@ let deps_of
     let ext = transitive_deps local f in
     (ext, mods_name_uniq)
   in
+  let impl_vmodule =
+    match Module.kind unit with
+    | Impl_vmodule -> true
+    | _ -> false
+  in
+
   let make_with_file_targets paths file =
     let open Action_builder.O in
     Action_builder.with_file_targets ~file_targets:[ file ]
@@ -162,36 +168,46 @@ let deps_of
     add_rule produce_all_deps
   in
   let+ _ =
-    let produce_all_deps_ext =
-      let paths =
-        make_paths
-          (fun (a, b) -> Ext (a, b))
-          (fun m ->
-            match m with
-            | Module_dep.Local _ -> None
-            | External s -> Some (Module_dep.External_name.to_string s))
+    if not impl_vmodule then
+      let produce_all_deps_ext =
+        let paths =
+          make_paths
+            (fun (a, b) -> Ext (a, b))
+            (fun m ->
+              match m with
+              | Module_dep.Local _ -> None
+              | External s -> Some (Module_dep.External_name.to_string s))
+        in
+        make_with_file_targets paths ext_deps_file
       in
-      make_with_file_targets paths ext_deps_file
-    in
-    add_rule produce_all_deps_ext
+      add_rule produce_all_deps_ext
+    else
+      Memo.return
+        (Action_builder.with_no_targets (Action_builder.return Action.empty))
   in
   let all_deps_file = Path.build all_deps_file in
   let ext_deps_file = Path.build ext_deps_file in
   let md_l =
-    Action_builder.map2
-      ~f:(fun x y -> parse_compilation_units ~modules x y)
-      (Action_builder.lines_of all_deps_file)
-      (Action_builder.lines_of ext_deps_file)
+    if not impl_vmodule then
+      Action_builder.map2
+        ~f:(fun x y -> parse_compilation_units ~modules x y)
+        (Action_builder.lines_of all_deps_file)
+        (Action_builder.lines_of ext_deps_file)
+    else
+      Action_builder.map
+        ~f:(fun x -> parse_compilation_units ~modules x [])
+        (Action_builder.lines_of all_deps_file)
   in
   (Action_builder.memoize (Path.to_string all_deps_file)) md_l
 
 let read_deps_of ~obj_dir ~modules ~ml_kind unit =
+  Dune_util.Log.info
+    [ Pp.textf "read_deps_of %s" (Module.name unit |> Module_name.to_string) ];
   let all_deps_file = Obj_dir.Module.dep obj_dir (Transitive (unit, ml_kind)) in
-  let ext_deps_file = Obj_dir.Module.dep obj_dir (Ext (unit, ml_kind)) in
-  Action_builder.map2
+
+  Action_builder.map
     (Action_builder.lines_of (Path.build all_deps_file))
-    (Action_builder.lines_of (Path.build ext_deps_file))
-    ~f:(fun x y -> parse_compilation_units ~modules x y)
+    ~f:(fun x -> parse_compilation_units ~modules x [])
   |> Action_builder.memoize (Path.Build.to_string all_deps_file)
 
 let read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit =

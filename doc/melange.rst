@@ -151,7 +151,7 @@ The resulting layout in ``_build/default/output`` will be as follows:
   sources. These runtime dependencies can include assets like CSS files, images,
   fonts, external JavaScript files, etc. ``runtime_deps`` adhere to the formats
   in :doc:`concepts/dependency-spec`. For example
-  ``(runtime_deps ./path/to/file.css (glob_file_rec ./fonts/*))``.
+  ``(runtime_deps ./path/to/file.css (glob_files_rec ./fonts/*))``.
 
 - ``(emit_stdlib <bool>)`` allows the user to specify whether the Melange
   standard library should be included as a dependency of the stanza or not. The

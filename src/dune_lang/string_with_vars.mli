@@ -5,7 +5,6 @@
 
 open Stdune
 open Dune_sexp
-open Dune_util
 
 (** A sequence of text and variables. *)
 type t

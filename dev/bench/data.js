@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681893757919,
+  "lastUpdate": 1681894254345,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -14208,6 +14208,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.77471055112667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4c83fce53b52bf11a41644cec920fe929bf344dc",
+          "message": "doc: merge reference info about findlib (#7567)\n\n* doc: merge reference info about findlib\r\n\r\nThis merges the \"advanced topics\" sections about findlib into a new\r\nreference document that explains how META files are imported and\r\nexported.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\nCo-authored-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-04-19T10:28:37+02:00",
+          "tree_id": "b83feda35b4ef3682c8bea285f3b7db81e780baa",
+          "url": "https://github.com/ocaml/dune/commit/4c83fce53b52bf11a41644cec920fe929bf344dc"
+        },
+        "date": 1681894253727,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.541705988160004",
             "unit": "seconds"
           }
         ]

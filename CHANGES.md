@@ -118,6 +118,9 @@ Unreleased
 - Fix regression where Merlin was unable to handle filenames with uppercase
   letters under Windows. (#7577, @nojb)
 
+- On nix+macos, pass `-f` to the codesign hook to avoid errors when the binary
+  is already signed (#7183, fixes #6265, @greedy)
+
 3.7.1 (2023-04-04)
 ------------------
 

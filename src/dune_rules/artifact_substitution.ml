@@ -52,7 +52,14 @@ type conf =
   }
 
 let mac_codesign_hook ~codesign path =
-  Process.run ~display:Quiet Strict codesign [ "-s"; "-"; Path.to_string path ]
+  let stdout_to =
+    Process.Io.make_stdout Execution_parameters.Action_output_on_success.Swallow
+  in
+  let stderr_to =
+    Process.Io.make_stderr Execution_parameters.Action_output_on_success.Swallow
+  in
+  Process.run ~stdout_to ~stderr_to ~display:Quiet Strict codesign
+    [ "-f"; "-s"; "-"; Path.to_string path ]
 
 let sign_hook_of_context (context : Context.t) =
   let config = context.ocaml_config in

@@ -15,7 +15,7 @@ core_bench \
 "csexp>=1.3.0" \
 js_of_ocaml \
 js_of_ocaml-compiler \
-"mdx>=2.1.0" \
+"mdx>=2.3.0" \
 menhir \
 ocamlfind \
 ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat) \

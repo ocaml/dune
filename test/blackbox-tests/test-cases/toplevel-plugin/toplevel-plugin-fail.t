@@ -133,7 +133,7 @@ This is not allowed in toplevels, so it fails.
   >   print_endline "Done with registration of Plugin2";
   > EOF
 
-  $ dune build --display short @all 2>&1  dune_cmd sanitize
+  $ dune build --display short @all 2>&1 | dune_cmd sanitize
       ocamldep .top_with_plugins.eobjs/top_with_plugins.impl.d
         ocamlc .registration.objs/byte/registration.{cmi,cmo,cmt}
       ocamldep .registration.objs/registration.impl.d

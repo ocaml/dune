@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681983557240,
+  "lastUpdate": 1681999045265,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -32479,6 +32479,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "26.891976685486668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "be6f666284b4838f2e368bec61ee1f6410362322",
+          "message": "Test the behavior of the mdx 0.3 stanza wrt `.mld` files (#7569)\n\nAs MDX 2.3.0 was released it added support for `.mld` files. Dune\r\ncurrently just supports `.md` files by default in the 0.3 version of the\r\nmdx stanza. OTOH `.mld` files can be passed in and dune uses MDX to\r\ngenerate a corrected version.\r\n\r\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-04-20T15:42:01+02:00",
+          "tree_id": "c16f8a4bf17109bd78de96f5a2c4f6631f1a37d3",
+          "url": "https://github.com/ocaml/dune/commit/be6f666284b4838f2e368bec61ee1f6410362322"
+        },
+        "date": 1681999041991,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "25.501671138846664",
             "unit": "seconds"
           }
         ]

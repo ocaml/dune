@@ -137,6 +137,8 @@ jobs:
       - name: Setup DKML on a Windows host
         if: startsWith(matrix.dkml_host_abi, 'windows_')
         uses: ./ci/setup-dkml/gh-windows-4.12.1/pre
+        with:
+          CACHE_PREFIX: "cachebust1" # bump if cache is suspected to be corrupt
 
       - name: Build and test the package on Windows host
         if: startsWith(matrix.dkml_host_abi, 'windows_')
@@ -167,6 +169,8 @@ jobs:
       - name: Setup DKML on a Windows host
         if: startsWith(matrix.dkml_host_abi, 'windows_')
         uses: ./ci/setup-dkml/gh-windows/pre
+        with:
+          CACHE_PREFIX: "cachebust1" # bump if cache is suspected to be corrupt
 
       - name: Build and test the package on Windows host
         if: startsWith(matrix.dkml_host_abi, 'windows_')

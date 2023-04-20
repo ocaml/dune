@@ -74,6 +74,7 @@ let rule sctx ~requires_link (exes : Dune_file.Executables.t) =
                       let name = Lib.name x in
                       if
                         Lib_name.equal name (Lib_name.of_string "threads.posix")
+                        || Lib_name.equal name (Lib_name.of_string "bigarray")
                       then None
                       else Some (Lib_name.to_dyn name))))
           ; Pp.nop

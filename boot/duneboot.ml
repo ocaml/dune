@@ -557,6 +557,8 @@ module Config : sig
   val output_complete_obj_arg : string
 
   val unix_library_flags : string list
+
+  val has_bigarray_library : bool
 end = struct
   let ocaml_version = Scanf.sscanf Sys.ocaml_version "%d.%d" (fun a b -> (a, b))
 
@@ -620,6 +622,8 @@ end = struct
 
   let unix_library_flags =
     if ocaml_version >= (5, 0) then [ "-I"; "+unix" ] else []
+
+  let has_bigarray_library = ocaml_version < (5, 0)
 end
 
 let insert_header fn ~header =
@@ -979,11 +983,17 @@ type status =
 let resolve_externals external_libraries =
   let external_libraries, external_includes =
     let convert = function
-      | "threads" -> ("threads" ^ Config.ocaml_archive_ext, [ "-I"; "+threads" ])
-      | "unix" -> ("unix" ^ Config.ocaml_archive_ext, Config.unix_library_flags)
+      | "threads" ->
+        Some ("threads" ^ Config.ocaml_archive_ext, [ "-I"; "+threads" ])
+      | "unix" ->
+        Some ("unix" ^ Config.ocaml_archive_ext, Config.unix_library_flags)
+      | "bigarray" ->
+        if Config.has_bigarray_library then
+          Some ("bigarray" ^ Config.ocaml_archive_ext, [])
+        else None
       | s -> fatal "unhandled external library %s" s
     in
-    let externals = List.map ~f:convert external_libraries in
+    let externals = List.filter_map ~f:convert external_libraries in
     List.split externals
   in
   let external_includes = List.concat external_includes in

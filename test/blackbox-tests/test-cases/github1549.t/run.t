@@ -52,3 +52,4 @@ Reproduction case for #1549: too many parentheses in installed .dune files
   3 |   (inline_tests (backend dune_inline_tests)))
   /usr/bin/sed: can't read x.ml: No such file or directory
   Leaving directory 'example'
+  [1]

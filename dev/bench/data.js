@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682014473611,
+  "lastUpdate": 1682014994526,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -14324,6 +14324,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.34745757906666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "98de95004d753a3e30b0f4a3bbb09312541e892b",
+          "message": "feature(coq): composition of installed theories\n\nThis commit introduces a new database for \"installed\" theories present\nin `user-contrib` and `COQPATH`.\n\nThe above paths are scanned and the database of theories is populated\nbased on the subdirectories found.\n\nIn order to keep compatibility, we add to the database all possible\ntheory names (so for example, given a directory `A/B` we will register\ntwo Coq theories `A` and `A.B`).\n\nChanges in the code are as expected, main new things are:\n\n- `Coq_lib.t` now can represent two kind of objects: theories with an\n  associated dune stanza, and theories found in the system and for\n  whom no stanza is available.\n\n- A new`Coq_path.t` type, which represents an inferred \"stanza\" for\n  libraries that are installed in the `user-contrib` / `COQPATH`\n  scheme. The list of such paths is then used to build the database.\n\nStarting with `(coq lang 0.8)` Coq will not see any theory, even if\nglobally installed, unless that theory was declared in the\ncorresponding `theories` field in the stanzas.\n\nThis solves a longstanding problem due to users being not able to\ncompose with a theory that could present either locally or in\ninstalled form.\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>\nCo-authored-by: Emilio Jesus Gallego Arias <e+git@x80.org>",
+          "timestamp": "2023-04-20T19:51:58+02:00",
+          "tree_id": "286831ab991ed1ccd567c1262c56c6b3f5ef15c0",
+          "url": "https://github.com/ocaml/dune/commit/98de95004d753a3e30b0f4a3bbb09312541e892b"
+        },
+        "date": 1682014992942,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.826249081120004",
             "unit": "seconds"
           }
         ]

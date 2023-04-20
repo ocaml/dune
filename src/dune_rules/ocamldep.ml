@@ -70,8 +70,7 @@ let parse_deps_exn ~file lines =
       if basename <> Path.basename file then invalid ();
       String.extract_blank_separated_words deps)
 
-let deps_of
-    ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md)
+let deps_of ({ sandbox; modules; sctx; dir; obj_dir; vimpl; stdlib = _ } as md)
     ~ml_kind unit =
   let source = Option.value_exn (Module.source unit ~ml_kind) in
   let dep = Obj_dir.Module.dep obj_dir in
@@ -130,9 +129,10 @@ let deps_of
     (ext, mods_name_uniq)
   in
   let impl_vmodule =
-    match Module.kind unit with
+    (match Module.kind unit with
     | Impl_vmodule -> true
-    | _ -> false
+    | _ -> false)
+    || Option.is_some vimpl
   in
 
   let make_with_file_targets paths file =

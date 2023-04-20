@@ -26,12 +26,18 @@ module Includes = struct
     let lib_to_entry_modules_map =
       Lib.Map.of_list_exn lib_to_entry_modules_mapin
     in
-    let external_dep_names =
-      List.filter_map ~f:Module_dep.filter_external module_deps
-      |> List.map ~f:Module_dep.External_name.to_string
+
+    let dep_names =
+      List.map module_deps ~f:(fun mdep ->
+          let open Module_dep in
+          match mdep with
+          (* Lib shadowing by a local module obliges
+             us to also check if a lib is a local module *)
+          | Local m -> Module.name m |> Module_name.to_string
+          | External mname -> External_name.to_string mname)
     in
     let exists_in_odeps lib_name =
-      List.exists external_dep_names ~f:(fun odep ->
+      List.exists dep_names ~f:(fun odep ->
           (*  Dune_util.Log.info [ Pp.textf "Comparing %s %s \n" lib_name odep ]; *)
           String.equal lib_name odep || String.is_prefix ~prefix:odep lib_name)
     in
@@ -78,7 +84,7 @@ module Includes = struct
                           exists_in_odeps
                             (Module.name top_c_mod |> Module_name.to_string))
                       (* Secondly, for each ocamldep outut X, see if current [entry_module_name] is in top closed modules of X  *)
-                      || List.exists external_dep_names ~f:(fun odep_output ->
+                      || List.exists dep_names ~f:(fun odep_output ->
                              let odep_module_name =
                                Module_name.of_string odep_output
                              in

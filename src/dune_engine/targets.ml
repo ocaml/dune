@@ -27,6 +27,11 @@ let combine x y =
   ; dirs = Path.Build.Set.union x.dirs y.dirs
   }
 
+let diff t { files; dirs } =
+  { files = Path.Build.Set.diff t.files files
+  ; dirs = Path.Build.Set.diff t.dirs dirs
+  }
+
 let is_empty { files; dirs } =
   Path.Build.Set.is_empty files && Path.Build.Set.is_empty dirs
 
@@ -55,6 +60,10 @@ let pp { files; dirs } =
 let exists { files; dirs } ~f =
   Path.Build.Set.exists files ~f || Path.Build.Set.exists dirs ~f
 
+let iter { files; dirs } ~file ~dir =
+  Path.Build.Set.iter files ~f:file;
+  Path.Build.Set.iter dirs ~f:dir
+
 module Validated = struct
   type nonrec t = t =
     { files : Path.Build.Set.t
@@ -64,6 +73,8 @@ module Validated = struct
   let to_dyn = to_dyn
 
   let head = head_exn
+
+  let unvalidate t = t
 end
 
 module Validation_result = struct

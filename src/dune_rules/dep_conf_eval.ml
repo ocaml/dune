@@ -85,6 +85,8 @@ let add_sandbox_config acc (dep : Dep_conf.t) =
 
 let rec dep expander = function
   | Include s ->
+    (* TODO this is wrong. we shouldn't allow bindings here if we are in an
+       unnamed expansion *)
     let deps = expand_include ~expander s in
     Other
       (let* deps = deps in
@@ -225,7 +227,7 @@ and named_paths_builder ~expander l =
               Pform.Map.set bindings (Var (User_var name))
                 (Expander.Deps.Without
                    (let+ paths = Memo.Lazy.force x in
-                    Dune_util.Value.L.paths (List.concat paths)))
+                    Value.L.paths (List.concat paths)))
             in
             let x =
               let open Action_builder.O in
@@ -245,7 +247,7 @@ and named_paths_builder ~expander l =
               Pform.Map.set bindings (Var (User_var name))
                 (Expander.Deps.With
                    (let+ paths = x in
-                    Dune_util.Value.L.paths paths))
+                    Value.L.paths paths))
             in
             (x :: builders, bindings)))
   in
@@ -259,7 +261,7 @@ let named ~expander l =
   let builder, bindings = named_paths_builder ~expander l in
   let builder =
     let+ paths = builder in
-    Dune_util.Value.L.paths paths
+    Value.L.paths paths
   in
   let builder =
     Action_builder.memoize ~cutoff:(List.equal Value.equal) "deps" builder

@@ -1,6 +1,5 @@
 open Stdune
 open Dune_sexp
-open Dune_util
 
 type part =
   | Text of string

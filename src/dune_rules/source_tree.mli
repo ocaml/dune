@@ -51,8 +51,6 @@ module Dir : sig
       -> Outcome.t M.t
   end
 
-  val sub_dir_paths : t -> Path.Source.Set.t
-
   val sub_dir_names : t -> Filename.Set.t
 
   val status : t -> Sub_dirs.Status.t
@@ -96,12 +94,3 @@ val is_vendored : Path.Source.t -> bool Memo.t
 
 (** [true] iff the path is a file *)
 val file_exists : Path.Source.t -> bool Memo.t
-
-(**/**)
-
-(* Hook to describe how to filter source files. This can be used by forks of
-   Dune to implement different filtering strategies.
-
-   This is currently used inside Jane Street. *)
-val filter_source_files :
-  (Dune_project.t -> (Path.Source.t -> Filename.t -> bool) Memo.t) ref

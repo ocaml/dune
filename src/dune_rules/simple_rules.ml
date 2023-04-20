@@ -97,7 +97,8 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       | Some bindings -> Expander.add_bindings expander ~bindings
     in
     let* (action : _ Action_builder.With_targets.t) =
-      Action_unexpanded.expand (snd rule.action) ~loc:(fst rule.action)
+      let chdir = Expander.dir expander in
+      Action_unexpanded.expand (snd rule.action) ~loc:(fst rule.action) ~chdir
         ~expander ~deps:rule.deps ~targets ~targets_dir:dir
     in
     let action =
@@ -246,8 +247,9 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
           | None -> expander
           | Some bindings -> Expander.add_bindings expander ~bindings
         in
+        let chdir = Expander.dir expander in
         Action_unexpanded.expand_no_targets action ~loc:action_loc ~expander
-          ~deps:alias_conf.deps ~what:"aliases"
+          ~chdir ~deps:alias_conf.deps ~what:"aliases"
       in
       let* action = interpret_and_add_locks ~expander alias_conf.locks action in
       Alias_rules.add sctx ~loc action ~alias)

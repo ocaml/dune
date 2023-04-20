@@ -47,13 +47,21 @@ let decode_sandbox_config =
   in
   Sandbox_config.Partial.merge ~loc x
 
-let decode =
+let decode files =
+  let files_only =
+    match files with
+    | `Allow -> return ()
+    | `Forbid ->
+      let* loc = loc in
+      User_error.raise ~loc
+        [ Pp.text "only files are allowed in this position" ]
+  in
   let decode =
     let sw = String_with_vars.decode in
     sum ~force_parens:true
       [ ("file", sw >>| fun x -> File x)
-      ; ("alias", sw >>| fun x -> Alias x)
-      ; ("alias_rec", sw >>| fun x -> Alias_rec x)
+      ; ("alias", files_only >>> sw >>| fun x -> Alias x)
+      ; ("alias_rec", files_only >>> sw >>| fun x -> Alias_rec x)
       ; ( "glob_files"
         , sw >>| fun glob -> Glob_files { Glob_files.glob; recursive = false }
         )
@@ -61,8 +69,8 @@ let decode =
         , let+ () = Dune_lang.Syntax.since Stanza.syntax (3, 0)
           and+ glob = sw in
           Glob_files { Glob_files.glob; recursive = true } )
-      ; ("package", sw >>| fun x -> Package x)
-      ; ("universe", return Universe)
+      ; ("package", files_only >>> sw >>| fun x -> Package x)
+      ; ("universe", files_only >>> return Universe)
       ; ( "files_recursively_in"
         , let+ () =
             Dune_lang.Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"source_tree"
@@ -72,8 +80,9 @@ let decode =
         , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 0)
           and+ x = sw in
           Source_tree x )
-      ; ("env_var", sw >>| fun x -> Env_var x)
-      ; ("sandbox", decode_sandbox_config >>| fun x -> Sandbox_config x)
+      ; ("env_var", files_only >>> sw >>| fun x -> Env_var x)
+      ; ( "sandbox"
+        , files_only >>> decode_sandbox_config >>| fun x -> Sandbox_config x )
       ; ( "include"
         , let+ () = Dune_lang.Syntax.since Stanza.syntax (3, 1)
           and+ filename = filename in
@@ -83,6 +92,10 @@ let decode =
   decode
   <|> let+ x = String_with_vars.decode in
       File x
+
+let decode_no_files = decode `Forbid
+
+let decode = decode `Allow
 
 open Dune_lang
 

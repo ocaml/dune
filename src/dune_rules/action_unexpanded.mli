@@ -20,6 +20,7 @@ val remove_locs : t -> t
 val expand :
      t
   -> loc:Loc.t
+  -> chdir:Path.Build.t
   -> deps:Dep_conf.t Bindings.t
   -> targets_dir:Path.Build.t
   -> targets:Path.Build.t Targets_spec.t
@@ -31,6 +32,7 @@ val expand :
 val expand_no_targets :
      t
   -> loc:Loc.t
+  -> chdir:Path.Build.t
   -> deps:Dep_conf.t Bindings.t
   -> expander:Expander.t
   -> what:string

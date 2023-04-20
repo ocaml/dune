@@ -29,7 +29,7 @@ module L : sig
   val include_flags :
     ?project:Dune_project.t -> t -> Lib_mode.t -> _ Command.Args.t
 
-  val c_include_flags : t -> _ Command.Args.t
+  val c_include_flags : t -> Super_context.t -> _ Command.Args.t
 
   val toplevel_include_paths : t -> Path.Set.t
 end

@@ -23,6 +23,7 @@ Welcome to Dune's Documentation!
    :caption: How-to Guides
 
    howto/formatting
+   howto/opam-file-generation
 
 .. toctree::
    :caption: Reference Guides
@@ -37,6 +38,8 @@ Welcome to Dune's Documentation!
    reference/foreign
    reference/cli
    reference/preprocessing-spec
+   reference/packages
+   reference/findlib
    concepts/scopes
    concepts/variables
    concepts/dependency-spec
@@ -55,7 +58,6 @@ Welcome to Dune's Documentation!
    sites
    instrumentation
    jsoo
-   opam
    toplevel-integration
    variants
    tests
@@ -65,14 +67,12 @@ Welcome to Dune's Documentation!
 
    explanation/preprocessing
    explanation/ocaml-ecosystem
+   explanation/opam-integration
 
 .. toctree::
    :caption: Advanced topics
 
-   advanced/meta-file-generation
-   advanced/findlib-integration
    advanced/findlib-dynamic
-   advanced/classical-ppx
    advanced/profiling-dune
    advanced/package-version
    advanced/ocaml-syntax

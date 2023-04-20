@@ -22,77 +22,80 @@ module Include_term = struct
       ]
 end
 
-module Make (Base_term : sig
-  type t
+type 'a t =
+  | Base of 'a
+  | Include of Include_term.t * 'a decoder Lazy.t
 
-  val decode : t Dune_lang.Decoder.t
-end) (Config : sig
-  val include_keyword : string
+and 'a decoder =
+  { decode : 'a t Dune_lang.Decoder.t
+  ; non_sexp_behaviour : [ `User_error | `Parse_as_base_term ]
+  }
 
-  val include_allowed_in_versions : [ `Since of Syntax.Version.t | `All ]
+let of_base base = Base base
 
-  val non_sexp_behaviour : [ `User_error | `Parse_as_base_term ]
-end) =
-struct
-  type t =
-    | Base of Base_term.t
-    | Include of Include_term.t
-
-  let of_base base = Base base
-
-  let decode =
-    let open Dune_lang.Decoder in
-    let base_term_decode =
-      let+ base_term = Base_term.decode in
-      Base base_term
+let decode ~base_term ~include_keyword ~include_allowed_in_versions config =
+  let open Dune_lang.Decoder in
+  let base_term_decode =
+    let+ base_term = base_term in
+    Base base_term
+  in
+  let include_term_decode =
+    let+ include_term =
+      Include_term.decode ~include_keyword
+        ~allowed_in_versions:include_allowed_in_versions
     in
-    let include_term_decode =
-      let+ include_term =
-        Include_term.decode ~include_keyword:Config.include_keyword
-          ~allowed_in_versions:Config.include_allowed_in_versions
+    Include (include_term, config)
+  in
+  include_term_decode <|> base_term_decode
+
+let decode ~base_term ~include_keyword ~include_allowed_in_versions
+    ~non_sexp_behaviour =
+  let rec config =
+    lazy
+      { non_sexp_behaviour
+      ; decode =
+          decode ~base_term ~include_keyword ~include_allowed_in_versions config
+      }
+  in
+  (Lazy.force config).decode
+
+let load_included_file config path ~context =
+  let open Memo.O in
+  let+ contents = Build_system.read_file (Path.build path) ~f:Io.read_file in
+  let ast =
+    Dune_lang.Parser.parse_string contents ~mode:Single
+      ~fname:(Path.Build.to_string path)
+  in
+  let config = Lazy.force config in
+  let parse = Dune_lang.Decoder.parse config.decode context in
+  match ast with
+  | List (_loc, terms) -> List.map terms ~f:parse
+  | other -> (
+    match config.non_sexp_behaviour with
+    | `User_error ->
+      let loc = Dune_sexp.Ast.loc other in
+      User_error.raise ~loc [ Pp.textf "Expected list, got:\n%s" contents ]
+    | `Parse_as_base_term ->
+      let term = Dune_lang.Decoder.parse config.decode context other in
+      [ term ])
+
+let expand_include (type a) (t : a t) ~expand_str ~dir =
+  let rec expand_include t ~seen =
+    match t with
+    | Base base_term -> Memo.return [ base_term ]
+    | Include ({ context; path = path_sw }, config) ->
+      let open Memo.O in
+      let* path =
+        expand_str path_sw
+        >>| Path.Build.relative ~error_loc:(String_with_vars.loc path_sw) dir
       in
-      Include include_term
-    in
-    include_term_decode <|> base_term_decode
-
-  let load_included_file path ~context =
-    let open Memo.O in
-    let+ contents = Build_system.read_file (Path.build path) ~f:Io.read_file in
-    let ast =
-      Dune_lang.Parser.parse_string contents ~mode:Single
-        ~fname:(Path.Build.to_string path)
-    in
-    let parse = Dune_lang.Decoder.parse decode context in
-    match ast with
-    | List (_loc, terms) -> List.map terms ~f:parse
-    | other -> (
-      match Config.non_sexp_behaviour with
-      | `User_error ->
-        let loc = Dune_sexp.Ast.loc other in
-        User_error.raise ~loc [ Pp.textf "Expected list, got:\n%s" contents ]
-      | `Parse_as_base_term ->
-        let term = Dune_lang.Decoder.parse decode context other in
-        [ term ])
-
-  let expand_include t ~expand_str ~dir =
-    let rec expand_include t ~seen =
-      match t with
-      | Base base_term -> Memo.return [ base_term ]
-      | Include { context; path = path_sw } ->
-        let open Memo.O in
-        let* path =
-          expand_str path_sw
-          >>| Path.Build.relative ~error_loc:(String_with_vars.loc path_sw) dir
-        in
-        if Path.Build.Set.mem seen path then
-          User_error.raise
-            ~loc:(String_with_vars.loc path_sw)
-            [ Pp.textf "Include loop detected via: %s"
-                (Path.Build.to_string path)
-            ];
-        let seen = Path.Build.Set.add seen path in
-        let* contents = load_included_file path ~context in
-        Memo.List.concat_map contents ~f:(expand_include ~seen)
-    in
-    expand_include t ~seen:Path.Build.Set.empty
-end
+      if Path.Build.Set.mem seen path then
+        User_error.raise
+          ~loc:(String_with_vars.loc path_sw)
+          [ Pp.textf "Include loop detected via: %s" (Path.Build.to_string path)
+          ];
+      let seen = Path.Build.Set.add seen path in
+      let* contents = load_included_file config path ~context in
+      Memo.List.concat_map contents ~f:(expand_include ~seen)
+  in
+  expand_include t ~seen:Path.Build.Set.empty

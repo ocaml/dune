@@ -1,6 +1,16 @@
 Unreleased
 ----------
 
+- When a rule's action is interrupted, delete any leftover directory targets.
+  This is consistent with how we treat file targets. (@rgrinberg, 7564)
+
+- Fix plugin loading with findlib. The functionality was broken in 3.7.0.
+  (#7556, @anmonteiro)
+
+- Introduce a `public_headers` field on libraries. This field is like
+  `install_c_headers`, but it allows to choose the extension and choose the
+  paths for the installed headers. (#7512, @rgrinberg)
+
 - Load the host context `findlib.conf` when cross-compiling (#7428, fixes
   #1701, @rgrinberg, @anmonteiro)
 
@@ -100,6 +110,16 @@ Unreleased
 
 - Allow `(package ...)` in any position within `(rule ...)` stanza (#7445,
   @Leonidas-from-XIV)
+
+- Always include `opam` files in the generated `.install` file. Previously, it
+  would not be included whenever `(generate_opam_files true)` was set and the
+  `.install` file wasn't yet generated. (#7547, @rgrinberg)
+
+- Fix regression where Merlin was unable to handle filenames with uppercase
+  letters under Windows. (#7577, @nojb)
+
+- On nix+macos, pass `-f` to the codesign hook to avoid errors when the binary
+  is already signed (#7183, fixes #6265, @greedy)
 
 3.7.1 (2023-04-04)
 ------------------

@@ -225,7 +225,7 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
           (let open Resolve.O in
           let+ libs = requires in
           Command.Args.S
-            [ Lib_flags.L.c_include_flags libs
+            [ Lib_flags.L.c_include_flags libs sctx
             ; Hidden_deps (Lib_file_deps.deps libs ~groups:[ Header ])
             ])
       ]

@@ -46,8 +46,8 @@ recommended to use this method in new projects, as we expect to deprecate it in
 the future. The right way to define a package is with a ``package`` stanza in
 the ``dune-project`` file.
 
-See :ref:`opam-generation` for instructions on configuring Dune to automatically
-generate ``.opam`` files based on the ``package`` stanzas.
+See :doc:`../howto/opam-file-generation` for instructions on configuring Dune
+to automatically generate ``.opam`` files based on the ``package`` stanzas.
 
 Attaching Elements to a Package
 -------------------------------

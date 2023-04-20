@@ -37,7 +37,7 @@ let rule sctx ~requires_link (exes : Dune_file.Executables.t) =
         let dir = Lib_info.src_dir info in
         let special_builtin_support =
           match Lib_info.special_builtin_support info with
-          | Some (Build_info { data_module; _ }) -> Some data_module
+          | Some (_loc, Build_info { data_module; _ }) -> Some data_module
           | _ -> None
         in
         let open Memo.O in

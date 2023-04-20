@@ -478,18 +478,19 @@ end = struct
           requires t |> List.map ~f:(fun name -> Lib_dep.direct (add_loc name))
         in
         let ppx_runtime_deps = List.map ~f:add_loc (ppx_runtime_deps t) in
-        let special_builtin_support : Lib_info.Special_builtin_support.t option
-            =
+        let special_builtin_support :
+            (Loc.t * Lib_info.Special_builtin_support.t) option =
           (* findlib has been around for much longer than dune, so it is
              acceptable to have a special case in dune for findlib. *)
           match Lib_name.to_string t.name with
-          | "findlib.dynload" -> Some Findlib_dynload
+          | "findlib.dynload" -> Some (loc, Findlib_dynload)
           | _ -> None
         in
         let foreign_objects = Lib_info.Source.External [] in
+        let public_headers = Lib_info.File_deps.External [] in
         let plugins = plugins t in
         let jsoo_runtime = jsoo_runtime t in
-        let melange_runtime_deps = Lib_info.Runtime_deps.External [] in
+        let melange_runtime_deps = Lib_info.File_deps.External [] in
         let preprocess = Preprocess.Per_module.no_preprocessing () in
         let virtual_ = None in
         let default_implementation = None in
@@ -572,8 +573,8 @@ end = struct
         let modules = Lib_info.Source.External None in
         Lib_info.create ~path_kind:External ~loc ~name:t.name ~kind ~status
           ~src_dir ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name
-          ~sub_systems ~requires ~foreign_objects ~plugins ~archives
-          ~ppx_runtime_deps ~foreign_archives
+          ~sub_systems ~requires ~foreign_objects ~public_headers ~plugins
+          ~archives ~ppx_runtime_deps ~foreign_archives
           ~native_archives:(Files native_archives) ~foreign_dll_files:[]
           ~jsoo_runtime ~preprocess ~enabled ~virtual_deps ~dune_version
           ~virtual_ ~implements ~default_implementation ~modes ~modules ~wrapped

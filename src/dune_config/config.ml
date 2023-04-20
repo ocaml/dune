@@ -82,3 +82,17 @@ let cutoffs_that_reduce_concurrency_in_watch_mode =
   in
   register t;
   t
+
+let copy_file =
+  let t =
+    { name = "copy_file"
+    ; of_string =
+        (function
+        | "portable" -> Ok `Portable
+        | "fast" -> Ok `Best
+        | _ -> Error (sprintf "only %S and %S are allowed" "fast" "portable"))
+    ; value = `Best
+    }
+  in
+  register t;
+  t

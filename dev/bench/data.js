@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681983543439,
+  "lastUpdate": 1681983557240,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -27896,6 +27896,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "81.35510329442",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "geoff@programmer-monk.net",
+            "name": "Geoff Reedy",
+            "username": "greedy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8609f69f149164d6b00c028223f0e4752bf38cf6",
+          "message": "fix: use codesign -f to replace existing signature (#7183)\n\nWhen using dune in macOS + nix, the nix tooling adds a codesigning hook\r\nso when dune goes to sign files after substitution there is already an\r\nexisting signature which fails the build as could be seen in the\r\nfailure of the promote-only-when-needed test.\r\n\r\nThe failure can be avoided by providing the -f option to codesign which\r\nwill replace any existing signatures on the file.\r\n\r\nHowever, when -f is used and a signature is replaced, codesign prints a\r\nmessage that it is replacing the existing signature. This additional\r\nmessage pollutes dune's output and causes spurious failures of the cram\r\ntests on macOS + nix.\r\n\r\nThis secondary negative effect is eliminated by running the codesign\r\ntool with output swallowed as long as the tool runs successfully.\r\n\r\nFixes #6265\r\n\r\nSigned-off-by: Geoff Reedy <geoff@programmer-monk.net>",
+          "timestamp": "2023-04-20T11:06:37+02:00",
+          "tree_id": "f4a55b3ccdad466b1d30cf99b2ba958b99296bc6",
+          "url": "https://github.com/ocaml/dune/commit/8609f69f149164d6b00c028223f0e4752bf38cf6"
+        },
+        "date": 1681983556268,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.1948966292933334",
             "unit": "seconds"
           }
         ]

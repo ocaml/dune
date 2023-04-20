@@ -5,8 +5,7 @@ module Includes = struct
 
   let filter_with_odeps libs deps md =
     let open Resolve.Memo.O in
-    let+ ( ( ((module_deps, lib_top_module_map), lib_to_entry_modules_mapin)
-           , flags )
+    let+ ( (((module_deps, lib_top_module_map), lib_to_entry_modules_map), flags)
          , _ ) =
       deps
     in
@@ -24,7 +23,7 @@ module Includes = struct
       Module_name.Map.of_list_exn (List.concat lib_top_module_map)
     in
     let lib_to_entry_modules_map =
-      Lib.Map.of_list_exn lib_to_entry_modules_mapin
+      Lib.Map.of_list_exn lib_to_entry_modules_map
     in
 
     let dep_names =
@@ -49,7 +48,7 @@ module Includes = struct
     then libs
     else
       List.filter libs ~f:(fun lib ->
-          (* Not filtering vlib implementations *)
+          (* Not filtering vlib implementations and vlibs *)
           let implements =
             Option.is_some (Lib_info.implements (Lib.info lib))
           in
@@ -78,30 +77,27 @@ module Includes = struct
                       | Some modules -> modules
                       | None -> []
                     in
-                    let keep =
-                      (* First, check if one of the top closed modules matches any of ocamldep outputs *)
-                      List.exists top_c_modules ~f:(fun top_c_mod ->
-                          exists_in_odeps
-                            (Module.name top_c_mod |> Module_name.to_string))
-                      (* Secondly, for each ocamldep outut X, see if current [entry_module_name] is in top closed modules of X  *)
-                      || List.exists dep_names ~f:(fun odep_output ->
-                             let odep_module_name =
-                               Module_name.of_string odep_output
-                             in
-                             let top_c_modules =
-                               match
-                                 Module_name.Map.find lib_top_module_map
-                                   odep_module_name
-                               with
-                               | Some modules -> modules
-                               | None -> []
-                             in
-                             List.exists top_c_modules ~f:(fun top_c_mod ->
-                                 Module_name.equal entry_module_name
-                                   (Module.name top_c_mod)))
-                    in
 
-                    keep
+                    (* First, check if one of the top closed modules matches any of [ocamldep] outputs *)
+                    List.exists top_c_modules ~f:(fun top_c_mod ->
+                        exists_in_odeps
+                          (Module.name top_c_mod |> Module_name.to_string))
+                    (* Secondly, for each [ocamldep] outut [X], see if current [entry_module_name] is in closure of [X]  *)
+                    || List.exists dep_names ~f:(fun odep_output ->
+                           let odep_module_name =
+                             Module_name.of_string odep_output
+                           in
+                           let top_c_modules =
+                             match
+                               Module_name.Map.find lib_top_module_map
+                                 odep_module_name
+                             with
+                             | Some modules -> modules
+                             | None -> []
+                           in
+                           List.exists top_c_modules ~f:(fun top_c_mod ->
+                               Module_name.equal entry_module_name
+                                 (Module.name top_c_mod)))
                   else true)
             else true)
 

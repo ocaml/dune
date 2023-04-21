@@ -219,8 +219,8 @@ let modules_of_files ~path ~dialects ~dir ~files =
         [ Pp.textf "Too many files for module %s in %s:"
             (Module_name.to_string name)
             (Path.Source.to_string_maybe_quoted src_dir)
-        ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f1))
-        ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f2))
+        ; Pp.enumerate [ f1; f2 ] ~f:(fun x ->
+              Pp.text @@ Path.to_string_maybe_quoted @@ Module.File.path x)
         ]
   in
   let impls = parse_one_set impl_files in
@@ -482,8 +482,8 @@ let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib
                     "The following module and module group cannot co-exist in \
                      the same executable or library because they correspond to \
                      the same module path"
-                ; Pp.textf "- module %s" module_
-                ; Pp.textf "- module group %s" group
+                ; Pp.enumerate ~f:Pp.text
+                    [ "module " ^ module_; "module group " ^ group ]
                 ])
       | No | Include Unqualified ->
         List.fold_left dirs ~init:Module_name.Map.empty
@@ -493,10 +493,9 @@ let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib
                 User_error.raise ~loc
                   [ Pp.textf "Module %S appears in several directories:"
                       (Module_name.to_string name)
-                  ; Pp.textf "- %s"
-                      (Path.to_string_maybe_quoted (Module.Source.src_dir x))
-                  ; Pp.textf "- %s"
-                      (Path.to_string_maybe_quoted (Module.Source.src_dir y))
+                  ; Pp.enumerate [ x; y ] ~f:(fun x ->
+                        Pp.text @@ Path.to_string_maybe_quoted
+                        @@ Module.Source.src_dir x)
                   ; Pp.text "This is not allowed, please rename one of them."
                   ]))
         |> Module_trie.of_map

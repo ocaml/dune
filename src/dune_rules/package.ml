@@ -629,8 +629,7 @@ let decode ~dir =
     | Error (name, (loc1, _), (loc2, _)) ->
       User_error.raise
         [ Pp.textf "%s %s is declared twice:" error_msg (to_string name)
-        ; Pp.textf "- %s" (print_value loc1)
-        ; Pp.textf "- %s" (print_value loc2)
+        ; Pp.enumerate [ loc1; loc2 ] ~f:print_value
         ]
   in
   fields
@@ -649,13 +648,16 @@ let decode ~dir =
        name_map
          (Dune_lang.Syntax.since Stanza.syntax (2, 0))
          Name.Map.of_list_map Name.to_string "deprecated_package_names"
-         (located Name.decode) Loc.to_file_colon_line "Deprecated package name"
+         (located Name.decode)
+         (fun x -> Pp.text (Loc.to_file_colon_line x))
+         "Deprecated package name"
      and+ sites =
        name_map
          (Dune_lang.Syntax.since Stanza.syntax (2, 8))
          Section.Site.Map.of_list_map Section.Site.to_string "sites"
          (pair Section.decode Section.Site.decode)
-         Section.to_string "Site location name"
+         (fun x -> Pp.text (Section.to_string x))
+         "Site location name"
      and+ allow_empty =
        field_b "allow_empty"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))

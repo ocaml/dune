@@ -179,8 +179,7 @@ let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
   User_error.raise
     [ Pp.textf "Multiple rules generated for %s:"
         (Path.to_string_maybe_quoted fn)
-    ; Pp.textf "- %s" (describe_rule rule')
-    ; Pp.textf "- %s" (describe_rule rule)
+    ; Pp.enumerate ~f:(fun x -> describe_rule x |> Pp.text) [ rule; rule' ]
     ]
     ~hints:
       (match (rule.info, rule'.info) with

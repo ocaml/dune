@@ -128,8 +128,8 @@ module DB = struct
                 in
                 User_error.raise ~annots
                   [ main_message
-                  ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-                  ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+                  ; Pp.enumerate [ loc1; loc2 ] ~f:(fun x ->
+                        Pp.text (Loc.to_file_colon_line x))
                   ])
     in
     Lib.DB.create () ~parent:(Some parent) ~host
@@ -209,8 +209,8 @@ module DB = struct
           User_error.raise ~annots ~loc:loc2
             [ Pp.textf "Public library %s is defined twice:"
                 (Lib_name.to_string name)
-            ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-            ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+            ; Pp.enumerate [ loc1; loc2 ] ~f:(fun x ->
+                  Pp.text (Loc.to_file_colon_line x))
             ])
     in
     let resolve lib = Memo.return (resolve t public_libs lib) in

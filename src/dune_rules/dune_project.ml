@@ -754,10 +754,10 @@ let parse_packages (name : Name.t option) ~info ~dir ~version packages
       | _, _ -> ());
       let package_defined_twice name loc1 loc2 =
         let main_message =
-          [ Pp.textf "Package name %s is defined twice:"
-              (Package.Name.to_string name)
-          ]
+          Pp.textf "Package name %s is defined twice:"
+            (Package.Name.to_string name)
         in
+
         let name = Package.Name.to_string name in
         let annots =
           let message loc =
@@ -766,15 +766,14 @@ let parse_packages (name : Name.t option) ~info ~dir ~version packages
           let related = [ message loc1; message loc2 ] in
           User_message.Annots.singleton Compound_user_error.annot
             [ Compound_user_error.make
-                ~main:(User_message.make main_message)
+                ~main:(User_message.make [ main_message ])
                 ~related
             ]
         in
         User_error.raise ~annots
-          (main_message
-          @ [ Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-            ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-            ])
+          [ main_message
+          ; Pp.enumerate [ loc1; loc2 ] ~f:Loc.pp_file_colon_line
+          ]
       in
       let deprecated_package_names =
         List.fold_left packages ~init:Package.Name.Map.empty

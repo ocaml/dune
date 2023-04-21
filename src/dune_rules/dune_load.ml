@@ -303,10 +303,9 @@ let load () =
                 User_error.raise
                   [ Pp.textf "Too many opam files for package %S:"
                       (Package.Name.to_string name)
-                  ; Pp.textf "- %s"
-                      (Path.Source.to_string_maybe_quoted (Package.opam_file a))
-                  ; Pp.textf "- %s"
-                      (Path.Source.to_string_maybe_quoted (Package.opam_file b))
+                  ; Pp.enumerate [ a; b ] ~f:(fun x ->
+                        Pp.text @@ Path.Source.to_string_maybe_quoted
+                        @@ Package.opam_file x)
                   ])))
   in
   let+ dune_files =

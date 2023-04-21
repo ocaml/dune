@@ -290,7 +290,7 @@ let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules
     ~include_subdirs:
       (loc_include_subdirs, (include_subdirs : Dune_file.Include_subdirs.t)) =
   let open Resolve.Memo.O in
-  let+ kind, main_module_name, wrapped =
+  let* kind, main_module_name, wrapped =
     match lib.implements with
     | None ->
       (* In the two following pattern matching, we can only get [From _] if
@@ -334,7 +334,8 @@ let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules
       let kind : Modules_field_evaluator.kind = Implementation impl in
       (kind, main_module_name, wrapped)
   in
-  let sources, modules =
+  let open Memo.O in
+  let* sources, modules =
     let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
       lib.buildable
     in
@@ -366,9 +367,10 @@ let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules
   in
   let implements = Option.is_some lib.implements in
   let _loc, lib_name = lib.name in
-  ( sources
-  , Modules_group.lib ~stdlib:lib.stdlib ~implements ~lib_name ~obj_dir:dir
-      ~modules ~main_module_name ~wrapped )
+  Resolve.Memo.return
+    ( sources
+    , Modules_group.lib ~stdlib:lib.stdlib ~implements ~lib_name ~obj_dir:dir
+        ~modules ~main_module_name ~wrapped )
 
 let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
     ~include_subdirs =
@@ -413,14 +415,13 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
         `Library (lib, sources, modules, obj_dir)
       | Executables exes | Tests { exes; _ } ->
         let obj_dir = Dune_file.Executables.obj_dir ~dir exes in
-        let sources, modules =
+        let+ sources, modules =
           let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
             exes.buildable
           in
-          Modules_field_evaluator.eval ~modules ~stanza_loc
+          Modules_field_evaluator.eval ~modules ~stanza_loc ~src_dir:dir
             ~kind:Modules_field_evaluator.Exe_or_normal_lib
-            ~private_modules:Ordered_set_lang.standard ~src_dir:dir
-            modules_settings
+            ~private_modules:Ordered_set_lang.standard modules_settings
         in
         let modules =
           let project = Scope.project scope in
@@ -429,10 +430,10 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
             Modules_group.make_wrapped ~obj_dir ~modules `Exe
           else Modules_group.exe_unwrapped modules ~obj_dir
         in
-        Memo.return (`Executables (exes, sources, modules, obj_dir))
+        `Executables (exes, sources, modules, obj_dir)
       | Melange_stanzas.Emit.T mel ->
         let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
-        let sources, modules =
+        let+ sources, modules =
           Modules_field_evaluator.eval ~modules ~stanza_loc:mel.loc
             ~kind:Modules_field_evaluator.Exe_or_normal_lib
             ~private_modules:Ordered_set_lang.standard ~src_dir:dir mel.modules
@@ -441,7 +442,7 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
           Modules_group.make_wrapped ~obj_dir:(Obj_dir.obj_dir obj_dir) ~modules
             `Melange
         in
-        Memo.return (`Melange_emit (mel, sources, modules, obj_dir))
+        `Melange_emit (mel, sources, modules, obj_dir)
       | _ -> Memo.return `Skip)
   >>| filter_partition_map
 

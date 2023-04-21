@@ -456,7 +456,13 @@ let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib
       | Include Qualified ->
         List.fold_left dirs ~init:Module_trie.empty
           ~f:(fun acc ((dir : Path.Build.t), local, files) ->
-            let path = List.map local ~f:Module_name.of_string in
+            let path =
+              List.map local ~f:(fun m ->
+                  Module_name.parse_string_exn
+                    ( Loc.in_dir
+                        (Path.drop_optional_build_context (Path.build dir))
+                    , m ))
+            in
             let modules = modules_of_files ~dialects ~dir ~files ~path in
             match Module_trie.set_map acc path modules with
             | Ok s -> s

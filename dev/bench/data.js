@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682089445616,
+  "lastUpdate": 1682089633319,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -28302,6 +28302,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8012339455933333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "604049b72d88096c1b5a9a2d02590587382ffe6c",
+          "message": "Source fetching (#7179)\n\nImplement a source fetching library that uses opam under the hood\r\n\r\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-04-21T07:40:02-07:00",
+          "tree_id": "77b15a8d5690d22cf3bc01ed2448e2ea956a5bba",
+          "url": "https://github.com/ocaml/dune/commit/604049b72d88096c1b5a9a2d02590587382ffe6c"
+        },
+        "date": 1682089632519,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "69.31650280164666",
             "unit": "seconds"
           }
         ]

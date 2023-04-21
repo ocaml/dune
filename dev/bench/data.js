@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682089644530,
+  "lastUpdate": 1682089944061,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -14440,6 +14440,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.48951415548",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6886f7cbe95f4348c1e96706359bad5fdf4a5622",
+          "message": "Don't attempt read from closed fd in dune_rpc_lwt (#7581)\n\nThis fixes a bug where RPC clients built with dune_rpc_lwt would crash\r\nwhile disconnecting as they attempted to read from a channel whose\r\nunderlying file descriptor had been closed.\r\n\r\nAlso updates the dune-rpc-lwt expect test to expect the text \"success\"\r\nto be printed by the client after its connection is closed. It wasn't\r\nbeing printed prior to this change.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-04-21T07:51:28-07:00",
+          "tree_id": "08c27af35909d62b83a33c88e0770e0a6f15233d",
+          "url": "https://github.com/ocaml/dune/commit/6886f7cbe95f4348c1e96706359bad5fdf4a5622"
+        },
+        "date": 1682089941938,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.98275852115333",
             "unit": "seconds"
           }
         ]

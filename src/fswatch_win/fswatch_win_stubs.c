@@ -94,7 +94,7 @@ static void push_events(struct fsenv* fsenv, struct watch* w) {
   /* Perform [e->next = fsenv->events; fsenv->events = e] atomically */
   do {
     e->next = fsenv->events;
-  } while (InterlockedCompareExchangePointer(&(fsenv->events), e, e->next) != e->next);
+  } while (InterlockedCompareExchangePointer((PVOID volatile *)&(fsenv->events), e, e->next) != e->next);
 
   SetEvent(fsenv->signal); /* wakeup OCaml thread */
 }
@@ -106,7 +106,7 @@ static struct events* pop_events(struct fsenv* fsenv) {
   /* Perform [res = fsenv->events; fsenv->events = NULL] atomically */
   do {
     res = fsenv->events;
-  } while (InterlockedCompareExchangePointer(&(fsenv->events), NULL, res) != res);
+  } while (InterlockedCompareExchangePointer((PVOID volatile *)&(fsenv->events), NULL, res) != res);
 
   return res;
 }

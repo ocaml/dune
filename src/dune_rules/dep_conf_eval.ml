@@ -137,11 +137,7 @@ let rec dep expander = function
   | Source_tree s ->
     Other
       (let* path = Expander.expand_path expander s in
-       let deps =
-         let open Memo.O in
-         let+ files = Source_deps.files path in
-         (files, Dep.Set.to_files_set_exn files)
-       in
+       let deps = Source_deps.files path in
        Action_builder.dyn_memo_deps deps
        |> Action_builder.map ~f:Path.Set.to_list)
   | Package p ->

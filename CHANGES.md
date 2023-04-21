@@ -2,7 +2,7 @@ Unreleased
 ----------
 
 - When a rule's action is interrupted, delete any leftover directory targets.
-  This is consistent with how we treat file targets. (@rgrinberg, 7564)
+  This is consistent with how we treat file targets. (#7564, @rgrinberg)
 
 - Fix plugin loading with findlib. The functionality was broken in 3.7.0.
   (#7556, @anmonteiro)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682045823063,
+  "lastUpdate": 1682069585130,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -32827,6 +32827,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "29.087401196393333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "18a04d64e4a44e4a37237d1fd501b2a15478fe88",
+          "message": "ci: remove MSVC 4.12.1 builds (#7591)\n\nFixes #7592\r\n\r\nOne of these builds has been failing for some time and after some\r\ninvestigation it seems that the other one is only working because of\r\nsome cached assets that can not be recreated easily.\r\n\r\nQuoting @jonahbeckford, DkML is a rolling distribution, so fixes are not\r\nbackported to old compiler versions. At the moment of this commit, MSVC\r\n4.14 is the current version and works as expected.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-04-21T11:19:55+02:00",
+          "tree_id": "56b6f19a0b3c2fcfd0d99e83fe32ae6bdb0e5e51",
+          "url": "https://github.com/ocaml/dune/commit/18a04d64e4a44e4a37237d1fd501b2a15478fe88"
+        },
+        "date": 1682069582709,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.25013248733333",
             "unit": "seconds"
           }
         ]

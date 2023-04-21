@@ -6,7 +6,6 @@
 Here we test that instrumentation processing is not passed to merlin by setting
 up a project with instrumentation and testing checking the merlin config.
 
-  $ dune build --instrument-with hello ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar
   $ dune build --instrument-with hello ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
   $ dune ocaml merlin dump-config $PWD/lib
   Bar
@@ -22,12 +21,6 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/lib/subdir)
    (S
     $TESTCASE_ROOT/ppx)
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/f44ece1517dc1020595aced5ed9e33eb/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="bar"'"))
    (FLG (-w -40 -g)))
   File
   ((STDLIB /OCAMLC_WHERE)
@@ -43,12 +36,6 @@ up a project with instrumentation and testing checking the merlin config.
    (S
     $TESTCASE_ROOT/ppx)
    (FLG (-open Bar))
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/f44ece1517dc1020595aced5ed9e33eb/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="bar"'"))
    (FLG (-w -40 -g)))
   Foo
   ((STDLIB /OCAMLC_WHERE)
@@ -67,12 +54,6 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/lib/subdir)
    (S
     $TESTCASE_ROOT/ppx)
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/f44ece1517dc1020595aced5ed9e33eb/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="foo"'"))
    (FLG (-w -40 -g)))
   Privmod
   ((STDLIB /OCAMLC_WHERE)
@@ -92,10 +73,4 @@ up a project with instrumentation and testing checking the merlin config.
    (S
     $TESTCASE_ROOT/ppx)
    (FLG (-open Foo))
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/f44ece1517dc1020595aced5ed9e33eb/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="foo"'"))
    (FLG (-w -40 -g)))

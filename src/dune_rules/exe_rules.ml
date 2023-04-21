@@ -130,11 +130,6 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   in
   let stdlib_dir = ctx.lib_config.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in
-  let preprocess =
-    Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
-      ~instrumentation_backend:
-        (Lib.DB.instrumentation_backend (Scope.libs scope))
-  in
   let* dep_graphs =
     (* Building an archive for foreign stubs, we link the corresponding object
        files directly to improve perf. *)
@@ -210,7 +205,9 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
-      ~source_dirs:Path.Source.Set.empty ~libname:None ~preprocess ~obj_dir
+      ~source_dirs:Path.Source.Set.empty ~libname:None ~obj_dir
+      ~preprocess:
+        (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Lib.Compile.merlin_ident compile_info)
       ~modes:`Exe )

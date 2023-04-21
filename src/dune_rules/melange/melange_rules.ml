@@ -212,11 +212,6 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
     in
     let* () = Module_compilation.build_all cctx in
     let* requires_compile = Compilation_context.requires_compile cctx in
-    let preprocess =
-      Preprocess.Per_module.with_instrumentation mel.preprocess
-        ~instrumentation_backend:
-          (Lib.DB.instrumentation_backend (Scope.libs scope))
-    in
     let stdlib_dir = ctx.lib_config.stdlib_dir in
     let+ () =
       let emit_and_libs_deps =
@@ -250,7 +245,10 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
     in
     ( cctx
     , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
-        ~source_dirs:Path.Source.Set.empty ~libname:None ~preprocess ~obj_dir
+        ~source_dirs:Path.Source.Set.empty ~libname:None
+        ~preprocess:
+          (Preprocess.Per_module.without_instrumentation mel.preprocess)
+        ~obj_dir
         ~ident:(Lib.Compile.merlin_ident compile_info)
         ~dialects:(Dune_project.dialects (Scope.project scope))
         ~modes:`Melange_emit )

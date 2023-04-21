@@ -10,6 +10,7 @@ type t =
   ; loc : Loc.t
   ; infer : bool
   ; enabled_if : Blang.t
+  ; menhir_lang_version : Dune_sexp.Syntax.Version.t
   }
 
 val modules : t -> string list

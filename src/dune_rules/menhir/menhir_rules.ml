@@ -74,10 +74,13 @@ module Run (P : PARAMS) = struct
 
   let source m = Path.relative (Path.build dir) (m ^ ".mly")
 
-  let targets m ~cmly =
-    let base = [ m ^ ".ml"; m ^ ".mli" ] in
-    List.map ~f:(Path.Build.relative dir)
-      (if cmly then (m ^ ".cmly") :: base else base)
+  let targets m ~cmly ~explain =
+    let base =
+      let cmly = if cmly then [ m ^ ".cmly" ] else [] in
+      let conflicts = if explain then [ m ^ ".conflicts" ] else [] in
+      List.concat [ conflicts; cmly; [ m ^ ".ml"; m ^ ".mli" ] ]
+    in
+    List.map base ~f:(Path.Build.relative dir)
 
   let sources ms = List.map ~f:source ms
 
@@ -170,6 +173,23 @@ module Run (P : PARAMS) = struct
                       text
                   ]))
 
+  let explain ~menhir_lang_version
+      (expanded_flags : Ordered_set_lang.Unexpanded.t) =
+    (* Given a list of [expanded_flags], which are generally provided as an
+       [Action_builder.t], we check if "--explain" ever occurs by running the
+       action. Working on [expanded_flags] is important as this will allow us to
+       check any flags appearing in (env) stanzas. *)
+    menhir_lang_version >= (2, 2)
+    &&
+    try
+      Ordered_set_lang.Unexpanded.fold_strings expanded_flags ~init:false
+        ~f:(fun _pos sw acc ->
+          match String_with_vars.text_only sw with
+          | None -> acc
+          | Some text ->
+            if String.equal text "--explain" then raise_notrace Exit else false)
+    with Exit -> true
+
   (* ------------------------------------------------------------------------ *)
 
   (* [process3 stanza] converts a Menhir stanza into a set of build rules. This
@@ -218,6 +238,9 @@ module Run (P : PARAMS) = struct
       Module_compilation.ocamlc_i ~deps cctx mock_module
         ~output:(inferred_mli base)
     in
+    let explain =
+      explain ~menhir_lang_version:stanza.menhir_lang_version stanza.flags
+    in
     (* 3. A second invocation of Menhir reads the inferred [.mli] file. *)
     menhir
       [ Command.Args.dyn expanded_flags
@@ -226,7 +249,7 @@ module Run (P : PARAMS) = struct
       ; Path (Path.relative (Path.build dir) base)
       ; A "--infer-read-reply"
       ; Dep (Path.build (inferred_mli base))
-      ; Hidden_targets (targets base ~cmly)
+      ; Hidden_targets (targets base ~cmly ~explain)
       ]
     >>= rule
 
@@ -238,12 +261,15 @@ module Run (P : PARAMS) = struct
   let process1 base ~cmly (stanza : stanza) : unit Memo.t =
     let open Memo.O in
     let expanded_flags = expand_flags stanza.flags in
+    let explain =
+      explain ~menhir_lang_version:stanza.menhir_lang_version stanza.flags
+    in
     menhir
       [ Command.Args.dyn expanded_flags
       ; Deps (sources stanza.modules)
       ; A "--base"
       ; Path (Path.relative (Path.build dir) base)
-      ; Hidden_targets (targets base ~cmly)
+      ; Hidden_targets (targets base ~cmly ~explain)
       ]
     >>= rule
 

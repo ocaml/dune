@@ -337,6 +337,18 @@ let get_exn t =
       ; ("context", Univ_map.to_dyn context)
       ]
 
+let get t =
+  get t.key >>= function
+  | Some (Active x) -> return (Some x)
+  | Some (Inactive _) -> return None
+  | None ->
+    let+ context = get_all in
+    Code_error.raise "Syntax identifier is unset"
+      [ ("name", Dyn.string t.name)
+      ; ("supported_versions", Supported_versions.to_dyn t.supported_versions)
+      ; ("context", Univ_map.to_dyn context)
+      ]
+
 let deleted_in ?(extra_info = "") t ver =
   let open Version.Infix in
   let* current_ver = get_exn t in

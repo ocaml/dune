@@ -121,4 +121,6 @@ val key : t -> Key.t Univ_map.Key.t
 
 val get_exn : t -> (Version.t, 'k) Decoder.parser
 
+val get : t -> (Version.t option, 'k) Decoder.parser
+
 val experimental : t -> bool

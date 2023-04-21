@@ -20,6 +20,10 @@ Unreleased
   `install_c_headers`, but it allows to choose the extension and choose the
   paths for the installed headers. (#7512, @rgrinberg)
 
+- Menhir rules will understand the `--explain` flag when passed and build a
+  `.conflicts` file. Menhir lang has been bumped to 2.2 (#7607, fixes #6865,
+  @Alizter)
+
 - Load the host context `findlib.conf` when cross-compiling (#7428, fixes
   #1701, @rgrinberg, @anmonteiro)
 

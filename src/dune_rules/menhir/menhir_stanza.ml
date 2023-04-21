@@ -6,6 +6,7 @@ let syntax =
     ; ((1, 1), `Since (1, 4))
     ; ((2, 0), `Since (1, 4))
     ; ((2, 1), `Since (2, 2))
+    ; ((2, 2), `Since (3, 8))
     ]
 
 open Dune_lang.Decoder
@@ -18,6 +19,7 @@ type t =
   ; loc : Loc.t
   ; infer : bool
   ; enabled_if : Blang.t
+  ; menhir_lang_version : Dune_sexp.Syntax.Version.t
   }
 
 let decode =
@@ -31,13 +33,22 @@ let decode =
      and+ menhir_syntax = Dune_lang.Syntax.get_exn syntax
      and+ enabled_if =
        Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
-     and+ loc = loc in
+     and+ loc = loc
+     and+ menhir_lang_version = Dune_lang.Syntax.get_exn syntax in
      let infer =
        match infer with
        | Some infer -> infer
        | None -> menhir_syntax >= (2, 0)
      in
-     { merge_into; flags; modules; mode; loc; infer; enabled_if })
+     { merge_into
+     ; flags
+     ; modules
+     ; mode
+     ; loc
+     ; infer
+     ; enabled_if
+     ; menhir_lang_version
+     })
 
 type Stanza.t += T of t
 

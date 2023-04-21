@@ -125,6 +125,12 @@ Unreleased
 - On nix+macos, pass `-f` to the codesign hook to avoid errors when the binary
   is already signed (#7183, fixes #6265, @greedy)
 
+- Coq build languages less than 0.8 are deprecated, and will be
+  removed in the next Dune version. All users are required to migrate
+  to `(coq lang 0.8)` which provides the right semantics for theories
+  that have been globally installed, such as those coming from OPAM
+  (@ejgallego, @Alizter)
+
 3.7.1 (2023-04-04)
 ------------------
 

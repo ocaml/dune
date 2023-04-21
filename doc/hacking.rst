@@ -252,7 +252,7 @@ Such languages must be enabled in the ``dune`` project file separately:
 .. code:: dune
 
    (lang dune 3.8)
-   (using coq 0.7)
+   (using coq 0.8)
 
 If such extensions are experimental, it's recommended that they pass
 ``~experimental:true``, and that their versions are below 1.0.

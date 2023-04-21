@@ -33,7 +33,7 @@ version<coq-lang>` in the :ref:`dune-project` file. For example, adding
 
 .. code:: dune
 
-    (using coq 0.7)
+    (using coq 0.8)
 
 to a :ref:`dune-project` file enables using the ``coq.theory`` stanza and other
 ``coq.*`` stanzas. See the :ref:`Dune Coq language<coq-lang>` section for more
@@ -145,7 +145,7 @@ The semantics of the fields are:
 - From version :ref:`Coq lang 0.7<coq-lang>` onwards, if Coq has been configured
   with ``-native-compiler yes`` or ``ondemand``, Dune will always build the
   ``cmxs`` files together with the ``vo`` files.
-  
+
   You may override this by specifying ``(mode native)`` or ``(mode vo)``. Before
   :ref:`Coq lang 0.7<coq-lang>`, the native mode had to be manually specified.
 
@@ -250,9 +250,13 @@ file:
 
 .. code:: dune
 
-    (using coq 0.7)
+    (using coq 0.8)
 
 The supported Coq language versions (not the version of Coq) are:
+
+- ``0.8``: Support for composition with installed Coq theories
+
+Deprecated and removed experimental Coq language versions are:
 
 - ``0.1``: Basic Coq theory support.
 - ``0.2``: Support for the ``theories`` field and composition of theories in the
@@ -347,7 +351,7 @@ Let us start with a simple project. First, make sure we have a
 .. code:: dune
 
   (lang dune 3.8)
-  (using coq 0.7)
+  (using coq 0.8)
 
 Next we need a :ref:`dune<dune-files>` file with a :ref:`coq-theory` stanza:
 
@@ -557,7 +561,7 @@ otherwise Coq will not be able to find it.
 .. code:: dune
 
   (lang dune 3.8)
-  (using coq 0.7)
+  (using coq 0.8)
 
   (package
    (name my-coq-plugin)

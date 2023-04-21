@@ -16,6 +16,8 @@ Reproducing test case for #5532.
   > EOF
 
   $ dune build
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in Dune 3.9
   File "dune", line 1, characters 0-26:
   1 | (coq.theory
   2 |  (name basic))

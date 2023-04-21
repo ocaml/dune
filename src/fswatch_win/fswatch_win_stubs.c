@@ -326,7 +326,8 @@ static void remove_watch(struct watch* w, struct watch** lst) {
   free_watch(w);
 }
 
-static DWORD WINAPI watch_thread(struct fsenv* fsenv) {
+static DWORD WINAPI watch_thread(LPVOID lpParameter) {
+  struct fsenv* fsenv = lpParameter;
   struct watch* watches = NULL;
   BOOL shuttingDown = FALSE;
 

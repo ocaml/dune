@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682015360207,
+  "lastUpdate": 1682044755193,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -32711,6 +32711,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.581970543133338",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "51c2d83cc5b6331421b43ab5e27b74d7dc0db230",
+          "message": "refactor: simplify source dependencies (#7563)\n\nRemove the [Source_tree] functor in [Dep.Set] and replace it with a\r\nfunction [of_source_files]\r\n\r\nThis simplifies the API everywhere, and removes an assert false.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-20T19:22:30-07:00",
+          "tree_id": "f7cb70e50b9dea38ea1fa5ccf8bfdea2be286174",
+          "url": "https://github.com/ocaml/dune/commit/51c2d83cc5b6331421b43ab5e27b74d7dc0db230"
+        },
+        "date": 1682044751866,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "29.087401196393333",
             "unit": "seconds"
           }
         ]

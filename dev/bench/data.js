@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682095487629,
+  "lastUpdate": 1682095993498,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -14498,6 +14498,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.24870685265333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "antonin@tarides.com",
+            "name": "Antonin Décimo",
+            "username": "MisterDA"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "808b752df01c4ad717e7a69b685632f61c3c403d",
+          "message": "Fix Windows fswatch C warnings (#7602)\n\nSigned-off-by: Antonin Décimo <antonin@tarides.com>",
+          "timestamp": "2023-04-21T18:31:21+02:00",
+          "tree_id": "db042b27d690048f5889cbe41c555c437b23004c",
+          "url": "https://github.com/ocaml/dune/commit/808b752df01c4ad717e7a69b685632f61c3c403d"
+        },
+        "date": 1682095992470,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.13808996672",
             "unit": "seconds"
           }
         ]

@@ -60,6 +60,9 @@ type single_module_error =
   | Vmodule_impl_missing_impl
   | Forbidden_new_public_module
   | Vmodule_impls_with_own_intf
+  | Undeclared_module_without_implementation
+  | Undeclared_private_module
+  | Undeclared_virtual_module
 
 type errors =
   { errors : (single_module_error * Loc.t * Module_name.Path.t) list
@@ -97,14 +100,19 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
         in
         let ( ++ ) f g loc acc = f loc (g loc acc) in
         let ( !? ) = Option.is_some in
-        with_property private_ (add_if impl_vmodule Private_impl_of_vmodule)
+        with_property private_
+          (add_if impl_vmodule Private_impl_of_vmodule
+          ++ add_if (not !?modules) Undeclared_private_module)
         @@ with_property intf_only
              (add_if has_impl Spurious_module_intf
-             ++ add_if impl_vmodule Vmodule_impl_intf_only_exclusion)
+             ++ add_if impl_vmodule Vmodule_impl_intf_only_exclusion
+             ++ add_if (not !?modules) Undeclared_module_without_implementation
+             )
         @@ with_property virtual_
              (add_if has_impl Spurious_module_virtual
              ++ add_if !?intf_only Virt_intf_overlap
-             ++ add_if !?private_ Private_virt_module)
+             ++ add_if !?private_ Private_virt_module
+             ++ add_if (not !?modules) Undeclared_virtual_module)
         @@ with_property modules
              (add_if
                 ((not !?private_)
@@ -128,7 +136,7 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
 
 let check_invalid_module_listing ~stanza_loc ~modules_without_implementation
     ~intf_only ~modules ~virtual_modules ~private_modules
-    ~existing_virtual_modules ~allow_new_public_modules =
+    ~existing_virtual_modules ~allow_new_public_modules ~is_vendored =
   let { errors; unimplemented_virt_modules } =
     find_errors ~modules ~intf_only ~virtual_modules ~private_modules
       ~existing_virtual_modules ~allow_new_public_modules
@@ -154,6 +162,11 @@ let check_invalid_module_listing ~stanza_loc ~modules_without_implementation
     let missing_intf_only = get Missing_intf_only in
     let spurious_modules_intf = get Spurious_module_intf in
     let spurious_modules_virtual = get Spurious_module_virtual in
+    let undeclared_modules_without_implementation =
+      get Undeclared_module_without_implementation
+    in
+    let undeclared_private_modules = get Undeclared_private_module in
+    let undeclared_virtual_modules = get Undeclared_virtual_module in
     let uncapitalized =
       List.map ~f:(fun (_, m) -> Module_name.Path.uncapitalize m)
     in
@@ -161,11 +174,12 @@ let check_invalid_module_listing ~stanza_loc ~modules_without_implementation
       Pp.enumerate modules ~f:(fun (_, m) ->
           Pp.verbatim (Module_name.Path.to_string m))
     in
-    let print before l after =
+    let print ?(is_error = true) before l after =
       match l with
       | [] -> ()
       | (loc, _) :: _ ->
-        User_error.raise ~loc (List.concat [ before; [ line_list l ]; after ])
+        User_warning.emit ~is_error ~loc
+          (List.concat [ before; [ line_list l ]; after ])
     in
     print
       [ Pp.text "The following modules are implementations of virtual modules:"
@@ -213,6 +227,20 @@ let check_invalid_module_listing ~stanza_loc ~modules_without_implementation
       (unimplemented_virt_modules |> Module_name.Path.Set.to_list
       |> List.map ~f:(fun name -> (stanza_loc, name)))
       [ Pp.text "You must provide an implementation for all of these modules." ];
+    (* Checking that (modules) includes all declared modules *)
+    let print_undelared_modules field mods =
+      (* TODO: this is a warning for now, change to an error in 3.9. *)
+      (* If we are in a vendored stanza we do nothing. *)
+      if not is_vendored then
+        print ~is_error:false
+          [ Pp.textf "These modules appear in the %s field:" field ]
+          mods
+          [ Pp.text "They must also appear in the modules field." ]
+    in
+    print_undelared_modules "modules_without_implementation"
+      undeclared_modules_without_implementation;
+    print_undelared_modules "private_modules" undeclared_private_modules;
+    print_undelared_modules "virtual_modules" undeclared_virtual_modules;
     (if missing_intf_only <> [] then
      match Ordered_set_lang.loc modules_without_implementation with
      | None ->
@@ -263,7 +291,7 @@ let eval0 ~modules:(all_modules : Module.Source.t Module_trie.t) ~stanza_loc
   { modules; fake_modules = !fake_modules }
 
 let eval ~modules:(all_modules : Module.Source.t Module_trie.t) ~stanza_loc
-    ~private_modules ~kind ~src_dir
+    ~private_modules ~kind ~src_dir ~is_vendored
     { Stanza_common.Modules_settings.modules = _
     ; root_module
     ; modules_without_implementation
@@ -299,7 +327,7 @@ let eval ~modules:(all_modules : Module.Source.t Module_trie.t) ~stanza_loc
         ]);
   check_invalid_module_listing ~stanza_loc ~modules_without_implementation
     ~intf_only ~modules ~virtual_modules ~private_modules
-    ~existing_virtual_modules ~allow_new_public_modules;
+    ~existing_virtual_modules ~allow_new_public_modules ~is_vendored;
   let all_modules =
     Module_trie.mapi modules ~f:(fun _path (_, m) ->
         let name = [ Module.Source.name m ] in
@@ -333,8 +361,14 @@ let eval ~modules:(all_modules : Module.Source.t Module_trie.t) ~stanza_loc
       ~modules:(all_modules : Module.Source.t Module_trie.t)
       ~stanza_loc settings.modules
   in
+  let open Memo.O in
+  let+ is_vendored =
+    match Path.Build.drop_build_context src_dir with
+    | Some src_dir -> Source_tree.is_vendored src_dir
+    | None -> Memo.return false
+  in
   let modules =
     eval ~modules:all_modules ~stanza_loc ~private_modules ~kind ~src_dir
-      settings eval0
+      ~is_vendored settings eval0
   in
   (eval0.modules, modules)

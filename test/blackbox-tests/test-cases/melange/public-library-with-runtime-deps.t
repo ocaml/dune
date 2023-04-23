@@ -14,6 +14,7 @@ Test `melange.runtime_deps` in a public library in the workspace
   > (library
   >  (public_name foo)
   >  (modes melange)
+  >  (preprocess (pps melange.ppx))
   >  (melange.runtime_deps index.txt nested/hello.txt))
   > EOF
   $ cat > lib/foo.ml <<EOF
@@ -46,6 +47,7 @@ Test `melange.runtime_deps` in a public library in the workspace
   >  (alias mel)
   >  (target output)
   >  (libraries foo)
+  >  (preprocess (pps melange.ppx))
   >  (emit_stdlib false)
   >  (runtime_deps assets/file.txt))
   > EOF
@@ -64,6 +66,7 @@ The runtime_dep index.txt was copied to the build folder
 
   $ ls _build/default/lib
   foo.ml
+  foo.pp.ml
   index.txt
   nested
   $ ls _build/default/output/node_modules/foo/
@@ -76,7 +79,6 @@ The runtime_dep index.txt was copied to the build folder
   
   Some text
   
-
 The same does not work for non-recursive aliases
 
   $ dune clean

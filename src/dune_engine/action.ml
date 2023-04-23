@@ -4,18 +4,16 @@ module File_perm = File_perm
 module Outputs = Outputs
 module Inputs = Inputs
 
-module type Encoder = sig
+module type T = sig
   type t
-
-  val encode : t -> Dune_lang.t
 end
 
 module Make
-    (Program : Encoder)
-    (Path : Encoder)
-    (Target : Encoder)
-    (String : Encoder)
-    (Extension : Encoder)
+    (Program : T)
+    (Path : T)
+    (Target : T)
+    (String : T)
+    (Extension : T)
     (Ast : Action_intf.Ast
              with type program := Program.t
              with type path := Path.t
@@ -24,75 +22,6 @@ module Make
               and type ext := Extension.t) =
 struct
   include Ast
-
-  let rec encode =
-    let open Dune_lang in
-    let program = Program.encode in
-    let string = String.encode in
-    let path = Path.encode in
-    let target = Target.encode in
-    function
-    | Run (a, xs) -> List (atom "run" :: program a :: List.map xs ~f:string)
-    | With_accepted_exit_codes (pred, t) ->
-      List
-        [ atom "with-accepted-exit-codes"
-        ; Predicate_lang.encode Dune_lang.Encoder.int pred
-        ; encode t
-        ]
-    | Dynamic_run (a, xs) ->
-      List (atom "run_dynamic" :: program a :: List.map xs ~f:string)
-    | Chdir (a, r) -> List [ atom "chdir"; path a; encode r ]
-    | Setenv (k, v, r) -> List [ atom "setenv"; string k; string v; encode r ]
-    | Redirect_out (outputs, fn, perm, r) ->
-      List
-        [ atom
-            (sprintf "with-%s-to%s"
-               (Outputs.to_string outputs)
-               (File_perm.suffix perm))
-        ; target fn
-        ; encode r
-        ]
-    | Redirect_in (inputs, fn, r) ->
-      List
-        [ atom (sprintf "with-%s-from" (Inputs.to_string inputs))
-        ; path fn
-        ; encode r
-        ]
-    | Ignore (outputs, r) ->
-      List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs)); encode r ]
-    | Progn l -> List (atom "progn" :: List.map l ~f:encode)
-    | Concurrent l -> List (atom "concurrent" :: List.map l ~f:encode)
-    | Echo xs -> List (atom "echo" :: List.map xs ~f:string)
-    | Cat xs -> List (atom "cat" :: List.map xs ~f:path)
-    | Copy (x, y) -> List [ atom "copy"; path x; target y ]
-    | Symlink (x, y) -> List [ atom "symlink"; path x; target y ]
-    | Hardlink (x, y) -> List [ atom "hardlink"; path x; target y ]
-    | System x -> List [ atom "system"; string x ]
-    | Bash x -> List [ atom "bash"; string x ]
-    | Write_file (x, perm, y) ->
-      List [ atom ("write-file" ^ File_perm.suffix perm); target x; string y ]
-    | Rename (x, y) -> List [ atom "rename"; target x; target y ]
-    | Remove_tree x -> List [ atom "remove-tree"; target x ]
-    | Mkdir x -> List [ atom "mkdir"; target x ]
-    | Diff { optional; file1; file2; mode = Binary } ->
-      assert (not optional);
-      List [ atom "cmp"; path file1; target file2 ]
-    | Diff { optional = false; file1; file2; mode = _ } ->
-      List [ atom "diff"; path file1; target file2 ]
-    | Diff { optional = true; file1; file2; mode = _ } ->
-      List [ atom "diff?"; path file1; target file2 ]
-    | Merge_files_into (srcs, extras, into) ->
-      List
-        [ atom "merge-files-into"
-        ; List (List.map ~f:path srcs)
-        ; List (List.map ~f:string extras)
-        ; target into
-        ]
-    | Pipe (outputs, l) ->
-      List
-        (atom (sprintf "pipe-%s" (Outputs.to_string outputs))
-        :: List.map l ~f:encode)
-    | Extension ext -> List [ atom "ext"; Extension.encode ext ]
 
   let run prog args = Run (prog, args)
 
@@ -179,10 +108,6 @@ module Prog = struct
 
   type t = (Path.t, Not_found.t) result
 
-  let encode = function
-    | Ok s -> Dpath.encode s
-    | Error (e : Not_found.t) -> Dune_lang.Encoder.string e.program
-
   let to_dyn t = Result.to_dyn Path.to_dyn Not_found.to_dyn t
 
   let ok_exn = function
@@ -195,8 +120,6 @@ module Encode_ext = struct
     (module Ext.Instance
        with type target = Dpath.Build.t
         and type path = Dpath.t)
-
-  let encode = Dune_lang.Encoder.unknown
 end
 
 module type Ast =
@@ -209,13 +132,7 @@ module type Ast =
 
 module rec Ast : Ast = Ast
 
-module String_with_sexp = struct
-  type t = string
-
-  let encode = Dune_lang.Encoder.string
-end
-
-include Make (Prog) (Dpath) (Dpath.Build) (String_with_sexp) (Encode_ext) (Ast)
+include Make (Prog) (Dpath) (Dpath.Build) (String) (Encode_ext) (Ast)
 
 include Monoid.Make (struct
   type nonrec t = t
@@ -242,15 +159,7 @@ module For_shell = struct
 
   module rec Ast : Ast = Ast
 
-  include
-    Make (String_with_sexp) (String_with_sexp) (String_with_sexp)
-      (String_with_sexp)
-      (struct
-        type t = Dune_lang.t
-
-        let encode = Dune_lang.Encoder.sexp
-      end)
-      (Ast)
+  include Make (String) (String) (String) (String) (Dune_lang) (Ast)
 end
 
 module Relativise = Action_mapper.Make (Ast) (For_shell.Ast)

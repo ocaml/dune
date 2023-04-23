@@ -77,7 +77,8 @@ dev-deps:
 
 .PHONY: coverage-deps
 coverage-deps:
-	opam install -y bisect_ppx
+  # We install all test deps including coq deps
+	opam install -y $(TEST_DEPS) bisect_ppx coq-native coq.8.16.1
 
 .PHONY: dev-switch
 dev-switch:
@@ -104,10 +105,15 @@ test-melange: $(BIN)
 	$(BIN) build @runtest-melange
 
 test-all: $(BIN)
-	$(BIN) build @runtest @runtest-js @runtest-coq @runtest-melange
+	DUNE_COQ_TEST=enable $(BIN) build @runtest @runtest-js @runtest-coq @runtest-melange
 
 test-coverage: $(BIN)
-	- $(BIN) build --instrument-with bisect_ppx --force @runtest
+# [Makefiles for dummies] the "-" ensures this build step can fail, since
+# coverage outputs some nonsense making our tests fail. That is however not
+# important and we just need codepaths to be run. It is important that we don't
+# fail here so that the reporting afterwards can happen.
+	- DUNE_COQ_TEST=enable $(BIN) build --instrument-with bisect_ppx --force \
+	  @runtest @runtest-js @runtest-coq @runtest-melange
 	bisect-ppx-report send-to Coveralls
 
 .PHONY: check

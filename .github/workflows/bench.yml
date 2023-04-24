@@ -92,9 +92,9 @@ jobs:
           yarn install
           opam install -y reason
           opam pin add -y graphql_ppx https://github.com/jchavarri/graphql-ppx.git\#2598910886f1d2d3869406ae7eb787341d8dce6b
-          opam pin add -y melange.dev https://github.com/melange-re/melange.git\#227b7cb862c4a81f74c19fa051a75005918a18ff
-          opam pin add -y reactjs-jsx-ppx.dev https://github.com/melange-re/melange.git\#227b7cb862c4a81f74c19fa051a75005918a18ff
-          opam pin add -y rescript-syntax.dev https://github.com/melange-re/melange.git\#227b7cb862c4a81f74c19fa051a75005918a18ff
+          opam pin add -y melange.dev https://github.com/melange-re/melange.git\#ebc038332c16e331ee4ab9017426e63461157cdd
+          opam pin add -y reactjs-jsx-ppx.dev https://github.com/melange-re/melange.git\#ebc038332c16e331ee4ab9017426e63461157cdd
+          opam pin add -y rescript-syntax.dev https://github.com/melange-re/melange.git\#ebc038332c16e331ee4ab9017426e63461157cdd
 
       - name: Run pupilfirst benchmark
         working-directory: pupilfirst

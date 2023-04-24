@@ -90,7 +90,7 @@ module Prog = struct
         match program with
         | "refmt" -> Some (Option.value ~default:"opam install reason" hint)
         | "rescript_syntax" ->
-          Some (Option.value ~default:"opam install mel" hint)
+          Some (Option.value ~default:"opam install rescript-syntax" hint)
         | _ -> hint
       in
       Utils.program_not_found_message ?hint ~loc ~context program

@@ -15,6 +15,8 @@ Example using melange.emit, copy_files and include_subdirs
   $ cat > src/dune <<EOF
   > (melange.emit
   >  (target app)
+  >  (preprocess (pps melange.ppx))
+  >  (emit_stdlib false)
   >  (alias mel))
   > 
   > (subdir
@@ -41,7 +43,6 @@ Example using melange.emit, copy_files and include_subdirs
   $ node $src
   hello from file
   
-
 Now add include_subdirs unqualified to show issue
 
   $ echo "(include_subdirs unqualified)" >> src/dune
@@ -51,4 +52,3 @@ Now add include_subdirs unqualified to show issue
   $ node $src
   hello from file
   
-

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682316186040,
+  "lastUpdate": 1682356250256,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -33697,6 +33697,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "29.320551194913335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f7c5082c396805214fe677a5900c07c656861d0e",
+          "message": "fix: melange bench (#7623)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-04-24T09:58:21-07:00",
+          "tree_id": "e18495d5f3813aed57264d94145fbd171d0b9c5e",
+          "url": "https://github.com/ocaml/dune/commit/f7c5082c396805214fe677a5900c07c656861d0e"
+        },
+        "date": 1682356247860,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "24.00576568922",
             "unit": "seconds"
           }
         ]

@@ -5,8 +5,6 @@ Test dune rules
   > (using melange 0.1)
   > EOF
 
-Using flags field in melange.emit stanzas is not supported
-
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)

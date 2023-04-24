@@ -84,8 +84,6 @@ module For_shell : sig
       with type target := string
       with type string := string
       with type ext := Dune_lang.t
-
-  val encode : t Dune_lang.Encoder.t
 end
 
 (** Convert the action to a format suitable for printing *)

@@ -12,6 +12,7 @@ Test simple interactions between melange.emit and copy_files
   >  (alias mel)
   >  (target output)
   >  (emit_stdlib false)
+  >  (preprocess (pps melange.ppx))
   >  (runtime_deps assets/file.txt assets/file.txt))
   > EOF
 
@@ -34,9 +35,7 @@ Rules created for the assets in the output directory
    (targets ((files (default/a/output/a/assets/file.txt)) (directories ())))
     (chdir _build/default (copy a/assets/file.txt a/output/a/assets/file.txt))))
 
-  $ dune build @mel --display=short
-          melc a/.output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc a/output/a/main.js
+  $ dune build @mel
 
 The runtime_dep index.txt was copied to the build folder
 
@@ -52,6 +51,7 @@ The runtime_dep index.txt was copied to the build folder
   hello from file
   
 
+
 Test depending on non-existing paths
 
   $ mkdir another
@@ -61,16 +61,18 @@ Test depending on non-existing paths
   >  (alias non-existing-mel)
   >  (target another-output)
   >  (emit_stdlib false)
+  >  (preprocess (pps melange.ppx))
   >  (runtime_deps doesnt-exist.txt))
   > EOF
 
   $ dune build @non-existing-mel
-  File "another/dune", line 1, characters 0-119:
+  File "another/dune", line 1, characters 0-151:
   1 | (melange.emit
   2 |  (alias non-existing-mel)
   3 |  (target another-output)
   4 |  (emit_stdlib false)
-  5 |  (runtime_deps doesnt-exist.txt))
+  5 |  (preprocess (pps melange.ppx))
+  6 |  (runtime_deps doesnt-exist.txt))
   Error: No rule found for another/doesnt-exist.txt
   [1]
 
@@ -81,11 +83,12 @@ Test depend on non-file dependencies
   >  (alias non-existing-mel)
   >  (target another-output)
   >  (emit_stdlib false)
+  >  (preprocess (pps melange.ppx))
   >  (runtime_deps (sandbox none)))
   > EOF
   $ dune build @non-existing-mel
-  File "another/dune", line 5, characters 15-29:
-  5 |  (runtime_deps (sandbox none)))
+  File "another/dune", line 6, characters 15-29:
+  6 |  (runtime_deps (sandbox none)))
                      ^^^^^^^^^^^^^^
   Error: only files are allowed in this position
   [1]
@@ -98,6 +101,7 @@ Test depending on paths that "escape" the melange.emit directory
   >  (alias mel)
   >  (target another-output)
   >  (emit_stdlib false)
+  >  (preprocess (pps melange.ppx))
   >  (runtime_deps ../a/assets/file.txt))
   > EOF
   $ cat > another/main.ml <<EOF
@@ -117,11 +121,7 @@ Need to create the source dir first for the alias to be picked up
     ((files (default/another/another-output/a/assets/file.txt))
      (copy a/assets/file.txt another/another-output/a/assets/file.txt))))
 
-  $ dune build @mel --display=short
-          melc a/.output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc another/.another-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc a/output/a/main.js
-          melc another/another-output/another/main.js
+  $ dune build @mel
 
 Path ends ups being emitted "correctly", but outside the target dir.
   $ ls _build/default/another/another-output/another
@@ -137,6 +137,7 @@ Test depending on external paths
   >  (alias mel)
   >  (target external-output)
   >  (emit_stdlib false)
+  >  (preprocess (pps melange.ppx))
   >  (runtime_deps /etc/hosts))
   > EOF
   $ cat > external/main.ml <<EOF
@@ -147,6 +148,7 @@ Test depending on external paths
   > EOF
 
   $ dune build @mel --display=short
+           ppx external/main.pp.ml
           melc external/.external-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
           melc external/external-output/external/main.js
 

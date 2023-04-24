@@ -18,25 +18,8 @@ Test dune rules
 
 Calling dune rules with the alias works fine
 
-  $ dune rules @melange
-  ((deps
-    ((File (External /home/me/code/dune/_opam/bin/melc))
-     (File
+  $ dune rules @melange | grep In_build_dir
       (In_build_dir _build/default/.output.mobjs/melange/melange__Main.cmj))))
-   (targets ((files (default/output/main.js)) (directories ())))
-   (context default)
-   (action
-    (chdir
-     _build/default
-     (run
-      /home/me/code/dune/_opam/bin/melc
-      -I
-      .output.mobjs/melange
-      --bs-module-type
-      commonjs
-      -o
-      output/main.js
-      .output.mobjs/melange/melange__Main.cmj))))
 
 Using output folder fails
 
@@ -48,22 +31,5 @@ Creating dir fixes the problem
 
   $ mkdir output
 
-  $ dune rules output
-  ((deps
-    ((File (External /home/me/code/dune/_opam/bin/melc))
-     (File
+  $ dune rules output | grep In_build_dir
       (In_build_dir _build/default/.output.mobjs/melange/melange__Main.cmj))))
-   (targets ((files (default/output/main.js)) (directories ())))
-   (context default)
-   (action
-    (chdir
-     _build/default
-     (run
-      /home/me/code/dune/_opam/bin/melc
-      -I
-      .output.mobjs/melange
-      --bs-module-type
-      commonjs
-      -o
-      output/main.js
-      .output.mobjs/melange/melange__Main.cmj))))

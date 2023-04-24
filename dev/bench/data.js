@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682356250256,
+  "lastUpdate": 1682361744622,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -33726,6 +33726,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "24.00576568922",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "javier.chavarri@gmail.com",
+            "name": "Javier Chávarri",
+            "username": "jchavarri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c2bb82e3fb987af35865457292a6eaf16716eb8e",
+          "message": "melange: test dune rules subcommand (#7621)\n\n\r\nSigned-off-by: Javier Chávarri <javier.chavarri@gmail.com>",
+          "timestamp": "2023-04-24T11:27:06-07:00",
+          "tree_id": "3009b864e6f8afbe572de2866192c3edac34ac59",
+          "url": "https://github.com/ocaml/dune/commit/c2bb82e3fb987af35865457292a6eaf16716eb8e"
+        },
+        "date": 1682361741340,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "25.906785163246667",
             "unit": "seconds"
           }
         ]

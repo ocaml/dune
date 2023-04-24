@@ -170,7 +170,7 @@
           slim-melange = mkSlim {
             extraBuildInputs = [
               pkgs.ocamlPackages.melange
-              pkgs.ocamlPackages.mel
+              pkgs.ocamlPackages.rescript-syntax
             ];
             meta.description = ''
               Provides a minimal shell environment built purely from nixpkgs
@@ -214,7 +214,7 @@
                 ++ [
                 ocamllsp.outputs.packages.${system}.ocaml-lsp-server
                 pkgs.ocamlPackages.melange
-                pkgs.ocamlPackages.mel
+                pkgs.ocamlPackages.rescript-syntax
               ] ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
               inputsFrom = [ self.packages.${system}.dune ];
               meta.description = ''

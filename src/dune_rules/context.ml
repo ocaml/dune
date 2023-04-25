@@ -362,42 +362,43 @@ type instance =
   ; targets : t list
   }
 
+let ocamlpath (kind : Kind.t) ~env ~findlib_toolchain =
+  match (kind, findlib_toolchain) with
+  | Default, None -> Option.value ~default:[] (Findlib.Config.ocamlpath env)
+  | _, _ -> (
+    let initial_ocamlpath = Findlib.Config.ocamlpath Env.initial in
+    let env_ocamlpath = Findlib.Config.ocamlpath env in
+    (* If we are not in the default context, we can only use the OCAMLPATH
+       variable if it is specific to this build context *)
+    (* CR-someday diml: maybe we should actually clear OCAMLPATH in other
+       build contexts *)
+    match (env_ocamlpath, initial_ocamlpath) with
+    | None, None -> []
+    | Some s, None ->
+      (* [OCAMLPATH] set for the target context, unset in the
+         [initial_env]. This means it's the [OCAMLPATH] specific to this
+         build context. *)
+      s
+    | None, Some _ ->
+      (* Clear [OCAMLPATH] for this build context if it's defined
+         initially but not for this build context. *)
+      []
+    | Some env_ocamlpath, Some initial_ocamlpath -> (
+      (* Clear [OCAMLPATH] for this build context Unless it's different
+         from the initial [OCAMLPATH] variable. *)
+      match
+        List.compare ~compare:Path.compare env_ocamlpath initial_ocamlpath
+      with
+      | Eq -> []
+      | _ -> env_ocamlpath))
+
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
     ~dynamically_linked_foreign_archives ~instrument_with =
   let which = Program.which ~path in
-  let env_ocamlpath = Findlib.Config.ocamlpath env in
-  let initial_ocamlpath = Findlib.Config.ocamlpath Env.initial in
   let create_one ~(name : Context_name.t) ~implicit ~findlib_toolchain ~host
       ~merlin =
-    let ocamlpath =
-      match (kind, findlib_toolchain) with
-      | Default, None -> Option.value env_ocamlpath ~default:[]
-      | _, _ -> (
-        (* If we are not in the default context, we can only use the OCAMLPATH
-           variable if it is specific to this build context *)
-        (* CR-someday diml: maybe we should actually clear OCAMLPATH in other
-           build contexts *)
-        match (env_ocamlpath, initial_ocamlpath) with
-        | None, None -> []
-        | Some s, None ->
-          (* [OCAMLPATH] set for the target context, unset in the
-             [initial_env]. This means it's the [OCAMLPATH] specific to this
-             build context. *)
-          s
-        | None, Some _ ->
-          (* Clear [OCAMLPATH] for this build context if it's defined
-             initially but not for this build context. *)
-          []
-        | Some env_ocamlpath, Some initial_ocamlpath -> (
-          (* Clear [OCAMLPATH] for this build context Unless it's different
-             from the initial [OCAMLPATH] variable. *)
-          match
-            List.compare ~compare:Path.compare env_ocamlpath initial_ocamlpath
-          with
-          | Eq -> []
-          | _ -> env_ocamlpath))
-    in
+    let ocamlpath = ocamlpath kind ~env ~findlib_toolchain in
     let* findlib =
       let findlib_toolchain =
         Option.map findlib_toolchain ~f:Context_name.to_string

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682443594938,
+  "lastUpdate": 1682443781067,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -33871,6 +33871,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.101729803600005",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "75afcefc2cf1f38f790f708641327d53890d4496",
+          "message": "refactor: move context env handling (#7633)\n\nmove the computation of the environment to own function\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-25T10:10:49-07:00",
+          "tree_id": "e1a5297463e8c0c41fc0dd2dfe89fc4c733b8459",
+          "url": "https://github.com/ocaml/dune/commit/75afcefc2cf1f38f790f708641327d53890d4496"
+        },
+        "date": 1682443778714,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.997233185766664",
             "unit": "seconds"
           }
         ]

@@ -189,7 +189,7 @@ let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope
     Command.Args.S [ base_flags; As foreign_flags ]
   in
   let include_args =
-    let ocaml_where = ctx.stdlib_dir in
+    let ocaml_where = ctx.lib_config.stdlib_dir in
     (* XXX: need glob dependency *)
     let open Action_builder.O in
     let ctypes = Lib_name.of_string "ctypes" in

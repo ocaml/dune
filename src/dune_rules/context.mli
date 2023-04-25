@@ -85,7 +85,6 @@ type t = private
   ; ocaml_config : Ocaml_config.t
   ; ocaml_config_vars : Ocaml_config.Vars.t
   ; version : Ocaml.Version.t
-  ; stdlib_dir : Path.t
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; lib_config : Lib_config.t
   ; build_context : Build_context.t

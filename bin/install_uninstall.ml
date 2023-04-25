@@ -718,7 +718,7 @@ let install_uninstall ~what =
               let conf =
                 Dune_rules.Artifact_substitution.conf_for_install ~relocatable
                   ~default_ocamlpath:context.default_ocamlpath
-                  ~stdlib_dir:context.stdlib_dir ~roots ~context
+                  ~stdlib_dir:context.lib_config.stdlib_dir ~roots ~context
               in
               Fiber.sequential_iter entries_per_package
                 ~f:(fun (package, entries) ->

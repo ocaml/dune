@@ -442,11 +442,14 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
              (c_compiler_and_flags context
              @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ]))
       | Arch_sixtyfour ->
-        static (string (string_of_bool context.arch_sixtyfour))
+        64
+        = Ocaml_config.word_size context.ocaml_config
+        |> string_of_bool |> string |> static
       | Ocaml_bin_dir -> static [ Dir context.ocaml_bin ]
       | Ocaml_version ->
         static (string (Ocaml_config.version_string context.ocaml_config))
-      | Ocaml_stdlib_dir -> static (string (Path.to_string context.stdlib_dir))
+      | Ocaml_stdlib_dir ->
+        static (string (Path.to_string context.lib_config.stdlib_dir))
       | Dev_null -> static (string (Path.to_string Dev_null.path))
       | Ext_obj -> static (string context.lib_config.ext_obj)
       | Ext_asm -> static (string (Ocaml_config.ext_asm context.ocaml_config))

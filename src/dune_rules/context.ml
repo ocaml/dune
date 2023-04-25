@@ -121,11 +121,9 @@ type t =
   ; findlib_paths : Path.t list
   ; findlib_toolchain : Context_name.t option
   ; default_ocamlpath : Path.t list
-  ; arch_sixtyfour : bool
   ; ocaml_config : Ocaml_config.t
   ; ocaml_config_vars : Ocaml_config.Vars.t
   ; version : Ocaml.Version.t
-  ; stdlib_dir : Path.t
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; lib_config : Lib_config.t
   ; build_context : Build_context.t
@@ -160,7 +158,6 @@ let to_dyn t : Dyn.t =
     ; ("ocamlmklib", Action.Prog.to_dyn t.ocamlmklib)
     ; ("env", Env.to_dyn (Env.diff t.env Env.initial))
     ; ("findlib_paths", list path t.findlib_paths)
-    ; ("arch_sixtyfour", Bool t.arch_sixtyfour)
     ; ( "natdynlink_supported"
       , Bool (Dynlink_supported.By_the_os.get t.lib_config.natdynlink_supported)
       )
@@ -363,42 +360,109 @@ type instance =
   ; targets : t list
   }
 
+let ocamlpath (kind : Kind.t) ~env ~findlib_toolchain =
+  match (kind, findlib_toolchain) with
+  | Default, None -> Option.value ~default:[] (Findlib.Config.ocamlpath env)
+  | _, _ -> (
+    let initial_ocamlpath = Findlib.Config.ocamlpath Env.initial in
+    let env_ocamlpath = Findlib.Config.ocamlpath env in
+    (* If we are not in the default context, we can only use the OCAMLPATH
+       variable if it is specific to this build context *)
+    (* CR-someday diml: maybe we should actually clear OCAMLPATH in other
+       build contexts *)
+    match (env_ocamlpath, initial_ocamlpath) with
+    | None, None -> []
+    | Some s, None ->
+      (* [OCAMLPATH] set for the target context, unset in the
+         [initial_env]. This means it's the [OCAMLPATH] specific to this
+         build context. *)
+      s
+    | None, Some _ ->
+      (* Clear [OCAMLPATH] for this build context if it's defined
+         initially but not for this build context. *)
+      []
+    | Some env_ocamlpath, Some initial_ocamlpath -> (
+      (* Clear [OCAMLPATH] for this build context Unless it's different
+         from the initial [OCAMLPATH] variable. *)
+      match
+        List.compare ~compare:Path.compare env_ocamlpath initial_ocamlpath
+      with
+      | Eq -> []
+      | _ -> env_ocamlpath))
+
+let context_env env name ocfg findlib env_nodes version ~profile ~host
+    ~default_ocamlpath =
+  let env =
+    (* See comment in ansi_color.ml for setup_env_for_colors. For versions
+       where OCAML_COLOR is not supported, but 'color' is in OCAMLPARAM, use
+       the latter. If 'color' is not supported, we just don't force colors
+       with 4.02. *)
+    if
+      !Clflags.capture_outputs
+      && Lazy.force Ansi_color.stderr_supports_color
+      && Ocaml.Version.supports_color_in_ocamlparam version
+      && not (Ocaml.Version.supports_ocaml_color version)
+    then
+      let value =
+        match Env.get env "OCAMLPARAM" with
+        | None -> "color=always,_"
+        | Some s -> "color=always," ^ s
+      in
+      Env.add env ~var:"OCAMLPARAM" ~value
+    else env
+  in
+  let extend_var var ?(path_sep = Bin.path_sep) v =
+    let v = Path.to_absolute_filename (Path.build v) in
+    match Env.get env var with
+    | None -> (var, v)
+    | Some prev -> (var, sprintf "%s%c%s" v path_sep prev)
+  in
+  let vars =
+    let local_lib_root = Local_install_path.lib_root ~context:name in
+    [ extend_var "CAML_LD_LIBRARY_PATH"
+        (Path.Build.relative
+           (Local_install_path.dir ~context:name)
+           "lib/stublibs")
+    ; extend_var "OCAMLPATH" ~path_sep:Findlib.Config.ocamlpath_sep
+        local_lib_root
+    ; ("DUNE_OCAML_STDLIB", Ocaml_config.standard_library ocfg)
+    ; ( "DUNE_OCAML_HARDCODED"
+      , String.concat
+          ~sep:(Char.escaped Findlib.Config.ocamlpath_sep)
+          (List.map ~f:Path.to_string default_ocamlpath) )
+    ; extend_var "OCAMLTOP_INCLUDE_PATH"
+        (Path.Build.relative local_lib_root "toplevel")
+    ; extend_var "OCAMLFIND_IGNORE_DUPS_IN"
+        ~path_sep:Findlib.Config.ocamlpath_sep local_lib_root
+    ; extend_var "MANPATH" (Local_install_path.man_dir ~context:name)
+    ; ( "INSIDE_DUNE"
+      , let build_dir = Context_name.build_dir name in
+        Path.to_absolute_filename (Path.build build_dir) )
+    ; ( "DUNE_SOURCEROOT"
+      , Path.to_absolute_filename (Path.source Path.Source.root) )
+    ]
+  in
+  Env.extend env ~vars:(Env.Map.of_list_exn vars)
+  |> Env.update ~var:"PATH" ~f:(fun _ ->
+         match host with
+         | None ->
+           let _key, path =
+             Local_install_path.bin_dir ~context:name |> extend_var "PATH"
+           in
+           Some path
+         | Some host -> Env.get host.env "PATH")
+  |> Env.extend_env
+       (Option.value ~default:Env.empty
+          (Option.map findlib ~f:Findlib.Config.env))
+  |> Env.extend_env (Env_nodes.extra_env ~profile env_nodes)
+
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
     ~dynamically_linked_foreign_archives ~instrument_with =
   let which = Program.which ~path in
-  let env_ocamlpath = Findlib.Config.ocamlpath env in
-  let initial_ocamlpath = Findlib.Config.ocamlpath Env.initial in
   let create_one ~(name : Context_name.t) ~implicit ~findlib_toolchain ~host
       ~merlin =
-    let ocamlpath =
-      match (kind, findlib_toolchain) with
-      | Default, None -> Option.value env_ocamlpath ~default:[]
-      | _, _ -> (
-        (* If we are not in the default context, we can only use the OCAMLPATH
-           variable if it is specific to this build context *)
-        (* CR-someday diml: maybe we should actually clear OCAMLPATH in other
-           build contexts *)
-        match (env_ocamlpath, initial_ocamlpath) with
-        | None, None -> []
-        | Some s, None ->
-          (* [OCAMLPATH] set for the target context, unset in the
-             [initial_env]. This means it's the [OCAMLPATH] specific to this
-             build context. *)
-          s
-        | None, Some _ ->
-          (* Clear [OCAMLPATH] for this build context if it's defined
-             initially but not for this build context. *)
-          []
-        | Some env_ocamlpath, Some initial_ocamlpath -> (
-          (* Clear [OCAMLPATH] for this build context Unless it's different
-             from the initial [OCAMLPATH] variable. *)
-          match
-            List.compare ~compare:Path.compare env_ocamlpath initial_ocamlpath
-          with
-          | Eq -> []
-          | _ -> env_ocamlpath))
-    in
+    let ocamlpath = ocamlpath kind ~env ~findlib_toolchain in
     let* findlib =
       let findlib_toolchain =
         Option.map findlib_toolchain ~f:Context_name.to_string
@@ -434,26 +498,18 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
             (Action.Prog.Not_found.create ~context:name ~program:prog ~loc:None
                ~hint ()))
     in
-    let build_dir = Context_name.build_dir name in
-    let default_ocamlpath =
-      let build_env_kind =
-        Build_environment_kind.query ~kind ~findlib_toolchain ~env
-      in
-      Build_environment_kind.findlib_paths build_env_kind ~findlib
-        ~ocamlc_dir:dir
-    in
-    let ocaml_config_ok_exn = function
-      | Ok x -> x
-      | Error (Ocaml_config.Origin.Ocamlc_config, msg) ->
-        User_error.raise
-          [ Pp.textf "Failed to parse the output of '%s -config':"
-              (Path.to_string ocamlc)
-          ; Pp.text msg
-          ]
-      | Error (Makefile_config file, msg) ->
-        User_error.raise ~loc:(Loc.in_file file) [ Pp.text msg ]
-    in
     let* ocaml_config_vars, ocfg =
+      let ocaml_config_ok_exn = function
+        | Ok x -> x
+        | Error (Ocaml_config.Origin.Ocamlc_config, msg) ->
+          User_error.raise
+            [ Pp.textf "Failed to parse the output of '%s -config':"
+                (Path.to_string ocamlc)
+            ; Pp.text msg
+            ]
+        | Error (Makefile_config file, msg) ->
+          User_error.raise ~loc:(Loc.in_file file) [ Pp.text msg ]
+      in
       let+ lines =
         Memo.of_reproducible_fiber
           (Process.run_capture_lines ~display:Quiet ~env Strict ocamlc
@@ -470,76 +526,23 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
     let version = Ocaml.Version.of_ocaml_config ocfg in
     let default_ocamlpath =
+      let default_ocamlpath =
+        let build_env_kind =
+          Build_environment_kind.query ~kind ~findlib_toolchain ~env
+        in
+        Build_environment_kind.findlib_paths build_env_kind ~findlib
+          ~ocamlc_dir:dir
+      in
       if Ocaml.Version.has_META_files version then
         stdlib_dir :: default_ocamlpath
       else default_ocamlpath
     in
     let findlib_paths = ocamlpath @ default_ocamlpath in
     let env =
-      (* See comment in ansi_color.ml for setup_env_for_colors. For versions
-         where OCAML_COLOR is not supported, but 'color' is in OCAMLPARAM, use
-         the latter. If 'color' is not supported, we just don't force colors
-         with 4.02. *)
-      if
-        !Clflags.capture_outputs
-        && Lazy.force Ansi_color.stderr_supports_color
-        && Ocaml.Version.supports_color_in_ocamlparam version
-        && not (Ocaml.Version.supports_ocaml_color version)
-      then
-        let value =
-          match Env.get env "OCAMLPARAM" with
-          | None -> "color=always,_"
-          | Some s -> "color=always," ^ s
-        in
-        Env.add env ~var:"OCAMLPARAM" ~value
-      else env
-    in
-    let env =
-      let extend_var var ?(path_sep = Bin.path_sep) v =
-        let v = Path.to_absolute_filename (Path.build v) in
-        match Env.get env var with
-        | None -> (var, v)
-        | Some prev -> (var, sprintf "%s%c%s" v path_sep prev)
-      in
-      let vars =
-        let local_lib_root = Local_install_path.lib_root ~context:name in
-        [ extend_var "CAML_LD_LIBRARY_PATH"
-            (Path.Build.relative
-               (Local_install_path.dir ~context:name)
-               "lib/stublibs")
-        ; extend_var "OCAMLPATH" ~path_sep:Findlib.Config.ocamlpath_sep
-            local_lib_root
-        ; ("DUNE_OCAML_STDLIB", Ocaml_config.standard_library ocfg)
-        ; ( "DUNE_OCAML_HARDCODED"
-          , String.concat
-              ~sep:(Char.escaped Findlib.Config.ocamlpath_sep)
-              (List.map ~f:Path.to_string default_ocamlpath) )
-        ; extend_var "OCAMLTOP_INCLUDE_PATH"
-            (Path.Build.relative local_lib_root "toplevel")
-        ; extend_var "OCAMLFIND_IGNORE_DUPS_IN"
-            ~path_sep:Findlib.Config.ocamlpath_sep local_lib_root
-        ; extend_var "MANPATH" (Local_install_path.man_dir ~context:name)
-        ; ("INSIDE_DUNE", Path.to_absolute_filename (Path.build build_dir))
-        ; ( "DUNE_SOURCEROOT"
-          , Path.to_absolute_filename (Path.source Path.Source.root) )
-        ]
-      in
-      Env.extend env ~vars:(Env.Map.of_list_exn vars)
-      |> Env.update ~var:"PATH" ~f:(fun _ ->
-             match host with
-             | None ->
-               let _key, path =
-                 Local_install_path.bin_dir ~context:name |> extend_var "PATH"
-               in
-               Some path
-             | Some host -> Env.get host.env "PATH")
-      |> Env.extend_env
-           (Option.value ~default:Env.empty
-              (Option.map findlib ~f:Findlib.Config.env))
-      |> Env.extend_env (Env_nodes.extra_env ~profile env_nodes)
+      context_env env name ocfg findlib env_nodes version ~profile ~host
+        ~default_ocamlpath
     in
     let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in
-    let arch_sixtyfour = Ocaml_config.word_size ocfg = 64 in
     let* ocamlopt = get_ocaml_tool "ocamlopt" in
     let lib_config =
       { Lib_config.has_native = Result.is_ok ocamlopt
@@ -603,7 +606,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; dynamically_linked_foreign_archives
       ; env_nodes
       ; for_host = host
-      ; build_dir
+      ; build_dir = Context_name.build_dir name
       ; path
       ; toplevel_path =
           Option.map
@@ -620,8 +623,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; findlib_paths
       ; findlib_toolchain
       ; default_ocamlpath
-      ; arch_sixtyfour
-      ; stdlib_dir
       ; ocaml_config = ocfg
       ; ocaml_config_vars
       ; version

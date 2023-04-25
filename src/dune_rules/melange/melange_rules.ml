@@ -222,7 +222,7 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
         ~instrumentation_backend:
           (Lib.DB.instrumentation_backend (Scope.libs scope))
     in
-    let stdlib_dir = ctx.stdlib_dir in
+    let stdlib_dir = ctx.lib_config.stdlib_dir in
     let+ () =
       let emit_and_libs_deps =
         let target_dir = Path.Build.relative dir mel.target in

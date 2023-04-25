@@ -128,6 +128,9 @@ Unreleased
 - Fix bug where RPC clients built with dune-rpc-lwt would crash when closing
   their connection to the server (#7581, @gridbugs)
 
+- Introduce mdx stanza 0.4 requiring mdx >= 2.3.0 which updates the default
+  list of files to include `*.mld` files (#7582, @Leonidas-from-XIV)
+
 3.7.1 (2023-04-04)
 ------------------
 

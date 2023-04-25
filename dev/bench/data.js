@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682436680560,
+  "lastUpdate": 1682442049718,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -33813,6 +33813,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.5091406735",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d3806e022db561500bb4281a2071ea3934f62c72",
+          "message": "refactor: move ocamlpath handling (#7631)\n\nocamlpath construction is moved to its own function\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-25T09:39:32-07:00",
+          "tree_id": "b526b3202a4955a5f56cda878256aca88ca4c143",
+          "url": "https://github.com/ocaml/dune/commit/d3806e022db561500bb4281a2071ea3934f62c72"
+        },
+        "date": 1682442047386,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.132342166053334",
             "unit": "seconds"
           }
         ]

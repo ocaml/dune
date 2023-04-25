@@ -662,7 +662,12 @@ module Library = struct
            >>> located Lib_info.Special_builtin_support.decode)
        and+ enabled_if =
          let open Enabled_if in
-         let allowed_vars = Only Lib_config.allowed_in_enabled_if in
+         let allowed_vars =
+           Only
+             (("context_name", (2, 8))
+             :: ("profile", (2, 5))
+             :: Lib_config.allowed_in_enabled_if)
+         in
          decode ~allowed_vars ~since:(Some (1, 10)) ()
        and+ instrumentation_backend =
          field_o "instrumentation.backend"
@@ -964,8 +969,18 @@ module Library = struct
       let+ enabled_if_result =
         Blang_expand.eval conf.enabled_if ~dir:(Path.build dir)
           ~f:(fun ~source:_ pform ->
-            let value = Lib_config.get_for_enabled_if lib_config pform in
-            Memo.return [ Value.String value ])
+            let+ value =
+              match pform with
+              | Var Context_name ->
+                let context, _ = Path.Build.extract_build_context_exn dir in
+                Memo.return context
+              | Var Profile ->
+                let+ context = Context.DB.by_dir dir in
+                Profile.to_string context.profile
+              | _ ->
+                Memo.return @@ Lib_config.get_for_enabled_if lib_config pform
+            in
+            [ Value.String value ])
       in
       if not enabled_if_result then
         Lib_info.Enabled_status.Disabled_because_of_enabled_if

@@ -102,13 +102,12 @@ let conf_of_context (context : Context.t option) =
     ; sign_hook
     }
 
-let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~roots ~context
-    =
+let conf_for_install ~relocatable ~roots ~(context : Context.t) =
   let get_vcs = Source_tree.nearest_vcs in
   let hardcoded_ocaml_path =
     match relocatable with
     | Some prefix -> Relocatable prefix
-    | None -> Hardcoded default_ocamlpath
+    | None -> Hardcoded context.default_ocamlpath
   in
   let get_location section package =
     let paths = Install.Section.Paths.make ~package ~roots in
@@ -116,7 +115,7 @@ let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~roots ~context
   in
   let get_config_path = function
     | Sourceroot -> None
-    | Stdlib -> Some stdlib_dir
+    | Stdlib -> Some context.lib_config.stdlib_dir
   in
   let sign_hook = lazy (sign_hook_of_context context) in
   { get_location; get_vcs; get_config_path; hardcoded_ocaml_path; sign_hook }

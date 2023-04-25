@@ -121,7 +121,6 @@ type t =
   ; findlib_paths : Path.t list
   ; findlib_toolchain : Context_name.t option
   ; default_ocamlpath : Path.t list
-  ; arch_sixtyfour : bool
   ; ocaml_config : Ocaml_config.t
   ; ocaml_config_vars : Ocaml_config.Vars.t
   ; version : Ocaml.Version.t
@@ -159,7 +158,6 @@ let to_dyn t : Dyn.t =
     ; ("ocamlmklib", Action.Prog.to_dyn t.ocamlmklib)
     ; ("env", Env.to_dyn (Env.diff t.env Env.initial))
     ; ("findlib_paths", list path t.findlib_paths)
-    ; ("arch_sixtyfour", Bool t.arch_sixtyfour)
     ; ( "natdynlink_supported"
       , Bool (Dynlink_supported.By_the_os.get t.lib_config.natdynlink_supported)
       )
@@ -539,7 +537,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       |> Env.extend_env (Env_nodes.extra_env ~profile env_nodes)
     in
     let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in
-    let arch_sixtyfour = Ocaml_config.word_size ocfg = 64 in
     let* ocamlopt = get_ocaml_tool "ocamlopt" in
     let lib_config =
       { Lib_config.has_native = Result.is_ok ocamlopt
@@ -620,7 +617,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; findlib_paths
       ; findlib_toolchain
       ; default_ocamlpath
-      ; arch_sixtyfour
       ; ocaml_config = ocfg
       ; ocaml_config_vars
       ; version

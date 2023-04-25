@@ -128,7 +128,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~preprocessing:pp ~js_of_ocaml ~opaque:Inherit_from_settings
       ~package:exes.package
   in
-  let stdlib_dir = ctx.Context.stdlib_dir in
+  let stdlib_dir = ctx.lib_config.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let preprocess =
     Preprocess.Per_module.with_instrumentation exes.buildable.preprocess

@@ -193,7 +193,7 @@ let build_c ~(kind : Foreign_language.t) ~sctx ~dir ~expander ~include_flags
        produced in the current directory *)
     Command.run ~dir:(Path.build dir) c_compiler
       ([ Command.Args.dyn with_user_and_std_flags
-       ; S [ A "-I"; Path ctx.stdlib_dir ]
+       ; S [ A "-I"; Path ctx.lib_config.stdlib_dir ]
        ; include_flags
        ]
       @ output_param @ [ A "-c"; Dep src ])

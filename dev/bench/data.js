@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682361744622,
+  "lastUpdate": 1682431957200,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -33755,6 +33755,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.906785163246667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "17300c748ec6c0f45eb9b7665b31199b8e28ba96",
+          "message": "refactor: remove context.stdlib_dir (#7627)\n\nit's already present in lib_config\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-25T06:54:22-07:00",
+          "tree_id": "ca73ec8dde46c29436a33f320192862b60de8ae4",
+          "url": "https://github.com/ocaml/dune/commit/17300c748ec6c0f45eb9b7665b31199b8e28ba96"
+        },
+        "date": 1682431954839,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.012992894046665",
             "unit": "seconds"
           }
         ]

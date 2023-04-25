@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682443781067,
+  "lastUpdate": 1682454452324,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -33900,6 +33900,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.997233185766664",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "418a4e7f17b7f2e491fb0ef775fc3a7277b267c7",
+          "message": "refactor: get rid of context.toplevel_path (#7636)\n\nIt was never used\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-25T13:06:06-07:00",
+          "tree_id": "806f781bb1283dc1195f7b055d4cdbfb5cb7ac61",
+          "url": "https://github.com/ocaml/dune/commit/418a4e7f17b7f2e491fb0ef775fc3a7277b267c7"
+        },
+        "date": 1682454449557,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "30.206508949466667",
             "unit": "seconds"
           }
         ]

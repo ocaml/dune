@@ -66,11 +66,9 @@ type t = private
         (** Directory where artifact are stored, for instance "_build/default" *)
   ; build_dir : Path.Build.t
         (** env node that this context was initialized with *)
-  ; env_nodes : Env_nodes.t  (** [PATH] *)
-  ; path : Path.t list  (** [OCAML_TOPLEVEL_PATH] *)
-  ; toplevel_path : Path.t option
-        (** Ocaml bin directory with all ocaml tools *)
-  ; ocaml_bin : Path.t
+  ; env_nodes : Env_nodes.t
+  ; path : Path.t list  (** [PATH] *)
+  ; ocaml_bin : Path.t  (** Ocaml bin directory with all ocaml tools *)
   ; ocaml : Action.Prog.t
   ; ocamlc : Path.t
   ; ocamlopt : Action.Prog.t

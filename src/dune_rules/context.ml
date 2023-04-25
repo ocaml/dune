@@ -109,7 +109,6 @@ type t =
   ; build_dir : Path.Build.t
   ; env_nodes : Env_nodes.t
   ; path : Path.t list
-  ; toplevel_path : Path.t option
   ; ocaml_bin : Path.t
   ; ocaml : Action.Prog.t
   ; ocamlc : Path.t
@@ -149,7 +148,6 @@ let to_dyn t : Dyn.t =
       )
     ; ("fdo_target_exe", option path t.fdo_target_exe)
     ; ("build_dir", Path.Build.to_dyn t.build_dir)
-    ; ("toplevel_path", option path t.toplevel_path)
     ; ("ocaml_bin", path t.ocaml_bin)
     ; ("ocaml", Action.Prog.to_dyn t.ocaml)
     ; ("ocamlc", path t.ocamlc)
@@ -608,10 +606,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; for_host = host
       ; build_dir = Context_name.build_dir name
       ; path
-      ; toplevel_path =
-          Option.map
-            (Env.get env "OCAML_TOPLEVEL_PATH")
-            ~f:Path.of_filename_relative_to_initial_cwd
       ; ocaml_bin
       ; ocaml
       ; ocamlc

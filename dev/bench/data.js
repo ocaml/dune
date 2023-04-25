@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682442049718,
+  "lastUpdate": 1682443594938,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -33842,6 +33842,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "26.132342166053334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "73c678058de916e82a6f85fe193959a2d4fc3379",
+          "message": "refactor: remove context.arch_sixtyfour (#7634)\n\nnowhere near useful enough to live in the context\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-25T10:08:46-07:00",
+          "tree_id": "741d8a4e2afecdd5c5c71c862d562ee24162a066",
+          "url": "https://github.com/ocaml/dune/commit/73c678058de916e82a6f85fe193959a2d4fc3379"
+        },
+        "date": 1682443592652,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.101729803600005",
             "unit": "seconds"
           }
         ]

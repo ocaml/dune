@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Correctly set `MANPATH` in `dune exec`. Previously, we would use the `bin/`
+  directory of the context. (#7655, @rgrinberg)
+
 - Allow overriding the `ocaml` binary with findlib configuration (#7648,
   @rgrinberg)
 

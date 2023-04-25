@@ -31,72 +31,6 @@ module Env_nodes = struct
       (Dune_env.Stanza.find env_nodes.workspace ~profile).env_vars
 end
 
-module Bin = struct
-  include Bin
-
-  let which ~path prog =
-    let prog = add_exe prog in
-    Memo.List.find_map path ~f:(fun dir ->
-        let fn = Path.relative dir prog in
-        let+ exists = Fs_memo.file_exists (Path.as_outside_build_dir_exn fn) in
-        if exists then Some fn else None)
-end
-
-module Program = struct
-  module Name = String
-
-  let programs_for_which_we_prefer_opt_ext =
-    [ "ocamlc"; "ocamldep"; "ocamlmklib"; "ocamlobjinfo"; "ocamlopt" ]
-
-  let best_path dir program =
-    let exe_path program =
-      let fn = Path.relative dir (program ^ Bin.exe) in
-      let+ exists = Fs_memo.file_exists (Path.as_outside_build_dir_exn fn) in
-      if exists then Some fn else None
-    in
-    if List.mem programs_for_which_we_prefer_opt_ext program ~equal:String.equal
-    then
-      let* path = exe_path (program ^ ".opt") in
-      match path with
-      | None -> exe_path program
-      | Some _ as path -> Memo.return path
-    else exe_path program
-
-  module rec Rec : sig
-    val which : path:Path.t list -> string -> Path.t option Memo.t
-  end = struct
-    open Rec
-
-    let which_impl (path, program) =
-      match path with
-      | [] -> Memo.return None
-      | dir :: path -> (
-        let* res = best_path dir program in
-        match res with
-        | None -> which ~path program
-        | Some prog -> Memo.return (Some prog))
-
-    let which =
-      let memo =
-        let module Input = struct
-          type t = Path.t list * string
-
-          let equal = Tuple.T2.equal (List.equal Path.equal) String.equal
-
-          let hash = Tuple.T2.hash (List.hash Path.hash) String.hash
-
-          let to_dyn = Dyn.opaque
-        end in
-        Memo.create "which"
-          ~input:(module Input)
-          ~cutoff:(Option.equal Path.equal) which_impl
-      in
-      fun ~path prog -> Memo.exec memo (path, prog)
-  end
-
-  include Rec
-end
-
 type t =
   { name : Context_name.t
   ; kind : Kind.t
@@ -176,7 +110,7 @@ module Opam : sig
 end = struct
   let opam =
     Memo.Lazy.create ~name:"context-opam" (fun () ->
-        Bin.which ~path:(Env_path.path Env.initial) "opam" >>= function
+        Which.which ~path:(Env_path.path Env.initial) "opam" >>= function
         | None -> Utils.program_not_found "opam" ~loc:None
         | Some opam -> (
           let+ version =
@@ -457,7 +391,7 @@ let context_env env name ocfg findlib env_nodes version ~profile ~host
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
     ~dynamically_linked_foreign_archives ~instrument_with =
-  let which = Program.which ~path in
+  let which = Which.which ~path in
   let create_one ~(name : Context_name.t) ~implicit ~findlib_toolchain ~host
       ~merlin =
     let ocamlpath = ocamlpath kind ~env ~findlib_toolchain in
@@ -484,7 +418,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       get_tool_using_findlib_config prog >>= function
       | Some x -> Memo.return (Ok x)
       | None -> (
-        Program.best_path ocaml_bin prog >>| function
+        Which.best_path ~dir:ocaml_bin prog >>| function
         | Some p -> Ok p
         | None ->
           let hint =
@@ -657,7 +591,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
   in
   { native; targets = List.filter_opt others }
 
-let which t fname = Program.which ~path:t.path fname
+let which t fname = Which.which ~path:t.path fname
 
 let extend_paths t ~env =
   let t =

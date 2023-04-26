@@ -222,7 +222,7 @@ let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
     List.map deps ~f:(fun m -> Path.build (Obj_dir.Module.odoc obj_dir m)))
 
 let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
-    ~dep_graphs ~pkg_or_lnu =
+    ~dep_graphs ~pkg_or_lnu ~mode =
   let odoc_file = Obj_dir.Module.odoc obj_dir m in
   let open Memo.O in
   let+ () =
@@ -238,7 +238,12 @@ let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
           ; Target odoc_file
           ; Dep
               (Path.build
-                 (Obj_dir.Module.cmti_file ~cm_kind:(Ocaml Cmi) obj_dir m))
+                 (Obj_dir.Module.cmti_file
+                    ~cm_kind:
+                      (match mode with
+                      | Lib_mode.Ocaml _ -> Ocaml Cmi
+                      | Melange -> Melange Cmi)
+                    obj_dir m))
           ]
       in
       let open Action_builder.With_targets.O in
@@ -324,9 +329,11 @@ let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
   let modules_and_odoc_files =
     Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
         let compiled =
+          let modes = Lib_info.modes info in
+          let mode = Lib_mode.Map.Set.for_merlin modes in
           compile_module sctx ~includes
             ~dep_graphs:(Compilation_context.dep_graphs cctx)
-            ~obj_dir ~pkg_or_lnu m
+            ~obj_dir ~pkg_or_lnu ~mode m
         in
         compiled :: acc)
   in

@@ -3,12 +3,9 @@ open Import
 module Includes = struct
   type t = Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
-  let filter_with_odeps libs deps md =
+  let filter_with_odeps libs deps md lib_top_module_map =
     let open Resolve.Memo.O in
-    let+ ( (((module_deps, lib_top_module_map), lib_to_entry_modules_map), flags)
-         , _ ) =
-      deps
-    in
+    let+ ((module_deps, lib_to_entry_modules_map), flags), _ = deps in
     let rec flag_open_present entry_lib_name l =
       match l with
       | flag :: entry_name :: t ->
@@ -19,9 +16,7 @@ module Includes = struct
         else flag_open_present entry_lib_name (entry_name :: t)
       | _ -> false
     in
-    let lib_top_module_map =
-      Module_name.Map.of_list_exn (List.concat lib_top_module_map)
-    in
+
     let lib_to_entry_modules_map =
       Lib.Map.of_list_exn lib_to_entry_modules_map
     in
@@ -101,10 +96,11 @@ module Includes = struct
                   else true)
             else true)
 
-  let make ?(lib_top_module_map = Action_builder.return [])
+  let make ?(lib_top_module_map = Module_name.Map.empty)
       ?(lib_to_entry_modules_map = Action_builder.return []) () ~project ~opaque
       ~requires ~md ~dep_graphs ~flags =
     let flags =
+      Dune_util.Log.info [ Pp.textf "Make includes" ];
       Action_builder.map2
         (Action_builder.map2
            (Ocaml_flags.get flags (Lib_mode.Ocaml Byte))
@@ -126,13 +122,9 @@ module Includes = struct
         Action_builder.map2 module_deps_impl module_deps_intf
           ~f:(fun inft impl -> List.append inft impl)
       in
-      let cmb_top =
-        Action_builder.map2 cmb_itf_impl lib_top_module_map ~f:(fun mods map ->
-            (mods, map))
-      in
       let cmb_entry =
-        Action_builder.map2 cmb_top lib_to_entry_modules_map ~f:(fun mods map ->
-            (mods, map))
+        Action_builder.map2 cmb_itf_impl lib_to_entry_modules_map
+          ~f:(fun mods map -> (mods, map))
       in
       let cmb_flags =
         Action_builder.map2 cmb_entry flags ~f:(fun mods map -> (mods, map))
@@ -144,7 +136,7 @@ module Includes = struct
       Command.Args.memo
         (Resolve.Memo.args
            (let* libs = requires in
-            let+ libs = filter_with_odeps libs deps md in
+            let+ libs = filter_with_odeps libs deps md lib_top_module_map in
             Command.Args.S
               [ iflags libs mode
               ; Hidden_deps (Lib_file_deps.deps libs ~groups)
@@ -155,7 +147,7 @@ module Includes = struct
       Command.Args.memo
         (Resolve.Memo.args
            (let* libs = requires in
-            let+ libs = filter_with_odeps libs deps md in
+            let+ libs = filter_with_odeps libs deps md lib_top_module_map in
             Command.Args.S
               [ iflags libs (Ocaml Native)
               ; Hidden_deps
@@ -279,7 +271,7 @@ let dep_graphs t = t.modules.dep_graphs
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
     ?stdlib ~js_of_ocaml ~package ?public_lib_name ?vimpl ?modes ?bin_annot ?loc
-    ?(lib_top_module_map = Action_builder.return [])
+    ?(lib_top_module_map = Module_name.Map.empty)
     ?(lib_to_entry_modules_map = Action_builder.return []) () =
   let open Memo.O in
   let project = Scope.project scope in

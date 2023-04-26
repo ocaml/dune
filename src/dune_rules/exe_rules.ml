@@ -241,7 +241,7 @@ let compile_info ~scope (exes : Dune_file.Executables.t) =
     ~forbidden_libraries:exes.forbidden_libraries ~merlin_ident
 
 let rules ?(lib_to_entry_modules_map = Action_builder.return [])
-    ?(lib_top_module_map = Action_builder.return []) ~sctx ~dir ~dir_contents
+    ?(lib_top_module_map = Module_name.Map.empty) ~sctx ~dir ~dir_contents
     ~scope ~expander (exes : Dune_file.Executables.t) =
   let* compile_info = compile_info ~scope exes in
   let f () =

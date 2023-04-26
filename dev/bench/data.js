@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682520179890,
+  "lastUpdate": 1682521008091,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -33958,6 +33958,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.993466410833335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "679e88706d8cc4de241a53f66444310a018cd5a7",
+          "message": "fix: files recorded by sandboxed cinaps action in action builder (#7618)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-04-26T07:39:09-07:00",
+          "tree_id": "3a3d3e310763975e83ea100493a9eed5c6adedb4",
+          "url": "https://github.com/ocaml/dune/commit/679e88706d8cc4de241a53f66444310a018cd5a7"
+        },
+        "date": 1682521005508,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.05868265603333",
             "unit": "seconds"
           }
         ]

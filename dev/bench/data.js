@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682521008091,
+  "lastUpdate": 1682531985829,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -33987,6 +33987,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.05868265603333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8090c877e5a141e82dc49fa6d0241125923a71e1",
+          "message": "refactor: move executable find to own module (#7640)\n\nWill be used by package management\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-26T10:41:42-07:00",
+          "tree_id": "908f6f33f0e8073fd754ea241f8c8f805ee6f3a1",
+          "url": "https://github.com/ocaml/dune/commit/8090c877e5a141e82dc49fa6d0241125923a71e1"
+        },
+        "date": 1682531983450,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.183282298686667",
             "unit": "seconds"
           }
         ]

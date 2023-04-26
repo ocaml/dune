@@ -13,3 +13,8 @@ With modules
 
   $ dune describe pp src/with_module/main_suffix.ml
   let suffixed = "hello_my_custom_suffix"
+
+With a file that does not exist
+  $ dune describe pp src/with_module/wrong.ml
+  Error: _build/default/src/with_module/wrong.ml does not exist
+  [1]

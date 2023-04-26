@@ -815,9 +815,7 @@ module Preprocess = struct
           Error file_in_build_dir
         | Some staged_pps ->
           let (ppx_exe, flags), (_ : Dep.Fact.t Dep.Map.t) = staged_pps in
-          let* () =
-            Build_system.build_file
-              (Path.of_string (Path.Build.to_string ppx_exe))
+          let* () = Build_system.build_file (Path.build ppx_exe)
           and* () = Build_system.build_file file_in_build_dir in
           Memo.return (Ok (`Ppx_exe ((ppx_exe, flags), file_in_build_dir)))))
 

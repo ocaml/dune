@@ -293,7 +293,7 @@ module Build_environment_kind = struct
           | Some s -> Opam2_environment s
           | None -> Unknown)))
 
-  let findlib_paths t ~findlib ~ocamlc_dir =
+  let findlib_paths t ~findlib ~ocaml_bin =
     match (findlib, t) with
     | ( Some findlib
       , ( Cross_compilation_using_findlib_toolchain _
@@ -320,7 +320,7 @@ module Build_environment_kind = struct
       let p = Path.of_filename_relative_to_initial_cwd opam_prefix in
       let p = Path.relative p "lib" in
       [ p ]
-    | None, Unknown -> [ Path.relative (Path.parent_exn ocamlc_dir) "lib" ]
+    | None, Unknown -> [ Path.relative (Path.parent_exn ocaml_bin) "lib" ]
 end
 
 let check_fdo_support has_native ocfg ~name =
@@ -479,17 +479,17 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         | Some x -> x
         | None -> Utils.program_not_found ocamlc ~context:name ~loc:None)
     in
-    let dir = Path.parent_exn ocamlc in
+    let ocaml_bin = Path.parent_exn ocamlc in
     let get_ocaml_tool prog =
       get_tool_using_findlib_config prog >>= function
       | Some x -> Memo.return (Ok x)
       | None -> (
-        Program.best_path dir prog >>| function
+        Program.best_path ocaml_bin prog >>| function
         | Some p -> Ok p
         | None ->
           let hint =
             sprintf "ocamlc found in %s, but %s/%s doesn't exist (context: %s)"
-              (Path.to_string dir) (Path.to_string dir) prog
+              (Path.to_string ocaml_bin) (Path.to_string ocaml_bin) prog
               (Context_name.to_string name)
           in
           Error
@@ -528,8 +528,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         let build_env_kind =
           Build_environment_kind.query ~kind ~findlib_toolchain ~env
         in
-        Build_environment_kind.findlib_paths build_env_kind ~findlib
-          ~ocamlc_dir:dir
+        Build_environment_kind.findlib_paths build_env_kind ~findlib ~ocaml_bin
       in
       if Ocaml.Version.has_META_files version then
         stdlib_dir :: default_ocamlpath
@@ -540,7 +539,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       context_env env name ocfg findlib env_nodes version ~profile ~host
         ~default_ocamlpath
     in
-    let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in
     let* ocamlopt = get_ocaml_tool "ocamlopt" in
     let lib_config =
       { Lib_config.has_native = Result.is_ok ocamlopt
@@ -552,7 +550,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; model = Ocaml_config.model ocfg
       ; ext_dll = Ocaml_config.ext_dll ocfg
       ; natdynlink_supported =
-          Dynlink_supported.By_the_os.of_bool natdynlink_supported
+          (let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in
+           Dynlink_supported.By_the_os.of_bool natdynlink_supported)
       ; stdlib_dir
       ; ccomp_type = Ocaml_config.ccomp_type ocfg
       ; profile
@@ -573,7 +572,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     and* ocamldep = get_ocaml_tool "ocamldep"
     and* ocamlmklib = get_ocaml_tool "ocamlmklib"
     and* ocamlobjinfo = get_ocaml_tool "ocamlobjinfo" in
-    let ocaml_bin = dir in
     let supports_shared_libraries =
       Ocaml_config.supports_shared_libraries ocfg
     in

@@ -766,58 +766,51 @@ module Preprocess = struct
       let+ () = Build_system.build_file pp_file in
       Ok (`Pp_file (project, pp_file))
     | false -> (
-      let* file_exists =
-        Build_system.file_exists (Path.build file_in_build_dir)
+      let* lib_or_exe =
+        External_lib_deps.Top_module.find_lib_or_exe super_context
+          (file |> Path.Source.of_string)
       in
-      match file_exists with
-      | false ->
-        User_error.raise
-          [ Pp.textf "%s does not exist"
-              (Path.Build.to_string file_in_build_dir)
-          ]
-      | true -> (
-        let* lib_or_exe =
-          External_lib_deps.Top_module.find_lib_or_exe super_context
-            (file |> Path.Source.of_string)
-        in
-        let* staged_pps =
-          match lib_or_exe with
-          | None -> Memo.return None
-          | Some { stanza = `Executables { buildable; _ }; _ }
-          | Some { stanza = `Library { buildable; _ }; _ } -> (
-            let preprocess =
-              Dune_rules.Preprocess.Per_module.(
-                without_instrumentation buildable.preprocess
-                |> single_preprocess)
-            in
-            match preprocess with
-            | External_lib_deps.Preprocess.Pps
-                { loc; pps; flags; staged = true } ->
-              let* scope =
-                External_lib_deps.Scope.DB.find_by_project context project
-              in
-              let* expander =
-                Super_context.expander ~dir:context.build_dir super_context
-              in
-              let request =
-                External_lib_deps.Preprocessing.get_ppx_driver super_context
-                  ~loc ~expander ~lib_name:None ~flags ~scope pps
-              in
-              let* result = Action_builder.run request Eager in
-              Memo.return (Some result)
-            | No_preprocessing | Action _ | Future_syntax _ | Pps _ ->
-              Memo.return None)
-        in
-        let file_in_build_dir = Path.build file_in_build_dir in
-        match staged_pps with
+      let* staged_pps =
+        match lib_or_exe with
         | None ->
-          let+ () = Build_system.build_file file_in_build_dir in
-          Error file_in_build_dir
-        | Some staged_pps ->
-          let (ppx_exe, flags), (_ : Dep.Fact.t Dep.Map.t) = staged_pps in
-          let* () = Build_system.build_file (Path.build ppx_exe)
-          and* () = Build_system.build_file file_in_build_dir in
-          Memo.return (Ok (`Ppx_exe ((ppx_exe, flags), file_in_build_dir)))))
+          User_error.raise
+            [ Pp.textf "%s does not exist"
+                (Path.Build.to_string file_in_build_dir)
+            ]
+        | Some { stanza = `Executables { buildable; _ }; _ }
+        | Some { stanza = `Library { buildable; _ }; _ } -> (
+          let preprocess =
+            Dune_rules.Preprocess.Per_module.(
+              without_instrumentation buildable.preprocess |> single_preprocess)
+          in
+          match preprocess with
+          | External_lib_deps.Preprocess.Pps { loc; pps; flags; staged = true }
+            ->
+            let* scope =
+              External_lib_deps.Scope.DB.find_by_project context project
+            in
+            let* expander =
+              Super_context.expander ~dir:context.build_dir super_context
+            in
+            let request =
+              External_lib_deps.Preprocessing.get_ppx_driver super_context ~loc
+                ~expander ~lib_name:None ~flags ~scope pps
+            in
+            let* result = Action_builder.run request Eager in
+            Memo.return (Some result)
+          | No_preprocessing | Action _ | Future_syntax _ | Pps _ ->
+            Memo.return None)
+      in
+      let file_in_build_dir = Path.build file_in_build_dir in
+      match staged_pps with
+      | None ->
+        let+ () = Build_system.build_file file_in_build_dir in
+        Error file_in_build_dir
+      | Some staged_pps ->
+        let (ppx_exe, flags), (_ : Dep.Fact.t Dep.Map.t) = staged_pps in
+        let* () = Build_system.build_file (Path.build ppx_exe)
+        and* () = Build_system.build_file file_in_build_dir in
+        Memo.return (Ok (`Ppx_exe ((ppx_exe, flags), file_in_build_dir))))
 
   let run super_context file =
     let open Memo.O in

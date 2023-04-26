@@ -30,7 +30,7 @@ let url ~port ~filename =
 let download ~port ~filename ~target () =
   let open Fiber.O in
   let url = url ~port ~filename in
-  let* () = Fetch.fetch url ~target in
+  let* () = Fetch.fetch Loc.none url ~target in
   print_endline "Done downloading";
   Fiber.return ()
 

@@ -776,15 +776,15 @@ module Preprocess = struct
               (Path.Build.to_string file_in_build_dir)
           ]
       | true -> (
-        let* stanza =
+        let* lib_or_exe =
           External_lib_deps.Top_module.find_lib_or_exe super_context
             (file |> Path.Source.of_string)
         in
         let* staged_pps =
-          match stanza with
+          match lib_or_exe with
           | None -> Memo.return None
-          | Some (`Executables { buildable; _ }, _, _, _)
-          | Some (`Library { buildable; _ }, _, _, _) -> (
+          | Some { stanza = `Executables { buildable; _ }; _ }
+          | Some { stanza = `Library { buildable; _ }; _ } -> (
             let preprocess =
               Dune_rules.Preprocess.Per_module.(
                 without_instrumentation buildable.preprocess

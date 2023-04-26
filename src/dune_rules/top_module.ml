@@ -13,6 +13,16 @@ let drop_rules f =
   in
   res
 
+type lib_or_exe =
+  { stanza :
+      [ `Executables of Dune_file.Executables.t
+      | `Library of Dune_file.Library.t
+      ]
+  ; module_name : Module_name.t
+  ; dir : Path.Build.t
+  ; dir_contents : Dir_contents.t
+  }
+
 let find_lib_or_exe sctx src =
   let src =
     Path.Build.append_source (Super_context.context sctx).build_dir src
@@ -34,15 +44,16 @@ let find_lib_or_exe sctx src =
     let+ ocaml = Dir_contents.ocaml dir_contents in
     match Ml_sources.find_origin ocaml module_name with
     | Some (Executables exes) ->
-      Some (`Executables exes, module_name, dir, dir_contents)
-    | Some (Library lib) -> Some (`Library lib, module_name, dir, dir_contents)
+      Some { stanza = `Executables exes; module_name; dir; dir_contents }
+    | Some (Library lib) ->
+      Some { stanza = `Library lib; module_name; dir; dir_contents }
     | None | Some (Melange _) -> None)
 
 let find_module sctx src =
   let* stanza = find_lib_or_exe sctx src in
   match stanza with
   | None -> Memo.return None
-  | Some (stanza, module_name, dir, dir_contents) ->
+  | Some { stanza; module_name; dir; dir_contents } ->
     let* scope = Scope.DB.find_by_dir dir in
     let* expander = Super_context.expander sctx ~dir in
     let+ cctx, merlin =

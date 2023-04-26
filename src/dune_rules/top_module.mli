@@ -1,16 +1,17 @@
 open Import
 
-val find_lib_or_exe :
-     Super_context.t
-  -> Path.Source.t
-  -> ([ `Executables of Dune_file.Executables.t
+type lib_or_exe =
+  { stanza :
+      [ `Executables of Dune_file.Executables.t
       | `Library of Dune_file.Library.t
       ]
-     * Module_name.t
-     * Path.Build.t
-     * Dir_contents.t)
-     option
-     Memo.t
+  ; module_name : Module_name.t
+  ; dir : Path.Build.t
+  ; dir_contents : Dir_contents.t
+  }
+
+val find_lib_or_exe :
+  Super_context.t -> Path.Source.t -> lib_or_exe option Memo.t
 
 val find_module :
      Super_context.t

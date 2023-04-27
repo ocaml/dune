@@ -12,7 +12,7 @@ val foreign_rules :
 val compile_info : Library.t -> Scope.t -> (Lib.t * Lib.Compile.t) Memo.t
 
 val rules :
-     ?lib_to_entry_modules_map:(Lib.t * Module.t list) list Action_builder.t
+     ?lib_to_entry_modules_map:Module.t list Lib.Map.t
   -> ?lib_top_module_map:Module.t list Module_name.Map.t
   -> Library.t
   -> sctx:Super_context.t

@@ -91,7 +91,7 @@ let exit_and_flush code =
   Console.finish ();
   exit (Exit_code.code code)
 
-let () = Memtrace.trace_if_requested ~context:"dune_refine_deps" ();;
+let () = Memtrace.trace_if_requested ~context:"dune_refine_deps_once" ();;
 Dune_rules.Colors.setup_err_formatter_colors ();
 try
   match Cmd.eval_value cmd ~catch:false with

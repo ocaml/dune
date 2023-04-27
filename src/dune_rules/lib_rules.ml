@@ -556,7 +556,7 @@ let compile_info lib scope =
   Lib.DB.get_compile_info (Scope.libs scope) (Library.best_name lib)
     ~allow_overlaps:buildable.allow_overlapping_dependencies
 
-let rules ?(lib_to_entry_modules_map = Action_builder.return [])
+let rules ?(lib_to_entry_modules_map = Lib.Map.empty)
     ?(lib_top_module_map = Module_name.Map.empty) (lib : Library.t) ~sctx
     ~dir_contents ~dir ~expander ~scope =
   let buildable = lib.buildable in

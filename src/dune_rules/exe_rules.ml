@@ -240,7 +240,7 @@ let compile_info ~scope (exes : Dune_file.Executables.t) =
     ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
     ~forbidden_libraries:exes.forbidden_libraries ~merlin_ident
 
-let rules ?(lib_to_entry_modules_map = Action_builder.return [])
+let rules ?(lib_to_entry_modules_map = Lib.Map.empty)
     ?(lib_top_module_map = Module_name.Map.empty) ~sctx ~dir ~dir_contents
     ~scope ~expander (exes : Dune_file.Executables.t) =
   let* compile_info = compile_info ~scope exes in

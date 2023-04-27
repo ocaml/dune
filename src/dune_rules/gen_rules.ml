@@ -60,17 +60,22 @@ end = struct
     }
 
   let make_lib_entry_map sctx requires =
-    Resolve.Memo.bind requires ~f:(fun reqs ->
-        List.map reqs ~f:(fun req ->
-            let req_entry_mods =
-              match Lib.Local.of_lib req with
-              | None -> Memo.return []
-              | Some libl -> Odoc.entry_modules_by_lib sctx libl
-            in
-            Resolve.Memo.map (req_entry_mods |> Resolve.Memo.lift_memo)
-              ~f:(fun req_entry_mods' -> (req, req_entry_mods')))
-        |> Resolve.Memo.all)
-    |> Resolve.Memo.read
+    let* m, _ =
+      Action_builder.run
+        (Resolve.Memo.bind requires ~f:(fun reqs ->
+             List.map reqs ~f:(fun req ->
+                 let req_entry_mods =
+                   match Lib.Local.of_lib req with
+                   | None -> Memo.return []
+                   | Some libl -> Odoc.entry_modules_by_lib sctx libl
+                 in
+                 Resolve.Memo.map (req_entry_mods |> Resolve.Memo.lift_memo)
+                   ~f:(fun req_entry_mods' -> (req, req_entry_mods')))
+             |> Resolve.Memo.all)
+        |> Resolve.Memo.read)
+        Eager
+    in
+    Lib.Map.of_list_exn m |> Memo.return
 
   let make_lib_top_module_map sctx requires ~linking =
     let* m, _ =
@@ -151,7 +156,7 @@ end = struct
         Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
       in
       if available then
-        let lib_to_entry_modules_map = make_lib_entry_map sctx requires in
+        let* lib_to_entry_modules_map = make_lib_entry_map sctx requires in
         let* lib_top_module_map =
           make_lib_top_module_map sctx requires
             ~linking:(Dune_project.implicit_transitive_deps project)
@@ -180,7 +185,7 @@ end = struct
         let project = Scope.project scope in
         let* compile_info = Exe_rules.compile_info ~scope exes in
         let requires = make_requires project compile_info in
-        let lib_to_entry_modules_map = make_lib_entry_map sctx requires in
+        let* lib_to_entry_modules_map = make_lib_entry_map sctx requires in
         let* lib_top_module_map =
           make_lib_top_module_map sctx requires
             ~linking:(Dune_project.implicit_transitive_deps project)

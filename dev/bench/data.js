@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682569641768,
+  "lastUpdate": 1682608340057,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34045,6 +34045,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "29.596999886006667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "4612b42122ff7cc13fe0d6557795380cd80ea38b",
+          "message": "fix: validate directory module names in include_subdirs qualified\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-04-27T07:53:48-07:00",
+          "tree_id": "e3e78b7bdf322cf653c4b652cc83185fb0203c75",
+          "url": "https://github.com/ocaml/dune/commit/4612b42122ff7cc13fe0d6557795380cd80ea38b"
+        },
+        "date": 1682608337343,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.464244634720004",
             "unit": "seconds"
           }
         ]

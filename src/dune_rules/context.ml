@@ -404,6 +404,10 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let get_tool_using_findlib_config prog =
       Memo.Option.bind findlib ~f:(Findlib.Config.tool ~prog)
     in
+    let not_found ?hint prog =
+      Action.Prog.Not_found.create ?hint ~context:name ~program:prog ~loc:None
+        ()
+    in
     let* ocamlc =
       let ocamlc = "ocamlc" in
       get_tool_using_findlib_config ocamlc >>= function
@@ -411,7 +415,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | None -> (
         which ocamlc >>| function
         | Some x -> x
-        | None -> Utils.program_not_found ocamlc ~context:name ~loc:None)
+        | None -> not_found ocamlc |> Action.Prog.Not_found.raise)
     in
     let ocaml_bin = Path.parent_exn ocamlc in
     let get_ocaml_tool prog =
@@ -426,9 +430,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
               (Path.to_string ocaml_bin) (Path.to_string ocaml_bin) prog
               (Context_name.to_string name)
           in
-          Error
-            (Action.Prog.Not_found.create ~context:name ~program:prog ~loc:None
-               ~hint ()))
+          Error (not_found ~hint prog))
     in
     let* ocaml_config_vars, ocfg =
       let ocaml_config_ok_exn = function
@@ -501,8 +503,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       let program = "ocaml" in
       which program >>| function
       | Some s -> Ok s
-      | None ->
-        Error (Action.Prog.Not_found.create ~context:name ~program ~loc:None ())
+      | None -> Error (not_found program)
     and* ocamldep = get_ocaml_tool "ocamldep"
     and* ocamlmklib = get_ocaml_tool "ocamlmklib"
     and* ocamlobjinfo = get_ocaml_tool "ocamlobjinfo" in

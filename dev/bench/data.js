@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682611332941,
+  "lastUpdate": 1682615623825,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34161,6 +34161,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.181411613199998",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "59a64b2f2dcd3a9fbb416cf88e7c9565c1edc03b",
+          "message": "fix: allow overriding \"ocaml\" with findlib (#7648)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-27T09:55:35-07:00",
+          "tree_id": "08dbb200f8995101203ebe660dfd421d67912c30",
+          "url": "https://github.com/ocaml/dune/commit/59a64b2f2dcd3a9fbb416cf88e7c9565c1edc03b"
+        },
+        "date": 1682615621027,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.39602491237333",
             "unit": "seconds"
           }
         ]

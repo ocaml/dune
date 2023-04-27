@@ -54,3 +54,8 @@ let hash = Poly.hash
 let equal = Poly.equal
 
 let to_dyn = Dyn.opaque
+
+let cc_g t =
+  match t.ccomp_type with
+  | Msvc -> []
+  | Other _ -> [ "-g" ]

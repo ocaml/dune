@@ -721,7 +721,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
   let preprocess =
     Module_name.Per_item.map preprocess ~f:(fun pp ->
         Preprocess.remove_future_syntax ~for_:Compiler pp
-          (Super_context.context sctx).version)
+          (Super_context.context sctx).ocaml.version)
   in
   let preprocessor_deps, sandbox =
     Dep_conf_eval.unnamed preprocessor_deps ~expander

@@ -113,7 +113,6 @@ let build_c ~(kind : Foreign_language.t) ~sctx ~dir ~expander ~include_flags
   let* project = Scope.DB.find_by_dir dir >>| Scope.project in
   let use_standard_flags = Dune_project.use_standard_c_and_cxx_flags project in
   let base_flags =
-    let cfg = ctx.ocaml_config in
     match kind with
     | Cxx -> Fdo.cxx_flags ctx
     | C -> (
@@ -121,6 +120,7 @@ let build_c ~(kind : Foreign_language.t) ~sctx ~dir ~expander ~include_flags
       | Some true -> Fdo.c_flags ctx
       | None | Some false ->
         (* In dune < 2.8 flags from ocamlc_config are always added *)
+        let cfg = ctx.ocaml.ocaml_config in
         List.concat
           [ Ocaml_config.ocamlc_cflags cfg
           ; Ocaml_config.ocamlc_cppflags cfg
@@ -179,7 +179,7 @@ let build_c ~(kind : Foreign_language.t) ~sctx ~dir ~expander ~include_flags
       Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:kind
   and* c_compiler =
     Super_context.resolve_program ~loc:None ~dir sctx
-      (Ocaml_config.c_compiler ctx.ocaml_config)
+      (Ocaml_config.c_compiler ctx.ocaml.ocaml_config)
   in
   let output_param =
     match ctx.lib_config.ccomp_type with

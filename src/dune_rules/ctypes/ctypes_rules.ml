@@ -159,7 +159,7 @@ let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope
   let ctx = Super_context.context sctx in
   let open Memo.O in
   let* exe =
-    Ocaml_config.c_compiler ctx.ocaml_config
+    Ocaml_config.c_compiler ctx.ocaml.ocaml_config
     |> Super_context.resolve_program ~loc:None ~dir sctx
   in
   let project = Scope.project scope in
@@ -168,7 +168,7 @@ let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope
       let use_standard_flags =
         Dune_project.use_standard_c_and_cxx_flags project
       in
-      let cfg = ctx.ocaml_config in
+      let cfg = ctx.ocaml.ocaml_config in
       let fdo_flags = Command.Args.As (Fdo.c_flags ctx) in
       match use_standard_flags with
       | Some true -> fdo_flags

@@ -8,7 +8,7 @@ let first_exe (exes : Executables.t) = snd (List.hd exes.names)
 let linkages (ctx : Context.t) ~(exes : Executables.t) ~explicit_js_mode =
   let module L = Dune_file.Executables.Link_mode in
   let l =
-    let has_native = Result.is_ok ctx.ocamlopt in
+    let has_native = Result.is_ok ctx.ocaml.ocamlopt in
     let modes =
       L.Map.to_list exes.modes
       |> List.map ~f:(fun (mode, loc) ->

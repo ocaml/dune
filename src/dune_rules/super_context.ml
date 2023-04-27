@@ -1,7 +1,7 @@
 open Import
 
 let default_context_flags (ctx : Context.t) ~project =
-  let cflags = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
+  let cflags = Ocaml_config.ocamlc_cflags ctx.ocaml.ocaml_config in
   let cxxflags =
     List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
@@ -14,7 +14,7 @@ let default_context_flags (ctx : Context.t) ~project =
         let+ cc = Cxx_flags.ccomp_type ctx in
         let fdiagnostics_color = Cxx_flags.fdiagnostics_color cc in
         cflags
-        @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config
+        @ Ocaml_config.ocamlc_cppflags ctx.ocaml.ocaml_config
         @ fdiagnostics_color
       in
       let cxx =
@@ -292,7 +292,7 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
   in
   build_dir_is_vendored dir >>| function
   | true ->
-    let ocaml_version = (Env_tree.context t).version in
+    let ocaml_version = (Env_tree.context t).ocaml.version in
     with_vendored_flags ~ocaml_version flags
   | false -> flags
 

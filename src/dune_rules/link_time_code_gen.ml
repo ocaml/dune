@@ -162,7 +162,7 @@ let build_info_code cctx ~libs ~api_version =
 |ocaml};
   let fmt_eval : _ format6 =
     let context = Compilation_context.context cctx in
-    let ocaml_version = Ocaml.Version.of_ocaml_config context.ocaml_config in
+    let ocaml_version = context.ocaml.version in
     if Ocaml.Version.has_sys_opaque_identity ocaml_version then
       "let %s = eval (Sys.opaque_identity %S)"
     else "let %s = eval %S"

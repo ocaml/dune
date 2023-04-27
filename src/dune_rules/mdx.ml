@@ -389,7 +389,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
           Some lib
         | _ -> Resolve.Memo.return None)
     in
-    let mode = Context.best_mode (Super_context.context sctx) in
+    let mode = Ocaml_toolchain.best_mode (Super_context.context sctx).ocaml in
     let libs_include_paths =
       Lib_flags.L.include_paths libs_to_include (Ocaml mode)
     in

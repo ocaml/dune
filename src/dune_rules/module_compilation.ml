@@ -113,7 +113,7 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
       Some melc
     | Ocaml mode ->
       Memo.return
-        (let compiler = Context.compiler ctx mode in
+        (let compiler = Ocaml_toolchain.compiler ctx.ocaml mode in
          (* TODO one day remove this silly optimization *)
          match compiler with
          | Ok _ as s -> Some s
@@ -197,7 +197,9 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
   in
   let opaque_arg : _ Command.Args.t =
     let intf_only = cm_kind = Ocaml Cmi && not (Module.has m ~ml_kind:Impl) in
-    if opaque || (intf_only && Ocaml.Version.supports_opaque_for_mli ctx.version)
+    if
+      opaque
+      || (intf_only && Ocaml.Version.supports_opaque_for_mli ctx.ocaml.version)
     then A "-opaque"
     else Command.Args.empty
   in
@@ -287,8 +289,8 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
         and* () =
           let ctx = CC.context cctx in
           let can_split =
-            Ocaml.Version.supports_split_at_emit ctx.version
-            || Ocaml_config.is_dev_version ctx.ocaml_config
+            Ocaml.Version.supports_split_at_emit ctx.ocaml.version
+            || Ocaml_config.is_dev_version ctx.ocaml.ocaml_config
           in
           match (ctx.fdo_target_exe, can_split) with
           | None, _ -> build_cm ~cm_kind:(Ocaml Cmx) ~phase:None
@@ -342,7 +344,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
     (Action_builder.With_targets.add ~file_targets:[ output ]
        (let open Action_builder.With_targets.O in
        Action_builder.with_no_targets cm_deps
-       >>> Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
+       >>> Command.run (Ok ctx.ocaml.ocamlc) ~dir:(Path.build ctx.build_dir)
              ~stdout_to:output
              [ Command.Args.dyn ocaml_flags
              ; A "-I"

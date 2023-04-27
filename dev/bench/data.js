@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682615623825,
+  "lastUpdate": 1682631203943,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34190,6 +34190,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.39602491237333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "11f1921944822c84ad07b13c56a709887e7df697",
+          "message": "refactor: move ocaml toolchain to own module (#7651)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-27T14:20:57-07:00",
+          "tree_id": "9c7ab0f07a09ebf65b8f52e76ba1cbdb71293795",
+          "url": "https://github.com/ocaml/dune/commit/11f1921944822c84ad07b13c56a709887e7df697"
+        },
+        "date": 1682631201079,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.715672734933335",
             "unit": "seconds"
           }
         ]

@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Allow overriding the `ocaml` binary with findlib configuration (#7648,
+  @rgrinberg)
+
 - When a rule's action is interrupted, delete any leftover directory targets.
   This is consistent with how we treat file targets. (#7564, @rgrinberg)
 

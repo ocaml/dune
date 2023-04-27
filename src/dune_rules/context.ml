@@ -470,7 +470,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         stdlib_dir :: default_ocamlpath
       else default_ocamlpath
     in
-    let findlib_paths = ocamlpath @ default_ocamlpath in
     let env =
       context_env env name ocfg findlib env_nodes version ~profile ~host
         ~default_ocamlpath
@@ -499,11 +498,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     if Option.is_some fdo_target_exe then
       check_fdo_support lib_config.has_native ocfg ~name;
-    let* ocaml =
-      let program = "ocaml" in
-      which program >>| function
-      | Some s -> Ok s
-      | None -> Error (not_found program)
+    let* ocaml = get_ocaml_tool "ocaml"
     and* ocamldep = get_ocaml_tool "ocamldep"
     and* ocamlmklib = get_ocaml_tool "ocamlmklib"
     and* ocamlobjinfo = get_ocaml_tool "ocamlobjinfo" in
@@ -547,7 +542,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocamlmklib
       ; ocamlobjinfo
       ; env
-      ; findlib_paths
+      ; findlib_paths = ocamlpath @ default_ocamlpath
       ; findlib_toolchain
       ; default_ocamlpath
       ; ocaml_config = ocfg

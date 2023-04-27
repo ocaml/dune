@@ -694,11 +694,6 @@ module DB = struct
     get context
 end
 
-let cc_g (ctx : t) =
-  match ctx.lib_config.ccomp_type with
-  | Msvc -> []
-  | Other _ -> [ "-g" ]
-
 let name t = t.name
 
 let lib_config t = t.lib_config

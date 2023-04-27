@@ -95,9 +95,6 @@ val compare : t -> t -> Ordering.t
 (** Return what [%{make}] should expand into *)
 val make : t -> Path.t option Memo.t
 
-(** [\["-g"\]] if [!Clflags.g] and [\[\]] otherwise *)
-val cc_g : t -> string list
-
 val name : t -> Context_name.t
 
 val lib_config : t -> Lib_config.t

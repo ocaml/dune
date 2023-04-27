@@ -28,3 +28,17 @@ let%bench "syscall" =
   while Atomic.get counter > 0 do
     Thread.yield ()
   done
+
+let%bench "syscall - no background" =
+  let tasks = 50_000 in
+  let counter = Atomic.make tasks in
+  let f () =
+    Unix.sleepf 0.0;
+    Atomic.decr counter
+  in
+  for _ = 0 to tasks - 1 do
+    f ()
+  done;
+  while Atomic.get counter > 0 do
+    Thread.yield ()
+  done

@@ -62,7 +62,7 @@ let mac_codesign_hook ~codesign path =
     [ "-f"; "-s"; "-"; Path.to_string path ]
 
 let sign_hook_of_context (context : Context.t) =
-  let config = context.ocaml_config in
+  let config = context.ocaml.ocaml_config in
   match (Ocaml_config.system config, Ocaml_config.architecture config) with
   | "macosx", "arm64" -> (
     let codesign_name = "codesign" in

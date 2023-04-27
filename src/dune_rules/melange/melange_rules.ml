@@ -13,7 +13,7 @@ let ocaml_flags sctx ~dir melange =
   Super_context.build_dir_is_vendored dir >>| function
   | false -> flags
   | true ->
-    let ocaml_version = (Super_context.context sctx).version in
+    let ocaml_version = (Super_context.context sctx).ocaml.version in
     Super_context.with_vendored_flags ~ocaml_version flags
 
 let output_of_lib ~target_dir lib =
@@ -353,7 +353,7 @@ let setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
     >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
   in
   let* modules =
-    let version = (Super_context.context sctx).version in
+    let version = (Super_context.context sctx).ocaml.version in
     let* preprocess =
       Resolve.Memo.read_memo
         (Preprocess.Per_module.with_instrumentation mel.preprocess

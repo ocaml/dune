@@ -68,20 +68,11 @@ type t = private
         (** env node that this context was initialized with *)
   ; env_nodes : Env_nodes.t
   ; path : Path.t list  (** [PATH] *)
-  ; ocaml_bin : Path.t  (** Ocaml bin directory with all ocaml tools *)
-  ; ocaml : Action.Prog.t
-  ; ocamlc : Path.t
-  ; ocamlopt : Action.Prog.t
-  ; ocamldep : Action.Prog.t
-  ; ocamlmklib : Action.Prog.t
-  ; ocamlobjinfo : Action.Prog.t
+  ; ocaml : Ocaml_toolchain.t
   ; env : Env.t
   ; findlib_paths : Path.t list
   ; findlib_toolchain : Context_name.t option  (** Misc *)
   ; default_ocamlpath : Path.t list
-  ; ocaml_config : Ocaml_config.t
-  ; ocaml_config_vars : Ocaml_config.Vars.t
-  ; version : Ocaml.Version.t
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; lib_config : Lib_config.t
   ; build_context : Build_context.t
@@ -101,21 +92,13 @@ val to_dyn_concise : t -> Dyn.t
 (** Compare the context names *)
 val compare : t -> t -> Ordering.t
 
-(** Return the compiler needed for this compilation mode *)
-val compiler : t -> Ocaml.Mode.t -> Action.Prog.t
-
 (** Return what [%{make}] should expand into *)
 val make : t -> Path.t option Memo.t
-
-(** The best compilation mode for this context *)
-val best_mode : t -> Mode.t
 
 (** [\["-g"\]] if [!Clflags.g] and [\[\]] otherwise *)
 val cc_g : t -> string list
 
 val name : t -> Context_name.t
-
-val has_native : t -> bool
 
 val lib_config : t -> Lib_config.t
 

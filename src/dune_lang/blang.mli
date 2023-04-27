@@ -1,4 +1,5 @@
-open Import
+open Stdune
+open Dune_sexp
 
 module Op : sig
   type t =
@@ -28,9 +29,8 @@ val eval :
 
 val to_dyn : t -> Dyn.t
 
-val decode : t Dune_lang.Decoder.t
+val decode : t Decoder.t
 
 (** Resolve variables manually. For complex cases such as [enabled_if] *)
 val decode_manually :
-     (Pform.Env.t -> Dune_lang.Template.Pform.t -> Pform.t)
-  -> t Dune_lang.Decoder.t
+  (Pform.Env.t -> Template.Pform.t -> Pform.t) -> t Decoder.t

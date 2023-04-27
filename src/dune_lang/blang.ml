@@ -1,4 +1,5 @@
-open Import
+open Stdune
+open Dune_sexp
 
 module Op = struct
   type t =
@@ -71,7 +72,7 @@ let ops =
   [ ("=", Op.Eq); (">=", Gte); ("<=", Lte); (">", Gt); ("<", Lt); ("<>", Neq) ]
 
 let decode_gen decode_string =
-  let open Dune_lang.Decoder in
+  let open Decoder in
   let ops =
     List.map ops ~f:(fun (name, op) ->
         ( name
@@ -84,14 +85,12 @@ let decode_gen decode_string =
         sum ~force_parens:true
           (("or", repeat t >>| fun x -> Or x)
           :: ("and", repeat t >>| fun x -> And x)
-          :: ( "not"
-             , Dune_lang.Syntax.since Stanza.syntax (3, 2) >>> t >>| fun x ->
-               Not x )
+          :: ("not", Syntax.since Stanza.syntax (3, 2) >>> t >>| fun x -> Not x)
           :: ops)
         <|> let+ v = decode_string in
             Expr v)
   in
-  let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
+  let+ () = Syntax.since Stanza.syntax (1, 1)
   and+ decode = decode in
   decode
 

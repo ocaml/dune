@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682634051014,
+  "lastUpdate": 1682657889640,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34248,6 +34248,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.869180146453335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5ae2b3a8903fcd5127ca3955493e2f3d6b9dfd51",
+          "message": "fix: man dir for contexts (#7655)\n\nit was set to bin/ accidentally\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-27T21:43:10-07:00",
+          "tree_id": "d659ff095abe35d72e075367b15c235f18c411a2",
+          "url": "https://github.com/ocaml/dune/commit/5ae2b3a8903fcd5127ca3955493e2f3d6b9dfd51"
+        },
+        "date": 1682657886164,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "27.549049239193334",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682700225963,
+  "lastUpdate": 1682714711352,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34335,6 +34335,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.64644495931333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "528b633a74cc9a553ad623c2d4f73d2dad65e238",
+          "message": "feature: warn if modules is missing any mentioned modules\n\nWe warn the user if modules_without_implementation, private_modules or\nvirtual_modules contains any modules not in the modules field.\n\nFixes #7026\n\nThis will be made into an error in 3.9.\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-04-28T22:33:19+02:00",
+          "tree_id": "b7d1df01439d923c46e1656a7081f2eaf9e7c9e3",
+          "url": "https://github.com/ocaml/dune/commit/528b633a74cc9a553ad623c2d4f73d2dad65e238"
+        },
+        "date": 1682714708981,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "14.698625366273333",
             "unit": "seconds"
           }
         ]

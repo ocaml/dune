@@ -32,8 +32,8 @@ Melange (installed) library depends on private library
   Leaving directory 'lib'
   $ dune install --prefix $PWD/prefix --root lib --display short
   Installing $TESTCASE_ROOT/prefix/lib/foo/META
-  Installing $TESTCASE_ROOT/prefix/lib/foo/__private__/priv/.public_cmi_melange/priv.cmi
-  Installing $TESTCASE_ROOT/prefix/lib/foo/__private__/priv/.public_cmi_melange/priv.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/foo/__private__/priv/melange/.public_cmi_melange/priv.cmi
+  Installing $TESTCASE_ROOT/prefix/lib/foo/__private__/priv/melange/.public_cmi_melange/priv.cmt
   Installing $TESTCASE_ROOT/prefix/lib/foo/__private__/priv/melange/priv.cmj
   Installing $TESTCASE_ROOT/prefix/lib/foo/__private__/priv/priv.ml
   Installing $TESTCASE_ROOT/prefix/lib/foo/dune-package
@@ -53,7 +53,6 @@ Melange (installed) library depends on private library
   > (melange.emit
   >  (target output)
   >  (libraries foo)
-  >  (compile_flags -bs-diagnose -verbose)
   >  (emit_stdlib false))
   > EOF
 

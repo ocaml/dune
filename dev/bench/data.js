@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682696720607,
+  "lastUpdate": 1682700225963,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34306,6 +34306,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.11864357228667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "99edf1725a132e876b9de1821b53bda99ef88dca",
+          "message": "bench: add no-op syscall bench (#7654)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-28T09:31:04-07:00",
+          "tree_id": "384578d33aad4ab28d6b7ac8d1907da32c0ac32d",
+          "url": "https://github.com/ocaml/dune/commit/99edf1725a132e876b9de1821b53bda99ef88dca"
+        },
+        "date": 1682700222072,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.64644495931333",
             "unit": "seconds"
           }
         ]

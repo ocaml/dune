@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682657889640,
+  "lastUpdate": 1682696720607,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34277,6 +34277,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.549049239193334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "corentin.leruth@gmail.com",
+            "name": "Corentin Leruth",
+            "username": "tatchi"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "5c14171d0c2f2ed3ae53e96bff17683ca63625a7",
+          "message": "fix(melange): odoc for melange only libs\n\nSigned-off-by: Corentin Leruth <corentin.leruth@gmail.com>",
+          "timestamp": "2023-04-28T09:33:04-06:00",
+          "tree_id": "3d0ec2d6faadb7eb036d456b40935d7f7d36eb7a",
+          "url": "https://github.com/ocaml/dune/commit/5c14171d0c2f2ed3ae53e96bff17683ca63625a7"
+        },
+        "date": 1682696716836,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.11864357228667",
             "unit": "seconds"
           }
         ]

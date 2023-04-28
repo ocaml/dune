@@ -1,7 +1,5 @@
 (** Linking modes for binaries *)
 
-open Import
-
 type t =
   | C
   | Exe
@@ -12,7 +10,7 @@ type t =
 
 val compare : t -> t -> Ordering.t
 
-include Dune_lang.Conv.S with type t := t
+include Dune_sexp.Conv.S with type t := t
 
 val all : t list
 

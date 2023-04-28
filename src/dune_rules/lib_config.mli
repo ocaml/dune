@@ -30,3 +30,6 @@ val hash : t -> int
 val equal : t -> t -> bool
 
 val to_dyn : t -> Dyn.t
+
+(** [\["-g"\]] if [!Clflags.g] and [\[\]] otherwise *)
+val cc_g : t -> string list

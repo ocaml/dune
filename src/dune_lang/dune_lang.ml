@@ -8,3 +8,5 @@ module Pform = Pform
 module Action = Action
 module Dune_file_script = Dune_file_script
 module Value = Value
+module Blang = Blang
+module Binary_kind = Binary_kind

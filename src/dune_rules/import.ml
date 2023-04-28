@@ -51,4 +51,6 @@ module Diff = Dune_lang.Action.Diff
 module Outputs = Dune_lang.Action.Outputs
 module Syntax = Dune_sexp.Syntax
 module Value = Dune_lang.Value
+module Blang = Dune_lang.Blang
+module Binary_kind = Dune_lang.Binary_kind
 include Dune_engine.No_io

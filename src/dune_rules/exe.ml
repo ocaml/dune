@@ -32,17 +32,17 @@ module Linkage = struct
 
   let is_byte x = x.mode = Byte && not (is_js x)
 
-  let custom_with_ext ~ext context =
+  let custom_with_ext ~ext (context : Context.t) =
     { mode = Byte_with_stubs_statically_linked_in
     ; ext
     ; flags =
-        [ Ocaml.Version.custom_or_output_complete_exe context.Context.version ]
+        [ Ocaml.Version.custom_or_output_complete_exe context.ocaml.version ]
     }
 
   let custom = custom_with_ext ~ext:".exe"
 
   let native_or_custom (context : Context.t) =
-    match context.ocamlopt with
+    match context.ocaml.ocamlopt with
     | Error _ -> custom context
     | Ok _ -> native
 
@@ -82,7 +82,7 @@ module Linkage = struct
               Byte_with_stubs_statically_linked_in
           | Native -> Native
           | Best ->
-            if Result.is_ok ctx.ocamlopt then Native
+            if Result.is_ok ctx.ocaml.ocamlopt then Native
             else Byte_with_stubs_statically_linked_in)
       in
       let ext =
@@ -92,7 +92,7 @@ module Linkage = struct
       let flags =
         match m with
         | Byte_complete ->
-          [ Ocaml.Version.custom_or_output_complete_exe ctx.version ]
+          [ Ocaml.Version.custom_or_output_complete_exe ctx.ocaml.version ]
         | Other { kind; _ } -> (
           match kind with
           | C -> c_flags
@@ -100,7 +100,7 @@ module Linkage = struct
           | Exe -> (
             match link_mode with
             | Byte_with_stubs_statically_linked_in ->
-              [ Ocaml.Version.custom_or_output_complete_exe ctx.version ]
+              [ Ocaml.Version.custom_or_output_complete_exe ctx.ocaml.version ]
             | _ -> [])
           | Object -> o_flags
           | Plugin -> (
@@ -109,7 +109,7 @@ module Linkage = struct
             | _ -> cma_flags)
           | Shared_object -> (
             let so_flags =
-              let os_type = Ocaml_config.os_type ctx.ocaml_config in
+              let os_type = Ocaml_config.os_type ctx.ocaml.ocaml_config in
               if os_type = Win32 then so_flags_windows else so_flags_unix
             in
             match link_mode with
@@ -117,7 +117,7 @@ module Linkage = struct
               (* The compiler doesn't pass these flags in native mode. This
                  looks like a bug in the compiler. *)
               let native_c_libraries =
-                Ocaml_config.native_c_libraries ctx.ocaml_config
+                Ocaml_config.native_c_libraries ctx.ocaml.ocaml_config
               in
               List.concat_map native_c_libraries ~f:(fun flag ->
                   [ "-cclib"; flag ])
@@ -171,7 +171,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
        would provide a better fix for this issue. *)
     Action_builder.with_no_targets prefix
     >>> Command.run ~dir:(Path.build ctx.build_dir)
-          (Context.compiler ctx mode)
+          (Ocaml_toolchain.compiler ctx.ocaml mode)
           [ Command.Args.dyn ocaml_flags
           ; A "-o"
           ; Target exe

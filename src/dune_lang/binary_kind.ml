@@ -1,4 +1,4 @@
-open Import
+open Stdune
 
 type t =
   | C
@@ -28,14 +28,15 @@ let compare x y =
   | Js, Js -> Eq
 
 let decode =
-  let open Dune_lang.Decoder in
+  let open Dune_sexp in
+  let open Decoder in
   sum
-    [ ("c", Dune_lang.Syntax.since Stanza.syntax (1, 2) >>> return C)
+    [ ("c", Syntax.since Stanza.syntax (1, 2) >>> return C)
     ; ("exe", return Exe)
     ; ("object", return Object)
     ; ("shared_object", return Shared_object)
-    ; ("plugin", Dune_lang.Syntax.since Stanza.syntax (2, 4) >>> return Plugin)
-    ; ("js", Dune_lang.Syntax.since Stanza.syntax (1, 11) >>> return Js)
+    ; ("plugin", Syntax.since Stanza.syntax (2, 4) >>> return Plugin)
+    ; ("js", Syntax.since Stanza.syntax (1, 11) >>> return Js)
     ]
 
 let to_string = function
@@ -48,6 +49,6 @@ let to_string = function
 
 let to_dyn t = Dyn.variant (to_string t) []
 
-let encode t = Dune_lang.atom (to_string t)
+let encode t = Dune_sexp.atom (to_string t)
 
 let all = [ C; Exe; Object; Shared_object; Plugin; Js ]

@@ -99,7 +99,7 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
             let pp_spec =
               Staged.unstage
                 (Preprocessing.pped_modules_map preprocess
-                   (Super_context.context sctx).version)
+                   (Super_context.context sctx).ocaml.version)
             in
             Dir_contents.ocaml dir_contents
             >>| Ml_sources.modules ~for_:(Library name)

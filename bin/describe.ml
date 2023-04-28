@@ -278,7 +278,7 @@ module Crawl = struct
     let pp_map =
       Staged.unstage
       @@
-      let version = (Super_context.context sctx).version in
+      let version = (Super_context.context sctx).ocaml.version in
       Preprocessing.pped_modules_map
         (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
         version
@@ -335,7 +335,7 @@ module Crawl = struct
           let pp_map =
             Staged.unstage
             @@
-            let version = (Super_context.context sctx).version in
+            let version = (Super_context.context sctx).ocaml.version in
             Preprocessing.pped_modules_map
               (Preprocess.Per_module.without_instrumentation
                  (Lib_info.preprocess info))
@@ -723,7 +723,7 @@ module Preprocess = struct
     let+ () =
       Process.run ~display:!Clflags.display
         ~env:(Super_context.context_env sctx)
-        Process.Strict (Super_context.context sctx).ocamlc
+        Process.Strict (Super_context.context sctx).ocaml.ocamlc
         [ "-stop-after"
         ; "parsing"
         ; "-dsource"

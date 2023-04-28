@@ -1,6 +1,12 @@
 Unreleased
 ----------
 
+- Correctly set `MANPATH` in `dune exec`. Previously, we would use the `bin/`
+  directory of the context. (#7655, @rgrinberg)
+
+- Allow overriding the `ocaml` binary with findlib configuration (#7648,
+  @rgrinberg)
+
 - When a rule's action is interrupted, delete any leftover directory targets.
   This is consistent with how we treat file targets. (#7564, @rgrinberg)
 
@@ -132,6 +138,9 @@ Unreleased
 
 - Fix bug where RPC clients built with dune-rpc-lwt would crash when closing
   their connection to the server (#7581, @gridbugs)
+
+- Introduce mdx stanza 0.4 requiring mdx >= 2.3.0 which updates the default
+  list of files to include `*.mld` files (#7582, @Leonidas-from-XIV)
 
 3.7.1 (2023-04-04)
 ------------------

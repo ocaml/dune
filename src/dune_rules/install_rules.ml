@@ -190,24 +190,24 @@ end = struct
           in
           make_entry ?sub_dir Lib path)
     in
-    let* melange_runtime_entries = additional_deps lib.melange_runtime_deps
-    and+ public_headers = additional_deps lib.public_headers in
     let { Lib_config.has_native; ext_obj; _ } = lib_config in
     let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
       Dune_file.Mode_conf.Lib.Set.eval lib.modes ~has_native
     in
-    let* module_files =
+    let+ melange_runtime_entries = additional_deps lib.melange_runtime_deps
+    and+ public_headers = additional_deps lib.public_headers
+    and+ module_files =
       let obj_dir = Lib_info.obj_dir info in
-      let external_obj_dir =
-        Obj_dir.convert_to_external obj_dir ~dir:(Path.build dir)
+      let cm_dir =
+        let external_obj_dir =
+          Obj_dir.convert_to_external obj_dir ~dir:(Path.build dir)
+        in
+        fun m cm_kind ->
+          let visibility = Module.visibility m in
+          let dir' = Obj_dir.cm_dir external_obj_dir cm_kind visibility in
+          if Path.equal (Path.build dir) dir' then None
+          else Path.basename dir' |> Option.some
       in
-      let cm_dir m cm_kind =
-        let visibility = Module.visibility m in
-        let dir' = Obj_dir.cm_dir external_obj_dir cm_kind visibility in
-        if Path.equal (Path.build dir) dir' then None
-        else Path.basename dir' |> Option.some
-      in
-      let virtual_library = Library.is_virtual lib in
       let if_ b (cm_kind, f) =
         if b then
           match f with
@@ -215,8 +215,9 @@ end = struct
           | Some f -> [ (cm_kind, f) ]
         else []
       in
-      let modules =
-        let common m =
+      let common =
+        let virtual_library = Library.is_virtual lib in
+        fun m ->
           let cm_file kind = Obj_dir.Module.cm_file obj_dir m ~kind in
           let open Lib_mode.Cm_kind in
           [ if_ (native || byte) (Ocaml Cmi, cm_file (Ocaml Cmi))
@@ -229,48 +230,41 @@ end = struct
           ; if_ melange (Melange Cmj, cm_file (Melange Cmj))
           ]
           |> List.concat
-        in
-        let set_dir m =
-          List.map ~f:(fun (cm_kind, p) -> (cm_dir m cm_kind, p))
-        in
-        let+ modules_impl =
-          let+ bin_annot = Super_context.bin_annot sctx ~dir in
-          List.concat_map installable_modules.impl ~f:(fun m ->
-              let cmt_files =
-                if bin_annot then
-                  List.concat_map Ml_kind.all ~f:(fun ml_kind ->
-                      let open Lib_mode.Cm_kind in
-                      List.concat_map
-                        [ (native || byte, Ocaml Cmi); (melange, Melange Cmi) ]
-                        ~f:(fun (condition, kind) ->
-                          if_ condition
-                            ( kind
-                            , Obj_dir.Module.cmt_file obj_dir m ~ml_kind
-                                ~cm_kind:kind )))
-                else []
-              in
-
-              common m @ cmt_files |> set_dir m)
-        in
-        let modules_vlib =
-          List.concat_map installable_modules.vlib ~f:(fun m ->
-              if Module.kind m = Virtual then [] else common m |> set_dir m)
-        in
-        modules_vlib @ modules_impl
       in
-      modules
-    in
-    let* lib_files, dll_files =
-      let+ lib_files = lib_files ~dir ~dir_contents ~lib_config info in
-      let dll_files = dll_files ~modes:ocaml ~dynlink:lib.dynlink ~ctx info in
-      (lib_files, dll_files)
-    in
+      let set_dir m = List.map ~f:(fun (cm_kind, p) -> (cm_dir m cm_kind, p)) in
+      let+ modules_impl =
+        let+ bin_annot = Super_context.bin_annot sctx ~dir in
+        List.concat_map installable_modules.impl ~f:(fun m ->
+            let cmt_files =
+              match bin_annot with
+              | false -> []
+              | true ->
+                List.concat_map Ml_kind.all ~f:(fun ml_kind ->
+                    List.concat_map
+                      [ (native || byte, Lib_mode.Cm_kind.Ocaml Cmi)
+                      ; (melange, Melange Cmi)
+                      ]
+                      ~f:(fun (condition, kind) ->
+                        if_ condition
+                          ( kind
+                          , Obj_dir.Module.cmt_file obj_dir m ~ml_kind
+                              ~cm_kind:kind )))
+            in
+            common m @ cmt_files |> set_dir m)
+      in
+      let modules_vlib =
+        List.concat_map installable_modules.vlib ~f:(fun m ->
+            if Module.kind m = Virtual then [] else common m |> set_dir m)
+      in
+      modules_vlib @ modules_impl
+    and+ lib_files = lib_files ~dir ~dir_contents ~lib_config info
+    and+ execs = lib_ppxs ctx ~scope ~lib in
+    let dll_files = dll_files ~modes:ocaml ~dynlink:lib.dynlink ~ctx info in
     let install_c_headers =
       List.rev_map lib.install_c_headers ~f:(fun (loc, base) ->
           Path.Build.relative dir (base ^ Foreign_language.header_extension)
           |> make_entry ~loc Lib)
     in
-    let+ execs = lib_ppxs ctx ~scope ~lib in
     List.concat
       [ sources
       ; melange_runtime_entries

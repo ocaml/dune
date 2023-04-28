@@ -712,8 +712,6 @@ let files_of path =
     Dir0.files dir |> Filename.Set.to_list
     |> Path.Source.Set.of_list_map ~f:(Path.Source.relative path)
 
-let dir_exists path = find_dir path >>| Option.is_some
-
 module Dir = struct
   include Dir0
 

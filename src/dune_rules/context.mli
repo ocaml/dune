@@ -111,12 +111,6 @@ val build_context : t -> Build_context.t
     an explicit installation directory. *)
 val roots : t -> Path.t option Install.Section.Paths.Roots.t
 
-(** Generate the rules for producing the files needed by configurator. *)
-val gen_configurator_rules : t -> unit Memo.t
-
-(** Force the files required by configurator at runtime to be produced. *)
-val force_configurator_files : unit Memo.Lazy.t
-
 val host : t -> t
 
 module DB : sig

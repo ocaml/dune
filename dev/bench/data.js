@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682729304025,
+  "lastUpdate": 1682739592367,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34393,6 +34393,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.30337212102",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b8361de555f280566a50198e58b004950a6501ee",
+          "message": "refactor: move configurator rules to own module (#7659)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-04-28T20:27:48-07:00",
+          "tree_id": "bb796c93dbf191a92fc93f81e4f74dd5ab44fa83",
+          "url": "https://github.com/ocaml/dune/commit/b8361de555f280566a50198e58b004950a6501ee"
+        },
+        "date": 1682739589902,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.356937015246668",
             "unit": "seconds"
           }
         ]

@@ -251,9 +251,8 @@ module DB = struct
       ~public_libs ~public_theories stanzas coq_stanzas =
     let open Memo.O in
     let projects_by_dir =
-      List.map projects ~f:(fun (project : Dune_project.t) ->
+      Path.Source.Map.of_list_map_exn projects ~f:(fun project ->
           (Dune_project.root project, project))
-      |> Path.Source.Map.of_list_exn
     in
     let stanzas_by_project_dir =
       List.map stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
@@ -490,7 +489,5 @@ module DB = struct
       let* public_libs = public_libs ctx in
       let* stanzas = Only_packages.filtered_stanzas ctx in
       let+ map = Memo.exec memo (ctx.build_dir, public_libs, stanzas) in
-      match Package.Name.Map.find map pkg_name with
-      | None -> []
-      | Some entries -> entries
+      Package.Name.Map.Multi.find map pkg_name
 end

@@ -63,17 +63,14 @@ let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t)
       | Some lib_name ->
         let dir =
           let package_output = Path.as_in_build_dir_exn package_output in
-          let lib_root_dir =
-            Path.Build.to_string (Compilation_context.dir cctx)
-          in
-          let src_dir = Path.Build.to_string package_output in
+          let lib_root_dir = Path.build (Compilation_context.dir cctx) in
+          let src_dir = Path.build package_output in
           let build_dir =
             (Compilation_context.super_context cctx |> Super_context.context)
               .build_dir
           in
-          String.drop_prefix src_dir ~prefix:lib_root_dir
-          |> Option.value_exn
-          |> String.drop_prefix_if_exists ~prefix:"/"
+          Path.drop_prefix_exn src_dir ~prefix:lib_root_dir
+          |> Path.Local.to_string
           |> Path.Build.relative build_dir
         in
 

@@ -38,6 +38,7 @@ Test dependency on a private library in the same package as melange.emit
   >  (target dist)
   >  (alias dist)
   >  (libraries a)
+  >  (emit_stdlib false)
   >  (package a))
   > EOF
 

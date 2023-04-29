@@ -378,14 +378,13 @@ module Entry = struct
 
   let relative_installed_path t ~paths =
     Section.Paths.install_path paths t.section t.dst
+    |> Path.as_in_source_tree_exn |> Path.Source.to_local
 
   let add_install_prefix t ~paths ~prefix =
-    let opam_will_install_in_this_dir = Section.Paths.get paths t.section in
-    let i_want_to_install_the_file_as =
-      relative_installed_path t ~paths
-      |> Path.as_in_source_tree_exn |> Path.append_source prefix
-    in
     let dst =
+      let i_want_to_install_the_file_as =
+        relative_installed_path t ~paths |> Path.append_local prefix
+      and opam_will_install_in_this_dir = Section.Paths.get paths t.section in
       Path.reach i_want_to_install_the_file_as
         ~from:opam_will_install_in_this_dir
     in

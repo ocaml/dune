@@ -815,11 +815,8 @@ let symlink_installed_artifacts_to_build_install sctx
   List.map entries ~f:(fun (s : Install.Entry.Sourced.t) ->
       let entry = s.entry in
       let dst =
-        let relative =
-          Install.Entry.relative_installed_path entry ~paths:install_paths
-          |> Path.as_in_source_tree_exn
-        in
-        Path.Build.append_source install_dir relative
+        Install.Entry.relative_installed_path entry ~paths:install_paths
+        |> Path.Build.append_local install_dir
       in
       let loc =
         match s.source with

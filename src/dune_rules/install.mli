@@ -140,7 +140,7 @@ module Entry : sig
 
   val map_dst : 'a t -> f:(Dst.t -> Dst.t) -> 'a t
 
-  val relative_installed_path : _ t -> paths:Section.Paths.t -> Path.t
+  val relative_installed_path : _ t -> paths:Section.Paths.t -> Path.Local.t
 
   val add_install_prefix :
     'a t -> paths:Section.Paths.t -> prefix:Path.t -> 'a t

@@ -57,7 +57,12 @@ module Shutdown = struct
       | _ -> None)
 end
 
-let blocked_signals : Signal.t list = [ Int; Quit; Term ]
+(* These are the signals that will make the scheduler attempt to terminate dune *)
+let interrupt_signals : Signal.t list = [ Int; Quit; Term ]
+
+(* In addition, the scheduler also blocks some other signals so that only
+   designated threads can handle them by unblocking *)
+let blocked_signals : Signal.t list = Winch :: interrupt_signals
 
 module Thread : sig
   val spawn : signal_watcher:[ `Yes | `No ] -> (unit -> unit) -> unit
@@ -583,7 +588,7 @@ end
 module Signal_watcher : sig
   val init : Event.Queue.t -> unit
 end = struct
-  let signos = List.map blocked_signals ~f:Signal.to_int
+  let signos = List.map interrupt_signals ~f:Signal.to_int
 
   let warning =
     {|

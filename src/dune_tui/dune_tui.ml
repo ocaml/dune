@@ -128,21 +128,34 @@ module Tui () = struct
     let image = image ~status_line:state.status_line ~messages in
     Term.image term image
 
-  let rec handle_user_events ~now ~time_budget _mutex =
+  let resize mutex (state : Dune_threaded_console.state) =
+    Mutex.lock mutex;
+    state.dirty <- true;
+    Mutex.unlock mutex
+
+  let rec handle_user_events ~now ~time_budget mutex state =
     (* We check for any user input and handle it. If we go over the
        [time_budget] we give up and continue. *)
-    let input_fds, _, _ = Unix.select [ Unix.stdin ] [] [] time_budget in
+    let input_fds =
+      match Unix.select [ Unix.stdin ] [] [] time_budget with
+      | [], _, _ -> `Timeout
+      | _ :: _, _, _ -> `Event
+      | exception Unix.Unix_error (EINTR, _, _) -> `Event
+    in
     match input_fds with
-    | [] ->
+    | `Timeout ->
       now +. time_budget
       (* Nothing to do, we return the time at the end of the time budget. *)
-    | _ :: _ -> (
+    | `Event -> (
       (* TODO if anything fancy is done in the UI in the future we need to lock
          the state with the provided mutex *)
       match Term.event term with
       | `Key (`ASCII 'q', _) ->
         (* When we encounter q we make sure to quit by signaling termination. *)
         Unix.kill (Unix.getpid ()) Sys.sigterm;
+        Unix.gettimeofday ()
+      | `Resize _ ->
+        resize mutex state;
         Unix.gettimeofday ()
       | _ -> Unix.gettimeofday ()
       | exception Unix.Unix_error ((EAGAIN | EWOULDBLOCK), _, _) ->
@@ -152,7 +165,7 @@ module Tui () = struct
         let now = Unix.gettimeofday () in
         let delta_now = now -. old_now in
         let time_budget = Float.max 0. (time_budget -. delta_now) in
-        handle_user_events ~now ~time_budget _mutex)
+        handle_user_events ~now ~time_budget mutex state)
 
   let reset () = ()
 

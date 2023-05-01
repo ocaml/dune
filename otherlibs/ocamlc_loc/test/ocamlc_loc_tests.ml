@@ -598,3 +598,29 @@ Case
     ; related = []
     ; severity = Error Some { code = 8; name = "partial-match" }
     } |}]
+
+let%expect_test "two errors, second withour 'error:'" =
+  test_error
+    {|
+File "src/dune_threaded_console/dune_threaded_console.ml", line 59, characters 18-23:
+59 |       Queue.clear state.messages;
+                       ^^^^^
+Error: Syntax error: 'end' expected
+File "src/dune_threaded_console/dune_threaded_console.ml", line 9, characters 17-23:
+9 |   let module T = struct
+                     ^^^^^^
+  This 'struct' might be unmatched
+
+    |};
+  [%expect
+    {|
+>> error 0
+{ loc =
+    { path = "src/dune_threaded_console/dune_threaded_console.ml"
+    ; line = Single 59
+    ; chars = Some (18, 23)
+    }
+; message = "Syntax error: 'end' expected"
+; related = []
+; severity = Error None
+} |}]

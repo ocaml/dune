@@ -13,3 +13,9 @@ let max x y =
   | Eq | Gt -> x
   | Lt -> y
 ;;
+
+let min x y =
+  match compare x y with
+  | Eq | Lt -> x
+  | Gt -> y
+;;

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683046702240,
+  "lastUpdate": 1683047494346,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34538,6 +34538,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "30.245852139933334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4b95cd3d1b3a62e69a9a9db2bc4af2f9fd2e56d8",
+          "message": "refactor: minor source fetching cleanups (#7643)\n\n* Cleanup temporary files as soon as we read them\r\n* Remove opam_style_read_file in favor of stdune's equivalent\r\n* do not qualify some constructors\r\n* include dune in the name of temp files\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-02T09:53:34-07:00",
+          "tree_id": "98e430e2d9a589bf4253d38db467bb57b5789a70",
+          "url": "https://github.com/ocaml/dune/commit/4b95cd3d1b3a62e69a9a9db2bc4af2f9fd2e56d8"
+        },
+        "date": 1683047491915,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.807492526766666",
             "unit": "seconds"
           }
         ]

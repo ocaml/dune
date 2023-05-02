@@ -155,6 +155,8 @@ module Tui = struct
             text *)
     ; user_feedback_attr : A.t
         (** style for user feedback like message count, or scrollbar position *)
+    ; debug_feedback_attr : A.t
+        (** style for debug feedback like the current cursor position *)
     }
 
   type ui_state =
@@ -193,60 +195,53 @@ module Tui = struct
     ; ui_attrs =
         { divider_attr = A.(fg red)
         ; helper_attr = A.(fg yellow)
-        ; user_feedback_attr = A.(fg A.cyan)
+        ; user_feedback_attr = A.(fg cyan)
+        ; debug_feedback_attr = A.(fg lightmagenta)
         }
     }
   ;;
 
   let debug_image () =
-    I.vcat
-      [ Term.size (term ())
-        |> (fun (x, y) -> sprintf "Term size: (%d,%d)" x y)
-        |> I.string ui_state.ui_attrs.divider_attr
-      ; ui_state.reset_count
-        |> string_of_int
-        |> (fun x -> "Reset count: " ^ x)
-        |> I.string ui_state.ui_attrs.divider_attr
-      ; ui_state.help_screen
-        |> string_of_bool
-        |> (fun x -> "Help screen: " ^ x)
-        |> I.string ui_state.ui_attrs.divider_attr
-      ; ui_state.hscroll_pos
-        |> string_of_float
-        |> (fun x -> "Hscroll pos: " ^ x)
-        |> I.string ui_state.ui_attrs.divider_attr
-      ; ui_state.vscroll_pos
-        |> string_of_float
-        |> (fun x -> "Vscroll pos: " ^ x)
-        |> I.string ui_state.ui_attrs.divider_attr
-      ; ui_state.hscroll_speed
-        |> string_of_float
-        |> (fun x -> "Hscroll speed: " ^ x)
-        |> I.string ui_state.ui_attrs.divider_attr
-      ; ui_state.vscroll_speed
-        |> string_of_float
-        |> (fun x -> "Vscroll speed: " ^ x)
-        |> I.string ui_state.ui_attrs.divider_attr
-      ; ui_state.hscroll_grabbed
-        |> string_of_bool
-        |> (fun x -> "Hscroll grabbed: " ^ x)
-        |> I.string ui_state.ui_attrs.divider_attr
-      ; ui_state.vscroll_grabbed
-        |> string_of_bool
-        |> (fun x -> "Vscroll grabbed: " ^ x)
-        |> I.string ui_state.ui_attrs.divider_attr
-      ; ui_state.hscroll_enabled
-        |> string_of_bool
-        |> (fun x -> "Hscroll enabled: " ^ x)
-        |> I.string ui_state.ui_attrs.divider_attr
-      ; ui_state.vscroll_enabled
-        |> string_of_bool
-        |> (fun x -> "Vscroll enabled: " ^ x)
-        |> I.string ui_state.ui_attrs.divider_attr
-      ; ui_state.user_feedback
+    let { user_feedback
+        ; debug = _
+        ; reset_count
+        ; help_screen
+        ; hscroll_pos
+        ; vscroll_pos
+        ; hscroll_speed
+        ; vscroll_speed
+        ; hscroll_grabbed
+        ; vscroll_grabbed
+        ; hscroll_enabled
+        ; vscroll_enabled
+        ; hscroll_nib_size = _
+        ; vscroll_nib_size = _
+        ; ui_attrs
+        }
+      =
+      ui_state
+    in
+    let attr = ui_attrs.debug_feedback_attr in
+    [ (Term.size (term ()) |> fun (x, y) -> sprintf "Term size: (%d,%d)" x y)
+    ; (reset_count |> string_of_int |> fun x -> "Reset count: " ^ x)
+    ; (help_screen |> string_of_bool |> fun x -> "Help screen: " ^ x)
+    ; (hscroll_pos |> string_of_float |> fun x -> "Hscroll pos: " ^ x)
+    ; (vscroll_pos |> string_of_float |> fun x -> "Vscroll pos: " ^ x)
+    ; (hscroll_speed |> string_of_float |> fun x -> "Hscroll speed: " ^ x)
+    ; (vscroll_speed |> string_of_float |> fun x -> "Vscroll speed: " ^ x)
+    ; (hscroll_grabbed |> string_of_bool |> fun x -> "Hscroll grabbed: " ^ x)
+    ; (vscroll_grabbed |> string_of_bool |> fun x -> "Vscroll grabbed: " ^ x)
+    ; (hscroll_enabled |> string_of_bool |> fun x -> "Hscroll enabled: " ^ x)
+    ; (vscroll_enabled |> string_of_bool |> fun x -> "Vscroll enabled: " ^ x)
+    ]
+    |> List.map ~f:(I.string attr)
+    |> fun x ->
+    x
+    @ [ user_feedback
         |> Option.value ~default:(Pp.text "None")
-        |> image_of_user_message_style_pp ~attr:ui_state.ui_attrs.divider_attr
+        |> image_of_user_message_style_pp ~attr
       ]
+    |> I.vcat
   ;;
 
   let horizontal_line_with_count ~w total index =

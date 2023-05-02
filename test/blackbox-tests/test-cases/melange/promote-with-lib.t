@@ -1,7 +1,8 @@
 Test melange.emit promotion
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
+  > (using melange 0.1)
   > EOF
 
   $ mkdir lib
@@ -16,32 +17,6 @@ Test melange.emit promotion
   > EOF
 
   $ cat > dune <<EOF
-  > (executable
-  >  (name hello))
-  > EOF
-
-  $ cat > hello.ml <<EOF
-  > let the_binding = Mylib.some_binding
-  > let () =
-  >   print_endline "hello"
-  > EOF
-
-Fails with an informative error message if we parsed OSL for modes
-
-  $ dune build hello.exe
-  File "lib/dune", line 2, characters 8-17:
-  2 |  (modes :standard melange)
-              ^^^^^^^^^
-  Error: Unknown value :standard
-  [1]
-
-
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using melange 0.1)
-  > EOF
-
-  $ cat > dune <<EOF
   > (melange.emit
   >  (alias dist)
   >  (modules hello)
@@ -50,7 +25,14 @@ Fails with an informative error message if we parsed OSL for modes
   >  (libraries mylib))
   > EOF
 
+  $ cat > hello.ml <<EOF
+  > let the_binding = Mylib.some_binding
+  > let () =
+  >   print_endline "hello"
+  > EOF
+
   $ dune build @dist
+
 Library has `(modes :standard)` so it also builds for bytecode / native
 
   $ dune build lib/.mylib.objs/byte/mylib.cmo

@@ -113,6 +113,16 @@ module Tui () = struct
 
   let start () = Unix.set_nonblock Unix.stdin
 
+  type ui_attrs =
+    { divider_attr : A.t
+          (** style for diving visual elements like borders or rules *)
+    ; helper_attr : A.t
+          (** style for helpful ui elements like scrollbar structures or help
+              text *)
+    ; user_feedback_attr : A.t
+          (** style for user feedback like message count, or scrollbar position *)
+    }
+
   type ui_state =
     { mutable user_feedback : User_message.Style.t Pp.t option
     ; mutable debug : bool
@@ -124,6 +134,11 @@ module Tui () = struct
     ; mutable vscroll_speed : float
     ; mutable hscroll_grabbed : bool
     ; mutable vscroll_grabbed : bool
+    ; mutable hscroll_enabled : bool
+    ; mutable vscroll_enabled : bool
+    ; hscroll_nib_size : int
+    ; vscroll_nib_size : int
+    ; ui_attrs : ui_attrs
     }
 
   let ui_state =
@@ -137,52 +152,78 @@ module Tui () = struct
     ; vscroll_speed = 0.1
     ; hscroll_grabbed = false
     ; vscroll_grabbed = false
+    ; hscroll_enabled = false
+    ; vscroll_enabled = false
+    ; hscroll_nib_size = 3
+    ; vscroll_nib_size = 2
+    ; ui_attrs =
+        { divider_attr = A.(fg red)
+        ; helper_attr = A.(fg yellow)
+        ; user_feedback_attr = A.(fg A.cyan)
+        }
     }
 
   let debug_image () =
     I.vcat
-      [ ui_state.reset_count |> string_of_int
+      [ Term.size term
+        |> (fun (x, y) -> sprintf "Term size: (%d,%d)" x y)
+        |> I.string ui_state.ui_attrs.divider_attr
+      ; ui_state.reset_count |> string_of_int
         |> (fun x -> "Reset count: " ^ x)
-        |> I.string A.(fg red)
+        |> I.string ui_state.ui_attrs.divider_attr
       ; ui_state.help_screen |> string_of_bool
         |> (fun x -> "Help screen: " ^ x)
-        |> I.string A.(fg red)
+        |> I.string ui_state.ui_attrs.divider_attr
       ; ui_state.hscroll_pos |> string_of_float
         |> (fun x -> "Hscroll pos: " ^ x)
-        |> I.string A.(fg red)
+        |> I.string ui_state.ui_attrs.divider_attr
       ; ui_state.vscroll_pos |> string_of_float
         |> (fun x -> "Vscroll pos: " ^ x)
-        |> I.string A.(fg red)
+        |> I.string ui_state.ui_attrs.divider_attr
       ; ui_state.hscroll_speed |> string_of_float
         |> (fun x -> "Hscroll speed: " ^ x)
-        |> I.string A.(fg red)
+        |> I.string ui_state.ui_attrs.divider_attr
       ; ui_state.vscroll_speed |> string_of_float
         |> (fun x -> "Vscroll speed: " ^ x)
-        |> I.string A.(fg red)
+        |> I.string ui_state.ui_attrs.divider_attr
+      ; ui_state.hscroll_grabbed |> string_of_bool
+        |> (fun x -> "Hscroll grabbed: " ^ x)
+        |> I.string ui_state.ui_attrs.divider_attr
+      ; ui_state.vscroll_grabbed |> string_of_bool
+        |> (fun x -> "Vscroll grabbed: " ^ x)
+        |> I.string ui_state.ui_attrs.divider_attr
+      ; ui_state.hscroll_enabled |> string_of_bool
+        |> (fun x -> "Hscroll enabled: " ^ x)
+        |> I.string ui_state.ui_attrs.divider_attr
+      ; ui_state.vscroll_enabled |> string_of_bool
+        |> (fun x -> "Vscroll enabled: " ^ x)
+        |> I.string ui_state.ui_attrs.divider_attr
       ; ui_state.user_feedback
         |> Option.value ~default:(Pp.text "None")
-        |> image_of_user_message_style_pp ~attr:A.(fg red)
+        |> image_of_user_message_style_pp ~attr:ui_state.ui_attrs.divider_attr
       ]
 
   let horizontal_line_with_count ~w total index =
     let status =
       I.hcat
-        [ I.uchar A.(fg red) (Uchar.of_int 0x169c) 1 1
-        ; I.string A.(fg blue) (string_of_int (index + 1))
-        ; I.string A.(fg red) "/"
-        ; I.string A.(fg blue) (string_of_int total)
-        ; I.uchar A.(fg red) (Uchar.of_int 0x169B) 1 1
+        [ I.uchar ui_state.ui_attrs.divider_attr (Uchar.of_int 0x169c) 1 1
+        ; I.string ui_state.ui_attrs.user_feedback_attr
+            (string_of_int (index + 1))
+        ; I.string ui_state.ui_attrs.divider_attr "/"
+        ; I.string ui_state.ui_attrs.user_feedback_attr (string_of_int total)
+        ; I.uchar ui_state.ui_attrs.divider_attr (Uchar.of_int 0x169B) 1 1
         ]
     in
     I.(
-      hsnap ~align:`Left w status </> uchar A.(fg red) (Uchar.of_int 0x2015) w 1)
+      hsnap ~align:`Left w status
+      </> uchar ui_state.ui_attrs.divider_attr (Uchar.of_int 0x2015) w 1)
 
   let line_separated_message ~total index msg =
     let img = image_of_user_message_style_pp (User_message.pp msg) in
     I.vcat
       [ img
       ; horizontal_line_with_count total index
-          ~w:(Stdlib.Int.max (I.width img) (fst (Term.size term)))
+          ~w:(Int.max (I.width img) (fst (Term.size term)))
       ]
 
   let image ~status_line ~messages =
@@ -195,15 +236,12 @@ module Tui () = struct
       List.mapi messages
         ~f:(line_separated_message ~total:(List.length messages))
     in
-    let debug_image =
-      if ui_state.debug then [ I.empty; debug_image () ] else []
-    in
-    Notty.I.vcat (messages @ status @ debug_image)
+    Notty.I.vcat (messages @ status)
 
   let border_box image =
     let w, h = I.(width image, height image) in
-    let border_element ?(attr = A.(fg red)) ?(width = 1) ?(height = 1) unicode
-        valign halign =
+    let border_element ?(attr = ui_state.ui_attrs.divider_attr) ?(width = 1)
+        ?(height = 1) unicode valign halign =
       I.uchar attr (Uchar.of_int unicode) width height
       |> I.vsnap ~align:valign (h + 2)
       |> I.hsnap ~align:halign (w + 2)
@@ -218,10 +256,10 @@ module Tui () = struct
       ; border_element ~height:h 0x2551 `Middle `Left (* left border *)
       ; border_element ~height:h 0x2551 `Middle `Right (* right border *)
       ; I.pad ~l:1 ~t:1 ~r:1 ~b:1 image
-      ; I.char A.(bg black) ' ' (w + 2) (h + 2)
+      ; I.char A.empty ' ' (w + 2) (h + 2)
       ]
 
-  let dialogue_box ~title ?(title_attr = Notty.A.(bg blue ++ fg black)) image =
+  let dialogue_box ~title ?(title_attr = ui_state.ui_attrs.helper_attr) image =
     let title =
       I.(
         string title_attr title
@@ -231,77 +269,73 @@ module Tui () = struct
     I.(title </> border_box image)
 
   let horizontal_scroll_bar width =
-    let twidth, theight = Term.size term in
-    I.vsnap ~align:`Bottom theight
-    @@
-    if width > twidth then
-      let nib =
-        let l =
-          int_of_float (ui_state.hscroll_pos *. float_of_int (twidth - 6)) + 1
-        in
-        I.uchar A.(fg blue) (Uchar.of_int 0x25AC) 3 1 |> I.pad ~l
+    let nib =
+      let l =
+        int_of_float
+          (ui_state.hscroll_pos
+          *. float_of_int (width - ui_state.hscroll_nib_size - 2))
+        + 1 (* for the button *)
       in
-      I.zcat
-        [ nib
-        ; I.uchar A.(fg yellow) (Uchar.of_int 0x25C0) 1 1
-        ; I.uchar A.(fg yellow) (Uchar.of_int 0x25B6) 1 1
-          |> I.hsnap ~align:`Right (twidth - 1)
-        ; I.uchar A.(fg yellow) (Uchar.of_int 0x2500) (twidth - 1) 1
-        ; I.char A.(fg yellow ++ bg black) ' ' 1 1
-          |> I.hsnap ~align:`Right (twidth - 1)
-        ]
-    else I.empty
+      I.uchar ui_state.ui_attrs.user_feedback_attr (Uchar.of_int 0x25AC)
+        ui_state.hscroll_nib_size 1
+      |> I.pad ~l
+    in
+    I.zcat
+      [ nib
+      ; I.uchar ui_state.ui_attrs.helper_attr (Uchar.of_int 0x25C0) 1 1
+      ; I.uchar ui_state.ui_attrs.helper_attr (Uchar.of_int 0x25B6) 1 1
+        |> I.hsnap ~align:`Right width
+      ; I.uchar ui_state.ui_attrs.helper_attr (Uchar.of_int 0x2500) width 1
+      ; I.char A.empty ' ' 1 1 |> I.hsnap ~align:`Right width
+      ]
 
   let vertical_scroll_bar height =
-    let twidth, theight = Term.size term in
-    I.hsnap ~align:`Right twidth
-    @@
-    if height > theight then
-      let nib =
-        let t =
-          int_of_float (ui_state.vscroll_pos *. float_of_int (theight - 5)) + 1
-        in
-        I.uchar A.(fg blue) (Uchar.of_int 0x2588) 1 2 |> I.pad ~t
+    let nib =
+      let t =
+        int_of_float
+          (ui_state.vscroll_pos
+          *. float_of_int (height - ui_state.vscroll_nib_size - 2))
+        + 1 (* for the button *)
       in
-      I.zcat
-        [ nib
-        ; I.uchar A.(fg yellow) (Uchar.of_int 0x25B2) 1 1
-        ; I.uchar A.(fg yellow) (Uchar.of_int 0x25BC) 1 1
-          |> I.vsnap ~align:`Bottom (theight - 1)
-        ; I.uchar A.(fg yellow) (Uchar.of_int 0x2502) 1 (theight - 1)
-        ; I.char A.(fg yellow ++ bg black) ' ' 1 1
-          |> I.vsnap ~align:`Bottom (theight - 1)
-        ]
-    else I.empty
-
-  let help_screen () =
-    let twidth, theight = Term.size term in
-    if ui_state.help_screen then
-      let hsnap_or_leave img =
-        if I.width img < twidth then I.hsnap ~align:`Middle twidth img else img
-      in
-      let vsnap_or_leave img =
-        if I.height img < theight then I.vsnap ~align:`Middle theight img
-        else img
-      in
-      List.map
-        ~f:(I.string A.(fg yellow))
-        [ "Press 'q' to quit"
-        ; "Press 'h' or '?' to toggle this screen"
-        ; "Navigate with the mouse or arrow keys"
-        ; "Press 'd' to toggle debug mode"
-        ]
-      |> I.vcat
-      |> fun img ->
-      [ img
-      ; I.string A.empty ""
-      ; I.string A.(fg yellow) "🐪 Developed by the Dune team 🐪"
-        |> I.hsnap ~align:`Middle (I.width img)
+      I.uchar ui_state.ui_attrs.user_feedback_attr (Uchar.of_int 0x2588) 1
+        ui_state.vscroll_nib_size
+      |> I.pad ~t
+    in
+    I.zcat
+      [ nib
+      ; I.uchar ui_state.ui_attrs.helper_attr (Uchar.of_int 0x25B2) 1 1
+      ; I.uchar ui_state.ui_attrs.helper_attr (Uchar.of_int 0x25BC) 1 1
+        |> I.vsnap ~align:`Bottom height
+      ; I.uchar ui_state.ui_attrs.helper_attr (Uchar.of_int 0x2502) 1 height
+      ; I.char A.empty ' ' 1 1 |> I.vsnap ~align:`Bottom height
       ]
-      |> I.vcat |> I.pad ~l:1 ~r:1 ~t:1 ~b:1
-      |> dialogue_box ~title:"Help Screen" ~title_attr:A.(fg yellow)
-      |> vsnap_or_leave |> hsnap_or_leave
-    else I.empty
+
+  (** [help_screen width height] draws a help screen for a terminal of given
+      [width] and [height]. *)
+  let help_screen width height =
+    let hsnap_or_leave img =
+      if I.width img < width then I.hsnap ~align:`Middle width img else img
+    in
+    let vsnap_or_leave img =
+      if I.height img < height then I.vsnap ~align:`Middle height img else img
+    in
+    List.map
+      ~f:(I.string ui_state.ui_attrs.helper_attr)
+      [ "Press 'q' to quit"
+      ; "Press 'h' or '?' to toggle this screen"
+      ; "Navigate with the mouse or arrow keys"
+      ; "Press 'd' to toggle debug mode"
+      ]
+    |> I.vcat
+    |> fun img ->
+    [ img
+    ; I.string A.empty ""
+    ; I.string ui_state.ui_attrs.helper_attr "🐪 Developed by the Dune team 🐪"
+      |> I.hsnap ~align:`Middle (I.width img)
+    ]
+    |> I.vcat |> I.pad ~l:1 ~r:1 ~t:1 ~b:1
+    |> dialogue_box ~title:"Help Screen"
+    |> vsnap_or_leave |> hsnap_or_leave
 
   let top_frame image =
     (* The top frame is our main UI element. It contains all other widgets that
@@ -311,29 +345,64 @@ module Tui () = struct
     (* We do a quick calculation of the scrolling speed and update them. *)
     ui_state.hscroll_speed <- Float.max 0. (4. /. float_of_int w);
     ui_state.vscroll_speed <- Float.max 0. (2. /. float_of_int h);
+    (* We work out if the scrollbars are enabled based on if the image will fit
+       in the terminal *)
+    ui_state.hscroll_enabled <- w > tw;
+    ui_state.vscroll_enabled <- h > th;
+    (* disabling scrollbars resets the position *)
+    if not ui_state.hscroll_enabled then ui_state.hscroll_pos <- 0.;
+    if not ui_state.vscroll_enabled then ui_state.vscroll_pos <- 0.;
     let image =
       (* if our image spills over the size of the terminal, then we crop it
          according to the scrolling position. *)
       let l, r =
-        if w < tw then (0, 0)
-        else
+        if ui_state.hscroll_enabled then
           let l =
             int_of_float (ui_state.hscroll_pos *. float_of_int (w - tw + 1))
           in
           (l, w - tw - l)
+        else (0, 0)
       in
       let t, b =
-        if h < th then (0, 0)
-        else
+        if ui_state.vscroll_enabled then
           let t =
             int_of_float (ui_state.vscroll_pos *. float_of_int (h - th + 1))
           in
           (t, h - th - t)
+        else (0, 0)
       in
       I.crop ~l ~r ~t ~b image
     in
+    let help_screen =
+      if ui_state.help_screen then help_screen tw th else I.empty
+    in
+    let debug_box =
+      if ui_state.debug then debug_image () |> dialogue_box ~title:"Debug"
+      else I.empty
+    in
+    let vertical_scroll_bar, horizontal_scroll_bar, corner_decoration =
+      (* we adjust the sizes of the scroll bars according to how many we are
+         displaying *)
+      match (ui_state.hscroll_enabled, ui_state.vscroll_enabled) with
+      | true, true ->
+        ( vertical_scroll_bar (th - 1) |> I.hsnap ~align:`Right tw
+        , horizontal_scroll_bar (tw - 1) |> I.vsnap ~align:`Bottom th
+        , I.uchar ui_state.ui_attrs.helper_attr (Uchar.of_int 0x253C) 1 1
+          |> I.vsnap ~align:`Bottom th |> I.hsnap ~align:`Right tw )
+      | true, false ->
+        (I.empty, horizontal_scroll_bar tw |> I.vsnap ~align:`Bottom th, I.empty)
+      | false, true ->
+        (vertical_scroll_bar th |> I.hsnap ~align:`Right tw, I.empty, I.empty)
+      | _ -> (I.empty, I.empty, I.empty)
+    in
     I.zcat
-      [ help_screen (); vertical_scroll_bar h; horizontal_scroll_bar w; image ]
+      [ debug_box
+      ; help_screen
+      ; corner_decoration
+      ; vertical_scroll_bar
+      ; horizontal_scroll_bar
+      ; image
+      ]
 
   let render (state : Dune_threaded_console.state) =
     let messages = Queue.to_list state.messages in
@@ -372,17 +441,19 @@ module Tui () = struct
     finish_dirty_interaction ~mutex state
 
   let handle_horizontal_scroll ~direction ~mutex state =
-    ui_state.hscroll_pos <-
-      (match direction with
-      | `Up -> Float.max 0. (ui_state.hscroll_pos -. ui_state.hscroll_speed)
-      | `Down -> Float.min 1. (ui_state.hscroll_pos +. ui_state.hscroll_speed));
+    if ui_state.hscroll_enabled then
+      ui_state.hscroll_pos <-
+        (match direction with
+        | `Up -> Float.max 0. (ui_state.hscroll_pos -. ui_state.hscroll_speed)
+        | `Down -> Float.min 1. (ui_state.hscroll_pos +. ui_state.hscroll_speed));
     finish_dirty_interaction ~mutex state
 
   let handle_vertical_scroll ~direction ~mutex state =
-    ui_state.vscroll_pos <-
-      (match direction with
-      | `Up -> Float.max 0. (ui_state.vscroll_pos -. ui_state.vscroll_speed)
-      | `Down -> Float.min 1. (ui_state.vscroll_pos +. ui_state.vscroll_speed));
+    if ui_state.vscroll_enabled then
+      ui_state.vscroll_pos <-
+        (match direction with
+        | `Up -> Float.max 0. (ui_state.vscroll_pos -. ui_state.vscroll_speed)
+        | `Down -> Float.min 1. (ui_state.vscroll_pos +. ui_state.vscroll_speed));
     finish_dirty_interaction ~mutex state
 
   let handle_debug ~mutex state =
@@ -405,6 +476,16 @@ module Tui () = struct
            officia deserunt mollit anim id est laborum."
       ]
 
+  let explain_mouse_event ~pos:(x, y) ~button =
+    Pp.textf "You have just %s the mouse at (%d, %d) but this does nothing!"
+      (match button with
+      | `Left -> "left clicked"
+      | `Middle -> "middle clicked"
+      | `Right -> "right clicked"
+      | `Scroll `Up -> "scrolled up with"
+      | `Scroll `Down -> "scrolled down with")
+      x y
+
   let handle_unknown_input ~mutex (state : Dune_threaded_console.state) event =
     match event with
     (* lorem ipsum for testing *)
@@ -419,17 +500,12 @@ module Tui () = struct
         (Pp.textf "You have just pressed '%c' but this does nothing!" c);
       finish_dirty_interaction ~mutex state
     (* Mouse interaction *)
-    | `Mouse (`Press button, (x, y), _) ->
+    | `Mouse (`Press button, pos, _) ->
       give_user_feedback ~style:User_message.Style.Kwd
-        (Pp.textf
-           "You have just %s the mouse at (%d, %d) but this does nothing!"
-           (match button with
-           | `Left -> "left clicked"
-           | `Middle -> "middle clicked"
-           | `Right -> "right clicked"
-           | `Scroll `Up -> "scrolled up with"
-           | `Scroll `Down -> "scrolled down with")
-           x y);
+        (Pp.concat
+           [ explain_mouse_event ~pos ~button
+           ; Pp.textf " but this does nothing!"
+           ]);
       finish_dirty_interaction ~mutex state
     (* We have no more events to handle, we finish the interaction. *)
     | _ -> finish_interaction ()
@@ -441,30 +517,87 @@ module Tui () = struct
 
   let update_hscroll_pos ~x ~width =
     ui_state.hscroll_pos <-
-      Float.max 0. (Float.min 1. (float_of_int x /. float_of_int (width - 1)))
+      Float.max 0. @@ Float.min 1.
+      @@ float_of_int (x - 2) (* minus buttons *)
+         /. float_of_int (width - 2 - ui_state.hscroll_nib_size)
 
   let update_vscroll_pos ~y ~height =
     ui_state.vscroll_pos <-
-      Float.max 0. (Float.min 1. (float_of_int y /. float_of_int (height - 1)))
+      Float.max 0. @@ Float.min 1.
+      @@ float_of_int (y - 2)
+         /. float_of_int (height - 2 - ui_state.vscroll_nib_size)
+
+  let handle_horizontal_scroll_grab ~x ~width ~mutex state =
+    ui_state.hscroll_grabbed <- true;
+    update_hscroll_pos ~x ~width;
+    finish_dirty_interaction ~mutex state
+
+  let handle_vertical_scroll_grab ~y ~height ~mutex state =
+    ui_state.vscroll_grabbed <- true;
+    update_vscroll_pos ~y ~height;
+    finish_dirty_interaction ~mutex state
 
   let handle_mouse_press ~pos:(x, y) ~button ~mutex state =
     (* To handle mouse presses we need to workout which widget we are trying to
        interact with. At the moment there are only two scrollbars so this is
        simple enough, but in the future a more principled approach is warranted.
+
+       Each scroll bar has 3 components that we can interact with:
+
+       - The scroll itself, inwhich case we need to update the scrollbar
+         position.
+
+       - The up/down arrows, inwhich case we need to move the scrollbar.
     *)
+    give_user_feedback ~style:User_message.Style.Kwd
+      (explain_mouse_event ~pos:(x, y) ~button);
     let tw, th = Term.size term in
-    (match (button, x = tw - 1, y = th - 1) with
-    | `Left, true, true -> ()
+    match (button, ui_state.hscroll_enabled, ui_state.vscroll_enabled) with
+    (* both scrollbars' hit detection, the scrollbars resize depending on how
+       many there are so the hit detection has to be tweaked. *)
+    | `Left, true, true -> (
+      match (Int.compare x (tw - 1), Int.compare y (th - 1)) with
+      (* we hit the bottom right corner which has nothing *)
+      | Eq, Eq -> finish_dirty_interaction ~mutex state
+      (* checking the horizontal scrollbar *)
+      | Lt, Eq ->
+        (* checking the left button *)
+        if x = 0 then handle_horizontal_scroll ~direction:`Up ~mutex state
+          (* checking the right button *)
+        else if x = tw - 2 then
+          handle_horizontal_scroll ~direction:`Down ~mutex state
+          (* finally we must be hitting the scrollbar itself *)
+        else handle_horizontal_scroll_grab ~x ~width:tw ~mutex state
+      | Eq, Lt ->
+        (* checking the top button *)
+        if y = 0 then handle_vertical_scroll ~direction:`Up ~mutex state
+          (* checking the bottom button *)
+        else if y = th - 2 then
+          handle_vertical_scroll ~direction:`Down ~mutex state
+          (* finally we must be hitting the scrollbar itself *)
+        else handle_vertical_scroll_grab ~y ~height:th ~mutex state
+      | _ -> finish_dirty_interaction ~mutex state)
+    (* horizontal scrollbar hit detection *)
     | `Left, true, false ->
-      ui_state.vscroll_grabbed <- true;
-      update_vscroll_pos ~y ~height:th
+      if y = th - 1 then
+        if x = 0 then handle_horizontal_scroll ~direction:`Up ~mutex state
+        else if x = tw - 1 then
+          handle_horizontal_scroll ~direction:`Down ~mutex state
+        else handle_horizontal_scroll_grab ~x ~width:tw ~mutex state
+      else finish_dirty_interaction ~mutex state
+    (* vertical scrollbar hit detection *)
     | `Left, false, true ->
-      ui_state.hscroll_grabbed <- true;
-      update_hscroll_pos ~x ~width:tw
-    | _ -> ());
-    finish_dirty_interaction ~mutex state
+      if x = tw - 1 then
+        if y = 0 then handle_vertical_scroll ~direction:`Up ~mutex state
+        else if y = th - 1 then
+          handle_vertical_scroll ~direction:`Down ~mutex state
+        else handle_vertical_scroll_grab ~y ~height:th ~mutex state
+      else finish_dirty_interaction ~mutex state
+    (* no scrollbar was clicked *)
+    | _ -> finish_dirty_interaction ~mutex state
 
   let handle_mouse_drag ~pos:(x, y) ~mutex state =
+    (* todo: report event *)
     let tw, th = Term.size term in
     if ui_state.vscroll_grabbed then update_vscroll_pos ~y ~height:th
     else if ui_state.hscroll_grabbed then update_hscroll_pos ~x ~width:tw;

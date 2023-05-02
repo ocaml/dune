@@ -2,7 +2,6 @@ Test melange.emit promotion
 
   $ cat > dune-project <<EOF
   > (lang dune 3.7)
-  > (using melange 0.1)
   > EOF
 
   $ mkdir lib
@@ -17,12 +16,8 @@ Test melange.emit promotion
   > EOF
 
   $ cat > dune <<EOF
-  > (melange.emit
-  >  (alias dist)
-  >  (modules hello)
-  >  (promote (until-clean))
-  >  (target dist)
-  >  (libraries mylib))
+  > (executable
+  >  (name hello))
   > EOF
 
   $ cat > hello.ml <<EOF
@@ -33,14 +28,11 @@ Test melange.emit promotion
 
 Fails with an informative error message if we parsed OSL for modes
 
-  $ dune build @dist
-  File "lib/dune", line 1, characters 0-50:
-  1 | (library
+  $ dune build hello.exe
+  File "lib/dune", line 2, characters 8-17:
   2 |  (modes :standard melange)
-  3 |  (name mylib))
-  Error: Ordered set language for modes is only available since version 3.8 of
-  the dune language. Please update your dune-project file to have (lang dune
-  3.8).
+              ^^^^^^^^^
+  Error: Unknown value :standard
   [1]
 
 
@@ -48,8 +40,17 @@ Fails with an informative error message if we parsed OSL for modes
   > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
-  $ dune build @dist
 
+  $ cat > dune <<EOF
+  > (melange.emit
+  >  (alias dist)
+  >  (modules hello)
+  >  (promote (until-clean))
+  >  (target dist)
+  >  (libraries mylib))
+  > EOF
+
+  $ dune build @dist
 Library has `(modes :standard)` so it also builds for bytecode / native
 
   $ dune build lib/.mylib.objs/byte/mylib.cmo

@@ -3,7 +3,7 @@ form `foo.bar.baz`
 
   $ mkdir a app
   $ cat > a/dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (package (name a))
   > (using melange 0.1)
   > EOF
@@ -39,7 +39,7 @@ form `foo.bar.baz`
         (source (path Foo) (impl (path sub/foo.ml))))))
 
   $ cat >app/dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 

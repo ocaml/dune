@@ -599,7 +599,7 @@ Case
     ; severity = Error Some { code = 8; name = "partial-match" }
     } |}]
 
-let%expect_test "two errors, second withour 'error:'" =
+let%expect_test "two errors, second without 'error:'" =
   test_error
     {|
 File "src/dune_threaded_console/dune_threaded_console.ml", line 59, characters 18-23:

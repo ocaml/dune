@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683025199415,
+  "lastUpdate": 1683029781769,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34480,6 +34480,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "28.708749724473336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "23c2389bb083f3b7045d16e85759a93e098bb396",
+          "message": "Make (public_name -) equivalent to no public name (#7576)\n\n* Make (public_name -) equivalent to no public name\r\n\r\nFixes #5852\r\n\r\nThis brings consistency with `(public_names)` in `(executables)`: a\r\nplural stanza with only `-` in `(public_names)` installs nothing.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-05-02T13:58:29+02:00",
+          "tree_id": "2393be3f29722e85ec229642ba7045778a4bd7ca",
+          "url": "https://github.com/ocaml/dune/commit/23c2389bb083f3b7045d16e85759a93e098bb396"
+        },
+        "date": 1683029779373,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.495122482719996",
             "unit": "seconds"
           }
         ]

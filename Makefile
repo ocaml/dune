@@ -25,9 +25,8 @@ ppx_inline_test \
 ppxlib \
 ctypes \
 "utop>=2.6.0" \
-"melange>=0.3.1" \
-"mel>=0.3.1"
-
+"melange" \
+"rescript-syntax"
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
 DEV_DEPS := \
@@ -74,8 +73,9 @@ dev-depext:
 
 .PHONY: melange
 melange:
-	opam pin add -n melange-compiler-libs https://github.com/melange-re/melange-compiler-libs.git#7263bea2285499f5da857f2bb374345a5178791e
-	opam pin add -n melange https://github.com/melange-re/melange.git#68c6eff82ed056feed809d6cc82558e8697b965b
+	opam pin add -n melange-compiler-libs.dev https://github.com/melange-re/melange-compiler-libs.git#575ac4c24b296ea897821f9aaee1146ff258c704
+	opam pin add -n melange.dev https://github.com/melange-re/melange.git#60eabf03d60b1e71f8d5aae72d24d7a1dfcf5bf6
+	opam pin add -n rescript-syntax.dev https://github.com/melange-re/melange.git#60eabf03d60b1e71f8d5aae72d24d7a1dfcf5bf6
 
 .PHONY: dev-deps
 dev-deps: melange

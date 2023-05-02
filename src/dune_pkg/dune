@@ -1,0 +1,6 @@
+(library
+ (name dune_pkg)
+ (synopsis "[Internal] Dune's packaging support")
+ (libraries stdune fiber dune_engine opam_core opam_repository opam_format)
+ (instrumentation
+  (backend bisect_ppx)))

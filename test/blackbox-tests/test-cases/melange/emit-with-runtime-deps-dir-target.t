@@ -15,6 +15,7 @@ Test simple interactions between melange.emit and copy_files
   >  (alias mel)
   >  (target output)
   >  (emit_stdlib false)
+  >  (preprocess (pps melange.ppx))
   >  (runtime_deps ./some_dir))
   > EOF
 

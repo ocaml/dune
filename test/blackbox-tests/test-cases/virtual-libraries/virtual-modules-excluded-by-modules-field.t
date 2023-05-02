@@ -1,9 +1,11 @@
 Specifying a virtual module that isn't inside the (modules ..) field:
 
-  $ cat >dune-project <<EOF
+  $ cat > dune-project << EOF
   > (lang dune 3.7)
   > EOF
-  $ cat >dune <<EOF
+
+  $ mkdir src
+  $ cat > src/dune << EOF
   > (library
   >  (name foo)
   >  (wrapped false)
@@ -11,19 +13,21 @@ Specifying a virtual module that isn't inside the (modules ..) field:
   >  (modules y))
   > EOF
 
-  $ touch x.mli
+  $ touch src/x.mli
 
-  $ cat >y.ml <<EOF
+  $ cat > src/y.ml << EOF
   > module type F = X
   > EOF
 
-  $ mkdir impl
-  $ cat >impl/dune <<EOF
+  $ mkdir src/impl
+  $ cat > src/impl/dune << EOF
   > (library
   >  (name impl)
   >  (implements foo))
   > EOF
-  $ touch impl/x.ml
+  $ touch src/impl/x.ml
+
+X is warned about:
 
   $ dune build --display short
       ocamldep impl/.impl.objs/x.impl.d

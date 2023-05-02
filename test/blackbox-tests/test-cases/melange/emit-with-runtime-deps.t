@@ -10,6 +10,7 @@ Test simple interactions between melange.emit and copy_files
   >  (alias mel)
   >  (emit_stdlib false)
   >  (target output)
+  >  (preprocess (pps melange.ppx))
   >  (runtime_deps assets/file.txt (glob_files_rec ./globbed/*.txt)))
   > EOF
 
@@ -62,6 +63,7 @@ The runtime_dep index.txt was copied to the build folder
   assets
   globbed
   main.ml
+  main.pp.ml
   output
   $ ls _build/default/output
   assets
@@ -80,3 +82,4 @@ The runtime_dep index.txt was copied to the build folder
   $ node _build/default/output/main.js
   hello from file
   
+

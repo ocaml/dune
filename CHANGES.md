@@ -1,8 +1,14 @@
 Unreleased
 ----------
 
+- Correctly set `MANPATH` in `dune exec`. Previously, we would use the `bin/`
+  directory of the context. (#7655, @rgrinberg)
+
+- Allow overriding the `ocaml` binary with findlib configuration (#7648,
+  @rgrinberg)
+
 - When a rule's action is interrupted, delete any leftover directory targets.
-  This is consistent with how we treat file targets. (@rgrinberg, 7564)
+  This is consistent with how we treat file targets. (#7564, @rgrinberg)
 
 - Fix plugin loading with findlib. The functionality was broken in 3.7.0.
   (#7556, @anmonteiro)
@@ -20,6 +26,11 @@ Unreleased
 - Use `$PKG_CONFIG`, when set, to find the `pkg-config` binary  (#7469, fixes
   #2572, @anmonteiro)
 
+- Modules that were declared in `(modules_without_implementation)`,
+  `(private_modules)` or `(virtual_modules)` but not declared in `(modules)`
+  will cause Dune to emit a warning which will become an error in 3.9. (#7608,
+  fixes #7026, @Alizter)
+
 - Preliminary support for Coq compiled intefaces (`.vos` files) enabled via
   `(mode vos)` in `coq.theory` stanzas. This can be used in combination with
   `dune coq top` to obtain fast re-building of dependencies (with no checking
@@ -36,6 +47,10 @@ Unreleased
 
 - Dune in watch mode no longer builds concurrent rules in serial (#7395
   @rgrinberg, @jchavarri)
+
+- Dune can now detect Coq theories from outside the workspace. This allows for
+  composition with installed theories (not necessarily installed with Dune).
+  (#7047, @Alizter, @ejgallego)
 
 - `dune coq top` now correctly respects the project root when called from a
   subdirectory. However, absolute filenames passed to `dune coq top` are no
@@ -120,6 +135,12 @@ Unreleased
 
 - On nix+macos, pass `-f` to the codesign hook to avoid errors when the binary
   is already signed (#7183, fixes #6265, @greedy)
+
+- Fix bug where RPC clients built with dune-rpc-lwt would crash when closing
+  their connection to the server (#7581, @gridbugs)
+
+- Introduce mdx stanza 0.4 requiring mdx >= 2.3.0 which updates the default
+  list of files to include `*.mld` files (#7582, @Leonidas-from-XIV)
 
 3.7.1 (2023-04-04)
 ------------------

@@ -16,7 +16,7 @@ type t =
   }
 
 let find_module ~source t =
-  let f m = Path.Build.equal source (Coq_module.source m) in
+  let f m = Path.equal (Path.build source) (Coq_module.source m) in
   Coq_lib_name.Map.Multi.find_elt t.libraries ~f
 
 let empty =
@@ -37,7 +37,9 @@ let coq_modules_of_files ~dirs =
     String.Set.to_list_map files ~f:(fun file ->
         let name, _ = Filename.split_extension file in
         let name = Coq_module.Name.make name in
-        Coq_module.make ~source:(Path.Build.relative dir file) ~prefix ~name)
+        Coq_module.make
+          ~source:(Path.build @@ Path.Build.relative dir file)
+          ~prefix ~name)
   in
   List.concat_map ~f:build_mod_dir dirs
 

@@ -7,7 +7,6 @@
  (enabled_if
   (<> %{profile} dune-bootstrap))
  (libraries
-  memtrace
   memo
   ocaml
   dune_lang

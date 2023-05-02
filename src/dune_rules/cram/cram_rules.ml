@@ -80,13 +80,8 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
           | File _ -> Action_builder.return Path.Set.empty
           | Dir { dir; file = _ } ->
             let deps =
-              let open Memo.O in
-              let+ deps =
-                Path.Build.append_source prefix_with dir
-                |> Path.build |> Source_deps.files
-              in
-              let files = Dep.Set.to_files_set_exn deps in
-              (deps, files)
+              Path.Build.append_source prefix_with dir
+              |> Path.build |> Source_deps.files
             in
             Action_builder.dyn_memo_deps deps
         in

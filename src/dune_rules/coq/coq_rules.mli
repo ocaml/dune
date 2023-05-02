@@ -2,8 +2,10 @@ open Import
 
 (* This file is licensed under The MIT License *)
 (* (c) MINES ParisTech 2018-2019               *)
-(* (c) INRIA 2020                              *)
-(* Written by: Emilio Jesús Gallego Arias *)
+(* (c) INRIA 2020-2023                         *)
+(* Written by: Ali Caglayan                    *)
+(* Written by: Emilio Jesús Gallego Arias      *)
+(* Written by: Rudi Grinberg                   *)
 
 (** [deps_of ~dir ~use_stdlib ~wrapper_name coq_module] action that builds the
     deps of [coq_module] *)

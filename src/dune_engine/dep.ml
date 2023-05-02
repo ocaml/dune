@@ -314,33 +314,12 @@ module Set = struct
     file_selector
       (File_selector.create ~dir File_selector.Predicate_with_id.false_)
 
-  module Source_tree (Union : sig
-    type 'a result
-
-    val union_all :
-      Path.t -> f:(path:Path.t -> files:Filename.Set.t -> t) -> t result
-  end) =
-  struct
-    let files dir =
-      Union.union_all dir ~f:(fun ~path ~files ->
-          match String.Set.is_empty files with
-          | true -> singleton (dir_without_files_dep path)
-          | false ->
-            Filename.Set.fold files ~init:empty ~f:(fun fn acc ->
-                add acc (File (Path.relative path fn))))
-  end
-
-  let to_files_set_exn t =
-    fold t ~init:Path.Set.empty ~f:(fun dep acc ->
-        match dep with
-        | File f -> Path.Set.add acc f
-        | File_selector fs ->
-          assert (
-            File_selector.Predicate_with_id.equal
-              (File_selector.predicate fs)
-              File_selector.Predicate_with_id.false_);
-          acc
-        | _ -> assert false)
+  let of_source_files ~files ~empty_directories =
+    let init =
+      Path.Set.fold files ~init:empty ~f:(fun path acc -> add acc (file path))
+    in
+    Path.Set.fold empty_directories ~init ~f:(fun path acc ->
+        add acc (dir_without_files_dep path))
 
   let digest t =
     fold t ~init:[] ~f:(fun dep acc : Stable_for_digest.t list ->

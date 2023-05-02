@@ -34,8 +34,6 @@ val conf_of_context : Context.t option -> conf
 
 val conf_for_install :
      relocatable:Path.t option
-  -> default_ocamlpath:Path.t list
-  -> stdlib_dir:Path.t
   -> roots:Path.t Install.Section.Paths.Roots.t
   -> context:Context.t
   -> conf

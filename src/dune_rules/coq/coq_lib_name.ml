@@ -10,7 +10,17 @@ type t = string list
 
 let compare = List.compare ~compare:String.compare
 
+let equal x y = Ordering.is_eq (compare x y)
+
 let to_string x = String.concat ~sep:"." x
+
+let empty = []
+
+let stdlib = [ "Coq" ]
+
+let to_list x = x
+
+let append x y = x @ [ y ]
 
 let to_dir x = String.concat ~sep:"/" x
 

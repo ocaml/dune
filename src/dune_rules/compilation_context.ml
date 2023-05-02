@@ -3,12 +3,10 @@ open Import
 module Includes = struct
   type t = Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
-  let filter_with_odeps libs deps md =
+  let filter_with_odeps libs deps md lib_top_module_map lib_to_entry_modules_map
+      =
     let open Resolve.Memo.O in
-    let+ ( (((module_deps, lib_top_module_map), lib_to_entry_modules_map), flags)
-         , _ ) =
-      deps
-    in
+    let+ (module_deps, flags), _ = deps in
     let rec flag_open_present entry_lib_name l =
       match l with
       | flag :: entry_name :: t ->
@@ -19,13 +17,6 @@ module Includes = struct
         else flag_open_present entry_lib_name (entry_name :: t)
       | _ -> false
     in
-    let lib_top_module_map =
-      Module_name.Map.of_list_exn (List.concat lib_top_module_map)
-    in
-    let lib_to_entry_modules_map =
-      Lib.Map.of_list_exn lib_to_entry_modules_map
-    in
-
     let dep_names =
       List.map module_deps ~f:(fun mdep ->
           let open Module_dep in
@@ -101,10 +92,11 @@ module Includes = struct
                   else true)
             else true)
 
-  let make ?(lib_top_module_map = Action_builder.return [])
-      ?(lib_to_entry_modules_map = Action_builder.return []) () ~project ~opaque
-      ~requires ~md ~dep_graphs ~flags =
+  let make ?(lib_top_module_map = Module_name.Map.empty)
+      ?(lib_to_entry_modules_map = Lib.Map.empty) () ~project ~opaque ~requires
+      ~md ~dep_graphs ~flags =
     let flags =
+      Dune_util.Log.info [ Pp.textf "Make includes" ];
       Action_builder.map2
         (Action_builder.map2
            (Ocaml_flags.get flags (Lib_mode.Ocaml Byte))
@@ -126,16 +118,9 @@ module Includes = struct
         Action_builder.map2 module_deps_impl module_deps_intf
           ~f:(fun inft impl -> List.append inft impl)
       in
-      let cmb_top =
-        Action_builder.map2 cmb_itf_impl lib_top_module_map ~f:(fun mods map ->
-            (mods, map))
-      in
-      let cmb_entry =
-        Action_builder.map2 cmb_top lib_to_entry_modules_map ~f:(fun mods map ->
-            (mods, map))
-      in
+
       let cmb_flags =
-        Action_builder.map2 cmb_entry flags ~f:(fun mods map -> (mods, map))
+        Action_builder.map2 cmb_itf_impl flags ~f:(fun mods map -> (mods, map))
       in
       Action_builder.run cmb_flags Action_builder.Eager
       |> Resolve.Memo.lift_memo
@@ -144,7 +129,10 @@ module Includes = struct
       Command.Args.memo
         (Resolve.Memo.args
            (let* libs = requires in
-            let+ libs = filter_with_odeps libs deps md in
+            let+ libs =
+              filter_with_odeps libs deps md lib_top_module_map
+                lib_to_entry_modules_map
+            in
             Command.Args.S
               [ iflags libs mode
               ; Hidden_deps (Lib_file_deps.deps libs ~groups)
@@ -155,7 +143,10 @@ module Includes = struct
       Command.Args.memo
         (Resolve.Memo.args
            (let* libs = requires in
-            let+ libs = filter_with_odeps libs deps md in
+            let+ libs =
+              filter_with_odeps libs deps md lib_top_module_map
+                lib_to_entry_modules_map
+            in
             Command.Args.S
               [ iflags libs (Ocaml Native)
               ; Hidden_deps
@@ -192,7 +183,7 @@ let eval_opaque (context : Context.t) = function
   | Explicit b -> b
   | Inherit_from_settings ->
     Profile.is_dev context.profile
-    && Ocaml.Version.supports_opaque_for_mli context.version
+    && Ocaml.Version.supports_opaque_for_mli context.ocaml.version
 
 type modules =
   { modules : Modules.t
@@ -279,8 +270,8 @@ let dep_graphs t = t.modules.dep_graphs
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
     ?stdlib ~js_of_ocaml ~package ?public_lib_name ?vimpl ?modes ?bin_annot ?loc
-    ?(lib_top_module_map = Action_builder.return [])
-    ?(lib_to_entry_modules_map = Action_builder.return []) () =
+    ?(lib_top_module_map = Module_name.Map.empty)
+    ?(lib_to_entry_modules_map = Lib.Map.empty) () =
   let open Memo.O in
   let project = Scope.project scope in
   let requires_compile =
@@ -366,7 +357,7 @@ let for_alias_module t alias_module =
     (* If the compiler reads the cmi for module alias even with [-w -49
        -no-alias-deps], we must sandbox the build of the alias module since the
        modules it references are built after. *)
-    if Ocaml.Version.always_reads_alias_cmi ctx.version then
+    if Ocaml.Version.always_reads_alias_cmi ctx.ocaml.version then
       Sandbox_config.needs_sandboxing
     else Sandbox_config.no_special_requirements
   in
@@ -416,7 +407,7 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
     (* Cmi's of link time generated modules are compiled with -opaque, hence
        their implementation must also be compiled with -opaque *)
     let ctx = Super_context.context cctx.super_context in
-    Ocaml.Version.supports_opaque_for_mli ctx.version
+    Ocaml.Version.supports_opaque_for_mli ctx.ocaml.version
   in
   let modules = singleton_modules module_ in
   let dummy =

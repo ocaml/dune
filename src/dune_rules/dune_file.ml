@@ -536,8 +536,7 @@ module Library = struct
       let expected_version = (3, 8) in
       if dune_version >= expected_version then
         Mode_conf.Lib.Set.decode_osl ~stanza_loc project
-      else
-        Mode_conf.Lib.Set.decode
+      else Mode_conf.Lib.Set.decode
   end
 
   type visibility =

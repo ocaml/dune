@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1682782607142,
+  "lastUpdate": 1683025199415,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34451,6 +34451,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.127179702753335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "08aaf59e8d82223f9a2f643c76a54d7723f00fdf",
+          "message": "doc(coq): Add documentation for composition with installed theories\n\nCo-authored-by: Emilio Jesus Gallego Arias <e+git@x80.org>\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-05-02T12:32:49+02:00",
+          "tree_id": "fd4f8679b4906eb943c70b670e3dfab24abe3bc9",
+          "url": "https://github.com/ocaml/dune/commit/08aaf59e8d82223f9a2f643c76a54d7723f00fdf"
+        },
+        "date": 1683025196082,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "28.708749724473336",
             "unit": "seconds"
           }
         ]

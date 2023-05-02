@@ -71,22 +71,20 @@ module Fiber_job = struct
     run1
 end
 
-let fetch url ~target =
+let fetch loc url ~target =
   let open Fiber.O in
   let path = Path.to_string target in
   let fname = OpamFilename.of_string path in
   let hashes = [] in
   let label = "dune-fetch" in
   let job = OpamRepository.pull_file label fname hashes [ url ] in
-
-  let* downloaded = Fiber_job.run job in
+  let+ downloaded = Fiber_job.run job in
   match downloaded with
-  | Up_to_date () | Result () -> Fiber.return ()
-  | Not_available (normal, verbose) ->
-    let n =
+  | Up_to_date () | Result () -> ()
+  | Not_available (normal, _verbose) ->
+    User_error.raise ~loc
+      ([ Pp.textf "%s not available" (OpamUrl.to_string url) ]
+      @
       match normal with
-      | None -> "None"
-      | Some n -> Printf.sprintf "Some %S" n
-    in
-    Format.eprintf "Not available: normal %s verbose %S\n" n verbose;
-    Fiber.return ()
+      | None -> []
+      | Some normal -> [ Pp.text normal ])

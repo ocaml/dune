@@ -11,7 +11,7 @@ val build_module :
   -> unit Memo.t
 
 val ocamlc_i :
-     deps:Module.t list Action_builder.t Ml_kind.Dict.t
+     deps:Module_dep.t list Action_builder.t Ml_kind.Dict.t
   -> Compilation_context.t
   -> Module.t
   -> output:Path.Build.t

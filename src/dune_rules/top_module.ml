@@ -83,8 +83,9 @@ let gen_rules sctx ~dir:rules_dir ~comps =
       let* module_deps = module_deps cctx module_ in
       let files =
         let obj_dir = Compilation_context.obj_dir cctx in
-        List.filter_map module_deps ~f:(fun module_ ->
-            Obj_dir.Module.cm_file obj_dir module_ ~kind:(Ocaml Cmi))
+        List.filter_map ~f:Module_dep.filter_local module_deps
+        |> List.filter_map ~f:(fun module_ ->
+               Obj_dir.Module.cm_file obj_dir module_ ~kind:(Ocaml Cmi))
       in
       Memo.parallel_iter files ~f:(fun file ->
           let src = Path.build file in

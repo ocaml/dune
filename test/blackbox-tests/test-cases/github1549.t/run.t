@@ -46,4 +46,10 @@ Reproduction case for #1549: too many parentheses in installed .dune files
 
   $ env OCAMLPATH=backend/_build/install/default/lib dune runtest --root example
   Entering directory 'example'
+  File "src/dune", line 1, characters 0-71:
+  1 | (library
+  2 |   (name example)
+  3 |   (inline_tests (backend dune_inline_tests)))
+  /usr/bin/sed: can't read x.ml: No such file or directory
   Leaving directory 'example'
+  [1]

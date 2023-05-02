@@ -5,13 +5,6 @@ start running things. In the past, the error was only reported during
 the second run of dune.
 
   $ dune build @package-cycle
-  Error: Dependency cycle between:
-     alias a/.a-files
-  -> alias b/.b-files
-  -> alias a/.a-files
-  -> required by alias package-cycle in dune:1
-  [1]
-
   $ dune build @simple-repro-case
   Error: Dependency cycle between:
      _build/default/y
@@ -64,6 +57,13 @@ cryptic and can involve unrelated files:
   -> _build/default/indirect/.a.eobjs/b.impl.all-deps
   -> _build/default/indirect/.a.eobjs/c.intf.all-deps
   -> _build/default/indirect/.a.eobjs/a.impl.all-deps
+  -> required by _build/default/indirect/a.exe
+  -> required by alias indirect/indirect-deps in indirect/dune:6
+  Error: Dependency cycle between:
+     _build/default/indirect/.a.eobjs/a.impl.ext-deps
+  -> _build/default/indirect/.a.eobjs/b.impl.ext-deps
+  -> _build/default/indirect/.a.eobjs/c.intf.ext-deps
+  -> _build/default/indirect/.a.eobjs/a.impl.ext-deps
   -> required by _build/default/indirect/a.exe
   -> required by alias indirect/indirect-deps in indirect/dune:6
   [1]

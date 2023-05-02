@@ -40,9 +40,9 @@ specify js mode (#1940).
    js_of_ocaml .js/default/stdlib/std_exit.cmo.js
    js_of_ocaml .js/default/stdlib/stdlib.cma.js
    js_of_ocaml .b.eobjs/jsoo/b.cmo.js
+   js_of_ocaml .e.eobjs/jsoo/e.cmo.js
    js_of_ocaml b.bc.js
    js_of_ocaml .foo.objs/jsoo/default/foo.cma.js
-   js_of_ocaml .e.eobjs/jsoo/e.cmo.js
    js_of_ocaml e.bc.js
 
 Check that building a JS-enabled executable that depends on a library works.
@@ -51,13 +51,13 @@ Check that building a JS-enabled executable that depends on a library works.
   $ dune build --display short e.bc.js
    js_of_ocaml .e.eobjs/jsoo/e.bc.runtime.js
       ocamldep .e.eobjs/e.impl.d
+        ocamlc .e.eobjs/byte/e.{cmi,cmo,cmt}
         ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
       ocamldep .foo.objs/foo__C.impl.d
    js_of_ocaml .js/default/stdlib/std_exit.cmo.js
    js_of_ocaml .js/default/stdlib/stdlib.cma.js
-        ocamlc .foo.objs/byte/foo__C.{cmi,cmo,cmt}
-        ocamlc .e.eobjs/byte/e.{cmi,cmo,cmt}
-        ocamlc foo.cma
    js_of_ocaml .e.eobjs/jsoo/e.cmo.js
+        ocamlc .foo.objs/byte/foo__C.{cmi,cmo,cmt}
+        ocamlc foo.cma
    js_of_ocaml .foo.objs/jsoo/default/foo.cma.js
    js_of_ocaml e.bc.js

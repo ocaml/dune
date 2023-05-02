@@ -52,7 +52,10 @@ Creating the source directory makes it appear in the alias
    (targets ((files (default/output/assets/file.txt)) (directories ())))
    (action (chdir _build/default (copy assets/file.txt output/assets/file.txt))))
 
-  $ dune build @mel
+  $ dune build @mel --display=short
+      ocamldep .output.mobjs/melange__Main.impl.d
+          melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
+          melc output/main.js
 
 The runtime_dep index.txt was copied to the build folder
 

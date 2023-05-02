@@ -35,7 +35,10 @@ Rules created for the assets in the output directory
    (targets ((files (default/a/output/a/assets/file.txt)) (directories ())))
     (chdir _build/default (copy a/assets/file.txt a/output/a/assets/file.txt))))
 
-  $ dune build @mel
+  $ dune build @mel --display=short
+      ocamldep a/.output.mobjs/melange__Main.impl.d
+          melc a/.output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
+          melc a/output/a/main.js
 
 The runtime_dep index.txt was copied to the build folder
 
@@ -121,7 +124,13 @@ Need to create the source dir first for the alias to be picked up
     ((files (default/another/another-output/a/assets/file.txt))
      (copy a/assets/file.txt another/another-output/a/assets/file.txt))))
 
-  $ dune build @mel
+  $ dune build @mel --display=short
+      ocamldep a/.output.mobjs/melange__Main.impl.d
+      ocamldep another/.another-output.mobjs/melange__Main.impl.d
+          melc a/.output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
+          melc another/.another-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
+          melc a/output/a/main.js
+          melc another/another-output/another/main.js
 
 Path ends ups being emitted "correctly", but outside the target dir.
   $ ls _build/default/another/another-output/another
@@ -148,7 +157,7 @@ Test depending on external paths
   > EOF
 
   $ dune build @mel --display=short
-           ppx external/main.pp.ml
+      ocamldep external/.external-output.mobjs/melange__Main.impl.d
           melc external/.external-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
           melc external/external-output/external/main.js
 

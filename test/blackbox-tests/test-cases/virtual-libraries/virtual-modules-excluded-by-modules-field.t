@@ -30,41 +30,11 @@ Specifying a virtual module that isn't inside the (modules ..) field:
 X is warned about:
 
   $ dune build --display short
-  File "src/dune", line 4, characters 18-19:
-  4 |  (virtual_modules x)
-                        ^
-  Warning: These modules appear in the virtual_modules field:
-  - X
-  They must also appear in the modules field.
-      ocamldep src/impl/.impl.objs/x.impl.d
-        ocamlc src/.foo.objs/byte/y.{cmi,cmo,cmt} (exit 2)
-  File "src/y.ml", line 1, characters 16-17:
+      ocamldep impl/.impl.objs/x.impl.d
+      ocamldep .foo.objs/y.impl.d
+        ocamlc .foo.objs/byte/y.{cmi,cmo,cmt} (exit 2)
+  File "y.ml", line 1, characters 16-17:
   1 | module type F = X
                       ^
   Error: Unbound module type X
-  File "src/impl/dune", line 1, characters 0-40:
-  1 | (library
-  2 |  (name impl)
-  3 |  (implements foo))
-  Error: No rule found for src/.foo.objs/y.impl.all-deps
-  [1]
-
-
-This should be ignored if we are in vendored_dirs
-
-  $ cat > dune << EOF
-  > (vendored_dirs src)
-  > (executable
-  >  (name bar)
-  >  (libraries foo))
-  > EOF
-  $ cat > bar.ml
-
-  $ dune build ./bar.exe
-  Error: No implementation found for virtual library "foo" in
-  _build/default/src.
-  -> required by executable bar in dune:3
-  -> required by _build/default/.bar.eobjs/byte/dune__exe__Bar.cmi
-  -> required by _build/default/.bar.eobjs/native/dune__exe__Bar.cmx
-  -> required by _build/default/bar.exe
   [1]

@@ -148,6 +148,7 @@ module Module : sig
     type t =
       | Immediate of Module.t * Ml_kind.t
       | Transitive of Module.t * Ml_kind.t
+      | Ext of Module.t * Ml_kind.t
   end
 
   val dep : Path.Build.t t -> Dep.t -> Path.Build.t

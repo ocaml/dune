@@ -19,6 +19,7 @@ Parses the full form (<module-system> <extension>)
   > EOF
 
   $ dune build @mel --display=short
+      ocamldep .output.mobjs/melange__Main.impl.d
           melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
           melc output/main.bs.js
           melc output/main.mjs
@@ -51,6 +52,7 @@ Parses the simplified form and defaults extension to `.js`
   > EOF
 
   $ dune build @mel --display=short
+      ocamldep .output.mobjs/melange__Main.impl.d
           melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
           melc output/main.js
           melc output/main.mjs
@@ -73,6 +75,7 @@ Defaults to commonjs / `.js` if no config present at all
   > EOF
 
   $ dune build @mel --display=short
+      ocamldep .output.mobjs/melange__Main.impl.d
           melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
           melc output/main.js
 

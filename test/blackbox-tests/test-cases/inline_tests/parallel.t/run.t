@@ -5,6 +5,7 @@ First, build silently to avoid some noise
 See that `test1/runtest`, which uses `fake_backend_1, only runs one inline test runner
 
   $ dune build --display short @test1/runtest
+      ocamldep test1/.test_lib1.inline-tests/.test_lib1.inline-tests.eobjs/dune__exe__Inline_test_runner_test_lib1.impl.d
         ocamlc test1/.test_lib1.inline-tests/.test_lib1.inline-tests.eobjs/byte/dune__exe__Inline_test_runner_test_lib1.{cmi,cmo,cmt}
       ocamlopt test1/.test_lib1.inline-tests/.test_lib1.inline-tests.eobjs/native/dune__exe__Inline_test_runner_test_lib1.{cmx,o}
       ocamlopt test1/.test_lib1.inline-tests/inline_test_runner_test_lib1.exe
@@ -13,6 +14,7 @@ See that `test1/runtest`, which uses `fake_backend_1, only runs one inline test 
 See that `test2/runtest`, which uses `fake_backend_2`, runs one inline test runner per partition
 
   $ dune build --display short @test2/runtest
+      ocamldep test2/.test_lib2.inline-tests/.test_lib2.inline-tests.eobjs/dune__exe__Inline_test_runner_test_lib2.impl.d
         ocamlc test2/.test_lib2.inline-tests/.test_lib2.inline-tests.eobjs/byte/dune__exe__Inline_test_runner_test_lib2.{cmi,cmo,cmt}
       ocamlopt test2/.test_lib2.inline-tests/.test_lib2.inline-tests.eobjs/native/dune__exe__Inline_test_runner_test_lib2.{cmx,o}
       ocamlopt test2/.test_lib2.inline-tests/inline_test_runner_test_lib2.exe

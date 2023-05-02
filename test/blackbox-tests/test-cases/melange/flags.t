@@ -41,6 +41,10 @@ Trying to build triggers both warnings
   File "main.ml", line 1, characters 9-11:
   1 | let t = "\e\n" in
                ^^
+  Warning 14 [illegal-backslash]: illegal backslash escape in string.
+  File "main.ml", line 1, characters 9-11:
+  1 | let t = "\e\n" in
+               ^^
   Error (warning 14 [illegal-backslash]): illegal backslash escape in string.
   File "main.ml", line 1, characters 4-5:
   1 | let t = "\e\n" in

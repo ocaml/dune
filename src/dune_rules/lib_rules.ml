@@ -445,7 +445,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
     (fun () -> build_shared ~native_archives ~sctx lib ~dir ~flags)
 
 let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
-    ~compile_info =
+    ~compile_info ~lib_to_entry_modules_map ~lib_top_module_map =
   let* flags = Super_context.ocaml_flags sctx ~dir lib.buildable.flags
   and* vimpl = Virtual_rules.impl sctx ~lib ~scope in
   let obj_dir = Library.obj_dir ~dir lib in
@@ -475,10 +475,17 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     | Public p -> Some (Public_lib.name p)
     | Private _ -> None
   in
+  let project = Scope.project scope in
+  let requires_compile =
+    if Dune_project.implicit_transitive_deps project then
+      Memo.Lazy.force requires_link
+    else requires_compile
+  in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
     ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
     ~opaque:Inherit_from_settings ~js_of_ocaml:(Some js_of_ocaml)
     ?stdlib:lib.stdlib ~package ?vimpl ?public_lib_name ~modes
+    ~lib_top_module_map ~lib_to_entry_modules_map
 
 let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
     ~dir_contents ~compile_info =
@@ -551,12 +558,17 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
       ~ident:(Lib.Compile.merlin_ident compile_info)
       ~modes:(`Lib (Lib_info.modes lib_info)) )
 
-let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
+let compile_info lib scope =
+  let open Library in
   let buildable = lib.buildable in
-  let* local_lib, compile_info =
-    Lib.DB.get_compile_info (Scope.libs scope) (Library.best_name lib)
-      ~allow_overlaps:buildable.allow_overlapping_dependencies
-  in
+  Lib.DB.get_compile_info (Scope.libs scope) (Library.best_name lib)
+    ~allow_overlaps:buildable.allow_overlapping_dependencies
+
+let rules ?(lib_to_entry_modules_map = Lib.Map.empty)
+    ?(lib_top_module_map = Module_name.Map.empty) (lib : Library.t) ~sctx
+    ~dir_contents ~dir ~expander ~scope =
+  let buildable = lib.buildable in
+  let* local_lib, compile_info = compile_info lib scope in
   let local_lib = Lib.Local.of_lib_exn local_lib in
   let f () =
     let* source_modules =
@@ -565,6 +577,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
     in
     let* cctx =
       cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~compile_info
+        ~lib_to_entry_modules_map ~lib_top_module_map
     in
     let* () =
       match buildable.ctypes with

@@ -2,6 +2,9 @@
 
 open Import
 
+val entry_modules_by_lib :
+  Super_context.t -> Lib.Local.t -> Module.t list Memo.t
+
 val setup_library_odoc_rules :
   Compilation_context.t -> Lib.Local.t -> unit Memo.t
 

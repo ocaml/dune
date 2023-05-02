@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683029781769,
+  "lastUpdate": 1683046702240,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34509,6 +34509,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.495122482719996",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "51affb7f51373bc7d83f6fd17b05a6cdcedce972",
+          "message": "refactor: improve fetching error messages (#7642)\n\n* Include location in the error message\r\n* Do not include verbose message\r\n* Format errors using the correct dune primitives\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-02T09:34:30-07:00",
+          "tree_id": "3fba0c6e9113db514d1fb3b8e3905b15eb7a86c8",
+          "url": "https://github.com/ocaml/dune/commit/51affb7f51373bc7d83f6fd17b05a6cdcedce972"
+        },
+        "date": 1683046698381,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "30.245852139933334",
             "unit": "seconds"
           }
         ]

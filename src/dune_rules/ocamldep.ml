@@ -201,8 +201,6 @@ let deps_of ({ sandbox; modules; sctx; dir; obj_dir; vimpl; stdlib = _ } as md)
   (Action_builder.memoize (Path.to_string all_deps_file)) md_l
 
 let read_deps_of ~obj_dir ~modules ~ml_kind unit =
-  Dune_util.Log.info
-    [ Pp.textf "read_deps_of %s" (Module.name unit |> Module_name.to_string) ];
   let all_deps_file = Obj_dir.Module.dep obj_dir (Transitive (unit, ml_kind)) in
 
   Action_builder.map

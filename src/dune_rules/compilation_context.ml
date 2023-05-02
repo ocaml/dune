@@ -59,7 +59,7 @@ module Includes = struct
                       (flag_open_present
                          (Module_name.to_string entry_module_name)
                          flags)
-                  then
+                  then (
                     let top_c_modules =
                       match
                         Module_name.Map.find lib_top_module_map
@@ -68,27 +68,49 @@ module Includes = struct
                       | Some modules -> modules
                       | None -> []
                     in
-
-                    (* First, check if one of the top closed modules matches any of [ocamldep] outputs *)
-                    List.exists top_c_modules ~f:(fun top_c_mod ->
-                        exists_in_odeps
-                          (Module.name top_c_mod |> Module_name.to_string))
-                    (* Secondly, for each [ocamldep] outut [X], see if current [entry_module_name] is in closure of [X]  *)
-                    || List.exists dep_names ~f:(fun odep_output ->
-                           let odep_module_name =
-                             Module_name.of_string odep_output
-                           in
-                           let top_c_modules =
-                             match
-                               Module_name.Map.find lib_top_module_map
-                                 odep_module_name
-                             with
-                             | Some modules -> modules
-                             | None -> []
-                           in
-                           List.exists top_c_modules ~f:(fun top_c_mod ->
-                               Module_name.equal entry_module_name
-                                 (Module.name top_c_mod)))
+                    let keep =
+                      (* First, check if one of the top closed modules matches any of [ocamldep] outputs *)
+                      List.exists top_c_modules ~f:(fun top_c_mod ->
+                          exists_in_odeps
+                            (Module.name top_c_mod |> Module_name.to_string))
+                      (* Secondly, for each [ocamldep] outut [X], see if current [entry_module_name] is in closure of [X]  *)
+                      || List.exists dep_names ~f:(fun odep_output ->
+                             let odep_module_name =
+                               Module_name.of_string odep_output
+                             in
+                             let top_c_modules =
+                               match
+                                 Module_name.Map.find lib_top_module_map
+                                   odep_module_name
+                               with
+                               | Some modules -> modules
+                               | None -> []
+                             in
+                             List.exists top_c_modules ~f:(fun top_c_mod ->
+                                 Module_name.equal entry_module_name
+                                   (Module.name top_c_mod)))
+                    in
+                    (* if not keep then
+                      Dune_util.Log.info
+                        [ Pp.textf
+                            "Removing %s aka %s for module %s \n\n\
+                             ~Odep_list: %s\n\n\
+                             ~Top_c_modules: %s\n\
+                             ~Flags : %s\n\
+                             \\n\n\
+                            \                         \n\
+                            \                         •\n\
+                             ------------------"
+                            (Lib.name lib |> Lib_name.to_string)
+                            (Module_name.to_string entry_module_name)
+                            (Module.name md |> Module_name.to_string)
+                            (String.concat dep_names ~sep:" , ")
+                            (List.map top_c_modules ~f:(fun m ->
+                                 Module.name m |> Module_name.to_string)
+                            |> String.concat ~sep:", ")
+                            (String.concat flags ~sep:",")
+                        ]; *)
+                    keep)
                   else true)
             else true)
 
@@ -96,7 +118,6 @@ module Includes = struct
       ?(lib_to_entry_modules_map = Lib.Map.empty) () ~project ~opaque ~requires
       ~md ~dep_graphs ~flags =
     let flags =
-      Dune_util.Log.info [ Pp.textf "Make includes" ];
       Action_builder.map2
         (Action_builder.map2
            (Ocaml_flags.get flags (Lib_mode.Ocaml Byte))

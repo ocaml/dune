@@ -81,8 +81,6 @@ end = struct
     let* m, _ =
       Action_builder.run
         (Resolve.Memo.bind requires ~f:(fun reqs ->
-             Dune_util.Log.info
-               [ Pp.textf "make_lib_top_module_map size %d" (List.length reqs) ];
              List.filter_map reqs ~f:(fun req ->
                  (*Do not compute closure if it is virtual*)
                  let virtual_ =

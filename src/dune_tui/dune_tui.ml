@@ -179,7 +179,11 @@ module Tui () = struct
 
   let line_separated_message ~total index msg =
     let img = image_of_user_message_style_pp (User_message.pp msg) in
-    I.vcat [ img; horizontal_line_with_count ~w:(I.width img) total index ]
+    I.vcat
+      [ img
+      ; horizontal_line_with_count total index
+          ~w:(Stdlib.Int.max (I.width img) (fst (Term.size term)))
+      ]
 
   let image ~status_line ~messages =
     let status =

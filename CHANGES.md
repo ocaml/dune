@@ -20,6 +20,9 @@ Unreleased
 - Load the host context `findlib.conf` when cross-compiling (#7428, fixes
   #1701, @rgrinberg, @anmonteiro)
 
+- Add a `coqdoc_flags` field to the `coq.theory` stanza allowing the user to
+  pass extra arguments to `coqdoc`. (#17015, @Alizter)
+
 - Resolve `ppx_runtime_libraries` in the target context when cross compiling
   (#7450, fixes #2794, @anmonteiro)
 

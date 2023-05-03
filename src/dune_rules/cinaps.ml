@@ -172,7 +172,11 @@ let gen_rules sctx t ~dir ~scope =
       Dep_conf_eval.unnamed ~sandbox ~expander t.runtime_deps
     in
     let* () = runtime_deps in
-    let+ () = Action_builder.path cinaps_exe in
+    let+ () =
+      Action_builder.deps
+        (Dep.Set.of_files
+           (cinaps_exe :: List.rev_map cinapsed_files ~f:Path.build))
+    in
     Action.Full.make ~sandbox
     @@ A.chdir (Path.build dir)
          (A.progn

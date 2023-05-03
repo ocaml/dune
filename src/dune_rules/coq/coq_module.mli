@@ -24,7 +24,7 @@ module Map : Map.S with type key = t
 
 (** A Coq module [a.b.foo] defined in file [a/b/foo.v] *)
 val make :
-     source:Path.Build.t
+     source:Path.t
        (** file = .v source file; module name has to be the same so far *)
   -> prefix:string list (** Library-local qualified prefix *)
   -> name:Name.t (** Name of the module *)
@@ -32,7 +32,7 @@ val make :
 
 (** Coq does enforce some invariants wrt module vs file names *)
 
-val source : t -> Path.Build.t
+val source : t -> Path.t
 
 val prefix : t -> string list
 

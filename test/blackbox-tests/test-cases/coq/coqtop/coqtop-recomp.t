@@ -23,13 +23,53 @@ https://github.com/ocaml/dune/pull/5457#issuecomment-1084161587).
           coqc dir/foo.{glob,vo}
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R coqtop/_build/default/dir basic
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -I lib/coq/../coq-core/plugins/btauto
+  -I lib/coq/../coq-core/plugins/cc
+  -I lib/coq/../coq-core/plugins/derive
+  -I lib/coq/../coq-core/plugins/extraction
+  -I lib/coq/../coq-core/plugins/firstorder
+  -I lib/coq/../coq-core/plugins/funind
+  -I lib/coq/../coq-core/plugins/ltac
+  -I lib/coq/../coq-core/plugins/ltac2
+  -I lib/coq/../coq-core/plugins/micromega
+  -I lib/coq/../coq-core/plugins/nsatz
+  -I lib/coq/../coq-core/plugins/number_string_notation
+  -I lib/coq/../coq-core/plugins/ring
+  -I lib/coq/../coq-core/plugins/rtauto
+  -I lib/coq/../coq-core/plugins/ssreflect
+  -I lib/coq/../coq-core/plugins/ssrmatching
+  -I lib/coq/../coq-core/plugins/tauto
+  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/zify
+  -R coq/theories Coq
+  -R $TESTCASE_ROOT/_build/default/dir basic
   $ dune coq top --display short --toplevel echo dir/bar.v | ../scrub_coq_args.sh
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R coqtop/_build/default/dir basic
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -I lib/coq/../coq-core/plugins/btauto
+  -I lib/coq/../coq-core/plugins/cc
+  -I lib/coq/../coq-core/plugins/derive
+  -I lib/coq/../coq-core/plugins/extraction
+  -I lib/coq/../coq-core/plugins/firstorder
+  -I lib/coq/../coq-core/plugins/funind
+  -I lib/coq/../coq-core/plugins/ltac
+  -I lib/coq/../coq-core/plugins/ltac2
+  -I lib/coq/../coq-core/plugins/micromega
+  -I lib/coq/../coq-core/plugins/nsatz
+  -I lib/coq/../coq-core/plugins/number_string_notation
+  -I lib/coq/../coq-core/plugins/ring
+  -I lib/coq/../coq-core/plugins/rtauto
+  -I lib/coq/../coq-core/plugins/ssreflect
+  -I lib/coq/../coq-core/plugins/ssrmatching
+  -I lib/coq/../coq-core/plugins/tauto
+  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/zify
+  -R coq/theories Coq
+  -R $TESTCASE_ROOT/_build/default/dir basic
   $ dune clean
   $ (cd dir && dune coq top --root .. --display short --toplevel echo dir/bar.v) | ../scrub_coq_args.sh
   Entering directory '..'
@@ -38,13 +78,53 @@ https://github.com/ocaml/dune/pull/5457#issuecomment-1084161587).
   Leaving directory '..'
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R coqtop/_build/default/dir basic
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -I lib/coq/../coq-core/plugins/btauto
+  -I lib/coq/../coq-core/plugins/cc
+  -I lib/coq/../coq-core/plugins/derive
+  -I lib/coq/../coq-core/plugins/extraction
+  -I lib/coq/../coq-core/plugins/firstorder
+  -I lib/coq/../coq-core/plugins/funind
+  -I lib/coq/../coq-core/plugins/ltac
+  -I lib/coq/../coq-core/plugins/ltac2
+  -I lib/coq/../coq-core/plugins/micromega
+  -I lib/coq/../coq-core/plugins/nsatz
+  -I lib/coq/../coq-core/plugins/number_string_notation
+  -I lib/coq/../coq-core/plugins/ring
+  -I lib/coq/../coq-core/plugins/rtauto
+  -I lib/coq/../coq-core/plugins/ssreflect
+  -I lib/coq/../coq-core/plugins/ssrmatching
+  -I lib/coq/../coq-core/plugins/tauto
+  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/zify
+  -R coq/theories Coq
+  -R $TESTCASE_ROOT/_build/default/dir basic
   $ (cd dir && dune coq top --root .. --display short --toplevel echo dir/bar.v) | ../scrub_coq_args.sh
   Entering directory '..'
   Leaving directory '..'
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R coqtop/_build/default/dir basic
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -I lib/coq/../coq-core/plugins/btauto
+  -I lib/coq/../coq-core/plugins/cc
+  -I lib/coq/../coq-core/plugins/derive
+  -I lib/coq/../coq-core/plugins/extraction
+  -I lib/coq/../coq-core/plugins/firstorder
+  -I lib/coq/../coq-core/plugins/funind
+  -I lib/coq/../coq-core/plugins/ltac
+  -I lib/coq/../coq-core/plugins/ltac2
+  -I lib/coq/../coq-core/plugins/micromega
+  -I lib/coq/../coq-core/plugins/nsatz
+  -I lib/coq/../coq-core/plugins/number_string_notation
+  -I lib/coq/../coq-core/plugins/ring
+  -I lib/coq/../coq-core/plugins/rtauto
+  -I lib/coq/../coq-core/plugins/ssreflect
+  -I lib/coq/../coq-core/plugins/ssrmatching
+  -I lib/coq/../coq-core/plugins/tauto
+  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/zify
+  -R coq/theories Coq
+  -R $TESTCASE_ROOT/_build/default/dir basic
 

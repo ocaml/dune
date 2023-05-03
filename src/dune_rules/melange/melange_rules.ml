@@ -13,7 +13,7 @@ let ocaml_flags sctx ~dir melange =
   Super_context.build_dir_is_vendored dir >>| function
   | false -> flags
   | true ->
-    let ocaml_version = (Super_context.context sctx).version in
+    let ocaml_version = (Super_context.context sctx).ocaml.version in
     Super_context.with_vendored_flags ~ocaml_version flags
 
 let output_of_lib ~target_dir lib =
@@ -29,14 +29,9 @@ let output_of_lib ~target_dir lib =
           [ "node_modules"; Lib_name.to_string lib_name ] )
 
 let lib_output_path ~output_dir ~lib_dir src =
-  let dir =
-    let src_dir = Path.to_string src in
-    let lib_dir = Path.to_string lib_dir in
-    String.drop_prefix src_dir ~prefix:lib_dir
-    |> Option.value_exn
-    |> String.drop_prefix_if_exists ~prefix:"/"
-  in
-  if dir = "" then output_dir else Path.Build.relative output_dir dir
+  match Path.drop_prefix_exn src ~prefix:lib_dir |> Path.Local.to_string with
+  | "" -> output_dir
+  | dir -> Path.Build.relative output_dir dir
 
 let make_js_name ~js_ext ~output m =
   let basename = Melange.js_basename m ^ js_ext in
@@ -222,7 +217,7 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
         ~instrumentation_backend:
           (Lib.DB.instrumentation_backend (Scope.libs scope))
     in
-    let stdlib_dir = ctx.stdlib_dir in
+    let stdlib_dir = ctx.lib_config.stdlib_dir in
     let+ () =
       let emit_and_libs_deps =
         let target_dir = Path.Build.relative dir mel.target in
@@ -353,7 +348,7 @@ let setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
     >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
   in
   let* modules =
-    let version = (Super_context.context sctx).version in
+    let version = (Super_context.context sctx).ocaml.version in
     let* preprocess =
       Resolve.Memo.read_memo
         (Preprocess.Per_module.with_instrumentation mel.preprocess

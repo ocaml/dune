@@ -42,33 +42,45 @@ module V1 = struct
       (struct
         type t = Lwt_io.input_channel * Lwt_io.output_channel
 
-        let read (i, _) =
+        let read (i, o) =
+          (* The input and output channels share the same file descriptor. If
+             the output channel has been closed, reading from the input channel
+             will result in an error. *)
+          let is_channel_closed () = Lwt_io.is_closed o in
           let open Csexp.Parser in
           let lexer = Lexer.create () in
           let rec loop depth stack =
-            let* res = Lwt_io.read_char_opt i in
-            match res with
-            | None ->
+            if is_channel_closed () then (
               Lexer.feed_eoi lexer;
-              Lwt.return_none
-            | Some c -> (
-              match Lexer.feed lexer c with
-              | Await -> loop depth stack
-              | Lparen -> loop (depth + 1) (Stack.open_paren stack)
-              | Rparen ->
-                let stack = Stack.close_paren stack in
-                let depth = depth - 1 in
-                if depth = 0 then
-                  let sexps = Stack.to_list stack in
-                  sexps |> List.hd |> Lwt.return_some
-                else loop depth stack
-              | Atom count ->
-                let* atom =
-                  let bytes = Bytes.create count in
-                  let+ () = Lwt_io.read_into_exactly i bytes 0 count in
-                  Bytes.to_string bytes
-                in
-                loop depth (Stack.add_atom atom stack))
+              Lwt.return_none)
+            else
+              let* res = Lwt_io.read_char_opt i in
+              match res with
+              | None ->
+                Lexer.feed_eoi lexer;
+                Lwt.return_none
+              | Some c -> (
+                match Lexer.feed lexer c with
+                | Await -> loop depth stack
+                | Lparen -> loop (depth + 1) (Stack.open_paren stack)
+                | Rparen ->
+                  let stack = Stack.close_paren stack in
+                  let depth = depth - 1 in
+                  if depth = 0 then
+                    let sexps = Stack.to_list stack in
+                    sexps |> List.hd |> Lwt.return_some
+                  else loop depth stack
+                | Atom count ->
+                  if is_channel_closed () then (
+                    Lexer.feed_eoi lexer;
+                    Lwt.return_none)
+                  else
+                    let* atom =
+                      let bytes = Bytes.create count in
+                      let+ () = Lwt_io.read_into_exactly i bytes 0 count in
+                      Bytes.to_string bytes
+                    in
+                    loop depth (Stack.add_atom atom stack))
           in
           loop 0 Stack.Empty
 

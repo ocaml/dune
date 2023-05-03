@@ -543,7 +543,7 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
   | [ ".dune" ] ->
     has_rules ~dir
       (S.These (Filename.Set.of_list [ "ccomp" ]))
-      (fun () -> Context.gen_configurator_rules (Super_context.context sctx))
+      (fun () -> Configurator_rules.gen_rules (Super_context.context sctx))
   | ".js" :: rest ->
     has_rules ~dir
       (match rest with
@@ -617,7 +617,7 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
           under_melange_emit_target
       | Standalone_or_root { directory_targets; contents } -> (
         let rules =
-          let* () = Memo.Lazy.force Context.force_configurator_files in
+          let* () = Memo.Lazy.force Configurator_rules.force_files in
           let* { Dir_contents.root = dir_contents; subdirs; rules } =
             Memo.Lazy.force contents
           in

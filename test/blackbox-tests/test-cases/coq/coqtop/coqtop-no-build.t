@@ -21,10 +21,31 @@ On a fresh build, this should do nothing but should pass the correct flags:
 
   $ dune coq top --no-build --display short --toplevel echo dir/bar.v | ../scrub_coq_args.sh
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v
-  -w -deprecated-native-compiler-option -native-output-dir . -native-compiler on
-  -I coq-core/kernel
+  -w -deprecated-native-compiler-option -native-output-dir .
+  -native-compiler on
+  -nI lib/coq-core/kernel
   -nI $TESTCASE_ROOT/_build/default/dir
-  -R coqtop/_build/default/dir basic
+  -boot
+  -I lib/coq/../coq-core/plugins/btauto
+  -I lib/coq/../coq-core/plugins/cc
+  -I lib/coq/../coq-core/plugins/derive
+  -I lib/coq/../coq-core/plugins/extraction
+  -I lib/coq/../coq-core/plugins/firstorder
+  -I lib/coq/../coq-core/plugins/funind
+  -I lib/coq/../coq-core/plugins/ltac
+  -I lib/coq/../coq-core/plugins/ltac2
+  -I lib/coq/../coq-core/plugins/micromega
+  -I lib/coq/../coq-core/plugins/nsatz
+  -I lib/coq/../coq-core/plugins/number_string_notation
+  -I lib/coq/../coq-core/plugins/ring
+  -I lib/coq/../coq-core/plugins/rtauto
+  -I lib/coq/../coq-core/plugins/ssreflect
+  -I lib/coq/../coq-core/plugins/ssrmatching
+  -I lib/coq/../coq-core/plugins/tauto
+  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/zify
+  -R coq/theories Coq
+  -R $TESTCASE_ROOT/_build/default/dir basic
 
 And for comparison normally a build would happen:
 
@@ -32,7 +53,28 @@ And for comparison normally a build would happen:
         coqdep dir/.basic.theory.d
           coqc dir/Nbasic_foo.{cmi,cmxs},dir/foo.{glob,vo}
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v
-  -w -deprecated-native-compiler-option -native-output-dir . -native-compiler on
-  -I coq-core/kernel
+  -w -deprecated-native-compiler-option -native-output-dir .
+  -native-compiler on
+  -nI lib/coq-core/kernel
   -nI $TESTCASE_ROOT/_build/default/dir
-  -R coqtop/_build/default/dir basic
+  -boot
+  -I lib/coq/../coq-core/plugins/btauto
+  -I lib/coq/../coq-core/plugins/cc
+  -I lib/coq/../coq-core/plugins/derive
+  -I lib/coq/../coq-core/plugins/extraction
+  -I lib/coq/../coq-core/plugins/firstorder
+  -I lib/coq/../coq-core/plugins/funind
+  -I lib/coq/../coq-core/plugins/ltac
+  -I lib/coq/../coq-core/plugins/ltac2
+  -I lib/coq/../coq-core/plugins/micromega
+  -I lib/coq/../coq-core/plugins/nsatz
+  -I lib/coq/../coq-core/plugins/number_string_notation
+  -I lib/coq/../coq-core/plugins/ring
+  -I lib/coq/../coq-core/plugins/rtauto
+  -I lib/coq/../coq-core/plugins/ssreflect
+  -I lib/coq/../coq-core/plugins/ssrmatching
+  -I lib/coq/../coq-core/plugins/tauto
+  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/zify
+  -R coq/theories Coq
+  -R $TESTCASE_ROOT/_build/default/dir basic

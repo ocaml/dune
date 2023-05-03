@@ -154,15 +154,16 @@ module DB = struct
       Lib.DB.Resolve_result.redirect (Some scope.db) (Loc.none, name)
     | Some (Name name) -> Lib.DB.Resolve_result.redirect None name
 
-  let public_theories ~find_db coq_stanzas =
+  let public_theories ~find_db ~installed_theories coq_stanzas =
     List.filter_map coq_stanzas ~f:(fun (dir, (stanza : Coq_stanza.Theory.t)) ->
         if Option.is_some stanza.package then
-          Some (stanza, Coq_lib.DB.Theory dir)
+          Some (stanza, Coq_lib.DB.Entry.Theory dir)
         else None)
-    |> Coq_lib.DB.create_from_coqlib_stanzas ~find_db ~parent:None
+    |> Coq_lib.DB.create_from_coqlib_stanzas ~find_db
+         ~parent:(Some installed_theories)
 
-  let public_theories ~find_db coq_stanzas =
-    lazy (public_theories ~find_db coq_stanzas)
+  let public_theories ~find_db ~installed_theories coq_stanzas =
+    lazy (public_theories ~find_db ~installed_theories coq_stanzas)
 
   (* Create a database from the public libraries defined in the stanzas *)
   let public_libs t ~installed_libs ~lib_config ~host stanzas =
@@ -237,9 +238,9 @@ module DB = struct
         assert (Option.is_some project);
         let coq_stanzas = Option.value coq_stanzas ~default:[] in
         List.map coq_stanzas ~f:(fun (dir, (stanza : Coq_stanza.Theory.t)) ->
-            let entry =
+            let (entry : Coq_lib.DB.Entry.t) =
               match stanza.package with
-              | None -> Coq_lib.DB.Theory dir
+              | None -> Theory dir
               | Some _ -> Redirect public_theories
             in
             (stanza, entry))
@@ -250,9 +251,8 @@ module DB = struct
       ~public_libs ~public_theories stanzas coq_stanzas =
     let open Memo.O in
     let projects_by_dir =
-      List.map projects ~f:(fun (project : Dune_project.t) ->
+      Path.Source.Map.of_list_map_exn projects ~f:(fun project ->
           (Dune_project.root project, project))
-      |> Path.Source.Map.of_list_exn
     in
     let stanzas_by_project_dir =
       List.map stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
@@ -339,8 +339,15 @@ module DB = struct
       in
       (public_libs, host_context)
     in
-    let public_theories =
-      public_theories coq_stanzas ~find_db:(fun _ -> public_libs)
+    let* public_theories =
+      let+ coqpaths_of_coq = Coq_path.of_coq_install context
+      and+ coqpaths_of_env = Coq_path.of_env context.env in
+      let installed_theories =
+        Coq_lib.DB.create_from_coqpaths (coqpaths_of_env @ coqpaths_of_coq)
+      in
+      public_theories coq_stanzas
+        ~find_db:(fun _ -> public_libs)
+        ~installed_theories
     in
     let+ by_dir =
       scopes_by_dir ~host_context ~build_dir ~lib_config ~projects ~public_libs
@@ -482,7 +489,5 @@ module DB = struct
       let* public_libs = public_libs ctx in
       let* stanzas = Only_packages.filtered_stanzas ctx in
       let+ map = Memo.exec memo (ctx.build_dir, public_libs, stanzas) in
-      match Package.Name.Map.find map pkg_name with
-      | None -> []
-      | Some entries -> entries
+      Package.Name.Map.Multi.find map pkg_name
 end

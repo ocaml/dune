@@ -1,6 +1,8 @@
 How to Generate Opam Files from ``dune-project``
 ================================================
 
+.. highlight:: dune
+
 This guide will show you how to configure Dune so that it generates opam files.
 
 Declaring Package Dependencies
@@ -33,7 +35,7 @@ You can declare the package as::
 
   (package
    (name frobnitz)
-   (depends lwt fmt)
+   (depends lwt fmt))
 
 Also add common metadata using ``(authors)``, ``(maintainers)``, ``(license)``,
 ``(source)``, as well as a ``(synopsis)`` and a ``(description)`` for
@@ -46,7 +48,7 @@ following the rules in :ref:`package`.
 
 For example, if your opam file looks like:
 
-.. code::
+.. code:: opam
 
    opam-version: 2.0
    authors: ["Anil Madhavapeddy" "Rudi Grinberg"]

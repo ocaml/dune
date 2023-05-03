@@ -73,7 +73,7 @@ let copy_channels =
   loop
 
 let setup_copy ?(chmod = Fun.id) ~src ~dst () =
-  let ic = open_in src in
+  let ic = Stdlib.open_in_bin src in
   let oc =
     try
       let perm = (Unix.fstat (Unix.descr_of_in_channel ic)).st_perm |> chmod in

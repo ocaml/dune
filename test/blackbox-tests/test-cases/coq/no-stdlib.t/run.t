@@ -3,13 +3,7 @@ and the prelude is not imported
 
   $ dune build --display=short foo.vo
         coqdep .basic.theory.d
-  *** Warning: in file foo.v, library Prelude is required from root Coq and has not been found in the loadpath!
-          coqc foo.{glob,vo} (exit 1)
-  File "./foo.v", line 1, characters 0-32:
-  Error: Cannot find a physical path bound to logical path
-  Prelude with prefix Coq.
-  
-  [1]
+          coqc foo.{glob,vo}
 
   $ dune build --display=short bar.vo
           coqc bar.{glob,vo} (exit 1)

@@ -118,7 +118,8 @@ let%expect_test "run and connect" =
     {|
     started session
     received ping. shutting down.
-    dune build finished with 0 |}]
+    dune build finished with 0
+    success |}]
 
 module Logger = struct
   (* A little helper to make the output from the client and server

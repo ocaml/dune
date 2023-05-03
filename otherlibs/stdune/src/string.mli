@@ -37,6 +37,18 @@ val drop_suffix : t -> suffix:t -> t option
 
 val drop_suffix_if_exists : t -> suffix:t -> t
 
+module Caseless : sig
+  (** Case-insensitive matching semantics. *)
+
+  val drop_prefix : t -> prefix:t -> t option
+
+  val drop_prefix_if_exists : t -> prefix:t -> t
+
+  val drop_suffix : t -> suffix:t -> t option
+
+  val drop_suffix_if_exists : t -> suffix:t -> t
+end
+
 (** These only change ASCII characters *)
 val capitalize : t -> t
 

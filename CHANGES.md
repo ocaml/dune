@@ -1,8 +1,14 @@
 3.8.0~alpha1 (2023-04-18)
 -------------------------
 
+- Correctly set `MANPATH` in `dune exec`. Previously, we would use the `bin/`
+  directory of the context. (#7655, @rgrinberg)
+
+- Allow overriding the `ocaml` binary with findlib configuration (#7648,
+  @rgrinberg)
+
 - When a rule's action is interrupted, delete any leftover directory targets.
-  This is consistent with how we treat file targets. (@rgrinberg, 7564)
+  This is consistent with how we treat file targets. (#7564, @rgrinberg)
 
 - Fix plugin loading with findlib. The functionality was broken in 3.7.0.
   (#7556, @anmonteiro)
@@ -20,6 +26,11 @@
 - Use `$PKG_CONFIG`, when set, to find the `pkg-config` binary  (#7469, fixes
   #2572, @anmonteiro)
 
+- Modules that were declared in `(modules_without_implementation)`,
+  `(private_modules)` or `(virtual_modules)` but not declared in `(modules)`
+  will cause Dune to emit a warning which will become an error in 3.9. (#7608,
+  fixes #7026, @Alizter)
+
 - Preliminary support for Coq compiled intefaces (`.vos` files) enabled via
   `(mode vos)` in `coq.theory` stanzas. This can be used in combination with
   `dune coq top` to obtain fast re-building of dependencies (with no checking
@@ -36,6 +47,10 @@
 
 - Dune in watch mode no longer builds concurrent rules in serial (#7395
   @rgrinberg, @jchavarri)
+
+- Dune can now detect Coq theories from outside the workspace. This allows for
+  composition with installed theories (not necessarily installed with Dune).
+  (#7047, @Alizter, @ejgallego)
 
 - `dune coq top` now correctly respects the project root when called from a
   subdirectory. However, absolute filenames passed to `dune coq top` are no
@@ -115,6 +130,20 @@
   would not be included whenever `(generate_opam_files true)` was set and the
   `.install` file wasn't yet generated. (#7547, @rgrinberg)
 
+- Fix regression where Merlin was unable to handle filenames with uppercase
+  letters under Windows. (#7577, @nojb)
+
+- On nix+macos, pass `-f` to the codesign hook to avoid errors when the binary
+  is already signed (#7183, fixes #6265, @greedy)
+
+- Fix bug where RPC clients built with dune-rpc-lwt would crash when closing
+  their connection to the server (#7581, @gridbugs)
+
+- Introduce mdx stanza 0.4 requiring mdx >= 2.3.0 which updates the default
+  list of files to include `*.mld` files (#7582, @Leonidas-from-XIV)
+
+- Fix RPC server on Windows (used for OCaml-LSP). (#7666, @nojb)
+
 3.7.1 (2023-04-04)
 ------------------
 
@@ -128,6 +157,14 @@
 
 - Handle "Too many links" errors when using Dune cache on Windows.  The fix in
   3.7.0 for this same issue was not effective due to a typo. (#7472, @nojb)
+
+- In `(executable)`, `(public_name -)` is now equivalent to no `(public_name)`.
+  This is consistent with how `(executables)` handles this field.
+  (#7576 , fixes #5852, @emillon)
+
+- Change directory of odoc assets to `odoc.support` (was `_odoc_support`) so
+  that it works with Github Pages out of the box. (#7588, fixes #7364,
+  @emillon)
 
 3.7.0 (2023-02-17)
 ------------------

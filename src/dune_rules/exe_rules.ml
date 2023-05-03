@@ -8,7 +8,7 @@ let first_exe (exes : Executables.t) = snd (List.hd exes.names)
 let linkages (ctx : Context.t) ~(exes : Executables.t) ~explicit_js_mode =
   let module L = Dune_file.Executables.Link_mode in
   let l =
-    let has_native = Result.is_ok ctx.ocamlopt in
+    let has_native = Result.is_ok ctx.ocaml.ocamlopt in
     let modes =
       L.Map.to_list exes.modes
       |> List.map ~f:(fun (mode, loc) ->
@@ -128,7 +128,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~preprocessing:pp ~js_of_ocaml ~opaque:Inherit_from_settings
       ~package:exes.package
   in
-  let stdlib_dir = ctx.Context.stdlib_dir in
+  let stdlib_dir = ctx.lib_config.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let preprocess =
     Preprocess.Per_module.with_instrumentation exes.buildable.preprocess

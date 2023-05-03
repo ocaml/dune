@@ -3,7 +3,7 @@ Test dependency on installed package
   $ mkdir -p lib-a lib-a/sub b prefix
 
   $ cat > lib-a/dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (package (name a))
   > (using melange 0.1)
   > EOF
@@ -43,7 +43,7 @@ Test dependency on installed package
   Installing $TESTCASE_ROOT/prefix/lib/a/sub/sub.ml
 
   $ cat >b/dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 

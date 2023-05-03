@@ -8,6 +8,8 @@ When composing with a (boot) library, every library must have -boot passed to
 coqdep and coqc.
 
   $ dune build A
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   Module
   Prelude
   := Struct Inductive BootType : Set :=  boot : BootType | type : BootType. End
@@ -26,6 +28,8 @@ private boot library will be loaded implicitly.
   > EOF
 
   $ dune build B
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   private_boot
        : PrivateBootType
 
@@ -40,6 +44,8 @@ However if this boot library is public Dune will complain
   > EOF
 
   $ dune build B
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   Error: Cannot have more than one boot theory in scope:
   - Coq at Coq/dune:1
   - Coq at B/Coq/dune:2

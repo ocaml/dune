@@ -13,6 +13,19 @@ let coq_syntax =
     ; ((0, 8), `Since (3, 8))
     ]
 
+let already_warned = ref false
+
+let get_coq_syntax () =
+  let* version = Dune_lang.Syntax.get_exn coq_syntax in
+  if version < (0, 8) && not !already_warned then (
+    already_warned := true;
+    User_warning.emit
+      [ Pp.text
+          "Coq Language Versions lower than 0.8 have been deprecated in Dune \
+           3.8 and will be removed in an upcoming Dune version."
+      ]);
+  return version
+
 module Coqpp = struct
   type t =
     { modules : Ordered_set_lang.t
@@ -54,7 +67,7 @@ module Buildable = struct
         ]
 
   let decode =
-    let* coq_lang_version = Dune_lang.Syntax.get_exn coq_syntax in
+    let* coq_lang_version = get_coq_syntax () in
     let+ loc = loc
     and+ flags = Ordered_set_lang.Unexpanded.field "flags"
     and+ mode =

@@ -304,6 +304,11 @@ file:
 
 The supported Coq language versions (not the version of Coq) are:
 
+- ``0.8``: Support for composition with installed Coq theories;
+  support for ``vos`` builds.
+
+Deprecated experimental Coq language versions are:
+
 - ``0.1``: Basic Coq theory support.
 - ``0.2``: Support for the ``theories`` field and composition of theories in the
   same scope.
@@ -316,18 +321,17 @@ The supported Coq language versions (not the version of Coq) are:
 - ``0.7``: ``(mode )`` is automatically detected from the configuration of Coq
   and ``(mode native)`` is deprecated. The ``dev`` profile also no longer
   disables native compilation.
-- ``0.8``: Support for composition of installed theories; support for vos
-  builds.
 
 .. _coq-lang-1.0:
 
 Coq Language Version 1.0
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Guarantees with respect to stability are not yet provided. However, as the
-development of features progresses, we hope to reach ``1.0`` soon. The ``1.0``
-version of Coq lang will commit to a stable set of functionality. All the
-features below are expected to reach ``1.0`` unchanged or minimally modified.
+Guarantees with respect to stability are not yet provided, but we
+intend that the ``(0.8)`` version of the language becomes ``1.0``.
+The ``1.0`` version of Coq lang will commit to a stable set of
+functionality. All the features below are expected to reach ``1.0``
+unchanged or minimally modified.
 
 .. _coq-extraction:
 

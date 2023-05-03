@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-version=34ed40d0dcab0e5c6a613e29422e18f6473d7bcc
+version=cc62e68712e04def2716a1808d515160b2917b19
 
 set -e -o pipefail
 
@@ -136,16 +136,52 @@ index c6704f911..6dbd58e96 100644
  include OpamStd.AbstractString
  
  let unset = of_string "#unset#"
+diff --git a/vendor/opam/src/state/opamEnv.ml b/vendor/opam/src/state/opamEnv.ml
+index 8913edda0..044835ad0 100644
+--- a/vendor/opam/src/state/opamEnv.ml
++++ b/vendor/opam/src/state/opamEnv.ml
+@@ -15,6 +15,7 @@ open OpamStateTypes
+ open OpamTypesBase
+ open OpamStd.Op
+ open OpamFilename.Op
++module Re = Dune_re
+ 
+ let log fmt = OpamConsole.log "ENV" fmt
+ let slog = OpamConsole.slog
+diff --git a/vendor/opam/src/state/opamFileTools.ml b/vendor/opam/src/state/opamFileTools.ml
+index acba124a7..0e6f051ac 100644
+--- a/vendor/opam/src/state/opamFileTools.ml
++++ b/vendor/opam/src/state/opamFileTools.ml
+@@ -12,6 +12,7 @@
+ open OpamParserTypes.FullPos
+ open OpamTypes
+ open OpamTypesBase
++module Re = Dune_re
+ 
+ let log ?level fmt = OpamConsole.log "opam-file" ?level fmt
+ 
+diff --git a/vendor/opam/src/state/opamSysInteract.ml b/vendor/opam/src/state/opamSysInteract.ml
+index 2857654a9..53f11d870 100644
+--- a/vendor/opam/src/state/opamSysInteract.ml
++++ b/vendor/opam/src/state/opamSysInteract.ml
+@@ -8,6 +8,8 @@
+ (*                                                                        *)
+ (**************************************************************************)
+ 
++module Re = Dune_re
++
+ let log fmt = OpamConsole.log "XSYS" fmt
+ 
+ (* Run commands *)
 EOF
 
-for subpackage in core repository format
+for subpackage in core repository format state
 do
     PKG=opam/src/$subpackage/
     mkdir -p $PKG
     set +e
     cp -v $SRC/src/$subpackage/*.{ml,mli,mll,mly} $PKG
     set -e
-    cp -v $SRC/src/$subpackage/dune $PKG
     git checkout $PKG/dune
 done
 

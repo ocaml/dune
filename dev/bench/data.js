@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683127421368,
+  "lastUpdate": 1683127849841,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34683,6 +34683,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.714623243080002",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d75d513559db3a461c7b35b482f1414b41b261fc",
+          "message": "fix(opam): remove bigarray dependency (#7667)\n\nbigarray has been moved to stdlib, so mentioning it as an external\r\nlibrary breaks bootstrap\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-03T08:12:26-07:00",
+          "tree_id": "d089903e5d9eb6691376ff24f222873df9be3187",
+          "url": "https://github.com/ocaml/dune/commit/d75d513559db3a461c7b35b482f1414b41b261fc"
+        },
+        "date": 1683127846232,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.266481793066667",
             "unit": "seconds"
           }
         ]

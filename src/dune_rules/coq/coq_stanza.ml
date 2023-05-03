@@ -129,6 +129,7 @@ module Theory = struct
     ; boot : bool
     ; enabled_if : Blang.t
     ; buildable : Buildable.t
+    ; coqdoc_flags : Ordered_set_lang.Unexpanded.t
     }
 
   let coq_public_decode =
@@ -186,7 +187,11 @@ module Theory = struct
          field_b "boot" ~check:(Dune_lang.Syntax.since coq_syntax (0, 2))
        and+ modules = Stanza_common.modules_field "modules"
        and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
-       and+ buildable = Buildable.decode in
+       and+ buildable = Buildable.decode
+       and+ coqdoc_flags =
+         Ordered_set_lang.Unexpanded.field "coqdoc_flags"
+           ~check:(Dune_lang.Syntax.since coq_syntax (0, 8))
+       in
        (* boot libraries cannot depend on other theories *)
        check_boot_has_no_deps boot buildable;
        let package = merge_package_public ~package ~public in
@@ -198,6 +203,7 @@ module Theory = struct
        ; boot
        ; buildable
        ; enabled_if
+       ; coqdoc_flags
        })
 
   type Stanza.t += T of t

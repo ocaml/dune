@@ -602,8 +602,17 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps (s : Coq_stanza.Theory.t)
              | `Html -> "--html"
              | `Latex -> "--latex"
            in
+           let extra_coqdoc_flags =
+             (* Standard flags for coqdoc *)
+             let standard = Action_builder.return [ "--toc" ] in
+             let open Action_builder.O in
+             let* expander =
+               Action_builder.of_memo @@ Super_context.expander sctx ~dir
+             in
+             Expander.expand_and_eval_set expander s.coqdoc_flags ~standard
+           in
            [ Command.Args.S file_flags
-           ; A "--toc"
+           ; Command.Args.dyn extra_coqdoc_flags
            ; A mode_flag
            ; A "-d"
            ; Path (Path.build doc_dir)

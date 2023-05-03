@@ -162,6 +162,10 @@ Unreleased
   This is consistent with how `(executables)` handles this field.
   (#7576 , fixes #5852, @emillon)
 
+- Change directory of odoc assets to `odoc.support` (was `_odoc_support`) so
+  that it works with Github Pages out of the box. (#7588, fixes #7364,
+  @emillon)
+
 3.7.0 (2023-02-17)
 ------------------
 

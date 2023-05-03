@@ -536,7 +536,23 @@ module Library = struct
       let expected_version = (3, 8) in
       if dune_version >= expected_version then
         Mode_conf.Lib.Set.decode_osl ~stanza_loc project
-      else Mode_conf.Lib.Set.decode
+      else
+        (* Old behavior: if old parser succeeds, return that. Otherwise, if
+           parsing the ordered set language succeeds, ask the user to upgrade to
+           a supported version. Otherwise, fail with the first error. *)
+        try_
+          (Mode_conf.Lib.Set.decode >>| fun modes -> `Modes modes)
+          (fun exn ->
+            try_
+              ( Mode_conf.Lib.Set.decode_osl ~stanza_loc project >>| fun modes ->
+                if dune_version >= expected_version then `Modes modes
+                else `Upgrade )
+              (fun _ -> raise exn))
+        >>| function
+        | `Modes modes -> modes
+        | `Upgrade ->
+          Syntax.Error.since stanza_loc Stanza.syntax expected_version
+            ~what:"Ordered set language for modes"
   end
 
   type visibility =

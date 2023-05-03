@@ -9,3 +9,8 @@
   threads.posix)
  (instrumentation
   (backend bisect_ppx)))
+
+(rule
+ (alias wait)
+ (action
+  (system "sleep 10")))

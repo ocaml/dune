@@ -142,6 +142,8 @@ Unreleased
 - Introduce mdx stanza 0.4 requiring mdx >= 2.3.0 which updates the default
   list of files to include `*.mld` files (#7582, @Leonidas-from-XIV)
 
+- Fix RPC server on Windows (used for OCaml-LSP). (#7666, @nojb)
+
 3.7.1 (2023-04-04)
 ------------------
 
@@ -155,6 +157,14 @@ Unreleased
 
 - Handle "Too many links" errors when using Dune cache on Windows.  The fix in
   3.7.0 for this same issue was not effective due to a typo. (#7472, @nojb)
+
+- In `(executable)`, `(public_name -)` is now equivalent to no `(public_name)`.
+  This is consistent with how `(executables)` handles this field.
+  (#7576 , fixes #5852, @emillon)
+
+- Change directory of odoc assets to `odoc.support` (was `_odoc_support`) so
+  that it works with Github Pages out of the box. (#7588, fixes #7364,
+  @emillon)
 
 3.7.0 (2023-02-17)
 ------------------

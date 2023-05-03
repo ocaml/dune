@@ -85,7 +85,7 @@ let add_rule sctx =
   Super_context.add_rule sctx ~dir
 
 module Paths = struct
-  let odoc_support_dirname = "_odoc_support"
+  let odoc_support_dirname = "odoc.support"
 
   let root (context : Context.t) =
     Path.Build.relative context.Context.build_dir "_doc"

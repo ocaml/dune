@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683153522761,
+  "lastUpdate": 1683154144412,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34770,6 +34770,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "26.602151325946664",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "78965acd50c8618e2cdb80ae7cbcecdbfd79a48f",
+          "message": "doc(coq): add documentation for coqdoc_flags\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-05-04T00:26:55+02:00",
+          "tree_id": "c42a74068328f4cbfdc35324b77168ed0aad3454",
+          "url": "https://github.com/ocaml/dune/commit/78965acd50c8618e2cdb80ae7cbcecdbfd79a48f"
+        },
+        "date": 1683154141076,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.667881183540004",
             "unit": "seconds"
           }
         ]

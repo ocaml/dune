@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683102136133,
+  "lastUpdate": 1683109358469,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34625,6 +34625,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.06866136362",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f97fc3251ae24db0cb8e49c5a74dc34b63c9ecc9",
+          "message": "odoc: put odoc support files in odoc.support (#7588)\n\nFixes #7364\r\n\r\nIf the directory is named `_odoc_support` with a leading underscore, it\r\nis omitted when deploying to github pages. This is because this system\r\nalso support the jekyll site generator, which uses this convention for\r\ndata files.\r\n\r\nWe can not use any directory name here since we want to avoid conflicts\r\nwith OCaml identifiers and names of `*.mld` files.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-05-03T12:02:37+02:00",
+          "tree_id": "cb4d303539321dda7a7a5b12afd674084525c1b3",
+          "url": "https://github.com/ocaml/dune/commit/f97fc3251ae24db0cb8e49c5a74dc34b63c9ecc9"
+        },
+        "date": 1683109356080,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "25.507503532740003",
             "unit": "seconds"
           }
         ]

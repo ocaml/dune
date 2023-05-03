@@ -18,6 +18,7 @@ module Emit = struct
     ; compile_flags : Ordered_set_lang.Unexpanded.t
     ; allow_overlapping_dependencies : bool
     ; enabled_if : Blang.t
+    ; dune_version : Dune_lang.Syntax.Version.t
     }
 
   type Stanza.t += T of t
@@ -113,7 +114,7 @@ module Emit = struct
          let open Enabled_if in
          let allowed_vars = Any in
          decode ~allowed_vars ~since:None ()
-       in
+       and+ dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
        let preprocess =
          let init =
            let f libname = Preprocess.With_instrumentation.Ordinary libname in
@@ -142,6 +143,7 @@ module Emit = struct
        ; compile_flags
        ; allow_overlapping_dependencies
        ; enabled_if
+       ; dune_version
        })
   ;;
 

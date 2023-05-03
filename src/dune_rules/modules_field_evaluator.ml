@@ -153,6 +153,7 @@ let check_invalid_module_listing
   ~existing_virtual_modules
   ~allow_new_public_modules
   ~is_vendored
+  ~version
   =
   let { errors; unimplemented_virt_modules } =
     find_errors
@@ -240,12 +241,11 @@ let check_invalid_module_listing
       [ Pp.text "You must provide an implementation for all of these modules." ];
     (* Checking that (modules) includes all declared modules *)
     let print_undelared_modules field mods =
-      (* TODO: this is a warning for now, change to an error in 3.9. *)
       (* If we are in a vendored stanza we do nothing. *)
       if not is_vendored
       then
         print
-          ~is_error:false
+          ~is_error:(version >= (3, 11))
           [ Pp.textf "These modules appear in the %s field:" field ]
           mods
           [ Pp.text "They must also appear in the modules field." ]
@@ -320,6 +320,7 @@ let eval
   ~kind
   ~src_dir
   ~is_vendored
+  ~version
   { Stanza_common.Modules_settings.modules = _
   ; root_module
   ; modules_without_implementation
@@ -360,7 +361,8 @@ let eval
     ~private_modules
     ~existing_virtual_modules
     ~allow_new_public_modules
-    ~is_vendored;
+    ~is_vendored
+    ~version;
   let all_modules =
     Module_trie.mapi modules ~f:(fun _path (_, m) ->
       let name = [ Module.Source.name m ] in
@@ -394,6 +396,7 @@ let eval
   ~private_modules
   ~kind
   ~src_dir
+  ~version
   (settings : Stanza_common.Modules_settings.t)
   =
   let eval0 =
@@ -418,6 +421,7 @@ let eval
       ~is_vendored
       settings
       eval0
+      ~version
   in
   eval0.modules, modules
 ;;

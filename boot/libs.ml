@@ -66,6 +66,7 @@ let local_libraries =
   ; ("otherlibs/build-info/src", Some "Build_info", false,
     Some "Build_info_data")
   ; ("src/dune_rpc_impl", Some "Dune_rpc_impl", false, None)
+  ; ("vendor/sha", None, false, None)
   ]
 
 let link_flags =

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683095471449,
+  "lastUpdate": 1683102136133,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34596,6 +34596,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "26.722657179846667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8a6b09492e10427619bbe480fc75986b3cd63cb5",
+          "message": "dune-rpc: use loopback address on Windows (#7666)\n\nSigned-off-by: Nicolás Ojeda Bär <n.oje.bar@gmail.com>",
+          "timestamp": "2023-05-03T10:04:38+02:00",
+          "tree_id": "f007e966b814e2e1b698cdd5118618f16a3fc007",
+          "url": "https://github.com/ocaml/dune/commit/8a6b09492e10427619bbe480fc75986b3cd63cb5"
+        },
+        "date": 1683102133332,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.06866136362",
             "unit": "seconds"
           }
         ]

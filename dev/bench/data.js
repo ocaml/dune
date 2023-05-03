@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683137293976,
+  "lastUpdate": 1683153522761,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34741,6 +34741,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "26.852975114459998",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "javier.chavarri@gmail.com",
+            "name": "Javier Chávarri",
+            "username": "jchavarri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "988b0b29b0c8cf896f3af5272140c3606ed61821",
+          "message": "melange: set min version to 3.8 (#7665)\n\n* melange: set min version to 3.8\r\n\r\nSigned-off-by: Javier Chávarri <javier.chavarri@gmail.com>",
+          "timestamp": "2023-05-03T15:17:57-07:00",
+          "tree_id": "81be8e19d9bf055aea5c863668f5bf0f5e9810d7",
+          "url": "https://github.com/ocaml/dune/commit/988b0b29b0c8cf896f3af5272140c3606ed61821"
+        },
+        "date": 1683153519386,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.602151325946664",
             "unit": "seconds"
           }
         ]

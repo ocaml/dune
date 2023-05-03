@@ -1008,12 +1008,26 @@ module Fetch = struct
         | None -> []
         | Some checksum -> [ Dune_lang.atom_or_quoted_string checksum ])
 
-    let action { target_dir; url; checksum = _ } ~ectx:_ ~eenv:_ =
+    let action { target_dir; url; checksum } ~ectx:_ ~eenv:_ =
       let open Fiber.O in
       let* () = Fiber.return () in
-      (* TODO checksum handling *)
-      Dune_pkg.Fetch.fetch Loc.none (OpamUrl.of_string url)
-        ~target:(Path.build target_dir)
+      let checksum = Option.map ~f:Dune_pkg.Checksum.of_string checksum in
+      let* res =
+        Dune_pkg.Fetch.fetch ~checksum ~target:(Path.build target_dir)
+          (OpamUrl.of_string url)
+      in
+      match res with
+      | Ok () -> Fiber.return ()
+      | Error (Checksum_mismatch actual_checksum) ->
+        User_error.raise ~loc:Loc.none
+          [ Pp.text "Invalid checksum, got"
+          ; Dune_pkg.Checksum.pp actual_checksum
+          ]
+      | Error (Unavailable message) -> (
+        match message with
+        | None ->
+          User_error.raise ~loc:Loc.none [ Pp.text "Unknown fetch failure" ]
+        | Some msg -> User_error.raise ~loc:Loc.none [ User_message.pp msg ])
   end
 
   let action ~url ~checksum ~target_dir =

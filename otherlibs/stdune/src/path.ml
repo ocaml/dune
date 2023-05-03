@@ -1265,6 +1265,18 @@ let chmod t ~mode = Unix.chmod (to_string t) mode
 let follow_symlink path =
   Fpath.follow_symlink (to_string path) |> Result.map ~f:of_string
 
+let drop_prefix path ~prefix =
+  String.drop_prefix (to_string path) ~prefix:(to_string prefix)
+  |> Option.map ~f:(fun p ->
+         String.drop_prefix_if_exists ~prefix:"/" p |> Local.of_string)
+
+let drop_prefix_exn t ~prefix =
+  match drop_prefix t ~prefix with
+  | None ->
+    Code_error.raise "Path.drop_prefix_exn"
+      [ ("t", to_dyn t); ("prefix", to_dyn prefix) ]
+  | Some p -> p
+
 module Expert = struct
   let drop_absolute_prefix ~prefix p =
     match

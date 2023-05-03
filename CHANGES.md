@@ -142,6 +142,8 @@ Unreleased
 - Introduce mdx stanza 0.4 requiring mdx >= 2.3.0 which updates the default
   list of files to include `*.mld` files (#7582, @Leonidas-from-XIV)
 
+- Fix RPC server on Windows (used for OCaml-LSP). (#7666, @nojb)
+
 3.7.1 (2023-04-04)
 ------------------
 

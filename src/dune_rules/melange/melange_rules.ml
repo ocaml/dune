@@ -29,14 +29,9 @@ let output_of_lib ~target_dir lib =
           [ "node_modules"; Lib_name.to_string lib_name ] )
 
 let lib_output_path ~output_dir ~lib_dir src =
-  let dir =
-    let src_dir = Path.to_string src in
-    let lib_dir = Path.to_string lib_dir in
-    String.drop_prefix src_dir ~prefix:lib_dir
-    |> Option.value_exn
-    |> String.drop_prefix_if_exists ~prefix:"/"
-  in
-  if dir = "" then output_dir else Path.Build.relative output_dir dir
+  match Path.drop_prefix_exn src ~prefix:lib_dir |> Path.Local.to_string with
+  | "" -> output_dir
+  | dir -> Path.Build.relative output_dir dir
 
 let make_js_name ~js_ext ~output m =
   let basename = Melange.js_basename m ^ js_ext in

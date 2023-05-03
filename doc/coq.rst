@@ -59,6 +59,7 @@ stanza:
      (modules <ordered_set_lang>)
      (plugins <ocaml_plugins>)
      (flags <coq_flags>)
+     (coqdoc_flags <coqdoc_flags>)
      (stdlib <stdlib_included>)
      (mode <coq_native_mode>)
      (theories <coq_theories>))
@@ -106,6 +107,11 @@ The semantics of the fields are:
   is taken from the value set in the ``(coq (flags <flags>))`` field in ``env``
   profile. See :ref:`dune-env` for more information.
 
+- ``<coqdoc_flags>`` are extra user-configurable flags passed to ``coqdoc``. The
+  default value for ``:standard`` is ``--toc``. The ``--html`` or ``--latex``
+  flags are passed separately depending on which mode is targed. See the section
+  on :ref:`documentation using coqdoc<coqdoc>` for more information.
+
 - ``<stdlib_included>`` can either be ``yes`` or ``no``, currently defaulting to
   ``yes``. When set to ``no``, Coq's standard library won't be visible from this
   theory, which means the ``Coq`` prefix won't be bound, and
@@ -150,6 +156,7 @@ them in the correct order, even if they are in separate theories. Under the
 hood, Dune asks coqdep how to resolve these dependencies, which is why it is
 called once per theory.
 
+.. _coqdoc:
 
 Coq Documentation
 ~~~~~~~~~~~~~~~~~
@@ -161,7 +168,13 @@ A.tex``, respectively (if the :ref:`dune file<dune-files>` for the theory is the
 current directory).
 
 There are also two aliases ``@doc`` and ``@doc-latex`` that will respectively
-build the HTML or LaTeX documentation when called.
+build the HTML or LaTeX documentation when called. These will determine whether
+or not Dune passes a ``--html`` or ``--latex`` flag to ``coqdoc``.
+
+Further flags can also be configured using the ``(coqdoc_flags)`` field in the
+``coq.theory`` stanza. These will be passed to ``coqdoc`` and the default value
+is ``:standard`` which is ``--toc``. Extra flags can therefore be passed by
+writing ``(coqdoc_flags :standard --body-only)`` for example.
 
 .. _include-subdirs-coq:
 

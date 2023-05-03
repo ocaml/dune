@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683109358469,
+  "lastUpdate": 1683127421368,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34654,6 +34654,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.507503532740003",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "javier.chavarri@gmail.com",
+            "name": "Javier Chávarri",
+            "username": "jchavarri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7ca9aef65d0ccbd56d5799791267148b23459a2a",
+          "message": "melange: improve extension name (#7669)\n\nSigned-off-by: Javier Chávarri <javier.chavarri@gmail.com>",
+          "timestamp": "2023-05-03T08:06:09-07:00",
+          "tree_id": "77c989cf17584d16fa1d92cce01a1c7fa83380ff",
+          "url": "https://github.com/ocaml/dune/commit/7ca9aef65d0ccbd56d5799791267148b23459a2a"
+        },
+        "date": 1683127418727,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.714623243080002",
             "unit": "seconds"
           }
         ]

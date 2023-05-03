@@ -6,7 +6,15 @@ module Includes = struct
   let filter_with_odeps libs deps md lib_top_module_map lib_to_entry_modules_map
       =
     let open Resolve.Memo.O in
-    let+ (module_deps, flags), _ = deps in
+    let* (module_deps, flags), _ = deps in
+    let* lib_to_entry_modules_map = lib_to_entry_modules_map in
+    let lib_to_entry_modules_map =
+      Lib.Map.of_list_exn lib_to_entry_modules_map
+    in
+    let+ lib_top_module_map = lib_top_module_map in
+    let lib_top_module_map =
+      List.concat lib_top_module_map |> Module_name.Map.of_list_exn
+    in
     let rec flag_open_present entry_lib_name l =
       match l with
       | flag :: entry_name :: t ->
@@ -59,7 +67,7 @@ module Includes = struct
                       (flag_open_present
                          (Module_name.to_string entry_module_name)
                          flags)
-                  then (
+                  then
                     let top_c_modules =
                       match
                         Module_name.Map.find lib_top_module_map
@@ -91,32 +99,32 @@ module Includes = struct
                                    (Module.name top_c_mod)))
                     in
                     (* if not keep then
-                      Dune_util.Log.info
-                        [ Pp.textf
-                            "Removing %s aka %s for module %s \n\n\
-                             ~Odep_list: %s\n\n\
-                             ~Top_c_modules: %s\n\
-                             ~Flags : %s\n\
-                             \\n\n\
-                            \                         \n\
-                            \                         •\n\
-                             ------------------"
-                            (Lib.name lib |> Lib_name.to_string)
-                            (Module_name.to_string entry_module_name)
-                            (Module.name md |> Module_name.to_string)
-                            (String.concat dep_names ~sep:" , ")
-                            (List.map top_c_modules ~f:(fun m ->
-                                 Module.name m |> Module_name.to_string)
-                            |> String.concat ~sep:", ")
-                            (String.concat flags ~sep:",")
-                        ]; *)
-                    keep)
+                       Dune_util.Log.info
+                         [ Pp.textf
+                             "Removing %s aka %s for module %s \n\n\
+                              ~Odep_list: %s\n\n\
+                              ~Top_c_modules: %s\n\
+                              ~Flags : %s\n\
+                              \\n\n\
+                             \                         \n\
+                             \                         •\n\
+                              ------------------"
+                             (Lib.name lib |> Lib_name.to_string)
+                             (Module_name.to_string entry_module_name)
+                             (Module.name md |> Module_name.to_string)
+                             (String.concat dep_names ~sep:" , ")
+                             (List.map top_c_modules ~f:(fun m ->
+                                  Module.name m |> Module_name.to_string)
+                             |> String.concat ~sep:", ")
+                             (String.concat flags ~sep:",")
+                         ]; *)
+                    keep
                   else true)
             else true)
 
-  let make ?(lib_top_module_map = Module_name.Map.empty)
-      ?(lib_to_entry_modules_map = Lib.Map.empty) () ~project ~opaque ~requires
-      ~md ~dep_graphs ~flags =
+  let make ?(lib_top_module_map = Resolve.Memo.return [])
+      ?(lib_to_entry_modules_map = Resolve.Memo.return []) () ~project ~opaque
+      ~requires ~md ~dep_graphs ~flags =
     let flags =
       Action_builder.map2
         (Action_builder.map2
@@ -291,8 +299,8 @@ let dep_graphs t = t.modules.dep_graphs
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
     ?stdlib ~js_of_ocaml ~package ?public_lib_name ?vimpl ?modes ?bin_annot ?loc
-    ?(lib_top_module_map = Module_name.Map.empty)
-    ?(lib_to_entry_modules_map = Lib.Map.empty) () =
+    ?(lib_top_module_map = Resolve.Memo.return [])
+    ?(lib_to_entry_modules_map = Resolve.Memo.return []) () =
   let open Memo.O in
   let project = Scope.project scope in
   let requires_compile =

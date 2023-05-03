@@ -39,8 +39,9 @@ val create :
   -> ?modes:Dune_file.Mode_conf.Set.Details.t Lib_mode.Map.t
   -> ?bin_annot:bool
   -> ?loc:Loc.t
-  -> ?lib_top_module_map:Module.t list Module_name.Map.t
-  -> ?lib_to_entry_modules_map:Module.t list Lib.Map.t
+  -> ?lib_top_module_map:
+       (Module_name.t * Module.t list) list list Resolve.Memo.t
+  -> ?lib_to_entry_modules_map:(Lib.t * Module.t list) list Resolve.Memo.t
   -> unit
   -> t Memo.t
 

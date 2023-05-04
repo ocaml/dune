@@ -47,12 +47,15 @@ module Includes = struct
     then libs
     else
       List.filter libs ~f:(fun lib ->
-          (* Not filtering vlib implementations and vlibs *)
+          let melange_mode =
+            Lib_mode.Map.get (Lib.info lib |> Lib_info.modes) Lib_mode.Melange
+          in
           let implements =
             Option.is_some (Lib_info.implements (Lib.info lib))
           in
+          (* Not filtering vlib implementations, vlibs, and melange mode *)
           let virtual_ = Option.is_some (Lib_info.virtual_ (Lib.info lib)) in
-          if implements || virtual_ then true
+          if implements || virtual_ || melange_mode then true
           else
             let entry_module_names =
               (match Lib.Map.find lib_to_entry_modules_map lib with
@@ -110,8 +113,10 @@ module Includes = struct
                              "Removing %s aka %s for module %s \n\n\
                               ~Odep_list: %s\n\n\
                               ~Top_c_modules: %s\n\
-                              ~Flags : %s\n\
-                              \\n\n\
+                              ~Flags : %s\n\n\n\
+                             \                                                          \
+                              \n\n\
+                             \                              \\n\n\
                              \                         \n\
                              \                         •\n\
                               ------------------"

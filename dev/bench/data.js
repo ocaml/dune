@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683186411617,
+  "lastUpdate": 1683213980021,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34828,6 +34828,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.866524910080003",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7e16d5b4f6f07d29c0c30f5e9a8388f55863edf6",
+          "message": "Inline patch for local changes to OPAM (#7672)\n\nMostly about aliasing `Dune_re` that we can't do on our vendored branch\r\nof opam, lest it stops building.\r\n\r\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-05-04T08:04:21-07:00",
+          "tree_id": "e3db6816bceca394b103327dfdb02c85f8e6d1de",
+          "url": "https://github.com/ocaml/dune/commit/7e16d5b4f6f07d29c0c30f5e9a8388f55863edf6"
+        },
+        "date": 1683213977060,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "28.07983794668",
             "unit": "seconds"
           }
         ]

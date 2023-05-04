@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683154144412,
+  "lastUpdate": 1683186411617,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34799,6 +34799,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "26.667881183540004",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "243ddb0d8bda0659bd9a80808ea3decb48c1f3d2",
+          "message": "boot: fix line directive used for C headers (#7679)\n\nSigned-off-by: nojebar <nicolas.ojeda.bar@lexifi.com>",
+          "timestamp": "2023-05-04T09:29:15+02:00",
+          "tree_id": "2c8683ebd566fbd47c37b04b179cb2929bba21c0",
+          "url": "https://github.com/ocaml/dune/commit/243ddb0d8bda0659bd9a80808ea3decb48c1f3d2"
+        },
+        "date": 1683186409066,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.866524910080003",
             "unit": "seconds"
           }
         ]

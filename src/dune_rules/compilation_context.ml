@@ -62,7 +62,13 @@ module Includes = struct
             in
             if List.is_non_empty entry_module_names then
               List.exists entry_module_names ~f:(fun entry_module_name ->
+                  (* FIXME: ocamldep doesn't see Melange_wrapper for files that
+                      have been `copy_files` *)
                   if
+                    String.equal "Melange_wrapper"
+                      (Module_name.to_string entry_module_name)
+                  then true
+                  else if
                     not
                       (flag_open_present
                          (Module_name.to_string entry_module_name)

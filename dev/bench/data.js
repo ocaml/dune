@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683227194451,
+  "lastUpdate": 1683227513060,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -28911,6 +28911,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.330407080293333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "239e6aca68aaa27bc429425b4aab32f4a9ee9bcd",
+          "message": "test(melange): incorrect path when public lib depends on private lib (#7652)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-05-04T11:46:15-07:00",
+          "tree_id": "da53419dfc20004a0ab2536082c757d63957a886",
+          "url": "https://github.com/ocaml/dune/commit/239e6aca68aaa27bc429425b4aab32f4a9ee9bcd"
+        },
+        "date": 1683227512145,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "62.78950232651332",
             "unit": "seconds"
           }
         ]

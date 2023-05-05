@@ -476,27 +476,6 @@ module Unprocessed = struct
           | [] -> None
           | stdlib_dir :: _ -> Some stdlib_dir)
       in
-      let* requires =
-        match t.config.mode with
-        | Ocaml _ -> Action_builder.return requires
-        | Melange ->
-          Action_builder.of_memo
-            (let open Memo.O in
-            let scope = Expander.scope expander in
-            let libs = Scope.libs scope in
-            Lib.DB.find libs (Lib_name.of_string "melange") >>= function
-            | Some lib ->
-              let+ libs =
-                let linking =
-                  Dune_project.implicit_transitive_deps (Scope.project scope)
-                in
-                Lib.closure [ lib ] ~linking |> Resolve.Memo.peek >>| function
-                | Ok libs -> libs
-                | Error _ -> []
-              in
-              Lib.Set.union requires (Lib.Set.of_list libs)
-            | None -> Memo.return requires)
-      in
       let* flags = flags
       and* src_dirs, obj_dirs =
         Action_builder.of_memo

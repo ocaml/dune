@@ -86,8 +86,5 @@ val nearest_vcs : Path.Source.t -> Vcs.t option Memo.t
 
 val files_of : Path.Source.t -> Path.Source.Set.t Memo.t
 
-(** [true] iff the path is a directory *)
-val dir_exists : Path.Source.t -> bool Memo.t
-
 (** [true] iff the path is a vendored directory *)
 val is_vendored : Path.Source.t -> bool Memo.t

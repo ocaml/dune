@@ -91,6 +91,3 @@ val dir_exists : Path.Source.t -> bool Memo.t
 
 (** [true] iff the path is a vendored directory *)
 val is_vendored : Path.Source.t -> bool Memo.t
-
-(** [true] iff the path is a file *)
-val file_exists : Path.Source.t -> bool Memo.t

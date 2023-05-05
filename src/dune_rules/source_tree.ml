@@ -712,11 +712,6 @@ let files_of path =
     Dir0.files dir |> Filename.Set.to_list
     |> Path.Source.Set.of_list_map ~f:(Path.Source.relative path)
 
-let file_exists path =
-  find_dir (Path.Source.parent_exn path) >>| function
-  | None -> false
-  | Some dir -> Filename.Set.mem (Dir0.files dir) (Path.Source.basename path)
-
 let dir_exists path = find_dir path >>| Option.is_some
 
 module Dir = struct

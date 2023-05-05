@@ -261,7 +261,8 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
           ; As extra_args
           ; S (melange_args cctx cm_kind m)
           ; A "-no-alias-deps"
-          ; opaque_arg
+(*           ; A "-dtimings"
+ *)          ; opaque_arg
           ; As (Fdo.phase_flags phase)
           ; opens
           ; As

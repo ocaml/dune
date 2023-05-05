@@ -71,7 +71,7 @@ let parse_deps_exn ~file lines =
       String.extract_blank_separated_words deps)
 
 let deps_of ({ sandbox; modules; sctx; dir; obj_dir; vimpl; stdlib = _ } as md)
-    ~ml_kind unit =
+    ~ml_kind unit implicit_transitive_deps =
   let source = Option.value_exn (Module.source unit ~ml_kind) in
   let dep = Obj_dir.Module.dep obj_dir in
   let context = Super_context.context sctx in
@@ -168,7 +168,7 @@ let deps_of ({ sandbox; modules; sctx; dir; obj_dir; vimpl; stdlib = _ } as md)
     add_rule produce_all_deps
   in
   let+ _ =
-    if not impl_vmodule then
+    if implicit_transitive_deps && not impl_vmodule then
       let produce_all_deps_ext =
         let paths =
           make_paths
@@ -188,7 +188,7 @@ let deps_of ({ sandbox; modules; sctx; dir; obj_dir; vimpl; stdlib = _ } as md)
   let all_deps_file = Path.build all_deps_file in
   let ext_deps_file = Path.build ext_deps_file in
   let md_l =
-    if not impl_vmodule then
+    if implicit_transitive_deps && not impl_vmodule then
       Action_builder.map2
         ~f:(fun x y -> parse_compilation_units ~modules x y)
         (Action_builder.lines_of all_deps_file)

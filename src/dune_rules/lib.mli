@@ -48,6 +48,8 @@ module L : sig
     -> key:('a -> t)
     -> deps:('a -> 'a list Resolve.Memo.t)
     -> ('a list, 'a list) Result.t Resolve.Memo.t
+
+  val filter_list_set : Set.t -> t list -> t list * Set.t
 end
 
 (** {1 Compilation contexts} *)
@@ -66,7 +68,7 @@ module Compile : sig
   val for_lib : allow_overlaps:bool -> db -> lib -> t
 
   (** Return the list of dependencies needed for linking this library/exe *)
-  val requires_link : t -> lib list Resolve.t Memo.Lazy.t
+  val requires_link : t -> (lib * lib list) list Resolve.t Memo.Lazy.t
 
   (** Dependencies listed by the user + runtime dependencies from ppx *)
   val direct_requires : t -> lib list Resolve.Memo.t
@@ -255,3 +257,6 @@ module Local : sig
 
   include Comparable_intf.S with type key := t
 end
+
+val uniq_linking_closure :
+  (t * t list) list Resolve.Memo.t -> (t * t list) list Resolve.Memo.t

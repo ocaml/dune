@@ -167,7 +167,13 @@ let setup sctx ~dir =
       [ "-w"; "-24" ]
   in
   let* cctx =
-    let requires_link = Memo.lazy_ (fun () -> requires) in
+    let requires_link =
+      Memo.lazy_ (fun () ->
+          Resolve.Memo.map requires ~f:(fun r ->
+              match r with
+              | [] -> []
+              | h :: _ -> [ (h, r) ]))
+    in
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
       ~modules ~opaque:(Explicit false) ~requires_link
       ~requires_compile:requires ~flags ~js_of_ocaml:None ~package:None

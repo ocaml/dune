@@ -23,6 +23,7 @@ val deps_of :
      Modules_data.t
   -> ml_kind:Ml_kind.t
   -> Module.t
+  -> bool
   -> Module_dep.t list Action_builder.t Memo.t
 
 val read_deps_of :

@@ -152,7 +152,12 @@ include Sub_system.Register_end_point (struct
       in
       Compilation_context.create () ~super_context:sctx ~expander ~scope
         ~obj_dir ~modules ~opaque:(Explicit false) ~requires_compile:runner_libs
-        ~requires_link:(Memo.lazy_ (fun () -> runner_libs))
+        ~requires_link:
+          (Memo.lazy_ (fun () ->
+               Resolve.Memo.map runner_libs ~f:(fun r ->
+                   match r with
+                   | [] -> []
+                   | h :: _ -> [ (h, r) ])))
         ~flags ~js_of_ocaml:(Some js_of_ocaml) ~package
     in
     let linkages =

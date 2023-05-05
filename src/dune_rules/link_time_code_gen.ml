@@ -217,6 +217,7 @@ let findlib_predicates_set_by_dune pred =
 let handle_special_libs cctx =
   let ( let& ) m f = Resolve.Memo.bind m ~f in
   let& all_libs = Compilation_context.requires_link cctx in
+  let all_libs = List.map all_libs ~f:(fun (_, a) -> a) |> List.concat in
   let obj_dir = Compilation_context.obj_dir cctx |> Obj_dir.of_local in
   let ctx =
     let sctx = Compilation_context.super_context cctx in
@@ -246,6 +247,7 @@ let handle_special_libs cctx =
               ~code:
                 (Action_builder.of_memo
                    (let* () = Memo.return () in
+
                     build_info_code cctx ~libs:all_libs ~api_version))
               ~requires:(Resolve.Memo.return [ lib ])
               ~precompiled_cmi:true

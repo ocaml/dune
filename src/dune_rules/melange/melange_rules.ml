@@ -239,6 +239,8 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
             @@
             let open Resolve.Memo.O in
             Compilation_context.requires_link cctx
+            |> Resolve.Memo.map ~f:(fun l ->
+                   List.map l ~f:(fun (_, a) -> a) |> List.concat)
             >>= js_targets_of_libs sctx ~module_systems ~target_dir
           in
           Action_builder.paths deps
@@ -370,7 +372,13 @@ let setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
   let loc = mel.loc in
   let module_systems = mel.module_systems in
   let* requires_link = Memo.Lazy.force requires_link in
-  let includes = cmj_includes ~requires_link ~scope in
+  let includes =
+    let requires_link =
+      Resolve.map requires_link ~f:(fun l ->
+          List.map l ~f:(fun (_, a) -> a) |> List.concat)
+    in
+    cmj_includes ~requires_link ~scope
+  in
   let modules_for_js =
     Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc ->
         if Module.has x ~ml_kind:Impl then x :: acc else acc)
@@ -406,6 +414,10 @@ let setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
         let+ requires_link =
           Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)
         in
+        let requires_link =
+          Resolve.map requires_link ~f:(fun l ->
+              List.map l ~f:(fun (_, a) -> a) |> List.concat)
+        in
         cmj_includes ~requires_link ~scope
       in
       let output = output_of_lib ~target_dir lib in
@@ -424,6 +436,10 @@ let setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
                 ~allow_overlaps:mel.allow_overlapping_dependencies
                 (Scope.libs scope) vlib
               |> Lib.Compile.requires_link |> Memo.Lazy.force
+            in
+            let requires_link =
+              Resolve.map requires_link ~f:(fun l ->
+                  List.map l ~f:(fun (_, a) -> a) |> List.concat)
             in
             cmj_includes ~requires_link ~scope
           in
@@ -448,6 +464,9 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
     let* requires_link =
       Lib.Compile.requires_link compile_info
       |> Memo.Lazy.force >>= Resolve.read_memo
+    in
+    let requires_link =
+      List.map requires_link ~f:(fun (_, a) -> a) |> List.concat
     in
     setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
       mel

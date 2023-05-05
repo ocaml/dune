@@ -28,7 +28,7 @@ val create :
   -> modules:Modules.t
   -> flags:Ocaml_flags.t
   -> requires_compile:Lib.t list Resolve.Memo.t
-  -> requires_link:Lib.t list Resolve.t Memo.Lazy.t
+  -> requires_link:(Lib.t * Lib.t list) list Resolve.t Memo.Lazy.t
   -> ?preprocessing:Pp_spec.t
   -> opaque:opaque
   -> ?stdlib:Ocaml_stdlib.t
@@ -39,9 +39,7 @@ val create :
   -> ?modes:Dune_file.Mode_conf.Set.Details.t Lib_mode.Map.t
   -> ?bin_annot:bool
   -> ?loc:Loc.t
-  -> ?lib_top_module_map:
-       (Module_name.t * Module.t list) list list Resolve.Memo.t
-  -> ?lib_to_entry_modules_map:(Lib.t * Module.t list) list Resolve.Memo.t
+  -> ?entry_names_closure:(Lib.Local.t -> Module.t list Memo.t)
   -> unit
   -> t Memo.t
 
@@ -66,7 +64,7 @@ val modules : t -> Modules.t
 
 val flags : t -> Ocaml_flags.t
 
-val requires_link : t -> Lib.t list Resolve.Memo.t
+val requires_link : t -> (Lib.t * Lib.t list) list Resolve.t Memo.t
 
 val requires_compile : t -> Lib.t list Resolve.Memo.t
 

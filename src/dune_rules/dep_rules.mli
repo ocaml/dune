@@ -5,6 +5,7 @@ open Import
 val for_module :
      Ocamldep.Modules_data.t
   -> Module.t
+  -> bool
   -> Module_dep.t list Action_builder.t Ml_kind.Dict.t Memo.t
 
 val immediate_deps_of :
@@ -14,4 +15,7 @@ val immediate_deps_of :
   -> Ml_kind.t
   -> Module_dep.t list Action_builder.t
 
-val rules : Ocamldep.Modules_data.t -> Dep_graph.t Ml_kind.Dict.t Memo.t
+val rules :
+     Ocamldep.Modules_data.t
+  -> implicit_transitive_deps:bool
+  -> Dep_graph.t Ml_kind.Dict.t Memo.t

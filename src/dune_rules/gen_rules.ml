@@ -59,105 +59,6 @@ end = struct
     ; source_dirs = List.rev t.source_dirs
     }
 
-  let make_lib_entry_map sctx requires =
-    Resolve.Memo.bind requires ~f:(fun reqs ->
-        List.map reqs ~f:(fun req ->
-            let req_entry_mods =
-              match Lib.Local.of_lib req with
-              | None -> Memo.return []
-              | Some libl -> Odoc.entry_modules_by_lib sctx libl
-            in
-            Resolve.Memo.map (req_entry_mods |> Resolve.Memo.lift_memo)
-              ~f:(fun req_entry_mods' -> (req, req_entry_mods')))
-        |> Resolve.Memo.all)
-
-  let make_lib_top_module_map requires ~linking
-      (lib_to_entry_modules_map : (Lib.t * Module.t list) list Resolve.Memo.t) =
-    Resolve.Memo.bind lib_to_entry_modules_map
-      ~f:(fun lib_to_entry_modules_map ->
-        let entry_map = Lib.Map.of_list_exn lib_to_entry_modules_map in
-        Resolve.Memo.bind requires ~f:(fun reqs ->
-            List.map reqs ~f:(fun req ->
-                let e_mds =
-                  match Lib.Map.find entry_map req with
-                  | Some l -> l
-                  | None -> []
-                in
-                let transitive_closure = Lib.closure [ req ] ~linking in
-
-                Resolve.Memo.map transitive_closure ~f:(fun tc ->
-                    List.map e_mds ~f:(fun e_md ->
-                        let mname = Module.name e_md in
-                        (* list of all entry names of each lib in tc *)
-                        let lentc =
-                          List.map tc ~f:(fun ltc ->
-                              let e_mds =
-                                match Lib.Map.find entry_map ltc with
-                                | Some l -> l
-                                | None -> []
-                              in
-                              e_mds)
-                          |> List.concat
-                        in
-
-                        (mname, lentc))))
-            |> Resolve.Memo.all))
-
-  (* Resolve.Memo.bind requires ~f:(fun reqs ->
-      List.filter_map reqs ~f:(fun req ->
-          (*Do not compute closure if it is virtual*)
-          let virtual_ = Option.is_some (Lib_info.virtual_ (Lib.info req)) in
-          if virtual_ then None
-          else
-
-            Resolve.Memo.bind lib_to_entry_modules_map ~f:(fun   lib_to_entry_modules_map ->
-
-
-              )
-            let req_entry_mods =
-              match Lib.Local.of_lib req with
-              | None -> Memo.return []
-              | Some libl -> Odoc.entry_modules_by_lib sctx libl
-            in
-            let req_entry_mods= in
-            Some
-              (Resolve.Memo.bind (req_entry_mods |> Resolve.Memo.lift_memo)
-                 ~f:(fun req_entry_mods' ->
-                   List.map req_entry_mods' ~f:(fun req_entry_mod ->
-                       let transitive_closure =
-                         Lib.closure [ req ] ~linking
-                       in
-                       Resolve.Memo.bind transitive_closure ~f:(fun libst ->
-                           let transitive_modules =
-                             List.fold_left libst ~init:(Memo.return [])
-                               ~f:(fun acc libt ->
-                                 let libt_entry_mods =
-                                   match Lib.Local.of_lib libt with
-                                   | None -> Memo.return []
-                                   | Some libl ->
-                                     Odoc.entry_modules_by_lib sctx libl
-                                 in
-                                 let open Memo.O in
-                                 let* acc' = acc in
-                                 let+ entry_mods = libt_entry_mods in
-                                 List.append acc' entry_mods)
-                           in
-                           Memo.map transitive_modules ~f:(fun mds ->
-                               (Module.name req_entry_mod, mds))
-                           |> Resolve.Memo.lift_memo)
-
-                           )
-                   |> Resolve.Memo.all)))
-      |> Resolve.Memo.all)
-  *)
-
-  let make_requires project compile_info =
-    let requires_compile = Lib.Compile.direct_requires compile_info in
-    let requires_link = Lib.Compile.requires_link compile_info in
-    if Dune_project.implicit_transitive_deps project then
-      Memo.Lazy.force requires_link
-    else requires_compile
-
   let of_stanza stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander
       ~files_to_install =
     let dir = ctx_dir in
@@ -171,22 +72,12 @@ end = struct
       let* () =
         Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
       in
-      let* _, compile_info = Lib_rules.compile_info lib scope in
-      let project = Scope.project scope in
-      let requires = make_requires project compile_info in
       let* available =
         Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
       in
       if available then
-        let lib_to_entry_modules_map = make_lib_entry_map sctx requires in
-        let lib_top_module_map =
-          make_lib_top_module_map requires lib_to_entry_modules_map
-            ~linking:(Dune_project.implicit_transitive_deps project)
-        in
-
         let+ cctx, merlin =
-          Lib_rules.rules lib ~lib_to_entry_modules_map ~lib_top_module_map
-            ~sctx ~dir ~scope ~dir_contents ~expander
+          Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander
         in
         { merlin = Some merlin
         ; cctx = Some (lib.buildable.loc, cctx)
@@ -204,18 +95,8 @@ end = struct
       | false -> Memo.return empty_none
       | true ->
         let* () = Memo.Option.iter exes.install_conf ~f:files_to_install in
-        let project = Scope.project scope in
-        let* compile_info = Exe_rules.compile_info ~scope exes in
-        let requires = make_requires project compile_info in
-        let lib_to_entry_modules_map = make_lib_entry_map sctx requires in
-        let lib_top_module_map =
-          make_lib_top_module_map requires lib_to_entry_modules_map
-            ~linking:(Dune_project.implicit_transitive_deps project)
-        in
-
         let+ cctx, merlin =
-          Exe_rules.rules exes ~lib_to_entry_modules_map ~lib_top_module_map
-            ~sctx ~dir ~scope ~expander ~dir_contents
+          Exe_rules.rules exes ~sctx ~dir ~scope ~expander ~dir_contents
         in
         { merlin = Some merlin
         ; cctx = Some (exes.buildable.loc, cctx)

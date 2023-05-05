@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683320837042,
+  "lastUpdate": 1683321175625,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -29085,6 +29085,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.532407549893333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fa74a22fd6373cadc645bba721f08562262f5d14",
+          "message": "refactor: remove Source_tree.file_exists (#7560)\n\nFdo is the only user of this function, and it's easily switched to allow\r\nthe profile file to be generated.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-05T13:46:29-07:00",
+          "tree_id": "a10ef4bc27a553406edbd4d281884c17b5c877db",
+          "url": "https://github.com/ocaml/dune/commit/fa74a22fd6373cadc645bba721f08562262f5d14"
+        },
+        "date": 1683321175055,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "66.73691627340666",
             "unit": "seconds"
           }
         ]

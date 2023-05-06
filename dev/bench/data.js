@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683330833421,
+  "lastUpdate": 1683331352260,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -14701,6 +14701,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.21177592942",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "755fb8ce5e0522a2341854b7064fad85775fc96d",
+          "message": "refactor: remove Source_tree.dir_exists (#7686)\n\nnot useful enough and easily replaced by a one-liner\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-05T16:41:09-07:00",
+          "tree_id": "3002fd8216027f40be0534cf94c18fcc62bbc0f2",
+          "url": "https://github.com/ocaml/dune/commit/755fb8ce5e0522a2341854b7064fad85775fc96d"
+        },
+        "date": 1683331351271,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.27080802138",
             "unit": "seconds"
           }
         ]

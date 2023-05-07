@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683480748414,
+  "lastUpdate": 1683493932286,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -35669,6 +35669,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.544673123880003",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2ccb419ec375b9862cdec14bc8610c22ee85f941",
+          "message": "chore: update flakes (#7691)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-07T13:59:18-07:00",
+          "tree_id": "27355551eec6071ddf4a41af9b8e06f29e4c2c77",
+          "url": "https://github.com/ocaml/dune/commit/2ccb419ec375b9862cdec14bc8610c22ee85f941"
+        },
+        "date": 1683493929325,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "24.285725384453333",
             "unit": "seconds"
           }
         ]

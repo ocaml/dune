@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683494456122,
+  "lastUpdate": 1683494774773,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -14817,6 +14817,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.28535258743333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "9c8a2dec5056afca6a4606c987726b047da2be65",
+          "message": "Update otherlibs/ocamlc_loc/test/ocamlc_loc_tests.ml\n\nCo-authored-by: Marek Kubica <marek@xivilization.net>\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-05-07T23:06:08+02:00",
+          "tree_id": "ef2f7c0bcefcb4785aac4de964a35f99712bfd65",
+          "url": "https://github.com/ocaml/dune/commit/9c8a2dec5056afca6a4606c987726b047da2be65"
+        },
+        "date": 1683494773535,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.94497948598",
             "unit": "seconds"
           }
         ]

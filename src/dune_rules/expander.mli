@@ -143,3 +143,5 @@ val expand_locks :
   base:[ `Of_expander | `This of Path.t ] -> t -> Locks.t -> Path.t list Memo.t
 
 val sites : t -> Sites.t
+
+val isn't_allowed_in_this_position : source:Dune_lang.Template.Pform.t -> 'a

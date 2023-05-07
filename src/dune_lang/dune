@@ -9,6 +9,7 @@
   ocaml
   dyn
   ordering
+  dune_section
   (re_export dune_sexp))
  (instrumentation
   (backend bisect_ppx)))

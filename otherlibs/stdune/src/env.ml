@@ -72,6 +72,8 @@ let of_unix u = make (of_unix u)
 
 let add t ~var ~value = make (Map.set t.vars var value)
 
+let mem t ~var = Map.mem t.vars var
+
 let remove t ~var = make (Map.remove t.vars var)
 
 let extend t ~vars =

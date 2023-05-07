@@ -2,6 +2,76 @@ open Stdune
 open Dune_sexp
 
 module Var = struct
+  module Pkg = struct
+    module Section = struct
+      type t =
+        | Lib
+        | Libexec
+        | Bin
+        | Sbin
+        | Toplevel
+        | Share
+        | Etc
+        | Doc
+        | Stublibs
+        | Man
+        | Misc
+
+      let all =
+        [ (Lib, "lib")
+        ; (Libexec, "libexec")
+        ; (Bin, "bin")
+        ; (Sbin, "sbin")
+        ; (Toplevel, "toplevel")
+        ; (Share, "share")
+        ; (Etc, "etc")
+        ; (Doc, "doc")
+        ; (Stublibs, "stublibs")
+        ; (Man, "man")
+        ; (Misc, "misc")
+        ]
+
+      let to_string t = List.assoc all t |> Option.value_exn
+
+      let rec of_string x = function
+        | [] -> None
+        | (s, x') :: xs -> if x' = x then Some s else of_string x xs
+
+      let of_string x = of_string x all
+    end
+
+    type t =
+      | Switch
+      | Os_version
+      | Os_distribution
+      | Os_family
+      | Build
+      | Prefix
+      | User
+      | Group
+      | Jobs
+      | Arch
+      | Section_dir of Section.t
+
+    let compare = Poly.compare
+
+    let to_dyn t =
+      let open Dyn in
+      match t with
+      | Switch -> variant "Switch" []
+      | Os_version -> variant "Os_version" []
+      | Os_distribution -> variant "Os_distribution" []
+      | Os_family -> variant "Os_family" []
+      | Build -> variant "Build" []
+      | Prefix -> variant "Prefix" []
+      | User -> variant "User" []
+      | Group -> variant "Group" []
+      | Jobs -> variant "Jobs" []
+      | Arch -> variant "Arch" []
+      | Section_dir section ->
+        variant "Section_dir" [ string (Section.to_string section) ]
+  end
+
   type t =
     | User_var of string
     | Nothing
@@ -47,60 +117,60 @@ module Var = struct
     | Corrected_suffix
     | Inline_tests
     | Toolchain
+    | Pkg of Pkg.t
 
   let compare : t -> t -> Ordering.t = Poly.compare
 
   let to_dyn = function
     | User_var v -> Dyn.Variant ("User_var", [ String v ])
-    | t ->
-      let cstr =
-        match t with
-        | User_var _ -> assert false
-        | Nothing -> "Nothing"
-        | Project_root -> "Project_root"
-        | Workspace_root -> "Workspace_root"
-        | First_dep -> "First_dep"
-        | Deps -> "Deps"
-        | Targets -> "Targets"
-        | Target -> "Target"
-        | Cc -> "Cc"
-        | Cxx -> "Cxx"
-        | Ccomp_type -> "Ccomp_type"
-        | Cpp -> "Cpp"
-        | Pa_cpp -> "Pa_cpp"
-        | Make -> "Make"
-        | Ocaml_version -> "Ocaml_version"
-        | Ocaml -> "Ocaml"
-        | Ocamlc -> "Ocamlc"
-        | Ocamlopt -> "Ocamlopt"
-        | Ocaml_bin_dir -> "Ocaml_bin_dir"
-        | Ocaml_stdlib_dir -> "Ocaml_stdlib_dir"
-        | Dev_null -> "Dev_null"
-        | Ext_obj -> "Ext_obj"
-        | Ext_asm -> "Ext_asm"
-        | Ext_lib -> "Ext_lib"
-        | Ext_dll -> "Ext_dll"
-        | Ext_exe -> "Ext_exe"
-        | Ext_plugin -> "Ext_plugin"
-        | Profile -> "Profile"
-        | Context_name -> "Context_name"
-        | Os_type -> "Os_type"
-        | Architecture -> "Architecture"
-        | Arch_sixtyfour -> "Arch_sixtyfour"
-        | System -> "System"
-        | Model -> "Model"
-        | Ignoring_promoted_rules -> "Ignoring_promoted_rules"
-        | Input_file -> "Input_file"
-        | Library_name -> "Library_name"
-        | Partition -> "Partition"
-        | Impl_files -> "Impl_files"
-        | Intf_files -> "Intf_files"
-        | Test -> "Test"
-        | Corrected_suffix -> "Corrected_suffix"
-        | Inline_tests -> "Inline_tests"
-        | Toolchain -> "Toolchain"
-      in
-      Dyn.Variant (cstr, [])
+    | t -> (
+      let open Dyn in
+      match t with
+      | User_var _ -> assert false
+      | Nothing -> variant "Nothing" []
+      | Project_root -> variant "Project_root" []
+      | Workspace_root -> variant "Workspace_root" []
+      | First_dep -> variant "First_dep" []
+      | Deps -> variant "Deps" []
+      | Targets -> variant "Targets" []
+      | Target -> variant "Target" []
+      | Cc -> variant "Cc" []
+      | Cxx -> variant "Cxx" []
+      | Ccomp_type -> variant "Ccomp_type" []
+      | Cpp -> variant "Cpp" []
+      | Pa_cpp -> variant "Pa_cpp" []
+      | Make -> variant "Make" []
+      | Ocaml_version -> variant "Ocaml_version" []
+      | Ocaml -> variant "Ocaml" []
+      | Ocamlc -> variant "Ocamlc" []
+      | Ocamlopt -> variant "Ocamlopt" []
+      | Ocaml_bin_dir -> variant "Ocaml_bin_dir" []
+      | Ocaml_stdlib_dir -> variant "Ocaml_stdlib_dir" []
+      | Dev_null -> variant "Dev_null" []
+      | Ext_obj -> variant "Ext_obj" []
+      | Ext_asm -> variant "Ext_asm" []
+      | Ext_lib -> variant "Ext_lib" []
+      | Ext_dll -> variant "Ext_dll" []
+      | Ext_exe -> variant "Ext_exe" []
+      | Ext_plugin -> variant "Ext_plugin" []
+      | Profile -> variant "Profile" []
+      | Context_name -> variant "Context_name" []
+      | Os_type -> variant "Os_type" []
+      | Architecture -> variant "Architecture" []
+      | Arch_sixtyfour -> variant "Arch_sixtyfour" []
+      | System -> variant "System" []
+      | Model -> variant "Model" []
+      | Ignoring_promoted_rules -> variant "Ignoring_promoted_rules" []
+      | Input_file -> variant "Input_file" []
+      | Library_name -> variant "Library_name" []
+      | Partition -> variant "Partition" []
+      | Impl_files -> variant "Impl_files" []
+      | Intf_files -> variant "Intf_files" []
+      | Test -> variant "Test" []
+      | Corrected_suffix -> variant "Corrected_suffix" []
+      | Inline_tests -> variant "Inline_tests" []
+      | Toolchain -> variant "Toolchain" []
+      | Pkg pkg -> Pkg.to_dyn pkg)
 end
 
 module Artifact = struct
@@ -152,6 +222,7 @@ module Macro = struct
     | Coq_config
     | Env
     | Artifact of Artifact.t
+    | Pkg
 
   let compare x y =
     match (x, y) with
@@ -200,6 +271,9 @@ module Macro = struct
     | Env, Env -> Eq
     | Env, _ -> Lt
     | _, Env -> Gt
+    | Pkg, Pkg -> Eq
+    | Pkg, _ -> Lt
+    | _, Pkg -> Gt
     | Artifact x, Artifact y -> Artifact.compare x y
 
   let to_dyn =
@@ -224,6 +298,7 @@ module Macro = struct
     | Coq_config -> string "Coq_config"
     | Env -> string "Env"
     | Artifact ext -> variant "Artifact" [ Artifact.to_dyn ext ]
+    | Pkg -> variant "Pkg" []
 end
 
 module T = struct
@@ -307,6 +382,7 @@ let encode_to_latest_dune_lang_version t =
       | Corrected_suffix -> Some "corrected-suffix"
       | Inline_tests -> Some "inline_tests"
       | Toolchain -> Some "toolchain"
+      | Pkg _ -> assert false (* TODO *)
     with
     | None -> Pform_was_deleted
     | Some name -> Success { name; payload = None })
@@ -330,6 +406,7 @@ let encode_to_latest_dune_lang_version t =
       | Ocaml_config -> Some "ocaml-config"
       | Coq_config -> Some "coq"
       | Env -> Some "env"
+      | Pkg -> Some "pkg"
       | Artifact a -> Some (String.drop (Artifact.ext a) 1)
     with
     | None -> Pform_was_deleted
@@ -385,6 +462,33 @@ module Env = struct
     }
 
   let syntax_version t = t.syntax_version
+
+  let pkg =
+    let macros =
+      let macro (x : Macro.t) = No_info x in
+      String.Map.of_list_exn [ ("pkg", macro Pkg) ]
+    in
+    let vars =
+      let pkg =
+        [ ("switch", Var.Pkg.Switch)
+        ; ("os-version", Os_version)
+        ; ("os-distribution", Os_distribution)
+        ; ("os-family", Os_family)
+        ; ("build", Build)
+        ; ("prefix", Prefix)
+        ; ("user", User)
+        ; ("group", Group)
+        ; ("arch", Arch)
+        ]
+        |> List.rev_append
+             (List.rev_map Var.Pkg.Section.all ~f:(fun (section, name) ->
+                  (name, Var.Pkg.Section_dir section)))
+        |> List.rev_map ~f:(fun (x, y) -> (x, No_info (Var.Pkg y)))
+      in
+      let vars = ("make", No_info Var.Make) :: pkg in
+      String.Map.of_list_exn vars
+    in
+    fun syntax_version -> { vars; macros; syntax_version }
 
   let initial =
     let macros =

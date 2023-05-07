@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683480326537,
+  "lastUpdate": 1683480734605,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -29346,6 +29346,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.07975017848",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "javier.chavarri@gmail.com",
+            "name": "Javier Chávarri",
+            "username": "jchavarri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3bfe4d78c5a973651b72744e2daf35f44974733c",
+          "message": "ci bench mark: increase synth watch threshold (#7689)\n\nSigned-off-by: Javier Chávarri <javier.chavarri@gmail.com>",
+          "timestamp": "2023-05-07T09:54:56-07:00",
+          "tree_id": "762d28e0a653f20e3a659d0038ef0e86de138553",
+          "url": "https://github.com/ocaml/dune/commit/3bfe4d78c5a973651b72744e2daf35f44974733c"
+        },
+        "date": 1683480733634,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "80.36770187692667",
             "unit": "seconds"
           }
         ]

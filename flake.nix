@@ -90,7 +90,7 @@
 
       packages = {
         dune = scope.dune;
-        default = with pkgs; stdenv.mkDerivation rec {
+        default = with pkgs; stdenv.mkDerivation {
           pname = package;
           version = "n/a";
           src = ./.;

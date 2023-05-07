@@ -92,11 +92,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1682280790,
-        "narHash": "sha256-jMtxPlmu1E/tFuWFPH/skzsqYFM8uCO6gUFaKUi07/c=",
+        "lastModified": 1683443081,
+        "narHash": "sha256-T3vN2Ewlh4X1T3kKwRW+cZvob+FaE9WUWCEbUcn56KQ=",
         "owner": "melange-re",
         "repo": "melange",
-        "rev": "799f5d964d525b633419e7e15c4b7c23752983c1",
+        "rev": "e379b5304cf18cfae52fff929c278ff92cb54e9e",
         "type": "github"
       },
       "original": {
@@ -179,11 +179,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1682109806,
-        "narHash": "sha256-d9g7RKNShMLboTWwukM+RObDWWpHKaqTYXB48clBWXI=",
+        "lastModified": 1683442750,
+        "narHash": "sha256-IiJ0WWW6OcCrVFl1ijE+gTaP0ChFfV6dNkJR05yStmw=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "2362848adf8def2866fabbffc50462e929d7fffb",
+        "rev": "eb751d65225ec53de9cf3d88acbf08d275882389",
         "type": "github"
       },
       "original": {
@@ -211,11 +211,11 @@
     },
     "nixpkgs_3": {
       "locked": {
-        "lastModified": 1671359686,
-        "narHash": "sha256-3MpC6yZo+Xn9cPordGz2/ii6IJpP2n8LE8e/ebUXLrs=",
+        "lastModified": 1682362401,
+        "narHash": "sha256-/UMUHtF2CyYNl4b60Z2y4wwTTdIWGKhj9H301EDcT9M=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "04f574a1c0fde90b51bf68198e2297ca4e7cccf4",
+        "rev": "884ac294018409e0d1adc0cae185439a44bd6b0b",
         "type": "github"
       },
       "original": {
@@ -239,11 +239,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1679588234,
-        "narHash": "sha256-X0zKG9MF3I/71TA+cSSKCxHANsuFDZED1hcjjZDADFU=",
+        "lastModified": 1683139055,
+        "narHash": "sha256-koeiojvUw2D2bGUBdAGxnlgYZmVenSjQV90EE3w7Ink=",
         "ref": "refs/heads/master",
-        "rev": "66539c162dc49010d73535a40c439bc5a3a2b39f",
-        "revCount": 1977,
+        "rev": "88333f9c344f3caaf3eecf4e3ede7453f21247f3",
+        "revCount": 1990,
         "submodules": true,
         "type": "git",
         "url": "https://www.github.com/ocaml/ocaml-lsp"
@@ -268,11 +268,11 @@
         "opam2json": "opam2json"
       },
       "locked": {
-        "lastModified": 1673211536,
-        "narHash": "sha256-I6VLdlTpWFwTI2iV9f7d5q05bnAQyXSJjCs2lwHmqWc=",
+        "lastModified": 1681998787,
+        "narHash": "sha256-SCGFATFXNsE8SVNSrq4Xf8uxpqc5AEqCM0jnAfdOOMQ=",
         "owner": "tweag",
         "repo": "opam-nix",
-        "rev": "bb3391b226b3b10a914103098bbe4cb972b4eeaa",
+        "rev": "13b68fa2d6e50f0f668750e2180763eb0c3b808f",
         "type": "github"
       },
       "original": {
@@ -294,11 +294,11 @@
         "opam2json": "opam2json_2"
       },
       "locked": {
-        "lastModified": 1681998787,
-        "narHash": "sha256-SCGFATFXNsE8SVNSrq4Xf8uxpqc5AEqCM0jnAfdOOMQ=",
+        "lastModified": 1682411044,
+        "narHash": "sha256-HJY+LANQ75YQSfaTCOnmtiF4pF8d9Eb4dz+wLyNAihE=",
         "owner": "tweag",
         "repo": "opam-nix",
-        "rev": "13b68fa2d6e50f0f668750e2180763eb0c3b808f",
+        "rev": "02f7ae28a210e17ca5811b0a4c116acd94e82faa",
         "type": "github"
       },
       "original": {
@@ -342,11 +342,11 @@
     "opam-repository": {
       "flake": false,
       "locked": {
-        "lastModified": 1682021363,
-        "narHash": "sha256-nDUDFwyOTZDALeqqEDnF2PTPIHT4sVYdQXUbRt03oNs=",
+        "lastModified": 1683446036,
+        "narHash": "sha256-FawBf0/SN8RwtZ9GBd6yT0726R80yX4oV3dX5A9J2LA=",
         "owner": "ocaml",
         "repo": "opam-repository",
-        "rev": "786c55fa77c37f07eceea7d6a9bec04d2225e302",
+        "rev": "297ab9ebb38254eee222f5bb4365ae80baa9caa1",
         "type": "github"
       },
       "original": {

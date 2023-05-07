@@ -206,7 +206,9 @@ end = struct
           let visibility = Module.visibility m in
           let dir' = Obj_dir.cm_dir external_obj_dir cm_kind visibility in
           if Path.equal (Path.build dir) dir' then None
-          else Path.basename dir' |> Option.some
+          else
+            Path.drop_prefix_exn dir' ~prefix:(Path.build dir)
+            |> Path.Local.to_string |> Option.some
       in
       let if_ b (cm_kind, f) =
         if b then

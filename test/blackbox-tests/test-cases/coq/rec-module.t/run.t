@@ -1,4 +1,6 @@
   $ dune build --display short --debug-dependency-path @all
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
         coqdep .rec_module.theory.d
           coqc b/foo.{glob,vo}
           coqc c/d/bar.{glob,vo}
@@ -6,6 +8,8 @@
           coqc a/bar.{glob,vo}
 
   $ dune build --debug-dependency-path @default
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   lib: [
     "_build/install/default/lib/rec/META"
     "_build/install/default/lib/rec/dune-package"

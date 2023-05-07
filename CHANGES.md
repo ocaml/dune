@@ -7,6 +7,9 @@ Unreleased
 - Allow overriding the `ocaml` binary with findlib configuration (#7648,
   @rgrinberg)
 
+- merlin: ignore instrumentation settings for preprocessing. (#7606, fixes
+  #7465, @Alizter)
+
 - When a rule's action is interrupted, delete any leftover directory targets.
   This is consistent with how we treat file targets. (#7564, @rgrinberg)
 
@@ -19,6 +22,9 @@ Unreleased
 
 - Load the host context `findlib.conf` when cross-compiling (#7428, fixes
   #1701, @rgrinberg, @anmonteiro)
+
+- Add a `coqdoc_flags` field to the `coq.theory` stanza allowing the user to
+  pass extra arguments to `coqdoc`. (#7676, fixes #7954 @Alizter)
 
 - Resolve `ppx_runtime_libraries` in the target context when cross compiling
   (#7450, fixes #2794, @anmonteiro)
@@ -142,6 +148,17 @@ Unreleased
 - Introduce mdx stanza 0.4 requiring mdx >= 2.3.0 which updates the default
   list of files to include `*.mld` files (#7582, @Leonidas-from-XIV)
 
+- Fix RPC server on Windows (used for OCaml-LSP). (#7666, @nojb)
+
+- Coq language versions less 0.8 are deprecated, and will be removed
+  in an upcoming Dune version. All users are required to migrate to
+  `(coq lang 0.8)` which provides the right semantics for theories
+  that have been globally installed, such as those coming from opam
+  (@ejgallego, @Alizter)
+
+- Bump minimum version of the dune language for the melange syntax extension
+  from 3.7 to 3.8 (#7665, @jchavarri)
+
 3.7.1 (2023-04-04)
 ------------------
 
@@ -155,6 +172,14 @@ Unreleased
 
 - Handle "Too many links" errors when using Dune cache on Windows.  The fix in
   3.7.0 for this same issue was not effective due to a typo. (#7472, @nojb)
+
+- In `(executable)`, `(public_name -)` is now equivalent to no `(public_name)`.
+  This is consistent with how `(executables)` handles this field.
+  (#7576 , fixes #5852, @emillon)
+
+- Change directory of odoc assets to `odoc.support` (was `_odoc_support`) so
+  that it works with Github Pages out of the box. (#7588, fixes #7364,
+  @emillon)
 
 3.7.0 (2023-02-17)
 ------------------

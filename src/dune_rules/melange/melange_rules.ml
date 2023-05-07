@@ -29,14 +29,9 @@ let output_of_lib ~target_dir lib =
           [ "node_modules"; Lib_name.to_string lib_name ] )
 
 let lib_output_path ~output_dir ~lib_dir src =
-  let dir =
-    let src_dir = Path.to_string src in
-    let lib_dir = Path.to_string lib_dir in
-    String.drop_prefix src_dir ~prefix:lib_dir
-    |> Option.value_exn
-    |> String.drop_prefix_if_exists ~prefix:"/"
-  in
-  if dir = "" then output_dir else Path.Build.relative output_dir dir
+  match Path.drop_prefix_exn src ~prefix:lib_dir |> Path.Local.to_string with
+  | "" -> output_dir
+  | dir -> Path.Build.relative output_dir dir
 
 let make_js_name ~js_ext ~output m =
   let basename = Melange.js_basename m ^ js_ext in
@@ -217,11 +212,6 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
     in
     let* () = Module_compilation.build_all cctx in
     let* requires_compile = Compilation_context.requires_compile cctx in
-    let preprocess =
-      Preprocess.Per_module.with_instrumentation mel.preprocess
-        ~instrumentation_backend:
-          (Lib.DB.instrumentation_backend (Scope.libs scope))
-    in
     let stdlib_dir = ctx.lib_config.stdlib_dir in
     let+ () =
       let emit_and_libs_deps =
@@ -255,7 +245,10 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
     in
     ( cctx
     , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
-        ~source_dirs:Path.Source.Set.empty ~libname:None ~preprocess ~obj_dir
+        ~source_dirs:Path.Source.Set.empty ~libname:None
+        ~preprocess:
+          (Preprocess.Per_module.without_instrumentation mel.preprocess)
+        ~obj_dir
         ~ident:(Lib.Compile.merlin_ident compile_info)
         ~dialects:(Dune_project.dialects (Scope.project scope))
         ~modes:`Melange_emit )

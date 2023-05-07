@@ -145,8 +145,8 @@ end
 
 let syntax =
   Dune_lang.Syntax.create ~name:Dune_project.Melange_syntax.name
-    ~desc:"support for Melange compiler"
-    [ ((0, 1), `Since (3, 7)) ]
+    ~desc:"the Melange extension"
+    [ ((0, 1), `Since (3, 8)) ]
 
 let () =
   Dune_project.Extension.register_simple syntax

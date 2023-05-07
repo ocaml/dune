@@ -6,7 +6,7 @@ Example using melange.emit, copy_files and include_subdirs
   > EOF
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 

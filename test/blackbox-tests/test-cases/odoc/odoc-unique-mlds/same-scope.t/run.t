@@ -1,6 +1,6 @@
 Duplicate mld's in the same scope
   $ dune build @doc --display short
-          odoc _doc/_html/_odoc_support
+          odoc _doc/_html/odoc.support
           odoc _doc/_odoc/pkg/root/page-index.odoc
         ocamlc lib1/.root_lib1.objs/byte/root_lib1.{cmi,cmo,cmt}
         ocamlc lib2/.root_lib2.objs/byte/root_lib2.{cmi,cmo,cmt}

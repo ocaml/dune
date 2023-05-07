@@ -537,14 +537,11 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
       ; compile_info
       }
   in
-  let preprocess =
-    Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
-      ~instrumentation_backend:
-        (Lib.DB.instrumentation_backend (Scope.libs scope))
-  in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
-      ~source_dirs:Path.Source.Set.empty ~preprocess
+      ~source_dirs:Path.Source.Set.empty
+      ~preprocess:
+        (Preprocess.Per_module.without_instrumentation lib.buildable.preprocess)
       ~libname:(Some (snd lib.name))
       ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))

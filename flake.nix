@@ -78,7 +78,7 @@
             repos = [ opam-repository ];
           } ./.
           (devPackages // {
-            ocaml-base-compiler = "4.14.0";
+            ocaml-base-compiler = "4.14.1";
           });
       testBuildInputs = with pkgs;
         [ file mercurial ]

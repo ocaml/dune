@@ -43,34 +43,12 @@ Test that installed binaries are visible in dependent packages
   $ dune internal dump _build/default/.pkg/test/target/cookie
   { files =
       map
-        { LIB :
-            [ { src = In_source_tree "libxxx"
-              ; kind = File
-              ; dst = "libxxx"
-              ; section = LIB
-              }
-            ]
+        { LIB : [ In_build_dir "default/.pkg/test/target/lib/test/libxxx" ]
         ; LIB_ROOT :
-            [ { src = In_source_tree "lib_rootxxx"
-              ; kind = File
-              ; dst = "lib_rootxxx"
-              ; section = LIB_ROOT
-              }
-            ]
-        ; BIN :
-            [ { src = In_source_tree "foo"
-              ; kind = File
-              ; dst = "foo"
-              ; section = BIN
-              }
-            ]
+            [ In_build_dir "default/.pkg/test/target/lib/lib_rootxxx" ]
+        ; BIN : [ In_build_dir "default/.pkg/test/target/bin/foo" ]
         ; SHARE_ROOT :
-            [ { src = In_source_tree "lib_rootxxx"
-              ; kind = File
-              ; dst = "lib_rootxxx"
-              ; section = SHARE_ROOT
-              }
-            ]
+            [ In_build_dir "default/.pkg/test/target/share/lib_rootxxx" ]
         }
   ; variables = []
   }

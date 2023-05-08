@@ -270,15 +270,14 @@ module Install_cookie = struct
      installed artifacts and variables. *)
 
   type t =
-    { files : Path.t Install.Entry.t list Section.Map.t
+    { files : Path.t list Section.Map.t
     ; variables : Variable.t list
     }
 
   let to_dyn { files; variables } =
     let open Dyn in
     record
-      [ ( "files"
-        , Section.Map.to_dyn (list @@ Install.Entry.to_dyn Path.to_dyn) files )
+      [ ("files", Section.Map.to_dyn (list Path.to_dyn) files)
       ; ("variables", list Variable.to_dyn variables)
       ]
 
@@ -641,8 +640,7 @@ module Action_expander = struct
                   ->
                  let bins =
                    Section.Map.Multi.find cookie.files Bin
-                   |> Path.Set.of_list_map ~f:(Paths.entry_dst pkg.paths)
-                   |> Path.Set.fold ~init:bins ~f:(fun bin acc ->
+                   |> List.fold_left ~init:bins ~f:(fun acc bin ->
                           Filename.Map.set acc (Path.basename bin) bin)
                  in
                  let dep_info =
@@ -844,6 +842,16 @@ module Install_action = struct
       in
       (files, dirs)
 
+    let maybe_drop_sandbox_dir path =
+      match Path.extract_build_context_dir_maybe_sandboxed path with
+      | None -> path
+      | Some (sandbox, source) ->
+        let ctx =
+          let name = Path.basename sandbox in
+          Path.relative (Path.build Path.Build.root) name
+        in
+        Path.append_source ctx source
+
     let section_map_of_dir install_paths =
       let get = Install.Section.Paths.get install_paths in
       List.concat_map installable_sections ~f:(fun section ->
@@ -856,28 +864,6 @@ module Install_action = struct
           in
           collect dirs acc
           |> List.rev_map ~f:(fun file ->
-                 let entry =
-                   let dst =
-                     Path.drop_prefix_exn ~prefix:path file
-                     |> Path.Local.to_string
-                   in
-                   let file =
-                     match
-                       Path.extract_build_context_dir_maybe_sandboxed file
-                     with
-                     | None -> Path.as_in_build_dir_exn file
-                     | Some (sandbox, source) ->
-                       let ctx =
-                         let name = Path.basename sandbox in
-                         Path.relative (Path.build Path.Build.root) name
-                       in
-                       Path.append_source ctx source |> Path.as_in_build_dir_exn
-                   in
-                   let entry =
-                     Install.Entry.make section ~dst ~kind:`File file
-                   in
-                   Install.Entry.set_src entry (Path.build file)
-                 in
                  let section =
                    match
                      match section with
@@ -891,7 +877,7 @@ module Install_action = struct
                      if Path.Permissions.(test execute perm) then section'
                      else section
                  in
-                 (section, entry)))
+                 (section, maybe_drop_sandbox_dir file)))
       |> Section.Map.of_list_multi
 
     let action
@@ -925,41 +911,51 @@ module Install_action = struct
                     , entry ))
                 |> Path.Map.of_list_multi
               in
-              Path.Map.iteri by_src ~f:(fun src entries ->
-                  (* TODO set permissions *)
-                  let maybe_set_executable section dst =
-                    match Section.should_set_executable_bit section with
-                    | false -> ()
-                    | true ->
-                      let permission =
-                        let perm = (Path.Untracked.stat_exn dst).st_perm in
-                        Path.Permissions.(add execute) perm
-                      in
-                      Path.chmod dst ~mode:permission
-                  in
-                  match entries with
-                  | [] -> assert false
-                  | [ entry ] ->
-                    let dst =
-                      prepare_copy_or_move ~install_file ~target_dir entry
-                    in
-                    Path.rename src dst;
-                    maybe_set_executable entry.section dst
-                  | entry :: entries ->
-                    List.iter entries ~f:(fun entry ->
-                        let dst =
-                          prepare_copy_or_move ~install_file ~target_dir entry
+              let install_entries =
+                Path.Map.to_list_map by_src ~f:(fun src entries ->
+                    (* TODO set permissions *)
+                    let maybe_set_executable section dst =
+                      match Section.should_set_executable_bit section with
+                      | false -> ()
+                      | true ->
+                        let permission =
+                          let perm = (Path.Untracked.stat_exn dst).st_perm in
+                          Path.Permissions.(add execute) perm
                         in
-                        (* TODO hard link if possible *)
-                        Io.copy_file ~src ~dst ();
-                        maybe_set_executable entry.section dst);
-                    let dst =
-                      prepare_copy_or_move ~install_file ~target_dir entry
+                        Path.chmod dst ~mode:permission
                     in
-                    Path.rename src dst;
-                    maybe_set_executable entry.section dst);
-              List.rev_map install_entries
-                ~f:(fun (entry : _ Install.Entry.t) -> (entry.section, entry))
+                    match entries with
+                    | [] -> assert false
+                    | [ entry ] ->
+                      let dst =
+                        prepare_copy_or_move ~install_file ~target_dir entry
+                      in
+                      Path.rename src dst;
+                      maybe_set_executable entry.section dst;
+                      [ (entry.section, dst) ]
+                    | entry :: entries ->
+                      let install_entries =
+                        List.map entries ~f:(fun entry ->
+                            let dst =
+                              prepare_copy_or_move ~install_file ~target_dir
+                                entry
+                            in
+                            (* TODO hard link if possible *)
+                            Io.copy_file ~src ~dst ();
+                            maybe_set_executable entry.section dst;
+                            (entry.section, dst))
+                      in
+                      let dst =
+                        prepare_copy_or_move ~install_file ~target_dir entry
+                      in
+                      Path.rename src dst;
+                      maybe_set_executable entry.section dst;
+                      (entry.section, dst) :: install_entries)
+              in
+              List.concat install_entries
+              |> List.rev_map ~f:(fun (section, file) ->
+                     let file = maybe_drop_sandbox_dir file in
+                     (section, file))
               |> Section.Map.of_list_multi
             in
             Path.unlink install_file;

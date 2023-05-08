@@ -1,6 +1,9 @@
 Test that we can set variables
 
   $ mkdir dune.lock
+  $ cat >dune.lock/lock.dune <<EOF
+  > (lang package 0.1)
+  > EOF
   $ cat >dune.lock/test <<EOF
   > (build
   >  (system "\| cat >test.config <<EOF

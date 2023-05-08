@@ -1,6 +1,9 @@
 Test that we run the build command
 
   $ mkdir dune.lock
+  $ cat >dune.lock/lock.dune <<EOF
+  > (lang package 0.1)
+  > EOF
   $ cat >dune.lock/test <<EOF
   > (build
   >  (progn

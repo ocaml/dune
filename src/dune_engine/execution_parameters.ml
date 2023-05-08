@@ -20,7 +20,7 @@ module Action_output_on_success = struct
 end
 
 type t =
-  { dune_version : Dune_lang.Syntax.Version.t
+  { dune_version : Dune_sexp.Syntax.Version.t
   ; action_stdout_on_success : Action_output_on_success.t
   ; action_stderr_on_success : Action_output_on_success.t
   ; expand_aliases_in_sandbox : bool
@@ -34,7 +34,7 @@ let equal
     ; expand_aliases_in_sandbox
     ; add_workspace_root_to_build_path_prefix_map
     } t =
-  Dune_lang.Syntax.Version.equal dune_version t.dune_version
+  Dune_sexp.Syntax.Version.equal dune_version t.dune_version
   && Action_output_on_success.equal action_stdout_on_success
        t.action_stdout_on_success
   && Action_output_on_success.equal action_stderr_on_success
@@ -51,7 +51,7 @@ let hash
     ; add_workspace_root_to_build_path_prefix_map
     } =
   Poly.hash
-    ( Dune_lang.Syntax.Version.hash dune_version
+    ( Dune_sexp.Syntax.Version.hash dune_version
     , Action_output_on_success.hash action_stdout_on_success
     , Action_output_on_success.hash action_stderr_on_success
     , expand_aliases_in_sandbox
@@ -65,7 +65,7 @@ let to_dyn
     ; add_workspace_root_to_build_path_prefix_map
     } =
   Dyn.Record
-    [ ("dune_version", Dune_lang.Syntax.Version.to_dyn dune_version)
+    [ ("dune_version", Dune_sexp.Syntax.Version.to_dyn dune_version)
     ; ( "action_stdout_on_success"
       , Action_output_on_success.to_dyn action_stdout_on_success )
     ; ( "action_stderr_on_success"

@@ -47,7 +47,7 @@ val hash : t -> int
 
 val compare : t -> t -> Ordering.t
 
-val encode : t Dune_lang.Encoder.t
+val encode : t Dune_sexp.Encoder.t
 
 (** [to_dyn] is used as a marshallable representation of [t] (to compute
     digests), so it must be injective *)

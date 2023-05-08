@@ -10,4 +10,17 @@ Install actions should have the switch directory prepared:
   > EOF
 
   $ dune build .pkg/test/target/
-  find: '../target': No such file or directory
+  ../target
+  ../target/bin
+  ../target/doc
+  ../target/doc/test
+  ../target/etc
+  ../target/etc/test
+  ../target/lib
+  ../target/lib/stublibs
+  ../target/lib/test
+  ../target/lib/toplevel
+  ../target/man
+  ../target/sbin
+  ../target/share
+  ../target/share/test

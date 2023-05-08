@@ -727,7 +727,11 @@ end
 
 open Resolve
 
-module Install = struct
+module Install_action = struct
+  let installable_sections =
+    Section.(Set.diff all (Set.of_list [ Misc; Libexec; Libexec_root ]))
+    |> Section.Set.to_list
+
   module Spec = struct
     type ('path, 'target) t =
       { install_file : 'path
@@ -818,55 +822,52 @@ module Install = struct
 
     let section_map_of_dir install_paths =
       let get = Install.Section.Paths.get install_paths in
-      Section.(Set.diff all (Set.of_list [ Misc; Libexec; Libexec_root ]))
-      |> Section.Set.to_list
-      |> List.concat_map ~f:(fun section ->
-             let path = get section in
-             let acc, dirs =
-               match section with
-               | Lib_root -> skip path [ get Toplevel; get Stublibs; get Lib ]
-               | Share_root -> skip path [ get Share ]
-               | _ -> ([], [ path ])
-             in
-             collect dirs acc
-             |> List.rev_map ~f:(fun file ->
-                    let entry =
-                      let dst =
-                        Path.drop_prefix_exn ~prefix:path file
-                        |> Path.Local.to_string
-                      in
-                      let file =
-                        match
-                          Path.extract_build_context_dir_maybe_sandboxed file
-                        with
-                        | None -> Path.as_in_build_dir_exn file
-                        | Some (sandbox, source) ->
-                          let ctx =
-                            let name = Path.basename sandbox in
-                            Path.relative (Path.build Path.Build.root) name
-                          in
-                          Path.append_source ctx source
-                          |> Path.as_in_build_dir_exn
-                      in
-                      let entry =
-                        Install.Entry.make section ~dst ~kind:`File file
-                      in
-                      Install.Entry.set_src entry (Path.build file)
-                    in
-                    let section =
-                      match
-                        match section with
-                        | Lib_root -> Some Section.Libexec_root
-                        | Lib -> Some Libexec
-                        | _ -> None
-                      with
-                      | None -> section
-                      | Some section' ->
-                        let perm = (Path.Untracked.stat_exn file).st_perm in
-                        if Path.Permissions.(test execute perm) then section'
-                        else section
-                    in
-                    (section, entry)))
+      List.concat_map installable_sections ~f:(fun section ->
+          let path = get section in
+          let acc, dirs =
+            match section with
+            | Lib_root -> skip path [ get Toplevel; get Stublibs; get Lib ]
+            | Share_root -> skip path [ get Share ]
+            | _ -> ([], [ path ])
+          in
+          collect dirs acc
+          |> List.rev_map ~f:(fun file ->
+                 let entry =
+                   let dst =
+                     Path.drop_prefix_exn ~prefix:path file
+                     |> Path.Local.to_string
+                   in
+                   let file =
+                     match
+                       Path.extract_build_context_dir_maybe_sandboxed file
+                     with
+                     | None -> Path.as_in_build_dir_exn file
+                     | Some (sandbox, source) ->
+                       let ctx =
+                         let name = Path.basename sandbox in
+                         Path.relative (Path.build Path.Build.root) name
+                       in
+                       Path.append_source ctx source |> Path.as_in_build_dir_exn
+                   in
+                   let entry =
+                     Install.Entry.make section ~dst ~kind:`File file
+                   in
+                   Install.Entry.set_src entry (Path.build file)
+                 in
+                 let section =
+                   match
+                     match section with
+                     | Lib_root -> Some Section.Libexec_root
+                     | Lib -> Some Libexec
+                     | _ -> None
+                   with
+                   | None -> section
+                   | Some section' ->
+                     let perm = (Path.Untracked.stat_exn file).st_perm in
+                     if Path.Permissions.(test execute perm) then section'
+                     else section
+                 in
+                 (section, entry)))
       |> Section.Map.of_list_multi
 
     let action
@@ -1086,10 +1087,19 @@ let gen_rules context_name (pkg : Pkg.t) =
         | None -> Memo.return [ build_action ]
         | Some install_action ->
           let+ install_action = install_action in
-          [ build_action; install_action ]
+          let mkdir_install_dirs =
+            let install_paths = Paths.install_paths pkg.paths in
+            Install_action.installable_sections
+            |> List.rev_map ~f:(fun section ->
+                   Install.Section.Paths.get install_paths section
+                   |> Path.as_in_build_dir_exn |> Action.mkdir)
+            |> Action.progn |> Action.Full.make
+            |> Action_builder.With_targets.return
+          in
+          [ build_action; mkdir_install_dirs; install_action ]
       in
       let install_file_action =
-        Install.action pkg.paths
+        Install_action.action pkg.paths
           (match install_action with
           | None -> `No_install_action
           | Some _ -> `Has_install_action)

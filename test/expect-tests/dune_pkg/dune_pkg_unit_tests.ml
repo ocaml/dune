@@ -1,5 +1,6 @@
 open Stdune
 module Fetch = Dune_pkg.Fetch
+module Checksum = Dune_pkg.Checksum
 module Scheduler = Dune_engine.Scheduler
 
 let serve_once ~filename ~port () =
@@ -27,12 +28,37 @@ let url ~port ~filename =
   let localhost = Unix.inet_addr_loopback |> Unix.string_of_inet_addr in
   Format.sprintf "http://%s:%d/%s" localhost port filename |> OpamUrl.of_string
 
-let download ~port ~filename ~target () =
+let calculate_checksum ~filename =
+  OpamHash.compute filename |> Checksum.of_opam_hash
+
+let wrong_checksum =
+  OpamHash.compute_from_string "random content" |> Checksum.of_opam_hash
+
+let download ~port ~filename ~target ?checksum () =
   let open Fiber.O in
   let url = url ~port ~filename in
-  let* () = Fetch.fetch Loc.none url ~target in
-  print_endline "Done downloading";
-  Fiber.return ()
+  let* res = Fetch.fetch ~checksum ~target url in
+  match res with
+  | Error (Unavailable None) ->
+    let errs = [ Pp.text "Failure while downloading" ] in
+    User_error.raise ~loc:Loc.none errs
+  | Error (Unavailable (Some msg)) ->
+    User_error.raise ~loc:Loc.none [ User_message.pp msg ]
+  | Error (Checksum_mismatch actual_checksum) ->
+    let expected_checksum =
+      match checksum with
+      | Some v -> v
+      | None -> assert false
+    in
+    User_error.raise ~loc:Loc.none
+      [ Pp.text "Expected checksum was"
+      ; Pp.text @@ Checksum.to_string expected_checksum
+      ; Pp.text "but got"
+      ; Pp.text @@ Checksum.to_string actual_checksum
+      ]
+  | Ok () ->
+    print_endline "Done downloading";
+    Fiber.return ()
 
 let run thunk =
   let on_event _config _event = () in
@@ -46,21 +72,24 @@ let run thunk =
   in
   Scheduler.Run.go config ~on_event thunk
 
-let random_port state =
+let random_port () =
+  let state = Base.Random.State.make_self_init ~allow_in_tests:true () in
   (* ephemeral port range that is not assinged by IANA to prevent collisions *)
   Base.Random.State.int_incl state 49152 65535
 
-let%expect_test "downloading simple file" =
-  (* needed to get the testing machinery working *)
-  Dune_tests_common.init ();
-  let rng = Base.Random.State.make_self_init ~allow_in_tests:true () in
-  let port = random_port rng in
-  let filename = "plaintext.md" in
-  let server = serve_once ~filename ~port () in
-  let destination = "downloaded.md" in
+let target destination =
   let ext = Path.External.of_filename_relative_to_initial_cwd destination in
-  let target = Path.external_ ext in
-  run (download ~port ~filename ~target);
+  Path.external_ ext
+
+let%expect_test "downloading simple file" =
+  Dune_tests_common.init ();
+  let filename = "plaintext.md" in
+  let port = random_port () in
+  let server = serve_once ~filename ~port () in
+  let destination = "destination.md" in
+  run
+    (download ~port ~filename ~target:(target destination)
+       ~checksum:(calculate_checksum ~filename));
   Thread.join server;
   let served_content = Io.String_path.read_file filename in
   let downloaded_content = Io.String_path.read_file destination in
@@ -85,3 +114,39 @@ let%expect_test "downloading simple file" =
     webserver works as desired.
 
     Equal: true |}]
+
+let%expect_test "downloading but the checksums don't match" =
+  Dune_tests_common.init ();
+  let filename = "plaintext.md" in
+  let port = random_port () in
+  let server = serve_once ~filename ~port () in
+  let destination = "destination.md" in
+  run
+    (download ~port ~filename ~target:(target destination)
+       ~checksum:wrong_checksum);
+  Thread.join server;
+  print_endline "Finished successfully?";
+  [%expect.unreachable]
+  [@@expect.uncaught_exn
+    {|
+  (Dune_util__Report_error.Already_reported)
+  Trailing output
+  ---------------
+  Error: Expected checksum was
+  md5=c533195dc4253503071a19d42f08e877
+  but got
+  md5=cbe78b067d4739684e86edfd2cb518bd |}]
+
+let%expect_test "downloading, without any checksum" =
+  Dune_tests_common.init ();
+  let filename = "plaintext.md" in
+  let port = random_port () in
+  let server = serve_once ~filename ~port () in
+  let destination = "destination.md" in
+  run (download ~port ~filename ~target:(target destination));
+  Thread.join server;
+  print_endline "Finished successfully, no checksum verification";
+  [%expect
+    {|
+    Done downloading
+    Finished successfully, no checksum verification |}]

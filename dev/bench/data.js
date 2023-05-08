@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683562615681,
+  "lastUpdate": 1683563025527,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -29694,6 +29694,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.7966933861533334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5af0b5dff2009d65f1ab0e8650d43a038d3df103",
+          "message": "feature(pkg): Better API for Fetch (#7675)\n\n  * Introduces a checksum type\r\n  * Verifies the checksums\r\n  * Adds better error handling\r\n\r\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-05-08T08:50:53-07:00",
+          "tree_id": "a1c1a4d4574f74bd124fd91a53e520b407548b25",
+          "url": "https://github.com/ocaml/dune/commit/5af0b5dff2009d65f1ab0e8650d43a038d3df103"
+        },
+        "date": 1683563024355,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "79.66342548431334",
             "unit": "seconds"
           }
         ]

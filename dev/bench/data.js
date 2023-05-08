@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683587135243,
+  "lastUpdate": 1683587145256,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -29810,6 +29810,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "63.73207768964",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "6061bb0a7d8c6cdb2113ac91d1bd43981e94be3a",
+          "message": "Vendor opam-0install and its dependencies\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-05-08T16:39:48-06:00",
+          "tree_id": "2aff0d371da6cf6c2832ff4dfccbefbeb455b5d0",
+          "url": "https://github.com/ocaml/dune/commit/6061bb0a7d8c6cdb2113ac91d1bd43981e94be3a"
+        },
+        "date": 1683587144580,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.574644669586667",
             "unit": "seconds"
           }
         ]

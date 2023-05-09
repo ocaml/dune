@@ -24,21 +24,13 @@ let%expect_test "setenv" =
     bash -e -u -o pipefail -c 'echo Hello world' |}]
 
 let%expect_test "with-stdout-to" =
-  Redirect_out
-    ( Action.Outputs.Stdout
-    , "foo"
-    , Action.File_perm.Normal
-    , Bash "echo Hello world" )
+  Redirect_out (Action.Outputs.Stdout, "foo", `Normal, Bash "echo Hello world")
   |> print;
   [%expect {|
     bash -e -u -o pipefail -c 'echo Hello world' > foo |}]
 
 let%expect_test "with-stderr-to" =
-  Redirect_out
-    ( Action.Outputs.Stderr
-    , "foo"
-    , Action.File_perm.Normal
-    , Bash "echo Hello world" )
+  Redirect_out (Action.Outputs.Stderr, "foo", `Normal, Bash "echo Hello world")
   |> print;
   [%expect {|
     bash -e -u -o pipefail -c 'echo Hello world' 2> foo |}]
@@ -47,7 +39,7 @@ let%expect_test "with-outputs-to" =
   Redirect_out
     ( Action.Outputs.Outputs
     , "foo"
-    , Action.File_perm.Normal
+    , `Normal
     , Progn [ Bash "first sometinhg"; Bash "then"; Bash "echo Hello world" ] )
   |> print;
   [%expect
@@ -60,10 +52,7 @@ let%expect_test "with-outputs-to" =
 
 let%expect_test "with-outputs-to executable" =
   Redirect_out
-    ( Action.Outputs.Outputs
-    , "foo"
-    , Action.File_perm.Executable
-    , Bash "echo Hello world" )
+    (Action.Outputs.Outputs, "foo", `Executable, Bash "echo Hello world")
   |> print;
   [%expect
     {|
@@ -140,12 +129,12 @@ let%expect_test "echo" =
     echo -n Helloworld |}]
 
 let%expect_test "write-file" =
-  Write_file ("foo", Action.File_perm.Normal, "Hello world") |> print;
+  Write_file ("foo", `Normal, "Hello world") |> print;
   [%expect {|
     echo -n 'Hello world' > foo |}]
 
 let%expect_test "write-file executable" =
-  Write_file ("foo", Action.File_perm.Executable, "Hello world") |> print;
+  Write_file ("foo", `Executable, "Hello world") |> print;
   [%expect {|
       echo -n 'Hello world' > foo;
       chmod +x foo |}]
@@ -215,10 +204,7 @@ let%expect_test "pipe-stdout-to" =
     ( Action.Outputs.Stdout
     , [ Bash "echo Hello world"
       ; Redirect_out
-          ( Action.Outputs.Stdout
-          , "foo"
-          , Action.File_perm.Normal
-          , Bash "echo Hello world" )
+          (Action.Outputs.Stdout, "foo", `Normal, Bash "echo Hello world")
       ] )
   |> print;
   [%expect
@@ -231,10 +217,7 @@ let%expect_test "pipe-stderr-to" =
     ( Action.Outputs.Stderr
     , [ Bash "echo Hello world"
       ; Redirect_out
-          ( Action.Outputs.Stderr
-          , "foo"
-          , Action.File_perm.Normal
-          , Bash "echo Hello world" )
+          (Action.Outputs.Stderr, "foo", `Normal, Bash "echo Hello world")
       ] )
   |> print;
   [%expect
@@ -247,10 +230,7 @@ let%expect_test "pipe-outputs-to" =
     ( Action.Outputs.Outputs
     , [ Bash "echo Hello world"
       ; Redirect_out
-          ( Action.Outputs.Outputs
-          , "foo"
-          , Action.File_perm.Normal
-          , Bash "echo Hello world" )
+          (Action.Outputs.Outputs, "foo", `Normal, Bash "echo Hello world")
       ] )
   |> print;
   [%expect

@@ -60,16 +60,13 @@ end
 
 module File_perm = struct
   type t =
-    | Normal
-    | Executable
+    [ `Normal
+    | `Executable
+    ]
 
   let suffix = function
-    | Normal -> ""
-    | Executable -> "-executable"
-
-  let to_unix_perm = function
-    | Normal -> 0o666
-    | Executable -> 0o777
+    | `Normal -> ""
+    | `Executable -> "-executable"
 end
 
 type t =
@@ -106,7 +103,7 @@ let is_dev_null t = String_with_vars.is_pform t (Var Dev_null)
 
 let translate_to_ignore fn output action =
   if is_dev_null fn then Ignore (output, action)
-  else Redirect_out (output, fn, Normal, action)
+  else Redirect_out (output, fn, `Normal, action)
 
 let two_or_more decode =
   let open Decoder in
@@ -245,7 +242,7 @@ let cstrs_dune_file t =
   ; ( "write-file"
     , let+ fn = sw
       and+ s = sw in
-      Write_file (fn, Normal, s) )
+      Write_file (fn, `Normal, s) )
   ; ( "diff"
     , let+ diff = Diff.decode sw sw ~optional:false in
       Diff diff )

@@ -1,12 +1,13 @@
 open Import
 module Ext = Action_intf.Ext
-module File_perm = File_perm
 module Outputs = Outputs
 module Inputs = Inputs
 
 module type T = sig
   type t
 end
+
+module File_perm = Action_intf.File_perm
 
 module Make
     (Program : T)
@@ -29,13 +30,13 @@ struct
 
   let setenv var value t = Setenv (var, value, t)
 
-  let with_stdout_to ?(perm = File_perm.Normal) path t =
+  let with_stdout_to ?(perm = `Normal) path t =
     Redirect_out (Stdout, path, perm, t)
 
-  let with_stderr_to ?(perm = File_perm.Normal) path t =
+  let with_stderr_to ?(perm = `Normal) path t =
     Redirect_out (Stderr, path, perm, t)
 
-  let with_outputs_to ?(perm = File_perm.Normal) path t =
+  let with_outputs_to ?(perm = `Normal) path t =
     Redirect_out (Outputs, path, perm, t)
 
   let with_stdin_from path t = Redirect_in (Stdin, path, t)
@@ -62,7 +63,7 @@ struct
 
   let bash s = Bash s
 
-  let write_file ?(perm = File_perm.Normal) p s = Write_file (p, perm, s)
+  let write_file ?(perm = `Normal) p s = Write_file (p, perm, s)
 
   let rename a b = Rename (a, b)
 

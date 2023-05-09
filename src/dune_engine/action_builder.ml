@@ -201,7 +201,7 @@ module With_targets = struct
       in
       { build = all (List.rev build); targets }
 
-  let write_file_dyn ?(perm = Action.File_perm.Normal) fn s =
+  let write_file_dyn ?(perm = `Normal) fn s =
     add ~file_targets:[ fn ]
       (let+ s = s in
        Action.Full.make (Action.Write_file (fn, perm, s)))
@@ -219,16 +219,16 @@ let with_file_targets build ~file_targets : _ With_targets.t =
 let with_no_targets build : _ With_targets.t =
   { build; targets = Targets.empty }
 
-let write_file ?(perm = Action.File_perm.Normal) fn s =
+let write_file ?(perm = `Normal) fn s =
   with_file_targets ~file_targets:[ fn ]
     (return (Action.Full.make (Action.Write_file (fn, perm, s))))
 
-let write_file_dyn ?(perm = Action.File_perm.Normal) fn s =
+let write_file_dyn ?(perm = `Normal) fn s =
   with_file_targets ~file_targets:[ fn ]
     (let+ s = s in
      Action.Full.make (Action.Write_file (fn, perm, s)))
 
-let with_stdout_to ?(perm = Action.File_perm.Normal) fn t =
+let with_stdout_to ?(perm = `Normal) fn t =
   with_targets ~targets:(Targets.File.create fn)
     (let+ (act : Action.Full.t) = t in
      Action.Full.map act ~f:(Action.with_stdout_to ~perm fn))
@@ -248,7 +248,7 @@ let symlink_dir ~src ~dst =
          ~dirs:(Path.Build.Set.singleton dst))
     (path src >>> return (Action.Full.make (Action.Symlink (src, dst))))
 
-let create_file ?(perm = Action.File_perm.Normal) fn =
+let create_file ?(perm = `Normal) fn =
   with_file_targets ~file_targets:[ fn ]
     (return
        (Action.Full.make (Action.Redirect_out (Stdout, fn, perm, Action.empty))))

@@ -247,6 +247,10 @@ let diff_eq_files { Diff.optional; mode; file1; file2 } =
   (optional && not (Path.Untracked.exists file2))
   || compare_files mode file1 file2 = Eq
 
+let to_unix_perm : Action.File_perm.t -> int = function
+  | `Normal -> 0o666
+  | `Executable -> 0o777
+
 let rec exec t ~display ~ectx ~eenv =
   match (t : Action.t) with
   | Run (Error e, _) -> Action.Prog.Not_found.raise e
@@ -272,7 +276,7 @@ let rec exec t ~display ~ectx ~eenv =
   | Setenv (var, value, t) ->
     exec t ~display ~ectx ~eenv:{ eenv with env = Env.add eenv.env ~var ~value }
   | Redirect_out (Stdout, fn, perm, Echo s) ->
-    let perm = Action.File_perm.to_unix_perm perm in
+    let perm = to_unix_perm perm in
     Io.write_file (Path.build fn) (String.concat s ~sep:" ") ~perm;
     Fiber.return Done
   | Redirect_out (outputs, fn, perm, t) ->
@@ -280,7 +284,7 @@ let rec exec t ~display ~ectx ~eenv =
     redirect_out t ~display ~ectx ~eenv outputs ~perm fn
   | Redirect_in (inputs, fn, t) -> redirect_in t ~display ~ectx ~eenv inputs fn
   | Ignore (outputs, t) ->
-    redirect_out t ~display ~ectx ~eenv ~perm:Normal outputs Dev_null.path
+    redirect_out t ~display ~ectx ~eenv ~perm:`Normal outputs Dev_null.path
   | Progn ts -> exec_list ts ~display ~ectx ~eenv
   | Concurrent ts ->
     Fiber.parallel_map ts ~f:(exec ~display ~ectx ~eenv)
@@ -317,7 +321,7 @@ let rec exec t ~display ~ectx ~eenv =
     in
     Done
   | Write_file (fn, perm, s) ->
-    let perm = Action.File_perm.to_unix_perm perm in
+    let perm = to_unix_perm perm in
     Io.write_file (Path.build fn) s ~perm;
     Fiber.return Done
   | Rename (src, dst) ->
@@ -427,10 +431,7 @@ and redirect t ~display ~ectx ~eenv ?in_ ?out () =
     match out with
     | None -> (eenv.stdout_to, eenv.stderr_to, ignore)
     | Some (outputs, fn, perm) ->
-      let out =
-        Process.Io.file fn Process.Io.Out
-          ~perm:(Action.File_perm.to_unix_perm perm)
-      in
+      let out = Process.Io.file fn Process.Io.Out ~perm:(to_unix_perm perm) in
       let stdout_to, stderr_to =
         match outputs with
         | Stdout -> (out, eenv.stderr_to)
@@ -486,7 +487,7 @@ and exec_pipe outputs ts ~display ~ectx ~eenv =
           { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to }
         in
         redirect t ~display ~ectx ~eenv ~in_:(Stdin, in_)
-          ~out:(Stdout, out, Normal) ()
+          ~out:(Stdout, out, `Normal) ()
       in
       Dtemp.destroy File in_;
       match done_or_deps with
@@ -504,7 +505,7 @@ and exec_pipe outputs ts ~display ~ectx ~eenv =
       | Stderr -> { eenv with stdout_to = Process.Io.multi_use eenv.stdout_to }
     in
     let* done_or_deps =
-      redirect_out t1 ~display ~ectx ~eenv ~perm:Normal outputs out
+      redirect_out t1 ~display ~ectx ~eenv ~perm:`Normal outputs out
     in
     match done_or_deps with
     | Need_more_deps _ as need -> Fiber.return need

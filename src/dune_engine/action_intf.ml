@@ -1,5 +1,12 @@
 open Import
 
+module File_perm = struct
+  type t =
+    [ `Normal
+    | `Executable
+    ]
+end
+
 module Simplified = struct
   type destination =
     | Dev_null

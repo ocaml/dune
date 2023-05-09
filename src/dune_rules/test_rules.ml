@@ -99,7 +99,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                 ; action =
                     ( loc
                     , Action_unexpanded.Redirect_out
-                        (Stdout, diff.file2, Normal, run_action) )
+                        (Stdout, diff.file2, `Normal, run_action) )
                 ; mode = Standard
                 ; patch_back_source_tree = false
                 ; locks = t.locks

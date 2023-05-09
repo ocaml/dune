@@ -19,9 +19,10 @@ module Inputs : sig
 end
 
 module File_perm : sig
-  include
-    module type of Dune_lang.Action.File_perm
-      with type t = Dune_lang.Action.File_perm.t
+  type t =
+    [ `Normal
+    | `Executable
+    ]
 end
 
 module Ext : module type of Action_intf.Ext

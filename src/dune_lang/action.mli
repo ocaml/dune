@@ -57,12 +57,11 @@ module File_perm : sig
       account when memoizing commands. *)
 
   type t =
-    | Normal
-    | Executable
+    [ `Normal
+    | `Executable
+    ]
 
   val suffix : t -> string
-
-  val to_unix_perm : t -> int
 end
 
 type t =

@@ -38,8 +38,8 @@ let mkdir p = Run ("mkdir", [ "-p"; p ])
 
 let interpret_perm (perm : Action.File_perm.t) fn acc =
   match perm with
-  | Normal -> acc
-  | Executable -> Run ("chmod", [ "+x"; fn ]) :: acc
+  | `Normal -> acc
+  | `Executable -> Run ("chmod", [ "+x"; fn ]) :: acc
 
 let simplify act =
   let rec loop (act : Action.For_shell.t) acc =

@@ -1,3 +1,5 @@
+open Stdune
+
 (** Simple glob support library. *)
 
 type t
@@ -19,3 +21,9 @@ val to_string : t -> string
 val of_string : string -> t
 
 val of_string_result : string -> (t, int * string) result
+
+val to_dyn : t -> Dyn.t
+
+val of_string_exn : Loc.t -> string -> t
+
+val compare : t -> t -> Ordering.t

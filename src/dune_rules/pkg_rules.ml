@@ -1,5 +1,6 @@
 open Import
 open Memo.O
+open Dune_pkg
 
 [@@@ocaml.warning "-32-69"]
 
@@ -22,8 +23,8 @@ module Source = struct
   type t =
     | External_copy of Path.External.t
     | Fetch of
-        { url : string
-        ; checksum : string option
+        { url : Loc.t * string
+        ; checksum : (Loc.t * Checksum.t) option
         }
 
   let decode =
@@ -37,8 +38,16 @@ module Source = struct
             else Path.External.of_string source) )
       ; ( "fetch"
         , enter @@ fields
-          @@ let+ url = field "url" string
-             and+ checksum = field_o "checksum" string in
+          @@ let+ url = field "url" (located string)
+             and+ checksum = field_o "checksum" (located string) in
+             let checksum =
+               match checksum with
+               | None -> None
+               | Some ((loc, _) as checksum) -> (
+                 match Checksum.of_string_user_error checksum with
+                 | Ok checksum -> Some (loc, checksum)
+                 | Error e -> raise (User_error.E e))
+             in
              fun _ -> Fetch { url; checksum } )
       ]
 end
@@ -1001,8 +1010,8 @@ module Fetch = struct
   module Spec = struct
     type ('path, 'target) t =
       { target_dir : 'target
-      ; url : string
-      ; checksum : string option
+      ; url : Loc.t * string
+      ; checksum : (Loc.t * Checksum.t) option
       }
 
     let name = "source-fetch"
@@ -1013,37 +1022,53 @@ module Fetch = struct
 
     let is_useful_to ~distribute:_ ~memoize = memoize
 
+    let encode_loc f (loc, x) =
+      Dune_lang.List
+        (* TODO use something better for locs here *)
+        [ Dune_lang.atom_or_quoted_string (Loc.to_file_colon_line loc); f x ]
+
     let encode { target_dir; url; checksum } _ target : Dune_lang.t =
       List
         ([ Dune_lang.atom_or_quoted_string name
          ; target target_dir
-         ; Dune_lang.atom_or_quoted_string url
+         ; encode_loc Dune_lang.atom_or_quoted_string url
          ]
         @
         match checksum with
         | None -> []
-        | Some checksum -> [ Dune_lang.atom_or_quoted_string checksum ])
+        | Some checksum ->
+          [ encode_loc
+              (fun x -> Checksum.to_string x |> Dune_lang.atom_or_quoted_string)
+              checksum
+          ])
 
-    let action { target_dir; url; checksum } ~ectx:_ ~eenv:_ =
+    let action { target_dir; url = loc_url, url; checksum } ~ectx:_ ~eenv:_ =
       let open Fiber.O in
       let* () = Fiber.return () in
-      let checksum = Option.map ~f:Dune_pkg.Checksum.of_string checksum in
       let* res =
+        let checksum = Option.map checksum ~f:snd in
         Dune_pkg.Fetch.fetch ~checksum ~target:(Path.build target_dir)
           (OpamUrl.of_string url)
       in
       match res with
       | Ok () -> Fiber.return ()
-      | Error (Checksum_mismatch actual_checksum) ->
-        User_error.raise ~loc:Loc.none
-          [ Pp.text "Invalid checksum, got"
-          ; Dune_pkg.Checksum.pp actual_checksum
-          ]
-      | Error (Unavailable message) -> (
-        match message with
+      | Error (Checksum_mismatch actual_checksum) -> (
+        match checksum with
         | None ->
-          User_error.raise ~loc:Loc.none [ Pp.text "Unknown fetch failure" ]
-        | Some msg -> User_error.raise ~loc:Loc.none [ User_message.pp msg ])
+          User_error.raise ~loc:loc_url
+            [ Pp.text "No checksum provided. It should be:"
+            ; Checksum.pp actual_checksum
+            ]
+        | Some (loc, _) ->
+          User_error.raise ~loc
+            [ Pp.text "Invalid checksum, got"
+            ; Dune_pkg.Checksum.pp actual_checksum
+            ])
+      | Error (Unavailable message) -> (
+        let loc = loc_url in
+        match message with
+        | None -> User_error.raise ~loc [ Pp.text "Unknown fetch failure" ]
+        | Some msg -> User_error.raise ~loc [ User_message.pp msg ])
   end
 
   let action ~url ~checksum ~target_dir =

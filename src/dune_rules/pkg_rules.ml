@@ -21,7 +21,7 @@ open Dune_pkg
 
 module Source = struct
   type t =
-    | External_copy of Path.External.t
+    | External_copy of Loc.t * Path.External.t
     | Fetch of
         { url : Loc.t * string
         ; checksum : (Loc.t * Checksum.t) option
@@ -31,11 +31,12 @@ module Source = struct
     let open Dune_lang.Decoder in
     sum
       [ ( "copy"
-        , string >>| fun source path ->
+        , located string >>| fun (loc, source) path ->
           External_copy
-            (if Filename.is_relative source then
-             Path.External.relative path source
-            else Path.External.of_string source) )
+            ( loc
+            , if Filename.is_relative source then
+                Path.External.relative path source
+              else Path.External.of_string source ) )
       ; ( "fetch"
         , enter @@ fields
           @@ let+ url = field "url" (located string)
@@ -356,7 +357,7 @@ module Pkg = struct
     in
     match t.info.source with
     | None -> Memo.return Path.Local.Set.empty
-    | Some (External_copy root) ->
+    | Some (External_copy (_, root)) ->
       loop root Path.Local.Set.empty Path.Local.root
     | Some (Fetch _) -> assert false
 
@@ -1093,14 +1094,14 @@ let gen_rules context_name (pkg : Pkg.t) =
   let* source_deps, copy_rules =
     match pkg.info.source with
     | None -> Memo.return (Dep.Set.empty, [])
-    | Some (Fetch { url; checksum }) ->
+    | Some (Fetch { url = (loc, _) as url; checksum }) ->
       let fetch =
         Fetch.action ~url ~target_dir:pkg.paths.target_dir ~checksum
         |> Action.Full.make |> Action_builder.With_targets.return
       in
       Memo.return
-        (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ fetch ])
-    | Some (External_copy source_root) ->
+        (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ (loc, fetch) ])
+    | Some (External_copy (loc, source_root)) ->
       let source_root = Path.external_ source_root in
       let+ source_files, rules =
         Pkg.source_files pkg
@@ -1108,12 +1109,14 @@ let gen_rules context_name (pkg : Pkg.t) =
               ~f:(fun file (source_files, rules) ->
                 let src = Path.append_local source_root file in
                 let dst = Path.Build.append_local pkg.paths.source_dir file in
-                let copy = Action_builder.copy ~src ~dst in
+                let copy = (loc, Action_builder.copy ~src ~dst) in
                 (Path.build dst :: source_files, copy :: rules))
       in
       (Dep.Set.of_files source_files, rules)
   in
-  let* () = Memo.parallel_iter copy_rules ~f:rule in
+  let* () =
+    Memo.parallel_iter copy_rules ~f:(fun (loc, copy) -> rule ~loc copy)
+  in
   let* build_rule =
     let+ build_action =
       let install_action = Action_expander.install_command context_name pkg in

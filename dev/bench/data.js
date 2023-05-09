@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683598227911,
+  "lastUpdate": 1683653351050,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -36481,6 +36481,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.196418762913336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dae71f55b2930bc8e5bc867cf87b384a77976af3",
+          "message": "feature(pkg): version lock directory format (#7693)\n\nadd a file that sets the version used to generate the lock directory\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-09T10:14:41-07:00",
+          "tree_id": "e0d625821078adce1e8a4085de29807fa8cfc8c1",
+          "url": "https://github.com/ocaml/dune/commit/dae71f55b2930bc8e5bc867cf87b384a77976af3"
+        },
+        "date": 1683653347568,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.859535338913332",
             "unit": "seconds"
           }
         ]

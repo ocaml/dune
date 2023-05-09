@@ -398,6 +398,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
     match pform with
     | Var var -> (
       match var with
+      | Pkg _ -> assert false
       | Nothing -> static []
       | User_var _
       | Deps
@@ -509,6 +510,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
             [ Pp.text "No toolchain defined for this context" ]))
     | Macro (macro, s) -> (
       match macro with
+      | Pkg -> Code_error.raise "pkg forms aren't possible here" []
       | Ocaml_config -> (
         static
         @@

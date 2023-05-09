@@ -22,7 +22,10 @@
   dune_util
   dune_meta_parser
   dune_section
+  opam_format
   dune_cache
+  dune_pkg
+  opam_core
   build_path_prefix_map
   dune_engine
   dune_vcs

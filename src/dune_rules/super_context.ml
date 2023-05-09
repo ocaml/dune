@@ -341,13 +341,12 @@ let link_flags t ~dir (spec : Link_flags.Spec.t) =
     ~eval:(Expander.expand_and_eval_set expander)
 
 let menhir_flags t ~dir ~expander ~flags =
-  let t = t in
-  let default =
+  let standard =
     Env_tree.get_node t ~dir >>| Env_node.menhir_flags
     |> Action_builder.of_memo_join
   in
   Action_builder.memoize ~cutoff:(List.equal String.equal) "menhir flags"
-    (Expander.expand_and_eval_set expander flags ~standard:default)
+    (Expander.expand_and_eval_set expander flags ~standard)
 
 let local_binaries t ~dir = Env_tree.get_node t ~dir >>= Env_node.local_binaries
 

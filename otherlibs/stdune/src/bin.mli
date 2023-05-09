@@ -7,6 +7,8 @@ val path_sep : char
 (** Parse a [PATH] like variable *)
 val parse_path : ?sep:char -> string -> Path.t list
 
+val encode_strings : string list -> string
+
 (** Add an entry to the contents of a [PATH] variable. *)
 val cons_path : Path.t -> _PATH:string option -> string
 

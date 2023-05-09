@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683598214360,
+  "lastUpdate": 1683598227911,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -29984,6 +29984,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "79.41560727712665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "javier.chavarri@gmail.com",
+            "name": "Javier Chávarri",
+            "username": "jchavarri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6a92f8cd003e4db8a65b06b0d315aeafd507dcae",
+          "message": "test(melange): merlin generation (#7685)\n\nSigned-off-by: Javier Chávarri <javier.chavarri@gmail.com>",
+          "timestamp": "2023-05-08T18:38:29-07:00",
+          "tree_id": "96d00c81577e2906918accd8456624382cff0a25",
+          "url": "https://github.com/ocaml/dune/commit/6a92f8cd003e4db8a65b06b0d315aeafd507dcae"
+        },
+        "date": 1683598226810,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.175614074226667",
             "unit": "seconds"
           }
         ]

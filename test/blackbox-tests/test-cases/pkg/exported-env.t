@@ -5,7 +5,6 @@ Packages can export environment variables
   > (lang package 0.1)
   > EOF
   $ cat >dune.lock/test <<EOF
-  > (build (run true))
   > (exported_env
   >  (= FOO bar)
   >  (= BAR xxx)

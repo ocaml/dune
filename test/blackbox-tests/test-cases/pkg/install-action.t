@@ -5,7 +5,6 @@ Testing install actions
   > (lang package 0.1)
   > EOF
   $ cat >dune.lock/test <<'EOF'
-  > (build (run true))
   > (install (system "echo foobar; mkdir -p %{lib}; touch %{lib}/xxx"))
   > EOF
 

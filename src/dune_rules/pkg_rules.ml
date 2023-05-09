@@ -123,7 +123,7 @@ module Lock_file = struct
 
   module Pkg = struct
     type t =
-      { build_command : Action_unexpanded.t
+      { build_command : Action_unexpanded.t option
       ; install_command : Action_unexpanded.t option
       ; deps : Package.Name.t list
       ; info : Pkg_info.t
@@ -135,7 +135,7 @@ module Lock_file = struct
       enter @@ fields
       @@ let+ version = field ~default:"dev" "version" string
          and+ install_command = field_o "install" Action_unexpanded.decode
-         and+ build_command = field "build" Action_unexpanded.decode
+         and+ build_command = field_o "build" Action_unexpanded.decode
          and+ deps = field ~default:[] "deps" (repeat Package.Name.decode)
          and+ source = field_o "source" Source.decode
          and+ dev = field_b "dev"
@@ -303,7 +303,7 @@ module Pkg = struct
 
   type t =
     { id : Id.t
-    ; build_command : Action_unexpanded.t
+    ; build_command : Action_unexpanded.t option
     ; install_command : Action_unexpanded.t option
     ; deps : t list
     ; info : Pkg_info.t
@@ -674,7 +674,8 @@ module Action_expander = struct
     Action.Full.make ~sandbox:Sandbox_config.needs_sandboxing action
     |> Action_builder.return |> Action_builder.with_no_targets
 
-  let build_command context (pkg : Pkg.t) = expand context pkg pkg.build_command
+  let build_command context (pkg : Pkg.t) =
+    Option.map pkg.build_command ~f:(expand context pkg)
 
   let install_command context (pkg : Pkg.t) =
     Option.map pkg.install_command ~f:(expand context pkg)
@@ -1121,9 +1122,13 @@ let gen_rules context_name (pkg : Pkg.t) =
     let+ build_action =
       let install_action = Action_expander.install_command context_name pkg in
       let+ build_and_install =
-        let* build_action = Action_expander.build_command context_name pkg in
+        let* build_action =
+          match Action_expander.build_command context_name pkg with
+          | None -> Memo.return []
+          | Some build_command -> build_command >>| List.singleton
+        in
         match Action_expander.install_command context_name pkg with
-        | None -> Memo.return [ build_action ]
+        | None -> Memo.return build_action
         | Some install_action ->
           let+ install_action = install_action in
           let mkdir_install_dirs =
@@ -1135,7 +1140,7 @@ let gen_rules context_name (pkg : Pkg.t) =
             |> Action.progn |> Action.Full.make
             |> Action_builder.With_targets.return
           in
-          [ build_action; mkdir_install_dirs; install_action ]
+          build_action @ [ mkdir_install_dirs; install_action ]
       in
       let install_file_action =
         Install_action.action pkg.paths

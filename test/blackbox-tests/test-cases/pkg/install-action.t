@@ -32,14 +32,6 @@ Testing install actions
 
   $ dune internal dump _build/default/.pkg/test/target/cookie
   { files =
-      map
-        { LIB_ROOT :
-            [ { src = In_build_dir "default/.pkg/test/target/lib/xxx"
-              ; kind = File
-              ; dst = "xxx"
-              ; section = LIB_ROOT
-              }
-            ]
-        }
+      map { LIB_ROOT : [ In_build_dir "default/.pkg/test/target/lib/xxx" ] }
   ; variables = []
   }

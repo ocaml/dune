@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683587145256,
+  "lastUpdate": 1683592736211,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -36249,6 +36249,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.632398978806666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "2465d0043d6ca45a3d432a95c9117581f42a6cba",
+          "message": "fix(pkg): make sure %{prefix} is created before install action is ran\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-08T18:26:56-06:00",
+          "tree_id": "7360143d2250f13150f842d171e94e6e01bf72eb",
+          "url": "https://github.com/ocaml/dune/commit/2465d0043d6ca45a3d432a95c9117581f42a6cba"
+        },
+        "date": 1683592733436,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.41717212362667",
             "unit": "seconds"
           }
         ]

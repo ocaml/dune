@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683662029416,
+  "lastUpdate": 1683662378396,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30332,6 +30332,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.9164511871866665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6ec01b98fd5ddc3b49f963f60e490a652787f465",
+          "message": "refactor(pkg): simplify entries in cookie (#7701)\n\nDon't store original .install file information we aren't going to use.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-09T12:26:13-07:00",
+          "tree_id": "432b2feb63de657d190d668b8cd4f7ff22aebe1d",
+          "url": "https://github.com/ocaml/dune/commit/6ec01b98fd5ddc3b49f963f60e490a652787f465"
+        },
+        "date": 1683662377050,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "83.54014503294667",
             "unit": "seconds"
           }
         ]

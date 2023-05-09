@@ -1,7 +1,7 @@
 open Import
 open Memo.O
 
-[@@@ocaml.warning "-32"]
+[@@@ocaml.warning "-32-69"]
 
 (* TODO
    - substitutions
@@ -109,7 +109,7 @@ module Lock_file = struct
   let syntax =
     Dune_sexp.Syntax.create ~experimental:true ~name:"package"
       ~desc:"the package management language"
-      [ ((0, 1), `Since (3, 8)) ]
+      [ ((0, 1), `Since (0, 0)) ]
 
   module Pkg = struct
     type t =
@@ -128,8 +128,7 @@ module Lock_file = struct
          and+ build_command = field "build" Action_unexpanded.decode
          and+ deps = field ~default:[] "deps" (repeat Package.Name.decode)
          and+ source = field_o "source" Source.decode
-         (* TODO allow [(dev)] alone *)
-         and+ dev = field "dev" ~default:false bool
+         and+ dev = field_b "dev"
          and+ exported_env =
            field "exported_env" ~default:[] (repeat Env_update.decode)
          in
@@ -141,55 +140,71 @@ module Lock_file = struct
            { build_command; deps; install_command; info; exported_env }
   end
 
-  type t = Pkg.t Package.Name.Map.t
+  type t =
+    { version : Syntax.Version.t
+    ; packages : Pkg.t Package.Name.Map.t
+    }
 
   let path = Path.Source.(relative root "dune.lock")
+
+  let metadata = "lock.dune"
+
+  module Metadata = Dune_sexp.Versioned_file.Make (Unit)
+
+  let () = Metadata.Lang.register syntax ()
 
   let get () : t Memo.t =
     let dir_external =
       Path.source path |> Path.to_absolute_filename |> Path.External.of_string
     in
-    let path = Path.Outside_build_dir.In_source_dir path in
-    Fs_memo.dir_exists path >>= function
+    Fs_memo.dir_exists (In_source_dir path) >>= function
     | false ->
       (* TODO *)
       User_error.raise [ Pp.text "" ]
     | true -> (
-      Fs_memo.dir_contents path >>= function
+      Fs_memo.dir_contents (In_source_dir path) >>= function
       | Error _ ->
         (* TODO *)
         User_error.raise [ Pp.text "" ]
       | Ok content ->
-        Fs_cache.Dir_contents.to_list content
-        |> List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
-               match kind with
-               | S_REG ->
-                 let name = Package.Name.of_string name in
-                 Some name
-               | _ ->
-                 (* TODO *)
-                 None)
-        |> Memo.parallel_map ~f:(fun name ->
-               let+ package =
-                 let+ sexp =
-                   let path =
-                     Package.Name.to_string name
-                     |> Path.Outside_build_dir.relative path
+        let* version =
+          Fs_memo.with_lexbuf_from_file
+            (In_source_dir (Path.Source.relative path metadata))
+            ~f:(fun lexbuf ->
+              Metadata.parse_contents lexbuf ~f:(fun instance ->
+                  Dune_sexp.Decoder.return instance.version))
+        in
+        let+ packages =
+          Fs_cache.Dir_contents.to_list content
+          |> List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
+                 match kind with
+                 | S_REG when name <> metadata ->
+                   let name = Package.Name.of_string name in
+                   Some name
+                 | _ ->
+                   (* TODO *)
+                   None)
+          |> Memo.parallel_map ~f:(fun name ->
+                 let+ package =
+                   let+ sexp =
+                     let path =
+                       Package.Name.to_string name |> Path.Source.relative path
+                     in
+                     Fs_memo.with_lexbuf_from_file (In_source_dir path)
+                       ~f:(Dune_sexp.Parser.parse ~mode:Many)
                    in
-                   Fs_memo.with_lexbuf_from_file path
-                     ~f:(Dune_sexp.Parser.parse ~mode:Many)
+                   let parser =
+                     let env = Pform.Env.pkg version in
+                     String_with_vars.set_decoding_env env Pkg.decode
+                   in
+                   (Dune_lang.Decoder.parse parser Univ_map.empty
+                      (List (Loc.none, sexp)))
+                     name dir_external
                  in
-                 let parser =
-                   (* TODO get version correctly *)
-                   let env = Pform.Env.pkg (0, 1) in
-                   String_with_vars.set_decoding_env env Pkg.decode
-                 in
-                 (Dune_lang.Decoder.parse parser Univ_map.empty
-                    (List (Loc.none, sexp)))
-                   name dir_external
-               in
-               (name, package))
-        >>| Package.Name.Map.of_list_exn)
+                 (name, package))
+          >>| Package.Name.Map.of_list_exn
+        in
+        { packages; version })
 end
 
 module Paths = struct
@@ -1123,7 +1138,7 @@ let setup_package_rules context ~dir ~pkg_name :
   | Error m -> raise (User_error.E m)
   | Ok name -> (
     let* db = Lock_file.get () in
-    resolve db context name >>| function
+    resolve db.packages context name >>| function
     | None ->
       User_error.raise
         [ Pp.textf "unknown package %S" (Package.Name.to_string name) ]

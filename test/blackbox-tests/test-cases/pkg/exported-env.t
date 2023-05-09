@@ -1,6 +1,9 @@
 Packages can export environment variables
 
   $ mkdir dune.lock
+  $ cat >dune.lock/lock.dune <<EOF
+  > (lang package 0.1)
+  > EOF
   $ cat >dune.lock/test <<EOF
   > (build (run true))
   > (exported_env

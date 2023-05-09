@@ -31,6 +31,18 @@
   Foo__
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
 
+Paths to Melange stdlib appear in B and S entries without melange.emit stanza
+
+  $ dune ocaml dump-dot-merlin $PWD | grep -e "^B " -e "^S "
+  B /MELC_STDLIB/melange
+  B /MELC_STDLIB/melange
+  B /MELC_STDLIB/melange
+  B $TESTCASE_ROOT/_build/default/.foo.objs/melange
+  S /MELC_STDLIB
+  S /MELC_STDLIB
+  S /MELC_STDLIB
+  S $TESTCASE_ROOT
+
 All 3 modules (Foo, Foo__ and Bar) contain a ppx directive
 
   $ dune ocaml merlin dump-config $PWD | grep -i "ppx"

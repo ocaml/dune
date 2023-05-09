@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683654397508,
+  "lastUpdate": 1683656557785,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -36597,6 +36597,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.859535338913332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "20b9eed97c4d6e16bce37fe1d3fabf001d0c7750",
+          "message": "feature(pkg): improve checksum handling (#7696)\n\n* Add locations to various checksum errors\r\n* Add locations to checksum parsing errors\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-09T11:07:05-07:00",
+          "tree_id": "4f5f9432eb297bac34df2175a1dd14df3ff711c8",
+          "url": "https://github.com/ocaml/dune/commit/20b9eed97c4d6e16bce37fe1d3fabf001d0c7750"
+        },
+        "date": 1683656553649,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.688881719466668",
             "unit": "seconds"
           }
         ]

@@ -29,7 +29,7 @@ end
 
 type 'a t = (Predicate_lang.Glob.t, 'a) Ast.t
 
-let decode f = Ast.decode Predicate_lang.Glob.decode f
+let decode f = Ast.decode Dune_lang.decode_predicate_lang_glob f
 
 let eval (t : _ t) ~f =
   let elem = f t.on in

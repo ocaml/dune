@@ -288,7 +288,7 @@ let decode =
   let dirs =
     located
       (Dune_lang.Syntax.since Stanza.syntax (1, 6)
-      >>> Predicate_lang.Glob.decode)
+      >>> Dune_lang.decode_predicate_lang_glob)
   in
   let data_only_dirs =
     located

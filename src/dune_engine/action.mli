@@ -5,23 +5,44 @@
     the user in [Action_dune_lang.t] *)
 
 open! Import
-
-module Outputs : sig
-  include
-    module type of Dune_lang.Action.Outputs
-      with type t = Dune_lang.Action.Outputs.t
-end
+open Dune_util.Action
 
 module Inputs : sig
-  include
-    module type of Dune_lang.Action.Inputs
-      with type t = Dune_lang.Action.Inputs.t
+  type t = Inputs.t = Stdin
 end
 
 module File_perm : sig
-  include
-    module type of Dune_lang.Action.File_perm
-      with type t = Dune_lang.Action.File_perm.t
+  type t = File_perm.t =
+    | Normal
+    | Executable
+
+  val to_unix_perm : t -> int
+end
+
+module Outputs : sig
+  type t = Outputs.t =
+    | Stdout
+    | Stderr
+    | Outputs
+
+  val to_string : t -> string
+end
+
+module Diff : sig
+  open Diff
+
+  module Mode : sig
+    type t = Mode.t =
+      | Binary
+      | Text
+  end
+
+  type nonrec ('path, 'target) t = ('path, 'target) t =
+    { optional : bool
+    ; mode : Mode.t
+    ; file1 : 'path
+    ; file2 : 'target
+    }
 end
 
 module Ext : module type of Action_intf.Ext

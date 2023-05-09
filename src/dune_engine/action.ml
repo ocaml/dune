@@ -1,8 +1,6 @@
 open Import
+include Dune_util.Action
 module Ext = Action_intf.Ext
-module File_perm = File_perm
-module Outputs = Outputs
-module Inputs = Inputs
 
 module type T = sig
   type t

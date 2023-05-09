@@ -14,7 +14,7 @@ let decode_applies_to =
     Whole_subtree
   in
   let predicate =
-    let+ predicate = Predicate_lang.Glob.decode in
+    let+ predicate = Dune_lang.decode_predicate_lang_glob in
     Files_matching_in_this_dir predicate
   in
   subtree <|> predicate
@@ -36,7 +36,7 @@ let decode =
     (let+ loc = loc
      and+ applies_to =
        field "applies_to" decode_applies_to ~default:default_applies_to
-     and+ alias = field_o "alias" Alias.Name.decode
+     and+ alias = field_o "alias" Dune_lang.Alias.decode
      and+ deps = field_o "deps" (Bindings.decode Dep_conf.decode)
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
      and+ locks =

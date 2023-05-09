@@ -6,6 +6,9 @@
  (libraries
   stdune
   xdg
+  dyn
+  ordering
+  pp
   dune_console
   build_path_prefix_map
   dune_sexp

@@ -238,10 +238,10 @@ let restrict_env
   { Action.Ext.working_dir; env; stdout_to; stderr_to; stdin_from; exit_codes }
 
 let compare_files = function
-  | Diff.Mode.Binary -> Io.compare_files
+  | Action.Diff.Mode.Binary -> Io.compare_files
   | Text -> Io.compare_text_files
 
-let diff_eq_files { Diff.optional; mode; file1; file2 } =
+let diff_eq_files { Action.Diff.optional; mode; file1; file2 } =
   let file1 = if Path.Untracked.exists file1 then file1 else Dev_null.path in
   let file2 = Path.build file2 in
   (optional && not (Path.Untracked.exists file2))

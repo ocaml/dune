@@ -6,26 +6,27 @@
 
 open Stdune
 open Dune_sexp
+open Dune_util.Action
 
 module Action_plugin : sig
   val syntax : Syntax.t
 end
 
 module Diff : sig
+  open Diff
+
   module Mode : sig
-    type t =
-      | Binary  (** no diffing, just raw comparison *)
-      | Text  (** diffing after newline normalization *)
+    type t = Mode.t =
+      | Binary
+      | Text
   end
 
-  type ('path, 'target) t =
+  type nonrec ('path, 'target) t = ('path, 'target) t =
     { optional : bool
     ; mode : Mode.t
     ; file1 : 'path
     ; file2 : 'target
     }
-
-  val map : ('p, 't) t -> path:('p -> 'x) -> target:('t -> 'y) -> ('x, 'y) t
 
   val decode :
        'path Decoder.t
@@ -38,7 +39,7 @@ module Diff : sig
 end
 
 module Outputs : sig
-  type t =
+  type t = Outputs.t =
     | Stdout
     | Stderr
     | Outputs  (** Both Stdout and Stderr *)
@@ -47,7 +48,7 @@ module Outputs : sig
 end
 
 module Inputs : sig
-  type t = Stdin
+  type t = Inputs.t = Stdin
 
   val to_string : t -> string
 end
@@ -56,7 +57,7 @@ module File_perm : sig
   (** File mode, for when creating files. We only allow what Dune takes into
       account when memoizing commands. *)
 
-  type t =
+  type t = File_perm.t =
     | Normal
     | Executable
 

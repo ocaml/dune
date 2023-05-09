@@ -31,7 +31,8 @@ let decode =
   fields
     (let+ loc = loc
      and+ files =
-       field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.any
+       field "files" Dune_lang.decode_predicate_lang_glob
+         ~default:Predicate_lang.any
      and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
      and+ libraries =
        field "libraries" (Lib_dep.L.decode ~allow_re_export:false) ~default:[]
@@ -39,7 +40,7 @@ let decode =
        field ~default:[] "runtime_deps"
          (Dune_lang.Syntax.since syntax (1, 1) >>> repeat Dep_conf.decode)
      and+ cinaps_version = Dune_lang.Syntax.get_exn syntax
-     and+ alias = field_o "alias" Alias.Name.decode
+     and+ alias = field_o "alias" Dune_lang.Alias.decode
      and+ link_flags =
        Link_flags.Spec.decode
          ~check:(Some (Dune_lang.Syntax.since syntax (1, 3)))

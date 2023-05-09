@@ -95,7 +95,7 @@ module Emit = struct
                  ])
          in
          field "target" (plain_string (fun ~loc s -> of_string ~loc s))
-       and+ alias = field_o "alias" Alias.Name.decode
+       and+ alias = field_o "alias" Dune_lang.Alias.decode
        and+ module_systems =
          field "module_systems" module_systems
            ~default:[ Melange.Module_system.default ]

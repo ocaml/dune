@@ -1701,11 +1701,12 @@ module Rule = struct
            >>> Stanza_common.Pkg.decode)
        and+ alias =
          field_o "alias"
-           (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Alias.Name.decode)
+           (Dune_lang.Syntax.since Stanza.syntax (2, 0)
+           >>> Dune_lang.Alias.decode)
        and+ aliases =
          field_o "aliases"
            (Dune_lang.Syntax.since Stanza.syntax (3, 5)
-           >>> repeat Alias.Name.decode)
+           >>> repeat Dune_lang.Alias.decode)
        in
        let aliases =
          match alias with
@@ -1873,7 +1874,7 @@ module Alias_conf = struct
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
        in
        String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
-         (let+ name = field "name" Alias.Name.decode
+         (let+ name = field "name" Dune_lang.Alias.decode
           and+ package = field_o "package" Stanza_common.Pkg.decode
           and+ action =
             field_o "action"
@@ -2001,7 +2002,7 @@ module Copy_files = struct
 
   let long_form =
     let check = Dune_lang.Syntax.since Stanza.syntax (2, 7) in
-    let+ alias = field_o "alias" (check >>> Alias.Name.decode)
+    let+ alias = field_o "alias" (check >>> Dune_lang.Alias.decode)
     and+ mode =
       field "mode" ~default:Rule.Mode.Standard (check >>> Rule.Mode.decode)
     and+ enabled_if =

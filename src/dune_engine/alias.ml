@@ -1,92 +1,31 @@
 open Import
 
-module Name : sig
-  type t
+module Name = struct
+  include Dune_util.Alias_name
 
-  include Dune_sexp.Conv.S with type t := t
-
-  val equal : t -> t -> bool
-
-  val hash : t -> int
-
-  val compare : t -> t -> Ordering.t
-
-  val of_string : string -> t
-
-  val parse_string_exn : Loc.t * string -> t
-
-  val to_string : t -> string
-
-  val to_dyn : t -> Dyn.t
-
-  val default : t
-
-  val runtest : t
-
-  val install : t
-
-  val fmt : t
-
-  val all : t
-
-  val parse_local_path : Loc.t * Path.Local.t -> Path.Local.t * t
-
-  include Comparable_intf.S with type key := t
-end = struct
-  include String
-
-  (* DUNE3 once we get rid the "loose" validation, implement this module using
-     [Stringlike] *)
-  let of_string_opt_loose s = Option.some_if (Filename.basename s = s) s
-
-  let of_string_opt = function
-    (* The [""] case is caught by of_string_opt_loose. But there's no harm in
-       being more explicit about it *)
-    | "" | "." | "/" | ".." -> None
-    | s -> of_string_opt_loose s
-
-  let invalid_alias = Pp.textf "%S is not a valid alias name"
-
-  let parse_string_exn ~syntax (loc, s) =
-    let of_string_opt =
-      if syntax >= (2, 0) then of_string_opt else of_string_opt_loose
-    in
-    match of_string_opt s with
-    | None -> User_error.raise ~loc [ invalid_alias s ]
-    | Some s -> s
-
-  let encode = Dune_sexp.Encoder.string
-
-  let decode =
-    let open Dune_sexp.Decoder in
-    let* syntax = Dune_sexp.Syntax.get_exn Dune_lang.Stanza.syntax in
-    plain_string (fun ~loc s -> parse_string_exn ~syntax (loc, s))
-
-  let parse_string_exn =
-    parse_string_exn ~syntax:Dune_lang.Stanza.latest_version
+  let encode s = Dune_sexp.Encoder.string (to_string s)
 
   let of_string s =
     match of_string_opt s with
     | Some s -> s
     | None -> Code_error.raise "invalid alias name" [ ("s", Dyn.string s) ]
 
-  let to_string s = s
+  let default = of_string "default"
 
-  let default = "default"
+  let runtest = of_string "runtest"
 
-  let runtest = "runtest"
+  let install = of_string "install"
 
-  let install = "install"
+  let fmt = of_string "fmt"
 
-  let fmt = "fmt"
-
-  let all = "all"
-
-  let to_dyn = String.to_dyn
+  let all = of_string "all"
 
   let parse_local_path (loc, p) =
     match Path.Local.parent p with
-    | Some dir -> (dir, Path.Local.basename p)
+    | Some dir ->
+      ( dir
+      , (* TODO one day we should validate the name properly here *)
+        Path.Local.basename p |> of_string_opt_loose |> Option.value_exn )
     | None ->
       User_error.raise ~loc
         [ Pp.textf "Invalid alias path: %S"
@@ -114,7 +53,9 @@ end = struct
   let of_user_written_path ~loc path =
     match Path.as_in_build_dir path with
     | Some path ->
-      let name = Name.of_string (Path.Build.basename path) in
+      let name =
+        Path.Build.basename path |> Name.of_string_opt_loose |> Option.value_exn
+      in
       { dir = Path.Build.parent_exn path; name }
     | None ->
       User_error.raise ~loc

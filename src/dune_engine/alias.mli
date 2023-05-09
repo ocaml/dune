@@ -1,19 +1,8 @@
 open Import
 
 module Name : sig
-  type t
-
-  val decode : t Dune_sexp.Decoder.t
-
-  val of_string : string -> t
-
-  val equal : t -> t -> bool
-
-  val parse_string_exn : Loc.t * string -> t
-
-  val to_string : t -> string
-
-  val to_dyn : t -> Dyn.t
+  include
+    module type of Dune_util.Alias_name with type t = Dune_util.Alias_name.t
 
   val default : t
 

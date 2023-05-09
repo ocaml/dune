@@ -9,6 +9,7 @@
   memo
   ocaml
   dune_re
+  predicate_lang
   dune_console
   dune_digest
   opam_file_format

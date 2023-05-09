@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683661988493,
+  "lastUpdate": 1683662000459,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30274,6 +30274,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "68.67212044381334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f9e2e446499c032f9e3f42c4a028afb81f66bc78",
+          "message": "fix(pkg): location handling for source copies (#7697)\n\ninclude source locations for source fetching rules\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-09T12:26:28-07:00",
+          "tree_id": "1041383f9b8e18435bb93358a22fbf4095f6cbe4",
+          "url": "https://github.com/ocaml/dune/commit/f9e2e446499c032f9e3f42c4a028afb81f66bc78"
+        },
+        "date": 1683661999608,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.9164511871866665",
             "unit": "seconds"
           }
         ]

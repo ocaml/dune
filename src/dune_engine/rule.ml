@@ -70,7 +70,11 @@ module T = struct
   let loc t = t.loc
 
   let to_dyn t : Dyn.t =
-    Record [ ("id", Id.to_dyn t.id); ("info", Info.to_dyn t.info) ]
+    Record
+      [ ("id", Id.to_dyn t.id)
+      ; ("info", Info.to_dyn t.info)
+      ; ("loc", Loc.to_dyn t.loc)
+      ]
 end
 
 include T

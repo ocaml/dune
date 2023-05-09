@@ -2,6 +2,10 @@ open Import
 open Memo.O
 module Action_builder = Action_builder0
 
+module Debug = struct
+  let trace = ref false
+end
+
 module Progress = struct
   type t =
     { number_of_rules_discovered : int
@@ -23,6 +27,18 @@ module Progress = struct
     ; number_of_rules_executed = 0
     ; number_of_rules_failed = 0
     }
+
+  let to_dyn
+      { number_of_rules_discovered
+      ; number_of_rules_executed
+      ; number_of_rules_failed
+      } =
+    let open Dyn in
+    record
+      [ ("number_of_rules_discovered", int number_of_rules_discovered)
+      ; ("number_of_rules_executed", int number_of_rules_executed)
+      ; ("number_of_rules_failed", int number_of_rules_failed)
+      ]
 end
 
 module Error = struct
@@ -153,6 +169,15 @@ module State = struct
     | Build_succeeded__now_waiting_for_changes
     | Build_failed__now_waiting_for_changes
 
+  let to_dyn = function
+    | Initializing -> Dyn.variant "Initializing" []
+    | Building progress -> Dyn.variant "Building" [ Progress.to_dyn progress ]
+    | Restarting_current_build -> Dyn.variant "Restarting_current_build" []
+    | Build_succeeded__now_waiting_for_changes ->
+      Dyn.variant "Build_succeeded__now_waiting_for_changes" []
+    | Build_failed__now_waiting_for_changes ->
+      Dyn.variant "Build_failed__now_waiting_for_changes" []
+
   let equal x y =
     match (x, y) with
     | Building x, Building y -> Progress.equal x y
@@ -176,14 +201,17 @@ module State = struct
   (* This mutex ensures that at most one [run] is running in parallel. *)
   let build_mutex = Fiber.Mutex.create ()
 
-  let reset_progress () = Svar.write t (Building Progress.init)
+  let set what =
+    if !Debug.trace then
+      Console.print [ Pp.text "build_system.State.set: "; Dyn.pp (to_dyn what) ];
+    Svar.write t what
 
-  let set what = Svar.write t what
+  let reset_progress () = set (Building Progress.init)
 
   let update_build_progress_exn ~f =
     let current = Svar.read t in
     match current with
-    | Building current -> Svar.write t @@ Building (f current)
+    | Building current -> set @@ Building (f current)
     | _ -> assert false
 
   let incr_rule_done_exn () =
@@ -536,6 +564,16 @@ end = struct
     let { Rule.id = _; targets; dir; context; mode; action; info = _; loc } =
       rule
     in
+    if !Debug.trace then
+      Console.print
+        [ Pp.textf "de.build_system.ml.execute_rule_impl, targets="
+        ; Dyn.pp (Targets.Validated.to_dyn targets)
+        ; Pp.text ", dir="
+        ; Dyn.pp (Path.Build.to_dyn dir)
+        ; Pp.text ", loc="
+        ; Dyn.pp (Loc.to_dyn loc)
+        ];
+
     (* We run [State.start_rule_exn ()] entirely for its side effect, so one
        might be tempted to use [Memo.of_non_reproducible_fiber] here but that is
        wrong, because that would force us to rerun [execute_rule_impl] on every

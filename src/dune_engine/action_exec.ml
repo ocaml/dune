@@ -556,6 +556,39 @@ let exec
       with
       | false -> env
       | true ->
+        let debug = false in
+        (if debug then
+         match targets with
+         | None -> ()
+         | Some tgts -> (
+           let hd = Targets.Validated.head tgts in
+           let hd_str = Path.Build.to_string_maybe_quoted hd in
+           let targets_dyn = Targets.Validated.to_dyn tgts in
+           let targets_pp = Dyn.pp targets_dyn in
+           Log.info
+             [ Pp.textf "\n==============\nhead=(%S)" hd_str; targets_pp ];
+           let pp_action =
+             let action' = Action.for_shell t |> Action_to_sh.pp in
+             Pp.concat
+               [ Pp.textf "action ="
+               ; Pp.space
+               ; Pp.char '('
+               ; action'
+               ; Pp.char ')'
+               ]
+           in
+           Log.info [ pp_action ];
+           Log.info [ Pp.textf "root=%S" (Path.to_absolute_filename root) ];
+           Log.info
+             [ Pp.textf "Path.root=%S" (Path.to_absolute_filename Path.root) ];
+           match context with
+           | None -> Log.info [ Pp.textf "No context" ]
+           | Some context' ->
+             Log.info
+               [ Pp.textf "Context: name=%s, build_dir=%S"
+                   (Context_name.to_string context'.name)
+                   (Path.Build.to_string context'.build_dir)
+               ]));
         Dune_util.Build_path_prefix_map.extend_build_path_prefix_map env
           `New_rules_have_precedence
           [ Some

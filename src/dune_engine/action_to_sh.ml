@@ -90,7 +90,9 @@ let simplify act =
            (String.quote_for_shell target))
       :: acc
     | Pipe (outputs, l) -> Pipe (List.map ~f:block l, outputs) :: acc
-    | Extension _ -> Sh "# extensions are not supported" :: acc
+    | Extension ext ->
+      let ext_str = Dune_lang.to_string ext in
+      Sh ("# extensions are not supported=" ^ ext_str) :: acc
   and block act =
     match List.rev (loop act []) with
     | [] -> [ Run ("true", []) ]

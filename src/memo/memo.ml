@@ -9,6 +9,8 @@ module Debug = struct
   let check_invariants = ref false
 
   let verbose_diagnostics = ref false
+
+  let memo_trace = ref false
 end
 
 module Counters = struct
@@ -74,6 +76,9 @@ module Spec = struct
       | None when !Debug.track_locations_of_lazy_values ->
         Option.map (Caller_id.get ~skip:[ __FILE__ ]) ~f:(fun loc ->
             sprintf "lazy value created at %s" (Loc.to_file_colon_line loc))
+      | Some aname when !Debug.track_locations_of_lazy_values ->
+        Option.map (Caller_id.get ~skip:[ __FILE__ ]) ~f:(fun loc ->
+            sprintf "%s, at %s" aname (Loc.to_file_colon_line loc))
       | _ -> name
     in
     let allow_cutoff =
@@ -100,6 +105,26 @@ module Caches = struct
   let register ~clear = cleaners := clear :: !cleaners
 
   let clear () = List.iter !cleaners ~f:(fun f -> f ())
+end
+
+module Dep_node_without_id = struct
+  type ('i, 'o) t =
+    { spec : ('i, 'o) Spec.t
+    ; input : 'i
+    }
+
+  let input_to_dyn (type i) (node : (i, _) t) =
+    let (module Input : Store_intf.Input with type t = i) = node.spec.input in
+    Input.to_dyn node.input
+
+  let to_dyn t =
+    Dyn.Tuple
+      [ String
+          (match t.spec.name with
+          | Some name -> name
+          | None -> "<unnamed>")
+      ; input_to_dyn t
+      ]
 end
 
 module Dep_node_without_state = struct
@@ -1064,10 +1089,43 @@ let create (type i) name ~input:(module Input : Input with type t = i) ?cutoff
   let input = (module Input : Store_intf.Input with type t = i) in
   create_with_cache name ~cache ~input ~cutoff ~human_readable_description f
 
+let dep_node_trace' (spec : ('i, 'o) Spec.t) input (prefix : string)
+    (what : string) =
+  let dep_node_without_id : _ Dep_node_without_id.t = { input; spec } in
+  let hr =
+    match spec.human_readable_description with
+    | None -> Pp.text "no_hr"
+    | Some hrf -> hrf input
+  in
+  Console.print
+    [ Pp.box
+        (Pp.concat
+           [ Pp.textf "{dep_node_trace: %s: %s" prefix what
+           ; Pp.text ", human_readable="
+           ; hr
+           ; Dyn.pp (Dep_node_without_id.to_dyn dep_node_without_id)
+           ; Pp.text "}"
+           ])
+    ]
+
+let dep_node_trace (t : ('i, 'o) Table.t) input (prefix : string)
+    (what : string) =
+  let (spec : ('i, 'o) Spec.t) = t.spec in
+  dep_node_trace' spec input prefix what
+
 let make_dep_node ~spec ~input : _ Dep_node.t =
   let dep_node_without_state : _ Dep_node_without_state.t =
     { id = Id.gen (); input; spec }
   in
+  if !Debug.memo_trace then
+    Console.print
+      [ Pp.box
+          (Pp.concat
+             [ Pp.text "{make_dep_node: dep_node_without_state="
+             ; Dyn.pp (Dep_node_without_state.to_dyn dep_node_without_state)
+             ; Pp.text "}"
+             ])
+      ];
   { without_state = dep_node_without_state
   ; state = Out_of_date { old_value = None }
   ; has_cutoff =
@@ -1076,10 +1134,17 @@ let make_dep_node ~spec ~input : _ Dep_node.t =
       | No -> false)
   }
 
-let dep_node (t : (_, _) Table.t) input =
+let dep_node (t : ('i, 'o) Table.t) input =
+  if !Debug.memo_trace then
+    dep_node_trace t input "Memo.memo.ml.depnode" "lookup";
   match Store.find t.cache input with
-  | Some dep_node -> dep_node
+  | Some dep_node ->
+    if !Debug.memo_trace then
+      dep_node_trace t input "Memo.memo.ml.depnode" "found";
+    dep_node
   | None ->
+    if !Debug.memo_trace then
+      dep_node_trace t input "Memo.memo.ml.depnode" "not found";
     let dep_node = make_dep_node ~spec:t.spec ~input in
     Store.set t.cache input dep_node;
     dep_node
@@ -1303,7 +1368,16 @@ end = struct
 
   let exec_dep_node : 'i 'o. ('i, 'o) Dep_node.t -> 'o Fiber.t =
    fun dep_node ->
+    (if !Debug.memo_trace then
+     let spec = dep_node.without_state.spec in
+     let input = dep_node.without_state.input in
+     dep_node_trace' spec input "Memo.memo.ml.exec_dep_node" "before of_thunk");
+
     Fiber.of_thunk (fun () ->
+        (if !Debug.memo_trace then
+         let spec = dep_node.without_state.spec in
+         let input = dep_node.without_state.input in
+         dep_node_trace' spec input "Memo.memo.ml.exec_dep_node" "In the thunk");
         let* result =
           consider_and_restore_from_cache_without_adding_dep dep_node
           >>= function
@@ -1329,7 +1403,9 @@ end = struct
         | Error cycle_error -> raise (Cycle_error.E cycle_error))
 end
 
-let exec (type i o) (t : (i, o) Table.t) i = Exec.exec_dep_node (dep_node t i)
+let exec (type i o) (t : (i, o) Table.t) i =
+  if !Debug.memo_trace then dep_node_trace t i "Memo.memo.ml.exec" "entry";
+  Exec.exec_dep_node (dep_node t i)
 
 let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) cell =
   let rec collect_graph (Dep_node.T dep_node) graph : Graph.t Fiber.t =

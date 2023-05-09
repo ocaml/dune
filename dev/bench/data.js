@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683661315392,
+  "lastUpdate": 1683661376391,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -36771,6 +36771,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.912241166846666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e289710c5eaf9d6442cc61572667f02d30ba562c",
+          "message": "fix(pkg): allow build command to be optional (#7704)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-09T12:26:41-07:00",
+          "tree_id": "364e5da367ae46520e703ff2a07270b91bb0099f",
+          "url": "https://github.com/ocaml/dune/commit/e289710c5eaf9d6442cc61572667f02d30ba562c"
+        },
+        "date": 1683661372774,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.755531742360002",
             "unit": "seconds"
           }
         ]

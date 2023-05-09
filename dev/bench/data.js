@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683670567546,
+  "lastUpdate": 1683670578687,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30506,6 +30506,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "67.10997165662",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "66c2f2e4402b3a212b087fbf646ec65453e4342a",
+          "message": "nix: ocaml-base-compiler 4.14.0 -> 4.14.1\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-05-09T14:44:57-07:00",
+          "tree_id": "257f214415f2697674ff956e14f56c986cdd2707",
+          "url": "https://github.com/ocaml/dune/commit/66c2f2e4402b3a212b087fbf646ec65453e4342a"
+        },
+        "date": 1683670577969,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.7838658252266668",
             "unit": "seconds"
           }
         ]

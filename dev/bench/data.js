@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683737037063,
+  "lastUpdate": 1683737439457,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30564,6 +30564,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.7838658252266668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "477c25aa017d326c779a2b2858d413192bac53d6",
+          "message": "test(pkg): missing entries in .install (#7708)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-10T09:19:09-07:00",
+          "tree_id": "8fed580dc0ad06b82cdf928bfeeaa82a4ab100da",
+          "url": "https://github.com/ocaml/dune/commit/477c25aa017d326c779a2b2858d413192bac53d6"
+        },
+        "date": 1683737438675,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "79.64986757283333",
             "unit": "seconds"
           }
         ]

@@ -36,7 +36,9 @@ module Tui = struct
     fun () -> !(Lazy.force setup)
   ;;
 
-  let start () = Unix.set_nonblock Unix.stdin
+  let term_input_fds, _ = Term.fds (term ())
+
+  let start () = Unix.set_nonblock term_input_fds
 
   type ui_attrs =
     { divider_attr : A.t (** style for diving visual elements like borders or rules *)
@@ -797,7 +799,7 @@ module Tui = struct
     Unix.clear_nonblock Unix.stdin
   ;;
 end
-
+  
 let backend =
   let t = lazy (Dune_threaded_console.make (module Tui)) in
   fun () -> Lazy.force t

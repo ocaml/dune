@@ -926,33 +926,42 @@ module Install_action = struct
                         in
                         Path.chmod dst ~mode:permission
                     in
+                    let exists = lazy (Path.Untracked.exists src) in
                     match entries with
                     | [] -> assert false
                     | [ entry ] ->
-                      let dst =
-                        prepare_copy_or_move ~install_file ~target_dir entry
-                      in
-                      Path.rename src dst;
-                      maybe_set_executable entry.section dst;
-                      [ (entry.section, dst) ]
+                      if entry.optional && (not @@ Lazy.force exists) then []
+                      else
+                        let dst =
+                          prepare_copy_or_move ~install_file ~target_dir entry
+                        in
+                        Path.rename src dst;
+                        maybe_set_executable entry.section dst;
+                        [ (entry.section, dst) ]
                     | entry :: entries ->
                       let install_entries =
-                        List.map entries ~f:(fun entry ->
-                            let dst =
-                              prepare_copy_or_move ~install_file ~target_dir
-                                entry
-                            in
-                            (* TODO hard link if possible *)
-                            Io.copy_file ~src ~dst ();
-                            maybe_set_executable entry.section dst;
-                            (entry.section, dst))
+                        List.filter_map entries ~f:(fun entry ->
+                            if entry.optional && (not @@ Lazy.force exists) then
+                              None
+                            else
+                              let dst =
+                                prepare_copy_or_move ~install_file ~target_dir
+                                  entry
+                              in
+                              (* TODO hard link if possible *)
+                              Io.copy_file ~src ~dst ();
+                              maybe_set_executable entry.section dst;
+                              Some (entry.section, dst))
                       in
-                      let dst =
-                        prepare_copy_or_move ~install_file ~target_dir entry
-                      in
-                      Path.rename src dst;
-                      maybe_set_executable entry.section dst;
-                      (entry.section, dst) :: install_entries)
+                      if entry.optional && (not @@ Lazy.force exists) then
+                        install_entries
+                      else
+                        let dst =
+                          prepare_copy_or_move ~install_file ~target_dir entry
+                        in
+                        Path.rename src dst;
+                        maybe_set_executable entry.section dst;
+                        (entry.section, dst) :: install_entries)
               in
               List.concat install_entries
               |> List.rev_map ~f:(fun (section, file) ->

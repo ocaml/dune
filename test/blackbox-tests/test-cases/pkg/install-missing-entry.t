@@ -23,6 +23,3 @@ This on the other hand shouldn't error because myfile is optional
 
   $ lockfile "?myfile"
   $ dune build .pkg/test/target/
-  Error: No such file or directory
-  -> required by _build/default/.pkg/test/target
-  [1]

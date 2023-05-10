@@ -539,6 +539,7 @@ module External_lib_deps = struct
     module Ml_sources = Ml_sources
     module Dir_contents = Dir_contents
     module Top_module = Top_module
+    module Compilation_context = Compilation_context
   end
 
   module Kind = struct
@@ -766,16 +767,33 @@ module Preprocess = struct
       let+ () = Build_system.build_file pp_file in
       Ok (`Pp_file (project, pp_file))
     | false -> (
+      let src = file |> Path.Source.of_string in
+      let* top_module_info =
+        External_lib_deps.Top_module.find_module super_context src
+      in
+      let module_request =
+        match top_module_info with
+        | None ->
+          User_error.raise
+            [ Pp.textf "Could not find module corresponding to source file %s"
+                (Path.Source.to_string_maybe_quoted src)
+            ]
+        | Some (module_, _cctx, _) -> (
+          match Dune_rules.Module.pp_flags module_ with
+          | None -> Action_builder.return []
+          | Some (pp, _) -> pp)
+      in
       let* lib_or_exe =
-        External_lib_deps.Top_module.find_lib_or_exe super_context
-          (file |> Path.Source.of_string)
+        External_lib_deps.Top_module.find_lib_or_exe super_context src
       in
       let* staged_pps =
         match lib_or_exe with
         | None ->
           User_error.raise
-            [ Pp.textf "%s does not exist"
-                (Path.Build.to_string file_in_build_dir)
+            [ Pp.textf
+                "Could not find library or executable corresponding to source \
+                 file %s"
+                (Path.Source.to_string_maybe_quoted src)
             ]
         | Some { stanza = `Executables { buildable; _ }; _ }
         | Some { stanza = `Library { buildable; _ }; _ } -> (
@@ -792,11 +810,12 @@ module Preprocess = struct
             let* expander =
               Super_context.expander ~dir:context.build_dir super_context
             in
-            let request =
+            let pp_request =
               External_lib_deps.Preprocessing.get_ppx_driver super_context ~loc
                 ~expander ~lib_name:None ~flags ~scope pps
             in
-            let* result = Action_builder.run request Eager in
+            let all_requests = Action_builder.both module_request pp_request in
+            let* result = Action_builder.run all_requests Eager in
             Memo.return (Some result)
           | No_preprocessing | Action _ | Future_syntax _ | Pps _ ->
             Memo.return None)
@@ -806,8 +825,7 @@ module Preprocess = struct
       | None ->
         let+ () = Build_system.build_file file_in_build_dir in
         Error file_in_build_dir
-      | Some staged_pps ->
-        let (ppx_exe, flags), (_ : Dep.Fact.t Dep.Map.t) = staged_pps in
+      | Some ((_, (ppx_exe, flags)), _) ->
         let* () = Build_system.build_file (Path.build ppx_exe)
         and* () = Build_system.build_file file_in_build_dir in
         Memo.return (Ok (`Ppx_exe ((ppx_exe, flags), file_in_build_dir))))

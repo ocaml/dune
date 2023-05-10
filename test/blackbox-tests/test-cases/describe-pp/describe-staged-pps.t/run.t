@@ -16,5 +16,6 @@ With modules
 
 With a file that does not exist
   $ dune describe pp src/with_module/wrong.ml
-  Error: _build/default/src/with_module/wrong.ml does not exist
+  Error: Could not find module corresponding to source file
+  src/with_module/wrong.ml
   [1]

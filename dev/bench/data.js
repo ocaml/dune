@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683764208150,
+  "lastUpdate": 1683772209147,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -37409,6 +37409,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.456771781273332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "71ff3d5cced826a16650549666aa4a1bc86eda7c",
+          "message": "refactor: action decoding (#7711)\n\nremove some nesting and move the accepted exit codes decoder to own\r\nfunction\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-10T19:13:57-07:00",
+          "tree_id": "a98ca709fd0b4e107f394d5804dea3040b729566",
+          "url": "https://github.com/ocaml/dune/commit/71ff3d5cced826a16650549666aa4a1bc86eda7c"
+        },
+        "date": 1683772205296,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "29.329802898980002",
             "unit": "seconds"
           }
         ]

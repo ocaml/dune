@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683772855991,
+  "lastUpdate": 1683773288419,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30738,6 +30738,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.2687021693399996",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "71ff3d5cced826a16650549666aa4a1bc86eda7c",
+          "message": "refactor: action decoding (#7711)\n\nremove some nesting and move the accepted exit codes decoder to own\r\nfunction\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-10T19:13:57-07:00",
+          "tree_id": "a98ca709fd0b4e107f394d5804dea3040b729566",
+          "url": "https://github.com/ocaml/dune/commit/71ff3d5cced826a16650549666aa4a1bc86eda7c"
+        },
+        "date": 1683773287222,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "85.32710255328666",
             "unit": "seconds"
           }
         ]

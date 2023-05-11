@@ -332,7 +332,11 @@ module Component = struct
 
     (* A list of CSTs for dune-project file content *)
     let dune_project ?(opam_file_gen = true) dir (common : Options.Common.t) =
-      let package = Package.default (Atom.to_string common.name) dir in
+      let package =
+        Package.default
+          (Package.Name.of_string (Atom.to_string common.name))
+          dir
+      in
       let packages =
         Package.Name.Map.singleton (Package.name package) package
       in

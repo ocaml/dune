@@ -3,25 +3,13 @@
 open Import
 
 module Name : sig
-  type t
+  type t = Dune_lang.Package_name.t
 
   val opam_fn : t -> string
 
   val version_fn : t -> string
 
-  val compare : t -> t -> Ordering.t
-
-  val equal : t -> t -> bool
-
-  val hash : t -> int
-
-  include Comparable_intf.S with type key := t
-
-  include Dune_lang.Conv.S with type t := t
-
-  module Infix : Comparator.OPS with type t = t
-
-  include Stringlike_intf.S with type t := t
+  include module type of Dune_lang.Package_name with type t := t
 
   val of_opam_file_basename : string -> t option
 
@@ -189,7 +177,7 @@ val hash : t -> int
 val is_opam_file : Path.t -> bool
 
 (** Construct a default package (e.g., for project initialization) *)
-val default : string -> Path.Source.t -> t
+val default : Name.t -> Path.Source.t -> t
 
 (** Construct a package description from an opam file. *)
 val load_opam_file : Path.Source.t -> Name.t -> t Memo.t

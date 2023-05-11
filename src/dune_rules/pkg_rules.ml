@@ -127,6 +127,7 @@ module Lock_file = struct
       ; install_command : Action_unexpanded.t option
       ; deps : Package.Name.t list
       ; info : Pkg_info.t
+      ; lock_dir : Path.Source.t
       ; exported_env : String_with_vars.t Env_update.t list
       }
 
@@ -142,12 +143,22 @@ module Lock_file = struct
          and+ exported_env =
            field "exported_env" ~default:[] (repeat Env_update.decode)
          in
-         fun name path ->
+         fun ~lock_dir name ->
            let info =
-             let source = Option.map source ~f:(fun f -> f path) in
+             let source =
+               Option.map source ~f:(fun f ->
+                   Path.source lock_dir |> Path.to_absolute_filename
+                   |> Path.External.of_string |> f)
+             in
              { Pkg_info.name; version; dev; source }
            in
-           { build_command; deps; install_command; info; exported_env }
+           { build_command
+           ; deps
+           ; install_command
+           ; info
+           ; exported_env
+           ; lock_dir
+           }
   end
 
   type t =
@@ -164,9 +175,6 @@ module Lock_file = struct
   let () = Metadata.Lang.register syntax ()
 
   let get () : t Memo.t =
-    let dir_external =
-      Path.source path |> Path.to_absolute_filename |> Path.External.of_string
-    in
     Fs_memo.dir_exists (In_source_dir path) >>= function
     | false ->
       (* TODO *)
@@ -209,7 +217,7 @@ module Lock_file = struct
                    in
                    (Dune_lang.Decoder.parse parser Univ_map.empty
                       (List (Loc.none, sexp)))
-                     name dir_external
+                     ~lock_dir:path name
                  in
                  (name, package))
           >>| Package.Name.Map.of_list_exn
@@ -308,6 +316,7 @@ module Pkg = struct
     ; deps : t list
     ; info : Pkg_info.t
     ; paths : Paths.t
+    ; files_dir : Path.Source.t
     ; mutable exported_env : string Env_update.t list
     }
 
@@ -704,6 +713,7 @@ end = struct
         ; deps
         ; info
         ; exported_env
+        ; lock_dir
         } ->
       assert (Package.Name.equal name info.name);
       let* deps =
@@ -714,6 +724,10 @@ end = struct
       in
       let id = Pkg.Id.gen () in
       let paths = Paths.make name ctx in
+      let files_dir =
+        Path.Source.relative lock_dir
+          (sprintf "%s.files" (Package.Name.to_string info.name))
+      in
       let t =
         { Pkg.id
         ; build_command
@@ -721,6 +735,7 @@ end = struct
         ; deps
         ; paths
         ; info
+        ; files_dir
         ; exported_env = []
         }
       in
@@ -1091,6 +1106,55 @@ module Fetch = struct
     Action.Extension (module M)
 end
 
+module Copy_tree = struct
+  module Spec = struct
+    type ('path, 'target) t = 'path * 'target
+
+    let name = "copy-tree"
+
+    let version = 1
+
+    let bimap (src, dst) f g = (f src, g dst)
+
+    let is_useful_to ~distribute:_ ~memoize = memoize
+
+    let encode (src, dst) dep target : Dune_lang.t =
+      List [ Dune_lang.atom_or_quoted_string name; dep src; target dst ]
+
+    let action (root, dst) ~ectx:_ ~eenv:_ =
+      let open Fiber.O in
+      let+ () = Fiber.return () in
+      Install_action.Spec.collect [ root ] []
+      |> List.iter ~f:(fun src ->
+             let dst =
+               Path.append_local (Path.build dst)
+                 (Path.drop_prefix_exn src ~prefix:root)
+             in
+             let old_permissions =
+               match Path.Untracked.stat dst with
+               | Error _ -> None
+               | Ok s ->
+                 Path.unlink dst;
+                 Some s.st_perm
+             in
+             Io.copy_file
+               ~chmod:(fun default -> Option.value old_permissions ~default)
+               ~src ~dst ())
+  end
+
+  let action ~src ~dst =
+    let module M = struct
+      type path = Path.t
+
+      type target = Path.Build.t
+
+      module Spec = Spec
+
+      let v = (src, dst)
+    end in
+    Action.Extension (module M)
+end
+
 let add_env env action =
   Action_builder.With_targets.map action ~f:(Action.Full.add_env env)
 
@@ -1131,10 +1195,22 @@ let gen_rules context_name (pkg : Pkg.t) =
     let+ build_action =
       let install_action = Action_expander.install_command context_name pkg in
       let+ build_and_install =
+        let* copy_action =
+          Fs_memo.dir_exists (In_source_dir pkg.files_dir) >>| function
+          | false -> []
+          | true ->
+            [ Copy_tree.action
+                ~src:(Path.source pkg.files_dir)
+                ~dst:pkg.paths.source_dir
+              |> Action.Full.make |> Action_builder.With_targets.return
+            ]
+        in
         let* build_action =
           match Action_expander.build_command context_name pkg with
-          | None -> Memo.return []
-          | Some build_command -> build_command >>| List.singleton
+          | None -> Memo.return copy_action
+          | Some build_command ->
+            let+ build_command = build_command in
+            copy_action @ [ build_command ]
         in
         match Action_expander.install_command context_name pkg with
         | None -> Memo.return build_action

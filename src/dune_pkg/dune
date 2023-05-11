@@ -6,6 +6,7 @@
   fiber
   dune_engine
   dune_util
+  dune_lang
   opam_core
   opam_repository
   opam_format)

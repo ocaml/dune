@@ -113,164 +113,166 @@ let two_or_more decode =
   and+ rest = repeat decode in
   n1 :: n2 :: rest
 
+let decode_with_accepted_exit_codes =
+  let rec is_ok loc ~nesting_support ~nesting_support_version = function
+    | Run _ | Bash _ | System _ -> true
+    | Chdir (_, t)
+    | Setenv (_, _, t)
+    | Ignore (_, t)
+    | Redirect_in (_, _, t)
+    | Redirect_out (_, _, _, t)
+    | No_infer t ->
+      if nesting_support then
+        is_ok loc ~nesting_support ~nesting_support_version t
+      else
+        Syntax.Error.since loc Stanza.syntax nesting_support_version
+          ~what:"nesting modifiers under 'with-accepted-exit-codes'"
+    | _ -> false
+  in
+  let quote = List.map ~f:String.quoted in
+  fun t ->
+    let open Decoder in
+    Syntax.since Stanza.syntax (2, 0)
+    >>> let+ codes = Predicate_lang.decode_one Decoder.int
+        and+ version = Syntax.get_exn Stanza.syntax
+        and+ loc, t = located t in
+        match
+          let nesting_support_version = (2, 2) in
+          let nesting_support =
+            Syntax.Version.Infix.(version >= nesting_support_version)
+          in
+          ( is_ok loc ~nesting_support ~nesting_support_version t
+          , nesting_support )
+        with
+        | true, _ -> With_accepted_exit_codes (codes, t)
+        | false, true ->
+          User_error.raise ~loc
+            [ Pp.textf
+                "Only %s can be nested under \"with-accepted-exit-codes\""
+                (String.enumerate_and
+                @@ quote
+                     [ "run"
+                     ; "bash"
+                     ; "system"
+                     ; "chdir"
+                     ; "setenv"
+                     ; "ignore-<outputs>"
+                     ; "with-stdin-from"
+                     ; "with-<outputs>-to"
+                     ; "no-infer"
+                     ])
+            ]
+        | false, false ->
+          User_error.raise ~loc
+            [ Pp.textf "with-accepted-exit-codes can only be used with %s"
+                (String.enumerate_or (quote [ "run"; "bash"; "system" ]))
+            ]
+
 let decode =
   let open Decoder in
   let sw = String_with_vars.decode in
-  Decoder.fix (fun t ->
-      sum
-        [ ( "run"
-          , let+ prog = sw
+  Decoder.fix @@ fun t ->
+  sum
+    [ ( "run"
+      , let+ prog = sw
+        and+ args = repeat sw in
+        Run (prog, args) )
+    ; ("with-accepted-exit-codes", decode_with_accepted_exit_codes t)
+    ; ( "dynamic-run"
+      , Syntax.since Action_plugin.syntax (0, 1)
+        >>> let+ prog = sw
             and+ args = repeat sw in
-            Run (prog, args) )
-        ; ( "with-accepted-exit-codes"
-          , let open Decoder in
-            Syntax.since Stanza.syntax (2, 0)
-            >>> let+ codes = Predicate_lang.decode_one Decoder.int
-                and+ version = Syntax.get_exn Stanza.syntax
-                and+ loc, t = located t in
-                let nesting_support_version = (2, 2) in
-                let nesting_support =
-                  Syntax.Version.Infix.(version >= nesting_support_version)
-                in
-                let rec is_ok = function
-                  | Run _ | Bash _ | System _ -> true
-                  | Chdir (_, t)
-                  | Setenv (_, _, t)
-                  | Ignore (_, t)
-                  | Redirect_in (_, _, t)
-                  | Redirect_out (_, _, _, t)
-                  | No_infer t ->
-                    if nesting_support then is_ok t
-                    else
-                      Syntax.Error.since loc Stanza.syntax
-                        nesting_support_version
-                        ~what:
-                          "nesting modifiers under 'with-accepted-exit-codes'"
-                  | _ -> false
-                in
-                let quote = List.map ~f:(Printf.sprintf "\"%s\"") in
-                match (is_ok t, nesting_support) with
-                | true, _ -> With_accepted_exit_codes (codes, t)
-                | false, true ->
-                  User_error.raise ~loc
-                    [ Pp.textf
-                        "Only %s can be nested under \
-                         \"with-accepted-exit-codes\""
-                        (Stdune.String.enumerate_and
-                           (quote
-                              [ "run"
-                              ; "bash"
-                              ; "system"
-                              ; "chdir"
-                              ; "setenv"
-                              ; "ignore-<outputs>"
-                              ; "with-stdin-from"
-                              ; "with-<outputs>-to"
-                              ; "no-infer"
-                              ]))
-                    ]
-                | false, false ->
-                  User_error.raise ~loc
-                    [ Pp.textf
-                        "with-accepted-exit-codes can only be used with %s"
-                        (Stdune.String.enumerate_or
-                           (quote [ "run"; "bash"; "system" ]))
-                    ] )
-        ; ( "dynamic-run"
-          , Syntax.since Action_plugin.syntax (0, 1)
-            >>> let+ prog = sw
-                and+ args = repeat sw in
-                Dynamic_run (prog, args) )
-        ; ( "chdir"
-          , let+ dn = sw
+            Dynamic_run (prog, args) )
+    ; ( "chdir"
+      , let+ dn = sw
+        and+ t = t in
+        Chdir (dn, t) )
+    ; ( "setenv"
+      , let+ k = sw
+        and+ v = sw
+        and+ t = t in
+        Setenv (k, v, t) )
+    ; ( "with-stdout-to"
+      , let+ fn = sw
+        and+ t = t in
+        translate_to_ignore fn Stdout t )
+    ; ( "with-stderr-to"
+      , let+ fn = sw
+        and+ t = t in
+        translate_to_ignore fn Stderr t )
+    ; ( "with-outputs-to"
+      , let+ fn = sw
+        and+ t = t in
+        translate_to_ignore fn Outputs t )
+    ; ( "with-stdin-from"
+      , Syntax.since Stanza.syntax (2, 0)
+        >>> let+ fn = sw
             and+ t = t in
-            Chdir (dn, t) )
-        ; ( "setenv"
-          , let+ k = sw
-            and+ v = sw
-            and+ t = t in
-            Setenv (k, v, t) )
-        ; ( "with-stdout-to"
-          , let+ fn = sw
-            and+ t = t in
-            translate_to_ignore fn Stdout t )
-        ; ( "with-stderr-to"
-          , let+ fn = sw
-            and+ t = t in
-            translate_to_ignore fn Stderr t )
-        ; ( "with-outputs-to"
-          , let+ fn = sw
-            and+ t = t in
-            translate_to_ignore fn Outputs t )
-        ; ( "with-stdin-from"
-          , Syntax.since Stanza.syntax (2, 0)
-            >>> let+ fn = sw
-                and+ t = t in
-                Redirect_in (Stdin, fn, t) )
-        ; ("ignore-stdout", t >>| fun t -> Ignore (Stdout, t))
-        ; ("ignore-stderr", t >>| fun t -> Ignore (Stderr, t))
-        ; ("ignore-outputs", t >>| fun t -> Ignore (Outputs, t))
-        ; ("progn", repeat t >>| fun l -> Progn l)
-        ; ( "concurrent"
-          , Syntax.since Stanza.syntax (3, 8) >>> repeat t >>| fun l ->
-            Concurrent l )
-        ; ( "echo"
-          , let+ x = sw
-            and+ xs = repeat sw in
-            Echo (x :: xs) )
-        ; ( "cat"
-          , let* xs = repeat1 sw in
-            (if List.length xs > 1 then
-             Syntax.since ~what:"Passing several arguments to 'cat'"
-               Stanza.syntax (3, 4)
-            else return ())
-            >>> return (Cat xs) )
-        ; ( "copy"
-          , let+ src = sw
-            and+ dst = sw in
-            Copy (src, dst) )
-        ; ( "copy#"
-          , let+ src = sw
-            and+ dst = sw in
-            Copy_and_add_line_directive (src, dst) )
-        ; ( "copy-and-add-line-directive"
-          , let+ src = sw
-            and+ dst = sw in
-            Copy_and_add_line_directive (src, dst) )
-        ; ("system", sw >>| fun cmd -> System cmd)
-        ; ("bash", sw >>| fun cmd -> Bash cmd)
-        ; ( "write-file"
-          , let+ fn = sw
-            and+ s = sw in
-            Write_file (fn, Normal, s) )
-        ; ( "diff"
-          , let+ diff = Diff.decode sw sw ~optional:false in
-            Diff diff )
-        ; ( "diff?"
-          , let+ diff = Diff.decode sw sw ~optional:true in
-            Diff diff )
-        ; ( "cmp"
-          , let+ diff = Diff.decode_binary sw sw in
-            Diff diff )
-        ; ( "no-infer"
-          , Syntax.since Stanza.syntax (2, 6) >>> t >>| fun t -> No_infer t )
-        ; ( "pipe-stdout"
-          , Syntax.since Stanza.syntax (2, 7)
-            >>> let+ ts = two_or_more t in
-                Pipe (Stdout, ts) )
-        ; ( "pipe-stderr"
-          , Syntax.since Stanza.syntax (2, 7)
-            >>> let+ ts = two_or_more t in
-                Pipe (Stderr, ts) )
-        ; ( "pipe-outputs"
-          , Syntax.since Stanza.syntax (2, 7)
-            >>> let+ ts = two_or_more t in
-                Pipe (Outputs, ts) )
-        ; ( "cram"
-          , Syntax.since Stanza.syntax (2, 7)
-            >>> let+ script = sw in
-                Cram script )
-        ])
+            Redirect_in (Stdin, fn, t) )
+    ; ("ignore-stdout", t >>| fun t -> Ignore (Stdout, t))
+    ; ("ignore-stderr", t >>| fun t -> Ignore (Stderr, t))
+    ; ("ignore-outputs", t >>| fun t -> Ignore (Outputs, t))
+    ; ("progn", repeat t >>| fun l -> Progn l)
+    ; ( "concurrent"
+      , Syntax.since Stanza.syntax (3, 8) >>> repeat t >>| fun l -> Concurrent l
+      )
+    ; ( "echo"
+      , let+ x = sw
+        and+ xs = repeat sw in
+        Echo (x :: xs) )
+    ; ( "cat"
+      , let* xs = repeat1 sw in
+        (if List.length xs > 1 then
+         Syntax.since ~what:"Passing several arguments to 'cat'" Stanza.syntax
+           (3, 4)
+        else return ())
+        >>> return (Cat xs) )
+    ; ( "copy"
+      , let+ src = sw
+        and+ dst = sw in
+        Copy (src, dst) )
+    ; ( "copy#"
+      , let+ src = sw
+        and+ dst = sw in
+        Copy_and_add_line_directive (src, dst) )
+    ; ( "copy-and-add-line-directive"
+      , let+ src = sw
+        and+ dst = sw in
+        Copy_and_add_line_directive (src, dst) )
+    ; ("system", sw >>| fun cmd -> System cmd)
+    ; ("bash", sw >>| fun cmd -> Bash cmd)
+    ; ( "write-file"
+      , let+ fn = sw
+        and+ s = sw in
+        Write_file (fn, Normal, s) )
+    ; ( "diff"
+      , let+ diff = Diff.decode sw sw ~optional:false in
+        Diff diff )
+    ; ( "diff?"
+      , let+ diff = Diff.decode sw sw ~optional:true in
+        Diff diff )
+    ; ( "cmp"
+      , let+ diff = Diff.decode_binary sw sw in
+        Diff diff )
+    ; ( "no-infer"
+      , Syntax.since Stanza.syntax (2, 6) >>> t >>| fun t -> No_infer t )
+    ; ( "pipe-stdout"
+      , Syntax.since Stanza.syntax (2, 7)
+        >>> let+ ts = two_or_more t in
+            Pipe (Stdout, ts) )
+    ; ( "pipe-stderr"
+      , Syntax.since Stanza.syntax (2, 7)
+        >>> let+ ts = two_or_more t in
+            Pipe (Stderr, ts) )
+    ; ( "pipe-outputs"
+      , Syntax.since Stanza.syntax (2, 7)
+        >>> let+ ts = two_or_more t in
+            Pipe (Outputs, ts) )
+    ; ( "cram"
+      , Syntax.since Stanza.syntax (2, 7)
+        >>> let+ script = sw in
+            Cram script )
+    ]
 
 let rec encode =
   let sw = String_with_vars.encode in

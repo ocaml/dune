@@ -11,6 +11,6 @@ let group =
     ; Top.command
     ; Top.module_command
     ; Ocaml_merlin.group
-    ; Build_cmd.doc
+    ; Doc.cmd
     ]
 ;;

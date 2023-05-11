@@ -92,8 +92,14 @@ type t =
   | No_infer of t
   | Pipe of Outputs.t * t list
   | Cram of String_with_vars.t
+  | Patch of String_with_vars.t
+  | Substitute of String_with_vars.t * String_with_vars.t
 
-include Conv.S with type t := t
+val encode : t Encoder.t
+
+val decode_dune_file : t Decoder.t
+
+val decode_pkg : t Decoder.t
 
 (** Raises User_error on invalid action. *)
 val validate : loc:Loc.t -> t -> unit

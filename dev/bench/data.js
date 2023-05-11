@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683763779188,
+  "lastUpdate": 1683764193621,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30651,6 +30651,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.109869638833333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b03e4fb8449d5298602bebe4c1d89327c5ed8771",
+          "message": "fix(pkg): install optional entries correctly (#7710)\n\nEntries prefixed with \"?\" are optional. We no longer require them to\r\nexist when building a package.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-10T16:43:45-07:00",
+          "tree_id": "2c88cc26ecb309b812c6f071c7124d3f46f6e31c",
+          "url": "https://github.com/ocaml/dune/commit/b03e4fb8449d5298602bebe4c1d89327c5ed8771"
+        },
+        "date": 1683764192357,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "80.94816406794",
             "unit": "seconds"
           }
         ]

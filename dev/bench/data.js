@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683773303226,
+  "lastUpdate": 1683835318762,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -37525,6 +37525,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "29.329802898980002",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3887cb9aac425587711f7fac0019d92769581ea2",
+          "message": "feature(pkg): allow source overlays for packages (#7712)\n\nAnything in $package.files/ will be overlaid on top of the source\r\ndirectory before building.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-11T12:47:59-07:00",
+          "tree_id": "915d82a139feacdf5c3c7443970efcbbeac5f425",
+          "url": "https://github.com/ocaml/dune/commit/3887cb9aac425587711f7fac0019d92769581ea2"
+        },
+        "date": 1683835315299,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "25.862425730733335",
             "unit": "seconds"
           }
         ]

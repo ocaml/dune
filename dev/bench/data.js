@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683932257876,
+  "lastUpdate": 1683932756147,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -15281,6 +15281,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "45.22444811942666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "73dee3b224612dc78ca25c86b6166361fb8b9851",
+          "message": "refactor: move Package.Name.t to Dune_lang (#7715)\n\nThis will allow to move lock file definitions to Dune_pkg\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-12T15:41:17-07:00",
+          "tree_id": "467f541e23bcd445cf672e506c852aac608dc223",
+          "url": "https://github.com/ocaml/dune/commit/73dee3b224612dc78ca25c86b6166361fb8b9851"
+        },
+        "date": 1683932755618,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.33283053768667",
             "unit": "seconds"
           }
         ]

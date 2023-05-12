@@ -39,6 +39,9 @@ nested more than the dune-project file
     "_build/install/default/lib/foo/runtime.js"
   ]
 
+  $ cat lib/_build/install/default/lib/foo/dune-package | grep melange_runtime_deps
+   (melange_runtime_deps runtime.js))
+
   $ dune install --root lib --prefix $PWD/prefix
 
   $ mkdir -p app

@@ -73,7 +73,12 @@ module Lib = struct
       | Local -> None
     in
     let melange_runtime_deps =
-      additional_paths (Lib_info.melange_runtime_deps info)
+      match Lib_info.melange_runtime_deps info with
+      | Local _ -> assert false
+      | External paths ->
+        let lib_dir = Obj_dir.dir obj_dir in
+        List.map paths ~f:(fun p ->
+            Path.append_local lib_dir (Path.local_part p))
     in
     let jsoo_runtime = Lib_info.jsoo_runtime info in
     let virtual_ = Option.is_some (Lib_info.virtual_ info) in

@@ -1,4 +1,5 @@
-Test `melange.runtime_deps` in a library that has been installed
+Test `melange.runtime_deps` for installed libraries where the dune file is
+nested more than the dune-project file
 
   $ mkdir lib app prefix
   $ cat > lib/dune-project <<EOF
@@ -13,7 +14,6 @@ Test `melange.runtime_deps` in a library that has been installed
   > (library
   >  (public_name foo)
   >  (name foo)
-  >  ;(wrapped false)
   >  (modes melange)
   >  (preprocess (pps melange.ppx))
   >  (melange.runtime_deps ./runtime.js))
@@ -60,12 +60,10 @@ Test `melange.runtime_deps` in a library that has been installed
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @melange
   Entering directory 'app'
-  File "dune", line 1, characters 0-69:
-  1 | (melange.emit
-  2 |  (target output)
-  3 |  (emit_stdlib false)
-  4 |  (libraries foo))
-  Error: File unavailable:
-  $TESTCASE_ROOT/prefix/lib/foo/packages/foo/src/runtime.js
   Leaving directory 'app'
-  [1]
+
+File exists in output dir
+
+  $ ls app/_build/default/output/node_modules/foo
+  foo.js
+  runtime.js

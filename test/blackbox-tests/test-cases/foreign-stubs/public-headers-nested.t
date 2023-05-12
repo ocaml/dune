@@ -20,7 +20,7 @@ Headers with the same filename cannot be installed together:
     "_build/install/default/lib/mypkg/inc/foo.h" {"inc/foo.h"}
 
   $ cat _build/install/default/lib/mypkg/dune-package | grep public_headers
-   (public_headers default/lib/mypkg/foo.h default/lib/mypkg/foo.h)
+   (public_headers foo.h inc/foo.h)
 
 Now we try to use the installed headers:
 

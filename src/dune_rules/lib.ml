@@ -2007,6 +2007,14 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects
         else Direct (loc, mangled_name lib))
   in
   let name = mangled_name lib in
+  let melange_runtime_deps =
+    let prefix = Lib_info.src_dir lib.info in
+    List.map
+      ~f:(fun melange_runtime_dep ->
+        let local_dep = Path.drop_prefix_exn ~prefix melange_runtime_dep in
+        Path.of_local local_dep)
+      melange_runtime_deps
+  in
   let info =
     Lib_info.for_dune_package info ~name ~ppx_runtime_deps ~requires
       ~foreign_objects ~obj_dir ~implements ~default_implementation ~sub_systems

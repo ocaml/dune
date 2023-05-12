@@ -622,7 +622,7 @@ type external_ = Path.t t
 
 type local = Path.Build.t t
 
-let map t ~path_kind ~f_path ~f_obj_dir ~f_melange_deps =
+let map t ~path_kind ~f_path ~f_obj_dir ~f_public_deps =
   let f = f_path in
   let list = List.map ~f in
   let mode_list = Mode.Dict.map ~f:list in
@@ -638,26 +638,25 @@ let map t ~path_kind ~f_path ~f_obj_dir ~f_melange_deps =
   ; archives = mode_list t.archives
   ; plugins = mode_list t.plugins
   ; foreign_objects = Source.map ~f:(List.map ~f) t.foreign_objects
-  ; public_headers = File_deps.map ~f t.public_headers
+  ; public_headers = File_deps.map ~f:f_public_deps t.public_headers
   ; foreign_archives = Mode.Map.Multi.map t.foreign_archives ~f
   ; foreign_dll_files = List.map ~f t.foreign_dll_files
   ; native_archives
   ; jsoo_runtime = List.map ~f t.jsoo_runtime
-  ; melange_runtime_deps =
-      File_deps.map ~f:f_melange_deps t.melange_runtime_deps
+  ; melange_runtime_deps = File_deps.map ~f:f_public_deps t.melange_runtime_deps
   ; path_kind
   }
 
 let map_path t ~f =
-  map t ~path_kind:External ~f_path:f ~f_obj_dir:Fun.id ~f_melange_deps:Fun.id
+  map t ~path_kind:External ~f_path:f ~f_obj_dir:Fun.id ~f_public_deps:Fun.id
 
 let of_local =
   map ~path_kind:External ~f_path:Path.build ~f_obj_dir:Obj_dir.of_local
-    ~f_melange_deps:Path.build
+    ~f_public_deps:Path.build
 
 let as_local_exn =
   map ~path_kind:Local ~f_path:Path.as_in_build_dir_exn
-    ~f_obj_dir:Obj_dir.as_local_exn ~f_melange_deps:Path.as_in_build_dir_exn
+    ~f_obj_dir:Obj_dir.as_local_exn ~f_public_deps:Path.as_in_build_dir_exn
 
 let to_dyn path
     { loc

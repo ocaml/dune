@@ -49,8 +49,7 @@ module Lib = struct
       | External paths ->
         let lib_dir = Obj_dir.dir obj_dir in
         List.map paths ~f:(fun p ->
-            Path.as_in_build_dir_exn p |> Path.Build.drop_build_context_exn
-            |> Path.append_source lib_dir)
+            Path.append_local lib_dir (Path.local_part p))
     in
     let orig_src_dir = Lib_info.orig_src_dir info in
     let implements = Lib_info.implements info in
@@ -73,12 +72,7 @@ module Lib = struct
       | Local -> None
     in
     let melange_runtime_deps =
-      match Lib_info.melange_runtime_deps info with
-      | Local _ -> assert false
-      | External paths ->
-        let lib_dir = Obj_dir.dir obj_dir in
-        List.map paths ~f:(fun p ->
-            Path.append_local lib_dir (Path.local_part p))
+      additional_paths (Lib_info.melange_runtime_deps info)
     in
     let jsoo_runtime = Lib_info.jsoo_runtime info in
     let virtual_ = Option.is_some (Lib_info.virtual_ info) in

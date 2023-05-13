@@ -24,14 +24,12 @@ Test errors when public library runtime dependencies escape the dune file dir
 
   $ dune build --root lib
   Entering directory 'lib'
+  File "packages/foo/src/dune", line 6, characters 23-39:
+  6 |  (melange.runtime_deps ../../runtime.js))
+                             ^^^^^^^^^^^^^^^^
+  Error: Public library `foo' depends on assets outside its source tree. This
+  is not allowed.
+  Hint: Move the dependency to a descendant of the folder where the library is
+  defined
   Leaving directory 'lib'
-
-File ends up in the wrong path. Should be `../../runtime.js` from the lib dir
-
-  $ dune install --root lib --prefix "$PWD/_install" foo
-  $ ls _install/lib/foo
-  META
-  dune-package
-  foo.ml
-  melange
-  runtime.js
+  [1]

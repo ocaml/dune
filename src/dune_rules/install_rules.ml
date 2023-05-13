@@ -43,6 +43,25 @@ module Package_paths = struct
     Path.Build.extend_basename (meta_file ctx pkg) ~suffix:".template"
 end
 
+let check_runtime_deps_relative_path local_path ~loc ~lib_info =
+  let lib_src_dir = Lib_info.src_dir lib_info in
+  match
+    Path.Local.descendant local_path ~of_:(Path.Build.local lib_src_dir)
+  with
+  | None ->
+    User_error.raise ~loc
+      [ Pp.textf
+          "Public library `%s' depends on assets outside its source tree. This \
+           is not allowed."
+          (lib_info |> Lib_info.name |> Lib_name.to_string)
+      ]
+      ~hints:
+        [ Pp.textf
+            "Move the dependency to a descendant of the folder where the \
+             library is defined"
+        ]
+  | Some _ -> ()
+
 module Stanzas_to_entries : sig
   val stanzas_to_entries :
     Super_context.t -> Install.Entry.Sourced.t list Package.Name.Map.t Memo.t
@@ -178,7 +197,12 @@ end = struct
           ~paths:(Disallow_external lib_name)
       in
       Path.Set.to_list_map deps ~f:(fun path ->
-          let path = Path.as_in_build_dir_exn path in
+          let path =
+            let path = path |> Path.as_in_build_dir_exn in
+            check_runtime_deps_relative_path ~lib_info:info ~loc
+              (Path.Build.local path);
+            path
+          in
           let sub_dir =
             let src_dir = Path.Build.parent_exn path in
             match Path.Build.equal lib_src_dir src_dir with
@@ -564,8 +588,15 @@ end = struct
               | External _paths -> assert false
               | Local (loc, dep_conf) ->
                 Lib_file_deps.eval ~expander ~loc ~paths:Allow_all dep_conf
-                >>| Path.Set.to_list
+                >>| Path.Set.to_list_map ~f:(fun p ->
+                        let local_path =
+                          p |> Path.as_in_build_dir_exn |> Path.Build.local
+                        in
+                        check_runtime_deps_relative_path ~lib_info:info ~loc
+                          local_path;
+                        p)
             in
+
             let* foreign_objects =
               (* We are writing the list of .o files to dune-package, but we
                  actually only install them for virtual libraries. See

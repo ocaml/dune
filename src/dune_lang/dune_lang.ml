@@ -11,3 +11,4 @@ module Value = Value
 module Blang = Blang
 module Binary_kind = Binary_kind
 module Package_name = Package_name
+module Pkg = Pkg

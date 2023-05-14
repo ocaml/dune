@@ -7,7 +7,6 @@ open Dune_pkg
 (* TODO
    - substitutions
    - extra-files
-   - patches
    - build env
    - post dependencies
    - build dependencies
@@ -116,11 +115,6 @@ module Env_update = struct
 end
 
 module Lock_file = struct
-  let syntax =
-    Dune_sexp.Syntax.create ~experimental:true ~name:"package"
-      ~desc:"the package management language"
-      [ ((0, 1), `Since (0, 0)) ]
-
   module Pkg = struct
     type t =
       { build_command : Action_unexpanded.t option
@@ -135,8 +129,8 @@ module Lock_file = struct
       let open Dune_lang.Decoder in
       enter @@ fields
       @@ let+ version = field ~default:"dev" "version" string
-         and+ install_command = field_o "install" Action_unexpanded.decode
-         and+ build_command = field_o "build" Action_unexpanded.decode
+         and+ install_command = field_o "install" Dune_lang.Action.decode_pkg
+         and+ build_command = field_o "build" Dune_lang.Action.decode_pkg
          and+ deps = field ~default:[] "deps" (repeat Package.Name.decode)
          and+ source = field_o "source" Source.decode
          and+ dev = field_b "dev"
@@ -172,7 +166,7 @@ module Lock_file = struct
 
   module Metadata = Dune_sexp.Versioned_file.Make (Unit)
 
-  let () = Metadata.Lang.register syntax ()
+  let () = Metadata.Lang.register Dune_lang.Pkg.syntax ()
 
   let get () : t Memo.t =
     Fs_memo.dir_exists (In_source_dir path) >>= function
@@ -213,7 +207,11 @@ module Lock_file = struct
                    in
                    let parser =
                      let env = Pform.Env.pkg version in
-                     String_with_vars.set_decoding_env env Pkg.decode
+                     let decode =
+                       Syntax.set Dune_lang.Pkg.syntax (Active version)
+                         Pkg.decode
+                     in
+                     String_with_vars.set_decoding_env env decode
                    in
                    (Dune_lang.Decoder.parse parser Univ_map.empty
                       (List (Loc.none, sexp)))
@@ -469,6 +467,37 @@ module Pkg_installed = struct
     { cookie }
 end
 
+module Substitute = struct
+  module Spec = struct
+    type ('path, 'target) t = 'path * 'target
+
+    let name = "substitute"
+
+    let version = 1
+
+    let bimap (i, o) f g = (f i, g o)
+
+    let is_useful_to ~distribute:_ ~memoize = memoize
+
+    let encode (i, o) input output : Dune_lang.t =
+      List [ Dune_lang.atom_or_quoted_string name; input i; output o ]
+
+    let action _ ~ectx:_ ~eenv:_ = assert false
+  end
+
+  let action ~input ~output =
+    let module M = struct
+      type path = Path.t
+
+      type target = Path.Build.t
+
+      module Spec = Spec
+
+      let v = (input, output)
+    end in
+    Action.Extension (module M)
+end
+
 module Action_expander = struct
   module Expander = struct
     module String_expander = String_with_vars.Make_expander (Applicative.Id)
@@ -629,6 +658,34 @@ module Action_expander = struct
         |> Value.to_string ~dir
       in
       Memo.return @@ Action.System arg
+    | Patch p ->
+      let input =
+        Expander.expand_pform_gen ~mode:Single expander p
+        |> Value.to_string ~dir
+      in
+      let+ patch =
+        let path = Global.env () |> Env_path.path in
+        let program = "patch" in
+        Which.which ~path program >>| function
+        | Some p -> Ok p
+        | None ->
+          let loc = Some (String_with_vars.loc p) in
+          Error
+            (Action.Prog.Not_found.create ~context:expander.context ~program
+               ~loc ())
+      in
+      (* TODO opam has a preprocessing step that we should probably apply *)
+      Action.Run (patch, [ "-p1"; "-i"; input ])
+    | Substitute (input, output) ->
+      let input =
+        Expander.expand_pform_gen ~mode:Single expander input
+        |> Value.to_path ~dir
+      in
+      let output =
+        Expander.expand_pform_gen ~mode:Single expander output
+        |> Value.to_path ~dir |> Path.as_in_build_dir_exn
+      in
+      Memo.return @@ Substitute.action ~input ~output
     | _ ->
       (* TODO *)
       assert false
@@ -680,6 +737,7 @@ module Action_expander = struct
     let+ action =
       expand action ~expander >>| Action.chdir (Path.build pkg.paths.source_dir)
     in
+    (* TODO copying is needed because patch/substitute might be present *)
     Action.Full.make ~sandbox:Sandbox_config.needs_sandboxing action
     |> Action_builder.return |> Action_builder.with_no_targets
 

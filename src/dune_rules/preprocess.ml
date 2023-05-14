@@ -128,7 +128,7 @@ let decode =
                ~f:(fun env ->
                  let env = Option.value_exn env in
                  Some (Pform.Env.lt_renamed_input_file env))
-               Dune_lang.Action.decode)
+               Dune_lang.Action.decode_dune_file)
         in
         Action (loc, x) )
     ; ( "pps"

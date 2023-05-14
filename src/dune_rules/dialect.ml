@@ -71,10 +71,12 @@ let decode =
   let open Dune_lang.Decoder in
   let kind kind =
     let+ loc, extension = field "extension" (located string)
-    and+ preprocess = field_o "preprocess" (located Action.decode)
+    and+ preprocess = field_o "preprocess" (located Action.decode_dune_file)
     and+ format =
       field_o "format"
-        (map ~f:(fun (loc, x) -> (loc, x, [])) (located Action.decode))
+        (map
+           ~f:(fun (loc, x) -> (loc, x, []))
+           (located Action.decode_dune_file))
     in
     let extension =
       if String.contains extension '.' then

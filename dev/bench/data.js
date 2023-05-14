@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684067716042,
+  "lastUpdate": 1684068154947,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -15397,6 +15397,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.43686604238666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e70410190de9a1d3efde57dc7cba871833ba1eab",
+          "message": "refactor: remove use of format (#7727)\n\nUse pp instead of the deprecated formatters\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-14T05:21:38-07:00",
+          "tree_id": "f3552401e0b571f14054c67022c072eb9cb4be1e",
+          "url": "https://github.com/ocaml/dune/commit/e70410190de9a1d3efde57dc7cba871833ba1eab"
+        },
+        "date": 1684068154079,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.546498931353334",
             "unit": "seconds"
           }
         ]

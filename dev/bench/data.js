@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684068243836,
+  "lastUpdate": 1684068500333,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -31318,6 +31318,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.7599635852333335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9d2c36a989d2dac66050f286cd3dc020a9a2f8f2",
+          "message": "refactor: remove polymorphic comparison instance (#7726)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-14T05:23:02-07:00",
+          "tree_id": "ed4291f67f03f6e73a7a5dbce832347af40f63aa",
+          "url": "https://github.com/ocaml/dune/commit/9d2c36a989d2dac66050f286cd3dc020a9a2f8f2"
+        },
+        "date": 1684068499567,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "61.9634054122",
             "unit": "seconds"
           }
         ]

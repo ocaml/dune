@@ -223,6 +223,18 @@ module Status = struct
   let project = function
     | Installed_private | Installed -> None
     | Private (project, _) | Public (project, _) -> Some project
+
+  let relative_to_package t name =
+    match t with
+    | Private (_, None) -> None
+    | _ ->
+      (let _, subdir = Lib_name.split name in
+       match t with
+       | Private (_, Some _) ->
+         Lib_name.Local.mangled_path_under_package (Lib_name.to_local_exn name)
+         @ subdir
+       | _ -> subdir)
+      |> String.concat ~sep:"/" |> Path.Local.of_string |> Option.some
 end
 
 module Source = struct

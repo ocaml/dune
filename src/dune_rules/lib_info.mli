@@ -19,6 +19,10 @@ module Status : sig
 
   (** For local libraries, return the project they are part of *)
   val project : t -> Dune_project.t option
+
+  (** [relative_to_package t name] return the path of [name] relative to the
+      package determined by [t]. If there's no package, return [None] *)
+  val relative_to_package : t -> Lib_name.t -> Path.Local.t option
 end
 
 (** For values like modules that need to be evaluated to be fetched *)

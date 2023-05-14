@@ -467,8 +467,8 @@ module Or_meta = struct
   let pp ~dune_version ppf t =
     let t = encode ~dune_version t in
     Format.fprintf ppf "%a@."
-      (Format.pp_print_list ~pp_sep:Format.pp_print_newline
-         Dune_lang.Deprecated.pp)
+      (Format.pp_print_list ~pp_sep:Format.pp_print_newline (fun fmt lang ->
+           Dune_lang.pp lang |> Pp.to_fmt fmt))
       t
 
   let to_dyn x =

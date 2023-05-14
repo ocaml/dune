@@ -694,11 +694,10 @@ end = struct
           in
           let action_with_targets =
             Action_builder.write_file
-              (Package_paths.deprecated_dune_package_file ctx pkg
-                 dune_pkg.Dune_package.name)
+              (Package_paths.deprecated_dune_package_file ctx pkg dune_pkg.name)
               (Format.asprintf "%a"
                  (Dune_package.Or_meta.pp ~dune_version)
-                 (Dune_package.Or_meta.Dune_package dune_pkg))
+                 (Dune_package dune_pkg))
           in
           Super_context.add_rule sctx ~dir:ctx.build_dir ~loc
             action_with_targets)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684094967876,
+  "lastUpdate": 1684095373689,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -31521,6 +31521,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.77272459184",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3c5a9ed8e4d28cf6578550b33e6389b260a3a2bb",
+          "message": "refactor: move library path handling to single to one place (#7728)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-14T12:44:06-07:00",
+          "tree_id": "b192a51aa6d2524a5ef464a2521f47a11b188c60",
+          "url": "https://github.com/ocaml/dune/commit/3c5a9ed8e4d28cf6578550b33e6389b260a3a2bb"
+        },
+        "date": 1684095372777,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "78.74550443154668",
             "unit": "seconds"
           }
         ]

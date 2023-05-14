@@ -87,25 +87,6 @@ module Public_libs = struct
     }
 
   let create ~context ~public_libs = { context; public_libs }
-
-  let file_of_lib t ~loc ~lib ~file =
-    let open Resolve.Memo.O in
-    let+ lib = Lib.DB.resolve t.public_libs (loc, lib) in
-    if Lib.is_local lib then
-      let package, rest = Lib_name.split (Lib.name lib) in
-      let lib_install_dir =
-        Local_install_path.lib_dir ~context:t.context.name ~package
-      in
-      let lib_install_dir =
-        match rest with
-        | [] -> lib_install_dir
-        | _ -> Path.Build.relative lib_install_dir (String.concat rest ~sep:"/")
-      in
-      Path.build (Path.Build.relative lib_install_dir file)
-    else
-      let info = Lib.info lib in
-      let src_dir = Lib_info.src_dir info in
-      Path.relative src_dir file
 end
 
 type t =

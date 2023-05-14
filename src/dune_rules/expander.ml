@@ -276,9 +276,28 @@ let expand_read_macro ~dir ~source s ~read ~pack =
            but this is a bigger refactoring. *)
         With (Action_builder.of_memo read))
 
+let file_of_lib { Artifacts.Public_libs.context; public_libs } ~loc ~lib ~file =
+  let open Resolve.Memo.O in
+  let+ lib = Lib.DB.resolve public_libs (loc, lib) in
+  if Lib.is_local lib then
+    let package, rest = Lib_name.split (Lib.name lib) in
+    let lib_install_dir =
+      let lib_install_dir =
+        Local_install_path.lib_dir ~context:context.name ~package
+      in
+      match rest with
+      | [] -> lib_install_dir
+      | _ -> Path.Build.relative lib_install_dir (String.concat rest ~sep:"/")
+    in
+    Path.build (Path.Build.relative lib_install_dir file)
+  else
+    let info = Lib.info lib in
+    let src_dir = Lib_info.src_dir info in
+    Path.relative src_dir file
+
 let expand_lib_variable t source ~arg:s ~lib_exec ~lib_private =
+  let loc = Dune_lang.Template.Pform.loc source in
   let lib, file =
-    let loc = Dune_lang.Template.Pform.loc source in
     match String.lsplit2 s ~on:':' with
     | None ->
       User_error.raise ~loc [ Pp.textf "invalid %%{lib:...} form: %s" s ]
@@ -288,10 +307,7 @@ let expand_lib_variable t source ~arg:s ~lib_exec ~lib_private =
   let p =
     let open Resolve.Memo.O in
     if lib_private then
-      let* lib =
-        Lib.DB.resolve (Scope.libs scope)
-          (Dune_lang.Template.Pform.loc source, lib)
-      in
+      let* lib = Lib.DB.resolve (Scope.libs scope) (loc, lib) in
       let current_project = Scope.project t.scope
       and referenced_project =
         Lib.info lib |> Lib_info.status |> Lib_info.Status.project
@@ -304,8 +320,7 @@ let expand_lib_variable t source ~arg:s ~lib_exec ~lib_private =
           (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
       else
         Resolve.Memo.fail
-          (User_error.make
-             ~loc:(Dune_lang.Template.Pform.loc source)
+          (User_error.make ~loc
              [ Pp.textf
                  "The variable \"lib%s-private\" can only refer to libraries \
                   within the same project. The current project's name is %S, \
@@ -323,9 +338,7 @@ let expand_lib_variable t source ~arg:s ~lib_exec ~lib_private =
       let artifacts =
         if lib_exec then t.lib_artifacts_host else t.lib_artifacts
       in
-      Artifacts.Public_libs.file_of_lib artifacts
-        ~loc:(Dune_lang.Template.Pform.loc source)
-        ~lib ~file
+      file_of_lib artifacts ~loc ~lib ~file
   in
   let p =
     let open Memo.O in
@@ -336,8 +349,7 @@ let expand_lib_variable t source ~arg:s ~lib_exec ~lib_private =
         let lang_version = Dune_project.dune_version (Scope.project t.scope) in
         if lang_version < (3, 0) then Action_builder.return [ Value.Path p ]
         else
-          User_error.raise
-            ~loc:(Dune_lang.Template.Pform.loc source)
+          User_error.raise ~loc
             [ Pp.textf
                 "The form %%{%s:<libname>:%s} is no longer supported since \
                  version 3.0 of the Dune language."
@@ -376,8 +388,7 @@ let expand_lib_variable t source ~arg:s ~lib_exec ~lib_private =
           | false -> p >>| fun _ -> assert false
           | true ->
             Resolve.Memo.fail
-              (User_error.make
-                 ~loc:(Dune_lang.Template.Pform.loc source)
+              (User_error.make ~loc
                  [ Pp.textf
                      "The library %S is not public. The variable \"lib%s\" \
                       expands to the file's installation path which is not \

@@ -279,21 +279,23 @@ let expand_read_macro ~dir ~source s ~read ~pack =
 let file_of_lib { Artifacts.Public_libs.context; public_libs } ~loc ~lib ~file =
   let open Resolve.Memo.O in
   let+ lib = Lib.DB.resolve public_libs (loc, lib) in
-  if Lib.is_local lib then
-    let package, rest = Lib_name.split (Lib.name lib) in
-    let lib_install_dir =
-      let lib_install_dir =
+  let dir =
+    let info = Lib.info lib in
+    match Lib.is_local lib with
+    | false -> Lib_info.src_dir info
+    | true ->
+      let name = Lib.name lib in
+      let subdir =
+        Lib_info.Status.relative_to_package (Lib_info.status info) name
+        |> Option.value_exn
+      in
+      let pkg_root =
+        let package = Lib_name.package_name name in
         Local_install_path.lib_dir ~context:context.name ~package
       in
-      match rest with
-      | [] -> lib_install_dir
-      | _ -> Path.Build.relative lib_install_dir (String.concat rest ~sep:"/")
-    in
-    Path.build (Path.Build.relative lib_install_dir file)
-  else
-    let info = Lib.info lib in
-    let src_dir = Lib_info.src_dir info in
-    Path.relative src_dir file
+      Path.build (Path.Build.append_local pkg_root subdir)
+  in
+  Path.relative dir file
 
 let expand_lib_variable t source ~arg:s ~lib_exec ~lib_private =
   let loc = Dune_lang.Template.Pform.loc source in

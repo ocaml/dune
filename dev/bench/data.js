@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684061917804,
+  "lastUpdate": 1684061932671,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -31115,6 +31115,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "85.32181111013334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27018a342635f8e052d856266a97374392c3c458",
+          "message": "feature(pkg): parse patch/substitute actions (#7713)\n\nThese actions are necessary to implement opam's corresponding features\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-14T03:19:37-07:00",
+          "tree_id": "64387059ef534905b31562678e58511abcb192a2",
+          "url": "https://github.com/ocaml/dune/commit/27018a342635f8e052d856266a97374392c3c458"
+        },
+        "date": 1684061931725,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.4165724215266664",
             "unit": "seconds"
           }
         ]

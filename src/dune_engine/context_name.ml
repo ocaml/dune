@@ -34,5 +34,7 @@ include (
 
 let target t ~toolchain = sprintf "%s.%s" (to_string t) (to_string toolchain)
 
+let compare = String.compare
+
 module Infix = Comparator.Operators (String)
 module Top_closure = Top_closure.Make (String.Set) (Monad.Id)

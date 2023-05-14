@@ -91,7 +91,7 @@ let to_dyn t : Dyn.t =
 
 let to_dyn_concise t : Dyn.t = Context_name.to_dyn t.name
 
-let compare a b = Poly.compare a.name b.name
+let compare a b = Context_name.compare a.name b.name
 
 (** Wrap calls to the opam binary *)
 module Opam : sig

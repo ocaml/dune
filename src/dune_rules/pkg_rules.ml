@@ -222,11 +222,7 @@ module Pkg = struct
   let source_files t =
     let rec loop root acc path =
       let* contents =
-        let path =
-          (* TODO add [External.append_local] *)
-          Path.append_local (Path.external_ root) path
-          |> Path.as_external |> Option.value_exn
-        in
+        let path = Path.External.append_local root path in
         Fs_memo.dir_contents (External path)
       in
       match contents with

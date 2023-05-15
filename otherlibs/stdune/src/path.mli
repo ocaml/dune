@@ -82,6 +82,8 @@ module External : sig
   val mkdir_p : ?perms:int -> t -> unit
 
   val of_filename_relative_to_initial_cwd : string -> t
+
+  val append_local : t -> Local.t -> t
 end
 
 (** In the source section of the current workspace. *)

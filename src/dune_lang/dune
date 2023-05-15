@@ -7,6 +7,7 @@
   dune_rpc_private
   memo
   ocaml
+  dune_util
   dyn
   ordering
   dune_section

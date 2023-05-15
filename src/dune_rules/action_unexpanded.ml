@@ -480,6 +480,9 @@ let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
   | Cram script ->
     let+ script = E.dep script in
     Cram_exec.action script
+  | Substitute _ | Patch _ ->
+    (* these can only be provided by the package language which isn't expanded here *)
+    assert false
 
 let expand_no_targets t ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
   let open Action_builder.O in

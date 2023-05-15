@@ -1,0 +1,3 @@
+(cram
+ (deps %{bin:patch})
+ (applies_to patch))

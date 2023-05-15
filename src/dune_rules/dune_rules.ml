@@ -61,6 +61,7 @@ module Sub_dirs = Sub_dirs
 module Package = Package
 module Section = Section
 module Dialect = Dialect
+module Pkg_rules = Pkg_rules
 
 module Install_rules = struct
   let install_file = Install_rules.install_file

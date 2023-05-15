@@ -59,6 +59,11 @@ let local_libraries =
   ; ("src/dune_file_watcher", Some "Dune_file_watcher", false, None)
   ; ("src/dune_engine", Some "Dune_engine", false, None)
   ; ("vendor/opam/src/repository", None, false, None)
+  ; ("vendor/opam/src/state", None, false, None)
+  ; ("vendor/0install-solver/src/solver", Some "Zeroinstall_solver", false,
+    None)
+  ; ("vendor/fmt/src", None, false, None)
+  ; ("vendor/opam-0install/lib", Some "Opam_0install", false, None)
   ; ("src/dune_pkg", Some "Dune_pkg", false, None)
   ; ("src/dune_vcs", Some "Dune_vcs", false, None)
   ; ("src/dune_threaded_console", Some "Dune_threaded_console", false, None)

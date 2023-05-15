@@ -52,7 +52,7 @@ module E = struct
 end
 
 type t = {
-  root_dir: OpamFilename.Dir.t;
+  root_dir: OpamFilename.Dir.t lazy_t;
   current_switch: OpamSwitch.t option;
   switch_from: provenance;
   jobs: int Lazy.t;
@@ -70,7 +70,7 @@ type t = {
 }
 
 let default = {
-  root_dir = (
+  root_dir = lazy (
     (* On Windows, if a .opam directory is found in %HOME% or %USERPROFILE% then
        then we'll use it. Otherwise, we use %LOCALAPPDATA%. *)
     let home_location =
@@ -144,7 +144,7 @@ let setk k t
   =
   let (+) x opt = match opt with Some x -> x | None -> x in
   k {
-    root_dir = t.root_dir + root_dir;
+    root_dir = OpamCompat.Lazy.map (fun r -> r + root_dir) t.root_dir;
     current_switch =
       (match current_switch with None -> t.current_switch | s -> s);
     switch_from = t.switch_from + switch_from;
@@ -202,7 +202,7 @@ let opamroot ?root_dir () =
   let open OpamStd.Option.Op in
   (root_dir >>+ fun () ->
    OpamStd.Env.getopt "OPAMROOT" >>| OpamFilename.Dir.of_string)
-  +! default.root_dir
+  +! (Lazy.force default.root_dir)
 
 let is_newer_raw = function
   | Some v ->
@@ -396,7 +396,7 @@ let load_defaults ?lock_kind root_dir =
 let get_switch_opt () =
   match !r.current_switch with
   | Some s ->
-    Some (resolve_local_switch !r.root_dir s)
+    Some (resolve_local_switch (Lazy.force !r.root_dir) s)
   | None -> None
 
 let get_switch () =

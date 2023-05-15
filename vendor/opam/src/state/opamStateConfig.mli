@@ -37,10 +37,10 @@ module E : sig
 end
 
 type t = private {
-  root_dir: OpamFilename.Dir.t;
+  root_dir: OpamFilename.Dir.t Lazy.t;
   current_switch: OpamSwitch.t option;
   switch_from: provenance;
-  jobs: int Lazy.t;
+  jobs: int lazy_t;
   dl_jobs: int;
   build_test: bool;
   build_doc: bool;

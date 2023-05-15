@@ -43,7 +43,7 @@ let load_config lock_kind global_lock root =
 let inferred_from_system = "Inferred from system"
 
 let load lock_kind =
-  let root = OpamStateConfig.(!r.root_dir) in
+  let root = Lazy.force OpamStateConfig.(!r.root_dir) in
   log "LOAD-GLOBAL-STATE %@ %a" (slog OpamFilename.Dir.to_string) root;
   (* Always take a global read lock, this is only used to prevent concurrent
      ~/.opam format changes *)

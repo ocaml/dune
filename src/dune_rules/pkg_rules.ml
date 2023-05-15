@@ -301,7 +301,7 @@ module Pkg = struct
              let paths = Paths.install_paths t.paths in
              let env =
                Value.Dir (Install.Section.Paths.get paths Bin)
-               |> Env.Map.add_multi env "PATH"
+               |> Env.Map.add_multi env Env_path.var
              in
              let env =
                Value.Dir (Install.Section.Paths.get paths Toplevel)

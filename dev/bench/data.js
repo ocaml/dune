@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684142294256,
+  "lastUpdate": 1684142922117,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -38714,6 +38714,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.466671671606665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "60f4038d1d84399adc57ba7945fea806baddb4fd",
+          "message": "doc: put uncategorized pages under the best header (#7683)\n\nFixes #7584\r\n\r\nThis makes sure that the intermediate state we're in still makes sense\r\nin a release. The pages in question are not 100% of the right type but\r\nthey make sense as part of the section.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-05-15T11:11:39+02:00",
+          "tree_id": "9499fa2b3bf81576910e9acd4829e4d4c2f54a31",
+          "url": "https://github.com/ocaml/dune/commit/60f4038d1d84399adc57ba7945fea806baddb4fd"
+        },
+        "date": 1684142918196,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "29.763370147746667",
             "unit": "seconds"
           }
         ]

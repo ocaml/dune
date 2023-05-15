@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684105256969,
+  "lastUpdate": 1684142294256,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -38685,6 +38685,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "20.723742587493334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "antonin@tarides.com",
+            "name": "Antonin Décimo",
+            "username": "MisterDA"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1bbd527400a362a6e8c0d2317e64e825f3283628",
+          "message": "Bump ctypes stanza version to 0.3 in documentation (#7709)\n\nSigned-off-by: Antonin Décimo <antonin@tarides.com>\r\nCo-authored-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-05-15T11:02:35+02:00",
+          "tree_id": "381d6c14da22edbb29a8542364c35b5728fabc7b",
+          "url": "https://github.com/ocaml/dune/commit/1bbd527400a362a6e8c0d2317e64e825f3283628"
+        },
+        "date": 1684142290725,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.466671671606665",
             "unit": "seconds"
           }
         ]

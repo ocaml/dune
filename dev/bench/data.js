@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684142922117,
+  "lastUpdate": 1684147712605,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -38743,6 +38743,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "29.763370147746667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e3d346ab5852ffc06a1faeb01c7f4a88e2fffe67",
+          "message": "test: opam constraint generation (#7729)\n\nThis generalizes the test for #3431 and actually reveals that nested ors\r\nare incorrectly translated at the moment: in `p_or3`, `(or :a :b :c)`\r\ngets converted to `{a | b & c}`.\r\n\r\nIt also adds a test for `(and)` and `(or)` with no argument, which\r\nshould fail cleanly.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-05-15T12:35:53+02:00",
+          "tree_id": "a90e2e05df8217145d31a0ca4c5cabb8efe38b10",
+          "url": "https://github.com/ocaml/dune/commit/e3d346ab5852ffc06a1faeb01c7f4a88e2fffe67"
+        },
+        "date": 1684147709536,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.84477972774667",
             "unit": "seconds"
           }
         ]

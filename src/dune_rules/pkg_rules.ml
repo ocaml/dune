@@ -2,12 +2,9 @@ open Import
 open Memo.O
 open Dune_pkg
 
-[@@@ocaml.warning "-32-69"]
-
 (* TODO
    - substitutions
    - extra-files
-   - build env
    - post dependencies
    - build dependencies
    - cross compilation
@@ -53,8 +50,6 @@ module Pkg_info = struct
       ; ("dev", B t.dev)
       ]
 end
-
-module Env_update = Lock_dir.Env_update
 
 module Lock_dir = struct
   include Dune_pkg.Lock_dir
@@ -154,10 +149,6 @@ module Paths = struct
     Path.Build.relative t.source_dir
       (sprintf "%s.config" (Package.Name.to_string t.name))
 
-  let entry_dst t entry =
-    let paths = Lazy.force t.install_paths in
-    Install.Entry.relative_installed_path entry ~paths
-
   let install_paths t = Lazy.force t.install_paths
 
   let install_roots t = Lazy.force t.install_roots
@@ -193,6 +184,48 @@ module Install_cookie = struct
     match load f with
     | None -> User_error.raise [ Pp.text "unable to load" ]
     | Some f -> f
+end
+
+module Env_update = struct
+  include Dune_lang.Action.Env_update
+
+  let update kind ~new_v ~old_v ~f =
+    if new_v = "" then old_v
+    else
+      match kind with
+      | `Colon ->
+        let old_v = Option.value ~default:[] old_v in
+        Some (f ~old_v ~new_v)
+      | `Plus -> (
+        match old_v with
+        | None | Some [] -> Some [ Value.String new_v ]
+        | Some old_v -> Some (f ~old_v ~new_v))
+
+  let append = update ~f:(fun ~old_v ~new_v -> old_v @ [ Value.String new_v ])
+
+  let prepend = update ~f:(fun ~old_v ~new_v -> Value.String new_v :: old_v)
+
+  let set env { op; var = k; value = new_v } =
+    Env.Map.update env k ~f:(fun old_v ->
+        let append = append ~new_v ~old_v in
+        let prepend = prepend ~new_v ~old_v in
+        match op with
+        | Eq ->
+          if new_v = "" then if Sys.win32 then None else Some [ String "" ]
+          else Some [ Value.String new_v ]
+        | PlusEq -> prepend `Plus
+        | ColonEq -> prepend `Colon
+        | EqPlus -> append `Plus
+        | EqColon -> append `Colon
+        | EqPlusEq ->
+          (* TODO nobody uses this AFAIK *)
+          assert false)
+
+  let string_of_env_values values =
+    List.map values ~f:(function
+      | Value.String s -> s
+      | Dir s | Path s -> Path.to_absolute_filename s)
+    |> Bin.encode_strings
 end
 
 module Pkg = struct
@@ -261,21 +294,35 @@ module Pkg = struct
     |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t ->
            Path.build t.paths.target_dir |> Dep.file |> Dep.Set.add acc)
 
-  let update kind ~new_v ~old_v ~f =
-    if new_v = "" then old_v
-    else
-      match kind with
-      | `Colon ->
-        let old_v = Option.value ~default:[] old_v in
-        Some (f ~old_v ~new_v)
-      | `Plus -> (
-        match old_v with
-        | None | Some [] -> Some [ Value.String new_v ]
-        | Some old_v -> Some (f ~old_v ~new_v))
-
-  let append = update ~f:(fun ~old_v ~new_v -> old_v @ [ Value.String new_v ])
-
-  let prepend = update ~f:(fun ~old_v ~new_v -> Value.String new_v :: old_v)
+  let build_env t =
+    deps_closure t
+    |> List.fold_left ~init:Env.Map.empty ~f:(fun env t ->
+           let env =
+             let paths = Paths.install_paths t.paths in
+             let env =
+               Value.Dir (Install.Section.Paths.get paths Bin)
+               |> Env.Map.add_multi env "PATH"
+             in
+             let env =
+               Value.Dir (Install.Section.Paths.get paths Toplevel)
+               |> Env.Map.add_multi env "OCAMLTOP_INCLUDE_PATH"
+             in
+             let env =
+               Value.Dir (Install.Section.Paths.get paths Toplevel)
+               |> Env.Map.add_multi env "OCAMLTOP_INCLUDE_PATH"
+             in
+             let env =
+               Value.Dir (Install.Section.Paths.get paths Lib)
+               |> Env.Map.add_multi env "OCAMLPATH"
+             in
+             let env =
+               Value.Dir (Install.Section.Paths.get paths Stublibs)
+               |> Env.Map.add_multi env "CAML_LD_LIBRARY_PATH"
+             in
+             Value.Dir (Install.Section.Paths.get paths Man)
+             |> Env.Map.add_multi env "MANPATH"
+           in
+           List.fold_left t.exported_env ~init:env ~f:Env_update.set)
 
   let exported_env t =
     let base =
@@ -288,57 +335,7 @@ module Pkg = struct
         ; ("OPAMCLI", "2.0")
         ]
     in
-    let env =
-      deps_closure t
-      |> List.fold_left ~init:Env.Map.empty ~f:(fun env t ->
-             let env =
-               let paths = Paths.install_paths t.paths in
-               let env =
-                 Value.Dir (Install.Section.Paths.get paths Bin)
-                 |> Env.Map.add_multi env "PATH"
-               in
-               let env =
-                 Value.Dir (Install.Section.Paths.get paths Toplevel)
-                 |> Env.Map.add_multi env "OCAMLTOP_INCLUDE_PATH"
-               in
-               let env =
-                 Value.Dir (Install.Section.Paths.get paths Toplevel)
-                 |> Env.Map.add_multi env "OCAMLTOP_INCLUDE_PATH"
-               in
-               let env =
-                 Value.Dir (Install.Section.Paths.get paths Lib)
-                 |> Env.Map.add_multi env "OCAMLPATH"
-               in
-               let env =
-                 Value.Dir (Install.Section.Paths.get paths Stublibs)
-                 |> Env.Map.add_multi env "CAML_LD_LIBRARY_PATH"
-               in
-               Value.Dir (Install.Section.Paths.get paths Man)
-               |> Env.Map.add_multi env "MANPATH"
-             in
-             List.fold_left t.exported_env ~init:env
-               ~f:(fun env { Env_update.op; var = k; value = new_v } ->
-                 Env.Map.update env k ~f:(fun old_v ->
-                     let append = append ~new_v ~old_v in
-                     let prepend = prepend ~new_v ~old_v in
-                     match op with
-                     | Eq ->
-                       if new_v = "" then
-                         if Sys.win32 then None else Some [ String "" ]
-                       else Some [ Value.String new_v ]
-                     | PlusEq -> prepend `Plus
-                     | ColonEq -> prepend `Colon
-                     | EqPlus -> append `Plus
-                     | EqColon -> append `Colon
-                     | EqPlusEq ->
-                       (* TODO nobody uses this AFAIK *)
-                       assert false)))
-      |> Env.Map.map ~f:(fun values ->
-             List.map values ~f:(function
-               | Value.String s -> s
-               | Dir s | Path s -> Path.to_absolute_filename s)
-             |> Bin.encode_strings)
-    in
+    let env = build_env t |> Env.Map.map ~f:Env_update.string_of_env_values in
     Env.extend Env.empty ~vars:(Env.Map.superpose env base)
 end
 
@@ -396,6 +393,7 @@ module Action_expander = struct
       ; deps : (Variable.value String.Map.t * Paths.t) Package.Name.Map.t
       ; context : Context_name.t
       ; version : string
+      ; env : Value.t list Env.Map.t
       }
 
     let map_exe _ x =
@@ -430,7 +428,8 @@ module Action_expander = struct
       | Stublibs -> Path.relative roots.lib_root "stublibs"
       | Misc -> assert false
 
-    let expand_pform { paths; artifacts = _; context = _; deps; version = _ }
+    let expand_pform
+        { env = _; paths; artifacts = _; context = _; deps; version = _ }
         ~source (pform : Pform.t) : Value.t list =
       let loc = Dune_sexp.Template.Pform.loc source in
       match pform with
@@ -574,6 +573,32 @@ module Action_expander = struct
         |> Value.to_path ~dir |> Path.as_in_build_dir_exn
       in
       Memo.return @@ Substitute.action ~input ~output
+    | Withenv (updates, action) ->
+      let+ action = expand action ~expander in
+      let _env, updates =
+        List.fold_left ~init:(expander.env, []) updates
+          ~f:(fun (env, updates) ({ Env_update.op = _; var; value } as update)
+             ->
+            let value =
+              let expander = { expander with env } in
+              Expander.expand_pform_gen expander value ~mode:Single
+              |> Value.to_string ~dir
+            in
+            let env = Env_update.set env { update with value } in
+            let update =
+              let value =
+                match Env.Map.find env var with
+                | Some v -> Env_update.string_of_env_values v
+                | None ->
+                  (* TODO *)
+                  ""
+              in
+              (var, value)
+            in
+            (env, update :: updates))
+      in
+      List.fold_left updates ~init:action ~f:(fun action (k, v) ->
+          Action.Setenv (k, v, action))
     | _ ->
       (* TODO *)
       assert false
@@ -609,6 +634,7 @@ module Action_expander = struct
                  in
                  (bins, dep_info)))
     in
+    let env = Pkg.build_env pkg in
     let deps =
       Package.Name.Map.add_exn deps pkg.info.name
         (Pkg_info.variables pkg.info, pkg.paths)
@@ -618,6 +644,7 @@ module Action_expander = struct
     ; context
     ; deps
     ; version = pkg.info.version
+    ; env
     }
 
   let expand context (pkg : Pkg.t) action =
@@ -1186,6 +1213,7 @@ let gen_rules context_name (pkg : Pkg.t) =
     let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
     let open Action_builder.With_targets.O in
     Action_builder.deps deps |> Action_builder.with_no_targets
+    (* TODO should we add env deps on these? *)
     >>> add_env (Pkg.exported_env pkg) build_action
     |> Action_builder.With_targets.add_directories
          ~directory_targets:[ pkg.paths.target_dir ]

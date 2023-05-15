@@ -67,29 +67,3 @@ constraints.
       "@doc" {with-doc}
     ]
   ]
-
-`(and)`/`(or)` with no argument should get rejected.
-
-  $ cat > dune-project << EOF
-  > (lang dune 2.1)
-  > (generate_opam_files)
-  > (package
-  >  (name p)
-  >  (depends
-  >   (p (and))))
-  > EOF
-
-  $ dune build 2>&1 | grep 'Internal error'
-  Internal error, please report upstream including the contents of _build/log.
-
-  $ cat > dune-project << EOF
-  > (lang dune 2.1)
-  > (generate_opam_files)
-  > (package
-  >  (name p)
-  >  (depends
-  >   (p (or))))
-  > EOF
-
-  $ dune build 2>&1 | grep 'Internal error'
-  Internal error, please report upstream including the contents of _build/log.

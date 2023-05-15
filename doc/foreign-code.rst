@@ -93,7 +93,7 @@ file:
 .. code:: dune
 
   (lang dune 3.8)
-  (using ctypes 0.1)
+  (using ctypes 0.3)
 
 
 Next, here is a ``dune`` file you can use to define an OCaml program that binds

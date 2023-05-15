@@ -527,18 +527,12 @@ end = struct
     in
     let lib_root lib =
       let subdir =
-        let name = Lib.name lib in
-        let _, subdir = Lib_name.split name in
-        match
-          let info = Lib.info lib in
-          Lib_info.status info
-        with
-        | Private (_, Some _) ->
-          Lib_name.Local.mangled_path_under_package (Lib_name.to_local_exn name)
-          @ subdir
-        | _ -> subdir
+        Lib_info.Status.relative_to_package
+          (Lib_info.status @@ Lib.info lib)
+          (Lib.name lib)
+        |> Option.value_exn
       in
-      Path.Build.L.relative pkg_root subdir
+      Path.Build.append_local pkg_root subdir
     in
     let* entries =
       Memo.parallel_map lib_entries ~f:(fun (stanza : Scope.DB.Lib_entry.t) ->
@@ -694,11 +688,10 @@ end = struct
           in
           let action_with_targets =
             Action_builder.write_file
-              (Package_paths.deprecated_dune_package_file ctx pkg
-                 dune_pkg.Dune_package.name)
+              (Package_paths.deprecated_dune_package_file ctx pkg dune_pkg.name)
               (Format.asprintf "%a"
                  (Dune_package.Or_meta.pp ~dune_version)
-                 (Dune_package.Or_meta.Dune_package dune_pkg))
+                 (Dune_package dune_pkg))
           in
           Super_context.add_rule sctx ~dir:ctx.build_dir ~loc
             action_with_targets)

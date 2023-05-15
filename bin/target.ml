@@ -112,14 +112,12 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) :
     Error hint
   in
   let as_source_dir src =
-    Source_tree.dir_exists src >>| function
-    | true ->
-      Some
-        [ Request.Alias
-            (Alias.in_dir ~name:Dune_engine.Alias.Name.default ~recursive:true
-               ~contexts:setup.contexts path)
-        ]
-    | false -> None
+    Source_tree.find_dir src
+    >>| Option.map ~f:(fun _ ->
+            [ Request.Alias
+                (Alias.in_dir ~name:Dune_engine.Alias.Name.default
+                   ~recursive:true ~contexts:setup.contexts path)
+            ])
   in
   let matching_targets src =
     Memo.parallel_map setup.contexts ~f:(fun ctx ->

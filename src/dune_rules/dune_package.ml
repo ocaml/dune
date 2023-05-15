@@ -49,8 +49,7 @@ module Lib = struct
       | External paths ->
         let lib_dir = Obj_dir.dir obj_dir in
         List.map paths ~f:(fun p ->
-            Path.as_in_build_dir_exn p |> Path.Build.drop_build_context_exn
-            |> Path.append_source lib_dir)
+            Path.append_local lib_dir (Path.local_part p))
     in
     let orig_src_dir = Lib_info.orig_src_dir info in
     let implements = Lib_info.implements info in
@@ -468,8 +467,8 @@ module Or_meta = struct
   let pp ~dune_version ppf t =
     let t = encode ~dune_version t in
     Format.fprintf ppf "%a@."
-      (Format.pp_print_list ~pp_sep:Format.pp_print_newline
-         Dune_lang.Deprecated.pp)
+      (Format.pp_print_list ~pp_sep:Format.pp_print_newline (fun fmt lang ->
+           Dune_lang.pp lang |> Pp.to_fmt fmt))
       t
 
   let to_dyn x =

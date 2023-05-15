@@ -13,6 +13,10 @@ module Name : sig
 
   val of_opam_file_basename : string -> t option
 
+  val of_opam_package_name : OpamTypes.name -> t
+
+  val to_opam_package_name : t -> OpamTypes.name
+
   module Map_traversals : sig
     val parallel_iter : 'a Map.t -> f:(t -> 'a -> unit Memo.t) -> unit Memo.t
 
@@ -37,6 +41,8 @@ module Dependency : sig
       | Gt
       | Lt
       | Neq
+
+    val to_relop : t -> OpamParserTypes.FullPos.relop
   end
 
   module Constraint : sig
@@ -53,6 +59,8 @@ module Dependency : sig
       | Bop of Op.t * Var.t * Var.t
       | And of t list
       | Or of t list
+
+    val to_dyn : t -> Dyn.t
   end
 
   type t =
@@ -184,3 +192,8 @@ val default : Name.t -> Path.Source.t -> t
 val load_opam_file : Path.Source.t -> Name.t -> t Memo.t
 
 val missing_deps : t -> effective_deps:Name.Set.t -> Name.Set.t
+
+(** [to_opam_file t] returns an [OpamFile.OPAM.t] whose fields are based on the
+    fields of [t]. Note that this does not actually create a corresponding file
+    on disk. *)
+val to_opam_file : t -> OpamFile.OPAM.t

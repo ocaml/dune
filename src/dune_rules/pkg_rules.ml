@@ -18,39 +18,7 @@ open Dune_pkg
    - sandboxing
 *)
 
-module Source = struct
-  type t =
-    | External_copy of Loc.t * Path.External.t
-    | Fetch of
-        { url : Loc.t * string
-        ; checksum : (Loc.t * Checksum.t) option
-        }
-
-  let decode =
-    let open Dune_lang.Decoder in
-    sum
-      [ ( "copy"
-        , located string >>| fun (loc, source) path ->
-          External_copy
-            ( loc
-            , if Filename.is_relative source then
-                Path.External.relative path source
-              else Path.External.of_string source ) )
-      ; ( "fetch"
-        , enter @@ fields
-          @@ let+ url = field "url" (located string)
-             and+ checksum = field_o "checksum" (located string) in
-             let checksum =
-               match checksum with
-               | None -> None
-               | Some ((loc, _) as checksum) -> (
-                 match Checksum.of_string_user_error checksum with
-                 | Ok checksum -> Some (loc, checksum)
-                 | Error e -> raise (User_error.E e))
-             in
-             fun _ -> Fetch { url; checksum } )
-      ]
-end
+module Source = Dune_pkg.Lock_dir.Source
 
 module Variable = struct
   type value = OpamVariable.variable_contents =
@@ -76,12 +44,7 @@ module Variable = struct
 end
 
 module Pkg_info = struct
-  type t =
-    { name : Package.Name.t
-    ; version : string
-    ; dev : bool
-    ; source : Source.t option
-    }
+  include Dune_pkg.Lock_dir.Pkg_info
 
   let variables t =
     String.Map.of_list_exn
@@ -91,82 +54,10 @@ module Pkg_info = struct
       ]
 end
 
-module Env_update = struct
-  type 'a t =
-    { op : OpamParserTypes.env_update_op
-    ; var : Env.Var.t
-    ; value : 'a
-    }
+module Env_update = Lock_dir.Env_update
 
-  let decode =
-    let open Dune_lang.Decoder in
-    let env_update_op =
-      enum
-        [ ("=", OpamParserTypes.Eq)
-        ; ("+=", PlusEq)
-        ; ("=+", EqPlus)
-        ; (":=", ColonEq)
-        ; ("=:", EqColon)
-        ; ("=+=", EqPlusEq)
-        ]
-    in
-    let+ op, var, value = triple env_update_op string String_with_vars.decode in
-    { op; var; value }
-end
-
-module Lock_file = struct
-  module Pkg = struct
-    type t =
-      { build_command : Action_unexpanded.t option
-      ; install_command : Action_unexpanded.t option
-      ; deps : Package.Name.t list
-      ; info : Pkg_info.t
-      ; lock_dir : Path.Source.t
-      ; exported_env : String_with_vars.t Env_update.t list
-      }
-
-    let decode =
-      let open Dune_lang.Decoder in
-      enter @@ fields
-      @@ let+ version = field ~default:"dev" "version" string
-         and+ install_command = field_o "install" Dune_lang.Action.decode_pkg
-         and+ build_command = field_o "build" Dune_lang.Action.decode_pkg
-         and+ deps = field ~default:[] "deps" (repeat Package.Name.decode)
-         and+ source = field_o "source" Source.decode
-         and+ dev = field_b "dev"
-         and+ exported_env =
-           field "exported_env" ~default:[] (repeat Env_update.decode)
-         in
-         fun ~lock_dir name ->
-           let info =
-             let source =
-               Option.map source ~f:(fun f ->
-                   Path.source lock_dir |> Path.to_absolute_filename
-                   |> Path.External.of_string |> f)
-             in
-             { Pkg_info.name; version; dev; source }
-           in
-           { build_command
-           ; deps
-           ; install_command
-           ; info
-           ; exported_env
-           ; lock_dir
-           }
-  end
-
-  type t =
-    { version : Syntax.Version.t
-    ; packages : Pkg.t Package.Name.Map.t
-    }
-
-  let path = Path.Source.(relative root "dune.lock")
-
-  let metadata = "lock.dune"
-
-  module Metadata = Dune_sexp.Versioned_file.Make (Unit)
-
-  let () = Metadata.Lang.register Dune_lang.Pkg.syntax ()
+module Lock_dir = struct
+  include Dune_pkg.Lock_dir
 
   let get () : t Memo.t =
     Fs_memo.dir_exists (In_source_dir path) >>= function
@@ -755,7 +646,7 @@ module Action_expander = struct
     { env with value }
 end
 
-type db = Lock_file.Pkg.t Package.Name.Map.t
+type db = Lock_dir.Pkg.t Package.Name.Map.t
 
 module rec Resolve : sig
   val resolve : db -> Context_name.t -> Package.Name.t -> Pkg.t option Memo.t
@@ -766,7 +657,7 @@ end = struct
     match Package.Name.Map.find db name with
     | None -> Memo.return None
     | Some
-        { Lock_file.Pkg.build_command
+        { Lock_dir.Pkg.build_command
         ; install_command
         ; deps
         ; info
@@ -1309,7 +1200,7 @@ let setup_package_rules context ~dir ~pkg_name :
   match Package.Name.of_string_user_error (Loc.none, pkg_name) with
   | Error m -> raise (User_error.E m)
   | Ok name -> (
-    let* db = Lock_file.get () in
+    let* db = Lock_dir.get () in
     resolve db.packages context name >>| function
     | None ->
       User_error.raise

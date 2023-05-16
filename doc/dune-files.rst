@@ -654,9 +654,20 @@ map_workspace_root
    built.
 
    - with ``(map_workspace_root true)``, dune rewrites references to the
-     workspace root to ``/workspace_root``. Note that when this mapping is
-     enabled, the debug information produced by the bytecode compiler is
-     incorrect, as the location information is lost.
+     workspace root to ``/workspace_root``.  Starting with version
+     3.8, in addition, the installation root directory (usually
+     ``~/.opam/<switch>'') is also rewritten to ``/workspace_root``.
+     Note that when this mapping is enabled, the debug information produced
+     by the bytecode compiler gives locations relative to the
+     workspace root. If the developer chooses a source layout that
+     mirrors the installation layout, then by mapping paths with
+     ``/workspace_root`` replaced by the install root, the
+     installed artifacts (e.g. source files) can be found.
+     This mapping will be done by a combination of an updated
+     ``ocamldebug''' and the new ``dune ocaml debug`` command.
+     However, if the source layout is different than the install
+     layout, this will not work.
+
    - with ``(map_workspace_root false)``, the references are not rewritten.
 
    Starting from language version 3.0, the default is ``true``.

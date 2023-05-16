@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684246128628,
+  "lastUpdate": 1684246242170,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -31869,6 +31869,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.7596952049799999",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8520f87c95673b0808d09cdf8b343a77d142453e",
+          "message": "chore: update csexp (#7736)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-16T14:39:05+01:00",
+          "tree_id": "313bac36cdcd0882158eeeea044c11a872a5816e",
+          "url": "https://github.com/ocaml/dune/commit/8520f87c95673b0808d09cdf8b343a77d142453e"
+        },
+        "date": 1684246240702,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "78.01210580104",
             "unit": "seconds"
           }
         ]

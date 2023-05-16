@@ -3,11 +3,19 @@ open Stdune
 let _BUILD_PATH_PREFIX_MAP = "BUILD_PATH_PREFIX_MAP"
 
 let extend_build_path_prefix_map env how map =
-  let new_rules = Build_path_prefix_map.encode_map map in
-  Env.update env ~var:_BUILD_PATH_PREFIX_MAP ~f:(function
-    | None -> Some new_rules
-    | Some existing_rules ->
-      Some
-        (match how with
-        | `Existing_rules_have_precedence -> new_rules ^ ":" ^ existing_rules
-        | `New_rules_have_precedence -> existing_rules ^ ":" ^ new_rules))
+  Env.update env ~var:_BUILD_PATH_PREFIX_MAP ~f:(fun old_var_val ->
+      let new_map =
+        match old_var_val with
+        | None -> map
+        | Some existing_rules -> (
+          (* Validate the existing rules. *)
+          match Build_path_prefix_map.decode_map existing_rules with
+          | Error _ ->
+            (* Ignore invalid existing maps. *)
+            map
+          | Ok existing_map -> (
+            match how with
+            | `Existing_rules_have_precedence -> map @ existing_map
+            | `New_rules_have_precedence -> existing_map @ map))
+      in
+      Some (Build_path_prefix_map.encode_map new_map))

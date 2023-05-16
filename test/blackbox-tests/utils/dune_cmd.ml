@@ -265,6 +265,18 @@ module Rewrite_path = struct
   let () = register name of_args run
 end
 
+module Encode_prefix = struct
+  let name = "encode-prefix"
+
+  let of_args = function
+    | [ path ] -> path
+    | _ -> raise (Arg.Bad "Usage: dune_cmd encode-prefix <path>")
+
+  let run path = print_string (Build_path_prefix_map.encode_prefix path)
+
+  let () = register name of_args run
+end
+
 module Find_by_contents = struct
   let name = "find-file-by-contents-regexp"
 

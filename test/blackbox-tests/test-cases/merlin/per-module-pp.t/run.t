@@ -1,14 +1,16 @@
   $ dune build @check
 
   $ ocamlc_where="$(ocamlc -where)"
-  $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
+  $ ENCODED_OCAMLC_WHERE=$(dune_cmd encode-prefix "$ocamlc_where")
+  $ export BUILD_PATH_PREFIX_MAP=\
+  > "/OCAMLC_WHERE=$ENCODED_OCAMLC_WHERE:$BUILD_PATH_PREFIX_MAP"
 
 We dump the config for Foo and Bar modules but the pp.exe preprocessor
 should appear only once since only Foo is using it.
 
   $ dune ocaml merlin dump-config $PWD
   Bar
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /workspace_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -23,7 +25,7 @@ should appear only once since only Foo is using it.
      -keep-locs
      -g)))
   Foo
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /workspace_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)

@@ -2,7 +2,9 @@ Document how Dune displays various things
 =========================================
 
   $ echo '(lang dune 3.0)' > dune-project
-  $ export BUILD_PATH_PREFIX_MAP=SH=`command -v sh`
+  $ 
+  $ ENCODED_SH=$(dune_cmd encode-prefix "`command -v sh`")
+  $ export BUILD_PATH_PREFIX_MAP="SH=$ENCODED_SH"
 
 Errors with location embed in their output
 ------------------------------------------

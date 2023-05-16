@@ -1,7 +1,12 @@
   $ ocamlc_where="$(ocamlc -where)"
-  $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
-  $ ocamlfind_libs="$(ocamlfind printconf path | while read line; do printf lib=${line}:; done)"
-  $ export BUILD_PATH_PREFIX_MAP="$ocamlfind_libs:$BUILD_PATH_PREFIX_MAP"
+  $ ENCODED_OCAMLC_WHERE=$(dune_cmd encode-prefix "$ocamlc_where")
+  $ export BUILD_PATH_PREFIX_MAP=\
+  > "/OCAMLC_WHERE=$ENCODED_OCAMLC_WHERE:$BUILD_PATH_PREFIX_MAP"
+  $ for path in $(ocamlfind printconf path)
+  > do
+  > EPATH=$(dune_cmd encode-prefix "$path")
+  > export BUILD_PATH_PREFIX_MAP="/LIB=$EPATH:$BUILD_PATH_PREFIX_MAP"
+  > done
 
 Here we test that instrumentation processing is not passed to merlin by setting
 up a project with instrumentation and testing checking the merlin config.
@@ -9,7 +14,7 @@ up a project with instrumentation and testing checking the merlin config.
   $ dune build --instrument-with hello ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
   $ dune ocaml merlin dump-config $PWD/lib
   Bar
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /workspace_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -23,7 +28,7 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/ppx)
    (FLG (-w -40 -g)))
   File
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /workspace_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -38,16 +43,16 @@ up a project with instrumentation and testing checking the merlin config.
    (FLG (-open Bar))
    (FLG (-w -40 -g)))
   Foo
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /workspace_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
-   (B lib/findlib)
-   (B /OCAMLC_WHERE)
+   (B /workspace_root/lib/findlib)
+   (B /workspace_root/lib/ocaml)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
    (B
     $TESTCASE_ROOT/_build/default/ppx/.hello.objs/byte)
-   (S lib/findlib)
-   (S /OCAMLC_WHERE)
+   (S /workspace_root/lib/findlib)
+   (S /workspace_root/lib/ocaml)
    (S
     $TESTCASE_ROOT/lib)
    (S
@@ -56,16 +61,16 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/ppx)
    (FLG (-w -40 -g)))
   Privmod
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /workspace_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
-   (B lib/findlib)
-   (B /OCAMLC_WHERE)
+   (B /workspace_root/lib/findlib)
+   (B /workspace_root/lib/ocaml)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
    (B
     $TESTCASE_ROOT/_build/default/ppx/.hello.objs/byte)
-   (S lib/findlib)
-   (S /OCAMLC_WHERE)
+   (S /workspace_root/lib/findlib)
+   (S /workspace_root/lib/ocaml)
    (S
     $TESTCASE_ROOT/lib)
    (S

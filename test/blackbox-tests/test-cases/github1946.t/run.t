@@ -2,12 +2,14 @@ This test demonstrates that -ppx is no more missing when two stanzas are
 in the same dune file, but require different ppx specifications
 
   $ ocamlc_where="$(ocamlc -where)"
-  $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
+  $ ENCODED_OCAMLC_WHERE=$(dune_cmd encode-prefix "$ocamlc_where")
+  $ export BUILD_PATH_PREFIX_MAP=\
+  > "/OCAMLC_WHERE=$ENCODED_OCAMLC_WHERE:$BUILD_PATH_PREFIX_MAP"
 
   $ dune build @all --profile release
   $ dune ocaml merlin dump-config $PWD
   Usesppx1
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /workspace_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.usesppx1.objs/byte)
@@ -21,7 +23,7 @@ in the same dune file, but require different ppx specifications
      'library-name="usesppx1"'"))
    (FLG (-w -40 -g)))
   Usesppx2
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /workspace_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.usesppx2.objs/byte)

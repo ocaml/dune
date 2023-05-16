@@ -18,12 +18,13 @@ library also has more than one src dir.
   > EOF
 
   $ opam_prefix="$(ocamlc -where)"
-  $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
+  $ ENCODED_OPAM_PREFIX=$(dune_cmd encode-prefix "$opam_prefix")
+  $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$ENCODED_OPAM_PREFIX:$BUILD_PATH_PREFIX_MAP"
 
   $ dune build lib2/.merlin-conf/lib-lib2
   $ dune ocaml merlin dump-config $PWD/lib2
   Lib2
-  ((STDLIB /OPAM_PREFIX)
+  ((STDLIB /workspace_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib1/.lib1.objs/byte)

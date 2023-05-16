@@ -1,5 +1,7 @@
   $ ocamlc_where="$(ocamlc -where)"
-  $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
+  $ ENCODED_OCAMLC_WHERE=$(dune_cmd encode-prefix "$ocamlc_where")
+  $ export BUILD_PATH_PREFIX_MAP=\
+  > "$BUILD_PATH_PREFIX_MAP:/OCAMLC_WHERE=$ENCODED_OCAMLC_WHERE"
 
   $ dune exec ./foo.exe
   42

@@ -1,4 +1,5 @@
-  $ export BUILD_PATH_PREFIX_MAP=odoc=`command -v odoc`
+  $ ODOC_CMD=$(dune_cmd encode-prefix "`command -v odoc`")
+  $ export BUILD_PATH_PREFIX_MAP=odoc=$ODOC_CMD
 
 As configured in the `dune` file at the root, this should be an error:
 

@@ -1,3 +1,5 @@
+  $ # echo "BUILD_PATH_PREFIX_MAP=$BUILD_PATH_PREFIX_MAP"
+  $ unset BUILD_PATH_PREFIX_MAP
   $ echo 'Hello, world!' > hello.expected
 
   $ dune runtest

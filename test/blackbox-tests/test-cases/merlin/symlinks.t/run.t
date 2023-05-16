@@ -27,8 +27,10 @@ Dune ocaml-merlin also accepts paths relative to the current directory
   $ cd realsrc
 
   $ ocamlc_where="$(ocamlc -where)"
-  $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
+  $ ENCODED_OCAMLC_WHERE=$(dune_cmd encode-prefix "$ocamlc_where")
+  $ export BUILD_PATH_PREFIX_MAP=\
+  > "/OCAMLC_WHERE=$ENCODED_OCAMLC_WHERE:$BUILD_PATH_PREFIX_MAP"
 
   $ dune ocaml merlin dump-config "." --root=".." | head -n 2
   Foo
-  ((STDLIB /OCAMLC_WHERE)
+  ((STDLIB /workspace_root/lib/ocaml)

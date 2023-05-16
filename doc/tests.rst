@@ -725,11 +725,14 @@ default list of paths is:
 - The temporary directory for the current script will be replaced by ``$TMPDIR``
 
 To add additional paths to this sanitation mechanism, it's sufficient to modify
-the standard BUILD_PATH_PREFIX_MAP_ environment variable. For example:
+the standard BUILD_PATH_PREFIX_MAP environment variable. But one must
+be careful to encode the special delimeters (":", "=", "%") that might
+appear in the paths (e.g., on Windows). For example:
 
 .. code:: bash
 
-   $ export BUILD_PATH_PREFIX_MAP="HOME=$HOME:$BUILD_PATH_PREFIX_MAP"
+   $ ENCODED_HOME=$(dune_cmd encode-prefix "$HOME")
+   $ export BUILD_PATH_PREFIX_MAP="HOME=$ENCODED_HOME:$BUILD_PATH_PREFIX_MAP"
    $ echo $HOME
    $HOME
 

@@ -566,6 +566,32 @@ type input =
   ; action : Action.t
   }
 
+module Install_root = struct
+  let path_sep = if Sys.win32 then ';' else ':'
+
+  let exe = if Sys.win32 then ".exe" else ""
+
+  let best_prog dir prog =
+    let fn = Filename.concat dir (prog ^ ".opt" ^ exe) in
+    if Sys.file_exists fn then Some fn
+    else
+      let fn = Filename.concat dir (prog ^ exe) in
+      if Sys.file_exists fn then Some fn else None
+
+  let find_ocaml_prog path prog =
+    List.find_map path ~f:(fun dir -> best_prog dir prog)
+
+  let get (env : Env.t) =
+    match Env.get env "OPAM_SWITCH_PREFIX" with
+    | Some dir -> Some dir
+    | None ->
+      let open Option.O in
+      let* path_string = Env.get env "PATH" in
+      let path = String.split path_string ~on:path_sep in
+      let+ ocamlc = find_ocaml_prog path "ocamlc" in
+      Filename.dirname (Filename.dirname ocamlc)
+end
+
 let exec
     { targets; root; context; env; rule_loc; execution_parameters; action = t }
     ~build_deps =
@@ -582,11 +608,16 @@ let exec
       | true ->
         Dune_util.Build_path_prefix_map.extend_build_path_prefix_map env
           `New_rules_have_precedence
-          [ Some
-              { source = Path.to_absolute_filename root
-              ; target = "/workspace_root"
-              }
-          ]
+          ([ Some
+               { Build_path_prefix_map.source = Path.to_absolute_filename root
+               ; target = "/workspace_root"
+               }
+           ]
+          @
+          match Install_root.get env with
+          | None -> []
+          | Some install_root ->
+            [ Some { source = install_root; target = "/workspace_root" } ])
     in
     { working_dir = Path.root
     ; env

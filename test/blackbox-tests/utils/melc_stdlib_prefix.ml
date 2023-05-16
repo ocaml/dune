@@ -18,6 +18,7 @@ let () =
     let parts =
       List.map (Bin.parse_path where) ~f:(fun part ->
           Format.asprintf "/MELC_STDLIB=%s"
-            (part |> Path.parent_exn |> Path.to_string))
+            (part |> Path.parent_exn |> Path.to_string
+           |> Build_path_prefix_map.encode_prefix))
     in
     Format.printf "%s" (String.concat parts ~sep:":")

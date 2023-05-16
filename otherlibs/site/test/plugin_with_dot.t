@@ -84,8 +84,20 @@ Test error messages
   run c: registered:.
 
   $ cat >c/c.ml <<EOF
+  > let encode_prefix str =
+  >   let buf = Buffer.create (String.length str) in
+  >   let push_char = function
+  >     | '%' -> Buffer.add_string buf "%#"
+  >     | '=' -> Buffer.add_string buf "%+"
+  >     | ':' -> Buffer.add_string buf "%."
+  >     | c -> Buffer.add_char buf c
+  >   in
+  >   String.iter push_char str;
+  >   Buffer.contents buf
   > let l = Lazy.force Dune_site.Private_.Helpers.ocamlpath
-  > let l = List.map (Printf.sprintf "OCAMLPATH=%s") l
+  > let l = List.map (fun path -> 
+  >   let path = encode_prefix path in
+  >   Printf.sprintf "OCAMLPATH=%s" path) l
   > let () = print_string (String.concat ":" l)
   > EOF
 

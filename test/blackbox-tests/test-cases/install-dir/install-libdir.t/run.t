@@ -1,5 +1,7 @@
   $ opam_prefix="$(opam var prefix)"
-  $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
+  $ ENCODED_OPAM_PREFIX=$(dune_cmd encode-prefix "$opam_prefix")
+  $ export BUILD_PATH_PREFIX_MAP=\
+  > "/workspace_root=$ENCODED_OPAM_PREFIX:$BUILD_PATH_PREFIX_MAP"
 
 `dune install` should handle destination directories that don't exist
 
@@ -108,86 +110,86 @@ If prefix is not passed, libdir defaults to the opam-prefix/lib directory:
   $ (export OCAMLFIND_DESTDIR=/OCAMLFIND_DESTDIR
   >  dune install --dry-run --display short 2>&1 | dune_cmd sanitize
   >  dune uninstall --dry-run --display short 2>&1 | dune_cmd sanitize)
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/META
-  Installing /OPAM_PREFIX/lib/foo/META
-  Creating directory /OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/META to /OPAM_PREFIX/lib/foo/META (executable: false)
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/dune-package
-  Installing /OPAM_PREFIX/lib/foo/dune-package
-  Creating directory /OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/dune-package to /OPAM_PREFIX/lib/foo/dune-package (executable: false)
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo$ext_lib
-  Installing /OPAM_PREFIX/lib/foo/foo$ext_lib
-  Creating directory /OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo$ext_lib to /OPAM_PREFIX/lib/foo/foo$ext_lib (executable: false)
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cma
-  Installing /OPAM_PREFIX/lib/foo/foo.cma
-  Creating directory /OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cma to /OPAM_PREFIX/lib/foo/foo.cma (executable: false)
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmi
-  Installing /OPAM_PREFIX/lib/foo/foo.cmi
-  Creating directory /OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmi to /OPAM_PREFIX/lib/foo/foo.cmi (executable: false)
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmt
-  Installing /OPAM_PREFIX/lib/foo/foo.cmt
-  Creating directory /OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmt to /OPAM_PREFIX/lib/foo/foo.cmt (executable: false)
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmx
-  Installing /OPAM_PREFIX/lib/foo/foo.cmx
-  Creating directory /OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmx to /OPAM_PREFIX/lib/foo/foo.cmx (executable: false)
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmxa
-  Installing /OPAM_PREFIX/lib/foo/foo.cmxa
-  Creating directory /OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmxa to /OPAM_PREFIX/lib/foo/foo.cmxa (executable: false)
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.ml
-  Installing /OPAM_PREFIX/lib/foo/foo.ml
-  Creating directory /OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.ml to /OPAM_PREFIX/lib/foo/foo.ml (executable: false)
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/opam
-  Installing /OPAM_PREFIX/lib/foo/opam
-  Creating directory /OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/opam to /OPAM_PREFIX/lib/foo/opam (executable: false)
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmxs
-  Installing /OPAM_PREFIX/lib/foo/foo.cmxs
-  Creating directory /OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmxs to /OPAM_PREFIX/lib/foo/foo.cmxs (executable: true)
-  Removing (if it exists) /OPAM_PREFIX/bin/exec
-  Installing /OPAM_PREFIX/bin/exec
-  Creating directory /OPAM_PREFIX/bin
-  Copying _build/install/default/bin/exec to /OPAM_PREFIX/bin/exec (executable: true)
-  Removing (if it exists) /OPAM_PREFIX/man/a-man-page-with-no-ext
-  Installing /OPAM_PREFIX/man/a-man-page-with-no-ext
-  Creating directory /OPAM_PREFIX/man
-  Copying _build/install/default/man/a-man-page-with-no-ext to /OPAM_PREFIX/man/a-man-page-with-no-ext (executable: false)
-  Removing (if it exists) /OPAM_PREFIX/man/man1/a-man-page.1
-  Installing /OPAM_PREFIX/man/man1/a-man-page.1
-  Creating directory /OPAM_PREFIX/man/man1
-  Copying _build/install/default/man/man1/a-man-page.1 to /OPAM_PREFIX/man/man1/a-man-page.1 (executable: false)
-  Removing (if it exists) /OPAM_PREFIX/man/man3/another-man-page.3
-  Installing /OPAM_PREFIX/man/man3/another-man-page.3
-  Creating directory /OPAM_PREFIX/man/man3
-  Copying _build/install/default/man/man3/another-man-page.3 to /OPAM_PREFIX/man/man3/another-man-page.3 (executable: false)
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/META
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/dune-package
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo$ext_lib
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cma
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmi
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmt
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmx
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmxa
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.ml
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/opam
-  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmxs
-  Removing (if it exists) /OPAM_PREFIX/bin/exec
-  Removing (if it exists) /OPAM_PREFIX/man/a-man-page-with-no-ext
-  Removing (if it exists) /OPAM_PREFIX/man/man1/a-man-page.1
-  Removing (if it exists) /OPAM_PREFIX/man/man3/another-man-page.3
-  Removing directory (warn if not empty) /OPAM_PREFIX/man/man3
-  Removing directory (warn if not empty) /OPAM_PREFIX/man/man1
-  Removing directory (warn if not empty) /OPAM_PREFIX/man
-  Removing directory (warn if not empty) /OPAM_PREFIX/lib/foo
-  Removing directory (warn if not empty) /OPAM_PREFIX/bin
+  Removing (if it exists) /workspace_root/lib/foo/META
+  Installing /workspace_root/lib/foo/META
+  Creating directory /workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/META to /workspace_root/lib/foo/META (executable: false)
+  Removing (if it exists) /workspace_root/lib/foo/dune-package
+  Installing /workspace_root/lib/foo/dune-package
+  Creating directory /workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/dune-package to /workspace_root/lib/foo/dune-package (executable: false)
+  Removing (if it exists) /workspace_root/lib/foo/foo$ext_lib
+  Installing /workspace_root/lib/foo/foo$ext_lib
+  Creating directory /workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/foo$ext_lib to /workspace_root/lib/foo/foo$ext_lib (executable: false)
+  Removing (if it exists) /workspace_root/lib/foo/foo.cma
+  Installing /workspace_root/lib/foo/foo.cma
+  Creating directory /workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/foo.cma to /workspace_root/lib/foo/foo.cma (executable: false)
+  Removing (if it exists) /workspace_root/lib/foo/foo.cmi
+  Installing /workspace_root/lib/foo/foo.cmi
+  Creating directory /workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmi to /workspace_root/lib/foo/foo.cmi (executable: false)
+  Removing (if it exists) /workspace_root/lib/foo/foo.cmt
+  Installing /workspace_root/lib/foo/foo.cmt
+  Creating directory /workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmt to /workspace_root/lib/foo/foo.cmt (executable: false)
+  Removing (if it exists) /workspace_root/lib/foo/foo.cmx
+  Installing /workspace_root/lib/foo/foo.cmx
+  Creating directory /workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmx to /workspace_root/lib/foo/foo.cmx (executable: false)
+  Removing (if it exists) /workspace_root/lib/foo/foo.cmxa
+  Installing /workspace_root/lib/foo/foo.cmxa
+  Creating directory /workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxa to /workspace_root/lib/foo/foo.cmxa (executable: false)
+  Removing (if it exists) /workspace_root/lib/foo/foo.ml
+  Installing /workspace_root/lib/foo/foo.ml
+  Creating directory /workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/foo.ml to /workspace_root/lib/foo/foo.ml (executable: false)
+  Removing (if it exists) /workspace_root/lib/foo/opam
+  Installing /workspace_root/lib/foo/opam
+  Creating directory /workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/opam to /workspace_root/lib/foo/opam (executable: false)
+  Removing (if it exists) /workspace_root/lib/foo/foo.cmxs
+  Installing /workspace_root/lib/foo/foo.cmxs
+  Creating directory /workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxs to /workspace_root/lib/foo/foo.cmxs (executable: true)
+  Removing (if it exists) /workspace_root/bin/exec
+  Installing /workspace_root/bin/exec
+  Creating directory /workspace_root/bin
+  Copying _build/install/default/bin/exec to /workspace_root/bin/exec (executable: true)
+  Removing (if it exists) /workspace_root/man/a-man-page-with-no-ext
+  Installing /workspace_root/man/a-man-page-with-no-ext
+  Creating directory /workspace_root/man
+  Copying _build/install/default/man/a-man-page-with-no-ext to /workspace_root/man/a-man-page-with-no-ext (executable: false)
+  Removing (if it exists) /workspace_root/man/man1/a-man-page.1
+  Installing /workspace_root/man/man1/a-man-page.1
+  Creating directory /workspace_root/man/man1
+  Copying _build/install/default/man/man1/a-man-page.1 to /workspace_root/man/man1/a-man-page.1 (executable: false)
+  Removing (if it exists) /workspace_root/man/man3/another-man-page.3
+  Installing /workspace_root/man/man3/another-man-page.3
+  Creating directory /workspace_root/man/man3
+  Copying _build/install/default/man/man3/another-man-page.3 to /workspace_root/man/man3/another-man-page.3 (executable: false)
+  Removing (if it exists) /workspace_root/lib/foo/META
+  Removing (if it exists) /workspace_root/lib/foo/dune-package
+  Removing (if it exists) /workspace_root/lib/foo/foo$ext_lib
+  Removing (if it exists) /workspace_root/lib/foo/foo.cma
+  Removing (if it exists) /workspace_root/lib/foo/foo.cmi
+  Removing (if it exists) /workspace_root/lib/foo/foo.cmt
+  Removing (if it exists) /workspace_root/lib/foo/foo.cmx
+  Removing (if it exists) /workspace_root/lib/foo/foo.cmxa
+  Removing (if it exists) /workspace_root/lib/foo/foo.ml
+  Removing (if it exists) /workspace_root/lib/foo/opam
+  Removing (if it exists) /workspace_root/lib/foo/foo.cmxs
+  Removing (if it exists) /workspace_root/bin/exec
+  Removing (if it exists) /workspace_root/man/a-man-page-with-no-ext
+  Removing (if it exists) /workspace_root/man/man1/a-man-page.1
+  Removing (if it exists) /workspace_root/man/man3/another-man-page.3
+  Removing directory (warn if not empty) /workspace_root/man/man3
+  Removing directory (warn if not empty) /workspace_root/man/man1
+  Removing directory (warn if not empty) /workspace_root/man
+  Removing directory (warn if not empty) /workspace_root/lib/foo
+  Removing directory (warn if not empty) /workspace_root/bin
 
 If only libdir is passed, binaries are installed under prefix/bin and libraries
 in libdir:
@@ -238,22 +240,22 @@ in libdir:
   Installing /LIBDIR/foo/foo.cmxs
   Creating directory /LIBDIR/foo
   Copying _build/install/default/lib/foo/foo.cmxs to /LIBDIR/foo/foo.cmxs (executable: true)
-  Removing (if it exists) /OPAM_PREFIX/bin/exec
-  Installing /OPAM_PREFIX/bin/exec
-  Creating directory /OPAM_PREFIX/bin
-  Copying _build/install/default/bin/exec to /OPAM_PREFIX/bin/exec (executable: true)
-  Removing (if it exists) /OPAM_PREFIX/man/a-man-page-with-no-ext
-  Installing /OPAM_PREFIX/man/a-man-page-with-no-ext
-  Creating directory /OPAM_PREFIX/man
-  Copying _build/install/default/man/a-man-page-with-no-ext to /OPAM_PREFIX/man/a-man-page-with-no-ext (executable: false)
-  Removing (if it exists) /OPAM_PREFIX/man/man1/a-man-page.1
-  Installing /OPAM_PREFIX/man/man1/a-man-page.1
-  Creating directory /OPAM_PREFIX/man/man1
-  Copying _build/install/default/man/man1/a-man-page.1 to /OPAM_PREFIX/man/man1/a-man-page.1 (executable: false)
-  Removing (if it exists) /OPAM_PREFIX/man/man3/another-man-page.3
-  Installing /OPAM_PREFIX/man/man3/another-man-page.3
-  Creating directory /OPAM_PREFIX/man/man3
-  Copying _build/install/default/man/man3/another-man-page.3 to /OPAM_PREFIX/man/man3/another-man-page.3 (executable: false)
+  Removing (if it exists) /workspace_root/bin/exec
+  Installing /workspace_root/bin/exec
+  Creating directory /workspace_root/bin
+  Copying _build/install/default/bin/exec to /workspace_root/bin/exec (executable: true)
+  Removing (if it exists) /workspace_root/man/a-man-page-with-no-ext
+  Installing /workspace_root/man/a-man-page-with-no-ext
+  Creating directory /workspace_root/man
+  Copying _build/install/default/man/a-man-page-with-no-ext to /workspace_root/man/a-man-page-with-no-ext (executable: false)
+  Removing (if it exists) /workspace_root/man/man1/a-man-page.1
+  Installing /workspace_root/man/man1/a-man-page.1
+  Creating directory /workspace_root/man/man1
+  Copying _build/install/default/man/man1/a-man-page.1 to /workspace_root/man/man1/a-man-page.1 (executable: false)
+  Removing (if it exists) /workspace_root/man/man3/another-man-page.3
+  Installing /workspace_root/man/man3/another-man-page.3
+  Creating directory /workspace_root/man/man3
+  Copying _build/install/default/man/man3/another-man-page.3 to /workspace_root/man/man3/another-man-page.3 (executable: false)
   Removing (if it exists) /LIBDIR/foo/META
   Removing (if it exists) /LIBDIR/foo/dune-package
   Removing (if it exists) /LIBDIR/foo/foo.a
@@ -265,80 +267,80 @@ in libdir:
   Removing (if it exists) /LIBDIR/foo/foo.ml
   Removing (if it exists) /LIBDIR/foo/opam
   Removing (if it exists) /LIBDIR/foo/foo.cmxs
-  Removing (if it exists) /OPAM_PREFIX/bin/exec
-  Removing (if it exists) /OPAM_PREFIX/man/a-man-page-with-no-ext
-  Removing (if it exists) /OPAM_PREFIX/man/man1/a-man-page.1
-  Removing (if it exists) /OPAM_PREFIX/man/man3/another-man-page.3
-  Removing directory (warn if not empty) /OPAM_PREFIX/man/man3
-  Removing directory (warn if not empty) /OPAM_PREFIX/man/man1
-  Removing directory (warn if not empty) /OPAM_PREFIX/man
-  Removing directory (warn if not empty) /OPAM_PREFIX/bin
+  Removing (if it exists) /workspace_root/bin/exec
+  Removing (if it exists) /workspace_root/man/a-man-page-with-no-ext
+  Removing (if it exists) /workspace_root/man/man1/a-man-page.1
+  Removing (if it exists) /workspace_root/man/man3/another-man-page.3
+  Removing directory (warn if not empty) /workspace_root/man/man3
+  Removing directory (warn if not empty) /workspace_root/man/man1
+  Removing directory (warn if not empty) /workspace_root/man
+  Removing directory (warn if not empty) /workspace_root/bin
   Removing directory (warn if not empty) /LIBDIR/foo
 
 The DESTDIR var is supported. When set, it is prepended to the prefix.
 This is the case when the prefix is implicit:
 
   $ DESTDIR=DESTDIR dune install --dry-run --display short 2>&1 | dune_cmd sanitize
-  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/META
-  Installing DESTDIR/OPAM_PREFIX/lib/foo/META
-  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/META to DESTDIR/OPAM_PREFIX/lib/foo/META (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/dune-package
-  Installing DESTDIR/OPAM_PREFIX/lib/foo/dune-package
-  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/dune-package to DESTDIR/OPAM_PREFIX/lib/foo/dune-package (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo$ext_lib
-  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo$ext_lib
-  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo$ext_lib to DESTDIR/OPAM_PREFIX/lib/foo/foo$ext_lib (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.cma
-  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cma
-  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cma to DESTDIR/OPAM_PREFIX/lib/foo/foo.cma (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.cmi
-  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cmi
-  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmi to DESTDIR/OPAM_PREFIX/lib/foo/foo.cmi (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.cmt
-  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cmt
-  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmt to DESTDIR/OPAM_PREFIX/lib/foo/foo.cmt (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.cmx
-  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cmx
-  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmx to DESTDIR/OPAM_PREFIX/lib/foo/foo.cmx (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxa
-  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxa
-  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmxa to DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxa (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.ml
-  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.ml
-  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.ml to DESTDIR/OPAM_PREFIX/lib/foo/foo.ml (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/opam
-  Installing DESTDIR/OPAM_PREFIX/lib/foo/opam
-  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/opam to DESTDIR/OPAM_PREFIX/lib/foo/opam (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxs
-  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxs
-  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmxs to DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxs (executable: true)
-  Removing (if it exists) DESTDIR/OPAM_PREFIX/bin/exec
-  Installing DESTDIR/OPAM_PREFIX/bin/exec
-  Creating directory DESTDIR/OPAM_PREFIX/bin
-  Copying _build/install/default/bin/exec to DESTDIR/OPAM_PREFIX/bin/exec (executable: true)
-  Removing (if it exists) DESTDIR/OPAM_PREFIX/man/a-man-page-with-no-ext
-  Installing DESTDIR/OPAM_PREFIX/man/a-man-page-with-no-ext
-  Creating directory DESTDIR/OPAM_PREFIX/man
-  Copying _build/install/default/man/a-man-page-with-no-ext to DESTDIR/OPAM_PREFIX/man/a-man-page-with-no-ext (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_PREFIX/man/man1/a-man-page.1
-  Installing DESTDIR/OPAM_PREFIX/man/man1/a-man-page.1
-  Creating directory DESTDIR/OPAM_PREFIX/man/man1
-  Copying _build/install/default/man/man1/a-man-page.1 to DESTDIR/OPAM_PREFIX/man/man1/a-man-page.1 (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_PREFIX/man/man3/another-man-page.3
-  Installing DESTDIR/OPAM_PREFIX/man/man3/another-man-page.3
-  Creating directory DESTDIR/OPAM_PREFIX/man/man3
-  Copying _build/install/default/man/man3/another-man-page.3 to DESTDIR/OPAM_PREFIX/man/man3/another-man-page.3 (executable: false)
+  Removing (if it exists) DESTDIR/workspace_root/lib/foo/META
+  Installing DESTDIR/workspace_root/lib/foo/META
+  Creating directory DESTDIR/workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/META to DESTDIR/workspace_root/lib/foo/META (executable: false)
+  Removing (if it exists) DESTDIR/workspace_root/lib/foo/dune-package
+  Installing DESTDIR/workspace_root/lib/foo/dune-package
+  Creating directory DESTDIR/workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/dune-package to DESTDIR/workspace_root/lib/foo/dune-package (executable: false)
+  Removing (if it exists) DESTDIR/workspace_root/lib/foo/foo$ext_lib
+  Installing DESTDIR/workspace_root/lib/foo/foo$ext_lib
+  Creating directory DESTDIR/workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/foo$ext_lib to DESTDIR/workspace_root/lib/foo/foo$ext_lib (executable: false)
+  Removing (if it exists) DESTDIR/workspace_root/lib/foo/foo.cma
+  Installing DESTDIR/workspace_root/lib/foo/foo.cma
+  Creating directory DESTDIR/workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/foo.cma to DESTDIR/workspace_root/lib/foo/foo.cma (executable: false)
+  Removing (if it exists) DESTDIR/workspace_root/lib/foo/foo.cmi
+  Installing DESTDIR/workspace_root/lib/foo/foo.cmi
+  Creating directory DESTDIR/workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmi to DESTDIR/workspace_root/lib/foo/foo.cmi (executable: false)
+  Removing (if it exists) DESTDIR/workspace_root/lib/foo/foo.cmt
+  Installing DESTDIR/workspace_root/lib/foo/foo.cmt
+  Creating directory DESTDIR/workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmt to DESTDIR/workspace_root/lib/foo/foo.cmt (executable: false)
+  Removing (if it exists) DESTDIR/workspace_root/lib/foo/foo.cmx
+  Installing DESTDIR/workspace_root/lib/foo/foo.cmx
+  Creating directory DESTDIR/workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmx to DESTDIR/workspace_root/lib/foo/foo.cmx (executable: false)
+  Removing (if it exists) DESTDIR/workspace_root/lib/foo/foo.cmxa
+  Installing DESTDIR/workspace_root/lib/foo/foo.cmxa
+  Creating directory DESTDIR/workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxa to DESTDIR/workspace_root/lib/foo/foo.cmxa (executable: false)
+  Removing (if it exists) DESTDIR/workspace_root/lib/foo/foo.ml
+  Installing DESTDIR/workspace_root/lib/foo/foo.ml
+  Creating directory DESTDIR/workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/foo.ml to DESTDIR/workspace_root/lib/foo/foo.ml (executable: false)
+  Removing (if it exists) DESTDIR/workspace_root/lib/foo/opam
+  Installing DESTDIR/workspace_root/lib/foo/opam
+  Creating directory DESTDIR/workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/opam to DESTDIR/workspace_root/lib/foo/opam (executable: false)
+  Removing (if it exists) DESTDIR/workspace_root/lib/foo/foo.cmxs
+  Installing DESTDIR/workspace_root/lib/foo/foo.cmxs
+  Creating directory DESTDIR/workspace_root/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxs to DESTDIR/workspace_root/lib/foo/foo.cmxs (executable: true)
+  Removing (if it exists) DESTDIR/workspace_root/bin/exec
+  Installing DESTDIR/workspace_root/bin/exec
+  Creating directory DESTDIR/workspace_root/bin
+  Copying _build/install/default/bin/exec to DESTDIR/workspace_root/bin/exec (executable: true)
+  Removing (if it exists) DESTDIR/workspace_root/man/a-man-page-with-no-ext
+  Installing DESTDIR/workspace_root/man/a-man-page-with-no-ext
+  Creating directory DESTDIR/workspace_root/man
+  Copying _build/install/default/man/a-man-page-with-no-ext to DESTDIR/workspace_root/man/a-man-page-with-no-ext (executable: false)
+  Removing (if it exists) DESTDIR/workspace_root/man/man1/a-man-page.1
+  Installing DESTDIR/workspace_root/man/man1/a-man-page.1
+  Creating directory DESTDIR/workspace_root/man/man1
+  Copying _build/install/default/man/man1/a-man-page.1 to DESTDIR/workspace_root/man/man1/a-man-page.1 (executable: false)
+  Removing (if it exists) DESTDIR/workspace_root/man/man3/another-man-page.3
+  Installing DESTDIR/workspace_root/man/man3/another-man-page.3
+  Creating directory DESTDIR/workspace_root/man/man3
+  Copying _build/install/default/man/man3/another-man-page.3 to DESTDIR/workspace_root/man/man3/another-man-page.3 (executable: false)
 
 But also when the prefix is explicit:
 

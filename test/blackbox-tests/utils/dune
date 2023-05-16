@@ -17,4 +17,4 @@
 (executable
  (modules melc_stdlib_prefix)
  (name melc_stdlib_prefix)
- (libraries stdune))
+ (libraries stdune build_path_prefix_map))

@@ -1,5 +1,7 @@
+  $ ocamlc_where="$(ocamlc -where)"
+  $ ENCODED_OCAMLC_WHERE=$(dune_cmd encode-prefix "$ocamlc_where")
   $ export BUILD_PATH_PREFIX_MAP=\
-  > "OPAM_PREFIX=$(ocamlc -where):$BUILD_PATH_PREFIX_MAP"
+  > "/OCAMLC_WHERE=$ENCODED_OCAMLC_WHERE:$BUILD_PATH_PREFIX_MAP"
 
 If Merlin field is absent, default context is chosen
 
@@ -23,7 +25,7 @@ If Merlin field is absent, default context is chosen
 
   $ dune ocaml merlin dump-config "$PWD"
   Foo
-  ((STDLIB OPAM_PREFIX)
+  ((STDLIB /workspace_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -61,7 +63,7 @@ If Merlin field is present, this context is chosen
 
   $ dune ocaml merlin dump-config "$PWD"
   Foo
-  ((STDLIB OPAM_PREFIX)
+  ((STDLIB /workspace_root/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/cross/.foo.objs/byte)

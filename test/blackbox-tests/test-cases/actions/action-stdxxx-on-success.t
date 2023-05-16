@@ -1,7 +1,8 @@
 Test for --action-stdxxx-on-success
 ====================================
 
-  $ export BUILD_PATH_PREFIX_MAP="sh=$(command -v sh):$BUILD_PATH_PREFIX_MAP"
+  $ ENCODED_SH=$(dune_cmd encode-prefix "`command -v sh`")
+  $ export BUILD_PATH_PREFIX_MAP="sh=$ENCODED_SH:$BUILD_PATH_PREFIX_MAP"
 
   $ echo '(lang dune 3.0)' > dune-project
 

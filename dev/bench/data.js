@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684245238327,
+  "lastUpdate": 1684245608722,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -15571,6 +15571,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "49.71768284827334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "413a9a4825d5669b601c5b4e2d751099a65f69f3",
+          "message": "refactor: add Path.External.append_local and use it (#7735)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-16T14:39:28+01:00",
+          "tree_id": "6d4adeb46422fe0b3552ea323a43e40ba7301bb7",
+          "url": "https://github.com/ocaml/dune/commit/413a9a4825d5669b601c5b4e2d751099a65f69f3"
+        },
+        "date": 1684245606726,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.320215613673334",
             "unit": "seconds"
           }
         ]

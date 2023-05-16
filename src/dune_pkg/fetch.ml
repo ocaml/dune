@@ -63,20 +63,32 @@ module Fiber_job = struct
     run1
 end
 
-let fetch loc url ~target =
+type failure =
+  | Checksum_mismatch of Checksum.t
+  | Unavailable of User_message.t option
+
+let fetch ~checksum ~target url =
   let open Fiber.O in
   let path = Path.to_string target in
   let fname = OpamFilename.of_string path in
-  let hashes = [] in
   let label = "dune-fetch" in
-  let job = OpamRepository.pull_file label fname hashes [ url ] in
+  (* hashes have to be empty otherwise OPAM deletes the file after
+     downloading if the hash does not match *)
+  let job = OpamRepository.pull_file label fname [] [ url ] in
   let+ downloaded = Fiber_job.run job in
   match downloaded with
-  | Up_to_date () | Result () -> ()
-  | Not_available (normal, _verbose) ->
-    User_error.raise ~loc
-      ([ Pp.textf "%s not available" (OpamUrl.to_string url) ]
-      @
-      match normal with
-      | None -> []
-      | Some normal -> [ Pp.text normal ])
+  | Up_to_date () | Result () -> (
+    match checksum with
+    | None -> Ok ()
+    | Some expected -> (
+      let expected = Checksum.to_opam_hash expected in
+      match OpamHash.mismatch path expected with
+      | None -> Ok ()
+      | Some actual ->
+        (* the file is invalid, so remove it before returning to the user *)
+        Path.unlink target;
+        Error (Checksum_mismatch (Checksum.of_opam_hash actual))))
+  | Not_available (None, _verbose) -> Error (Unavailable None)
+  | Not_available (Some normal, verbose) ->
+    let msg = User_message.make [ Pp.text normal; Pp.text verbose ] in
+    Error (Unavailable (Some msg))

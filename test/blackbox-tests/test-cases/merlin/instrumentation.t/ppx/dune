@@ -1,0 +1,13 @@
+(library
+ (name hello_ppx)
+ (public_name hello.ppx)
+ (kind ppx_rewriter)
+ (ppx_runtime_libraries hello)
+ (libraries ppxlib)
+ (modules hello_ppx))
+
+(library
+ (public_name hello)
+ (modules hello)
+ (instrumentation.backend
+  (ppx hello.ppx)))

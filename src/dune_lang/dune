@@ -7,8 +7,10 @@
   dune_rpc_private
   memo
   ocaml
+  dune_util
   dyn
   ordering
+  dune_section
   (re_export dune_sexp))
  (instrumentation
   (backend bisect_ppx)))

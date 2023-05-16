@@ -711,5 +711,17 @@ let gen_rules ctx_or_install ~dir components =
           ; directory_targets
           ; rules = Memo.return rules
           })
-  | Context ctx ->
-    with_context ctx ~f:(fun sctx -> gen_rules ~sctx ~dir components)
+  | Context ctx -> (
+    match components with
+    | [ ".pkg" ] ->
+      let rules =
+        { Build_config.Rules.empty with
+          build_dir_only_sub_dirs =
+            Build_config.Rules.Build_only_sub_dirs.singleton ~dir Subdir_set.All
+        }
+      in
+      Memo.return @@ Build_config.Rules rules
+    | [ ".pkg"; pkg_name ] -> Pkg_rules.setup_package_rules ctx ~dir ~pkg_name
+    | ".pkg" :: _ :: _ ->
+      Memo.return @@ Build_config.Redirect_to_parent Build_config.Rules.empty
+    | _ -> with_context ctx ~f:(fun sctx -> gen_rules ~sctx ~dir components))

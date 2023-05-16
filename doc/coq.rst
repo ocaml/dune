@@ -59,6 +59,7 @@ stanza:
      (modules <ordered_set_lang>)
      (plugins <ocaml_plugins>)
      (flags <coq_flags>)
+     (coqdoc_flags <coqdoc_flags>)
      (stdlib <stdlib_included>)
      (mode <coq_native_mode>)
      (theories <coq_theories>))
@@ -106,6 +107,11 @@ The semantics of the fields are:
   is taken from the value set in the ``(coq (flags <flags>))`` field in ``env``
   profile. See :ref:`dune-env` for more information.
 
+- ``<coqdoc_flags>`` are extra user-configurable flags passed to ``coqdoc``. The
+  default value for ``:standard`` is ``--toc``. The ``--html`` or ``--latex``
+  flags are passed separately depending on which mode is targed. See the section
+  on :ref:`documentation using coqdoc<coqdoc>` for more information.
+
 - ``<stdlib_included>`` can either be ``yes`` or ``no``, currently defaulting to
   ``yes``. When set to ``no``, Coq's standard library won't be visible from this
   theory, which means the ``Coq`` prefix won't be bound, and
@@ -150,6 +156,7 @@ them in the correct order, even if they are in separate theories. Under the
 hood, Dune asks coqdep how to resolve these dependencies, which is why it is
 called once per theory.
 
+.. _coqdoc:
 
 Coq Documentation
 ~~~~~~~~~~~~~~~~~
@@ -161,7 +168,13 @@ A.tex``, respectively (if the :ref:`dune file<dune-files>` for the theory is the
 current directory).
 
 There are also two aliases ``@doc`` and ``@doc-latex`` that will respectively
-build the HTML or LaTeX documentation when called.
+build the HTML or LaTeX documentation when called. These will determine whether
+or not Dune passes a ``--html`` or ``--latex`` flag to ``coqdoc``.
+
+Further flags can also be configured using the ``(coqdoc_flags)`` field in the
+``coq.theory`` stanza. These will be passed to ``coqdoc`` and the default value
+is ``:standard`` which is ``--toc``. Extra flags can therefore be passed by
+writing ``(coqdoc_flags :standard --body-only)`` for example.
 
 .. _include-subdirs-coq:
 
@@ -304,6 +317,11 @@ file:
 
 The supported Coq language versions (not the version of Coq) are:
 
+- ``0.8``: Support for composition with installed Coq theories;
+  support for ``vos`` builds.
+
+Deprecated experimental Coq language versions are:
+
 - ``0.1``: Basic Coq theory support.
 - ``0.2``: Support for the ``theories`` field and composition of theories in the
   same scope.
@@ -316,18 +334,17 @@ The supported Coq language versions (not the version of Coq) are:
 - ``0.7``: ``(mode )`` is automatically detected from the configuration of Coq
   and ``(mode native)`` is deprecated. The ``dev`` profile also no longer
   disables native compilation.
-- ``0.8``: Support for composition of installed theories; support for vos
-  builds.
 
 .. _coq-lang-1.0:
 
 Coq Language Version 1.0
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Guarantees with respect to stability are not yet provided. However, as the
-development of features progresses, we hope to reach ``1.0`` soon. The ``1.0``
-version of Coq lang will commit to a stable set of functionality. All the
-features below are expected to reach ``1.0`` unchanged or minimally modified.
+Guarantees with respect to stability are not yet provided, but we
+intend that the ``(0.8)`` version of the language becomes ``1.0``.
+The ``1.0`` version of Coq lang will commit to a stable set of
+functionality. All the features below are expected to reach ``1.0``
+unchanged or minimally modified.
 
 .. _coq-extraction:
 

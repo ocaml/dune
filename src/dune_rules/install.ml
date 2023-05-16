@@ -253,6 +253,7 @@ module Entry = struct
     ; kind : [ `File | `Directory ]
     ; dst : Dst.t
     ; section : Section.t
+    ; optional : bool
     }
 
   let map_dst t ~f = { t with dst = f t.dst }
@@ -276,11 +277,12 @@ module Entry = struct
       }
   end
 
-  let compare compare_src { src; dst; section; kind } t =
+  let compare compare_src { optional; src; dst; section; kind } t =
     let open Ordering.O in
     let= () = Section.compare section t.section in
     let= () = Dst.compare dst t.dst in
     let= () = compare_src src t.src in
+    let= () = Bool.compare optional t.optional in
     Poly.compare kind t.kind
 
   let adjust_dst_gen =
@@ -338,7 +340,7 @@ module Entry = struct
 
   let make section ?dst ~kind src =
     let dst = adjust_dst' ~src ~dst ~section in
-    { src; dst; section; kind }
+    { optional = false; src; dst; section; kind }
 
   let make_with_site (section : Section_with_site.t) ?dst get_section ~kind src
       =
@@ -372,7 +374,7 @@ module Entry = struct
         | Man
         | Misc -> (section, dst)
       in
-      { src; dst; section; kind }
+      { optional = false; src; dst; section; kind }
 
   let set_src t src = { t with src }
 
@@ -391,11 +393,12 @@ module Entry = struct
     in
     { t with dst = Dst.explicit dst }
 
-  let of_install_file ~src ~dst ~section =
+  let of_install_file ~optional ~src ~dst ~section =
     { src
     ; section
     ; dst = Dst.of_install_file ~section ~src_basename:(Path.basename src) dst
     ; kind = `File
+    ; optional
     }
 
   let dyn_of_kind =
@@ -404,13 +407,14 @@ module Entry = struct
     | `File -> variant "File" []
     | `Directory -> variant "Directory" []
 
-  let to_dyn f { src; kind; dst; section } =
+  let to_dyn f { optional; src; kind; dst; section } =
     let open Dyn in
     record
       [ ("src", f src)
       ; ("kind", dyn_of_kind kind)
       ; ("dst", Dst.to_dyn dst)
       ; ("section", Section.to_dyn section)
+      ; ("optional", Dyn.bool optional)
       ]
 end
 
@@ -462,8 +466,13 @@ let load_install_file path =
         match files with
         | { pelem = List l; _ } ->
           let install_file src dst =
+            let optional, src =
+              match String.drop_prefix src ~prefix:"?" with
+              | None -> (false, src)
+              | Some src -> (true, src)
+            in
             let src = Path.of_string src in
-            Entry.of_install_file ~src ~dst ~section
+            Entry.of_install_file ~optional ~src ~dst ~section
           in
           List.map l.pelem ~f:(function
             | { pelem = String src; _ } -> install_file src None

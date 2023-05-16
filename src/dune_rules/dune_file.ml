@@ -1645,7 +1645,7 @@ module Rule = struct
       ]
 
   let short_form =
-    let+ loc, action = located Dune_lang.Action.decode in
+    let+ loc, action = located Dune_lang.Action.decode_dune_file in
     { targets = Infer
     ; deps = Bindings.empty
     ; action = (loc, action)
@@ -1676,7 +1676,7 @@ module Rule = struct
     in
     String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
       (let+ loc = loc
-       and+ action = field "action" (located Dune_lang.Action.decode)
+       and+ action = field "action" (located Dune_lang.Action.decode_dune_file)
        and+ targets = Targets_spec.field ~allow_directory_targets
        and+ locks = Locks.field ()
        and+ () =
@@ -1883,7 +1883,7 @@ module Alias_conf = struct
                let* () =
                  Dune_lang.Syntax.deleted_in ~extra_info Stanza.syntax (2, 0)
                in
-               located Dune_lang.Action.decode)
+               located Dune_lang.Action.decode_dune_file)
           and+ loc = loc
           and+ locks = Locks.field ()
           and+ enabled_if =
@@ -1924,7 +1924,7 @@ module Tests = struct
           and+ action =
             field_o "action"
               (Dune_lang.Syntax.since ~fatal:false Stanza.syntax (1, 2)
-              >>> Dune_lang.Action.decode)
+              >>> Dune_lang.Action.decode_dune_file)
           and+ forbidden_libraries =
             field "forbidden_libraries"
               (Dune_lang.Syntax.since Stanza.syntax (2, 0)

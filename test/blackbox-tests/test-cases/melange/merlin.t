@@ -8,7 +8,7 @@
   $ export BUILD_PATH_PREFIX_MAP="/MELC_STDLIB=$(ocamlfind query melange):$BUILD_PATH_PREFIX_MAP"
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 
@@ -30,6 +30,18 @@
    (FLG (-open Foo__))
   Foo__
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+
+Paths to Melange stdlib appear in B and S entries without melange.emit stanza
+
+  $ dune ocaml dump-dot-merlin $PWD | grep -e "^B " -e "^S "
+  B /MELC_STDLIB/melange
+  B /MELC_STDLIB/melange
+  B /MELC_STDLIB/melange
+  B $TESTCASE_ROOT/_build/default/.foo.objs/melange
+  S /MELC_STDLIB
+  S /MELC_STDLIB
+  S /MELC_STDLIB
+  S $TESTCASE_ROOT
 
 All 3 modules (Foo, Foo__ and Bar) contain a ppx directive
 

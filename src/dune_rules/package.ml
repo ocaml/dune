@@ -6,27 +6,7 @@ let opam_ext = ".opam"
 let is_opam_file path = String.is_suffix (Path.to_string path) ~suffix:opam_ext
 
 module Name = struct
-  include String
-
-  include (
-    Stringlike.Make (struct
-      type t = string
-
-      let to_string x = x
-
-      let module_ = "Package.Name"
-
-      let description = "package name"
-
-      let description_of_valid_string = None
-
-      let hint_valid = None
-
-      let of_string_opt s =
-        (* DUNE3 verify no dots or spaces *)
-        if s = "" then None else Some s
-    end) :
-      Stringlike_intf.S with type t := t)
+  include Dune_lang.Package_name
 
   let of_opam_file_basename basename =
     let open Option.O in

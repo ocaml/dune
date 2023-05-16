@@ -35,6 +35,8 @@ val extend_env : t -> t -> t
 
 val add : t -> var:Var.t -> value:string -> t
 
+val mem : t -> var:Var.t -> bool
+
 val remove : t -> var:Var.t -> t
 
 val diff : t -> t -> t

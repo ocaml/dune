@@ -36,7 +36,7 @@ module Backend = struct
            (Dune_lang.Syntax.since Stanza.syntax (3, 8)
            >>> Ordered_set_lang.Unexpanded.decode)
        and+ generate_runner =
-         field_o "generate_runner" (located Dune_lang.Action.decode)
+         field_o "generate_runner" (located Dune_lang.Action.decode_dune_file)
        and+ extends =
          field "extends" (repeat (located Lib_name.decode)) ~default:[]
        in

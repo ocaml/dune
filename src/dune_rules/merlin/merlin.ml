@@ -319,7 +319,6 @@ module Unprocessed = struct
     ; flags : string list Action_builder.t
     ; preprocess :
         Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
-        Resolve.Memo.t
     ; libname : Lib_name.Local.t option
     ; source_dirs : Path.Source.Set.t
     ; objs_dirs : Path.Set.t
@@ -445,9 +444,7 @@ module Unprocessed = struct
         (Modules.source_dirs modules)
 
   let pp_config t sctx ~expander =
-    let open Action_builder.O in
-    let* preprocess = Resolve.Memo.read t.config.preprocess in
-    Module_name.Per_item.map_action_builder preprocess
+    Module_name.Per_item.map_action_builder t.config.preprocess
       ~f:(pp_flags sctx ~expander t.config.libname)
 
   let process

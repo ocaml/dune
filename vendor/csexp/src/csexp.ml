@@ -233,7 +233,7 @@ module Make (Sexp : Sexp) = struct
       match Stack.add_token x stack with
       | exception Parse_error msg -> Error (pos, msg)
       | stack -> k s (pos + 1) len lexer stack)
-    [@@inlined always]
+    [@@inline always]
 
   let parse_string =
     let rec loop s pos len lexer stack =

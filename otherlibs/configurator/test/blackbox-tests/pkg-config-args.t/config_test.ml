@@ -9,5 +9,5 @@ let () =
       | Some p -> p
     in
     let query package = ignore (C.Pkg_config.query pkg_config ~package) in
-    query "gtk+-quartz-3.0";
+    query "dummy-pkg";
   )

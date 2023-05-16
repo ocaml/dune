@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684247007627,
+  "lastUpdate": 1684277006719,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -39236,6 +39236,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.67214913928",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f6e974af633da88c0dac5d39c09255477a87c2b6",
+          "message": "chore: ignored unused vars in stubs (#7740)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-16T15:26:03-07:00",
+          "tree_id": "4017f90c60eed45b2b088bb9c90365f3269e4821",
+          "url": "https://github.com/ocaml/dune/commit/f6e974af633da88c0dac5d39c09255477a87c2b6"
+        },
+        "date": 1684277003805,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.504601841899998",
             "unit": "seconds"
           }
         ]

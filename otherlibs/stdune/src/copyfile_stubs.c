@@ -51,6 +51,9 @@ CAMLprim value stdune_copyfile(value v_from, value v_to) {
 }
 
 CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
+  (void)v_in;
+  (void)v_out;
+  (void)v_size;
   caml_failwith("sendfile: linux");
 }
 
@@ -65,6 +68,8 @@ CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
 #define FD_val(value) Int_val(value)
 
 CAMLprim value stdune_copyfile(value v_from, value v_to) {
+  (void)v_from;
+  (void)v_to;
   caml_failwith("copyfile: only on macos");
 }
 
@@ -96,10 +101,15 @@ CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
 #else
 
 CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
+  (void)v_in;
+  (void)v_out;
+  (void)v_size;
   caml_failwith("sendfile: linux");
 }
 
 CAMLprim value stdune_copyfile(value v_from, value v_to) {
+  (void)v_from;
+  (void)v_to;
   caml_failwith("copyfile: only on macos");
 }
 

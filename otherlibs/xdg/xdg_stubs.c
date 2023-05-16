@@ -63,8 +63,8 @@ value dune_xdg__get_known_folder_path(value v_known_folder)
 
 #else /* _WIN32 */
 
-value dune_xdg__get_known_folder_path(value v_unit)
-{
+value dune_xdg__get_known_folder_path(value v_unit) {
+  (void)v_unit;
   caml_invalid_argument("get_known_folder_path: not implemented");
 }
 

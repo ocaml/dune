@@ -101,28 +101,29 @@ module Dependency = struct
   module Constraint = struct
     module Var = struct
       type t =
-        | QVar of string
+        | Literal of string
         | Var of string
 
       let encode = function
-        | QVar v -> Dune_lang.Encoder.string v
+        | Literal v -> Dune_lang.Encoder.string v
         | Var v -> Dune_lang.Encoder.string (":" ^ v)
 
       let decode =
         let open Dune_lang.Decoder in
         let+ s = string in
-        if String.is_prefix s ~prefix:":" then Var (String.drop s 1) else QVar s
+        if String.is_prefix s ~prefix:":" then Var (String.drop s 1)
+        else Literal s
 
       let to_opam v =
         let value_kind : OpamParserTypes.FullPos.value_kind =
           match v with
-          | QVar x -> String x
+          | Literal x -> String x
           | Var x -> Ident x
         in
         nopos value_kind
 
       let to_dyn = function
-        | QVar v -> Dyn.String v
+        | Literal v -> Dyn.String v
         | Var v -> Dyn.String (":" ^ v)
     end
 

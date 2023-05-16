@@ -42,8 +42,9 @@ module Dependency : sig
   module Constraint : sig
     module Var : sig
       type t =
-        | QVar of string
-        | Var of string
+        | Literal of string
+            (** A quoted string literal, such as a version number *)
+        | Var of string  (** A variable name such as :version or :with-test *)
     end
 
     type t =

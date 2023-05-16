@@ -4,6 +4,7 @@
 #include <caml/fail.h>
 
 void dune_wait3(value flags) {
+  (void)flags;
   caml_failwith("wait3: not supported on windows");
 }
 

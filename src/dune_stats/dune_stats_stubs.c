@@ -38,6 +38,7 @@ CAMLprim value dune_stats_available(value unit) {
 }
 
 CAMLprim value dune_stats_open_fds(value v_pid) {
+  (void)v_pid;
   caml_failwith("function is available only on macos");
 }
 

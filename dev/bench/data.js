@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684228120788,
+  "lastUpdate": 1684228753147,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -15542,6 +15542,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.206985963066664",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "695bf8245b200b06edf0c0fdc36df8df4cbcdf60",
+          "message": "Rename the `QVar` constructor to `Literal` (#7733)\n\nThis constructor is for quoted string literals. It took me a while to\r\nfigure this out so I'm renaming it to make it easier for the next person\r\nwho works with this code.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-05-16T09:52:55+01:00",
+          "tree_id": "19357edd705a8a8a972f51318f33a97835402c14",
+          "url": "https://github.com/ocaml/dune/commit/695bf8245b200b06edf0c0fdc36df8df4cbcdf60"
+        },
+        "date": 1684228751796,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "49.71768284827334",
             "unit": "seconds"
           }
         ]

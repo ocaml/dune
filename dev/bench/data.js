@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684245970386,
+  "lastUpdate": 1684246128628,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -39062,6 +39062,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.846632792540003",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6dc9f4da47006d23bb764579834230ad8fdc6cac",
+          "message": "doc: convert README.org in example to markdown (#7738)\n\nWe use markdown for other READMEs, so let's be consistent.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-05-16T15:55:36+02:00",
+          "tree_id": "42027c90d9d65d4b794d20afd1f659b2bed2ce4c",
+          "url": "https://github.com/ocaml/dune/commit/6dc9f4da47006d23bb764579834230ad8fdc6cac"
+        },
+        "date": 1684246125118,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.67214913928",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684338631404,
+  "lastUpdate": 1684339025464,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -32565,6 +32565,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.0552935548466666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "e+git@x80.org",
+            "name": "Emilio Jesús Gallego Arias",
+            "username": "ejgallego"
+          },
+          "distinct": true,
+          "id": "40de1334cd1d2cc330ea469480446880c4428ff9",
+          "message": "fix(coq): make config value COQCORELIB optional\n\nThis config value is not available in Coq <= 8.13. Therefore we\nshouldn't fail if it is missing.\n\nWe also fix the use of COQCORELIB in coq_path.ml to include a fallback\nwhen it is not available. There was even a comment warning us about this\nbug before.\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-05-17T17:25:11+02:00",
+          "tree_id": "e651287a35310d2e626443fd2ad87966206ba702",
+          "url": "https://github.com/ocaml/dune/commit/40de1334cd1d2cc330ea469480446880c4428ff9"
+        },
+        "date": 1684339024311,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "77.16932422602667",
             "unit": "seconds"
           }
         ]

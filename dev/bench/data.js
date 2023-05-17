@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684319276842,
+  "lastUpdate": 1684320424299,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -39700,6 +39700,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.73459621926",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "91b81b720758e35d2194aad01515c2722c15f79f",
+          "message": "doc: add API docs for dune-build-info (#7739)\n\nThe goal is to have great docs for this feature directly on\r\n<https://ocaml.org/p/dune-build-info/latest/doc/index.html>\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-05-17T12:31:49+02:00",
+          "tree_id": "47ac8a988e06e769d8e6ba3522d0919dc0caa59c",
+          "url": "https://github.com/ocaml/dune/commit/91b81b720758e35d2194aad01515c2722c15f79f"
+        },
+        "date": 1684320420150,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "27.246446433773333",
             "unit": "seconds"
           }
         ]

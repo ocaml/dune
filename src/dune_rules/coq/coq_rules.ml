@@ -315,8 +315,8 @@ let ml_flags_and_ml_pack_rule ~context ~lib_db ~theories_deps
 let boot_type ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module =
   let* scope = Scope.DB.find_by_dir dir in
   let+ boot_lib =
-    scope |> Scope.coq_libs
-    |> Coq_lib.DB.resolve_boot ~coq_lang_version
+    Scope.coq_libs scope
+    >>= Coq_lib.DB.resolve_boot ~coq_lang_version
     |> Resolve.Memo.read_memo
   in
   if use_stdlib then
@@ -549,7 +549,7 @@ let coqdoc_directory_targets ~dir:obj_dir (theory : Coq_stanza.Theory.t) =
   let+ (_ : Coq_lib.DB.t) =
     (* We force the creation of the coq_lib db here so that errors there can
        appear before any errors to do with directory targets from coqdoc. *)
-    let+ scope = Scope.DB.find_by_dir obj_dir in
+    let* scope = Scope.DB.find_by_dir obj_dir in
     Scope.coq_libs scope
   in
   let loc = theory.buildable.loc in
@@ -647,7 +647,7 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps (s : Coq_stanza.Theory.t)
 (* Common context for a theory, deps and rules *)
 let theory_context ~context ~scope ~coq_lang_version ~name buildable =
   let theory =
-    let coq_lib_db = Scope.coq_libs scope in
+    let* coq_lib_db = Scope.coq_libs scope in
     Coq_lib.DB.resolve coq_lib_db ~coq_lang_version name
   in
   let theories_deps =
@@ -666,13 +666,17 @@ let extraction_context ~context ~scope ~coq_lang_version
     (buildable : Coq_stanza.Buildable.t) =
   let coq_lib_db = Scope.coq_libs scope in
   let theories_deps =
+    let* coq_lib_db = coq_lib_db in
     Resolve.Memo.List.map buildable.theories
       ~f:(Coq_lib.DB.resolve coq_lib_db ~coq_lang_version)
   in
   (* Extraction requires a boot library so we do this unconditionally
      for now. We must do this because it can happne that
      s.buildable.theories is empty *)
-  let boot = Coq_lib.DB.resolve_boot ~coq_lang_version coq_lib_db in
+  let boot =
+    let* coq_lib_db = coq_lib_db in
+    Coq_lib.DB.resolve_boot ~coq_lang_version coq_lib_db
+  in
   let theories_deps =
     let open Resolve.Memo.O in
     let+ boot = boot

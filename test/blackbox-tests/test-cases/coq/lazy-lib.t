@@ -23,5 +23,3 @@ Next we create an empty coq project:
 Finally we run dune build:
 
   $ dune build
-  Command exited with code 5.
-  [1]

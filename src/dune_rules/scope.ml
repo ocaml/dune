@@ -4,7 +4,7 @@ open Memo.O
 type t =
   { project : Dune_project.t
   ; db : Lib.DB.t
-  ; coq_db : Coq_lib.DB.t Lazy.t
+  ; coq_db : Coq_lib.DB.t Memo.Lazy.t
   ; root : Path.Build.t
   }
 
@@ -14,7 +14,7 @@ let project t = t.project
 
 let libs t = t.db
 
-let coq_libs t = Lazy.force t.coq_db
+let coq_libs t = Memo.Lazy.force t.coq_db
 
 module DB = struct
   type scope = t
@@ -162,9 +162,6 @@ module DB = struct
     |> Coq_lib.DB.create_from_coqlib_stanzas ~find_db
          ~parent:(Some installed_theories)
 
-  let public_theories ~find_db ~installed_theories coq_stanzas =
-    lazy (public_theories ~find_db ~installed_theories coq_stanzas)
-
   (* Create a database from the public libraries defined in the stanzas *)
   let public_libs t ~installed_libs ~lib_config ~host stanzas =
     let public_libs =
@@ -228,7 +225,6 @@ module DB = struct
           (Dune_project.root project, (dir, stanza)))
       |> Path.Source.Map.of_list_multi
     in
-    let public_theories = Lazy.force public_theories in
     let parent = Some public_theories in
     let find_db dir = snd (find_by_dir_in_map db_by_project_dir dir) in
     Path.Source.Map.merge projects_by_dir coq_stanzas_by_project_dir
@@ -289,14 +285,13 @@ module DB = struct
              (project, db))
     in
     let coq_scopes_by_dir =
-      lazy
-        (coq_scopes_by_dir db_by_project_dir projects_by_dir public_theories
-           coq_stanzas)
+      Memo.Lazy.map public_theories ~f:(fun public_theories ->
+          coq_scopes_by_dir db_by_project_dir projects_by_dir public_theories
+            coq_stanzas)
     in
     let coq_db_find dir =
-      lazy
-        (let map = Lazy.force coq_scopes_by_dir in
-         Path.Source.Map.find_exn map dir)
+      Memo.Lazy.map coq_scopes_by_dir ~f:(fun x ->
+          Path.Source.Map.find_exn x dir)
     in
     Path.Source.Map.mapi db_by_project_dir ~f:(fun dir (project, db) ->
         let root =
@@ -334,15 +329,17 @@ module DB = struct
       in
       (public_libs, host_context)
     in
-    let* public_theories =
-      let+ coqpaths_of_coq = Coq_path.of_coq_install context
-      and+ coqpaths_of_env = Coq_path.of_env context.env in
+    let public_theories =
       let installed_theories =
+        Memo.lazy_ @@ fun () ->
+        let+ coqpaths_of_coq = Coq_path.of_coq_install context
+        and+ coqpaths_of_env = Coq_path.of_env context.env in
         Coq_lib.DB.create_from_coqpaths (coqpaths_of_env @ coqpaths_of_coq)
       in
-      public_theories coq_stanzas
-        ~find_db:(fun _ -> public_libs)
-        ~installed_theories
+      Memo.Lazy.map installed_theories ~f:(fun installed_theories ->
+          public_theories
+            ~find_db:(fun _ -> public_libs)
+            ~installed_theories coq_stanzas)
     in
     let+ by_dir =
       scopes_by_dir ~host_context ~build_dir ~lib_config ~projects ~public_libs

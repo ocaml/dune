@@ -8,6 +8,8 @@ module Vars : sig
 
   val get_path : t -> string -> Path.t
 
+  val get_path_opt : t -> string -> Path.t option
+
   val of_lines : string list -> (t, User_message.Style.t Pp.t) result
 
   exception E of User_message.Style.t Pp.t
@@ -42,6 +44,8 @@ end = struct
     | None -> fail "Variable %S not found." var
 
   let get_path t var = get t var |> Path.of_string
+
+  let get_path_opt t var = Option.map ~f:Path.of_string (get_opt t var)
 end
 
 module Value = struct
@@ -49,6 +53,8 @@ module Value = struct
     | Int of int
     | Path of Path.t
     | String of string
+
+  let path p = Path p
 
   let to_dyn = function
     | Int i -> Dyn.Int i
@@ -153,7 +159,7 @@ end
 type t =
   { version_info : (Version.t, User_message.Style.t Pp.t) Result.t
   ; coqlib : Path.t
-  ; coqcorelib : Path.t
+  ; coqcorelib : Path.t option (* this is not available in Coq < 8.14 *)
   ; coq_native_compiler_default : string
   }
 
@@ -183,7 +189,7 @@ let make_res ~(coqc : Action.Prog.t) =
       match Vars.of_lines config_lines with
       | Ok vars ->
         let coqlib = Vars.get_path vars "COQLIB" in
-        let coqcorelib = Vars.get_path vars "COQCORELIB" in
+        let coqcorelib = Vars.get_path_opt vars "COQCORELIB" in
         let coq_native_compiler_default =
           Vars.get vars "COQ_NATIVE_COMPILER_DEFAULT"
         in
@@ -222,7 +228,7 @@ let by_name { version_info; coqlib; coqcorelib; coq_native_compiler_default }
   | "version"
   | "ocaml-version" -> Version.by_name version_info name
   | "coqlib" -> Some (Value.Path coqlib)
-  | "coqcorelib" -> Some (Value.Path coqcorelib)
+  | "coqcorelib" -> Option.map ~f:Value.path coqcorelib
   | "coq_native_compiler_default" ->
     Some (Value.String coq_native_compiler_default)
   | _ -> None

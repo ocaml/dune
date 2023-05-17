@@ -25,7 +25,7 @@ let cmxs t = t.cmxs
 
 let stdlib t = t.stdlib
 
-let get_config_path coq_config key =
+let config_path_exn coq_config key =
   Coq_config.by_name coq_config key |> function
   | Some path -> (
     path |> function
@@ -37,6 +37,15 @@ let get_config_path coq_config key =
   | None ->
     (* This happens if the output of coqc --config doesn't include the key *)
     User_error.raise [ Pp.text "key not found from coqc --config"; Pp.text key ]
+
+let config_path ~default coq_config key =
+  Option.value ~default:(Coq_config.Value.Path default)
+    (Coq_config.by_name coq_config key)
+  |> function
+  | Coq_config.Value.Path p -> p (* We have found a path for key *)
+  | path ->
+    (* This should never happen *)
+    Code_error.raise "key is not a path" [ (key, Coq_config.Value.to_dyn path) ]
 
 let stdlib_plugins_dir path =
   let open Memo.O in
@@ -121,12 +130,10 @@ let of_coq_install coqc =
   let open Memo.O in
   let* coq_config = Coq_config.make ~coqc:(Ok coqc) in
   (* Now we query for coqlib *)
-  let coqlib_path = get_config_path coq_config "coqlib" in
-  (* We need a fallback here for older Coq where coqcorelib is not present *)
-  let coqcorelib = get_config_path coq_config "coqcorelib" in
+  let coqlib_path = config_path_exn coq_config "coqlib" in
+  let coqcorelib = config_path coq_config "coqcorelib" ~default:coqlib_path in
   let* cmxs = stdlib_plugins_dir coqcorelib in
   let* vo = scan_vo coqlib_path in
-  (* We add the stdlib for now *)
   let stdlib =
     { name = Coq_lib_name.stdlib
     ; path = Path.relative coqlib_path "theories"

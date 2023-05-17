@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684300894370,
+  "lastUpdate": 1684318258425,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -39468,6 +39468,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.884759769800002",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "distinct": true,
+          "id": "ab4c2f5a62cefeff61f864c8bf36a316cbd831f8",
+          "message": "fix(install): disallow installing runtime_deps that escape the library root\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-05-17T02:58:52-07:00",
+          "tree_id": "6e0b698218a3ac85c04fa1a0ba880d846519279b",
+          "url": "https://github.com/ocaml/dune/commit/ab4c2f5a62cefeff61f864c8bf36a316cbd831f8"
+        },
+        "date": 1684318255474,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.61172529004",
             "unit": "seconds"
           }
         ]

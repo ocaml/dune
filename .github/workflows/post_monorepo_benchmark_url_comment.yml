@@ -1,0 +1,16 @@
+name: Post Monorepo Benchmark URL Comment
+on:
+  pull_request:
+    types:
+      - opened
+
+jobs:
+  post_comment:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: mshick/add-pr-comment@v2
+        with:
+          message: |
+            Here's a link to the [Monorepo Benchmarks](https://autumn.ocamllabs.io/ocaml/dune/pull/${{ github.event.pull_request.number }}/base/main?worker=fermat&image=bench%2Fmonorepo%2Fbench.Dockerfile) for this pull request, running on current-bench!

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684321471279,
+  "lastUpdate": 1684324983726,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -39816,6 +39816,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.246446433773333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5274278dc68b0248d5bf01d2fee408797495a82c",
+          "message": "doc: point at the official docs in odoc (#7746)\n\nThis page is used by ocaml.org to display the docs for dune.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-05-17T13:48:14+02:00",
+          "tree_id": "f541b2ce348950252c1cead99b2aa53bfd8061d9",
+          "url": "https://github.com/ocaml/dune/commit/5274278dc68b0248d5bf01d2fee408797495a82c"
+        },
+        "date": 1684324979904,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "25.435086224066666",
             "unit": "seconds"
           }
         ]

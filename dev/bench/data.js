@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684300564944,
+  "lastUpdate": 1684300884632,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -32130,6 +32130,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.73268208662",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "25ebe8f30cce47c6871d3b7f3bbc9e0ada0ae143",
+          "message": "Add opam to vendor/.ocamlformat-ignore (#7744)\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-05-16T21:55:46-07:00",
+          "tree_id": "b17a320c549a6975e6421327c61903ea8375a977",
+          "url": "https://github.com/ocaml/dune/commit/25ebe8f30cce47c6871d3b7f3bbc9e0ada0ae143"
+        },
+        "date": 1684300884111,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "62.81435203202667",
             "unit": "seconds"
           }
         ]

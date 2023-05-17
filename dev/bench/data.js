@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684318258425,
+  "lastUpdate": 1684318420708,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -39497,6 +39497,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.61172529004",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "richardlford@users.noreply.github.com",
+            "name": "Richard L Ford",
+            "username": "richardlford"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fbcbddf41525a2967c9232c59b1060c7c121793e",
+          "message": "Document new debugging features (#7743)\n\n* Document new debugging features\r\n\r\nThis PR documents that users need to have a\r\nsource layout that mirrors the installation\r\nlayout if they want to be able to debug\r\ninstalled libraries with the bytecode\r\ndebugger.\r\n\r\nSigned-off-by: Richard L Ford <richardlford@gmail.com>\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\nCo-authored-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-05-17T10:01:02Z",
+          "tree_id": "0429a38367256bad5d3c3713e3bfdb0e7abcaaa0",
+          "url": "https://github.com/ocaml/dune/commit/fbcbddf41525a2967c9232c59b1060c7c121793e"
+        },
+        "date": 1684318417826,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.73459621926",
             "unit": "seconds"
           }
         ]

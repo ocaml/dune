@@ -8,3 +8,6 @@
    (api_version 1)))
  (instrumentation
   (backend bisect_ppx)))
+
+(documentation
+ (package dune-build-info))

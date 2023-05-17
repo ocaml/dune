@@ -228,11 +228,9 @@ module DB = struct
           (Dune_project.root project, (dir, stanza)))
       |> Path.Source.Map.of_list_multi
     in
-
     let public_theories = Lazy.force public_theories in
     let parent = Some public_theories in
     let find_db dir = snd (find_by_dir_in_map db_by_project_dir dir) in
-
     Path.Source.Map.merge projects_by_dir coq_stanzas_by_project_dir
       ~f:(fun _dir project coq_stanzas ->
         assert (Option.is_some project);
@@ -290,19 +288,16 @@ module DB = struct
              in
              (project, db))
     in
-
     let coq_scopes_by_dir =
       lazy
         (coq_scopes_by_dir db_by_project_dir projects_by_dir public_theories
            coq_stanzas)
     in
-
     let coq_db_find dir =
       lazy
         (let map = Lazy.force coq_scopes_by_dir in
          Path.Source.Map.find_exn map dir)
     in
-
     Path.Source.Map.mapi db_by_project_dir ~f:(fun dir (project, db) ->
         let root =
           Path.Build.append_source build_dir (Dune_project.root project)

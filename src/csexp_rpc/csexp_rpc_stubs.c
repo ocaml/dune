@@ -96,6 +96,10 @@ CAMLprim value dune_send(value v_fd, value v_bytes, value v_pos, value v_len) {
 }
 #else
 CAMLprim value dune_send(value v_fd, value v_bytes, value v_pos, value v_len) {
+  (void)v_fd;
+  (void)v_bytes;
+  (void)v_pos;
+  (void)v_len;
   caml_invalid_argument("sendmsg without sigpipe only available on linux");
 }
 #endif

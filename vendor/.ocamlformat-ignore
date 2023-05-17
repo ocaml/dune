@@ -20,3 +20,4 @@ cmdliner/src/cmdliner_term.ml
 cmdliner/src/cmdliner_term.mli
 cmdliner/src/cmdliner_trie.ml
 cmdliner/src/cmdliner_trie.mli
+opam/**

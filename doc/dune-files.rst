@@ -648,18 +648,29 @@ map_workspace_root
 .. dune:stanza:: map_workspace_root
    :param: <bool>
 
-   .. versionadded:: 3.7
-
    Control references to the file system locations where the project has been
    built.
 
    - with ``(map_workspace_root true)``, dune rewrites references to the
      workspace root to ``/workspace_root``. Note that when this mapping is
-     enabled, the debug information produced by the bytecode compiler is
-     incorrect, as the location information is lost.
+     enabled, the debug information produced by the bytecode compiler gives
+     locations relative to the workspace root. If the developer chooses a
+     source layout that mirrors the installation layout, then by mapping paths
+     with ``/workspace_root`` replaced by the install root, the installed
+     artifacts (e.g. source files) can be found. This mapping will be done by a
+     combination of an updated ``ocamldebug`` and the new ``dune ocaml debug``
+     command. However, if the source layout is different than the install
+     layout, this will not work.
+
    - with ``(map_workspace_root false)``, the references are not rewritten.
 
-   Starting from language version 3.0, the default is ``true``.
+   The default is ``(map_workspace_root true)``.
+
+   .. versionadded:: 3.0
+   .. versionchanged:: 3.7
+        Add a way to disable the mapping.
+   .. versionchanged:: 3.8
+        Also rewrite the installation directory (usually ``~/.opam/<switch>``).
 
 .. _dune-files:
 

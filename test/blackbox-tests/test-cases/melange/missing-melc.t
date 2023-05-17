@@ -15,6 +15,7 @@ Set up some fake environment without melc
   $ mkdir _path
   $ ln -s $(command -v dune) _path/
   $ ln -s $(command -v ocamlc) _path/
+  $ ln -s $(command -v ocamldebug) _path/
   $ ln -s $(command -v ocamldep) _path/
 
 For melange.emit stanzas, an error is shown

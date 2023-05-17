@@ -8,7 +8,7 @@ subdirectory with links to all the executables dune needs.
 
   $ mkdir make gmake bin
 
-  $ for prog in dune ocamlc sh; do
+  $ for prog in dune ocamlc ocamldebug sh; do
   >   ln -s $(which $prog) bin/;
   > done
 

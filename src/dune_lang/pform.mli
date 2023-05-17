@@ -56,6 +56,7 @@ module Var : sig
     | Ocaml_version
     | Ocaml
     | Ocamlc
+    | Ocamldebug
     | Ocamlopt
     | Ocaml_bin_dir
     | Ocaml_stdlib_dir

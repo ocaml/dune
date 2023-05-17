@@ -28,7 +28,13 @@ isn't set
   > export PATH="\$ORIG_PATH"
   > exec ocamlc "\$@"
   > EOF
+  $ cat > ocaml-bin/ocamldebug <<EOF
+  > #!/usr/bin/env sh
+  > export PATH="\$ORIG_PATH"
+  > exec ocamldebug "\$@"
+  > EOF
   $ chmod +x ocaml-bin/ocamlc
+  $ chmod +x ocaml-bin/ocamldebug
 
   $ DUNE_PATH=$(dirname `which dune`)
   $ SH_PATH=$(dirname `which sh`)

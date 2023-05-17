@@ -76,6 +76,7 @@ addition to unsetting INSIDE_DUNE, we also need to pass
   $ mkdir _path
   $ ln -s $(command -v dune) _path/
   $ ln -s $(command -v ocamlc) _path/
+  $ ln -s $(command -v ocamldebug) _path/
 
   $ cp _tools/fail _path/patdiff
   $ cp _tools/fail _path/diff

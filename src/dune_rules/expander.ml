@@ -439,6 +439,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Ocaml -> static (get_prog context.ocaml.ocaml)
       | Ocamlc -> static (path context.ocaml.ocamlc)
       | Ocamlopt -> static (get_prog context.ocaml.ocamlopt)
+      | Ocamldebug -> static (path context.ocaml.ocamldebug)
       | Make ->
         let open Memo.O in
         Direct

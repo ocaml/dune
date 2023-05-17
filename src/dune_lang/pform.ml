@@ -90,6 +90,7 @@ module Var = struct
     | Ocaml_version
     | Ocaml
     | Ocamlc
+    | Ocamldebug
     | Ocamlopt
     | Ocaml_bin_dir
     | Ocaml_stdlib_dir
@@ -143,6 +144,7 @@ module Var = struct
       | Ocaml_version -> variant "Ocaml_version" []
       | Ocaml -> variant "Ocaml" []
       | Ocamlc -> variant "Ocamlc" []
+      | Ocamldebug -> variant "Ocamldebug" []
       | Ocamlopt -> variant "Ocamlopt" []
       | Ocaml_bin_dir -> variant "Ocaml_bin_dir" []
       | Ocaml_stdlib_dir -> variant "Ocaml_stdlib_dir" []
@@ -355,6 +357,7 @@ let encode_to_latest_dune_lang_version t =
       | Ocaml_version -> Some "ocaml_version"
       | Ocaml -> Some "ocaml"
       | Ocamlc -> Some "ocamlc"
+      | Ocamldebug -> Some "ocamldebug"
       | Ocamlopt -> Some "ocamlopt"
       | Ocaml_bin_dir -> Some "ocaml_bin"
       | Ocaml_stdlib_dir -> Some "ocaml_where"
@@ -532,6 +535,7 @@ module Env = struct
         ; ("pa_cpp", No_info Pa_cpp)
         ; ("ocaml", No_info Ocaml)
         ; ("ocamlc", No_info Ocamlc)
+        ; ("ocamldebug", No_info Ocamldebug)
         ; ("ocamlopt", No_info Ocamlopt)
         ; ("arch_sixtyfour", No_info Arch_sixtyfour)
         ; ("make", No_info Make)

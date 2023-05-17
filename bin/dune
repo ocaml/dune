@@ -28,6 +28,7 @@
   dune_pkg
   cmdliner
   threads
+  build_path_prefix_map
   ; Kept to keep implicit_transitive_deps false working in 4.x
   threads.posix
   build_info

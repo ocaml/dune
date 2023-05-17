@@ -5,6 +5,7 @@ type t =
   { bin_dir : Path.t
   ; ocaml : Action.Prog.t
   ; ocamlc : Path.t
+  ; ocamldebug : Path.t
   ; ocamlopt : Action.Prog.t
   ; ocamldep : Action.Prog.t
   ; ocamlmklib : Action.Prog.t
@@ -29,6 +30,15 @@ let of_env_with_findlib name env findlib_config ~which =
       which ocamlc >>| function
       | Some x -> x
       | None -> not_found ocamlc |> Action.Prog.Not_found.raise)
+  in
+  let* ocamldebug =
+    let ocamldebug = "ocamldebug" in
+    get_tool_using_findlib_config ocamldebug >>= function
+    | Some x -> Memo.return x
+    | None -> (
+      which ocamldebug >>| function
+      | Some x -> x
+      | None -> not_found ocamldebug |> Action.Prog.Not_found.raise)
   in
   let ocaml_bin = Path.parent_exn ocamlc in
   let get_ocaml_tool prog =
@@ -77,6 +87,7 @@ let of_env_with_findlib name env findlib_config ~which =
     { bin_dir = ocaml_bin
     ; ocaml
     ; ocamlc
+    ; ocamldebug
     ; ocamlopt
     ; ocamldep
     ; ocamlmklib

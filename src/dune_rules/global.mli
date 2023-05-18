@@ -5,4 +5,4 @@ open Import
 val env : unit -> Env.t
 
 (** Initialises this module. *)
-val init : capture_outputs:bool -> unit
+val init : Env.t -> unit

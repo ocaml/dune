@@ -67,6 +67,7 @@ let local_libraries =
   ; ("src/dune_config_file", Some "Dune_config_file", false, None)
   ; ("src/dune_rules", Some "Dune_rules", true, None)
   ; ("src/upgrader", Some "Dune_upgrader", false, None)
+  ; ("src/dune_cli", Some "Dune_cli", false, None)
   ; ("vendor/cmdliner/src", None, false, None)
   ; ("otherlibs/build-info/src", Some "Build_info", false,
     Some "Build_info_data")

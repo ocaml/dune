@@ -13,6 +13,9 @@ val display : Dune_engine.Display.t ref
 (** Re-exported form [Dune_engine] *)
 val capture_outputs : bool ref
 
+(** Whether to try use colors in the output. *)
+val supports_color : bool ref
+
 (** Print debug info about artifact substitution *)
 val debug_artifact_substitution : bool ref
 

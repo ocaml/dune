@@ -1,4 +1,4 @@
-open Import
+open Stdune
 
 (* We redirect the output of all commands, so by default the various tools will
    disable colors. Since we support colors in the output of commands, we force

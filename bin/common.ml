@@ -2,7 +2,6 @@ open Stdune
 open Dune_config_file
 module Execution_env = Dune_util.Execution_env
 module Console = Dune_console
-module Colors = Dune_rules.Colors
 module Clflags = Dune_engine.Clflags
 module Graph = Dune_graph.Graph
 module Package = Dune_rules.Package
@@ -1044,7 +1043,17 @@ let init ?action_runner ?log_file c =
     let+ w = Dune_rules.Workspace.workspace () in
     Dune_engine.Execution_parameters.builtin_default
     |> Dune_rules.Workspace.update_execution_parameters w);
-  Dune_rules.Global.init ~capture_outputs:c.builder.capture_outputs;
+  (* Setup color support *)
+  Dune_rules.Clflags.supports_color :=
+    c.builder.capture_outputs && Lazy.force Ansi_color.stderr_supports_color;
+  (* Setup initial environment *)
+  let env =
+    if !Dune_rules.Clflags.supports_color then
+      Dune_cli.Colors.setup_env_for_colors Env.initial
+    else Env.initial
+  in
+  (* Initialize the initial enviornment of the rules *)
+  Dune_rules.Global.init env;
   let cache_config =
     match config.cache_enabled with
     | Disabled -> Dune_cache.Config.Disabled

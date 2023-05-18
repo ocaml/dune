@@ -312,27 +312,8 @@ let ocamlpath (kind : Kind.t) ~env ~findlib_toolchain =
       | Eq -> []
       | _ -> env_ocamlpath))
 
-let context_env env name ocfg findlib env_nodes version ~profile ~host
+let context_env env name ocfg findlib env_nodes ~profile ~host
     ~default_ocamlpath =
-  let env =
-    (* See comment in ansi_color.ml for setup_env_for_colors. For versions
-       where OCAML_COLOR is not supported, but 'color' is in OCAMLPARAM, use
-       the latter. If 'color' is not supported, we just don't force colors
-       with 4.02. *)
-    if
-      !Clflags.capture_outputs
-      && Lazy.force Ansi_color.stderr_supports_color
-      && Ocaml.Version.supports_color_in_ocamlparam version
-      && not (Ocaml.Version.supports_ocaml_color version)
-    then
-      let value =
-        match Env.get env "OCAMLPARAM" with
-        | None -> "color=always,_"
-        | Some s -> "color=always," ^ s
-      in
-      Env.add env ~var:"OCAMLPARAM" ~value
-    else env
-  in
   let extend_var var ?(path_sep = Bin.path_sep) v =
     let v = Path.to_absolute_filename (Path.build v) in
     match Env.get env var with
@@ -407,9 +388,27 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         stdlib_dir :: default_ocamlpath
       else default_ocamlpath
     in
+    (* Setting up colors for OCaml in case the version is too old. *)
     let env =
-      context_env env name ocaml.ocaml_config findlib env_nodes ocaml.version
-        ~profile ~host ~default_ocamlpath
+      (* For versions where OCAML_COLOR is not supported, but 'color' is in
+         OCAMLPARAM, use the latter. If 'color' is not supported, we just don't
+         force colors with 4.02. *)
+      if
+        !Clflags.supports_color
+        && Ocaml.Version.supports_color_in_ocamlparam ocaml.version
+        && not (Ocaml.Version.supports_ocaml_color ocaml.version)
+      then
+        let value =
+          match Env.get env "OCAMLPARAM" with
+          | None -> "color=always,_"
+          | Some s -> "color=always," ^ s
+        in
+        Env.add env ~var:"OCAMLPARAM" ~value
+      else env
+    in
+    let env =
+      context_env env name ocaml.ocaml_config findlib env_nodes ~profile ~host
+        ~default_ocamlpath
     in
     let lib_config =
       { Lib_config.has_native = Result.is_ok ocaml.ocamlopt

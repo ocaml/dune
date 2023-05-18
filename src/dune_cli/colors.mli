@@ -1,6 +1,7 @@
-open Import
+open Stdune
 
-(** [Env.initial] extended with variables to force a few tools to print colors *)
+(** [setup_env_for_colors env] extends [env] with variables to force a few tools
+    to print colors. *)
 val setup_env_for_colors : Env.t -> Env.t
 
 (** Enable the interpretation of color tags for [Format.err_formatter] *)

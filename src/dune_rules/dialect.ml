@@ -45,7 +45,7 @@ end
 
 type t =
   { name : string
-  ; file_kinds : File_kind.t Ml_kind.Dict.t
+  ; file_kinds : File_kind.t option Ml_kind.Dict.t
   }
 
 let name t = t.name
@@ -54,15 +54,17 @@ let to_dyn { name; file_kinds } =
   let open Dyn in
   record
     [ ("name", string name)
-    ; ("file_kinds", Ml_kind.Dict.to_dyn File_kind.to_dyn file_kinds)
+    ; ( "file_kinds"
+      , Ml_kind.Dict.to_dyn (Dyn.option File_kind.to_dyn) file_kinds )
     ]
 
 let encode { name; file_kinds } =
   let open Dune_lang.Encoder in
+  let open Option.O in
   let file_kind_stanzas =
-    let open Ml_kind in
-    List.map ~f:File_kind.encode
-      [ Dict.get file_kinds Intf; Dict.get file_kinds Impl ]
+    List.filter_map Ml_kind.all ~f:(fun kind ->
+        let+ file_kind = Ml_kind.Dict.get file_kinds kind in
+        File_kind.encode file_kind)
   in
   let fields = record_fields [ field "name" string name ] @ file_kind_stanzas in
   list sexp (string "dialect" :: fields)
@@ -87,18 +89,34 @@ let decode =
   in
   fields
     (let+ name = field "name" string
-     and+ impl = field "implementation" (fields (kind Ml_kind.Impl))
-     and+ intf = field "interface" (fields (kind Ml_kind.Intf)) in
+     and+ loc = loc
+     and+ impl = field_o "implementation" (fields (kind Ml_kind.Impl))
+     and+ intf = field_o "interface" (fields (kind Ml_kind.Intf))
+     and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
+     let dialect_kind_optional_since = (3, 9) in
+     if version < dialect_kind_optional_since then (
+       if Option.is_none impl then
+         Syntax.Error.since loc Stanza.syntax dialect_kind_optional_since
+           ~what:"omitting (implementation) in dialects";
+       if Option.is_none intf then
+         Syntax.Error.since loc Stanza.syntax dialect_kind_optional_since
+           ~what:"omitting (interface) in dialects");
      { name; file_kinds = Ml_kind.Dict.make ~intf ~impl })
 
 let extension { file_kinds; _ } ml_kind =
-  (Ml_kind.Dict.get file_kinds ml_kind).extension
+  let open Option.O in
+  let+ x = Ml_kind.Dict.get file_kinds ml_kind in
+  x.extension
 
 let preprocess { file_kinds; _ } ml_kind =
-  (Ml_kind.Dict.get file_kinds ml_kind).preprocess
+  let open Option.O in
+  let* x = Ml_kind.Dict.get file_kinds ml_kind in
+  x.preprocess
 
 let format { file_kinds; _ } ml_kind =
-  (Ml_kind.Dict.get file_kinds ml_kind).format
+  let open Option.O in
+  let* x = Ml_kind.Dict.get file_kinds ml_kind in
+  x.format
 
 let ocaml =
   let format kind =
@@ -126,8 +144,8 @@ let ocaml =
           , [ ".ocamlformat"; ".ocamlformat-ignore"; ".ocamlformat-enable" ] )
     }
   in
-  let intf = file_kind Ml_kind.Intf ".mli" in
-  let impl = file_kind Ml_kind.Impl ".ml" in
+  let intf = Some (file_kind Ml_kind.Intf ".mli") in
+  let impl = Some (file_kind Ml_kind.Impl ".ml") in
   { name = "ocaml"; file_kinds = Ml_kind.Dict.make ~intf ~impl }
 
 let reason =
@@ -152,8 +170,8 @@ let reason =
     ; format = Some (Loc.none, format, [])
     }
   in
-  let intf = file_kind Ml_kind.Intf ".rei" in
-  let impl = file_kind Ml_kind.Impl ".re" in
+  let intf = Some (file_kind Ml_kind.Intf ".rei") in
+  let impl = Some (file_kind Ml_kind.Impl ".re") in
   { name = "reason"; file_kinds = Ml_kind.Dict.make ~intf ~impl }
 
 let rescript =
@@ -179,14 +197,15 @@ let rescript =
     ; format = Some (Loc.none, format, [])
     }
   in
-  let intf = file_kind Ml_kind.Intf ".resi" in
-  let impl = file_kind Ml_kind.Impl ".res" in
+  let intf = Some (file_kind Ml_kind.Intf ".resi") in
+  let impl = Some (file_kind Ml_kind.Impl ".res") in
   { name = "rescript"; file_kinds = Ml_kind.Dict.make ~intf ~impl }
 
-let ml_suffix { file_kinds = { Ml_kind.Dict.intf; impl }; _ } ml_kind =
-  match (ml_kind, intf.preprocess, impl.preprocess) with
-  | Ml_kind.Intf, None, _ | Impl, _, None -> None
-  | _ -> Some (extension ocaml ml_kind)
+let ml_suffix { file_kinds = { intf; impl }; _ } ml_kind =
+  match (ml_kind, intf, impl) with
+  | Ml_kind.Intf, (None | Some { preprocess = None; _ }), _
+  | Impl, _, (None | Some { preprocess = None; _ }) -> None
+  | _ -> extension ocaml ml_kind
 
 module DB = struct
   type dialect = t
@@ -194,7 +213,7 @@ module DB = struct
   type t =
     { by_name : dialect String.Map.t
     ; by_extension : dialect String.Map.t
-    ; mutable extensions_for_merlin : string Ml_kind.Dict.t list option
+    ; mutable extensions_for_merlin : string option Ml_kind.Dict.t list option
     }
 
   let fold { by_name; _ } = String.Map.fold by_name
@@ -219,7 +238,8 @@ module DB = struct
                && intf = extension ocaml Ml_kind.Intf
           then s
           else { Ml_kind.Dict.impl; intf } :: s)
-      |> List.sort ~compare:(Ml_kind.Dict.compare String.compare)
+      |> List.sort
+           ~compare:(Ml_kind.Dict.compare (Option.compare String.compare))
     in
     t.extensions_for_merlin <- Some v;
     v
@@ -237,19 +257,21 @@ module DB = struct
         User_error.raise ~loc
           [ Pp.textf "dialect %S is already defined" dialect.name ]
     in
-    let add_ext map ext =
-      match String.Map.add map ext dialect with
-      | Ok map -> map
-      | Error dialect ->
-        User_error.raise ~loc
-          [ Pp.textf "extension %S is already registered by dialect %S"
-              (String.drop ext 1) dialect.name
-          ]
+    let add_ext map = function
+      | Some { File_kind.extension = ext; _ } -> (
+        match String.Map.add map ext dialect with
+        | Ok map -> map
+        | Error dialect ->
+          User_error.raise ~loc
+            [ Pp.textf "extension %S is already registered by dialect %S"
+                (String.drop ext 1) dialect.name
+            ])
+      | None -> map
     in
     let by_extension =
       add_ext
-        (add_ext by_extension dialect.file_kinds.intf.extension)
-        dialect.file_kinds.impl.extension
+        (add_ext by_extension dialect.file_kinds.intf)
+        dialect.file_kinds.impl
     in
     { by_name; by_extension; extensions_for_merlin = None }
 
@@ -262,8 +284,9 @@ module DB = struct
     Option.map
       ~f:(fun dialect ->
         let kind =
-          if dialect.file_kinds.intf.extension = extension then Ml_kind.Intf
-          else Ml_kind.Impl
+          match dialect.file_kinds.intf with
+          | Some intf when intf.extension = extension -> Ml_kind.Intf
+          | _ -> Ml_kind.Impl
         in
         (dialect, kind))
       (String.Map.find by_extension extension)

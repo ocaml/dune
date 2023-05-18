@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684390387716,
+  "lastUpdate": 1684390892659,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -15890,6 +15890,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "51.88932896480667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "431aa5c0b73bc37bee79abb27a0e3d6cca2b069e",
+          "message": "chore: update flakes (#7755)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-05-18T06:00:39Z",
+          "tree_id": "f3c4f72f49e231b86012cd420d74967e954ea403",
+          "url": "https://github.com/ocaml/dune/commit/431aa5c0b73bc37bee79abb27a0e3d6cca2b069e"
+        },
+        "date": 1684390891901,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.150529480693336",
             "unit": "seconds"
           }
         ]

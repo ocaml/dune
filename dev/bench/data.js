@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684389827819,
+  "lastUpdate": 1684390387716,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -40164,6 +40164,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "29.191913324473333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "431aa5c0b73bc37bee79abb27a0e3d6cca2b069e",
+          "message": "chore: update flakes (#7755)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-05-18T06:00:39Z",
+          "tree_id": "f3c4f72f49e231b86012cd420d74967e954ea403",
+          "url": "https://github.com/ocaml/dune/commit/431aa5c0b73bc37bee79abb27a0e3d6cca2b069e"
+        },
+        "date": 1684390384768,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.925201903226668",
             "unit": "seconds"
           }
         ]

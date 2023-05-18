@@ -20,8 +20,14 @@ module Query = struct
     | Libs s -> sprintf "%s.libs" s
     | Cflags s -> sprintf "%s.cflags" s
 
-  let to_args t : _ Command.Args.t list =
+  let to_args t ~env : _ Command.Args.t list =
+    let env_args : _ Command.Args.t =
+      match Env.get env "PKG_CONFIG_ARGN" with
+      | Some s -> As (String.split_on_char ~sep:' ' s)
+      | None -> Command.Args.empty
+    in
     Hidden_deps Dep.(Set.singleton universe)
+    :: env_args
     ::
     (match t with
     | Libs lib -> [ A "--libs"; A lib ]
@@ -59,9 +65,19 @@ let gen_rule sctx ~loc ~dir query =
   match bin with
   | Error _ -> Memo.return @@ Error `Not_found
   | Ok _ as bin ->
-    let command =
+    let* command =
+      let+ env =
+        let* dune_version =
+          let+ expander = Super_context.expander sctx ~dir in
+          expander |> Expander.scope |> Scope.project
+          |> Dune_project.dune_version
+        in
+        let* env_node = Super_context.env_node sctx ~dir in
+        if dune_version >= (3, 8) then Env_node.external_env env_node
+        else Memo.return Env.empty
+      in
       Command.run ~dir:(Path.build dir) ~stdout_to:(Query.file ~dir query) bin
-        (Query.to_args query)
+        (Query.to_args ~env query)
     in
     let+ () = Super_context.add_rule sctx ~loc ~dir command in
     Ok ()

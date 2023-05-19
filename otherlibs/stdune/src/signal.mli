@@ -29,6 +29,7 @@ type t =
   | Urg
   | Xcpu
   | Xfsz
+  | Winch
   | Unknown of int
 
 (** Get the signal's name, e.g. [Int] maps to "INT", [Term] to "TERM", etc. *)

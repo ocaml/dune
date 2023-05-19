@@ -27,7 +27,10 @@ type t =
   | Urg
   | Xcpu
   | Xfsz
+  | Winch
   | Unknown of int
+
+external sigwinch : unit -> int = "stdune_winch_number" [@@noalloc]
 
 let all =
   let open Sys in
@@ -59,6 +62,7 @@ let all =
   ; (Urg, sigurg)
   ; (Xcpu, sigxcpu)
   ; (Xfsz, sigxfsz)
+  ; (Winch, sigwinch ())
   ]
 
 let name = function
@@ -90,6 +94,7 @@ let name = function
   | Urg -> "URG"
   | Xcpu -> "XCPU"
   | Xfsz -> "XFSZ"
+  | Winch -> "WINCH"
   | Unknown n -> Int.to_string n
 
 let compare (x : t) (y : t) = Poly.compare x y

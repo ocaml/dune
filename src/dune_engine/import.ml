@@ -9,7 +9,6 @@ module Persistent = Dune_util.Persistent
 module Execution_env = Dune_util.Execution_env
 module Predicate_lang = Dune_lang.Predicate_lang
 module Glob = Dune_glob.V1
-module String_with_vars = Dune_lang.String_with_vars
 module Outputs = Dune_lang.Action.Outputs
 module Inputs = Dune_lang.Action.Inputs
 module File_perm = Dune_lang.Action.File_perm

@@ -319,7 +319,7 @@ module Unexpanded = struct
     let open Action_builder.O in
     let context = t.context in
     let expand_template ~mode sw =
-      Action_builder.Expander.expand sw ~mode ~dir ~f
+      Action_builder_expander.expand sw ~mode ~dir ~f
     in
     let f_elems s =
       let loc = String_with_vars.loc s in

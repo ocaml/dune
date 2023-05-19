@@ -113,7 +113,6 @@ module T = struct
   end
 end
 
-module Expander = String_with_vars.Make_expander (T)
 include T
 open O
 

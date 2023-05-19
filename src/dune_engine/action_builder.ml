@@ -107,7 +107,7 @@ let lines_of p =
 
 let read_sexp p =
   let+ s = contents p in
-  Dune_lang.Parser.parse_string s ~fname:(Path.to_string p) ~mode:Single
+  Dune_sexp.Parser.parse_string s ~fname:(Path.to_string p) ~mode:Single
 
 let if_file_exists p ~then_ ~else_ =
   of_thunk

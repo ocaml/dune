@@ -49,7 +49,7 @@ module T = struct
     | Universe, Universe -> Ordering.Eq
 
   let encode t =
-    let open Dune_lang.Encoder in
+    let open Dune_sexp.Encoder in
     match t with
     | File_selector g -> pair string File_selector.encode ("glob", g)
     | Env e -> pair string string ("Env", e)
@@ -57,7 +57,7 @@ module T = struct
     | Alias a -> pair string Alias.encode ("Alias", a)
     | Universe -> string "Universe"
 
-  let to_dyn t = Dyn.String (Dune_lang.to_string (encode t))
+  let to_dyn t = Dyn.String (Dune_sexp.to_string (encode t))
 end
 
 include T
@@ -305,7 +305,7 @@ module Set = struct
   let add_paths t paths =
     Path.Set.fold paths ~init:t ~f:(fun p set -> add set (File p))
 
-  let encode t = Dune_lang.Encoder.list encode (to_list t)
+  let encode t = Dune_sexp.Encoder.list encode (to_list t)
 
   (* This is to force the rules to be loaded for directories without files when
      depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale

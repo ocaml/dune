@@ -83,7 +83,7 @@ module For_shell : sig
       with type path := string
       with type target := string
       with type string := string
-      with type ext := Dune_lang.t
+      with type ext := Dune_sexp.t
 end
 
 (** Convert the action to a format suitable for printing *)

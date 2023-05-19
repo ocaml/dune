@@ -3,7 +3,7 @@ open Import
 module Name : sig
   type t
 
-  include Dune_lang.Conv.S with type t := t
+  include Dune_sexp.Conv.S with type t := t
 
   val equal : t -> t -> bool
 
@@ -55,11 +55,11 @@ end = struct
     | None -> User_error.raise ~loc [ invalid_alias s ]
     | Some s -> s
 
-  let encode = Dune_lang.Encoder.string
+  let encode = Dune_sexp.Encoder.string
 
   let decode =
-    let open Dune_lang.Decoder in
-    let* syntax = Dune_lang.Syntax.get_exn Dune_lang.Stanza.syntax in
+    let open Dune_sexp.Decoder in
+    let* syntax = Dune_sexp.Syntax.get_exn Dune_lang.Stanza.syntax in
     plain_string (fun ~loc s -> parse_string_exn ~syntax (loc, s))
 
   let parse_string_exn =
@@ -177,7 +177,7 @@ let check = make_standard (Name.of_string "check")
 let fmt = make_standard Name.fmt
 
 let encode { dir; name } =
-  let open Dune_lang.Encoder in
+  let open Dune_sexp.Encoder in
   record [ ("dir", Dpath.encode (Path.build dir)); ("name", Name.encode name) ]
 
 let get_ctx (path : Path.Build.t) =

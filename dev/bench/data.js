@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684518795808,
+  "lastUpdate": 1684518823419,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -33000,6 +33000,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8181044342066663",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "74149be53bc390867b3ce202f80438903dc84ce3",
+          "message": "refactor(engine): add restriction to errors (#7714)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-19T10:24:16-07:00",
+          "tree_id": "6287b685582e5455ab879d542b66de31bae8cb6a",
+          "url": "https://github.com/ocaml/dune/commit/74149be53bc390867b3ce202f80438903dc84ce3"
+        },
+        "date": 1684518822126,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "71.73853090274667",
             "unit": "seconds"
           }
         ]

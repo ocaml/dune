@@ -6,15 +6,10 @@ module Global_lock = Dune_util.Global_lock
 include struct
   open Dune_rpc
   module Initialize = Initialize
-  module Public = Public
-  module Versioned = Versioned
-  module Server_notifications = Server_notifications
   module Sub = Sub
   module Progress = Progress
   module Procedures = Procedures
-  module Id = Id
   module Diagnostic = Diagnostic
-  module Conv = Conv
 end
 
 include struct
@@ -253,7 +248,6 @@ let handler (t : t Fdecl.t) action_runner_server : 'a Dune_rpc_server.Handler.t
       ~version:Dune_rpc_private.Version.latest ()
   in
   let () =
-    let module Diagnostic = Dune_rpc.Diagnostic in
     let module Error = Build_system.Error in
     let diff ~last ~(now : Error.Set.t) =
       match last with

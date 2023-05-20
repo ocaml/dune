@@ -19,18 +19,30 @@ end
 
 include struct
   open Dune_engine
-  module Source_tree = Source_tree
+  module Action_runner = Action_runner
   module Build_config = Build_config
-  module Dune_project = Dune_project
   module Diff_promotion = Diff_promotion
 end
 
-module Dep_conf = Dune_rules.Dep_conf
-module Build_outcome = Decl.Build_outcome
-module Status = Decl.Status
-module Stanza = Dune_lang.Stanza
-module String_with_vars = Dune_lang.String_with_vars
-module Pform = Dune_lang.Pform
+include struct
+  open Dune_rules
+  module Dep_conf = Dep_conf
+  module Source_tree = Source_tree
+  module Dune_project = Dune_project
+end
+
+include struct
+  open Decl
+  module Build_outcome = Build_outcome
+  module Status = Status
+end
+
+include struct
+  open Dune_lang
+  module Stanza = Stanza
+  module String_with_vars = String_with_vars
+  module Pform = Pform
+end
 
 module Run = struct
   module Registry = Dune_rpc_private.Registry
@@ -38,7 +50,7 @@ module Run = struct
 
   type t =
     { handler : Dune_rpc_server.t
-    ; action_runner : Dune_engine.Action_runner.Rpc_server.t
+    ; action_runner : Action_runner.Rpc_server.t
     ; pool : Fiber.Pool.t
     ; root : string
     ; where : Dune_rpc.Where.t
@@ -216,7 +228,7 @@ let ready (t : t) =
 
 let stop (t : t) =
   Fiber.fork_and_join_unit
-    (fun () -> Dune_engine.Action_runner.Rpc_server.stop t.config.action_runner)
+    (fun () -> Action_runner.Rpc_server.stop t.config.action_runner)
     (fun () ->
       let+ server = Fiber.Ivar.peek t.config.server_ivar in
       match server with
@@ -340,7 +352,7 @@ let handler (t : t Fdecl.t) action_runner_server : 'a Dune_rpc_server.Handler.t
               ~f:(fun (_, entry) -> Session.Stage1.request_close entry.session))
       in
       let shutdown () =
-        Fiber.fork_and_join_unit Dune_engine.Scheduler.shutdown (fun () ->
+        Fiber.fork_and_join_unit Scheduler.shutdown (fun () ->
             Csexp_rpc.Server.stop (Lazy.force t.config.server);
             Fiber.return ())
       in
@@ -364,7 +376,7 @@ let handler (t : t Fdecl.t) action_runner_server : 'a Dune_rpc_server.Handler.t
   in
   let () =
     let f _ () =
-      let errors = Fiber.Svar.read Dune_engine.Build_system.errors in
+      let errors = Fiber.Svar.read Build_system.errors in
       Build_system.Error.Set.current errors
       |> Build_system.Error.Id.Map.values
       |> List.map ~f:Diagnostics.diagnostic_of_error

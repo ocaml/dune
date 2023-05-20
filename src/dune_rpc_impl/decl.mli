@@ -4,7 +4,7 @@ open Dune_rpc
 (** Internal RPC requests *)
 
 module Build_outcome : sig
-  type t = Dune_engine.Scheduler.Run.Build_outcome.t =
+  type t = Scheduler.Run.Build_outcome.t =
     | Success
     | Failure
 

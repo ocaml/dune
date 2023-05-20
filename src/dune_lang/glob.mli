@@ -1,7 +1,7 @@
 open! Stdune
 open Dune_sexp
 
-type t
+type t = Dune_glob.V1.t
 
 val equal : t -> t -> bool
 

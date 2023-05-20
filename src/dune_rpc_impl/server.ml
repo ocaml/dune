@@ -465,15 +465,11 @@ let create ~lock_timeout ~registry ~root ~watch_mode_config stats action_runner
   Fdecl.set t res;
   res
 
-let listening_address t = t.config.where
-
 let run t =
   let* () = Fiber.return () in
   Fiber.fork_and_join_unit
     (fun () -> Run.run t.config)
     (fun () -> Dune_engine.Action_runner.Rpc_server.run t.config.action_runner)
-
-let stats (t : t) = t.config.stats
 
 let action_runner t = t.config.action_runner
 

@@ -1,13 +1,5 @@
 open Import
-module Initialize = Dune_rpc.Initialize
-module Public = Dune_rpc.Public
-module Server_notifications = Dune_rpc.Server_notifications
-module Sub = Dune_rpc.Sub
-module Progress = Dune_rpc.Progress
-module Id = Dune_rpc.Id
 module Diagnostic = Dune_rpc.Diagnostic
-module Conv = Dune_rpc.Conv
-module Dep_conf = Dune_rules.Dep_conf
 module Compound_user_error = Dune_engine.Compound_user_error
 
 let absolutize_paths ~dir (loc : Loc.t) =

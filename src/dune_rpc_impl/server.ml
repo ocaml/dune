@@ -19,12 +19,7 @@ include struct
   module Diff_promotion = Diff_promotion
 end
 
-include struct
-  open Dune_rules
-  module Dep_conf = Dep_conf
-  module Source_tree = Source_tree
-  module Dune_project = Dune_project
-end
+module Dep_conf = Dune_rules.Dep_conf
 
 include struct
   open Decl
@@ -230,8 +225,8 @@ let stop (t : t) =
       | None -> ()
       | Some server -> Csexp_rpc.Server.stop server)
 
-let handler (t : t Fdecl.t) action_runner_server : 'a Dune_rpc_server.Handler.t
-    =
+let handler (t : t Fdecl.t) action_runner_server handle :
+    'a Dune_rpc_server.Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
     let client = () in
@@ -378,36 +373,9 @@ let handler (t : t Fdecl.t) action_runner_server : 'a Dune_rpc_server.Handler.t
     in
     Handler.implement_request rpc Procedures.Public.diagnostics f
   in
-  let source_path_of_string path =
-    if Filename.is_relative path then Path.Source.(relative root path)
-    else
-      let source_root =
-        Path.to_absolute_filename (Path.source Path.Source.root)
-      in
-      match String.drop_prefix path ~prefix:source_root with
-      | None ->
-        User_error.raise [ Pp.textf "path isn't available in workspace" ]
-      | Some s ->
-        let s = String.drop_prefix_if_exists s ~prefix:"/" in
-        Path.Source.(relative root s)
-  in
-  let () =
-    let f _ (path, `Contents contents) =
-      let+ version =
-        Memo.run
-          (let open Memo.O in
-          let source_path = source_path_of_string path in
-          let+ dir = Source_tree.nearest_dir source_path in
-          let project = Source_tree.Dir.project dir in
-          Dune_project.dune_version project)
-      in
-      Dune_lang.Format.format_string ~version contents
-    in
-    Handler.implement_request rpc Procedures.Public.format_dune_file f
-  in
   let () =
     let f _ path =
-      let files = source_path_of_string path in
+      let files = For_handlers.source_path_of_string path in
       Diff_promotion.promote_files_registered_in_last_run
         (These ([ files ], ignore));
       Fiber.return ()
@@ -420,13 +388,14 @@ let handler (t : t Fdecl.t) action_runner_server : 'a Dune_rpc_server.Handler.t
   in
   Dune_engine.Action_runner.Rpc_server.implement_handler action_runner_server
     rpc;
+  handle rpc;
   rpc
 
-let create ~lock_timeout ~registry ~root ~watch_mode_config stats action_runner
-    =
+let create ~lock_timeout ~registry ~root ~watch_mode_config ~handle stats
+    action_runner =
   let t = Fdecl.create Dyn.opaque in
   let pending_build_jobs = Job_queue.create () in
-  let handler = Dune_rpc_server.make (handler t action_runner) in
+  let handler = Dune_rpc_server.make (handler t action_runner handle) in
   let pool = Fiber.Pool.create () in
   let where = Where.default () in
   Global_lock.lock_exn ~timeout:lock_timeout;

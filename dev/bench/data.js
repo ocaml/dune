@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684606484134,
+  "lastUpdate": 1684606974779,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16064,6 +16064,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "43.209159163260004",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e7a1d844ddf4ac8cfc82f6dfa1657799d338a9b6",
+          "message": "refactor(engine): do not depend on Dune_lang.Glob (#7762)\n\nWe can use Dune_glob directly if we move some functions from dune_lang\r\nto dune_glob\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-20T11:02:07-07:00",
+          "tree_id": "836b43cf8b45d542d899156a395f3d2988999067",
+          "url": "https://github.com/ocaml/dune/commit/e7a1d844ddf4ac8cfc82f6dfa1657799d338a9b6"
+        },
+        "date": 1684606974212,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.2707244423",
             "unit": "seconds"
           }
         ]

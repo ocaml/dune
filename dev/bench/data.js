@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684607319203,
+  "lastUpdate": 1684663667180,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -40976,6 +40976,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.39622663954667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "753a324d4815766372f5e398a589c200b4925b4c",
+          "message": "refactor: remove string with var expansion from engine (#7771)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-21T02:46:15-07:00",
+          "tree_id": "69f4250af30afcbbb0a7e81f613b373b8dd8472b",
+          "url": "https://github.com/ocaml/dune/commit/753a324d4815766372f5e398a589c200b4925b4c"
+        },
+        "date": 1684663662537,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "29.489011085166666",
             "unit": "seconds"
           }
         ]

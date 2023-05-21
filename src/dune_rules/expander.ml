@@ -698,7 +698,7 @@ let expand_pform_no_deps t ~source pform =
     ~human_readable_description:(fun () -> describe_source ~source)
 
 let expand t ~mode template =
-  Action_builder.Expander.expand ~dir:(Path.build t.dir) ~mode template
+  Action_builder_expander.expand ~dir:(Path.build t.dir) ~mode template
     ~f:(expand_pform t)
 
 let make ~scope ~scope_host ~(context : Context.t) ~lib_artifacts

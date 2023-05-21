@@ -232,7 +232,7 @@ end = struct
        cf comment for [chdir]. *)
     module Expander = struct
       let expand env ~mode template =
-        Action_builder.Expander.expand ~dir:(Path.build env.dir) ~mode template
+        Action_builder_expander.expand ~dir:(Path.build env.dir) ~mode template
           ~f:(Expander.expand_pform env.expander)
 
       let expand_path t sw =

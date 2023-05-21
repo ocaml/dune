@@ -78,8 +78,6 @@ val exec_memo : ('i, 'o) memo -> 'i -> 'o t
     but the contents of [p] is irrelevant. *)
 val goal : 'a t -> 'a t
 
-module Expander : String_with_vars.Expander with type 'a app := 'a t
-
 (** If you're thinking of using [Process.run] here, check that: (i) you don't in
     fact need [Command.run], and that (ii) [Process.run] only reads the declared
     build rule dependencies. *)

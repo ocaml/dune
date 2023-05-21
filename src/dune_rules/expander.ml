@@ -822,12 +822,19 @@ module With_reduced_var_set = struct
       ~dir:(Path.build dir) blang
 end
 
+let expand_ordered_set_lang =
+  let module Expander = Ordered_set_lang.Unexpanded.Expand (struct
+    include Action_builder
+    include Action_builder_expander
+  end) in
+  Expander.expand
+
 let expand_and_eval_set t set ~standard =
   let dir = Path.build (dir t) in
   let+ standard =
     if Ordered_set_lang.Unexpanded.has_special_forms set then standard
     else Action_builder.return []
-  and+ set = Ordered_set_lang.Unexpanded.expand set ~dir ~f:(expand_pform t) in
+  and+ set = expand_ordered_set_lang set ~dir ~f:(expand_pform t) in
   Ordered_set_lang.eval set ~standard ~eq:String.equal ~parse:(fun ~loc:_ s ->
       s)
 

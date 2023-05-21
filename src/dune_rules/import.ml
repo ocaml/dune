@@ -41,6 +41,7 @@ end
 
 include Ocaml
 module Re = Dune_re
+module Ordered_set_lang = Dune_lang.Ordered_set_lang
 module Stanza = Dune_lang.Stanza
 module Predicate_lang = Dune_lang.Predicate_lang
 module Predicate_with_id = Dune_engine.File_selector.Predicate_with_id

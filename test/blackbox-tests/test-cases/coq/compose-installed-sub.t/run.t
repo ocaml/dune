@@ -11,7 +11,7 @@ We also need to set up a fake Coq install.
   $TESTCASE_ROOT/lib/coq
 
   $ mkdir -p lib/coq/theories/Init/
-  $ echo > lib/coq/theories/Init/Prelude.v << EOF
+  $ cat > lib/coq/theories/Init/Prelude.v << EOF
   > Inductive PreludeLoaded := Yes.
   > EOF
 
@@ -22,6 +22,14 @@ We need to manually compile the prelude.
 We also setup some plugins
 
   $ mkdir -p lib/coq-core/plugins
+
+Setting up a subdirectory theory:
+
+  $ cat > user/dune << EOF
+  > (coq.theory
+  >  (name user)
+  >  (theories global.field global.algebra))
+  > EOF
 
 We setup an installed theory. Note that lib/coq/user-contrib doesn't exist yet,
 so this also tests that it won't be a problem.
@@ -155,14 +163,27 @@ any problems. It shouldn't do, as the workspace should take precedence.
 
 We test updating the dune file for user to use the super-theory works:
 
-  $ rm user/dune
-  $ echo > user/dune << EOF
+  $ cat > user/dune << EOF
   > (coq.theory
-  >   (name user)
-  >   (theories global))
+  >  (name user)
+  >  (theories global))
   > EOF
   $ dune build --root user
   Entering directory 'user'
+  Inductive hello_alg : Set :=
+      I : hello_alg
+    | am : hello_alg
+    | an : hello_alg
+    | install : hello_alg
+    | loc : hello_alg
+    | at_alg : hello_alg.
+  Inductive hello_field : Set :=
+      I : hello_field
+    | am : hello_field
+    | an : hello_field
+    | install : hello_field
+    | loc : hello_field
+    | at_field : hello_field.
   Leaving directory 'user'
 
 We test whether installing `global` again in user-contrib will cause Dune to reject the

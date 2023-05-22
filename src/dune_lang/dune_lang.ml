@@ -13,3 +13,4 @@ module Binary_kind = Binary_kind
 module Package_name = Package_name
 module Pkg = Pkg
 module Ordered_set_lang = Ordered_set_lang
+module Format_config = Format_config

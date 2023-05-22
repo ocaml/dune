@@ -1,8 +1,6 @@
 (** This module represents user defined bindings of the form (:foo bar). These
     are used in the dependency specification language for example *)
 
-open Import
-
 type 'a one =
   | Unnamed of 'a
   | Named of string * 'a list
@@ -23,9 +21,9 @@ val singleton : 'a -> 'a t
 
 val to_dyn : 'a Dyn.builder -> 'a t Dyn.builder
 
-val decode : 'a Dune_lang.Decoder.t -> 'a t Dune_lang.Decoder.t
+val decode : 'a Dune_sexp.Decoder.t -> 'a t Dune_sexp.Decoder.t
 
-val encode : 'a Dune_lang.Encoder.t -> 'a t -> Dune_lang.t
+val encode : 'a Dune_sexp.Encoder.t -> 'a t -> Dune_sexp.t
 
 val var_names : _ t -> string list
 

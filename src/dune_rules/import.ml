@@ -41,6 +41,7 @@ end
 
 include Ocaml
 module Re = Dune_re
+module Bindings = Dune_lang.Bindings
 module Format_config = Dune_lang.Format_config
 module Ordered_set_lang = Dune_lang.Ordered_set_lang
 module Stanza = Dune_lang.Stanza

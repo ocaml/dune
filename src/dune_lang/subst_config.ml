@@ -1,4 +1,4 @@
-open Dune_lang.Decoder
+open Dune_sexp.Decoder
 
 (* Can be extended later if needed *)
 type t =
@@ -15,13 +15,12 @@ let to_string = function
 
 let to_dyn conf = to_string conf |> Dyn.string
 
-let encode t = Dune_lang.Encoder.string (to_string t)
+let encode t = Dune_sexp.Encoder.string (to_string t)
 
 let decoder = enum [ ("disabled", Disabled); ("enabled", Enabled) ]
 
 let field ~since =
-  field_o "subst"
-    (Dune_lang.Syntax.since Dune_lang.Stanza.syntax since >>> decoder)
+  field_o "subst" (Dune_sexp.Syntax.since Stanza.syntax since >>> decoder)
 
 let of_config = function
   | None -> Enabled

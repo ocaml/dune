@@ -11,9 +11,46 @@ end
 module Json = struct
   include Chrome_trace.Json
 
+  let copy_substring s buf start pos =
+    if pos > start then Buffer.add_substring buf s start (pos - start)
+
+  let rec quote_characters_to_buf s buf n start pos =
+    (* check if a character is a valid utf-8 continuation byte *)
+    let is_cb i = i < n && Char.code s.[i] land 0xc0 = 0x80 [@@inline] in
+    if pos < n then
+      match s.[pos] with
+      | '\b' -> escape s buf n start pos "\\b"
+      | '\t' -> escape s buf n start pos "\\t"
+      | '\n' -> escape s buf n start pos "\\n"
+      | '\012' -> escape s buf n start pos "\\f"
+      | '\r' -> escape s buf n start pos "\\r"
+      | '\\' -> escape s buf n start pos "\\\\"
+      | '"' -> escape s buf n start pos "\\\""
+      | '\000' .. '\031' as c ->
+        escape s buf n start pos (sprintf "\\u%04x" (Char.code c))
+      | '\032' .. '\127' -> quote_characters_to_buf s buf n start (pos + 1)
+      (* Check for valid UTF-8 *)
+      | '\xc0' .. '\xdf' when is_cb (pos + 1) ->
+        quote_characters_to_buf s buf n start (pos + 2)
+      | '\xe0' .. '\xef' when is_cb (pos + 1) && is_cb (pos + 2) ->
+        quote_characters_to_buf s buf n start (pos + 3)
+      | '\xf0' .. '\xf7'
+        when is_cb (pos + 1) && is_cb (pos + 2) && is_cb (pos + 3) ->
+        quote_characters_to_buf s buf n start (pos + 4)
+      (* Replace unrepresentable bytes by the Unicode replacement character (0xFFFD),
+         encoded in UTF-8 *)
+      | _ -> escape s buf n start pos "\xef\xbf\xbd"
+    else copy_substring s buf start pos
+
+  and escape s buf n start pos e =
+    copy_substring s buf start pos;
+    Buffer.add_string buf e;
+    quote_characters_to_buf s buf n (pos + 1) (pos + 1)
+
   let quote_string_to_buf s buf =
-    (* TODO: escaping is wrong here, in particular for control characters *)
-    Buffer.add_string buf (sprintf "%S" s)
+    Buffer.add_char buf '"';
+    quote_characters_to_buf s buf (String.length s) 0 0;
+    Buffer.add_char buf '"'
 
   let rec to_buf t buf =
     match t with

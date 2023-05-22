@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684788863138,
+  "lastUpdate": 1684789468087,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16354,6 +16354,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.73201670514666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "cbb201c1cd3741f3377dd71bde314eaec181ab41",
+          "message": "refactor(coq): remove indentation in coqtop\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-05-22T13:39:35-07:00",
+          "tree_id": "392bba31d5639de2cf774cbc440992ab9cb4054f",
+          "url": "https://github.com/ocaml/dune/commit/cbb201c1cd3741f3377dd71bde314eaec181ab41"
+        },
+        "date": 1684789466913,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "47.797741442639996",
             "unit": "seconds"
           }
         ]

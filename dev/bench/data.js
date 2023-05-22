@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684784949679,
+  "lastUpdate": 1684785603301,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16296,6 +16296,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "45.607425090953335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rleshchinskiy@gmail.com",
+            "name": "Roman Leshchinskiy",
+            "username": "rleshchinskiy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9c29917a5d18d6d9f281905eeb55266be99a4bab",
+          "message": "Improve JSON string quoting in Dune tracing (#7773)\n\nWe want to include more things in the trace file and we should always\r\nproduce valid JSON here.\r\n\r\nSigned-off-by: Roman Leshchinskiy <rleshchinskiy@janestreet.com>",
+          "timestamp": "2023-05-22T12:31:28-07:00",
+          "tree_id": "553d19e457c2b5ed5e6d2e55738fae7c1f5fb6a0",
+          "url": "https://github.com/ocaml/dune/commit/9c29917a5d18d6d9f281905eeb55266be99a4bab"
+        },
+        "date": 1684785601453,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "51.341182834659996",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,3 @@
-open Import
-
 type t
 
 val create :
@@ -10,10 +8,6 @@ val create :
   -> Dune_stats.t option
   -> Dune_engine.Action_runner.Rpc_server.t
   -> t
-
-val listening_address : t -> Dune_rpc.Where.t
-
-val stats : t -> Dune_stats.t option
 
 type pending_build_action =
   | Build of Dune_rules.Dep_conf.t list * Decl.Build_outcome.t Fiber.Ivar.t

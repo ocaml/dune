@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684664766930,
+  "lastUpdate": 1684744617792,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -41092,6 +41092,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "29.489011085166666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e33cb627bd301dd5632f91001be0a78bce31032b",
+          "message": "doc: add odoc index for configurator (#7749)\n\nThis adds an example and a pointer to the API docs.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-05-22T10:15:00+02:00",
+          "tree_id": "12d95eb7ab2022a93043c81baa7237cd3f63b357",
+          "url": "https://github.com/ocaml/dune/commit/e33cb627bd301dd5632f91001be0a78bce31032b"
+        },
+        "date": 1684744613759,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.05537268048",
             "unit": "seconds"
           }
         ]

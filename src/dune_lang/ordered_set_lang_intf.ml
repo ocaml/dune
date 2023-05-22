@@ -1,4 +1,4 @@
-open Import
+open Stdune
 
 module type Key = sig
   type t
@@ -41,4 +41,29 @@ module type Unordered_eval = sig
     -> key:('a -> Key.t)
     -> standard:(Loc.t * 'a) Key.Map.t
     -> (Loc.t * 'a) Key.Map.t
+end
+
+module type Action_builder = sig
+  type 'a t
+
+  val return : 'a -> 'a t
+
+  val all : 'a t list -> 'a list t
+
+  val read_sexp : Path.t -> Dune_sexp.Ast.t t
+
+  module O : sig
+    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+
+    val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
+
+    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+  end
+
+  val expand :
+       String_with_vars.t
+    -> mode:'a String_with_vars.Mode.t
+    -> dir:Path.t
+    -> f:Value.t list t String_with_vars.expander
+    -> 'a t
 end

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684744617792,
+  "lastUpdate": 1684745227913,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16122,6 +16122,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "50.42960686650665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e33cb627bd301dd5632f91001be0a78bce31032b",
+          "message": "doc: add odoc index for configurator (#7749)\n\nThis adds an example and a pointer to the API docs.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-05-22T10:15:00+02:00",
+          "tree_id": "12d95eb7ab2022a93043c81baa7237cd3f63b357",
+          "url": "https://github.com/ocaml/dune/commit/e33cb627bd301dd5632f91001be0a78bce31032b"
+        },
+        "date": 1684745225736,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "45.54232967342667",
             "unit": "seconds"
           }
         ]

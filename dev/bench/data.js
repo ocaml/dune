@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684762949224,
+  "lastUpdate": 1684763527313,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16180,6 +16180,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "47.44845945798",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "49d08cccd3d801dc5cbf46f920eed4b9501f0dc1",
+          "message": "refactor(rpc): move format call to own library (#7768)\n\n[Dune_rpc_impl] should be generic and not depend on dune's own rules.\r\n\r\nTo do so, we create a dune_rpc_dune_lang library that will register the\r\nformatting request that depends on dune.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-22T14:27:03+01:00",
+          "tree_id": "1bc45ce4abd05f228503d0ba7364af1e18e0ebf2",
+          "url": "https://github.com/ocaml/dune/commit/49d08cccd3d801dc5cbf46f920eed4b9501f0dc1"
+        },
+        "date": 1684763525796,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "46.07291841065334",
             "unit": "seconds"
           }
         ]

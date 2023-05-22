@@ -2,7 +2,7 @@ open Import
 open Dune_rpc
 
 module Build_outcome = struct
-  type t = Dune_engine.Scheduler.Run.Build_outcome.t =
+  type t = Scheduler.Run.Build_outcome.t =
     | Success
     | Failure
 

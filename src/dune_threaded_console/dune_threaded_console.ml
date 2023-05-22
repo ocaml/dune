@@ -61,6 +61,7 @@ let make (module Base : S) : (module Dune_console.Backend) =
     let start () =
       Base.start ();
       Dune_engine.Scheduler.spawn_thread @@ fun () ->
+      ignore (Unix.sigprocmask SIG_UNBLOCK [ Signal.to_int Winch ] : int list);
       let last = ref (Unix.gettimeofday ()) in
       let frame_rate = 1. /. 60. in
       let cleanup () =
@@ -102,10 +103,10 @@ let make (module Base : S) : (module Dune_console.Backend) =
           let elapsed = now -. !last in
           let new_time =
             if elapsed >= frame_rate then
-              Base.handle_user_events ~now ~time_budget:0.0 mutex
+              Base.handle_user_events ~now ~time_budget:0.0 mutex state
             else
               let delta = frame_rate -. elapsed in
-              Base.handle_user_events ~now ~time_budget:delta mutex
+              Base.handle_user_events ~now ~time_budget:delta mutex state
           in
           last := new_time
         done
@@ -135,7 +136,7 @@ let progress () =
       (* The current console doesn't react to user events so we just sleep until
           the next loop iteration. Because it doesn't react to user input, it cannot
           modify the UI state, and as a consequence doesn't need the mutex. *)
-      let handle_user_events ~now ~time_budget _ =
+      let handle_user_events ~now ~time_budget (_ : Mutex.t) (_ : state) =
         Unix.sleepf time_budget;
         now +. time_budget
     end)

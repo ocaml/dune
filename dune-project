@@ -129,6 +129,8 @@ execution of the action.
  (synopsis "Glob string matching language supported by dune")
  (depends
   (stdune (= :version))
+  dyn
+  ordering
   (dune-private-libs (= :version)))
  (description "\
 dune-glob provides a parser and interpreter for globs as \

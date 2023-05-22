@@ -153,7 +153,7 @@ val contents : Path.t -> string t
 val lines_of : Path.t -> string list t
 
 (** Load an S-expression from a file *)
-val read_sexp : Path.t -> Dune_lang.Ast.t t
+val read_sexp : Path.t -> Dune_sexp.Ast.t t
 
 (** Evaluates to [true] if the file is present on the file system or is the
     target of a rule. It doesn't add the path as dependency *)

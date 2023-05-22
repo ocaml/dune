@@ -40,16 +40,16 @@ val describe_target : Path.Build.t -> string
 
 val describe_path : Path.t -> string
 
-include Dune_lang.Conv.S with type t = Path.t
+include Dune_sexp.Conv.S with type t = Path.t
 
 module Local : sig
-  val encode : dir:Path.t -> Path.t Dune_lang.Encoder.t
+  val encode : dir:Path.t -> Path.t Dune_sexp.Encoder.t
 
-  val decode : dir:Path.t -> Path.t Dune_lang.Decoder.t
+  val decode : dir:Path.t -> Path.t Dune_sexp.Decoder.t
 end
 
 module Build : sig
-  include Dune_lang.Conv.S with type t = Path.Build.t
+  include Dune_sexp.Conv.S with type t = Path.Build.t
 
   val is_dev_null : t -> bool
 
@@ -59,7 +59,7 @@ module Build : sig
 end
 
 module External : sig
-  val encode : Path.External.t Dune_lang.Encoder.t
+  val encode : Path.External.t Dune_sexp.Encoder.t
 
-  val decode : Path.External.t Dune_lang.Decoder.t
+  val decode : Path.External.t Dune_sexp.Decoder.t
 end

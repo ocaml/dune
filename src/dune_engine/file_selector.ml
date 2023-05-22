@@ -63,7 +63,7 @@ let to_dyn { dir; predicate; only_generated_files } =
     ]
 
 let encode { dir; predicate; only_generated_files } =
-  let open Dune_lang.Encoder in
+  let open Dune_sexp.Encoder in
   record
     [ ("dir", Dpath.encode dir)
     ; ("predicate", Predicate_with_id.encode predicate)

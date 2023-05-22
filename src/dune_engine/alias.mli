@@ -3,7 +3,7 @@ open Import
 module Name : sig
   type t
 
-  val decode : t Dune_lang.Decoder.t
+  val decode : t Dune_sexp.Decoder.t
 
   val of_string : string -> t
 
@@ -49,7 +49,7 @@ val dir : t -> Path.Build.t
 
 val to_dyn : t -> Dyn.t
 
-val encode : t Dune_lang.Encoder.t
+val encode : t Dune_sexp.Encoder.t
 
 val of_user_written_path : loc:Loc.t -> Path.t -> t
 

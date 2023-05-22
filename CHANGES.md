@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Read `pkg-config` arguments from the `PKG_CONFIG_ARGN` environment variable
+  (#1492, #7734, @anmonteiro)
+
 - Correctly set `MANPATH` in `dune exec`. Previously, we would use the `bin/`
   directory of the context. (#7655, @rgrinberg)
 

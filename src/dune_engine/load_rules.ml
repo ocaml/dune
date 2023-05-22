@@ -805,6 +805,7 @@ end = struct
                 "Generated rules in a directory not allowed by the parent"
                 [ ("dir", Path.Build.to_dyn dir)
                 ; ("rules", Rules.Dir_rules.to_dyn rules)
+                ; ("restriction", Dir_set.to_dyn restriction)
                 ])
       in
       let* descendants_to_keep =

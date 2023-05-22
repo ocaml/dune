@@ -122,7 +122,7 @@ module Set : sig
 
   val of_files_set : Path.Set.t -> t
 
-  val encode : t -> Dune_lang.t
+  val encode : t -> Dune_sexp.t
 
   val add_paths : t -> Path.Set.t -> t
 

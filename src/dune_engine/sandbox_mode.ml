@@ -131,7 +131,7 @@ let copy = Some Copy
 let hardlink = Some Hardlink
 
 let decode =
-  let open Dune_lang.Decoder in
+  let open Dune_sexp.Decoder in
   enum
     [ ("none", None)
     ; ("symlink", Some Symlink)

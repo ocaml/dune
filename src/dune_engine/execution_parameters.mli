@@ -44,7 +44,7 @@ end
 
 val builtin_default : t
 
-val set_dune_version : Dune_lang.Syntax.Version.t -> t -> t
+val set_dune_version : Dune_sexp.Syntax.Version.t -> t -> t
 
 val set_action_stdout_on_success : Action_output_on_success.t -> t -> t
 
@@ -61,7 +61,7 @@ val default : t Memo.t
 
 (** {1 Accessors} *)
 
-val dune_version : t -> Dune_lang.Syntax.Version.t
+val dune_version : t -> Dune_sexp.Syntax.Version.t
 
 val should_remove_write_permissions_on_generated_files : t -> bool
 

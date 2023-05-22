@@ -32,3 +32,12 @@ let to_string t =
   match t with
   | Re { repr; re = _ } -> repr
   | Literal s -> s
+
+let to_dyn t = Dyn.variant "Glob" [ Dyn.string (to_string t) ]
+
+let of_string_exn loc repr =
+  match of_string_result repr with
+  | Error (_, msg) -> User_error.raise ~loc [ Pp.textf "invalid glob: %s" msg ]
+  | Ok t -> t
+
+let compare x y = String.compare (to_string x) (to_string y)

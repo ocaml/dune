@@ -155,11 +155,11 @@ module For_shell = struct
       with type path = string
       with type target = string
       with type string = string
-      with type ext = Dune_lang.t
+      with type ext = Dune_sexp.t
 
   module rec Ast : Ast = Ast
 
-  include Make (String) (String) (String) (String) (Dune_lang) (Ast)
+  include Make (String) (String) (String) (String) (Dune_sexp) (Ast)
 end
 
 module Relativise = Action_mapper.Make (Ast) (For_shell.Ast)
@@ -186,8 +186,8 @@ let for_shell t =
     ~f_path ~f_target
     ~f_ext:(fun ~dir (module A) ->
       A.Spec.encode A.v
-        (fun p -> Dune_lang.atom_or_quoted_string (f_path p ~dir))
-        (fun p -> Dune_lang.atom_or_quoted_string (f_target p ~dir)))
+        (fun p -> Dune_sexp.atom_or_quoted_string (f_path p ~dir))
+        (fun p -> Dune_sexp.atom_or_quoted_string (f_target p ~dir)))
     ~f_program:(fun ~dir x ->
       match x with
       | Ok p -> Path.reach p ~from:dir

@@ -142,6 +142,8 @@ let get_dir_triage ~dir =
       (Dir_triage.Build_directory { dir; context_or_install; sub_dir })
 
 let describe_rule (rule : Rule.t) =
+  Pp.text
+  @@
   match rule.info with
   | From_dune_file { start; _ } ->
     start.pos_fname ^ ":" ^ string_of_int start.pos_lnum
@@ -179,8 +181,7 @@ let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
   User_error.raise
     [ Pp.textf "Multiple rules generated for %s:"
         (Path.to_string_maybe_quoted fn)
-    ; Pp.textf "- %s" (describe_rule rule')
-    ; Pp.textf "- %s" (describe_rule rule)
+    ; Pp.enumerate ~f:describe_rule [ rule'; rule ]
     ]
     ~hints:
       (match (rule.info, rule'.info) with

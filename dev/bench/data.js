@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684787172996,
+  "lastUpdate": 1684787688231,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16325,6 +16325,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "51.341182834659996",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f6b92d203f98bb768f231dde4002dea4ac64fac8",
+          "message": "refactor(engine): remove dependency on dune lang version (#7764)\n\nThe dune version is the property of the dune language and the engine\r\nshold be independent of it. Instead, we set the property\r\n(set_should_remove_write_permissions_on_generated_files) that depends on\r\nit explicitly\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-22T13:13:44-07:00",
+          "tree_id": "6b62e7c80ae61df716d189c1a967d5d91229950f",
+          "url": "https://github.com/ocaml/dune/commit/f6b92d203f98bb768f231dde4002dea4ac64fac8"
+        },
+        "date": 1684787687139,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.73201670514666",
             "unit": "seconds"
           }
         ]

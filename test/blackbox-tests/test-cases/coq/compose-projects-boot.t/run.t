@@ -43,13 +43,23 @@ However if this boot library is public Dune will complain
   >  (boot))
   > EOF
 
+Due to lazy loading of installed theories, the error messages for having more
+than one boot theory is a bit delayed and comes with the multiple rules error
+message together. This is some extra noise for the user, but we are not sure how
+to fix this currently.
+
   $ dune build B
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
   Error: Cannot have more than one boot theory in scope:
   - Coq at Coq/dune:1
   - Coq at B/Coq/dune:2
-  -> required by _build/default/B/Foo.dune-package
+  -> required by alias B/default
+  Error: Multiple rules generated for
+  _build/install/default/lib/coq/theories/Init/Prelude.v:
+  - Coq/dune:1
+  - B/Coq/dune:2
+  -> required by _build/default/B/Foo.install
   -> required by alias B/all
   -> required by alias B/default
   [1]

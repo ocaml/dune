@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix string quoting in the json file written by `--trace-file` (#7773,
+  @rleshchinskiy)
+
 - Read `pkg-config` arguments from the `PKG_CONFIG_ARGN` environment variable
   (#1492, #7734, @anmonteiro)
 

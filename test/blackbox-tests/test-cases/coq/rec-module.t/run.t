@@ -3,8 +3,8 @@
   3.8 and will be removed in an upcoming Dune version.
         coqdep .rec_module.theory.d
           coqc b/foo.{glob,vo}
-          coqc c/d/bar.{glob,vo}
           coqc c/ooo.{glob,vo}
+          coqc c/d/bar.{glob,vo}
           coqc a/bar.{glob,vo}
 
   $ dune build --debug-dependency-path @default

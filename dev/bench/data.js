@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684763941959,
+  "lastUpdate": 1684770893817,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -41440,6 +41440,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "26.624185371826666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bbb169ee37e9a76b8e2126edd20bd374b6f823a7",
+          "message": "doc: correct doc for (map_workspace_root) (#7775)\n\nChange the documentation for `(map_workspace_root)` so that it matches\r\nthe existing situation.\r\n\r\nSee #7743 which had been incorrectly merged.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-05-22T17:42:29+02:00",
+          "tree_id": "299841793439e28c35af3de8af2a23c29b33f821",
+          "url": "https://github.com/ocaml/dune/commit/bbb169ee37e9a76b8e2126edd20bd374b6f823a7"
+        },
+        "date": 1684770890773,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.988208380986666",
             "unit": "seconds"
           }
         ]

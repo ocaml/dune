@@ -578,8 +578,8 @@ end = struct
       fail ~loc ~annots paragraphs
 end
 
-let report_process_finished stats ~metadata ~prog ~pid ~args ~started_at
-    (times : Proc.Times.t) =
+let report_process_finished stats ~metadata ~dir ~prog ~pid ~args ~started_at
+    ~exit_status ~stdout ~stderr (times : Proc.Times.t) =
   let common =
     let name =
       match metadata.name with
@@ -589,11 +589,61 @@ let report_process_finished stats ~metadata ~prog ~pid ~args ~started_at
     let ts = Timestamp.of_float_seconds started_at in
     Event.common_fields ~cat:("process" :: metadata.categories) ~name ~ts ()
   in
-  let args =
+  let always =
     [ ("process_args", `List (List.map args ~f:(fun arg -> `String arg)))
     ; ("pid", `Int (Pid.to_int pid))
     ]
   in
+  let extended =
+    if not (Dune_stats.extended_build_job_info stats) then []
+    else
+      let targets =
+        match metadata.purpose with
+        | Internal_job -> []
+        | Build_job None -> []
+        | Build_job (Some { files; dirs }) ->
+          let mkset s xs =
+            match
+              Path.Build.Set.to_list_map
+                ~f:(fun x -> `String (Path.Build.to_string x))
+                xs
+            with
+            | [] -> []
+            | xs -> [ (s, `List xs) ]
+          in
+          [ ("targets", `Assoc (mkset "files" files @ mkset "dirs" dirs)) ]
+      in
+      let exit =
+        match exit_status with
+        | Ok n -> [ ("exit", `Int n) ]
+        | Error (Exit_status.Failed n) ->
+          [ ("exit", `Int n)
+          ; ("error", `String (sprintf "exited with code %d" n))
+          ]
+        | Error (Signaled s) ->
+          [ ("exit", `Int (Signal.to_int s))
+          ; ("error", `String (sprintf "got signal %s" (Signal.name s)))
+          ]
+      in
+      let output name s =
+        match Lazy.force s with
+        | "" -> []
+        | s -> [ (name, `String s) ]
+      in
+      List.concat
+        [ [ ("prog", `String prog)
+          ; ( "dir"
+            , `String
+                (Option.map ~f:Path.to_string dir |> Option.value ~default:".")
+            )
+          ]
+        ; targets
+        ; exit
+        ; output "stdout" stdout
+        ; output "stderr" stderr
+        ]
+  in
+  let args = always @ extended in
   let dur = Event.Timestamp.of_float_seconds times.elapsed_time in
   let event = Event.complete ~args ~dur common in
   Dune_stats.emit stats event
@@ -724,9 +774,6 @@ let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
         ; resource_usage = process_info.resource_usage
         }
       in
-      Option.iter config.stats ~f:(fun stats ->
-          report_process_finished stats ~metadata ~prog:prog_str ~pid ~args
-            ~started_at times);
       Option.iter response_file ~f:Path.unlink;
       let actual_stdout =
         match stdout_capture with
@@ -759,6 +806,10 @@ let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
         | WSIGNALED n -> Error (Signaled (Signal.of_int n))
         | WSTOPPED _ -> assert false
       in
+      Option.iter config.stats ~f:(fun stats ->
+          report_process_finished stats ~metadata ~dir ~prog:prog_str ~pid ~args
+            ~started_at ~exit_status:exit_status' ~stdout:actual_stdout
+            ~stderr:actual_stderr times);
       let success = Result.is_ok exit_status' in
       let swallow_on_success_if_requested fn actual_output
           (on_success : Action_output_on_success.t) =

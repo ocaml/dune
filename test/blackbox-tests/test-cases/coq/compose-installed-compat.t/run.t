@@ -13,7 +13,7 @@ We also need to set up a fake Coq install.
   $TESTCASE_ROOT/lib/coq
 
   $ mkdir -p lib/coq/theories/Init/
-  $ echo > lib/coq/theories/Init/Prelude.v << EOF
+  $ cat > lib/coq/theories/Init/Prelude.v << EOF
   > Inductive PreludeLoaded := Yes.
   > EOF
 

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684778722780,
+  "lastUpdate": 1684779315909,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16267,6 +16267,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.275066970606666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "6c82fd1a82dbbeb6758feaaefc4be0ff3dec9638",
+          "message": "fix(coq): update test for duplicate boot theory\n\nDue to lazy loading of rules we get an extra error message about\nmultiple rules for the same target. This makes the error messages\nnoisier for the user, however since boot libraries are quite niche this\nisn't really worth fixing at the moment.\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-05-22T10:50:40-07:00",
+          "tree_id": "1de2985093a8b7a99517752db19d227098caa996",
+          "url": "https://github.com/ocaml/dune/commit/6c82fd1a82dbbeb6758feaaefc4be0ff3dec9638"
+        },
+        "date": 1684779314978,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "45.607425090953335",
             "unit": "seconds"
           }
         ]

@@ -343,6 +343,12 @@ let filename =
           [ Pp.textf "'.' and '..' are not valid filenames" ]
       | fn -> fn)
 
+let extension =
+  plain_string (fun ~loc s ->
+      if String.is_prefix ~prefix:"." s then
+        User_error.raise ~loc [ Pp.textf "extension must not start with '.'" ];
+      "." ^ s)
+
 let relative_file =
   plain_string (fun ~loc fn ->
       if Filename.is_relative fn then fn

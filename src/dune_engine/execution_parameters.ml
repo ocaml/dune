@@ -20,70 +20,70 @@ module Action_output_on_success = struct
 end
 
 type t =
-  { dune_version : Dune_sexp.Syntax.Version.t
-  ; action_stdout_on_success : Action_output_on_success.t
+  { action_stdout_on_success : Action_output_on_success.t
   ; action_stderr_on_success : Action_output_on_success.t
   ; expand_aliases_in_sandbox : bool
   ; add_workspace_root_to_build_path_prefix_map : bool
+  ; should_remove_write_permissions_on_generated_files : bool
   }
 
 let equal
-    { dune_version
-    ; action_stdout_on_success
+    { action_stdout_on_success
     ; action_stderr_on_success
     ; expand_aliases_in_sandbox
     ; add_workspace_root_to_build_path_prefix_map
+    ; should_remove_write_permissions_on_generated_files
     } t =
-  Dune_sexp.Syntax.Version.equal dune_version t.dune_version
-  && Action_output_on_success.equal action_stdout_on_success
-       t.action_stdout_on_success
+  Action_output_on_success.equal action_stdout_on_success
+    t.action_stdout_on_success
   && Action_output_on_success.equal action_stderr_on_success
        t.action_stderr_on_success
   && Bool.equal expand_aliases_in_sandbox t.expand_aliases_in_sandbox
   && Bool.equal add_workspace_root_to_build_path_prefix_map
        t.add_workspace_root_to_build_path_prefix_map
+  && Bool.equal should_remove_write_permissions_on_generated_files
+       t.should_remove_write_permissions_on_generated_files
 
 let hash
-    { dune_version
-    ; action_stdout_on_success
+    { action_stdout_on_success
     ; action_stderr_on_success
     ; expand_aliases_in_sandbox
     ; add_workspace_root_to_build_path_prefix_map
+    ; should_remove_write_permissions_on_generated_files
     } =
   Poly.hash
-    ( Dune_sexp.Syntax.Version.hash dune_version
-    , Action_output_on_success.hash action_stdout_on_success
+    ( Action_output_on_success.hash action_stdout_on_success
     , Action_output_on_success.hash action_stderr_on_success
     , expand_aliases_in_sandbox
-    , add_workspace_root_to_build_path_prefix_map )
+    , add_workspace_root_to_build_path_prefix_map
+    , should_remove_write_permissions_on_generated_files )
 
 let to_dyn
-    { dune_version
-    ; action_stdout_on_success
+    { action_stdout_on_success
     ; action_stderr_on_success
     ; expand_aliases_in_sandbox
     ; add_workspace_root_to_build_path_prefix_map
+    ; should_remove_write_permissions_on_generated_files
     } =
   Dyn.Record
-    [ ("dune_version", Dune_sexp.Syntax.Version.to_dyn dune_version)
-    ; ( "action_stdout_on_success"
+    [ ( "action_stdout_on_success"
       , Action_output_on_success.to_dyn action_stdout_on_success )
     ; ( "action_stderr_on_success"
       , Action_output_on_success.to_dyn action_stderr_on_success )
     ; ("expand_aliases_in_sandbox", Bool expand_aliases_in_sandbox)
     ; ( "add_workspace_root_to_build_path_prefix_map"
       , Bool add_workspace_root_to_build_path_prefix_map )
+    ; ( "should_remove_write_permissions_on_generated_files"
+      , Bool should_remove_write_permissions_on_generated_files )
     ]
 
 let builtin_default =
-  { dune_version = Dune_lang.Stanza.latest_version
-  ; action_stdout_on_success = Print
+  { action_stdout_on_success = Print
   ; action_stderr_on_success = Print
   ; expand_aliases_in_sandbox = true
   ; add_workspace_root_to_build_path_prefix_map = true
+  ; should_remove_write_permissions_on_generated_files = true
   }
-
-let set_dune_version x t = { t with dune_version = x }
 
 let set_action_stdout_on_success x t = { t with action_stdout_on_success = x }
 
@@ -94,10 +94,8 @@ let set_expand_aliases_in_sandbox x t = { t with expand_aliases_in_sandbox = x }
 let set_add_workspace_root_to_build_path_prefix_map x t =
   { t with add_workspace_root_to_build_path_prefix_map = x }
 
-let dune_version t = t.dune_version
-
-let should_remove_write_permissions_on_generated_files t =
-  t.dune_version >= (2, 4)
+let set_should_remove_write_permissions_on_generated_files x t =
+  { t with should_remove_write_permissions_on_generated_files = x }
 
 let expand_aliases_in_sandbox t = t.expand_aliases_in_sandbox
 
@@ -107,6 +105,9 @@ let add_workspace_root_to_build_path_prefix_map t =
 let action_stdout_on_success t = t.action_stdout_on_success
 
 let action_stderr_on_success t = t.action_stderr_on_success
+
+let should_remove_write_permissions_on_generated_files t =
+  t.should_remove_write_permissions_on_generated_files
 
 let default = Fdecl.create Dyn.opaque
 

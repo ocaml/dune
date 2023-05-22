@@ -1163,7 +1163,8 @@ let build (builder : Builder.t) ~default_root_is_cwd =
          in
          let action_runner = Dune_engine.Action_runner.Rpc_server.create () in
          Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir
-           ~watch_mode_config:builder.watch stats action_runner))
+           ~handle:Dune_rules_rpc.register ~watch_mode_config:builder.watch
+           stats action_runner))
   in
   if builder.store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if builder.print_metrics then (

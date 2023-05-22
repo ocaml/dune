@@ -35,6 +35,7 @@
   csexp
   csexp_rpc
   dune_rpc_impl
+  dune_rules_rpc
   dune_rpc_private
   dune_rpc_client
   spawn)

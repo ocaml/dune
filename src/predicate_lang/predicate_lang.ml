@@ -116,26 +116,24 @@ let to_predicate (type a) (t : a Predicate.t t) ~standard : a Predicate.t =
       exec t ~standard (fun pred -> Predicate.test pred a))
 
 module Glob = struct
-  type glob = string -> bool
+  module Glob = Dune_glob.V1
 
-  type nonrec t = glob t
+  type nonrec t = Glob.t t
 
-  let to_dyn t = to_dyn (fun _ -> Dyn.string "opaque") t
+  let to_dyn t = to_dyn Glob.to_dyn t
 
-  let exec (t : t) ~standard elem = exec t ~standard (fun f -> f elem)
+  let exec (t : t) ~standard elem = exec t ~standard (fun f -> Glob.test f elem)
 
   let filter (t : t) ~standard elems =
     match t with
     | Inter [] | Union [] -> []
     | _ -> List.filter elems ~f:(fun elem -> exec t ~standard elem)
 
-  let create_glob g = Dune_glob.V1.test g
+  let of_glob g = Element g
 
-  let of_glob g = Element (create_glob g)
+  let of_string_list s =
+    Union (List.rev_map s ~f:(fun x -> Element (Glob.literal x)))
 
-  let of_pred p = Element p
-
-  let true_ = Element (fun _ -> true)
-
-  let of_string_set s = Element (String.Set.mem s)
+  let of_string_set s =
+    Union (String.Set.to_list_map ~f:(fun x -> Element (Glob.literal x)) s)
 end

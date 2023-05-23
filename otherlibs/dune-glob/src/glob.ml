@@ -17,6 +17,8 @@ let empty = Re { re = Re.compile Re.empty; repr = "\000" }
 
 let universal = Re { re = Re.compile (Re.rep Re.any); repr = "**" }
 
+let literal s = Literal s
+
 let of_string_result repr =
   Lexer.parse_string repr
   |> Result.map ~f:(function

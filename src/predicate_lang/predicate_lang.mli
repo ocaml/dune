@@ -40,12 +40,7 @@ val to_predicate :
   'a Predicate.t t -> standard:'a Predicate.t t -> 'a Predicate.t
 
 module Glob : sig
-  (** The underlying type for the string predicate is not an actual glob, so
-      this module is confusingly named. *)
-
-  type glob
-
-  type nonrec t = glob t
+  type nonrec t = Dune_glob.V1.t t
 
   val to_dyn : t -> Dyn.t
 
@@ -53,13 +48,9 @@ module Glob : sig
 
   val filter : t -> standard:t -> string list -> string list
 
-  val create_glob : Dune_glob.V1.t -> glob
-
   val of_glob : Dune_glob.V1.t -> t
 
-  val of_pred : (string -> bool) -> t
+  val of_string_list : string list -> t
 
   val of_string_set : String.Set.t -> t
-
-  val true_ : t
 end

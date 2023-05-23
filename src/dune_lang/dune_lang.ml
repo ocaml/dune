@@ -15,6 +15,7 @@ module Pkg = Pkg
 module Ordered_set_lang = Ordered_set_lang
 module Format_config = Format_config
 module Bindings = Bindings
+module Subst_config = Subst_config
 
 let decode_predicate_lang_glob : Predicate_lang.Glob.t Dune_sexp.Decoder.t =
   Predicate_lang.decode

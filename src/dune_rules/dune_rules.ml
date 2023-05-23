@@ -60,7 +60,6 @@ module Source_tree = Source_tree
 module Sub_dirs = Sub_dirs
 module Package = Package
 module Section = Section
-module Subst_config = Subst_config
 module Dialect = Dialect
 
 module Install_rules = struct

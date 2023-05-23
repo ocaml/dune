@@ -535,6 +535,7 @@ module Builder = struct
     ; store_digest_preimage : bool
     ; root : string option
     ; stats_trace_file : string option
+    ; stats_trace_extended : bool
     }
 
   let set_root t root = { t with root = Some root }
@@ -738,6 +739,11 @@ module Builder = struct
             ~doc:
               "Output trace data in catapult format\n\
               \                   (compatible with chrome://tracing)")
+    and+ stats_trace_extended =
+      Arg.(
+        value & flag
+        & info [ "trace-extended" ] ~docs
+            ~doc:"Output extended trace data (requires trace-file)")
     and+ no_print_directory =
       Arg.(
         value & flag
@@ -851,6 +857,9 @@ module Builder = struct
             [ "display-separate-messages" ]
             ~doc:"Separate error messages with a blank line.")
     in
+    if Option.is_none stats_trace_file && stats_trace_extended then
+      User_error.raise
+        [ Pp.text "--trace-extended can only be used with --trace" ];
     { debug_dep_path
     ; debug_backtraces
     ; debug_artifact_substitution
@@ -895,6 +904,7 @@ module Builder = struct
     ; store_digest_preimage
     ; root
     ; stats_trace_file
+    ; stats_trace_extended
     }
 end
 
@@ -1095,6 +1105,19 @@ let init ?action_runner ?log_file c =
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)
     ];
   Dune_console.separate_messages c.builder.separate_error_messages;
+  Option.iter c.stats ~f:(fun stats ->
+      if Dune_stats.extended_build_job_info stats then
+        (* Communicate config settings as an instant event here. *)
+        let open Chrome_trace in
+        let args =
+          [ ("build_dir", `String (Path.Build.to_string Path.Build.root)) ]
+        in
+        let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
+        let common =
+          Event.common_fields ~cat:[ "config" ] ~name:"config" ~ts ()
+        in
+        let event = Event.instant ~args common in
+        Dune_stats.emit stats event);
   config
 
 let footer =
@@ -1144,7 +1167,11 @@ let build (builder : Builder.t) ~default_root_is_cwd =
   in
   let stats =
     Option.map builder.stats_trace_file ~f:(fun f ->
-        let stats = Dune_stats.create (Out (open_out f)) in
+        let stats =
+          Dune_stats.create
+            ~extended_build_job_info:builder.stats_trace_extended
+            (Out (open_out f))
+        in
         at_exit (fun () -> Dune_stats.close stats);
         stats)
   in

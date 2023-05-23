@@ -9,7 +9,9 @@ let c =
   let write s = Buffer.add_string buf s in
   let close () = () in
   let flush () = () in
-  Dune_stats.create (Custom { write; close; flush })
+  Dune_stats.create
+    (Custom { write; close; flush })
+    ~extended_build_job_info:false
 
 let () =
   let module Event = Chrome_trace.Event in

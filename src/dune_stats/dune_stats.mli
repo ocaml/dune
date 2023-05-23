@@ -12,13 +12,15 @@ type dst =
       ; flush : unit -> unit
       }
 
-val create : dst -> t
+val create : extended_build_job_info:bool -> dst -> t
 
 val emit : t -> Chrome_trace.Event.t -> unit
 
 val record_gc_and_fd : t -> unit
 
 val close : t -> unit
+
+val extended_build_job_info : t -> bool
 
 type event
 

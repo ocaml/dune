@@ -108,6 +108,7 @@ type t =
   { print : string -> unit
   ; close : unit -> unit
   ; flush : unit -> unit
+  ; extended_build_job_info : bool
   ; mutable after_first_event : bool
   }
 
@@ -117,7 +118,7 @@ let close { print; close; _ } =
   print "]\n";
   close ()
 
-let create dst =
+let create ~extended_build_job_info dst =
   let print =
     match dst with
     | Out out -> Stdlib.output_string out
@@ -133,9 +134,11 @@ let create dst =
     | Out out -> fun () -> flush out
     | Custom c -> c.flush
   in
-  { print; close; after_first_event = false; flush }
+  { print; close; after_first_event = false; flush; extended_build_job_info }
 
 let flush t = t.flush ()
+
+let extended_build_job_info t = t.extended_build_job_info
 
 let next_leading_char t =
   match t.after_first_event with

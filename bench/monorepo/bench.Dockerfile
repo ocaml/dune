@@ -136,7 +136,7 @@ RUN opam switch create prepare 4.14.1
 RUN opam install -y opam-monorepo ppx_sexp_conv ocamlfind ctypes ctypes-foreign re sexplib menhir camlp-streams zarith stdcompat refl yojson logs fmt
 
 # Download the monorepo benchmark and copy files into the benchmark project
-ENV MONOREPO_BENCHMARK_TAG=2023-04-25.1
+ENV MONOREPO_BENCHMARK_TAG=2023-05-17.0
 RUN wget https://github.com/ocaml-dune/ocaml-monorepo-benchmark/archive/refs/tags/$MONOREPO_BENCHMARK_TAG.tar.gz -O ocaml-monorepo-benchmark.tar.gz && \
   tar xf ocaml-monorepo-benchmark.tar.gz && \
   mv ocaml-monorepo-benchmark-$MONOREPO_BENCHMARK_TAG monorepo-benchmark

@@ -1,13 +1,17 @@
 include Stdune
 include Dune_vcs
-open Dune_util
-module Digest = Dune_digest
 module Console = Dune_console
-module Execution_env = Execution_env
-module Log = Log
-module Persistent = Persistent
-module Stringlike = Stringlike
-module Stringlike_intf = Stringlike_intf
+module Digest = Dune_digest
+
+include struct
+  open Dune_util
+  module Execution_env = Execution_env
+  module Log = Log
+  module Persistent = Persistent
+  module Stringlike = Stringlike
+  module Stringlike_intf = Stringlike_intf
+end
+
 include Dune_config_file
 
 include struct
@@ -37,23 +41,28 @@ include struct
   module Load_rules = Load_rules
   module Response_file = Response_file
   module Subdir_set = Subdir_set
+  module Predicate_with_id = File_selector.Predicate_with_id
 end
 
 include Ocaml
 module Re = Dune_re
-module Subst_config = Dune_lang.Subst_config
-module Bindings = Dune_lang.Bindings
-module Format_config = Dune_lang.Format_config
-module Ordered_set_lang = Dune_lang.Ordered_set_lang
-module Stanza = Dune_lang.Stanza
-module Predicate_with_id = Dune_engine.File_selector.Predicate_with_id
-module String_with_vars = Dune_lang.String_with_vars
-module Pform = Dune_lang.Pform
-module Glob = Dune_lang.Glob
-module Diff = Dune_lang.Action.Diff
-module Outputs = Dune_lang.Action.Outputs
 module Syntax = Dune_sexp.Syntax
-module Value = Dune_lang.Value
-module Blang = Dune_lang.Blang
-module Binary_kind = Dune_lang.Binary_kind
+
+include struct
+  open Dune_lang
+  module Subst_config = Subst_config
+  module Bindings = Bindings
+  module Format_config = Format_config
+  module Ordered_set_lang = Ordered_set_lang
+  module Stanza = Stanza
+  module String_with_vars = String_with_vars
+  module Pform = Pform
+  module Glob = Glob
+  module Diff = Action.Diff
+  module Outputs = Action.Outputs
+  module Value = Value
+  module Blang = Blang
+  module Binary_kind = Binary_kind
+end
+
 include Dune_engine.No_io

@@ -1,7 +1,7 @@
 include Dune_sexp
+module Alias = Alias
 module Format = Format
 module Stanza = Stanza
-module Predicate_lang = Predicate_lang
 module Glob = Glob
 module String_with_vars = String_with_vars
 module Pform = Pform
@@ -14,3 +14,7 @@ module Package_name = Package_name
 module Pkg = Pkg
 module Ordered_set_lang = Ordered_set_lang
 module Format_config = Format_config
+
+let decode_predicate_lang_glob : Predicate_lang.Glob.t Dune_sexp.Decoder.t =
+  Predicate_lang.decode
+    (Dune_sexp.Decoder.map Glob.decode ~f:Predicate_lang.Glob.create_glob)

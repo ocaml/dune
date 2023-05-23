@@ -190,8 +190,8 @@ let syntax =
     ; ((0, 4), `Since (3, 8))
     ]
 
-let glob_predicate repr =
-  repr |> Dune_lang.Glob.of_string_exn Loc.none |> Predicate_lang.Glob.of_glob
+let glob_predicate repr : Predicate_lang.Glob.t =
+  Dune_lang.Glob.of_string_exn Loc.none repr |> Predicate_lang.Glob.of_glob
 
 let default_files_of_version version =
   let md_files = glob_predicate "*.md" in
@@ -207,7 +207,8 @@ let decode =
     (let+ loc = loc
      and+ version = Dune_lang.Syntax.get_exn syntax
      and+ files =
-       field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.Standard
+       field "files" Dune_lang.decode_predicate_lang_glob
+         ~default:Predicate_lang.Standard
      and+ enabled_if =
        Enabled_if.decode ~allowed_vars:Any ~since:(Some (2, 9)) ()
      and+ package =

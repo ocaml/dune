@@ -17,7 +17,7 @@ module Promote = struct
        and+ only =
          field_o "only"
            (Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>> Predicate_lang.decode Glob.decode)
+           >>> Predicate_lang.decode Dune_lang.Glob.decode)
        in
        let only =
          Option.map only ~f:(fun only ->

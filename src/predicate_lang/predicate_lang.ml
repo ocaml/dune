@@ -122,10 +122,6 @@ module Glob = struct
 
   let to_dyn t = to_dyn (fun _ -> Dyn.string "opaque") t
 
-  let decode : t Decoder.t =
-    let open Decoder in
-    decode (Glob.decode >>| Glob.test)
-
   let exec (t : t) ~standard elem = exec t ~standard (fun f -> f elem)
 
   let filter (t : t) ~standard elems =
@@ -133,7 +129,9 @@ module Glob = struct
     | Inter [] | Union [] -> []
     | _ -> List.filter elems ~f:(fun elem -> exec t ~standard elem)
 
-  let of_glob g = Element (Glob.test g)
+  let create_glob g = Dune_glob.V1.test g
+
+  let of_glob g = Element (create_glob g)
 
   let of_pred p = Element p
 

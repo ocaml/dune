@@ -10,6 +10,7 @@
   memo
   ocaml
   dune_lang
+  predicate_lang
   fiber
   stdune
   dune_console

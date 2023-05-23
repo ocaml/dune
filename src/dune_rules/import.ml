@@ -44,7 +44,6 @@ module Re = Dune_re
 module Format_config = Dune_lang.Format_config
 module Ordered_set_lang = Dune_lang.Ordered_set_lang
 module Stanza = Dune_lang.Stanza
-module Predicate_lang = Dune_lang.Predicate_lang
 module Predicate_with_id = Dune_engine.File_selector.Predicate_with_id
 module String_with_vars = Dune_lang.String_with_vars
 module Pform = Dune_lang.Pform

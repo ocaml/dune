@@ -4,6 +4,7 @@
  (libraries
   dune_tests_common
   dune_lang
+  predicate_lang
   stdune
   dune_engine
   ;; This is because of the (implicit_transitive_deps false)

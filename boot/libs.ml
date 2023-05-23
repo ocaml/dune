@@ -29,6 +29,7 @@ let local_libraries =
     None)
   ; ("src/dune_config", Some "Dune_config", false, None)
   ; ("src/dune_util", Some "Dune_util", false, None)
+  ; ("src/predicate_lang", Some "Predicate_lang", false, None)
   ; ("src/section", Some "Dune_section", false, None)
   ; ("src/dune_lang", Some "Dune_lang", false, None)
   ; ("src/fiber_util", Some "Fiber_util", false, None)

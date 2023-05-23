@@ -1,4 +1,5 @@
 open Import
+open Dune_util.Action
 
 module Simplified = struct
   type destination =

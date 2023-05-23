@@ -49,13 +49,13 @@ module Glob : sig
 
   val to_dyn : t -> Dyn.t
 
-  val decode : t Decoder.t
-
   val exec : t -> standard:t -> string -> bool
 
   val filter : t -> standard:t -> string list -> string list
 
-  val of_glob : Glob.t -> t
+  val create_glob : Dune_glob.V1.t -> glob
+
+  val of_glob : Dune_glob.V1.t -> t
 
   val of_pred : (string -> bool) -> t
 

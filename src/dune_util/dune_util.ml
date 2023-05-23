@@ -7,6 +7,8 @@ module Stringlike_intf = Stringlike_intf
 module Build_path_prefix_map = Build_path_prefix_map0
 module Flock = Flock
 module Global_lock = Global_lock
+module Action = Action
+module Alias_name = Alias_name
 open Stdune
 
 let xdg =

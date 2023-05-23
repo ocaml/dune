@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684792079371,
+  "lastUpdate": 1684835907940,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -42252,6 +42252,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.00002375060667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d62f4c39748e2498fc99a398f5e0667761687bf7",
+          "message": "Prepare 3.8.0 (#7787)\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-05-23T11:42:47+02:00",
+          "tree_id": "e9bb979aac3ef8b7ec9d8dba040a6b2e84230b05",
+          "url": "https://github.com/ocaml/dune/commit/d62f4c39748e2498fc99a398f5e0667761687bf7"
+        },
+        "date": 1684835904293,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.886142346179998",
             "unit": "seconds"
           }
         ]

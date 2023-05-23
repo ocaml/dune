@@ -11,15 +11,9 @@ module V1 = struct
 
     let finalize f ~finally = Lwt.finalize f finally
 
-    let rec parallel_iter ls ~f =
-      let open Lwt.Syntax in
-      let* res = ls () in
-      match res with
-      | None -> Lwt.return_unit
-      | Some x ->
-        let+ () = f x
-        and+ () = parallel_iter ls ~f in
-        ()
+    let parallel_iter ls ~f =
+      let stream = Lwt_stream.from ls in
+      Lwt_stream.iter_p f stream
 
     module Ivar = struct
       type 'a t = 'a Lwt.t * 'a Lwt.u

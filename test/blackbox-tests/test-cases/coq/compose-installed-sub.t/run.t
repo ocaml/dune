@@ -187,7 +187,8 @@ We test updating the dune file for user to use the super-theory works:
   Leaving directory 'user'
 
 We test whether installing `global` again in user-contrib will cause Dune to reject the
-build.
+build. Currently this is not the case and the first theory is preferred inline
+with the loadpath semantics of Coq.
 
   $ dune install --root global --prefix=$PWD --display=short
   Installing $TESTCASE_ROOT/lib/global/META
@@ -203,10 +204,4 @@ build.
 
   $ dune build --root user
   Entering directory 'user'
-  Error: Coq theory global is defined twice:
-  - theory global in
-    $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global
-  - theory global in
-    $TESTCASE_ROOT/lib/coq/user-contrib/global
   Leaving directory 'user'
-  [1]

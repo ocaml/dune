@@ -1,5 +1,5 @@
-Unreleased
-----------
+3.8.0 (2023-05-23)
+------------------
 
 - Fix string quoting in the json file written by `--trace-file` (#7773,
   @rleshchinskiy)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684867099951,
+  "lastUpdate": 1684867359229,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16528,6 +16528,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.43158506314",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rleshchinskiy@gmail.com",
+            "name": "Roman Leshchinskiy",
+            "username": "rleshchinskiy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fef3d65f4e556833d5b8f602d971060304e5b551",
+          "message": "Trace more data (#7778)\n\nThis allows Dune to generate trace files which contain the same\r\ninformation as .jenga/debug files about processes that Dune runs. This\r\ncan be quite a bit of information (including stdout and stderr) so this\r\nis controlled by the `--trace-extended` flag.\r\n\r\nSigned-off-by: Roman Leshchinskiy <rleshchinskiy@janestreet.com>\r\nCo-authored-by: Roman Leshchinskiy <rleshchinskiy@janestreet.com>",
+          "timestamp": "2023-05-23T11:20:28-07:00",
+          "tree_id": "44e1b6210d717d19d26bb9bd169ecc80185ef9b7",
+          "url": "https://github.com/ocaml/dune/commit/fef3d65f4e556833d5b8f602d971060304e5b551"
+        },
+        "date": 1684867358411,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.51821235752001",
             "unit": "seconds"
           }
         ]

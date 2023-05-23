@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684849719174,
+  "lastUpdate": 1684864817814,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -42484,6 +42484,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.91519216382",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "00b64461959cad060fac875fe35b2da16469fbe6",
+          "message": "refactor(engine): decouple from Dune_lang (#7785)\n\nThis requires the following 3 general moves:\r\n\r\n* Moving predicate_lang into its own library\r\n* Moving various action definitions from Dune_lang to Dune_util\r\n* Moving the definition of alias names to Dune_util.\r\n\r\nThe last refactoring of the aliases isn't yet completed. I think we'd\r\nrather have rules specific aliases such as fmt and install to live in\r\ndune_lang rather than in the engine, but for now this is good enough.\r\n\r\nAlso, this refactoring caught some missing validation bugs in the alias\r\nmodule. I've added some TODO's to address them eventually.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-23T10:47:27-07:00",
+          "tree_id": "936736196effeef981611d369d206b281fd42123",
+          "url": "https://github.com/ocaml/dune/commit/00b64461959cad060fac875fe35b2da16469fbe6"
+        },
+        "date": 1684864814404,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.108058638506666",
             "unit": "seconds"
           }
         ]

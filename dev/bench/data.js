@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684849704783,
+  "lastUpdate": 1684849719174,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -34421,6 +34421,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "83.29168435835332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "adb31f53f04710d6555421da21dccb43dc27e267",
+          "message": "Use lwt stream in dune-rpc-lwt\n\nPreviously we re-implemented `Lwt_stream.iter_p` inside dune-rpc-lwt and\nit seemed to be causing stack overflows for very large builds (such as\nthe monorepo benchmark).\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-05-23T14:14:17+01:00",
+          "tree_id": "93c590a82746c206e8d5460a0d5e85e84c390b1e",
+          "url": "https://github.com/ocaml/dune/commit/adb31f53f04710d6555421da21dccb43dc27e267"
+        },
+        "date": 1684849718097,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.24663607744",
             "unit": "seconds"
           }
         ]

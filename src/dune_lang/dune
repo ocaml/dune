@@ -5,7 +5,6 @@
   stdune
   dune_glob
   dune_rpc_private
-  memo
   ocaml
   dune_util
   dyn

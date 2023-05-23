@@ -111,8 +111,6 @@ module type Expander = sig
     t -> dir:Path.t -> f:Value.t list option app expander -> t app
 end
 
-include Expander with type 'a app := 'a Memo.t
-
 module Make_expander (A : Applicative) : Expander with type 'a app := 'a A.t
 
 val remove_locs : t -> t

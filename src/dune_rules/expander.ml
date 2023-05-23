@@ -698,7 +698,7 @@ let expand_pform_no_deps t ~source pform =
     ~human_readable_description:(fun () -> describe_source ~source)
 
 let expand t ~mode template =
-  Action_builder_expander.expand ~dir:(Path.build t.dir) ~mode template
+  String_expander.Action_builder.expand ~dir:(Path.build t.dir) ~mode template
     ~f:(expand_pform t)
 
 let make ~scope ~scope_host ~(context : Context.t) ~lib_artifacts
@@ -739,7 +739,8 @@ module No_deps = struct
   let expand_pform = expand_pform_no_deps
 
   let expand t ~mode sw =
-    String_with_vars.expand ~dir:(Path.build t.dir) ~mode sw ~f:(expand_pform t)
+    String_expander.Memo.expand ~dir:(Path.build t.dir) ~mode sw
+      ~f:(expand_pform t)
 
   let expand_path t sw =
     let+ v = expand t ~mode:Single sw in
@@ -807,17 +808,17 @@ module With_reduced_var_set = struct
 
   let expand_str ~context ~dir sw =
     let+ v =
-      String_with_vars.expand ~dir:(Path.build dir) ~mode:Single sw
+      String_expander.Memo.expand ~dir:(Path.build dir) ~mode:Single sw
         ~f:(expand_pform ~context ~bindings:Pform.Map.empty ~dir)
     in
     Value.to_string v ~dir:(Path.build dir)
 
   let expand_str_partial ~context ~dir sw =
-    String_with_vars.expand_as_much_as_possible ~dir:(Path.build dir) sw
+    String_expander.Memo.expand_as_much_as_possible ~dir:(Path.build dir) sw
       ~f:(expand_pform_opt ~context ~bindings:Pform.Map.empty ~dir)
 
   let eval_blang ~context ~dir blang =
-    Blang.eval
+    Blang_expand.eval
       ~f:(expand_pform ~context ~bindings:Pform.Map.empty ~dir)
       ~dir:(Path.build dir) blang
 end
@@ -825,7 +826,7 @@ end
 let expand_ordered_set_lang =
   let module Expander = Ordered_set_lang.Unexpanded.Expand (struct
     include Action_builder
-    include Action_builder_expander
+    include String_expander.Action_builder
   end) in
   Expander.expand
 
@@ -839,7 +840,7 @@ let expand_and_eval_set t set ~standard =
       s)
 
 let eval_blang t blang =
-  Blang.eval ~f:(No_deps.expand_pform t) ~dir:(Path.build t.dir) blang
+  Blang_expand.eval ~f:(No_deps.expand_pform t) ~dir:(Path.build t.dir) blang
 
 let expand_lock ~base expander (Locks.Lock sw) =
   let open Memo.O in

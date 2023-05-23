@@ -232,7 +232,8 @@ end = struct
        cf comment for [chdir]. *)
     module Expander = struct
       let expand env ~mode template =
-        Action_builder_expander.expand ~dir:(Path.build env.dir) ~mode template
+        String_expander.Action_builder.expand ~dir:(Path.build env.dir) ~mode
+          template
           ~f:(Expander.expand_pform env.expander)
 
       let expand_path t sw =
@@ -254,7 +255,7 @@ end = struct
 
       module No_deps = struct
         let expand env ~mode template =
-          String_with_vars.expand ~dir:(Path.build env.dir) ~mode template
+          String_expander.Memo.expand ~dir:(Path.build env.dir) ~mode template
             ~f:(Expander.No_deps.expand_pform env.expander)
 
         let expand_path env sw =

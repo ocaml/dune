@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684946184276,
+  "lastUpdate": 1684946195312,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -35320,6 +35320,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "65.5675214564",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "32c33a9164b1739c56325bcb7762044b5007e9df",
+          "message": "Conservative implementation of lockfile generation\n\nAdds a command `dune pkg lock` which generates a lock directory.\nCurrently the user must specify a path to a local checkout of\nopam-repository, there is no way to override opam variables (though it's\npossible to clear them all), and only a subset of lockfile fields are\nset.\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-05-24T17:09:55+01:00",
+          "tree_id": "e072d5d8723f73d25378d8ba6794bed72488a5d6",
+          "url": "https://github.com/ocaml/dune/commit/32c33a9164b1739c56325bcb7762044b5007e9df"
+        },
+        "date": 1684946194658,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.806165210226667",
             "unit": "seconds"
           }
         ]

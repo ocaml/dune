@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684872897939,
+  "lastUpdate": 1684906008075,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -42948,6 +42948,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.25345637708",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3acd86d940fd7f742286f0d38e5387c95ef195b0",
+          "message": "Bump version of Dune lang to 3.9 (#7795)\n\nSigned-off-by: Nicolás Ojeda Bär <n.oje.bar@gmail.com>",
+          "timestamp": "2023-05-24T07:03:48+02:00",
+          "tree_id": "74f70bd508ddc38581a53605b4f3dd279a32a212",
+          "url": "https://github.com/ocaml/dune/commit/3acd86d940fd7f742286f0d38e5387c95ef195b0"
+        },
+        "date": 1684906003813,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "28.588216476466666",
             "unit": "seconds"
           }
         ]

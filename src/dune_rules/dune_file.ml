@@ -962,7 +962,7 @@ module Library = struct
     let name = best_name conf in
     let+ enabled =
       let+ enabled_if_result =
-        Blang.eval conf.enabled_if ~dir:(Path.build dir)
+        Blang_expand.eval conf.enabled_if ~dir:(Path.build dir)
           ~f:(fun ~source:_ pform ->
             let value = Lib_config.get_for_enabled_if lib_config pform in
             Memo.return [ Value.String value ])

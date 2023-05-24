@@ -9,6 +9,8 @@ module Op : sig
     | Lte
     | Lt
     | Neq
+
+  val eval : t -> Ordering.t -> bool
 end
 
 type t =
@@ -20,12 +22,6 @@ type t =
   | Compare of Op.t * String_with_vars.t * String_with_vars.t
 
 val true_ : t
-
-val eval :
-     t
-  -> dir:Path.t
-  -> f:Value.t list Memo.t String_with_vars.expander
-  -> bool Memo.t
 
 val to_dyn : t -> Dyn.t
 

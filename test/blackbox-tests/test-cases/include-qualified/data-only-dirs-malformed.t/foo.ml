@@ -1,1 +1,1 @@
-let () = Format.printf "%s@d" Bar.Baar.baaar
+let () = Format.printf "%s@." Bar.Baar.baaar

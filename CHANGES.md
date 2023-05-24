@@ -7,6 +7,9 @@ Unreleased
 - Extensions used in `(dialect)` can contain periods (e.g., `cppo.ml`). (#7782,
   fixes #7777, @nojb)
 
+- Allow `(include_subdirs qualified)` to be used when libraries define a
+  `(modules ...)` field (#7797, fixes #7597, @anmonteiro)
+
 3.8.0 (2023-05-23)
 ------------------
 

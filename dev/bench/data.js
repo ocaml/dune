@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684945849372,
+  "lastUpdate": 1684945981785,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16760,6 +16760,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.24169778355334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "705f875d2d1efc033a2c19d1433baf2dabe76105",
+          "message": "refactor(dune_lang): drop dependency on memo (#7793)\n\ndune_lang contains purely the frontend that's agnostic from any rules\r\nmachinery\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-24T09:07:38-07:00",
+          "tree_id": "83a315e9b153662507f3437fbb376a2aedaf71e2",
+          "url": "https://github.com/ocaml/dune/commit/705f875d2d1efc033a2c19d1433baf2dabe76105"
+        },
+        "date": 1684945980248,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "47.31419422254",
             "unit": "seconds"
           }
         ]

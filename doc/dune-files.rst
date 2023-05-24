@@ -75,9 +75,10 @@ dialect
 
          Specify the file extension used for this dialect.
 
-         The extension string must not contain any dots and be unique in a given
-         project (so that a given extension can be mapped back to a
-         corresponding dialect).
+         The extension string must not start with a period and be unique in a
+         given project (so that a given extension can be mapped back to a
+         corresponding dialect). In Dune 3.9 and later, the extension string may
+         contain periods (e.g., `cppo.ml`).
 
          This field is required.
 

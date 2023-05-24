@@ -4,6 +4,9 @@ Unreleased
 - Add additional metadata to the traces provided by `--trace-file` whenever
   `--trace-extended` is passed (#7778, @rleshchinskiy)
 
+- Extensions used in `(dialect)` can contain periods (e.g., `cppo.ml`). (#7782,
+  fixes #7777, @nojb)
+
 3.8.0 (2023-05-23)
 ------------------
 

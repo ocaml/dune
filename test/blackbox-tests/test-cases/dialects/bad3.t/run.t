@@ -2,5 +2,5 @@
   File "dune-project", line 5, characters 28-32:
   5 |  (implementation (extension .foo))
                                   ^^^^
-  Error: extension must not contain '.'
+  Error: extension must not start with '.'
   [1]

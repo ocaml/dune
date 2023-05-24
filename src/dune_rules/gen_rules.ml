@@ -69,9 +69,6 @@ end = struct
       let+ () = toplevel_setup ~sctx ~dir ~toplevel in
       empty_none
     | Library lib ->
-      let* () =
-        Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
-      in
       let* available =
         Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
       in

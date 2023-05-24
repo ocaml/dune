@@ -39,6 +39,8 @@ val map : 'a t -> f:('a -> 'b) -> 'b t
 val to_predicate :
   'a Predicate.t t -> standard:'a Predicate.t t -> 'a Predicate.t
 
+val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
+
 module Glob : sig
   type nonrec t = Dune_glob.V1.t t
 
@@ -53,4 +55,10 @@ module Glob : sig
   val of_string_list : string list -> t
 
   val of_string_set : String.Set.t -> t
+
+  val compare : t -> t -> Ordering.t
+
+  val hash : t -> int
+
+  val encode : t -> Dune_sexp.t
 end

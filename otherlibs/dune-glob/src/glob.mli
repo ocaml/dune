@@ -29,3 +29,7 @@ val of_string_exn : Loc.t -> string -> t
 val literal : string -> t
 
 val compare : t -> t -> Ordering.t
+
+val hash : t -> int
+
+val matching_extensions : Filename.Extension.t list -> t

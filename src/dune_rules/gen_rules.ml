@@ -178,30 +178,20 @@ let lib_src_dirs ~dir_contents =
   |> List.map ~f:(fun dc ->
          Path.Build.drop_build_context_exn (Dir_contents.dir dc))
 
-(* Stanza *)
-
 let define_all_alias ~dir ~project ~js_targets =
   let deps =
-    let pred =
-      let id =
-        lazy
-          (let open Dyn in
-          variant "exclude"
-            (List.map ~f:(fun p -> Path.Build.to_dyn p) js_targets))
-      in
-      List.iter js_targets ~f:(fun js_target ->
-          assert (Path.Build.equal (Path.Build.parent_exn js_target) dir));
-      let f =
-        if Dune_project.explicit_js_mode project then fun _ -> true
-        else fun basename ->
-          not
-            (List.exists js_targets ~f:(fun js_target ->
-                 String.equal (Path.Build.basename js_target) basename))
-      in
-      Predicate_with_id.create ~id ~f
+    let predicate =
+      if Dune_project.explicit_js_mode project then Predicate_lang.any
+      else (
+        List.iter js_targets ~f:(fun js_target ->
+            assert (Path.Build.equal (Path.Build.parent_exn js_target) dir));
+        Compl
+          (Predicate_lang.Glob.of_string_set
+             (String.Set.of_list_map js_targets ~f:Path.Build.basename)))
     in
     let only_generated_files = Dune_project.dune_version project >= (3, 0) in
-    File_selector.create ~dir:(Path.build dir) ~only_generated_files pred
+    File_selector.of_predicate_lang ~dir:(Path.build dir) ~only_generated_files
+      predicate
     |> Action_builder.paths_matching_unit ~loc:Loc.none
   in
   Rules.Produce.Alias.add_deps (Alias.all ~dir) deps

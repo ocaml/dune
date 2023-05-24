@@ -115,6 +115,10 @@ let to_predicate (type a) (t : a Predicate.t t) ~standard : a Predicate.t =
   Predicate.create (fun a ->
       exec t ~standard (fun pred -> Predicate.test pred a))
 
+let compare _ _ _ = Ordering.Eq
+
+let hash _ _ = 1
+
 module Glob = struct
   module Glob = Dune_glob.V1
 
@@ -136,4 +140,11 @@ module Glob = struct
 
   let of_string_set s =
     Union (String.Set.to_list_map ~f:(fun x -> Element (Glob.literal x)) s)
+
+  let compare x y = compare Glob.compare x y
+
+  let hash t = hash Glob.hash t
+
+  let encode t =
+    encode (fun x -> Dune_sexp.atom_or_quoted_string (Glob.to_string x)) t
 end

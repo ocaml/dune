@@ -43,3 +43,18 @@ let of_string_exn loc repr =
   | Ok t -> t
 
 let compare x y = String.compare (to_string x) (to_string y)
+
+let hash t = String.hash (to_string t)
+
+let matching_extensions extensions =
+  Re
+    { re =
+        Re.(
+          [ rep any; char '.'; List.map extensions ~f:str |> alt ]
+          |> seq |> compile)
+    ; repr =
+        (match extensions with
+        | [] -> Code_error.raise "empty list of extensions" []
+        | [ x ] -> sprintf "*.%s" x
+        | xs -> sprintf "*.{%s}" (String.concat xs ~sep:","))
+    }

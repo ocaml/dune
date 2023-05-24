@@ -92,7 +92,7 @@ file:
 
 .. code:: dune
 
-  (lang dune 3.8)
+  (lang dune 3.9)
   (using ctypes 0.3)
 
 

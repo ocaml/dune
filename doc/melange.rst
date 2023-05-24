@@ -48,7 +48,7 @@ version 3.8 of the dune language and the Melange extension is enabled:
 
 .. code:: dune
 
-  (lang dune 3.8)
+  (lang dune 3.9)
   (using melange 0.1)
 
 Next, write a :ref:`dune<dune-files>` file with a :ref:`melange-emit` stanza:

@@ -1,5 +1,5 @@
-3.8.0 (2023-05-23)
-------------------
+Unreleased
+----------
 
 - Add additional metadata to the traces provided by `--trace-file` whenever
   `--trace-extended` is passed (#7778, @rleshchinskiy)

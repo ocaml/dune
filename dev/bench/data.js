@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684915912087,
+  "lastUpdate": 1684915934162,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -35001,6 +35001,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8461995614666666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "96528a3c344e2eea930289a8a08de010eaadb53c",
+          "message": "Run short monorepo benchmarks multiple times (#7798)\n\nThis is an attempt to make the benchmarks less noisy by running them\r\n3 times and having current-bench report the mean. Fortunately the amount\r\nof noise we see in monorepo benchmarks is constant, so long running\r\nbenchmarks (mainly the initial build from scratch) have only a small\r\namount of noise when expressed as a percentage of the running  time.\r\nThus we can get away with only running the shorter benchmarks several\r\ntimes.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-05-24T08:45:24+01:00",
+          "tree_id": "4f313677c2945d9c05f0eecd3d31f28f24183c62",
+          "url": "https://github.com/ocaml/dune/commit/96528a3c344e2eea930289a8a08de010eaadb53c"
+        },
+        "date": 1684915933339,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "67.86911942512667",
             "unit": "seconds"
           }
         ]

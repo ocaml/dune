@@ -30,7 +30,7 @@ module Directory_rules = struct
 end
 
 module Scheme = struct
-  include Dune_rules.Scheme
+  include Dune_rules.For_tests.Scheme
 
   (* Calls [print] every time any code embedded in the scheme runs, be it a
      [Thunk] constructor or an [Approximation] function.
@@ -154,7 +154,7 @@ let run m = Fiber.run (Memo.run m) ~iter:(fun () -> assert false)
 
 let print_rules scheme ~dir = run @@ print_rules scheme ~dir
 
-open Dune_rules.Scheme
+open Dune_rules.For_tests.Scheme
 
 let%expect_test _ =
   let scheme = Scheme.Thunk (fun () -> Memo.return Scheme.Empty) in

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684952194738,
+  "lastUpdate": 1684952208552,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -35465,6 +35465,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "77.99424892624667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9b2e8318cb4b0254c2c870967edeeba50003ac73",
+          "message": "test: demonstrate `include_subdirs qualified` crash with modules OSL (#7797)\n\n* test: demonstrate `include_subdirs qualified` crash with modules OSL\r\n\r\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>\r\n\r\n* fix: merge for Module_trie\r\n\r\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-05-24T10:39:39-07:00",
+          "tree_id": "318a7d7f1b5e23af1fac8aad41cbade5522e1a0c",
+          "url": "https://github.com/ocaml/dune/commit/9b2e8318cb4b0254c2c870967edeeba50003ac73"
+        },
+        "date": 1684952207410,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.137438899993333",
             "unit": "seconds"
           }
         ]

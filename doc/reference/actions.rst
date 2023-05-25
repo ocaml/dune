@@ -2,6 +2,7 @@ User Actions
 ============
 
 .. default-domain:: dune
+.. highlight:: dune
 
 ``(action ...)`` fields describe user actions.
 
@@ -30,21 +31,40 @@ The following constructions are available:
    Execute a program. ``<prog>`` is resolved locally if it is available in the
    current workspace, otherwise it is resolved using the ``PATH``.
 
+   Example::
+
+   (run capnp compile -o %{bin:capnpc-ocaml} schema.capnp)
+
 .. action:: dynamic-run
    :param: <prog> <args>
 
    Execute a program that was linked against the ``dune-action-plugin`` library.
    ``<prog>`` is resolved in the same way as in ``run``.
 
+   Example::
+
+   (dynamic-run ./plugin.exe)
+
 .. action:: chdir
    :param: <dir> <DSL>
 
-   Change the current directory.
+   Run an action in a different directory.
+
+   Example::
+
+     (chdir src
+      (run ./build.exe))
 
 .. action:: setenv
    :param: <var> <value> <DSL>
 
-   Set an environment variable.
+   Run an action with an environment variable set.
+
+   Example::
+
+     (setenv
+       VAR value
+       (bash "echo $VAR"))
 
 .. action:: with-<outputs>-to
    :param: <file> <DSL>
@@ -52,16 +72,31 @@ The following constructions are available:
    Redirect the output to a file, where ``<outputs>`` is one of: ``stdout``,
    ``stderr`` or ``outputs`` (for both ``stdout`` and ``stderr``).
 
+   Example::
+
+     (with-stdout-to conf.txt
+      (run ./get-conf.exe))
+
 .. action:: ignore-<outputs>
    :param: <DSL>
 
    Ignore the output, where ``<outputs>`` is one of: ``stdout``, ``stderr``, or
    ``outputs``.
 
+   Example::
+
+     (ignore-stderr
+      (run ./get-conf.exe))
+
 .. action:: with-stdin-from
    :param: <file> <DSL>
 
    Redirect the input from a file.
+
+   Example::
+
+     (with-stdin-from data.txt
+      (run ./tests.exe))
 
 .. action:: with-accepted-exit-codes
    :param: <pred> <DSL>
@@ -74,10 +109,22 @@ The following constructions are available:
    occurrences of ``run``, ``bash``, ``system``, ``chdir``, ``setenv``,
    ``ignore-<outputs>``, ``with-stdin-from``, and ``with-<outputs>-to``.
 
+   Example::
+
+     (with-accepted-exit-codes
+      (or 1 2)
+      (run false))
+
 .. action:: progn
    :param: <DSL>...
 
    Execute several commands in sequence.
+
+   Example::
+
+     (progn
+      (run ./proga.exe)
+      (run ./progb.exe))
 
 .. action:: concurrent
    :param: <DSL>...
@@ -89,20 +136,38 @@ The following constructions are available:
       actually run sequentially, which may cause a deadlock if they talk to
       each other.
 
+   Example::
+
+     (concurrent
+      (run ./proga.exe)
+      (run ./progb.exe))
+
 .. action:: echo
    :param: <string>
 
    Output a string on ``stdout``.
+
+   Example::
+
+   (echo "Hello, world")
 
 .. action:: write-file
    :param: <file> <string>
 
    Writes ``<string>`` to ``<file>``.
 
+   Example::
+
+   (write-file users.txt jane,joe)
+
 .. action:: cat
    :param: <file> ...
 
    Sequentially print the contents of files to stdout.
+
+   Example::
+
+   (cat data.txt)
 
 .. action:: copy
    :param: <src> <dst>
@@ -111,20 +176,36 @@ The following constructions are available:
    ``module_name.xxx.ml`` :ref:`naming convention <merlin-filenames>` to
    preserve Merlin's functionality.
 
+   Example::
+
+   (copy data.txt.template data.txt)
+
 .. action:: copy#
    :param: <src> <dst>
 
    Copy a file and add a line directive at the beginning.
+
+   Example::
+
+   (copy# config.windows.ml config.ml)
 
 .. action:: system
    :param: <cmd>
 
    Execute a command using the system shell: ``sh`` on Unix and ``cmd`` on Windows.
 
+   Example::
+
+   (system "command arg1 arg2")
+
 .. action:: bash
    :param: <cmd>
 
    Execute a command using ``/bin/bash``. This is obviously not very portable.
+
+   Example::
+
+   (bash "echo $PATH")
 
 .. action:: diff
    :param: <file1> <file2>
@@ -133,6 +214,10 @@ The following constructions are available:
    is better and allows promotion. See :doc:`../concepts/promotion` for more
    details.
 
+   Example::
+
+   (diff test.expected test.output)
+
 .. action:: diff?
    :param: <file1> <file2>
 
@@ -140,11 +225,21 @@ The following constructions are available:
    that ``<file2>`` should be produced by a part of the same action rather than
    be a dependency, is optional and will be consumed by ``diff?``.
 
+   Example::
+
+     (progn
+      (with-stdout-to test.output (run ./test.exe))
+      (diff? test.expected test.output))
+
 .. action:: cmp
    :param: <file1> <file2>
 
    ``(cmp <file1> <file2>)`` is similar to ``(run cmp <file1> <file2>)`` but
    allows promotion. See :doc:`../concepts/promotion` for more details.
+
+   Example::
+
+   (cmp bin.expected bin.output)
 
 .. action:: no-infer
    :param: <DSL>
@@ -152,6 +247,13 @@ The following constructions are available:
    Perform an action without inference of dependencies and targets. This is
    useful if you are generating dependencies in a way that Dune doesn't know
    about, for instance by calling an external build system.
+
+   Example::
+
+     (no-infer
+      (progn
+       (run make)
+       (copy mylib.a lib.a)))
 
 .. action:: pipe-<outputs>
    :param: <DSL> <DSL> <DSL>...
@@ -161,6 +263,12 @@ The following constructions are available:
    Execute several actions (at least two) in sequence, filtering the
    ``<outputs>`` of the first command through the other command, piping the
    standard output of each one into the input of the next.
+
+   Example::
+
+      (pipe-stdout
+       (run ./list-tests.exe)
+       (run ./exec-tests.exe))
 
 As mentioned, ``copy#`` inserts a line directive at the beginning of
 the destination file. More precisely, it inserts the following line:

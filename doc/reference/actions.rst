@@ -299,14 +299,13 @@ As a result, if you execute the command from the original directory, it will
 only see the basename.
 
 To understand why this is important, let's consider this ``dune`` file living in
-``src/foo``:
+``src/foo``::
 
-::
-
-    (rule
-     (target blah.ml)
-     (deps   blah.mll)
-     (action (run ocamllex -o %{target} %{deps})))
+  (rule
+   (target blah.ml)
+   (deps blah.mll)
+   (action
+    (run ocamllex -o %{target} %{deps})))
 
 Here the command that will be executed is:
 
@@ -323,11 +322,11 @@ is an error in the generated ``blah.ml`` file, it will be reported as:
     Error: ...
 
 Which can be a problem, as your editor might think that ``blah.ml`` is at the root
-of your project. Instead, this is a better way to write it:
+of your project. Instead, this is a better way to write it::
 
-::
-
-    (rule
-     (target blah.ml)
-     (deps   blah.mll)
-     (action (chdir %{workspace_root} (run ocamllex -o %{target} %{deps}))))
+  (rule
+   (target blah.ml)
+   (deps blah.mll)
+   (action
+    (chdir %{workspace_root}
+     (run ocamllex -o %{target} %{deps}))))

@@ -22,46 +22,46 @@ source code.
 
 The following constructions are available:
 
-.. dune:stanza:: run
+.. dune:action:: run
    :param: <prog> <args>
 
    Execute a program. ``<prog>`` is resolved locally if it is available in the
    current workspace, otherwise it is resolved using the ``PATH``.
 
-.. dune:stanza:: dynamic-run
+.. dune:action:: dynamic-run
    :param: <prog> <args>
 
    Execute a program that was linked against the ``dune-action-plugin`` library.
    ``<prog>`` is resolved in the same way as in ``run``.
 
-.. dune:stanza:: chdir
+.. dune:action:: chdir
    :param: <dir> <DSL>
 
    Change the current directory.
 
-.. dune:stanza:: setenv
+.. dune:action:: setenv
    :param: <var> <value> <DSL>
 
    Set an environment variable.
 
-.. dune:stanza:: with-<outputs>-to
+.. dune:action:: with-<outputs>-to
    :param: <file> <DSL>
 
    Redirect the output to a file, where ``<outputs>`` is one of: ``stdout``,
    ``stderr`` or ``outputs`` (for both ``stdout`` and ``stderr``).
 
-.. dune:stanza:: ignore-<outputs>
+.. dune:action:: ignore-<outputs>
    :param: <DSL>
 
    Ignore the output, where ``<outputs>`` is one of: ``stdout``, ``stderr``, or
    ``outputs``.
 
-.. dune:stanza:: with-stdin-from
+.. dune:action:: with-stdin-from
    :param: <file> <DSL>
 
    Redirect the input from a file.
 
-.. dune:stanza:: with-accepted-exit-codes
+.. dune:action:: with-accepted-exit-codes
    :param: <pred> <DSL>
 
    .. versionadded:: 2.0
@@ -72,12 +72,12 @@ The following constructions are available:
    occurrences of ``run``, ``bash``, ``system``, ``chdir``, ``setenv``,
    ``ignore-<outputs>``, ``with-stdin-from``, and ``with-<outputs>-to``.
 
-.. dune:stanza:: progn
+.. dune:action:: progn
    :param: <DSL>...
 
    Execute several commands in sequence.
 
-.. dune:stanza:: concurrent
+.. dune:action:: concurrent
    :param: <DSL>...
 
    Execute several commands concurrently and collect all resulting errors, if any.
@@ -87,71 +87,71 @@ The following constructions are available:
       actually run sequentially, which may cause a deadlock if they talk to
       each other.
 
-.. dune:stanza:: echo
+.. dune:action:: echo
    :param: <string>
 
    Output a string on ``stdout``.
 
-.. dune:stanza:: write-file
+.. dune:action:: write-file
    :param: <file> <string>
 
    Writes ``<string>`` to ``<file>``.
 
-.. dune:stanza:: cat
+.. dune:action:: cat
    :param: <file> ...
 
    Sequentially print the contents of files to stdout.
 
-.. dune:stanza:: copy
+.. dune:action:: copy
    :param: <src> <dst>
 
    Copy a file. If these files are OCaml sources, you should follow the
    ``module_name.xxx.ml`` :ref:`naming convention <merlin-filenames>` to
    preserve Merlin's functionality.
 
-.. dune:stanza:: copy#
+.. dune:action:: copy#
    :param: <src> <dst>
 
    Copy a file and add a line directive at the beginning.
 
-.. dune:stanza:: system
+.. dune:action:: system
    :param: <cmd>
 
    Execute a command using the system shell: ``sh`` on Unix and ``cmd`` on Windows.
 
-.. dune:stanza:: bash
+.. dune:action:: bash
    :param: <cmd>
 
    Execute a command using ``/bin/bash``. This is obviously not very portable.
 
-.. dune:stanza:: diff
+.. dune:action:: diff
    :param: <file1> <file2>
 
    ``(diff <file1> <file2>)`` is similar to ``(run diff <file1> <file2>)`` but
    is better and allows promotion. See :doc:`../concepts/promotion` for more
    details.
 
-.. dune:stanza:: diff?
+.. dune:action:: diff?
    :param: <file1> <file2>
 
    ``(diff? <file1> <file2>)`` is similar to ``(diff <file1> <file2>)`` except
    that ``<file2>`` should be produced by a part of the same action rather than
    be a dependency, is optional and will be consumed by ``diff?``.
 
-.. dune:stanza:: cmp
+.. dune:action:: cmp
    :param: <file1> <file2>
 
    ``(cmp <file1> <file2>)`` is similar to ``(run cmp <file1> <file2>)`` but
    allows promotion. See :doc:`../concepts/promotion` for more details.
 
-.. dune:stanza:: no-infer
+.. dune:action:: no-infer
    :param: <DSL>
 
    Perform an action without inference of dependencies and targets. This is
    useful if you are generating dependencies in a way that Dune doesn't know
    about, for instance by calling an external build system.
 
-.. dune:stanza:: pipe-<outputs>
+.. dune:action:: pipe-<outputs>
    :param: <DSL> <DSL> <DSL>...
 
    .. versionadded:: 2.7

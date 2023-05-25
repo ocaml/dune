@@ -22,61 +22,143 @@ source code.
 
 The following constructions are available:
 
-- ``(run <prog> <args>)`` to execute a program. ``<prog>`` is resolved
-  locally if it is available in the current workspace, otherwise it is
-  resolved using the ``PATH``
-- ``(dynamic-run <prog> <args>)`` to execute a program that was linked
-  against ``dune-action-plugin`` library. ``<prog>`` is resolved in
-  the same way as in ``run``
-- ``(chdir <dir> <DSL>)`` to change the current directory
-- ``(setenv <var> <value> <DSL>)`` to set an environment variable
-- ``(with-<outputs>-to <file> <DSL>)`` to redirect the output to a file, where
-  ``<outputs>`` is one of: ``stdout``, ``stderr`` or ``outputs`` (for both
-  ``stdout`` and ``stderr``)
-- ``(ignore-<outputs> <DSL>)`` to ignore the output, where
-  ``<outputs>`` is one of: ``stdout``, ``stderr``, or ``outputs``
-- ``(with-stdin-from <file> <DSL>)`` to redirect the input from a file
-- ``(with-accepted-exit-codes <pred> <DSL>)`` specifies the list of expected exit codes
-  for the programs executed in ``<DSL>``. ``<pred>`` is a predicate on integer
-  values, and it's specified using the :doc:`predicate-language`. ``<DSL>`` can
-  only contain nested occurrences of ``run``, ``bash``, ``system``, ``chdir``,
-  ``setenv``, ``ignore-<outputs>``, ``with-stdin-from``, and
-  ``with-<outputs>-to``. This action is available since Dune 2.0.
-- ``(progn <DSL>...)`` to execute several commands in sequence
-- ``(concurrent <DSL>...)``` to execute several commands concurrently
-  and collect all resulting errors, if any.
-  **Warning:** The concurrency is limited by the `-j` flag passed to Dune.
-  In particular, if Dune is running with `-j 1`, these commands will actually
-  run sequentially, which may cause a deadlock if they talk to each other.
-- ``(echo <string>)`` to output a string on ``stdout``
-- ``(write-file <file> <string>)`` writes ``<string>`` to ``<file>``
-- ``(cat <file> ...)`` to sequentially print the contents of files to stdout
-- ``(copy <src> <dst>)`` to copy a file. If these files are OCaml sources, you
-  should follow the ``module_name.xxx.ml``
-  :ref:`naming convention <merlin-filenames>` to preserve Merlin's
-  functionality.
-- ``(copy# <src> <dst>)`` to copy a file and add a line directive at
-  the beginning
-- ``(system <cmd>)`` to execute a command using the system shell: ``sh`` on Unix
-  and ``cmd`` on Windows
-- ``(bash <cmd>)`` to execute a command using ``/bin/bash``. This is obviously
-  not very portable.
-- ``(diff <file1> <file2>)`` is similar to ``(run diff <file1> <file2>)`` but
-  is better and allows promotion. See :doc:`../concepts/promotion` for more
-  details.
-- ``(diff? <file1> <file2>)`` is similar to ``(diff <file1>
-  <file2>)`` except that ``<file2>`` should be produced by a part of the
-  same action rather than be a dependency, is optional and will
-  be consumed by ``diff?``.
-- ``(cmp <file1> <file2>)`` is similar to ``(run cmp <file1> <file2>)`` but
-  allows promotion. See :doc:`../concepts/promotion` for more details.
-- ``(no-infer <DSL>)`` to perform an action without inference of dependencies
-  and targets. This is useful if you are generating dependencies in a way
-  that Dune doesn't know about, for instance by calling an external build system.
-- ``(pipe-<outputs> <DSL> <DSL> <DSL>...)`` to execute several actions (at least two)
-  in sequence, filtering the ``<outputs>`` of the first command through the other
-  command, piping the standard output of each one into the input of the next.
-  This action is available since Dune 2.7.
+.. dune:stanza:: run
+   :param: <prog> <args>
+
+   Execute a program. ``<prog>`` is resolved locally if it is available in the
+   current workspace, otherwise it is resolved using the ``PATH``.
+
+.. dune:stanza:: dynamic-run
+   :param: <prog> <args>
+
+   Execute a program that was linked against the ``dune-action-plugin`` library.
+   ``<prog>`` is resolved in the same way as in ``run``.
+
+.. dune:stanza:: chdir
+   :param: <dir> <DSL>
+
+   Change the current directory.
+
+.. dune:stanza:: setenv
+   :param: <var> <value> <DSL>
+
+   Set an environment variable.
+
+.. dune:stanza:: with-<outputs>-to
+   :param: <file> <DSL>
+
+   Redirect the output to a file, where ``<outputs>`` is one of: ``stdout``,
+   ``stderr`` or ``outputs`` (for both ``stdout`` and ``stderr``).
+
+.. dune:stanza:: ignore-<outputs>
+   :param: <DSL>
+
+   Ignore the output, where ``<outputs>`` is one of: ``stdout``, ``stderr``, or
+   ``outputs``.
+
+.. dune:stanza:: with-stdin-from
+   :param: <file> <DSL>
+
+   Redirect the input from a file.
+
+.. dune:stanza:: with-accepted-exit-codes
+   :param: <pred> <DSL>
+
+   .. versionadded:: 2.0
+
+   Specifies the list of expected exit codes for the programs executed in
+   ``<DSL>``. ``<pred>`` is a predicate on integer values, and it's specified
+   using the :doc:`predicate-language`. ``<DSL>`` can only contain nested
+   occurrences of ``run``, ``bash``, ``system``, ``chdir``, ``setenv``,
+   ``ignore-<outputs>``, ``with-stdin-from``, and ``with-<outputs>-to``.
+
+.. dune:stanza:: progn
+   :param: <DSL>...
+
+   Execute several commands in sequence.
+
+.. dune:stanza:: concurrent
+   :param: <DSL>...
+
+   Execute several commands concurrently and collect all resulting errors, if any.
+
+   .. warning:: The concurrency is limited by the ``-j`` flag passed to Dune.
+      In particular, if Dune is running with ``-j 1``, these commands will
+      actually run sequentially, which may cause a deadlock if they talk to
+      each other.
+
+.. dune:stanza:: echo
+   :param: <string>
+
+   Output a string on ``stdout``.
+
+.. dune:stanza:: write-file
+   :param: <file> <string>
+
+   Writes ``<string>`` to ``<file>``.
+
+.. dune:stanza:: cat
+   :param: <file> ...
+
+   Sequentially print the contents of files to stdout.
+
+.. dune:stanza:: copy
+   :param: <src> <dst>
+
+   Copy a file. If these files are OCaml sources, you should follow the
+   ``module_name.xxx.ml`` :ref:`naming convention <merlin-filenames>` to
+   preserve Merlin's functionality.
+
+.. dune:stanza:: copy#
+   :param: <src> <dst>
+
+   Copy a file and add a line directive at the beginning.
+
+.. dune:stanza:: system
+   :param: <cmd>
+
+   Execute a command using the system shell: ``sh`` on Unix and ``cmd`` on Windows.
+
+.. dune:stanza:: bash
+   :param: <cmd>
+
+   Execute a command using ``/bin/bash``. This is obviously not very portable.
+
+.. dune:stanza:: diff
+   :param: <file1> <file2>
+
+   ``(diff <file1> <file2>)`` is similar to ``(run diff <file1> <file2>)`` but
+   is better and allows promotion. See :doc:`../concepts/promotion` for more
+   details.
+
+.. dune:stanza:: diff?
+   :param: <file1> <file2>
+
+   ``(diff? <file1> <file2>)`` is similar to ``(diff <file1> <file2>)`` except
+   that ``<file2>`` should be produced by a part of the same action rather than
+   be a dependency, is optional and will be consumed by ``diff?``.
+
+.. dune:stanza:: cmp
+   :param: <file1> <file2>
+
+   ``(cmp <file1> <file2>)`` is similar to ``(run cmp <file1> <file2>)`` but
+   allows promotion. See :doc:`../concepts/promotion` for more details.
+
+.. dune:stanza:: no-infer
+   :param: <DSL>
+
+   Perform an action without inference of dependencies and targets. This is
+   useful if you are generating dependencies in a way that Dune doesn't know
+   about, for instance by calling an external build system.
+
+.. dune:stanza:: pipe-<outputs>
+   :param: <DSL> <DSL> <DSL>...
+
+   .. versionadded:: 2.7
+
+   Execute several actions (at least two) in sequence, filtering the
+   ``<outputs>`` of the first command through the other command, piping the
+   standard output of each one into the input of the next.
 
 As mentioned, ``copy#`` inserts a line directive at the beginning of
 the destination file. More precisely, it inserts the following line:

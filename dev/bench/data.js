@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685089685114,
+  "lastUpdate": 1685090224377,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16847,6 +16847,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "45.68701519248",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "45c82dc488afd3d2b5b556abaad7f3dab3cf56ce",
+          "message": "doc: expand actions documentation with a special directive (#7804)\n\nThis expands the dune sphinx domain with an action: directive to document\r\nactions.\r\n\r\nThe reference/actions.rst document is updated to use this, with additional\r\nexamples.\r\n\r\nPossible followup work:\r\n\r\n- create an action index (not sure if needed)\r\n- add action xrefs to link to the documentation of a given action directly.\r\n- document inference (target, deps) for each action",
+          "timestamp": "2023-05-26T10:10:15+02:00",
+          "tree_id": "c4661a76caca15e11aa2bf6cdd030ddb79c533ac",
+          "url": "https://github.com/ocaml/dune/commit/45c82dc488afd3d2b5b556abaad7f3dab3cf56ce"
+        },
+        "date": 1685090223262,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.90390973068",
             "unit": "seconds"
           }
         ]

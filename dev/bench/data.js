@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685108498046,
+  "lastUpdate": 1685109008806,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16876,6 +16876,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.90390973068",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b304f67c19e9b608af77c5328c132adb0e5ee71e",
+          "message": "test: default ignore patterns for source tree (#7808)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-26T06:29:03-07:00",
+          "tree_id": "531d2502c175b843dc679dac2ac3a6c7b60fb3bf",
+          "url": "https://github.com/ocaml/dune/commit/b304f67c19e9b608af77c5328c132adb0e5ee71e"
+        },
+        "date": 1685109008195,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.094935267366665",
             "unit": "seconds"
           }
         ]

@@ -265,6 +265,34 @@ module Diagnostic = struct
 
   let to_dyn t = Sexp.to_dyn (Conv.to_sexp sexp t)
 
+  let to_user_message t =
+    let prefix =
+      Option.map t.severity ~f:(fun sev ->
+          let severity, prefix =
+            match sev with
+            | Error -> (Stdune.User_message.Style.Error, "Error:")
+            | Warning -> (Warning, "Warning:")
+          in
+          Pp.tag severity (Pp.text prefix))
+    in
+    let directory =
+      match t.directory with
+      | None -> []
+      | Some d ->
+        [ Pp.tag Stdune.User_message.Style.Loc (Pp.textf "(In directory %s)" d)
+        ]
+    in
+    let formatted_loc =
+      match t.loc with
+      | None -> []
+      | Some l ->
+        [ Pp.map_tags ~f:(fun _ -> Stdune.User_message.Style.Loc) (Loc.pp l) ]
+    in
+    Stdune.User_message.make ?prefix
+      (directory @ formatted_loc
+      @ [ Pp.map_tags ~f:(fun _ -> Stdune.User_message.Style.Details) t.message
+        ])
+
   module Event = struct
     type nonrec t =
       | Add of t

@@ -5,7 +5,7 @@ BUILD_TARGET = ./monorepo_bench.exe
 MONOREPO_PATH = /home/user/monorepo-benchmark/benchmark
 
 bench:
-	$(RUNNER) --dune-exe-path=$(DUNE_EXE_PATH) --build-target=$(BUILD_TARGET) --monorepo-path=$(MONOREPO_PATH) --print-dune-output
+	$(RUNNER) --dune-exe-path=$(DUNE_EXE_PATH) --build-target=$(BUILD_TARGET) --monorepo-path=$(MONOREPO_PATH) --print-dune-output --num-short-job-repeats=3
 
 clean:
 	dune clean

@@ -10,6 +10,7 @@
   memo
   ocaml
   dune_lang
+  predicate_lang
   fiber
   stdune
   dune_console
@@ -24,6 +25,7 @@
   dune_engine
   dune_util
   dune_upgrader
+  dune_pkg
   cmdliner
   threads
   ; Kept to keep implicit_transitive_deps false working in 4.x
@@ -38,7 +40,8 @@
   dune_rules_rpc
   dune_rpc_private
   dune_rpc_client
-  spawn)
+  spawn
+  opam_format)
  (bootstrap_info bootstrap-info))
 
 ; Installing the dune binary depends on the kind of build:

@@ -5,11 +5,11 @@
   stdune
   dune_glob
   dune_rpc_private
-  memo
   ocaml
   dune_util
   dyn
   ordering
+  predicate_lang
   dune_section
   (re_export dune_sexp))
  (instrumentation

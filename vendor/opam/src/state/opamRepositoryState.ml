@@ -28,7 +28,7 @@ module Cache = struct
     end)
 
   let remove () =
-    let root = OpamStateConfig.(!r.root_dir) in
+    let root = Lazy.force OpamStateConfig.(!r.root_dir) in
     let cache_dir = OpamPath.state_cache_dir root in
     let remove_cache_file file =
       if OpamFilename.check_suffix file ".cache" then
@@ -301,10 +301,9 @@ let check_last_update () =
   if OpamCoreConfig.(!r.debug_level) < 0 then () else
   let last_update =
     OpamFilename.written_since
-      (OpamPath.state_cache (OpamStateConfig.(!r.root_dir)))
+      (OpamPath.state_cache (Lazy.force OpamStateConfig.(!r.root_dir)))
   in
   if last_update > float_of_int (3600*24*21) then
     OpamConsole.note "It seems you have not updated your repositories \
                       for a while. Consider updating them with:\n%s\n"
       (OpamConsole.colorise `bold "opam update");
-

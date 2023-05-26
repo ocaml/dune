@@ -161,7 +161,7 @@ module Env = struct
     fields
     @@ let+ compilation_mode =
          field_o "compilation_mode" Compilation_mode.decode
-       and+ runtest_alias = field_o "runtest_alias" Alias.Name.decode
+       and+ runtest_alias = field_o "runtest_alias" Dune_lang.Alias.decode
        and+ flags = Flags.decode in
        Option.iter ~f:Alias.register_as_standard runtest_alias;
        { compilation_mode; runtest_alias; flags }

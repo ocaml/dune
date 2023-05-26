@@ -14,7 +14,7 @@ contents of all configuration files read by Dune and looks like:
 
 .. code:: dune
 
-   (lang dune 3.8)
+   (lang dune 3.9)
 
 Additionally, they can contains the following stanzas.
 
@@ -75,9 +75,10 @@ dialect
 
          Specify the file extension used for this dialect.
 
-         The extension string must not contain any dots and be unique in a given
-         project (so that a given extension can be mapped back to a
-         corresponding dialect).
+         The extension string must not start with a period and be unique in a
+         given project (so that a given extension can be mapped back to a
+         corresponding dialect). In Dune 3.9 and later, the extension string may
+         contain periods (e.g., `cppo.ml`).
 
          This field is required.
 
@@ -745,7 +746,7 @@ The ``dune-workspace`` file uses the S-expression syntax. This is what a typical
 
 .. code:: dune
 
-    (lang dune 3.8)
+    (lang dune 3.9)
     (context (opam (switch 4.07.1)))
     (context (opam (switch 4.08.1)))
     (context (opam (switch 4.11.1)))

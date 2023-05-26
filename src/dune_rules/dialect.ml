@@ -70,19 +70,19 @@ let encode { name; file_kinds } =
 let decode =
   let open Dune_lang.Decoder in
   let kind kind =
-    let+ loc, extension = field "extension" (located string)
+    let+ loc, extension = field "extension" (located extension)
     and+ preprocess = field_o "preprocess" (located Action.decode_dune_file)
     and+ format =
       field_o "format"
         (map
            ~f:(fun (loc, x) -> (loc, x, []))
            (located Action.decode_dune_file))
-    in
-    let extension =
-      if String.contains extension '.' then
-        User_error.raise ~loc [ Pp.textf "extension must not contain '.'" ];
-      "." ^ extension
-    in
+    and+ syntax_ver = Syntax.get_exn Stanza.syntax in
+    let ver = (3, 9) in
+    (if syntax_ver < ver && Option.is_some (String.index_from extension 1 '.')
+    then
+     let what = "the possibility of defining extensions containing periods" in
+     Syntax.Error.since loc Stanza.syntax ver ~what);
     { File_kind.kind; extension; preprocess; format }
   in
   fields

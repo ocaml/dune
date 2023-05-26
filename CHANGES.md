@@ -1,6 +1,21 @@
 Unreleased
 ----------
 
+- Add additional metadata to the traces provided by `--trace-file` whenever
+  `--trace-extended` is passed (#7778, @rleshchinskiy)
+
+- Extensions used in `(dialect)` can contain periods (e.g., `cppo.ml`). (#7782,
+  fixes #7777, @nojb)
+
+- Allow `(include_subdirs qualified)` to be used when libraries define a
+  `(modules ...)` field (#7797, fixes #7597, @anmonteiro)
+
+3.8.0 (2023-05-23)
+------------------
+
+- Fix string quoting in the json file written by `--trace-file` (#7773,
+  @rleshchinskiy)
+
 - Read `pkg-config` arguments from the `PKG_CONFIG_ARGN` environment variable
   (#1492, #7734, @anmonteiro)
 

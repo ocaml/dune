@@ -1075,10 +1075,11 @@ let info t = t.info
 
 let update_execution_parameters t ep =
   ep
-  |> Execution_parameters.set_dune_version t.dune_version
   |> Execution_parameters.set_expand_aliases_in_sandbox
        t.expand_aliases_in_sandbox
   |> Execution_parameters.set_add_workspace_root_to_build_path_prefix_map
        t.map_workspace_root
+  |> Execution_parameters.set_should_remove_write_permissions_on_generated_files
+       (t.dune_version >= (2, 4))
 
 let opam_file_location t = t.opam_file_location

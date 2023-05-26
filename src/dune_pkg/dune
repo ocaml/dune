@@ -9,6 +9,8 @@
   dune_lang
   opam_core
   opam_repository
-  opam_format)
+  opam_format
+  opam_state
+  opam_0install)
  (instrumentation
   (backend bisect_ppx)))

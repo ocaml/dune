@@ -24,12 +24,7 @@ module Emit = struct
   let implicit_alias = Alias.Name.of_string "melange"
 
   let decode =
-    let extension_field =
-      let+ loc, extension = located string in
-      if String.is_prefix ~prefix:"." extension then
-        User_error.raise ~loc [ Pp.textf "extension must not start with '.'" ];
-      "." ^ extension
-    in
+    let extension_field = extension in
     let module_systems =
       let module_system =
         enum [ ("es6", Melange.Module_system.Es6); ("commonjs", CommonJs) ]
@@ -95,7 +90,7 @@ module Emit = struct
                  ])
          in
          field "target" (plain_string (fun ~loc s -> of_string ~loc s))
-       and+ alias = field_o "alias" Alias.Name.decode
+       and+ alias = field_o "alias" Dune_lang.Alias.decode
        and+ module_systems =
          field "module_systems" module_systems
            ~default:[ Melange.Module_system.default ]

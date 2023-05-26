@@ -1,9 +1,9 @@
-open Import
-open Dune_lang.Decoder
+open Stdune
+open Dune_sexp
+open Decoder
 
 let syntax =
-  Dune_lang.Syntax.create ~name:"fmt"
-    ~desc:"integration with automatic formatters"
+  Syntax.create ~name:"fmt" ~desc:"integration with automatic formatters"
     [ ((1, 0), `Since (1, 4))
     ; ((1, 1), `Since (1, 7))
     ; ((1, 2), `Since (1, 11))
@@ -41,7 +41,7 @@ module Language = struct
   let in_ext_1_1 = Set.add in_ext_1_0 Dune
 
   let encode =
-    let open Dune_lang.Encoder in
+    let open Encoder in
     function
     | Dune -> string "dune"
     | Dialect d -> string d
@@ -67,7 +67,7 @@ module Enabled_for = struct
 
   let field_ext =
     let+ list_opt = field
-    and+ ext_version = Dune_lang.Syntax.get_exn syntax in
+    and+ ext_version = Syntax.get_exn syntax in
     match (list_opt, ext_version) with
     | Some l, _ -> Only (Language.Set.of_list l)
     | None, (1, 0) -> Only Language.in_ext_1_0
@@ -75,7 +75,7 @@ module Enabled_for = struct
     | None, (1, 2) -> All
     | None, _ ->
       Code_error.raise "This fmt version does not exist"
-        [ ("version", Dune_lang.Syntax.Version.to_dyn ext_version) ]
+        [ ("version", Syntax.Version.to_dyn ext_version) ]
 
   let equal t1 t2 =
     match (t1, t2) with
@@ -124,8 +124,7 @@ let disabled =
   { loc = Loc.none; enabled_for = Enabled_for.Only Language.Set.empty }
 
 let field ~since =
-  field_o "formatting"
-    (Dune_lang.Syntax.since Dune_lang.Stanza.syntax since >>> dune2_dec)
+  field_o "formatting" (Syntax.since Stanza.syntax since >>> dune2_dec)
 
 let is_empty = function
   | { enabled_for = Enabled_for.Only l; _ } -> Language.Set.is_empty l
@@ -134,7 +133,7 @@ let is_empty = function
 let loc t = t.loc
 
 let encode_formatting enabled_for =
-  let open Dune_lang.Encoder in
+  let open Encoder in
   record_fields
     [ field_i "enabled_for"
         (List.map ~f:Language.encode)
@@ -142,7 +141,7 @@ let encode_formatting enabled_for =
     ]
 
 let encode_explicit conf =
-  let open Dune_lang.Encoder in
+  let open Encoder in
   [ field_i "formatting" encode_formatting conf ] |> record_fields |> List.hd
 
 let to_explicit { loc; enabled_for } =
@@ -167,7 +166,7 @@ let of_config ~ext ~dune_lang ~version =
       | Some { enabled_for; _ } ->
         let dlang = encode_explicit enabled_for in
         [ Pp.textf "To port it to the new syntax, you can replace this part by:"
-        ; Pp.tag User_message.Style.Details (Dune_lang.pp dlang)
+        ; Pp.tag User_message.Style.Details (Dune_sexp.pp dlang)
         ]
       | None ->
         [ Pp.textf "To port it to the new syntax, you can delete this part." ]

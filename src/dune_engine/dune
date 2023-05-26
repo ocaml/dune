@@ -12,7 +12,8 @@
   fiber
   memo
   threads.posix
-  dune_lang
+  predicate_lang
+  dune_sexp
   dune_cache
   dune_cache_storage
   dune_glob

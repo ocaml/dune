@@ -1,7 +1,8 @@
 open Stdune
 open Dune_rules
-open Dune_engine
+open Dune_rules.For_tests
 open Dune_tests_common
+module Context_name = Dune_engine.Context_name
 
 let () = init ()
 

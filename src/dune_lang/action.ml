@@ -1,5 +1,6 @@
 open Stdune
 open Dune_sexp
+open Dune_util.Action
 
 module Action_plugin = struct
   let syntax =
@@ -9,38 +10,24 @@ module Action_plugin = struct
 end
 
 module Diff = struct
-  module Mode = struct
-    type t =
-      | Binary
-      | Text
-  end
-
-  type ('path, 'target) t =
-    { optional : bool
-    ; mode : Mode.t
-    ; file1 : 'path
-    ; file2 : 'target
-    }
-
-  let map t ~path ~target =
-    { t with file1 = path t.file1; file2 = target t.file2 }
+  include Diff
 
   let decode path target ~optional =
     let open Decoder in
     let+ file1 = path
     and+ file2 = target in
-    { optional; file1; file2; mode = Text }
+    { Diff.optional; file1; file2; mode = Text }
 
   let decode_binary path target =
     let open Decoder in
     let+ () = Syntax.since Stanza.syntax (1, 0)
     and+ file1 = path
     and+ file2 = target in
-    { optional = false; file1; file2; mode = Binary }
+    { Diff.optional = false; file1; file2; mode = Binary }
 end
 
 module Outputs = struct
-  type t =
+  type t = Outputs.t =
     | Stdout
     | Stderr
     | Outputs
@@ -52,14 +39,14 @@ module Outputs = struct
 end
 
 module Inputs = struct
-  type t = Stdin
+  type t = Inputs.t = Stdin
 
   let to_string = function
     | Stdin -> "stdin"
 end
 
 module File_perm = struct
-  type t =
+  type t = File_perm.t =
     | Normal
     | Executable
 

@@ -1,5 +1,5 @@
 open Stdune
-module Jsoo_rules = Dune_rules.Jsoo_rules
+module Jsoo_rules = Dune_rules.For_tests.Jsoo_rules
 
 let%expect_test _ =
   let test s l =

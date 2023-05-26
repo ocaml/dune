@@ -1,5 +1,6 @@
 open Dune_engine
 open Action.For_shell
+module Action = Dune_engine.Action
 
 let print x = x |> Action_to_sh.pp |> Dune_tests_common.print
 
@@ -107,7 +108,7 @@ let%expect_test "with-stdin-from" =
 (* TODO currently no special printing for with-accepted-exit-codes *)
 let%expect_test "with-accepted-exit-codes" =
   With_accepted_exit_codes
-    ( Dune_lang.Predicate_lang.Union [ Element 0; Element 1; Element 123 ]
+    ( Predicate_lang.Union [ Element 0; Element 1; Element 123 ]
     , Bash {|
     echo Hello world
     exit 123
@@ -177,10 +178,10 @@ let%expect_test "bash" =
 
 let%expect_test "diff" =
   Diff
-    { optional = false
+    { Action.Diff.optional = false
     ; file1 = "foo"
     ; file2 = "bar"
-    ; mode = Dune_lang.Action.Diff.Mode.Text
+    ; mode = Action.Diff.Mode.Text
     }
   |> print;
   [%expect {|
@@ -188,10 +189,10 @@ let%expect_test "diff" =
 
 let%expect_test "diff optional" =
   Diff
-    { optional = true
+    { Action.Diff.optional = true
     ; file1 = "foo"
     ; file2 = "bar"
-    ; mode = Dune_lang.Action.Diff.Mode.Text
+    ; mode = Action.Diff.Mode.Text
     }
   |> print;
   [%expect {|
@@ -199,10 +200,10 @@ let%expect_test "diff optional" =
 
 let%expect_test "cmp" =
   Diff
-    { optional = false
+    { Action.Diff.optional = false
     ; file1 = "foo"
     ; file2 = "bar"
-    ; mode = Dune_lang.Action.Diff.Mode.Binary
+    ; mode = Action.Diff.Mode.Binary
     }
   |> print;
   [%expect {|

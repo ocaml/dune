@@ -134,12 +134,32 @@ class FieldDirective(ObjectDescription):
         domain.add_field(path, sig)
 
 
+class ActionDirective(ObjectDescription):
+    """
+    The action directive.
+    """
+
+    option_spec = {
+        "param": directives.unchanged_required,
+    }
+
+    def handle_signature(self, sig, signode):
+        param = self.options.get("param", "...")
+        text = f"({sig} {param})"
+        signode += addnodes.desc_name(text=text)
+        return sig
+
+    def add_target_and_index(self, name_cls, sig, signode):
+        signode["ids"].append(f"action-{sig}")
+
+
 class DuneDomain(Domain):
     name = "dune"
 
     directives = {
         "stanza": StanzaDirective,
         "field": FieldDirective,
+        "action": ActionDirective,
     }
     roles = {"ref": XRefRole()}
     indices = {StanzaIndex, FieldIndex}

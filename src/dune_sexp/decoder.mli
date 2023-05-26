@@ -189,6 +189,10 @@ val plain_string : (loc:Loc.t -> string -> 'a) -> 'a t
 (** A valid filename, i.e. a string other than "." or ".." *)
 val filename : Filename.t t
 
+(** An extension: a string not starting with ".". The value returned by the
+    parser is prefixed with ".". *)
+val extension : string t
+
 (** A relative filename *)
 val relative_file : string t
 

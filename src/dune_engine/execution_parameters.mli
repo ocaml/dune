@@ -44,8 +44,6 @@ end
 
 val builtin_default : t
 
-val set_dune_version : Dune_sexp.Syntax.Version.t -> t -> t
-
 val set_action_stdout_on_success : Action_output_on_success.t -> t -> t
 
 val set_action_stderr_on_success : Action_output_on_success.t -> t -> t
@@ -56,12 +54,12 @@ val set_add_workspace_root_to_build_path_prefix_map : bool -> t -> t
 
 val add_workspace_root_to_build_path_prefix_map : t -> bool
 
+val set_should_remove_write_permissions_on_generated_files : bool -> t -> t
+
 (** As configured by [init] *)
 val default : t Memo.t
 
 (** {1 Accessors} *)
-
-val dune_version : t -> Dune_sexp.Syntax.Version.t
 
 val should_remove_write_permissions_on_generated_files : t -> bool
 

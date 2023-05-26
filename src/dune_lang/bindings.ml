@@ -1,5 +1,5 @@
-open Import
-open Dune_lang.Decoder
+open Stdune
+open Dune_sexp.Decoder
 
 type 'a one =
   | Unnamed of 'a
@@ -64,12 +64,12 @@ let decode elem =
   loop String.Set.empty [] l
 
 let encode encode bindings =
-  Dune_lang.List
+  Dune_sexp.List
     (List.map bindings ~f:(function
       | Unnamed a -> encode a
       | Named (name, bindings) ->
-        Dune_lang.List
-          (Dune_lang.atom (":" ^ name) :: List.map ~f:encode bindings)))
+        Dune_sexp.List
+          (Dune_sexp.atom (":" ^ name) :: List.map ~f:encode bindings)))
 
 let var_names t =
   List.filter_map t ~f:(function

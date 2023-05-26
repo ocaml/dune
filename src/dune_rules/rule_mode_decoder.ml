@@ -17,12 +17,13 @@ module Promote = struct
        and+ only =
          field_o "only"
            (Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>> Predicate_lang.decode Dune_lang.Glob.decode)
+           >>> Dune_lang.decode_predicate_lang_glob)
        in
        let only =
          Option.map only ~f:(fun only ->
-             let only = Predicate_lang.map only ~f:Glob.to_predicate in
-             Predicate_lang.to_predicate only ~standard:Predicate_lang.any)
+             Predicate.create
+               (Predicate_lang.exec only ~standard:Predicate_lang.any
+                  ~equal:Filename.equal))
        in
        { Rule.Promote.lifetime =
            (if until_clean then Until_clean else Unlimited)

@@ -26,8 +26,6 @@ val to_dyn : t -> Dyn.t
 
 val of_string_exn : Loc.t -> string -> t
 
-val literal : string -> t
-
 val compare : t -> t -> Ordering.t
 
 val hash : t -> int

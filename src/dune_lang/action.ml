@@ -122,7 +122,7 @@ let decode_with_accepted_exit_codes =
   fun t ->
     let open Decoder in
     Syntax.since Stanza.syntax (2, 0)
-    >>> let+ codes = Predicate_lang.decode_one Decoder.int
+    >>> let+ codes = Predicate_lang.decode_one Decoder.int (fun g -> Element g)
         and+ version = Syntax.get_exn Stanza.syntax
         and+ loc, t = located t in
         match
@@ -286,7 +286,7 @@ let rec encode =
   | With_accepted_exit_codes (pred, t) ->
     List
       [ atom "with-accepted-exit-codes"
-      ; Predicate_lang.encode Encoder.int pred
+      ; Predicate_lang.encode Encoder.int (fun _ -> assert false) pred
       ; encode t
       ]
   | Dynamic_run (a, xs) -> List (atom "run_dynamic" :: sw a :: List.map xs ~f:sw)

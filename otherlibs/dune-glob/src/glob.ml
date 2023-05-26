@@ -17,8 +17,6 @@ let empty = Re { re = Re.compile Re.empty; repr = "\000" }
 
 let universal = Re { re = Re.compile (Re.rep Re.any); repr = "**" }
 
-let literal s = Literal s
-
 let of_string_result repr =
   Lexer.parse_string repr
   |> Result.map ~f:(function
@@ -47,11 +45,24 @@ let compare x y = String.compare (to_string x) (to_string y)
 let hash t = String.hash (to_string t)
 
 let matching_extensions extensions =
+  let re =
+    let open Re in
+    [ rep any
+    ; char '.'
+    ; List.map extensions ~f:(fun s ->
+          match of_string s with
+          | Literal _ -> str s
+          | Re _ ->
+            (* we cannot allow anything that can be parsed as a regex
+               here b/c we want the string representation to match [of_string]
+            *)
+            Code_error.raise "invalid extension" [ ("s", Dyn.string s) ])
+      |> alt
+    ]
+    |> seq |> compile
+  in
   Re
-    { re =
-        Re.(
-          [ rep any; char '.'; List.map extensions ~f:str |> alt ]
-          |> seq |> compile)
+    { re
     ; repr =
         (match extensions with
         | [] -> Code_error.raise "empty list of extensions" []

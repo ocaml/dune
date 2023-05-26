@@ -21,4 +21,5 @@ module Profile = Profile
 module Targets_spec = Targets_spec
 module Wrapped = Wrapped
 
-let decode_predicate_lang_glob = Predicate_lang.decode Glob.decode
+let decode_predicate_lang_glob =
+  Predicate_lang.decode Glob.decode (fun x -> Glob x)

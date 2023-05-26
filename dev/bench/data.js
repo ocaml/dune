@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685110251380,
+  "lastUpdate": 1685110584745,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -35784,6 +35784,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6385143970533333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "784fa0e39223f2bb83030535b92745513fff9d2d",
+          "message": "chore: remove some pointless right indent (#7809)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-26T14:49:22+01:00",
+          "tree_id": "9a045d084e85bc71f8caa58855c144eacfa12590",
+          "url": "https://github.com/ocaml/dune/commit/784fa0e39223f2bb83030535b92745513fff9d2d"
+        },
+        "date": 1685110583844,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.72224831109999",
             "unit": "seconds"
           }
         ]

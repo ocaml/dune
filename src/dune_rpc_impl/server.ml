@@ -19,19 +19,10 @@ include struct
   module Diff_promotion = Diff_promotion
 end
 
-module Dep_conf = Dune_rules.Dep_conf
-
 include struct
   open Decl
   module Build_outcome = Build_outcome
   module Status = Status
-end
-
-include struct
-  open Dune_lang
-  module Stanza = Stanza
-  module String_with_vars = String_with_vars
-  module Pform = Pform
 end
 
 module Run = struct
@@ -114,13 +105,7 @@ module Run = struct
         Fiber.return ())
 end
 
-type pending_build_action =
-  | Build of Dep_conf.t list * Build_outcome.t Fiber.Ivar.t
-
-(* TODO un-copy-paste from dune/bin/arg.ml *)
-let dep_parser =
-  Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version)
-    Dep_conf.decode
+type 'a pending_build_action = Build of 'a list * Build_outcome.t Fiber.Ivar.t
 
 module Client = Stdune.Unit
 
@@ -204,19 +189,19 @@ end = struct
           Fiber.return ())
 end
 
-type t =
+type 'a t =
   { config : Run.t
-  ; pending_build_jobs :
-      (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
+  ; pending_build_jobs : ('a list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
+  ; parse_build : string -> 'a
   ; watch_mode_config : Watch_mode_config.t
   ; mutable clients : Clients.t
   }
 
-let ready (t : t) =
+let ready (t : _ t) =
   let* server = Fiber.Ivar.read t.config.server_ivar in
   Csexp_rpc.Server.ready server
 
-let stop (t : t) =
+let stop (t : _ t) =
   Fiber.fork_and_join_unit
     (fun () -> Action_runner.Rpc_server.stop t.config.action_runner)
     (fun () ->
@@ -225,7 +210,7 @@ let stop (t : t) =
       | None -> ()
       | Some server -> Csexp_rpc.Server.stop server)
 
-let handler (t : t Fdecl.t) action_runner_server handle :
+let handler (t : _ t Fdecl.t) action_runner_server handle :
     'a Dune_rpc_server.Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
@@ -309,17 +294,7 @@ let handler (t : t Fdecl.t) action_runner_server handle :
         raise (Dune_rpc.Response.Error.E error)
       | Yes Passive ->
         let ivar = Fiber.Ivar.create () in
-        let targets =
-          List.map targets ~f:(fun s ->
-              Dune_lang.Decoder.parse dep_parser
-                (Univ_map.set Univ_map.empty String_with_vars.decoding_env_key
-                   (* CR-someday aalekseyev: hardcoding the version here is not
-                      ideal, but it will do for now since this command is not
-                      stable and we're only using it in tests. *)
-                   (Pform.Env.initial (3, 0)))
-                (Dune_lang.Parser.parse_string ~fname:"dune rpc"
-                   ~mode:Dune_lang.Parser.Mode.Single s))
-        in
+        let targets = List.map targets ~f:server.parse_build in
         let* () = Job_queue.write server.pending_build_jobs (targets, ivar) in
         Fiber.Ivar.read ivar
     in
@@ -392,7 +367,7 @@ let handler (t : t Fdecl.t) action_runner_server handle :
   rpc
 
 let create ~lock_timeout ~registry ~root ~watch_mode_config ~handle stats
-    action_runner =
+    action_runner ~parse_build =
   let t = Fdecl.create Dyn.opaque in
   let pending_build_jobs = Job_queue.create () in
   let handler = Dune_rpc_server.make (handler t action_runner handle) in
@@ -429,7 +404,12 @@ let create ~lock_timeout ~registry ~root ~watch_mode_config ~handle stats
     }
   in
   let res =
-    { config; pending_build_jobs; watch_mode_config; clients = Clients.empty }
+    { config
+    ; pending_build_jobs
+    ; watch_mode_config
+    ; clients = Clients.empty
+    ; parse_build
+    }
   in
   Fdecl.set t res;
   res

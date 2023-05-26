@@ -911,7 +911,10 @@ end
 type t =
   { builder : Builder.t
   ; root : Workspace_root.t
-  ; rpc : [ `Allow of Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
+  ; rpc :
+      [ `Allow of Dune_rules.Dep_conf.t Dune_rpc_impl.Server.t Lazy.t
+      | `Forbid_builds
+      ]
   ; stats : Dune_stats.t option
   }
 
@@ -1191,7 +1194,7 @@ let build (builder : Builder.t) ~default_root_is_cwd =
          let action_runner = Dune_engine.Action_runner.Rpc_server.create () in
          Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir
            ~handle:Dune_rules_rpc.register ~watch_mode_config:builder.watch
-           stats action_runner))
+           ~parse_build:Dune_rules_rpc.parse_build stats action_runner))
   in
   if builder.store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if builder.print_metrics then (

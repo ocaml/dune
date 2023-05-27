@@ -37,6 +37,7 @@
   dune_tests_common
   stdune
   dune_engine
+  dune_lang
   dune_rules
   memo
   test_scheduler

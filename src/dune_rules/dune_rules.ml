@@ -5,7 +5,6 @@ module Context = Context
 module Super_context = Super_context
 module Compilation_context = Compilation_context
 module Colors = Colors
-module Profile = Profile
 module Workspace = Workspace
 module Dune_package = Dune_package
 module Alias_rec = Alias_rec

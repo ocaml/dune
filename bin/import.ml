@@ -31,7 +31,6 @@ include struct
   module Package = Package
   module Section = Section
   module Dune_project = Dune_project
-  module Profile = Profile
   module Dune_package = Dune_package
   module Resolve = Resolve
   module Sub_dirs = Sub_dirs
@@ -56,7 +55,13 @@ end
 module Digest = Dune_digest
 module Metrics = Dune_metrics
 module Console = Dune_console
-module Stanza = Dune_lang.Stanza
+
+include struct
+  open Dune_lang
+  module Stanza = Stanza
+  module Profile = Profile
+end
+
 module Log = Dune_util.Log
 module Dune_rpc = Dune_rpc_private
 module Graph = Dune_graph.Graph

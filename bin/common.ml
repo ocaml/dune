@@ -6,7 +6,7 @@ module Colors = Dune_rules.Colors
 module Clflags = Dune_engine.Clflags
 module Graph = Dune_graph.Graph
 module Package = Dune_rules.Package
-module Profile = Dune_rules.Profile
+module Profile = Dune_lang.Profile
 module Cmd = Cmdliner.Cmd
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
@@ -281,7 +281,7 @@ module Options_implied_by_dash_p = struct
               (Printf.sprintf
                  "Select the build profile, for instance $(b,dev) or \
                   $(b,release). The default is $(b,%s)."
-                 (Profile.to_string Dune_rules.Profile.default)))
+                 (Profile.to_string Profile.default)))
     in
     match profile with
     | None -> t

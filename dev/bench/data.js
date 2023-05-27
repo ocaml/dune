@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685193683782,
+  "lastUpdate": 1685194033303,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -35871,6 +35871,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6334878468600003",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d3ebb55d6e3ecd269289efea076d5c77126f1fc1",
+          "message": "refactor(rpc): move dune lang dep to dune_rules_rpc (#7813)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-27T05:55:48-07:00",
+          "tree_id": "b2c24a31fa6485ba0cec435bb0b867b0027862fb",
+          "url": "https://github.com/ocaml/dune/commit/d3ebb55d6e3ecd269289efea076d5c77126f1fc1"
+        },
+        "date": 1685194032583,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "68.53831950900667",
             "unit": "seconds"
           }
         ]

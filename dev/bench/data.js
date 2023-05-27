@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685198013717,
+  "lastUpdate": 1685198508813,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -16992,6 +16992,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "44.899090790033334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4bc6060584c8f85d0e413ddf556f6668f07db8bf",
+          "message": "test: remove some pointless output (#7815)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-27T07:21:20-07:00",
+          "tree_id": "2bb764da755064bcbd10901dd579b728112db967",
+          "url": "https://github.com/ocaml/dune/commit/4bc6060584c8f85d0e413ddf556f6668f07db8bf"
+        },
+        "date": 1685198508107,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.20905021592667",
             "unit": "seconds"
           }
         ]

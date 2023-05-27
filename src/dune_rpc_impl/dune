@@ -6,8 +6,6 @@
   fiber
   csexp_rpc
   dune_stats
-  xdg
-  memo
   dune_rpc_client
   dune_console
   dune_util

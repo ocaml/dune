@@ -356,14 +356,14 @@ let context_env env name ocfg findlib env_nodes version ~profile ~host
     ]
   in
   Env.extend env ~vars:(Env.Map.of_list_exn vars)
-  |> Env.update ~var:"PATH" ~f:(fun _ ->
+  |> Env.update ~var:Env_path.var ~f:(fun _ ->
          match host with
          | None ->
            let _key, path =
-             Local_install_path.bin_dir ~context:name |> extend_var "PATH"
+             Local_install_path.bin_dir ~context:name |> extend_var Env_path.var
            in
            Some path
-         | Some host -> Env.get host.env "PATH")
+         | Some host -> Env.get host.env Env_path.var)
   |> Env.extend_env
        (Option.value ~default:Env.empty
           (Option.map findlib ~f:Findlib.Config.env))

@@ -17,6 +17,7 @@ module Format_config = Format_config
 module Bindings = Bindings
 module Subst_config = Subst_config
 module Locks = Locks
+module Profile = Profile
 
 let decode_predicate_lang_glob : Predicate_lang.Glob.t Dune_sexp.Decoder.t =
   Predicate_lang.decode

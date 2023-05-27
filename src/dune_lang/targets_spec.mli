@@ -1,6 +1,6 @@
 (** Specification of targets. *)
 
-open Import
+open Stdune
 
 module Multiplicity : sig
   type t =
@@ -33,4 +33,4 @@ type 'a t =
 (** [target] or [targets] field with the correct multiplicity. *)
 val field :
      allow_directory_targets:bool
-  -> String_with_vars.t t Dune_lang.Decoder.fields_parser
+  -> String_with_vars.t t Dune_sexp.Decoder.fields_parser

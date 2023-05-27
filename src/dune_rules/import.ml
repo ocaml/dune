@@ -50,6 +50,7 @@ module Syntax = Dune_sexp.Syntax
 
 include struct
   open Dune_lang
+  module Targets_spec = Targets_spec
   module Profile = Profile
   module Locks = Locks
   module Subst_config = Subst_config

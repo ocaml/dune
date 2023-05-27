@@ -1,4 +1,4 @@
-open Import
+open Stdune
 
 module Multiplicity = struct
   type t =
@@ -40,7 +40,7 @@ type 'a t =
   | Infer
 
 let decode_target ~allow_directory_targets =
-  let open Dune_lang.Decoder in
+  let open Dune_sexp.Decoder in
   let file =
     let+ file = String_with_vars.decode in
     (file, Kind.File)
@@ -57,25 +57,25 @@ let decode_target ~allow_directory_targets =
   file <|> dir
 
 let decode_static ~allow_directory_targets =
-  let open Dune_lang.Decoder in
-  let+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax
+  let open Dune_sexp.Decoder in
+  let+ syntax_version = Dune_sexp.Syntax.get_exn Stanza.syntax
   and+ targets = repeat (decode_target ~allow_directory_targets) in
   if syntax_version < (1, 3) then
     List.iter targets ~f:(fun (target, (_ : Kind.t)) ->
         if String_with_vars.has_pforms target then
-          Dune_lang.Syntax.Error.since
+          Dune_sexp.Syntax.Error.since
             (String_with_vars.loc target)
             Stanza.syntax (1, 3) ~what:"Using variables in the targets field");
   Static { targets; multiplicity = Multiple }
 
 let decode_one_static ~allow_directory_targets =
-  let open Dune_lang.Decoder in
-  let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 11)
+  let open Dune_sexp.Decoder in
+  let+ () = Dune_sexp.Syntax.since Stanza.syntax (1, 11)
   and+ target = decode_target ~allow_directory_targets in
   Static { targets = [ target ]; multiplicity = One }
 
 let field ~allow_directory_targets =
-  let open Dune_lang.Decoder in
+  let open Dune_sexp.Decoder in
   fields_mutually_exclusive ~default:Infer
     [ ("targets", decode_static ~allow_directory_targets)
     ; ("target", decode_one_static ~allow_directory_targets)

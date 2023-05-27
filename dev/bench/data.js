@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685198923952,
+  "lastUpdate": 1685213178313,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -44804,6 +44804,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.401353525386668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "distinct": true,
+          "id": "0991eab8267a07d40d2a53fb7120d6255265faa6",
+          "message": "refactor(alias_rec): demonstrate how to use this new type in rules\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-05-27T11:33:54-07:00",
+          "tree_id": "139d0550b756e4e77e673c3b8fb1f752925564d8",
+          "url": "https://github.com/ocaml/dune/commit/0991eab8267a07d40d2a53fb7120d6255265faa6"
+        },
+        "date": 1685213174591,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.650083867120003",
             "unit": "seconds"
           }
         ]

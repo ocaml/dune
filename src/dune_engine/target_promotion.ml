@@ -41,54 +41,15 @@ module To_delete = struct
         if Path.Source.Set.mem db p then None
         else Some (Path.Source.Set.add db p))
 
-  let remove p =
-    modify_db (fun db ->
-        if Path.Source.Set.mem db p then Some (Path.Source.Set.remove db p)
-        else None)
-
   let dump () =
     if !needs_dumping && Path.build_dir_exists () then (
       needs_dumping := false;
       get_db () |> P.dump fn)
 
-  let mem p = Path.Source.Set.mem !(Lazy.force db) p
-
   let () = Hooks.End_of_build.always dump
 end
 
 let files_in_source_tree_to_delete () = To_delete.get_db ()
-
-(* TODO: Delete this step after users of Dune <2.8 are sufficiently rare. This
-   step is sketchy because it's using the [To_delete] database and that can get
-   out of date (see a comment on [To_delete]), so we should not widen the scope
-   of it too much. *)
-let delete_stale_dot_merlin_file ~dir ~source_files_to_ignore =
-  (* If a [.merlin] file is present in the [To_delete] set but not in the
-     [Source_files_to_ignore] that means the rule that ordered its promotion is
-     no more valid. This would happen when upgrading to Dune 2.8 from earlier
-     version without and building uncleaned projects. We delete these leftover
-     files here. *)
-  let merlin_file = ".merlin" in
-  let source_dir = Path.Build.drop_build_context_exn dir in
-  let merlin_in_src = Path.Source.(relative source_dir merlin_file) in
-  let source_files_to_ignore =
-    if
-      To_delete.mem merlin_in_src
-      && not (Path.Source.Set.mem source_files_to_ignore merlin_in_src)
-    then (
-      Log.info
-        [ Pp.textf "Deleting left-over Merlin file %s.\n"
-            (Path.Source.to_string merlin_in_src)
-        ];
-      (* We remove the file from the promoted database *)
-      To_delete.remove merlin_in_src;
-      Path.Source.unlink_no_err merlin_in_src;
-      (* We need to keep ignoring the .merlin file for that build or Dune will
-         attempt to copy it and fail because it has been deleted *)
-      Path.Source.Set.add source_files_to_ignore merlin_in_src)
-    else source_files_to_ignore
-  in
-  source_files_to_ignore
 
 let promote_target_if_not_up_to_date ~src ~src_digest ~dst ~promote_source
     ~promote_until_clean =

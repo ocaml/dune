@@ -333,11 +333,8 @@ let context_env env name ocfg findlib env_nodes version ~profile ~host
       Env.add env ~var:"OCAMLPARAM" ~value
     else env
   in
-  let extend_var var ?(path_sep = Bin.path_sep) v =
-    let v = Path.to_absolute_filename (Path.build v) in
-    match Env.get env var with
-    | None -> (var, v)
-    | Some prev -> (var, sprintf "%s%c%s" v path_sep prev)
+  let extend_var var ?path_sep v =
+    (var, Bin.cons_path ?path_sep (Path.build v) ~_PATH:(Env.get env var))
   in
   let vars =
     let local_lib_root = Local_install_path.lib_root ~context:name in

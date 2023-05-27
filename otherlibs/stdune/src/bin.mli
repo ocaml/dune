@@ -10,7 +10,7 @@ val parse_path : ?sep:char -> string -> Path.t list
 val encode_strings : string list -> string
 
 (** Add an entry to the contents of a [PATH] variable. *)
-val cons_path : Path.t -> _PATH:string option -> string
+val cons_path : ?path_sep:char -> Path.t -> _PATH:string option -> string
 
 (** Extension to append to executable filenames *)
 val exe : string

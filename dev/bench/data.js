@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685197207533,
+  "lastUpdate": 1685197220829,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -35987,6 +35987,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "77.19339928532666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9e6bd2d3c785c7b140116410aa43a8ad4012ddf8",
+          "message": "fix: remove .merlin handling from the engine (#7562)\n\nWe haven't relied on .merlin files in the rules for over 2 years. It's\r\nOK to get rid of them now.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-27T06:48:47-07:00",
+          "tree_id": "14e72680df471bab0dd3a6e42721048abc681d7e",
+          "url": "https://github.com/ocaml/dune/commit/9e6bd2d3c785c7b140116410aa43a8ad4012ddf8"
+        },
+        "date": 1685197219894,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.08936331472",
             "unit": "seconds"
           }
         ]

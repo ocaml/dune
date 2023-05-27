@@ -1,5 +1,4 @@
 open Import
-module Mode = Wrapped
 
 module Common = struct
   module Encode = struct
@@ -593,7 +592,7 @@ module Wrapped = struct
   type t =
     { group : Group.t
     ; wrapped_compat : Module.Name_map.t
-    ; wrapped : Mode.t
+    ; wrapped : Dune_lang.Wrapped.t
     ; toplevel_module : [ `Exported | `Hidden ]
     }
 
@@ -602,7 +601,7 @@ module Wrapped = struct
     record
       [ ("group", Group.to_dyn group)
       ; ("wrapped_compat", Module_name.Map.to_dyn Module.to_dyn wrapped_compat)
-      ; ("wrapped", Mode.to_dyn wrapped)
+      ; ("wrapped", Dune_lang.Wrapped.to_dyn wrapped)
       ]
 
   let lib_interface t = Group.lib_interface t.group
@@ -638,7 +637,7 @@ module Wrapped = struct
        and+ modules = modules ~src_dir ()
        and+ wrapped_compat = modules ~name:"wrapped_compat" ~src_dir ()
        and+ alias = field "alias_module" (Module.decode ~src_dir)
-       and+ wrapped = field "wrapped" Mode.decode in
+       and+ wrapped = field "wrapped" Dune_lang.Wrapped.decode in
        let group =
          { Group.alias
          ; name = main_module_name
@@ -653,7 +652,7 @@ module Wrapped = struct
     fields
       (let+ group = field "group" (Group.decode ~src_dir)
        and+ wrapped_compat = modules ~name:"wrapped_compat" ~src_dir ()
-       and+ wrapped = field "wrapped" Mode.decode in
+       and+ wrapped = field "wrapped" Dune_lang.Wrapped.decode in
        { group; wrapped_compat; wrapped; toplevel_module = `Exported })
 
   let decode ~src_dir =
@@ -672,7 +671,7 @@ module Wrapped = struct
       Mangle.of_lib ~main_module_name ~lib_name ~implements ~modules
     in
     let wrapped_compat =
-      match (wrapped : Mode.t) with
+      match (wrapped : Dune_lang.Wrapped.t) with
       | Simple false -> assert false
       | Simple true -> Module_name.Map.empty
       | Yes_with_transition _ ->
@@ -777,7 +776,7 @@ let obj_map t = Lazy.force t.obj_map
 let equal (x : t) (y : t) = Poly.equal x.modules y.modules
 
 let rec encode t ~src_dir =
-  let open Dune_lang in
+  let open Dune_sexp in
   match t.modules with
   | Singleton m -> List (atom "singleton" :: Module.encode m ~src_dir)
   | Unwrapped m -> List (atom "unwrapped" :: Unwrapped.encode m ~src_dir)

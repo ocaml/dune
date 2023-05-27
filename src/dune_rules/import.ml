@@ -44,7 +44,15 @@ include struct
   module Predicate_with_id = File_selector.Predicate_with_id
 end
 
-include Ocaml
+include struct
+  open Ocaml
+  module Cm_kind = Cm_kind
+  module Mode = Mode
+  module Ml_kind = Ml_kind
+  module Variant = Variant
+  module Version = Version
+end
+
 module Re = Dune_re
 module Syntax = Dune_sexp.Syntax
 

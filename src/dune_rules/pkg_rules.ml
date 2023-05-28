@@ -219,16 +219,17 @@ module Pkg = struct
     | Ok s -> s
     | Error _ -> assert false
 
-  let source_files t =
+  let source_files t ~loc =
     let rec loop root acc path =
-      let* contents =
-        let path = Path.External.append_local root path in
-        Fs_memo.dir_contents (External path)
-      in
+      let full_path = Path.External.append_local root path in
+      let* contents = Fs_memo.dir_contents (External full_path) in
       match contents with
-      | Error _ ->
-        (* TODO *)
-        assert false
+      | Error e ->
+        User_error.raise ~loc
+          [ Pp.textf "Unable to read %s"
+              (Path.External.to_string_maybe_quoted full_path)
+          ; Unix_error.Detailed.pp e
+          ]
       | Ok contents ->
         let contents = Fs_cache.Dir_contents.to_list contents in
         let files, dirs =
@@ -1123,7 +1124,7 @@ let gen_rules context_name (pkg : Pkg.t) =
     | Some (External_copy (loc, source_root)) ->
       let source_root = Path.external_ source_root in
       let+ source_files, rules =
-        Pkg.source_files pkg
+        Pkg.source_files pkg ~loc
         >>| Path.Local.Set.fold ~init:([], [])
               ~f:(fun file (source_files, rules) ->
                 let src = Path.append_local source_root file in

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685303207638,
+  "lastUpdate": 1685303354892,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -45761,6 +45761,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.327152672786667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9302a9ffd19e8ed20b229ad6b36b5949c2800e76",
+          "message": "fix(pkg): improve location for source copying (#7826)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-28T12:34:01-07:00",
+          "tree_id": "a2ef717a5f36fac08c9e27d91fd381386a2ea249",
+          "url": "https://github.com/ocaml/dune/commit/9302a9ffd19e8ed20b229ad6b36b5949c2800e76"
+        },
+        "date": 1685303350089,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.98975625191333",
             "unit": "seconds"
           }
         ]

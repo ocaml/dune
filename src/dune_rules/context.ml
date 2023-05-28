@@ -324,13 +324,7 @@ let context_env env name ocfg findlib env_nodes version ~profile ~host
       && Lazy.force Ansi_color.stderr_supports_color
       && Ocaml.Version.supports_color_in_ocamlparam version
       && not (Ocaml.Version.supports_ocaml_color version)
-    then
-      let value =
-        match Env.get env "OCAMLPARAM" with
-        | None -> "color=always,_"
-        | Some s -> "color=always," ^ s
-      in
-      Env.add env ~var:"OCAMLPARAM" ~value
+    then Ocaml.Env.with_color env
     else env
   in
   let extend_var var ?path_sep v =

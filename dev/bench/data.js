@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685276428918,
+  "lastUpdate": 1685288792649,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -45616,6 +45616,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "24.813417594806666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c12997170bb861cd22e65bbbc639fb4532b3be1f",
+          "message": "feature: async digest handling (#7372)\n\nCompute file digests in background threads\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-28T08:30:52-07:00",
+          "tree_id": "2f474a27b1e5d369a088194b6db5b980de266042",
+          "url": "https://github.com/ocaml/dune/commit/c12997170bb861cd22e65bbbc639fb4532b3be1f"
+        },
+        "date": 1685288787775,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.590819290373332",
             "unit": "seconds"
           }
         ]

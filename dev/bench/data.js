@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685268319699,
+  "lastUpdate": 1685268330907,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -36480,6 +36480,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "67.93534390994667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dfc1b24da8476fba5d143cebc18c5d5863240364",
+          "message": "refactor: move ctypes module to its directory (#7820)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-28T02:29:23-07:00",
+          "tree_id": "a7544b6630901191a8161d62c2aef7af789d48a9",
+          "url": "https://github.com/ocaml/dune/commit/dfc1b24da8476fba5d143cebc18c5d5863240364"
+        },
+        "date": 1685268330254,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8330027109133333",
             "unit": "seconds"
           }
         ]

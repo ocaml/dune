@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685268442778,
+  "lastUpdate": 1685268453237,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -36567,6 +36567,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "61.767074784013325",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1060e8355fc6e0df6a06a8e62d88b54470a0f676",
+          "message": "refactor: move OCAMLPARAM handling to [ocaml] (#7823)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-28T02:31:44-07:00",
+          "tree_id": "f1b19a459b783177c952f451043153d99b0ded06",
+          "url": "https://github.com/ocaml/dune/commit/1060e8355fc6e0df6a06a8e62d88b54470a0f676"
+        },
+        "date": 1685268452338,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.575437263073333",
             "unit": "seconds"
           }
         ]

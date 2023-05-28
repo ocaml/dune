@@ -24,3 +24,4 @@ module Locks = Locks
 module Profile = Profile
 module Targets_spec = Targets_spec
 module Wrapped = Wrapped
+module Visibility = Visibility

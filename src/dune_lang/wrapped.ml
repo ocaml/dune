@@ -1,5 +1,5 @@
-open Import
-open Dune_lang.Decoder
+open Stdune
+open Dune_sexp.Decoder
 
 type t =
   | Simple of bool
@@ -12,13 +12,13 @@ let decode =
     [ ("true", return (Simple true))
     ; ("false", return (Simple false))
     ; ( "transition"
-      , Dune_lang.Syntax.since Stanza.syntax (1, 2)
+      , Dune_sexp.Syntax.since Stanza.syntax (1, 2)
         >>> let+ x = string in
             Yes_with_transition x )
     ]
 
 let encode =
-  let open Dune_lang.Encoder in
+  let open Dune_sexp.Encoder in
   function
   | Simple b -> bool b
   | Yes_with_transition m -> pair string string ("transition", m)

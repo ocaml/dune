@@ -19,6 +19,7 @@ module Subst_config = Subst_config
 module Locks = Locks
 module Profile = Profile
 module Targets_spec = Targets_spec
+module Wrapped = Wrapped
 
 let decode_predicate_lang_glob : Predicate_lang.Glob.t Dune_sexp.Decoder.t =
   Predicate_lang.decode

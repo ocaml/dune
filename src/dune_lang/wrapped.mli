@@ -4,7 +4,7 @@ type t =
 
 val equal : t -> t -> bool
 
-include Dune_lang.Conv.S with type t := t
+include Dune_sexp.Conv.S with type t := t
 
 val to_bool : t -> bool
 

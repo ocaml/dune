@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685275511967,
+  "lastUpdate": 1685276049439,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17224,6 +17224,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "43.903919612206664",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a7cdf972ea8bcf8e4924bcc1f58ebda978e89589",
+          "message": "refactor: move Wrapped to Dune_lang (#7825)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-28T04:51:15-07:00",
+          "tree_id": "8b4ace5ea1cc22db8ae038d2878534640c710e25",
+          "url": "https://github.com/ocaml/dune/commit/a7cdf972ea8bcf8e4924bcc1f58ebda978e89589"
+        },
+        "date": 1685276048297,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.91043061122",
             "unit": "seconds"
           }
         ]

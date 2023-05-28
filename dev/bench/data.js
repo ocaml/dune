@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685303938229,
+  "lastUpdate": 1685304039303,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -36944,6 +36944,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.1518609957333337",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "823a52f87e0ac7d5e4fa866631af9e16a62935f9",
+          "message": "refactor: remove context_name from lib_config (#7637)\n\nIt has nothing to do with library settings\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-28T12:33:48-07:00",
+          "tree_id": "4543c38e004fda88b79b4d04e5a858828d5f8209",
+          "url": "https://github.com/ocaml/dune/commit/823a52f87e0ac7d5e4fa866631af9e16a62935f9"
+        },
+        "date": 1685304038433,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "67.11616853723332",
             "unit": "seconds"
           }
         ]

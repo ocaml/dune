@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685267613253,
+  "lastUpdate": 1685267715944,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -45094,6 +45094,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.04265303977333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9ff5c5e009c9bd1b9bca2efd8019ccbab3f8058b",
+          "message": "refactor: move cram to appropriate directory (#7821)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-28T02:29:50-07:00",
+          "tree_id": "8926e7f65a16ff5ad332859b678c4cd2ea600b3f",
+          "url": "https://github.com/ocaml/dune/commit/9ff5c5e009c9bd1b9bca2efd8019ccbab3f8058b"
+        },
+        "date": 1685267711364,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.74642935346",
             "unit": "seconds"
           }
         ]

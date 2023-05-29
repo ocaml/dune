@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685351379150,
+  "lastUpdate": 1685385865298,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -46312,6 +46312,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.580867098719995",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3b075f7d0a30cd765d34cfeb33396c4d7860de20",
+          "message": "feature: async sandboxing (#7360)\n\nConstruct and remove sandboxes asynchronously. We move the construction\r\nto background threads to allow the build to proceed instead of blocking\r\non IO.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-29T11:30:55-07:00",
+          "tree_id": "1923e69b24f3615d5a5a3b6c0e8f924fb35907a1",
+          "url": "https://github.com/ocaml/dune/commit/3b075f7d0a30cd765d34cfeb33396c4d7860de20"
+        },
+        "date": 1685385861549,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "24.653523764813333",
             "unit": "seconds"
           }
         ]

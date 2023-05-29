@@ -7,6 +7,8 @@ module Kind : sig
     | Git
     | Hg
 
+  val of_dir_name : Filename.t -> t option
+
   val of_dir_contents : Filename.Set.t -> t option
 end
 

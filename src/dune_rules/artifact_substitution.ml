@@ -95,12 +95,7 @@ let conf_of_context (context : Context.t option) =
       Hardcoded (install_dir :: context.default_ocamlpath)
     in
     let sign_hook = lazy (sign_hook_of_context context) in
-    { get_vcs = Source_tree.nearest_vcs
-    ; get_location
-    ; get_config_path
-    ; hardcoded_ocaml_path
-    ; sign_hook
-    }
+    { get_vcs; get_location; get_config_path; hardcoded_ocaml_path; sign_hook }
 
 let conf_for_install ~relocatable ~roots ~(context : Context.t) =
   let get_vcs = Source_tree.nearest_vcs in

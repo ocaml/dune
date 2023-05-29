@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685351368841,
+  "lastUpdate": 1685351379150,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -37292,6 +37292,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "63.95656276036001",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f84e6ead5beeccd67ededde520e3e2507576d8f9",
+          "message": "refactor: move site variables to site runtime lib (#7828)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-29T01:43:20-07:00",
+          "tree_id": "e94841b29722abf9cbedc8c07045ae4280461fd5",
+          "url": "https://github.com/ocaml/dune/commit/f84e6ead5beeccd67ededde520e3e2507576d8f9"
+        },
+        "date": 1685351378472,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6253083702200002",
             "unit": "seconds"
           }
         ]

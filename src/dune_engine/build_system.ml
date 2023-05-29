@@ -438,20 +438,22 @@ end = struct
       action
     in
     let* dune_stats = Scheduler.stats () in
-    let sandbox =
+    let* sandbox =
       match sandbox_mode with
       | Some mode ->
-        Some
-          (Sandbox.create ~mode ~deps ~rule_dir:dir ~rule_loc:loc ~rule_digest
-             ~dune_stats
-             ~expand_aliases:
-               (Execution_parameters.expand_aliases_in_sandbox
-                  execution_parameters))
+        let+ sandbox =
+          Sandbox.create ~mode ~deps ~rule_dir:dir ~rule_loc:loc ~rule_digest
+            ~dune_stats
+            ~expand_aliases:
+              (Execution_parameters.expand_aliases_in_sandbox
+                 execution_parameters)
+        in
+        Some sandbox
       | None ->
         (* If the action is not sandboxed, we use [pending_file_targets] to
            clean up the build directory if the action is interrupted. *)
         Pending_targets.add targets;
-        None
+        Fiber.return None
     in
     let action =
       match sandbox with
@@ -482,10 +484,10 @@ end = struct
         | None -> root
         | Some sandbox -> Sandbox.map_path sandbox root)
     in
-    let+ exec_result =
+    let* exec_result =
       with_locks locks ~f:(fun () ->
           let build_deps deps = Memo.run (build_deps deps) in
-          let+ action_exec_result =
+          let* action_exec_result =
             let input =
               { Action_exec.root
               ; context
@@ -500,10 +502,11 @@ end = struct
             | None -> Action_exec.exec input ~build_deps
             | Some runner -> Action_runner.exec_action runner input
           in
-          let produced_targets =
+          let+ produced_targets =
             match sandbox with
             | None ->
-              Targets.Produced.produced_after_rule_executed_exn ~loc targets
+              Fiber.return
+                (Targets.Produced.produced_after_rule_executed_exn ~loc targets)
             | Some sandbox ->
               (* The stamp file for anonymous actions is always created outside
                  the sandbox, so we can't move it. *)
@@ -518,11 +521,14 @@ end = struct
           in
           { Exec_result.produced_targets; action_exec_result })
     in
-    (match sandbox with
-    | Some sandbox -> Sandbox.destroy sandbox
-    | None ->
-      (* All went well, these targets are no longer pending. *)
-      Pending_targets.remove targets);
+    let+ () =
+      match sandbox with
+      | Some sandbox -> Sandbox.destroy sandbox
+      | None ->
+        (* All went well, these targets are no longer pending. *)
+        Pending_targets.remove targets;
+        Fiber.return ()
+    in
     exec_result
 
   let promote_targets ~rule_mode ~dir ~targets ~promote_source =

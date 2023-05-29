@@ -106,3 +106,13 @@ let background_digests =
   in
   register t;
   t
+
+let background_sandboxes =
+  let t =
+    { name = "background_sandboxes"
+    ; of_string = Toggle.of_string
+    ; value = `Disabled
+    }
+  in
+  register t;
+  t

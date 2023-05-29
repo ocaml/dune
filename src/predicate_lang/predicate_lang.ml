@@ -9,7 +9,8 @@ type 'a t =
   | Inter of 'a t list
 
 let diff a = function
-  | Union [] | Inter [] -> a
+  | Union [] -> a
+  | Inter [] -> Union []
   | b -> Inter [ a; Compl b ]
 
 let inter a = Inter a

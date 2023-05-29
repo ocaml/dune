@@ -338,8 +338,9 @@ let context_env env name ocfg findlib env_nodes version ~profile ~host
            "lib/stublibs")
     ; extend_var "OCAMLPATH" ~path_sep:Findlib.Config.ocamlpath_sep
         local_lib_root
-    ; ("DUNE_OCAML_STDLIB", Ocaml_config.standard_library ocfg)
-    ; ( "DUNE_OCAML_HARDCODED"
+    ; ( Dune_site_private.dune_ocaml_stdlib_env_var
+      , Ocaml_config.standard_library ocfg )
+    ; ( Dune_site_private.dune_ocaml_hardcoded_env_var
       , String.concat
           ~sep:(Char.escaped Findlib.Config.ocamlpath_sep)
           (List.map ~f:Path.to_string default_ocamlpath) )
@@ -351,7 +352,7 @@ let context_env env name ocfg findlib env_nodes version ~profile ~host
     ; ( "INSIDE_DUNE"
       , let build_dir = Context_name.build_dir name in
         Path.to_absolute_filename (Path.build build_dir) )
-    ; ( "DUNE_SOURCEROOT"
+    ; ( Dune_site_private.dune_sourceroot_env_var
       , Path.to_absolute_filename (Path.source Path.Source.root) )
     ]
   in

@@ -3,6 +3,12 @@ let path_sep = if Sys.win32 then ';' else ':'
 
 let dune_dir_locations_env_var = "DUNE_DIR_LOCATIONS"
 
+let dune_ocaml_stdlib_env_var = "DUNE_OCAML_STDLIB"
+
+let dune_ocaml_hardcoded_env_var = "DUNE_OCAML_HARDCODED"
+
+let dune_sourceroot_env_var = "DUNE_SOURCEROOT"
+
 type entry =
   { package : string
   ; section : Dune_section.t

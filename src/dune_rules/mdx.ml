@@ -207,8 +207,7 @@ let decode =
     (let+ loc = loc
      and+ version = Dune_lang.Syntax.get_exn syntax
      and+ files =
-       field "files" Dune_lang.decode_predicate_lang_glob
-         ~default:Predicate_lang.Standard
+       field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.Standard
      and+ enabled_if =
        Enabled_if.decode ~allowed_vars:Any ~since:(Some (2, 9)) ()
      and+ package =
@@ -259,7 +258,7 @@ let files_to_mdx t ~sctx ~dir =
   let must_mdx src_path =
     let file = Path.Source.basename src_path in
     let standard = default_files_of_version t.version in
-    Predicate_lang.Glob.exec t.files ~standard file
+    Predicate_lang.Glob.test t.files ~standard file
   in
   let build_path src_path =
     Path.Build.append_source (Super_context.context sctx).build_dir src_path

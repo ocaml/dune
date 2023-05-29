@@ -29,11 +29,11 @@ end
 
 type 'a t = (Predicate_lang.Glob.t, 'a) Ast.t
 
-let decode f = Ast.decode Dune_lang.decode_predicate_lang_glob f
+let decode f = Ast.decode Predicate_lang.Glob.decode f
 
 let eval (t : _ t) ~f =
   let elem = f t.on in
   List.find_map t.clauses ~f:(fun (keys, v) ->
       Option.some_if
-        (Predicate_lang.Glob.exec keys ~standard:Predicate_lang.empty elem)
+        (Predicate_lang.Glob.test keys ~standard:Predicate_lang.empty elem)
         v)

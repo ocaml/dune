@@ -31,8 +31,7 @@ let decode =
   fields
     (let+ loc = loc
      and+ files =
-       field "files" Dune_lang.decode_predicate_lang_glob
-         ~default:Predicate_lang.any
+       field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.any
      and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
      and+ libraries =
        field "libraries" (Lib_dep.L.decode ~allow_re_export:false) ~default:[]
@@ -71,7 +70,7 @@ let gen_rules sctx t ~dir ~scope =
     >>| Path.Source.Set.to_list
     >>| List.filter_map ~f:(fun p ->
             if
-              Predicate_lang.Glob.exec t.files (Path.Source.basename p)
+              Predicate_lang.Glob.test t.files (Path.Source.basename p)
                 ~standard:Predicate_lang.any
             then
               Some

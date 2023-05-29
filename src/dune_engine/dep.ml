@@ -311,8 +311,7 @@ module Set = struct
      depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
      directories in directories that contain no file. *)
   let dir_without_files_dep dir =
-    file_selector
-      (File_selector.create ~dir File_selector.Predicate_with_id.false_)
+    file_selector (File_selector.of_predicate_lang ~dir Predicate_lang.empty)
 
   let of_source_files ~files ~empty_directories =
     let init =

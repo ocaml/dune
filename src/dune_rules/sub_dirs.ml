@@ -79,11 +79,7 @@ let status status_by_dir ~dir : Status.Or_ignored.t =
   | Some d -> Status d
 
 let default =
-  let standard_dirs =
-    Predicate_lang.Glob.of_pred (function
-      | "" -> false
-      | s -> s.[0] <> '.' && s.[0] <> '_')
-  in
+  let standard_dirs = Predicate_lang.Glob.of_glob (Glob.of_string "[!._]*") in
   { Status.Map.normal = standard_dirs
   ; data_only = Predicate_lang.empty
   ; vendored = Predicate_lang.empty
@@ -120,7 +116,7 @@ let eval (t : _ Status.Map.t) ~dirs =
   |> String.Map.filter_mapi ~f:(fun dir () : Status.t option ->
          let statuses =
            Status.Map.merge t default ~f:(fun pred standard ->
-               Predicate_lang.Glob.exec pred ~standard dir)
+               Predicate_lang.Glob.test pred ~standard dir)
            |> Status.Set.to_list
          in
          match statuses with
@@ -273,7 +269,7 @@ let decode =
   let ignored_sub_dirs =
     let ignored =
       let+ l = enter (repeat (strict_subdir "ignored_sub_dirs")) in
-      Predicate_lang.Glob.of_string_set (String.Set.of_list_map ~f:snd l)
+      Predicate_lang.Glob.of_string_list (List.rev_map ~f:snd l)
     in
     let+ version = Dune_lang.Syntax.get_exn Stanza.syntax
     and+ loc, ignored = located ignored in
@@ -288,7 +284,7 @@ let decode =
   let dirs =
     located
       (Dune_lang.Syntax.since Stanza.syntax (1, 6)
-      >>> Dune_lang.decode_predicate_lang_glob)
+      >>> Predicate_lang.Glob.decode)
   in
   let data_only_dirs =
     located

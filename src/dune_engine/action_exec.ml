@@ -247,6 +247,8 @@ let diff_eq_files { Action.Diff.optional; mode; file1; file2 } =
   (optional && not (Path.Untracked.exists file2))
   || compare_files mode file1 file2 = Eq
 
+let zero = Predicate_lang.Element 0
+
 let rec exec t ~display ~ectx ~eenv =
   match (t : Action.t) with
   | Run (Error e, _) -> Action.Prog.Not_found.raise e
@@ -255,11 +257,9 @@ let rec exec t ~display ~ectx ~eenv =
     Done
   | With_accepted_exit_codes (exit_codes, t) ->
     let eenv =
-      let standard = Predicate_lang.Element (Predicate.create (Int.equal 0)) in
       let exit_codes =
-        Predicate_lang.map exit_codes ~f:(fun i ->
-            Predicate.create (Int.equal i))
-        |> Predicate_lang.to_predicate ~standard
+        Predicate.create
+          (Predicate_lang.test exit_codes ~test:Int.equal ~standard:zero)
       in
       { eenv with exit_codes }
     in

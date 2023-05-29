@@ -140,8 +140,7 @@ let rules ~sctx ~expander ~dir tests =
               match spec.applies_to with
               | Whole_subtree -> true
               | Files_matching_in_this_dir pred ->
-                Predicate_lang.Glob.exec pred
-                  ~standard:Predicate_lang.Glob.true_ name
+                Predicate_lang.Glob.test pred ~standard:Predicate_lang.any name
             with
             | false -> acc
             | true ->

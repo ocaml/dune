@@ -41,7 +41,6 @@ include struct
   module Load_rules = Load_rules
   module Response_file = Response_file
   module Subdir_set = Subdir_set
-  module Predicate_with_id = File_selector.Predicate_with_id
 end
 
 include struct

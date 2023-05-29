@@ -62,7 +62,7 @@ let include_dir_flags ~expander ~dir ~include_dirs =
                 (sprintf "%S is not a directory" (Path.to_string include_dir))
           in
           let deps =
-            File_selector.create ~dir:include_dir Predicate_with_id.true_
+            File_selector.of_predicate_lang ~dir:include_dir Predicate_lang.any
             |> Dep.file_selector |> Dep.Set.singleton
           in
           Command.Args.Hidden_deps deps
@@ -87,7 +87,8 @@ let include_dir_flags ~expander ~dir ~include_dirs =
                             Path.append_source build_dir
                               (Source_tree.Dir.path t)
                           in
-                          File_selector.create ~dir Predicate_with_id.true_
+                          File_selector.of_predicate_lang ~dir
+                            Predicate_lang.any
                           |> Dep.file_selector |> Dep.Set.singleton
                         in
                         Command.Args.Hidden_deps deps

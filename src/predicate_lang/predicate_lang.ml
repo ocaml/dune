@@ -95,47 +95,90 @@ let rec to_dyn f =
   | Union xs -> variant "or" (List.map ~f:(to_dyn f) xs)
   | Inter xs -> variant "and" (List.map ~f:(to_dyn f) xs)
 
-let rec exec t ~standard elem =
-  match (t : _ t) with
-  | Compl t -> not (exec t ~standard elem)
-  | Element f -> elem f
-  | Union xs -> List.exists ~f:(fun t -> exec t ~standard elem) xs
-  | Inter xs -> List.for_all ~f:(fun t -> exec t ~standard elem) xs
-  | Standard -> exec standard ~standard elem
-
-let rec map t ~f =
+let rec test_ t ~standard ~test elem =
   match t with
-  | Compl x -> Compl (map x ~f)
-  | Element x -> Element (f x)
-  | Union x -> Union (List.map x ~f:(map ~f))
-  | Inter x -> Inter (List.map x ~f:(map ~f))
-  | Standard -> Standard
+  | Compl t -> not (test_ t ~standard ~test elem)
+  | Element f -> test f elem
+  | Union xs -> List.exists ~f:(fun t -> test_ t ~standard ~test elem) xs
+  | Inter xs -> List.for_all ~f:(fun t -> test_ t ~standard ~test elem) xs
+  | Standard -> test_ standard ~standard ~test elem
 
-let to_predicate (type a) (t : a Predicate.t t) ~standard : a Predicate.t =
-  Predicate.create (fun a ->
-      exec t ~standard (fun pred -> Predicate.test pred a))
+let test = test_
+
+let rec compare f x y =
+  match (x, y) with
+  | Element a, Element b -> f a b
+  | Element _, _ -> Lt
+  | _, Element _ -> Gt
+  | Compl x, Compl y -> compare f x y
+  | Compl _, _ -> Lt
+  | _, Compl _ -> Gt
+  | Standard, Standard -> Eq
+  | Standard, _ -> Lt
+  | _, Standard -> Gt
+  | Union a, Union b -> List.compare a b ~compare:(compare f)
+  | Union _, _ -> Lt
+  | _, Union _ -> Gt
+  | Inter a, Inter b -> List.compare a b ~compare:(compare f)
 
 module Glob = struct
-  type glob = string -> bool
+  module Glob = Dune_glob.V1
 
-  type nonrec t = glob t
+  module Element = struct
+    type t =
+      | Glob of Glob.t
+      | Literal of string
 
-  let to_dyn t = to_dyn (fun _ -> Dyn.string "opaque") t
+    let to_dyn = function
+      | Literal s -> Dyn.variant "Literal" [ Dyn.string s ]
+      | Glob g -> Dyn.variant "Glob" [ Glob.to_dyn g ]
 
-  let exec (t : t) ~standard elem = exec t ~standard (fun f -> f elem)
+    let encode t =
+      Dune_sexp.atom_or_quoted_string
+      @@
+      match t with
+      | Literal s -> s
+      | Glob g -> Glob.to_string g
 
-  let filter (t : t) ~standard elems =
-    match t with
-    | Inter [] | Union [] -> []
-    | _ -> List.filter elems ~f:(fun elem -> exec t ~standard elem)
+    let compare x y =
+      match (x, y) with
+      | Glob x, Glob y -> Glob.compare x y
+      | Glob _, _ -> Lt
+      | _, Glob _ -> Gt
+      | Literal x, Literal y -> String.compare x y
 
-  let create_glob g = Dune_glob.V1.test g
+    let test t s =
+      match t with
+      | Literal s' -> String.equal s s'
+      | Glob g -> Glob.test g s
 
-  let of_glob g = Element (create_glob g)
+    let decode =
+      let open Dune_sexp.Decoder in
+      let+ glob =
+        Decoder.plain_string (fun ~loc x -> Glob.of_string_exn loc x)
+      in
+      Glob glob
+  end
 
-  let of_pred p = Element p
+  type nonrec t = Element.t t
 
-  let true_ = Element (fun _ -> true)
+  let to_dyn t = to_dyn Element.to_dyn t
 
-  let of_string_set s = Element (String.Set.mem s)
+  let test (t : t) ~standard elem = test t ~standard ~test:Element.test elem
+
+  let of_glob g = Element (Element.Glob g)
+
+  let of_string_list s =
+    Union (List.rev_map s ~f:(fun x -> Element (Element.Literal x)))
+
+  let of_string_set s =
+    Union (String.Set.to_list_map ~f:(fun x -> Element (Element.Literal x)) s)
+
+  let compare x y = compare Element.compare x y
+
+  let hash t = Poly.hash t
+
+  let decode = decode Element.decode
+
+  let encode t = encode Element.encode t
 end

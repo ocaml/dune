@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685347274116,
+  "lastUpdate": 1685347735874,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17340,6 +17340,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "44.319180011760004",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f97171818f36df594e856edba0351fe82d2a1e4a",
+          "message": "refactor: remove vcs from source tree (#7555)\n\nIt can be implemented on top of more primitive source tree functionality\r\nand is not worth storing as its computed quickly.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-29T00:47:46-07:00",
+          "tree_id": "89512b74c8dcab077594881e021c87aed8aeabc4",
+          "url": "https://github.com/ocaml/dune/commit/f97171818f36df594e856edba0351fe82d2a1e4a"
+        },
+        "date": 1685347734695,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.92284418692667",
             "unit": "seconds"
           }
         ]

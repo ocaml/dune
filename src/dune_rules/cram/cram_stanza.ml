@@ -14,7 +14,7 @@ let decode_applies_to =
     Whole_subtree
   in
   let predicate =
-    let+ predicate = Dune_lang.decode_predicate_lang_glob in
+    let+ predicate = Predicate_lang.Glob.decode in
     Files_matching_in_this_dir predicate
   in
   subtree <|> predicate

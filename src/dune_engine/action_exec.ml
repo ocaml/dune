@@ -259,7 +259,7 @@ let rec exec t ~display ~ectx ~eenv =
     let eenv =
       let exit_codes =
         Predicate.create
-          (Predicate_lang.exec exit_codes ~equal:Int.equal ~standard:zero)
+          (Predicate_lang.test exit_codes ~test:Int.equal ~standard:zero)
       in
       { eenv with exit_codes }
     in

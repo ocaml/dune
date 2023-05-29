@@ -44,5 +44,5 @@ let hash { dir; predicate; only_generated_files } =
     (dir, predicate, only_generated_files)
 
 let test t path =
-  Predicate_lang.Glob.exec t.predicate ~standard:Predicate_lang.empty
+  Predicate_lang.Glob.test t.predicate ~standard:Predicate_lang.empty
     (Path.basename path)

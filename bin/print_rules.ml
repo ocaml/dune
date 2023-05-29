@@ -60,7 +60,7 @@ let rec encode : Action.For_shell.t -> Dune_lang.t =
   | With_accepted_exit_codes (pred, t) ->
     List
       [ atom "with-accepted-exit-codes"
-      ; Predicate_lang.encode Dune_lang.Encoder.int (fun _ -> assert false) pred
+      ; Predicate_lang.encode Dune_lang.Encoder.int pred
       ; encode t
       ]
   | Dynamic_run (a, xs) ->

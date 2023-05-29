@@ -116,7 +116,7 @@ let eval (t : _ Status.Map.t) ~dirs =
   |> String.Map.filter_mapi ~f:(fun dir () : Status.t option ->
          let statuses =
            Status.Map.merge t default ~f:(fun pred standard ->
-               Predicate_lang.Glob.exec pred ~standard dir)
+               Predicate_lang.Glob.test pred ~standard dir)
            |> Status.Set.to_list
          in
          match statuses with
@@ -284,7 +284,7 @@ let decode =
   let dirs =
     located
       (Dune_lang.Syntax.since Stanza.syntax (1, 6)
-      >>> Dune_lang.decode_predicate_lang_glob)
+      >>> Predicate_lang.Glob.decode)
   in
   let data_only_dirs =
     located

@@ -308,10 +308,6 @@ module Pkg = struct
                |> Env.Map.add_multi env "OCAMLTOP_INCLUDE_PATH"
              in
              let env =
-               Value.Dir (Install.Section.Paths.get paths Toplevel)
-               |> Env.Map.add_multi env "OCAMLTOP_INCLUDE_PATH"
-             in
-             let env =
                Value.Dir (Install.Section.Paths.get paths Lib)
                |> Env.Map.add_multi env "OCAMLPATH"
              in

@@ -24,12 +24,7 @@ module Emit = struct
   let implicit_alias = Alias.Name.of_string "melange"
 
   let decode =
-    let extension_field =
-      let+ loc, extension = located string in
-      if String.is_prefix ~prefix:"." extension then
-        User_error.raise ~loc [ Pp.textf "extension must not start with '.'" ];
-      "." ^ extension
-    in
+    let extension_field = extension in
     let module_systems =
       let module_system =
         enum [ ("es6", Melange.Module_system.Es6); ("commonjs", CommonJs) ]
@@ -95,7 +90,7 @@ module Emit = struct
                  ])
          in
          field "target" (plain_string (fun ~loc s -> of_string ~loc s))
-       and+ alias = field_o "alias" Alias.Name.decode
+       and+ alias = field_o "alias" Dune_lang.Alias.decode
        and+ module_systems =
          field "module_systems" module_systems
            ~default:[ Melange.Module_system.default ]
@@ -104,7 +99,7 @@ module Emit = struct
        and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ runtime_deps =
          field "runtime_deps"
-           (located (repeat Dep_conf.decode))
+           (located (repeat Dep_conf.decode_no_files))
            ~default:(loc, [])
        and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
        and+ promote = field_o "promote" Rule_mode_decoder.Promote.decode
@@ -145,8 +140,8 @@ end
 
 let syntax =
   Dune_lang.Syntax.create ~name:Dune_project.Melange_syntax.name
-    ~desc:"support for Melange compiler"
-    [ ((0, 1), `Since (3, 7)) ]
+    ~desc:"the Melange extension"
+    [ ((0, 1), `Since (3, 8)) ]
 
 let () =
   Dune_project.Extension.register_simple syntax

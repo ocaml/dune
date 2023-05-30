@@ -6,27 +6,7 @@ let opam_ext = ".opam"
 let is_opam_file path = String.is_suffix (Path.to_string path) ~suffix:opam_ext
 
 module Name = struct
-  include String
-
-  include (
-    Stringlike.Make (struct
-      type t = string
-
-      let to_string x = x
-
-      let module_ = "Package.Name"
-
-      let description = "package name"
-
-      let description_of_valid_string = None
-
-      let hint_valid = None
-
-      let of_string_opt s =
-        (* DUNE3 verify no dots or spaces *)
-        if s = "" then None else Some s
-    end) :
-      Stringlike_intf.S with type t := t)
+  include Dune_lang.Package_name
 
   let of_opam_file_basename basename =
     let open Option.O in
@@ -38,6 +18,11 @@ module Name = struct
   let meta_fn (t : t) = "META." ^ to_string t
 
   let version_fn (t : t) = to_string t ^ ".version"
+
+  let of_opam_package_name opam_package_name =
+    OpamPackage.Name.to_string opam_package_name |> of_string
+
+  let to_opam_package_name t = to_string t |> OpamPackage.Name.of_string
 
   module Infix = Comparator.Operators (String)
   module Map_traversals = Memo.Make_map_traversals (Map)
@@ -112,6 +97,10 @@ module Dependency = struct
       | Lt -> nopos `Lt
       | Neq -> nopos `Neq
 
+    let to_relop_pelem op =
+      let ({ pelem; _ } : OpamParserTypes.FullPos.relop) = to_relop op in
+      pelem
+
     let encode x =
       let f (_, op) = equal x op in
       (* Assumes the [map] is complete, so exception is impossible *)
@@ -121,28 +110,33 @@ module Dependency = struct
   module Constraint = struct
     module Var = struct
       type t =
-        | QVar of string
+        | Literal of string
         | Var of string
 
       let encode = function
-        | QVar v -> Dune_lang.Encoder.string v
+        | Literal v -> Dune_lang.Encoder.string v
         | Var v -> Dune_lang.Encoder.string (":" ^ v)
 
       let decode =
         let open Dune_lang.Decoder in
         let+ s = string in
-        if String.is_prefix s ~prefix:":" then Var (String.drop s 1) else QVar s
+        if String.is_prefix s ~prefix:":" then Var (String.drop s 1)
+        else Literal s
 
       let to_opam v =
         let value_kind : OpamParserTypes.FullPos.value_kind =
           match v with
-          | QVar x -> String x
+          | Literal x -> String x
           | Var x -> Ident x
         in
         nopos value_kind
 
+      let to_opam_filter = function
+        | Literal literal -> OpamTypes.FString literal
+        | Var var -> OpamTypes.FIdent ([], OpamVariable.of_string var, None)
+
       let to_dyn = function
-        | QVar v -> Dyn.String v
+        | Literal v -> Dyn.String v
         | Var v -> Dyn.String (":" ^ v)
     end
 
@@ -201,6 +195,23 @@ module Dependency = struct
             Bvar (Var (String.drop s 1))
           | _ -> sum (ops @ logops))
 
+    let rec to_opam_condition = function
+      | Bvar var -> OpamTypes.Atom (OpamTypes.Filter (Var.to_opam_filter var))
+      | Uop (op, var) ->
+        OpamTypes.Atom
+          (OpamTypes.Constraint (Op.to_relop_pelem op, Var.to_opam_filter var))
+      | Bop (op, lhs, rhs) ->
+        OpamTypes.Atom
+          (OpamTypes.Filter
+             (OpamTypes.FOp
+                ( Var.to_opam_filter lhs
+                , Op.to_relop_pelem op
+                , Var.to_opam_filter rhs )))
+      | And conjunction ->
+        OpamFormula.ands (List.map conjunction ~f:to_opam_condition)
+      | Or disjunction ->
+        OpamFormula.ors (List.map disjunction ~f:to_opam_condition)
+
     let rec to_dyn =
       let open Dyn in
       function
@@ -258,6 +269,17 @@ module Dependency = struct
     match constraint_ with
     | None -> pkg
     | Some c -> nopos (OpamParserTypes.FullPos.Option (pkg, nopos [ c ]))
+
+  let list_to_opam_filtered_formula ts =
+    List.map ts ~f:(fun { name; constraint_ } ->
+        let opam_package_name = Name.to_opam_package_name name in
+        let condition =
+          match constraint_ with
+          | None -> OpamTypes.Empty
+          | Some constraint_ -> Constraint.to_opam_condition constraint_
+        in
+        OpamFormula.Atom (opam_package_name, condition))
+    |> OpamFormula.ands
 
   let to_dyn { name; constraint_ } =
     let open Dyn in
@@ -549,7 +571,7 @@ end
 
 type opam_file =
   | Exists of bool
-  | Look_inside_opam_dir
+  | Generated
 
 type t =
   { id : Id.t
@@ -579,10 +601,7 @@ let name t = t.id.name
 let dir t = t.id.dir
 
 let set_inside_opam_dir t ~dir =
-  { t with
-    has_opam_file = Look_inside_opam_dir
-  ; opam_file = Path.Source.relative dir (Name.opam_fn t.id.name)
-  }
+  { t with opam_file = Path.Source.relative dir (Name.opam_fn t.id.name) }
 
 let encode (name : Name.t)
     { id = _
@@ -687,7 +706,7 @@ let dyn_of_opam_file =
   let open Dyn in
   function
   | Exists b -> variant "Exists" [ bool b ]
-  | Look_inside_opam_dir -> variant "Look_inside_opam_dir" []
+  | Generated -> variant "Generated" []
 
 let to_dyn
     { id
@@ -838,3 +857,13 @@ let missing_deps (t : t) ~effective_deps =
     |> Name.Set.of_list
   in
   Name.Set.diff effective_deps specified_deps
+
+let to_opam_file t =
+  let opam_package_name = name t |> Name.to_opam_package_name in
+  let depends = Dependency.list_to_opam_filtered_formula t.depends in
+  (* Currently this just creates an opam file with fields needed for dependency
+     solving with opam_0install but could easily be extended with more fields.
+  *)
+  OpamFile.OPAM.empty
+  |> OpamFile.OPAM.with_name opam_package_name
+  |> OpamFile.OPAM.with_depends depends

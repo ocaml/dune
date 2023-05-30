@@ -11,7 +11,7 @@ val root : t -> Workspace_root.t
 
 val rpc :
      t
-  -> [ `Allow of Dune_rpc_impl.Server.t
+  -> [ `Allow of Dune_rules.Dep_conf.t Dune_rpc_impl.Server.t
        (** Will run rpc if in watch mode and acquire the build lock *)
      | `Forbid_builds
        (** Promise not to build anything. For now, this isn't checked *)
@@ -51,7 +51,7 @@ val insignificant_changes : t -> [ `React | `Ignore ]
     [config] field of [Dune_rules.Workspace.workspace ()]) *)
 val init :
      ?action_runner:
-       (   Dune_rpc_impl.Server.t
+       (   Dune_rules.Dep_conf.t Dune_rpc_impl.Server.t
         -> (Dune_engine.Action_exec.input -> Dune_engine.Action_runner.t option)
            Staged.t)
   -> ?log_file:Dune_util.Log.File.t

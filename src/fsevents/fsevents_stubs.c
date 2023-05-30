@@ -191,8 +191,8 @@ CAMLprim value dune_fsevents_create(value v_paths, value v_latency,
   t->v_callback = v_callback;
   t->stream = stream;
 
-  value v_ret = caml_alloc_custom(
-      &dune_fsevents_t_ops, sizeof(dune_fsevents_t *), 0, 1);
+  value v_ret =
+      caml_alloc_custom(&dune_fsevents_t_ops, sizeof(dune_fsevents_t *), 0, 1);
   Fsevents_val(v_ret) = t;
   CAMLreturn(v_ret);
 }
@@ -358,60 +358,74 @@ static char *unavailable_message =
 #endif
 
 CAMLprim value dune_fsevents_stop(value v_t) {
+  (void)v_t;
   caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_start(value v_t) {
+  (void)v_t;
   caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_create(value v_paths, value v_latency,
                                     value v_callback) {
+  (void)v_paths;
+  (void)v_latency;
+  (void)v_callback;
   caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_set_exclusion_paths(value v_t, value v_paths) {
+  (void)v_t;
+  (void)v_paths;
   caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_flush_async(value v_t) {
-
+  (void)v_t;
   caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_kind(value v_flags) {
-
+  (void)v_flags;
   caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_action(value v_flags) {
-
+  (void)v_flags;
   caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_raw(value v_flags) {
+  (void)v_flags;
   caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_flush_sync(value v_t) {
+  (void)v_t;
   caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_destroy(value v_t) {
+  (void)v_t;
   caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_break(value v_t) {
+  (void)v_t;
   caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_loop(value v_t) {
+  (void)v_t;
   caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_runloop_current(value v_unit) {
+  (void)v_unit;
   caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_runloop_run(value v_unit) {
+  (void)v_unit;
   caml_failwith(unavailable_message);
 }
-CAMLprim value dune_fsevents_available(value unit) {
-  CAMLparam1(unit);
+CAMLprim value dune_fsevents_available(value v_unit) {
+  CAMLparam1(v_unit);
   CAMLreturn(Val_false);
 }
 

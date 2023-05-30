@@ -78,7 +78,7 @@
             repos = [ opam-repository ];
           } ./.
           (devPackages // {
-            ocaml-base-compiler = "4.14.0";
+            ocaml-base-compiler = "4.14.1";
           });
       testBuildInputs = with pkgs;
         [ file mercurial ]
@@ -90,7 +90,7 @@
 
       packages = {
         dune = scope.dune;
-        default = with pkgs; stdenv.mkDerivation rec {
+        default = with pkgs; stdenv.mkDerivation {
           pname = package;
           version = "n/a";
           src = ./.;
@@ -170,7 +170,7 @@
           slim-melange = mkSlim {
             extraBuildInputs = [
               pkgs.ocamlPackages.melange
-              pkgs.ocamlPackages.mel
+              pkgs.ocamlPackages.rescript-syntax
             ];
             meta.description = ''
               Provides a minimal shell environment built purely from nixpkgs
@@ -214,7 +214,7 @@
                 ++ [
                 ocamllsp.outputs.packages.${system}.ocaml-lsp-server
                 pkgs.ocamlPackages.melange
-                pkgs.ocamlPackages.mel
+                pkgs.ocamlPackages.rescript-syntax
               ] ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
               inputsFrom = [ self.packages.${system}.dune ];
               meta.description = ''

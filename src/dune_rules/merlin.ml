@@ -319,7 +319,6 @@ module Unprocessed = struct
     ; flags : string list Action_builder.t
     ; preprocess :
         Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
-        Resolve.Memo.t
     ; libname : Lib_name.Local.t option
     ; source_dirs : Path.Source.Set.t
     ; objs_dirs : Path.Set.t
@@ -389,8 +388,9 @@ module Unprocessed = struct
       | None -> Action_builder.return None
       | Some args ->
         let action =
-          let action = Preprocessing.chdir (Run (exe, args)) in
-          Action_unexpanded.expand_no_targets ~loc ~expander ~deps:[]
+          let action = Action_unexpanded.Run (exe, args) in
+          let chdir = (Expander.context expander).build_dir in
+          Action_unexpanded.expand_no_targets ~loc ~expander ~deps:[] ~chdir
             ~what:"preprocessing actions" action
         in
         let pp_of_action exe args =
@@ -412,7 +412,7 @@ module Unprocessed = struct
       Processed.pp_flag option Action_builder.t =
     match
       Preprocess.remove_future_syntax preprocess ~for_:Merlin
-        (Super_context.context sctx).version
+        (Super_context.context sctx).ocaml.version
     with
     | Action (loc, (action : Dune_lang.Action.t)) ->
       pp_flag_of_action ~expander ~loc ~action
@@ -444,9 +444,7 @@ module Unprocessed = struct
         (Modules.source_dirs modules)
 
   let pp_config t sctx ~expander =
-    let open Action_builder.O in
-    let* preprocess = Resolve.Memo.read t.config.preprocess in
-    Module_name.Per_item.map_action_builder preprocess
+    Module_name.Per_item.map_action_builder t.config.preprocess
       ~f:(pp_flags sctx ~expander t.config.libname)
 
   let process

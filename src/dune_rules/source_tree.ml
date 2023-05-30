@@ -129,14 +129,6 @@ module Dune_file = struct
     { path = file; kind; plain }
 end
 
-let filter_source_files =
-  let is_temp_file fn =
-    String.is_prefix fn ~prefix:".#"
-    || String.is_suffix fn ~suffix:".swp"
-    || String.is_suffix fn ~suffix:"~"
-  in
-  ref (fun _ -> Memo.return (fun _dir fn -> not (is_temp_file fn)))
-
 module Readdir : sig
   type t = private
     { path : Path.Source.t
@@ -145,8 +137,6 @@ module Readdir : sig
     }
 
   val empty : Path.Source.t -> t
-
-  val filter_files : t -> Dune_project.t -> t Memo.t
 
   val of_source_path :
     Path.Source.t -> (t, Unix_error.Detailed.t) Result.t Memo.t
@@ -183,9 +173,10 @@ end = struct
     | S_CHR | S_BLK | S_FIFO | S_SOCK -> true
     | _ -> false
 
-  let filter_files t project =
-    let+ f = !filter_source_files project in
-    { t with files = Filename.Set.filter t.files ~f:(fun fn -> f t.path fn) }
+  let is_temp_file fn =
+    String.is_prefix fn ~prefix:".#"
+    || String.is_suffix fn ~suffix:".swp"
+    || String.is_suffix fn ~suffix:"~"
 
   let of_source_path_impl path =
     Fs_memo.dir_contents (In_source_dir path) >>= function
@@ -209,6 +200,7 @@ end = struct
         Memo.parallel_map dir_contents ~f:(fun (fn, kind) ->
             let path = Path.Source.relative path fn in
             if Path.Source.is_in_build_dir path then Memo.return List.Skip
+            else if is_temp_file fn then Memo.return List.Skip
             else
               let+ is_directory, file =
                 match kind with
@@ -300,16 +292,11 @@ module Output = struct
 end
 
 module Dir0 = struct
-  type vcs =
-    | Ancestor_vcs
-    | This of Vcs.t
-
   type t =
     { path : Path.Source.t
     ; status : Sub_dirs.Status.t
     ; contents : contents
     ; project : Dune_project.t
-    ; vcs : vcs
     }
 
   and contents =
@@ -326,16 +313,12 @@ module Dir0 = struct
 
   type error = Missing_run_t of Cram_test.t
 
-  let rec to_dyn { path; status; contents; project = _; vcs } =
+  let rec to_dyn { path; status; contents; project = _ } =
     let open Dyn in
     Record
       [ ("path", Path.Source.to_dyn path)
       ; ("status", Sub_dirs.Status.to_dyn status)
       ; ("contents", dyn_of_contents contents)
-      ; ( "vcs"
-        , match vcs with
-          | Ancestor_vcs -> Dyn.Variant ("Ancestor_vcs", [])
-          | This vcs -> Dyn.Variant ("This", [ Vcs.to_dyn vcs ]) )
       ]
 
   and dyn_of_sub_dir { sub_dir_status; sub_dir_as_t; virtual_ } =
@@ -360,8 +343,8 @@ module Dir0 = struct
     let create ~files ~sub_dirs ~dune_file = { files; sub_dirs; dune_file }
   end
 
-  let create ~project ~path ~status ~contents ~vcs =
-    { path; status; contents; project; vcs }
+  let create ~project ~path ~status ~contents =
+    { path; status; contents; project }
 
   let contents t = t.contents
 
@@ -377,8 +360,6 @@ module Dir0 = struct
 
   let project t = t.project
 
-  let vcs t = t.vcs
-
   let file_paths t =
     Path.Source.Set.of_listing ~dir:t.path
       ~filenames:(Filename.Set.to_list (files t))
@@ -387,31 +368,10 @@ module Dir0 = struct
     Filename.Map.foldi (sub_dirs t) ~init:Filename.Set.empty ~f:(fun s _ acc ->
         Filename.Set.add acc s)
 
-  let sub_dir_paths t =
-    String.Map.foldi (sub_dirs t) ~init:Path.Source.Set.empty ~f:(fun s _ acc ->
-        Path.Source.Set.add acc (Path.Source.relative t.path s))
-
   let sub_dir_as_t (s : sub_dir) =
     let+ t = Memo.Cell.read s.sub_dir_as_t in
     (Option.value_exn t).dir
 end
-
-let ancestor_vcs =
-  Memo.lazy_ ~name:"ancestor_vcs" (fun () ->
-      if Execution_env.inside_dune then Memo.return None
-      else
-        let rec loop dir =
-          if Fpath.is_root dir then None
-          else
-            let dir = Filename.dirname dir in
-            match
-              Sys.readdir dir |> Array.to_list |> Filename.Set.of_list
-              |> Vcs.Kind.of_dir_contents
-            with
-            | Some kind -> Some { Vcs.kind; root = Path.of_string dir }
-            | None -> loop dir
-        in
-        Memo.return (loop (Path.to_absolute_filename Path.root)))
 
 module rec Memoized : sig
   val root : unit -> Dir0.t Memo.t
@@ -576,15 +536,6 @@ end = struct
     in
     (Dir0.Contents.create ~files ~sub_dirs ~dune_file, dirs_visited)
 
-  let get_vcs ~default:vcs ~readdir:{ Readdir.path; files; dirs } =
-    match
-      Vcs.Kind.of_dir_contents
-        (Filename.Set.union files
-           (Filename.Set.of_list_map dirs ~f:(fun (name, _, _) -> name)))
-    with
-    | None -> vcs
-    | Some kind -> Dir0.This { Vcs.kind; root = Path.(append_source root) path }
-
   let root () =
     let path = Path.Source.root in
     let dir_status : Sub_dirs.Status.t = Normal in
@@ -607,8 +558,6 @@ end = struct
       | None -> Dune_project.anonymous ~dir:path ()
       | Some p -> p
     in
-    let* readdir = Readdir.filter_files readdir project in
-    let vcs = get_vcs ~default:Ancestor_vcs ~readdir in
     let* dirs_visited =
       File.of_source_path (In_source_dir path) >>| function
       | Ok file -> Dirs_visited.singleton path file
@@ -617,7 +566,7 @@ end = struct
     let+ contents, visited =
       contents readdir ~dirs_visited ~project ~dir_status
     in
-    let dir = Dir0.create ~project ~path ~status:dir_status ~contents ~vcs in
+    let dir = Dir0.create ~project ~path ~status:dir_status ~contents in
     { Output.dir; visited }
 
   let find_dir_raw_impl path : Dir0.t Output.t option Memo.t =
@@ -666,14 +615,10 @@ end = struct
             in
             Option.value project ~default:parent_dir.project
         in
-        let* readdir = Readdir.filter_files readdir project in
-        let vcs = get_vcs ~default:parent_dir.vcs ~readdir in
         let* contents, visited =
           contents readdir ~dirs_visited ~project ~dir_status
         in
-        let dir =
-          Dir0.create ~project ~path ~status:dir_status ~contents ~vcs
-        in
+        let dir = Dir0.create ~project ~path ~status:dir_status ~contents in
         Memo.return (Some { Output.dir; visited }))
 
   let find_dir_raw =
@@ -713,25 +658,12 @@ let nearest_dir path =
   let* root = root () in
   nearest_dir root components
 
-let nearest_vcs path =
-  let* dir = nearest_dir path in
-  match Dir0.vcs dir with
-  | This vcs -> Memo.return (Some vcs)
-  | Ancestor_vcs -> Memo.Lazy.force ancestor_vcs
-
 let files_of path =
   find_dir path >>| function
   | None -> Path.Source.Set.empty
   | Some dir ->
     Dir0.files dir |> Filename.Set.to_list
     |> Path.Source.Set.of_list_map ~f:(Path.Source.relative path)
-
-let file_exists path =
-  find_dir (Path.Source.parent_exn path) >>| function
-  | None -> false
-  | Some dir -> Filename.Set.mem (Dir0.files dir) (Path.Source.basename path)
-
-let dir_exists path = find_dir path >>| Option.is_some
 
 module Dir = struct
   include Dir0
@@ -816,3 +748,55 @@ let is_vendored dir =
   find_dir dir >>| function
   | None -> false
   | Some d -> Dir.status d = Vendored
+
+let ancestor_vcs =
+  Memo.lazy_ ~name:"ancestor_vcs" (fun () ->
+      if Execution_env.inside_dune then Memo.return None
+      else
+        let rec loop dir =
+          if Fpath.is_root dir then None
+          else
+            let dir = Filename.dirname dir in
+            match
+              Sys.readdir dir |> Array.to_list |> Filename.Set.of_list
+              |> Vcs.Kind.of_dir_contents
+            with
+            | Some kind -> Some { Vcs.kind; root = Path.of_string dir }
+            | None -> loop dir
+        in
+        Memo.return (loop (Path.to_absolute_filename Path.root)))
+
+let fold_parents =
+  let rec loop acc f t = function
+    | [] -> Memo.return acc
+    | comp :: components -> (
+      match Filename.Map.find (Dir0.sub_dirs t) comp with
+      | None -> Memo.return acc
+      | Some sub_dir ->
+        let* sub_dir = Dir0.sub_dir_as_t sub_dir in
+        let* acc = f sub_dir acc in
+        loop acc f sub_dir components)
+  in
+  fun path ~init ~f ->
+    let components = Path.Source.explode path in
+    let* root = root () in
+    let* acc = f root init in
+    loop acc f root components
+
+(* there's no need for any memoization. we use this function sporadically and
+   it's already fast enough *)
+let nearest_vcs =
+  let f dir acc =
+    Readdir.of_source_path (Dir.path dir) >>| function
+    | Error _ -> acc
+    | Ok readdir -> (
+      match
+        List.find_map readdir.dirs ~f:(fun (s, _, _) -> Vcs.Kind.of_dir_name s)
+      with
+      | None -> acc
+      | Some kind -> Some { Vcs.kind; root = Path.source @@ Dir.path dir })
+  in
+  fun path ->
+    let open Memo.O in
+    let* init = Memo.Lazy.force ancestor_vcs in
+    fold_parents ~f ~init path

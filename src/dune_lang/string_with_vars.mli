@@ -5,7 +5,6 @@
 
 open Stdune
 open Dune_sexp
-open Dune_util
 
 (** A sequence of text and variables. *)
 type t
@@ -111,8 +110,6 @@ module type Expander = sig
   val expand_as_much_as_possible :
     t -> dir:Path.t -> f:Value.t list option app expander -> t app
 end
-
-include Expander with type 'a app := 'a Memo.t
 
 module Make_expander (A : Applicative) : Expander with type 'a app := 'a A.t
 

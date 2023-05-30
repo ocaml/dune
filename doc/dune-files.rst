@@ -14,7 +14,7 @@ contents of all configuration files read by Dune and looks like:
 
 .. code:: dune
 
-   (lang dune 3.8)
+   (lang dune 3.9)
 
 Additionally, they can contains the following stanzas.
 
@@ -75,9 +75,10 @@ dialect
 
          Specify the file extension used for this dialect.
 
-         The extension string must not contain any dots and be unique in a given
-         project (so that a given extension can be mapped back to a
-         corresponding dialect).
+         The extension string must not start with a period and be unique in a
+         given project (so that a given extension can be mapped back to a
+         corresponding dialect). In Dune 3.9 and later, the extension string may
+         contain periods (e.g., `cppo.ml`).
 
          This field is required.
 
@@ -242,7 +243,7 @@ generate_opam_files
 
       (generate_opam_files)
 
-   .. seealso:: :ref:`opam-generation`
+   .. seealso:: :doc:`howto/opam-file-generation`
 
 Dune uses the following global fields to set the metadata for all packages
 defined in the project:
@@ -648,8 +649,6 @@ map_workspace_root
 .. dune:stanza:: map_workspace_root
    :param: <bool>
 
-   .. versionadded:: 3.7
-
    Control references to the file system locations where the project has been
    built.
 
@@ -657,9 +656,15 @@ map_workspace_root
      workspace root to ``/workspace_root``. Note that when this mapping is
      enabled, the debug information produced by the bytecode compiler is
      incorrect, as the location information is lost.
+
    - with ``(map_workspace_root false)``, the references are not rewritten.
 
-   Starting from language version 3.0, the default is ``true``.
+   The default is ``(map_workspace_root true)``.
+
+   .. versionadded:: 3.0
+        Initial version with the mapping always enabled.
+   .. versionchanged:: 3.7
+        Add a way to disable the mapping.
 
 .. _dune-files:
 
@@ -741,7 +746,7 @@ The ``dune-workspace`` file uses the S-expression syntax. This is what a typical
 
 .. code:: dune
 
-    (lang dune 3.8)
+    (lang dune 3.9)
     (context (opam (switch 4.07.1)))
     (context (opam (switch 4.08.1)))
     (context (opam (switch 4.11.1)))

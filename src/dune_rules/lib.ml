@@ -218,8 +218,8 @@ end
 
 module Resolved_select = struct
   type t =
-    { src_fn : string Resolve.t
-    ; dst_fn : string
+    { src_fn : Filename.t Resolve.t
+    ; dst_fn : Filename.t
     }
 end
 
@@ -1956,7 +1956,8 @@ module DB = struct
 end
 
 let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects
-    ~melange_runtime_deps ~dir : Dune_package.Lib.t Resolve.Memo.t =
+    ~melange_runtime_deps ~public_headers ~dir :
+    Dune_package.Lib.t Resolve.Memo.t =
   let loc = Lib_info.loc info in
   let mangled_name lib =
     match Lib_info.status lib.info with
@@ -2006,10 +2007,20 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects
         else Direct (loc, mangled_name lib))
   in
   let name = mangled_name lib in
+  let remove_public_dep_prefix paths =
+    let prefix = Lib_info.src_dir lib.info in
+    List.map
+      ~f:(fun path ->
+        let local_dep = Path.drop_prefix_exn ~prefix path in
+        Path.of_local local_dep)
+      paths
+  in
+  let public_headers = remove_public_dep_prefix public_headers in
+  let melange_runtime_deps = remove_public_dep_prefix melange_runtime_deps in
   let info =
     Lib_info.for_dune_package info ~name ~ppx_runtime_deps ~requires
       ~foreign_objects ~obj_dir ~implements ~default_implementation ~sub_systems
-      ~modules ~melange_runtime_deps
+      ~modules ~melange_runtime_deps ~public_headers
   in
   Dune_package.Lib.of_dune_lib ~info ~main_module_name
 

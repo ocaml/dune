@@ -1,5 +1,16 @@
 open Stdune
 
+(** The thread pool implementation allows callers to offload (non raising) work
+    to background threads.
+
+    The pool maintains a [min_workers, max_workers] number of threads active and
+    dispatches the work to them.
+
+    There's no attempt to dispatch the work fairly.
+
+    There's no ways to for callers to pick an underlying thread to use for some
+    specific task. *)
+
 type t =
   { mutex : Mutex.t
   ; cv : Condition.t
@@ -11,7 +22,9 @@ type t =
     mutable idle : int
   ; (* total number of running threads *)
     mutable running : int
-  ; mutable dead : Thread.t list
+  ; (* dead threads are collected here to [Thread.join] them. This is to
+       cleanup the resources of dead threads. *)
+    mutable dead : Thread.t list
   }
 
 let spawn_worker t =
@@ -67,8 +80,11 @@ let create ~min_workers ~max_workers ~spawn_thread =
 
 let task t ~f =
   Mutex.lock t.mutex;
-  List.iter t.dead ~f:Thread.join;
-  t.dead <- [];
+  (match t.dead with
+  | [] -> ()
+  | dead ->
+    t.dead <- [];
+    List.iter dead ~f:Thread.join);
   Queue.push t.tasks f;
   maybe_spawn_worker t;
   Condition.signal t.cv;

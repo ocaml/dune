@@ -27,11 +27,27 @@ val global_lock : Toggle.t t
     reduces concurrency *)
 val cutoffs_that_reduce_concurrency_in_watch_mode : Toggle.t t
 
+(** whether dune should optimize file copying on Linux/MacOS *)
+val copy_file : [ `Portable | `Best ] t
+
 (** Before any configuration value is accessed, this function must be called
     with all the configuration values from the relevant config file
     ([dune-workspace], or [dune-config]).
 
     Note that environment variables take precedence over the values passed here
     for easy overriding. *)
+
+(** Execute some actions in background threads. See [Action_exec] for the
+    concrete list of actions *)
+val background_actions : Toggle.t t
+
+(** Compute digests of files in a background thread *)
+val background_digests : Toggle.t t
+
+(** Build and destroy sandboxes in background threads *)
+val background_sandboxes : Toggle.t t
+
+(** Run file operations when executing rules in background threads *)
+val background_file_system_operations_in_rule_execution : Toggle.t t
 
 val init : (Loc.t * string) String.Map.t -> unit

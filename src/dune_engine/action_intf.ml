@@ -1,4 +1,5 @@
 open Import
+open Dune_util.Action
 
 module Simplified = struct
   type destination =
@@ -144,7 +145,7 @@ module Ext = struct
     val is_useful_to : distribute:bool -> memoize:bool -> bool
 
     val encode :
-      ('p, 't) t -> ('p -> Dune_lang.t) -> ('t -> Dune_lang.t) -> Dune_lang.t
+      ('p, 't) t -> ('p -> Dune_sexp.t) -> ('t -> Dune_sexp.t) -> Dune_sexp.t
 
     val bimap : ('a, 'b) t -> ('a -> 'x) -> ('b -> 'y) -> ('x, 'y) t
 

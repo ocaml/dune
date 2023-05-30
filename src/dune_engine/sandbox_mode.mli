@@ -95,7 +95,7 @@ val copy : t
 
 val hardlink : t
 
-val decode : t Dune_lang.Decoder.t
+val decode : t Dune_sexp.Decoder.t
 
 val to_string : t -> string
 

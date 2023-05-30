@@ -29,6 +29,8 @@ let local_libraries =
     None)
   ; ("src/dune_config", Some "Dune_config", false, None)
   ; ("src/dune_util", Some "Dune_util", false, None)
+  ; ("src/predicate_lang", Some "Predicate_lang", false, None)
+  ; ("src/section", Some "Dune_section", false, None)
   ; ("src/dune_lang", Some "Dune_lang", false, None)
   ; ("src/fiber_util", Some "Fiber_util", false, None)
   ; ("src/dune_cache_storage", Some "Dune_cache_storage", false, None)
@@ -38,9 +40,12 @@ let local_libraries =
   ; ("otherlibs/chrome-trace/src", Some "Chrome_trace", false, None)
   ; ("vendor/spawn/src", Some "Spawn", false, None)
   ; ("src/dune_stats", Some "Dune_stats", false, None)
-  ; ("src/section", Some "Dune_section", false, None)
   ; ("otherlibs/site/src/private", Some "Dune_site_private", false, None)
   ; ("src/meta_parser", Some "Dune_meta_parser", false, None)
+  ; ("vendor/sha", None, false, None)
+  ; ("vendor/uutf", None, false, None)
+  ; ("vendor/opam/src/core", None, false, None)
+  ; ("vendor/opam/src/format", None, false, None)
   ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
   ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)
   ; ("src/dune_rpc_client", Some "Dune_rpc_client", false, None)
@@ -53,9 +58,15 @@ let local_libraries =
   ; ("src/fswatch_win", Some "Fswatch_win", false, None)
   ; ("src/dune_file_watcher", Some "Dune_file_watcher", false, None)
   ; ("src/dune_engine", Some "Dune_engine", false, None)
+  ; ("vendor/opam/src/repository", None, false, None)
+  ; ("vendor/opam/src/state", None, false, None)
+  ; ("vendor/0install-solver/src/solver", Some "Zeroinstall_solver", false,
+    None)
+  ; ("vendor/fmt/src", None, false, None)
+  ; ("vendor/opam-0install/lib", Some "Opam_0install", false, None)
+  ; ("src/dune_pkg", Some "Dune_pkg", false, None)
   ; ("src/dune_vcs", Some "Dune_vcs", false, None)
   ; ("src/dune_threaded_console", Some "Dune_threaded_console", false, None)
-  ; ("vendor/uutf", None, false, None)
   ; ("vendor/notty/src", None, true, None)
   ; ("vendor/notty/src-unix", None, true, None)
   ; ("src/dune_tui", Some "Dune_tui", false, None)
@@ -66,6 +77,7 @@ let local_libraries =
   ; ("otherlibs/build-info/src", Some "Build_info", false,
     Some "Build_info_data")
   ; ("src/dune_rpc_impl", Some "Dune_rpc_impl", false, None)
+  ; ("src/dune_rules_rpc", Some "Dune_rules_rpc", false, None)
   ]
 
 let link_flags =

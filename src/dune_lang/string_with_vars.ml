@@ -1,6 +1,5 @@
 open Stdune
 open Dune_sexp
-open Dune_util
 
 type part =
   | Text of string
@@ -270,8 +269,6 @@ struct
     let parts = loop [] [] parts in
     { t with parts }
 end
-
-include Make_expander (Memo)
 
 let is_pform t pform =
   match t.parts with

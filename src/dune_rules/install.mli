@@ -95,6 +95,7 @@ module Entry : sig
     ; kind : [ `File | `Directory ]
     ; dst : Dst.t
     ; section : Section.t
+    ; optional : bool
     }
 
   module Sourced : sig

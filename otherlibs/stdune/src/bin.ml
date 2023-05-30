@@ -6,7 +6,9 @@ let parse_path ?(sep = path_sep) s =
        | "" -> None
        | p -> Some (Path.of_filename_relative_to_initial_cwd p))
 
-let cons_path p ~_PATH =
+let encode_strings paths = String.concat ~sep:(String.make 1 path_sep) paths
+
+let cons_path ?(path_sep = path_sep) p ~_PATH =
   let p = Path.to_absolute_filename p in
   match _PATH with
   | None -> p

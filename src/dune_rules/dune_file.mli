@@ -148,6 +148,7 @@ module Library : sig
     ; visibility : visibility
     ; synopsis : string option
     ; install_c_headers : (Loc.t * string) list
+    ; public_headers : Loc.t * Dep_conf.t list
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
     ; modes : Mode_conf.Lib.Set.t
     ; kind : Lib_kind.t
@@ -171,7 +172,8 @@ module Library : sig
     ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
     ; stdlib : Ocaml_stdlib.t option
-    ; special_builtin_support : Lib_info.Special_builtin_support.t option
+    ; special_builtin_support :
+        (Loc.t * Lib_info.Special_builtin_support.t) option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
     ; melange_runtime_deps : Loc.t * Dep_conf.t list

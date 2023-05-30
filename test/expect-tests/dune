@@ -38,6 +38,7 @@
   stdune
   dune_engine
   dune_rules
+  dune_lang
   memo
   test_scheduler
   ;; This is because of the (implicit_transitive_deps false)

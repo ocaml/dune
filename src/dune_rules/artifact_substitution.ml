@@ -52,10 +52,17 @@ type conf =
   }
 
 let mac_codesign_hook ~codesign path =
-  Process.run ~display:Quiet Strict codesign [ "-s"; "-"; Path.to_string path ]
+  let stdout_to =
+    Process.Io.make_stdout Execution_parameters.Action_output_on_success.Swallow
+  in
+  let stderr_to =
+    Process.Io.make_stderr Execution_parameters.Action_output_on_success.Swallow
+  in
+  Process.run ~stdout_to ~stderr_to ~display:Quiet Strict codesign
+    [ "-f"; "-s"; "-"; Path.to_string path ]
 
 let sign_hook_of_context (context : Context.t) =
-  let config = context.ocaml_config in
+  let config = context.ocaml.ocaml_config in
   match (Ocaml_config.system config, Ocaml_config.architecture config) with
   | "macosx", "arm64" -> (
     let codesign_name = "codesign" in
@@ -80,7 +87,7 @@ let conf_of_context (context : Context.t option) =
     let get_location = Install.Section.Paths.get_local_location context.name in
     let get_config_path = function
       | Sourceroot -> Some (Path.source Path.Source.root)
-      | Stdlib -> Some context.stdlib_dir
+      | Stdlib -> Some context.lib_config.stdlib_dir
     in
     let hardcoded_ocaml_path =
       let install_dir = Local_install_path.dir ~context:context.name in
@@ -88,20 +95,14 @@ let conf_of_context (context : Context.t option) =
       Hardcoded (install_dir :: context.default_ocamlpath)
     in
     let sign_hook = lazy (sign_hook_of_context context) in
-    { get_vcs = Source_tree.nearest_vcs
-    ; get_location
-    ; get_config_path
-    ; hardcoded_ocaml_path
-    ; sign_hook
-    }
+    { get_vcs; get_location; get_config_path; hardcoded_ocaml_path; sign_hook }
 
-let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~roots ~context
-    =
+let conf_for_install ~relocatable ~roots ~(context : Context.t) =
   let get_vcs = Source_tree.nearest_vcs in
   let hardcoded_ocaml_path =
     match relocatable with
     | Some prefix -> Relocatable prefix
-    | None -> Hardcoded default_ocamlpath
+    | None -> Hardcoded context.default_ocamlpath
   in
   let get_location section package =
     let paths = Install.Section.Paths.make ~package ~roots in
@@ -109,7 +110,7 @@ let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~roots ~context
   in
   let get_config_path = function
     | Sourceroot -> None
-    | Stdlib -> Some stdlib_dir
+    | Stdlib -> Some context.lib_config.stdlib_dir
   in
   let sign_hook = lazy (sign_hook_of_context context) in
   { get_location; get_vcs; get_config_path; hardcoded_ocaml_path; sign_hook }

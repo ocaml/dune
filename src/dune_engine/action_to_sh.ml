@@ -11,9 +11,9 @@ module Simplified = struct
     | Run of string * string list
     | Chdir of string
     | Setenv of string * string
-    | Redirect_out of t list * Outputs.t * destination
-    | Redirect_in of t list * Inputs.t * source
-    | Pipe of t list list * Outputs.t
+    | Redirect_out of t list * Action.Outputs.t * destination
+    | Redirect_in of t list * Action.Inputs.t * source
+    | Pipe of t list list * Action.Outputs.t
     | Sh of string
     | Concurrent of t list list
 end

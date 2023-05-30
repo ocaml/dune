@@ -82,6 +82,8 @@ module External : sig
   val mkdir_p : ?perms:int -> t -> unit
 
   val of_filename_relative_to_initial_cwd : string -> t
+
+  val append_local : t -> Local.t -> t
 end
 
 (** In the source section of the current workspace. *)
@@ -446,6 +448,14 @@ val chmod : t -> mode:int -> unit
 
 (** Attempts to resolve a symlink. Returns [None] if the path isn't a symlink *)
 val follow_symlink : t -> (t, Fpath.follow_symlink_error) result
+
+(** [drop_prefix_exn t ~prefix] drops the [prefix] from a path, including any
+    leftover `/` prefix. Raises a [Code_error.t] if the prefix wasn't found. *)
+val drop_prefix_exn : t -> prefix:t -> Local.t
+
+(** [drop_prefix t ~prefix] drops the [prefix] from a path, including any
+    leftover `/` prefix. Returns [None] if the prefix wasn't found. *)
+val drop_prefix : t -> prefix:t -> Local.t option
 
 module Expert : sig
   (** Attempt to convert external paths to source/build paths. Don't use this

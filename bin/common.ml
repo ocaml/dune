@@ -6,7 +6,7 @@ module Colors = Dune_rules.Colors
 module Clflags = Dune_engine.Clflags
 module Graph = Dune_graph.Graph
 module Package = Dune_rules.Package
-module Profile = Dune_rules.Profile
+module Profile = Dune_lang.Profile
 module Cmd = Cmdliner.Cmd
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
@@ -281,7 +281,7 @@ module Options_implied_by_dash_p = struct
               (Printf.sprintf
                  "Select the build profile, for instance $(b,dev) or \
                   $(b,release). The default is $(b,%s)."
-                 (Profile.to_string Dune_rules.Profile.default)))
+                 (Profile.to_string Profile.default)))
     in
     match profile with
     | None -> t
@@ -535,6 +535,7 @@ module Builder = struct
     ; store_digest_preimage : bool
     ; root : string option
     ; stats_trace_file : string option
+    ; stats_trace_extended : bool
     }
 
   let set_root t root = { t with root = Some root }
@@ -738,6 +739,11 @@ module Builder = struct
             ~doc:
               "Output trace data in catapult format\n\
               \                   (compatible with chrome://tracing)")
+    and+ stats_trace_extended =
+      Arg.(
+        value & flag
+        & info [ "trace-extended" ] ~docs
+            ~doc:"Output extended trace data (requires trace-file)")
     and+ no_print_directory =
       Arg.(
         value & flag
@@ -851,6 +857,9 @@ module Builder = struct
             [ "display-separate-messages" ]
             ~doc:"Separate error messages with a blank line.")
     in
+    if Option.is_none stats_trace_file && stats_trace_extended then
+      User_error.raise
+        [ Pp.text "--trace-extended can only be used with --trace" ];
     { debug_dep_path
     ; debug_backtraces
     ; debug_artifact_substitution
@@ -895,13 +904,17 @@ module Builder = struct
     ; store_digest_preimage
     ; root
     ; stats_trace_file
+    ; stats_trace_extended
     }
 end
 
 type t =
   { builder : Builder.t
   ; root : Workspace_root.t
-  ; rpc : [ `Allow of Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
+  ; rpc :
+      [ `Allow of Dune_rules.Dep_conf.t Dune_rpc_impl.Server.t Lazy.t
+      | `Forbid_builds
+      ]
   ; stats : Dune_stats.t option
   }
 
@@ -1095,6 +1108,19 @@ let init ?action_runner ?log_file c =
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)
     ];
   Dune_console.separate_messages c.builder.separate_error_messages;
+  Option.iter c.stats ~f:(fun stats ->
+      if Dune_stats.extended_build_job_info stats then
+        (* Communicate config settings as an instant event here. *)
+        let open Chrome_trace in
+        let args =
+          [ ("build_dir", `String (Path.Build.to_string Path.Build.root)) ]
+        in
+        let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
+        let common =
+          Event.common_fields ~cat:[ "config" ] ~name:"config" ~ts ()
+        in
+        let event = Event.instant ~args common in
+        Dune_stats.emit stats event);
   config
 
 let footer =
@@ -1144,7 +1170,11 @@ let build (builder : Builder.t) ~default_root_is_cwd =
   in
   let stats =
     Option.map builder.stats_trace_file ~f:(fun f ->
-        let stats = Dune_stats.create (Out (open_out f)) in
+        let stats =
+          Dune_stats.create
+            ~extended_build_job_info:builder.stats_trace_extended
+            (Out (open_out f))
+        in
         at_exit (fun () -> Dune_stats.close stats);
         stats)
   in
@@ -1163,7 +1193,8 @@ let build (builder : Builder.t) ~default_root_is_cwd =
          in
          let action_runner = Dune_engine.Action_runner.Rpc_server.create () in
          Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir
-           ~watch_mode_config:builder.watch stats action_runner))
+           ~handle:Dune_rules_rpc.register ~watch_mode_config:builder.watch
+           ~parse_build:Dune_rules_rpc.parse_build stats action_runner))
   in
   if builder.store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if builder.print_metrics then (

@@ -145,7 +145,7 @@ let odoc_name = Package.Name.of_string "odoc"
 let insert_dune_dep depends dune_version =
   let constraint_ : Package.Dependency.Constraint.t =
     let dune_version = Dune_lang.Syntax.Version.to_string dune_version in
-    Uop (Gte, QVar dune_version)
+    Uop (Gte, Literal dune_version)
   in
   let rec loop acc = function
     | [] ->

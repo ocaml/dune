@@ -62,7 +62,8 @@ let include_dir_flags ~expander ~dir ~include_dirs =
                 (sprintf "%S is not a directory" (Path.to_string include_dir))
           in
           let deps =
-            File_selector.create ~dir:include_dir Predicate_with_id.true_
+            File_selector.of_predicate_lang ~dir:include_dir
+              Predicate_lang.true_
             |> Dep.file_selector |> Dep.Set.singleton
           in
           Command.Args.Hidden_deps deps
@@ -87,7 +88,8 @@ let include_dir_flags ~expander ~dir ~include_dirs =
                             Path.append_source build_dir
                               (Source_tree.Dir.path t)
                           in
-                          File_selector.create ~dir Predicate_with_id.true_
+                          File_selector.of_predicate_lang ~dir
+                            Predicate_lang.true_
                           |> Dep.file_selector |> Dep.Set.singleton
                         in
                         Command.Args.Hidden_deps deps
@@ -113,7 +115,6 @@ let build_c ~(kind : Foreign_language.t) ~sctx ~dir ~expander ~include_flags
   let* project = Scope.DB.find_by_dir dir >>| Scope.project in
   let use_standard_flags = Dune_project.use_standard_c_and_cxx_flags project in
   let base_flags =
-    let cfg = ctx.ocaml_config in
     match kind with
     | Cxx -> Fdo.cxx_flags ctx
     | C -> (
@@ -121,6 +122,7 @@ let build_c ~(kind : Foreign_language.t) ~sctx ~dir ~expander ~include_flags
       | Some true -> Fdo.c_flags ctx
       | None | Some false ->
         (* In dune < 2.8 flags from ocamlc_config are always added *)
+        let cfg = ctx.ocaml.ocaml_config in
         List.concat
           [ Ocaml_config.ocamlc_cflags cfg
           ; Ocaml_config.ocamlc_cppflags cfg
@@ -179,7 +181,7 @@ let build_c ~(kind : Foreign_language.t) ~sctx ~dir ~expander ~include_flags
       Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:kind
   and* c_compiler =
     Super_context.resolve_program ~loc:None ~dir sctx
-      (Ocaml_config.c_compiler ctx.ocaml_config)
+      (Ocaml_config.c_compiler ctx.ocaml.ocaml_config)
   in
   let output_param =
     match ctx.lib_config.ccomp_type with
@@ -193,7 +195,7 @@ let build_c ~(kind : Foreign_language.t) ~sctx ~dir ~expander ~include_flags
        produced in the current directory *)
     Command.run ~dir:(Path.build dir) c_compiler
       ([ Command.Args.dyn with_user_and_std_flags
-       ; S [ A "-I"; Path ctx.stdlib_dir ]
+       ; S [ A "-I"; Path ctx.lib_config.stdlib_dir ]
        ; include_flags
        ]
       @ output_param @ [ A "-c"; Dep src ])
@@ -225,7 +227,7 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
           (let open Resolve.O in
           let+ libs = requires in
           Command.Args.S
-            [ Lib_flags.L.c_include_flags libs
+            [ Lib_flags.L.c_include_flags libs sctx
             ; Hidden_deps (Lib_file_deps.deps libs ~groups:[ Header ])
             ])
       ]

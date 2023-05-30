@@ -51,8 +51,6 @@ module Dir : sig
       -> Outcome.t M.t
   end
 
-  val sub_dir_paths : t -> Path.Source.Set.t
-
   val sub_dir_names : t -> Filename.Set.t
 
   val status : t -> Sub_dirs.Status.t
@@ -82,26 +80,11 @@ val find_dir : Path.Source.t -> Dir.t option Memo.t
     ancestor of [fn]. *)
 val nearest_dir : Path.Source.t -> Dir.t Memo.t
 
-(** [nearest_vcs t fn] returns the version control system with the longest root
-    path that is an ancestor of [fn]. *)
-val nearest_vcs : Path.Source.t -> Vcs.t option Memo.t
-
 val files_of : Path.Source.t -> Path.Source.Set.t Memo.t
-
-(** [true] iff the path is a directory *)
-val dir_exists : Path.Source.t -> bool Memo.t
 
 (** [true] iff the path is a vendored directory *)
 val is_vendored : Path.Source.t -> bool Memo.t
 
-(** [true] iff the path is a file *)
-val file_exists : Path.Source.t -> bool Memo.t
-
-(**/**)
-
-(* Hook to describe how to filter source files. This can be used by forks of
-   Dune to implement different filtering strategies.
-
-   This is currently used inside Jane Street. *)
-val filter_source_files :
-  (Dune_project.t -> (Path.Source.t -> Filename.t -> bool) Memo.t) ref
+(** [nearest_vcs t fn] returns the version control system with the longest root
+    path that is an ancestor of [fn]. *)
+val nearest_vcs : Path.Source.t -> Vcs.t option Memo.t

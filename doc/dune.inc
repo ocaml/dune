@@ -171,6 +171,15 @@
  (files   dune-ocaml-merlin.1))
 
 (rule
+ (with-stdout-to dune-pkg.1
+  (run dune pkg --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-pkg.1))
+
+(rule
  (with-stdout-to dune-printenv.1
   (run dune printenv --help=groff)))
 

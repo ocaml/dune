@@ -17,10 +17,33 @@ Test case: default flags
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   coqc -q
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -I lib/coq/../coq-core/plugins/btauto
+  -I lib/coq/../coq-core/plugins/cc
+  -I lib/coq/../coq-core/plugins/derive
+  -I lib/coq/../coq-core/plugins/extraction
+  -I lib/coq/../coq-core/plugins/firstorder
+  -I lib/coq/../coq-core/plugins/funind
+  -I lib/coq/../coq-core/plugins/ltac
+  -I lib/coq/../coq-core/plugins/ltac2
+  -I lib/coq/../coq-core/plugins/micromega
+  -I lib/coq/../coq-core/plugins/nsatz
+  -I lib/coq/../coq-core/plugins/number_string_notation
+  -I lib/coq/../coq-core/plugins/ring
+  -I lib/coq/../coq-core/plugins/rtauto
+  -I lib/coq/../coq-core/plugins/ssreflect
+  -I lib/coq/../coq-core/plugins/ssrmatching
+  -I lib/coq/../coq-core/plugins/tauto
+  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/zify
+  -R coq/theories Coq
+  -R . foo
+  foo.v
 
 TC: :standard
 
@@ -32,10 +55,33 @@ TC: :standard
 
   $ rm _build/default/foo.vo
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   coqc -q
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -I lib/coq/../coq-core/plugins/btauto
+  -I lib/coq/../coq-core/plugins/cc
+  -I lib/coq/../coq-core/plugins/derive
+  -I lib/coq/../coq-core/plugins/extraction
+  -I lib/coq/../coq-core/plugins/firstorder
+  -I lib/coq/../coq-core/plugins/funind
+  -I lib/coq/../coq-core/plugins/ltac
+  -I lib/coq/../coq-core/plugins/ltac2
+  -I lib/coq/../coq-core/plugins/micromega
+  -I lib/coq/../coq-core/plugins/nsatz
+  -I lib/coq/../coq-core/plugins/number_string_notation
+  -I lib/coq/../coq-core/plugins/ring
+  -I lib/coq/../coq-core/plugins/rtauto
+  -I lib/coq/../coq-core/plugins/ssreflect
+  -I lib/coq/../coq-core/plugins/ssrmatching
+  -I lib/coq/../coq-core/plugins/tauto
+  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/zify
+  -R coq/theories Coq
+  -R . foo
+  foo.v
 
 TC: override :standard
 
@@ -46,10 +92,33 @@ TC: override :standard
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   coqc
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -I lib/coq/../coq-core/plugins/btauto
+  -I lib/coq/../coq-core/plugins/cc
+  -I lib/coq/../coq-core/plugins/derive
+  -I lib/coq/../coq-core/plugins/extraction
+  -I lib/coq/../coq-core/plugins/firstorder
+  -I lib/coq/../coq-core/plugins/funind
+  -I lib/coq/../coq-core/plugins/ltac
+  -I lib/coq/../coq-core/plugins/ltac2
+  -I lib/coq/../coq-core/plugins/micromega
+  -I lib/coq/../coq-core/plugins/nsatz
+  -I lib/coq/../coq-core/plugins/number_string_notation
+  -I lib/coq/../coq-core/plugins/ring
+  -I lib/coq/../coq-core/plugins/rtauto
+  -I lib/coq/../coq-core/plugins/ssreflect
+  -I lib/coq/../coq-core/plugins/ssrmatching
+  -I lib/coq/../coq-core/plugins/tauto
+  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/zify
+  -R coq/theories Coq
+  -R . foo
+  foo.v
 
 TC: add to :standard
 
@@ -60,10 +129,33 @@ TC: add to :standard
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   coqc -q -type-in-type
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -I lib/coq/../coq-core/plugins/btauto
+  -I lib/coq/../coq-core/plugins/cc
+  -I lib/coq/../coq-core/plugins/derive
+  -I lib/coq/../coq-core/plugins/extraction
+  -I lib/coq/../coq-core/plugins/firstorder
+  -I lib/coq/../coq-core/plugins/funind
+  -I lib/coq/../coq-core/plugins/ltac
+  -I lib/coq/../coq-core/plugins/ltac2
+  -I lib/coq/../coq-core/plugins/micromega
+  -I lib/coq/../coq-core/plugins/nsatz
+  -I lib/coq/../coq-core/plugins/number_string_notation
+  -I lib/coq/../coq-core/plugins/ring
+  -I lib/coq/../coq-core/plugins/rtauto
+  -I lib/coq/../coq-core/plugins/ssreflect
+  -I lib/coq/../coq-core/plugins/ssrmatching
+  -I lib/coq/../coq-core/plugins/tauto
+  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/zify
+  -R coq/theories Coq
+  -R . foo
+  foo.v
 
 TC: extend in workspace + override standard
 
@@ -79,10 +171,33 @@ TC: extend in workspace + override standard
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   coqc -type-in-type
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -I lib/coq/../coq-core/plugins/btauto
+  -I lib/coq/../coq-core/plugins/cc
+  -I lib/coq/../coq-core/plugins/derive
+  -I lib/coq/../coq-core/plugins/extraction
+  -I lib/coq/../coq-core/plugins/firstorder
+  -I lib/coq/../coq-core/plugins/funind
+  -I lib/coq/../coq-core/plugins/ltac
+  -I lib/coq/../coq-core/plugins/ltac2
+  -I lib/coq/../coq-core/plugins/micromega
+  -I lib/coq/../coq-core/plugins/nsatz
+  -I lib/coq/../coq-core/plugins/number_string_notation
+  -I lib/coq/../coq-core/plugins/ring
+  -I lib/coq/../coq-core/plugins/rtauto
+  -I lib/coq/../coq-core/plugins/ssreflect
+  -I lib/coq/../coq-core/plugins/ssrmatching
+  -I lib/coq/../coq-core/plugins/tauto
+  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/zify
+  -R coq/theories Coq
+  -R . foo
+  foo.v
 
 TC: extend in workspace + override standard
 
@@ -92,10 +207,33 @@ TC: extend in workspace + override standard
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   coqc -q -type-in-type
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -I lib/coq/../coq-core/plugins/btauto
+  -I lib/coq/../coq-core/plugins/cc
+  -I lib/coq/../coq-core/plugins/derive
+  -I lib/coq/../coq-core/plugins/extraction
+  -I lib/coq/../coq-core/plugins/firstorder
+  -I lib/coq/../coq-core/plugins/funind
+  -I lib/coq/../coq-core/plugins/ltac
+  -I lib/coq/../coq-core/plugins/ltac2
+  -I lib/coq/../coq-core/plugins/micromega
+  -I lib/coq/../coq-core/plugins/nsatz
+  -I lib/coq/../coq-core/plugins/number_string_notation
+  -I lib/coq/../coq-core/plugins/ring
+  -I lib/coq/../coq-core/plugins/rtauto
+  -I lib/coq/../coq-core/plugins/ssreflect
+  -I lib/coq/../coq-core/plugins/ssrmatching
+  -I lib/coq/../coq-core/plugins/tauto
+  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/zify
+  -R coq/theories Coq
+  -R . foo
+  foo.v
 
 TC: extend in dune (env) + override standard
 
@@ -107,10 +245,33 @@ TC: extend in dune (env) + override standard
 
   $ rm -rf _build/default/foo.vo
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   coqc -type-in-type
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -I lib/coq/../coq-core/plugins/btauto
+  -I lib/coq/../coq-core/plugins/cc
+  -I lib/coq/../coq-core/plugins/derive
+  -I lib/coq/../coq-core/plugins/extraction
+  -I lib/coq/../coq-core/plugins/firstorder
+  -I lib/coq/../coq-core/plugins/funind
+  -I lib/coq/../coq-core/plugins/ltac
+  -I lib/coq/../coq-core/plugins/ltac2
+  -I lib/coq/../coq-core/plugins/micromega
+  -I lib/coq/../coq-core/plugins/nsatz
+  -I lib/coq/../coq-core/plugins/number_string_notation
+  -I lib/coq/../coq-core/plugins/ring
+  -I lib/coq/../coq-core/plugins/rtauto
+  -I lib/coq/../coq-core/plugins/ssreflect
+  -I lib/coq/../coq-core/plugins/ssrmatching
+  -I lib/coq/../coq-core/plugins/tauto
+  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/zify
+  -R coq/theories Coq
+  -R . foo
+  foo.v
 
 TC: extend in dune (env) + standard
 
@@ -122,10 +283,33 @@ TC: extend in dune (env) + standard
 
   $ rm -rf _build/default/foo.vo
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   coqc -q -type-in-type -type-in-type
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -I lib/coq/../coq-core/plugins/btauto
+  -I lib/coq/../coq-core/plugins/cc
+  -I lib/coq/../coq-core/plugins/derive
+  -I lib/coq/../coq-core/plugins/extraction
+  -I lib/coq/../coq-core/plugins/firstorder
+  -I lib/coq/../coq-core/plugins/funind
+  -I lib/coq/../coq-core/plugins/ltac
+  -I lib/coq/../coq-core/plugins/ltac2
+  -I lib/coq/../coq-core/plugins/micromega
+  -I lib/coq/../coq-core/plugins/nsatz
+  -I lib/coq/../coq-core/plugins/number_string_notation
+  -I lib/coq/../coq-core/plugins/ring
+  -I lib/coq/../coq-core/plugins/rtauto
+  -I lib/coq/../coq-core/plugins/ssreflect
+  -I lib/coq/../coq-core/plugins/ssrmatching
+  -I lib/coq/../coq-core/plugins/tauto
+  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/zify
+  -R coq/theories Coq
+  -R . foo
+  foo.v
 
 TC: extend in dune (env) + workspace + standard
 
@@ -142,7 +326,30 @@ TC: extend in dune (env) + workspace + standard
 
   $ rm -rf _build/default/foo.vo
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   coqc -q -type-in-type -bt
   -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled -native-compiler ondemand
-  -R . foo foo.v)
+  -w -native-compiler-disabled
+  -native-compiler ondemand
+  -I lib/coq/../coq-core/plugins/btauto
+  -I lib/coq/../coq-core/plugins/cc
+  -I lib/coq/../coq-core/plugins/derive
+  -I lib/coq/../coq-core/plugins/extraction
+  -I lib/coq/../coq-core/plugins/firstorder
+  -I lib/coq/../coq-core/plugins/funind
+  -I lib/coq/../coq-core/plugins/ltac
+  -I lib/coq/../coq-core/plugins/ltac2
+  -I lib/coq/../coq-core/plugins/micromega
+  -I lib/coq/../coq-core/plugins/nsatz
+  -I lib/coq/../coq-core/plugins/number_string_notation
+  -I lib/coq/../coq-core/plugins/ring
+  -I lib/coq/../coq-core/plugins/rtauto
+  -I lib/coq/../coq-core/plugins/ssreflect
+  -I lib/coq/../coq-core/plugins/ssrmatching
+  -I lib/coq/../coq-core/plugins/tauto
+  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/zify
+  -R coq/theories Coq
+  -R . foo
+  foo.v

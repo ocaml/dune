@@ -119,8 +119,8 @@ type t = Path.t
 
 let encode p =
   let make constr arg =
-    Dune_lang.List
-      [ Dune_lang.atom constr; Dune_lang.atom_or_quoted_string arg ]
+    Dune_sexp.List
+      [ Dune_sexp.atom constr; Dune_sexp.atom_or_quoted_string arg ]
   in
   let open Path in
   match p with
@@ -129,7 +129,7 @@ let encode p =
   | External p -> make "External" (Path.External.to_string p)
 
 let decode =
-  let open Dune_lang.Decoder in
+  let open Dune_sexp.Decoder in
   let external_ =
     plain_string (fun ~loc t ->
         if Filename.is_relative t then
@@ -144,11 +144,11 @@ let decode =
 
 module Local = struct
   let encode ~dir:from p =
-    let open Dune_lang.Encoder in
+    let open Dune_sexp.Encoder in
     string (Path.reach ~from p)
 
   let decode ~dir =
-    let open Dune_lang.Decoder in
+    let open Dune_sexp.Decoder in
     let+ error_loc, path = located string in
     Path.relative ~error_loc dir path
 end
@@ -158,10 +158,10 @@ module Build = struct
 
   let encode p =
     let str = Path.reach ~from:Path.build_dir (Path.build p) in
-    Dune_lang.atom_or_quoted_string str
+    Dune_sexp.atom_or_quoted_string str
 
   let decode =
-    let open Dune_lang.Decoder in
+    let open Dune_sexp.Decoder in
     let+ base = string in
     Path.Build.(relative root) base
 
@@ -173,10 +173,10 @@ module Build = struct
 end
 
 module External = struct
-  let encode p = Dune_lang.Encoder.string (Path.External.to_string p)
+  let encode p = Dune_sexp.Encoder.string (Path.External.to_string p)
 
   let decode =
-    let open Dune_lang.Decoder in
+    let open Dune_sexp.Decoder in
     let+ path = string in
     Path.External.of_string path
 end

@@ -32,7 +32,7 @@ Begin by installing a library with C stubs.
   Installing install/lib/libA/libA.cmxs
   Installing install/lib/stublibs/dlllibA_stubs.so
   $ cat ./install/lib/libA/dune-package
-  (lang dune 3.8)
+  (lang dune 3.9)
   (name libA)
   (sections
    (lib

@@ -13,6 +13,11 @@ val is_empty : t -> bool
 (** Combine the sets of file and directory targets. *)
 val combine : t -> t -> t
 
+val diff : t -> t -> t
+
+val iter :
+  t -> file:(Path.Build.t -> unit) -> dir:(Path.Build.t -> unit) -> unit
+
 module File : sig
   (** A single file target. *)
   val create : Path.Build.t -> t
@@ -27,6 +32,8 @@ end
 val create : files:Path.Build.Set.t -> dirs:Path.Build.Set.t -> t
 
 module Validated : sig
+  type unvalidated := t
+
   (** A rule can produce a set of files whose names are known upfront, as well
       as a set of "opaque" directories whose contents is initially unknown. *)
   type t = private
@@ -39,6 +46,8 @@ module Validated : sig
   val head : t -> Path.Build.t
 
   val to_dyn : t -> Dyn.t
+
+  val unvalidate : t -> unvalidated
 end
 
 module Validation_result : sig
@@ -79,7 +88,8 @@ module Produced : sig
 
   (** Like [of_validated] but assumes the targets have been just produced by a
       rule. If some directory targets aren't readable, an error is raised *)
-  val produced_after_rule_executed_exn : loc:Loc.t -> Validated.t -> unit t
+  val produced_after_rule_executed_exn :
+    loc:Loc.t -> Validated.t -> unit t Fiber.t
 
   (** Populates only the [files] field, leaving [dirs] empty. Raises a code
       error if the list contains duplicates. *)
@@ -105,3 +115,7 @@ module Produced : sig
 
   val to_dyn : _ t -> Dyn.t
 end
+
+(** will run in a background thread if
+    [background_file_system_operations_in_rule_execution] is set *)
+val maybe_async : (unit -> 'a) -> 'a Fiber.t

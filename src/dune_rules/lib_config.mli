@@ -12,11 +12,9 @@ type t =
   ; ext_dll : string
   ; stdlib_dir : Path.t
   ; ccomp_type : Ocaml_config.Ccomp_type.t
-  ; profile : Profile.t
   ; ocaml_version_string : string
   ; ocaml_version : Ocaml.Version.t
   ; instrument_with : Lib_name.t list
-  ; context_name : Context_name.t
   }
 
 val allowed_in_enabled_if : (string * Dune_lang.Syntax.Version.t) list
@@ -30,3 +28,6 @@ val hash : t -> int
 val equal : t -> t -> bool
 
 val to_dyn : t -> Dyn.t
+
+(** [\["-g"\]] if [!Clflags.g] and [\[\]] otherwise *)
+val cc_g : t -> string list

@@ -9,6 +9,7 @@
   memo
   ocaml
   dune_re
+  predicate_lang
   dune_console
   dune_digest
   opam_file_format
@@ -22,7 +23,10 @@
   dune_util
   dune_meta_parser
   dune_section
+  opam_format
   dune_cache
+  dune_pkg
+  opam_core
   build_path_prefix_map
   dune_engine
   dune_vcs

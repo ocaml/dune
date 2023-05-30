@@ -509,7 +509,8 @@ module Library = struct
     let make ~wrapped ~implements ~special_builtin_support :
         t Lib_info.Inherited.t =
       (match (wrapped, special_builtin_support) with
-      | Some (loc, Yes_with_transition _), Some _ ->
+      | Some (loc, Yes_with_transition _), Some (_loc, _) ->
+        (* TODO use _loc *)
         User_error.raise ~loc
           [ Pp.text
               "Cannot have transition modules for libraries with special \
@@ -563,6 +564,7 @@ module Library = struct
     ; visibility : visibility
     ; synopsis : string option
     ; install_c_headers : (Loc.t * string) list
+    ; public_headers : Loc.t * Dep_conf.t list
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
     ; modes : Mode_conf.Lib.Set.t
     ; kind : Lib_kind.t
@@ -581,7 +583,8 @@ module Library = struct
     ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
     ; stdlib : Ocaml_stdlib.t option
-    ; special_builtin_support : Lib_info.Special_builtin_support.t option
+    ; special_builtin_support :
+        (Loc.t * Lib_info.Special_builtin_support.t) option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
     ; melange_runtime_deps : Loc.t * Dep_conf.t list
@@ -600,6 +603,11 @@ module Library = struct
        and+ synopsis = field_o "synopsis" string
        and+ install_c_headers =
          field "install_c_headers" (repeat (located string)) ~default:[]
+       and+ public_headers =
+         field "public_headers"
+           (Dune_lang.Syntax.since Stanza.syntax (3, 8)
+           >>> located (repeat Dep_conf.decode_no_files))
+           ~default:(stanza_loc, [])
        and+ ppx_runtime_libraries =
          field "ppx_runtime_libraries"
            (repeat (located Lib_name.decode))
@@ -651,10 +659,15 @@ module Library = struct
        and+ special_builtin_support =
          field_o "special_builtin_support"
            (Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>> Lib_info.Special_builtin_support.decode)
+           >>> located Lib_info.Special_builtin_support.decode)
        and+ enabled_if =
          let open Enabled_if in
-         let allowed_vars = Only Lib_config.allowed_in_enabled_if in
+         let allowed_vars =
+           Only
+             (("context_name", (2, 8))
+             :: ("profile", (2, 5))
+             :: Lib_config.allowed_in_enabled_if)
+         in
          decode ~allowed_vars ~since:(Some (1, 10)) ()
        and+ instrumentation_backend =
          field_o "instrumentation.backend"
@@ -735,6 +748,7 @@ module Library = struct
        ; visibility
        ; synopsis
        ; install_c_headers
+       ; public_headers
        ; ppx_runtime_libraries
        ; modes
        ; kind
@@ -953,10 +967,20 @@ module Library = struct
     let name = best_name conf in
     let+ enabled =
       let+ enabled_if_result =
-        Blang.eval conf.enabled_if ~dir:(Path.build dir)
+        Blang_expand.eval conf.enabled_if ~dir:(Path.build dir)
           ~f:(fun ~source:_ pform ->
-            let value = Lib_config.get_for_enabled_if lib_config pform in
-            Memo.return [ Value.String value ])
+            let+ value =
+              match pform with
+              | Var Context_name ->
+                let context, _ = Path.Build.extract_build_context_exn dir in
+                Memo.return context
+              | Var Profile ->
+                let+ context = Context.DB.by_dir dir in
+                Profile.to_string context.profile
+              | _ ->
+                Memo.return @@ Lib_config.get_for_enabled_if lib_config pform
+            in
+            [ Value.String value ])
       in
       if not enabled_if_result then
         Lib_info.Enabled_status.Disabled_because_of_enabled_if
@@ -987,15 +1011,19 @@ module Library = struct
     let entry_modules = Lib_info.Source.Local in
     let melange_runtime_deps =
       let loc, runtime_deps = conf.melange_runtime_deps in
-      Lib_info.Runtime_deps.Local (loc, runtime_deps)
+      Lib_info.File_deps.Local (loc, runtime_deps)
+    in
+    let public_headers =
+      let loc, public_headers = conf.public_headers in
+      Lib_info.File_deps.Local (loc, public_headers)
     in
     Lib_info.create ~loc ~path_kind:Local ~name ~kind ~status ~src_dir
       ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems
-      ~requires ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
-      ~foreign_archives ~native_archives ~foreign_dll_files ~jsoo_runtime
-      ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_ ~entry_modules
-      ~implements ~default_implementation ~modes ~modules:Local ~wrapped
-      ~special_builtin_support ~exit_module ~instrumentation_backend
+      ~requires ~foreign_objects ~public_headers ~plugins ~archives
+      ~ppx_runtime_deps ~foreign_archives ~native_archives ~foreign_dll_files
+      ~jsoo_runtime ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_
+      ~entry_modules ~implements ~default_implementation ~modes ~modules:Local
+      ~wrapped ~special_builtin_support ~exit_module ~instrumentation_backend
       ~melange_runtime_deps
 end
 
@@ -1090,17 +1118,19 @@ module Executables = struct
 
     let has_public_name t = Option.is_some t.public
 
-    let public_name =
+    let public_name ~dash_is_none =
       located string >>| fun (loc, s) ->
       ( loc
       , match s with
-        | "-" -> None
+        | "-" -> if dash_is_none then None else Some s
         | s -> Some s )
 
     let multi_fields =
       map_validate
         (let+ names = field_o "names" (repeat1 (located string))
-         and+ pub_names = field_o "public_names" (repeat1 public_name) in
+         and+ pub_names =
+           field_o "public_names" (repeat1 (public_name ~dash_is_none:true))
+         in
          (names, pub_names))
         ~f:(fun (names, public_names) ->
           match (names, public_names) with
@@ -1117,10 +1147,12 @@ module Executables = struct
           | names, public_names -> Ok (names, public_names))
 
     let single_fields =
+      let* dune_syntax = Dune_lang.Syntax.get_exn Stanza.syntax in
+      let dash_is_none = dune_syntax >= (3, 8) in
       let+ name = field_o "name" (located string)
-      and+ public_name = field_o "public_name" (located string) in
+      and+ public_name = field_o "public_name" (public_name ~dash_is_none) in
       ( Option.map name ~f:List.singleton
-      , Option.map public_name ~f:(fun (loc, s) -> [ (loc, Some s) ]) )
+      , Option.map public_name ~f:List.singleton )
 
     let pluralize s ~multi = if multi then s ^ "s" else s
 
@@ -1628,7 +1660,7 @@ module Rule = struct
       ]
 
   let short_form =
-    let+ loc, action = located Dune_lang.Action.decode in
+    let+ loc, action = located Dune_lang.Action.decode_dune_file in
     { targets = Infer
     ; deps = Bindings.empty
     ; action = (loc, action)
@@ -1659,7 +1691,7 @@ module Rule = struct
     in
     String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
       (let+ loc = loc
-       and+ action = field "action" (located Dune_lang.Action.decode)
+       and+ action = field "action" (located Dune_lang.Action.decode_dune_file)
        and+ targets = Targets_spec.field ~allow_directory_targets
        and+ locks = Locks.field ()
        and+ () =
@@ -1684,11 +1716,12 @@ module Rule = struct
            >>> Stanza_common.Pkg.decode)
        and+ alias =
          field_o "alias"
-           (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Alias.Name.decode)
+           (Dune_lang.Syntax.since Stanza.syntax (2, 0)
+           >>> Dune_lang.Alias.decode)
        and+ aliases =
          field_o "aliases"
            (Dune_lang.Syntax.since Stanza.syntax (3, 5)
-           >>> repeat Alias.Name.decode)
+           >>> repeat Dune_lang.Alias.decode)
        in
        let aliases =
          match alias with
@@ -1856,7 +1889,7 @@ module Alias_conf = struct
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
        in
        String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
-         (let+ name = field "name" Alias.Name.decode
+         (let+ name = field "name" Dune_lang.Alias.decode
           and+ package = field_o "package" Stanza_common.Pkg.decode
           and+ action =
             field_o "action"
@@ -1866,7 +1899,7 @@ module Alias_conf = struct
                let* () =
                  Dune_lang.Syntax.deleted_in ~extra_info Stanza.syntax (2, 0)
                in
-               located Dune_lang.Action.decode)
+               located Dune_lang.Action.decode_dune_file)
           and+ loc = loc
           and+ locks = Locks.field ()
           and+ enabled_if =
@@ -1907,7 +1940,7 @@ module Tests = struct
           and+ action =
             field_o "action"
               (Dune_lang.Syntax.since ~fatal:false Stanza.syntax (1, 2)
-              >>> Dune_lang.Action.decode)
+              >>> Dune_lang.Action.decode_dune_file)
           and+ forbidden_libraries =
             field "forbidden_libraries"
               (Dune_lang.Syntax.since Stanza.syntax (2, 0)
@@ -1984,7 +2017,7 @@ module Copy_files = struct
 
   let long_form =
     let check = Dune_lang.Syntax.since Stanza.syntax (2, 7) in
-    let+ alias = field_o "alias" (check >>> Alias.Name.decode)
+    let+ alias = field_o "alias" (check >>> Dune_lang.Alias.decode)
     and+ mode =
       field "mode" ~default:Rule.Mode.Standard (check >>> Rule.Mode.decode)
     and+ enabled_if =

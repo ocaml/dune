@@ -14,6 +14,8 @@ val target : t -> toolchain:t -> t
 
 val equal : t -> t -> bool
 
+val compare : t -> t -> Ordering.t
+
 include Stringlike_intf.S with type t := t
 
 module Infix : Comparator.OPS with type t = t

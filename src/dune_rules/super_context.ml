@@ -1,7 +1,7 @@
 open Import
 
 let default_context_flags (ctx : Context.t) ~project =
-  let cflags = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
+  let cflags = Ocaml_config.ocamlc_cflags ctx.ocaml.ocaml_config in
   let cxxflags =
     List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
@@ -14,7 +14,7 @@ let default_context_flags (ctx : Context.t) ~project =
         let+ cc = Cxx_flags.ccomp_type ctx in
         let fdiagnostics_color = Cxx_flags.fdiagnostics_color cc in
         cflags
-        @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config
+        @ Ocaml_config.ocamlc_cppflags ctx.ocaml.ocaml_config
         @ fdiagnostics_color
       in
       let cxx =
@@ -85,9 +85,22 @@ end = struct
 
   let external_env t ~dir = get_node t ~dir >>= Env_node.external_env
 
+  let scope_host ~scope (context : Context.t) =
+    match context.for_host with
+    | None -> Memo.return scope
+    | Some host ->
+      let dir =
+        let root = Scope.root scope in
+        let src = Path.Build.drop_build_context_exn root in
+        Path.Build.append_source host.build_dir src
+      in
+      Scope.DB.find_by_dir dir
+
   let expander_for_artifacts ~scope ~external_env ~root_expander ~dir =
+    let+ scope_host = scope_host ~scope (Expander.context root_expander) in
     Expander.extend_env root_expander ~env:external_env
-    |> Expander.set_scope ~scope |> Expander.set_dir ~dir
+    |> Expander.set_scope ~scope ~scope_host
+    |> Expander.set_dir ~dir
 
   let extend_expander t ~dir ~expander_for_artifacts =
     let* bin_artifacts_host = bin_artifacts_host t ~dir in
@@ -104,7 +117,7 @@ end = struct
     let* node = get_node t ~dir in
     let* external_env = external_env t ~dir in
     let scope = Env_node.scope node in
-    let expander_for_artifacts =
+    let* expander_for_artifacts =
       expander_for_artifacts ~scope ~external_env ~root_expander:t.root_expander
         ~dir
     in
@@ -145,7 +158,7 @@ end = struct
     let default_context_flags = default_context_flags t.context ~project in
     let expander_for_artifacts =
       Memo.lazy_ (fun () ->
-          let+ external_env = external_env t ~dir in
+          let* external_env = external_env t ~dir in
           expander_for_artifacts ~scope ~root_expander:t.root_expander
             ~external_env ~dir)
     in
@@ -279,7 +292,7 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
   in
   build_dir_is_vendored dir >>| function
   | true ->
-    let ocaml_version = (Env_tree.context t).version in
+    let ocaml_version = (Env_tree.context t).ocaml.version in
     with_vendored_flags ~ocaml_version flags
   | false -> flags
 
@@ -310,7 +323,7 @@ let default_foreign_flags t ~dir ~language =
   |> Action_builder.of_memo_join
 
 let foreign_flags t ~dir ~expander ~flags ~language =
-  let ccg = Context.cc_g (Env_tree.context t) in
+  let ccg = Lib_config.cc_g (Env_tree.context t).lib_config in
   let default = default_foreign_flags t ~dir ~language in
   let open Action_builder.O in
   let name = Foreign_language.proper_name language in
@@ -328,13 +341,12 @@ let link_flags t ~dir (spec : Link_flags.Spec.t) =
     ~eval:(Expander.expand_and_eval_set expander)
 
 let menhir_flags t ~dir ~expander ~flags =
-  let t = t in
-  let default =
+  let standard =
     Env_tree.get_node t ~dir >>| Env_node.menhir_flags
     |> Action_builder.of_memo_join
   in
   Action_builder.memoize ~cutoff:(List.equal String.equal) "menhir flags"
-    (Expander.expand_and_eval_set expander flags ~standard:default)
+    (Expander.expand_and_eval_set expander flags ~standard)
 
 let local_binaries t ~dir = Env_tree.get_node t ~dir >>= Env_node.local_binaries
 

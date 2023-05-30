@@ -5,7 +5,7 @@ type applies_to =
   | Whole_subtree
   | Files_matching_in_this_dir of Predicate_lang.Glob.t
 
-let default_applies_to = Files_matching_in_this_dir Predicate_lang.Glob.true_
+let default_applies_to = Files_matching_in_this_dir Predicate_lang.true_
 
 let decode_applies_to =
   let open Dune_lang.Decoder in
@@ -36,7 +36,7 @@ let decode =
     (let+ loc = loc
      and+ applies_to =
        field "applies_to" decode_applies_to ~default:default_applies_to
-     and+ alias = field_o "alias" Alias.Name.decode
+     and+ alias = field_o "alias" Dune_lang.Alias.decode
      and+ deps = field_o "deps" (Bindings.decode Dep_conf.decode)
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
      and+ locks =

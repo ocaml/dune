@@ -3,27 +3,19 @@
 open Import
 
 module Name : sig
-  type t
+  type t = Dune_lang.Package_name.t
 
   val opam_fn : t -> string
 
   val version_fn : t -> string
 
-  val compare : t -> t -> Ordering.t
-
-  val equal : t -> t -> bool
-
-  val hash : t -> int
-
-  include Comparable_intf.S with type key := t
-
-  include Dune_lang.Conv.S with type t := t
-
-  module Infix : Comparator.OPS with type t = t
-
-  include Stringlike_intf.S with type t := t
+  include module type of Dune_lang.Package_name with type t := t
 
   val of_opam_file_basename : string -> t option
+
+  val of_opam_package_name : OpamTypes.name -> t
+
+  val to_opam_package_name : t -> OpamTypes.name
 
   module Map_traversals : sig
     val parallel_iter : 'a Map.t -> f:(t -> 'a -> unit Memo.t) -> unit Memo.t
@@ -49,13 +41,16 @@ module Dependency : sig
       | Gt
       | Lt
       | Neq
+
+    val to_relop : t -> OpamParserTypes.FullPos.relop
   end
 
   module Constraint : sig
     module Var : sig
       type t =
-        | QVar of string
-        | Var of string
+        | Literal of string
+            (** A quoted string literal, such as a version number *)
+        | Var of string  (** A variable name such as :version or :with-test *)
     end
 
     type t =
@@ -64,6 +59,8 @@ module Dependency : sig
       | Bop of Op.t * Var.t * Var.t
       | And of t list
       | Or of t list
+
+    val to_dyn : t -> Dyn.t
   end
 
   type t =
@@ -142,7 +139,7 @@ end
 
 type opam_file =
   | Exists of bool
-  | Look_inside_opam_dir
+  | Generated
 
 type t =
   { id : Id.t
@@ -189,9 +186,14 @@ val hash : t -> int
 val is_opam_file : Path.t -> bool
 
 (** Construct a default package (e.g., for project initialization) *)
-val default : string -> Path.Source.t -> t
+val default : Name.t -> Path.Source.t -> t
 
 (** Construct a package description from an opam file. *)
 val load_opam_file : Path.Source.t -> Name.t -> t Memo.t
 
 val missing_deps : t -> effective_deps:Name.Set.t -> Name.Set.t
+
+(** [to_opam_file t] returns an [OpamFile.OPAM.t] whose fields are based on the
+    fields of [t]. Note that this does not actually create a corresponding file
+    on disk. *)
+val to_opam_file : t -> OpamFile.OPAM.t

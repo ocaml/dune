@@ -15,7 +15,7 @@ Duplicate theories in the same project should be caught by Dune:
 
   $ dune build
   Error: Coq theory foo is defined twice:
-  - B/dune:2
-  - A/dune:2
+  - theory foo in B/dune:2
+  - theory foo in A/dune:2
   -> required by alias default
   [1]

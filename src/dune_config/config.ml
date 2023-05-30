@@ -82,3 +82,57 @@ let cutoffs_that_reduce_concurrency_in_watch_mode =
   in
   register t;
   t
+
+let copy_file =
+  let t =
+    { name = "copy_file"
+    ; of_string =
+        (function
+        | "portable" -> Ok `Portable
+        | "fast" -> Ok `Best
+        | _ -> Error (sprintf "only %S and %S are allowed" "fast" "portable"))
+    ; value = `Best
+    }
+  in
+  register t;
+  t
+
+let background_actions =
+  let t =
+    { name = "background_actions"
+    ; of_string = Toggle.of_string
+    ; value = `Disabled
+    }
+  in
+  register t;
+  t
+
+let background_digests =
+  let t =
+    { name = "background_digests"
+    ; of_string = Toggle.of_string
+    ; value = `Disabled
+    }
+  in
+  register t;
+  t
+
+let background_sandboxes =
+  let t =
+    { name = "background_sandboxes"
+    ; of_string = Toggle.of_string
+    ; value = `Disabled
+    }
+  in
+  register t;
+  t
+
+let background_file_system_operations_in_rule_execution =
+  let t =
+    { name = "background_file_system_operations_in_rule_execution"
+    ; of_string = Toggle.of_string
+    ; value = `Disabled
+    }
+  in
+  register t;
+  t

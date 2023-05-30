@@ -113,7 +113,18 @@ end
 
 val alias : Alias.t -> unit t
 
-val dep_on_alias_if_exists : Alias.t -> Alias_status.t t
+module Alias_build_info : sig
+  (** When looking up aliases, [alias_status] represents whether the alias was
+      defined in that directory or not.
+
+      For custom traversals, [allowed_build_only_subdirs] provides additional
+      information about immediate, build-only (not present in source)
+      sub-directories that the traversal might want to look under. *)
+  type t =
+    { alias_status : Alias_status.t
+    ; allowed_build_only_subdirs : Filename.Set.t
+    }
+end
 
 module Alias_rec (_ : sig
   (* This API isn't fully baked yet. We might move it to the rules *)
@@ -123,7 +134,7 @@ module Alias_rec (_ : sig
       otherwise. *)
   val traverse :
        Path.Build.t
-    -> f:(path:Path.Build.t -> Alias_status.t t)
+    -> f:(path:Path.Build.t -> Alias_build_info.t t)
     -> Alias_status.t t
 end) : sig
   (** Depend on an alias recursively. Return [Defined] if the alias is defined
@@ -153,7 +164,7 @@ val contents : Path.t -> string t
 val lines_of : Path.t -> string list t
 
 (** Load an S-expression from a file *)
-val read_sexp : Path.t -> Dune_lang.Ast.t t
+val read_sexp : Path.t -> Dune_sexp.Ast.t t
 
 (** Evaluates to [true] if the file is present on the file system or is the
     target of a rule. It doesn't add the path as dependency *)

@@ -1,7 +1,7 @@
 open! Stdune
 open Dune_sexp
 
-type t
+type t = Dune_glob.V1.t
 
 val equal : t -> t -> bool
 
@@ -25,4 +25,8 @@ val universal : t
 
 val of_string_exn : Loc.t -> string -> t
 
+val of_string : string -> t
+
 val to_predicate : t -> Filename.t Predicate.t
+
+val matching_extensions : Filename.Extension.t list -> t

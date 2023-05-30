@@ -4,10 +4,11 @@ module Persistent = Persistent
 module Report_error = Report_error
 module Stringlike = Stringlike
 module Stringlike_intf = Stringlike_intf
-module Value = Value
 module Build_path_prefix_map = Build_path_prefix_map0
 module Flock = Flock
 module Global_lock = Global_lock
+module Action = Action
+module Alias_name = Alias_name
 open Stdune
 
 let xdg =

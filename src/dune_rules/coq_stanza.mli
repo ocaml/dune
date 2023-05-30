@@ -34,6 +34,7 @@ module Theory : sig
     ; boot : bool
     ; enabled_if : Blang.t
     ; buildable : Buildable.t
+    ; coqdoc_flags : Ordered_set_lang.Unexpanded.t
     }
 
   type Stanza.t += T of t

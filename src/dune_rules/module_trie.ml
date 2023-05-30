@@ -103,14 +103,24 @@ let rec to_dyn f t =
     t
 
 let merge x y ~f =
-  let base _path _ = (* TODO *) assert false in
+  let rec base ~path ~f t =
+    Map.foldi t ~init:empty ~f:(fun k v acc ->
+        let path = k :: path in
+        let rev_path = List.rev path in
+        match v with
+        | Leaf leaf -> (
+          match f rev_path leaf with
+          | None -> acc
+          | Some leaf -> Map.add_exn acc k (Leaf leaf))
+        | Map m -> Map.add_exn acc k (Map (base ~path ~f m)))
+  in
   let rec loop path x y =
     match (x, y) with
     | None, None -> assert false
-    | Some x, None -> base path x
-    | None, Some x -> base path x
+    | Some x, None -> base x ~path ~f:(fun path x -> f path (Some x) None)
+    | None, Some y -> base y ~path ~f:(fun path x -> f path None (Some x))
     | Some x, Some y ->
-      Map.merge x y ~f:(fun name x y ->
+      Map.merge x y ~f:(fun (name : Module_name.t) x y ->
           let path = name :: path in
           let rev_path = List.rev path in
           let leaf l r =
@@ -125,8 +135,10 @@ let merge x y ~f =
           | Some (Leaf x), None -> leaf (Some x) None
           | Some (Leaf x), Some (Leaf y) -> leaf (Some x) (Some y)
           (* maps *)
-          | None, Some (Map v) -> non_empty_map (base path v)
-          | Some (Map v), None -> non_empty_map (base path v)
+          | None, Some (Map v) ->
+            non_empty_map (base v ~path ~f:(fun path x -> f path None (Some x)))
+          | Some (Map v), None ->
+            non_empty_map (base v ~path ~f:(fun path x -> f path (Some x) None))
           | Some (Map x), Some (Map y) ->
             non_empty_map (loop path (Some x) (Some y))
           (* mixed *)

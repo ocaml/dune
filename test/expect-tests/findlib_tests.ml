@@ -1,6 +1,6 @@
 open Stdune
 open Dune_rules
-open Dune_engine
+open Dune_rules.For_tests
 open Dune_tests_common
 
 let () = init ()
@@ -33,11 +33,9 @@ let findlib =
     ; ext_dll = ".so"
     ; stdlib_dir = Path.root
     ; ccomp_type = Other "gcc"
-    ; profile = Profile.Dev
     ; ocaml_version_string = "4.02.3"
     ; ocaml_version = Ocaml.Version.make (4, 2, 3)
     ; instrument_with = []
-    ; context_name = Context_name.of_string "default"
     }
   in
   Memo.lazy_ (fun () ->

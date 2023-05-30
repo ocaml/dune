@@ -1,0 +1,8 @@
+(dialect
+ (name cppo)
+ (implementation
+  (extension cppo.ml)
+  (preprocess (run ./cppo.exe %{input-file})))
+ (interface
+  (extension cppo.mli)
+  (preprocess (run ./cppo.exe %{input-file}))))

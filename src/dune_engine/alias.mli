@@ -1,19 +1,8 @@
 open Import
 
 module Name : sig
-  type t
-
-  val decode : t Dune_lang.Decoder.t
-
-  val of_string : string -> t
-
-  val equal : t -> t -> bool
-
-  val parse_string_exn : Loc.t * string -> t
-
-  val to_string : t -> string
-
-  val to_dyn : t -> Dyn.t
+  include
+    module type of Dune_util.Alias_name with type t = Dune_util.Alias_name.t
 
   val default : t
 
@@ -49,7 +38,7 @@ val dir : t -> Path.Build.t
 
 val to_dyn : t -> Dyn.t
 
-val encode : t Dune_lang.Encoder.t
+val encode : t Dune_sexp.Encoder.t
 
 val of_user_written_path : loc:Loc.t -> Path.t -> t
 

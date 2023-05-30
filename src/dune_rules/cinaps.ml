@@ -31,7 +31,7 @@ let decode =
   fields
     (let+ loc = loc
      and+ files =
-       field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.any
+       field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.true_
      and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
      and+ libraries =
        field "libraries" (Lib_dep.L.decode ~allow_re_export:false) ~default:[]
@@ -39,7 +39,7 @@ let decode =
        field ~default:[] "runtime_deps"
          (Dune_lang.Syntax.since syntax (1, 1) >>> repeat Dep_conf.decode)
      and+ cinaps_version = Dune_lang.Syntax.get_exn syntax
-     and+ alias = field_o "alias" Alias.Name.decode
+     and+ alias = field_o "alias" Dune_lang.Alias.decode
      and+ link_flags =
        Link_flags.Spec.decode
          ~check:(Some (Dune_lang.Syntax.since syntax (1, 3)))
@@ -70,8 +70,8 @@ let gen_rules sctx t ~dir ~scope =
     >>| Path.Source.Set.to_list
     >>| List.filter_map ~f:(fun p ->
             if
-              Predicate_lang.Glob.exec t.files (Path.Source.basename p)
-                ~standard:Predicate_lang.any
+              Predicate_lang.Glob.test t.files (Path.Source.basename p)
+                ~standard:Predicate_lang.true_
             then
               Some
                 (Path.Build.append_source (Super_context.context sctx).build_dir
@@ -172,7 +172,11 @@ let gen_rules sctx t ~dir ~scope =
       Dep_conf_eval.unnamed ~sandbox ~expander t.runtime_deps
     in
     let* () = runtime_deps in
-    let+ () = Action_builder.path cinaps_exe in
+    let+ () =
+      Action_builder.deps
+        (Dep.Set.of_files
+           (cinaps_exe :: List.rev_map cinapsed_files ~f:Path.build))
+    in
     Action.Full.make ~sandbox
     @@ A.chdir (Path.build dir)
          (A.progn

@@ -1,0 +1,62 @@
+{1 [dune-configurator] - Helper library for gathering system configuration }
+
+[dune-configurator] is a small library that helps writing OCaml scripts that
+test features available on the system, in order to generate [config.h]
+files for instance.
+
+Among other things, dune-configurator allows one to:
+- test if a C program compiles
+- query [pkg-config]
+- import [#define] from OCaml header files
+- generate a [config.h] file
+
+{2 API Documentation }
+
+The entry point for this library is {!Configurator.V1}.
+
+{2 Example }
+
+The following happens in a [dune] project that contains some C code that needs
+to link against [libpng].
+
+The following program ([discover/discover.ml]) uses [dune-configurator] to
+query [pkg-config] and create [cflags.sexp] and [libs.sexp]:
+
+{[
+let () =
+  Configurator.V1.main ~name:"libpng"
+    (fun c ->
+       let pkg_config =
+         match Configurator.V1.Pkg_config.get c with
+         | Some p -> p
+         | None -> failwith "Cannot find pkg-config"
+       in
+       let conf = Configurator.V1.Pkg_config.query ~package:"libpng" in
+       Configurator.V1.Flags.write_sexp "cflags.sexp" conf.cflags;
+       Configurator.V1.Flags.write_sexp "libs.sexp" conf.libs)
+]}
+
+It can be built using the following [discover/dune] file:
+
+{v
+(executable
+ (name discover)
+ (libraries dune-configurator))
+
+(rule
+ (targets cflags.sexp libs.sexp)
+ (action
+  (run ./discover.exe)))
+v}
+
+And used when building the C code in the following [dune] file:
+
+{v
+(library
+ (name png)
+ (foreign_stubs
+  (language c)
+  (names bindings)
+  (flags :standard (:include discover/cflags.sexp)))
+ (c_library_flags :standard (:include discover/libs.sexp)))
+v}

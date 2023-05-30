@@ -159,7 +159,7 @@ let split_lines s =
   loop ~acc:[] 0 0 ~last_is_cr:false
 
 (* copy a file - fails if the file exists *)
-let copy ?(header = "") a b =
+let copy ?(header = "") directive a b =
   if Sys.file_exists b then fatal "%s already exists" b;
   let ic = open_in_bin a in
   let len = in_channel_length ic in
@@ -167,8 +167,6 @@ let copy ?(header = "") a b =
   close_in ic;
   let oc = open_out_bin b in
   output_string oc header;
-  (* MSVC is fussy about #line 1 vs # 1 *)
-  let directive = if Filename.extension b = ".c" then "line" else "" in
   fprintf oc "#%s 1 %S\n" directive a;
   output_string oc s;
   close_out oc
@@ -838,10 +836,10 @@ module Library = struct
             let dst = build_dir ^/ mangled in
             match kind with
             | Header | C ->
-              copy fn dst;
+              copy "line" fn dst;
               Fiber.return [ mangled ]
             | Ml | Mli ->
-              copy fn dst ~header;
+              copy "" fn dst ~header;
               Fiber.return [ mangled ]
             | Mll -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
             | Mly ->

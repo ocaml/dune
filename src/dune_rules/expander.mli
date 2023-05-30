@@ -32,7 +32,7 @@ val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
 
 val set_dir : t -> dir:Path.Build.t -> t
 
-val set_scope : t -> scope:Scope.t -> t
+val set_scope : t -> scope:Scope.t -> scope_host:Scope.t -> t
 
 val set_bin_artifacts : t -> bin_artifacts_host:Artifacts.Bin.t -> t
 
@@ -143,3 +143,5 @@ val expand_locks :
   base:[ `Of_expander | `This of Path.t ] -> t -> Locks.t -> Path.t list Memo.t
 
 val sites : t -> Sites.t
+
+val isn't_allowed_in_this_position : source:Dune_lang.Template.Pform.t -> 'a

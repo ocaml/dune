@@ -73,8 +73,8 @@ module Compile : sig
 
   module Resolved_select : sig
     type t =
-      { src_fn : string Resolve.t
-      ; dst_fn : string
+      { src_fn : Filename.t Resolve.t
+      ; dst_fn : Filename.t
       }
   end
 
@@ -227,6 +227,7 @@ val to_dune_lib :
   -> modules:Modules.t
   -> foreign_objects:Path.t list
   -> melange_runtime_deps:Path.t list
+  -> public_headers:Path.t list
   -> dir:Path.t
   -> Dune_package.Lib.t Resolve.Memo.t
 

@@ -178,30 +178,20 @@ let lib_src_dirs ~dir_contents =
   |> List.map ~f:(fun dc ->
          Path.Build.drop_build_context_exn (Dir_contents.dir dc))
 
-(* Stanza *)
-
 let define_all_alias ~dir ~project ~js_targets =
   let deps =
-    let pred =
-      let id =
-        lazy
-          (let open Dyn in
-          variant "exclude"
-            (List.map ~f:(fun p -> Path.Build.to_dyn p) js_targets))
-      in
-      List.iter js_targets ~f:(fun js_target ->
-          assert (Path.Build.equal (Path.Build.parent_exn js_target) dir));
-      let f =
-        if Dune_project.explicit_js_mode project then fun _ -> true
-        else fun basename ->
-          not
-            (List.exists js_targets ~f:(fun js_target ->
-                 String.equal (Path.Build.basename js_target) basename))
-      in
-      Predicate_with_id.create ~id ~f
+    let predicate =
+      if Dune_project.explicit_js_mode project then Predicate_lang.true_
+      else (
+        List.iter js_targets ~f:(fun js_target ->
+            assert (Path.Build.equal (Path.Build.parent_exn js_target) dir));
+        Predicate_lang.not
+          (Predicate_lang.Glob.of_string_set
+             (String.Set.of_list_map js_targets ~f:Path.Build.basename)))
     in
     let only_generated_files = Dune_project.dune_version project >= (3, 0) in
-    File_selector.create ~dir:(Path.build dir) ~only_generated_files pred
+    File_selector.of_predicate_lang ~dir:(Path.build dir) ~only_generated_files
+      predicate
     |> Action_builder.paths_matching_unit ~loc:Loc.none
   in
   Rules.Produce.Alias.add_deps (Alias.all ~dir) deps
@@ -543,7 +533,7 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
   | [ ".dune" ] ->
     has_rules ~dir
       (S.These (Filename.Set.of_list [ "ccomp" ]))
-      (fun () -> Context.gen_configurator_rules (Super_context.context sctx))
+      (fun () -> Configurator_rules.gen_rules (Super_context.context sctx))
   | ".js" :: rest ->
     has_rules ~dir
       (match rest with
@@ -617,7 +607,7 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
           under_melange_emit_target
       | Standalone_or_root { directory_targets; contents } -> (
         let rules =
-          let* () = Memo.Lazy.force Context.force_configurator_files in
+          let* () = Memo.Lazy.force Configurator_rules.force_files in
           let* { Dir_contents.root = dir_contents; subdirs; rules } =
             Memo.Lazy.force contents
           in
@@ -711,5 +701,17 @@ let gen_rules ctx_or_install ~dir components =
           ; directory_targets
           ; rules = Memo.return rules
           })
-  | Context ctx ->
-    with_context ctx ~f:(fun sctx -> gen_rules ~sctx ~dir components)
+  | Context ctx -> (
+    match components with
+    | [ ".pkg" ] ->
+      let rules =
+        { Build_config.Rules.empty with
+          build_dir_only_sub_dirs =
+            Build_config.Rules.Build_only_sub_dirs.singleton ~dir Subdir_set.All
+        }
+      in
+      Memo.return @@ Build_config.Rules rules
+    | [ ".pkg"; pkg_name ] -> Pkg_rules.setup_package_rules ctx ~dir ~pkg_name
+    | ".pkg" :: _ :: _ ->
+      Memo.return @@ Build_config.Redirect_to_parent Build_config.Rules.empty
+    | _ -> with_context ctx ~f:(fun sctx -> gen_rules ~sctx ~dir components))

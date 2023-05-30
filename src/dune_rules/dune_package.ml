@@ -43,11 +43,20 @@ module Lib = struct
     let modes = Lib_info.modes info in
     let synopsis = Lib_info.synopsis info in
     let obj_dir = Lib_info.obj_dir info in
+    let additional_paths (paths : _ Lib_info.File_deps.t) =
+      match paths with
+      | Local _ -> assert false
+      | External paths ->
+        let lib_dir = Obj_dir.dir obj_dir in
+        List.map paths ~f:(fun p ->
+            Path.append_local lib_dir (Path.local_part p))
+    in
     let orig_src_dir = Lib_info.orig_src_dir info in
     let implements = Lib_info.implements info in
     let ppx_runtime_deps = Lib_info.ppx_runtime_deps info in
     let default_implementation = Lib_info.default_implementation info in
     let special_builtin_support = Lib_info.special_builtin_support info in
+    let public_headers = additional_paths (Lib_info.public_headers info) in
     let archives = Lib_info.archives info in
     let sub_systems = Lib_info.sub_systems info in
     let plugins = Lib_info.plugins info in
@@ -63,13 +72,7 @@ module Lib = struct
       | Local -> None
     in
     let melange_runtime_deps =
-      match Lib_info.melange_runtime_deps info with
-      | Local _ -> assert false
-      | External paths ->
-        let lib_dir = Obj_dir.dir obj_dir in
-        List.map paths ~f:(fun p ->
-            Path.as_in_build_dir_exn p |> Path.Build.drop_build_context_exn
-            |> Path.append_source lib_dir)
+      additional_paths (Lib_info.melange_runtime_deps info)
     in
     let jsoo_runtime = Lib_info.jsoo_runtime info in
     let virtual_ = Option.is_some (Lib_info.virtual_ info) in
@@ -97,6 +100,7 @@ module Lib = struct
        ; mode_paths "archives" archives
        ; mode_paths "plugins" plugins
        ; paths "foreign_objects" foreign_objects
+       ; paths "public_headers" public_headers
        ; field_i "foreign_archives" (Mode.Map.encode path)
            (Lib_info.foreign_archives info)
        ; paths "foreign_dll_files" foreign_dll_files
@@ -113,7 +117,8 @@ module Lib = struct
        ; field_o "modules" (Modules.encode ~src_dir:package_root) modules
        ; paths "melange_runtime_deps" melange_runtime_deps
        ; field_o "special_builtin_support"
-           Lib_info.Special_builtin_support.encode special_builtin_support
+           Lib_info.Special_builtin_support.encode
+           (Option.map ~f:snd special_builtin_support)
        ; field_o "instrumentation.backend" (no_loc Lib_name.encode)
            instrumentation_backend
        ]
@@ -155,6 +160,7 @@ module Lib = struct
        and+ archives = mode_paths "archives"
        and+ plugins = mode_paths "plugins"
        and+ foreign_objects = paths "foreign_objects"
+       and+ public_headers = paths "public_headers"
        and+ foreign_archives =
          if lang.version >= (3, 5) then
            let+ field_o = field_o "foreign_archives" (Mode.Map.decode path) in
@@ -180,7 +186,7 @@ module Lib = struct
        and+ special_builtin_support =
          field_o "special_builtin_support"
            (Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>> Lib_info.Special_builtin_support.decode)
+           >>> located Lib_info.Special_builtin_support.decode)
        and+ instrumentation_backend =
          field_o "instrumentation.backend" (located Lib_name.decode)
        in
@@ -199,6 +205,7 @@ module Lib = struct
          let version = None in
          let main_module_name = Lib_info.Inherited.This main_module_name in
          let foreign_objects = Lib_info.Source.External foreign_objects in
+         let public_headers = Lib_info.File_deps.External public_headers in
          let preprocess = Preprocess.Per_module.no_preprocessing () in
          let virtual_deps = [] in
          let dune_version = None in
@@ -211,12 +218,12 @@ module Lib = struct
          let entry_modules = Lib_info.Source.External (Ok entry_modules) in
          let modules = Lib_info.Source.External (Some modules) in
          let melange_runtime_deps =
-           Lib_info.Runtime_deps.External melange_runtime_deps
+           Lib_info.File_deps.External melange_runtime_deps
          in
          Lib_info.create ~path_kind:External ~loc ~name ~kind ~status ~src_dir
            ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name
-           ~sub_systems ~requires ~foreign_objects ~plugins ~archives
-           ~ppx_runtime_deps ~foreign_archives
+           ~sub_systems ~requires ~foreign_objects ~public_headers ~plugins
+           ~archives ~ppx_runtime_deps ~foreign_archives
            ~native_archives:(Files native_archives) ~foreign_dll_files
            ~jsoo_runtime ~preprocess ~enabled ~virtual_deps ~dune_version
            ~virtual_ ~entry_modules ~implements ~default_implementation ~modes
@@ -460,8 +467,8 @@ module Or_meta = struct
   let pp ~dune_version ppf t =
     let t = encode ~dune_version t in
     Format.fprintf ppf "%a@."
-      (Format.pp_print_list ~pp_sep:Format.pp_print_newline
-         Dune_lang.Deprecated.pp)
+      (Format.pp_print_list ~pp_sep:Format.pp_print_newline (fun fmt lang ->
+           Dune_lang.pp lang |> Pp.to_fmt fmt))
       t
 
   let to_dyn x =

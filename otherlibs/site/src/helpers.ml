@@ -93,7 +93,7 @@ let sourceroot local =
   | None ->
     (* None if the binary is executed from _build but not by dune, which should
        not happen *)
-    Sys.getenv_opt "DUNE_SOURCEROOT"
+    Sys.getenv_opt dune_sourceroot_env_var
 
 let ocamlpath =
   lazy
@@ -105,7 +105,7 @@ let ocamlpath =
      let static =
        match Lazy.force Hardcoded_ocaml_path.t with
        | Hardcoded_ocaml_path.None ->
-         String.split_on_char path_sep (Sys.getenv "DUNE_OCAML_HARDCODED")
+         String.split_on_char path_sep (Sys.getenv dune_ocaml_hardcoded_env_var)
        | Hardcoded_ocaml_path.Relocatable ->
          [ Filename.concat (Lazy.force prefix) "lib" ]
        | Hardcoded_ocaml_path.Hardcoded l -> l
@@ -116,5 +116,5 @@ let ocamlpath =
 let stdlib =
   lazy
     (match eval Dune_site_data.stdlib_dir with
-    | None -> Sys.getenv "DUNE_OCAML_STDLIB"
+    | None -> Sys.getenv dune_ocaml_stdlib_env_var
     | Some s -> s)

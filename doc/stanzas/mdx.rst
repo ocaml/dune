@@ -18,9 +18,10 @@ Note that this feature is still experimental and needs to be enabled in your
 
 .. code:: dune
 
-  (using mdx 0.3)
+  (using mdx 0.4)
 
-.. note:: Version ``0.2`` of the stanza requires mdx ``1.9.0``.
+.. note:: Version ``0.2`` of the stanza requires mdx ``1.9.0``. Version ``0.4``
+   of the stanza requires mdx ``2.3.0``.
 
 
 The syntax is as follows:
@@ -33,7 +34,8 @@ Where ``<optional-fields>`` are:
 
 - ``(files <globs>)`` are the files that you want MDX to check, described as a
   list of globs (see the :ref:`Glob language specification <glob>` ). It
-  defaults to ``*.md``.
+  defaults to ``*.md *.mld`` as of version ``0.4`` of the stanza and ``*.md``
+  before.
 
 - ``(deps <deps-conf list>)`` to specify the dependencies of your documentation
   code blocks. See :doc:`concepts/dependency-spec` for more details.

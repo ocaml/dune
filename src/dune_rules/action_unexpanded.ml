@@ -50,6 +50,7 @@ module Action_expander : sig
 
   val run :
        'a t
+    -> chdir:Path.Build.t
     -> targets_dir:Path.Build.t option
     -> expander:Expander.t
     -> 'a Action_builder.With_targets.t Memo.t
@@ -133,12 +134,12 @@ end = struct
     in
     fun l env acc -> loop [] l env acc
 
-  let run t ~targets_dir ~expander =
+  let run t ~chdir ~targets_dir ~expander =
     let deps = Action_builder.return Path.Set.empty in
     let acc =
       { file_targets = Path.Build.Map.empty; deps; deps_if_exist = deps }
     in
-    let env = { expander; infer = true; dir = Expander.dir expander } in
+    let env = { expander; infer = true; dir = chdir } in
     Memo.map (t env acc) ~f:(fun (b, acc) ->
         let { file_targets; deps; deps_if_exist } = acc in
         (* A file can be inferred as both a dependency and a target, for
@@ -231,7 +232,8 @@ end = struct
        cf comment for [chdir]. *)
     module Expander = struct
       let expand env ~mode template =
-        Action_builder.Expander.expand ~dir:(Path.build env.dir) ~mode template
+        String_expander.Action_builder.expand ~dir:(Path.build env.dir) ~mode
+          template
           ~f:(Expander.expand_pform env.expander)
 
       let expand_path t sw =
@@ -253,7 +255,7 @@ end = struct
 
       module No_deps = struct
         let expand env ~mode template =
-          String_with_vars.expand ~dir:(Path.build env.dir) ~mode template
+          String_expander.Memo.expand ~dir:(Path.build env.dir) ~mode template
             ~f:(Expander.No_deps.expand_pform env.expander)
 
         let expand_path env sw =
@@ -479,8 +481,11 @@ let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
   | Cram script ->
     let+ script = E.dep script in
     Cram_exec.action script
+  | Withenv _ | Substitute _ | Patch _ ->
+    (* these can only be provided by the package language which isn't expanded here *)
+    assert false
 
-let expand_no_targets t ~loc ~deps:deps_written_by_user ~expander ~what =
+let expand_no_targets t ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
   let open Action_builder.O in
   let deps_builder, expander, sandbox =
     Dep_conf_eval.named ~expander deps_written_by_user
@@ -490,8 +495,9 @@ let expand_no_targets t ~loc ~deps:deps_written_by_user ~expander ~what =
   in
   let* { Action_builder.With_targets.build; targets } =
     let context = Expander.context expander in
-    Action_builder.of_memo
-      (Action_expander.run (expand ~context t) ~targets_dir:None ~expander)
+    expand ~context t
+    |> Action_expander.run ~chdir ~targets_dir:None ~expander
+    |> Action_builder.of_memo
   in
   if not (Targets.is_empty targets) then
     User_error.raise ~loc
@@ -503,10 +509,10 @@ let expand_no_targets t ~loc ~deps:deps_written_by_user ~expander ~what =
       ];
   let+ () = deps_builder
   and+ action = build in
-  let dir = Path.build (Expander.dir expander) in
-  Action.Full.make (Action.Chdir (dir, action)) ~sandbox
+  let action = Action.Chdir (Path.build chdir, action) in
+  Action.Full.make action ~sandbox
 
-let expand t ~loc ~deps:deps_written_by_user ~targets_dir
+let expand t ~loc ~chdir ~deps:deps_written_by_user ~targets_dir
     ~targets:targets_written_by_user ~expander =
   let open Action_builder.O in
   let deps_builder, expander, sandbox =
@@ -535,8 +541,8 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
   in
   let+! { Action_builder.With_targets.build; targets } =
     let context = Expander.context expander in
-    Action_expander.run (expand ~context t) ~targets_dir:(Some targets_dir)
-      ~expander
+    expand ~context t
+    |> Action_expander.run ~chdir ~targets_dir:(Some targets_dir) ~expander
   in
   let targets =
     match (targets_written_by_user : _ Targets_spec.t) with
@@ -556,8 +562,7 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
   let build =
     let+ () = deps_builder
     and+ action = build in
-    let dir = Path.build (Expander.dir expander) in
-    Action.Full.make (Action.Chdir (dir, action)) ~sandbox
+    Action.Full.make (Action.Chdir (Path.build chdir, action)) ~sandbox
   in
   Action_builder.with_targets ~targets build
 

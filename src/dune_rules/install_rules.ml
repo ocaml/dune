@@ -10,16 +10,14 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
 
 module Package_paths = struct
   let opam_file (ctx : Context.t) (pkg : Package.t) =
-    match pkg.has_opam_file with
-    | Exists false -> Memo.return None
-    | Exists true ->
-      Memo.return
-      @@ Some (Path.Build.append_source ctx.build_dir (Package.opam_file pkg))
-    | Look_inside_opam_dir -> (
-      let opam_file = Package.opam_file pkg in
-      Source_tree.file_exists opam_file >>| function
-      | true -> Some (Path.Build.append_source ctx.build_dir opam_file)
-      | false -> None)
+    let opam_file = Package.opam_file pkg in
+    let exists =
+      match pkg.has_opam_file with
+      | Exists b -> b
+      | Generated -> true
+    in
+    if exists then Some (Path.Build.append_source ctx.build_dir opam_file)
+    else None
 
   let meta_file (ctx : Context.t) pkg =
     Path.Build.append_source ctx.build_dir (Package.meta_file pkg)
@@ -44,6 +42,25 @@ module Package_paths = struct
   let meta_template ctx pkg =
     Path.Build.extend_basename (meta_file ctx pkg) ~suffix:".template"
 end
+
+let check_runtime_deps_relative_path local_path ~loc ~lib_info =
+  let lib_src_dir = Lib_info.src_dir lib_info in
+  match
+    Path.Local.descendant local_path ~of_:(Path.Build.local lib_src_dir)
+  with
+  | None ->
+    User_error.raise ~loc
+      [ Pp.textf
+          "Public library `%s' depends on assets outside its source tree. This \
+           is not allowed."
+          (lib_info |> Lib_info.name |> Lib_name.to_string)
+      ]
+      ~hints:
+        [ Pp.textf
+            "Move the dependency to a descendant of the folder where the \
+             library is defined"
+        ]
+  | Some _ -> ()
 
 module Stanzas_to_entries : sig
   val stanzas_to_entries :
@@ -173,15 +190,19 @@ end = struct
               in
               make_entry ?sub_dir Lib source ?dst))
     in
-    let* melange_runtime_entries =
-      let loc, melange_runtime_deps = lib.melange_runtime_deps in
-      let+ melange_runtime_deps =
+    let additional_deps (loc, deps) =
+      let+ deps =
         let* expander = Super_context.expander sctx ~dir:lib_src_dir in
-        Melange_rules.Runtime_deps.eval ~expander ~loc
-          ~paths:(Disallow_external lib_name) melange_runtime_deps
+        Lib_file_deps.eval deps ~expander ~loc
+          ~paths:(Disallow_external lib_name)
       in
-      Path.Set.to_list_map melange_runtime_deps ~f:(fun path ->
-          let path = Path.as_in_build_dir_exn path in
+      Path.Set.to_list_map deps ~f:(fun path ->
+          let path =
+            let path = path |> Path.as_in_build_dir_exn in
+            check_runtime_deps_relative_path ~lib_info:info ~loc
+              (Path.Build.local path);
+            path
+          in
           let sub_dir =
             let src_dir = Path.Build.parent_exn path in
             match Path.Build.equal lib_src_dir src_dir with
@@ -197,18 +218,22 @@ end = struct
     let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
       Dune_file.Mode_conf.Lib.Set.eval lib.modes ~has_native
     in
-    let* module_files =
+    let+ melange_runtime_entries = additional_deps lib.melange_runtime_deps
+    and+ public_headers = additional_deps lib.public_headers
+    and+ module_files =
       let obj_dir = Lib_info.obj_dir info in
-      let external_obj_dir =
-        Obj_dir.convert_to_external obj_dir ~dir:(Path.build dir)
+      let cm_dir =
+        let external_obj_dir =
+          Obj_dir.convert_to_external obj_dir ~dir:(Path.build dir)
+        in
+        fun m cm_kind ->
+          let visibility = Module.visibility m in
+          let dir' = Obj_dir.cm_dir external_obj_dir cm_kind visibility in
+          if Path.equal (Path.build dir) dir' then None
+          else
+            Path.drop_prefix_exn dir' ~prefix:(Path.build dir)
+            |> Path.Local.to_string |> Option.some
       in
-      let cm_dir m cm_kind =
-        let visibility = Module.visibility m in
-        let dir' = Obj_dir.cm_dir external_obj_dir cm_kind visibility in
-        if Path.equal (Path.build dir) dir' then None
-        else Path.basename dir' |> Option.some
-      in
-      let virtual_library = Library.is_virtual lib in
       let if_ b (cm_kind, f) =
         if b then
           match f with
@@ -216,8 +241,9 @@ end = struct
           | Some f -> [ (cm_kind, f) ]
         else []
       in
-      let modules =
-        let common m =
+      let common =
+        let virtual_library = Library.is_virtual lib in
+        fun m ->
           let cm_file kind = Obj_dir.Module.cm_file obj_dir m ~kind in
           let open Lib_mode.Cm_kind in
           [ if_ (native || byte) (Ocaml Cmi, cm_file (Ocaml Cmi))
@@ -230,43 +256,36 @@ end = struct
           ; if_ melange (Melange Cmj, cm_file (Melange Cmj))
           ]
           |> List.concat
-        in
-        let set_dir m =
-          List.map ~f:(fun (cm_kind, p) -> (cm_dir m cm_kind, p))
-        in
-        let+ modules_impl =
-          let+ bin_annot = Super_context.bin_annot sctx ~dir in
-          List.concat_map installable_modules.impl ~f:(fun m ->
-              let cmt_files =
-                if bin_annot then
-                  List.concat_map Ml_kind.all ~f:(fun ml_kind ->
-                      let open Lib_mode.Cm_kind in
-                      List.concat_map
-                        [ (native || byte, Ocaml Cmi); (melange, Melange Cmi) ]
-                        ~f:(fun (condition, kind) ->
-                          if_ condition
-                            ( kind
-                            , Obj_dir.Module.cmt_file obj_dir m ~ml_kind
-                                ~cm_kind:kind )))
-                else []
-              in
-
-              common m @ cmt_files |> set_dir m)
-        in
-        let modules_vlib =
-          List.concat_map installable_modules.vlib ~f:(fun m ->
-              if Module.kind m = Virtual then [] else common m |> set_dir m)
-        in
-        modules_vlib @ modules_impl
       in
-      modules
-    in
-    let* lib_files, dll_files =
-      let+ lib_files = lib_files ~dir ~dir_contents ~lib_config info in
-      let dll_files = dll_files ~modes:ocaml ~dynlink:lib.dynlink ~ctx info in
-      (lib_files, dll_files)
-    in
-    let+ execs = lib_ppxs ctx ~scope ~lib in
+      let set_dir m = List.map ~f:(fun (cm_kind, p) -> (cm_dir m cm_kind, p)) in
+      let+ modules_impl =
+        let+ bin_annot = Super_context.bin_annot sctx ~dir in
+        List.concat_map installable_modules.impl ~f:(fun m ->
+            let cmt_files =
+              match bin_annot with
+              | false -> []
+              | true ->
+                List.concat_map Ml_kind.all ~f:(fun ml_kind ->
+                    List.concat_map
+                      [ (native || byte, Lib_mode.Cm_kind.Ocaml Cmi)
+                      ; (melange, Melange Cmi)
+                      ]
+                      ~f:(fun (condition, kind) ->
+                        if_ condition
+                          ( kind
+                          , Obj_dir.Module.cmt_file obj_dir m ~ml_kind
+                              ~cm_kind:kind )))
+            in
+            common m @ cmt_files |> set_dir m)
+      in
+      let modules_vlib =
+        List.concat_map installable_modules.vlib ~f:(fun m ->
+            if Module.kind m = Virtual then [] else common m |> set_dir m)
+      in
+      modules_vlib @ modules_impl
+    and+ lib_files = lib_files ~dir ~dir_contents ~lib_config info
+    and+ execs = lib_ppxs ctx ~scope ~lib in
+    let dll_files = dll_files ~modes:ocaml ~dynlink:lib.dynlink ~ctx info in
     let install_c_headers =
       List.rev_map lib.install_c_headers ~f:(fun (loc, base) ->
           Path.Build.relative dir (base ^ Foreign_language.header_extension)
@@ -283,6 +302,7 @@ end = struct
             let entry = Install.Entry.make ~kind:`File Stublibs a in
             Install.Entry.Sourced.create ~loc entry)
       ; install_c_headers
+      ; public_headers
       ]
 
   let keep_if expander ~scope stanza =
@@ -419,7 +439,7 @@ end = struct
     let+ init =
       Package.Name.Map_traversals.parallel_map packages
         ~f:(fun _name (pkg : Package.t) ->
-          let* opam_file = Package_paths.opam_file ctx pkg in
+          let opam_file = Package_paths.opam_file ctx pkg in
           let init =
             let file section local_file dst =
               Install.Entry.make section local_file ~kind:`File ~dst
@@ -458,7 +478,7 @@ end = struct
           | Some dir ->
             let pkg_dir = Path.Build.append_source ctx.build_dir pkg_dir in
             Source_tree.Dir.files dir
-            |> String.Set.fold ~init ~f:(fun fn acc ->
+            |> Filename.Set.fold ~init ~f:(fun fn acc ->
                    if is_odig_doc_file fn then
                      let odig_file = Path.Build.relative pkg_dir fn in
                      let entry = Install.Entry.make Doc ~kind:`File odig_file in
@@ -531,18 +551,12 @@ end = struct
     in
     let lib_root lib =
       let subdir =
-        let name = Lib.name lib in
-        let _, subdir = Lib_name.split name in
-        match
-          let info = Lib.info lib in
-          Lib_info.status info
-        with
-        | Private (_, Some _) ->
-          Lib_name.Local.mangled_path_under_package (Lib_name.to_local_exn name)
-          @ subdir
-        | _ -> subdir
+        Lib_info.Status.relative_to_package
+          (Lib_info.status @@ Lib.info lib)
+          (Lib.name lib)
+        |> Option.value_exn
       in
-      Path.Build.L.relative pkg_root subdir
+      Path.Build.append_local pkg_root subdir
     in
     let* entries =
       Memo.parallel_map lib_entries ~f:(fun (stanza : Scope.DB.Lib_entry.t) ->
@@ -563,17 +577,26 @@ end = struct
                      { loc; old_public_name; new_public_name } ))
           | Library lib ->
             let info = Lib.Local.info lib in
-            let* dir_contents =
-              let dir = Lib_info.src_dir info in
-              Dir_contents.get sctx ~dir
-            in
+            let dir = Lib_info.src_dir info in
+            let* dir_contents = Dir_contents.get sctx ~dir in
             let obj_dir = Lib.Local.obj_dir lib in
-            let lib_src_dir =
-              let info = Lib.Local.info lib in
-              Lib_info.src_dir info
-            in
             let lib = Lib.Local.to_lib lib in
             let name = Lib.name lib in
+            let* expander = Super_context.expander sctx ~dir in
+            let file_deps (deps : _ Lib_info.File_deps.t) =
+              match deps with
+              | External _paths -> assert false
+              | Local (loc, dep_conf) ->
+                Lib_file_deps.eval ~expander ~loc ~paths:Allow_all dep_conf
+                >>| Path.Set.to_list_map ~f:(fun p ->
+                        let local_path =
+                          p |> Path.as_in_build_dir_exn |> Path.Build.local
+                        in
+                        check_runtime_deps_relative_path ~lib_info:info ~loc
+                          local_path;
+                        p)
+            in
+
             let* foreign_objects =
               (* We are writing the list of .o files to dune-package, but we
                  actually only install them for virtual libraries. See
@@ -590,22 +613,12 @@ end = struct
               Dir_contents.ocaml dir_contents
               >>| Ml_sources.modules ~for_:(Library name)
             and* melange_runtime_deps =
-              match Lib_info.melange_runtime_deps info with
-              | External _paths -> assert false
-              | Local (loc, dep_conf) ->
-                let+ melange_runtime_deps =
-                  let* expander =
-                    Super_context.expander sctx ~dir:lib_src_dir
-                  in
-                  Melange_rules.Runtime_deps.eval ~expander ~loc
-                    ~paths:Allow_all dep_conf
-                in
-                Path.Set.to_list melange_runtime_deps
-            in
+              file_deps (Lib_info.melange_runtime_deps info)
+            and* public_headers = file_deps (Lib_info.public_headers info) in
             let+ sub_systems =
               Lib.to_dune_lib lib
                 ~dir:(Path.build (lib_root lib))
-                ~modules ~foreign_objects ~melange_runtime_deps
+                ~modules ~foreign_objects ~melange_runtime_deps ~public_headers
               >>= Resolve.read_memo
             in
             Some (name, Dune_package.Entry.Library sub_systems))
@@ -706,11 +719,10 @@ end = struct
           in
           let action_with_targets =
             Action_builder.write_file
-              (Package_paths.deprecated_dune_package_file ctx pkg
-                 dune_pkg.Dune_package.name)
+              (Package_paths.deprecated_dune_package_file ctx pkg dune_pkg.name)
               (Format.asprintf "%a"
                  (Dune_package.Or_meta.pp ~dune_version)
-                 (Dune_package.Or_meta.Dune_package dune_pkg))
+                 (Dune_package dune_pkg))
           in
           Super_context.add_rule sctx ~dir:ctx.build_dir ~loc
             action_with_targets)

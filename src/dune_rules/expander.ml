@@ -80,7 +80,7 @@ let set_local_env_var t ~var ~value =
 
 let set_dir t ~dir = { t with dir }
 
-let set_scope t ~scope = { t with scope }
+let set_scope t ~scope ~scope_host = { t with scope; scope_host }
 
 let set_bin_artifacts t ~bin_artifacts_host = { t with bin_artifacts_host }
 
@@ -159,9 +159,9 @@ let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
             s
         ])
 
-let isn't_allowed_in_this_position ~source =
+let isn't_allowed_in_this_position ~(source : Dune_lang.Template.Pform.t) =
   let exn =
-    User_error.make ~loc:source.Dune_lang.Template.Pform.loc
+    User_error.make ~loc:source.loc
       [ Pp.textf "%s isn't allowed in this position."
           (Dune_lang.Template.Pform.describe source)
       ]
@@ -222,9 +222,9 @@ let get_prog = function
   | Ok p -> path p
   | Error err -> Action.Prog.Not_found.raise err
 
-let c_compiler_and_flags (context : Context.t) =
-  Ocaml_config.c_compiler context.ocaml_config
-  :: Ocaml_config.ocamlc_cflags context.ocaml_config
+let c_compiler_and_flags ocaml_config =
+  Ocaml_config.c_compiler ocaml_config
+  :: Ocaml_config.ocamlc_cflags ocaml_config
 
 let relative ~source d s =
   Path.build
@@ -276,6 +276,133 @@ let expand_read_macro ~dir ~source s ~read ~pack =
            but this is a bigger refactoring. *)
         With (Action_builder.of_memo read))
 
+let file_of_lib { Artifacts.Public_libs.context; public_libs } ~loc ~lib ~file =
+  let open Resolve.Memo.O in
+  let+ lib = Lib.DB.resolve public_libs (loc, lib) in
+  let dir =
+    let info = Lib.info lib in
+    match Lib.is_local lib with
+    | false -> Lib_info.src_dir info
+    | true ->
+      let name = Lib.name lib in
+      let subdir =
+        Lib_info.Status.relative_to_package (Lib_info.status info) name
+        |> Option.value_exn
+      in
+      let pkg_root =
+        let package = Lib_name.package_name name in
+        Local_install_path.lib_dir ~context:context.name ~package
+      in
+      Path.build (Path.Build.append_local pkg_root subdir)
+  in
+  Path.relative dir file
+
+let expand_lib_variable t source ~arg:s ~lib_exec ~lib_private =
+  let loc = Dune_lang.Template.Pform.loc source in
+  let lib, file =
+    match String.lsplit2 s ~on:':' with
+    | None ->
+      User_error.raise ~loc [ Pp.textf "invalid %%{lib:...} form: %s" s ]
+    | Some (lib, f) -> (Lib_name.parse_string_exn (loc, lib), f)
+  in
+  let scope = if lib_exec then t.scope_host else t.scope in
+  let p =
+    let open Resolve.Memo.O in
+    if lib_private then
+      let* lib = Lib.DB.resolve (Scope.libs scope) (loc, lib) in
+      let current_project = Scope.project t.scope
+      and referenced_project =
+        Lib.info lib |> Lib_info.status |> Lib_info.Status.project
+      in
+      if
+        Option.equal Dune_project.equal (Some current_project)
+          referenced_project
+      then
+        Resolve.Memo.return
+          (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
+      else
+        Resolve.Memo.fail
+          (User_error.make ~loc
+             [ Pp.textf
+                 "The variable \"lib%s-private\" can only refer to libraries \
+                  within the same project. The current project's name is %S, \
+                  but the reference is to %s."
+                 (if lib_exec then "exec" else "")
+                 (Dune_project.Name.to_string_hum
+                    (Dune_project.name current_project))
+                 (match referenced_project with
+                 | None -> "an external library"
+                 | Some project ->
+                   Dune_project.name project |> Dune_project.Name.to_string_hum
+                   |> String.quoted)
+             ])
+    else
+      let artifacts =
+        if lib_exec then t.lib_artifacts_host else t.lib_artifacts
+      in
+      file_of_lib artifacts ~loc ~lib ~file
+  in
+  let p =
+    let open Memo.O in
+    Resolve.Memo.peek p >>| function
+    | Ok p -> (
+      match file with
+      | "" | "." ->
+        let lang_version = Dune_project.dune_version (Scope.project t.scope) in
+        if lang_version < (3, 0) then Action_builder.return [ Value.Path p ]
+        else
+          User_error.raise ~loc
+            [ Pp.textf
+                "The form %%{%s:<libname>:%s} is no longer supported since \
+                 version 3.0 of the Dune language."
+                (if lib_private then "lib-private" else "lib")
+                file
+            ]
+            ~hints:
+              [ (match Lib_name.to_string lib with
+                | "ctypes" ->
+                  Pp.text
+                    "Did you know that Dune 3.0 supports ctypes natively? See \
+                     the manual for more details."
+                | _ ->
+                  Pp.textf
+                    "If you are trying to use this form to include a \
+                     directory, you should instead use (foreign_stubs \
+                     (include_dirs (lib %s))). See the manual for more \
+                     details."
+                    (Lib_name.to_string lib))
+              ]
+      | _ ->
+        if (not lib_exec) || (not Sys.win32) || Filename.extension s = ".exe"
+        then dep p
+        else
+          let p_exe = Path.extend_basename p ~suffix:".exe" in
+          Action_builder.if_file_exists p_exe ~then_:(dep p_exe) ~else_:(dep p))
+    | Error () ->
+      let p =
+        if lib_private then Resolve.Memo.map p ~f:(fun _ -> assert false)
+        else
+          let open Resolve.Memo.O in
+          let* available =
+            Resolve.Memo.lift_memo (Lib.DB.available (Scope.libs scope) lib)
+          in
+          match available with
+          | false -> p >>| fun _ -> assert false
+          | true ->
+            Resolve.Memo.fail
+              (User_error.make ~loc
+                 [ Pp.textf
+                     "The library %S is not public. The variable \"lib%s\" \
+                      expands to the file's installation path which is not \
+                      defined for private libraries."
+                     (Lib_name.to_string lib)
+                     (if lib_exec then "exec" else "")
+                 ])
+      in
+      Resolve.Memo.read p
+  in
+  Action_builder.of_memo_join p
+
 let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
     (pform : Pform.t) : expansion_result =
   match Pform.Map.find bindings pform with
@@ -284,6 +411,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
     match pform with
     | Var var -> (
       match var with
+      | Pkg _ -> assert false
       | Nothing -> static []
       | User_var _
       | Deps
@@ -308,9 +436,9 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
         Need_full_expander
           (fun t ->
             invalid_use_of_target_variable t ~source ~var_multiplicity:Multiple)
-      | Ocaml -> static (get_prog context.ocaml)
-      | Ocamlc -> static (path context.ocamlc)
-      | Ocamlopt -> static (get_prog context.ocamlopt)
+      | Ocaml -> static (get_prog context.ocaml.ocaml)
+      | Ocamlc -> static (path context.ocaml.ocamlc)
+      | Ocamlopt -> static (get_prog context.ocaml.ocamlopt)
       | Make ->
         let open Memo.O in
         Direct
@@ -321,43 +449,47 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                 Utils.program_not_found ~context:context.name
                   ~loc:(Some (Dune_lang.Template.Pform.loc source))
                   "make"))
-      | Cpp -> static (strings (c_compiler_and_flags context @ [ "-E" ]))
+      | Cpp ->
+        c_compiler_and_flags context.ocaml.ocaml_config @ [ "-E" ]
+        |> strings |> static
       | Pa_cpp ->
-        static
-          (strings
-             (c_compiler_and_flags context
-             @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ]))
+        c_compiler_and_flags context.ocaml.ocaml_config
+        @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ]
+        |> strings |> static
       | Arch_sixtyfour ->
-        static (string (string_of_bool context.arch_sixtyfour))
-      | Ocaml_bin_dir -> static [ Dir context.ocaml_bin ]
+        64
+        = Ocaml_config.word_size context.ocaml.ocaml_config
+        |> string_of_bool |> string |> static
+      | Ocaml_bin_dir -> static [ Dir context.ocaml.bin_dir ]
       | Ocaml_version ->
-        static (string (Ocaml_config.version_string context.ocaml_config))
-      | Ocaml_stdlib_dir -> static (string (Path.to_string context.stdlib_dir))
+        static (string (Ocaml_config.version_string context.ocaml.ocaml_config))
+      | Ocaml_stdlib_dir ->
+        static (string (Path.to_string context.lib_config.stdlib_dir))
       | Dev_null -> static (string (Path.to_string Dev_null.path))
       | Ext_obj -> static (string context.lib_config.ext_obj)
-      | Ext_asm -> static (string (Ocaml_config.ext_asm context.ocaml_config))
+      | Ext_asm ->
+        static (string (Ocaml_config.ext_asm context.ocaml.ocaml_config))
       | Ext_lib -> static (string context.lib_config.ext_lib)
       | Ext_dll -> static (string context.lib_config.ext_dll)
-      | Ext_exe -> static (string (Ocaml_config.ext_exe context.ocaml_config))
+      | Ext_exe ->
+        static (string (Ocaml_config.ext_exe context.ocaml.ocaml_config))
       | Ext_plugin ->
-        static
-          (string
-             (Mode.plugin_ext
-                (if Ocaml_config.natdynlink_supported context.ocaml_config then
-                 Mode.Native
-                else Mode.Byte)))
+        (if Ocaml_config.natdynlink_supported context.ocaml.ocaml_config then
+         Mode.Native
+        else Byte)
+        |> Mode.plugin_ext |> string |> static
       | Profile -> static (string (Profile.to_string context.profile))
       | Workspace_root -> static [ Value.Dir (Path.build context.build_dir) ]
       | Context_name -> static (string (Context_name.to_string context.name))
       | Os_type ->
-        static
-          (string
-             (Ocaml_config.Os_type.to_string
-                (Ocaml_config.os_type context.ocaml_config)))
+        static @@ string
+        @@ Ocaml_config.Os_type.to_string
+             (Ocaml_config.os_type context.ocaml.ocaml_config)
       | Architecture ->
-        static (string (Ocaml_config.architecture context.ocaml_config))
-      | System -> static (string (Ocaml_config.system context.ocaml_config))
-      | Model -> static (string (Ocaml_config.model context.ocaml_config))
+        static (string (Ocaml_config.architecture context.ocaml.ocaml_config))
+      | System ->
+        static (string (Ocaml_config.system context.ocaml.ocaml_config))
+      | Model -> static (string (Ocaml_config.model context.ocaml.ocaml_config))
       | Ignoring_promoted_rules ->
         static (string (string_of_bool !Clflags.ignore_promoted_rules))
       | Project_root ->
@@ -378,34 +510,35 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
               (let* cc = Action_builder.of_memo (cc t) in
                cc.cxx))
       | Ccomp_type ->
-        static
-          (string
-             (Ocaml_config.Ccomp_type.to_string context.lib_config.ccomp_type))
-      | Toolchain ->
-        static
-          (string
-             (match context.findlib_toolchain with
-             | Some toolchain -> Context_name.to_string toolchain
-             | None ->
-               let loc = Dune_lang.Template.Pform.loc source in
-               User_error.raise ~loc
-                 [ Pp.text "No toolchain defined for this context" ])))
+        static @@ string
+        @@ Ocaml_config.Ccomp_type.to_string context.lib_config.ccomp_type
+      | Toolchain -> (
+        static @@ string
+        @@
+        match context.findlib_toolchain with
+        | Some toolchain -> Context_name.to_string toolchain
+        | None ->
+          let loc = Dune_lang.Template.Pform.loc source in
+          User_error.raise ~loc
+            [ Pp.text "No toolchain defined for this context" ]))
     | Macro (macro, s) -> (
       match macro with
-      | Ocaml_config ->
+      | Pkg -> Code_error.raise "pkg forms aren't possible here" []
+      | Ocaml_config -> (
         static
-          (match Ocaml_config.by_name context.ocaml_config s with
-          | None ->
-            User_error.raise
-              ~loc:(Dune_lang.Template.Pform.loc source)
-              [ Pp.textf "Unknown ocaml configuration variable %S" s ]
-          | Some v -> (
-            match v with
-            | Bool x -> string (string_of_bool x)
-            | Int x -> string (string_of_int x)
-            | String x -> string x
-            | Words x -> strings x
-            | Prog_and_args x -> strings (x.prog :: x.args)))
+        @@
+        match Ocaml_config.by_name context.ocaml.ocaml_config s with
+        | None ->
+          User_error.raise
+            ~loc:(Dune_lang.Template.Pform.loc source)
+            [ Pp.textf "Unknown ocaml configuration variable %S" s ]
+        | Some v -> (
+          match v with
+          | Bool x -> string (string_of_bool x)
+          | Int x -> string (string_of_int x)
+          | String x -> string x
+          | Words x -> strings x
+          | Prog_and_args x -> strings (x.prog :: x.args)))
       | Env ->
         Need_full_expander
           (fun t ->
@@ -453,132 +586,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Lib { lib_exec; lib_private } ->
         Need_full_expander
           (fun t ->
-            With
-              (let lib, file =
-                 let loc = Dune_lang.Template.Pform.loc source in
-                 match String.lsplit2 s ~on:':' with
-                 | None ->
-                   User_error.raise ~loc
-                     [ Pp.textf "invalid %%{lib:...} form: %s" s ]
-                 | Some (lib, f) -> (Lib_name.parse_string_exn (loc, lib), f)
-               in
-               let scope = if lib_exec then t.scope_host else t.scope in
-               let p =
-                 let open Resolve.Memo.O in
-                 if lib_private then
-                   let* lib =
-                     Lib.DB.resolve (Scope.libs scope)
-                       (Dune_lang.Template.Pform.loc source, lib)
-                   in
-                   let current_project = Scope.project t.scope
-                   and referenced_project =
-                     Lib.info lib |> Lib_info.status |> Lib_info.Status.project
-                   in
-                   if
-                     Option.equal Dune_project.equal (Some current_project)
-                       referenced_project
-                   then
-                     Resolve.Memo.return
-                       (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
-                   else
-                     Resolve.Memo.fail
-                       (User_error.make
-                          ~loc:(Dune_lang.Template.Pform.loc source)
-                          [ Pp.textf
-                              "The variable \"lib%s-private\" can only refer \
-                               to libraries within the same project. The \
-                               current project's name is %S, but the reference \
-                               is to %s."
-                              (if lib_exec then "exec" else "")
-                              (Dune_project.Name.to_string_hum
-                                 (Dune_project.name current_project))
-                              (match referenced_project with
-                              | None -> "an external library"
-                              | Some project ->
-                                Dune_project.name project
-                                |> Dune_project.Name.to_string_hum
-                                |> String.quoted)
-                          ])
-                 else
-                   let artifacts =
-                     if lib_exec then t.lib_artifacts_host else t.lib_artifacts
-                   in
-                   Artifacts.Public_libs.file_of_lib artifacts
-                     ~loc:(Dune_lang.Template.Pform.loc source)
-                     ~lib ~file
-               in
-               let p =
-                 let open Memo.O in
-                 Resolve.Memo.peek p >>| function
-                 | Ok p -> (
-                   match file with
-                   | "" | "." ->
-                     let lang_version =
-                       Dune_project.dune_version (Scope.project t.scope)
-                     in
-                     if lang_version < (3, 0) then
-                       Action_builder.return [ Value.Path p ]
-                     else
-                       User_error.raise
-                         ~loc:(Dune_lang.Template.Pform.loc source)
-                         [ Pp.textf
-                             "The form %%{%s:<libname>:%s} is no longer \
-                              supported since version 3.0 of the Dune \
-                              language."
-                             (if lib_private then "lib-private" else "lib")
-                             file
-                         ]
-                         ~hints:
-                           [ (match Lib_name.to_string lib with
-                             | "ctypes" ->
-                               Pp.text
-                                 "Did you know that Dune 3.0 supports ctypes \
-                                  natively? See the manual for more details."
-                             | _ ->
-                               Pp.textf
-                                 "If you are trying to use this form to \
-                                  include a directory, you should instead use \
-                                  (foreign_stubs (include_dirs (lib %s))). See \
-                                  the manual for more details."
-                                 (Lib_name.to_string lib))
-                           ]
-                   | _ ->
-                     if
-                       (not lib_exec) || (not Sys.win32)
-                       || Filename.extension s = ".exe"
-                     then dep p
-                     else
-                       let p_exe = Path.extend_basename p ~suffix:".exe" in
-                       Action_builder.if_file_exists p_exe ~then_:(dep p_exe)
-                         ~else_:(dep p))
-                 | Error () ->
-                   let p =
-                     if lib_private then
-                       Resolve.Memo.map p ~f:(fun _ -> assert false)
-                     else
-                       let open Resolve.Memo.O in
-                       let* available =
-                         Resolve.Memo.lift_memo
-                           (Lib.DB.available (Scope.libs scope) lib)
-                       in
-                       match available with
-                       | false -> p >>| fun _ -> assert false
-                       | true ->
-                         Resolve.Memo.fail
-                           (User_error.make
-                              ~loc:(Dune_lang.Template.Pform.loc source)
-                              [ Pp.textf
-                                  "The library %S is not public. The variable \
-                                   \"lib%s\" expands to the file's \
-                                   installation path which is not defined for \
-                                   private libraries."
-                                  (Lib_name.to_string lib)
-                                  (if lib_exec then "exec" else "")
-                              ])
-                   in
-                   Resolve.Memo.read p
-               in
-               Action_builder.of_memo_join p))
+            With (expand_lib_variable t source ~arg:s ~lib_exec ~lib_private))
       | Lib_available ->
         Need_full_expander
           (fun t ->
@@ -603,17 +611,17 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Read_strings ->
         expand_read_macro ~dir ~source s ~read:Io.lines_of_file
           ~pack:(fun lines ->
-            strings
-              (List.map lines ~f:(fun line ->
-                   match Scanf.unescaped line with
-                   | Error () ->
-                     User_error.raise
-                       ~loc:(Loc.in_file (relative ~source dir s))
-                       [ Pp.textf
-                           "This file must be a list of lines escaped using \
-                            OCaml's conventions"
-                       ]
-                   | Ok s -> s)))
+            List.map lines ~f:(fun line ->
+                match Scanf.unescaped line with
+                | Error () ->
+                  User_error.raise
+                    ~loc:(Loc.in_file (relative ~source dir s))
+                    [ Pp.textf
+                        "This file must be a list of lines escaped using \
+                         OCaml's conventions"
+                    ]
+                | Ok s -> s)
+            |> strings)
       | Coq_config ->
         Need_full_expander
           (fun t ->
@@ -690,7 +698,7 @@ let expand_pform_no_deps t ~source pform =
     ~human_readable_description:(fun () -> describe_source ~source)
 
 let expand t ~mode template =
-  Action_builder.Expander.expand ~dir:(Path.build t.dir) ~mode template
+  String_expander.Action_builder.expand ~dir:(Path.build t.dir) ~mode template
     ~f:(expand_pform t)
 
 let make ~scope ~scope_host ~(context : Context.t) ~lib_artifacts
@@ -706,7 +714,7 @@ let make ~scope ~scope_host ~(context : Context.t) ~lib_artifacts
   ; lib_artifacts
   ; lib_artifacts_host
   ; bin_artifacts_host
-  ; c_compiler = Ocaml_config.c_compiler context.ocaml_config
+  ; c_compiler = Ocaml_config.c_compiler context.ocaml.ocaml_config
   ; context
   ; lookup_artifacts = None
   ; foreign_flags =
@@ -731,7 +739,8 @@ module No_deps = struct
   let expand_pform = expand_pform_no_deps
 
   let expand t ~mode sw =
-    String_with_vars.expand ~dir:(Path.build t.dir) ~mode sw ~f:(expand_pform t)
+    String_expander.Memo.expand ~dir:(Path.build t.dir) ~mode sw
+      ~f:(expand_pform t)
 
   let expand_path t sw =
     let+ v = expand t ~mode:Single sw in
@@ -799,32 +808,39 @@ module With_reduced_var_set = struct
 
   let expand_str ~context ~dir sw =
     let+ v =
-      String_with_vars.expand ~dir:(Path.build dir) ~mode:Single sw
+      String_expander.Memo.expand ~dir:(Path.build dir) ~mode:Single sw
         ~f:(expand_pform ~context ~bindings:Pform.Map.empty ~dir)
     in
     Value.to_string v ~dir:(Path.build dir)
 
   let expand_str_partial ~context ~dir sw =
-    String_with_vars.expand_as_much_as_possible ~dir:(Path.build dir) sw
+    String_expander.Memo.expand_as_much_as_possible ~dir:(Path.build dir) sw
       ~f:(expand_pform_opt ~context ~bindings:Pform.Map.empty ~dir)
 
   let eval_blang ~context ~dir blang =
-    Blang.eval
+    Blang_expand.eval
       ~f:(expand_pform ~context ~bindings:Pform.Map.empty ~dir)
       ~dir:(Path.build dir) blang
 end
+
+let expand_ordered_set_lang =
+  let module Expander = Ordered_set_lang.Unexpanded.Expand (struct
+    include Action_builder
+    include String_expander.Action_builder
+  end) in
+  Expander.expand
 
 let expand_and_eval_set t set ~standard =
   let dir = Path.build (dir t) in
   let+ standard =
     if Ordered_set_lang.Unexpanded.has_special_forms set then standard
     else Action_builder.return []
-  and+ set = Ordered_set_lang.Unexpanded.expand set ~dir ~f:(expand_pform t) in
+  and+ set = expand_ordered_set_lang set ~dir ~f:(expand_pform t) in
   Ordered_set_lang.eval set ~standard ~eq:String.equal ~parse:(fun ~loc:_ s ->
       s)
 
 let eval_blang t blang =
-  Blang.eval ~f:(No_deps.expand_pform t) ~dir:(Path.build t.dir) blang
+  Blang_expand.eval ~f:(No_deps.expand_pform t) ~dir:(Path.build t.dir) blang
 
 let expand_lock ~base expander (Locks.Lock sw) =
   let open Memo.O in

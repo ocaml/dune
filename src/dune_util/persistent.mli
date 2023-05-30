@@ -33,10 +33,9 @@ end
 (** Create a pair of functions to write/read a persistent value to/from a file.
     [D.name] must be unique.
 
-    In the future, we plan to add a command [dune dump <file>] that will
-    pretty-print the contents of any persistent file. This command will use the
-    [D.name] stored in the persistent file to locate the appropriate pretty
-    printer. *)
+    There's the [dune dump <file>] command that can pretty-print the contents of
+    any persistent file. This command can use the [D.name] stored in the
+    persistent file to locate the appropriate pretty printer. *)
 module Make (D : Desc) : sig
   val to_string : D.t -> string
 

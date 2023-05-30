@@ -9,6 +9,14 @@ type t =
   ; dirs : Path.Build.Set.t
   }
 
+let maybe_async f =
+  (* It would be nice to do this check only once and return a function, but the
+     type of this function would need to be polymorphic which is forbidden by
+     the relaxed value restriction. *)
+  match Config.(get background_file_system_operations_in_rule_execution) with
+  | `Enabled -> Scheduler.async_exn f
+  | `Disabled -> Fiber.return (f ())
+
 module File = struct
   let create file =
     { files = Path.Build.Set.singleton file; dirs = Path.Build.Set.empty }
@@ -25,6 +33,11 @@ let empty = { files = Path.Build.Set.empty; dirs = Path.Build.Set.empty }
 let combine x y =
   { files = Path.Build.Set.union x.files y.files
   ; dirs = Path.Build.Set.union x.dirs y.dirs
+  }
+
+let diff t { files; dirs } =
+  { files = Path.Build.Set.diff t.files files
+  ; dirs = Path.Build.Set.diff t.dirs dirs
   }
 
 let is_empty { files; dirs } =
@@ -55,6 +68,10 @@ let pp { files; dirs } =
 let exists { files; dirs } ~f =
   Path.Build.Set.exists files ~f || Path.Build.Set.exists dirs ~f
 
+let iter { files; dirs } ~file ~dir =
+  Path.Build.Set.iter files ~f:file;
+  Path.Build.Set.iter dirs ~f:dir
+
 module Validated = struct
   type nonrec t = t =
     { files : Path.Build.Set.t
@@ -64,6 +81,8 @@ module Validated = struct
   let to_dyn = to_dyn
 
   let head = head_exn
+
+  let unvalidate t = t
 end
 
 module Validation_result = struct
@@ -139,7 +158,8 @@ module Produced = struct
         Ok { files; dirs }
 
   let produced_after_rule_executed_exn ~loc targets =
-    match of_validated targets with
+    let open Fiber.O in
+    maybe_async (fun () -> of_validated targets) >>| function
     | Ok t -> t
     | Error (`Directory dir, (Unix.ENOENT, _, _)) ->
       User_error.raise ~loc

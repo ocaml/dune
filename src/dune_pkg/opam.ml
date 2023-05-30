@@ -124,11 +124,17 @@ module Summary = struct
   type t = { opam_packages_to_lock : OpamPackage.t list }
 
   let selected_packages_message t =
-    User_message.make
-      (Pp.tag User_message.Style.Success
-         (Pp.text "Selected the following packages:")
-      :: List.map t.opam_packages_to_lock ~f:(fun package ->
-             Pp.text (OpamPackage.to_string package)))
+    match t.opam_packages_to_lock with
+    | [] ->
+      User_message.make
+        [ Pp.tag User_message.Style.Success (Pp.text "No dependencies to lock")
+        ]
+    | opam_packages_to_lock ->
+      User_message.make
+        (Pp.tag User_message.Style.Success
+           (Pp.text "Selected the following packages:")
+        :: List.map opam_packages_to_lock ~f:(fun package ->
+               Pp.text (OpamPackage.to_string package)))
 end
 
 let opam_package_to_lock_file_pkg ~repo ~local_packages ~lock_dir_path

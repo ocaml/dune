@@ -42,7 +42,7 @@ type t =
 
 val create_latest_version : Pkg.t Package_name.Map.t -> t
 
-val path : Path.Source.t
+val default_path : Path.Source.t
 
 val metadata : Filename.t
 

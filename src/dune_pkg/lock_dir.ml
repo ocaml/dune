@@ -146,7 +146,7 @@ let create_latest_version packages =
   let version = Syntax.greatest_supported_version Dune_lang.Pkg.syntax in
   { version; packages }
 
-let path = Path.Source.(relative root "dune.lock")
+let default_path = Path.Source.(relative root "dune.lock")
 
 let metadata = "lock.dune"
 

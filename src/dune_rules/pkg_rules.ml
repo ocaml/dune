@@ -55,6 +55,8 @@ module Lock_dir = struct
   include Dune_pkg.Lock_dir
 
   let get () : t Memo.t =
+    (* TODO this should be able to handle lock directories at the non-default path *)
+    let path = default_path in
     Fs_memo.dir_exists (In_source_dir path) >>= function
     | false ->
       (* TODO *)

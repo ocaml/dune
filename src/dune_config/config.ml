@@ -126,3 +126,13 @@ let background_sandboxes =
   in
   register t;
   t
+
+let background_file_system_operations_in_rule_execution =
+  let t =
+    { name = "background_file_system_operations_in_rule_execution"
+    ; of_string = Toggle.of_string
+    ; value = `Disabled
+    }
+  in
+  register t;
+  t

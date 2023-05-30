@@ -9,6 +9,14 @@ type t =
   ; dirs : Path.Build.Set.t
   }
 
+let maybe_async f =
+  (* It would be nice to do this check only once and return a function, but the
+     type of this function would need to be polymorphic which is forbidden by
+     the relaxed value restriction. *)
+  match Config.(get background_file_system_operations_in_rule_execution) with
+  | `Enabled -> Scheduler.async_exn f
+  | `Disabled -> Fiber.return (f ())
+
 module File = struct
   let create file =
     { files = Path.Build.Set.singleton file; dirs = Path.Build.Set.empty }
@@ -150,7 +158,8 @@ module Produced = struct
         Ok { files; dirs }
 
   let produced_after_rule_executed_exn ~loc targets =
-    match of_validated targets with
+    let open Fiber.O in
+    maybe_async (fun () -> of_validated targets) >>| function
     | Ok t -> t
     | Error (`Directory dir, (Unix.ENOENT, _, _)) ->
       User_error.raise ~loc

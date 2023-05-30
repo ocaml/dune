@@ -15,7 +15,7 @@ val diff : 'a t -> 'a t -> 'a t
 
 val and_ : 'a t list -> 'a t
 
-val compl : 'a t -> 'a t
+val not : 'a t -> 'a t
 
 val or_ : 'a t list -> 'a t
 

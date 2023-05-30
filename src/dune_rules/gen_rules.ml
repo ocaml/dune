@@ -185,7 +185,7 @@ let define_all_alias ~dir ~project ~js_targets =
       else (
         List.iter js_targets ~f:(fun js_target ->
             assert (Path.Build.equal (Path.Build.parent_exn js_target) dir));
-        Predicate_lang.compl
+        Predicate_lang.not
           (Predicate_lang.Glob.of_string_set
              (String.Set.of_list_map js_targets ~f:Path.Build.basename)))
     in

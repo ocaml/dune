@@ -3,7 +3,7 @@ open Dune_sexp
 
 type 'a t =
   | Element of 'a
-  | Compl of 'a t
+  | Not of 'a t
   | Standard
   | Or of 'a t list
   | And of 'a t list
@@ -17,9 +17,9 @@ let standard = Standard
 let diff a = function
   | Or [] -> a
   | And [] -> Or []
-  | b -> And [ a; Compl b ]
+  | b -> And [ a; Not b ]
 
-let compl a = Compl a
+let not a = Not a
 
 let true_ = And []
 
@@ -36,7 +36,7 @@ let and_ = function
   | _ :: _ :: _ as xs -> And xs
 
 let rec decode_one =
-  let not_or a = compl (Or a) in
+  let not_or a = not (Or a) in
 
   fun f ->
     let open Decoder in
@@ -95,7 +95,7 @@ let rec encode f =
   let open Encoder in
   function
   | Element a -> f a
-  | Compl a -> constr "not" (encode f) a
+  | Not a -> constr "not" (encode f) a
   | Standard -> string ":standard"
   | Or xs -> constr "or" (list (encode f)) xs
   | And xs -> constr "and" (list (encode f)) xs
@@ -104,14 +104,14 @@ let rec to_dyn f =
   let open Dyn in
   function
   | Element a -> f a
-  | Compl a -> variant "compl" [ to_dyn f a ]
+  | Not a -> variant "compl" [ to_dyn f a ]
   | Standard -> string ":standard"
   | Or xs -> variant "or" (List.map ~f:(to_dyn f) xs)
   | And xs -> variant "and" (List.map ~f:(to_dyn f) xs)
 
 let rec test_ t ~standard ~test elem =
   match t with
-  | Compl t -> not (test_ t ~standard ~test elem)
+  | Not t -> Stdlib.not (test_ t ~standard ~test elem)
   | Element f -> test f elem
   | Or xs -> List.exists ~f:(fun t -> test_ t ~standard ~test elem) xs
   | And xs -> List.for_all ~f:(fun t -> test_ t ~standard ~test elem) xs
@@ -124,9 +124,9 @@ let rec compare f x y =
   | Element a, Element b -> f a b
   | Element _, _ -> Lt
   | _, Element _ -> Gt
-  | Compl x, Compl y -> compare f x y
-  | Compl _, _ -> Lt
-  | _, Compl _ -> Gt
+  | Not x, Not y -> compare f x y
+  | Not _, _ -> Lt
+  | _, Not _ -> Gt
   | Standard, Standard -> Eq
   | Standard, _ -> Lt
   | _, Standard -> Gt

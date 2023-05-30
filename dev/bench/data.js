@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685435938023,
+  "lastUpdate": 1685436227280,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -37553,6 +37553,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6598330319266668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5c830d8d0c0d02f8883bb2bacf886da169e009a6",
+          "message": "fix(pkg): do not set OCAMLTOP_INCLUDE_PATH twice (#7834)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-30T01:16:50-07:00",
+          "tree_id": "58219d1879b6b43f23dc065f9c95f1e78ba31292",
+          "url": "https://github.com/ocaml/dune/commit/5c830d8d0c0d02f8883bb2bacf886da169e009a6"
+        },
+        "date": 1685436226506,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "67.60437018262667",
             "unit": "seconds"
           }
         ]

@@ -830,20 +830,8 @@ let link_odoc_rules sctx (a : Artefact.t) ~package ~requires ~indices =
     (let open Action_builder.With_targets.O in
     Action_builder.with_no_targets deps >>> run_odoc)
 
-let setup_html sctx deps (a : Artefact.t) =
+let html_generate sctx deps (a : Artefact.t) =
   let ctx = Super_context.context sctx in
-  let to_remove, dummy =
-    match Artefact.artefact_ty a with
-    | Mld -> (Artefact.html_file a, [])
-    | Module _ ->
-      (* Dummy target so that the below rule as at least one target. We do this
-         because we don't know the targets of odoc in this case. The proper way
-         to support this would be to have directory targets. *)
-      let dummy =
-        Action_builder.create_file (Artefact.html_dir a ++ ".dummy")
-      in
-      (Artefact.html_dir a, [ dummy ])
-  in
   let open Memo.O in
   let odoc_support_path = Paths.odoc_support ctx in
   let html_output = Paths.html_root ctx in
@@ -862,19 +850,21 @@ let setup_html sctx deps (a : Artefact.t) =
       ; A support_relative
       ; Dep (Path.build (Artefact.odocl_file a))
       ; Hidden_deps deps
-      ; Hidden_targets [ Artefact.html_file a ]
-      ]
+      ] 
   in
-  add_rule sctx
-    (Action_builder.progn
-       (Action_builder.with_no_targets
-          (Action_builder.return
-             (Action.Full.make
-                (Action.Progn
-                   [ Action.Remove_tree to_remove
-                   ; Action.Mkdir (Artefact.html_dir a)
-                   ])))
-       :: run_odoc :: dummy))
+  let rule, result =
+    match Artefact.artefact_ty a with
+    | Mld ->
+      Action_builder.With_targets.add ~file_targets:[Artefact.html_file a] run_odoc,
+      None
+    | Module _ ->
+      let dir = Artefact.html_dir a in
+      Action_builder.With_targets.add_directories ~directory_targets:[ dir ] run_odoc,
+      Some dir
+  in
+  let+ () = add_rule sctx rule in
+  result
+
 
 let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
   let open Memo.O in
@@ -1235,7 +1225,8 @@ let setup_package_odoc_rules sctx ~pkg =
         let+ () = link_odoc_rules sctx ~package:(Some pkg) ~requires ~indices:[] a in
         r)
   in
-  Dep.setup_deps ctx (Pkg pkg) (Path.set_of_build_paths_list odocs)
+  let+ () = Dep.setup_deps ctx (Pkg pkg) (Path.set_of_build_paths_list odocs) in
+  []
     
     
 let setup_lib_html_rules_def =
@@ -1256,15 +1247,17 @@ let setup_lib_html_rules_def =
     let t = Target.Lib lib in
     let* _, artefacts = odoc_artefacts sctx t in
     let index = create_index_odoc ctx (PrivateLib (lib_unique_name lib)) in
-    let* () =
-      Memo.parallel_iter artefacts ~f:(fun a ->
-          setup_html sctx (Import.Dep.Set.of_list []) a)
+    let* dirs =
+      Memo.parallel_map artefacts ~f:(fun a ->
+          html_generate sctx (Import.Dep.Set.of_list []) a)
     in
+    let dirs = List.filter_map ~f:(fun x -> x) dirs in
     let html_files =
       List.map ~f:(fun a -> Path.build (Artefact.html_file a)) artefacts
     in
     let static_html = List.map ~f:(fun b -> Path.build b) (static_html ctx) in
-    setup_html sctx (Import.Dep.Set.of_files (static_html @ html_files)) index
+    let+ _ = html_generate sctx (Import.Dep.Set.of_files (static_html @ html_files)) index in
+    dirs
   in
   Memo.With_implicit_output.create "setup-library-html-rules"
     ~implicit_output:Rules.implicit_output
@@ -1303,19 +1296,20 @@ let setup_pkg_html_rules_def =
     in
     let static_html = List.map ~f:Path.build (static_html ctx) in
     let deps = Import.Dep.Set.of_list [] in
-    let* () = Memo.List.iter artefacts ~f:(setup_html sctx deps) in
+    let* dirs = Memo.List.map artefacts ~f:(html_generate sctx deps) in
     let deps =
       Import.Dep.Set.of_list
         (List.map ~f:Import.Dep.file (static_html @ html_files))
     in
-    setup_html sctx deps index
+    let+ _ = html_generate sctx deps index in
+    List.filter_map ~f:(fun x -> x) dirs
   in
   Memo.With_implicit_output.create "setup_pkg_html_rules"
     ~implicit_output:Rules.implicit_output
     ~input:(module Input)
     f
 
-let setup_pkg_html_rules sctx ~pkg : unit Memo.t =
+let setup_pkg_html_rules sctx ~pkg =
   Memo.With_implicit_output.exec setup_pkg_html_rules_def
     (sctx, Package.Name.to_string pkg)
 
@@ -1495,7 +1489,7 @@ let setup_toplevel_html_rule sctx =
         let html_file = Artefact.html_file index in
         Import.Dep.Set.add acc (Import.Dep.file (Path.build html_file)))
   in
-  setup_html sctx deps artefact
+  html_generate sctx deps artefact
 
 let setup_toplevel_index_rules sctx =
   let ctx = Super_context.context sctx in
@@ -1518,7 +1512,7 @@ let setup_toplevel_index_rules sctx =
     link_odoc_rules sctx artefact ~package:None ~requires:(Resolve.return [])
       ~indices:dts
   in
-  Memo.return ()
+  Memo.return []
 
 type index_content =
   | Symlink of Path.t
@@ -1558,14 +1552,14 @@ let setup_lnu_index_rules sctx lnu =
     Option.bind ~f:Lib.Local.of_lib lib
   in
   match lib with
-  | None -> Memo.return ()
+  | None -> Memo.return []
   | Some l ->
     let index = Index.PrivateLib lnu in
     let* _, artefacts = odoc_artefacts sctx (Lib l) in
     let index_content = Generated (default_private_index l artefacts) in
     let* requires = Lib.closure [ (l :> Lib.t) ] ~linking:false in
     let* _ = general_index_rules sctx index index_content artefacts requires in
-    Memo.return ()
+    Memo.return []
 
 let setup_pkg_index_rules sctx pkg =
   let pkg_name = Package.name pkg in
@@ -1598,14 +1592,14 @@ let setup_pkg_index_rules sctx pkg =
   in
   let* requires = Lib.closure (libs :> Lib.t list) ~linking:false in
   let* _ = general_index_rules sctx index index_content artefacts requires in
-  Memo.return ()
+  Memo.return []
 
 let setup_external_index_rules sctx dir =
   let ctx = Super_context.context sctx in
   let* ext_index, artefacts = odoc_artefacts sctx (ExtLib dir) in
   let* c = classify_local_dir ctx dir in
   match c with
-  | Nothing -> Memo.return ()
+  | Nothing -> Memo.return []
   | Fallback f ->
     let index = Index.ExternalFallback (EF dir) in
     (* let index = create_index_odoc ctx index in *)
@@ -1617,7 +1611,7 @@ let setup_external_index_rules sctx dir =
     let* libs = Valid.find ctx f.libs in
     let* requires = Lib.closure libs ~linking:false in
     let* _ = general_index_rules sctx index index_content artefacts requires in
-    Memo.return ()
+    Memo.return []
   | Dune_with_modules (pkg, dwm) ->
     let index = Index.ExternalDunePackage pkg in
     let entry_modules =
@@ -1637,7 +1631,7 @@ let setup_external_index_rules sctx dir =
     let* libs = List.map ~f:(fun dwm -> dwm.lib) dwm |> Valid.filter_libs ctx in
     let* requires = Lib.closure libs ~linking:false in
     let* _ = general_index_rules sctx index index_content artefacts requires in
-    Memo.return ()
+    Memo.return []
 
 (* End of index rules *)
 
@@ -1700,7 +1694,7 @@ let compile_external_odoc a sctx lib_module_names parent requires =
     Memo.return ()
 
 let fallback_external_rules sctx local_dir lib_names subdirs =
-  if String.contains local_dir '/' then Memo.return ()
+  if String.contains local_dir '/' then Memo.return []
   else
     let ctx = Super_context.context sctx in
     let* libs = Valid.find ctx lib_names in
@@ -1758,7 +1752,8 @@ let fallback_external_rules sctx local_dir lib_names subdirs =
       Memo.List.iter extra_targets ~f:(fun extra_target ->
           Dep.setup_deps ctx extra_target deps)
     in
-    Dep.setup_deps ctx (ExtLib local_dir) deps
+    let+ () = Dep.setup_deps ctx (ExtLib local_dir) deps in
+    []
 
 let singleton_external_rules sctx dwm =
   let ctx = Super_context.context sctx in
@@ -1813,12 +1808,12 @@ let singleton_external_rules sctx dwm =
 let setup_external_rules sctx local_dir =
   let* c = classify_local_dir (Super_context.context sctx) local_dir in
   match c with
-  | Nothing -> Memo.return ()
+  | Nothing -> Memo.return []
   | Dune_with_modules (_package, m) ->
     let* _ =
       List.map m ~f:(fun m -> singleton_external_rules sctx m) |> Memo.all
     in
-    Memo.return ()
+    Memo.return []
   | Fallback { libs; subdirs } ->
     fallback_external_rules sctx local_dir libs subdirs
 
@@ -1845,7 +1840,7 @@ let setup_external_html_rules sctx local_dir =
       Some (index, artefacts)
   in
   match artefacts with
-  | None -> Memo.return ()
+  | None -> Memo.return []
   | Some (index, artefacts) ->
     let artefacts =
       List.filter
@@ -1855,15 +1850,17 @@ let setup_external_html_rules sctx local_dir =
           | _ -> true)
         artefacts
     in
-    let* () =
-      Memo.List.iter artefacts ~f:(fun a ->
-          setup_html sctx (Import.Dep.Set.of_list []) a)
+    let* dirs =
+      Memo.List.map artefacts ~f:(fun a ->
+          html_generate sctx (Import.Dep.Set.of_list []) a)
     in
+    let dirs = List.filter_map ~f:(fun x -> x) dirs in
     let html_files =
       List.map artefacts ~f:(fun a ->
           Import.Dep.file (Path.build (Artefact.html_file a)))
     in
-    setup_html sctx (Import.Dep.Set.of_list html_files) index
+    let+ _ = html_generate sctx (Import.Dep.Set.of_list html_files) index in
+    dirs
 
 (* End of external rules *)
 
@@ -1883,11 +1880,12 @@ let gen_project_rules sctx project =
       Rules.Produce.Alias.add_deps alias
         (Import.Dep.Set.of_files [ html_file ] |> Action_builder.deps))
 
-let has_rules ?(directory_targets = Path.Build.Map.empty) m =
-  let rules = Rules.collect_unit (fun () -> m) in
+let has_rules m =
+  let* dirs,rules = Rules.collect (fun () -> m) in
+  let directory_targets = Path.Build.Map.of_list_exn (List.map ~f:(fun dir -> (dir, Loc.none)) dirs) in
   Memo.return
     (Build_config.Rules
-       { rules
+       { rules = Memo.return rules
        ; build_dir_only_sub_dirs = Build_config.Rules.Build_only_sub_dirs.empty
        ; directory_targets
        })
@@ -1945,11 +1943,12 @@ let gen_rules sctx ~dir rest =
          })
   | [ "html" ] ->
     let ctx = Super_context.context sctx in
-    let directory_targets =
-      Path.Build.Map.singleton (Paths.odoc_support ctx) Loc.none
+    let rules =
+      let* () = setup_css_rule sctx in
+      let+ _ = setup_toplevel_html_rule sctx in
+      [ Paths.odoc_support ctx ]
     in
-    has_rules ~directory_targets
-      (setup_css_rule sctx >>> setup_toplevel_html_rule sctx)
+    has_rules rules
   | [ "index" ] -> has_rules (setup_toplevel_index_rules sctx)
   | [ "index"; "local"; pkg ] ->
     with_package sctx pkg ~f:(fun pkg -> setup_pkg_index_rules sctx pkg)
@@ -1965,7 +1964,8 @@ let gen_rules sctx ~dir rest =
       | Package pkg ->
         Log.info [Pp.textf "html rules for package %s" lib_unique_name_or_pkg];
         has_rules (setup_pkg_html_rules sctx ~pkg:(Package.name pkg))
-      | PrivateLib lib -> has_rules (setup_lib_html_rules sctx lib)
+      | PrivateLib lib ->
+        has_rules (setup_lib_html_rules sctx lib)
       | ExtLib ->
         has_rules (setup_external_html_rules sctx lib_unique_name_or_pkg)
       | Unknown -> Memo.return no_rules)

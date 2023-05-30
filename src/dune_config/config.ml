@@ -97,6 +97,16 @@ let copy_file =
   register t;
   t
 
+let background_actions =
+  let t =
+    { name = "background_actions"
+    ; of_string = Toggle.of_string
+    ; value = `Disabled
+    }
+  in
+  register t;
+  t
+
 let background_digests =
   let t =
     { name = "background_digests"

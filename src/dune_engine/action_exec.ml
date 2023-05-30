@@ -2,6 +2,15 @@ open Import
 open Fiber.O
 module DAP = Dune_action_plugin.Private.Protocol
 
+let maybe_async =
+  let maybe_async =
+    lazy
+      (match Config.(get background_actions) with
+      | `Enabled -> Scheduler.async_exn
+      | `Disabled -> fun f -> Fiber.return (f ()))
+  in
+  fun f -> (Lazy.force maybe_async) f
+
 (** A version of [Dune_action_plugin.Private.Protocol.Dependency] where all
     relative paths are replaced by [Path.t]. (except the protocol doesn't
     support Globs yet) *)
@@ -273,8 +282,11 @@ let rec exec t ~display ~ectx ~eenv =
     exec t ~display ~ectx ~eenv:{ eenv with env = Env.add eenv.env ~var ~value }
   | Redirect_out (Stdout, fn, perm, Echo s) ->
     let perm = Action.File_perm.to_unix_perm perm in
-    Io.write_file (Path.build fn) (String.concat s ~sep:" ") ~perm;
-    Fiber.return Done
+    let+ () =
+      maybe_async (fun () ->
+          Io.write_file (Path.build fn) (String.concat s ~sep:" ") ~perm)
+    in
+    Done
   | Redirect_out (outputs, fn, perm, t) ->
     let fn = Path.build fn in
     redirect_out t ~display ~ectx ~eenv outputs ~perm fn
@@ -289,20 +301,27 @@ let rec exec t ~display ~ectx ~eenv =
     let+ () = exec_echo eenv.stdout_to (String.concat strs ~sep:" ") in
     Done
   | Cat xs ->
-    List.iter xs ~f:(fun fn ->
-        Io.with_file_in fn ~f:(fun ic ->
-            Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to)));
-    Fiber.return Done
+    let+ () =
+      maybe_async (fun () ->
+          List.iter xs ~f:(fun fn ->
+              Io.with_file_in fn ~f:(fun ic ->
+                  Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to))))
+    in
+    Done
   | Copy (src, dst) ->
     let dst = Path.build dst in
-    Io.copy_file ~src ~dst ();
-    Fiber.return Done
+    let+ () = maybe_async (fun () -> Io.copy_file ~src ~dst ()) in
+    Done
   | Symlink (src, dst) ->
-    Io.portable_symlink ~src ~dst:(Path.build dst);
-    Fiber.return Done
+    let+ () =
+      maybe_async (fun () -> Io.portable_symlink ~src ~dst:(Path.build dst))
+    in
+    Done
   | Hardlink (src, dst) ->
-    Io.portable_hardlink ~src ~dst:(Path.build dst);
-    Fiber.return Done
+    let+ () =
+      maybe_async (fun () -> Io.portable_hardlink ~src ~dst:(Path.build dst))
+    in
+    Done
   | System cmd ->
     let path, arg =
       Utils.system_shell_exn ~needed_to:"interpret (system ...) actions"
@@ -318,17 +337,19 @@ let rec exec t ~display ~ectx ~eenv =
     Done
   | Write_file (fn, perm, s) ->
     let perm = Action.File_perm.to_unix_perm perm in
-    Io.write_file (Path.build fn) s ~perm;
-    Fiber.return Done
+    let+ () = maybe_async (fun () -> Io.write_file (Path.build fn) s ~perm) in
+    Done
   | Rename (src, dst) ->
-    Unix.rename (Path.Build.to_string src) (Path.Build.to_string dst);
-    Fiber.return Done
+    let src = Path.Build.to_string src in
+    let dst = Path.Build.to_string dst in
+    let+ () = maybe_async (fun () -> Unix.rename src dst) in
+    Done
   | Remove_tree path ->
-    Path.rm_rf (Path.build path);
-    Fiber.return Done
+    let+ () = maybe_async (fun () -> Path.rm_rf (Path.build path)) in
+    Done
   | Mkdir path ->
-    Path.mkdir_p (Path.build path);
-    Fiber.return Done
+    let+ () = maybe_async (fun () -> Path.mkdir_p (Path.build path)) in
+    Done
   | Diff ({ optional; file1; file2; mode } as diff) ->
     let remove_intermediate_file () =
       if optional then
@@ -393,15 +414,18 @@ let rec exec t ~display ~ectx ~eenv =
       in
       Done
   | Merge_files_into (sources, extras, target) ->
-    let lines =
-      List.fold_left sources ~init:(String.Set.of_list extras)
-        ~f:(fun set source_path ->
-          Io.lines_of_file source_path
-          |> String.Set.of_list |> String.Set.union set)
+    let+ () =
+      maybe_async (fun () ->
+          let lines =
+            List.fold_left sources ~init:(String.Set.of_list extras)
+              ~f:(fun set source_path ->
+                Io.lines_of_file source_path
+                |> String.Set.of_list |> String.Set.union set)
+          in
+          let target = Path.build target in
+          Io.write_lines target (String.Set.to_list lines))
     in
-    let target = Path.build target in
-    Io.write_lines target (String.Set.to_list lines);
-    Fiber.return Done
+    Done
   | Pipe (outputs, l) -> exec_pipe ~display ~ectx ~eenv outputs l
   | Extension (module A) ->
     let* () =

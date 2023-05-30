@@ -66,34 +66,6 @@ module Pkg_info = struct
     }
 end
 
-module Env_update = struct
-  type 'a t =
-    { op : OpamParserTypes.env_update_op
-    ; var : Env.Var.t
-    ; value : 'a
-    }
-
-  let op_by_string =
-    [ ("=", OpamParserTypes.Eq)
-    ; ("+=", PlusEq)
-    ; ("=+", EqPlus)
-    ; (":=", ColonEq)
-    ; ("=:", EqColon)
-    ; ("=+=", EqPlusEq)
-    ]
-
-  let decode =
-    let open Dune_lang.Decoder in
-    let env_update_op = enum op_by_string in
-    let+ op, var, value = triple env_update_op string String_with_vars.decode in
-    { op; var; value }
-
-  let encode { op; var; value } =
-    let open Dune_lang.Encoder in
-    let env_update_op = enum op_by_string in
-    triple env_update_op string String_with_vars.encode (op, var, value)
-end
-
 module Pkg = struct
   type t =
     { build_command : Action.t option
@@ -101,7 +73,7 @@ module Pkg = struct
     ; deps : Package_name.t list
     ; info : Pkg_info.t
     ; lock_dir : Path.Source.t
-    ; exported_env : String_with_vars.t Env_update.t list
+    ; exported_env : String_with_vars.t Dune_lang.Action.Env_update.t list
     }
 
   module Fields = struct
@@ -130,7 +102,8 @@ module Pkg = struct
        and+ source = field_o Fields.source Source.decode
        and+ dev = field_b Fields.dev
        and+ exported_env =
-         field Fields.exported_env ~default:[] (repeat Env_update.decode)
+         field Fields.exported_env ~default:[]
+           (repeat Dune_lang.Action.Env_update.decode)
        in
        fun ~lock_dir name ->
          let info =
@@ -159,7 +132,8 @@ module Pkg = struct
       ; field_l Fields.deps Package_name.encode deps
       ; field_o Fields.source Source.encode source
       ; field_b Fields.dev dev
-      ; field_l Fields.exported_env Env_update.encode exported_env
+      ; field_l Fields.exported_env Dune_lang.Action.Env_update.encode
+          exported_env
       ]
 end
 

@@ -59,6 +59,45 @@ module File_perm = struct
     | Executable -> 0o777
 end
 
+module Env_update = struct
+  type op =
+    | Eq
+    | PlusEq
+    | EqPlus
+    | ColonEq
+    | EqColon
+    | EqPlusEq
+
+  type 'a t =
+    { op : op
+    ; var : Env.Var.t
+    ; value : 'a
+    }
+
+  let ops =
+    [ ("=", Eq)
+    ; ("+=", PlusEq)
+    ; ("=+", EqPlus)
+    ; (":=", ColonEq)
+    ; ("=:", EqColon)
+    ; ("=+=", EqPlusEq)
+    ]
+
+  let decode =
+    let open Decoder in
+    let env_update_op = enum ops in
+    let+ op, var, value = triple env_update_op string String_with_vars.decode in
+    { op; var; value }
+
+  let encode { op; var; value } =
+    let op =
+      List.find_map ops ~f:(fun (k, v) ->
+          if Poly.equal v op then Some k else None)
+      |> Option.value_exn
+    in
+    List [ atom op; atom var; String_with_vars.encode value ]
+end
+
 type t =
   | Run of String_with_vars.t * String_with_vars.t list
   | With_accepted_exit_codes of int Predicate_lang.t * t
@@ -88,6 +127,7 @@ type t =
   | Cram of String_with_vars.t
   | Patch of String_with_vars.t
   | Substitute of String_with_vars.t * String_with_vars.t
+  | Withenv of String_with_vars.t Env_update.t list * t
 
 let is_dev_null t = String_with_vars.is_pform t (Var Dev_null)
 
@@ -264,7 +304,7 @@ let cstrs_dune_file t =
 let decode_dune_file = Decoder.fix @@ fun t -> Decoder.sum (cstrs_dune_file t)
 
 let decode_pkg =
-  let cstrs_pkg =
+  let cstrs_pkg t =
     let open Decoder in
     [ ( "patch"
       , Syntax.since Pkg.syntax (0, 1)
@@ -275,9 +315,14 @@ let decode_pkg =
         >>> let+ input = sw
             and+ output = sw in
             Substitute (input, output) )
+    ; ( "withenv"
+      , Syntax.since Pkg.syntax (0, 1)
+        >>> let+ ops = enter (repeat Env_update.decode)
+            and+ t = t in
+            Withenv (ops, t) )
     ]
   in
-  Decoder.fix @@ fun t -> Decoder.sum (cstrs_dune_file t @ cstrs_pkg)
+  Decoder.fix @@ fun t -> Decoder.sum (cstrs_dune_file t @ cstrs_pkg t)
 
 let rec encode =
   let sw = String_with_vars.encode in
@@ -336,6 +381,8 @@ let rec encode =
   | Cram script -> List [ atom "cram"; sw script ]
   | Patch i -> List [ atom "patch"; sw i ]
   | Substitute (i, o) -> List [ atom "substitute"; sw i; sw o ]
+  | Withenv (ops, t) ->
+    List [ atom "withenv"; List (List.map ~f:Env_update.encode ops); encode t ]
 
 (* In [Action_exec] we rely on one-to-one mapping between the cwd-relative paths
    seen by the action and [Path.t] seen by dune.
@@ -356,6 +403,7 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Redirect_in (_, _, t)
     | Ignore (_, t)
     | With_accepted_exit_codes (_, t)
+    | Withenv (_, t)
     | No_infer t -> loop t
     | Run _
     | Echo _
@@ -416,6 +464,11 @@ let rec map_string_with_vars t ~f =
   | Cram sw -> Cram (f sw)
   | Patch i -> Patch (f i)
   | Substitute (i, o) -> Substitute (f i, f o)
+  | Withenv (ops, t) ->
+    Withenv
+      ( List.map ops ~f:(fun (op : _ Env_update.t) ->
+            { op with value = f op.value })
+      , map_string_with_vars t ~f )
 
 let remove_locs = map_string_with_vars ~f:String_with_vars.remove_locs
 

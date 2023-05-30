@@ -21,16 +21,6 @@ module Pkg_info : sig
     }
 end
 
-module Env_update : sig
-  type 'a t =
-    { op : OpamParserTypes.env_update_op
-    ; var : Env.Var.t
-    ; value : 'a
-    }
-
-  val decode : String_with_vars.t t Dune_sexp.Decoder.t
-end
-
 module Pkg : sig
   type t =
     { build_command : Action.t option
@@ -38,7 +28,7 @@ module Pkg : sig
     ; deps : Package_name.t list
     ; info : Pkg_info.t
     ; lock_dir : Path.Source.t
-    ; exported_env : String_with_vars.t Env_update.t list
+    ; exported_env : String_with_vars.t Action.Env_update.t list
     }
 
   val decode :

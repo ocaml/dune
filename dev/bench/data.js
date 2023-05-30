@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685450427391,
+  "lastUpdate": 1685450671680,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17601,6 +17601,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "43.5618283235",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a799918819def30650ddf4cef8e4ba688f88e8bd",
+          "message": "refactor(predicate_lang): make abstract and rename (#7839)\n\nMake the predicate language abstract and apply some simplicifations when\r\n[Union]/[Inter] are created.\r\n\r\nRename [any] and [emtpy] to [true_] and [false_]\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-30T05:23:05-07:00",
+          "tree_id": "f80ee05af6812f5de9beb11c5d210b7c6f069973",
+          "url": "https://github.com/ocaml/dune/commit/a799918819def30650ddf4cef8e4ba688f88e8bd"
+        },
+        "date": 1685450669916,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.351350639900005",
             "unit": "seconds"
           }
         ]

@@ -198,7 +198,7 @@ let default_files_of_version version =
   let mld_files = glob_predicate "*.mld" in
   let mld_support_since = (0, 4) in
   match Syntax.Version.Infix.(version >= mld_support_since) with
-  | true -> Predicate_lang.union [ md_files; mld_files ]
+  | true -> Predicate_lang.or_ [ md_files; mld_files ]
   | false -> md_files
 
 let decode =
@@ -207,7 +207,7 @@ let decode =
     (let+ loc = loc
      and+ version = Dune_lang.Syntax.get_exn syntax
      and+ files =
-       field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.Standard
+       field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.standard
      and+ enabled_if =
        Enabled_if.decode ~allowed_vars:Any ~since:(Some (2, 9)) ()
      and+ package =

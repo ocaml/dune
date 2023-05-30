@@ -108,7 +108,7 @@ let%expect_test "with-stdin-from" =
 (* TODO currently no special printing for with-accepted-exit-codes *)
 let%expect_test "with-accepted-exit-codes" =
   With_accepted_exit_codes
-    ( Predicate_lang.Union [ Element 0; Element 1; Element 123 ]
+    ( Predicate_lang.of_list [ 0; 1; 123 ]
     , Bash {|
     echo Hello world
     exit 123

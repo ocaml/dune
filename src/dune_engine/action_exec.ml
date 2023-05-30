@@ -256,7 +256,7 @@ let diff_eq_files { Action.Diff.optional; mode; file1; file2 } =
   (optional && not (Path.Untracked.exists file2))
   || compare_files mode file1 file2 = Eq
 
-let zero = Predicate_lang.Element 0
+let zero = Predicate_lang.element 0
 
 let rec exec t ~display ~ectx ~eenv =
   match (t : Action.t) with

@@ -3,24 +3,23 @@
 open! Stdune
 open Dune_sexp
 
-type 'a t =
-  | Element of 'a
-  | Compl of 'a t
-  | Standard
-  | Union of 'a t list
-  | Inter of 'a t list
+type 'a t
+
+val of_list : 'a list -> 'a t
+
+val element : 'a -> 'a t
+
+val standard : 'a t
 
 val diff : 'a t -> 'a t -> 'a t
 
-val inter : 'a t list -> 'a t
+val and_ : 'a t list -> 'a t
 
 val compl : 'a t -> 'a t
 
-val union : 'a t list -> 'a t
+val or_ : 'a t list -> 'a t
 
-val not_union : 'a t list -> 'a t
-
-val any : 'a t
+val true_ : 'a t
 
 val decode_one : 'a Decoder.t -> 'a t Decoder.t
 
@@ -32,7 +31,7 @@ val to_dyn : 'a Dyn.builder -> 'a t Dyn.builder
 
 val test : 'a t -> standard:'a t -> test:('a -> 'b -> bool) -> 'b -> bool
 
-val empty : 'a t
+val false_ : 'a t
 
 val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
 

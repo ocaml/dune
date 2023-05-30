@@ -81,8 +81,8 @@ let status status_by_dir ~dir : Status.Or_ignored.t =
 let default =
   let standard_dirs = Predicate_lang.Glob.of_glob (Glob.of_string "[!._]*") in
   { Status.Map.normal = standard_dirs
-  ; data_only = Predicate_lang.empty
-  ; vendored = Predicate_lang.empty
+  ; data_only = Predicate_lang.false_
+  ; vendored = Predicate_lang.false_
   }
 
 let or_default (t : _ Status.Map.t) : _ Status.Map.t =
@@ -98,7 +98,7 @@ let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs =
     | Some (loc, data_only), [] -> Some (loc, data_only)
     | None, (loc, _) :: _ ->
       let ignored_sub_dirs = List.map ~f:snd ignored_sub_dirs in
-      Some (loc, Predicate_lang.union ignored_sub_dirs)
+      Some (loc, Predicate_lang.or_ ignored_sub_dirs)
     | Some _data_only, _ :: _ -> assert false
   in
   { Status.Map.normal = dirs; data_only; vendored = vendored_dirs }
@@ -262,7 +262,7 @@ let strict_subdir_glob field_name =
       (let+ loc, l = strict_subdir field_name in
        Predicate_lang.Glob.of_glob (Glob.of_string_exn loc l))
   in
-  Predicate_lang.union globs
+  Predicate_lang.or_ globs
 
 let decode =
   let open Dune_lang.Decoder in

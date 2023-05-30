@@ -22,7 +22,7 @@ module Promote = struct
        let only =
          Option.map only ~f:(fun only ->
              Predicate.create
-               (Predicate_lang.Glob.test only ~standard:Predicate_lang.any))
+               (Predicate_lang.Glob.test only ~standard:Predicate_lang.true_))
        in
        { Rule.Promote.lifetime =
            (if until_clean then Until_clean else Unlimited)

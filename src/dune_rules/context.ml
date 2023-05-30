@@ -544,7 +544,7 @@ let create_for_opam ~loc ~root ~env ~env_nodes ~targets ~profile ~switch ~name
           Build_environment_kind.opam_switch_prefix_var_name
       ];
   let path =
-    match Env.Map.find vars "PATH" with
+    match Env.Map.find vars Env_path.var with
     | None -> Env_path.path env
     | Some s -> Bin.parse_path s
   in

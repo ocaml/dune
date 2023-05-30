@@ -50,14 +50,12 @@ module Coq_sources = Coq_sources
 module Coq_lib_name = Coq_lib_name
 module Coq_lib = Coq_lib
 module Command = Command
-module Install = Install
 module Lib_name = Lib_name
 module Clflags = Clflags
 module Dune_project = Dune_project
 module Source_tree = Source_tree
 module Sub_dirs = Sub_dirs
 module Package = Package
-module Section = Section
 module Dialect = Dialect
 
 module Install_rules = struct

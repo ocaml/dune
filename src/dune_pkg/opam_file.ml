@@ -1,4 +1,4 @@
-open Import
+open Stdune
 open OpamParserTypes.FullPos
 
 type t = opamfile

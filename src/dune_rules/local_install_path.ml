@@ -13,3 +13,13 @@ let man_dir ~context = Path.Build.relative (dir ~context) "man"
 
 let lib_dir ~context ~package =
   Path.Build.relative (lib_root ~context) (Package.Name.to_string package)
+
+(* let extend_vars ~root = *)
+(*   let lib = _ in *)
+(*   let man = _ in *)
+(*   [ ("CAML_LD_LIBRARY_PATH", Path.Build.relative lib "stublibs") *)
+(*   ; ("OCAMLPATH", lib) *)
+(*   ; ("OCAMLTOP_INCLUDE_PATH", Path.Build.relative lib "toplevel") *)
+(*   ; ("OCAMLFIND_IGNORE_DUPS_IN", lib) *)
+(*   ; ("MANPATH", man) *)
+(*   ] *)

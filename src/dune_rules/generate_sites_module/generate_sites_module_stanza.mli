@@ -10,7 +10,7 @@ type t =
         (** should the fact that the installation use the relocatable mode *)
   ; sites : (Loc.t * Package.Name.t) list
         (** list of the sites whose location should be given *)
-  ; plugins : (Loc.t * (Package.Name.t * (Loc.t * Section.Site.t))) list
+  ; plugins : (Loc.t * (Package.Name.t * (Loc.t * Site.t))) list
         (** list of the sites for which a plugin system must be provided *)
   }
 

@@ -31,7 +31,7 @@ let interpret_destdir ~destdir path =
   | Some destdir -> Path.append_local destdir (Path.local_part path)
 
 let get_dirs context ~prefix_from_command_line ~from_command_line =
-  let module Roots = Install.Section.Paths.Roots in
+  let module Roots = Install.Roots in
   let prefix_from_command_line =
     Option.map ~f:Path.of_string prefix_from_command_line
   in
@@ -112,7 +112,7 @@ module Special_file = struct
   let of_entry (e : _ Install.Entry.t) =
     match e.section with
     | Lib ->
-      let dst = Install.Dst.to_string e.dst in
+      let dst = Install.Entry.Dst.to_string e.dst in
       if dst = Findlib.meta_fn then Some META
       else if dst = Dune_package.fn then Some Dune_package
       else None
@@ -246,8 +246,7 @@ end) : File_operations = struct
       Some { need_version = true; callback }
 
   let replace_sites
-      ~(get_location : Dune_rules.Section.t -> Package.Name.t -> Stdune.Path.t)
-      dp =
+      ~(get_location : Section.t -> Package.Name.t -> Stdune.Path.t) dp =
     match
       List.find_map dp ~f:(function
         | Dune_lang.List [ Atom (A "name"); Atom (A name) ] -> Some name
@@ -647,7 +646,9 @@ let install_uninstall ~what =
           |> CMap.to_list_map ~f:(fun context install_files ->
                  let entries_per_package =
                    List.map install_files ~f:(fun (package, install_file) ->
-                       let entries = Install.load_install_file install_file in
+                       let entries =
+                         Install.Entry.load_install_file install_file
+                       in
                        let entries =
                          List.filter entries
                            ~f:(fun (entry : Path.t Install.Entry.t) ->
@@ -696,7 +697,7 @@ let install_uninstall ~what =
         let (module Ops) = file_operations ~verbosity ~dry_run ~workspace in
         let files_deleted_in = ref Path.Set.empty in
         let from_command_line =
-          let open Install.Section.Paths.Roots in
+          let open Install.Roots in
           { lib_root = libdir_from_command_line
           ; etc_root = etcdir_from_command_line
           ; doc_root = docdir_from_command_line
@@ -721,7 +722,7 @@ let install_uninstall ~what =
               in
               Fiber.sequential_iter entries_per_package
                 ~f:(fun (package, entries) ->
-                  let paths = Install.Section.Paths.make ~package ~roots in
+                  let paths = Install.Paths.make ~package ~roots in
                   let+ entries =
                     Fiber.sequential_map entries ~f:(fun entry ->
                         let special_file = Special_file.of_entry entry in
@@ -778,7 +779,7 @@ let install_uninstall ~what =
                         ~findlib_toolchain:context.findlib_toolchain package
                     in
                     Io.write_file (Path.source fn)
-                      (Install.gen_install_file entries)))
+                      (Install.Entry.gen_install_file entries)))
         in
         Path.Set.to_list !files_deleted_in
         (* This [List.rev] is to ensure we process children directories before

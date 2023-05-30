@@ -447,13 +447,13 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
          [packages_sections] *)
       Package.Name.Map.foldi packages ~init:package_sections
         ~f:(fun package_name (package : Package.t) acc ->
-          Section.Site.Map.fold package.sites ~init:acc ~f:(fun section acc ->
+          Site.Map.fold package.sites ~init:acc ~f:(fun section acc ->
               add_in_package_section acc package_name section))
     in
     let env_dune_dir_locations =
       let roots =
-        Local_install_path.dir ~context:context.name
-        |> Path.build |> Install.Section.Paths.Roots.opam_from_prefix
+        Install.Context.dir ~context:context.name
+        |> Path.build |> Install.Roots.opam_from_prefix
       in
       let init =
         match
@@ -472,12 +472,11 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
       in
       Package.Name.Map.foldi ~init package_sections
         ~f:(fun package_name sections init ->
-          let paths = Install.Section.Paths.make ~package:package_name ~roots in
+          let paths = Install.Paths.make ~package:package_name ~roots in
           Section.Set.fold sections ~init ~f:(fun section acc ->
               let package = Package.Name.to_string package_name in
               let dir =
-                Path.to_absolute_filename
-                  (Install.Section.Paths.get paths section)
+                Path.to_absolute_filename (Install.Paths.get paths section)
               in
               { Dune_site_private.package; dir; section } :: acc))
     in

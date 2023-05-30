@@ -1,6 +1,6 @@
 (** Parsing and interpretation of opam files *)
 
-open Import
+open Stdune
 
 type value := OpamParserTypes.FullPos.value
 

@@ -109,7 +109,7 @@ val build_context : t -> Build_context.t
 
 (** Query where build artifacts should be installed if the user doesn't specify
     an explicit installation directory. *)
-val roots : t -> Path.t option Install.Section.Paths.Roots.t
+val roots : t -> Path.t option Install.Roots.t
 
 val host : t -> t
 

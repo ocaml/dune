@@ -331,11 +331,9 @@ let context_env env name ocfg findlib env_nodes version ~profile ~host
     (var, Bin.cons_path ?path_sep (Path.build v) ~_PATH:(Env.get env var))
   in
   let vars =
-    let local_lib_root = Local_install_path.lib_root ~context:name in
+    let local_lib_root = Install.Context.lib_root ~context:name in
     [ extend_var "CAML_LD_LIBRARY_PATH"
-        (Path.Build.relative
-           (Local_install_path.dir ~context:name)
-           "lib/stublibs")
+        (Path.Build.relative (Install.Context.dir ~context:name) "lib/stublibs")
     ; extend_var "OCAMLPATH" ~path_sep:Findlib.Config.ocamlpath_sep
         local_lib_root
     ; ( Dune_site_private.dune_ocaml_stdlib_env_var
@@ -348,7 +346,7 @@ let context_env env name ocfg findlib env_nodes version ~profile ~host
         (Path.Build.relative local_lib_root "toplevel")
     ; extend_var "OCAMLFIND_IGNORE_DUPS_IN"
         ~path_sep:Findlib.Config.ocamlpath_sep local_lib_root
-    ; extend_var "MANPATH" (Local_install_path.man_dir ~context:name)
+    ; extend_var "MANPATH" (Install.Context.man_dir ~context:name)
     ; ( "INSIDE_DUNE"
       , let build_dir = Context_name.build_dir name in
         Path.to_absolute_filename (Path.build build_dir) )
@@ -361,7 +359,7 @@ let context_env env name ocfg findlib env_nodes version ~profile ~host
          match host with
          | None ->
            let _key, path =
-             Local_install_path.bin_dir ~context:name |> extend_var Env_path.var
+             Install.Context.bin_dir ~context:name |> extend_var Env_path.var
            in
            Some path
          | Some host -> Env.get host.env Env_path.var)
@@ -701,7 +699,7 @@ let map_exe (context : t) =
 let host t = Option.value ~default:t t.for_host
 
 let roots t =
-  let module Roots = Install.Section.Paths.Roots in
+  let module Roots = Install.Roots in
   let prefix_roots =
     match Env.get t.env Build_environment_kind.opam_switch_prefix_var_name with
     | None ->

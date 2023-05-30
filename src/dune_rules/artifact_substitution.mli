@@ -34,7 +34,7 @@ val conf_of_context : Context.t option -> conf
 
 val conf_for_install :
      relocatable:Path.t option
-  -> roots:Path.t Install.Section.Paths.Roots.t
+  -> roots:Path.t Install.Roots.t
   -> context:Context.t
   -> conf
 

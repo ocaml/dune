@@ -1063,7 +1063,7 @@ let () =
   Extension.register_simple Dune_lang.Action.Action_plugin.syntax (return [])
 
 let dune_site_extension =
-  Extension.register_unit Section.dune_site_syntax (return [])
+  Extension.register_unit Site.dune_site_syntax (return [])
 
 let strict_package_deps t = t.strict_package_deps
 

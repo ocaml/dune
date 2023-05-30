@@ -39,11 +39,11 @@ let section_of_site t ~loc ~pkg ~site =
     User_error.raise ~loc
       [ Pp.textf "The package %s is not found" (Package.Name.to_string pkg) ]
   | Some sites -> (
-    match Section.Site.Map.find sites site with
+    match Site.Map.find sites site with
     | Some section -> section
     | None ->
       User_error.raise ~loc
         [ Pp.textf "Package %s doesn't define a site %s"
             (Package.Name.to_string pkg)
-            (Section.Site.to_string site)
+            (Site.to_string site)
         ])

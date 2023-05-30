@@ -1,0 +1,13 @@
+(library
+ (name dune_install)
+ (synopsis "the handling of installation paths")
+ (libraries
+  stdune
+  dyn
+  opam_file_format
+  dune_util
+  dune_pkg
+  dune_engine
+  dune_section
+  dune_lang
+  dune_sexp))

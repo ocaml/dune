@@ -1,5 +1,6 @@
 open! Import
 module Stanza = Dune_lang.Stanza
+module Opam_file = Dune_pkg.Opam_file
 
 let opam_ext = ".opam"
 
@@ -587,7 +588,7 @@ type t =
   ; has_opam_file : opam_file
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
-  ; sites : Section.t Section.Site.Map.t
+  ; sites : Section.t Site.Map.t
   ; allow_empty : bool
   }
 
@@ -635,8 +636,8 @@ let encode (name : Name.t)
         ; field_l "deprecated_package_names" Name.encode
             (Name.Map.keys deprecated_package_names)
         ; field_l "sits"
-            (pair Section.Site.encode Section.encode)
-            (Section.Site.Map.to_list sites)
+            (pair Site.encode Section.encode)
+            (Site.Map.to_list sites)
         ; field_b "allow_empty" allow_empty
         ]
   in
@@ -675,8 +676,8 @@ let decode ~dir =
      and+ sites =
        name_map
          (Dune_lang.Syntax.since Stanza.syntax (2, 8))
-         Section.Site.Map.of_list_map Section.Site.to_string "sites"
-         (pair Section.decode Section.Site.decode)
+         Site.Map.of_list_map Site.to_string "sites"
+         (pair Section.decode Site.decode)
          Section.to_string "Site location name"
      and+ allow_empty =
        field_b "allow_empty"
@@ -739,7 +740,7 @@ let to_dyn
     ; ("version", option string version)
     ; ( "deprecated_package_names"
       , Name.Map.to_dyn Loc.to_dyn_hum deprecated_package_names )
-    ; ("sites", Section.Site.Map.to_dyn Section.to_dyn sites)
+    ; ("sites", Site.Map.to_dyn Section.to_dyn sites)
     ; ("allow_empty", Bool allow_empty)
     ]
 
@@ -771,7 +772,7 @@ let default name dir =
   ; has_opam_file = Exists false
   ; tags = [ "topics"; "to describe"; "your"; "project" ]
   ; deprecated_package_names = Name.Map.empty
-  ; sites = Section.Site.Map.empty
+  ; sites = Site.Map.empty
   ; allow_empty = false
   ; opam_file = Id.default_opam_file id
   }
@@ -844,7 +845,7 @@ let load_opam_file file name =
   ; has_opam_file = Exists true
   ; tags = Option.value (get_many "tags") ~default:[]
   ; deprecated_package_names = Name.Map.empty
-  ; sites = Section.Site.Map.empty
+  ; sites = Site.Map.empty
   ; allow_empty = true
   ; opam_file = Id.default_opam_file id
   }

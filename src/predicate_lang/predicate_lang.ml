@@ -5,78 +5,91 @@ type 'a t =
   | Element of 'a
   | Compl of 'a t
   | Standard
-  | Union of 'a t list
-  | Inter of 'a t list
+  | Or of 'a t list
+  | And of 'a t list
+
+let element a = Element a
+
+let of_list xs = Or (List.rev_map ~f:element xs)
+
+let standard = Standard
 
 let diff a = function
-  | Union [] -> a
-  | Inter [] -> Union []
-  | b -> Inter [ a; Compl b ]
-
-let inter a = Inter a
+  | Or [] -> a
+  | And [] -> Or []
+  | b -> And [ a; Compl b ]
 
 let compl a = Compl a
 
-let union a = Union a
+let true_ = And []
 
-let not_union a = compl (union a)
+let false_ = Or []
 
-let any = not_union []
+let or_ = function
+  | [] -> false_
+  | [ x ] -> x
+  | _ :: _ :: _ as xs -> Or xs
 
-let empty = Union []
+let and_ = function
+  | [] -> true_
+  | [ x ] -> x
+  | _ :: _ :: _ as xs -> And xs
 
-let rec decode_one f =
-  let open Decoder in
-  let bool_ops () =
-    sum
-      [ ("or", many f union [])
-      ; ("and", many f inter [])
-      ; ("not", many f not_union [])
-      ]
-  in
-  let elt =
-    let+ e = f in
-    Element e
-  in
-  peek_exn >>= function
-  | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
-  | Atom (_, A "") | Quoted_string (_, _) | Template _ -> elt
-  | Atom (loc, A s) -> (
-    match s with
-    | ":standard" -> junk >>> return Standard
-    | ":include" ->
-      User_error.raise ~loc
-        [ Pp.text ":include isn't supported in the predicate language" ]
-    | _ when s.[0] = ':' ->
-      User_error.raise ~loc [ Pp.textf "undefined symbol %s" s ]
-    | _ -> elt)
-  | List (_, Atom (loc, A s) :: _) -> (
-    match s with
-    | ":include" ->
-      User_error.raise ~loc
-        [ Pp.text ":include isn't supported in the predicate language" ]
-    | "or" | "and" | "not" -> bool_ops ()
-    | s when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
-      User_error.raise ~loc
-        [ Pp.text
-            "This atom must be quoted because it is the first element of a \
-             list and doesn't start with - or:"
+let rec decode_one =
+  let not_or a = compl (Or a) in
+
+  fun f ->
+    let open Decoder in
+    let bool_ops () =
+      sum
+        [ ("or", many f or_ [])
+        ; ("and", many f and_ [])
+        ; ("not", many f not_or [])
         ]
-    | _ -> enter (many f union []))
-  | List _ -> enter (many f union [])
+    in
+    let elt =
+      let+ e = f in
+      Element e
+    in
+    peek_exn >>= function
+    | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
+    | Atom (_, A "") | Quoted_string (_, _) | Template _ -> elt
+    | Atom (loc, A s) -> (
+      match s with
+      | ":standard" -> junk >>> return Standard
+      | ":include" ->
+        User_error.raise ~loc
+          [ Pp.text ":include isn't supported in the predicate language" ]
+      | _ when s.[0] = ':' ->
+        User_error.raise ~loc [ Pp.textf "undefined symbol %s" s ]
+      | _ -> elt)
+    | List (_, Atom (loc, A s) :: _) -> (
+      match s with
+      | ":include" ->
+        User_error.raise ~loc
+          [ Pp.text ":include isn't supported in the predicate language" ]
+      | "or" | "and" | "not" -> bool_ops ()
+      | s when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
+        User_error.raise ~loc
+          [ Pp.text
+              "This atom must be quoted because it is the first element of a \
+               list and doesn't start with - or:"
+          ]
+      | _ -> enter (many f or_ []))
+    | List _ -> enter (many f or_ [])
 
 and many f k acc =
   let open Decoder in
   peek >>= function
   | None -> return (k (List.rev acc))
   | Some (Atom (_, A "\\")) ->
-    junk >>> many f union [] >>| fun to_remove ->
+    junk >>> many f or_ [] >>| fun to_remove ->
     diff (k (List.rev acc)) to_remove
   | Some _ ->
     let* x = decode_one f in
     many f k (x :: acc)
 
-and decode f = many f union []
+and decode f = many f or_ []
 
 let rec encode f =
   let open Encoder in
@@ -84,8 +97,8 @@ let rec encode f =
   | Element a -> f a
   | Compl a -> constr "not" (encode f) a
   | Standard -> string ":standard"
-  | Union xs -> constr "or" (list (encode f)) xs
-  | Inter xs -> constr "and" (list (encode f)) xs
+  | Or xs -> constr "or" (list (encode f)) xs
+  | And xs -> constr "and" (list (encode f)) xs
 
 let rec to_dyn f =
   let open Dyn in
@@ -93,15 +106,15 @@ let rec to_dyn f =
   | Element a -> f a
   | Compl a -> variant "compl" [ to_dyn f a ]
   | Standard -> string ":standard"
-  | Union xs -> variant "or" (List.map ~f:(to_dyn f) xs)
-  | Inter xs -> variant "and" (List.map ~f:(to_dyn f) xs)
+  | Or xs -> variant "or" (List.map ~f:(to_dyn f) xs)
+  | And xs -> variant "and" (List.map ~f:(to_dyn f) xs)
 
 let rec test_ t ~standard ~test elem =
   match t with
   | Compl t -> not (test_ t ~standard ~test elem)
   | Element f -> test f elem
-  | Union xs -> List.exists ~f:(fun t -> test_ t ~standard ~test elem) xs
-  | Inter xs -> List.for_all ~f:(fun t -> test_ t ~standard ~test elem) xs
+  | Or xs -> List.exists ~f:(fun t -> test_ t ~standard ~test elem) xs
+  | And xs -> List.for_all ~f:(fun t -> test_ t ~standard ~test elem) xs
   | Standard -> test_ standard ~standard ~test elem
 
 let test = test_
@@ -117,10 +130,10 @@ let rec compare f x y =
   | Standard, Standard -> Eq
   | Standard, _ -> Lt
   | _, Standard -> Gt
-  | Union a, Union b -> List.compare a b ~compare:(compare f)
-  | Union _, _ -> Lt
-  | _, Union _ -> Gt
-  | Inter a, Inter b -> List.compare a b ~compare:(compare f)
+  | Or a, Or b -> List.compare a b ~compare:(compare f)
+  | Or _, _ -> Lt
+  | _, Or _ -> Gt
+  | And a, And b -> List.compare a b ~compare:(compare f)
 
 module Glob = struct
   module Glob = Dune_glob.V1
@@ -170,10 +183,10 @@ module Glob = struct
   let of_glob g = Element (Element.Glob g)
 
   let of_string_list s =
-    Union (List.rev_map s ~f:(fun x -> Element (Element.Literal x)))
+    Or (List.rev_map s ~f:(fun x -> Element (Element.Literal x)))
 
   let of_string_set s =
-    Union (String.Set.to_list_map ~f:(fun x -> Element (Element.Literal x)) s)
+    Or (String.Set.to_list_map ~f:(fun x -> Element (Element.Literal x)) s)
 
   let compare x y = compare Element.compare x y
 

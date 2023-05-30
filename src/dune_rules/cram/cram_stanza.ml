@@ -5,7 +5,7 @@ type applies_to =
   | Whole_subtree
   | Files_matching_in_this_dir of Predicate_lang.Glob.t
 
-let default_applies_to = Files_matching_in_this_dir Predicate_lang.any
+let default_applies_to = Files_matching_in_this_dir Predicate_lang.true_
 
 let decode_applies_to =
   let open Dune_lang.Decoder in

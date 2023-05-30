@@ -181,11 +181,11 @@ let lib_src_dirs ~dir_contents =
 let define_all_alias ~dir ~project ~js_targets =
   let deps =
     let predicate =
-      if Dune_project.explicit_js_mode project then Predicate_lang.any
+      if Dune_project.explicit_js_mode project then Predicate_lang.true_
       else (
         List.iter js_targets ~f:(fun js_target ->
             assert (Path.Build.equal (Path.Build.parent_exn js_target) dir));
-        Compl
+        Predicate_lang.compl
           (Predicate_lang.Glob.of_string_set
              (String.Set.of_list_map js_targets ~f:Path.Build.basename)))
     in

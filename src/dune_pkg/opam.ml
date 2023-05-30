@@ -6,12 +6,53 @@ module Repo = struct
 
   type t = { packages_dir_path : Filename.t }
 
+  let minimum_opam_version = OpamVersion.of_string "2.0"
+
   let validate_repo_file opam_repo_dir_path =
-    try
-      OpamFilename.raw (opam_repo_dir_path / "repo")
-      |> OpamFile.make |> OpamFile.Repo.read |> ignore
-    with OpamSystem.Internal_error message ->
-      User_error.raise [ Pp.text message ]
+    let opam_repo_file_path = opam_repo_dir_path / "repo" in
+    let repo =
+      try
+        OpamFilename.raw opam_repo_file_path
+        |> OpamFile.make |> OpamFile.Repo.read
+      with
+      | OpamSystem.Internal_error message ->
+        User_error.raise [ Pp.text message ]
+      | OpamPp.(Bad_format _ | Bad_format_list _ | Bad_version _) as
+        bad_format_exn ->
+        User_error.raise
+          [ Pp.text (OpamPp.string_of_bad_format bad_format_exn) ]
+      | unexpected_exn ->
+        Code_error.raise
+          (Printf.sprintf
+             "Unexpected exception raised while validating opam repo file %s"
+             (String.maybe_quoted opam_repo_file_path))
+          [ ("exception", Exn.to_dyn unexpected_exn) ]
+    in
+    match OpamFile.Repo.opam_version repo with
+    | None ->
+      User_error.raise
+        [ Pp.textf "The file %s lacks an \"opam-version\" field."
+            (String.maybe_quoted opam_repo_file_path)
+        ]
+        ~hints:
+          [ Pp.textf "Add `opam-version: \"%s\"` to the file."
+              (OpamVersion.to_string minimum_opam_version)
+          ]
+    | Some opam_version ->
+      if OpamVersion.compare opam_version minimum_opam_version < 0 then
+        User_error.raise
+          [ Pp.textf
+              "The file %s specifies an opam-version which is too low (%s). \
+               The minimum opam-version is %s."
+              (String.maybe_quoted opam_repo_file_path)
+              (OpamVersion.to_string opam_version)
+              (OpamVersion.to_string minimum_opam_version)
+          ]
+          ~hints:
+            [ Pp.textf
+                "Change the opam-version field to `opam-version: \"%s\"`."
+                (OpamVersion.to_string minimum_opam_version)
+            ]
 
   let of_opam_repo_dir_path opam_repo_dir_path =
     if not (Sys.file_exists opam_repo_dir_path) then

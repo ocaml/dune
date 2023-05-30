@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685454566207,
+  "lastUpdate": 1685454581149,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -38075,6 +38075,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "84.37410452016665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "14fbf9d7923b8ec3e06ae79c6b2bf8f06277e716",
+          "message": "refactor: rename Compl to Not in predicate language (#7841)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-30T06:16:26-07:00",
+          "tree_id": "162001b09002a4a59fce06368bf68c44f6a8a723",
+          "url": "https://github.com/ocaml/dune/commit/14fbf9d7923b8ec3e06ae79c6b2bf8f06277e716"
+        },
+        "date": 1685454579635,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.3055248853666668",
             "unit": "seconds"
           }
         ]

@@ -64,7 +64,7 @@ let lib_unique_name lib =
   | Private (project, _) -> Scope_key.to_string name project
 
 module Paths = struct
-  let odoc_support_dirname = "odoc.support"
+  let odoc_support_dirname = "docs/odoc.support"
 
   let root (context : Context.t) =
     Path.Build.relative context.Context.build_dir "_doc"

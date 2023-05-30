@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685443549582,
+  "lastUpdate": 1685444197231,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17543,6 +17543,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.76557318834",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "695053d37d18f82222a3163a2981481585f46311",
+          "message": "fix(predicate_lang): [Inter []] should be [true] (#7836)\n\nSince [Union []] is [false], [Inter []] should be [true] for symmetry.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-30T11:30:03+01:00",
+          "tree_id": "b8e23d098e06275c38561257643151410bfe1978",
+          "url": "https://github.com/ocaml/dune/commit/695053d37d18f82222a3163a2981481585f46311"
+        },
+        "date": 1685444196267,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "49.02464704164",
             "unit": "seconds"
           }
         ]

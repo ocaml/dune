@@ -38,7 +38,7 @@ The following constructions are available:
    :param: <prog> <args>
 
    Execute a program that was linked against the ``dune-action-plugin`` library.
-   ``<prog>`` is resolved in the same way as in ``run``.
+   ``<prog>`` is resolved in the same way as in :dune:ref:`action-run`.
 
    Example::
 

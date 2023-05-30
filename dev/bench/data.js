@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685433512543,
+  "lastUpdate": 1685433523407,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -37466,6 +37466,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "64.99790592027334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "de2997eba1bb2ebab3db8d7dee21e2ad52bdcf6e",
+          "message": "feature(pkg): set environment in build rules (#7742)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-30T08:31:35+01:00",
+          "tree_id": "5d75db38053e6345000c5df0facae0b88960869f",
+          "url": "https://github.com/ocaml/dune/commit/de2997eba1bb2ebab3db8d7dee21e2ad52bdcf6e"
+        },
+        "date": 1685433522468,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6598330319266668",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685455453721,
+  "lastUpdate": 1685455774908,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -38133,6 +38133,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.3055248853666668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f8327fcd18fc2e59db83da256ba931ec86fc6390",
+          "message": "feature(engine): file async operations (#7838)\n\nThis moves over some remaining file operations in the engine into background\r\nthreads.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-30T14:43:35+01:00",
+          "tree_id": "e2408323197e473e7ca97f5758247b41ffe21087",
+          "url": "https://github.com/ocaml/dune/commit/f8327fcd18fc2e59db83da256ba931ec86fc6390"
+        },
+        "date": 1685455774155,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "63.38608263990667",
             "unit": "seconds"
           }
         ]

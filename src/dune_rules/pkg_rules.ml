@@ -1141,8 +1141,10 @@ let gen_rules context_name (pkg : Pkg.t) =
     | None -> Memo.return (Dep.Set.empty, [])
     | Some (Fetch { url = (loc, _) as url; checksum }) ->
       let fetch =
-        Fetch.action ~url ~target_dir:pkg.paths.target_dir ~checksum
+        Fetch.action ~url ~target_dir:pkg.paths.source_dir ~checksum
         |> Action.Full.make |> Action_builder.With_targets.return
+        |> Action_builder.With_targets.add_directories
+             ~directory_targets:[ pkg.paths.source_dir ]
       in
       Memo.return
         (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ (loc, fetch) ])
@@ -1233,7 +1235,11 @@ let setup_package_rules context ~dir ~pkg_name :
       let rules =
         { Build_config.Rules.directory_targets =
             (let target_dir = paths.target_dir in
-             Path.Build.Map.singleton target_dir Loc.none)
+             let map = Path.Build.Map.singleton target_dir Loc.none in
+             match pkg.info.source with
+             | Some (Fetch f) ->
+               Path.Build.Map.add_exn map paths.source_dir (fst f.url)
+             | _ -> map)
         ; build_dir_only_sub_dirs =
             Build_config.Rules.Build_only_sub_dirs.singleton ~dir
               Subdir_set.empty

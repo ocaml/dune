@@ -30,7 +30,7 @@ module Source = struct
                 Path.External.relative path source
               else Path.External.of_string source ) )
       ; ( Fields.fetch
-        , enter @@ fields
+        , fields
           @@ let+ url = field Fields.url (located string)
              and+ checksum = field_o Fields.checksum (located string) in
              let checksum =

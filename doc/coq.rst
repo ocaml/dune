@@ -132,7 +132,8 @@ The semantics of the fields are:
   Coq theories are located by Dune.
 
 - If Coq has been configured with ``-native-compiler yes`` or ``ondemand``, Dune
-  will always build the ``cmxs`` files together with the ``vo`` files.
+  will always build the ``cmxs`` files together with the ``vo`` files. This only
+  works on Coq versions after 8.13 in which the option was introduced.
 
   You may override this by specifying ``(mode native)`` or ``(mode vo)``.
 

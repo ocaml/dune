@@ -69,8 +69,8 @@ dialect
    .. dune:field:: implementation
 
       Details related to the implementation files (corresponding to `*.ml`).
-      
-      In Dune 3.9 and later, this field is optional.
+
+      In Dune lang 3.9 and later, this field is optional.
 
       .. dune:field:: extension
          :param: <string>
@@ -121,7 +121,7 @@ dialect
 
       This field supports the same sub-fields as ``implementation``.
 
-      In Dune 3.9 and later, this field is optional.
+      In Dune lang 3.9 and later, this field is optional.
 
 .. _executables_implicit_empty_intf:
 

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685522193386,
+  "lastUpdate": 1685522324201,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17746,6 +17746,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "44.98321964964",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "skyler.soss@gmail.com",
+            "name": "Skye Soss",
+            "username": "Skyb0rg007"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "16e18d6efb9358a1862239eacdb94f7f42c2c0be",
+          "message": "Added XDG_STATE_HOME support to xdg library (#7843)\n\nSigned-off-by: Skye Soss <skyler.soss@gmail.com>",
+          "timestamp": "2023-05-31T09:04:55+01:00",
+          "tree_id": "14224044d173f3355685e9df529a8cb9ce660aee",
+          "url": "https://github.com/ocaml/dune/commit/16e18d6efb9358a1862239eacdb94f7f42c2c0be"
+        },
+        "date": 1685522322790,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "46.57265642955334",
             "unit": "seconds"
           }
         ]

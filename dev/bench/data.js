@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685546820294,
+  "lastUpdate": 1685547150418,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -38568,6 +38568,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.9435266711266665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sbaugh@catern.com",
+            "name": "Spencer Baugh",
+            "username": "catern"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d4ceaa91ff88c59a16b9437046e9379e8fa38d34",
+          "message": "refactor: create Diagnostic.to_user_message so it can be reused (#7812)\n\nAnother patch wanted to use this function, so move it out of private\r\nbin/diagnostics.ml to somewhere it can be reused.\r\n\r\nSigned-off-by: Spencer Baugh <sbaugh@janestreet.com>\r\nCo-authored-by: Spencer Baugh <sbaugh@janestreet.com>",
+          "timestamp": "2023-05-31T08:02:27-07:00",
+          "tree_id": "0271672647bc47b88629f595080a2aac6e7d3cff",
+          "url": "https://github.com/ocaml/dune/commit/d4ceaa91ff88c59a16b9437046e9379e8fa38d34"
+        },
+        "date": 1685547149372,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.20589637271333",
             "unit": "seconds"
           }
         ]

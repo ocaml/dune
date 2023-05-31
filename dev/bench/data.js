@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685522324201,
+  "lastUpdate": 1685522717337,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17775,6 +17775,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "46.57265642955334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "28753a19ed5be5deec192e480d2822eda22492ee",
+          "message": "Add tests for lock directory regeneration safety\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-05-31T09:06:41+01:00",
+          "tree_id": "32db3332ac95bd4fb3c101077f849a752eb31e36",
+          "url": "https://github.com/ocaml/dune/commit/28753a19ed5be5deec192e480d2822eda22492ee"
+        },
+        "date": 1685522715810,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.60889187755333",
             "unit": "seconds"
           }
         ]

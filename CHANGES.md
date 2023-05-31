@@ -1,6 +1,10 @@
 Unreleased
 ----------
 
+- Fix a crash when using a version of Coq < 8.13 due to the native compiler
+  config variable being missing. We now explicitly default to `(mode vo)` for
+  these older versions of Coq. (#7847, fixes #7846, @Alizter)
+
 - Remove some compatibility code for old version of dune that generated
   `.merlin` files. Now dune will never remove `.merlin` files automatically
   (#7562)

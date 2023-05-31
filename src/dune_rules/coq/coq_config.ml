@@ -4,7 +4,7 @@ open Memo.O
 module Vars : sig
   type t
 
-  val get : t -> string -> string
+  val get_opt : t -> string -> string option
 
   val get_path : t -> string -> Path.t
 
@@ -183,9 +183,14 @@ let make_res ~(coqc : Action.Prog.t) =
       match Vars.of_lines config_lines with
       | Ok vars ->
         let coqlib = Vars.get_path vars "COQLIB" in
+        (* this is not available in Coq < 8.14 *)
         let coqcorelib = Vars.get_path_opt vars "COQCORELIB" in
+        (* this is not available in Coq < 8.13 *)
         let coq_native_compiler_default =
-          Vars.get vars "COQ_NATIVE_COMPILER_DEFAULT"
+          match Vars.get_opt vars "COQ_NATIVE_COMPILER_DEFAULT" with
+          | Some s -> s
+          (* we will explicitly not support native compilation for Coq < 8.13 *)
+          | None -> "no"
         in
         Ok { version_info; coqlib; coqcorelib; coq_native_compiler_default }
       | Error msg ->

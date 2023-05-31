@@ -26,16 +26,11 @@ Now we create a theory that depends on both
   > EOF
 
   $ cat > a.v << EOF
-  > From A.B Require a.
-  > From A.C Require a.
+  > From A.B Require Import a.
+  > From A.C Require Import a.
+  > Print b.
   > EOF
 
-
-  $ dune build a.vo --display short
-  Error: Coq theory A is defined twice:
-  - theory A in
-    $TESTCASE_ROOT/mytheory/../B/lib/coq/user-contrib/A
-  - theory A in
-    $TESTCASE_ROOT/mytheory/../C/lib/coq/user-contrib/A
-  [1]
+  $ dune build a.vo
+  Inductive b : Prop :=  .
  

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685523053994,
+  "lastUpdate": 1685524525293,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -47820,6 +47820,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.915085014526667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd6b86af30275e165b33f8e03dc6582c8555e6ed",
+          "message": "fix(pkg): sourc fetching repos (#7802)\n\nAdd and declare the source target directory for fetching sources.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-05-31T09:55:05+01:00",
+          "tree_id": "4e7c87476ee59873226904bdf9d81dbe62b0b7af",
+          "url": "https://github.com/ocaml/dune/commit/bd6b86af30275e165b33f8e03dc6582c8555e6ed"
+        },
+        "date": 1685524521410,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.6344074295",
             "unit": "seconds"
           }
         ]

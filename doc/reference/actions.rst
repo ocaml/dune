@@ -1,7 +1,6 @@
 User Actions
 ============
 
-.. default-domain:: dune
 .. highlight:: dune
 
 ``(action ...)`` fields describe user actions.
@@ -25,7 +24,7 @@ source code.
 
 The following constructions are available:
 
-.. action:: run
+.. dune:action:: run
    :param: <prog> <args>
 
    Execute a program. ``<prog>`` is resolved locally if it is available in the
@@ -35,17 +34,17 @@ The following constructions are available:
 
    (run capnp compile -o %{bin:capnpc-ocaml} schema.capnp)
 
-.. action:: dynamic-run
+.. dune:action:: dynamic-run
    :param: <prog> <args>
 
    Execute a program that was linked against the ``dune-action-plugin`` library.
-   ``<prog>`` is resolved in the same way as in ``run``.
+   ``<prog>`` is resolved in the same way as in :dune:ref:`action-run`.
 
    Example::
 
    (dynamic-run ./plugin.exe)
 
-.. action:: chdir
+.. dune:action:: chdir
    :param: <dir> <DSL>
 
    Run an action in a different directory.
@@ -55,7 +54,7 @@ The following constructions are available:
      (chdir src
       (run ./build.exe))
 
-.. action:: setenv
+.. dune:action:: setenv
    :param: <var> <value> <DSL>
 
    Run an action with an environment variable set.
@@ -66,7 +65,7 @@ The following constructions are available:
        VAR value
        (bash "echo $VAR"))
 
-.. action:: with-<outputs>-to
+.. dune:action:: with-<outputs>-to
    :param: <file> <DSL>
 
    Redirect the output to a file, where ``<outputs>`` is one of: ``stdout``,
@@ -77,7 +76,7 @@ The following constructions are available:
      (with-stdout-to conf.txt
       (run ./get-conf.exe))
 
-.. action:: ignore-<outputs>
+.. dune:action:: ignore-<outputs>
    :param: <DSL>
 
    Ignore the output, where ``<outputs>`` is one of: ``stdout``, ``stderr``, or
@@ -88,7 +87,7 @@ The following constructions are available:
      (ignore-stderr
       (run ./get-conf.exe))
 
-.. action:: with-stdin-from
+.. dune:action:: with-stdin-from
    :param: <file> <DSL>
 
    Redirect the input from a file.
@@ -98,7 +97,7 @@ The following constructions are available:
      (with-stdin-from data.txt
       (run ./tests.exe))
 
-.. action:: with-accepted-exit-codes
+.. dune:action:: with-accepted-exit-codes
    :param: <pred> <DSL>
 
    .. versionadded:: 2.0
@@ -115,7 +114,7 @@ The following constructions are available:
       (or 1 2)
       (run false))
 
-.. action:: progn
+.. dune:action:: progn
    :param: <DSL>...
 
    Execute several commands in sequence.
@@ -126,7 +125,7 @@ The following constructions are available:
       (run ./proga.exe)
       (run ./progb.exe))
 
-.. action:: concurrent
+.. dune:action:: concurrent
    :param: <DSL>...
 
    Execute several commands concurrently and collect all resulting errors, if any.
@@ -142,7 +141,7 @@ The following constructions are available:
       (run ./proga.exe)
       (run ./progb.exe))
 
-.. action:: echo
+.. dune:action:: echo
    :param: <string>
 
    Output a string on ``stdout``.
@@ -151,7 +150,7 @@ The following constructions are available:
 
    (echo "Hello, world")
 
-.. action:: write-file
+.. dune:action:: write-file
    :param: <file> <string>
 
    Writes ``<string>`` to ``<file>``.
@@ -160,7 +159,7 @@ The following constructions are available:
 
    (write-file users.txt jane,joe)
 
-.. action:: cat
+.. dune:action:: cat
    :param: <file> ...
 
    Sequentially print the contents of files to stdout.
@@ -169,7 +168,7 @@ The following constructions are available:
 
    (cat data.txt)
 
-.. action:: copy
+.. dune:action:: copy
    :param: <src> <dst>
 
    Copy a file. If these files are OCaml sources, you should follow the
@@ -180,7 +179,7 @@ The following constructions are available:
 
    (copy data.txt.template data.txt)
 
-.. action:: copy#
+.. dune:action:: copy#
    :param: <src> <dst>
 
    Copy a file and add a line directive at the beginning.
@@ -204,7 +203,7 @@ The following constructions are available:
    time, one wants this behavior rather than a bare copy, so it was renamed to
    something shorter.
 
-.. action:: system
+.. dune:action:: system
    :param: <cmd>
 
    Execute a command using the system shell: ``sh`` on Unix and ``cmd`` on Windows.
@@ -213,7 +212,7 @@ The following constructions are available:
 
    (system "command arg1 arg2")
 
-.. action:: bash
+.. dune:action:: bash
    :param: <cmd>
 
    Execute a command using ``/bin/bash``. This is obviously not very portable.
@@ -222,7 +221,7 @@ The following constructions are available:
 
    (bash "echo $PATH")
 
-.. action:: diff
+.. dune:action:: diff
    :param: <file1> <file2>
 
    ``(diff <file1> <file2>)`` is similar to ``(run diff <file1> <file2>)`` but
@@ -233,7 +232,7 @@ The following constructions are available:
 
    (diff test.expected test.output)
 
-.. action:: diff?
+.. dune:action:: diff?
    :param: <file1> <file2>
 
    ``(diff? <file1> <file2>)`` is similar to ``(diff <file1> <file2>)`` except
@@ -246,7 +245,7 @@ The following constructions are available:
       (with-stdout-to test.output (run ./test.exe))
       (diff? test.expected test.output))
 
-.. action:: cmp
+.. dune:action:: cmp
    :param: <file1> <file2>
 
    ``(cmp <file1> <file2>)`` is similar to ``(run cmp <file1> <file2>)`` but
@@ -256,7 +255,7 @@ The following constructions are available:
 
    (cmp bin.expected bin.output)
 
-.. action:: no-infer
+.. dune:action:: no-infer
    :param: <DSL>
 
    Perform an action without inference of dependencies and targets. This is
@@ -270,7 +269,7 @@ The following constructions are available:
        (run make)
        (copy mylib.a lib.a)))
 
-.. action:: pipe-<outputs>
+.. dune:action:: pipe-<outputs>
    :param: <DSL> <DSL> <DSL>...
 
    .. versionadded:: 2.7

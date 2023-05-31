@@ -14,6 +14,9 @@ Unreleased
 - Allow `(include_subdirs qualified)` to be used when libraries define a
   `(modules ...)` field (#7797, fixes #7597, @anmonteiro)
 
+- The `interface` and `implementation` fields of a `(dialect)` are now optional
+  (#7757, @gpetiot)
+
 3.8.0 (2023-05-23)
 ------------------
 

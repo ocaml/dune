@@ -11,8 +11,6 @@ module Vars : sig
   val get_path_opt : t -> string -> Path.t option
 
   val of_lines : string list -> (t, User_message.Style.t Pp.t) result
-
-  exception E of User_message.Style.t Pp.t
 end = struct
   open Result.O
 
@@ -32,16 +30,12 @@ end = struct
     Result.map_error (String.Map.of_list vars) ~f:(fun (var, _, _) ->
         Pp.(textf "Variable %S present twice." var))
 
-  exception E of User_message.Style.t Pp.t
-
-  let fail fmt msg = raise (E (Pp.textf fmt msg))
-
   let get_opt = String.Map.find
 
   let get t var =
     match get_opt t var with
     | Some s -> s
-    | None -> fail "Variable %S not found." var
+    | None -> Code_error.raise "Variable not found." [ ("var", Dyn.string var) ]
 
   let get_path t var = get t var |> Path.of_string
 

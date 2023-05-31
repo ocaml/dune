@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685455784865,
+  "lastUpdate": 1685520524742,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -47472,6 +47472,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "20.88854821672",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "30d7355c4b3b15c28d774b2555cd917cdef1fa08",
+          "message": "doc: add xrefs to actions (#7842)\n\nThe following will generates a link to the documentation for action x:\r\n\r\n:dune:ref:`action-x`\r\nSome examples are added.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-05-31T09:44:47+02:00",
+          "tree_id": "7bb40e595a4bc1aac1a58b647c301863a4fe6311",
+          "url": "https://github.com/ocaml/dune/commit/30d7355c4b3b15c28d774b2555cd917cdef1fa08"
+        },
+        "date": 1685520519637,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.19223863259333",
             "unit": "seconds"
           }
         ]

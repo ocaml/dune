@@ -111,6 +111,8 @@ module Diagnostic : sig
 
   val to_dyn : t -> Dyn.t
 
+  val to_user_message : t -> Stdune.User_message.t
+
   module Event : sig
     type nonrec t =
       | Add of t

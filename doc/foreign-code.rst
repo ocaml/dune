@@ -342,9 +342,9 @@ writing the following code ``src/dune``:
       (copy libfoo/libfoo.so dllfoo.so)))))
 
 We copy the resulting archive files to the top directory where they can be
-declared as ``targets``. The build is done in a ``no-infer`` action because
-``libfoo/libfoo.a`` and ``libfoo/libfoo.so`` are dependencies produced by an
-external build system.
+declared as ``targets``. The build is done in a :dune:ref:`action-no-infer`
+action because ``libfoo/libfoo.a`` and ``libfoo/libfoo.so`` are dependencies
+produced by an external build system.
 
 The last step is to attach these archives to an OCaml library as follows:
 

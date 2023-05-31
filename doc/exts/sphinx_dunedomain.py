@@ -1,10 +1,18 @@
 from docutils.parsers.rst import directives
+from docutils.nodes import literal, Text
 from sphinx import addnodes
-from sphinx.domains import Domain, Index
+from sphinx.domains import Domain, Index, ObjType
 from sphinx.directives import ObjectDescription
 from sphinx.roles import XRefRole
 from collections import defaultdict
 from sphinx.util.nodes import make_refnode
+
+
+def set_xref_text(node, new_text):
+    assert type(node) is literal, type(mode)
+    (child,) = node.children
+    assert type(child) is Text, type(child)
+    node.children = [Text(new_text)]
 
 
 class StanzaIndex(Index):
@@ -14,8 +22,8 @@ class StanzaIndex(Index):
     def generate(self, docnames=None):
         content = defaultdict(list)
 
-        stanzas = {
-            name: (dispname, typ, docname, anchor, prio)
+        stanzas = [
+            (dispname, typ, docname, anchor)
             for (
                 name,
                 dispname,
@@ -23,10 +31,10 @@ class StanzaIndex(Index):
                 docname,
                 anchor,
                 prio,
-            ) in self.domain.get_objects()
-        }
+            ) in self.domain.get_stanzas()
+        ]
 
-        for dispname, typ, docname, anchor, _priority in stanzas.values():
+        for dispname, typ, docname, anchor in stanzas:
             content[dispname[0].lower()].append(
                 (dispname, 0, docname, anchor, docname, "", typ)
             )
@@ -151,6 +159,8 @@ class ActionDirective(ObjectDescription):
 
     def add_target_and_index(self, name_cls, sig, signode):
         signode["ids"].append(f"action-{sig}")
+        domain = self.env.get_domain("dune")
+        domain.add_action(name_cls)
 
 
 class DuneDomain(Domain):
@@ -164,12 +174,22 @@ class DuneDomain(Domain):
     roles = {"ref": XRefRole()}
     indices = {StanzaIndex, FieldIndex}
     initial_data = {"stanzas": [], "fields": []}
+    object_types = {"action": ObjType("action")}
 
     def get_full_qualified_name(self, node):
         return f"stanza.{node.arguments[0]}"
 
-    def get_objects(self):
+    def get_stanzas(self):
         return self.data["stanzas"]
+
+    def get_actions(self):
+        return [
+            (f"action.{name}", name, "action", docname, f"action-{name}", 0)
+            for name, docname in self.actions.items()
+        ]
+
+    def get_objects(self):
+        return self.get_stanzas() + self.get_actions()
 
     def add_stanza(self, signature):
         name = f"stanza.{signature}"
@@ -189,9 +209,38 @@ class DuneDomain(Domain):
         typ = f"Field in {pretty_path}"
         self.data["fields"].append((name, field, typ, self.env.docname, anchor))
 
+    def add_action(self, name):
+        self.actions[name] = self.env.docname
+
     def setup(self):
         super().setup()
+        self.actions = {}
         self.env.current_path = []
+
+    def find_object(self, typ, name):
+        objects = self.get_objects()
+        matches = [
+            (docname, anchor)
+            for _, obj_name, obj_typ, docname, anchor, _ in objects
+            if obj_name == name and obj_typ == typ
+        ]
+        assert matches, f"dune domain: found no {typ} named {name}"
+        assert len(matches) == 1, f"dune domain: found several {typ} named {name}"
+        return matches[0]
+
+    def resolve_xref(self, env, fromdocname, builder, typ, target, node, contnode):
+        """
+        Replace dune:ref:`action-x` by a link to where x is defined.
+        The text of is changed so that it is (x) rather than action-x.
+        """
+        if not target.startswith("action-"):
+            # target is not from this domain
+            return None
+
+        action_name = target.removeprefix("action-")
+        todocname, targ = self.find_object("action", action_name)
+        set_xref_text(contnode, f"({action_name})")
+        return make_refnode(builder, fromdocname, todocname, targ, contnode, targ)
 
 
 def setup(app):

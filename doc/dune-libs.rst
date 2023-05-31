@@ -178,4 +178,5 @@ your own risk.*
 
 ``Dune-action-plugin`` provides a monadic interface to express program
 dependencies directly inside the source code. Programs using this feature
-should be declared using ``dynamic-run`` construction instead of usual ``run``.
+should be declared using :dune:ref:`action-dynamic-run` construction instead of
+usual :dune:ref:`action-run`.

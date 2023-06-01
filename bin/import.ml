@@ -20,7 +20,6 @@ include struct
 end
 
 module Execution_env = Dune_util.Execution_env
-include Dune_install
 
 include struct
   open Dune_rules

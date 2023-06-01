@@ -30,6 +30,7 @@ Welcome to Dune's Documentation!
    sites
    instrumentation
    jsoo
+   melange
    toplevel-integration
    variants
    tests

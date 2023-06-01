@@ -1,15 +1,8 @@
-:orphan:
-
 .. _melange_main:
 
 ***********************************
 JavaScript Compilation With Melange
 ***********************************
-
-.. warning::
-
-   Melange support is not officially released, and any bugs or missing
-   functionality should be reported as a GitHub issue.
 
 Introduction
 ============
@@ -102,6 +95,8 @@ Adding Melange support to Dune libraries is done as follows:
 
 melange.emit
 ============
+
+.. versionadded:: 3.8
 
 The ``melange.emit`` stanza allows the user to produce JavaScript files
 from Melange libraries and entry-point modules. It's similar to the OCaml

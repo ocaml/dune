@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685634684108,
+  "lastUpdate": 1685635297485,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17978,6 +17978,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.30563450040666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "eedbbf8352540863950866bd8ac652df2838c4df",
+          "message": "refactor: move install file handling (#7853)\n\nMove install file/destination handling to own library and split it away\r\nfrom all the experimental sites stuff.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-01T08:35:40-07:00",
+          "tree_id": "5ef6a3da2be253d7e0c39b5418ef49bfdf1ee591",
+          "url": "https://github.com/ocaml/dune/commit/eedbbf8352540863950866bd8ac652df2838c4df"
+        },
+        "date": 1685635296260,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "45.99486309408667",
             "unit": "seconds"
           }
         ]

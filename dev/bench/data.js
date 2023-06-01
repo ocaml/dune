@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685633768901,
+  "lastUpdate": 1685634301236,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17949,6 +17949,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.9888933564",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "guillaume@tarides.com",
+            "name": "Guillaume Petiot",
+            "username": "gpetiot"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aaabac7e47ca368044e89ddf8986867e208e076f",
+          "message": "Make the `interface` and `implementation` fields of a dialect optional (#7757)\n\nSigned-off-by: Guillaume Petiot <guillaume@tarides.com>",
+          "timestamp": "2023-06-01T17:22:54+02:00",
+          "tree_id": "4a49df5895d685bd15b5001bcdf85aa0edbb7931",
+          "url": "https://github.com/ocaml/dune/commit/aaabac7e47ca368044e89ddf8986867e208e076f"
+        },
+        "date": 1685634300099,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.30563450040666",
             "unit": "seconds"
           }
         ]

@@ -336,8 +336,8 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
   in
   ()
 
-let setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
-    ~mode (mel : Melange_stanzas.Emit.t) =
+let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope
+    (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
   (* Use "mobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
@@ -345,7 +345,7 @@ let setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
     Dir_contents.ocaml dir_contents
     >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
   in
-  let* modules =
+  let+ modules =
     let version = (Super_context.context sctx).ocaml.version in
     let* preprocess =
       Resolve.Memo.read_memo
@@ -358,16 +358,24 @@ let setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
     in
     Modules.map_user_written modules ~f:(fun m -> Memo.return @@ pped_map m)
   in
+  let modules_for_js =
+    Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc ->
+        if Module.has x ~ml_kind:Impl then x :: acc else acc)
+  in
+  (modules_for_js, obj_dir)
+
+let setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
+    ~mode (mel : Melange_stanzas.Emit.t) =
+  let open Memo.O in
+  let* modules_for_js, obj_dir =
+    modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope mel
+  in
   let requires_link = Lib.Compile.requires_link compile_info in
   let pkg_name = Option.map mel.package ~f:Package.name in
   let loc = mel.loc in
   let module_systems = mel.module_systems in
   let* requires_link = Memo.Lazy.force requires_link in
   let includes = cmj_includes ~requires_link ~scope in
-  let modules_for_js =
-    Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc ->
-        if Module.has x ~ml_kind:Impl then x :: acc else acc)
-  in
   let output = `Private_library_or_emit target_dir in
   let obj_dir = Obj_dir.of_local obj_dir in
   let* () =
@@ -426,6 +434,18 @@ let setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
       let* source_modules = impl_only_modules_defined_in_this_lib sctx lib in
       Memo.parallel_iter source_modules ~f:(build_js ~dir ~output ~includes))
 
+let setup_js_rules_libraries_and_entries ~dir_contents ~dir ~scope ~sctx
+    ~compile_info ~requires_link ~mode ~target_dir mel =
+  let open Memo.O in
+  let+ () =
+    setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
+      mel
+  and+ () =
+    setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
+      ~mode mel
+  in
+  ()
+
 let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
   let open Memo.O in
   let target_dir =
@@ -437,15 +457,31 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
     | Some p -> Promote p
   in
   let* compile_info = compile_info ~scope mel in
-  let+ () =
-    let* requires_link =
-      Lib.Compile.requires_link compile_info
-      |> Memo.Lazy.force >>= Resolve.read_memo
-    in
-    setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
-      mel
-  and+ () =
-    setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
-      ~mode mel
+  let* requires_link_resolve =
+    Lib.Compile.requires_link compile_info |> Memo.Lazy.force
   in
-  ()
+  match Resolve.to_result requires_link_resolve with
+  | Ok requires_link ->
+    setup_js_rules_libraries_and_entries ~dir_contents ~dir ~scope ~sctx
+      ~compile_info ~requires_link ~mode ~target_dir mel
+  | Error resolve_error ->
+    (* NOTE: in multi-package projects where [melange.emit] stanzas are
+       present, we can't eagerly resolve the link-time closure for
+       [melange.emit] stanzas since their targets aren't public (i.e. part of a
+       package). When resolution fails, we replace the JS entries with the
+       resolution error inside [Action_builder.fail] to give Dune a chance to
+       fail if any of the targets end up attached to a package installation. *)
+    let* modules_for_js, _obj_dir =
+      modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope mel
+    in
+    Resolve.push_frames resolve_error @@ fun () ->
+    let module_systems = mel.module_systems in
+    let output = `Private_library_or_emit target_dir in
+    let loc = mel.loc in
+    Memo.parallel_iter modules_for_js ~f:(fun m ->
+        Memo.parallel_iter module_systems ~f:(fun (_module_system, js_ext) ->
+            let file_targets = [ make_js_name ~output ~js_ext m ] in
+            Super_context.add_rule sctx ~dir ~loc ~mode
+              (Action_builder.fail
+                 { fail = (fun () -> Resolve.raise_error resolve_error) }
+              |> Action_builder.with_file_targets ~file_targets)))

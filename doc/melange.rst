@@ -239,6 +239,10 @@ The resulting layout in ``_build/default/output`` will be as follows:
 - ``(allow_overlapping_dependencies)`` is the same as the corresponding field of
   :ref:`library`.
 
+- ``(enabled_if <blang expression>)`` conditionally disables a melange emit
+  stanza. The JavaScript files associated with the stanza won't be built. The
+  condition is specified using the :doc:`reference/boolean-language`.
+
 Recommended Practices
 =====================
 

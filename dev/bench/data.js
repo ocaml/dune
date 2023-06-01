@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685626039723,
+  "lastUpdate": 1685626545632,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -17920,6 +17920,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "46.462070421553335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "355319919b18023bfee818db1f8a42f5e9bc2c68",
+          "message": "refactor: allow bootstrap to have an Entry module (#7854)\n\nThe old name mangling scheme would produce symbols with the __entry\r\nsuffix already used by the compiler. We just capitalize the first letter\r\nafter the __. As a bonus, this also matches the dune rules convention.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-01T06:10:59-07:00",
+          "tree_id": "930aa66a099df7c8994cc74adcf3b7c1f697cfb1",
+          "url": "https://github.com/ocaml/dune/commit/355319919b18023bfee818db1f8a42f5e9bc2c68"
+        },
+        "date": 1685626545082,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.9888933564",
             "unit": "seconds"
           }
         ]

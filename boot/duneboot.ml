@@ -767,7 +767,9 @@ module Library = struct
         | None -> base ^ ext
         | Some t ->
           if String.capitalize_ascii base = t.toplevel_module then base ^ ext
-          else String.uncapitalize_ascii t.toplevel_module ^ "__" ^ base ^ ext)
+          else
+            let base = String.capitalize_ascii base in
+            String.uncapitalize_ascii t.toplevel_module ^ "__" ^ base ^ ext)
 
     let header t =
       match t with
@@ -783,8 +785,7 @@ module Library = struct
         StringSet.iter
           (fun m ->
             if m <> t.toplevel_module then
-              fprintf oc "module %s = %s__%s\n" m t.toplevel_module
-                (String.uncapitalize_ascii m))
+              fprintf oc "module %s = %s__%s\n" m t.toplevel_module m)
           modules;
         close_out oc;
         Some fn

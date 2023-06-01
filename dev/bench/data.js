@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685638866337,
+  "lastUpdate": 1685639377402,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -18123,6 +18123,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.577301018840004",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fe5ad8ea0ca5a16d6e1d9e5c378ca6746b2d7ab3",
+          "message": "test: make action runner test more reproducible (#7856)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-01T09:46:32-07:00",
+          "tree_id": "423387f6dba1bb63d5c36aeefa4ef23c82b1d0f1",
+          "url": "https://github.com/ocaml/dune/commit/fe5ad8ea0ca5a16d6e1d9e5c378ca6746b2d7ab3"
+        },
+        "date": 1685639376663,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.17851923473333",
             "unit": "seconds"
           }
         ]

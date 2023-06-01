@@ -41,18 +41,22 @@ let to_result x = x
 
 let of_error x = Error x
 
-let error_to_memo { stack_frames; exn } =
-  let open Memo.O in
+let raise_error ({ exn; _ } : error) = raise exn
+
+let push_frames { stack_frames; exn = _ } f =
   let rec loop = function
     | [] ->
-      let+ () = Memo.return () in
-      raise exn
+      let open Memo.O in
+      let* () = Memo.return () in
+      f ()
     | x :: rest ->
       Memo.push_stack_frame
         ~human_readable_description:(fun () -> Lazy.force x)
         (fun () -> loop rest)
   in
   loop stack_frames
+
+let error_to_memo error = push_frames error (fun () -> raise_error error)
 
 let read_memo = function
   | Ok x -> Memo.return x

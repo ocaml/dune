@@ -1,20 +1,6 @@
 open Import
 
-type t = Dune_section.t =
-  | Lib
-  | Lib_root
-  | Libexec
-  | Libexec_root
-  | Bin
-  | Sbin
-  | Toplevel
-  | Share
-  | Share_root
-  | Etc
-  | Doc
-  | Stublibs
-  | Man
-  | Misc
+include module type of Dune_section with type t = Dune_section.t
 
 val compare : t -> t -> Ordering.t
 
@@ -23,10 +9,6 @@ include Comparable_intf.S with type key := t
 val enum_decoder : (string * t) list
 
 val all : Set.t
-
-val to_string : t -> string
-
-val of_string : string -> t option
 
 val parse_string : string -> (t, string) Result.t
 

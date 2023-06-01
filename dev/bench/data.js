@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685637410248,
+  "lastUpdate": 1685637574843,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -18065,6 +18065,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "44.1219934591",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a60873ed4658aafb6477fd4fcff770190e3cb618",
+          "message": "refactor: move dune-private-libs to own dir (#7859)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-01T09:13:33-07:00",
+          "tree_id": "210b1d295d6dbdd9b9cf003fd2432e45e6bd695e",
+          "url": "https://github.com/ocaml/dune/commit/a60873ed4658aafb6477fd4fcff770190e3cb618"
+        },
+        "date": 1685637573427,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "46.76231285025333",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685635706582,
+  "lastUpdate": 1685636363536,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -48632,6 +48632,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "26.529795437133334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "970a7210b53ddb734f3d6492bd44d1b6b2e4f8bc",
+          "message": "chore: remove fiber-lwt (#7858)\n\nits home is now in ocaml-dune/fiber\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-01T09:05:52-07:00",
+          "tree_id": "546b68d47717082f16d9e8252281c28aa6691b06",
+          "url": "https://github.com/ocaml/dune/commit/970a7210b53ddb734f3d6492bd44d1b6b2e4f8bc"
+        },
+        "date": 1685636359221,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.465231200753333",
             "unit": "seconds"
           }
         ]

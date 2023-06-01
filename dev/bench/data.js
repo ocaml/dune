@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685609394478,
+  "lastUpdate": 1685609408317,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -38771,6 +38771,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "80.43215721152666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8f6f1a25085b41d480e7ef2dc8dcb6934f0df22c",
+          "message": "Test errors for invalid opam repositories (#7830)\n\nThis also expands the cases in which an opam repository is considered\r\ninvalid and handles some additional exceptions that can be raised while\r\nopam is parsing the repo file.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-06-01T01:10:48-07:00",
+          "tree_id": "f477c9e716feebbe054e2b290b6acdca75d55ca8",
+          "url": "https://github.com/ocaml/dune/commit/8f6f1a25085b41d480e7ef2dc8dcb6934f0df22c"
+        },
+        "date": 1685609407298,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.1703987343200004",
             "unit": "seconds"
           }
         ]

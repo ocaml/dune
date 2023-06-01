@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685636885231,
+  "lastUpdate": 1685636959085,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -48719,6 +48719,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "26.039385838559998",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a60873ed4658aafb6477fd4fcff770190e3cb618",
+          "message": "refactor: move dune-private-libs to own dir (#7859)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-01T09:13:33-07:00",
+          "tree_id": "210b1d295d6dbdd9b9cf003fd2432e45e6bd695e",
+          "url": "https://github.com/ocaml/dune/commit/a60873ed4658aafb6477fd4fcff770190e3cb618"
+        },
+        "date": 1685636952898,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.542329821593338",
             "unit": "seconds"
           }
         ]

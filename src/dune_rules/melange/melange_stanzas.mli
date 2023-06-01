@@ -17,6 +17,7 @@ module Emit : sig
     ; promote : Rule.Promote.t option
     ; compile_flags : Ordered_set_lang.Unexpanded.t
     ; allow_overlapping_dependencies : bool
+    ; enabled_if : Blang.t
     }
 
   type Stanza.t += T of t

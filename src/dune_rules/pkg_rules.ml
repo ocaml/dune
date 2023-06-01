@@ -116,14 +116,14 @@ module Paths = struct
     { source_dir : Path.Build.t
     ; target_dir : Path.Build.t
     ; name : Package.Name.t
-    ; install_roots : Path.t Install.Section.Paths.Roots.t Lazy.t
-    ; install_paths : Install.Section.Paths.t Lazy.t
+    ; install_roots : Path.t Install.Roots.t Lazy.t
+    ; install_paths : Install.Paths.t Lazy.t
     }
 
   let install_roots ~target_dir =
-    Path.build target_dir |> Install.Section.Paths.Roots.opam_from_prefix
+    Path.build target_dir |> Install.Roots.opam_from_prefix
 
-  let install_paths roots package = Install.Section.Paths.make ~package ~roots
+  let install_paths roots package = Install.Paths.make ~package ~roots
 
   let of_root name ~root =
     let source_dir = Path.Build.relative root "source" in
@@ -302,22 +302,22 @@ module Pkg = struct
            let env =
              let paths = Paths.install_paths t.paths in
              let env =
-               Value.Dir (Install.Section.Paths.get paths Bin)
+               Value.Dir (Install.Paths.get paths Bin)
                |> Env.Map.add_multi env Env_path.var
              in
              let env =
-               Value.Dir (Install.Section.Paths.get paths Toplevel)
+               Value.Dir (Install.Paths.get paths Toplevel)
                |> Env.Map.add_multi env "OCAMLTOP_INCLUDE_PATH"
              in
              let env =
-               Value.Dir (Install.Section.Paths.get paths Lib)
+               Value.Dir (Install.Paths.get paths Lib)
                |> Env.Map.add_multi env "OCAMLPATH"
              in
              let env =
-               Value.Dir (Install.Section.Paths.get paths Stublibs)
+               Value.Dir (Install.Paths.get paths Stublibs)
                |> Env.Map.add_multi env "CAML_LD_LIBRARY_PATH"
              in
-             Value.Dir (Install.Section.Paths.get paths Man)
+             Value.Dir (Install.Paths.get paths Man)
              |> Env.Map.add_multi env "MANPATH"
            in
            List.fold_left t.exported_env ~init:env ~f:Env_update.set)
@@ -411,7 +411,7 @@ module Action_expander = struct
       | Man -> Man
       | Misc -> Misc
 
-    let section_dir_of_root (roots : _ Install.Section.Paths.Roots.t)
+    let section_dir_of_root (roots : _ Install.Roots.t)
         (section : Pform.Var.Pkg.Section.t) =
       match section with
       | Lib -> roots.lib_root
@@ -479,7 +479,7 @@ module Action_expander = struct
                 | Some section ->
                   let section = dune_section_of_pform section in
                   let install_paths = Paths.install_paths paths in
-                  [ Dir (Install.Section.Paths.get install_paths section) ]))))
+                  [ Dir (Install.Paths.get install_paths section) ]))))
         | _ -> assert false)
       | _ -> Expander.isn't_allowed_in_this_position ~source
 
@@ -792,11 +792,8 @@ module Install_action = struct
             Path.basename install_file |> Filename.chop_extension
             |> Package.Name.of_string
           in
-          let roots =
-            Path.build target_dir
-            |> Install.Section.Paths.Roots.opam_from_prefix
-          in
-          Install.Section.Paths.make ~package ~roots
+          let roots = Path.build target_dir |> Install.Roots.opam_from_prefix in
+          Install.Paths.make ~package ~roots
         in
         Install.Entry.relative_installed_path entry ~paths
       in
@@ -841,7 +838,7 @@ module Install_action = struct
         Path.append_source ctx source
 
     let section_map_of_dir install_paths =
-      let get = Install.Section.Paths.get install_paths in
+      let get = Install.Paths.get install_paths in
       List.concat_map installable_sections ~f:(fun section ->
           let path = get section in
           let acc, dirs =
@@ -890,7 +887,9 @@ module Install_action = struct
           | true ->
             let map =
               let install_dir = Path.parent_exn install_file in
-              let install_entries = Install.load_install_file install_file in
+              let install_entries =
+                Install.Entry.load_install_file install_file
+              in
               let by_src =
                 List.rev_map install_entries
                   ~f:(fun (entry : _ Install.Entry.t) ->
@@ -1193,7 +1192,7 @@ let gen_rules context_name (pkg : Pkg.t) =
             let install_paths = Paths.install_paths pkg.paths in
             Install_action.installable_sections
             |> List.rev_map ~f:(fun section ->
-                   Install.Section.Paths.get install_paths section
+                   Install.Paths.get install_paths section
                    |> Path.as_in_build_dir_exn |> Action.mkdir)
             |> Action.progn |> Action.Full.make
             |> Action_builder.With_targets.return

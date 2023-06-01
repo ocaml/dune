@@ -1,44 +1,4 @@
-open! Import
-include Dune_section
-
-let compare : t -> t -> Ordering.t = Poly.compare
-
-let to_dyn x =
-  let s = Dune_section.to_string x in
-  let open Dyn in
-  variant (String.uppercase_ascii s) []
-
-module Key = struct
-  type nonrec t = t
-
-  let compare = compare
-
-  let to_dyn = to_dyn
-end
-
-module O = Comparable.Make (Key)
-module Map = O.Map
-module Set = O.Set
-
-let parse_string s =
-  match of_string s with
-  | Some s -> Ok s
-  | None -> Error (sprintf "invalid section: %s" s)
-
-let enum_decoder = Dune_section.all |> List.map ~f:(fun (x, y) -> (y, x))
-
-let decode = Dune_lang.Decoder.enum enum_decoder
-
-let encode v =
-  let open Dune_lang.Encoder in
-  string (to_string v)
-
-let all = Set.of_list (List.map ~f:fst Dune_section.all)
-
-let should_set_executable_bit = function
-  | Lib | Lib_root | Toplevel | Share | Share_root | Etc | Doc | Man | Misc ->
-    false
-  | Libexec | Libexec_root | Bin | Sbin | Stublibs -> true
+open Import
 
 let valid_format_doc =
   Pp.text
@@ -90,27 +50,25 @@ Stringlike.Make (struct
   let of_string_opt s = if is_valid_module_name s then Some (S.make s) else None
 end)
 
-module Site = struct
-  include String
+include String
 
-  include (
-    Modulelike (struct
-      type t = string
+include (
+  Modulelike (struct
+    type t = string
 
-      let to_string t = t
+    let to_string t = t
 
-      let module_ = "Section.Site"
+    let module_ = "Site"
 
-      let description = "site name"
+    let description = "site name"
 
-      let make s = s
-    end) :
-      Stringlike_intf.S with type t := t)
+    let make s = s
+  end) :
+    Stringlike_intf.S with type t := t)
 
-  module Infix = Comparator.Operators (String)
-end
+module Infix = Comparator.Operators (String)
 
 let dune_site_syntax =
-  Dune_lang.Syntax.create ~name:"dune_site" ~experimental:true
+  Dune_sexp.Syntax.create ~name:"dune_site" ~experimental:true
     ~desc:"the sites locations extension (experimental)"
     [ ((0, 1), `Since (2, 8)) ]

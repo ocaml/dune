@@ -11,8 +11,4 @@ val create : Context.t -> t Memo.t
 val find_package : t -> Package.Name.t -> any_package option Memo.t
 
 val section_of_site :
-     t
-  -> loc:Loc.t
-  -> pkg:Package.Name.t
-  -> site:Section.Site.t
-  -> Section.t Memo.t
+  t -> loc:Loc.t -> pkg:Package.Name.t -> site:Site.t -> Section.t Memo.t

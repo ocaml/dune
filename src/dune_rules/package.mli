@@ -155,7 +155,7 @@ type t =
   ; has_opam_file : opam_file
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
-  ; sites : Section.t Section.Site.Map.t
+  ; sites : Install.Section.t Site.Map.t
   ; allow_empty : bool
   }
 

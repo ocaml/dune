@@ -2,6 +2,8 @@ include Stdune
 include Dune_vcs
 module Console = Dune_console
 module Digest = Dune_digest
+include Dune_install
+module Section = Install.Section
 
 include struct
   open Dune_util

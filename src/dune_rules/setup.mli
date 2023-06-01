@@ -8,4 +8,4 @@
 val library_path : string list
 
 (** Where to install files. All the directories are absolute path *)
-val roots : string option Install.Section.Paths.Roots.t
+val roots : string option Dune_install.Install.Roots.t

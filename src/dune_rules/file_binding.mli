@@ -39,10 +39,10 @@ module Unexpanded : sig
 
   val destination_relative_to_install_path :
        t
-    -> section:Install.Section.t
+    -> section:Section.t
     -> expand:(String_with_vars.t -> string Memo.t)
     -> expand_partial:(String_with_vars.t -> String_with_vars.t Memo.t)
-    -> Install.Dst.t Memo.t
+    -> Install.Entry.Dst.t Memo.t
 
   module L : sig
     val decode : t list Dune_lang.Decoder.t

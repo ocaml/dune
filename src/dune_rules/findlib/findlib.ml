@@ -295,7 +295,7 @@ let builtin_for_dune : Dune_package.t =
   ; version = None
   ; dir = Path.root
   ; sections = Section.Map.empty
-  ; sites = Section.Site.Map.empty
+  ; sites = Site.Map.empty
   ; files = []
   }
 
@@ -638,7 +638,7 @@ end = struct
     ; entries
     ; dir
     ; sections = Section.Map.empty
-    ; sites = Section.Site.Map.empty
+    ; sites = Site.Map.empty
     ; files = []
     }
 

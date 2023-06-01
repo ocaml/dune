@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685648269172,
+  "lastUpdate": 1685648280061,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -39641,6 +39641,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "67.36302226189333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1977843a74e17491e03e98e3f05a15ed784874f5",
+          "message": "refactor: rename package dirs (#7860)\n\ndune-action-plugin, dune-site, dune-build-info, ocmalc-loc should all\r\nlive in directories named after their packages\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-01T12:10:44-07:00",
+          "tree_id": "8e64207f1aeadd93119debcd47d0abb072624d53",
+          "url": "https://github.com/ocaml/dune/commit/1977843a74e17491e03e98e3f05a15ed784874f5"
+        },
+        "date": 1685648279188,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6696092930866666",
             "unit": "seconds"
           }
         ]

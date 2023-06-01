@@ -39,7 +39,8 @@ let config_path_exn coq_config key =
     User_error.raise [ Pp.text "key not found from coqc --config"; Pp.text key ]
 
 let config_path ~default coq_config key =
-  Option.value ~default:(Coq_config.Value.Path default)
+  Option.value
+    ~default:(Coq_config.Value.path default)
     (Coq_config.by_name coq_config key)
   |> function
   | Coq_config.Value.Path p -> p (* We have found a path for key *)

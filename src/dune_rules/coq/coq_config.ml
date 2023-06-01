@@ -42,11 +42,28 @@ end = struct
   let get_path_opt t var = Option.map ~f:Path.of_string (get_opt t var)
 end
 
-module Value = struct
+module Value : sig
+  type t = private
+    | Int of int
+    | Path of Path.t
+    | String of string
+
+  val int : int -> t
+
+  val string : string -> t
+
+  val path : Path.t -> t
+
+  val to_dyn : t -> Dyn.t
+end = struct
   type t =
     | Int of int
     | Path of Path.t
     | String of string
+
+  let int i = Int i
+
+  let string s = String s
 
   let path p = Path p
 
@@ -95,9 +112,9 @@ module Version = struct
 
     let by_name { major; minor; suffix } name =
       match name with
-      | "major" -> Some (Value.Int major)
-      | "minor" -> Some (Value.Int minor)
-      | "suffix" -> Some (Value.String suffix)
+      | "major" -> Some (Value.int major)
+      | "minor" -> Some (Value.int minor)
+      | "suffix" -> Some (Value.string suffix)
       | _ -> None
   end
 
@@ -145,8 +162,8 @@ module Version = struct
       | "version.minor" -> Num.by_name version_num "minor"
       | "version.revision" -> Num.by_name version_num "revision"
       | "version.suffix" -> Num.by_name version_num "suffix"
-      | "version" -> Some (Value.String version_string)
-      | "ocaml-version" -> Some (Value.String ocaml_version_string)
+      | "version" -> Some (Value.string version_string)
+      | "ocaml-version" -> Some (Value.string ocaml_version_string)
       | _ -> None)
 end
 
@@ -154,7 +171,8 @@ type t =
   { version_info : (Version.t, User_message.Style.t Pp.t) Result.t
   ; coqlib : Path.t
   ; coqcorelib : Path.t option (* this is not available in Coq < 8.14 *)
-  ; coq_native_compiler_default : string
+  ; coq_native_compiler_default :
+      string option (* this is not available in Coq < 8.13 *)
   }
 
 let impl_config bin =
@@ -187,10 +205,7 @@ let make_res ~(coqc : Action.Prog.t) =
         let coqcorelib = Vars.get_path_opt vars "COQCORELIB" in
         (* this is not available in Coq < 8.13 *)
         let coq_native_compiler_default =
-          match Vars.get_opt vars "COQ_NATIVE_COMPILER_DEFAULT" with
-          | Some s -> s
-          (* we will explicitly not support native compilation for Coq < 8.13 *)
-          | None -> "no"
+          Vars.get_opt vars "COQ_NATIVE_COMPILER_DEFAULT"
         in
         Ok { version_info; coqlib; coqcorelib; coq_native_compiler_default }
       | Error msg ->
@@ -226,8 +241,10 @@ let by_name { version_info; coqlib; coqcorelib; coq_native_compiler_default }
   | "version.suffix"
   | "version"
   | "ocaml-version" -> Version.by_name version_info name
-  | "coqlib" -> Some (Value.Path coqlib)
+  | "coqlib" -> Some (Value.path coqlib)
   | "coqcorelib" -> Option.map ~f:Value.path coqcorelib
   | "coq_native_compiler_default" ->
-    Some (Value.String coq_native_compiler_default)
-  | _ -> None
+    Option.map ~f:Value.string coq_native_compiler_default
+  | _ ->
+    Code_error.raise "Unknown name was requested from coq_config"
+      [ ("name", Dyn.string name) ]

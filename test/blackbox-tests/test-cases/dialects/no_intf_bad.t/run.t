@@ -1,4 +1,4 @@
-Test the (dialect ...) stanza inside the dune-project file.
+Test the (dialect ...) stanza inside the `dune-project` file.
 
   $ dune exec ./main.exe
   File "dune-project", line 3, characters 0-92:

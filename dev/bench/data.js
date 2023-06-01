@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685648280061,
+  "lastUpdate": 1685648395988,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -49444,6 +49444,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.47132609718",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "1bfc3a72f7202425c65d99afca123920155afd75",
+          "message": "fix(coq): first theory in COQPATH takes precedence always\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-01T12:24:28-07:00",
+          "tree_id": "68765dc6be8b4a2fd28f276ebfa34d20fe0c2631",
+          "url": "https://github.com/ocaml/dune/commit/1bfc3a72f7202425c65d99afca123920155afd75"
+        },
+        "date": 1685648390485,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.60486979478667",
             "unit": "seconds"
           }
         ]

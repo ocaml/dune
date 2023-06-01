@@ -608,16 +608,15 @@ let exec
       | true ->
         Dune_util.Build_path_prefix_map.extend_build_path_prefix_map env
           `New_rules_have_precedence
-          ([ Some
-               { Build_path_prefix_map.source = Path.to_absolute_filename root
-               ; target = "/workspace_root"
-               }
-           ]
-          @
-          match Install_root.get env with
-          | None -> []
-          | Some install_root ->
-            [ Some { source = install_root; target = "/workspace_root" } ])
+          (let target = "/workspace_root" in
+           Some
+             { Build_path_prefix_map.source = Path.to_absolute_filename root
+             ; target
+             }
+           ::
+           (match Install_root.get env with
+           | None -> []
+           | Some install_root -> [ Some { source = install_root; target } ]))
     in
     { working_dir = Path.root
     ; env

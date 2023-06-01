@@ -17,6 +17,7 @@ module Emit = struct
     ; promote : Rule.Promote.t option
     ; compile_flags : Ordered_set_lang.Unexpanded.t
     ; allow_overlapping_dependencies : bool
+    ; enabled_if : Blang.t
     }
 
   type Stanza.t += T of t
@@ -108,7 +109,12 @@ module Emit = struct
        and+ allow_overlapping_dependencies =
          field_b "allow_overlapping_dependencies"
        and+ emit_stdlib = field "emit_stdlib" bool ~default:true
-       and+ modules = Stanza_common.Modules_settings.decode in
+       and+ modules = Stanza_common.Modules_settings.decode
+       and+ enabled_if =
+         let open Enabled_if in
+         let allowed_vars = Any in
+         decode ~allowed_vars ~since:None ()
+       in
        let preprocess =
          let init =
            let f libname = Preprocess.With_instrumentation.Ordinary libname in
@@ -133,6 +139,7 @@ module Emit = struct
        ; promote
        ; compile_flags
        ; allow_overlapping_dependencies
+       ; enabled_if
        })
 
   let target_dir (emit : t) ~dir = Path.Build.relative dir emit.target

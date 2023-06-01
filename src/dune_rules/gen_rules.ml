@@ -144,16 +144,19 @@ end = struct
       | true ->
         let+ () = Mdx.gen_rules ~sctx ~dir ~scope ~expander mdx in
         empty_none)
-    | Melange_stanzas.Emit.T mel ->
-      let+ cctx, merlin =
-        Melange_rules.setup_emit_cmj_rules ~dir_contents ~dir ~scope ~sctx
-          ~expander mel
-      in
-      { merlin = Some merlin
-      ; cctx = Some (mel.loc, cctx)
-      ; js = None
-      ; source_dirs = None
-      }
+    | Melange_stanzas.Emit.T mel -> (
+      Expander.eval_blang expander mel.enabled_if >>= function
+      | false -> Memo.return empty_none
+      | true ->
+        let+ cctx, merlin =
+          Melange_rules.setup_emit_cmj_rules ~dir_contents ~dir ~scope ~sctx
+            ~expander mel
+        in
+        { merlin = Some merlin
+        ; cctx = Some (mel.loc, cctx)
+        ; js = None
+        ; source_dirs = None
+        })
     | _ -> Memo.return empty_none
 
   let of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents

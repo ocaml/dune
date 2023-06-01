@@ -30,7 +30,7 @@ let local_libraries =
   ; ("src/dune_config", Some "Dune_config", false, None)
   ; ("src/dune_util", Some "Dune_util", false, None)
   ; ("src/predicate_lang", Some "Predicate_lang", false, None)
-  ; ("src/section", Some "Dune_section", false, None)
+  ; ("otherlibs/dune-private-libs/section", Some "Dune_section", false, None)
   ; ("src/dune_lang", Some "Dune_lang", false, None)
   ; ("vendor/opam-file-format", None, false, None)
   ; ("src/fiber_util", Some "Fiber_util", false, None)
@@ -65,7 +65,8 @@ let local_libraries =
   ; ("src/dune_pkg", Some "Dune_pkg", false, None)
   ; ("src/install", Some "Install", false, None)
   ; ("otherlibs/site/src/private", Some "Dune_site_private", false, None)
-  ; ("src/meta_parser", Some "Dune_meta_parser", false, None)
+  ; ("otherlibs/dune-private-libs/meta_parser", Some "Dune_meta_parser",
+    false, None)
   ; ("src/dune_vcs", Some "Dune_vcs", false, None)
   ; ("src/dune_threaded_console", Some "Dune_threaded_console", false, None)
   ; ("vendor/notty/src", None, true, None)

@@ -63,7 +63,7 @@ let local_libraries =
   ; ("vendor/fmt/src", None, false, None)
   ; ("vendor/opam-0install/lib", Some "Opam_0install", false, None)
   ; ("src/dune_pkg", Some "Dune_pkg", false, None)
-  ; ("src/dune_install", Some "Dune_install", false, None)
+  ; ("src/install", Some "Install", false, None)
   ; ("otherlibs/site/src/private", Some "Dune_site_private", false, None)
   ; ("src/meta_parser", Some "Dune_meta_parser", false, None)
   ; ("src/dune_vcs", Some "Dune_vcs", false, None)

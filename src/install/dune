@@ -1,5 +1,5 @@
 (library
- (name dune_install)
+ (name install)
  (synopsis "the handling of installation paths")
  (libraries
   stdune

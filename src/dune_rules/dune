@@ -12,7 +12,7 @@
   predicate_lang
   dune_console
   dune_digest
-  dune_install
+  install
   dune_lang
   dune_glob
   ocaml_config

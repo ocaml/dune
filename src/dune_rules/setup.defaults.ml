@@ -1,6 +1,6 @@
 let library_path = []
 
-let roots : string option Dune_install.Install.Roots.t =
+let roots : string option Install.Roots.t =
   { lib_root = None
   ; man = None
   ; doc_root = None

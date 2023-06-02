@@ -1,12 +1,12 @@
 # Creates a monorepo out of packages in opam and builds it with dune
 
-FROM debian
+FROM debian:stable-20230522
 
 # Enable non-free packages
 RUN sed -i '/^deb/ s/$/ non-free/' /etc/apt/sources.list
 
 # Install tools and system dependencies of packages
-RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y \
   build-essential \
   sudo \
   pkg-config \

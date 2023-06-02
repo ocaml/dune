@@ -272,14 +272,14 @@ end
 module Unavailable_reason = struct
   type t =
     | Not_found
-    | Invalid_dune_package of exn
+    | Invalid_dune_package of User_message.t
 
   let to_dyn =
     let open Dyn in
     function
     | Not_found -> variant "Not_found" []
     | Invalid_dune_package why ->
-      variant "Invalid_dune_package" [ Exn.to_dyn why ]
+      variant "Invalid_dune_package" [ Dyn.string (User_message.to_string why) ]
 end
 
 let builtin_for_dune : Dune_package.t =
@@ -542,13 +542,12 @@ end = struct
               match dir_contents with
               | Error (e, _, _) ->
                 Error
-                  (User_error.E
-                     (User_message.make
-                        [ Pp.textf "Unable to get entry modules of %s in %s. "
-                            (Lib_name.to_string t.name)
-                            (Path.to_string src_dir)
-                        ; Pp.textf "error: %s" (Unix.error_message e)
-                        ]))
+                  (User_message.make
+                     [ Pp.textf "Unable to get entry modules of %s in %s. "
+                         (Lib_name.to_string t.name)
+                         (Path.to_string src_dir)
+                     ; Pp.textf "error: %s" (Unix.error_message e)
+                     ])
               | Ok dir_contents ->
                 let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
                 let ext = Cm_kind.ext Cmi in
@@ -568,7 +567,7 @@ end = struct
                             (Loc.in_dir src_dir, name)
                         with
                         | Ok s -> Ok (Some s)
-                        | Error e -> Error (User_error.E e)))))
+                        | Error e -> Error e))))
         in
         let modules = Lib_info.Source.External None in
         Lib_info.create ~path_kind:External ~loc ~name:t.name ~kind ~status

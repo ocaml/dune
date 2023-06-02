@@ -18,7 +18,8 @@ let find_package t pkg =
     Findlib.find_root_package t.findlib pkg >>| function
     | Ok p -> Some (Installed p)
     | Error Not_found -> None
-    | Error (Invalid_dune_package exn) -> Exn.raise exn)
+    | Error (Invalid_dune_package user_message) ->
+      User_error.raise [ User_message.pp user_message ])
 
 let create (context : Context.t) =
   let* packages = Only_packages.get () in

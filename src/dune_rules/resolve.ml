@@ -1,7 +1,7 @@
 open Import
 
 type error =
-  { exn : exn
+  { message : User_message.t
   ; stack_frames : User_message.Style.t Pp.t Lazy.t list
   }
 
@@ -19,31 +19,29 @@ include Monad.Make (struct
   let bind = bind
 end)
 
-let error_equal { exn; stack_frames } b =
-  Exn.equal exn b.exn
+let error_equal { message; stack_frames } b =
+  User_message.equal message b.message
   && Stdune.List.equal
        (fun (lazy a) (lazy b) -> Poly.equal a b)
        stack_frames b.stack_frames
 
 let equal f = Result.equal f error_equal
 
-let error_hash { exn; stack_frames } =
-  Poly.hash (Exn.hash exn, Stdune.List.map stack_frames ~f:Lazy.force)
+let error_hash { message; stack_frames } =
+  Poly.hash (Poly.hash message, Stdune.List.map stack_frames ~f:Lazy.force)
 
 let to_dyn f t =
-  Result.to_dyn f Exn.to_dyn (Result.map_error t ~f:(fun x -> x.exn))
+  Result.to_dyn f Dyn.string
+    (Result.map_error t ~f:(fun x -> User_message.to_string x.message))
 
 let hash f = Result.hash f error_hash
 
-let of_result = Result.map_error ~f:(fun exn -> { exn; stack_frames = [] })
+let of_result =
+  Result.map_error ~f:(fun message -> { message; stack_frames = [] })
 
 let to_result x = x
 
-let of_error x = Error x
-
-let raise_error ({ exn; _ } : error) = raise exn
-
-let push_frames { stack_frames; exn = _ } f =
+let push_frames { stack_frames; message = _ } f =
   let rec loop = function
     | [] ->
       let open Memo.O in
@@ -55,6 +53,8 @@ let push_frames { stack_frames; exn = _ } f =
         (fun () -> loop rest)
   in
   loop stack_frames
+
+let raise_error { message; _ } = raise (User_error.E message)
 
 let error_to_memo error = push_frames error (fun () -> raise_error error)
 
@@ -73,7 +73,7 @@ let args t =
     let open Action_builder.O in
     Command.Args.Dyn (read t >>| fun _ -> assert false)
 
-let fail msg = Error { exn = User_error.E msg; stack_frames = [] }
+let fail msg = Error { message = msg; stack_frames = [] }
 
 let peek t = Result.map_error t ~f:ignore
 

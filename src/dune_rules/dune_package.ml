@@ -458,12 +458,17 @@ module Or_meta = struct
     let dir = Path.parent_exn file in
     Path.as_outside_build_dir_exn file
     |> Fs_memo.with_lexbuf_from_file ~f:(fun lexbuf ->
-           (* XXX stop catching code errors, invalid args, etc. *)
-           Result.try_with (fun () ->
-               Vfile.parse_contents lexbuf ~f:(fun lang ->
-                   String_with_vars.set_decoding_env
-                     (Pform.Env.initial lang.version)
-                     (decode ~lang ~dir))))
+           match
+             Vfile.parse_contents lexbuf ~f:(fun lang ->
+                 String_with_vars.set_decoding_env
+                   (Pform.Env.initial lang.version)
+                   (decode ~lang ~dir))
+           with
+           | x -> Ok x
+           | exception User_error.E message -> Error message
+           | exception exn ->
+             (* XXX stop catching code errors, invalid args, etc. *)
+             Error (User_message.make [ Exn.pp exn ]))
 
   let pp ~dune_version ppf t =
     let t = encode ~dune_version t in

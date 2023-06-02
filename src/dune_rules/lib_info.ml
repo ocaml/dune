@@ -350,7 +350,7 @@ type 'path t =
   ; dune_version : Dune_lang.Syntax.Version.t option
   ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
   ; virtual_ : Modules.t Source.t option
-  ; entry_modules : Module_name.t list Or_exn.t Source.t
+  ; entry_modules : (Module_name.t list, User_message.t) result Source.t
   ; implements : (Loc.t * Lib_name.t) option
   ; default_implementation : (Loc.t * Lib_name.t) option
   ; wrapped : Wrapped.t Inherited.t option
@@ -439,7 +439,7 @@ let equal (type a) (t : a t)
        t.sub_systems
   && Option.equal (Source.equal Modules.equal) virtual_ t.virtual_
   && Source.equal
-       (Or_exn.equal (List.equal Module_name.equal))
+       (Result.equal (List.equal Module_name.equal) User_message.equal)
        entry_modules t.entry_modules
   && Option.equal
        (Tuple.T2.equal Loc.equal Lib_name.equal)
@@ -737,7 +737,10 @@ let to_dyn path
     ; ("sub_systems", Sub_system_name.Map.to_dyn Dyn.opaque sub_systems)
     ; ("virtual_", option (Source.to_dyn Modules.to_dyn) virtual_)
     ; ( "entry_modules"
-      , Source.to_dyn (Or_exn.to_dyn (list Module_name.to_dyn)) entry_modules )
+      , Source.to_dyn
+          (Result.to_dyn (list Module_name.to_dyn) string)
+          (Source.map entry_modules
+             ~f:(Result.map_error ~f:User_message.to_string)) )
     ; ("implements", option (snd Lib_name.to_dyn) implements)
     ; ( "default_implementation"
       , option (snd Lib_name.to_dyn) default_implementation )

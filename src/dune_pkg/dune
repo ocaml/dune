@@ -7,10 +7,12 @@
   dune_engine
   dune_util
   dune_lang
+  dune_console
   opam_core
   opam_repository
   opam_format
   opam_state
-  opam_0install)
+  opam_0install
+  fmt)
  (instrumentation
   (backend bisect_ppx)))

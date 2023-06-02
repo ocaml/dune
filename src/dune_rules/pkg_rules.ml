@@ -54,9 +54,19 @@ end
 module Lock_dir = struct
   include Dune_pkg.Lock_dir
 
-  let get () : t Memo.t =
-    (* TODO this should be able to handle lock directories at the non-default path *)
-    let path = default_path in
+  let get (ctx : Context_name.t) : t Memo.t =
+    let* path =
+      let+ workspace = Workspace.workspace () in
+      match
+        List.find_map workspace.contexts ~f:(fun ctx' ->
+            match Context_name.equal (Workspace.Context.name ctx') ctx with
+            | false -> None
+            | true -> Some ctx')
+      with
+      | None -> default_path
+      | Some (Default { lock; _ }) -> Option.value lock ~default:default_path
+      | Some (Opam _) -> assert false
+    in
     Fs_memo.dir_exists (In_source_dir path) >>= function
     | false ->
       (* TODO *)
@@ -427,8 +437,8 @@ module Action_expander = struct
       | Misc -> assert false
 
     let expand_pform
-        { env = _; paths; artifacts = _; context = _; deps; version = _ }
-        ~source (pform : Pform.t) : Value.t list =
+        { env = _; paths; artifacts = _; context; deps; version = _ } ~source
+        (pform : Pform.t) : Value.t list =
       let loc = Dune_sexp.Template.Pform.loc source in
       match pform with
       | Var (Pkg Switch) -> [ String "dune" ]
@@ -481,6 +491,7 @@ module Action_expander = struct
                   let install_paths = Paths.install_paths paths in
                   [ Dir (Install.Paths.get install_paths section) ]))))
         | _ -> assert false)
+      | Var Context_name -> [ Value.String (Context_name.to_string context) ]
       | _ -> Expander.isn't_allowed_in_this_position ~source
 
     let expand_pform_gen t =
@@ -1224,7 +1235,7 @@ let setup_package_rules context ~dir ~pkg_name :
   match Package.Name.of_string_user_error (Loc.none, pkg_name) with
   | Error m -> raise (User_error.E m)
   | Ok name -> (
-    let* db = Lock_dir.get () in
+    let* db = Lock_dir.get context in
     resolve db.packages context name >>| function
     | None ->
       User_error.raise

@@ -1,15 +1,5 @@
 open Stdune
 
-module Repo : sig
-  (** An opam repository *)
-  type t
-
-  (** Create a [t] from a path to a local directory containing a opam
-      repository. Raises an exception if the directory is not a valid opam
-      repository. *)
-  val of_opam_repo_dir_path : Filename.t -> t
-end
-
 module Env : sig
   (** An opam environment consisting of assignments to variables (e.g. "arch"
       and "os") *)
@@ -22,6 +12,15 @@ module Env : sig
   val global : unit -> t
 end
 
+module Repo_selection : sig
+  (** An opam repository *)
+  type t
+
+  val switch_with_name : string -> t
+
+  val local_repo_with_env : opam_repo_dir_path:Filename.t -> env:Env.t -> t
+end
+
 module Summary : sig
   (** Some intermediate state from the solve exposed for logging purposes *)
   type t
@@ -31,8 +30,7 @@ module Summary : sig
 end
 
 val solve_lock_dir :
-     env:Env.t
-  -> repo:Repo.t
+     repo_selection:Repo_selection.t
   -> lock_dir_path:Path.Source.t
   -> OpamFile.OPAM.t OpamTypes.name_map
   -> Summary.t * Lock_dir.t

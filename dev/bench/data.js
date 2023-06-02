@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685693215367,
+  "lastUpdate": 1685735588012,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -49908,6 +49908,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.38599912348",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2252edf5c737a3efa0e396e72ec195f642b70fa4",
+          "message": "test: proper pattern in build-e2e (#7870)\n\nUsing multiple -e's or's the patterns together.\r\n\r\nWe want to match both patterns\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-02T12:40:13-07:00",
+          "tree_id": "b9d6b967418d9410e68bc1bab64a120c38f2f4e5",
+          "url": "https://github.com/ocaml/dune/commit/2252edf5c737a3efa0e396e72ec195f642b70fa4"
+        },
+        "date": 1685735583762,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.16806160508",
             "unit": "seconds"
           }
         ]

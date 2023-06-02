@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685691578203,
+  "lastUpdate": 1685692089928,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -18268,6 +18268,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.102459991833335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd5aac2f538d8c1af96dff3c9d16d2c4e0ac8e39",
+          "message": "feature(pkg): lock file configuration in workspace (#7835)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-02T00:27:01-07:00",
+          "tree_id": "b673ac892304da222b620237bc1d5f836cf0c287",
+          "url": "https://github.com/ocaml/dune/commit/bd5aac2f538d8c1af96dff3c9d16d2c4e0ac8e39"
+        },
+        "date": 1685692088793,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.508813990313335",
             "unit": "seconds"
           }
         ]

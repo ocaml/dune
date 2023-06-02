@@ -77,6 +77,7 @@ module Lock = struct
         User_error.raise
           [ Pp.text "--opam-env may only used with --opam-repository-path" ]
       | Some opam_switch_name, None, None ->
+        (* switch with name does not support environments *)
         Repo_selection.switch_with_name opam_switch_name
       | None, Some opam_repo_dir_path, env_source_opt ->
         let env =
@@ -213,10 +214,16 @@ module Lock = struct
         ~all_contexts_arg:all_contexts
         ~version_preference_arg:version_preference
     in
-    let+ source_dir = Memo.run (Source_tree.root ()) in
+    let* source_dir = Memo.run (Source_tree.root ()) in
     let project = Source_tree.Dir.project source_dir in
     let dune_package_map = Dune_project.packages project in
     let opam_file_map = opam_file_map_of_dune_package_map dune_package_map in
+    let+ sys_env =
+      Dune_pkg.Sys_poll.sys_env ~path:(Env_path.path Stdune.Env.initial)
+    in
+    let repo_selection =
+      Dune_pkg.Opam.Repo_selection.add_env sys_env repo_selection
+    in
     (* Construct a list of thunks that will perform all the file IO side
        effects after performing validation so that if materializing any
        lockdir would fail then no side effect takes place. *)

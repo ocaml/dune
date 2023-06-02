@@ -168,6 +168,13 @@ module Env = struct
 
   let find_by_name (t : t) ~name =
     OpamVariable.Map.find_opt (OpamVariable.of_string name) t
+
+  let add ~var ~value t =
+    let variable = OpamVariable.of_string var in
+    let content = OpamVariable.string value in
+    OpamVariable.Map.add variable content t
+
+  let union = OpamVariable.Map.union (fun _left right -> right)
 end
 
 module Local_repo_with_env = struct
@@ -325,9 +332,11 @@ module Repo_state = struct
 end
 
 module Repo_selection = struct
-  type t =
+  type pre =
     | Switch_with_name of string
     | Local_repo_with_env of Local_repo_with_env.t
+
+  type t = pre
 
   let switch_with_name switch_name = Switch_with_name switch_name
 
@@ -337,6 +346,13 @@ module Repo_selection = struct
           Local_repo.of_opam_repo_dir_path opam_repo_dir_path
       ; env
       }
+
+  let add_env env' = function
+    | Switch_with_name _ as rs -> rs
+    | Local_repo_with_env ({ env; _ } as local) ->
+      let env = Env.union env env' in
+      let local = { local with env } in
+      Local_repo_with_env local
 
   (* [with_state ~f t] calls [f] on a [Repo_state.t] implied by [t] and
      returns the result. Don't let the [Repo_state.t] escape the function [f].

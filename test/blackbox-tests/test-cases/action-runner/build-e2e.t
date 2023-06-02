@@ -14,8 +14,8 @@ dune command
 
   $ timeout 2 dune internal action-runner build --runner ar1 --runner ar2
   $ ar1="_build/ar1.*.log"
-  $ grep -e mkdir -e aaa $ar1
+  $ grep -e "# mkdir.*aaa" $ar1
   # mkdir -p _build/default/ar1;cd _build/default/ar1;echo -n xxx > aaa
   $ ar2="_build/ar2.*.log"
-  $ grep -e mkdir -e bbb $ar2
+  $ grep -e "# mkdir.*bbb" $ar2
   # mkdir -p _build/default/ar2;cd _build/default/ar2;echo -n yyy > bbb

@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Do not re-run OCaml syntax files on every iteration of the watch mode. This
+  is too memory consuming. (#7894, fix #6900, @rgrinberg)
+
 - Fix a crash when using a version of Coq < 8.13 due to the native compiler
   config variable being missing. We now explicitly default to `(mode vo)` for
   these older versions of Coq. (#7847, fixes #7846, @Alizter)

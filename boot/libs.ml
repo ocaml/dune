@@ -39,12 +39,13 @@ let local_libraries =
   ; ("otherlibs/chrome-trace/src", Some "Chrome_trace", false, None)
   ; ("vendor/spawn/src", Some "Spawn", false, None)
   ; ("src/dune_stats", Some "Dune_stats", false, None)
-  ; ("otherlibs/action-plugin/src", Some "Dune_action_plugin", false, None)
+  ; ("otherlibs/dune-action-plugin/src", Some "Dune_action_plugin", false,
+    None)
   ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
   ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)
   ; ("src/dune_rpc_client", Some "Dune_rpc_client", false, None)
   ; ("src/thread_pool", Some "Dune_thread_pool", false, None)
-  ; ("otherlibs/ocamlc_loc/src", Some "Ocamlc_loc", false, None)
+  ; ("otherlibs/ocamlc-loc/src", Some "Ocamlc_loc", false, None)
   ; ("src/fsevents", Some "Fsevents", false, None)
   ; ("vendor/ocaml-inotify/src", Some "Ocaml_inotify", false, None)
   ; ("src/async_inotify_for_dune", Some "Async_inotify_for_dune", false,
@@ -64,7 +65,8 @@ let local_libraries =
   ; ("vendor/opam-0install/lib", Some "Opam_0install", false, None)
   ; ("src/dune_pkg", Some "Dune_pkg", false, None)
   ; ("src/install", Some "Install", false, None)
-  ; ("otherlibs/site/src/private", Some "Dune_site_private", false, None)
+  ; ("otherlibs/dune-site/src/private", Some "Dune_site_private", false,
+    None)
   ; ("otherlibs/dune-private-libs/meta_parser", Some "Dune_meta_parser",
     false, None)
   ; ("src/dune_vcs", Some "Dune_vcs", false, None)
@@ -76,7 +78,7 @@ let local_libraries =
   ; ("src/dune_rules", Some "Dune_rules", true, None)
   ; ("src/upgrader", Some "Dune_upgrader", false, None)
   ; ("vendor/cmdliner/src", None, false, None)
-  ; ("otherlibs/build-info/src", Some "Build_info", false,
+  ; ("otherlibs/dune-build-info/src", Some "Build_info", false,
     Some "Build_info_data")
   ; ("src/dune_rpc_impl", Some "Dune_rpc_impl", false, None)
   ; ("src/dune_rules_rpc", Some "Dune_rules_rpc", false, None)

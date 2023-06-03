@@ -576,18 +576,21 @@ end = struct
     in
     match context with
     | Default
-        { targets
-        ; name
-        ; host_context = _
-        ; profile
-        ; env = _
-        ; toolchain
-        ; paths
-        ; loc = _
-        ; fdo_target_exe
-        ; dynamically_linked_foreign_archives
-        ; instrument_with
-        ; merlin = _
+        { lock = _
+        ; base =
+            { targets
+            ; name
+            ; host_context = _
+            ; profile
+            ; env = _
+            ; toolchain
+            ; paths
+            ; loc = _
+            ; fdo_target_exe
+            ; dynamically_linked_foreign_archives
+            ; instrument_with
+            ; merlin = _
+            }
         } ->
       let merlin =
         workspace.merlin_context = Some (Workspace.Context.name context)

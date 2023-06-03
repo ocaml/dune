@@ -1141,7 +1141,6 @@ let add_env env action =
 
 let rule ?loc { Action_builder.With_targets.build; targets } =
   (* TODO this ignores the workspace file *)
-  let build = Action_builder.map build ~f:(Action.Full.add_env Env.initial) in
   Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build ~context:None
   |> Rules.Produce.rule
 

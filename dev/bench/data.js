@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685827110425,
+  "lastUpdate": 1685829210148,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -50256,6 +50256,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "24.476229879986665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "distinct": true,
+          "id": "59d6ed16291f45a6d6e27eed808ef118c4897025",
+          "message": "fix(melange): resolve libraries lazily for melange.emit\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-03T14:38:44-07:00",
+          "tree_id": "fe9183077606855dda4187718b610295a68f6c3a",
+          "url": "https://github.com/ocaml/dune/commit/59d6ed16291f45a6d6e27eed808ef118c4897025"
+        },
+        "date": 1685829204767,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "25.583498959573333",
             "unit": "seconds"
           }
         ]

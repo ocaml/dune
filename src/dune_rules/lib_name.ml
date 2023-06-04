@@ -53,7 +53,7 @@ module Local = struct
             in
             loop false 0
     end) :
-      Stringlike_intf.S with type t := t)
+      Stringlike with type t := t)
 
   let mangled_path_under_package local_name =
     [ private_key; to_string local_name ]

@@ -1,6 +1,7 @@
 open Stdune
 module Stringlike = Dune_util.Stringlike
-module Stringlike_intf = Dune_util.Stringlike_intf
+
+module type Stringlike = Dune_util.Stringlike
 
 type t =
   | Dev
@@ -32,7 +33,7 @@ include (
       | Release -> "release"
       | User_defined s -> s
   end) :
-    Stringlike_intf.S with type t := t)
+    Stringlike with type t := t)
 
 let equal x y =
   match (x, y) with

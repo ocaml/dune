@@ -30,7 +30,7 @@ include (
       then None
       else Some name
   end) :
-    Stringlike_intf.S with type t := t)
+    Stringlike with type t := t)
 
 let target t ~toolchain = sprintf "%s.%s" (to_string t) (to_string toolchain)
 

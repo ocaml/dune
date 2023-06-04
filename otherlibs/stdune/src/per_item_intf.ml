@@ -1,5 +1,3 @@
-open Import
-
 module type S = sig
   type key
 
@@ -27,16 +25,16 @@ module type S = sig
 
   val fold : 'a t -> init:'acc -> f:('a -> 'acc -> 'acc) -> 'acc
 
-  val fold_resolve :
-       'a t
-    -> init:'acc
-    -> f:('a -> 'acc -> 'acc Resolve.Memo.t)
-    -> 'acc Resolve.Memo.t
-
   val exists : 'a t -> f:('a -> bool) -> bool
 
-  val map_action_builder :
-    'a t -> f:('a -> 'b Action_builder.t) -> 'b t Action_builder.t
+  module Make_monad_traversals (Monad : sig
+    include Monad.S
 
-  val map_resolve : 'a t -> f:('a -> 'b Resolve.Memo.t) -> 'b t Resolve.Memo.t
+    val all : 'a t list -> 'a list t
+  end) : sig
+    val fold :
+      'a t -> init:'acc -> f:('a -> 'acc -> 'acc Monad.t) -> 'acc Monad.t
+
+    val map : 'a t -> f:('a -> 'b Monad.t) -> 'b t Monad.t
+  end
 end

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685885125973,
+  "lastUpdate": 1685885140103,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -40424,6 +40424,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "76.20904170102666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "8246390804965bd43091b195c83f2045fb2baf65",
+          "message": "refactor: use Pp.enumerate in load_rules\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-04T05:53:04-07:00",
+          "tree_id": "cfb835f654e91cb0fbf2648d9179017daf7f2c33",
+          "url": "https://github.com/ocaml/dune/commit/8246390804965bd43091b195c83f2045fb2baf65"
+        },
+        "date": 1685885138895,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.216526555986667",
             "unit": "seconds"
           }
         ]

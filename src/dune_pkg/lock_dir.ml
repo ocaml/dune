@@ -2,12 +2,14 @@ open Import
 open Dune_lang
 
 module Source = struct
+  type fetch =
+    { url : Loc.t * string
+    ; checksum : (Loc.t * Checksum.t) option
+    }
+
   type t =
     | External_copy of Loc.t * Path.External.t
-    | Fetch of
-        { url : Loc.t * string
-        ; checksum : (Loc.t * Checksum.t) option
-        }
+    | Fetch of fetch
 
   let remove_locs = function
     | External_copy (_loc, path) -> External_copy (Loc.none, path)
@@ -51,6 +53,20 @@ module Source = struct
     let checksum = "checksum"
   end
 
+  let decode_fetch =
+    let open Dune_sexp.Decoder in
+    let+ url = field Fields.url (located string)
+    and+ checksum = field_o Fields.checksum (located string) in
+    let checksum =
+      match checksum with
+      | None -> None
+      | Some ((loc, _) as checksum) -> (
+        match Checksum.of_string_user_error checksum with
+        | Ok checksum -> Some (loc, checksum)
+        | Error e -> raise (User_error.E e))
+    in
+    { url; checksum }
+
   let decode =
     let open Dune_lang.Decoder in
     sum
@@ -62,30 +78,22 @@ module Source = struct
                 Path.External.relative path source
               else Path.External.of_string source ) )
       ; ( Fields.fetch
-        , fields
-          @@ let+ url = field Fields.url (located string)
-             and+ checksum = field_o Fields.checksum (located string) in
-             let checksum =
-               match checksum with
-               | None -> None
-               | Some ((loc, _) as checksum) -> (
-                 match Checksum.of_string_user_error checksum with
-                 | Ok checksum -> Some (loc, checksum)
-                 | Error e -> raise (User_error.E e))
-             in
-             fun _ -> Fetch { url; checksum } )
+        , let+ fetch = fields decode_fetch in
+          fun _ -> Fetch fetch )
       ]
+
+  let encode_fetch_field { url = _loc, url; checksum } =
+    let open Dune_sexp.Encoder in
+    [ field Fields.url string url
+    ; field_o Fields.checksum Checksum.encode (Option.map checksum ~f:snd)
+    ]
 
   let encode t =
     let open Dune_lang.Encoder in
     match t with
     | External_copy (_loc, path) ->
       constr Fields.copy string (Path.External.to_string path)
-    | Fetch { url = _loc, url; checksum } ->
-      named_record_fields Fields.fetch
-        [ field Fields.url string url
-        ; field_o Fields.checksum Checksum.encode (Option.map checksum ~f:snd)
-        ]
+    | Fetch fetch -> named_record_fields Fields.fetch (encode_fetch_field fetch)
 end
 
 module Pkg_info = struct
@@ -94,28 +102,40 @@ module Pkg_info = struct
     ; version : string
     ; dev : bool
     ; source : Source.t option
+    ; extra_sources : (Path.Local.t * Source.t) list
     }
 
-  let equal { name; version; dev; source }
+  let equal { name; version; dev; source; extra_sources }
       { name = other_name
       ; version = other_version
       ; dev = other_dev
       ; source = other_source
+      ; extra_sources = other_extra_sources
       } =
     Package_name.equal name other_name
     && String.equal version other_version
     && Bool.equal dev other_dev
     && Option.equal Source.equal source other_source
+    && List.equal
+         (Tuple.T2.equal Path.Local.equal Source.equal)
+         extra_sources other_extra_sources
 
   let remove_locs t =
-    { t with source = Option.map ~f:Source.remove_locs t.source }
+    { t with
+      source = Option.map ~f:Source.remove_locs t.source
+    ; extra_sources =
+        List.map t.extra_sources ~f:(fun (local, source) ->
+            (local, Source.remove_locs source))
+    }
 
-  let to_dyn { name; version; dev; source } =
+  let to_dyn { name; version; dev; source; extra_sources } =
     Dyn.record
       [ ("name", Package_name.to_dyn name)
       ; ("version", Dyn.string version)
       ; ("dev", Dyn.bool dev)
       ; ("source", Dyn.option Source.to_dyn source)
+      ; ( "extra_sources"
+        , Dyn.list (Dyn.pair Path.Local.to_dyn Source.to_dyn) extra_sources )
       ]
 end
 
@@ -177,6 +197,8 @@ module Pkg = struct
     let dev = "dev"
 
     let exported_env = "exported_env"
+
+    let extra_sources = "extra_sources"
   end
 
   let decode =
@@ -191,23 +213,37 @@ module Pkg = struct
        and+ exported_env =
          field Fields.exported_env ~default:[]
            (repeat Dune_lang.Action.Env_update.decode)
+       and+ extra_sources =
+         field Fields.extra_sources ~default:[]
+           (repeat
+              (pair (plain_string Path.Local.parse_string_exn) Source.decode))
        in
        fun ~lock_dir name ->
          let info =
-           let source =
-             Option.map source ~f:(fun f ->
-                 Path.source lock_dir |> Path.to_absolute_filename
-                 |> Path.External.of_string |> f)
+           let make_source f =
+             Path.source lock_dir |> Path.to_absolute_filename
+             |> Path.External.of_string |> f
            in
-           { Pkg_info.name; version; dev; source }
+           let source = Option.map source ~f:make_source in
+           let extra_sources =
+             List.map extra_sources ~f:(fun (path, source) ->
+                 (path, make_source source))
+           in
+           { Pkg_info.name; version; dev; source; extra_sources }
          in
          { build_command; deps; install_command; info; exported_env }
+
+  let encode_extra_source (local, source) =
+    List
+      [ Dune_sexp.atom_or_quoted_string (Path.Local.to_string local)
+      ; Source.encode source
+      ]
 
   let encode
       { build_command
       ; install_command
       ; deps
-      ; info = { Pkg_info.name = _; version; dev; source }
+      ; info = { Pkg_info.name = _; extra_sources; version; dev; source }
       ; exported_env
       } =
     let open Dune_lang.Encoder in
@@ -220,6 +256,7 @@ module Pkg = struct
       ; field_b Fields.dev dev
       ; field_l Fields.exported_env Dune_lang.Action.Env_update.encode
           exported_env
+      ; field_l Fields.extra_sources encode_extra_source extra_sources
       ]
 end
 

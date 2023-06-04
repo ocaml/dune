@@ -228,14 +228,14 @@ module Plugin : sig
     { package : Package.t
     ; name : Package.Name.t
     ; libraries : (Loc.t * Lib_name.t) list
-    ; site : Loc.t * (Package.Name.t * Section.Site.t)
+    ; site : Loc.t * (Package.Name.t * Site.t)
     ; optional : bool
     }
 end
 
 module Install_conf : sig
   type t =
-    { section : Install.Section_with_site.t
+    { section : Section_with_site.t
     ; files : Install_entry.File.t list
     ; dirs : Install_entry.Dir.t list
     ; package : Package.t

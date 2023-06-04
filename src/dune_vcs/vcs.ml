@@ -7,10 +7,17 @@ module Kind = struct
     | Git
     | Hg
 
-  let of_dir_contents files =
-    if Filename.Set.mem files ".git" then Some Git
-    else if Filename.Set.mem files ".hg" then Some Hg
-    else None
+  let of_dir_name = function
+    | ".git" -> Some Git
+    | ".hg" -> Some Hg
+    | _ -> None
+
+  let of_dir_contents set =
+    match
+      Filename.Set.find set ~f:(fun s -> Option.is_some (of_dir_name s))
+    with
+    | None -> None
+    | Some s -> Some (Option.value_exn (of_dir_name s))
 
   let to_dyn t =
     Dyn.Variant

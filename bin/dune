@@ -15,6 +15,7 @@
   stdune
   dune_console
   unix
+  install
   dune_metrics
   dune_digest
   dune_cache

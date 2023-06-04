@@ -3,24 +3,23 @@
 open! Stdune
 open Dune_sexp
 
-type 'a t =
-  | Element of 'a
-  | Compl of 'a t
-  | Standard
-  | Union of 'a t list
-  | Inter of 'a t list
+type 'a t
+
+val of_list : 'a list -> 'a t
+
+val element : 'a -> 'a t
+
+val standard : 'a t
 
 val diff : 'a t -> 'a t -> 'a t
 
-val inter : 'a t list -> 'a t
+val and_ : 'a t list -> 'a t
 
-val compl : 'a t -> 'a t
+val not : 'a t -> 'a t
 
-val union : 'a t list -> 'a t
+val or_ : 'a t list -> 'a t
 
-val not_union : 'a t list -> 'a t
-
-val any : 'a t
+val true_ : 'a t
 
 val decode_one : 'a Decoder.t -> 'a t Decoder.t
 
@@ -30,36 +29,40 @@ val encode : 'a Encoder.t -> 'a t Encoder.t
 
 val to_dyn : 'a Dyn.builder -> 'a t Dyn.builder
 
-val exec : 'a t -> standard:'a t -> ('a -> bool) -> bool
+val test : 'a t -> standard:'a t -> test:('a -> 'b -> bool) -> 'b -> bool
 
-val empty : 'a t
+val false_ : 'a t
 
-val map : 'a t -> f:('a -> 'b) -> 'b t
-
-val to_predicate :
-  'a Predicate.t t -> standard:'a Predicate.t t -> 'a Predicate.t
+val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
 
 module Glob : sig
-  (** The underlying type for the string predicate is not an actual glob, so
-      this module is confusingly named. *)
+  module Element : sig
+    type t =
+      | Glob of Dune_glob.V1.t
+      | Literal of string
+  end
 
-  type glob
-
-  type nonrec t = glob t
+  type nonrec t = Element.t t
 
   val to_dyn : t -> Dyn.t
 
-  val exec : t -> standard:t -> string -> bool
-
-  val filter : t -> standard:t -> string list -> string list
-
-  val create_glob : Dune_glob.V1.t -> glob
+  val test : t -> standard:t -> string -> bool
 
   val of_glob : Dune_glob.V1.t -> t
 
-  val of_pred : (string -> bool) -> t
+  (** [of_string_list xs] return an expression that will match any element
+      inside the list [xs] *)
+  val of_string_list : string list -> t
 
+  (** [of_string_list xs] return an expression that will only match any element
+      inside the set [xs] *)
   val of_string_set : String.Set.t -> t
 
-  val true_ : t
+  val compare : t -> t -> Ordering.t
+
+  val hash : t -> int
+
+  val decode : t Dune_sexp.Decoder.t
+
+  val encode : t -> Dune_sexp.t
 end

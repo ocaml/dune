@@ -662,7 +662,12 @@ module Library = struct
            >>> located Lib_info.Special_builtin_support.decode)
        and+ enabled_if =
          let open Enabled_if in
-         let allowed_vars = Only Lib_config.allowed_in_enabled_if in
+         let allowed_vars =
+           Only
+             (("context_name", (2, 8))
+             :: ("profile", (2, 5))
+             :: Lib_config.allowed_in_enabled_if)
+         in
          decode ~allowed_vars ~since:(Some (1, 10)) ()
        and+ instrumentation_backend =
          field_o "instrumentation.backend"
@@ -964,8 +969,18 @@ module Library = struct
       let+ enabled_if_result =
         Blang_expand.eval conf.enabled_if ~dir:(Path.build dir)
           ~f:(fun ~source:_ pform ->
-            let value = Lib_config.get_for_enabled_if lib_config pform in
-            Memo.return [ Value.String value ])
+            let+ value =
+              match pform with
+              | Var Context_name ->
+                let context, _ = Path.Build.extract_build_context_exn dir in
+                Memo.return context
+              | Var Profile ->
+                let+ context = Context.DB.by_dir dir in
+                Profile.to_string context.profile
+              | _ ->
+                Memo.return @@ Lib_config.get_for_enabled_if lib_config pform
+            in
+            [ Value.String value ])
       in
       if not enabled_if_result then
         Lib_info.Enabled_status.Disabled_because_of_enabled_if
@@ -1017,7 +1032,7 @@ module Plugin = struct
     { package : Package.t
     ; name : Package.Name.t
     ; libraries : (Loc.t * Lib_name.t) list
-    ; site : Loc.t * (Package.Name.t * Section.Site.t)
+    ; site : Loc.t * (Package.Name.t * Site.t)
     ; optional : bool
     }
 
@@ -1025,8 +1040,7 @@ module Plugin = struct
     fields
       (let+ name = field "name" Package.Name.decode
        and+ libraries = field "libraries" (repeat (located Lib_name.decode))
-       and+ site =
-         field "site" (located (pair Package.Name.decode Section.Site.decode))
+       and+ site = field "site" (located (pair Package.Name.decode Site.decode))
        and+ package = Stanza_common.Pkg.field ~stanza:"plugin"
        and+ optional = field_b "optional" in
        { name; libraries; site; package; optional })
@@ -1034,7 +1048,7 @@ end
 
 module Install_conf = struct
   type t =
-    { section : Install.Section_with_site.t
+    { section : Section_with_site.t
     ; files : Install_entry.File.t list
     ; dirs : Install_entry.Dir.t list
     ; package : Package.t
@@ -1044,7 +1058,7 @@ module Install_conf = struct
   let decode =
     fields
       (let+ loc = loc
-       and+ section = field "section" Install.Section_with_site.decode
+       and+ section = field "section" Section_with_site.decode
        and+ files = field_o "files" (repeat Install_entry.File.decode)
        and+ dirs =
          field_o "dirs"
@@ -2275,11 +2289,11 @@ module Stanzas = struct
               ];
         [ Cram_stanza.T t ] )
     ; ( "generate_sites_module"
-      , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
+      , let+ () = Dune_lang.Syntax.since Site.dune_site_syntax (0, 1)
         and+ t = Generate_sites_module_stanza.decode in
         [ Generate_sites_module_stanza.T t ] )
     ; ( "plugin"
-      , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
+      , let+ () = Dune_lang.Syntax.since Site.dune_site_syntax (0, 1)
         and+ t = Plugin.decode in
         [ Plugin t ] )
     ]

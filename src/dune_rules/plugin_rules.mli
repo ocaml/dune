@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 
 val setup_rules :
   sctx:Super_context.t -> dir:Path.Build.t -> Dune_file.Plugin.t -> unit Memo.t

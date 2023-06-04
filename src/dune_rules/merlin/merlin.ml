@@ -47,7 +47,7 @@ module Processed = struct
     ; obj_dirs : Path.Set.t
     ; src_dirs : Path.Set.t
     ; flags : string list
-    ; extensions : string Ml_kind.Dict.t list
+    ; extensions : string option Ml_kind.Dict.t list
     ; melc_flags : string list
     }
 
@@ -59,7 +59,7 @@ module Processed = struct
       ; ("obj_dirs", Path.Set.to_dyn obj_dirs)
       ; ("src_dirs", Path.Set.to_dyn src_dirs)
       ; ("flags", list string flags)
-      ; ("extensions", list (Ml_kind.Dict.to_dyn string) extensions)
+      ; ("extensions", list (Ml_kind.Dict.to_dyn (Dyn.option string)) extensions)
       ; ("melc_flags", list string melc_flags)
       ]
 
@@ -118,6 +118,13 @@ module Processed = struct
 
   let serialize_path = Path.to_absolute_filename
 
+  let get_ext { Ml_kind.Dict.impl; intf } =
+    match (impl, intf) with
+    | Some impl, Some intf -> Some (impl, intf)
+    | Some impl, None -> Some (impl, impl)
+    | None, Some intf -> Some (intf, intf)
+    | None, None -> None
+
   let to_sexp ~opens ~pp
       { stdlib_dir; obj_dirs; src_dirs; flags; extensions; melc_flags } =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
@@ -171,7 +178,9 @@ module Processed = struct
         :: flags
     in
     let suffixes =
-      List.map extensions ~f:(fun { Ml_kind.Dict.impl; intf } ->
+      List.filter_map extensions ~f:(fun x ->
+          let open Option.O in
+          let+ impl, intf = get_ext x in
           make_directive "SUFFIX" (Sexp.Atom (Printf.sprintf "%s %s" impl intf)))
     in
     Sexp.List
@@ -198,8 +207,9 @@ module Processed = struct
         printf "STDLIB %s\n" (serialize_path stdlib_dir));
     Path.Set.iter obj_dirs ~f:(fun p -> printf "B %s\n" (serialize_path p));
     Path.Set.iter src_dirs ~f:(fun p -> printf "S %s\n" (serialize_path p));
-    List.iter extensions ~f:(fun { Ml_kind.Dict.impl; intf } ->
-        printf "SUFFIX %s" (Printf.sprintf "%s %s" impl intf));
+    List.iter extensions ~f:(fun x ->
+        Option.iter (get_ext x) ~f:(fun (impl, intf) ->
+            printf "SUFFIX %s" (Printf.sprintf "%s %s" impl intf)));
     (* We print all FLG directives as comments *)
     List.iter pp_configs
       ~f:
@@ -322,7 +332,7 @@ module Unprocessed = struct
     ; libname : Lib_name.Local.t option
     ; source_dirs : Path.Source.Set.t
     ; objs_dirs : Path.Set.t
-    ; extensions : string Ml_kind.Dict.t list
+    ; extensions : string option Ml_kind.Dict.t list
     ; mode : Lib_mode.t
     }
 

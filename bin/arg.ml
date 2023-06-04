@@ -2,6 +2,7 @@ open Stdune
 include Cmdliner.Arg
 module Stanza = Dune_lang.Stanza
 module String_with_vars = Dune_lang.String_with_vars
+module Profile = Dune_lang.Profile
 module Pform = Dune_lang.Pform
 module Dep_conf = Dune_rules.Dep_conf
 module Package = Dune_rules.Package
@@ -33,7 +34,7 @@ let path = Path.conv
 
 let external_path = Path.External.conv
 
-let profile = conv Dune_rules.Profile.conv
+let profile = conv Profile.conv
 
 module Dep = struct
   module Dep_conf = Dep_conf

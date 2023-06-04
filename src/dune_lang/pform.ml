@@ -485,7 +485,11 @@ module Env = struct
                   (name, Var.Pkg.Section_dir section)))
         |> List.rev_map ~f:(fun (x, y) -> (x, No_info (Var.Pkg y)))
       in
-      let vars = ("make", No_info Var.Make) :: pkg in
+      let vars =
+        ("make", No_info Var.Make)
+        :: ("context_name", No_info Var.Context_name)
+        :: pkg
+      in
       String.Map.of_list_exn vars
     in
     fun syntax_version -> { vars; macros; syntax_version }

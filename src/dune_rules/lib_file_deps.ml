@@ -27,19 +27,12 @@ module Group = struct
     | Melange Cmj -> Obj_dir.melange_dir obj_dir
     | Header -> Obj_dir.dir obj_dir
 
-  let to_predicate =
+  let to_glob =
     let preds =
       List.map all ~f:(fun g ->
-          let ext = ext g in
-          (* we cannot use globs because of bootstrapping. *)
-          let id =
-            lazy
-              (let open Dyn in
-              variant "Lib_file_deps" [ string ext ])
-          in
           let pred =
-            Predicate_with_id.create ~id ~f:(fun p ->
-                String.equal (Filename.extension p) ext)
+            Glob.matching_extensions
+              [ String.drop_prefix_if_exists ~prefix:"." (ext g) ]
           in
           (g, pred))
     in
@@ -50,7 +43,7 @@ let deps_of_lib (lib : Lib.t) ~groups =
   let obj_dir = Lib.info lib |> Lib_info.obj_dir in
   List.map groups ~f:(fun g ->
       let dir = Group.obj_dir g obj_dir in
-      Group.to_predicate g |> File_selector.create ~dir |> Dep.file_selector)
+      Group.to_glob g |> File_selector.of_glob ~dir |> Dep.file_selector)
   |> Dep.Set.of_list
 
 let deps_with_exts =

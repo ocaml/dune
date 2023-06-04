@@ -1,5 +1,6 @@
 open Import
 open Memo.O
+module Opam_file = Dune_pkg.Opam_file
 
 let default_build_command =
   let before_1_11 =

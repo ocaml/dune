@@ -66,6 +66,26 @@ module File_perm : sig
   val to_unix_perm : t -> int
 end
 
+module Env_update : sig
+  type op =
+    | Eq
+    | PlusEq
+    | EqPlus
+    | ColonEq
+    | EqColon
+    | EqPlusEq
+
+  type 'a t =
+    { op : op
+    ; var : Env.Var.t
+    ; value : 'a
+    }
+
+  val decode : String_with_vars.t t Decoder.t
+
+  val encode : String_with_vars.t t -> Dune_sexp.t
+end
+
 type t =
   | Run of String_with_vars.t * String_with_vars.t list
   | With_accepted_exit_codes of int Predicate_lang.t * t
@@ -95,6 +115,7 @@ type t =
   | Cram of String_with_vars.t
   | Patch of String_with_vars.t
   | Substitute of String_with_vars.t * String_with_vars.t
+  | Withenv of String_with_vars.t Env_update.t list * t
 
 val encode : t Encoder.t
 

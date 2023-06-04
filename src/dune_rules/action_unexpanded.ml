@@ -481,7 +481,7 @@ let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
   | Cram script ->
     let+ script = E.dep script in
     Cram_exec.action script
-  | Substitute _ | Patch _ ->
+  | Withenv _ | Substitute _ | Patch _ ->
     (* these can only be provided by the package language which isn't expanded here *)
     assert false
 

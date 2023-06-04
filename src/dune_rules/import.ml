@@ -2,6 +2,7 @@ include Stdune
 include Dune_vcs
 module Console = Dune_console
 module Digest = Dune_digest
+module Section = Install.Section
 
 include struct
   open Dune_util
@@ -41,15 +42,26 @@ include struct
   module Load_rules = Load_rules
   module Response_file = Response_file
   module Subdir_set = Subdir_set
-  module Predicate_with_id = File_selector.Predicate_with_id
 end
 
-include Ocaml
+include struct
+  open Ocaml
+  module Cm_kind = Cm_kind
+  module Mode = Mode
+  module Ml_kind = Ml_kind
+  module Variant = Variant
+  module Version = Version
+end
+
 module Re = Dune_re
 module Syntax = Dune_sexp.Syntax
 
 include struct
   open Dune_lang
+  module Wrapped = Wrapped
+  module Targets_spec = Targets_spec
+  module Profile = Profile
+  module Locks = Locks
   module Subst_config = Subst_config
   module Bindings = Bindings
   module Format_config = Format_config

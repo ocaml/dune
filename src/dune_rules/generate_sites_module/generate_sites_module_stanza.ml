@@ -6,7 +6,7 @@ type t =
   ; sourceroot : bool
   ; relocatable : bool
   ; sites : (Loc.t * Package.Name.t) list
-  ; plugins : (Loc.t * (Package.Name.t * (Loc.t * Section.Site.t))) list
+  ; plugins : (Loc.t * (Package.Name.t * (Loc.t * Site.t))) list
   }
 
 let decode =
@@ -20,8 +20,7 @@ let decode =
        field "sites" ~default:[] (repeat (located Package.Name.decode))
      and+ plugins =
        field "plugins" ~default:[]
-         (repeat
-            (located (pair Package.Name.decode (located Section.Site.decode))))
+         (repeat (located (pair Package.Name.decode (located Site.decode))))
      in
      { loc; module_; sourceroot; relocatable; sites; plugins })
 

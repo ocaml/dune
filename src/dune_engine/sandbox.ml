@@ -2,6 +2,14 @@ open Import
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
 
+let maybe_async f =
+  (* It would be nice to do this check only once and return a function, but the
+     type of this function would need to be polymorphic which is forbidden by the
+     relaxed value restriction. *)
+  match Config.(get background_sandboxes) with
+  | `Disabled -> Fiber.return (f ())
+  | `Enabled -> Scheduler.async_exn f
+
 let init =
   let init =
     lazy
@@ -115,15 +123,19 @@ let create ~mode ~dune_stats ~rule_loc ~deps ~rule_dir ~rule_digest
   let sandbox_suffix = rule_digest |> Digest.to_string in
   let sandbox_dir = Path.Build.relative sandbox_dir sandbox_suffix in
   let t = { dir = sandbox_dir; snapshot = None } in
-  Path.rm_rf (Path.build sandbox_dir);
-  create_dirs t ~deps ~rule_dir;
+  let open Fiber.O in
+  let* () =
+    maybe_async (fun () ->
+        Path.rm_rf (Path.build sandbox_dir);
+        create_dirs t ~deps ~rule_dir)
+  in
   let deps =
     if expand_aliases then Dep.Facts.paths deps
     else Dep.Facts.paths_without_expanding_aliases deps
   in
   (* CR-someday amokhov: Note that this doesn't link dynamic dependencies, so
      targets produced dynamically will be unavailable. *)
-  link_deps t ~mode ~deps;
+  let+ () = maybe_async (fun () -> link_deps t ~mode ~deps) in
   Dune_stats.finish event;
   match mode with
   | Patch_back_source_tree ->
@@ -230,25 +242,26 @@ let apply_changes_to_source_tree t ~old_snapshot =
         | Lt | Gt -> copy_file p))
 
 let move_targets_to_build_dir t ~loc ~should_be_skipped
-    ~(targets : Targets.Validated.t) : unit Targets.Produced.t =
-  Option.iter t.snapshot ~f:(fun old_snapshot ->
-      apply_changes_to_source_tree t ~old_snapshot);
-  Path.Build.Set.iter targets.files ~f:(fun target ->
-      if not (should_be_skipped target) then
-        rename_optional_file ~src:(map_path t target) ~dst:target);
-  let discovered_targets =
-    Path.Build.Set.to_list_map targets.dirs ~f:(fun target ->
-        let src_dir = map_path t target in
-        let files = collect_dir_recursively ~loc ~src_dir ~dst_dir:target in
-        if Path.Untracked.exists (Path.build target) then
-          (* We clean up all targets (including directory targets) before running an
-             action, so this branch should be unreachable. *)
-          Code_error.raise "Stale directory target in the build directory"
-            [ ("dst_dir", Path.Build.to_dyn target) ];
-        Path.rename (Path.build src_dir) (Path.build target);
-        files)
-    |> Appendable_list.concat |> Appendable_list.to_list
-  in
-  Targets.Produced.expand_validated_exn targets discovered_targets
+    ~(targets : Targets.Validated.t) : unit Targets.Produced.t Fiber.t =
+  maybe_async (fun () ->
+      Option.iter t.snapshot ~f:(fun old_snapshot ->
+          apply_changes_to_source_tree t ~old_snapshot);
+      Path.Build.Set.iter targets.files ~f:(fun target ->
+          if not (should_be_skipped target) then
+            rename_optional_file ~src:(map_path t target) ~dst:target);
+      let discovered_targets =
+        Path.Build.Set.to_list_map targets.dirs ~f:(fun target ->
+            let src_dir = map_path t target in
+            let files = collect_dir_recursively ~loc ~src_dir ~dst_dir:target in
+            if Path.Untracked.exists (Path.build target) then
+              (* We clean up all targets (including directory targets) before running an
+                 action, so this branch should be unreachable. *)
+              Code_error.raise "Stale directory target in the build directory"
+                [ ("dst_dir", Path.Build.to_dyn target) ];
+            Path.rename (Path.build src_dir) (Path.build target);
+            files)
+        |> Appendable_list.concat |> Appendable_list.to_list
+      in
+      Targets.Produced.expand_validated_exn targets discovered_targets)
 
-let destroy t = Path.rm_rf (Path.build t.dir)
+let destroy t = maybe_async (fun () -> Path.rm_rf (Path.build t.dir))

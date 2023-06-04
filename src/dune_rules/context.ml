@@ -324,31 +324,21 @@ let context_env env name ocfg findlib env_nodes version ~profile ~host
       && Lazy.force Ansi_color.stderr_supports_color
       && Ocaml.Version.supports_color_in_ocamlparam version
       && not (Ocaml.Version.supports_ocaml_color version)
-    then
-      let value =
-        match Env.get env "OCAMLPARAM" with
-        | None -> "color=always,_"
-        | Some s -> "color=always," ^ s
-      in
-      Env.add env ~var:"OCAMLPARAM" ~value
+    then Ocaml.Env.with_color env
     else env
   in
-  let extend_var var ?(path_sep = Bin.path_sep) v =
-    let v = Path.to_absolute_filename (Path.build v) in
-    match Env.get env var with
-    | None -> (var, v)
-    | Some prev -> (var, sprintf "%s%c%s" v path_sep prev)
+  let extend_var var ?path_sep v =
+    (var, Bin.cons_path ?path_sep (Path.build v) ~_PATH:(Env.get env var))
   in
   let vars =
-    let local_lib_root = Local_install_path.lib_root ~context:name in
+    let local_lib_root = Install.Context.lib_root ~context:name in
     [ extend_var "CAML_LD_LIBRARY_PATH"
-        (Path.Build.relative
-           (Local_install_path.dir ~context:name)
-           "lib/stublibs")
+        (Path.Build.relative (Install.Context.dir ~context:name) "lib/stublibs")
     ; extend_var "OCAMLPATH" ~path_sep:Findlib.Config.ocamlpath_sep
         local_lib_root
-    ; ("DUNE_OCAML_STDLIB", Ocaml_config.standard_library ocfg)
-    ; ( "DUNE_OCAML_HARDCODED"
+    ; ( Dune_site_private.dune_ocaml_stdlib_env_var
+      , Ocaml_config.standard_library ocfg )
+    ; ( Dune_site_private.dune_ocaml_hardcoded_env_var
       , String.concat
           ~sep:(Char.escaped Findlib.Config.ocamlpath_sep)
           (List.map ~f:Path.to_string default_ocamlpath) )
@@ -356,23 +346,23 @@ let context_env env name ocfg findlib env_nodes version ~profile ~host
         (Path.Build.relative local_lib_root "toplevel")
     ; extend_var "OCAMLFIND_IGNORE_DUPS_IN"
         ~path_sep:Findlib.Config.ocamlpath_sep local_lib_root
-    ; extend_var "MANPATH" (Local_install_path.man_dir ~context:name)
+    ; extend_var "MANPATH" (Install.Context.man_dir ~context:name)
     ; ( "INSIDE_DUNE"
       , let build_dir = Context_name.build_dir name in
         Path.to_absolute_filename (Path.build build_dir) )
-    ; ( "DUNE_SOURCEROOT"
+    ; ( Dune_site_private.dune_sourceroot_env_var
       , Path.to_absolute_filename (Path.source Path.Source.root) )
     ]
   in
   Env.extend env ~vars:(Env.Map.of_list_exn vars)
-  |> Env.update ~var:"PATH" ~f:(fun _ ->
+  |> Env.update ~var:Env_path.var ~f:(fun _ ->
          match host with
          | None ->
            let _key, path =
-             Local_install_path.bin_dir ~context:name |> extend_var "PATH"
+             Install.Context.bin_dir ~context:name |> extend_var Env_path.var
            in
            Some path
-         | Some host -> Env.get host.env "PATH")
+         | Some host -> Env.get host.env Env_path.var)
   |> Env.extend_env
        (Option.value ~default:Env.empty
           (Option.map findlib ~f:Findlib.Config.env))
@@ -427,11 +417,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
            Dynlink_supported.By_the_os.of_bool natdynlink_supported)
       ; stdlib_dir
       ; ccomp_type = Ocaml_config.ccomp_type ocaml.ocaml_config
-      ; profile
       ; ocaml_version_string = Ocaml_config.version_string ocaml.ocaml_config
       ; ocaml_version = Ocaml.Version.of_ocaml_config ocaml.ocaml_config
       ; instrument_with
-      ; context_name = name
       }
     in
     if Option.is_some fdo_target_exe then
@@ -554,7 +542,7 @@ let create_for_opam ~loc ~root ~env ~env_nodes ~targets ~profile ~switch ~name
           Build_environment_kind.opam_switch_prefix_var_name
       ];
   let path =
-    match Env.Map.find vars "PATH" with
+    match Env.Map.find vars Env_path.var with
     | None -> Env_path.path env
     | Some s -> Bin.parse_path s
   in
@@ -588,18 +576,21 @@ end = struct
     in
     match context with
     | Default
-        { targets
-        ; name
-        ; host_context = _
-        ; profile
-        ; env = _
-        ; toolchain
-        ; paths
-        ; loc = _
-        ; fdo_target_exe
-        ; dynamically_linked_foreign_archives
-        ; instrument_with
-        ; merlin = _
+        { lock = _
+        ; base =
+            { targets
+            ; name
+            ; host_context = _
+            ; profile
+            ; env = _
+            ; toolchain
+            ; paths
+            ; loc = _
+            ; fdo_target_exe
+            ; dynamically_linked_foreign_archives
+            ; instrument_with
+            ; merlin = _
+            }
         } ->
       let merlin =
         workspace.merlin_context = Some (Workspace.Context.name context)
@@ -711,7 +702,7 @@ let map_exe (context : t) =
 let host t = Option.value ~default:t t.for_host
 
 let roots t =
-  let module Roots = Install.Section.Paths.Roots in
+  let module Roots = Install.Roots in
   let prefix_roots =
     match Env.get t.env Build_environment_kind.opam_switch_prefix_var_name with
     | None ->

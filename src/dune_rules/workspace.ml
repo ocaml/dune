@@ -11,37 +11,35 @@ let all_binaries (e : Dune_env.Stanza.t) =
 let env_field, env_field_lazy =
   let make f g =
     field "env" ~default:(f Dune_env.Stanza.empty)
-      (g
-         (let+ () = Dune_lang.Syntax.since syntax (1, 1)
-          and+ version = Dune_lang.Syntax.get_exn syntax
-          and+ loc = loc
-          and+ s = Dune_env.Stanza.decode in
-          let binaries = all_binaries s in
-          if List.is_empty binaries then s
-          else
-            let minimum_version = (3, 2) in
-            if version < minimum_version then
-              let message =
-                User_message.make ~loc
-                  [ Pp.text
-                      (Dune_lang.Syntax.Error_msg.since syntax minimum_version
-                         ~what:
-                           "'binaries' in an 'env' stanza in a dune-workspace \
-                            file")
-                  ]
-              in
-              s
-              |> Dune_env.Stanza.add_warning ~message
-              |> Dune_env.Stanza.add_error ~message
-            else
-              match File_binding.Unexpanded.L.find_pform binaries with
-              | None -> s
-              | Some loc ->
-                User_error.raise ~loc
-                  [ Pp.text
-                      "Variables are not supported in 'binaries' in an 'env' \
-                       stanza in a dune-workspace file."
-                  ]))
+    @@ g
+    @@ let+ () = Dune_lang.Syntax.since syntax (1, 1)
+       and+ version = Dune_lang.Syntax.get_exn syntax
+       and+ loc = loc
+       and+ s = Dune_env.Stanza.decode in
+       let binaries = all_binaries s in
+       if List.is_empty binaries then s
+       else
+         let minimum_version = (3, 2) in
+         if version < minimum_version then
+           let message =
+             User_message.make ~loc
+               [ Pp.text
+                   (Dune_lang.Syntax.Error_msg.since syntax minimum_version
+                      ~what:
+                        "'binaries' in an 'env' stanza in a dune-workspace file")
+               ]
+           in
+           Dune_env.Stanza.add_warning ~message s
+           |> Dune_env.Stanza.add_error ~message
+         else
+           match File_binding.Unexpanded.L.find_pform binaries with
+           | None -> s
+           | Some loc ->
+             User_error.raise ~loc
+               [ Pp.text
+                   "Variables are not supported in 'binaries' in an 'env' \
+                    stanza in a dune-workspace file."
+               ]
   in
   (make Fun.id Fun.id, make Lazy.from_val lazy_)
 
@@ -262,9 +260,16 @@ module Context = struct
   end
 
   module Default = struct
-    type t = Common.t
+    type t =
+      { base : Common.t
+      ; lock : Path.Source.t option
+      }
 
-    let to_dyn = Common.to_dyn
+    let to_dyn { base; lock } =
+      Dyn.record
+        [ ("base", Common.to_dyn base)
+        ; ("lock", Dyn.(option Path.Source.to_dyn) lock)
+        ]
 
     let decode =
       let+ common = Common.decode
@@ -272,7 +277,14 @@ module Context = struct
         field_o "name"
           ( Dune_lang.Syntax.since syntax (1, 10) >>= fun () ->
             Context_name.decode )
+      and+ lock =
+        (* TODO
+           1. guard before version check before releasing
+           2. allow external paths
+        *)
+        field_o "lock" (Dpath.Local.decode ~dir:(Path.source Path.Source.root))
       in
+      let lock = Option.map lock ~f:Path.as_in_source_tree_exn in
       fun ~profile_default ~instrument_with_default ~x ->
         let common = common ~profile_default ~instrument_with_default in
         let default =
@@ -283,9 +295,13 @@ module Context = struct
           Context_name.parse_string_exn (Loc.none, name)
         in
         let name = Option.value ~default name in
-        { common with targets = Target.add common.targets x; name }
+        let base =
+          { common with targets = Target.add common.targets x; name }
+        in
+        { base; lock }
 
-    let equal = Common.equal
+    let equal { base; lock } t =
+      Common.equal base t.base && Option.equal Path.Source.equal lock t.lock
   end
 
   type t =
@@ -306,13 +322,15 @@ module Context = struct
     | Opam x, Opam y -> Opam.equal x y
     | _, _ -> false
 
-  let loc = function
-    | Default x -> x.loc
-    | Opam x -> x.base.loc
+  let base = function
+    | Default x -> x.base
+    | Opam x -> x.base
+
+  let loc t = (base t).loc
 
   let host_context = function
-    | Default { host_context; _ } | Opam { base = { host_context; _ }; _ } ->
-      host_context
+    | Default { base = { host_context; _ }; _ }
+    | Opam { base = { host_context; _ }; _ } -> host_context
 
   let decode =
     sum
@@ -326,17 +344,11 @@ module Context = struct
             Opam (f ~profile_default ~instrument_with_default ~x) )
       ]
 
-  let env = function
-    | Default d -> d.env
-    | Opam o -> o.base.env
+  let env t = (base t).env
 
-  let name = function
-    | Default d -> d.name
-    | Opam o -> o.base.name
+  let name t = (base t).name
 
-  let targets = function
-    | Default x -> x.targets
-    | Opam x -> x.base.targets
+  let targets t = (base t).targets
 
   let all_names t =
     let n = name t in
@@ -347,18 +359,21 @@ module Context = struct
 
   let default ~x ~profile ~instrument_with =
     Default
-      { loc = Loc.of_pos __POS__
-      ; targets = [ Option.value x ~default:Target.Native ]
-      ; profile = Option.value profile ~default:Profile.default
-      ; name = Context_name.default
-      ; host_context = None
-      ; env = Dune_env.Stanza.empty
-      ; toolchain = None
-      ; paths = []
-      ; fdo_target_exe = None
-      ; dynamically_linked_foreign_archives = true
-      ; instrument_with = Option.value instrument_with ~default:[]
-      ; merlin = false
+      { lock = None
+      ; base =
+          { loc = Loc.of_pos __POS__
+          ; targets = [ Option.value x ~default:Target.Native ]
+          ; profile = Option.value profile ~default:Profile.default
+          ; name = Context_name.default
+          ; host_context = None
+          ; env = Dune_env.Stanza.empty
+          ; toolchain = None
+          ; paths = []
+          ; fdo_target_exe = None
+          ; dynamically_linked_foreign_archives = true
+          ; instrument_with = Option.value instrument_with ~default:[]
+          ; merlin = false
+          }
       }
 
   let build_contexts t =
@@ -569,13 +584,11 @@ let step1 clflags =
              defined_names :=
                Context_name.Set.union !defined_names
                  (Context_name.Set.of_list (Context.all_names ctx));
-             match (ctx, acc) with
-             | Opam { base = { merlin = true; _ }; _ }, Some _
-             | Default { merlin = true; _ }, Some _ ->
+             match (Context.base ctx, acc) with
+             | { merlin = true; _ }, Some _ ->
                User_error.raise ~loc:(Context.loc ctx)
                  [ Pp.text "you can only have one context for merlin" ]
-             | Opam { base = { merlin = true; _ }; _ }, None
-             | Default { merlin = true; _ }, None -> Some name
+             | { merlin = true; _ }, None -> Some name
              | _ -> acc)
        in
        let contexts =

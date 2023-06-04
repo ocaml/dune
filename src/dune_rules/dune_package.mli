@@ -61,9 +61,9 @@ type t =
   ; entries : Entry.t Lib_name.Map.t
   ; version : string option
   ; sections : Path.t Section.Map.t
-  ; sites : Section.t Section.Site.Map.t
+  ; sites : Section.t Site.Map.t
   ; dir : Path.t
-  ; files : (Section.t * Install.Dst.t list) list
+  ; files : (Section.t * Install.Entry.Dst.t list) list
   }
 
 val to_dyn : t Dyn.builder

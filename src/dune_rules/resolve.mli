@@ -108,6 +108,10 @@ type error
 
 val to_result : 'a t -> ('a, error) result
 
+val raise_error : error -> 'a
+
+val push_frames : error -> (unit -> 'a Memo.t) -> 'a Memo.t
+
 val of_error : error -> 'a t
 
 (** Read a [Resolve.t] value inside the action builder monad. *)

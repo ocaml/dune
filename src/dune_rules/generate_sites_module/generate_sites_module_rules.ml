@@ -83,7 +83,7 @@ let sanitize_site_name name =
   let rec aux name i =
     if i < 0 then i else if name.[i] = '_' then aux name (i - 1) else i
   in
-  let name = String.uncapitalize_ascii (Section.Site.to_string name) in
+  let name = String.uncapitalize_ascii (Site.to_string name) in
   let last = String.length name - 1 in
   let i = aux name last in
   let s = if i <> last then String.sub name ~pos:0 ~len:(i + 1) else name in
@@ -96,12 +96,12 @@ let sites_code packages buf (loc, pkg) =
     | None -> User_error.raise ~loc [ Pp.text "Unknown package" ]
   in
   let package_name = Package.name package in
-  Section.Site.Map.iteri package.sites ~f:(fun name section ->
+  Site.Map.iteri package.sites ~f:(fun name section ->
       pr buf "    let %s = %s.site" (sanitize_site_name name) helpers;
       pr buf "      ~package:%S" (Package.Name.to_string package_name);
       pr buf "      ~section:Dune_section.%s"
         (String.capitalize_ascii (Section.to_string section));
-      pr buf "      ~suffix:%S" (Section.Site.to_string name);
+      pr buf "      ~suffix:%S" (Site.to_string name);
       pr buf "      ~encoded:%a" encode (Location (section, package_name)))
 
 let plugins_code packages buf pkg sites =
@@ -114,7 +114,7 @@ let plugins_code packages buf pkg sites =
   (* Parse the replacement format described in [artifact_substitution.ml]. *)
   List.iter sites ~f:(fun (loc, ssite) ->
       let site = sanitize_site_name ssite in
-      if not (Section.Site.Map.mem package.sites ssite) then
+      if not (Site.Map.mem package.sites ssite) then
         User_error.raise ~loc
           [ Pp.textf "Package %s doesn't define a site %s" pkg site ];
       pr buf "    module %s : %s.S = %s.Make(struct let paths = Sites.%s end)"

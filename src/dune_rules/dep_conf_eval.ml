@@ -173,7 +173,7 @@ let rec dep expander = function
                  ~f:(fun (s, l) ->
                    let dir = Section.Map.find_exn pkg.sections s in
                    List.map l ~f:(fun d ->
-                       Path.relative dir (Install.Dst.to_string d)))
+                       Path.relative dir (Install.Entry.Dst.to_string d)))
                  pkg.files
              in
              Action_builder.paths files

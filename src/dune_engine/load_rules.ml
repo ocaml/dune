@@ -321,8 +321,6 @@ module rec Load_rules : sig
 
   val lookup_alias :
     Alias.t -> (Loc.t * Rules.Dir_rules.Alias_spec.item) list option Memo.t
-
-  val alias_exists : Alias.t -> bool Memo.t
 end = struct
   open Load_rules
 
@@ -385,11 +383,6 @@ end = struct
         [ ("alias", Alias.to_dyn alias) ]
     | Build { aliases; _ } -> Alias.Name.Map.find aliases (Alias.name alias)
     | Build_under_directory_target _ -> None
-
-  let alias_exists alias =
-    lookup_alias alias >>| function
-    | None -> false
-    | Some _ -> true
 
   let compute_alias_expansions ~(collected : Rules.Dir_rules.ready) ~dir =
     let aliases = collected.aliases in
@@ -754,10 +747,6 @@ end = struct
               Path.Build.Set.to_list_map ~f:Path.Build.drop_build_context_exn
                 source_files_to_ignore
               |> Path.Source.Set.of_list
-            in
-            let source_files_to_ignore =
-              Target_promotion.delete_stale_dot_merlin_file ~dir
-                ~source_files_to_ignore
             in
             Path.Source.Set.diff files source_files_to_ignore
           in

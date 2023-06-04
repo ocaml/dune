@@ -18,7 +18,7 @@ val create :
   -> rule_dir:Path.Build.t
   -> rule_digest:Digest.t
   -> expand_aliases:bool
-  -> t
+  -> t Fiber.t
 
 (** Move all targets created by the action from the sandbox to the build
     directory, skipping the files for which [should_be_skipped] returns [true].
@@ -29,6 +29,6 @@ val move_targets_to_build_dir :
   -> loc:Loc.t
   -> should_be_skipped:(Path.Build.t -> bool)
   -> targets:Targets.Validated.t
-  -> unit Targets.Produced.t
+  -> unit Targets.Produced.t Fiber.t
 
-val destroy : t -> unit
+val destroy : t -> unit Fiber.t

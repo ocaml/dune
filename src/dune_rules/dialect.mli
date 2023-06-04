@@ -29,7 +29,7 @@ val encode : t Dune_lang.Encoder.t
 
 val decode : t Dune_lang.Decoder.t
 
-val extension : t -> Ml_kind.t -> string
+val extension : t -> Ml_kind.t -> string option
 
 val preprocess : t -> Ml_kind.t -> (Loc.t * Dune_lang.Action.t) option
 
@@ -58,7 +58,7 @@ module DB : sig
 
   val fold : t -> init:'a -> f:(dialect -> 'a -> 'a) -> 'a
 
-  val extensions_for_merlin : t -> string Ml_kind.Dict.t list
+  val extensions_for_merlin : t -> string option Ml_kind.Dict.t list
 
   val to_dyn : t -> Dyn.t
 

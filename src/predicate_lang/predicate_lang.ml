@@ -3,139 +3,196 @@ open Dune_sexp
 
 type 'a t =
   | Element of 'a
-  | Compl of 'a t
+  | Not of 'a t
   | Standard
-  | Union of 'a t list
-  | Inter of 'a t list
+  | Or of 'a t list
+  | And of 'a t list
+
+let element a = Element a
+
+let of_list xs = Or (List.rev_map ~f:element xs)
+
+let standard = Standard
 
 let diff a = function
-  | Union [] | Inter [] -> a
-  | b -> Inter [ a; Compl b ]
+  | Or [] -> a
+  | And [] -> Or []
+  | b -> And [ a; Not b ]
 
-let inter a = Inter a
+let not a = Not a
 
-let compl a = Compl a
+let true_ = And []
 
-let union a = Union a
+let false_ = Or []
 
-let not_union a = compl (union a)
+let or_ = function
+  | [] -> false_
+  | [ x ] -> x
+  | _ :: _ :: _ as xs -> Or xs
 
-let any = not_union []
+let and_ = function
+  | [] -> true_
+  | [ x ] -> x
+  | _ :: _ :: _ as xs -> And xs
 
-let empty = Union []
+let rec decode_one =
+  let not_or a = not (Or a) in
 
-let rec decode_one f =
-  let open Decoder in
-  let bool_ops () =
-    sum
-      [ ("or", many f union [])
-      ; ("and", many f inter [])
-      ; ("not", many f not_union [])
-      ]
-  in
-  let elt =
-    let+ e = f in
-    Element e
-  in
-  peek_exn >>= function
-  | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
-  | Atom (_, A "") | Quoted_string (_, _) | Template _ -> elt
-  | Atom (loc, A s) -> (
-    match s with
-    | ":standard" -> junk >>> return Standard
-    | ":include" ->
-      User_error.raise ~loc
-        [ Pp.text ":include isn't supported in the predicate language" ]
-    | _ when s.[0] = ':' ->
-      User_error.raise ~loc [ Pp.textf "undefined symbol %s" s ]
-    | _ -> elt)
-  | List (_, Atom (loc, A s) :: _) -> (
-    match s with
-    | ":include" ->
-      User_error.raise ~loc
-        [ Pp.text ":include isn't supported in the predicate language" ]
-    | "or" | "and" | "not" -> bool_ops ()
-    | s when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
-      User_error.raise ~loc
-        [ Pp.text
-            "This atom must be quoted because it is the first element of a \
-             list and doesn't start with - or:"
+  fun f ->
+    let open Decoder in
+    let bool_ops () =
+      sum
+        [ ("or", many f or_ [])
+        ; ("and", many f and_ [])
+        ; ("not", many f not_or [])
         ]
-    | _ -> enter (many f union []))
-  | List _ -> enter (many f union [])
+    in
+    let elt =
+      let+ e = f in
+      Element e
+    in
+    peek_exn >>= function
+    | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
+    | Atom (_, A "") | Quoted_string (_, _) | Template _ -> elt
+    | Atom (loc, A s) -> (
+      match s with
+      | ":standard" -> junk >>> return Standard
+      | ":include" ->
+        User_error.raise ~loc
+          [ Pp.text ":include isn't supported in the predicate language" ]
+      | _ when s.[0] = ':' ->
+        User_error.raise ~loc [ Pp.textf "undefined symbol %s" s ]
+      | _ -> elt)
+    | List (_, Atom (loc, A s) :: _) -> (
+      match s with
+      | ":include" ->
+        User_error.raise ~loc
+          [ Pp.text ":include isn't supported in the predicate language" ]
+      | "or" | "and" | "not" -> bool_ops ()
+      | s when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
+        User_error.raise ~loc
+          [ Pp.text
+              "This atom must be quoted because it is the first element of a \
+               list and doesn't start with - or:"
+          ]
+      | _ -> enter (many f or_ []))
+    | List _ -> enter (many f or_ [])
 
 and many f k acc =
   let open Decoder in
   peek >>= function
   | None -> return (k (List.rev acc))
   | Some (Atom (_, A "\\")) ->
-    junk >>> many f union [] >>| fun to_remove ->
+    junk >>> many f or_ [] >>| fun to_remove ->
     diff (k (List.rev acc)) to_remove
   | Some _ ->
     let* x = decode_one f in
     many f k (x :: acc)
 
-and decode f = many f union []
+and decode f = many f or_ []
 
 let rec encode f =
   let open Encoder in
   function
   | Element a -> f a
-  | Compl a -> constr "not" (encode f) a
+  | Not a -> constr "not" (encode f) a
   | Standard -> string ":standard"
-  | Union xs -> constr "or" (list (encode f)) xs
-  | Inter xs -> constr "and" (list (encode f)) xs
+  | Or xs -> constr "or" (list (encode f)) xs
+  | And xs -> constr "and" (list (encode f)) xs
 
 let rec to_dyn f =
   let open Dyn in
   function
   | Element a -> f a
-  | Compl a -> variant "compl" [ to_dyn f a ]
+  | Not a -> variant "compl" [ to_dyn f a ]
   | Standard -> string ":standard"
-  | Union xs -> variant "or" (List.map ~f:(to_dyn f) xs)
-  | Inter xs -> variant "and" (List.map ~f:(to_dyn f) xs)
+  | Or xs -> variant "or" (List.map ~f:(to_dyn f) xs)
+  | And xs -> variant "and" (List.map ~f:(to_dyn f) xs)
 
-let rec exec t ~standard elem =
-  match (t : _ t) with
-  | Compl t -> not (exec t ~standard elem)
-  | Element f -> elem f
-  | Union xs -> List.exists ~f:(fun t -> exec t ~standard elem) xs
-  | Inter xs -> List.for_all ~f:(fun t -> exec t ~standard elem) xs
-  | Standard -> exec standard ~standard elem
-
-let rec map t ~f =
+let rec test_ t ~standard ~test elem =
   match t with
-  | Compl x -> Compl (map x ~f)
-  | Element x -> Element (f x)
-  | Union x -> Union (List.map x ~f:(map ~f))
-  | Inter x -> Inter (List.map x ~f:(map ~f))
-  | Standard -> Standard
+  | Not t -> Stdlib.not (test_ t ~standard ~test elem)
+  | Element f -> test f elem
+  | Or xs -> List.exists ~f:(fun t -> test_ t ~standard ~test elem) xs
+  | And xs -> List.for_all ~f:(fun t -> test_ t ~standard ~test elem) xs
+  | Standard -> test_ standard ~standard ~test elem
 
-let to_predicate (type a) (t : a Predicate.t t) ~standard : a Predicate.t =
-  Predicate.create (fun a ->
-      exec t ~standard (fun pred -> Predicate.test pred a))
+let test = test_
+
+let rec compare f x y =
+  match (x, y) with
+  | Element a, Element b -> f a b
+  | Element _, _ -> Lt
+  | _, Element _ -> Gt
+  | Not x, Not y -> compare f x y
+  | Not _, _ -> Lt
+  | _, Not _ -> Gt
+  | Standard, Standard -> Eq
+  | Standard, _ -> Lt
+  | _, Standard -> Gt
+  | Or a, Or b -> List.compare a b ~compare:(compare f)
+  | Or _, _ -> Lt
+  | _, Or _ -> Gt
+  | And a, And b -> List.compare a b ~compare:(compare f)
 
 module Glob = struct
-  type glob = string -> bool
+  module Glob = Dune_glob.V1
 
-  type nonrec t = glob t
+  module Element = struct
+    type t =
+      | Glob of Glob.t
+      | Literal of string
 
-  let to_dyn t = to_dyn (fun _ -> Dyn.string "opaque") t
+    let to_dyn = function
+      | Literal s -> Dyn.variant "Literal" [ Dyn.string s ]
+      | Glob g -> Dyn.variant "Glob" [ Glob.to_dyn g ]
 
-  let exec (t : t) ~standard elem = exec t ~standard (fun f -> f elem)
+    let encode t =
+      Dune_sexp.atom_or_quoted_string
+      @@
+      match t with
+      | Literal s -> s
+      | Glob g -> Glob.to_string g
 
-  let filter (t : t) ~standard elems =
-    match t with
-    | Inter [] | Union [] -> []
-    | _ -> List.filter elems ~f:(fun elem -> exec t ~standard elem)
+    let compare x y =
+      match (x, y) with
+      | Glob x, Glob y -> Glob.compare x y
+      | Glob _, _ -> Lt
+      | _, Glob _ -> Gt
+      | Literal x, Literal y -> String.compare x y
 
-  let create_glob g = Dune_glob.V1.test g
+    let test t s =
+      match t with
+      | Literal s' -> String.equal s s'
+      | Glob g -> Glob.test g s
 
-  let of_glob g = Element (create_glob g)
+    let decode =
+      let open Dune_sexp.Decoder in
+      let+ glob =
+        Decoder.plain_string (fun ~loc x -> Glob.of_string_exn loc x)
+      in
+      Glob glob
+  end
 
-  let of_pred p = Element p
+  type nonrec t = Element.t t
 
-  let true_ = Element (fun _ -> true)
+  let to_dyn t = to_dyn Element.to_dyn t
 
-  let of_string_set s = Element (String.Set.mem s)
+  let test (t : t) ~standard elem = test t ~standard ~test:Element.test elem
+
+  let of_glob g = Element (Element.Glob g)
+
+  let of_string_list s =
+    Or (List.rev_map s ~f:(fun x -> Element (Element.Literal x)))
+
+  let of_string_set s =
+    Or (String.Set.to_list_map ~f:(fun x -> Element (Element.Literal x)) s)
+
+  let compare x y = compare Element.compare x y
+
+  let hash t = Poly.hash t
+
+  let decode = decode Element.decode
+
+  let encode t = encode Element.encode t
 end

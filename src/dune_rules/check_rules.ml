@@ -1,15 +1,9 @@
 open Import
 
 let dev_files =
-  let exts = [ Ml_kind.cmt_ext Impl; Ml_kind.cmt_ext Intf; Cm_kind.ext Cmi ] in
-  let id =
-    lazy
-      (let open Dyn in
-      variant "dev_files" (List.map ~f:string exts))
-  in
-  Predicate_with_id.create ~id ~f:(fun p ->
-      let ext = Filename.extension p in
-      List.mem exts ext ~equal:String.equal)
+  [ Ml_kind.cmt_ext Impl; Ml_kind.cmt_ext Intf; Cm_kind.ext Cmi ]
+  |> List.map ~f:(String.drop_prefix_if_exists ~prefix:".")
+  |> Glob.matching_extensions
 
 let add_obj_dir sctx ~obj_dir mode =
   if (Super_context.context sctx).merlin then
@@ -20,7 +14,7 @@ let add_obj_dir sctx ~obj_dir mode =
           | Lib_mode.Melange -> Obj_dir.melange_dir obj_dir
           | Ocaml _ -> Obj_dir.byte_dir obj_dir)
       in
-      File_selector.create ~dir dev_files
+      File_selector.of_glob ~dir dev_files
     in
     Rules.Produce.Alias.add_deps
       (Alias.check ~dir:(Obj_dir.dir obj_dir))

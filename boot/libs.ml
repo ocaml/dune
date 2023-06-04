@@ -44,7 +44,7 @@ let local_libraries =
   ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
   ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)
   ; ("src/dune_rpc_client", Some "Dune_rpc_client", false, None)
-  ; ("src/thread_pool", Some "Dune_thread_pool", false, None)
+  ; ("src/dune_thread_pool", Some "Dune_thread_pool", false, None)
   ; ("otherlibs/ocamlc-loc/src", Some "Ocamlc_loc", false, None)
   ; ("src/fsevents", Some "Fsevents", false, None)
   ; ("vendor/ocaml-inotify/src", Some "Ocaml_inotify", false, None)

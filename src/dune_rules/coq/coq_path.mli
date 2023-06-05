@@ -18,13 +18,21 @@ val name : t -> Coq_lib_name.t
 
 val path : t -> Path.t
 
+(** List of .vo files in a path *)
 val vo : t -> Path.t list
 
+(** Unused for now, maybe be useful for coqdep -modules *)
 val cmxs : t -> Path.t list
 
+(** List of directories that contain .cmxs files and thus need to be passed to
+    Coq using -I *)
+val cmxs_directories : t -> Path.t list
+
+(** Does the path correspond to Coq's stdlib? *)
 val stdlib : t -> bool
 
+(** Build list of Coq paths from a Coq install ([COQLIB] and [coqc -config]) *)
 val of_coq_install : Context.t -> t list Memo.t
 
-(**  *)
+(** Build list of Coq paths from [COQPATH] variable *)
 val of_env : Env.t -> t list Memo.t

@@ -80,3 +80,36 @@ Now we should see that A is rebuilt
     | but : hello
     | updated : hello.
   Leaving directory 'A'
+
+Next we add a new file to B that should cause a call to coqdep, but no rebuild.
+
+  $ cat > B/c.v << EOF
+  > Inductive bye := I | am | a | new | install | loc.
+  > EOF
+
+  $ dune build --root B @install
+  Entering directory 'B'
+  Leaving directory 'B'
+  $ dune install --root B --prefix=$PWD --display=short
+  Deleting $TESTCASE_ROOT/lib/B/META
+  Installing $TESTCASE_ROOT/lib/B/META
+  Deleting $TESTCASE_ROOT/lib/B/dune-package
+  Installing $TESTCASE_ROOT/lib/B/dune-package
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmi
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmi
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmxs
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmxs
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_c.cmi
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_c.cmxs
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/c.v
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/c.vo
+
+Now we should see that A is not rebuilt, however coqdep is called, this seems to fail
+
+  $ dune build --root A --display=short
+  Entering directory 'A'
+  Leaving directory 'A'

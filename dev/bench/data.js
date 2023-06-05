@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685989915741,
+  "lastUpdate": 1685998080312,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -51532,6 +51532,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.080771129486667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bbe3d1fc9e9888fe3437b8ad6b1a1d8531b073a5",
+          "message": "refactor: remove dead code in OSL decoder (#7886)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-06-05T13:35:08-07:00",
+          "tree_id": "6cd7fa4e60aaf9617152b6a11695416edd2f6b74",
+          "url": "https://github.com/ocaml/dune/commit/bbe3d1fc9e9888fe3437b8ad6b1a1d8531b073a5"
+        },
+        "date": 1685998075252,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.85401680982",
             "unit": "seconds"
           }
         ]

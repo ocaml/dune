@@ -366,6 +366,13 @@ let build_shared lib ~native_archives ~sctx ~dir ~flags =
       in
       Super_context.add_rule sctx build ~dir ~loc:lib.buildable.loc)
 
+let iter_modes_concurrently (t : _ Ocaml.Mode.Dict.t)
+    ~(f : Ocaml.Mode.t -> unit Memo.t) =
+  let open Memo.O in
+  let+ () = Memo.when_ t.byte (fun () -> f Byte)
+  and+ () = Memo.when_ t.native (fun () -> f Native) in
+  ()
+
 let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
     ~expander ~lib_info =
   let obj_dir = Compilation_context.obj_dir cctx in
@@ -423,7 +430,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
       ~top_sorted_modules ()
   in
   let* () =
-    Mode.Dict.Set.iter_concurrently modes.ocaml ~f:(fun mode ->
+    iter_modes_concurrently modes.ocaml ~f:(fun mode ->
         build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode
           ~cm_files)
   and* () =

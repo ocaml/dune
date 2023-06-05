@@ -26,6 +26,9 @@ Unreleased
 - The `interface` and `implementation` fields of a `(dialect)` are now optional
   (#7757, @gpetiot)
 
+- Revert #7450 "Resolve `ppx_runtime_libraries` in the target context when
+  cross compiling"
+
 3.8.0 (2023-05-23)
 ------------------
 

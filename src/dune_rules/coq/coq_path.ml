@@ -12,6 +12,7 @@ type t =
   ; path : Path.t
   ; vo : Path.t list
   ; cmxs : Path.t list
+  ; cmxs_directories : Path.t list
   ; stdlib : bool
   }
 
@@ -22,6 +23,8 @@ let path t = t.path
 let vo t = t.vo
 
 let cmxs t = t.cmxs
+
+let cmxs_directories t = t.cmxs_directories
 
 let stdlib t = t.stdlib
 
@@ -48,84 +51,119 @@ let config_path ~default coq_config key =
     (* This should never happen *)
     Code_error.raise "key is not a path" [ (key, Coq_config.Value.to_dyn path) ]
 
-let stdlib_plugins_dir path =
-  let open Memo.O in
-  let path = Path.relative path "plugins" in
-  let* dir_contents =
-    Fs_memo.dir_contents (Path.as_outside_build_dir_exn path)
-  in
-  match dir_contents with
-  | Error _ -> Memo.return []
-  | Ok dir_contents ->
-    let f (d, kind) =
-      match kind with
-      | File_kind.S_DIR | S_LNK -> Some (Path.relative path d)
-      | _ -> None
-    in
-    Memo.return
-      (List.filter_map ~f (Fs_cache.Dir_contents.to_list dir_contents))
-
-let build_user_contrib ~cmxs ~vo ~subpath ~name =
-  let path = subpath in
-  { name; path; cmxs; vo; stdlib = false }
+let build_user_contrib ~cmxs ~cmxs_directories ~vo ~path ~name =
+  { name; path; cmxs; cmxs_directories; vo; stdlib = false }
 
 (* Scanning todos: blacklist? *)
-let scan_vo_cmxs ~path dir_contents =
+let scan_vo_cmxs ~dir dir_contents =
   let f (d, kind) =
     match kind with
-    (* Skip some directories as Coq does, for now '-' and '.' *)
+    (* Skip some files as Coq does, for now files with '-' *)
     | _ when String.contains d '-' -> List.Skip
-    | _ when String.contains d '.' -> Skip
     | (File_kind.S_REG | S_LNK) when Filename.check_suffix d ".cmxs" ->
-      Left (Path.relative path d)
+      Left (Path.relative dir d)
     | (File_kind.S_REG | S_LNK) when Filename.check_suffix d ".vo" ->
-      Right (Path.relative path d)
+      Right (Path.relative dir d)
     | _ -> Skip
   in
   List.filter_partition_map ~f dir_contents
 
 (* Note this will only work for absolute paths *)
 let retrieve_vo_cmxs cps =
-  (List.concat_map ~f:cmxs cps, List.concat_map ~f:vo cps)
+  ( List.concat_map ~f:cmxs cps
+  , List.concat_map ~f:cmxs_directories cps
+  , List.concat_map ~f:vo cps )
 
-(** [scan_user_path ~prefix path] Note that we already have very similar
-    functionality in [Dir_status] *)
-let rec scan_path ~f ~acc ~prefix path : 'a list Memo.t =
+module Scan_action = struct
+  type ('prefix, 'res) t =
+       dir:Path.t
+    -> prefix:'prefix
+    -> subresults:'res list
+    -> (Filename.t * File_kind.t) list
+    -> 'res list Memo.t
+end
+
+(** [scan_path ~f ~acc ~prefix ~dir dir_contents] Given
+    [f ~dir
+    ~prefix ~subresults dir_contents], [scan_path] will call [f]
+    forall the subdirs of [dir] with [dir] set to the subpath, [prefix] set to
+    [acc prefix d] for each subdirectory [d] and [subresults] the results of the
+    scanning of children directories *)
+let rec scan_path ~(f : ('prefix, 'res) Scan_action.t) ~acc ~prefix ~dir
+    dir_contents : 'a list Memo.t =
+  let open Memo.O in
+  let f (d, kind) =
+    match kind with
+    (* We skip directories starting by . , this is mainly to avoid
+       .coq-native *)
+    | (File_kind.S_DIR | S_LNK) when d.[0] = '.' -> Memo.return []
+    (* Need to check the link resolves to a directory! *)
+    | File_kind.S_DIR | S_LNK -> (
+      let dir = Path.relative dir d in
+      let* dir_contents =
+        Fs_memo.dir_contents (Path.as_outside_build_dir_exn dir)
+      in
+      match dir_contents with
+      | Error _ -> Memo.return []
+      | Ok dir_contents ->
+        let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
+        let prefix = acc prefix d in
+        let* subresults = scan_path ~f ~acc ~prefix ~dir dir_contents in
+        f ~dir ~prefix ~subresults dir_contents)
+    | _ -> Memo.return []
+  in
+  Memo.List.concat_map ~f dir_contents
+
+let scan_path ~f ~acc ~prefix dir =
   let open Memo.O in
   let* dir_contents =
-    Fs_memo.dir_contents (Path.as_outside_build_dir_exn path)
+    Fs_memo.dir_contents (Path.as_outside_build_dir_exn dir)
   in
   match dir_contents with
   | Error _ -> Memo.return []
   | Ok dir_contents ->
     let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
-    let f (d, kind) =
-      match kind with
-      | File_kind.S_DIR | S_LNK ->
-        let subpath = Path.relative path d in
-        let prefix = acc prefix d in
-        let* subpaths = scan_path ~f ~acc ~prefix subpath in
-        f ~path ~prefix ~subpath ~subpaths dir_contents
-      | _ -> Memo.return []
+    scan_path ~f ~acc ~prefix ~dir dir_contents
+
+(** Scan the plugins in stdlib, returns list of cmxs + list of directories with
+    cmxs *)
+let scan_stdlib_plugins coqcorelib : (Path.t list * Path.t) list Memo.t =
+  let f ~dir ~prefix:() ~subresults dir_contents =
+    let cmxs, _ = scan_vo_cmxs ~dir dir_contents in
+    let res =
+      match cmxs with
+      | [] -> subresults
+      | _ :: _ -> (cmxs, dir) :: subresults
     in
-    Memo.List.concat_map ~f dir_contents
-
-let scan_user_path path =
-  let f ~path ~prefix ~subpath ~subpaths dir_contents =
-    let cmxs, vo = scan_vo_cmxs ~path dir_contents in
-    let cmxs_r, vo_r = retrieve_vo_cmxs subpaths in
-    let cmxs, vo = (cmxs @ cmxs_r, vo @ vo_r) in
-    Memo.return (build_user_contrib ~cmxs ~vo ~subpath ~name:prefix :: subpaths)
+    Memo.return res
   in
-  scan_path path ~f ~acc:Coq_lib_name.append ~prefix:Coq_lib_name.empty
+  let pluginsdir = Path.relative coqcorelib "plugins" in
+  let acc _ _ = () in
+  scan_path ~f ~acc ~prefix:() pluginsdir
 
-let scan_vo path =
-  let f ~path ~prefix:_ ~subpath:_ ~subpaths dir_contents =
-    let _, vo = scan_vo_cmxs ~path dir_contents in
-    Memo.return (vo @ subpaths)
+(** [scan_user_path path] Note that we already have very similar functionality
+    in [Dir_status] *)
+let scan_user_path root_path =
+  let f ~dir ~prefix ~subresults dir_contents =
+    let cmxs, vo = scan_vo_cmxs ~dir dir_contents in
+    let cmxs_directories = if not (List.is_empty cmxs) then [ dir ] else [] in
+    let cmxs_r, cdir_r, vo_r = retrieve_vo_cmxs subresults in
+    let cmxs, cmxs_directories, vo =
+      (cmxs @ cmxs_r, cmxs_directories @ cdir_r, vo @ vo_r)
+    in
+    Memo.return
+      (build_user_contrib ~cmxs ~cmxs_directories ~vo ~path:dir ~name:prefix
+      :: subresults)
+  in
+  scan_path ~f ~acc:Coq_lib_name.append ~prefix:Coq_lib_name.empty root_path
+
+let scan_vo root_path =
+  let f ~dir ~prefix:() ~subresults dir_contents =
+    let _, vo = scan_vo_cmxs ~dir dir_contents in
+    Memo.return (vo @ subresults)
   in
   let acc _ _ = () in
-  scan_path path ~f ~acc ~prefix:()
+  scan_path ~f ~acc ~prefix:() root_path
 
 let of_coq_install coqc =
   let open Memo.O in
@@ -133,13 +171,16 @@ let of_coq_install coqc =
   (* Now we query for coqlib *)
   let coqlib_path = config_path_exn coq_config "coqlib" in
   let coqcorelib = config_path coq_config "coqcorelib" ~default:coqlib_path in
-  let* cmxs = stdlib_plugins_dir coqcorelib in
+  let* stdlib_plugs = scan_stdlib_plugins coqcorelib in
   let* vo = scan_vo coqlib_path in
+  let cmxs, cmxs_directories = List.split stdlib_plugs in
+  let cmxs = List.concat cmxs in
   let stdlib =
     { name = Coq_lib_name.stdlib
     ; path = Path.relative coqlib_path "theories"
     ; vo
     ; cmxs
+    ; cmxs_directories
     ; stdlib = true
     }
   in

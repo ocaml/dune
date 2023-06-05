@@ -647,14 +647,10 @@ module DB = struct
     (* Map is eager, this may not be very convenient in large trees,
        but should be fine for now *)
     let map =
-      match
-        Coq_lib_name.Map.of_list_map cps ~f:(fun cp -> (Coq_path.name cp, cp))
-      with
-      | Ok m -> m
-      | Error (name, cp1, cp2) ->
-        let id1 = Id.create ~path:(Coq_path.path cp1) ~name:(Loc.none, name) in
-        let id2 = Id.create ~path:(Coq_path.path cp2) ~name:(Loc.none, name) in
-        Error.duplicate_theory_name id1 id2
+      List.rev_map cps ~f:(fun cp -> (Coq_path.name cp, cp))
+      (* Since we reversed the order, the second coqpath should take
+         precedence. This is in line with Coq semantics. *)
+      |> Coq_lib_name.Map.of_list_reducei ~f:(fun _name _cp1 cp2 -> cp2)
     in
     let resolve name : t Resolve_result.t =
       match Coq_lib_name.Map.find map name with

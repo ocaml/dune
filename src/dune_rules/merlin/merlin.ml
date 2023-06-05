@@ -453,8 +453,11 @@ module Unprocessed = struct
       Path.Set.map ~f:Path.drop_optional_build_context
         (Modules.source_dirs modules)
 
+  module Per_item_action_builder =
+    Module_name.Per_item.Make_monad_traversals (Action_builder)
+
   let pp_config t sctx ~expander =
-    Module_name.Per_item.map_action_builder t.config.preprocess
+    Per_item_action_builder.map t.config.preprocess
       ~f:(pp_flags sctx ~expander t.config.libname)
 
   let process

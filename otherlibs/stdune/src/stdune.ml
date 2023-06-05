@@ -72,6 +72,9 @@ module Predicate = Predicate
 module Bytes_unit = Bytes_unit
 module Dev_null = Dev_null
 module Platform = Platform
+module Per_item = Per_item
+
+module type Per_item = Per_item_intf.S
 
 module Unix_error = struct
   include Dune_filesystem_stubs.Unix_error

@@ -1,5 +1,3 @@
-open Import
-
 module Make (Key : Map.Key) : Per_item_intf.S with type key = Key.t = struct
   module Map = Map.Make (Key)
 
@@ -40,16 +38,6 @@ module Make (Key : Map.Key) : Per_item_intf.S with type key = Key.t = struct
 
   let fold t ~init ~f = Array.fold_right t.values ~init ~f
 
-  let fold_resolve t ~init ~f =
-    let open Resolve.Memo.O in
-    let rec loop i acc =
-      if i = Array.length t.values then Resolve.Memo.return acc
-      else
-        let* acc = f t.values.(i) acc in
-        loop (i + 1) acc
-    in
-    loop 0 init
-
   let exists t ~f = Array.exists t.values ~f
 
   let is_constant t = Array.length t.values = 1
@@ -65,13 +53,15 @@ module Make (Key : Map.Key) : Per_item_intf.S with type key = Key.t = struct
       let l = Array.to_list values in
       let+ new_values = List.map l ~f |> M.all in
       { map; values = Array.of_list new_values }
+
+    let fold t ~init ~f =
+      let open M.O in
+      let rec loop i acc =
+        if i = Array.length t.values then M.return acc
+        else
+          let* acc = f t.values.(i) acc in
+          loop (i + 1) acc
+      in
+      loop 0 init
   end
-
-  module A = Make_monad_traversals (Action_builder)
-
-  let map_action_builder = A.map
-
-  module R = Make_monad_traversals (Resolve.Memo)
-
-  let map_resolve = R.map
 end

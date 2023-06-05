@@ -65,8 +65,6 @@ type t =
 
 let scope t = t.scope
 
-let scope_host t = t.scope_host
-
 let artifacts t = t.bin_artifacts_host
 
 let dir t = t.dir

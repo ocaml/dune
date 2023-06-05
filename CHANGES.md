@@ -26,6 +26,9 @@ Unreleased
 - The `interface` and `implementation` fields of a `(dialect)` are now optional
   (#7757, @gpetiot)
 
+- Revert #7415 and #7450 (Resolve `ppx_runtime_libraries` in the target context when
+  cross compiling) (#7887, fixes #7875, @emillon)
+
 3.8.0 (2023-05-23)
 ------------------
 
@@ -82,7 +85,7 @@ Unreleased
 - Fix `dune install` when cross compiling (#7410, fixes #6191, @anmonteiro,
   @rizo)
 
-- Find `pps` dependencies in the host context when cross-compiling,  (#7410,
+- Find `pps` dependencies in the host context when cross-compiling,  (#7415,
   fixes #4156, @anmonteiro)
 
 - Dune in watch mode no longer builds concurrent rules in serial (#7395

@@ -16,6 +16,7 @@ val make :
   -> preprocessor_deps:Dep_conf.t list
   -> instrumentation_deps:Dep_conf.t list
   -> lib_name:Lib_name.Local.t option
+  -> scope:Scope.t
   -> Pp_spec.t
 
 (** Get a path to a cached ppx driver with some extra flags for cookies. *)

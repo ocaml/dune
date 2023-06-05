@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685989905168,
+  "lastUpdate": 1685989915741,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -41207,6 +41207,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "65.07883076808001",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "55ef3576bdac0c539417a7ae3b9dc8e75b3e143b",
+          "message": "refator: rename [Stringlike_intf] to [Stringlike] (#7884)\n\nto match our convention with other functors (e.g. [Monad])\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-05T11:04:55-07:00",
+          "tree_id": "30d6563a2f75f99f5a5bed603da5316bc981ccc7",
+          "url": "https://github.com/ocaml/dune/commit/55ef3576bdac0c539417a7ae3b9dc8e75b3e143b"
+        },
+        "date": 1685989915055,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6781519610666666",
             "unit": "seconds"
           }
         ]

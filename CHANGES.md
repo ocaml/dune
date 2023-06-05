@@ -1,6 +1,10 @@
 Unreleased
 ----------
 
+- Cinaps: The promotion rules for cinaps would only offer one file at a time no
+  matter how many promotions were available. Now we offer all the promotions at
+  once (#7901, @rgrinberg)
+
 - Do not re-run OCaml syntax files on every iteration of the watch mode. This
   is too memory consuming. (#7894, fix #6900, @rgrinberg)
 

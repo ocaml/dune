@@ -27,4 +27,7 @@ Cinaps should offer all promotions at once
   File "t1.ml", line 1, characters 0-0:
   Error: Files _build/default/t1.ml and _build/default/t1.ml.cinaps-corrected
   differ.
+  File "t2.ml", line 1, characters 0-0:
+  Error: Files _build/default/t2.ml and _build/default/t2.ml.cinaps-corrected
+  differ.
   [1]

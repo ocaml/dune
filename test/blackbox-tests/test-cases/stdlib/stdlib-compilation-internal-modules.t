@@ -18,20 +18,18 @@ Compile a library with `(stdlib ..)` and multiple globs for internal_modules
   > module Other = Other
   > EOF
 
-First we test wrapped:
-
   $ cat >stdlib/dune <<EOF
   > (library
   >  (name mystdlib)
   >  (stdlib
   >   (internal_modules one* other)))
   > EOF
+
+Works when setting the correct version
+
   $ dune build
-  File "stdlib/dune", line 4, characters 25-30:
-  4 |   (internal_modules one* other)))
-                               ^^^^^
-  Error: Too many arguments for internal_modules
-  [1]
   $ find _build/default/stdlib -iname '*.cmi' | sort;
-  find: '_build/default/stdlib': No such file or directory
+  _build/default/stdlib/.mystdlib.objs/byte/mystdlib.cmi
+  _build/default/stdlib/.mystdlib.objs/byte/mystdlib__One_module.cmi
+  _build/default/stdlib/.mystdlib.objs/byte/mystdlib__Other.cmi
 

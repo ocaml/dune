@@ -36,6 +36,9 @@ Unreleased
 - Fix scanning of Coq installed files (@ejgallego, reported by
   @palmskog, #7895 , fixes #7893)
 
+- Allow multiple globs in library's `(stdlib (internal_modules ..))`
+  (@anmonteiro, #7878)
+
 3.8.1 (2023-06-05)
 ------------------
 

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685959209983,
+  "lastUpdate": 1685959235522,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -50749,6 +50749,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.86947252646",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4b992dd22aeba75f62b13de5d8b53a0d4481cc30",
+          "message": "chore: fix typo in error message (#7882)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-05T10:46:53+01:00",
+          "tree_id": "bb4d32d798761eab0211b966d179c5e83e686fbc",
+          "url": "https://github.com/ocaml/dune/commit/4b992dd22aeba75f62b13de5d8b53a0d4481cc30"
+        },
+        "date": 1685959230843,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.924023185219998",
             "unit": "seconds"
           }
         ]

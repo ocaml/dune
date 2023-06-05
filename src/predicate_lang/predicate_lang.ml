@@ -2,6 +2,8 @@ open Stdune
 open Dune_sexp
 
 type 'a t =
+  | True
+  | False
   | Element of 'a
   | Not of 'a t
   | Standard
@@ -21,9 +23,9 @@ let diff a = function
 
 let not a = Not a
 
-let true_ = And []
+let true_ = True
 
-let false_ = Or []
+let false_ = False
 
 let or_ = function
   | [] -> false_
@@ -94,6 +96,8 @@ and decode f = many f or_ []
 let rec encode f =
   let open Encoder in
   function
+  | True -> encode f (Or [])
+  | False -> encode f (And [])
   | Element a -> f a
   | Not a -> constr "not" (encode f) a
   | Standard -> string ":standard"
@@ -104,6 +108,8 @@ let rec to_dyn f =
   let open Dyn in
   function
   | Element a -> f a
+  | True -> variant "True" []
+  | False -> variant "False" []
   | Not a -> variant "compl" [ to_dyn f a ]
   | Standard -> string ":standard"
   | Or xs -> variant "or" (List.map ~f:(to_dyn f) xs)
@@ -111,6 +117,8 @@ let rec to_dyn f =
 
 let rec test_ t ~standard ~test elem =
   match t with
+  | True -> true
+  | False -> false
   | Not t -> Stdlib.not (test_ t ~standard ~test elem)
   | Element f -> test f elem
   | Or xs -> List.exists ~f:(fun t -> test_ t ~standard ~test elem) xs
@@ -121,6 +129,9 @@ let test = test_
 
 let rec compare f x y =
   match (x, y) with
+  | True, True -> Eq
+  | True, _ -> Gt
+  | _, True -> Lt
   | Element a, Element b -> f a b
   | Element _, _ -> Lt
   | _, Element _ -> Gt
@@ -134,6 +145,9 @@ let rec compare f x y =
   | Or _, _ -> Lt
   | _, Or _ -> Gt
   | And a, And b -> List.compare a b ~compare:(compare f)
+  | And _, _ -> Lt
+  | _, And _ -> Gt
+  | False, False -> Eq
 
 module Glob = struct
   module Glob = Dune_glob.V1

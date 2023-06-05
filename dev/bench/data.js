@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685971694080,
+  "lastUpdate": 1685972334425,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -18616,6 +18616,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.17866577298",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1106c6cf5108498beb3fdabc6595bee39a3d5948",
+          "message": "refactor: predicate lang (#7851)\n\nIndividual constructors for true/false.\r\n\r\nThis gives a more compact representation for these common forms.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-05T14:11:57+01:00",
+          "tree_id": "a6459b0ca765969eb7181ceb9af0c26baeebea42",
+          "url": "https://github.com/ocaml/dune/commit/1106c6cf5108498beb3fdabc6595bee39a3d5948"
+        },
+        "date": 1685972333259,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "49.34120767930667",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685998080312,
+  "lastUpdate": 1685998281922,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -51561,6 +51561,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.85401680982",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a2d22f894c63f909d74db887d8d9c71d7f45cb49",
+          "message": "fix(pkg): use correct ocamlpath (#7881)\n\nalso take this opportunity to share the paths between contexts and\r\ninstalled packages.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-05T13:34:23-07:00",
+          "tree_id": "d043f803f0d20e631b1173c370795d51daecca01",
+          "url": "https://github.com/ocaml/dune/commit/a2d22f894c63f909d74db887d8d9c71d7f45cb49"
+        },
+        "date": 1685998276300,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "29.46301285290667",
             "unit": "seconds"
           }
         ]

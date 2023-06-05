@@ -1,3 +1,10 @@
+3.8.1 (unreleased)
+------------------
+
+- Fix a crash when using a version of Coq < 8.13 due to the native compiler
+  config variable being missing. We now explicitly default to `(mode vo)` for
+  these older versions of Coq. (#7847, fixes #7846, @Alizter)
+
 3.8.0 (2023-05-23)
 ------------------
 

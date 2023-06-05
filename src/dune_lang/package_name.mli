@@ -13,4 +13,4 @@ include Comparable_intf.S with type key := t
 
 include Dune_sexp.Conv.S with type t := t
 
-include Stringlike_intf.S with type t := t
+include Stringlike with type t := t

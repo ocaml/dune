@@ -64,7 +64,7 @@ include (
 
     let make s = s
   end) :
-    Stringlike_intf.S with type t := t)
+    Stringlike with type t := t)
 
 module Infix = Comparator.Operators (String)
 

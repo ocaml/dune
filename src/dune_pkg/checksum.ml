@@ -20,7 +20,7 @@ include (
       (* verify through OpamHash *)
       OpamHash.of_string_opt s
   end) :
-    Stringlike_intf.S with type t := t)
+    Stringlike with type t := t)
 
 let to_opam_hash v = v
 

@@ -10,7 +10,8 @@ include struct
   module Log = Log
   module Persistent = Persistent
   module Stringlike = Stringlike
-  module Stringlike_intf = Stringlike_intf
+
+  module type Stringlike = Stringlike
 end
 
 include Dune_config_file

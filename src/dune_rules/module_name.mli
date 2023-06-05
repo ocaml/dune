@@ -6,7 +6,7 @@ type t
 (** Description of valid module names *)
 val valid_format_doc : User_message.Style.t Pp.t
 
-include Stringlike_intf.S with type t := t
+include Stringlike with type t := t
 
 val add_suffix : t -> string -> t
 

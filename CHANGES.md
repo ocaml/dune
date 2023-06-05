@@ -1,4 +1,4 @@
-3.8.1 (unreleased)
+3.8.1 (2023-06-05)
 ------------------
 
 - Fix a crash when using a version of Coq < 8.13 due to the native compiler

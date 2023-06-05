@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685983150380,
+  "lastUpdate": 1685988906977,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -51300,6 +51300,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.846208514313332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e4c8fd52061c808962873fa72171287b8b8ac0a3",
+          "message": "refactor(stdune): rename [Top_closure_intf] with [Top_closure] (#7885)\n\nFor consistency with other functors in [Stdune]\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-05T11:02:34-07:00",
+          "tree_id": "f03a20653dd2bbe2c75c12b6d7923b2ea4dfb48f",
+          "url": "https://github.com/ocaml/dune/commit/e4c8fd52061c808962873fa72171287b8b8ac0a3"
+        },
+        "date": 1685988902173,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.76249729284",
             "unit": "seconds"
           }
         ]

@@ -120,7 +120,7 @@ let gen_rules sctx t ~dir ~scope =
     Preprocessing.make sctx ~dir ~expander
       ~lint:(Preprocess.Per_module.no_preprocessing ())
       ~preprocess:t.preprocess ~preprocessor_deps:t.preprocessor_deps
-      ~instrumentation_deps:[] ~lib_name:None
+      ~instrumentation_deps:[] ~lib_name:None ~scope
   in
   let* modules =
     Modules.singleton_exe module_

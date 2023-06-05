@@ -27,7 +27,7 @@ Unreleased
   (#7757, @gpetiot)
 
 - Revert #7450 "Resolve `ppx_runtime_libraries` in the target context when
-  cross compiling"
+  cross compiling", #7415.
 
 3.8.0 (2023-05-23)
 ------------------
@@ -85,7 +85,7 @@ Unreleased
 - Fix `dune install` when cross compiling (#7410, fixes #6191, @anmonteiro,
   @rizo)
 
-- Find `pps` dependencies in the host context when cross-compiling,  (#7410,
+- Find `pps` dependencies in the host context when cross-compiling,  (#7415,
   fixes #4156, @anmonteiro)
 
 - Dune in watch mode no longer builds concurrent rules in serial (#7395

@@ -372,7 +372,6 @@ end
 
 type db =
   { parent : db option
-  ; host : db Memo.Lazy.t option
   ; resolve : Lib_name.t -> resolve_result Memo.t
   ; all : Lib_name.t list Memo.Lazy.t
   ; lib_config : Lib_config.t
@@ -1284,15 +1283,8 @@ end = struct
       in
       let pps =
         let* pps =
-          let* db_host =
-            match db.host with
-            | None -> Resolve.Memo.return db
-            | Some host -> Resolve.Memo.lift_memo (Memo.Lazy.force host)
-          in
           Resolve.Memo.List.map pps ~f:(fun (loc, name) ->
-              let* lib =
-                resolve_dep db_host (loc, name) ~private_deps:Allow_all
-              in
+              let* lib = resolve_dep db (loc, name) ~private_deps:Allow_all in
               match (allow_only_ppx_deps, Lib_info.kind lib.info) with
               | true, Normal -> Error.only_ppx_deps_allowed ~loc lib.info
               | _ -> Resolve.Memo.return lib)
@@ -1733,12 +1725,12 @@ module DB = struct
 
   type t = db
 
-  let create ~parent ~host ~resolve ~all ~lib_config () =
-    { parent; host; resolve; all = Memo.lazy_ all; lib_config }
+  let create ~parent ~resolve ~all ~lib_config () =
+    { parent; resolve; all = Memo.lazy_ all; lib_config }
 
-  let create_from_findlib ~host findlib =
+  let create_from_findlib findlib =
     let lib_config = Findlib.lib_config findlib in
-    create () ~parent:None ~host ~lib_config
+    create () ~parent:None ~lib_config
       ~resolve:(fun name ->
         let open Memo.O in
         Findlib.find findlib name >>| function
@@ -1754,12 +1746,12 @@ module DB = struct
         let open Memo.O in
         Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.name)
 
-  let installed (context : Context.t) ~host =
+  let installed (context : Context.t) =
     let open Memo.O in
     let+ findlib =
       Findlib.create ~paths:context.findlib_paths ~lib_config:context.lib_config
     in
-    create_from_findlib ~host findlib
+    create_from_findlib findlib
 
   let find t name =
     let open Memo.O in

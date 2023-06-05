@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685960046235,
+  "lastUpdate": 1685960057515,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -40714,6 +40714,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "65.91982570143334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "3fd15d76e48bcc8cdf74ab48c7cf5ba5db3f53bf",
+          "message": "Monorepo benchmark uses fixed docker image tag\n\nThis stops the benchmark from being exposed to breaking changes as\nthe debian docker image receives updates. This also adds the `apt-get\nupgrade` command to the docker file so that newly installed packages\ncompatible with packages that came installed in the debian image.\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-06-05T10:47:10+01:00",
+          "tree_id": "7dc2dd841de943868f82947c3334f7d581391191",
+          "url": "https://github.com/ocaml/dune/commit/3fd15d76e48bcc8cdf74ab48c7cf5ba5db3f53bf"
+        },
+        "date": 1685960056809,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8154336512466667",
             "unit": "seconds"
           }
         ]

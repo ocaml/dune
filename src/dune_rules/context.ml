@@ -327,42 +327,33 @@ let context_env env name ocfg findlib env_nodes version ~profile ~host
     then Ocaml.Env.with_color env
     else env
   in
-  let extend_var var ?path_sep v =
-    (var, Bin.cons_path ?path_sep (Path.build v) ~_PATH:(Env.get env var))
-  in
   let vars =
-    let local_lib_root = Install.Context.lib_root ~context:name in
-    [ extend_var "CAML_LD_LIBRARY_PATH"
-        (Path.Build.relative (Install.Context.dir ~context:name) "lib/stublibs")
-    ; extend_var "OCAMLPATH" ~path_sep:Findlib.Config.ocamlpath_sep
-        local_lib_root
-    ; ( Dune_site_private.dune_ocaml_stdlib_env_var
+    [ ( Dune_site_private.dune_ocaml_stdlib_env_var
       , Ocaml_config.standard_library ocfg )
     ; ( Dune_site_private.dune_ocaml_hardcoded_env_var
-      , String.concat
-          ~sep:(Char.escaped Findlib.Config.ocamlpath_sep)
-          (List.map ~f:Path.to_string default_ocamlpath) )
-    ; extend_var "OCAMLTOP_INCLUDE_PATH"
-        (Path.Build.relative local_lib_root "toplevel")
-    ; extend_var "OCAMLFIND_IGNORE_DUPS_IN"
-        ~path_sep:Findlib.Config.ocamlpath_sep local_lib_root
-    ; extend_var "MANPATH" (Install.Context.man_dir ~context:name)
+      , List.map ~f:Path.to_string default_ocamlpath
+        |> String.concat ~sep:(Char.escaped Findlib.Config.ocamlpath_sep) )
+    ; ( Dune_site_private.dune_sourceroot_env_var
+      , Path.to_absolute_filename (Path.source Path.Source.root) )
     ; ( "INSIDE_DUNE"
       , let build_dir = Context_name.build_dir name in
         Path.to_absolute_filename (Path.build build_dir) )
-    ; ( Dune_site_private.dune_sourceroot_env_var
-      , Path.to_absolute_filename (Path.source Path.Source.root) )
     ]
   in
+  let roots =
+    Install.Roots.make ~relative:Path.Build.relative
+      (Install.Context.dir ~context:name)
+  in
   Env.extend env ~vars:(Env.Map.of_list_exn vars)
-  |> Env.update ~var:Env_path.var ~f:(fun _ ->
+  |> Install.Roots.add_to_env roots
+  |> Env.update ~var:Env_path.var ~f:(fun _PATH ->
          match host with
+         | Some host -> Env.get host.env Env_path.var
          | None ->
-           let _key, path =
-             Install.Context.bin_dir ~context:name |> extend_var Env_path.var
-           in
-           Some path
-         | Some host -> Env.get host.env Env_path.var)
+           Some
+             (Bin.cons_path
+                (Path.build (Install.Context.bin_dir ~context:name))
+                ~_PATH))
   |> Env.extend_env
        (Option.value ~default:Env.empty
           (Option.map findlib ~f:Findlib.Config.env))

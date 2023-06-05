@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685983139277,
+  "lastUpdate": 1685983150380,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -41033,6 +41033,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "67.5545504201",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "886df09f605c2ecc12ac9a1829275602f9e18032",
+          "message": "Revert #7415 and #7450 (#7887)\n\n* Revert \"fix(x-compilation): delay evaluation of `ppx_runtime_deps` until context is known\"\r\n\r\nThis reverts commit ab74a71dc04380ed592462f982ceb4dd6371203f.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\n\r\n* Revert \"test(x-compilation): demonstrate overlap check failure with ppx_runtime_libraries\"\r\n\r\nThis reverts commit 096fc97ea5a8734186a9fb7ae080326526fd7bf7.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\n\r\n* Revert \"fix(x-compilation): find host ppx dependencies in the host context (#7415)\"\r\n\r\nThis reverts commit 16a7e883ef2b2283f8a636fbf2c8bade3da92754.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\n\r\n* Changelog\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\n\r\n---------\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-06-05T18:11:36+02:00",
+          "tree_id": "ff4b4d93901b87fb5968b30cc763e864ff8db5d5",
+          "url": "https://github.com/ocaml/dune/commit/886df09f605c2ecc12ac9a1829275602f9e18032"
+        },
+        "date": 1685983149384,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6878102640400001",
             "unit": "seconds"
           }
         ]

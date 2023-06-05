@@ -6,6 +6,8 @@ type t
 
 val scope : t -> Scope.t
 
+val scope_host : t -> Scope.t
+
 val dir : t -> Path.Build.t
 
 val context : t -> Context.t

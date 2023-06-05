@@ -259,6 +259,8 @@ module Per_module = struct
     in
     Per_module.map t ~f:(filter_map ~f)
 
+  module Resolve_traversals = Per_module.Make_monad_traversals (Resolve.Memo)
+
   let with_instrumentation t ~instrumentation_backend =
     let f = function
       | With_instrumentation.Ordinary libname ->
@@ -268,7 +270,7 @@ module Per_module = struct
           (instrumentation_backend libname)
           ~f:(Option.map ~f:(fun backend -> (backend, flags)))
     in
-    Per_module.map_resolve t ~f:(filter_map_resolve ~f)
+    Resolve_traversals.map t ~f:(filter_map_resolve ~f)
 
   let instrumentation_deps t ~instrumentation_backend =
     let open Resolve.Memo.O in
@@ -279,7 +281,7 @@ module Per_module = struct
         | Some _ -> deps
         | None -> [])
     in
-    Per_module.fold_resolve t ~init:[] ~f:(fun t init ->
+    Resolve_traversals.fold t ~init:[] ~f:(fun t init ->
         let f acc t =
           let+ x = f t in
           x :: acc

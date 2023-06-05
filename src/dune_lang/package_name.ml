@@ -19,4 +19,4 @@ include (
       (* DUNE3 verify no dots or spaces *)
       if s = "" then None else Some s
   end) :
-    Dune_util.Stringlike_intf.S with type t := t)
+    Dune_util.Stringlike with type t := t)

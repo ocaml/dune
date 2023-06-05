@@ -8,7 +8,7 @@ include Dune_sexp.Conv.S with type t := t
 
 module Infix : Comparator.OPS with type t = t
 
-include Stringlike_intf.S with type t := t
+include Stringlike with type t := t
 
 val dune_site_syntax : Dune_sexp.Syntax.t
 
@@ -27,6 +27,6 @@ module Modulelike (S : sig
 
   (** The string is always a correct module name, except not capitalized *)
   val make : string -> t
-end) : Stringlike_intf.S with type t = S.t
+end) : Stringlike with type t = S.t
 
 val valid_format_doc : User_message.Style.t Pp.t

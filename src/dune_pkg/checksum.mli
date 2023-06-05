@@ -4,7 +4,7 @@ open Import
     fetched already. *)
 type t
 
-include Stringlike_intf.S with type t := t
+include Stringlike with type t := t
 
 (** [to_opam_hash c] converts [c] to the representation of has values used by
     OPAM *)

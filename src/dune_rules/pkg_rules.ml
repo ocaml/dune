@@ -306,31 +306,26 @@ module Pkg = struct
     |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t ->
            Path.build t.paths.target_dir |> Dep.file |> Dep.Set.add acc)
 
-  let build_env t =
-    deps_closure t
-    |> List.fold_left ~init:Env.Map.empty ~f:(fun env t ->
-           let env =
-             let paths = Paths.install_paths t.paths in
+  let build_env =
+    let add_to_path env var what =
+      Env.Map.update env var ~f:(fun paths ->
+          let paths = Option.value paths ~default:[] in
+          Some (Value.Dir (Path.build what) :: paths))
+    in
+    fun t ->
+      deps_closure t
+      |> List.fold_left ~init:Env.Map.empty ~f:(fun env t ->
              let env =
-               Value.Dir (Install.Paths.get paths Bin)
-               |> Env.Map.add_multi env Env_path.var
+               let roots =
+                 Paths.install_roots t.paths
+                 |> Install.Roots.map ~f:Path.as_in_build_dir_exn
+               in
+               let init = add_to_path env Env_path.var roots.bin in
+               let vars = Install.Roots.to_env_without_path roots in
+               List.fold_left vars ~init ~f:(fun acc (var, path) ->
+                   add_to_path acc var path)
              in
-             let env =
-               Value.Dir (Install.Paths.get paths Toplevel)
-               |> Env.Map.add_multi env "OCAMLTOP_INCLUDE_PATH"
-             in
-             let env =
-               Value.Dir (Install.Paths.get paths Lib)
-               |> Env.Map.add_multi env "OCAMLPATH"
-             in
-             let env =
-               Value.Dir (Install.Paths.get paths Stublibs)
-               |> Env.Map.add_multi env "CAML_LD_LIBRARY_PATH"
-             in
-             Value.Dir (Install.Paths.get paths Man)
-             |> Env.Map.add_multi env "MANPATH"
-           in
-           List.fold_left t.exported_env ~init:env ~f:Env_update.set)
+             List.fold_left t.exported_env ~init:env ~f:Env_update.set)
 
   let exported_env t =
     let base =

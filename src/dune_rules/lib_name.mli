@@ -4,10 +4,10 @@ type t
 
 val hash : t -> int
 
-include Stringlike_intf.S with type t := t
+include Stringlike with type t := t
 
 module Local : sig
-  include Stringlike_intf.S
+  include Stringlike
 
   (** Description of valid library names *)
   val valid_format_doc : User_message.Style.t Pp.t

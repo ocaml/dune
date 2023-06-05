@@ -90,8 +90,6 @@ module Dict : sig
     val to_list : t -> mode list
 
     val of_list : mode list -> t
-
-    val iter_concurrently : t -> f:(mode -> unit Memo.t) -> unit Memo.t
   end
 end
 

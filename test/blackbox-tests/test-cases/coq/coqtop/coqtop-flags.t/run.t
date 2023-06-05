@@ -26,7 +26,10 @@ The flags passed to coqc:
   -I lib/coq/../coq-core/plugins/ssreflect
   -I lib/coq/../coq-core/plugins/ssrmatching
   -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/tutorial/p0
+  -I lib/coq/../coq-core/plugins/tutorial/p1
+  -I lib/coq/../coq-core/plugins/tutorial/p2
+  -I lib/coq/../coq-core/plugins/tutorial/p3
   -I lib/coq/../coq-core/plugins/zify
   -R coq/theories Coq
   -R . minimal
@@ -58,7 +61,10 @@ The flags passed to coqtop:
   -I lib/coq/../coq-core/plugins/ssreflect
   -I lib/coq/../coq-core/plugins/ssrmatching
   -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/tutorial/p0
+  -I lib/coq/../coq-core/plugins/tutorial/p1
+  -I lib/coq/../coq-core/plugins/tutorial/p2
+  -I lib/coq/../coq-core/plugins/tutorial/p3
   -I lib/coq/../coq-core/plugins/zify
   -R coq/theories Coq
   -R $TESTCASE_ROOT/_build/default minimal

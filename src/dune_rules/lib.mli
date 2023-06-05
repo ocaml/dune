@@ -99,7 +99,7 @@ module DB : sig
   (** A database allow to resolve library names *)
   type t = db
 
-  val installed : Context.t -> host:t Memo.Lazy.t option -> t Memo.t
+  val installed : Context.t -> t Memo.t
 
   module Resolve_result : sig
     type db := t
@@ -124,7 +124,6 @@ module DB : sig
       [all] returns the list of names of libraries available in this database. *)
   val create :
        parent:t option
-    -> host:t Memo.Lazy.t option
     -> resolve:(Lib_name.t -> Resolve_result.t Memo.t)
     -> all:(unit -> Lib_name.t list Memo.t)
     -> lib_config:Lib_config.t

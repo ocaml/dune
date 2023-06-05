@@ -355,7 +355,7 @@ let setup_separate_compilation_rules sctx components =
     let pkg = Lib_name.parse_string_exn (Loc.none, s_pkg) in
     let ctx = Super_context.context sctx in
     let open Memo.O in
-    let* installed_libs = Lib.DB.installed ~host:None ctx in
+    let* installed_libs = Lib.DB.installed ctx in
     Lib.DB.find installed_libs pkg >>= function
     | None -> Memo.return ()
     | Some pkg ->

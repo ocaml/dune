@@ -160,7 +160,7 @@ module Script = struct
     in
     if not (Path.Untracked.exists (Path.build generated_dune_file)) then
       User_error.raise
-        [ Pp.textf "%s failed to produce a valid dune_file file."
+        [ Pp.textf "%s failed to produce a valid dune file."
             (Path.Source.to_string_maybe_quoted file)
         ; Pp.textf "Did you forgot to call [Jbuild_plugin.V*.send]?"
         ];

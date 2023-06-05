@@ -5,6 +5,11 @@
   config variable being missing. We now explicitly default to `(mode vo)` for
   these older versions of Coq. (#7847, fixes #7846, @Alizter)
 
+- Duplicate installed Coq theories are now allowed with the first appearing in
+  COQPATH being preferred. This is inline with Coq's loadpath semantics. This
+  fixes an issue with install layouts based on COQPATH such as those found in
+  nixpkgs. (#7790, @Alizter)
+
 3.8.0 (2023-05-23)
 ------------------
 

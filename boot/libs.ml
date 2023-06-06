@@ -33,6 +33,7 @@ let local_libraries =
   ; ("otherlibs/dune-private-libs/section", Some "Dune_section", false, None)
   ; ("src/dune_lang", Some "Dune_lang", false, None)
   ; ("vendor/opam-file-format", None, false, None)
+  ; ("src/dune_async_io", Some "Dune_async_io", false, None)
   ; ("src/fiber_util", Some "Fiber_util", false, None)
   ; ("src/dune_cache_storage", Some "Dune_cache_storage", false, None)
   ; ("src/dune_cache", Some "Dune_cache", false, None)

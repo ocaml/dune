@@ -8,15 +8,6 @@ Unreleased
 - Do not re-run OCaml syntax files on every iteration of the watch mode. This
   is too memory consuming. (#7894, fix #6900, @rgrinberg)
 
-- Fix a crash when using a version of Coq < 8.13 due to the native compiler
-  config variable being missing. We now explicitly default to `(mode vo)` for
-  these older versions of Coq. (#7847, fixes #7846, @Alizter)
-
-- Duplicate installed Coq theories are now allowed with the first appearing in
-  COQPATH being preferred. This is inline with Coq's loadpath semantics. This
-  fixes an issue with install layouts based on COQPATH such as those found in
-  nixpkgs. (#7790, @Alizter)
-
 - Remove some compatibility code for old version of dune that generated
   `.merlin` files. Now dune will never remove `.merlin` files automatically
   (#7562)
@@ -32,6 +23,18 @@ Unreleased
 
 - The `interface` and `implementation` fields of a `(dialect)` are now optional
   (#7757, @gpetiot)
+
+3.8.1 (2023-06-05)
+------------------
+
+- Fix a crash when using a version of Coq < 8.13 due to the native compiler
+  config variable being missing. We now explicitly default to `(mode vo)` for
+  these older versions of Coq. (#7847, fixes #7846, @Alizter)
+
+- Duplicate installed Coq theories are now allowed with the first appearing in
+  COQPATH being preferred. This is inline with Coq's loadpath semantics. This
+  fixes an issue with install layouts based on COQPATH such as those found in
+  nixpkgs. (#7790, @Alizter)
 
 - Revert #7415 and #7450 (Resolve `ppx_runtime_libraries` in the target context when
   cross compiling) (#7887, fixes #7875, @emillon)

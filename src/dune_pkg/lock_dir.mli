@@ -40,6 +40,10 @@ type t =
   ; packages : Pkg.t Package_name.Map.t
   }
 
+val equal : t -> t -> bool
+
+val to_dyn : t -> Dyn.t
+
 val create_latest_version : Pkg.t Package_name.Map.t -> t
 
 val default_path : Path.Source.t

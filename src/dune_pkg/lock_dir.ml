@@ -9,6 +9,40 @@ module Source = struct
         ; checksum : (Loc.t * Checksum.t) option
         }
 
+  let remove_locs = function
+    | External_copy (_loc, path) -> External_copy (Loc.none, path)
+    | Fetch { url = _loc, url; checksum } ->
+      Fetch
+        { url = (Loc.none, url)
+        ; checksum =
+            Option.map checksum ~f:(fun (_loc, checksum) ->
+                (Loc.none, checksum))
+        }
+
+  let equal a b =
+    match (a, b) with
+    | External_copy (loc, path), External_copy (other_loc, other_path) ->
+      Loc.equal loc other_loc && Path.External.equal path other_path
+    | ( Fetch { url = loc, url; checksum }
+      , Fetch { url = other_loc, other_url; checksum = other_checksum } ) ->
+      Loc.equal loc other_loc && String.equal url other_url
+      && Option.equal
+           (fun (loc, checksum) (other_loc, other_checksum) ->
+             Loc.equal loc other_loc && Checksum.equal checksum other_checksum)
+           checksum other_checksum
+    | _ -> false
+
+  let equal_no_locs a b = equal (remove_locs a) (remove_locs b)
+
+  let to_dyn = function
+    | External_copy (_loc, path) ->
+      Dyn.variant "External_copy" [ Path.External.to_dyn path ]
+    | Fetch { url = _loc, url; checksum } ->
+      Dyn.variant "Fetch"
+        [ Dyn.string url
+        ; Dyn.option (fun (_loc, checksum) -> Checksum.to_dyn checksum) checksum
+        ]
+
   module Fields = struct
     let copy = "copy"
 
@@ -64,6 +98,25 @@ module Pkg_info = struct
     ; dev : bool
     ; source : Source.t option
     }
+
+  let equal { name; version; dev; source }
+      { name = other_name
+      ; version = other_version
+      ; dev = other_dev
+      ; source = other_source
+      } =
+    Package_name.equal name other_name
+    && String.equal version other_version
+    && Bool.equal dev other_dev
+    && Option.equal Source.equal_no_locs source other_source
+
+  let to_dyn { name; version; dev; source } =
+    Dyn.record
+      [ ("name", Package_name.to_dyn name)
+      ; ("version", Dyn.string version)
+      ; ("dev", Dyn.bool dev)
+      ; ("source", Dyn.option Source.to_dyn source)
+      ]
 end
 
 module Pkg = struct
@@ -75,6 +128,38 @@ module Pkg = struct
     ; lock_dir : Path.Source.t
     ; exported_env : String_with_vars.t Dune_lang.Action.Env_update.t list
     }
+
+  let equal
+      { build_command; install_command; deps; info; lock_dir; exported_env }
+      { build_command = other_build_command
+      ; install_command = other_install_command
+      ; deps = other_deps
+      ; info = other_info
+      ; lock_dir = other_lock_dir
+      ; exported_env = other_exported_env
+      } =
+    Option.equal Action.equal_no_locs build_command other_build_command
+    && Option.equal Action.equal_no_locs install_command other_install_command
+    && List.equal Package_name.equal deps other_deps
+    && Pkg_info.equal info other_info
+    && Path.Source.equal lock_dir other_lock_dir
+    && List.equal
+         (Dune_lang.Action.Env_update.equal String_with_vars.equal_no_loc)
+         exported_env other_exported_env
+
+  let to_dyn
+      { build_command; install_command; deps; info; lock_dir; exported_env } =
+    Dyn.record
+      [ ("build_command", Dyn.option Action.to_dyn build_command)
+      ; ("install_command", Dyn.option Action.to_dyn install_command)
+      ; ("deps", Dyn.list Package_name.to_dyn deps)
+      ; ("info", Pkg_info.to_dyn info)
+      ; ("lock_dir", Path.Source.to_dyn lock_dir)
+      ; ( "exported_env"
+        , Dyn.list
+            (Dune_lang.Action.Env_update.to_dyn String_with_vars.to_dyn)
+            exported_env )
+      ]
 
   module Fields = struct
     let version = "version"
@@ -141,6 +226,17 @@ type t =
   { version : Syntax.Version.t
   ; packages : Pkg.t Package_name.Map.t
   }
+
+let equal { version; packages }
+    { version = other_version; packages = other_packages } =
+  Syntax.Version.equal version other_version
+  && Package_name.Map.equal ~equal:Pkg.equal packages other_packages
+
+let to_dyn { version; packages } =
+  Dyn.record
+    [ ("version", Syntax.Version.to_dyn version)
+    ; ("packages", Package_name.Map.to_dyn Pkg.to_dyn packages)
+    ]
 
 let create_latest_version packages =
   let version = Syntax.greatest_supported_version Dune_lang.Pkg.syntax in

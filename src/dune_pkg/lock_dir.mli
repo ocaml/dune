@@ -53,3 +53,5 @@ val metadata : Filename.t
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit
 
 val write_disk : lock_dir_path:Path.Source.t -> t -> unit
+
+val read_disk : lock_dir_path:Path.Source.t -> t Or_exn.t

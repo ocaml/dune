@@ -44,4 +44,4 @@ let console_backend = function
   | Simple { status_line; _ } -> (
     match status_line with
     | false -> Dune_console.Backend.dumb
-    | true -> Dune_console.Backend.progress)
+    | true -> Dune_threaded_console.progress ())

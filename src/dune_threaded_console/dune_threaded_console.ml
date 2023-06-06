@@ -61,7 +61,8 @@ let make (module Base : S) : (module Dune_console.Backend) =
     let start () =
       Base.start ();
       Dune_engine.Scheduler.spawn_thread @@ fun () ->
-      ignore (Unix.sigprocmask SIG_UNBLOCK [ Signal.to_int Winch ] : int list);
+      if not Sys.win32 then
+        ignore (Unix.sigprocmask SIG_UNBLOCK [ Signal.to_int Winch ] : int list);
       let last = ref (Unix.gettimeofday ()) in
       let frame_rate = 1. /. 60. in
       let cleanup () =

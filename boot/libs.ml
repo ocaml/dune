@@ -70,9 +70,9 @@ let local_libraries =
   ; ("otherlibs/dune-private-libs/meta_parser", Some "Dune_meta_parser",
     false, None)
   ; ("src/dune_vcs", Some "Dune_vcs", false, None)
-  ; ("src/dune_threaded_console", Some "Dune_threaded_console", false, None)
   ; ("vendor/notty/src", None, true, None)
   ; ("vendor/notty/src-unix", None, true, None)
+  ; ("src/dune_threaded_console", Some "Dune_threaded_console", false, None)
   ; ("src/dune_tui", Some "Dune_tui", false, None)
   ; ("src/dune_config_file", Some "Dune_config_file", false, None)
   ; ("src/dune_rules", Some "Dune_rules", true, None)

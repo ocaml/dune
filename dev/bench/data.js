@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686058996191,
+  "lastUpdate": 1686059118780,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -18877,6 +18877,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.082158722573325",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "364739309cd190887ba8bb75650efb15d8e3d9a5",
+          "message": "fix(cinaps): offer all promotions (#7901)\n\nInstead of failing on the first promotion, offer all of them.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-06T06:23:00-07:00",
+          "tree_id": "149a398491ed8ab4f1d3808f1f44e5946c5e84b4",
+          "url": "https://github.com/ocaml/dune/commit/364739309cd190887ba8bb75650efb15d8e3d9a5"
+        },
+        "date": 1686059117560,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.70455517836",
             "unit": "seconds"
           }
         ]

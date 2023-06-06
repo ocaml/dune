@@ -84,10 +84,9 @@ module Source = struct
     | External_copy (_loc, path) ->
       constr Fields.copy string (Path.External.to_string path)
     | Fetch { url = _loc, url; checksum } ->
-      record
-        [ (Fields.url, string url)
-        ; ( Fields.checksum
-          , (option Checksum.encode) (Option.map checksum ~f:snd) )
+      named_record_fields Fields.fetch
+        [ field Fields.url string url
+        ; field_o Fields.checksum Checksum.encode (Option.map checksum ~f:snd)
         ]
 end
 

@@ -153,7 +153,6 @@ module Script = struct
     in
     let ocaml = Action.Prog.ok_exn context.ocaml.ocaml in
     let* () =
-      let* (_ : Memo.Run.t) = Memo.current_run () in
       Memo.of_reproducible_fiber
         (Process.run Strict ~display:Quiet ~dir:(Path.source dir)
            ~env:context.env ocaml args)

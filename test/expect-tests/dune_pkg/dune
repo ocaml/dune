@@ -8,6 +8,7 @@
   dune_pkg
   dune_engine
   dune_util
+  dune_lang
   fiber
   opam_core
   threads.posix

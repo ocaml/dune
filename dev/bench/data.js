@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685999405996,
+  "lastUpdate": 1686054354641,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -51764,6 +51764,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "29.46301285290667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b7413e5414eda7854f1ef4c87e3b58b7eaef7351",
+          "message": "test: demonstrate cinaps rules bug (#7898)\n\nThe cinaps rules will run the promotions sequentially, and will stop\r\nonce they find one that fails.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-06T05:12:31-07:00",
+          "tree_id": "6fdf4eed060aac0d7ac7fe8bcc5a7616115f44e1",
+          "url": "https://github.com/ocaml/dune/commit/b7413e5414eda7854f1ef4c87e3b58b7eaef7351"
+        },
+        "date": 1686054349511,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.893787393820002",
             "unit": "seconds"
           }
         ]

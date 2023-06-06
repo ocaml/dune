@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686059118780,
+  "lastUpdate": 1686059326973,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -41642,6 +41642,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.1053832905533336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "12a0268165d198f8cff12191fe895e1f28d4a109",
+          "message": "fix(rpc): remove threads (#7418)\n\nreplace them with evented io based on Unix.select\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-06T06:21:59-07:00",
+          "tree_id": "19877f18ef93945c1aeeee1274cd1be3393dec46",
+          "url": "https://github.com/ocaml/dune/commit/12a0268165d198f8cff12191fe895e1f28d4a109"
+        },
+        "date": 1686059323969,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "64.92615720483333",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686054354641,
+  "lastUpdate": 1686054603171,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -51793,6 +51793,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.893787393820002",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": false,
+          "id": "e1f3e19cb309ffebc3a7517cd8991f4582ead896",
+          "message": "fix: do not re-run jbuild syntax dune files on every run (#7894)\n\nWhile this is more correct, it ends up being too slow in practice\r\nespecially since we don't have cut-off on the results\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-06T05:13:50-07:00",
+          "tree_id": "0c06774192d464c79dd440a11eda42d6cbdfb0d7",
+          "url": "https://github.com/ocaml/dune/commit/e1f3e19cb309ffebc3a7517cd8991f4582ead896"
+        },
+        "date": 1686054597564,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.027449360440002",
             "unit": "seconds"
           }
         ]

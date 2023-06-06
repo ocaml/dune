@@ -321,3 +321,77 @@ let write_disk ~lock_dir_path t =
            List.map contents ~f:Dune_lang.to_string |> String.concat ~sep:"\n"
          in
          Io.write_file path contents_string)
+
+let load_metadata_version source_path =
+  let open Or_exn.O in
+  let* syntax, version =
+    Metadata.load (Path.source source_path)
+      ~f:(fun { Metadata.Lang.Instance.syntax; data = (); version } ->
+        Dune_lang.Decoder.return (syntax, version))
+  in
+  if String.equal (Syntax.name syntax) (Syntax.name Dune_lang.Pkg.syntax) then
+    Ok version
+  else
+    Error
+      User_error.(
+        E
+          (make
+             [ Pp.textf "In %s, expected language to be %s, but found %s"
+                 (Path.Source.to_string source_path)
+                 (Syntax.name Dune_lang.Pkg.syntax)
+                 (Syntax.name syntax)
+             ]))
+
+let load_pkg ~parser_context ~lock_dir_path package_name =
+  let open Or_exn.O in
+  let+ mk_pkg =
+    Result.try_with (fun () ->
+        let source_path =
+          Path.Source.relative lock_dir_path
+            (Package_name.to_string package_name)
+        in
+        let pkg_string = Io.read_file (Path.source source_path) in
+        let ast =
+          Dune_lang.Parser.parse_string pkg_string ~mode:Many_as_one
+            ~fname:(Path.Source.to_string source_path)
+        in
+        Dune_lang.Decoder.parse Pkg.decode parser_context ast)
+  in
+  mk_pkg ~lock_dir:lock_dir_path package_name
+
+let read_disk ~lock_dir_path =
+  let open Or_exn.O in
+  let* () =
+    if Path.is_directory (Path.source lock_dir_path) then Ok ()
+    else
+      Error
+        User_error.(
+          E
+            (make
+               [ Pp.textf "%s is not a directory"
+                   (Path.Source.to_string lock_dir_path)
+               ]))
+  in
+  let* version =
+    load_metadata_version (Path.Source.relative lock_dir_path metadata)
+  in
+  let parser_context =
+    Univ_map.singleton String_with_vars.decoding_env_key
+      (Pform.Env.initial version)
+  in
+  let+ packages =
+    Sys.readdir (Path.Source.to_string lock_dir_path)
+    |> Array.to_list
+    |> List.filter_map ~f:(fun filename ->
+           if Filename.equal filename metadata then None
+           else
+             let package_path = Path.Source.relative lock_dir_path filename in
+             if Path.is_directory (Path.source package_path) then None
+             else
+               let package_name = Package_name.of_string filename in
+               Some
+                 ( load_pkg ~parser_context ~lock_dir_path package_name
+                 >>| fun pkg -> (package_name, pkg) ))
+    |> Result.List.all >>| Package_name.Map.of_list_exn
+  in
+  { version; packages }

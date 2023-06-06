@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686064460426,
+  "lastUpdate": 1686064965549,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -18906,6 +18906,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.70455517836",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5403f7949f399a6d618072f6c2abad02272ebac0",
+          "message": "Use threaded console, adapt for Windows (#7906)\n\nSigned-off-by: Nicolás Ojeda Bär <n.oje.bar@gmail.com>",
+          "timestamp": "2023-06-06T17:01:19+02:00",
+          "tree_id": "3ea37b96b9d372b289a16cee6c870565ecdf14ac",
+          "url": "https://github.com/ocaml/dune/commit/5403f7949f399a6d618072f6c2abad02272ebac0"
+        },
+        "date": 1686064964526,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.57841209818667",
             "unit": "seconds"
           }
         ]

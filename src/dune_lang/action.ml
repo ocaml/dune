@@ -436,7 +436,7 @@ let validate ~loc t = ensure_at_most_one_dynamic_run ~loc t
 
 let rec map_string_with_vars t ~f =
   match t with
-  | Run (sw, xs) -> Run (f sw, xs)
+  | Run (sw, xs) -> Run (f sw, List.map ~f xs)
   | With_accepted_exit_codes (lang, t) ->
     With_accepted_exit_codes (lang, map_string_with_vars t ~f)
   | Dynamic_run (sw, sws) -> Dynamic_run (f sw, List.map sws ~f)
@@ -448,7 +448,7 @@ let rec map_string_with_vars t ~f =
   | Ignore (o, t) -> Ignore (o, map_string_with_vars t ~f)
   | Progn xs -> Progn (List.map xs ~f:(map_string_with_vars ~f))
   | Concurrent xs -> Concurrent (List.map xs ~f:(map_string_with_vars ~f))
-  | Echo xs -> Echo xs
+  | Echo xs -> Echo (List.map ~f xs)
   | Cat xs -> Cat (List.map ~f xs)
   | Copy (sw1, sw2) -> Copy (f sw1, f sw2)
   | Symlink (sw1, sw2) -> Symlink (f sw1, f sw2)

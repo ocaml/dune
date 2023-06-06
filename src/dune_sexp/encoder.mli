@@ -27,6 +27,9 @@ val field_i : string -> ('a -> T.t list) -> 'a -> field
 
 val record_fields : field list -> T.t list
 
+(** A named record, e.g.: (name (field1 value1) (field2 value2) ...) *)
+val named_record_fields : string -> field list t
+
 val unknown : _ t
 
 val enum : (string * 'a) list -> 'a t

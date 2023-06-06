@@ -67,19 +67,25 @@ module File_perm : sig
 end
 
 module Env_update : sig
-  type op =
-    | Eq
-    | PlusEq
-    | EqPlus
-    | ColonEq
-    | EqColon
-    | EqPlusEq
+  module Op : sig
+    type t =
+      | Eq
+      | PlusEq
+      | EqPlus
+      | ColonEq
+      | EqColon
+      | EqPlusEq
+  end
 
   type 'a t =
-    { op : op
+    { op : Op.t
     ; var : Env.Var.t
     ; value : 'a
     }
+
+  val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+
+  val to_dyn : 'a Dyn.builder -> 'a t Dyn.builder
 
   val decode : String_with_vars.t t Decoder.t
 
@@ -127,6 +133,8 @@ val decode_pkg : t Decoder.t
 val validate : loc:Loc.t -> t -> unit
 
 val compare_no_locs : t -> t -> Ordering.t
+
+val equal_no_locs : t -> t -> bool
 
 val to_dyn : t -> Dyn.t
 

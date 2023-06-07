@@ -2,6 +2,7 @@ include Stdune
 include Dune_vcs
 module Console = Dune_console
 module Digest = Dune_digest
+module Section = Install.Section
 
 include struct
   open Dune_util
@@ -9,7 +10,8 @@ include struct
   module Log = Log
   module Persistent = Persistent
   module Stringlike = Stringlike
-  module Stringlike_intf = Stringlike_intf
+
+  module type Stringlike = Stringlike
 end
 
 include Dune_config_file

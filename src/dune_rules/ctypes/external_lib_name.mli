@@ -3,7 +3,7 @@ open Import
 (** Represents a valid external lib name *)
 type t
 
-include Stringlike_intf.S with type t := t
+include Stringlike with type t := t
 
 val equal : t -> t -> bool
 

@@ -205,9 +205,9 @@ let stop (t : _ t) =
   Fiber.fork_and_join_unit
     (fun () -> Action_runner.Rpc_server.stop t.config.action_runner)
     (fun () ->
-      let+ server = Fiber.Ivar.peek t.config.server_ivar in
+      let* server = Fiber.Ivar.peek t.config.server_ivar in
       match server with
-      | None -> ()
+      | None -> Fiber.return ()
       | Some server -> Csexp_rpc.Server.stop server)
 
 let handler (t : _ t Fdecl.t) action_runner_server handle :
@@ -317,8 +317,7 @@ let handler (t : _ t Fdecl.t) action_runner_server handle :
       in
       let shutdown () =
         Fiber.fork_and_join_unit Scheduler.shutdown (fun () ->
-            Csexp_rpc.Server.stop (Lazy.force t.config.server);
-            Fiber.return ())
+            Csexp_rpc.Server.stop (Lazy.force t.config.server))
       in
       Fiber.fork_and_join_unit terminate_sessions shutdown
     in

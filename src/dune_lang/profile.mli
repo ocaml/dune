@@ -14,6 +14,6 @@ val is_release : t -> bool
 
 val is_inline_test : t -> bool
 
-include Dune_util.Stringlike_intf.S with type t := t
+include Dune_util.Stringlike with type t := t
 
 val default : t

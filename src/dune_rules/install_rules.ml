@@ -387,7 +387,7 @@ end = struct
                 let src = File_binding.Expanded.src fb in
                 let dst = File_binding.Expanded.dst fb in
                 let+ entry =
-                  Install.Entry.make_with_site ~kind:`File section
+                  Install_entry_with_site.make_with_site ~kind:`File section
                     (Sites.section_of_site sites)
                     src ?dst
                 in
@@ -402,7 +402,8 @@ end = struct
                 let src = File_binding.Expanded.src fb in
                 let dst = File_binding.Expanded.dst fb in
                 let+ entry =
-                  Install.Entry.make_with_site section ~kind:`Directory
+                  Install_entry_with_site.make_with_site section
+                    ~kind:`Directory
                     (Sites.section_of_site sites)
                     src ?dst
                 in
@@ -531,7 +532,7 @@ end = struct
     let pkg_name = Package.name pkg in
     let sections =
       (* the one from sites *)
-      Section.Site.Map.values pkg.sites |> Section.Set.of_list
+      Site.Map.values pkg.sites |> Section.Set.of_list
     in
     let sections =
       (* the one from install stanza *)
@@ -539,7 +540,7 @@ end = struct
           Section.Set.add acc s)
     in
     Section.Set.to_map sections ~f:(fun section ->
-        Install.Section.Paths.get_local_location ctx_name section pkg_name)
+        Install.Paths.get_local_location ctx_name section pkg_name)
 
   (* TODO delay the library resolution errors here. We should still be load
      the [dune-package] file rule even if some libraries are missing *)
@@ -547,7 +548,7 @@ end = struct
     let pkg_name = Package.name pkg in
     let ctx = Super_context.context sctx in
     let pkg_root =
-      Local_install_path.lib_dir ~context:ctx.name ~package:pkg_name
+      Install.Context.lib_dir ~context:ctx.name ~package:pkg_name
     in
     let lib_root lib =
       let subdir =
@@ -711,7 +712,7 @@ end = struct
             ; entries
             ; dir =
                 Path.build
-                  (Local_install_path.lib_dir ~context:ctx.name ~package:name)
+                  (Install.Context.lib_dir ~context:ctx.name ~package:name)
             ; sections
             ; sites = pkg.sites
             ; files = []
@@ -837,7 +838,7 @@ include Meta_and_dune_package
 let symlink_installed_artifacts_to_build_install sctx
     (entries : Install.Entry.Sourced.t list) ~install_paths =
   let ctx = Super_context.context sctx |> Context.build_context in
-  let install_dir = Local_install_path.dir ~context:ctx.name in
+  let install_dir = Install.Context.dir ~context:ctx.name in
   List.map entries ~f:(fun (s : Install.Entry.Sourced.t) ->
       let entry = s.entry in
       let dst =
@@ -912,8 +913,8 @@ let packages_file_is_part_of path =
 
 let symlinked_entries sctx package =
   let package_name = Package.name package in
-  let roots = Install.Section.Paths.Roots.opam_from_prefix Path.root in
-  let install_paths = Install.Section.Paths.make ~package:package_name ~roots in
+  let roots = Install.Roots.opam_from_prefix Path.root in
+  let install_paths = Install.Paths.make ~package:package_name ~roots in
   let+ entries = install_entries sctx package in
   symlink_installed_artifacts_to_build_install sctx ~install_paths entries
   |> List.split
@@ -983,7 +984,7 @@ include (
                 let comps = List.rev comps in
                 Install.Entry.set_src entry path
                 |> Install.Entry.map_dst ~f:(fun dst ->
-                       Install.Dst.concat_all dst comps))
+                       Install.Entry.Dst.concat_all dst comps))
             |> List.sort
                  ~compare:(fun (x : _ Install.Entry.t) (y : _ Install.Entry.t)
                           -> Path.compare x.src y.src)
@@ -1011,7 +1012,7 @@ include (
               match entry.kind with
               | `File -> [ entry ]
               | `Directory -> read_dir_recursively entry)
-          |> Install.gen_install_file
+          |> Install.Entry.gen_install_file
         in
         Io.write_file (Path.build dst) entries;
         Fiber.return ()
@@ -1036,8 +1037,8 @@ include (
 
 let gen_package_install_file_rules sctx (package : Package.t) =
   let package_name = Package.name package in
-  let roots = Install.Section.Paths.Roots.opam_from_prefix Path.root in
-  let install_paths = Install.Section.Paths.make ~package:package_name ~roots in
+  let roots = Install.Roots.opam_from_prefix Path.root in
+  let install_paths = Install.Paths.make ~package:package_name ~roots in
   let entries =
     Action_builder.of_memo (symlinked_entries sctx package >>| fst)
   in
@@ -1173,7 +1174,7 @@ let memo =
         (let ctx = Super_context.context sctx in
          let context_name = ctx.name in
          Scheme.Approximation
-           ( Dir_set.subtree (Local_install_path.dir ~context:context_name)
+           ( Dir_set.subtree (Install.Context.dir ~context:context_name)
            , Thunk
                (fun () ->
                  let+ rules = symlinked_entries sctx pkg >>| snd in

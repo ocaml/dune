@@ -54,9 +54,19 @@ end
 module Lock_dir = struct
   include Dune_pkg.Lock_dir
 
-  let get () : t Memo.t =
-    (* TODO this should be able to handle lock directories at the non-default path *)
-    let path = default_path in
+  let get (ctx : Context_name.t) : t Memo.t =
+    let* path =
+      let+ workspace = Workspace.workspace () in
+      match
+        List.find_map workspace.contexts ~f:(fun ctx' ->
+            match Context_name.equal (Workspace.Context.name ctx') ctx with
+            | false -> None
+            | true -> Some ctx')
+      with
+      | None -> default_path
+      | Some (Default { lock; _ }) -> Option.value lock ~default:default_path
+      | Some (Opam _) -> assert false
+    in
     Fs_memo.dir_exists (In_source_dir path) >>= function
     | false ->
       (* TODO *)
@@ -116,14 +126,14 @@ module Paths = struct
     { source_dir : Path.Build.t
     ; target_dir : Path.Build.t
     ; name : Package.Name.t
-    ; install_roots : Path.t Install.Section.Paths.Roots.t Lazy.t
-    ; install_paths : Install.Section.Paths.t Lazy.t
+    ; install_roots : Path.t Install.Roots.t Lazy.t
+    ; install_paths : Install.Paths.t Lazy.t
     }
 
   let install_roots ~target_dir =
-    Path.build target_dir |> Install.Section.Paths.Roots.opam_from_prefix
+    Path.build target_dir |> Install.Roots.opam_from_prefix
 
-  let install_paths roots package = Install.Section.Paths.make ~package ~roots
+  let install_paths roots package = Install.Paths.make ~package ~roots
 
   let of_root name ~root =
     let source_dir = Path.Build.relative root "source" in
@@ -296,31 +306,26 @@ module Pkg = struct
     |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t ->
            Path.build t.paths.target_dir |> Dep.file |> Dep.Set.add acc)
 
-  let build_env t =
-    deps_closure t
-    |> List.fold_left ~init:Env.Map.empty ~f:(fun env t ->
-           let env =
-             let paths = Paths.install_paths t.paths in
+  let build_env =
+    let add_to_path env var what =
+      Env.Map.update env var ~f:(fun paths ->
+          let paths = Option.value paths ~default:[] in
+          Some (Value.Dir (Path.build what) :: paths))
+    in
+    fun t ->
+      deps_closure t
+      |> List.fold_left ~init:Env.Map.empty ~f:(fun env t ->
              let env =
-               Value.Dir (Install.Section.Paths.get paths Bin)
-               |> Env.Map.add_multi env Env_path.var
+               let roots =
+                 Paths.install_roots t.paths
+                 |> Install.Roots.map ~f:Path.as_in_build_dir_exn
+               in
+               let init = add_to_path env Env_path.var roots.bin in
+               let vars = Install.Roots.to_env_without_path roots in
+               List.fold_left vars ~init ~f:(fun acc (var, path) ->
+                   add_to_path acc var path)
              in
-             let env =
-               Value.Dir (Install.Section.Paths.get paths Toplevel)
-               |> Env.Map.add_multi env "OCAMLTOP_INCLUDE_PATH"
-             in
-             let env =
-               Value.Dir (Install.Section.Paths.get paths Lib)
-               |> Env.Map.add_multi env "OCAMLPATH"
-             in
-             let env =
-               Value.Dir (Install.Section.Paths.get paths Stublibs)
-               |> Env.Map.add_multi env "CAML_LD_LIBRARY_PATH"
-             in
-             Value.Dir (Install.Section.Paths.get paths Man)
-             |> Env.Map.add_multi env "MANPATH"
-           in
-           List.fold_left t.exported_env ~init:env ~f:Env_update.set)
+             List.fold_left t.exported_env ~init:env ~f:Env_update.set)
 
   let exported_env t =
     let base =
@@ -411,7 +416,7 @@ module Action_expander = struct
       | Man -> Man
       | Misc -> Misc
 
-    let section_dir_of_root (roots : _ Install.Section.Paths.Roots.t)
+    let section_dir_of_root (roots : _ Install.Roots.t)
         (section : Pform.Var.Pkg.Section.t) =
       match section with
       | Lib -> roots.lib_root
@@ -427,8 +432,8 @@ module Action_expander = struct
       | Misc -> assert false
 
     let expand_pform
-        { env = _; paths; artifacts = _; context = _; deps; version = _ }
-        ~source (pform : Pform.t) : Value.t list =
+        { env = _; paths; artifacts = _; context; deps; version = _ } ~source
+        (pform : Pform.t) : Value.t list =
       let loc = Dune_sexp.Template.Pform.loc source in
       match pform with
       | Var (Pkg Switch) -> [ String "dune" ]
@@ -479,8 +484,9 @@ module Action_expander = struct
                 | Some section ->
                   let section = dune_section_of_pform section in
                   let install_paths = Paths.install_paths paths in
-                  [ Dir (Install.Section.Paths.get install_paths section) ]))))
+                  [ Dir (Install.Paths.get install_paths section) ]))))
         | _ -> assert false)
+      | Var Context_name -> [ Value.String (Context_name.to_string context) ]
       | _ -> Expander.isn't_allowed_in_this_position ~source
 
     let expand_pform_gen t =
@@ -792,11 +798,8 @@ module Install_action = struct
             Path.basename install_file |> Filename.chop_extension
             |> Package.Name.of_string
           in
-          let roots =
-            Path.build target_dir
-            |> Install.Section.Paths.Roots.opam_from_prefix
-          in
-          Install.Section.Paths.make ~package ~roots
+          let roots = Path.build target_dir |> Install.Roots.opam_from_prefix in
+          Install.Paths.make ~package ~roots
         in
         Install.Entry.relative_installed_path entry ~paths
       in
@@ -841,7 +844,7 @@ module Install_action = struct
         Path.append_source ctx source
 
     let section_map_of_dir install_paths =
-      let get = Install.Section.Paths.get install_paths in
+      let get = Install.Paths.get install_paths in
       List.concat_map installable_sections ~f:(fun section ->
           let path = get section in
           let acc, dirs =
@@ -890,7 +893,9 @@ module Install_action = struct
           | true ->
             let map =
               let install_dir = Path.parent_exn install_file in
-              let install_entries = Install.load_install_file install_file in
+              let install_entries =
+                Install.Entry.load_install_file install_file
+              in
               let by_src =
                 List.rev_map install_entries
                   ~f:(fun (entry : _ Install.Entry.t) ->
@@ -1131,7 +1136,6 @@ let add_env env action =
 
 let rule ?loc { Action_builder.With_targets.build; targets } =
   (* TODO this ignores the workspace file *)
-  let build = Action_builder.map build ~f:(Action.Full.add_env Env.initial) in
   Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build ~context:None
   |> Rules.Produce.rule
 
@@ -1193,7 +1197,7 @@ let gen_rules context_name (pkg : Pkg.t) =
             let install_paths = Paths.install_paths pkg.paths in
             Install_action.installable_sections
             |> List.rev_map ~f:(fun section ->
-                   Install.Section.Paths.get install_paths section
+                   Install.Paths.get install_paths section
                    |> Path.as_in_build_dir_exn |> Action.mkdir)
             |> Action.progn |> Action.Full.make
             |> Action_builder.With_targets.return
@@ -1225,7 +1229,7 @@ let setup_package_rules context ~dir ~pkg_name :
   match Package.Name.of_string_user_error (Loc.none, pkg_name) with
   | Error m -> raise (User_error.E m)
   | Ok name -> (
-    let* db = Lock_dir.get () in
+    let* db = Lock_dir.get context in
     resolve db.packages context name >>| function
     | None ->
       User_error.raise

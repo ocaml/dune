@@ -14,7 +14,6 @@ include struct
   module Action_to_sh = Action_to_sh
   module Dpath = Dpath
   module Findlib = Dune_rules.Findlib
-  module Install = Dune_rules.Install
   module Diff_promotion = Diff_promotion
   module Cached_digest = Cached_digest
   module Targets = Targets
@@ -29,7 +28,7 @@ include struct
   module Lib_name = Lib_name
   module Workspace = Workspace
   module Package = Package
-  module Section = Section
+  module Section = Install.Section
   module Dune_project = Dune_project
   module Dune_package = Dune_package
   module Resolve = Resolve

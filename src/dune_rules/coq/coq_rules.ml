@@ -62,9 +62,7 @@ end = struct
     | Public (_, pkg) ->
       let package = Package.name pkg in
       let meta_i =
-        Path.Build.relative
-          (Local_install_path.lib_dir ~context ~package)
-          "META"
+        Path.Build.relative (Install.Context.lib_dir ~context ~package) "META"
       in
       Some (Path.build meta_i)
     | Installed -> None

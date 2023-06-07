@@ -1,12 +1,12 @@
 # Creates a monorepo out of packages in opam and builds it with dune
 
-FROM debian
+FROM debian:stable-20230522
 
 # Enable non-free packages
 RUN sed -i '/^deb/ s/$/ non-free/' /etc/apt/sources.list
 
 # Install tools and system dependencies of packages
-RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y \
   build-essential \
   sudo \
   pkg-config \
@@ -136,7 +136,7 @@ RUN opam switch create prepare 4.14.1
 RUN opam install -y opam-monorepo ppx_sexp_conv ocamlfind ctypes ctypes-foreign re sexplib menhir camlp-streams zarith stdcompat refl yojson logs fmt
 
 # Download the monorepo benchmark and copy files into the benchmark project
-ENV MONOREPO_BENCHMARK_TAG=2023-05-24.0
+ENV MONOREPO_BENCHMARK_TAG=2023-06-03.0
 RUN wget https://github.com/ocaml-dune/ocaml-monorepo-benchmark/archive/refs/tags/$MONOREPO_BENCHMARK_TAG.tar.gz -O ocaml-monorepo-benchmark.tar.gz && \
   tar xf ocaml-monorepo-benchmark.tar.gz && \
   mv ocaml-monorepo-benchmark-$MONOREPO_BENCHMARK_TAG monorepo-benchmark

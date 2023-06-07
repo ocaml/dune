@@ -374,13 +374,15 @@ let decode_old ~src_dir =
              ]
      in
      let file exists ml_kind =
+       let open Option.O in
        if exists then
          let module_basename n ~(ml_kind : Ml_kind.t) ~(dialect : Dialect.t) =
            let n = Module_name.to_string n in
-           String.lowercase n ^ Dialect.extension dialect ml_kind
+           let+ ext = Dialect.extension dialect ml_kind in
+           String.lowercase n ^ ext
          in
-         let basename = module_basename name ~ml_kind ~dialect:Dialect.ocaml in
-         Some (File.make Dialect.ocaml (Path.relative src_dir basename))
+         let+ basename = module_basename name ~ml_kind ~dialect:Dialect.ocaml in
+         File.make Dialect.ocaml (Path.relative src_dir basename)
        else None
      in
      let kind =

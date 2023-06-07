@@ -45,7 +45,10 @@ module Context : sig
   end
 
   module Default : sig
-    type t = Common.t
+    type t =
+      { base : Common.t
+      ; lock : Path.Source.t option
+      }
   end
 
   type t =

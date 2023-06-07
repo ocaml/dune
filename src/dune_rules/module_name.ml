@@ -1,8 +1,8 @@
 open Import
 
-let valid_format_doc = Section.valid_format_doc
+let valid_format_doc = Site.valid_format_doc
 
-include Section.Modulelike (struct
+include Site.Modulelike (struct
   type t = string
 
   let description = "module name"

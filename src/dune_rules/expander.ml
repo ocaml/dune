@@ -65,8 +65,6 @@ type t =
 
 let scope t = t.scope
 
-let scope_host t = t.scope_host
-
 let artifacts t = t.bin_artifacts_host
 
 let dir t = t.dir
@@ -291,7 +289,7 @@ let file_of_lib { Artifacts.Public_libs.context; public_libs } ~loc ~lib ~file =
       in
       let pkg_root =
         let package = Lib_name.package_name name in
-        Local_install_path.lib_dir ~context:context.name ~package
+        Install.Context.lib_dir ~context:context.name ~package
       in
       Path.build (Path.Build.append_local pkg_root subdir)
   in

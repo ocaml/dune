@@ -539,20 +539,11 @@ module Library = struct
       else
         (* Old behavior: if old parser succeeds, return that. Otherwise, if
            parsing the ordered set language succeeds, ask the user to upgrade to
-           a supported version. Otherwise, fail with the first error. *)
-        try_
-          (Mode_conf.Lib.Set.decode >>| fun modes -> `Modes modes)
-          (fun exn ->
-            try_
-              ( Mode_conf.Lib.Set.decode_osl ~stanza_loc project >>| fun modes ->
-                if dune_version >= expected_version then `Modes modes
-                else `Upgrade )
-              (fun _ -> raise exn))
-        >>| function
-        | `Modes modes -> modes
-        | `Upgrade ->
-          Syntax.Error.since stanza_loc Stanza.syntax expected_version
-            ~what:"Ordered set language for modes"
+           a supported version *)
+        try_ Mode_conf.Lib.Set.decode (fun _exn ->
+            Mode_conf.Lib.Set.decode_osl ~stanza_loc project >>| fun _modes ->
+            Syntax.Error.since stanza_loc Stanza.syntax expected_version
+              ~what:"Ordered set language for modes")
   end
 
   type visibility =
@@ -1032,7 +1023,7 @@ module Plugin = struct
     { package : Package.t
     ; name : Package.Name.t
     ; libraries : (Loc.t * Lib_name.t) list
-    ; site : Loc.t * (Package.Name.t * Section.Site.t)
+    ; site : Loc.t * (Package.Name.t * Site.t)
     ; optional : bool
     }
 
@@ -1040,8 +1031,7 @@ module Plugin = struct
     fields
       (let+ name = field "name" Package.Name.decode
        and+ libraries = field "libraries" (repeat (located Lib_name.decode))
-       and+ site =
-         field "site" (located (pair Package.Name.decode Section.Site.decode))
+       and+ site = field "site" (located (pair Package.Name.decode Site.decode))
        and+ package = Stanza_common.Pkg.field ~stanza:"plugin"
        and+ optional = field_b "optional" in
        { name; libraries; site; package; optional })
@@ -1049,7 +1039,7 @@ end
 
 module Install_conf = struct
   type t =
-    { section : Install.Section_with_site.t
+    { section : Section_with_site.t
     ; files : Install_entry.File.t list
     ; dirs : Install_entry.Dir.t list
     ; package : Package.t
@@ -1059,7 +1049,7 @@ module Install_conf = struct
   let decode =
     fields
       (let+ loc = loc
-       and+ section = field "section" Install.Section_with_site.decode
+       and+ section = field "section" Section_with_site.decode
        and+ files = field_o "files" (repeat Install_entry.File.decode)
        and+ dirs =
          field_o "dirs"
@@ -2290,11 +2280,11 @@ module Stanzas = struct
               ];
         [ Cram_stanza.T t ] )
     ; ( "generate_sites_module"
-      , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
+      , let+ () = Dune_lang.Syntax.since Site.dune_site_syntax (0, 1)
         and+ t = Generate_sites_module_stanza.decode in
         [ Generate_sites_module_stanza.T t ] )
     ; ( "plugin"
-      , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
+      , let+ () = Dune_lang.Syntax.since Site.dune_site_syntax (0, 1)
         and+ t = Plugin.decode in
         [ Plugin t ] )
     ]

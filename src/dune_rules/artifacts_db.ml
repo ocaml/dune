@@ -3,7 +3,7 @@ open Memo.O
 
 let get_installed_binaries ~(context : Context.t) stanzas =
   let open Memo.O in
-  let install_dir = Local_install_path.bin_dir ~context:context.name in
+  let install_dir = Install.Context.bin_dir ~context:context.name in
   let expand_str ~dir sw =
     Expander.With_reduced_var_set.expand_str ~context ~dir sw
   in
@@ -23,7 +23,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
                 ~section:Bin ~expand:(expand_str ~dir)
                 ~expand_partial:(expand_str_partial ~dir)
             in
-            let p = Path.Local.of_string (Install.Dst.to_string p) in
+            let p = Path.Local.of_string (Install.Entry.Dst.to_string p) in
             if Path.Local.is_root (Path.Local.parent_exn p) then
               Some (Path.Build.append_local install_dir p)
             else None)

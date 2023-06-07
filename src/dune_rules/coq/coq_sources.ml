@@ -58,6 +58,25 @@ let check_no_unqualified (loc, (qualif_mode : Dune_file.Include_subdirs.t)) =
 let extract t (stanza : Extraction.t) =
   Loc.Map.find_exn t.extract stanza.buildable.loc
 
+let add_module_to_rev_map ~stanza acc m =
+  Coq_module.Map.add acc m stanza |> function
+  | Ok acc -> acc
+  | Error
+      ( `Theory { Theory.buildable = { Buildable.loc = other_loc; _ }; _ }
+      | `Extraction
+          { Extraction.buildable = { Buildable.loc = other_loc; _ }; _ } ) ->
+    User_error.raise
+      [ Pp.textf "Coq module %S occurs in multiple Coq stanzas:"
+          (Coq_module.name m |> Coq_module.Name.to_string)
+      ; (let loc =
+           match stanza with
+           | `Theory (theory : Theory.t) -> theory.buildable.Buildable.loc
+           | `Extraction (extr : Extraction.t) -> extr.buildable.Buildable.loc
+         in
+         Pp.enumerate [ loc; other_loc ] ~f:(fun l ->
+             Pp.map_tags ~f:(fun _ -> Stdune.User_message.Style.Loc) (Loc.pp l)))
+      ]
+
 let of_dir stanzas ~dir ~include_subdirs ~dirs =
   check_no_unqualified include_subdirs;
   let modules = coq_modules_of_files ~dirs in
@@ -72,14 +91,8 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
         Coq_lib_name.Map.add_exn acc.libraries (snd coq.name) modules
       in
       let rev_map =
-        List.fold_left modules ~init:acc.rev_map ~f:(fun acc m ->
-            Coq_module.Map.add acc m (`Theory coq) |> function
-            | Ok acc -> acc
-            | Error _ ->
-              User_error.raise ~loc:coq.buildable.loc
-                [ Pp.textf "Duplicate Coq module %S."
-                    (Coq_module.name m |> Coq_module.Name.to_string)
-                ])
+        List.fold_left modules ~init:acc.rev_map
+          ~f:(add_module_to_rev_map ~stanza:(`Theory coq))
       in
       { acc with directories; libraries; rev_map }
     | Extraction.T extr ->
@@ -95,7 +108,9 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
             [ Pp.text "no coq source corresponding to prelude field" ]
       in
       let extract = Loc.Map.add_exn acc.extract extr.buildable.loc m in
-      let rev_map = Coq_module.Map.add_exn acc.rev_map m (`Extraction extr) in
+      let rev_map =
+        add_module_to_rev_map acc.rev_map m ~stanza:(`Extraction extr)
+      in
       { acc with extract; rev_map }
     | _ -> acc)
 

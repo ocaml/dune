@@ -1044,22 +1044,20 @@ let term : unit Term.t =
   and+ options = Options.arg in
   let config = Common.init common in
   let what = What.parse what ~lang in
-  Scheduler.go ~common ~config (fun () ->
-      let open Fiber.O in
-      let* setup = Import.Main.setup () in
-      let* setup = Memo.run setup in
-      let super_context =
-        Import.Main.find_scontext_exn setup ~name:context_name
-      in
-      let+ res =
-        Build_system.run_exn (fun () ->
-            What.describe what options common setup super_context)
-      in
-      match res with
-      | None -> ()
-      | Some res -> (
-        match format with
-        | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
-        | Sexp -> print_as_sexp res))
+  Scheduler.go ~common ~config @@ fun () ->
+  let open Fiber.O in
+  let* setup = Import.Main.setup () in
+  let* setup = Memo.run setup in
+  let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
+  let+ res =
+    Build_system.run_exn (fun () ->
+        What.describe what options common setup super_context)
+  in
+  match res with
+  | None -> ()
+  | Some res -> (
+    match format with
+    | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
+    | Sexp -> print_as_sexp res)
 
 let command = Cmd.v info term

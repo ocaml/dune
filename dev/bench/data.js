@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686140735955,
+  "lastUpdate": 1686141056555,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -42048,6 +42048,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6791693395733331",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd1193de7b5b59770d01d0a3f43e6936c6271a16",
+          "message": "doc: .opam.template files can be generated (#7911)\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-06-07T14:04:52+02:00",
+          "tree_id": "812657e8e73fb243601ac298fdfa3b34dcd19293",
+          "url": "https://github.com/ocaml/dune/commit/bd1193de7b5b59770d01d0a3f43e6936c6271a16"
+        },
+        "date": 1686141055565,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "63.18092104314667",
             "unit": "seconds"
           }
         ]

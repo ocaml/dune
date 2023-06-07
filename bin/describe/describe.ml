@@ -886,7 +886,7 @@ module What = struct
       in
       Dune_lang.Decoder.parse parse Univ_map.empty ast
 
-  let describe t options (common : Common.t) setup super_context =
+  let describe t options (common : Common.t) setup super_context () =
     let some = Memo.map ~f:(fun x -> Some x) in
     match t with
     | Opam_files -> Opam_files.get () |> some
@@ -1050,8 +1050,7 @@ let term : unit Term.t =
   let* setup = Memo.run setup in
   let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
   let+ res =
-    Build_system.run_exn (fun () ->
-        What.describe what options common setup super_context)
+    Build_system.run_exn (What.describe what options common setup super_context)
   in
   match res with
   | None -> ()

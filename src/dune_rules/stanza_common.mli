@@ -14,8 +14,6 @@ module Pkg : sig
   val default_exn : loc:Loc.t -> Dune_project.t -> string -> Package.t
 end
 
-val modules_field : string -> Ordered_set_lang.t fields_parser
-
 (** [preprocess] and [preprocessor_deps] fields *)
 val preprocess_fields :
   (Preprocess.Without_instrumentation.t Preprocess.Per_module.t

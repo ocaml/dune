@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686124703083,
+  "lastUpdate": 1686125225129,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -18935,6 +18935,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.57841209818667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "javier.chavarri@gmail.com",
+            "name": "Javier Chávarri",
+            "username": "jchavarri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "38adb9cd3b27ec71a0058af032708cdebd16c607",
+          "message": "melange: update docs (#7850)\n\nSigned-off-by: Javier Chávarri <javier.chavarri@gmail.com>\r\nCo-authored-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-06-07T09:35:53+02:00",
+          "tree_id": "21578206837ed0b7e27fdd9ea104ea54033ccb77",
+          "url": "https://github.com/ocaml/dune/commit/38adb9cd3b27ec71a0058af032708cdebd16c607"
+        },
+        "date": 1686125224394,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.092728494053326",
             "unit": "seconds"
           }
         ]

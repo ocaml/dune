@@ -784,71 +784,6 @@ module Preprocess = struct
       |> Memo.of_non_reproducible_fiber
 end
 
-(* What to describe. To determine what to describe, we convert the positional
-   arguments of the command line to a list of atoms and we parse it using the
-   regular [Dune_lang.Decoder].
-
-   This way we can reuse all the existing versioning, error reporting, etc...
-   machinery. This also allow to easily extend this to arbitrary complex phrases
-   without hassle. *)
-module What = struct
-  type t = Workspace of { dirs : string list option }
-
-  (** By default, describe the whole workspace *)
-  let default = Workspace { dirs = None }
-
-  (* The list of command names, their args, their documentation, and their
-     parser *)
-  let parsers_with_docs :
-      (string * string list * string * t Dune_lang.Decoder.t) list =
-    let open Dune_lang.Decoder in
-    [ ( "workspace"
-      , [ "DIRS" ]
-      , "prints a description of the workspace's structure. If some \
-         directories DIRS are provided, then only those directories of the \
-         workspace are considered."
-      , let+ dirs = repeat relative_file in
-        (* [None] means that all directories should be accepted,
-           whereas [Some l] means that only the directories in the
-           list [l] should be accepted. The checks on whether the
-           paths exist and whether they are directories are performed
-           later in the [describe] function. *)
-        let dirs = if List.is_empty dirs then None else Some dirs in
-        Workspace { dirs } )
-    ]
-
-  (* The list of documentation strings (one for each command) *)
-  let docs =
-    List.map parsers_with_docs ~f:(fun (stag, args, doc, _parser) ->
-        let command = "$(b," ^ stag ^ ")" in
-        let args =
-          match args with
-          | [] -> " "
-          | _ -> " " ^ String.concat ~sep:" " args ^ " "
-        in
-        let desc = "(" ^ doc ^ ")" in
-        command ^ args ^ desc)
-
-  (* The decoder for commands *)
-  let parse =
-    let open Dune_lang.Decoder in
-    sum
-    @@ List.map
-         ~f:(fun (stag, _args, _doc, parser) -> (stag, parser))
-         parsers_with_docs
-
-  let parse ~lang args =
-    match args with
-    | [] -> default
-    | _ ->
-      let parse = Dune_lang.Syntax.set Stanza.syntax (Active lang) parse in
-      let ast =
-        Dune_lang.Ast.add_loc ~loc:Loc.none
-          (List (List.map args ~f:Dune_lang.atom_or_quoted_string))
-      in
-      Dune_lang.Decoder.parse parse Univ_map.empty ast
-end
-
 module Options = struct
   type t = options
 
@@ -953,19 +888,38 @@ let workspace_cmd_term : unit Term.t =
   and+ what =
     Arg.(
       value & pos_all string []
-      & info [] ~docv:"STRING"
+      & info [] ~docv:"DIRS"
           ~doc:
-            ("What to describe. The syntax of this description is tied to the \
-              version passed to $(b,--lang). The currently available commands \
-              are the following: "
-            ^ String.concat ~sep:", " What.docs
-            ^ "."))
+            "prints a description of the workspace's structure. If some \
+             directories DIRS are provided, then only those directories of the \
+             workspace are considered.")
   and+ context_name = Common.context_arg ~doc:"Build context to use."
   and+ format = Format.arg
   and+ lang = Lang.arg
   and+ options = Options.arg in
   let config = Common.init common in
-  let what = What.parse ("workspace" :: what) ~lang in
+  let dirs =
+    let args = "workspace" :: what in
+    let parse =
+      Dune_lang.Syntax.set Stanza.syntax (Active lang)
+      @@
+      let open Dune_lang.Decoder in
+      fields @@ field "workspace"
+      @@ let+ dirs = repeat relative_file in
+         (* [None] means that all directories should be accepted,
+            whereas [Some l] means that only the directories in the
+            list [l] should be accepted. The checks on whether the
+            paths exist and whether they are directories are performed
+            later in the [describe] function. *)
+         let dirs = if List.is_empty dirs then None else Some dirs in
+         dirs
+    in
+    let ast =
+      Dune_lang.Ast.add_loc ~loc:Loc.none
+        (List (List.map args ~f:Dune_lang.atom_or_quoted_string))
+    in
+    Dune_lang.Decoder.parse parse Univ_map.empty ast
+  in
   Scheduler.go ~common ~config @@ fun () ->
   let open Fiber.O in
   let* setup = Import.Main.setup () in
@@ -973,36 +927,33 @@ let workspace_cmd_term : unit Term.t =
   let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
   let+ res =
     Build_system.run_exn @@ fun () ->
-    match what with
-    | What.Workspace { dirs } ->
-      let context = Super_context.context super_context in
-      let open Memo.O in
-      let* dirs =
-        (* prefix directories with the workspace root, so that the
-           command also works correctly when it is run from a
-           subdirectory *)
-        Memo.Option.map dirs
-          ~f:
-            (Memo.List.map ~f:(fun dir ->
-                 let p =
-                   Path.Source.(relative root) (Common.prefix_target common dir)
-                 in
-                 let s = Path.source p in
-                 if not @@ Path.exists s then
-                   User_error.raise
-                     [ Pp.textf "No such file or directory: %s"
-                         (Path.to_string s)
-                     ];
-                 if not @@ Path.is_directory s then
-                   User_error.raise
-                     [ Pp.textf "File exists, but is not a directory: %s"
-                         (Path.to_string s)
-                     ];
-                 Memo.return p))
-      in
-      Crawl.workspace options dirs setup context
-      >>| Sanitize_for_tests.Workspace.sanitize context
-      >>| Descr.Workspace.to_dyn options
+    let context = Super_context.context super_context in
+    let open Memo.O in
+    let* dirs =
+      (* prefix directories with the workspace root, so that the
+         command also works correctly when it is run from a
+         subdirectory *)
+      Memo.Option.map dirs
+        ~f:
+          (Memo.List.map ~f:(fun dir ->
+               let p =
+                 Path.Source.(relative root) (Common.prefix_target common dir)
+               in
+               let s = Path.source p in
+               if not @@ Path.exists s then
+                 User_error.raise
+                   [ Pp.textf "No such file or directory: %s" (Path.to_string s)
+                   ];
+               if not @@ Path.is_directory s then
+                 User_error.raise
+                   [ Pp.textf "File exists, but is not a directory: %s"
+                       (Path.to_string s)
+                   ];
+               Memo.return p))
+    in
+    Crawl.workspace options dirs setup context
+    >>| Sanitize_for_tests.Workspace.sanitize context
+    >>| Descr.Workspace.to_dyn options
   in
   match format with
   | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)

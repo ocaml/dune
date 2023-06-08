@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686210917013,
+  "lastUpdate": 1686211508935,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -19022,6 +19022,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.35038946858",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6f8952c791d5a0053191021610dbadb048cc605f",
+          "message": "refactor: remove Stanza_common.modules_field (#7916)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-08T08:40:19+01:00",
+          "tree_id": "d5188f0279c721903e903fc3b9eaf93eee935212",
+          "url": "https://github.com/ocaml/dune/commit/6f8952c791d5a0053191021610dbadb048cc605f"
+        },
+        "date": 1686211507766,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "46.91191039043999",
             "unit": "seconds"
           }
         ]

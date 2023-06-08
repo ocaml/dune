@@ -795,7 +795,6 @@ module What = struct
   type t =
     | Workspace of { dirs : string list option }
     | External_lib_deps
-    | Opam_files
 
   (** By default, describe the whole workspace *)
   let default = Workspace { dirs = None }
@@ -818,10 +817,6 @@ module What = struct
            later in the [describe] function. *)
         let dirs = if List.is_empty dirs then None else Some dirs in
         Workspace { dirs } )
-    ; ( "opam-files"
-      , []
-      , "prints information about the Opam files that have been discovered"
-      , return Opam_files )
     ; ( "external-lib-deps"
       , []
       , "Print out external libraries needed to build the project. It's an \
@@ -863,7 +858,6 @@ module What = struct
   let describe t options (common : Common.t) setup super_context () =
     let some = Memo.map ~f:(fun x -> Some x) in
     match t with
-    | Opam_files -> Opam_files.get () |> some
     | External_lib_deps -> External_lib_deps.get setup super_context |> some
     | Workspace { dirs } ->
       let context = Super_context.context super_context in
@@ -1069,35 +1063,23 @@ let external_lib_deps_cmd =
        | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
        | Sexp -> print_as_sexp res)
 
+let opam_files_cmd_term =
+  let+ common = Common.term
+  and+ format = Format.arg in
+  let config = Common.init common in
+  Scheduler.go ~common ~config @@ fun () ->
+  let open Fiber.O in
+  let+ res = Build_system.run_exn (fun () -> Opam_files.get ()) in
+  match format with
+  | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
+  | Sexp -> print_as_sexp res
+
 let opam_files_cmd =
   let doc =
     "prints information about the Opam files that have been discovered"
   in
   let info = Cmd.info ~doc "opam-files" in
-  Cmd.v info
-  @@ let+ common = Common.term
-     and+ context_name = Common.context_arg ~doc:"Build context to use."
-     and+ format = Format.arg
-     and+ options = Options.arg in
-     let config = Common.init common in
-     let what = What.Opam_files in
-     Scheduler.go ~common ~config @@ fun () ->
-     let open Fiber.O in
-     let* setup = Import.Main.setup () in
-     let* setup = Memo.run setup in
-     let super_context =
-       Import.Main.find_scontext_exn setup ~name:context_name
-     in
-     let+ res =
-       Build_system.run_exn
-         (What.describe what options common setup super_context)
-     in
-     match res with
-     | None -> ()
-     | Some res -> (
-       match format with
-       | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
-       | Sexp -> print_as_sexp res)
+  Cmd.v info opam_files_cmd_term
 
 let pp_cmd_term =
   let+ common = Common.term

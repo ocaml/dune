@@ -45,3 +45,15 @@ end
 module Preprocess : sig
   val run : Super_context.t -> string -> unit Memo.t
 end
+
+module Format : sig
+  type t =
+    | Sexp
+    | Csexp
+
+  val all : (string * t) list
+
+  val arg : t Term.t
+end
+
+val print_as_sexp : Dyn.t -> unit

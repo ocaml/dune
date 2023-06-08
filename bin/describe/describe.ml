@@ -34,18 +34,6 @@ module Options = struct
     { Describe_common.with_deps; with_pps }
 end
 
-module Format = struct
-  type t =
-    | Sexp
-    | Csexp
-
-  let all = [ ("sexp", Sexp); ("csexp", Csexp) ]
-
-  let arg =
-    let doc = Printf.sprintf "$(docv) must be %s" (Arg.doc_alts_enum all) in
-    Arg.(value & opt (enum all) Sexp & info [ "format" ] ~docv:"FORMAT" ~doc)
-end
-
 module Lang = struct
   type t = Dune_lang.Syntax.Version.t
 
@@ -108,7 +96,7 @@ let workspace_cmd_term : unit Term.t =
              directories DIRS are provided, then only those directories of the \
              workspace are considered.")
   and+ context_name = Common.context_arg ~doc:"Build context to use."
-  and+ format = Format.arg
+  and+ format = Describe_common.Format.arg
   and+ lang = Lang.arg
   and+ options = Options.arg in
   let config = Common.init common in
@@ -170,7 +158,7 @@ let workspace_cmd_term : unit Term.t =
     >>| Describe_common.Descr.Workspace.to_dyn options
   in
   match format with
-  | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
+  | Describe_common.Format.Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
   | Sexp -> print_as_sexp res
 
 let workspace_cmd =
@@ -185,7 +173,7 @@ let workspace_cmd =
 let external_lib_deps_cmd_term =
   let+ common = Common.term
   and+ context_name = Common.context_arg ~doc:"Build context to use."
-  and+ format = Format.arg in
+  and+ format = Describe_common.Format.arg in
   let config = Common.init common in
   Scheduler.go ~common ~config @@ fun () ->
   let open Fiber.O in
@@ -207,26 +195,6 @@ let external_lib_deps_cmd =
   in
   let info = Cmd.info ~doc "external-lib-deps" in
   Cmd.v info external_lib_deps_cmd_term
-
-let opam_files_cmd_term =
-  let+ common = Common.term
-  and+ format = Format.arg in
-  let config = Common.init common in
-  Scheduler.go ~common ~config @@ fun () ->
-  let open Fiber.O in
-  let+ res =
-    Build_system.run_exn (fun () -> Describe_common.Opam_files.get ())
-  in
-  match format with
-  | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
-  | Sexp -> print_as_sexp res
-
-let opam_files_cmd =
-  let doc =
-    "prints information about the Opam files that have been discovered"
-  in
-  let info = Cmd.info ~doc "opam-files" in
-  Cmd.v info opam_files_cmd_term
 
 let group =
   let doc = "Describe the workspace." in
@@ -251,6 +219,6 @@ let group =
   Cmd.group ~default info
     [ workspace_cmd
     ; external_lib_deps_cmd
-    ; opam_files_cmd
+    ; Describe_opam_files.command
     ; Describe_pp.command
     ]

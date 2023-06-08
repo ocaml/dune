@@ -57,8 +57,10 @@ Finally, add a source file to build:
 
   echo 'Js.log "hello from melange"' > hello.ml
 
-After running ``dune build output/hello.js``, Dune produces the following
-file structure:
+After running ``dune build output/hello.js`` or ``dune build @melange``
+(by default, all ``melange.emit`` stanzas will attach their targets to
+the  ``melange`` alias),
+Dune produces the following file structure:
 
 .. code::
 

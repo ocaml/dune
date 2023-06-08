@@ -16,6 +16,6 @@ let term =
       Describe_common.Preprocess.run super_context file)
 
 let command =
-  let doc = "builds a given FILE and prints the preprocessed output" in
+  let doc = "Build a given FILE and print the preprocessed output." in
   let info = Cmd.info ~doc "pp" in
   Cmd.v info term

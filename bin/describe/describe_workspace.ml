@@ -163,7 +163,7 @@ let term : unit Term.t =
 
 let command =
   let doc =
-    "prints a description of the workspace's structure. If some directories \
+    "Print a description of the workspace's structure. If some directories \
      DIRS are provided, then only those directories of the workspace are \
      considered."
   in

@@ -16,7 +16,7 @@ let term =
 
 let command =
   let doc =
-    "prints information about the Opam files that have been discovered"
+    "Print information about the opam files that have been discovered."
   in
   let info = Cmd.info ~doc "opam-files" in
   Cmd.v info term

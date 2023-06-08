@@ -796,7 +796,6 @@ module What = struct
     | Workspace of { dirs : string list option }
     | External_lib_deps
     | Opam_files
-    | Pp of string
 
   (** By default, describe the whole workspace *)
   let default = Workspace { dirs = None }
@@ -823,11 +822,6 @@ module What = struct
       , []
       , "prints information about the Opam files that have been discovered"
       , return Opam_files )
-    ; ( "pp"
-      , [ "FILE" ]
-      , "builds a given FILE and prints the preprocessed output"
-      , let+ s = filename in
-        Pp s )
     ; ( "external-lib-deps"
       , []
       , "Print out external libraries needed to build the project. It's an \
@@ -901,10 +895,6 @@ module What = struct
       >>| Sanitize_for_tests.Workspace.sanitize context
       >>| Descr.Workspace.to_dyn options
       |> some
-    | Pp file ->
-      let open Memo.O in
-      let+ () = Preprocess.run super_context file in
-      None
 end
 
 module Options = struct
@@ -1109,36 +1099,24 @@ let opam_files_cmd =
        | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
        | Sexp -> print_as_sexp res)
 
+let pp_cmd_term =
+  let+ common = Common.term
+  and+ context_name = Common.context_arg ~doc:"Build context to use."
+  and+ file =
+    Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"FILE"))
+  in
+  let config = Common.init common in
+  Scheduler.go ~common ~config @@ fun () ->
+  let open Fiber.O in
+  let* setup = Import.Main.setup () in
+  let* setup = Memo.run setup in
+  let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
+  Build_system.run_exn (fun () -> Preprocess.run super_context file)
+
 let pp_cmd =
   let doc = "builds a given FILE and prints the preprocessed output" in
   let info = Cmd.info ~doc "pp" in
-  Cmd.v info
-  @@ let+ common = Common.term
-     and+ context_name = Common.context_arg ~doc:"Build context to use."
-     and+ format = Format.arg
-     and+ options = Options.arg
-     and+ file =
-       Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"FILE"))
-     in
-     let config = Common.init common in
-     let what = What.Pp file in
-     Scheduler.go ~common ~config @@ fun () ->
-     let open Fiber.O in
-     let* setup = Import.Main.setup () in
-     let* setup = Memo.run setup in
-     let super_context =
-       Import.Main.find_scontext_exn setup ~name:context_name
-     in
-     let+ res =
-       Build_system.run_exn
-         (What.describe what options common setup super_context)
-     in
-     match res with
-     | None -> ()
-     | Some res -> (
-       match format with
-       | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
-       | Sexp -> print_as_sexp res)
+  Cmd.v info pp_cmd_term
 
 let group =
   let doc = "Describe the workspace." in

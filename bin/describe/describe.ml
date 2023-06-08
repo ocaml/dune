@@ -849,7 +849,6 @@ module What = struct
       Dune_lang.Decoder.parse parse Univ_map.empty ast
 
   let describe t options (common : Common.t) setup super_context () =
-    let some = Memo.map ~f:(fun x -> Some x) in
     match t with
     | Workspace { dirs } ->
       let context = Super_context.context super_context in
@@ -880,7 +879,6 @@ module What = struct
       Crawl.workspace options dirs setup context
       >>| Sanitize_for_tests.Workspace.sanitize context
       >>| Descr.Workspace.to_dyn options
-      |> some
 end
 
 module Options = struct
@@ -1008,12 +1006,9 @@ let workspace_cmd_term : unit Term.t =
   let+ res =
     Build_system.run_exn (What.describe what options common setup super_context)
   in
-  match res with
-  | None -> ()
-  | Some res -> (
-    match format with
-    | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
-    | Sexp -> print_as_sexp res)
+  match format with
+  | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
+  | Sexp -> print_as_sexp res
 
 let workspace_cmd =
   let doc =

@@ -170,32 +170,6 @@ let workspace_cmd =
   let info = Cmd.info ~doc "workspace" in
   Cmd.v info workspace_cmd_term
 
-let external_lib_deps_cmd_term =
-  let+ common = Common.term
-  and+ context_name = Common.context_arg ~doc:"Build context to use."
-  and+ format = Describe_common.Format.arg in
-  let config = Common.init common in
-  Scheduler.go ~common ~config @@ fun () ->
-  let open Fiber.O in
-  let* setup = Import.Main.setup () in
-  let* setup = Memo.run setup in
-  let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
-  let+ res =
-    Build_system.run_exn (fun () ->
-        Describe_common.External_lib_deps.get setup super_context)
-  in
-  match format with
-  | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
-  | Sexp -> print_as_sexp res
-
-let external_lib_deps_cmd =
-  let doc =
-    "Print out external libraries needed to build the project. It's an \
-     approximated set of libraries."
-  in
-  let info = Cmd.info ~doc "external-lib-deps" in
-  Cmd.v info external_lib_deps_cmd_term
-
 let group =
   let doc = "Describe the workspace." in
   let man =
@@ -218,7 +192,7 @@ let group =
   let default = workspace_cmd_term in
   Cmd.group ~default info
     [ workspace_cmd
-    ; external_lib_deps_cmd
+    ; Describe_external_lib_deps.command
     ; Describe_opam_files.command
     ; Describe_pp.command
     ]

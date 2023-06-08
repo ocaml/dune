@@ -8,26 +8,6 @@ open Import
 
    - duniverse people for "describe opam-files" *)
 
-let doc = "Describe the workspace."
-
-let man =
-  [ `S "DESCRIPTION"
-  ; `P
-      {|Describe what is in the current workspace in either human or
-        machine readable form.
-
-        By default, this command output a human readable description of
-        the current workspace. This output is aimed at human and is not
-        suitable for machine processing. In particular, it is not versioned.
-
-        If you want to interpret the output of this command from a program,
-        you must use the $(b,--format) option to specify a machine readable
-        format as well as the $(b,--lang) option to get a stable output.|}
-  ; `Blocks Common.help_secs
-  ]
-
-let info = Cmd.info "describe" ~doc ~man
-
 (** whether to sanitize absolute paths of workspace items, and their UIDs, to
     ensure reproducible tests *)
 let sanitize_for_tests = ref false
@@ -1026,7 +1006,7 @@ let print_as_sexp dyn =
   Pp.to_fmt Stdlib.Format.std_formatter
     (Dune_lang.Format.pp_top_sexps ~version [ cst ])
 
-let term : unit Term.t =
+let workspace_cmd_term : unit Term.t =
   let+ common = Common.term
   and+ what =
     Arg.(
@@ -1043,7 +1023,7 @@ let term : unit Term.t =
   and+ lang = Lang.arg
   and+ options = Options.arg in
   let config = Common.init common in
-  let what = What.parse what ~lang in
+  let what = What.parse ("workspace" :: what) ~lang in
   Scheduler.go ~common ~config @@ fun () ->
   let open Fiber.O in
   let* setup = Import.Main.setup () in
@@ -1059,4 +1039,126 @@ let term : unit Term.t =
     | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
     | Sexp -> print_as_sexp res)
 
-let command = Cmd.v info term
+let workspace_cmd =
+  let doc =
+    "prints a description of the workspace's structure. If some directories \
+     DIRS are provided, then only those directories of the workspace are \
+     considered."
+  in
+  let info = Cmd.info ~doc "workspace" in
+  Cmd.v info workspace_cmd_term
+
+let external_lib_deps_cmd =
+  let doc =
+    "Print out external libraries needed to build the project. It's an \
+     approximated set of libraries."
+  in
+  let info = Cmd.info ~doc "external-lib-deps" in
+  Cmd.v info
+  @@ let+ common = Common.term
+     and+ context_name = Common.context_arg ~doc:"Build context to use."
+     and+ format = Format.arg
+     and+ options = Options.arg in
+     let config = Common.init common in
+     let what = What.External_lib_deps in
+     Scheduler.go ~common ~config @@ fun () ->
+     let open Fiber.O in
+     let* setup = Import.Main.setup () in
+     let* setup = Memo.run setup in
+     let super_context =
+       Import.Main.find_scontext_exn setup ~name:context_name
+     in
+     let+ res =
+       Build_system.run_exn
+         (What.describe what options common setup super_context)
+     in
+     match res with
+     | None -> ()
+     | Some res -> (
+       match format with
+       | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
+       | Sexp -> print_as_sexp res)
+
+let opam_files_cmd =
+  let doc =
+    "prints information about the Opam files that have been discovered"
+  in
+  let info = Cmd.info ~doc "opam-files" in
+  Cmd.v info
+  @@ let+ common = Common.term
+     and+ context_name = Common.context_arg ~doc:"Build context to use."
+     and+ format = Format.arg
+     and+ options = Options.arg in
+     let config = Common.init common in
+     let what = What.Opam_files in
+     Scheduler.go ~common ~config @@ fun () ->
+     let open Fiber.O in
+     let* setup = Import.Main.setup () in
+     let* setup = Memo.run setup in
+     let super_context =
+       Import.Main.find_scontext_exn setup ~name:context_name
+     in
+     let+ res =
+       Build_system.run_exn
+         (What.describe what options common setup super_context)
+     in
+     match res with
+     | None -> ()
+     | Some res -> (
+       match format with
+       | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
+       | Sexp -> print_as_sexp res)
+
+let pp_cmd =
+  let doc = "builds a given FILE and prints the preprocessed output" in
+  let info = Cmd.info ~doc "pp" in
+  Cmd.v info
+  @@ let+ common = Common.term
+     and+ context_name = Common.context_arg ~doc:"Build context to use."
+     and+ format = Format.arg
+     and+ options = Options.arg
+     and+ file =
+       Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"FILE"))
+     in
+     let config = Common.init common in
+     let what = What.Pp file in
+     Scheduler.go ~common ~config @@ fun () ->
+     let open Fiber.O in
+     let* setup = Import.Main.setup () in
+     let* setup = Memo.run setup in
+     let super_context =
+       Import.Main.find_scontext_exn setup ~name:context_name
+     in
+     let+ res =
+       Build_system.run_exn
+         (What.describe what options common setup super_context)
+     in
+     match res with
+     | None -> ()
+     | Some res -> (
+       match format with
+       | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
+       | Sexp -> print_as_sexp res)
+
+let group =
+  let doc = "Describe the workspace." in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P
+        {|Describe what is in the current workspace in either human or
+        machine readable form.
+
+        By default, this command output a human readable description of
+        the current workspace. This output is aimed at human and is not
+        suitable for machine processing. In particular, it is not versioned.
+
+        If you want to interpret the output of this command from a program,
+        you must use the $(b,--format) option to specify a machine readable
+        format as well as the $(b,--lang) option to get a stable output.|}
+    ; `Blocks Common.help_secs
+    ]
+  in
+  let info = Cmd.info "describe" ~doc ~man in
+  let default = workspace_cmd_term in
+  Cmd.group ~default info
+    [ workspace_cmd; external_lib_deps_cmd; opam_files_cmd; pp_cmd ]

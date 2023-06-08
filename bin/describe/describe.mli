@@ -1,3 +1,3 @@
 open Import
 
-val command : unit Cmd.t
+val group : unit Cmd.t

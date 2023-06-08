@@ -847,38 +847,6 @@ module What = struct
           (List (List.map args ~f:Dune_lang.atom_or_quoted_string))
       in
       Dune_lang.Decoder.parse parse Univ_map.empty ast
-
-  let describe t options (common : Common.t) setup super_context () =
-    match t with
-    | Workspace { dirs } ->
-      let context = Super_context.context super_context in
-      let open Memo.O in
-      let* dirs =
-        (* prefix directories with the workspace root, so that the
-           command also works correctly when it is run from a
-           subdirectory *)
-        Memo.Option.map dirs
-          ~f:
-            (Memo.List.map ~f:(fun dir ->
-                 let p =
-                   Path.Source.(relative root) (Common.prefix_target common dir)
-                 in
-                 let s = Path.source p in
-                 if not @@ Path.exists s then
-                   User_error.raise
-                     [ Pp.textf "No such file or directory: %s"
-                         (Path.to_string s)
-                     ];
-                 if not @@ Path.is_directory s then
-                   User_error.raise
-                     [ Pp.textf "File exists, but is not a directory: %s"
-                         (Path.to_string s)
-                     ];
-                 Memo.return p))
-      in
-      Crawl.workspace options dirs setup context
-      >>| Sanitize_for_tests.Workspace.sanitize context
-      >>| Descr.Workspace.to_dyn options
 end
 
 module Options = struct
@@ -1004,7 +972,37 @@ let workspace_cmd_term : unit Term.t =
   let* setup = Memo.run setup in
   let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
   let+ res =
-    Build_system.run_exn (What.describe what options common setup super_context)
+    Build_system.run_exn @@ fun () ->
+    match what with
+    | What.Workspace { dirs } ->
+      let context = Super_context.context super_context in
+      let open Memo.O in
+      let* dirs =
+        (* prefix directories with the workspace root, so that the
+           command also works correctly when it is run from a
+           subdirectory *)
+        Memo.Option.map dirs
+          ~f:
+            (Memo.List.map ~f:(fun dir ->
+                 let p =
+                   Path.Source.(relative root) (Common.prefix_target common dir)
+                 in
+                 let s = Path.source p in
+                 if not @@ Path.exists s then
+                   User_error.raise
+                     [ Pp.textf "No such file or directory: %s"
+                         (Path.to_string s)
+                     ];
+                 if not @@ Path.is_directory s then
+                   User_error.raise
+                     [ Pp.textf "File exists, but is not a directory: %s"
+                         (Path.to_string s)
+                     ];
+                 Memo.return p))
+      in
+      Crawl.workspace options dirs setup context
+      >>| Sanitize_for_tests.Workspace.sanitize context
+      >>| Descr.Workspace.to_dyn options
   in
   match format with
   | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)

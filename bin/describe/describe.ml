@@ -228,26 +228,6 @@ let opam_files_cmd =
   let info = Cmd.info ~doc "opam-files" in
   Cmd.v info opam_files_cmd_term
 
-let pp_cmd_term =
-  let+ common = Common.term
-  and+ context_name = Common.context_arg ~doc:"Build context to use."
-  and+ file =
-    Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"FILE"))
-  in
-  let config = Common.init common in
-  Scheduler.go ~common ~config @@ fun () ->
-  let open Fiber.O in
-  let* setup = Import.Main.setup () in
-  let* setup = Memo.run setup in
-  let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
-  Build_system.run_exn (fun () ->
-      Describe_common.Preprocess.run super_context file)
-
-let pp_cmd =
-  let doc = "builds a given FILE and prints the preprocessed output" in
-  let info = Cmd.info ~doc "pp" in
-  Cmd.v info pp_cmd_term
-
 let group =
   let doc = "Describe the workspace." in
   let man =
@@ -269,4 +249,8 @@ let group =
   let info = Cmd.info "describe" ~doc ~man in
   let default = workspace_cmd_term in
   Cmd.group ~default info
-    [ workspace_cmd; external_lib_deps_cmd; opam_files_cmd; pp_cmd ]
+    [ workspace_cmd
+    ; external_lib_deps_cmd
+    ; opam_files_cmd
+    ; Describe_pp.command
+    ]

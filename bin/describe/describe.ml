@@ -8,9 +8,7 @@ module Options = struct
     let open Arg in
     value & flag
     & info [ "with-deps" ]
-        ~doc:
-          "Whether the dependencies between modules should be printed (for the \
-           $(b,workspace) command only)."
+        ~doc:"Whether the dependencies between modules should be printed."
 
   let arg_with_pps =
     let open Arg in
@@ -26,8 +24,7 @@ module Options = struct
     & info [ "sanitize-for-tests" ]
         ~doc:
           "Sanitize the absolute paths in workspace items, and the associated \
-           UIDs, so that the output is reproducible. For use in dune's \
-           internal tests only (for the $(b,workspace) command only)."
+           UIDs, so that the output is reproducible."
 
   let arg : t Term.t =
     let+ with_deps = arg_with_deps

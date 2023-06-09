@@ -87,25 +87,23 @@ let external_resolve db name kind =
 
 let external_lib_deps db lib_deps =
   let open Memo.O in
-  lib_deps
-  |> Memo.parallel_map ~f:(fun lib ->
-         match lib with
-         | Dune_rules.Lib_dep.Direct (_, name) | Re_export (_, name) -> (
-           let+ v = external_resolve db name Kind.Required in
-           match v with
-           | Some x -> [ x ]
-           | None -> [])
-         | Select select ->
-           select.choices
-           |> Memo.parallel_map
-                ~f:(fun (choice : Dune_rules.Lib_dep.Select.Choice.t) ->
-                  Lib_name.Set.to_string_list choice.required
-                  @ Lib_name.Set.to_string_list choice.forbidden
-                  |> Memo.parallel_map ~f:(fun name ->
-                         let name = Lib_name.of_string name in
-                         external_resolve db name Kind.Optional)
-                  >>| List.filter_opt)
-           >>| List.concat)
+  Memo.parallel_map lib_deps ~f:(fun lib ->
+      match lib with
+      | Dune_rules.Lib_dep.Direct (_, name) | Re_export (_, name) -> (
+        let+ v = external_resolve db name Kind.Required in
+        match v with
+        | Some x -> [ x ]
+        | None -> [])
+      | Select select ->
+        Memo.parallel_map select.choices
+          ~f:(fun (choice : Dune_rules.Lib_dep.Select.Choice.t) ->
+            Memo.parallel_map
+              (Lib_name.Set.to_string_list choice.required
+              @ Lib_name.Set.to_string_list choice.forbidden)
+              ~f:(fun name ->
+                external_resolve db (Lib_name.of_string name) Kind.Optional)
+            >>| List.filter_opt)
+        >>| List.concat)
   >>| List.concat
 
 let external_libs db dir libraries preprocess names package kind =

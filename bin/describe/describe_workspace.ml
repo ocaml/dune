@@ -75,20 +75,6 @@ module Lang = struct
          `Error (true, msg)
 end
 
-let print_as_sexp dyn =
-  let rec dune_lang_of_sexp : Sexp.t -> Dune_lang.t = function
-    | Atom s -> Dune_lang.atom_or_quoted_string s
-    | List l -> List (List.map l ~f:dune_lang_of_sexp)
-  in
-  let cst =
-    dyn |> Sexp.of_dyn |> dune_lang_of_sexp
-    |> Dune_lang.Ast.add_loc ~loc:Loc.none
-    |> Dune_lang.Cst.concrete
-  in
-  let version = Dune_lang.Syntax.greatest_supported_version Stanza.syntax in
-  Pp.to_fmt Stdlib.Format.std_formatter
-    (Dune_lang.Format.pp_top_sexps ~version [ cst ])
-
 (** The following module is responsible sanitizing the output of
     [dune describe workspace], so that the absolute paths and the UIDs that
     depend on them are stable for tests. These paths may differ, depending on
@@ -153,7 +139,6 @@ module Crawl = struct
   open Dune_rules
   open Dune_engine
   open Memo.O
-  module Ml_kind = Ocaml.Ml_kind
 
   (** Computes the digest of a library *)
   let uid_of_library (lib : Lib.t) : Digest.t =
@@ -166,12 +151,12 @@ module Crawl = struct
   let immediate_deps_of_module ~options ~obj_dir ~modules unit =
     match (options : Describe_common.Descr.options) with
     | { with_deps = false; _ } ->
-      Action_builder.return { Ml_kind.Dict.intf = []; impl = [] }
+      Action_builder.return { Ocaml.Ml_kind.Dict.intf = []; impl = [] }
     | { with_deps = true; _ } ->
       let deps = Dune_rules.Dep_rules.immediate_deps_of unit modules obj_dir in
       let open Action_builder.O in
       let+ intf, impl = Action_builder.both (deps Intf) (deps Impl) in
-      { Ml_kind.Dict.intf; impl }
+      { Ocaml.Ml_kind.Dict.intf; impl }
 
   (** Builds the description of a module from a module and its object directory *)
   let module_ ~obj_dir ~(deps_for_intf : Module.t list)
@@ -194,13 +179,12 @@ module Crawl = struct
     }
 
   (** Builds the list of modules *)
-  let modules ~obj_dir
-      ~(deps_of : Module.t -> Module.t list Ml_kind.Dict.t Action_builder.t)
-      (modules_ : Modules.t) : Descr.Mod.t list Memo.t =
+  let modules ~obj_dir ~deps_of modules_ : Descr.Mod.t list Memo.t =
     Modules.fold_no_vlib ~init:(Memo.return []) modules_ ~f:(fun m macc ->
         let* acc = macc in
         let deps = deps_of m in
-        let+ { Ml_kind.Dict.intf = deps_for_intf; impl = deps_for_impl }, _ =
+        let+ ( { Ocaml.Ml_kind.Dict.intf = deps_for_intf; impl = deps_for_impl }
+             , _ ) =
           Dune_engine.Action_builder.run deps Eager
         in
         module_ ~obj_dir ~deps_for_intf ~deps_for_impl m :: acc)
@@ -213,7 +197,6 @@ module Crawl = struct
       Dir_contents.get sctx ~dir >>= Dir_contents.ocaml
       >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
     in
-
     let pp_map =
       Staged.unstage
       @@
@@ -328,9 +311,9 @@ module Crawl = struct
     Descr.Item.Build_context (Path.build context.build_dir)
 
   (** Builds a workspace description for the provided dune setup and context *)
-  let workspace options dirs
+  let workspace options
       ({ Dune_rules.Main.conf; contexts = _; scontexts } :
-        Dune_rules.Main.build_system) (context : Context.t) :
+        Dune_rules.Main.build_system) (context : Context.t) dirs :
       Descr.Workspace.t Memo.t =
     let sctx = Context_name.Map.find_exn scontexts context.name in
     let open Memo.O in
@@ -422,39 +405,32 @@ let term : unit Term.t =
   let* setup = Import.Main.setup () in
   let* setup = Memo.run setup in
   let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
-  let+ res =
-    Build_system.run_exn @@ fun () ->
-    let context = Super_context.context super_context in
-    let open Memo.O in
-    let* dirs =
-      (* prefix directories with the workspace root, so that the
-         command also works correctly when it is run from a
-         subdirectory *)
-      Memo.Option.map dirs
-        ~f:
-          (Memo.List.map ~f:(fun dir ->
-               let p =
-                 Path.Source.(relative root) (Common.prefix_target common dir)
-               in
-               let s = Path.source p in
-               if not @@ Path.exists s then
-                 User_error.raise
-                   [ Pp.textf "No such file or directory: %s" (Path.to_string s)
-                   ];
-               if not @@ Path.is_directory s then
-                 User_error.raise
-                   [ Pp.textf "File exists, but is not a directory: %s"
-                       (Path.to_string s)
-                   ];
-               Memo.return p))
-    in
-    Crawl.workspace options dirs setup context
-    >>| Sanitize_for_tests.Workspace.sanitize context
-    >>| Describe_common.Descr.Workspace.to_dyn options
-  in
-  match format with
-  | Describe_common.Format.Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
-  | Sexp -> print_as_sexp res
+  Build_system.run_exn @@ fun () ->
+  let context = Super_context.context super_context in
+  let open Memo.O in
+  (* prefix directories with the workspace root, so that the
+     command also works correctly when it is run from a
+     subdirectory *)
+  Memo.Option.map dirs
+    ~f:
+      (Memo.List.map ~f:(fun dir ->
+           let p =
+             Path.Source.(relative root) (Common.prefix_target common dir)
+           in
+           let s = Path.source p in
+           if not @@ Path.exists s then
+             User_error.raise
+               [ Pp.textf "No such file or directory: %s" (Path.to_string s) ];
+           if not @@ Path.is_directory s then
+             User_error.raise
+               [ Pp.textf "File exists, but is not a directory: %s"
+                   (Path.to_string s)
+               ];
+           Memo.return p))
+  >>= Crawl.workspace options setup context
+  >>| Sanitize_for_tests.Workspace.sanitize context
+  >>| Describe_common.Descr.Workspace.to_dyn options
+  >>| Describe_common.Format.print_dyn format
 
 let command =
   let doc =

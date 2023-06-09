@@ -30,6 +30,8 @@ Unreleased
 - Switch back to threaded console for all systems; fix unresponsive console on
   Windows (#7906, @nojb)
 
+- Respect `-p` / `--only-packages` for `melange.emit` artifacts (#7849, @anmonteiro)
+
 3.8.1 (2023-06-05)
 ------------------
 

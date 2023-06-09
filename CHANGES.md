@@ -69,6 +69,9 @@ Unreleased
 - Compute digests and manage sandboxes in background threads (#7947,
   @rgrinberg)
 
+- Add `(build_if)` to the `(test)` stanza. When it evaluates to false, the
+  executable is not built. (#7899, fixes #6938, @emillon)
+
 3.8.1 (2023-06-05)
 ------------------
 

@@ -110,14 +110,17 @@ end = struct
       let+ () = Simple_rules.alias sctx alias ~dir ~expander in
       empty_none
     | Tests tests ->
-      let+ cctx, merlin =
-        Test_rules.rules tests ~sctx ~dir ~scope ~expander ~dir_contents
-      in
-      { merlin = Some merlin
-      ; cctx = Some (tests.exes.buildable.loc, cctx)
-      ; js = None
-      ; source_dirs = None
-      }
+      let* enabled = Expander.eval_blang expander tests.build_if in
+      if enabled then
+        let+ cctx, merlin =
+          Test_rules.rules tests ~sctx ~dir ~scope ~expander ~dir_contents
+        in
+        { merlin = Some merlin
+        ; cctx = Some (tests.exes.buildable.loc, cctx)
+        ; js = None
+        ; source_dirs = None
+        }
+      else Memo.return empty_none
     | Copy_files { files = glob; _ } ->
       let* source_dirs =
         let loc = String_with_vars.loc glob in

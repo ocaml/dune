@@ -1,5 +1,4 @@
 open Import
-open Stdune
 
 let term =
   let+ common = Common.term
@@ -15,9 +14,7 @@ let term =
     Build_system.run_exn (fun () ->
         Describe_common.External_lib_deps.get setup super_context)
   in
-  match format with
-  | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
-  | Sexp -> Describe_common.print_as_sexp res
+  Describe_common.Format.print_dyn format res
 
 let command =
   let doc =

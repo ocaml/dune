@@ -47,9 +47,7 @@ module Format : sig
     | Sexp
     | Csexp
 
-  val all : (string * t) list
-
   val arg : t Term.t
-end
 
-val print_as_sexp : Dyn.t -> unit
+  val print_dyn : t -> Dyn.t -> unit
+end

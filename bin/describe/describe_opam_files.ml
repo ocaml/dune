@@ -31,9 +31,7 @@ let term =
            in
            Dyn.Tuple [ String (Path.to_string opam_file); String contents ]))
   in
-  match format with
-  | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
-  | Sexp -> Describe_common.print_as_sexp res
+  Describe_common.Format.print_dyn format res
 
 let command =
   let doc =

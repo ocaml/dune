@@ -38,10 +38,6 @@ module External_lib_deps : sig
   val get : Dune_rules.Main.build_system -> Super_context.t -> Dyn.t Memo.t
 end
 
-module Preprocess : sig
-  val run : Super_context.t -> string -> unit Memo.t
-end
-
 module Format : sig
   type t =
     | Sexp

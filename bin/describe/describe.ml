@@ -1,5 +1,12 @@
 open Import
 
+(* This command is not yet versioned, but some people are using it in
+   non-released tools. If you change the format of the output, please contact:
+
+   - rotor people for "describe workspace"
+
+   - duniverse people for "describe opam-files" *)
+
 let group =
   let doc = "Describe the workspace." in
   let man =

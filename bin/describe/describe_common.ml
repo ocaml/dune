@@ -1,13 +1,6 @@
 open Stdune
 open Import
 
-(* This command is not yet versioned, but some people are using it in
-   non-released tools. If you change the format of the output, please contact:
-
-   - rotor people for "describe workspace"
-
-   - duniverse people for "describe opam-files" *)
-
 module Descr = struct
   type options =
     { with_deps : bool

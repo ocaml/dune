@@ -1,8 +1,6 @@
 open Import
 open Stdune
 
-val sanitize_for_tests : bool ref
-
 type options =
   { with_deps : bool
   ; with_pps : bool

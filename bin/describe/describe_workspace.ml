@@ -4,6 +4,10 @@ open Stdune
 module Options = struct
   type t = Describe_common.options
 
+  (** whether to sanitize absolute paths of workspace items, and their UIDs, to
+      ensure reproducible tests *)
+  let sanitize_for_tests = ref false
+
   let arg_with_deps =
     let open Arg in
     value & flag
@@ -30,7 +34,7 @@ module Options = struct
     let+ with_deps = arg_with_deps
     and+ with_pps = arg_with_pps
     and+ sanitize_for_tests_value = arg_sanitize_for_tests in
-    Describe_common.sanitize_for_tests := sanitize_for_tests_value;
+    sanitize_for_tests := sanitize_for_tests_value;
     { Describe_common.with_deps; with_pps }
 end
 
@@ -138,7 +142,7 @@ module Sanitize_for_tests = struct
     (** Sanitizes a workspace description when options ask to do so, or performs
         no change at all otherwise *)
     let sanitize context items =
-      if !Describe_common.sanitize_for_tests then really_sanitize context items
+      if !Options.sanitize_for_tests then really_sanitize context items
       else items
   end
 end

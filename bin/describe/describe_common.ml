@@ -8,9 +8,6 @@ open Import
 
    - duniverse people for "describe opam-files" *)
 
-(** whether to sanitize absolute paths of workspace items, and their UIDs, to
-    ensure reproducible tests *)
-let sanitize_for_tests = ref false
 
 (** Option flags for what to do while crawling the workspace *)
 type options =

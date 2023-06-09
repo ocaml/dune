@@ -1,3 +1,9 @@
+3.8.2 (unreleased)
+------------------
+
+- Switch back to threaded console for all systems; fix unresponsive console on
+  Windows (#7906, @nojb)
+
 3.8.1 (2023-06-05)
 ------------------
 
@@ -12,6 +18,9 @@
 
 - Revert #7415 and #7450 (Resolve `ppx_runtime_libraries` in the target context when
   cross compiling) (#7887, fixes #7875, @emillon)
+
+- Fix RPC buffer corruption issues due to multi threading. This issue was only
+  reproducible with large RPC payloads (#7418)
 
 3.8.0 (2023-05-23)
 ------------------

@@ -3,7 +3,7 @@ open Stdune
 
 let term =
   let+ common = Common.term
-  and+ format = Describe_common.Format.arg in
+  and+ format = Describe_format.arg in
   let config = Common.init common in
   Scheduler.go ~common ~config @@ fun () ->
   Build_system.run_exn @@ fun () ->
@@ -26,7 +26,7 @@ let term =
     Dyn.Tuple [ String (Path.to_string opam_file); String contents ]
   in
   Dyn.List (List.map packages ~f:opam_file_to_dyn)
-  |> Describe_common.Format.print_dyn format
+  |> Describe_format.print_dyn format
 
 let command =
   let doc =

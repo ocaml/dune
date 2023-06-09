@@ -160,7 +160,7 @@ let to_dyn context_name external_resolved_libs =
 let term =
   let+ common = Common.term
   and+ context_name = Common.context_arg ~doc:"Build context to use."
-  and+ format = Describe_common.Format.arg in
+  and+ format = Describe_format.arg in
   let config = Common.init common in
   Scheduler.go ~common ~config @@ fun () ->
   let open Fiber.O in
@@ -175,7 +175,7 @@ let term =
   in
   external_resolved_libs setup super_context
   >>| to_dyn context_name
-  >>| Describe_common.Format.print_dyn format
+  >>| Describe_format.print_dyn format
 
 let command =
   let doc =

@@ -2,7 +2,14 @@ open Import
 open Stdune
 
 module Options = struct
-  type t = Describe_common.Descr.options
+  (** Option flags for what to do while crawling the workspace *)
+  type t =
+    { with_deps : bool
+          (** whether to compute direct dependencies between modules *)
+    ; with_pps : bool
+          (** whether to include the dependencies to ppx-rewriters (that are
+              used at compile time) *)
+    }
 
   (** whether to sanitize absolute paths of workspace items, and their UIDs, to
       ensure reproducible tests *)
@@ -35,7 +42,177 @@ module Options = struct
     and+ with_pps = arg_with_pps
     and+ sanitize_for_tests_value = arg_sanitize_for_tests in
     sanitize_for_tests := sanitize_for_tests_value;
-    { Describe_common.Descr.with_deps; with_pps }
+    { with_deps; with_pps }
+end
+
+(** The module [Descr] is a typed representation of the description of a
+    workspace, that is provided by the ``dune describe workspace`` command.
+
+    Each sub-module contains a [to_dyn] function, that translates the
+    descriptors to a value of type [Dyn.t].
+
+    The typed representation aims at precisely describing the structure of the
+    information computed by ``dune describe``, and hopefully make users' life
+    easier in decoding the S-expressions into meaningful contents. *)
+module Descr = struct
+  (** [dyn_path p] converts a path to a value of type [Dyn.t]. Remark: this is
+      different from Path.to_dyn, that produces extra tags from a variant
+      datatype. *)
+  let dyn_path (p : Path.t) : Dyn.t = String (Path.to_string p)
+
+  (** Description of the dependencies of a module *)
+  module Mod_deps = struct
+    type t =
+      { for_intf : Dune_rules.Module_name.t list
+            (** direct module dependencies for the interface *)
+      ; for_impl : Dune_rules.Module_name.t list
+            (** direct module dependencies for the implementation *)
+      }
+
+    (** Conversion to the [Dyn.t] type *)
+    let to_dyn { for_intf; for_impl } =
+      let open Dyn in
+      record
+        [ ("for_intf", list Dune_rules.Module_name.to_dyn for_intf)
+        ; ("for_impl", list Dune_rules.Module_name.to_dyn for_impl)
+        ]
+  end
+
+  (** Description of modules *)
+  module Mod = struct
+    type t =
+      { name : Dune_rules.Module_name.t  (** name of the module *)
+      ; impl : Path.t option  (** path to the .ml file, if any *)
+      ; intf : Path.t option  (** path to the .mli file, if any *)
+      ; cmt : Path.t option  (** path to the .cmt file, if any *)
+      ; cmti : Path.t option  (** path to the .cmti file, if any *)
+      ; module_deps : Mod_deps.t  (** direct module dependencies *)
+      }
+
+    (** Conversion to the [Dyn.t] type *)
+    let to_dyn { Options.with_deps; _ }
+        { name; impl; intf; cmt; cmti; module_deps } : Dyn.t =
+      let open Dyn in
+      let optional_fields =
+        let module_deps =
+          if with_deps then Some ("module_deps", Mod_deps.to_dyn module_deps)
+          else None
+        in
+        (* we build a list of options, that is later filtered, so that adding
+           new optional fields in the future can be done easily *)
+        match module_deps with
+        | None -> []
+        | Some module_deps -> [ module_deps ]
+      in
+      record
+      @@ [ ("name", Dune_rules.Module_name.to_dyn name)
+         ; ("impl", option dyn_path impl)
+         ; ("intf", option dyn_path intf)
+         ; ("cmt", option dyn_path cmt)
+         ; ("cmti", option dyn_path cmti)
+         ]
+      @ optional_fields
+  end
+
+  (** Description of executables *)
+  module Exe = struct
+    type t =
+      { names : string list  (** names of the executable *)
+      ; requires : Digest.t list
+            (** list of direct dependencies to libraries, identified by their
+                digests *)
+      ; modules : Mod.t list
+            (** list of the modules the executable is composed of *)
+      ; include_dirs : Path.t list  (** list of include directories *)
+      }
+
+    let map_path t ~f = { t with include_dirs = List.map ~f t.include_dirs }
+
+    (** Conversion to the [Dyn.t] type *)
+    let to_dyn options { names; requires; modules; include_dirs } : Dyn.t =
+      let open Dyn in
+      record
+        [ ("names", List (List.map ~f:(fun name -> String name) names))
+        ; ("requires", Dyn.(list string) (List.map ~f:Digest.to_string requires))
+        ; ("modules", list (Mod.to_dyn options) modules)
+        ; ("include_dirs", list dyn_path include_dirs)
+        ]
+  end
+
+  (** Description of libraries *)
+
+  module Lib = struct
+    type t =
+      { name : Lib_name.t  (** name of the library *)
+      ; uid : Digest.t  (** digest of the library *)
+      ; local : bool  (** whether this library is local *)
+      ; requires : Digest.t list
+            (** list of direct dependendies to libraries, identified by their
+                digests *)
+      ; source_dir : Path.t
+            (** path to the directory that contains the sources of this library *)
+      ; modules : Mod.t list
+            (** list of the modules the executable is composed of *)
+      ; include_dirs : Path.t list  (** list of include directories *)
+      }
+
+    let map_path t ~f =
+      { t with
+        source_dir = f t.source_dir
+      ; include_dirs = List.map ~f t.include_dirs
+      }
+
+    (** Conversion to the [Dyn.t] type *)
+    let to_dyn options
+        { name; uid; local; requires; source_dir; modules; include_dirs } :
+        Dyn.t =
+      let open Dyn in
+      record
+        [ ("name", Lib_name.to_dyn name)
+        ; ("uid", String (Digest.to_string uid))
+        ; ("local", Bool local)
+        ; ("requires", (list string) (List.map ~f:Digest.to_string requires))
+        ; ("source_dir", dyn_path source_dir)
+        ; ("modules", list (Mod.to_dyn options) modules)
+        ; ("include_dirs", (list dyn_path) include_dirs)
+        ]
+  end
+
+  (** Description of items: executables, or libraries *)
+  module Item = struct
+    type t =
+      | Executables of Exe.t
+      | Library of Lib.t
+      | Root of Path.t
+      | Build_context of Path.t
+
+    let map_path t ~f =
+      match t with
+      | Executables exe -> Executables (Exe.map_path exe ~f)
+      | Library lib -> Library (Lib.map_path lib ~f)
+      | Root r -> Root (f r)
+      | Build_context c -> Build_context (f c)
+
+    (** Conversion to the [Dyn.t] type *)
+    let to_dyn options : t -> Dyn.t = function
+      | Executables exe_descr ->
+        Variant ("executables", [ Exe.to_dyn options exe_descr ])
+      | Library lib_descr ->
+        Variant ("library", [ Lib.to_dyn options lib_descr ])
+      | Root root ->
+        Variant ("root", [ String (Path.to_absolute_filename root) ])
+      | Build_context build_ctxt ->
+        Variant ("build_context", [ String (Path.to_string build_ctxt) ])
+  end
+
+  (** Description of a workspace: a list of items *)
+  module Workspace = struct
+    type t = Item.t list
+
+    (** Conversion to the [Dyn.t] type *)
+    let to_dyn options (items : t) : Dyn.t =
+      Dyn.list (Item.to_dyn options) items
+  end
 end
 
 module Lang = struct
@@ -123,7 +300,7 @@ module Sanitize_for_tests = struct
       in
       (* now, we rename the UIDs in the [requires] field , while reversing the
          list of items, so that we get back the original ordering *)
-      List.map ~f:(Describe_common.Descr.Item.map_path ~f:rename_path) items
+      List.map ~f:(Descr.Item.map_path ~f:rename_path) items
 
     (** Sanitizes a workspace description when options ask to do so, or performs
         no change at all otherwise *)
@@ -135,7 +312,6 @@ end
 
 (** Crawl the workspace to get all the data *)
 module Crawl = struct
-  open Describe_common
   open Dune_rules
   open Dune_engine
   open Memo.O
@@ -149,7 +325,7 @@ module Crawl = struct
     else Digest.generic name
 
   let immediate_deps_of_module ~options ~obj_dir ~modules unit =
-    match (options : Describe_common.Descr.options) with
+    match (options : Options.t) with
     | { with_deps = false; _ } ->
       Action_builder.return { Ocaml.Ml_kind.Dict.intf = []; impl = [] }
     | { with_deps = true; _ } ->
@@ -374,7 +550,7 @@ let term : unit Term.t =
              directories DIRS are provided, then only those directories of the \
              workspace are considered.")
   and+ context_name = Common.context_arg ~doc:"Build context to use."
-  and+ format = Describe_common.Format.arg
+  and+ format = Describe_format.arg
   and+ lang = Lang.arg
   and+ options = Options.arg in
   let config = Common.init common in
@@ -429,8 +605,8 @@ let term : unit Term.t =
            Memo.return p))
   >>= Crawl.workspace options setup context
   >>| Sanitize_for_tests.Workspace.sanitize context
-  >>| Describe_common.Descr.Workspace.to_dyn options
-  >>| Describe_common.Format.print_dyn format
+  >>| Descr.Workspace.to_dyn options
+  >>| Describe_format.print_dyn format
 
 let command =
   let doc =

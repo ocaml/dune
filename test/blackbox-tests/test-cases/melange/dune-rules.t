@@ -13,8 +13,13 @@ Test dune rules
   > EOF
 
   $ cat > main.ml <<EOF
-  > print_endline "hello"
+  > Js.log "hello"
   > EOF
+
+Calling dune rules with the 'all' alias works fine
+
+  $ dune rules @all | grep In_build_dir
+  [1]
 
 Calling dune rules with the alias works fine
 
@@ -31,5 +36,6 @@ Creating dir fixes the problem
 
   $ mkdir output
 
-  $ dune rules output | grep In_build_dir
+  $ dune rules output | grep "\.cmj"
       (In_build_dir _build/default/.output.mobjs/melange/melange__Main.cmj))))
+      .output.mobjs/melange/melange__Main.cmj))))

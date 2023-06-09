@@ -34,10 +34,6 @@ module Sanitize_for_tests : sig
   end
 end
 
-module Opam_files : sig
-  val get : unit -> Dyn.t Memo.t
-end
-
 module External_lib_deps : sig
   val get : Dune_rules.Main.build_system -> Super_context.t -> Dyn.t Memo.t
 end

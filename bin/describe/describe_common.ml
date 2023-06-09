@@ -478,30 +478,6 @@ module Sanitize_for_tests = struct
   end
 end
 
-module Opam_files = struct
-  let get () =
-    let open Memo.O in
-    let+ project = Source_tree.root () >>| Source_tree.Dir.project in
-    let packages = Dune_project.packages project |> Package.Name.Map.values in
-    Dyn.List
-      (List.map packages ~f:(fun pkg ->
-           let opam_file = Path.source (Package.opam_file pkg) in
-           let contents =
-             if not (Dune_project.generate_opam_files project) then
-               Io.read_file opam_file
-             else
-               let template_file =
-                 Dune_rules.Opam_create.template_file opam_file
-               in
-               let template =
-                 if Path.exists template_file then
-                   Some (template_file, Io.read_file template_file)
-                 else None
-               in
-               Dune_rules.Opam_create.generate project pkg ~template
-           in
-           Dyn.Tuple [ String (Path.to_string opam_file); String contents ]))
-end
 
 module External_lib_deps = struct
   include struct

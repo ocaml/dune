@@ -2,7 +2,7 @@ open Import
 open Stdune
 
 module Options = struct
-  type t = Describe_common.options
+  type t = Describe_common.Descr.options
 
   (** whether to sanitize absolute paths of workspace items, and their UIDs, to
       ensure reproducible tests *)
@@ -35,7 +35,7 @@ module Options = struct
     and+ with_pps = arg_with_pps
     and+ sanitize_for_tests_value = arg_sanitize_for_tests in
     sanitize_for_tests := sanitize_for_tests_value;
-    { Describe_common.with_deps; with_pps }
+    { Describe_common.Descr.with_deps; with_pps }
 end
 
 module Lang = struct
@@ -147,6 +147,239 @@ module Sanitize_for_tests = struct
   end
 end
 
+(** Crawl the workspace to get all the data *)
+module Crawl = struct
+  open Describe_common
+  open Dune_rules
+  open Dune_engine
+  open Memo.O
+  module Ml_kind = Ocaml.Ml_kind
+
+  (** Computes the digest of a library *)
+  let uid_of_library (lib : Lib.t) : Digest.t =
+    let name = Lib.name lib in
+    if Lib.is_local lib then
+      let source_dir = Lib_info.src_dir (Lib.info lib) in
+      Digest.generic (name, Path.to_string source_dir)
+    else Digest.generic name
+
+  let immediate_deps_of_module ~options ~obj_dir ~modules unit =
+    match (options : Describe_common.Descr.options) with
+    | { with_deps = false; _ } ->
+      Action_builder.return { Ml_kind.Dict.intf = []; impl = [] }
+    | { with_deps = true; _ } ->
+      let deps = Dune_rules.Dep_rules.immediate_deps_of unit modules obj_dir in
+      let open Action_builder.O in
+      let+ intf, impl = Action_builder.both (deps Intf) (deps Impl) in
+      { Ml_kind.Dict.intf; impl }
+
+  (** Builds the description of a module from a module and its object directory *)
+  let module_ ~obj_dir ~(deps_for_intf : Module.t list)
+      ~(deps_for_impl : Module.t list) (m : Module.t) : Descr.Mod.t =
+    let source ml_kind =
+      Option.map (Module.source m ~ml_kind) ~f:Module.File.path
+    in
+    let cmt ml_kind =
+      Dune_rules.Obj_dir.Module.cmt_file obj_dir m ~ml_kind ~cm_kind:(Ocaml Cmi)
+    in
+    { Descr.Mod.name = Module.name m
+    ; impl = source Impl
+    ; intf = source Intf
+    ; cmt = cmt Impl
+    ; cmti = cmt Intf
+    ; module_deps =
+        { for_intf = List.map ~f:Module.name deps_for_intf
+        ; for_impl = List.map ~f:Module.name deps_for_impl
+        }
+    }
+
+  (** Builds the list of modules *)
+  let modules ~obj_dir
+      ~(deps_of : Module.t -> Module.t list Ml_kind.Dict.t Action_builder.t)
+      (modules_ : Modules.t) : Descr.Mod.t list Memo.t =
+    Modules.fold_no_vlib ~init:(Memo.return []) modules_ ~f:(fun m macc ->
+        let* acc = macc in
+        let deps = deps_of m in
+        let+ { Ml_kind.Dict.intf = deps_for_intf; impl = deps_for_impl }, _ =
+          Dune_engine.Action_builder.run deps Eager
+        in
+        module_ ~obj_dir ~deps_for_intf ~deps_for_impl m :: acc)
+
+  (** Builds a workspace item for the provided executables object *)
+  let executables sctx ~options ~project ~dir (exes : Dune_file.Executables.t) :
+      (Descr.Item.t * Lib.Set.t) option Memo.t =
+    let first_exe = snd (List.hd exes.names) in
+    let* modules_, obj_dir =
+      Dir_contents.get sctx ~dir >>= Dir_contents.ocaml
+      >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
+    in
+
+    let pp_map =
+      Staged.unstage
+      @@
+      let version = (Super_context.context sctx).ocaml.version in
+      Preprocessing.pped_modules_map
+        (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
+        version
+    in
+    let deps_of module_ =
+      let module_ = pp_map module_ in
+      immediate_deps_of_module ~options ~obj_dir ~modules:modules_ module_
+    in
+    let obj_dir = Obj_dir.of_local obj_dir in
+    let* scope =
+      Scope.DB.find_by_project (Super_context.context sctx) project
+    in
+    let* modules_ = modules ~obj_dir ~deps_of modules_ in
+    let+ requires =
+      let* compile_info = Exe_rules.compile_info ~scope exes in
+      let open Resolve.Memo.O in
+      let* requires = Lib.Compile.direct_requires compile_info in
+      if options.with_pps then
+        let+ pps = Lib.Compile.pps compile_info in
+        pps @ requires
+      else Resolve.Memo.return requires
+    in
+    match Resolve.peek requires with
+    | Error () -> None
+    | Ok libs ->
+      let include_dirs = Obj_dir.all_cmis obj_dir in
+      let exe_descr =
+        { Descr.Exe.names = List.map ~f:snd exes.names
+        ; requires = List.map ~f:uid_of_library libs
+        ; modules = modules_
+        ; include_dirs
+        }
+      in
+      Some (Descr.Item.Executables exe_descr, Lib.Set.of_list libs)
+
+  (** Builds a workspace item for the provided library object *)
+  let library sctx ~options (lib : Lib.t) : Descr.Item.t option Memo.t =
+    let* requires = Lib.requires lib in
+    match Resolve.peek requires with
+    | Error () -> Memo.return None
+    | Ok requires ->
+      let name = Lib.name lib in
+      let info = Lib.info lib in
+      let src_dir = Lib_info.src_dir info in
+      let obj_dir = Lib_info.obj_dir info in
+      let+ modules_ =
+        match Lib.is_local lib with
+        | false -> Memo.return []
+        | true ->
+          Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
+          >>= Dir_contents.ocaml
+          >>| Ml_sources.modules_and_obj_dir ~for_:(Library name)
+          >>= fun (modules_, obj_dir_) ->
+          let pp_map =
+            Staged.unstage
+            @@
+            let version = (Super_context.context sctx).ocaml.version in
+            Preprocessing.pped_modules_map
+              (Preprocess.Per_module.without_instrumentation
+                 (Lib_info.preprocess info))
+              version
+          in
+          let deps_of module_ =
+            immediate_deps_of_module ~options ~obj_dir:obj_dir_
+              ~modules:modules_ (pp_map module_)
+          in
+          modules ~obj_dir ~deps_of modules_
+      in
+      let include_dirs = Obj_dir.all_cmis obj_dir in
+      let lib_descr =
+        { Descr.Lib.name
+        ; uid = uid_of_library lib
+        ; local = Lib.is_local lib
+        ; requires = List.map requires ~f:uid_of_library
+        ; source_dir = src_dir
+        ; modules = modules_
+        ; include_dirs
+        }
+      in
+      Some (Descr.Item.Library lib_descr)
+
+  (** [source_path_is_in_dirs dirs p] tests whether the source path [p] is a
+      descendant of some of the provided directory [dirs]. If [dirs = None],
+      then it always succeeds. If [dirs = Some l], then a matching directory is
+      search in the list [l]. *)
+  let source_path_is_in_dirs dirs (p : Path.Source.t) =
+    match dirs with
+    | None -> true
+    | Some dirs ->
+      List.exists ~f:(fun dir -> Path.Source.is_descendant p ~of_:dir) dirs
+
+  (** Tests whether a dune file is located in a path that is a descendant of
+      some directory *)
+  let dune_file_is_in_dirs dirs (dune_file : Dune_file.t) =
+    source_path_is_in_dirs dirs dune_file.dir
+
+  (** Tests whether a library is located in a path that is a descendant of some
+      directory *)
+  let lib_is_in_dirs dirs (lib : Lib.t) =
+    source_path_is_in_dirs dirs
+      (Path.drop_build_context_exn @@ Lib_info.best_src_dir @@ Lib.info lib)
+
+  (** Builds a workspace item for the root path *)
+  let root () = Descr.Item.Root Path.root
+
+  (** Builds a workspace item for the build directory path *)
+  let build_ctxt (context : Context.t) : Descr.Item.t =
+    Descr.Item.Build_context (Path.build context.build_dir)
+
+  (** Builds a workspace description for the provided dune setup and context *)
+  let workspace options dirs
+      ({ Dune_rules.Main.conf; contexts = _; scontexts } :
+        Dune_rules.Main.build_system) (context : Context.t) :
+      Descr.Workspace.t Memo.t =
+    let sctx = Context_name.Map.find_exn scontexts context.name in
+    let open Memo.O in
+    let* dune_files =
+      Dune_load.Dune_files.eval conf.dune_files ~context
+      >>| List.filter ~f:(dune_file_is_in_dirs dirs)
+    in
+    let* exes, exe_libs =
+      (* the list of workspace items that describe executables, and the list of
+         their direct library dependencies *)
+      Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
+          Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
+              let dir =
+                Path.Build.append_source context.build_dir dune_file.dir
+              in
+              match stanza with
+              | Dune_file.Executables exes ->
+                executables sctx ~options ~project:dune_file.project ~dir exes
+              | _ -> Memo.return None)
+          >>| List.filter_opt)
+      >>| List.concat >>| List.split
+    in
+    let exe_libs =
+      (* conflate the dependencies of executables into a single set *)
+      Lib.Set.union_all exe_libs
+    in
+    let* project_libs =
+      let ctx = Super_context.context sctx in
+      (* the list of libraries declared in the project *)
+      Memo.parallel_map conf.projects ~f:(fun project ->
+          let* scope = Scope.DB.find_by_project ctx project in
+          Scope.libs scope |> Lib.DB.all)
+      >>| Lib.Set.union_all
+      >>| Lib.Set.filter ~f:(lib_is_in_dirs dirs)
+    in
+
+    let+ libs =
+      (* the executables' libraries, and the project's libraries *)
+      Lib.Set.union exe_libs project_libs
+      |> Lib.Set.to_list
+      |> Lib.descriptive_closure ~with_pps:options.with_pps
+      >>= Memo.parallel_map ~f:(library ~options sctx)
+      >>| List.filter_opt
+    in
+    let root = root () in
+    let build_ctxt = build_ctxt context in
+    root :: build_ctxt :: (exes @ libs)
+end
+
 let term : unit Term.t =
   let+ common = Common.term
   and+ what =
@@ -215,7 +448,7 @@ let term : unit Term.t =
                    ];
                Memo.return p))
     in
-    Describe_common.Crawl.workspace options dirs setup context
+    Crawl.workspace options dirs setup context
     >>| Sanitize_for_tests.Workspace.sanitize context
     >>| Describe_common.Descr.Workspace.to_dyn options
   in

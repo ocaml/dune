@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686316072731,
+  "lastUpdate": 1686316401537,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -42483,6 +42483,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.1917841538666667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "517113c2531d54f942b129f645f346aa8ebd65d3",
+          "message": "doc: fix wrapping in changelog (#7928)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-09T13:46:56+01:00",
+          "tree_id": "63a85d78a3c7a658bca9249e122e62bd5aacdee9",
+          "url": "https://github.com/ocaml/dune/commit/517113c2531d54f942b129f645f346aa8ebd65d3"
+        },
+        "date": 1686316400979,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "64.85721952584002",
             "unit": "seconds"
           }
         ]

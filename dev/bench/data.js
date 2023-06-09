@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686278463723,
+  "lastUpdate": 1686279083922,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -19080,6 +19080,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "46.64894269198666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "374b0b5d56d808beaaff136fcb88ab592759da99",
+          "message": "test(x-compilation): resolution failure for transitive ppx_runtime_libraries (#7896)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-06-08T19:25:17-07:00",
+          "tree_id": "2e8d30cf961bedfd069b7e031df27a12f3015a1d",
+          "url": "https://github.com/ocaml/dune/commit/374b0b5d56d808beaaff136fcb88ab592759da99"
+        },
+        "date": 1686279082635,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "47.30325952992666",
             "unit": "seconds"
           }
         ]

@@ -421,62 +421,6 @@ module Crawl = struct
     root :: build_ctxt :: (exes @ libs)
 end
 
-(** The following module is responsible sanitizing the output of
-    [dune describe workspace], so that the absolute paths and the UIDs that
-    depend on them are stable for tests. These paths may differ, depending on
-    the machine they are run on. *)
-module Sanitize_for_tests = struct
-  module Workspace = struct
-    (** Sanitizes a workspace description, by renaming non-reproducible UIDs and
-        paths *)
-    let really_sanitize (context : Context.t) items =
-      let rename_path =
-        let findlib_paths =
-          context.findlib_paths |> List.map ~f:Path.to_string
-        in
-        function
-        (* we have found a path for OCaml's root: let's define the renaming
-           function *)
-        | Path.External ext_path as path -> (
-          match
-            List.find_map findlib_paths ~f:(fun prefix ->
-                (* if the path to rename is an external path, try to find the
-                   OCaml root inside, and replace it with a fixed string *)
-                let s = Path.External.to_string ext_path in
-                match String.drop_prefix ~prefix s with
-                | None -> None
-                | Some s' ->
-                  (* we have found the OCaml root path: let's replace it with a
-                     constant string *)
-                  Some
-                    (Path.external_
-                    @@ Path.External.of_string
-                         Filename.(concat dir_sep @@ concat "FINDLIB" s')))
-          with
-          | None -> path
-          | Some p -> p)
-        | Path.In_source_tree p ->
-          (* Replace the workspace root with a fixed string *)
-          let p =
-            let new_root = Filename.(concat dir_sep "WORKSPACE_ROOT") in
-            if Path.Source.is_root p then new_root
-            else Filename.(concat new_root (Path.Source.to_string p))
-          in
-          Path.external_ (Path.External.of_string p)
-        | path ->
-          (* Otherwise, it should not be changed *)
-          path
-      in
-      (* now, we rename the UIDs in the [requires] field , while reversing the
-         list of items, so that we get back the original ordering *)
-      List.map ~f:(Descr.Item.map_path ~f:rename_path) items
-
-    (** Sanitizes a workspace description when options ask to do so, or performs
-        no change at all otherwise *)
-    let sanitize context items =
-      if !sanitize_for_tests then really_sanitize context items else items
-  end
-end
 
 module Format = struct
   type t =

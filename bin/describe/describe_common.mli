@@ -1,4 +1,5 @@
 open Import
+open Stdune
 
 val sanitize_for_tests : bool ref
 
@@ -10,6 +11,8 @@ type options =
 module Descr : sig
   module Item : sig
     type t
+
+    val map_path : t -> f:(Path.t -> Path.t) -> t
   end
 
   module Workspace : sig
@@ -26,12 +29,6 @@ module Crawl : sig
     -> Dune_rules.Main.build_system
     -> Context.t
     -> Descr.Workspace.t Memo.t
-end
-
-module Sanitize_for_tests : sig
-  module Workspace : sig
-    val sanitize : Context.t -> Descr.Item.t list -> Descr.Item.t list
-  end
 end
 
 module Format : sig

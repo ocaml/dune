@@ -1,6 +1,12 @@
 open Import
 open Stdune
 
+(** Common library for "dune describe" style commands. This module contains two
+    modules:
+
+    - [Desc] which is a description of a workspace that can be serialised.
+    - [Format] which provides outputs serialisation support for a command. *)
+
 (** The module [Descr] is a typed representation of the description of a
     workspace, that is provided by the ``dune describe workspace`` command.
 

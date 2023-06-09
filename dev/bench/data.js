@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686315562107,
+  "lastUpdate": 1686315729388,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -42396,6 +42396,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.22320211488",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2fb1992c625b171b7a726573d90a3ccbf57c7a51",
+          "message": "chore: add changelog entry for #7849 (#7925)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>\r\nCo-authored-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-06-09T14:29:32+02:00",
+          "tree_id": "c1e24627848b2c1d1ae7a2b76ab969f645eea5e4",
+          "url": "https://github.com/ocaml/dune/commit/2fb1992c625b171b7a726573d90a3ccbf57c7a51"
+        },
+        "date": 1686315728484,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "81.41722646085334",
             "unit": "seconds"
           }
         ]

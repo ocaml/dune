@@ -4,15 +4,7 @@ open Stdune
 let term =
   let+ common = Common.term
   and+ format = Describe_format.arg
-  and+ _ =
-    Arg.(
-      value
-      & opt (some string) None
-      & info [ "lang" ] ~docv:"VERSION"
-          ~doc:
-            "This argument has no effect and is deprecated. It exists solely \
-             for backwards compatibility.")
-  in
+  and+ _ = Describe_lang_compat.arg in
   let config = Common.init common in
   Scheduler.go ~common ~config @@ fun () ->
   Build_system.run_exn @@ fun () ->

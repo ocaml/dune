@@ -160,14 +160,7 @@ let to_dyn context_name external_resolved_libs =
 let term =
   let+ common = Common.term
   and+ context_name = Common.context_arg ~doc:"Build context to use."
-  and+ _ =
-    Arg.(
-      value
-      & opt (some string) None
-      & info [ "lang" ] ~docv:"VERSION"
-          ~doc:
-            "This argument has no effect and is deprecated. It exists solely \
-             for backwards compatibility.")
+  and+ _ = Describe_lang_compat.arg
   and+ format = Describe_format.arg in
   let config = Common.init common in
   Scheduler.go ~common ~config @@ fun () ->

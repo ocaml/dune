@@ -95,14 +95,7 @@ let get_pped_file super_context file =
 let term =
   let+ common = Common.term
   and+ context_name = Common.context_arg ~doc:"Build context to use."
-  and+ _ =
-    Arg.(
-      value
-      & opt (some string) None
-      & info [ "lang" ] ~docv:"VERSION"
-          ~doc:
-            "This argument has no effect and is deprecated. It exists solely \
-             for backwards compatibility.")
+  and+ _ = Describe_lang_compat.arg
   and+ file =
     Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"FILE"))
   in

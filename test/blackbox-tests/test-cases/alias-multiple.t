@@ -82,7 +82,7 @@ not allowed
   2 |  (alias a)
   3 |  (aliases b)
   4 |  (action (echo "I have run")))
-  Error: fields alias, aliases are mutually exclusive
+  Error: fields "alias" and "aliases" are mutually exclusive.
   [1]
 
 Even if the aliases list is empty
@@ -99,5 +99,5 @@ Even if the aliases list is empty
   2 |  (alias a)
   3 |  (aliases)
   4 |  (action (echo "I have run")))
-  Error: fields alias, aliases are mutually exclusive
+  Error: fields "alias" and "aliases" are mutually exclusive.
   [1]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686436852149,
+  "lastUpdate": 1686436988433,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -42773,6 +42773,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6869917632866667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "df8db5c20edd492b1bb7a7fdfd55f610f73ab58a",
+          "message": "nix: allow entering slim shell with packages compiled from local dune (#7874)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-06-10T22:15:36Z",
+          "tree_id": "56ae8f50f2093415ab4b312f45943559f8b26985",
+          "url": "https://github.com/ocaml/dune/commit/df8db5c20edd492b1bb7a7fdfd55f610f73ab58a"
+        },
+        "date": 1686436987651,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "68.96710259249333",
             "unit": "seconds"
           }
         ]

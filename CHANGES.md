@@ -12,6 +12,9 @@ Unreleased
 - Add `dune build --dump-gc-stats FILE` argument to dump garbage collection
   stats to a named file. (#8072, @Alizter)
 
+- Fix bug with ppx and Reason syntax due to missing dependency in sandboxed
+  action (#7932, fixes #7930, @Alizter)
+
 3.9.1 (2023-07-06)
 ------------------
 

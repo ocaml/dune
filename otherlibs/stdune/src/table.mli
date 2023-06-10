@@ -59,10 +59,9 @@ val filteri_inplace : ('a, 'b) t -> f:(key:'a -> data:'b -> bool) -> unit
 val length : (_, _) t -> int
 
 module Multi : sig
-  type ('k, 'v) t
+  type ('k, 'v) t := ('k, 'v list) t
 
   val cons : ('k, 'v) t -> 'k -> 'v -> unit
 
   val find : ('k, 'v) t -> 'k -> 'v list
 end
-with type ('k, 'v) t := ('k, 'v list) t

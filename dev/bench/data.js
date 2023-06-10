@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686437000287,
+  "lastUpdate": 1686437266140,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -42831,6 +42831,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.9449571714799998",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "distinct": true,
+          "id": "1c0939ee8371951ec0f0d1bd0a1c810ca1b23122",
+          "message": "feat: allow multiple globs in library's (stdlib (internal_modules ...))\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-06-10T15:13:40-07:00",
+          "tree_id": "932c217826b10470aac6415a18095c8179f2766e",
+          "url": "https://github.com/ocaml/dune/commit/1c0939ee8371951ec0f0d1bd0a1c810ca1b23122"
+        },
+        "date": 1686437264635,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "81.92388625544",
             "unit": "seconds"
           }
         ]

@@ -1704,27 +1704,16 @@ module Rule = struct
          field_o "package"
            (Dune_lang.Syntax.since Stanza.syntax (2, 0)
            >>> Stanza_common.Pkg.decode)
-       and+ alias =
-         field_o "alias"
-           (Dune_lang.Syntax.since Stanza.syntax (2, 0)
-           >>> Dune_lang.Alias.decode)
        and+ aliases =
-         field_o "aliases"
-           (Dune_lang.Syntax.since Stanza.syntax (3, 5)
-           >>> repeat Dune_lang.Alias.decode)
-       in
-       let aliases =
-         match alias with
-         | None -> Option.value ~default:[] aliases
-         | Some alias -> (
-           match aliases with
-           | None -> [ alias ]
-           | Some _ ->
-             User_error.raise ~loc
-               [ Pp.text
-                   "The 'alias' and 'aliases' fields are mutually exclusive. \
-                    Please use only the 'aliases' field."
-               ])
+         let open Dune_sexp.Decoder in
+         fields_mutually_exclusive ~default:[]
+           [ ( "alias"
+             , Dune_lang.Syntax.since Stanza.syntax (2, 0)
+               >>> Dune_lang.Alias.decode >>| List.singleton )
+           ; ( "aliases"
+             , Dune_lang.Syntax.since Stanza.syntax (3, 5)
+               >>> repeat Dune_lang.Alias.decode )
+           ]
        in
        let mode, patch_back_source_tree =
          match mode with

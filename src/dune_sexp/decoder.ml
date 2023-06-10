@@ -698,9 +698,9 @@ let fields_missing_need_exactly_one loc names =
   [@@inline never] [@@specialise never] [@@local never]
 
 let fields_mutual_exclusion_violation loc names =
+  let names = List.map names ~f:String.quoted in
   User_error.raise ~loc
-    [ Pp.textf "fields %s are mutually exclusive"
-        (String.concat ~sep:", " names)
+    [ Pp.textf "fields %s are mutually exclusive." (String.enumerate_and names)
     ]
   [@@inline never] [@@specialise never] [@@local never]
 

@@ -68,7 +68,7 @@ to get a better error message:
   2 |   (targets a)
   3 |   (target a)
   4 |   (action (bash "echo hola > %{target}")))
-  Error: fields targets, target are mutually exclusive
+  Error: fields "targets" and "target" are mutually exclusive.
   [1]
 
 ^ Specifying both [targets] and [target] is not allowed

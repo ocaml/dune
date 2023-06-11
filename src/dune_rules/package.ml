@@ -80,15 +80,8 @@ module Dependency = struct
     let map =
       [ ("=", Eq); (">=", Gte); ("<=", Lte); (">", Gt); ("<", Lt); ("<>", Neq) ]
 
-    let to_dyn =
-      let open Dyn in
-      function
-      | Eq -> string "Eq"
-      | Gt -> string "Gt"
-      | Gte -> string "Gte"
-      | Lte -> string "Lte"
-      | Lt -> string "Lt"
-      | Neq -> string "Neq"
+    let to_dyn t =
+      Dyn.variant (fst (List.find_exn ~f:(fun (_, op) -> equal t op) map)) []
 
     let to_relop = function
       | Eq -> nopos `Eq

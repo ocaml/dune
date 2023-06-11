@@ -182,17 +182,16 @@ module Error = struct
   let private_deps_not_allowed ~kind ~loc private_dep =
     let name = Lib_info.name private_dep in
 
-    User_error.E
-      (User_error.make ~loc
-         [ Pp.textf
-             "Library %S is private, it cannot be a dependency of a %s. You \
-              need to give %S a public name."
-             (Lib_name.to_string name)
-             (match kind with
-             | `Private_package -> "private library attached to a package"
-             | `Public -> "public library")
-             (Lib_name.to_string name)
-         ])
+    User_error.make ~loc
+      [ Pp.textf
+          "Library %S is private, it cannot be a dependency of a %s. You need \
+           to give %S a public name."
+          (Lib_name.to_string name)
+          (match kind with
+          | `Private_package -> "private library attached to a package"
+          | `Public -> "public library")
+          (Lib_name.to_string name)
+      ]
 
   let only_ppx_deps_allowed ~loc dep =
     let name = Lib_info.name dep in
@@ -358,12 +357,12 @@ module Status = struct
     | Found of lib
     | Not_found
     | Hidden of lib Hidden.t
-    | Invalid of exn
+    | Invalid of User_message.t
 
   let to_dyn t =
     let open Dyn in
     match t with
-    | Invalid e -> variant "Invalid" [ Exn.to_dyn e ]
+    | Invalid e -> variant "Invalid" [ Dyn.string (User_message.to_string e) ]
     | Not_found -> variant "Not_found" []
     | Hidden { lib = _; path; reason } ->
       variant "Hidden" [ Path.to_dyn path; string reason ]
@@ -381,7 +380,7 @@ and resolve_result =
   | Not_found
   | Found of Lib_info.external_
   | Hidden of Lib_info.external_ Hidden.t
-  | Invalid of exn
+  | Invalid of User_message.t
   | (* Redirect (None, lib) looks up lib in the same database *)
     Redirect of
       db option * (Loc.t * Lib_name.t)
@@ -1703,7 +1702,7 @@ module DB = struct
       | Not_found
       | Found of Lib_info.external_
       | Hidden of Lib_info.external_ Hidden.t
-      | Invalid of exn
+      | Invalid of User_message.t
       | Redirect of db option * (Loc.t * Lib_name.t)
 
     let found f = Found f
@@ -1716,7 +1715,7 @@ module DB = struct
       let open Dyn in
       match x with
       | Not_found -> variant "Not_found" []
-      | Invalid e -> variant "Invalid" [ Exn.to_dyn e ]
+      | Invalid e -> variant "Invalid" [ Dyn.string (User_message.to_string e) ]
       | Found lib -> variant "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
       | Hidden h ->
         variant "Hidden" [ Hidden.to_dyn (Lib_info.to_dyn Path.to_dyn) h ]

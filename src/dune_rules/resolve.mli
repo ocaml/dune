@@ -102,7 +102,7 @@ val hash : ('a -> int) -> 'a t -> int
 
 val to_dyn : ('a -> Dyn.t) -> 'a t Dyn.builder
 
-val of_result : ('a, exn) result -> 'a t
+val of_result : ('a, User_message.t) result -> 'a t
 
 type error
 
@@ -111,8 +111,6 @@ val to_result : 'a t -> ('a, error) result
 val raise_error : error -> 'a
 
 val push_frames : error -> (unit -> 'a Memo.t) -> 'a Memo.t
-
-val of_error : error -> 'a t
 
 (** Read a [Resolve.t] value inside the action builder monad. *)
 val read : 'a t -> 'a Action_builder.t
@@ -201,7 +199,7 @@ module Memo : sig
 
   val fail : User_message.t -> _ t
 
-  val of_result : ('a, exn) result -> 'a t
+  val of_result : ('a, User_message.t) result -> 'a t
 
   (** Read the value immediately, ignoring actual errors. *)
   val peek : 'a t -> ('a, unit) result Memo.t

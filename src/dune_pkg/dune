@@ -4,8 +4,10 @@
  (libraries
   stdune
   fiber
+  chrome_trace
   dune_engine
   dune_util
+  dune_stats
   dune_lang
   dune_console
   opam_core

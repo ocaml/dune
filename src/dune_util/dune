@@ -5,6 +5,8 @@
   (names dune_flock))
  (libraries
   stdune
+  dune_stats
+  chrome_trace
   xdg
   dyn
   ordering

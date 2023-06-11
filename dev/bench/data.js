@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686476030340,
+  "lastUpdate": 1686476101310,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -19283,6 +19283,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "47.50761822178",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "972de26c70a25fdc7fb37039c7b104252c3100ae",
+          "message": "swap order of target and targets in mutually exclusive field error (#7935)\n\nThis is to make it more consistent with the analagous error for alias\r\nand aliases.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-11T02:13:14-07:00",
+          "tree_id": "4280aa6c277918b1b266a92d9a2428462deb6a90",
+          "url": "https://github.com/ocaml/dune/commit/972de26c70a25fdc7fb37039c7b104252c3100ae"
+        },
+        "date": 1686476100120,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.186540836153334",
             "unit": "seconds"
           }
         ]

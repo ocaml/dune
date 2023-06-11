@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Include source tree scans in the traces produced by `--trace-file` (#7937,
+  @rgrinberg)
+
 - Cinaps: The promotion rules for cinaps would only offer one file at a time no
   matter how many promotions were available. Now we offer all the promotions at
   once (#7901, @rgrinberg)

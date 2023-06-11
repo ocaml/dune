@@ -39,6 +39,8 @@ Unreleased
 - Allow multiple globs in library's `(stdlib (internal_modules ..))`
   (@anmonteiro, #7878)
 
+- Attach melange rules to the default alias (#7926, @haochenx)
+
 3.8.1 (2023-06-05)
 ------------------
 

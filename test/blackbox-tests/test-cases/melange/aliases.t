@@ -67,37 +67,9 @@ Dune default alias works
   $ dune clean
   $ dune build
   $ node _build/default/output/main.js
-  node:internal/modules/cjs/loader:1078
-    throw err;
-    ^
-  
-  Error: Cannot find module '$TESTCASE_ROOT/_build/default/output/main.js'
-      at Module._resolveFilename (node:internal/modules/cjs/loader:1075:15)
-      at Module._load (node:internal/modules/cjs/loader:920:27)
-      at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:81:12)
-      at node:internal/main/run_main_module:23:47 {
-    code: 'MODULE_NOT_FOUND',
-    requireStack: []
-  }
-  
-  Node.js v18.16.0
-  [1]
+  hello
   $ node _build/default/output2/main2.js
-  node:internal/modules/cjs/loader:1078
-    throw err;
-    ^
-  
-  Error: Cannot find module '$TESTCASE_ROOT/_build/default/output2/main2.js'
-      at Module._resolveFilename (node:internal/modules/cjs/loader:1075:15)
-      at Module._load (node:internal/modules/cjs/loader:920:27)
-      at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:81:12)
-      at node:internal/main/run_main_module:23:47 {
-    code: 'MODULE_NOT_FOUND',
-    requireStack: []
-  }
-  
-  Node.js v18.16.0
-  [1]
+  hello
 
 Users can override melange alias (even if useless)
 
@@ -139,18 +111,4 @@ Even if user defines an alias, dune default alias should still work
   $ dune clean
   $ dune build
   $ node _build/default/output/main.js
-  node:internal/modules/cjs/loader:1078
-    throw err;
-    ^
-  
-  Error: Cannot find module '$TESTCASE_ROOT/_build/default/output/main.js'
-      at Module._resolveFilename (node:internal/modules/cjs/loader:1075:15)
-      at Module._load (node:internal/modules/cjs/loader:920:27)
-      at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:81:12)
-      at node:internal/main/run_main_module:23:47 {
-    code: 'MODULE_NOT_FOUND',
-    requireStack: []
-  }
-  
-  Node.js v18.16.0
-  [1]
+  hello

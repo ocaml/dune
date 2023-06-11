@@ -39,7 +39,10 @@ Test case: default flags
   -I lib/coq/../coq-core/plugins/ssreflect
   -I lib/coq/../coq-core/plugins/ssrmatching
   -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/tutorial/p0
+  -I lib/coq/../coq-core/plugins/tutorial/p1
+  -I lib/coq/../coq-core/plugins/tutorial/p2
+  -I lib/coq/../coq-core/plugins/tutorial/p3
   -I lib/coq/../coq-core/plugins/zify
   -R coq/theories Coq
   -R . foo
@@ -77,7 +80,10 @@ TC: :standard
   -I lib/coq/../coq-core/plugins/ssreflect
   -I lib/coq/../coq-core/plugins/ssrmatching
   -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/tutorial/p0
+  -I lib/coq/../coq-core/plugins/tutorial/p1
+  -I lib/coq/../coq-core/plugins/tutorial/p2
+  -I lib/coq/../coq-core/plugins/tutorial/p3
   -I lib/coq/../coq-core/plugins/zify
   -R coq/theories Coq
   -R . foo
@@ -114,7 +120,10 @@ TC: override :standard
   -I lib/coq/../coq-core/plugins/ssreflect
   -I lib/coq/../coq-core/plugins/ssrmatching
   -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/tutorial/p0
+  -I lib/coq/../coq-core/plugins/tutorial/p1
+  -I lib/coq/../coq-core/plugins/tutorial/p2
+  -I lib/coq/../coq-core/plugins/tutorial/p3
   -I lib/coq/../coq-core/plugins/zify
   -R coq/theories Coq
   -R . foo
@@ -151,7 +160,10 @@ TC: add to :standard
   -I lib/coq/../coq-core/plugins/ssreflect
   -I lib/coq/../coq-core/plugins/ssrmatching
   -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/tutorial/p0
+  -I lib/coq/../coq-core/plugins/tutorial/p1
+  -I lib/coq/../coq-core/plugins/tutorial/p2
+  -I lib/coq/../coq-core/plugins/tutorial/p3
   -I lib/coq/../coq-core/plugins/zify
   -R coq/theories Coq
   -R . foo
@@ -193,7 +205,10 @@ TC: extend in workspace + override standard
   -I lib/coq/../coq-core/plugins/ssreflect
   -I lib/coq/../coq-core/plugins/ssrmatching
   -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/tutorial/p0
+  -I lib/coq/../coq-core/plugins/tutorial/p1
+  -I lib/coq/../coq-core/plugins/tutorial/p2
+  -I lib/coq/../coq-core/plugins/tutorial/p3
   -I lib/coq/../coq-core/plugins/zify
   -R coq/theories Coq
   -R . foo
@@ -229,7 +244,10 @@ TC: extend in workspace + override standard
   -I lib/coq/../coq-core/plugins/ssreflect
   -I lib/coq/../coq-core/plugins/ssrmatching
   -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/tutorial/p0
+  -I lib/coq/../coq-core/plugins/tutorial/p1
+  -I lib/coq/../coq-core/plugins/tutorial/p2
+  -I lib/coq/../coq-core/plugins/tutorial/p3
   -I lib/coq/../coq-core/plugins/zify
   -R coq/theories Coq
   -R . foo
@@ -267,7 +285,10 @@ TC: extend in dune (env) + override standard
   -I lib/coq/../coq-core/plugins/ssreflect
   -I lib/coq/../coq-core/plugins/ssrmatching
   -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/tutorial/p0
+  -I lib/coq/../coq-core/plugins/tutorial/p1
+  -I lib/coq/../coq-core/plugins/tutorial/p2
+  -I lib/coq/../coq-core/plugins/tutorial/p3
   -I lib/coq/../coq-core/plugins/zify
   -R coq/theories Coq
   -R . foo
@@ -305,7 +326,10 @@ TC: extend in dune (env) + standard
   -I lib/coq/../coq-core/plugins/ssreflect
   -I lib/coq/../coq-core/plugins/ssrmatching
   -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/tutorial/p0
+  -I lib/coq/../coq-core/plugins/tutorial/p1
+  -I lib/coq/../coq-core/plugins/tutorial/p2
+  -I lib/coq/../coq-core/plugins/tutorial/p3
   -I lib/coq/../coq-core/plugins/zify
   -R coq/theories Coq
   -R . foo
@@ -348,7 +372,10 @@ TC: extend in dune (env) + workspace + standard
   -I lib/coq/../coq-core/plugins/ssreflect
   -I lib/coq/../coq-core/plugins/ssrmatching
   -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/tutorial/p0
+  -I lib/coq/../coq-core/plugins/tutorial/p1
+  -I lib/coq/../coq-core/plugins/tutorial/p2
+  -I lib/coq/../coq-core/plugins/tutorial/p3
   -I lib/coq/../coq-core/plugins/zify
   -R coq/theories Coq
   -R . foo

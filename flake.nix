@@ -3,18 +3,9 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     ocamllsp = {
-      url = "git+https://www.github.com/ocaml/ocaml-lsp?submodules=1";
+      url = "git+https://github.com/ocaml/ocaml-lsp?submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
-      inputs.opam-repository.follows = "opam-repository";
-    };
-    opam-nix = {
-      url = "github:tweag/opam-nix";
-      inputs.opam-repository.follows = "opam-repository";
-    };
-    opam-repository = {
-      url = "github:ocaml/opam-repository";
-      flake = false;
     };
     melange = {
       url = "github:melange-re/melange";
@@ -25,31 +16,13 @@
   outputs =
     { self
     , flake-utils
-    , opam-nix
     , nixpkgs
     , ocamllsp
-    , opam-repository
     , melange
     }@inputs:
     let package = "dune";
     in flake-utils.lib.eachDefaultSystem (system:
     let
-      devPackages = {
-        menhir = "*";
-        lwt = "*";
-        csexp = "*";
-        core_bench = "*";
-        js_of_ocaml = "*";
-        js_of_ocaml-compiler = "*";
-        mdx = "*";
-        odoc = "*";
-        ppx_expect = "*";
-        ppxlib = "*";
-        ctypes = "*";
-        utop = "*";
-        cinaps = "*";
-        ocamlfind = "1.9.2";
-      };
       pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
         (self: super: {
           ocamlPackages = self.ocaml-ng.ocamlPackages_4_14;
@@ -71,25 +44,16 @@
             builtins.replaceStrings [ "." ] [ "_" ] version;
         in
         builtins.getAttr ("ocamlformat_" + ocamlformat_version) pkgs;
-      scope =
-        opam-nix.lib.${system}.buildOpamProject'
-          {
-            inherit pkgs;
-            repos = [ opam-repository ];
-          } ./.
-          (devPackages // {
-            ocaml-base-compiler = "4.14.1";
-          });
+
       testBuildInputs = with pkgs;
         [ file mercurial ]
         ++ lib.optionals stdenv.isLinux [ strace ];
       testNativeBuildInputs = with pkgs; [ nodejs-slim pkg-config opam ocamlformat ];
     in
-    {
+    rec {
       formatter = pkgs.nixpkgs-fmt;
 
-      packages = {
-        dune = scope.dune;
+      packages = rec {
         default = with pkgs; stdenv.mkDerivation {
           pname = package;
           version = "n/a";
@@ -105,6 +69,7 @@
           configurePlatforms = [ ];
           installFlags = [ "PREFIX=${placeholder "out"}" "LIBDIR=$(OCAMLFIND_DESTDIR)" ];
         };
+        dune = default;
       };
 
       devShells =
@@ -115,12 +80,27 @@
             })
             melange.overlays.default
           ];
-          mkSlim = { extraBuildInputs ? [ ], meta ? null }:
-            pkgs.mkShell {
+          makeDuneDevShell =
+            { extraBuildInputs ? [ ]
+            , meta ? null
+            , duneFromScope ? false
+            }:
+            let
+              slimPkgs =
+                if duneFromScope then
+                  pkgs.extend
+                    (self: super: {
+                      ocamlPackages = super.ocamlPackages.overrideScope' (oself: osuper: {
+                        dune_3 = packages.default;
+                      });
+                    })
+                else pkgs;
+            in
+            slimPkgs.mkShell {
               inherit meta;
               nativeBuildInputs = testNativeBuildInputs;
-              inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
-              buildInputs = testBuildInputs ++ (with pkgs.ocamlPackages; [
+              inputsFrom = [ slimPkgs.ocamlPackages.dune_3 ];
+              buildInputs = testBuildInputs ++ (with slimPkgs.ocamlPackages; [
                 merlin
                 ppx_expect
                 ctypes
@@ -161,13 +141,13 @@
               '';
             };
 
-          slim = mkSlim {
+          slim = makeDuneDevShell {
             meta.description = ''
               Provides a minimal shell environment built purely from nixpkgs
               that can run the testsuite (except the coq / melange tests).
             '';
           };
-          slim-melange = mkSlim {
+          slim-melange = makeDuneDevShell {
             extraBuildInputs = [
               pkgs.ocamlPackages.melange
               pkgs.ocamlPackages.rescript-syntax
@@ -202,24 +182,36 @@
               '';
             };
 
+          scope = makeDuneDevShell {
+            duneFromScope = true;
+            meta.description = ''
+              Provides a minimal shell environment built purely from nixpkgs
+              that replaces the Dune executable in the `ocamlPackages` scope by
+              the Dune binary built by from the repo.
+            '';
+          };
           default =
-            pkgs.mkShell {
-              nativeBuildInputs = testNativeBuildInputs;
-              buildInputs = testBuildInputs ++ (with pkgs;
-                [
-                  # dev tools
-                  patdiff
-                  ccls
-                ])
-                ++ [
-                ocamllsp.outputs.packages.${system}.ocaml-lsp-server
+            makeDuneDevShell {
+              extraBuildInputs = (with pkgs; [
+                # dev tools
+                patdiff
+                ccls
+              ]) ++ (with pkgs.ocamlPackages; [
+                ocamllsp.outputs.packages.${system}.default
                 pkgs.ocamlPackages.melange
-                pkgs.ocamlPackages.rescript-syntax
-              ] ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
-              inputsFrom = [ self.packages.${system}.dune ];
+                rescript-syntax
+                js_of_ocaml-compiler
+                js_of_ocaml
+                utop
+                core_bench
+                mdx
+                odoc
+                ppx_expect
+                ctypes
+              ]);
               meta.description = ''
-                Provides a shell environment built with opam2nix, where `dune`
-                is provided and built using the source code in this repo.
+                Provides a shell environment where `dune` is provided and built
+                using the source code in this repo.
               '';
             };
         };

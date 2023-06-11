@@ -152,7 +152,7 @@ and Legacy : sig
     ; implicit : bool (* Only useful for the stdlib *)
     ; installed_root : Path.t (* ; libraries : (Loc.t * Lib.t) list Resolve.t *)
     ; vo : Path.t list
-    ; cmxs : Path.t list
+    ; cmxs_directories : Path.t list
     }
 
   val to_dyn : t -> Dyn.t
@@ -171,27 +171,24 @@ end = struct
     ; implicit : bool (* Only useful for the stdlib *)
     ; installed_root : Path.t (* ; libraries : (Loc.t * Lib.t) list Resolve.t *)
     ; vo : Path.t list
-    ; cmxs : Path.t list
+    ; cmxs_directories : Path.t list
     }
 
-  let to_dyn { boot_id; id; implicit; installed_root; vo; cmxs } =
+  let to_dyn { boot_id; id; implicit; installed_root; vo; cmxs_directories } =
     Dyn.record
       [ ("boot_id", Dyn.option Id.to_dyn boot_id)
       ; ("id", Id.to_dyn id)
       ; ("implicit", Dyn.bool implicit)
       ; ("installed_root", Path.to_dyn installed_root)
       ; ("vo", Dyn.list Path.to_dyn vo)
-      ; ("cmxs", Dyn.list Path.to_dyn cmxs)
-        (* ; ( "libraries" *)
-        (*   , Resolve.to_dyn (Dyn.list (Dyn.pair Loc.to_dyn Lib.to_dyn)) libraries *)
-        (* ) *)
+      ; ("cmxs_directories", Dyn.list Path.to_dyn cmxs_directories)
       ]
 
   let implicit t = t.implicit
 
   let installed_root t = t.installed_root
 
-  let cmxs_directories t = t.cmxs
+  let cmxs_directories t = t.cmxs_directories
 
   let vo t = t.vo
 end
@@ -504,16 +501,17 @@ module DB = struct
     let create_from_stanza coq_db db dir stanza =
       Memo.exec memo (coq_db, db, dir, stanza)
 
-    (* XXX: Memoize? This is pretty cheap so not sure worth the cost *)
+    (* XXX: Memoize? This is pretty cheap so not sure worth the cost,
+       still called too much I have observed, suspicious! *)
     let create_from_coqpath ~boot_id cp =
       let name = Coq_path.name cp in
       let installed_root = Coq_path.path cp in
       let implicit = Coq_path.stdlib cp in
-      let cmxs = Coq_path.cmxs cp in
+      let cmxs_directories = Coq_path.cmxs_directories cp in
       let vo = Coq_path.vo cp in
       let id = Id.create ~path:installed_root ~name:(Loc.none, name) in
       Resolve.Memo.return
-        { Legacy.boot_id; id; implicit; installed_root; vo; cmxs }
+        { Legacy.boot_id; id; implicit; installed_root; vo; cmxs_directories }
 
     module Resolve_result_no_redirect = struct
       (** In our second iteration, we remove all the redirects *)

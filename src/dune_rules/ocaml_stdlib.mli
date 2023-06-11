@@ -12,7 +12,7 @@ type t = private
   ; exit_module : Module_name.t option
         (** Modules that are implicitly added by the compiler at the end when
             linking an executable *)
-  ; internal_modules : Glob.t
+  ; internal_modules : Predicate_lang.Glob.t
         (** Module names that are hardcoded in the compiler and so cannot be
             wrapped *)
   ; loc : Loc.t

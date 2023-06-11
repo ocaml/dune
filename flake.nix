@@ -95,10 +95,24 @@
                       });
                     })
                 else pkgs;
+
+              inherit (pkgs) writeScriptBin stdenv lib;
+
+              duneScript =
+                writeScriptBin "dune" ''
+                  #!${stdenv.shell}
+                  "$DUNE_SOURCE_ROOT"/_boot/dune.exe $@
+                '';
             in
+
             slimPkgs.mkShell {
+              shellHook = ''
+                export DUNE_SOURCE_ROOT=$PWD
+              '';
               inherit meta;
-              nativeBuildInputs = testNativeBuildInputs;
+              nativeBuildInputs =
+                testNativeBuildInputs ++
+                lib.optionals (!duneFromScope) [ duneScript ];
               inputsFrom = [ slimPkgs.ocamlPackages.dune_3 ];
               buildInputs = testBuildInputs ++ (with slimPkgs.ocamlPackages; [
                 merlin

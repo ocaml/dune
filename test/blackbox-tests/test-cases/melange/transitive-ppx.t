@@ -20,8 +20,6 @@ Test interaction of melange.emit library ppx dependencies
   > EOF
   $ touch lib/impl/subdir.ml
 
-Depending on the `subdir` library (preprocessed by a missing PPX) crashes dune
-
   $ cat > lib/test/dune <<EOF
   > (melange.emit
   >  (target dist)
@@ -30,5 +28,22 @@ Depending on the `subdir` library (preprocessed by a missing PPX) crashes dune
   >  (libraries subdir))
   > EOF
 
-  $ dune build 2>&1 | grep "must not crash"
-  I must not crash.  Uncertainty is the mind-killer. Exceptions are the
+  $ dune build
+  File "lib/impl/dune", line 5, characters 18-29:
+  5 |  (preprocess (pps not-present)))
+                        ^^^^^^^^^^^
+  Error: Library "not-present" not found.
+  -> required by library "mel-subdir" in _build/default/lib/impl
+  -> required by melange target dist
+  -> required by alias lib/test/all
+  -> required by alias default
+  File "lib/impl/dune", line 5, characters 18-29:
+  5 |  (preprocess (pps not-present)))
+                        ^^^^^^^^^^^
+  Error: Library "not-present" not found.
+  -> required by melange target dist
+  -> required by library "mel-subdir" in _build/default/lib/impl
+  -> required by _build/default/lib/test/dist/lib/test/.dist.mobjs/melange.js
+  -> required by alias lib/test/all
+  -> required by alias default
+  [1]

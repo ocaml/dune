@@ -54,9 +54,20 @@ let push_frames { stack_frames; message = _ } f =
   in
   loop stack_frames
 
-let raise_error { message; _ } = raise (User_error.E message)
+let error_to_memo error =
+  push_frames error (fun () -> raise (User_error.E error.message))
 
-let error_to_memo error = push_frames error (fun () -> raise_error error)
+let raise_error_with_stack_trace { message; stack_frames } =
+  match
+    Dune_util.Report_error.format_memo_stack
+      (List.map stack_frames ~f:Lazy.force)
+  with
+  | None -> raise (User_error.E message)
+  | Some stack ->
+    let message =
+      { message with paragraphs = message.paragraphs @ [ stack ] }
+    in
+    raise (User_error.E message)
 
 let read_memo = function
   | Ok x -> Memo.return x

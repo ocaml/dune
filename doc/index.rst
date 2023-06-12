@@ -50,6 +50,7 @@ Welcome to Dune's Documentation!
    reference/preprocessing-spec
    reference/packages
    reference/findlib
+   reference/aliases
    concepts/scopes
    concepts/variables
    concepts/dependency-spec

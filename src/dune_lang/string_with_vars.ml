@@ -13,6 +13,22 @@ type t =
   ; loc : Loc.t
   }
 
+let compare { quoted; parts; loc } t =
+  let open Ordering.O in
+  let= () = Bool.compare quoted t.quoted in
+  let= () = Loc.compare loc t.loc in
+  List.compare parts t.parts ~compare:(fun a b ->
+      match (a, b) with
+      | Text a, Text b -> String.compare a b
+      | Pform (_, a), Pform (_, b) -> Pform.compare a b
+      | Error (_, a), Error (_, b) -> User_message.compare a b
+      | Text _, _ -> Lt
+      | _, Text _ -> Gt
+      | Pform _, _ -> Lt
+      | _, Pform _ -> Gt)
+
+let equal x y = Ordering.is_eq (compare x y)
+
 let compare_no_loc { quoted; parts; loc = _ } t =
   let open Ordering.O in
   let= () = Bool.compare quoted t.quoted in

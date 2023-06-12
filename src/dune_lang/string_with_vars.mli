@@ -9,6 +9,10 @@ open Dune_sexp
 (** A sequence of text and variables. *)
 type t
 
+val equal : t -> t -> bool
+
+val compare : t -> t -> Ordering.t
+
 val compare_no_loc : t -> t -> Ordering.t
 
 val equal_no_loc : t -> t -> bool

@@ -83,6 +83,8 @@ module Env_update : sig
     ; value : 'a
     }
 
+  val map : 'a t -> f:('a -> 'b) -> 'b t
+
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 
   val to_dyn : 'a Dyn.builder -> 'a t Dyn.builder

@@ -160,8 +160,11 @@ let lock_dir_encode_decode_round_trip_test ~lock_dir_path ~make_lock_dir =
   let lock_dir_round_tripped =
     Lock_dir.read_disk ~lock_dir_path |> Result.ok_exn
   in
-  if Lock_dir.equal lock_dir_round_tripped lock_dir_original then
-    print_endline "lockdir matches after roundtrip:"
+  if
+    Lock_dir.equal
+      (Lock_dir.remove_locs lock_dir_round_tripped)
+      (Lock_dir.remove_locs lock_dir_original)
+  then print_endline "lockdir matches after roundtrip:"
   else print_endline "lockdir doesn't match after roundtrip:";
   print_endline (Lock_dir.to_dyn lock_dir_round_tripped |> Dyn.to_string)
 

@@ -40,6 +40,8 @@ type t =
   ; packages : Pkg.t Package_name.Map.t
   }
 
+val remove_locs : t -> t
+
 val equal : t -> t -> bool
 
 val to_dyn : t -> Dyn.t

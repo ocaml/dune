@@ -36,46 +36,46 @@ let term =
              to print multiple fields.")
   in
   let config = Common.init common in
-  Scheduler.go ~common ~config (fun () ->
-      let open Fiber.O in
-      let* setup = Import.Main.setup () in
-      let* setup = Memo.run setup in
-      let dir = Path.of_string dir in
-      let checked = Util.check_path setup.contexts dir in
-      let request =
-        Action_builder.all
-          (match checked with
-          | In_build_dir (ctx, _) ->
-            let sctx =
-              Dune_engine.Context_name.Map.find_exn setup.scontexts ctx.name
-            in
-            [ dump sctx ~dir:(Path.as_in_build_dir_exn dir) ]
-          | In_source_dir dir ->
-            Dune_engine.Context_name.Map.values setup.scontexts
-            |> List.map ~f:(fun sctx ->
-                   let dir =
-                     Path.Build.append_source
-                       (Super_context.context sctx).build_dir dir
-                   in
-                   dump sctx ~dir)
-          | External _ ->
-            User_error.raise
-              [ Pp.text "Environment is not defined for external paths" ]
-          | In_install_dir _ ->
-            User_error.raise
-              [ Pp.text "Environment is not defined in install dirs" ])
+  Scheduler.go ~common ~config @@ fun () ->
+  let open Fiber.O in
+  let* setup = Import.Main.setup () in
+  let* setup = Memo.run setup in
+  let dir = Path.of_string dir in
+  let checked = Util.check_path setup.contexts dir in
+  let request =
+    Action_builder.all
+    @@
+    match checked with
+    | In_build_dir (ctx, _) ->
+      let sctx =
+        Dune_engine.Context_name.Map.find_exn setup.scontexts ctx.name
       in
-      Build_system.run_exn (fun () ->
-          let open Memo.O in
-          let+ res, _facts = Action_builder.run request Eager in
-          res)
-      >>| function
-      | [ (_, env) ] -> Format.printf "%a" (pp ~fields) env
-      | l ->
-        List.iter l ~f:(fun (name, env) ->
-            Format.printf "@[<v2>Environment for context %s:@,%a@]@."
-              (Dune_engine.Context_name.to_string name)
-              (pp ~fields) env))
+      [ dump sctx ~dir:(Path.as_in_build_dir_exn dir) ]
+    | In_source_dir dir ->
+      Dune_engine.Context_name.Map.values setup.scontexts
+      |> List.map ~f:(fun sctx ->
+             let dir =
+               Path.Build.append_source (Super_context.context sctx).build_dir
+                 dir
+             in
+             dump sctx ~dir)
+    | External _ ->
+      User_error.raise
+        [ Pp.text "Environment is not defined for external paths" ]
+    | In_install_dir _ ->
+      User_error.raise [ Pp.text "Environment is not defined in install dirs" ]
+  in
+  ( Build_system.run_exn @@ fun () ->
+    let open Memo.O in
+    let+ res, _facts = Action_builder.run request Eager in
+    res )
+  >>| function
+  | [ (_, env) ] -> Format.printf "%a" (pp ~fields) env
+  | l ->
+    List.iter l ~f:(fun (name, env) ->
+        Format.printf "@[<v2>Environment for context %s:@,%a@]@."
+          (Dune_engine.Context_name.to_string name)
+          (pp ~fields) env)
 
 let command =
   let doc = "Print the environment of a directory" in

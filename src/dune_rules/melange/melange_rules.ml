@@ -172,6 +172,17 @@ let build_js ~loc ~dir ~pkg_name ~mode ~module_systems ~output ~obj_dir ~sctx
            ; Dep src
            ]))
 
+(* attach [deps] to the specified [alias] AND the (dune default) [all] alias.
+
+   when [alias] is not supplied, {!Melange_stanzas.Emit.implicit_alias} is
+   assumed. *)
+let add_deps_to_aliases ?(alias = Melange_stanzas.Emit.implicit_alias) ~dir deps
+    =
+  let alias = Alias.make alias ~dir in
+  let dune_default_alias = Alias.all ~dir in
+  let attach alias = Rules.Produce.Alias.add_deps alias deps in
+  Memo.parallel_iter ~f:attach [ alias; dune_default_alias ]
+
 let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
     (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
@@ -235,13 +246,7 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
         in
         ()
       in
-      match mel.alias with
-      | None ->
-        let alias = Alias.make Melange_stanzas.Emit.implicit_alias ~dir in
-        Rules.Produce.Alias.add_deps alias emit_and_libs_deps
-      | Some alias_name ->
-        let alias = Alias.make alias_name ~dir in
-        Rules.Produce.Alias.add_deps alias emit_and_libs_deps
+      add_deps_to_aliases ?alias:mel.alias emit_and_libs_deps ~dir
     in
     ( cctx
     , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
@@ -323,17 +328,7 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
     Memo.parallel_iter copy ~f:(fun (src, dst) ->
         Super_context.add_rule ~loc ~dir ~mode sctx
           (Action_builder.copy ~src ~dst))
-  and+ () =
-    match mel.alias with
-    | None ->
-      let alias =
-        Alias.make Melange_stanzas.Emit.implicit_alias ~dir:target_dir
-      in
-      Rules.Produce.Alias.add_deps alias deps
-    | Some alias_name ->
-      let alias = Alias.make alias_name ~dir:target_dir in
-      Rules.Produce.Alias.add_deps alias deps
-  in
+  and+ () = add_deps_to_aliases ?alias:mel.alias deps ~dir:target_dir in
   ()
 
 let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope

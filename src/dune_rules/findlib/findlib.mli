@@ -24,7 +24,7 @@ module Unavailable_reason : sig
     | Not_found
         (** The package is hidden because it contains an unsatisfied 'exist_if'
             clause *)
-    | Invalid_dune_package of exn
+    | Invalid_dune_package of User_message.t
 
   val to_dyn : t -> Dyn.t
 end
@@ -41,7 +41,7 @@ val find :
 val all_packages : t -> Dune_package.Entry.t list Memo.t
 
 (** List all the packages that have broken [dune-package] files *)
-val all_broken_packages : t -> (Package.Name.t * exn) list Memo.t
+val all_broken_packages : t -> (Package.Name.t * User_message.t) list Memo.t
 
 (** A dummy package. This is used to implement [external-lib-deps] *)
 val dummy_lib : t -> name:Lib_name.t -> Dune_package.Lib.t Memo.t

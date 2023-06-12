@@ -30,6 +30,20 @@ Unreleased
 - Switch back to threaded console for all systems; fix unresponsive console on
   Windows (#7906, @nojb)
 
+- Respect `-p` / `--only-packages` for `melange.emit` artifacts (#7849,
+  @anmonteiro)
+
+- Fix scanning of Coq installed files (@ejgallego, reported by
+  @palmskog, #7895 , fixes #7893)
+
+- Allow multiple globs in library's `(stdlib (internal_modules ..))`
+  (@anmonteiro, #7878)
+
+- Attach melange rules to the default alias (#7926, @haochenx)
+
+- In opam constraints, reject `(and)` and `(or)` with no arguments at parse
+  time (#7730, @emillon)
+
 3.8.1 (2023-06-05)
 ------------------
 
@@ -42,8 +56,8 @@ Unreleased
   fixes an issue with install layouts based on COQPATH such as those found in
   nixpkgs. (#7790, @Alizter)
 
-- Revert #7415 and #7450 (Resolve `ppx_runtime_libraries` in the target context when
-  cross compiling) (#7887, fixes #7875, @emillon)
+- Revert #7415 and #7450 (Resolve `ppx_runtime_libraries` in the target context
+  when cross compiling) (#7887, fixes #7875, @emillon)
 
 3.8.0 (2023-05-23)
 ------------------

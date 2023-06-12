@@ -17,6 +17,22 @@ end
 module Legacy : sig
   type t
 
+  (** For each legacy library, we need two pieces of data:
+
+      - the list of [.vo] files, this is because we need to make the call to
+        [coqdep] depend on it. If due to external action the list of these files
+        changes, coqdep must be re-run. Note that coqdep sometimes checks for
+        [.vo] files and sometimes for [.v] files, which is messy (in principle
+        only checks for [.v] files when compiling the stdlib using make, but
+        YMMV with coqdep code).
+
+      In the case of a [Dune.t] lib, this list is obtained from the [src_root],
+      via [Dir_contents.coq], maybe we should move that function here and make
+      it common.
+
+      - the list of directories containing [.cmxs] files, so we can add them to
+        the loadpath as Coq does for all [user-contrib] *)
+
   (** List of vo files *)
   val vo : t -> Path.t list
 

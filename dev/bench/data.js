@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686557051862,
+  "lastUpdate": 1686557566111,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -19428,6 +19428,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.93150054779333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6501f426b704b47c121cbc4064259a7b6de1b86a",
+          "message": "fix(opam): cleanly reject argumentless (and)/(or) (#7730)\n\nOtherwise they would raise a code error later.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-06-12T09:51:08+02:00",
+          "tree_id": "498ab9db78d47fdad8ec3767eb53b4e6c5469e08",
+          "url": "https://github.com/ocaml/dune/commit/6501f426b704b47c121cbc4064259a7b6de1b86a"
+        },
+        "date": 1686557565460,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.652453675020006",
             "unit": "seconds"
           }
         ]

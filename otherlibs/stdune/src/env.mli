@@ -6,6 +6,8 @@ module Var : sig
   val temp_dir : t
 
   include Comparable_intf.S with type key := t
+
+  val to_dyn : t -> Dyn.t
 end
 
 type t

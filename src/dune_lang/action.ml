@@ -60,38 +60,70 @@ module File_perm = struct
 end
 
 module Env_update = struct
-  type op =
-    | Eq
-    | PlusEq
-    | EqPlus
-    | ColonEq
-    | EqColon
-    | EqPlusEq
+  module Op = struct
+    type t =
+      | Eq
+      | PlusEq
+      | EqPlus
+      | ColonEq
+      | EqColon
+      | EqPlusEq
+
+    let equal a b =
+      match (a, b) with
+      | Eq, Eq
+      | PlusEq, PlusEq
+      | EqPlus, EqPlus
+      | ColonEq, ColonEq
+      | EqColon, EqColon
+      | EqPlusEq, EqPlusEq -> true
+      | _ -> false
+
+    let all =
+      [ ("=", Eq)
+      ; ("+=", PlusEq)
+      ; ("=+", EqPlus)
+      ; (":=", ColonEq)
+      ; ("=:", EqColon)
+      ; ("=+=", EqPlusEq)
+      ]
+
+    let to_dyn t =
+      List.find_map all ~f:(fun (k, t') ->
+          if equal t t' then Some (Dyn.string k) else None)
+      |> Option.value_exn
+  end
 
   type 'a t =
-    { op : op
+    { op : Op.t
     ; var : Env.Var.t
     ; value : 'a
     }
 
-  let ops =
-    [ ("=", Eq)
-    ; ("+=", PlusEq)
-    ; ("=+", EqPlus)
-    ; (":=", ColonEq)
-    ; ("=:", EqColon)
-    ; ("=+=", EqPlusEq)
-    ]
+  let map t ~f = { t with value = f t.value }
+
+  let equal value_equal { op; var; value }
+      { op = other_op; var = other_var; value = other_value } =
+    Op.equal op other_op
+    && Ordering.is_eq (Env.Var.compare var other_var)
+    && value_equal value other_value
+
+  let to_dyn value_to_dyn { op; var; value } =
+    Dyn.record
+      [ ("op", Op.to_dyn op)
+      ; ("var", Env.Var.to_dyn var)
+      ; ("value", value_to_dyn value)
+      ]
 
   let decode =
     let open Decoder in
-    let env_update_op = enum ops in
+    let env_update_op = enum Op.all in
     let+ op, var, value = triple env_update_op string String_with_vars.decode in
     { op; var; value }
 
   let encode { op; var; value } =
     let op =
-      List.find_map ops ~f:(fun (k, v) ->
+      List.find_map Op.all ~f:(fun (k, v) ->
           if Poly.equal v op then Some k else None)
       |> Option.value_exn
     in
@@ -436,7 +468,7 @@ let validate ~loc t = ensure_at_most_one_dynamic_run ~loc t
 
 let rec map_string_with_vars t ~f =
   match t with
-  | Run (sw, xs) -> Run (f sw, xs)
+  | Run (sw, xs) -> Run (f sw, List.map ~f xs)
   | With_accepted_exit_codes (lang, t) ->
     With_accepted_exit_codes (lang, map_string_with_vars t ~f)
   | Dynamic_run (sw, sws) -> Dynamic_run (f sw, List.map sws ~f)
@@ -448,7 +480,7 @@ let rec map_string_with_vars t ~f =
   | Ignore (o, t) -> Ignore (o, map_string_with_vars t ~f)
   | Progn xs -> Progn (List.map xs ~f:(map_string_with_vars ~f))
   | Concurrent xs -> Concurrent (List.map xs ~f:(map_string_with_vars ~f))
-  | Echo xs -> Echo xs
+  | Echo xs -> Echo (List.map ~f xs)
   | Cat xs -> Cat (List.map ~f xs)
   | Copy (sw1, sw2) -> Copy (f sw1, f sw2)
   | Symlink (sw1, sw2) -> Symlink (f sw1, f sw2)
@@ -473,6 +505,8 @@ let rec map_string_with_vars t ~f =
 let remove_locs = map_string_with_vars ~f:String_with_vars.remove_locs
 
 let compare_no_locs t1 t2 = Poly.compare (remove_locs t1) (remove_locs t2)
+
+let equal_no_locs t1 t2 = Ordering.is_eq (compare_no_locs t1 t2)
 
 open Decoder
 

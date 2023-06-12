@@ -67,6 +67,8 @@ let record_fields (l : field list) =
     | Normal (name, v) -> Some (List [ Atom (Atom.of_string name); v ])
     | Inlined_list (name, l) -> Some (List (Atom (Atom.of_string name) :: l)))
 
+let named_record_fields name fields = List (string name :: record_fields fields)
+
 let unknown _ = atom "<unknown>"
 
 let enum xs x =

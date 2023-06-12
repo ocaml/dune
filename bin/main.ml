@@ -22,7 +22,6 @@ let all : _ Cmdliner.Cmd.t list =
     ; Format_dune_file.command
     ; Upgrade.command
     ; Cache.command
-    ; Describe.command
     ; Top.command
     ; Ocaml_merlin.command
     ; Shutdown.command
@@ -32,6 +31,7 @@ let all : _ Cmdliner.Cmd.t list =
   let groups =
     [ Ocaml_cmd.group
     ; Coq.group
+    ; Describe.group
     ; Rpc.group
     ; Internal.group
     ; Init.group

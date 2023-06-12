@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix printing errors from excerpts whenever character offsets span multiple
+  lines (#7950, fixes #7905, @rgrinberg)
+
 - Include source tree scans in the traces produced by `--trace-file` (#7937,
   @rgrinberg)
 

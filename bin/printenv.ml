@@ -5,9 +5,9 @@ let dump sctx ~dir =
   let+ env = Super_context.dump_env sctx ~dir in
   ((Super_context.context sctx).name, env)
 
-let pp ppf ~fields sexps =
+let pp ~fields sexps =
   let fields = String.Set.of_list fields in
-  List.iter sexps ~f:(fun sexp ->
+  List.filter_map sexps ~f:(fun sexp ->
       let do_print =
         String.Set.is_empty fields
         ||
@@ -15,14 +15,7 @@ let pp ppf ~fields sexps =
         | Dune_lang.List (Atom (A name) :: _) -> String.Set.mem fields name
         | _ -> false
       in
-      if do_print then
-        let version =
-          Dune_lang.Syntax.greatest_supported_version Stanza.syntax
-        in
-        Dune_lang.Ast.add_loc sexp ~loc:Loc.none
-        |> Dune_lang.Cst.concrete |> List.singleton
-        |> Dune_lang.Format.pp_top_sexps ~version
-        |> Format.fprintf ppf "%a@?" Pp.to_fmt)
+      if do_print then Some (Dune_lang.pp sexp) else None)
 
 let term =
   let+ common = Common.term
@@ -65,17 +58,17 @@ let term =
     | In_install_dir _ ->
       User_error.raise [ Pp.text "Environment is not defined in install dirs" ]
   in
-  ( Build_system.run_exn @@ fun () ->
-    let open Memo.O in
-    let+ res, _facts = Action_builder.run request Eager in
-    res )
-  >>| function
-  | [ (_, env) ] -> Format.printf "%a" (pp ~fields) env
+  Build_system.run_exn @@ fun () ->
+  let open Memo.O in
+  let+ res, _facts = Action_builder.run request Eager in
+  match res with
+  | [ (_, env) ] -> Console.print (pp ~fields env)
   | l ->
     List.iter l ~f:(fun (name, env) ->
-        Format.printf "@[<v2>Environment for context %s:@,%a@]@."
+        Pp.textf "Environment for context %s:"
           (Dune_engine.Context_name.to_string name)
-          (pp ~fields) env)
+        :: (pp ~fields) env
+        |> Dune_console.print)
 
 let command =
   let doc = "Print the environment of a directory" in

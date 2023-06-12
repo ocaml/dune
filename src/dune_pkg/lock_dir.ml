@@ -32,8 +32,6 @@ module Source = struct
            checksum other_checksum
     | _ -> false
 
-  let equal_no_locs a b = equal (remove_locs a) (remove_locs b)
-
   let to_dyn = function
     | External_copy (_loc, path) ->
       Dyn.variant "External_copy" [ Path.External.to_dyn path ]
@@ -107,7 +105,10 @@ module Pkg_info = struct
     Package_name.equal name other_name
     && String.equal version other_version
     && Bool.equal dev other_dev
-    && Option.equal Source.equal_no_locs source other_source
+    && Option.equal Source.equal source other_source
+
+  let remove_locs t =
+    { t with source = Option.map ~f:Source.remove_locs t.source }
 
   let to_dyn { name; version; dev; source } =
     Dyn.record
@@ -143,8 +144,16 @@ module Pkg = struct
     && Pkg_info.equal info other_info
     && Path.Source.equal lock_dir other_lock_dir
     && List.equal
-         (Dune_lang.Action.Env_update.equal String_with_vars.equal_no_loc)
+         (Dune_lang.Action.Env_update.equal String_with_vars.equal)
          exported_env other_exported_env
+
+  let remove_locs t =
+    { t with
+      info = Pkg_info.remove_locs t.info
+    ; exported_env =
+        List.map t.exported_env
+          ~f:(Dune_lang.Action.Env_update.map ~f:String_with_vars.remove_locs)
+    }
 
   let to_dyn
       { build_command; install_command; deps; info; lock_dir; exported_env } =
@@ -226,10 +235,13 @@ type t =
   ; packages : Pkg.t Package_name.Map.t
   }
 
+let remove_locs t =
+  { t with packages = Package_name.Map.map t.packages ~f:Pkg.remove_locs }
+
 let equal { version; packages }
     { version = other_version; packages = other_packages } =
   Syntax.Version.equal version other_version
-  && Package_name.Map.equal ~equal:Pkg.equal packages other_packages
+  && Package_name.Map.equal packages other_packages ~equal:Pkg.equal
 
 let to_dyn { version; packages } =
   Dyn.record

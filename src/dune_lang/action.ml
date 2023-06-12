@@ -100,6 +100,8 @@ module Env_update = struct
     ; value : 'a
     }
 
+  let map t ~f = { t with value = f t.value }
+
   let equal value_equal { op; var; value }
       { op = other_op; var = other_var; value = other_value } =
     Op.equal op other_op

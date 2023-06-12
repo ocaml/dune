@@ -21,6 +21,9 @@ Unreleased
 - Allow `(include_subdirs qualified)` to be used when libraries define a
   `(modules ...)` field (#7797, fixes #7597, @anmonteiro)
 
+- `$ dune describe` is now a command group, so arguments to subcommands must be
+  passed after subcommand itself. (#7919, @Alizter)
+
 - The `interface` and `implementation` fields of a `(dialect)` are now optional
   (#7757, @gpetiot)
 

@@ -1,16 +1,6 @@
 open Stdune
 open Import
 
-let doc = "Print the environment of a directory"
-
-let man =
-  [ `S "DESCRIPTION"
-  ; `P {|$(b,dune printenv DIR) prints the environment of a directory|}
-  ; `Blocks Common.help_secs
-  ]
-
-let info = Cmd.info "printenv" ~doc ~man
-
 let dump sctx ~dir =
   let open Action_builder.O in
   let+ env = Super_context.dump_env sctx ~dir in
@@ -88,4 +78,12 @@ let term =
               (Dune_engine.Context_name.to_string name)
               (pp ~fields) env))
 
-let command = Cmd.v info term
+let command =
+  let doc = "Print the environment of a directory" in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|$(b,dune show env DIR) prints the environment of a directory|}
+    ; `Blocks Common.help_secs
+    ]
+  in
+  Cmd.v (Cmd.info "env" ~doc ~man) term

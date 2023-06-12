@@ -12,6 +12,7 @@ let subcommands =
   ; Describe_external_lib_deps.command
   ; Describe_opam_files.command
   ; Describe_pp.command
+  ; Printenv.command
   ]
 
 let group =

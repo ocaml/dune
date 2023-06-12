@@ -130,14 +130,14 @@ let theories_flags ~theories_deps =
     let+ libs = theories_deps in
     Command.Args.S (List.map ~f:theory_coqc_flag libs))
 
-let boot_flags ~coq_lang_version t : _ Command.Args.t =
-  let boot_flag = if coq_lang_version >= (0, 8) then [ "-boot" ] else [] in
-  match t with
+let boot_flags ~coq_lang_version : _ -> _ Command.Args.t = function
+  | `Bootstrap _ -> A "-boot"
   (* We are compiling the prelude itself
       [should be replaced with (per_file ...) flags] *)
-  | `Bootstrap_prelude -> As ("-noinit" :: boot_flag)
-  (* No special case *)
-  | `No_boot | `Bootstrap _ -> As boot_flag
+  | `Bootstrap_prelude -> As [ "-boot"; "-noinit" ]
+  (* On >= 0.8 we always need to pass -boot *)
+  | `No_boot ->
+    if coq_lang_version >= (0, 8) then A "-boot" else Command.Args.empty
 
 let coqc_file_flags ~dir ~theories_deps ~wrapper_name ~boot_type ~ml_flags
     ~coq_lang_version : _ Command.Args.t list =

@@ -44,6 +44,9 @@ Unreleased
 - In opam constraints, reject `(and)` and `(or)` with no arguments at parse
   time (#7730, @emillon)
 
+- Fix `-boot` flag being passed to `coqdep` when composing with Coq stdlib
+  (#7942, @Alizter)
+
 3.8.1 (2023-06-05)
 ------------------
 

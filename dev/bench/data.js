@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686586889208,
+  "lastUpdate": 1686587337605,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -19515,6 +19515,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.12983163070667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "5c3d855658dc279368f2ffc7c4d6c36908119475",
+          "message": "refactor: remove all suspicious equalities\n\nMake all equalities respect locations and add [remove_locs] functions to\nhave comparison that ignores locations.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-12T17:07:49+01:00",
+          "tree_id": "b9c6ee74e6c853f67fce544e555da30a820a9396",
+          "url": "https://github.com/ocaml/dune/commit/5c3d855658dc279368f2ffc7c4d6c36908119475"
+        },
+        "date": 1686587335995,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.47779025989334",
             "unit": "seconds"
           }
         ]

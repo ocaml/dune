@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686582448751,
+  "lastUpdate": 1686582780644,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -43527,6 +43527,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6338023504066665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "punchagan@muse-amuse.in",
+            "name": "Puneeth Chaganti",
+            "username": "punchagan"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e1cd0a436c82ed364d9c46920d4d2e1cb6be2bd9",
+          "message": "fix(chore): Fix actions/checkout to use the latest version (#7944)\n\ndf1477bc30c353e7ccd3b78a45c4b33fd9aede52 incorrectly changed the version of\r\nsetup-ocaml instead of actions/checkout. This commit fixes it.\r\n\r\nSigned-off-by: Puneeth Chaganti <punchagan@muse-amuse.in>",
+          "timestamp": "2023-06-12T07:47:00-07:00",
+          "tree_id": "ba1240ef31574f4a8260211e3c66cff84c446a54",
+          "url": "https://github.com/ocaml/dune/commit/e1cd0a436c82ed364d9c46920d4d2e1cb6be2bd9"
+        },
+        "date": 1686582779335,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.43111876536666",
             "unit": "seconds"
           }
         ]

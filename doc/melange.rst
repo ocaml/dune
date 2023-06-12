@@ -148,9 +148,8 @@ The resulting layout in ``_build/default/output`` will be as follows:
     is explicitly defined in the stanza, the targets from this stanza will
     be excluded from the ``melange`` alias.
 
-  - As per Dune's convention, all targets declared using this stanza will also
-    be attached to the Dune's default ``@all`` alias, regardless of whether
-    the ``(alias ...)`` field is present.
+  - The targets of ``melange.emit`` are also attached to the Dune default
+    alias (``@all``), regardless of whether the ``(alias ...)`` field is present.
 
 - ``(module_systems <module_systems>)`` specifies the JavaScript import and
   export format used. The values allowed for ``<module_systems>`` are ``es6``

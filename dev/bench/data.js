@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686562807336,
+  "lastUpdate": 1686562817757,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -43469,6 +43469,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "63.37153331796667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "javier.chavarri@gmail.com",
+            "name": "Javier Chávarri",
+            "username": "jchavarri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c8529dfd1f124c6994f21d9341c039b1968a9852",
+          "message": "ci bench: remove melange pins (#7918)\n\nSigned-off-by: Javier Chávarri <javier.chavarri@gmail.com>",
+          "timestamp": "2023-06-12T10:14:55+01:00",
+          "tree_id": "1ae245e31aa97dd0e281a1fab34707ba33ba90f6",
+          "url": "https://github.com/ocaml/dune/commit/c8529dfd1f124c6994f21d9341c039b1968a9852"
+        },
+        "date": 1686562817041,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6338023504066665",
             "unit": "seconds"
           }
         ]

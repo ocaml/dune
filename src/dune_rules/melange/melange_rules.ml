@@ -469,7 +469,6 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
     let* modules_for_js, _obj_dir =
       modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope mel
     in
-    Resolve.push_frames resolve_error @@ fun () ->
     let module_systems = mel.module_systems in
     let output = `Private_library_or_emit target_dir in
     let loc = mel.loc in
@@ -478,5 +477,8 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
             let file_targets = [ make_js_name ~output ~js_ext m ] in
             Super_context.add_rule sctx ~dir ~loc ~mode
               (Action_builder.fail
-                 { fail = (fun () -> Resolve.raise_error resolve_error) }
+                 { fail =
+                     (fun () ->
+                       Resolve.raise_error_with_stack_trace resolve_error)
+                 }
               |> Action_builder.with_file_targets ~file_targets)))

@@ -108,9 +108,7 @@ type error
 
 val to_result : 'a t -> ('a, error) result
 
-val raise_error : error -> 'a
-
-val push_frames : error -> (unit -> 'a Memo.t) -> 'a Memo.t
+val raise_error_with_stack_trace : error -> 'a
 
 (** Read a [Resolve.t] value inside the action builder monad. *)
 val read : 'a t -> 'a Action_builder.t

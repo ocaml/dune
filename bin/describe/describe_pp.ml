@@ -43,8 +43,7 @@ let get_pped_file super_context file =
     file |> Path.to_string |> Path.Build.relative context.build_dir
   in
   let file_in_build_dir =
-    if String.is_empty file then
-      User_error.raise [ Pp.textf "no file is given" ]
+    if String.is_empty file then User_error.raise [ Pp.textf "No file given." ]
     else Path.of_string file |> in_build_dir |> Path.build
   in
   let pp_file =
@@ -86,11 +85,12 @@ let get_pped_file super_context file =
         let+ () = Build_system.build_file file_in_build_dir in
         Error file_in_build_dir
       | Some { loc; _ } ->
-        User_error.raise ~loc
-          [ Pp.text "describe pp command doesn\'t work with staged_pps" ])
+        User_error.raise ~loc [ Pp.text "staged_pps are not supported." ])
     | false ->
       User_error.raise
-        [ Pp.textf "%s does not exist" (Path.to_string file_in_build_dir) ])
+        [ Pp.textf "%s does not exist"
+            (Path.to_string_maybe_quoted file_in_build_dir)
+        ])
 
 let term =
   let+ common = Common.term

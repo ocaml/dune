@@ -7,6 +7,13 @@ open Import
 
    - duniverse people for "describe opam-files" *)
 
+let subcommands =
+  [ Describe_workspace.command
+  ; Describe_external_lib_deps.command
+  ; Describe_opam_files.command
+  ; Describe_pp.command
+  ]
+
 let group =
   let doc = "Describe the workspace." in
   let man =
@@ -27,9 +34,10 @@ let group =
   in
   let info = Cmd.info "describe" ~doc ~man in
   let default = Describe_workspace.term in
-  Cmd.group ~default info
-    [ Describe_workspace.command
-    ; Describe_external_lib_deps.command
-    ; Describe_opam_files.command
-    ; Describe_pp.command
-    ]
+  Cmd.group ~default info subcommands
+
+module Show = struct
+  let group =
+    let doc = "Command group for showing information about the workspace" in
+    Cmd.group (Cmd.info ~doc "show") subcommands
+end

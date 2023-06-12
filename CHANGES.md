@@ -41,6 +41,9 @@ Unreleased
 
 - Attach melange rules to the default alias (#7926, @haochenx)
 
+- In opam constraints, reject `(and)` and `(or)` with no arguments at parse
+  time (#7730, @emillon)
+
 3.8.1 (2023-06-05)
 ------------------
 

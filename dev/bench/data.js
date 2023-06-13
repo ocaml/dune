@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686682776711,
+  "lastUpdate": 1686683115706,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -44397,6 +44397,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.154399102693333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "11386f1f3698a6cefc17a214d1a5e38a1e0c90c8",
+          "message": "feature: extend traces to include source scans (#7937)\n\nSource scans can be quite slow. Record them in the trace.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-13T11:39:07-07:00",
+          "tree_id": "7af847289aa69ca0f6e792ed2a4dce93fb4b8da9",
+          "url": "https://github.com/ocaml/dune/commit/11386f1f3698a6cefc17a214d1a5e38a1e0c90c8"
+        },
+        "date": 1686683114956,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "66.90294743685334",
             "unit": "seconds"
           }
         ]

@@ -1,14 +1,5 @@
 open Import
 
-module Ext : sig
-  type t = string
-
-  val exe : t
-  val cmo : t
-  val cma : t
-  val runtime : t
-end
-
 module Flags : sig
   type 'flags t =
     { build_runtime : 'flags
@@ -45,6 +36,23 @@ module Sourcemap : sig
     | File
 end
 
+module Submode : sig
+  type t =
+    | JS
+    | Wasm
+
+  type submode := t
+
+  module Set : sig
+    type t =
+      { js : bool
+      ; wasm : bool
+      }
+
+    val to_list : t -> submode list
+  end
+end
+
 module Compilation_mode : sig
   type t =
     | Whole_program
@@ -54,6 +62,7 @@ end
 module In_buildable : sig
   type t =
     { flags : Flags.Spec.t
+    ; submodes : Submode.Set.t option
     ; javascript_files : string list
     ; wasm_files : string list
     ; compilation_mode : Compilation_mode.t option
@@ -67,6 +76,7 @@ end
 module In_context : sig
   type t =
     { flags : Flags.Spec.t
+    ; submodes : Submode.Set.t option
     ; javascript_files : Path.Build.t list
     ; wasm_files : Path.Build.t list
     ; compilation_mode : Compilation_mode.t option
@@ -77,12 +87,23 @@ module In_context : sig
   val default : t
 end
 
+module Ext : sig
+  type t = string
+
+  val exe : submode:Submode.t -> t
+  val cmo : submode:Submode.t -> t
+  val cma : submode:Submode.t -> t
+  val runtime : submode:Submode.t -> t
+  val wasm_dir : t
+end
+
 module Env : sig
   type 'a t =
     { compilation_mode : Compilation_mode.t option
     ; sourcemap : Sourcemap.t option
     ; runtest_alias : Alias.Name.t option
     ; flags : 'a Flags.t
+    ; submodes : Submode.Set.t option
     }
 
   val map : f:('a -> 'b) -> 'a t -> 'b t

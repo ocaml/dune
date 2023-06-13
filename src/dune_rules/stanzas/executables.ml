@@ -307,7 +307,7 @@ module Link_mode = struct
        | Byte, Shared_object -> ".bc" ^ ext_dll
        | Native, Shared_object -> ext_dll
        | mode, Plugin -> Mode.plugin_ext mode
-       | Byte, Js -> Js_of_ocaml.Ext.exe
+       | Byte, Js -> Js_of_ocaml.Ext.exe ~submode:JS
        | Native, Js ->
          User_error.raise ~loc [ Pp.text "Javascript generation only supports bytecode!" ])
   ;;

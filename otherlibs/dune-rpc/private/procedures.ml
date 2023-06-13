@@ -135,11 +135,24 @@ module Poll = struct
         ~version:1
   end
 
+  module Job = struct
+    let name = "running-jobs"
+
+    let v1 =
+      Decl.Request.make_current_gen ~req:Id.sexp
+        ~resp:(Conv.option (Conv.list Job.Event.sexp))
+        ~version:1
+  end
+
   let progress =
     let open Progress in
     make name [ v1 ]
 
   let diagnostic =
     let open Diagnostic in
+    make name [ v1 ]
+
+  let running_jobs =
+    let open Job in
     make name [ v1 ]
 end

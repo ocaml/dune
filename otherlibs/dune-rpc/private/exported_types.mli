@@ -154,3 +154,40 @@ module Message : sig
 
   val to_sexp_unversioned : t -> Csexp.t
 end
+
+module Job : sig
+  module Id : sig
+    type t
+
+    val compare : t -> t -> Ordering.t
+
+    val hash : t -> int
+
+    val create : int -> t
+
+    val sexp : (t, Conv.values) Conv.t
+  end
+
+  type t =
+    { id : Id.t
+    ; pid : int
+    ; description : unit Pp.t
+    ; started_at : float
+    }
+
+  val id : t -> Id.t
+
+  val pid : t -> int
+
+  val description : t -> unit Pp.t
+
+  val started_at : t -> float
+
+  module Event : sig
+    type nonrec t =
+      | Start of t
+      | Stop of Id.t
+
+    val sexp : (t, Conv.values) Conv.t
+  end
+end

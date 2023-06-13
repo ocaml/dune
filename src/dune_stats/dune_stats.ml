@@ -118,6 +118,15 @@ let close { print; close; _ } =
   print "]\n";
   close ()
 
+let global = ref None
+
+let set_global t =
+  if Option.is_some !global then
+    Code_error.raise "global stats have been set" [];
+  global := Some t
+
+let global () = !global
+
 let create ~extended_build_job_info dst =
   let print =
     match dst with

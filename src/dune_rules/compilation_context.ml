@@ -7,14 +7,10 @@ module Includes = struct
     let open Resolve.Memo.O in
     let* (module_deps, flags), _ = module_deps in
     let combine lr =
-      let+ requires = Lib.uniq_linking_closure lr in
-      List.fold_left requires ~init:Lib.Set.empty ~f:(fun set (lib, closure) ->
-          let set = Lib.Set.add set lib in
-          let set =
-            List.fold_left closure ~init:set ~f:(fun set lib ->
-                Lib.Set.add set lib)
-          in
-          set)
+      let+ requires = lr in
+      List.fold_left requires ~init:Lib.Set.empty ~f:(fun set0 (lib, closure) ->
+          List.fold_left closure ~init:(Lib.Set.add set0 lib)
+            ~f:(fun set1 lib -> Lib.Set.add set1 lib))
       |> Lib.Set.to_list
     in
     let open_present = List.exists flags ~f:(fun f -> String.equal f "-open") in
@@ -34,7 +30,7 @@ module Includes = struct
     in
     let md_name = Module.name md |> Module_name.to_string in
     if
-      (* FIXME: edge cases that are yet to be identified *)
+      (* FIXME edge cases that are to be identified *)
       String.is_suffix md_name ~suffix:"__mock"
       || String.is_prefix md_name ~prefix:"Utils"
       || String.is_prefix md_name ~prefix:"Lwt"
@@ -61,7 +57,6 @@ module Includes = struct
         in
         let implements = Option.is_some (Lib_info.implements (Lib.info lib)) in
         let local = Lib.Local.of_lib lib |> Option.is_none in
-
         let virtual_ = Option.is_some (Lib_info.virtual_ (Lib.info lib)) in
         melange_mode || implements || local || virtual_
       in
@@ -70,6 +65,7 @@ module Includes = struct
             Resolve.Memo.List.map lcs ~f:(fun (lib, closure) ->
                 let lib_pubname = Lib.name lib |> Lib_name.to_string in
                 if
+                  (* FIXME edge cases that are to be identified *)
                   String.is_prefix ~prefix:"ppxlib" lib_pubname
                   || String.is_prefix ~prefix:"containers" lib_pubname
                   || String.is_prefix ~prefix:"lwt" lib_pubname
@@ -98,29 +94,27 @@ module Includes = struct
                               in
                               List.append acc em)
                     in
-
                     if List.is_empty em || List.is_empty closure_names then
                       Some (lib, closure)
                     else
                       let module_names = List.append em closure_names in
                       if
                         List.exists dep_names ~f:(fun ocamldep_out ->
-                            flag_open_present ocamldep_out
-                            || List.exists module_names ~f:(fun e_module_name ->
-                                   let e_module_name =
-                                     Module.name e_module_name
-                                     |> Module_name.to_string
-                                   in
-                                   let is_melange_wrapper =
-                                     String.equal "Melange_wrapper"
-                                       e_module_name
-                                   in
-                                   is_melange_wrapper
-                                   || flag_open_present e_module_name
-                                   || String.is_prefix ~prefix:ocamldep_out
-                                        e_module_name
-                                   || String.is_prefix ~prefix:e_module_name
-                                        ocamldep_out))
+                            List.exists module_names ~f:(fun e_module_name ->
+                                let e_module_name =
+                                  Module.name e_module_name
+                                  |> Module_name.to_string
+                                in
+                                let is_melange_wrapper =
+                                  (* FIXME *)
+                                  String.equal "Melange_wrapper" e_module_name
+                                in
+                                is_melange_wrapper
+                                || flag_open_present e_module_name
+                                || String.is_prefix ~prefix:ocamldep_out
+                                     e_module_name
+                                || String.is_prefix ~prefix:e_module_name
+                                     ocamldep_out))
                       then Some (lib, closure)
                       else None))
       in
@@ -130,7 +124,6 @@ module Includes = struct
   let make ~requires_link ~requires_compile
       ?(entry_names_closure = fun _ -> Memo.return []) () ~project ~opaque ~md
       ~dep_graphs ~flags =
-    ignore entry_names_closure;
     let flags =
       Action_builder.map2
         (Action_builder.map2
@@ -140,25 +133,9 @@ module Includes = struct
         (Ocaml_flags.get flags Lib_mode.Melange)
         ~f:List.append
     in
-
     let open Lib_mode.Cm_kind.Map in
     let open Resolve.Memo.O in
     let iflags libs mode = Lib_flags.L.include_flags ~project libs mode in
-    let deps =
-      let dep_graph_impl = Ml_kind.Dict.get dep_graphs Ml_kind.Impl in
-      let dep_graph_intf = Ml_kind.Dict.get dep_graphs Ml_kind.Intf in
-      let module_deps_impl = Dep_graph.deps_of dep_graph_impl md in
-      let module_deps_intf = Dep_graph.deps_of dep_graph_intf md in
-      let cmb_itf_impl =
-        Action_builder.map2 module_deps_impl module_deps_intf
-          ~f:(fun inft impl -> List.append inft impl)
-      in
-      let cmb_flags =
-        Action_builder.map2 cmb_itf_impl flags ~f:(fun mods map -> (mods, map))
-      in
-      Action_builder.run cmb_flags Action_builder.Eager
-      |> Resolve.Memo.lift_memo
-    in
     let flags =
       let dep_graph_impl = Ml_kind.Dict.get dep_graphs Ml_kind.Impl in
       let dep_graph_intf = Ml_kind.Dict.get dep_graphs Ml_kind.Intf in
@@ -168,22 +145,17 @@ module Includes = struct
         Action_builder.map2 module_deps_impl module_deps_intf
           ~f:(fun inft impl -> List.append inft impl)
       in
-
       let cmb_flags =
         Action_builder.map2 cmb_itf_impl flags ~f:(fun mods map -> (mods, map))
       in
       Action_builder.run cmb_flags Action_builder.Eager
       |> Resolve.Memo.lift_memo
     in
-    ignore flags;
     let requires =
       if Dune_project.implicit_transitive_deps project then
         filter_ocamldep requires_link flags entry_names_closure md
       else requires_compile
     in
-
-    ignore deps;
-
     let make_includes_args ~mode groups =
       Command.Args.memo
         (Resolve.Memo.args

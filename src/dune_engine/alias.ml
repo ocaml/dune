@@ -107,7 +107,7 @@ let install = make_standard Name.install
 
 let doc = make_standard (Name.of_string "doc")
 
-let private_doc = make_standard (Name.of_string "doc-private")
+let doc_all = make_standard (Name.of_string "doc-all")
 
 let lint = make_standard (Name.of_string "lint")
 

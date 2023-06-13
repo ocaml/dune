@@ -19,5 +19,6 @@ let f () () = function
   in
   Temp.destroy Dir file;
   print_endline output;
-  [%expect.unreachable]
-  [@@expect.uncaught_exn {| (Invalid_argument Bytes.create) |}]
+  [%expect {|
+    4 | let f () () = function
+    5 |   | A -> () |}]

@@ -27,7 +27,7 @@ module Linkage = struct
 
   let native = { mode = Native; ext = ".exe"; flags = [] }
   let is_native x = x.mode = Native
-  let is_js x = x.mode = Byte && x.ext = Js_of_ocaml.Ext.exe
+  let is_js x = x.mode = Byte && x.ext = Js_of_ocaml.Ext.exe ~submode:JS
   let is_byte x = x.mode = Byte && not (is_js x)
 
   let custom_with_ext ~ext ocaml_version =
@@ -45,7 +45,7 @@ module Linkage = struct
     | Ok _ -> native
   ;;
 
-  let js = { mode = Byte; ext = Js_of_ocaml.Ext.exe; flags = [] }
+  let js = { mode = Byte; ext = Js_of_ocaml.Ext.exe ~submode:JS; flags = [] }
 
   let is_plugin t =
     List.mem (List.map ~f:Mode.plugin_ext Mode.all) t.ext ~equal:String.equal

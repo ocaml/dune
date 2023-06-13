@@ -21,52 +21,52 @@ let test_kind dir_contents (loc, name, ext) =
   else `Regular
 ;;
 
-let ext_of_mode runtest_mode =
-  match runtest_mode with
-  | `js -> Js_of_ocaml.Ext.exe
-  | `bc -> ".bc"
-  | `exe -> ".exe"
-;;
-
 let custom_runner runtest_mode =
   match runtest_mode with
   | `js -> Some Jsoo_rules.runner
   | `bc | `exe -> None
 ;;
 
-let runtest_modes modes project =
+let runtest_modes modes submodes project =
   if Dune_project.dune_version project < (3, 0)
-  then [ `exe ]
+  then Memo.return [ `exe, ".exe" ]
   else
     Executables.Link_mode.Map.to_list modes
-    |> List.filter_map ~f:(fun ((mode : Executables.Link_mode.t), _) ->
+    |> Memo.sequential_map ~f:(fun ((mode : Executables.Link_mode.t), _) ->
       match mode with
-      | Byte_complete -> Some `exe
-      | Other { kind = Exe; mode = Native | Best } -> Some `exe
-      | Other { kind = Exe; mode = Byte } -> Some `bc
-      | Other { kind = Js; _ } -> Some `js
+      | Byte_complete | Other { kind = Exe; mode = Native | Best } ->
+        Memo.return [ `exe, ".exe" ]
+      | Other { kind = Exe; mode = Byte } -> Memo.return [ `bc, ".bc" ]
+      | Other { kind = Js; _ } ->
+        Memo.return
+          (List.map submodes ~f:(fun submode -> `js, Js_of_ocaml.Ext.exe ~submode))
       | Other { kind = C | Object | Shared_object | Plugin; _ } ->
         (* We don't know how to run tests in these cases *)
-        None)
-    |> List.sort_uniq ~compare:Poly.compare
+        Memo.return [])
+    >>| List.flatten
+    >>| List.sort_uniq ~compare:Poly.compare
 ;;
 
 let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
   let* () =
-    let runtest_modes = runtest_modes t.exes.modes (Scope.project scope) in
+    let* runtest_modes =
+      let* submodes =
+        Jsoo_rules.jsoo_submodes ~dir ~submodes:t.exes.buildable.js_of_ocaml.submodes
+      in
+      runtest_modes t.exes.modes submodes (Scope.project scope)
+    in
     Expander.eval_blang expander t.enabled_if
     >>= function
     | false ->
       let loc = Nonempty_list.hd t.exes.names |> fst in
-      Memo.parallel_iter runtest_modes ~f:(fun mode ->
+      Memo.parallel_iter runtest_modes ~f:(fun (mode, _) ->
         let* alias_name = alias mode ~dir in
         let alias = Alias.make alias_name ~dir in
         Simple_rules.Alias_rules.add_empty sctx ~loc ~alias)
     | true ->
       Nonempty_list.to_list t.exes.names
       |> Memo.parallel_iter ~f:(fun (loc, s) ->
-        Memo.parallel_iter runtest_modes ~f:(fun runtest_mode ->
-          let ext = ext_of_mode runtest_mode in
+        Memo.parallel_iter runtest_modes ~f:(fun (runtest_mode, ext) ->
           let custom_runner = custom_runner runtest_mode in
           let test_pform = Pform.Var Test in
           let run_action =

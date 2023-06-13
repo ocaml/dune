@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686651626850,
+  "lastUpdate": 1686652032542,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -43788,6 +43788,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.62378877768",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "90f1d2428b89a8053beaa152e435a5b0c758880f",
+          "message": "feature: enable async sandboxing/digests (#7947)\n\nThese seem to speed up builds in practice\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-13T02:56:28-07:00",
+          "tree_id": "0ce43a456afb1a185e1bccc37ec49fd0e901463c",
+          "url": "https://github.com/ocaml/dune/commit/90f1d2428b89a8053beaa152e435a5b0c758880f"
+        },
+        "date": 1686652031394,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "80.14729354672",
             "unit": "seconds"
           }
         ]

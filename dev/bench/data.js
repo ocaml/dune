@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686679078750,
+  "lastUpdate": 1686679478409,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -44310,6 +44310,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.1687875450333336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cf69ca8546ca067ef2c7966c82106cf36cbb60b9",
+          "message": "chore: fix bad markup in xdg (#7959)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-13T10:34:22-07:00",
+          "tree_id": "f716e5851e072c78604b5f9cc1a2180123b8f401",
+          "url": "https://github.com/ocaml/dune/commit/cf69ca8546ca067ef2c7966c82106cf36cbb60b9"
+        },
+        "date": 1686679477532,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "78.79023085004667",
             "unit": "seconds"
           }
         ]

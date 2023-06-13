@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686660575850,
+  "lastUpdate": 1686660586083,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -43991,6 +43991,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "63.51974448031333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a5e15342f39db81eb4f9c09dffba6a9c636cde2c",
+          "message": "deps: use melange from opam (#7915)\n\n* deps: use melange from opam\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\n\r\n* Update build-test.sh\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\n\r\n---------\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-06-13T12:24:16Z",
+          "tree_id": "7495b3fafa2ed063ded317ed297234359366d5da",
+          "url": "https://github.com/ocaml/dune/commit/a5e15342f39db81eb4f9c09dffba6a9c636cde2c"
+        },
+        "date": 1686660585559,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.63308512418",
             "unit": "seconds"
           }
         ]

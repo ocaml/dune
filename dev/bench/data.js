@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686672572817,
+  "lastUpdate": 1686672584116,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -44194,6 +44194,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "64.18409224462",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e2975d14b9ee92947a5b7f41addd533c8919cd03",
+          "message": "feature(rpc): running jobs api (#7956)\n\nThis RPC API allows clients to poll for the jobs dune is currently\r\nexecuting.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-13T08:44:23-07:00",
+          "tree_id": "6429d1f913232c5969ae4dc926cac3716ffad545",
+          "url": "https://github.com/ocaml/dune/commit/e2975d14b9ee92947a5b7f41addd533c8919cd03"
+        },
+        "date": 1686672583378,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6652068511533333",
             "unit": "seconds"
           }
         ]

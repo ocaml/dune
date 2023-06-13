@@ -1,4 +1,4 @@
-(** Base directories. Values of type {!t} are created using {create}. *)
+(** Base directories. Values of type {!t} are created using {!create}. *)
 type t
 
 (** The user's home directory. Uses [$USERPROFILE] on Windows, [$HOME]

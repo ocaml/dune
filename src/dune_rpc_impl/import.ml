@@ -6,6 +6,7 @@ include struct
   open Dune_engine
   module Build_system = Build_system
   module Scheduler = Scheduler
+  module Job = Job
 end
 
 include struct

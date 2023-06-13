@@ -42,4 +42,11 @@ module DB : sig
   val get : dir:Path.Build.t -> t Memo.t
 end
 
-val directory_targets : t -> dir:Path.Build.t -> Loc.t Path.Build.Map.t Memo.t
+val directory_targets
+  :  t
+  -> jsoo_submodes:
+       (dir:Import.Path.Build.t
+        -> submodes:Js_of_ocaml.Submode.Set.t option
+        -> Js_of_ocaml.Submode.t list Memo.t)
+  -> dir:Path.Build.t
+  -> Loc.t Path.Build.Map.t Memo.t

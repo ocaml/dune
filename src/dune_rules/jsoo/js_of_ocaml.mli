@@ -78,6 +78,7 @@ module Env : sig
     { compilation_mode : Compilation_mode.t option
     ; runtest_alias : Alias.Name.t option
     ; flags : 'a Flags.t
+    ; node_flags : 'a
     }
 
   val map : f:('a -> 'b) -> 'a t -> 'b t

@@ -317,6 +317,11 @@ let js_of_ocaml_flags t ~dir (spec : Js_of_ocaml.Flags.Spec.t) =
   Js_of_ocaml.Flags.make ~spec ~default:js_of_ocaml.flags
     ~eval:(Expander.expand_and_eval_set expander)
 
+let js_of_ocaml_node_flags t ~dir ~flags =
+  let+ expander = Env_tree.expander t ~dir
+  and+ js_of_ocaml = Env_tree.get_node t ~dir >>= Env_node.js_of_ocaml in
+  Expander.expand_and_eval_set expander flags ~standard:js_of_ocaml.node_flags
+
 let default_foreign_flags t ~dir ~language =
   Env_tree.get_node t ~dir >>| Env_node.foreign_flags
   >>| (fun dict -> Foreign_language.Dict.get dict language)

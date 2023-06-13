@@ -220,6 +220,9 @@ include Sub_system.Register_end_point (struct
       else Sandbox_config.needs_sandboxing
     in
     let deps, sandbox = Dep_conf_eval.unnamed ~sandbox info.deps ~expander in
+    let* runner_flags =
+      Super_context.js_of_ocaml_node_flags sctx ~dir ~flags:info.node_flags
+    in
     let action (mode : Mode_conf.t) (flags : string list Action_builder.t) :
         Action.t Action_builder.t =
       (* [action] needs to run from [dir] as we use [dir] to resolve
@@ -246,9 +249,11 @@ include Sub_system.Register_end_point (struct
           let* prog =
             Action_builder.of_memo
               (Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner)
+          and* runner_flags = runner_flags
           and* flags = flags in
           let action =
-            Action.run prog (Path.reach exe ~from:(Path.build dir) :: flags)
+            Action.run prog
+              (runner_flags @ (Path.reach exe ~from:(Path.build dir) :: flags))
           in
           (* jeremiedimino: it feels like this pattern should be pushed
              into [resolve_program] directly *)

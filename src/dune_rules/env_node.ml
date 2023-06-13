@@ -158,6 +158,9 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         ; flags =
             Js_of_ocaml.Flags.make ~spec:local.flags ~default:jsoo.flags
               ~eval:(Expander.expand_and_eval_set expander)
+        ; node_flags =
+            Expander.expand_and_eval_set expander local.node_flags
+              ~standard:jsoo.node_flags
         })
   in
   let foreign_flags lang =

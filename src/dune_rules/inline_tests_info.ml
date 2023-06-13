@@ -123,6 +123,7 @@ module Tests = struct
     ; deps : Dep_conf.t list
     ; modes : Mode_conf.Set.t
     ; flags : Ordered_set_lang.Unexpanded.t
+    ; node_flags : Ordered_set_lang.Unexpanded.t
     ; executable_ocaml_flags : Ocaml_flags.Spec.t
     ; executable_link_flags : Ordered_set_lang.Unexpanded.t
     ; backend : (Loc.t * Lib_name.t) option
@@ -145,6 +146,7 @@ module Tests = struct
       (let+ loc = loc
        and+ deps = field "deps" (repeat Dep_conf.decode) ~default:[]
        and+ flags = Ordered_set_lang.Unexpanded.field "flags"
+       and+ node_flags = Ordered_set_lang.Unexpanded.field "node_flags"
        and+ executable_ocaml_flags, executable_link_flags =
          field "executable"
            ~default:
@@ -172,6 +174,7 @@ module Tests = struct
        { loc
        ; deps
        ; flags
+       ; node_flags
        ; executable_ocaml_flags
        ; executable_link_flags
        ; backend

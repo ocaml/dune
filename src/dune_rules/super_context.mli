@@ -44,6 +44,12 @@ val js_of_ocaml_flags :
   -> Js_of_ocaml.Flags.Spec.t
   -> string list Action_builder.t Js_of_ocaml.Flags.t Memo.t
 
+val js_of_ocaml_node_flags :
+     t
+  -> dir:Path.Build.t
+  -> flags:Ordered_set_lang.Unexpanded.t
+  -> string list Action_builder.t Memo.t
+
 val default_foreign_flags :
      t
   -> dir:Path.Build.t

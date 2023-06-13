@@ -155,6 +155,7 @@ module Env = struct
     { compilation_mode : Compilation_mode.t option
     ; runtest_alias : Alias.Name.t option
     ; flags : 'a Flags.t
+    ; node_flags : 'a
     }
 
   let decode =
@@ -162,24 +163,35 @@ module Env = struct
     @@ let+ compilation_mode =
          field_o "compilation_mode" Compilation_mode.decode
        and+ runtest_alias = field_o "runtest_alias" Dune_lang.Alias.decode
-       and+ flags = Flags.decode in
+       and+ flags = Flags.decode
+       and+ node_flags = field_oslu "node_flags" in
        Option.iter ~f:Alias.register_as_standard runtest_alias;
-       { compilation_mode; runtest_alias; flags }
+       { compilation_mode; runtest_alias; flags; node_flags }
 
-  let equal { compilation_mode; runtest_alias; flags } t =
+  let equal { compilation_mode; runtest_alias; flags; node_flags } t =
     Option.equal Compilation_mode.equal compilation_mode t.compilation_mode
     && Option.equal Alias.Name.equal runtest_alias t.runtest_alias
     && Flags.equal Ordered_set_lang.Unexpanded.equal flags t.flags
+    && Ordered_set_lang.Unexpanded.equal node_flags t.node_flags
 
-  let map ~f { compilation_mode; runtest_alias; flags } =
-    { compilation_mode; runtest_alias; flags = Flags.map ~f flags }
+  let map ~f { compilation_mode; runtest_alias; flags; node_flags } =
+    { compilation_mode
+    ; runtest_alias
+    ; flags = Flags.map ~f flags
+    ; node_flags = f node_flags
+    }
 
   let empty =
-    { compilation_mode = None; runtest_alias = None; flags = Flags.standard }
+    { compilation_mode = None
+    ; runtest_alias = None
+    ; flags = Flags.standard
+    ; node_flags = Ordered_set_lang.Unexpanded.standard
+    }
 
   let default ~profile =
     { compilation_mode = None
     ; runtest_alias = None
     ; flags = Flags.default ~profile
+    ; node_flags = []
     }
 end

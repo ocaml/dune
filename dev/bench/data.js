@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686668251163,
+  "lastUpdate": 1686668653925,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -44049,6 +44049,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.63308512418",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7fcb86498298211f75372aa015c5868c3248ed81",
+          "message": "doc: improve API docs for xdg (#7958)\n\nThis adds a nice index.mld with an introduction and an example, and\r\nimproves the API docs a bit.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-06-13T16:34:04+02:00",
+          "tree_id": "074a978e86dd65bdf37b2f143543998d2f1d1642",
+          "url": "https://github.com/ocaml/dune/commit/7fcb86498298211f75372aa015c5868c3248ed81"
+        },
+        "date": 1686668652756,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "79.16130091536",
             "unit": "seconds"
           }
         ]

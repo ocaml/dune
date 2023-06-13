@@ -149,9 +149,26 @@ module Compilation_mode = struct
   ;;
 end
 
+module Target = struct
+  type t =
+    | JS
+    | Wasm
+
+  let decode = enum [ "js", JS; "wasm", Wasm ]
+
+  let equal x y =
+    match x, y with
+    | JS, JS -> true
+    | Wasm, Wasm -> true
+    | JS, _ -> false
+    | Wasm, _ -> false
+  ;;
+end
+
 module Env = struct
   type 'a t =
     { compilation_mode : Compilation_mode.t option
+    ; target : Target.t option
     ; runtest_alias : Alias.Name.t option
     ; flags : 'a Flags.t
     }
@@ -159,25 +176,38 @@ module Env = struct
   let decode =
     fields
     @@ let+ compilation_mode = field_o "compilation_mode" Compilation_mode.decode
+       and+ target =
+         field_o "target" (Dune_lang.Syntax.since Stanza.syntax (3, 11) >>> Target.decode)
        and+ runtest_alias = field_o "runtest_alias" Dune_lang.Alias.decode
        and+ flags = Flags.decode in
        Option.iter ~f:Alias.register_as_standard runtest_alias;
-       { compilation_mode; runtest_alias; flags }
+       { compilation_mode; target; runtest_alias; flags }
   ;;
 
-  let equal { compilation_mode; runtest_alias; flags } t =
+  let equal { compilation_mode; target; runtest_alias; flags } t =
     Option.equal Compilation_mode.equal compilation_mode t.compilation_mode
+    && Option.equal Target.equal target t.target
     && Option.equal Alias.Name.equal runtest_alias t.runtest_alias
     && Flags.equal Ordered_set_lang.Unexpanded.equal flags t.flags
   ;;
 
-  let map ~f { compilation_mode; runtest_alias; flags } =
-    { compilation_mode; runtest_alias; flags = Flags.map ~f flags }
+  let map ~f { compilation_mode; target; runtest_alias; flags } =
+    { compilation_mode; target; runtest_alias; flags = Flags.map ~f flags }
   ;;
 
-  let empty = { compilation_mode = None; runtest_alias = None; flags = Flags.standard }
+  let empty =
+    { compilation_mode = None
+    ; target = None
+    ; runtest_alias = None
+    ; flags = Flags.standard
+    }
+  ;;
 
   let default ~profile =
-    { compilation_mode = None; runtest_alias = None; flags = Flags.default ~profile }
+    { compilation_mode = None
+    ; target = None
+    ; runtest_alias = None
+    ; flags = Flags.default ~profile
+    }
   ;;
 end

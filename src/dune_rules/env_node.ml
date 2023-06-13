@@ -148,6 +148,7 @@ let make
         let+ expander = Memo.Lazy.force expander in
         { Js_of_ocaml.Env.compilation_mode =
             Option.first_some local.compilation_mode jsoo.compilation_mode
+        ; target = Option.first_some local.target jsoo.target
         ; runtest_alias = Option.first_some local.runtest_alias jsoo.runtest_alias
         ; flags =
             Js_of_ocaml.Flags.make

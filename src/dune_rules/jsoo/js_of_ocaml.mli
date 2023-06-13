@@ -64,9 +64,16 @@ module Compilation_mode : sig
     | Separate_compilation
 end
 
+module Target : sig
+  type t =
+    | JS
+    | Wasm
+end
+
 module Env : sig
   type 'a t =
     { compilation_mode : Compilation_mode.t option
+    ; target : Target.t option
     ; runtest_alias : Alias.Name.t option
     ; flags : 'a Flags.t
     }

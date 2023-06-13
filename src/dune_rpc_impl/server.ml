@@ -10,6 +10,7 @@ include struct
   module Progress = Progress
   module Procedures = Procedures
   module Diagnostic = Diagnostic
+  module Job = Job
 end
 
 include struct
@@ -253,6 +254,40 @@ let handler (t : _ t Fdecl.t) action_runner_server handle :
     in
     Handler.implement_long_poll rpc Procedures.Poll.diagnostic
       Build_system.errors ~equal:Error.Set.equal ~diff
+  in
+  let () =
+    let start_job { Running_jobs.pid; description; started_at; id } =
+      let id = Running_jobs.Id.to_int id |> Job.Id.create in
+      let pid = Pid.to_int pid in
+      Job.Event.Start { Job.started_at; id; pid; description }
+    in
+    let stop_job id =
+      Job.Event.Stop (Job.Id.create (Running_jobs.Id.to_int id))
+    in
+    let diff ~(last : Running_jobs.t option) ~(now : Running_jobs.t) =
+      match last with
+      | None ->
+        Running_jobs.current now |> Running_jobs.Id.Map.values
+        |> List.map ~f:start_job
+      | Some last -> (
+        match Running_jobs.one_event_diff ~last ~now with
+        | Some last_event ->
+          [ (match last_event with
+            | Start job -> start_job job
+            | Stop id -> stop_job id)
+          ]
+        | None ->
+          Running_jobs.Id.Map.merge (Running_jobs.current last)
+            (Running_jobs.current now) ~f:(fun id last now ->
+              match (last, now) with
+              | None, None -> assert false
+              | Some _, Some _ -> None
+              | Some _, None -> Some (stop_job id)
+              | _, Some now -> Some (start_job now))
+          |> Running_jobs.Id.Map.values)
+    in
+    Handler.implement_long_poll rpc Procedures.Poll.running_jobs
+      Running_jobs.jobs ~equal:Running_jobs.equal ~diff
   in
   let () =
     let diff ~last:_ ~(now : Build_system.State.t) =

@@ -401,26 +401,22 @@ end = struct
     ++ Pp.tag User_message.Style.Error (Pp.verbatim msg)
 end
 
-let gen_id =
-  let next = ref (-1) in
-  fun () ->
-    incr next;
-    !next
-
 let cmdline_approximate_length prog args =
   List.fold_left args ~init:(String.length prog) ~f:(fun acc arg ->
       acc + String.length arg)
 
 let pp_id id =
   let open Pp.O in
-  Pp.char '[' ++ Pp.tag User_message.Style.Id (Pp.textf "%d" id) ++ Pp.char ']'
+  Pp.char '['
+  ++ Pp.tag User_message.Style.Id (Pp.textf "%d" (Running_jobs.Id.to_int id))
+  ++ Pp.char ']'
 
 module Handle_exit_status : sig
   open Exit_status
 
   val verbose :
        ('a, error) result
-    -> id:int
+    -> id:Running_jobs.Id.t
     -> metadata:metadata
     -> output:string
     -> command_line:User_message.Style.t Pp.t
@@ -659,7 +655,7 @@ let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
         | None -> dir
         | Some p -> if Path.is_root p then None else Some p
       in
-      let id = gen_id () in
+      let id = Running_jobs.Id.gen () in
       let ok_codes = accepted_codes fail_mode in
       let prog_str = Path.reach_for_running ?from:dir prog in
       let command_line =
@@ -764,11 +760,25 @@ let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
         in
         (started_at, pid)
       in
+      let* () =
+        let description =
+          (* CR-soon amokhov: What happens with actions attached to aliases? Do they go into
+             [Build_job None] category? Can produce more informative description for them? *)
+          match metadata.purpose with
+          | Internal_job -> Pp.text "(internal)"
+          | Build_job None -> Pp.text "(no targets)"
+          | Build_job (Some target) ->
+            Targets.Validated.head target
+            |> Path.Build.to_string_maybe_quoted |> Pp.verbatim
+        in
+        Running_jobs.start id pid ~description ~started_at
+      in
       Io.release stdout_to;
       Io.release stderr_to;
-      let+ process_info =
+      let* process_info =
         Scheduler.wait_for_process pid ~is_process_group_leader:true
       in
+      let+ () = Running_jobs.stop id in
       let times =
         { Proc.Times.elapsed_time = process_info.end_time -. started_at
         ; resource_usage = process_info.resource_usage

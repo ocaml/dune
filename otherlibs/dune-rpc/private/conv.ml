@@ -208,6 +208,20 @@ let int =
         | Some i -> i))
     , fun s -> Atom (Int.to_string s) )
 
+let float =
+  Iso
+    ( Sexp
+    , (function
+      | List _ as list ->
+        raise_of_sexp
+          ~payload:[ ("list", list) ]
+          "float: expected atom. received list"
+      | Atom s -> (
+        match Float.of_string_opt s with
+        | None -> raise_of_sexp "unable to read float"
+        | Some i -> i))
+    , fun s -> Atom (Float.to_string s) )
+
 let unit =
   Iso
     ( Sexp

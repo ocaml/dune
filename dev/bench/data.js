@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686688823239,
+  "lastUpdate": 1686689145613,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -44484,6 +44484,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6902441338066667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b4c64134f3abcd9b7cb25d33b52264d6dfbc75e5",
+          "message": "fix: correctly print multi-line excerpts (#7950)\n\nThe previous code would pretend that a multi-line excerpt was\r\nsingle-line whenever the stop character was outside the line.\r\n\r\nFixes #7905\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-13T13:20:12-07:00",
+          "tree_id": "6eecc464d9c14e7d4a99b52e0c1b5fbb99483b31",
+          "url": "https://github.com/ocaml/dune/commit/b4c64134f3abcd9b7cb25d33b52264d6dfbc75e5"
+        },
+        "date": 1686689144667,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "63.96157679935334",
             "unit": "seconds"
           }
         ]

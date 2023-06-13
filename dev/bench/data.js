@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686672675105,
+  "lastUpdate": 1686672688777,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -44252,6 +44252,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "78.72442876792",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "10479e7d276d75d00f0275731d4b802bf8280907",
+          "message": "feature(pkg): Generate lockdir from opam switch\n\nThis adds an option to `dune pkg lock` for passing a switch name, which\nwill generate a lockfile using the given switch to solve dependencies.\nThis is intended as a temporary convenience so that users don't need to\ndownload the opam repository in order to generate lockfiles. Eventually\ndune will handle downloading the opam repository itself at which point\nthis feature will be removed.\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-06-13T16:41:18+01:00",
+          "tree_id": "7b354ce11dae1f31feaf91d4f9c1713185d6566e",
+          "url": "https://github.com/ocaml/dune/commit/10479e7d276d75d00f0275731d4b802bf8280907"
+        },
+        "date": 1686672687702,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.1687875450333336",
             "unit": "seconds"
           }
         ]

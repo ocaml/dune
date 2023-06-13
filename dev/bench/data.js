@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686653365787,
+  "lastUpdate": 1686653376551,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -43904,6 +43904,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "64.04034714669334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "158f31dd528aa305f97ba6c5dc56b43acf18b672",
+          "message": "Monorepo benchmark uses offline duniverse (#7951)\n\nThis changes the monorepo benchmark to use an offline copy of its\r\nrequired duniverse directory. This removes the need to run `opam\r\nmonorepo pull` while preparing the benchmark which improves the\r\nreliability of the benchmark, as it is possible that packages can become\r\nunavailable to download from time to time, which can cause the benchmark\r\nto fail. This has the added benifit of speeding up the benchmark\r\npreparation. A consequence of this change is that running the benchmark\r\nlocally requires some additional steps which are documented in the\r\nmonorepo benchmark readme.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-06-13T11:23:57+01:00",
+          "tree_id": "823cc4a368abdb7caa9e0f13cbf3f46e2bae464a",
+          "url": "https://github.com/ocaml/dune/commit/158f31dd528aa305f97ba6c5dc56b43acf18b672"
+        },
+        "date": 1686653375680,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.63054393906",
             "unit": "seconds"
           }
         ]

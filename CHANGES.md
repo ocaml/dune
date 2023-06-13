@@ -12,6 +12,9 @@
 - Fix RPC buffer corruption issues due to multi threading. This issue was only
   reproducible with large RPC payloads (#7418)
 
+- Fix printing errors from excerpts whenever character offsets span multiple
+  lines (#7950, fixes #7905, @rgrinberg)
+
 3.8.1 (2023-06-05)
 ------------------
 

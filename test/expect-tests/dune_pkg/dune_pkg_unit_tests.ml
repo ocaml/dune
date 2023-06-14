@@ -153,25 +153,23 @@ let%expect_test "downloading, without any checksum" =
     Done downloading
     Finished successfully, no checksum verification |}]
 
-let lock_dir_encode_decode_round_trip_test ~lock_dir_path ~make_lock_dir =
+let lock_dir_encode_decode_round_trip_test ~lock_dir_path ~lock_dir =
   let lock_dir_path = Path.Source.of_string lock_dir_path in
-  let lock_dir_original = make_lock_dir ~lock_dir_path in
-  Lock_dir.write_disk ~lock_dir_path lock_dir_original;
+  Lock_dir.write_disk ~lock_dir_path lock_dir;
   let lock_dir_round_tripped =
     Lock_dir.read_disk ~lock_dir_path |> Result.ok_exn
   in
   if
     Lock_dir.equal
       (Lock_dir.remove_locs lock_dir_round_tripped)
-      (Lock_dir.remove_locs lock_dir_original)
+      (Lock_dir.remove_locs lock_dir)
   then print_endline "lockdir matches after roundtrip:"
   else print_endline "lockdir doesn't match after roundtrip:";
   print_endline (Lock_dir.to_dyn lock_dir_round_tripped |> Dyn.to_string)
 
 let%expect_test "encode/decode round trip test for lockdir with no deps" =
   lock_dir_encode_decode_round_trip_test ~lock_dir_path:"empty_lock_dir"
-    ~make_lock_dir:(fun ~lock_dir_path:_ ->
-      Lock_dir.create_latest_version Package_name.Map.empty);
+    ~lock_dir:(Lock_dir.create_latest_version Package_name.Map.empty);
   [%expect
     {|
     lockdir matches after roundtrip:
@@ -179,24 +177,23 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
 
 let%expect_test "encode/decode round trip test for lockdir with simple deps" =
   lock_dir_encode_decode_round_trip_test ~lock_dir_path:"simple_lock_dir"
-    ~make_lock_dir:(fun ~lock_dir_path ->
-      let mk_pkg_basic ~name ~version =
-        let name = Package_name.of_string name in
-        ( name
-        , { Lock_dir.Pkg.build_command = None
-          ; install_command = None
-          ; deps = []
-          ; info =
-              { Lock_dir.Pkg_info.name; version; dev = false; source = None }
-          ; lock_dir = lock_dir_path
-          ; exported_env = []
-          } )
-      in
-      Lock_dir.create_latest_version
-        (Package_name.Map.of_list_exn
-           [ mk_pkg_basic ~name:"foo" ~version:"0.1.0"
-           ; mk_pkg_basic ~name:"bar" ~version:"0.2.0"
-           ]));
+    ~lock_dir:
+      (let mk_pkg_basic ~name ~version =
+         let name = Package_name.of_string name in
+         ( name
+         , { Lock_dir.Pkg.build_command = None
+           ; install_command = None
+           ; deps = []
+           ; info =
+               { Lock_dir.Pkg_info.name; version; dev = false; source = None }
+           ; exported_env = []
+           } )
+       in
+       Lock_dir.create_latest_version
+         (Package_name.Map.of_list_exn
+            [ mk_pkg_basic ~name:"foo" ~version:"0.1.0"
+            ; mk_pkg_basic ~name:"bar" ~version:"0.2.0"
+            ]));
   [%expect
     {|
     lockdir matches after roundtrip:
@@ -209,7 +206,6 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
               ; deps = []
               ; info =
                   { name = "bar"; version = "0.2.0"; dev = false; source = None }
-              ; lock_dir = In_source_tree "simple_lock_dir"
               ; exported_env = []
               }
           ; "foo" :
@@ -218,7 +214,6 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
               ; deps = []
               ; info =
                   { name = "foo"; version = "0.1.0"; dev = false; source = None }
-              ; lock_dir = In_source_tree "simple_lock_dir"
               ; exported_env = []
               }
           }
@@ -228,88 +223,86 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
   let module Action = Dune_lang.Action in
   let module String_with_vars = Dune_lang.String_with_vars in
   lock_dir_encode_decode_round_trip_test ~lock_dir_path:"complex_lock_dir"
-    ~make_lock_dir:(fun ~lock_dir_path ->
-      let pkg_a =
-        let name = Package_name.of_string "a" in
-        ( name
-        , { Lock_dir.Pkg.build_command =
-              Some
-                Action.(
-                  Progn [ Echo [ String_with_vars.make_text Loc.none "hello" ] ])
-          ; install_command =
-              Some
-                (Action.System
-                   (* String_with_vars.t doesn't round trip so we have to set
-                      [quoted] if the string would be quoted *)
-                   (String_with_vars.make_text ~quoted:true Loc.none
-                      "echo 'world'"))
-          ; deps = []
-          ; info =
-              { Lock_dir.Pkg_info.name
-              ; version = "0.1.0"
-              ; dev = false
-              ; source =
-                  Some
-                    (External_copy (Loc.none, Path.External.of_string "/tmp/a"))
-              }
-          ; lock_dir = lock_dir_path
-          ; exported_env =
-              [ { Action.Env_update.op = Eq
-                ; var = "foo"
-                ; value = String_with_vars.make_text Loc.none "bar"
-                }
-              ]
-          } )
-      in
-      let pkg_b =
-        let name = Package_name.of_string "b" in
-        ( name
-        , { Lock_dir.Pkg.build_command = None
-          ; install_command = None
-          ; deps = [ fst pkg_a ]
-          ; info =
-              { Lock_dir.Pkg_info.name
-              ; version = "dev"
-              ; dev = true
-              ; source =
-                  Some
-                    (Fetch
-                       { url = (Loc.none, "https://github.com/foo/b")
-                       ; checksum =
-                           Some
-                             ( Loc.none
-                             , Checksum.of_string
-                                 "sha256=adfc38f14c0188a2ad80d61451d011d27ab8839b717492d7ad42f7cb911c54c3"
-                             )
-                       })
-              }
-          ; lock_dir = lock_dir_path
-          ; exported_env = []
-          } )
-      in
-      let pkg_c =
-        let name = Package_name.of_string "c" in
-        ( name
-        , { Lock_dir.Pkg.build_command = None
-          ; install_command = None
-          ; deps = [ fst pkg_a; fst pkg_b ]
-          ; info =
-              { Lock_dir.Pkg_info.name
-              ; version = "0.2"
-              ; dev = false
-              ; source =
-                  Some
-                    (Fetch
-                       { url = (Loc.none, "https://github.com/foo/c")
-                       ; checksum = None
-                       })
-              }
-          ; lock_dir = lock_dir_path
-          ; exported_env = []
-          } )
-      in
-      Lock_dir.create_latest_version
-        (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ]));
+    ~lock_dir:
+      (let pkg_a =
+         let name = Package_name.of_string "a" in
+         ( name
+         , { Lock_dir.Pkg.build_command =
+               Some
+                 Action.(
+                   Progn
+                     [ Echo [ String_with_vars.make_text Loc.none "hello" ] ])
+           ; install_command =
+               Some
+                 (Action.System
+                    (* String_with_vars.t doesn't round trip so we have to set
+                       [quoted] if the string would be quoted *)
+                    (String_with_vars.make_text ~quoted:true Loc.none
+                       "echo 'world'"))
+           ; deps = []
+           ; info =
+               { Lock_dir.Pkg_info.name
+               ; version = "0.1.0"
+               ; dev = false
+               ; source =
+                   Some
+                     (External_copy (Loc.none, Path.External.of_string "/tmp/a"))
+               }
+           ; exported_env =
+               [ { Action.Env_update.op = Eq
+                 ; var = "foo"
+                 ; value = String_with_vars.make_text Loc.none "bar"
+                 }
+               ]
+           } )
+       in
+       let pkg_b =
+         let name = Package_name.of_string "b" in
+         ( name
+         , { Lock_dir.Pkg.build_command = None
+           ; install_command = None
+           ; deps = [ fst pkg_a ]
+           ; info =
+               { Lock_dir.Pkg_info.name
+               ; version = "dev"
+               ; dev = true
+               ; source =
+                   Some
+                     (Fetch
+                        { url = (Loc.none, "https://github.com/foo/b")
+                        ; checksum =
+                            Some
+                              ( Loc.none
+                              , Checksum.of_string
+                                  "sha256=adfc38f14c0188a2ad80d61451d011d27ab8839b717492d7ad42f7cb911c54c3"
+                              )
+                        })
+               }
+           ; exported_env = []
+           } )
+       in
+       let pkg_c =
+         let name = Package_name.of_string "c" in
+         ( name
+         , { Lock_dir.Pkg.build_command = None
+           ; install_command = None
+           ; deps = [ fst pkg_a; fst pkg_b ]
+           ; info =
+               { Lock_dir.Pkg_info.name
+               ; version = "0.2"
+               ; dev = false
+               ; source =
+                   Some
+                     (Fetch
+                        { url = (Loc.none, "https://github.com/foo/c")
+                        ; checksum = None
+                        })
+               }
+           ; exported_env = []
+           } )
+       in
+       Lock_dir.create_latest_version
+         (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ]));
   [%expect
     {|
     lockdir matches after roundtrip:
@@ -326,7 +319,6 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   ; dev = false
                   ; source = Some External_copy External "/tmp/a"
                   }
-              ; lock_dir = In_source_tree "complex_lock_dir"
               ; exported_env = [ { op = "="; var = "foo"; value = "bar" } ]
               }
           ; "b" :
@@ -343,7 +335,6 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                           "https://github.com/foo/b",Some
                                                        "sha256=adfc38f14c0188a2ad80d61451d011d27ab8839b717492d7ad42f7cb911c54c3"
                   }
-              ; lock_dir = In_source_tree "complex_lock_dir"
               ; exported_env = []
               }
           ; "c" :
@@ -356,7 +347,6 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   ; dev = false
                   ; source = Some Fetch "https://github.com/foo/c",None
                   }
-              ; lock_dir = In_source_tree "complex_lock_dir"
               ; exported_env = []
               }
           }

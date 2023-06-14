@@ -31,6 +31,5 @@ end
 
 val solve_lock_dir :
      repo_selection:Repo_selection.t
-  -> lock_dir_path:Path.Source.t
   -> OpamFile.OPAM.t OpamTypes.name_map
   -> Summary.t * Lock_dir.t

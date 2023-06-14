@@ -125,24 +125,20 @@ module Pkg = struct
     ; install_command : Action.t option
     ; deps : Package_name.t list
     ; info : Pkg_info.t
-    ; lock_dir : Path.Source.t
     ; exported_env : String_with_vars.t Dune_lang.Action.Env_update.t list
     }
 
-  let equal
-      { build_command; install_command; deps; info; lock_dir; exported_env }
+  let equal { build_command; install_command; deps; info; exported_env }
       { build_command = other_build_command
       ; install_command = other_install_command
       ; deps = other_deps
       ; info = other_info
-      ; lock_dir = other_lock_dir
       ; exported_env = other_exported_env
       } =
     Option.equal Action.equal_no_locs build_command other_build_command
     && Option.equal Action.equal_no_locs install_command other_install_command
     && List.equal Package_name.equal deps other_deps
     && Pkg_info.equal info other_info
-    && Path.Source.equal lock_dir other_lock_dir
     && List.equal
          (Dune_lang.Action.Env_update.equal String_with_vars.equal)
          exported_env other_exported_env
@@ -155,14 +151,12 @@ module Pkg = struct
           ~f:(Dune_lang.Action.Env_update.map ~f:String_with_vars.remove_locs)
     }
 
-  let to_dyn
-      { build_command; install_command; deps; info; lock_dir; exported_env } =
+  let to_dyn { build_command; install_command; deps; info; exported_env } =
     Dyn.record
       [ ("build_command", Dyn.option Action.to_dyn build_command)
       ; ("install_command", Dyn.option Action.to_dyn install_command)
       ; ("deps", Dyn.list Package_name.to_dyn deps)
       ; ("info", Pkg_info.to_dyn info)
-      ; ("lock_dir", Path.Source.to_dyn lock_dir)
       ; ( "exported_env"
         , Dyn.list
             (Dune_lang.Action.Env_update.to_dyn String_with_vars.to_dyn)
@@ -207,14 +201,13 @@ module Pkg = struct
            in
            { Pkg_info.name; version; dev; source }
          in
-         { build_command; deps; install_command; info; exported_env; lock_dir }
+         { build_command; deps; install_command; info; exported_env }
 
   let encode
       { build_command
       ; install_command
       ; deps
       ; info = { Pkg_info.name = _; version; dev; source }
-      ; lock_dir = _
       ; exported_env
       } =
     let open Dune_lang.Encoder in

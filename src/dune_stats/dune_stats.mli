@@ -12,6 +12,10 @@ type dst =
       ; flush : unit -> unit
       }
 
+val global : unit -> t option
+
+val set_global : t -> unit
+
 val create : extended_build_job_info:bool -> dst -> t
 
 val emit : t -> Chrome_trace.Event.t -> unit

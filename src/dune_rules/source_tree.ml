@@ -671,18 +671,47 @@ module Dir = struct
   module Make_map_reduce (M : Memo.S) (Outcome : Monoid) = struct
     open M.O
 
-    let rec map_reduce t ~traverse ~f =
-      let must_traverse = Sub_dirs.Status.Map.find traverse t.status in
-      match must_traverse with
-      | false -> M.return Outcome.empty
-      | true ->
-        let+ here = f t
-        and+ in_sub_dirs =
-          M.List.map (Filename.Map.values t.contents.sub_dirs) ~f:(fun s ->
-              let* t = M.of_memo (sub_dir_as_t s) in
-              map_reduce t ~traverse ~f)
-        in
-        List.fold_left in_sub_dirs ~init:here ~f:Outcome.combine
+    let map_reduce =
+      let rec map_reduce t ~traverse ~f =
+        let must_traverse = Sub_dirs.Status.Map.find traverse t.status in
+        match must_traverse with
+        | false -> M.return Outcome.empty
+        | true ->
+          let+ here = f t
+          and+ in_sub_dirs =
+            M.List.map (Filename.Map.values t.contents.sub_dirs) ~f:(fun s ->
+                let* t = M.of_memo (sub_dir_as_t s) in
+                map_reduce t ~traverse ~f)
+          in
+          List.fold_left in_sub_dirs ~init:here ~f:Outcome.combine
+      in
+      let impl =
+        lazy
+          (match Dune_stats.global () with
+          | None -> map_reduce
+          | Some stats ->
+            fun t ~traverse ~f ->
+              let start = Unix.gettimeofday () in
+              let+ res = map_reduce t ~traverse ~f in
+              let event =
+                let stop = Unix.gettimeofday () in
+                let module Event = Chrome_trace.Event in
+                let module Timestamp = Event.Timestamp in
+                let dur = Timestamp.of_float_seconds (stop -. start) in
+                let common =
+                  Event.common_fields ~name:"Source tree scan"
+                    ~ts:(Timestamp.of_float_seconds start)
+                    ()
+                in
+                let args =
+                  [ ("dir", `String (Path.Source.to_string t.path)) ]
+                in
+                Event.complete common ~args ~dur
+              in
+              Dune_stats.emit stats event;
+              res)
+      in
+      fun t ~traverse ~f -> (Lazy.force impl) t ~traverse ~f
   end
 
   let cram_tests (t : t) =

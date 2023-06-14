@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686726105102,
+  "lastUpdate": 1686730653373,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -56172,6 +56172,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "26.72383277725333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "louis.roche@ahrefs.com",
+            "name": "Louis",
+            "username": "Khady"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ef6023685d2c5eaa21158088f8c7b638e414f994",
+          "message": "doc: fix example usage of dune ocaml top-module in doc (#7964)\n\nSigned-off-by: Louis <louis.roche@ahrefs.com>",
+          "timestamp": "2023-06-14T09:04:58+01:00",
+          "tree_id": "9592aebc306f5428f3586ba8445b2d9db235aae5",
+          "url": "https://github.com/ocaml/dune/commit/ef6023685d2c5eaa21158088f8c7b638e414f994"
+        },
+        "date": 1686730648419,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.05477071696667",
             "unit": "seconds"
           }
         ]

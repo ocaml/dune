@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686737160807,
+  "lastUpdate": 1686737645228,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -19921,6 +19921,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.005915934453334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c66e1405894553bdde3bcae6987c6caff6229ee0",
+          "message": "feature: add config toggle for threaded console (#7953)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-14T02:52:18-07:00",
+          "tree_id": "ed0b5118fafdcfaf609a05b62a7e4f9def39e5fa",
+          "url": "https://github.com/ocaml/dune/commit/c66e1405894553bdde3bcae6987c6caff6229ee0"
+        },
+        "date": 1686737644393,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "47.50199137586666",
             "unit": "seconds"
           }
         ]

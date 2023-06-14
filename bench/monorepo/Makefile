@@ -3,8 +3,20 @@ RUNNER = /home/user/monorepo-benchmark/dune-benchmark-runner/_build/default/src/
 DUNE_EXE_PATH = /home/user/dune/_build/default/bin/main.exe
 BUILD_TARGET = ./monorepo_bench.exe
 MONOREPO_PATH = /home/user/monorepo-benchmark/benchmark
+USER_GROUP = user:users
 
-bench:
+# This benchmark is intended to run on current-bench where the duniverse
+# directory is expected to exist at this path. See the readme for info on
+# running this benchmark locally.
+DUNIVERSE_MOUNT_POINT = /home/opam/bench-dir/current-bench-data/duniverse
+
+# Copy the duniverse directory as root in case the regular user doesn't have
+# permission to read from the mount point.
+duniverse:
+	sudo cp -a $(DUNIVERSE_MOUNT_POINT) .
+	sudo chown -hR $(USER_GROUP) duniverse
+
+bench: duniverse
 	$(RUNNER) --dune-exe-path=$(DUNE_EXE_PATH) --build-target=$(BUILD_TARGET) --monorepo-path=$(MONOREPO_PATH) --print-dune-output --num-short-job-repeats=5 --remove-outliers=1
 
 clean:

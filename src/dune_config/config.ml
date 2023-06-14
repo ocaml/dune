@@ -111,7 +111,7 @@ let background_digests =
   let t =
     { name = "background_digests"
     ; of_string = Toggle.of_string
-    ; value = `Disabled
+    ; value = `Enabled
     }
   in
   register t;
@@ -121,7 +121,7 @@ let background_sandboxes =
   let t =
     { name = "background_sandboxes"
     ; of_string = Toggle.of_string
-    ; value = `Disabled
+    ; value = `Enabled
     }
   in
   register t;

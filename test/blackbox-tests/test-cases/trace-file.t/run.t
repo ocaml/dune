@@ -3,6 +3,7 @@
 This captures the commands that are being run:
 
   $ <trace.json grep '"X"' | cut -c 2- | sed -E 's/:[0-9]+/:.../g'
+  {"args":{"dir":"."},"ph":"X","dur":...,"name":"Source tree scan","cat":"","ts":...,"pid":...,"tid":...}
   {"args":{"process_args":["-config"],"pid":...},"ph":"X","dur":...,"name":"ocamlc.opt","cat":"process","ts":...,"pid":...,"tid":...}
   {"args":{"process_args":["-modules","-impl","prog.ml"],"pid":...},"ph":"X","dur":...,"name":"ocamldep.opt","cat":"process","ts":...,"pid":...,"tid":...}
   {"args":{"process_args":["-w","@1..3@5..28@30..39@43@46..47@49..57@61..62-40","-strict-sequence","-strict-formats","-short-paths","-keep-locs","-g","-bin-annot","-I",".prog.eobjs/byte","-no-alias-deps","-opaque","-o",".prog.eobjs/byte/prog.cmo","-c","-impl","prog.ml"],"pid":...},"ph":"X","dur":...,"name":"ocamlc.opt","cat":"process","ts":...,"pid":...,"tid":...}

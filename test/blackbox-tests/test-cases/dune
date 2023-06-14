@@ -1,5 +1,8 @@
 (env
  (_
+  (env-vars
+   (DUNE_CONFIG__BACKGROUND_SANDBOXES disabled)
+   (DUNE_CONFIG__BACKGROUND_DIGESTS disabled))
   (binaries
    ../utils/dune_cmd.exe
    ../utils/dunepp.exe

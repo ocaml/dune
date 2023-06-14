@@ -1,6 +1,12 @@
 Unreleased
 ----------
 
+- Fix printing errors from excerpts whenever character offsets span multiple
+  lines (#7950, fixes #7905, @rgrinberg)
+
+- Include source tree scans in the traces produced by `--trace-file` (#7937,
+  @rgrinberg)
+
 - Cinaps: The promotion rules for cinaps would only offer one file at a time no
   matter how many promotions were available. Now we offer all the promotions at
   once (#7901, @rgrinberg)
@@ -46,6 +52,9 @@ Unreleased
 
 - In opam constraints, reject `(and)` and `(or)` with no arguments at parse
   time (#7730, @emillon)
+
+- Compute digests and manage sandboxes in background threads (#7947,
+  @rgrinberg)
 
 3.8.1 (2023-06-05)
 ------------------

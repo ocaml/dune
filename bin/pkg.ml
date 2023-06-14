@@ -151,8 +151,7 @@ module Lock = struct
           opam_file_map_of_dune_package_map dune_package_map
         in
         let summary, lock_dir =
-          Dune_pkg.Opam.solve_lock_dir ~repo_selection ~lock_dir_path
-            opam_file_map
+          Dune_pkg.Opam.solve_lock_dir ~repo_selection opam_file_map
         in
         Console.print_user_message
           (Dune_pkg.Opam.Summary.selected_packages_message summary);

@@ -341,8 +341,7 @@ module Summary = struct
                Pp.text (OpamPackage.to_string package)))
 end
 
-let opam_package_to_lock_file_pkg ~repo_state ~local_packages ~lock_dir_path
-    opam_package =
+let opam_package_to_lock_file_pkg ~repo_state ~local_packages opam_package =
   let name = OpamPackage.name opam_package in
   let version =
     OpamPackage.version opam_package |> OpamPackage.Version.to_string
@@ -373,7 +372,6 @@ let opam_package_to_lock_file_pkg ~repo_state ~local_packages ~lock_dir_path
   ; install_command = None
   ; deps
   ; info
-  ; lock_dir = lock_dir_path
   ; exported_env = []
   }
 
@@ -398,7 +396,7 @@ let solve_package_list local_packages context =
   | Error e -> User_error.raise [ Pp.text (Solver.diagnostics e) ]
   | Ok packages -> Solver.packages_of_result packages
 
-let solve_lock_dir ~repo_selection ~lock_dir_path local_packages =
+let solve_lock_dir ~repo_selection local_packages =
   let is_local_package package =
     OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
   in
@@ -415,7 +413,7 @@ let solve_lock_dir ~repo_selection ~lock_dir_path local_packages =
           List.map opam_packages_to_lock ~f:(fun opam_package ->
               let pkg =
                 opam_package_to_lock_file_pkg ~repo_state ~local_packages
-                  ~lock_dir_path opam_package
+                  opam_package
               in
               (pkg.info.name, pkg))
           |> Package_name.Map.of_list

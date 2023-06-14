@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686724175825,
+  "lastUpdate": 1686724688178,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -19834,6 +19834,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.30524989416667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd14e40efc522e9e993b7f0042037a2478565ddc",
+          "message": "fix: stop catching all exceptions in `Dune_package.Or_meta.load` (#7940)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-06-14T06:14:01Z",
+          "tree_id": "c191c4399eb382740751ba3741f5292ed9f7f7a6",
+          "url": "https://github.com/ocaml/dune/commit/bd14e40efc522e9e993b7f0042037a2478565ddc"
+        },
+        "date": 1686724687057,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "46.93039698360666",
             "unit": "seconds"
           }
         ]

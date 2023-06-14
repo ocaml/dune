@@ -135,8 +135,8 @@ module Session = struct
     match t.state with
     | Closed -> Fiber.return ()
     | Open { fd; _ } ->
-      let+ () = Async_io.close fd in
-      t.state <- Closed
+      t.state <- Closed;
+      Async_io.close fd
 
   module Lexer = Csexp.Parser.Lexer
   module Stack = Csexp.Parser.Stack

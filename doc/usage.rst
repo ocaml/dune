@@ -371,7 +371,7 @@ to return the toplevel directives needed to evaluate the module:
 .. code:: bash
 
    $ utop
-   # use_output "dune top-module path/to/module.ml";;
+   # use_output "dune ocaml top-module path/to/module.ml";;
 
 Requirements & Limitations
 --------------------------

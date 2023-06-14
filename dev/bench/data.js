@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686739364831,
+  "lastUpdate": 1686739369525,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -44977,6 +44977,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "78.47475519622002",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "829ad1a45233f50f3da581c58524d2c06cd2a42e",
+          "message": "Remove lock_dir field from Lock_dir.Pkg.t (#7965)\n\nThis field prevented us from representing package data with the lockdir\r\npath abstracted, and in cases where package data was read from a file in\r\na lockdir, the value of the `lock_dir` field is always the path to the\r\nlockdir containing the file.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-06-14T03:08:29-07:00",
+          "tree_id": "90d42c3063dce84c1359ce254c92d9bec23d8860",
+          "url": "https://github.com/ocaml/dune/commit/829ad1a45233f50f3da581c58524d2c06cd2a42e"
+        },
+        "date": 1686739368095,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "85.95805852427334",
             "unit": "seconds"
           }
         ]

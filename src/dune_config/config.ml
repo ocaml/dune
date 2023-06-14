@@ -136,3 +136,13 @@ let background_file_system_operations_in_rule_execution =
   in
   register t;
   t
+
+let threaded_console =
+  let t =
+    { name = "threaded_console"
+    ; of_string = Toggle.of_string
+    ; value = `Enabled
+    }
+  in
+  register t;
+  t

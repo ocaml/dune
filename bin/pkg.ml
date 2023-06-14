@@ -2,42 +2,6 @@ open Stdune
 open Import
 module Lock_dir = Dune_pkg.Lock_dir
 
-(* Takes a string containing a possibly absolute path and returns a
-   [Path.Source.t] referring to that path. In the case of an absolute path,
-   [Error `Absolute_path_outside_source_directory] is returned in the case that
-   the specified path is outside the source directory. *)
-let source_path_from_possibly_absolute_path path_string =
-  if Filename.is_relative path_string then
-    Ok (Path.Source.of_string path_string)
-  else
-    let path = Path.External.of_string path_string |> Path.external_ in
-    let source_dir_path = Path.external_ Path.External.initial_cwd in
-    match Path.drop_prefix path ~prefix:source_dir_path with
-    | None -> Error `Absolute_path_outside_source_directory
-    | Some relative_path -> Ok (Path.Source.of_local relative_path)
-
-let lock_dir_term =
-  let+ lock_dir_opt =
-    Arg.(
-      value
-      & opt (some string) None
-      & info [ "lock-dir" ] ~docv:"PATH"
-          ~doc:
-            (sprintf "Path to lock directory (default: %s)"
-               (Stdune.Path.Source.to_string Lock_dir.default_path)))
-  in
-  Option.map lock_dir_opt ~f:(fun path_string ->
-      match source_path_from_possibly_absolute_path path_string with
-      | Ok source_path -> source_path
-      | Error `Absolute_path_outside_source_directory ->
-        User_error.raise
-          [ Pp.textf
-              "Specified lock directory (%s) is not a descendant of the source \
-               directory."
-              (String.maybe_quoted path_string)
-          ])
-  |> Option.value ~default:Lock_dir.default_path
-
 module Lock = struct
   module Repo_selection = struct
     module Env = struct
@@ -139,8 +103,7 @@ module Lock = struct
 
   let term =
     let+ (common : Common.t) = Common.term
-    and+ repo_selection = Repo_selection.term
-    and+ lock_dir_path = lock_dir_term in
+    and+ repo_selection = Repo_selection.term in
     let config = Common.init common in
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in
@@ -150,6 +113,7 @@ module Lock = struct
         let opam_file_map =
           opam_file_map_of_dune_package_map dune_package_map
         in
+        let lock_dir_path = Lock_dir.default_path in
         let summary, lock_dir =
           Dune_pkg.Opam.solve_lock_dir ~repo_selection opam_file_map
         in

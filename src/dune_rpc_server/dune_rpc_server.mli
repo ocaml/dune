@@ -1,16 +1,6 @@
 open Stdune
 open Dune_rpc_private
 
-module Poller : sig
-  type t
-
-  val to_dyn : t -> Dyn.t
-
-  val compare : t -> t -> Ordering.t
-
-  val name : t -> Procedures.Poll.Name.t
-end
-
 module Session : sig
   module Id : Stdune.Id.S
 
@@ -18,10 +8,6 @@ module Session : sig
   type 'a t
 
   val id : _ t -> Id.t
-
-  (* [initialize session] returns the initialize request used to initialize this
-     session *)
-  val initialize : _ t -> Initialize.Request.t
 
   (** [get session] returns the current session state. It is an error to access
       the state after [on_terminate] finishes. *)
@@ -48,11 +34,7 @@ module Session : sig
 
   val compare : 'a t -> 'a t -> Ordering.t
 
-  val request_close : 'a t -> unit Fiber.t
-
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
-
-  val has_poller : _ t -> Poller.t -> bool
 
   val closed : _ t -> unit Fiber.t
 
@@ -66,9 +48,9 @@ module Session : sig
 
     val menu : _ t -> Menu.t option
 
+    (* [initialize session] returns the initialize request used to initialize this
+       session *)
     val initialize : _ t -> Initialize.Request.t
-
-    val compare : 'a t -> 'a t -> Ordering.t
 
     val request_close : 'a t -> unit Fiber.t
 
@@ -118,6 +100,10 @@ module Handler : sig
       according to the metadata [decl]. *)
   val declare_request : 's t -> ('a, 'b) Decl.request -> unit
 
+  (** [implement_long_poll t proc_diff svar ~equal ~diff] will implement long
+      polling routines to sync the state variable [svar]. [equal] is used to
+      prevent updates that do not modify the state. [diff] is used to generate
+      efficient operations to bring the state up to date. *)
   val implement_long_poll :
        _ t
     -> 'diff Procedures.Poll.t
@@ -126,12 +112,14 @@ module Handler : sig
     -> diff:(last:'state option -> now:'state -> 'diff)
     -> unit
 
-  module Private : sig
+  module For_tests : sig
+    (** Raw long polling machinery only good for tests *)
+
     val implement_poll :
          's t
       -> 'a Procedures.Poll.t
-      -> on_poll:('s Session.t -> Poller.t -> 'a option Fiber.t)
-      -> on_cancel:('s Session.t -> Poller.t -> unit Fiber.t)
+      -> on_poll:('s Session.t -> 'a option Fiber.t)
+      -> on_cancel:('s Session.t -> unit Fiber.t)
       -> unit
   end
 end

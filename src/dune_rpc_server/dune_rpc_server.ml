@@ -41,8 +41,6 @@ module Poller = struct
 
   let to_dyn { id; name = _; session_id = _ } = Id.to_dyn id
 
-  let name t = t.name
-
   let compare x y = Id.compare x.id y.id
 end
 
@@ -138,8 +136,6 @@ module Session = struct
 
     let id t = t.id
 
-    let send t packets = t.send packets
-
     let request t ((id, call) as req) =
       match Table.find t.pending id with
       | Some _ ->
@@ -151,7 +147,7 @@ module Session = struct
         let ivar = Fiber.Ivar.create () in
         Table.add_exn t.pending id ivar;
         let+ () =
-          Fiber.Pool.task t.pool ~f:(fun () -> send t (Some [ Request req ]))
+          Fiber.Pool.task t.pool ~f:(fun () -> t.send (Some [ Request req ]))
         in
         ivar
 
@@ -198,22 +194,12 @@ module Session = struct
 
   let set t = Stage1.set t.base
 
-  let initialize t = Stage1.initialize t.base
-
-  let close t = Stage1.close t.base
-
   let closed t =
     match t.base.state with
     | Uninitialized close | Initialized { close; _ } ->
       Fiber.Ivar.read close.ivar
 
-  let request_close t = Stage1.request_close t.base
-
   let compare x y = Stage1.compare x.base y.base
-
-  let send t = Stage1.send t.base
-
-  let queries t = t.base.queries
 
   let id t = t.base.id
 
@@ -227,7 +213,7 @@ module Session = struct
       (* cwong: What to do here? *)
       Fiber.return ()
     | Ok { Versioned.Staged.encode } ->
-      send t (Some [ Notification (encode n) ])
+      t.base.send (Some [ Notification (encode n) ])
 
   let request t decl id req =
     let* () = Fiber.return () in
@@ -270,8 +256,6 @@ module Session = struct
     | Some poller ->
       t.pollers <- Dune_rpc_private.Id.Map.remove t.pollers id;
       Some poller
-
-  let has_poller t (poller : Poller.t) = Id.equal t.base.id poller.session_id
 end
 
 type message_kind =
@@ -354,8 +338,8 @@ module H = struct
       ; method_ = "notify/abort"
       }
     in
-    let* () = Session.Stage1.send session (Some [ Notification call ]) in
-    Session.Stage1.send session None
+    let* () = session.send (Some [ Notification call ]) in
+    session.send None
 
   let dispatch_notification (type a) (t : a t) stats (session : a Session.t)
       meth_ n () =
@@ -416,12 +400,12 @@ module H = struct
         .state
     with
     | `Closed -> Fiber.return ()
-    | `Open -> Session.send session (Some [ Response (id, response) ])
+    | `Open -> session.base.send (Some [ Response (id, response) ])
 
   let run_session (type a) (t : a t) stats (session : a Session.t) =
     let open Fiber.O in
     let* () =
-      Fiber.Stream.In.parallel_iter (Session.queries session)
+      Fiber.Stream.In.parallel_iter session.base.queries
         ~f:(fun (message : Packet.t) ->
           match message with
           | Response resp -> Session.Stage1.response session.base resp
@@ -432,9 +416,9 @@ module H = struct
             Fiber.Pool.task session.base.pool
               ~f:(dispatch_request t stats session r.method_ r id))
     in
-    let* () = Session.request_close session in
+    let* () = Session.Stage1.request_close session.base in
     let* () = t.base.on_terminate session in
-    Session.close session
+    Session.Stage1.close session.base
 
   let negotiate_version (type a) (t : a stage1) stats
       (session : a Session.Stage1.t) =
@@ -528,9 +512,8 @@ module H = struct
 
     let to_handler { builder; on_terminate; on_init; version; on_upgrade } =
       let to_handler menu =
-        V.Builder.to_handler builder
-          ~session_version:(fun s -> (Session.initialize s).dune_version)
-          ~menu
+        V.Builder.to_handler builder ~menu ~session_version:(fun s ->
+            (Session.Stage1.initialize s.base).dune_version)
       in
       let known_versions =
         V.Builder.registered_procedures builder
@@ -635,8 +618,11 @@ module H = struct
 
     let implement_long_poll = Long_poll.implement_long_poll
 
-    module Private = struct
-      let implement_poll = Long_poll.implement_poll
+    module For_tests = struct
+      let implement_poll t poll ~on_poll ~on_cancel =
+        let on_poll session _poller = on_poll session in
+        let on_cancel session _poller = on_cancel session in
+        Long_poll.implement_poll t poll ~on_poll ~on_cancel
     end
   end
 end

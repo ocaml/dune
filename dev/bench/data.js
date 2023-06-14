@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686747643681,
+  "lastUpdate": 1686748090337,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20008,6 +20008,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "46.52311707194667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "97441450368ca70cdb82ab2dc9161fa9bc6ec0d7",
+          "message": "Document why local opam repo path is a Filename.t (#7971)\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-06-14T05:47:56-07:00",
+          "tree_id": "9b31369d2db87fd638cfe4732871c3b5d7860d58",
+          "url": "https://github.com/ocaml/dune/commit/97441450368ca70cdb82ab2dc9161fa9bc6ec0d7"
+        },
+        "date": 1686748089363,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.92923735178667",
             "unit": "seconds"
           }
         ]

@@ -282,63 +282,73 @@ let file_contents_by_path t =
      |> List.map ~f:(fun (name, pkg) ->
             (Package_filename.of_package_name name, Pkg.encode pkg)))
 
-(* Checks whether path refers to a valid lock directory and returns a value
-   indicating the status of the lock directory. [Ok _] values indicate that
-   it's safe to proceed with regenerating the lock directory. [Error _]
-   values indicate that it's unsafe to remove the existing directory and lock
-   directory regeneration should not proceed. *)
-let check_existing_lock_dir path =
-  match Path.exists path with
-  | false -> Ok `Non_existant
-  | true -> (
-    match Path.is_directory path with
-    | false -> Error `Not_directory
+module Write_disk = struct
+  (* Checks whether path refers to a valid lock directory and returns a value
+     indicating the status of the lock directory. [Ok _] values indicate that
+     it's safe to proceed with regenerating the lock directory. [Error _]
+     values indicate that it's unsafe to remove the existing directory and lock
+     directory regeneration should not proceed. *)
+  let check_existing_lock_dir path =
+    match Path.exists path with
+    | false -> Ok `Non_existant
     | true -> (
-      let metadata_path = Path.relative path metadata in
-      match
-        Path.exists metadata_path && not (Path.is_directory metadata_path)
-      with
-      | false -> Error `No_metadata_file
+      match Path.is_directory path with
+      | false -> Error `Not_directory
       | true -> (
+        let metadata_path = Path.relative path metadata in
         match
-          Metadata.load metadata_path
-            ~f:(Fun.const (Dune_lang.Decoder.return ()))
+          Path.exists metadata_path && not (Path.is_directory metadata_path)
         with
-        | Ok () -> Ok `Is_existing_lock_dir
-        | Error exn -> Error (`Failed_to_parse_metadata exn))))
+        | false -> Error `No_metadata_file
+        | true -> (
+          match
+            Metadata.load metadata_path
+              ~f:(Fun.const (Dune_lang.Decoder.return ()))
+          with
+          | Ok () -> Ok `Is_existing_lock_dir
+          | Error exn -> Error (`Failed_to_parse_metadata exn))))
 
-(* Removes the exitsing lock directory at the specified path if it exists and
-   is a valid lock directory *)
-let safely_remove_lock_dir_if_exists path =
-  match check_existing_lock_dir path with
-  | Ok `Non_existant -> ()
-  | Ok `Is_existing_lock_dir -> Path.rm_rf path
-  | Error e ->
-    let error_reason_pp =
-      match e with
-      | `Not_directory -> Pp.text "Specified lock dir path is not a directory"
-      | `No_metadata_file ->
-        Pp.textf "Specified lock dir lacks metadata file (%s)" metadata
-      | `Failed_to_parse_metadata exn -> Exn.pp exn
+  (* Removes the exitsing lock directory at the specified path if it exists and
+     is a valid lock directory. Checks the validity of the existing lockdir (if
+     any) and raises if it's invalid before constructing the returned thunk, so
+     validation can happen separately from executing the side effect that removes
+     the directory. *)
+  let safely_remove_lock_dir_if_exists_thunk path =
+    match check_existing_lock_dir path with
+    | Ok `Non_existant -> Fun.const ()
+    | Ok `Is_existing_lock_dir -> fun () -> Path.rm_rf path
+    | Error e ->
+      let error_reason_pp =
+        match e with
+        | `Not_directory -> Pp.text "Specified lock dir path is not a directory"
+        | `No_metadata_file ->
+          Pp.textf "Specified lock dir lacks metadata file (%s)" metadata
+        | `Failed_to_parse_metadata exn -> Exn.pp exn
+      in
+      User_error.raise
+        [ Pp.textf "Refusing to regenerate lock directory %s"
+            (Path.to_string_maybe_quoted path)
+        ; error_reason_pp
+        ]
+
+  type t = unit -> unit
+
+  let prepare ~lock_dir_path lock_dir =
+    let lock_dir_path = Path.source lock_dir_path in
+    let remove_dir_if_exists =
+      safely_remove_lock_dir_if_exists_thunk lock_dir_path
     in
-    User_error.raise
-      [ Pp.textf "Refusing to regenerate lock directory %s"
-          (Path.to_string_maybe_quoted path)
-      ; error_reason_pp
-      ]
+    fun () ->
+      remove_dir_if_exists ();
+      Path.mkdir_p lock_dir_path;
+      file_contents_by_path lock_dir
+      |> List.iter ~f:(fun (path_within_lock_dir, contents) ->
+             let path = Path.relative lock_dir_path path_within_lock_dir in
+             Option.iter (Path.parent path) ~f:Path.mkdir_p;
+             List.map contents ~f:Dune_lang.to_string |> Io.write_lines path)
 
-let write_disk ~lock_dir_path t =
-  let lock_dir_path = Path.source lock_dir_path in
-  let () = safely_remove_lock_dir_if_exists lock_dir_path in
-  Path.mkdir_p lock_dir_path;
-  file_contents_by_path t
-  |> List.iter ~f:(fun (path_within_lock_dir, contents) ->
-         let path = Path.relative lock_dir_path path_within_lock_dir in
-         Option.iter (Path.parent path) ~f:Path.mkdir_p;
-         let contents_string =
-           List.map contents ~f:Dune_lang.to_string |> String.concat ~sep:"\n"
-         in
-         Io.write_file path contents_string)
+  let commit t = t ()
+end
 
 let load_metadata_version source_path =
   let open Or_exn.O in

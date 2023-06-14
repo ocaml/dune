@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686738385187,
+  "lastUpdate": 1686738460421,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -56433,6 +56433,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "28.441519419353337",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2c809f071ccd7b102338efe52f65baff51b2112a",
+          "message": "Remove custom lockdir argument from `dune pkg lock` (#7966)\n\nThis feature let users specify a custom lockdir to create when running\r\n`dune pkg lock`. It was added before dune allowed custom lockdirs to be\r\nassociated with build contexts. Removing this feature will make it\r\nconceptually simpler (for users) to know which lockdir will be used.\r\nPresently it has no well defined use case and no commands support it\r\nbesides `dune pkg lock`. It will be easy to add this back in the future\r\nif we decide it's a feature we want to support.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-06-14T03:12:36-07:00",
+          "tree_id": "91df5f9fe508e70493313a64f23fde98b7a31819",
+          "url": "https://github.com/ocaml/dune/commit/2c809f071ccd7b102338efe52f65baff51b2112a"
+        },
+        "date": 1686738454150,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "27.35710422897333",
             "unit": "seconds"
           }
         ]

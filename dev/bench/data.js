@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686725688451,
+  "lastUpdate": 1686726091187,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -44658,6 +44658,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.12402223852",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "hx@kxc.inc",
+            "name": "Haochen M. Kotoi-Xie",
+            "username": "haochenx"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "157bcb3408b815345239a6d5098d6fe017cda884",
+          "message": "doc/melange.rst - make the alias attachment behavior of `melange.emit` clearer (#7924)\n\n* doc/melange.rst - make default target alias clear in introduction\r\n\r\nSigned-off-by: Haochen Kotoi-Xie <hx@kxc.inc>\r\n\r\n* reflect reviewer's comments and changes by #7926\r\n\r\nSigned-off-by: Haochen Kotoi-Xie <hx@kxc.inc>\r\n\r\n* fix formatting\r\n\r\nSigned-off-by: Haochen Kotoi-Xie <hx@kxc.inc>\r\n\r\n* reflect reviewer's comments\r\n\r\nSigned-off-by: Haochen Kotoi-Xie <hx@kxc.inc>\r\n\r\n* Update doc/melange.rst\r\n\r\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: Haochen Kotoi-Xie <hx@kxc.inc>\r\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>\r\nCo-authored-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-06-14T06:31:14Z",
+          "tree_id": "226fa458d1c476f0c59b65a95f238c30850c704f",
+          "url": "https://github.com/ocaml/dune/commit/157bcb3408b815345239a6d5098d6fe017cda884"
+        },
+        "date": 1686726090063,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "79.58186675682667",
             "unit": "seconds"
           }
         ]

@@ -224,8 +224,9 @@ module Session = struct
         | Error exn ->
           Log.info
             [ Pp.textf "Unable to read (%d)" (Id.to_int t.id); Exn.pp exn ];
+          Dune_util.Report_error.report_exception exn;
           let+ () = close t in
-          reraise exn
+          None
         | Ok None ->
           let+ () = close t in
           None

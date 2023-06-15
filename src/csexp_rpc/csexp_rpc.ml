@@ -173,7 +173,7 @@ module Session = struct
                 | exception
                     Unix.Unix_error ((EAGAIN | EINTR | EWOULDBLOCK), _, _) ->
                   `Refill
-                | 0 ->
+                | (exception Unix.Unix_error (ECONNRESET, _, _)) | 0 ->
                   open_.read_eof <- true;
                   `Eof
                 | len ->

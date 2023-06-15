@@ -99,3 +99,26 @@ let to_dyn ({ bytes; pos_r; pos_w; total_written } as t) =
     ; ("pos_w", int pos_w)
     ; ("pos_r", int pos_r)
     ]
+
+let write_pos t = t.pos_w
+
+let max_write_len t = Bytes.length t.bytes - t.pos_w
+
+let commit_write t ~len =
+  let pos_w = t.pos_w + len in
+  if pos_w > Bytes.length t.bytes then
+    Code_error.raise "not enough space to commit write"
+      [ ("len", Dyn.int len); ("t", to_dyn t) ];
+  t.pos_w <- pos_w
+
+let read_char_exn t =
+  assert (t.pos_r < t.pos_w);
+  let c = Bytes.get t.bytes t.pos_r in
+  read t 1;
+  c
+
+let read_into_buffer t buf ~max_len =
+  let len = min max_len (t.pos_w - t.pos_r) in
+  Buffer.add_subbytes buf t.bytes t.pos_r len;
+  read t len;
+  len

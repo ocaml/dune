@@ -15,15 +15,6 @@
 
 open Stdune
 
-module type Scheduler = sig
-  (** [async f] enqueue task [f] *)
-
-  val async : (unit -> 'a) -> ('a, Exn_with_backtrace.t) result Fiber.t
-end
-
-(** Hack until we move [Dune_engine.Scheduler] into own library *)
-val scheduler : (module Scheduler) Fdecl.t
-
 module Session : sig
   (** Rpc session backed by two threads. One thread for reading, and another for
       writing *)
@@ -61,7 +52,7 @@ module Server : sig
       to the server *)
   val ready : t -> unit Fiber.t
 
-  val stop : t -> unit
+  val stop : t -> unit Fiber.t
 
   val serve : t -> Session.t Fiber.Stream.In.t Fiber.t
 

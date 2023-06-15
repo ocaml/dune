@@ -704,15 +704,15 @@ struct
             (fun () -> session#start)
             ~on_error:(fun exn ->
               (* TODO report errors in dune_stats as well *)
-              let msg =
-                User_error.make
+              (match exn.exn with
+              | Dune_util.Report_error.Already_reported -> ()
+              | _ ->
+                Dune_util.Log.info
                   [ Pp.textf "encountered error serving rpc client (id %d)"
                       (Session.Id.to_int id)
                   ; Exn_with_backtrace.pp exn
-                  ]
-              in
-              let e = { exn with exn = User_error.E msg } in
-              Dune_util.Report_error.report e;
+                  ]);
+              Dune_util.Report_error.report exn;
               Fiber.return ())
         in
         Event.emit (Session Stop) stats id;

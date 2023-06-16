@@ -1,16 +1,29 @@
 open Stdune
 open Dune_config_file
-module Execution_env = Dune_util.Execution_env
 module Console = Dune_console
-module Colors = Dune_rules.Colors
-module Clflags = Dune_engine.Clflags
 module Graph = Dune_graph.Graph
-module Package = Dune_rules.Package
 module Profile = Dune_lang.Profile
-module Cmd = Cmdliner.Cmd
-module Term = Cmdliner.Term
-module Manpage = Cmdliner.Manpage
-module Only_packages = Dune_rules.Only_packages
+
+open struct
+  open Dune_util
+  module Execution_env = Execution_env
+  module Log = Log
+  module Report_error = Report_error
+end
+
+open struct
+  open Dune_rules
+  module Package = Package
+  module Colors = Colors
+  module Only_packages = Only_packages
+end
+
+open struct
+  open Cmdliner
+  module Cmd = Cmd
+  module Term = Term
+  module Manpage = Manpage
+end
 
 module Let_syntax = struct
   let ( let+ ) t f = Term.(const f $ t)
@@ -510,7 +523,7 @@ module Builder = struct
     ; only_packages : Only_packages.Clflags.t
     ; capture_outputs : bool
     ; diff_command : string option
-    ; promote : Clflags.Promote.t option
+    ; promote : Dune_engine.Clflags.Promote.t option
     ; ignore_promoted_rules : bool
     ; force : bool
     ; no_print_directory : bool
@@ -627,13 +640,13 @@ module Builder = struct
                    "Automatically promote files. This is similar to running\n\
                    \                   $(b,dune promote) after the build.")
          in
-         Option.some_if auto Clflags.Promote.Automatically)
+         Option.some_if auto Dune_engine.Clflags.Promote.Automatically)
         (let+ disable =
            let doc = "Disable all promotion rules" in
            let env = Cmd.Env.info ~doc "DUNE_DISABLE_PROMOTION" in
            Arg.(value & flag & info [ "disable-promotion" ] ~docs ~env ~doc)
          in
-         Option.some_if disable Clflags.Promote.Never)
+         Option.some_if disable Dune_engine.Clflags.Promote.Never)
     and+ force =
       Arg.(
         value & flag
@@ -1032,7 +1045,7 @@ let init ?action_runner ?log_file c =
     (Path.Outside_build_dir.of_string c.builder.build_dir);
   (* Once we have the build directory set, initialise the logging. We can't do
      this earlier, because the build log typically goes into [_build/log]. *)
-  Dune_util.Log.init () ?file:log_file;
+  Log.init () ?file:log_file;
   (* We need to print this before reading the workspace file, so that the editor
      can interpret errors in the workspace file. *)
   print_entering_message c;
@@ -1068,7 +1081,7 @@ let init ?action_runner ?log_file c =
         ; reproducibility_check = config.cache_reproducibility_check
         }
   in
-  Dune_util.Log.info
+  Log.info
     [ Pp.textf "Shared cache: %s"
         (Dune_config.Cache.Enabled.to_string config.cache_enabled)
     ];
@@ -1084,26 +1097,28 @@ let init ?action_runner ?log_file c =
     ~sandboxing_preference:config.sandboxing_preference ~cache_config
     ~cache_debug_flags:c.builder.cache_debug_flags ();
   Only_packages.Clflags.set c.builder.only_packages;
-  Dune_util.Report_error.print_memo_stacks := c.builder.debug_dep_path;
-  Clflags.report_errors_config := c.builder.report_errors_config;
-  Clflags.debug_backtraces c.builder.debug_backtraces;
+  Report_error.print_memo_stacks := c.builder.debug_dep_path;
+  Dune_engine.Clflags.report_errors_config := c.builder.report_errors_config;
+  Dune_engine.Clflags.debug_backtraces c.builder.debug_backtraces;
   Dune_rules.Clflags.debug_artifact_substitution :=
     c.builder.debug_artifact_substitution;
-  Clflags.debug_load_dir := c.builder.debug_load_dir;
-  Clflags.debug_digests := c.builder.debug_digests;
-  Clflags.debug_fs_cache := c.builder.cache_debug_flags.fs_cache;
-  Clflags.wait_for_filesystem_clock := c.builder.wait_for_filesystem_clock;
-  Clflags.capture_outputs := c.builder.capture_outputs;
-  Clflags.diff_command := c.builder.diff_command;
-  Clflags.promote := c.builder.promote;
-  Clflags.force := c.builder.force;
+  Dune_engine.Clflags.debug_load_dir := c.builder.debug_load_dir;
+  Dune_engine.Clflags.debug_digests := c.builder.debug_digests;
+  Dune_engine.Clflags.debug_fs_cache := c.builder.cache_debug_flags.fs_cache;
+  Dune_engine.Clflags.wait_for_filesystem_clock :=
+    c.builder.wait_for_filesystem_clock;
+  Dune_engine.Clflags.capture_outputs := c.builder.capture_outputs;
+  Dune_engine.Clflags.diff_command := c.builder.diff_command;
+  Dune_engine.Clflags.promote := c.builder.promote;
+  Dune_engine.Clflags.force := c.builder.force;
   Dune_rules.Clflags.store_orig_src_dir := c.builder.store_orig_src_dir;
   Dune_rules.Clflags.promote_install_files := c.builder.promote_install_files;
-  Clflags.always_show_command_line := c.builder.always_show_command_line;
+  Dune_engine.Clflags.always_show_command_line :=
+    c.builder.always_show_command_line;
   Dune_rules.Clflags.ignore_promoted_rules := c.builder.ignore_promoted_rules;
   Dune_rules.Clflags.on_missing_dune_project_file :=
     if c.builder.require_dune_project_file then Error else Warn;
-  Dune_util.Log.info
+  Log.info
     [ Pp.textf "Workspace root: %s"
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)
     ];

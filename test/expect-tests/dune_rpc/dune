@@ -4,6 +4,7 @@
  (inline_tests)
  (libraries
   ocaml_config
+  dune_util
   dune_rpc_private
   dune_rpc_server
   dune_rpc_impl

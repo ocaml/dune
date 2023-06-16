@@ -1,4 +1,3 @@
-open Stdune
 open Import
 
 let files_to_promote ~common files : Diff_promotion.files_to_promote =

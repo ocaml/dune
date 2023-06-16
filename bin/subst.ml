@@ -1,4 +1,3 @@
-open Stdune
 open Import
 module Vcs = Dune_vcs.Vcs
 module Subst_config = Dune_lang.Subst_config

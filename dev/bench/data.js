@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686905167366,
+  "lastUpdate": 1686905180014,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -45209,6 +45209,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "67.05649795786668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8ed0ebf05cca68c86b5307ba76bf742eb01179da",
+          "message": "Lockdir generation using opam switch prefers oldest (#7980)\n\nThis fixes an oversight where generating lockdirs taking dependencies\r\nfrom an opam switch didn't prefer the oldest version of packages, but\r\nwhen taking dependencies from an opam repo in a directory we did prefer\r\nthe oldest. This changes the behaviour when using an opam switch to\r\nmatch that when using a directory (both now prefer the oldest versions\r\nof packages).\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-06-16T09:18:36+01:00",
+          "tree_id": "6388c104aa8863bd95362addb5b0ad0f5a4a8278",
+          "url": "https://github.com/ocaml/dune/commit/8ed0ebf05cca68c86b5307ba76bf742eb01179da"
+        },
+        "date": 1686905178842,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.88219362496",
             "unit": "seconds"
           }
         ]

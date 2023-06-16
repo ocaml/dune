@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686943876479,
+  "lastUpdate": 1686944040264,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -45818,6 +45818,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.160853867233333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bfd6a33f4ba3c61e54e4d543ed12ed9c70cf96e5",
+          "message": "feature: add dune show env and make dune printenv an alias of it (#7985)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-16T12:08:08-07:00",
+          "tree_id": "5be739397f08495c2902b5cd28d7fb0be7f65fef",
+          "url": "https://github.com/ocaml/dune/commit/bfd6a33f4ba3c61e54e4d543ed12ed9c70cf96e5"
+        },
+        "date": 1686944038936,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "64.58399008850667",
             "unit": "seconds"
           }
         ]

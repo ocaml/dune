@@ -45,6 +45,7 @@ let local_libraries =
   ; ("vendor/uutf", None, false, None)
   ; ("vendor/opam/src/core", None, false, None)
   ; ("vendor/opam/src/format", None, false, None)
+  ; ("src/dune_async_io", Some "Dune_async_io", false, None)
   ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
   ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)
   ; ("src/dune_rpc_client", Some "Dune_rpc_client", false, None)

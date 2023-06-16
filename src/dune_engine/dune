@@ -11,6 +11,7 @@
   dyn
   fiber
   memo
+  dune_async_io
   threads.posix
   dune_lang
   dune_cache

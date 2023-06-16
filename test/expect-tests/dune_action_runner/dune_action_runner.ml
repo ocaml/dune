@@ -25,7 +25,7 @@ let run () =
       Dune_rpc_server.Handler.create ~version:(3, 7)
         ~on_init:(fun _ _ ->
           print_endline "server: client connected";
-          Csexp_rpc.Server.stop csexp_server |> Fiber.return)
+          Csexp_rpc.Server.stop csexp_server)
         ()
     in
     Action_runner.Rpc_server.implement_handler action_runner_server handler;

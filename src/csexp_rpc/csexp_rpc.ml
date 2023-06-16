@@ -1,22 +1,7 @@
 open Stdune
 open Fiber.O
+open Dune_async_io
 module Log = Dune_util.Log
-
-module type Scheduler = sig
-  val async : (unit -> 'a) -> ('a, Exn_with_backtrace.t) result Fiber.t
-end
-
-let scheduler = Fdecl.create Dyn.opaque
-
-let async f =
-  let module Scheduler = (val Fdecl.get scheduler : Scheduler) in
-  Scheduler.async f
-
-let async_exn f =
-  let+ res = async f in
-  match res with
-  | Ok s -> s
-  | Error e -> Exn_with_backtrace.reraise e
 
 module Session_id = Id.Make ()
 
@@ -97,19 +82,21 @@ end
 let debug = Option.is_some (Env.get Env.initial "DUNE_RPC_DEBUG")
 
 module Session = struct
+  let fail = function
+    | `Cancelled -> raise Dune_util.Report_error.Already_reported
+    | `Exn exn -> raise exn
+
   module Id = Session_id
 
   type state =
     | Closed
     | Open of
         { out_buf : Io_buffer.t
+        ; in_buf : Io_buffer.t
         ; fd : Unix.file_descr
-        ; (* A mutex for modifying [out_buf].
-
-             Needed as long as we use threads for async IO. Once we switch to
-             event based IO, we won't need this mutex anymore *)
-          write_mutex : Mutex.t
-        ; in_channel : in_channel
+        ; mutable read_eof : bool
+        ; write_mutex : Fiber.Mutex.t
+        ; read_mutex : Fiber.Mutex.t
         }
 
   type t =
@@ -117,39 +104,47 @@ module Session = struct
     ; mutable state : state
     }
 
-  let create fd in_channel =
+  let create fd =
+    Unix.set_nonblock fd;
     let id = Id.gen () in
     if debug then
       Log.info [ Pp.textf "RPC created new session %d" (Id.to_int id) ];
     let state =
+      let size = 8192 in
       Open
         { fd
-        ; in_channel
-        ; out_buf = Io_buffer.create ~size:8192
-        ; write_mutex = Mutex.create ()
+        ; in_buf = Io_buffer.create ~size
+        ; out_buf = Io_buffer.create ~size
+        ; read_eof = false
+        ; write_mutex = Fiber.Mutex.create ()
+        ; read_mutex = Fiber.Mutex.create ()
         }
     in
     { id; state }
 
   let string_of_packet = function
     | None -> "EOF"
-    | Some csexp -> Sexp.to_string csexp
+    | Some csexp -> Dyn.to_string (Sexp.to_dyn csexp)
 
   let string_of_packets = function
     | None -> "EOF"
     | Some sexps -> String.concat ~sep:" " (List.map ~f:Sexp.to_string sexps)
 
   let close t =
+    let* () = Fiber.return () in
     match t.state with
-    | Closed -> ()
-    | Open { write_mutex = _; fd = _; in_channel; out_buf = _ } ->
-      (* with a socket, there's only one fd. We make sure to close it only once.
-         with dune rpc init, we have two separate fd's (stdin/stdout) so we must
-         close both. *)
-      close_in_noerr in_channel;
+    | Closed -> Fiber.return ()
+    | Open { fd; _ } ->
+      let+ () = Async_io.close fd in
       t.state <- Closed
 
+  module Lexer = Csexp.Parser.Lexer
+  module Stack = Csexp.Parser.Stack
+
+  let min_read = 8192
+
   let read t =
+    let* () = Fiber.return () in
     let debug res =
       if debug then
         Log.info
@@ -162,26 +157,79 @@ module Session = struct
     | Closed ->
       debug None;
       Fiber.return None
-    | Open { in_channel; _ } ->
-      let rec read () =
-        match Csexp.input_opt in_channel with
-        | exception Unix.Unix_error (_, _, _) -> None
-        | exception Sys_error _ -> None
-        | exception Sys_blocked_io -> read ()
-        | Ok None -> None
-        | Ok (Some csexp) -> Some csexp
-        | Error _ -> None
-      in
-      let+ res = async read in
-      let res =
+    | Open ({ fd; in_buf; read_mutex; _ } as open_) ->
+      let lexer = Lexer.create () in
+      let buf = Buffer.create 16 in
+      let rec refill () =
+        if Io_buffer.length in_buf > 0 then Fiber.return (Ok `Continue)
+        else if open_.read_eof then Fiber.return (Ok `Eof)
+        else
+          let* task =
+            Async_io.ready fd `Read ~f:(fun () ->
+                let () = Io_buffer.maybe_resize_to_fit in_buf min_read in
+                let pos = Io_buffer.write_pos in_buf in
+                let len = Io_buffer.max_write_len in_buf in
+                match Unix.read fd (Io_buffer.bytes in_buf) pos len with
+                | exception
+                    Unix.Unix_error ((EAGAIN | EINTR | EWOULDBLOCK), _, _) ->
+                  `Refill
+                | 0 ->
+                  open_.read_eof <- true;
+                  `Eof
+                | len ->
+                  Io_buffer.commit_write in_buf ~len;
+                  `Continue)
+          in
+          Async_io.Task.await task >>= function
+          | Error (`Exn e) -> Fiber.return (Error e)
+          | Error `Cancelled | Ok `Eof -> Fiber.return @@ Ok `Eof
+          | Ok `Continue -> Fiber.return @@ Ok `Continue
+          | Ok `Refill -> refill ()
+      and read parser =
+        let* res = refill () in
         match res with
-        | Error _ ->
-          close t;
-          None
+        | Error _ as e -> Fiber.return e
+        | Ok `Eof -> Fiber.return (Ok None)
+        | Ok `Continue -> (
+          let char = Io_buffer.read_char_exn in_buf in
+          let token = Lexer.feed lexer char in
+          match token with
+          | Atom n ->
+            Buffer.clear buf;
+            atom parser n
+          | (Lparen | Rparen | Await) as token -> (
+            let parser = Stack.add_token token parser in
+            match parser with
+            | Sexp (sexp, Empty) -> Fiber.return (Ok (Some sexp))
+            | parser -> read parser))
+      and atom parser n =
+        if n = 0 then
+          let atom = Buffer.contents buf in
+          match Stack.add_atom atom parser with
+          | Sexp (sexp, Empty) -> Fiber.return (Ok (Some sexp))
+          | parser -> read parser
+        else
+          refill () >>= function
+          | Error _ as e -> Fiber.return e
+          | Ok `Eof -> Fiber.return (Ok None)
+          | Ok `Continue ->
+            let n' = Io_buffer.read_into_buffer in_buf buf ~max_len:n in
+            atom parser (n - n')
+      in
+      let+ res =
+        let* res =
+          Fiber.Mutex.with_lock read_mutex ~f:(fun () -> read Stack.Empty)
+        in
+        match res with
+        | Error exn ->
+          Log.info
+            [ Pp.textf "Unable to read (%d)" (Id.to_int t.id); Exn.pp exn ];
+          let+ () = close t in
+          reraise exn
         | Ok None ->
-          close t;
+          let+ () = close t in
           None
-        | Ok (Some sexp) -> Some sexp
+        | Ok (Some sexp) -> Fiber.return @@ Some sexp
       in
       debug res;
       res
@@ -193,27 +241,37 @@ module Session = struct
     | Linux -> send
     | _ -> Unix.single_write
 
-  let rec csexp_write_loop fd out_buf token write_mutex =
-    Mutex.lock write_mutex;
-    if Io_buffer.flushed out_buf token then Mutex.unlock write_mutex
+  let rec csexp_write_loop fd out_buf token =
+    if Io_buffer.flushed out_buf token then Fiber.return (Ok ())
     else
       (* We always make sure to try and write the entire buffer.
           This should minimize the amount of [write] calls we need
           to do *)
-      let written =
-        let bytes = Io_buffer.bytes out_buf in
-        let pos = Io_buffer.pos out_buf in
-        let len = Io_buffer.length out_buf in
-        try write fd bytes pos len
-        with exn ->
-          Mutex.unlock write_mutex;
-          reraise exn
+      let* task =
+        let* task =
+          Async_io.ready fd `Write ~f:(fun () ->
+              let bytes = Io_buffer.bytes out_buf in
+              let pos = Io_buffer.pos out_buf in
+              let len = Io_buffer.length out_buf in
+              match write fd bytes pos len with
+              | exception Unix.Unix_error ((EAGAIN | EINTR | EWOULDBLOCK), _, _)
+                -> `Continue
+              | exception Unix.Unix_error (EPIPE, _, _) -> `Cancelled
+              | exception exn -> `Exn exn
+              | written ->
+                Io_buffer.read out_buf written;
+                `Continue)
+        in
+        Async_io.Task.await task
       in
-      Io_buffer.read out_buf written;
-      Mutex.unlock write_mutex;
-      csexp_write_loop fd out_buf token write_mutex
+      match task with
+      | Error _ as e -> Fiber.return e
+      | Ok (`Exn exn) -> Fiber.return (Error (`Exn exn))
+      | Ok `Cancelled -> Fiber.return (Error `Cancelled)
+      | Ok `Continue -> csexp_write_loop fd out_buf token
 
   let write t sexps =
+    let* () = Fiber.return () in
     if debug then
       Log.info
         [ Pp.verbatim
@@ -235,63 +293,69 @@ module Session = struct
            (* TODO this hack is temporary until we get rid of dune rpc init *)
            Unix.shutdown fd Unix.SHUTDOWN_ALL
          with Unix.Unix_error (_, _, _) -> ());
-        close t;
-        Fiber.return ()
+        close t
       | Some sexps -> (
-        let+ res =
-          Mutex.lock write_mutex;
-          Io_buffer.write_csexps out_buf sexps;
-          let flush_token = Io_buffer.flush_token out_buf in
-          Mutex.unlock write_mutex;
-          async (fun () -> csexp_write_loop fd out_buf flush_token write_mutex)
+        let* res =
+          Fiber.Mutex.with_lock write_mutex ~f:(fun () ->
+              Io_buffer.write_csexps out_buf sexps;
+              let flush_token = Io_buffer.flush_token out_buf in
+              csexp_write_loop fd out_buf flush_token)
         in
         match res with
-        | Ok () -> ()
-        | Error e ->
-          close t;
-          Exn_with_backtrace.reraise e))
+        | Ok () -> Fiber.return ()
+        | Error error ->
+          let+ () = close t in
+          fail error))
 end
-
-let close_fd_no_error fd = try Unix.close fd with _ -> ()
 
 module Server = struct
   module Transport = struct
     type t =
       { fd : Unix.file_descr
       ; sockaddr : Unix.sockaddr
-      ; r_interrupt_accept : Unix.file_descr
-      ; w_interrupt_accept : Unix.file_descr
-      ; buf : Bytes.t
+      ; mutable task : (Unix.file_descr * Unix.sockaddr) Async_io.Task.t option
+      ; mutable running : bool
       }
 
     let create fd sockaddr ~backlog =
       Unix.listen fd backlog;
-      let r_interrupt_accept, w_interrupt_accept = Unix.pipe ~cloexec:true () in
-      let buf = Bytes.make 1 '0' in
-      { fd; sockaddr; r_interrupt_accept; w_interrupt_accept; buf }
+      Unix.set_nonblock fd;
+      { fd; sockaddr; task = None; running = true }
 
-    let accept t =
-      match Unix.select [ t.r_interrupt_accept; t.fd ] [] [] (-1.0) with
-      | r, [], [] ->
-        let inter, accept =
-          List.fold_left r ~init:(false, false) ~f:(fun (i, a) fd ->
-              if fd = t.fd then (i, true)
-              else if fd = t.r_interrupt_accept then (true, a)
-              else assert false)
+    let close t =
+      let+ () = Async_io.close t.fd in
+      Ok None
+
+    let rec accept t =
+      let* () = Fiber.return () in
+      match t.running with
+      | false -> close t
+      | true -> (
+        let* task =
+          Async_io.ready t.fd `Read ~f:(fun () ->
+              Unix.accept ~cloexec:true t.fd)
         in
-        if inter then None
-        else if accept then (
-          let fd, _ = Unix.accept ~cloexec:true t.fd in
+        t.task <- Some task;
+        let* res = Async_io.Task.await task in
+        match res with
+        | Error (`Exn (Unix.Unix_error (Unix.EAGAIN, _, _))) -> accept t
+        | Error (`Exn exn) ->
+          let+ _ = close t in
+          Error (Exn_with_backtrace.capture exn)
+        | Error `Cancelled -> close t
+        | Ok (fd, _) ->
           Socket.maybe_set_nosigpipe fd;
-          Unix.clear_nonblock fd;
-          Some fd)
-        else assert false
-      | _, _, _ -> assert false
-      | exception Unix.Unix_error (Unix.EBADF, _, _) -> None
+          Unix.set_nonblock fd;
+          Fiber.return @@ Ok (Some fd))
 
     let stop t =
-      let _ = Unix.write t.w_interrupt_accept t.buf 0 1 in
-      close_fd_no_error t.fd;
+      let* () = Fiber.return () in
+      t.running <- false;
+      let+ () =
+        match t.task with
+        | None -> Fiber.return ()
+        | Some task -> Async_io.Task.cancel task
+      in
       match t.sockaddr with
       | ADDR_UNIX p -> Fpath.unlink_no_err p
       | _ -> ()
@@ -325,20 +389,11 @@ module Server = struct
     | `Closed -> Code_error.raise "already closed" []
     | `Running _ -> Code_error.raise "already running" []
     | `Init fd ->
-      let* transport =
-        async_exn (fun () -> Transport.create fd t.sockaddr ~backlog:t.backlog)
-      in
+      let transport = Transport.create fd t.sockaddr ~backlog:t.backlog in
       t.state <- `Running transport;
       let+ () = Fiber.Ivar.fill t.ready () in
-      let accept () =
-        async (fun () ->
-            Transport.accept transport
-            |> Option.map ~f:(fun client ->
-                   let in_ = Unix.in_channel_of_descr client in
-                   (client, in_)))
-      in
       let loop () =
-        let+ accept = accept () in
+        let+ accept = Transport.accept transport in
         match accept with
         | Error exn ->
           Log.info
@@ -353,18 +408,21 @@ module Server = struct
                  accepted."
             ];
           None
-        | Ok (Some (fd, in_)) ->
-          let session = Session.create fd in_ in
+        | Ok (Some fd) ->
+          let session = Session.create fd in
           Some session
       in
       Fiber.Stream.In.create loop
 
   let stop t =
-    let () =
+    let* () = Fiber.return () in
+    let+ () =
       match t.state with
-      | `Closed -> ()
+      | `Closed -> Fiber.return ()
       | `Running t -> Transport.stop t
-      | `Init fd -> Unix.close fd
+      | `Init fd ->
+        Unix.close fd;
+        Fiber.return ()
     in
     t.state <- `Closed
 
@@ -376,12 +434,9 @@ end
 
 module Client = struct
   module Transport = struct
-    type t =
-      { fd : Unix.file_descr
-      ; sockaddr : Unix.sockaddr
-      }
+    type t = { fd : Unix.file_descr }
 
-    let close t = close_fd_no_error t.fd
+    let close t = Unix.close t.fd
 
     let create sockaddr =
       let fd =
@@ -389,11 +444,8 @@ module Client = struct
           (Unix.domain_of_sockaddr sockaddr)
           Unix.SOCK_STREAM 0
       in
-      { sockaddr; fd }
-
-    let connect t =
-      let () = Socket.connect t.fd t.sockaddr in
-      t.fd
+      Unix.set_nonblock fd;
+      { fd }
   end
 
   type t =
@@ -404,17 +456,17 @@ module Client = struct
   let create sockaddr = { sockaddr; transport = None }
 
   let connect t =
-    let+ task =
-      async (fun () ->
-          let transport = Transport.create t.sockaddr in
-          t.transport <- Some transport;
-          let client = Transport.connect transport in
-          let in_ = Unix.in_channel_of_descr client in
-          (client, in_))
-    in
-    match task with
-    | Error exn -> Error exn
-    | Ok (fd, in_) -> Ok (Session.create fd in_)
+    let* () = Fiber.return () in
+    let backtrace = Printexc.get_callstack 10 in
+    let transport = Transport.create t.sockaddr in
+    let fd = transport.fd in
+    t.transport <- Some transport;
+    Async_io.connect Socket.connect fd t.sockaddr >>| function
+    | Ok () -> Ok (Session.create fd)
+    | Error `Cancelled ->
+      let exn = Failure "connect cancelled" in
+      Error { Exn_with_backtrace.exn; backtrace }
+    | Error (`Exn exn) -> Error { Exn_with_backtrace.exn; backtrace }
 
   let connect_exn t =
     let+ res = connect t in

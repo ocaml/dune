@@ -60,7 +60,7 @@ let%expect_test "csexp server life cycle" =
         (match response with
         | None -> log "no response"
         | Some sexp -> log "received %s" (Csexp.to_string sexp));
-        let+ () = Session.write client None in
+        let* () = Session.write client None in
         log "closed";
         Server.stop server)
       (fun () ->

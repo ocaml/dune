@@ -9,6 +9,9 @@
 - Fix scanning of Coq installed files (@ejgallego, reported by
   @palmskog, #7895 , fixes #7893)
 
+- Fix RPC buffer corruption issues due to multi threading. This issue was only
+  reproducible with large RPC payloads (#7418)
+
 3.8.1 (2023-06-05)
 ------------------
 
@@ -23,9 +26,6 @@
 
 - Revert #7415 and #7450 (Resolve `ppx_runtime_libraries` in the target context when
   cross compiling) (#7887, fixes #7875, @emillon)
-
-- Fix RPC buffer corruption issues due to multi threading. This issue was only
-  reproducible with large RPC payloads (#7418)
 
 3.8.0 (2023-05-23)
 ------------------

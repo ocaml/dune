@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686950229165,
+  "lastUpdate": 1686950377335,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20327,6 +20327,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.588503418159995",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8b7e70016c9700a6c6264cd36d3ff8f9427daadf",
+          "message": "refactor: add stdune to import in bin/ (#7994)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-16T13:59:49-07:00",
+          "tree_id": "18a97d972c3e06aeb93535439f2479eac2a52bea",
+          "url": "https://github.com/ocaml/dune/commit/8b7e70016c9700a6c6264cd36d3ff8f9427daadf"
+        },
+        "date": 1686950376320,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.10644295394667",
             "unit": "seconds"
           }
         ]

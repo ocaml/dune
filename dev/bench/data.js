@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686920607350,
+  "lastUpdate": 1686920940574,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -45267,6 +45267,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.88219362496",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e1518c95be740e9582399fd7b9bccf9f232e2257",
+          "message": "test: disable log output in action runner test (#7981)\n\nThis log was being output on dune's stderr instead.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-06-16T14:43:34+02:00",
+          "tree_id": "b53ae41d8b53376345b4a357eecf892f6a23d628",
+          "url": "https://github.com/ocaml/dune/commit/e1518c95be740e9582399fd7b9bccf9f232e2257"
+        },
+        "date": 1686920939587,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.63107850549333",
             "unit": "seconds"
           }
         ]

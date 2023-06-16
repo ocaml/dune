@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686923161482,
+  "lastUpdate": 1686923401788,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20124,6 +20124,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.94605284686667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "761395b60d0e154a91137f48201dd890e16763a9",
+          "message": "create dune show command group (#7946)\n\nThis is an alias of dune describe.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-16T14:27:23+01:00",
+          "tree_id": "c10c55ebe894e39f008f93fc00d63c0329416da0",
+          "url": "https://github.com/ocaml/dune/commit/761395b60d0e154a91137f48201dd890e16763a9"
+        },
+        "date": 1686923399437,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "45.83837895094666",
             "unit": "seconds"
           }
         ]

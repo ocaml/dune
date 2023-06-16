@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686949935745,
+  "lastUpdate": 1686950053770,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20298,6 +20298,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.42866627098667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "23cad30a0e5c9cae65f0f3f0af3d15b235d646b5",
+          "message": "test: rpc server callbacks (#7993)\n\nmake sure that callbacks are called in the presence of exceptions\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-16T13:54:30-07:00",
+          "tree_id": "0dbadbbbdb0e2d08b41345db594f57000afd1a1f",
+          "url": "https://github.com/ocaml/dune/commit/23cad30a0e5c9cae65f0f3f0af3d15b235d646b5"
+        },
+        "date": 1686950052635,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.588503418159995",
             "unit": "seconds"
           }
         ]

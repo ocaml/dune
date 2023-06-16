@@ -1,4 +1,3 @@
-open Stdune
 open Import
 
 let doc = "Execute a Coq toplevel with the local configuration."

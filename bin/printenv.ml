@@ -1,4 +1,3 @@
-open Stdune
 open Import
 
 let dump sctx ~dir =

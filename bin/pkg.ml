@@ -1,4 +1,3 @@
-open Stdune
 open Import
 module Lock_dir = Dune_pkg.Lock_dir
 

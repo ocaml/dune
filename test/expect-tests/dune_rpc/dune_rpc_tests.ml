@@ -7,6 +7,8 @@ module Scheduler = Test_scheduler
 
 let () = Printexc.record_backtrace false
 
+let () = Dune_util.Log.init_disabled ()
+
 let print pp = Format.printf "%a@." Pp.to_fmt pp
 
 let print_dyn dyn = print (Dyn.pp dyn)
@@ -579,3 +581,164 @@ let%expect_test "server to client request" =
     client: received request from server
     client: received response 20
     server: finished. |}]
+
+let%test_module "finalization" =
+  (module struct
+    let decl = simple_request ~method_:"double" Conv.unit Conv.unit
+
+    let witness = Decl.Request.witness decl
+
+    type callback =
+      | Print
+      | Fail
+
+    let dyn_of_callback =
+      let open Dyn in
+      function
+      | Print -> variant "Print" []
+      | Fail -> variant "Fail" []
+
+    type callbacks =
+      { on_init : callback
+      ; on_terminate : callback
+      ; on_upgrade : callback
+      }
+
+    let dyn_of_callback { on_init; on_terminate; on_upgrade } =
+      Dyn.record
+        [ ("on_init", dyn_of_callback on_init)
+        ; ("on_terminate", dyn_of_callback on_terminate)
+        ; ("on_upgrade", dyn_of_callback on_upgrade)
+        ]
+
+    let handler { on_init; on_terminate; on_upgrade } =
+      let f name = function
+        | Print -> Fiber.return (printfn "server: %s" name)
+        | Fail -> failwith (sprintf "server: failed in %s" name)
+      in
+      let on_init _ _ = f "init" on_init in
+      let on_terminate _ = f "terminate" on_terminate in
+      let on_upgrade _ _ = f "upgrade" on_upgrade in
+      Handler.create ~on_terminate ~on_init ~on_upgrade ~version:(1, 1) ()
+
+    let test callback =
+      let handler =
+        let rpc = handler callback in
+        let () =
+          let cb _ () = failwith "never works" in
+          Handler.implement_request rpc decl cb
+        in
+        rpc
+      in
+      let client client =
+        printfn "client: sending request";
+        let+ resp = request_exn client witness () in
+        match resp with
+        | Error error -> print_dyn @@ Response.Error.to_dyn error
+        | Ok _ -> assert false
+      in
+      let init =
+        { Initialize.Request.dune_version = (1, 1)
+        ; protocol_version = Protocol.latest_version
+        ; id = Id.make (Atom "test-client")
+        }
+      in
+      test ~init ~client ~handler ~private_menu:[ Request decl ] ()
+
+    let%expect_test "termination is always called" =
+      let kind = [ Print; Fail ] in
+      let callbacks =
+        List.concat_map kind ~f:(fun on_init ->
+            List.concat_map kind ~f:(fun on_terminate ->
+                List.concat_map kind ~f:(fun on_upgrade ->
+                    [ { on_init; on_terminate; on_upgrade } ])))
+      in
+      List.iter callbacks ~f:(fun callback ->
+          dyn_of_callback callback |> print_dyn;
+          (try test callback
+           with exn ->
+             let exn = Exn_with_backtrace.capture exn in
+             Format.printf "%a.%!" Exn_with_backtrace.pp_uncaught exn);
+          print_endline "---------------");
+      [%expect
+        {|
+        { on_init = Print; on_terminate = Print; on_upgrade = Print }
+        server: init
+        server: upgrade
+        client: sending request
+        { payload =
+            Some [ [ [ "exn"; "Failure(\"never works\")" ]; [ "backtrace"; "" ] ] ]
+        ; message = "server error"
+        ; kind = Code_error
+        }
+        server: terminate
+        server: finished.
+        ---------------
+        { on_init = Print; on_terminate = Print; on_upgrade = Fail }
+        server: init
+        Error: exception Failure("server: failed in upgrade")
+
+        I must not crash.  Uncertainty is the mind-killer. Exceptions are the
+        little-death that brings total obliteration.  I will fully express my cases.
+        Execution will pass over me and through me.  And when it has gone past, I
+        will unwind the stack along its path.  Where the cases are handled there will
+        be nothing.  Only I will remain.
+        client: sending request
+        /-----------------------------------------------------------------------
+        | Internal error: Uncaught exception.
+        | Test_scheduler.Never
+        \-----------------------------------------------------------------------
+        .---------------
+        { on_init = Print; on_terminate = Fail; on_upgrade = Print }
+        server: init
+        server: upgrade
+        client: sending request
+        { payload =
+            Some [ [ [ "exn"; "Failure(\"never works\")" ]; [ "backtrace"; "" ] ] ]
+        ; message = "server error"
+        ; kind = Code_error
+        }
+        Error: exception Failure("server: failed in terminate")
+        /-----------------------------------------------------------------------
+        | Internal error: Uncaught exception.
+        | Test_scheduler.Never
+        \-----------------------------------------------------------------------
+        .---------------
+        { on_init = Print; on_terminate = Fail; on_upgrade = Fail }
+        server: init
+        Error: exception Failure("server: failed in upgrade")
+        client: sending request
+        /-----------------------------------------------------------------------
+        | Internal error: Uncaught exception.
+        | Test_scheduler.Never
+        \-----------------------------------------------------------------------
+        .---------------
+        { on_init = Fail; on_terminate = Print; on_upgrade = Print }
+        Error: exception Failure("server: failed in init")
+        /-----------------------------------------------------------------------
+        | Internal error: Uncaught exception.
+        | Test_scheduler.Never
+        \-----------------------------------------------------------------------
+        .---------------
+        { on_init = Fail; on_terminate = Print; on_upgrade = Fail }
+        Error: exception Failure("server: failed in init")
+        /-----------------------------------------------------------------------
+        | Internal error: Uncaught exception.
+        | Test_scheduler.Never
+        \-----------------------------------------------------------------------
+        .---------------
+        { on_init = Fail; on_terminate = Fail; on_upgrade = Print }
+        Error: exception Failure("server: failed in init")
+        /-----------------------------------------------------------------------
+        | Internal error: Uncaught exception.
+        | Test_scheduler.Never
+        \-----------------------------------------------------------------------
+        .---------------
+        { on_init = Fail; on_terminate = Fail; on_upgrade = Fail }
+        Error: exception Failure("server: failed in init")
+        /-----------------------------------------------------------------------
+        | Internal error: Uncaught exception.
+        | Test_scheduler.Never
+        \-----------------------------------------------------------------------
+        .--------------- |}]
+  end)

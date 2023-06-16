@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686951168403,
+  "lastUpdate": 1686951182983,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -46166,6 +46166,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "81.37260371500666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c3b680b6fc5a54a9e3f75b2014a0782572cc99c3",
+          "message": "describe_pp: improve error messages (#7986)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-16T14:00:30-07:00",
+          "tree_id": "89e6dc13ec7550fd20c885c6c42869f6225ac0d4",
+          "url": "https://github.com/ocaml/dune/commit/c3b680b6fc5a54a9e3f75b2014a0782572cc99c3"
+        },
+        "date": 1686951181832,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.3148160821133335",
             "unit": "seconds"
           }
         ]

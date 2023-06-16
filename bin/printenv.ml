@@ -15,7 +15,7 @@ let pp ~fields sexps =
         | Dune_lang.List (Atom (A name) :: _) -> String.Set.mem fields name
         | _ -> false
       in
-      if do_print then Some (Dune_lang.pp sexp) else None)
+      Option.some_if do_print (Dune_lang.pp sexp))
 
 let term =
   let+ common = Common.term

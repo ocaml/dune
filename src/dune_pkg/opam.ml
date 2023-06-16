@@ -255,6 +255,8 @@ module Opam_solver = struct
     include
       Context_with_local_packages (Context_either (Dir_context) (Switch_context))
 
+    let prefer_oldest = true
+
     let create_dir_context ~local_repo_with_env ~local_packages =
       let { Local_repo_with_env.local_repo = { Local_repo.packages_dir_path }
           ; env
@@ -263,15 +265,15 @@ module Opam_solver = struct
       in
       let env name = Env.find_by_name env ~name in
       let dir_context =
-        Dir_context.create ~prefer_oldest:true
+        Dir_context.create ~prefer_oldest
           ~constraints:OpamPackage.Name.Map.empty ~env packages_dir_path
       in
       create ~base_context:(Left dir_context) ~local_packages
 
     let create_switch_context ~switch_state ~local_packages =
       let switch_context =
-        Switch_context.create ~constraints:OpamPackage.Name.Map.empty
-          switch_state
+        Switch_context.create ~prefer_oldest
+          ~constraints:OpamPackage.Name.Map.empty switch_state
       in
       create ~base_context:(Right switch_context) ~local_packages
   end

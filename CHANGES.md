@@ -1,4 +1,4 @@
-3.8.2 (unreleased)
+3.8.2 (2023-06-16)
 ------------------
 
 - Switch back to threaded console for all systems; fix unresponsive console on

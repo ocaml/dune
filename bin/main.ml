@@ -32,6 +32,7 @@ let all : _ Cmdliner.Cmd.t list =
     [ Ocaml_cmd.group
     ; Coq.group
     ; Describe.group
+    ; Describe.Show.group
     ; Rpc.group
     ; Internal.group
     ; Init.group

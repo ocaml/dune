@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Add `dune show` command group which is an alias of `dune describe`. (#7946,
+  @Alizter)
+
 - Fix printing errors from excerpts whenever character offsets span multiple
   lines (#7950, fixes #7905, @rgrinberg)
 

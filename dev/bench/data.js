@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686925174398,
+  "lastUpdate": 1686926504713,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -57332,6 +57332,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.980167976520004",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "421b53c9d334079e9e5801f1977a155960c514ad",
+          "message": "fix(rpc): do not re-reaise read errors (#7978)\n\nThere's no point in re-raising read errors even if we don't know what\r\nthey are. The callers can't handle them apart from dropping the\r\nconnection. Since the errors are unknown, we also report them to the\r\nconsole.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-16T15:28:56+01:00",
+          "tree_id": "4c5caa0d9bc45f966954dd6d0fa56054c3ee1edb",
+          "url": "https://github.com/ocaml/dune/commit/421b53c9d334079e9e5801f1977a155960c514ad"
+        },
+        "date": 1686926498683,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.63480528427333",
             "unit": "seconds"
           }
         ]

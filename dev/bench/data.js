@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686922719109,
+  "lastUpdate": 1686922893147,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -57013,6 +57013,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.714784124519998",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "761395b60d0e154a91137f48201dd890e16763a9",
+          "message": "create dune show command group (#7946)\n\nThis is an alias of dune describe.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-16T14:27:23+01:00",
+          "tree_id": "c10c55ebe894e39f008f93fc00d63c0329416da0",
+          "url": "https://github.com/ocaml/dune/commit/761395b60d0e154a91137f48201dd890e16763a9"
+        },
+        "date": 1686922887014,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.553222036386668",
             "unit": "seconds"
           }
         ]

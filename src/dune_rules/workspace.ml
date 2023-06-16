@@ -262,13 +262,13 @@ module Context = struct
   module Default = struct
     type t =
       { base : Common.t
-      ; lock : Path.Source.t option
+      ; lock : Dune_pkg.Lock_dir_path.t option
       }
 
     let to_dyn { base; lock } =
       Dyn.record
         [ ("base", Common.to_dyn base)
-        ; ("lock", Dyn.(option Path.Source.to_dyn) lock)
+        ; ("lock", Dyn.(option Dune_pkg.Lock_dir_path.to_dyn) lock)
         ]
 
     let decode =
@@ -282,9 +282,17 @@ module Context = struct
            1. guard before version check before releasing
            2. allow external paths
         *)
-        field_o "lock" (Dpath.Local.decode ~dir:(Path.source Path.Source.root))
+        field_o "lock"
+          (let+ loc, dpath =
+             located @@ Dpath.Local.decode ~dir:(Path.source Path.Source.root)
+           in
+           match
+             Path.as_in_source_tree_exn dpath
+             |> Dune_pkg.Lock_dir_path.of_path_source
+           with
+           | Ok lock_dir_path -> lock_dir_path
+           | Error (`Msg msg) -> User_error.raise ~loc [ Pp.text msg ])
       in
-      let lock = Option.map lock ~f:Path.as_in_source_tree_exn in
       fun ~profile_default ~instrument_with_default ~x ->
         let common = common ~profile_default ~instrument_with_default in
         let default =
@@ -301,7 +309,8 @@ module Context = struct
         { base; lock }
 
     let equal { base; lock } t =
-      Common.equal base t.base && Option.equal Path.Source.equal lock t.lock
+      Common.equal base t.base
+      && Option.equal Dune_pkg.Lock_dir_path.equal lock t.lock
   end
 
   type t =

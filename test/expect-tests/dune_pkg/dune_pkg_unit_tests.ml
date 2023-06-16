@@ -2,6 +2,7 @@ open Stdune
 module Fetch = Dune_pkg.Fetch
 module Checksum = Dune_pkg.Checksum
 module Lock_dir = Dune_pkg.Lock_dir
+module Lock_dir_path = Dune_pkg.Lock_dir_path
 module Scheduler = Dune_engine.Scheduler
 module Package_name = Dune_lang.Package_name
 
@@ -154,7 +155,7 @@ let%expect_test "downloading, without any checksum" =
     Finished successfully, no checksum verification |}]
 
 let lock_dir_encode_decode_round_trip_test ~lock_dir_path ~lock_dir =
-  let lock_dir_path = Path.Source.of_string lock_dir_path in
+  let lock_dir_path = Lock_dir_path.of_string lock_dir_path in
   Lock_dir.write_disk ~lock_dir_path lock_dir;
   let lock_dir_round_tripped =
     Lock_dir.read_disk ~lock_dir_path |> Result.ok_exn

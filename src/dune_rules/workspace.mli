@@ -47,7 +47,7 @@ module Context : sig
   module Default : sig
     type t =
       { base : Common.t
-      ; lock : Path.Source.t option
+      ; lock : Dune_pkg.Lock_dir_path.t option
       }
   end
 

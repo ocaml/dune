@@ -196,8 +196,8 @@ module Pkg = struct
          let info =
            let source =
              Option.map source ~f:(fun f ->
-                 Path.source lock_dir |> Path.to_absolute_filename
-                 |> Path.External.of_string |> f)
+                 Lock_dir_path.to_path lock_dir
+                 |> Path.to_absolute_filename |> Path.External.of_string |> f)
            in
            { Pkg_info.name; version; dev; source }
          in
@@ -246,7 +246,8 @@ let create_latest_version packages =
   let version = Syntax.greatest_supported_version Dune_lang.Pkg.syntax in
   { version; packages }
 
-let default_path = Path.Source.(relative root "dune.lock")
+let default_path =
+  Path.Source.(relative root "dune.lock") |> Lock_dir_path.of_path_source_exn
 
 let metadata = "lock.dune"
 
@@ -314,7 +315,7 @@ let safely_remove_lock_dir_if_exists path =
       ]
 
 let write_disk ~lock_dir_path t =
-  let lock_dir_path = Path.source lock_dir_path in
+  let lock_dir_path = Lock_dir_path.to_path lock_dir_path in
   let () = safely_remove_lock_dir_if_exists lock_dir_path in
   Path.mkdir_p lock_dir_path;
   file_contents_by_path t
@@ -351,7 +352,8 @@ let load_pkg ~parser_context ~lock_dir_path package_name =
   let+ mk_pkg =
     Result.try_with (fun () ->
         let source_path =
-          Path.Source.relative lock_dir_path
+          Path.Source.relative
+            (Lock_dir_path.to_path_source lock_dir_path)
             (Package_name.to_string package_name)
         in
         let pkg_string = Io.read_file (Path.source source_path) in
@@ -366,30 +368,37 @@ let load_pkg ~parser_context ~lock_dir_path package_name =
 let read_disk ~lock_dir_path =
   let open Or_exn.O in
   let* () =
-    if Path.is_directory (Path.source lock_dir_path) then Ok ()
+    if Path.is_directory (Lock_dir_path.to_path lock_dir_path) then Ok ()
     else
       Error
         User_error.(
           E
             (make
                [ Pp.textf "%s is not a directory"
-                   (Path.Source.to_string lock_dir_path)
+                   (Lock_dir_path.to_string lock_dir_path)
                ]))
   in
   let* version =
-    load_metadata_version (Path.Source.relative lock_dir_path metadata)
+    load_metadata_version
+      (Path.Source.relative
+         (Lock_dir_path.to_path_source lock_dir_path)
+         metadata)
   in
   let parser_context =
     Univ_map.singleton String_with_vars.decoding_env_key
       (Pform.Env.initial version)
   in
   let+ packages =
-    Sys.readdir (Path.Source.to_string lock_dir_path)
+    Sys.readdir (Lock_dir_path.to_string lock_dir_path)
     |> Array.to_list
     |> List.filter_map ~f:(fun filename ->
            if Filename.equal filename metadata then None
            else
-             let package_path = Path.Source.relative lock_dir_path filename in
+             let package_path =
+               Path.Source.relative
+                 (Lock_dir_path.to_path_source lock_dir_path)
+                 filename
+             in
              if Path.is_directory (Path.source package_path) then None
              else
                let package_name = Package_name.of_string filename in

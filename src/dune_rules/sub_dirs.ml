@@ -74,9 +74,17 @@ module Status = struct
 end
 
 let status status_by_dir ~dir : Status.Or_ignored.t =
-  match String.Map.find status_by_dir dir with
-  | None -> Ignored
-  | Some d -> Status d
+  if Dune_pkg.Lock_dir_path.is_valid_source_path (Path.Source.of_string dir)
+  then
+    (* All directories whose names are valid lockdir names are treated as
+       data-only directories. This is because if a lockdir contains a file
+       named "dune" this file will contain data about the package "dune" and
+       won't be a valid dune file. *)
+    Status Status.Data_only
+  else
+    match String.Map.find status_by_dir dir with
+    | None -> Ignored
+    | Some d -> Status d
 
 let default =
   let standard_dirs = Predicate_lang.Glob.of_glob (Glob.of_string "[!._]*") in

@@ -31,7 +31,7 @@ module Pkg : sig
     }
 
   val decode :
-    (lock_dir:Path.Source.t -> Package_name.t -> t) Dune_sexp.Decoder.t
+    (lock_dir:Lock_dir_path.t -> Package_name.t -> t) Dune_sexp.Decoder.t
 end
 
 type t =
@@ -47,12 +47,12 @@ val to_dyn : t -> Dyn.t
 
 val create_latest_version : Pkg.t Package_name.Map.t -> t
 
-val default_path : Path.Source.t
+val default_path : Lock_dir_path.t
 
 val metadata : Filename.t
 
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit
 
-val write_disk : lock_dir_path:Path.Source.t -> t -> unit
+val write_disk : lock_dir_path:Lock_dir_path.t -> t -> unit
 
-val read_disk : lock_dir_path:Path.Source.t -> t Or_exn.t
+val read_disk : lock_dir_path:Lock_dir_path.t -> t Or_exn.t

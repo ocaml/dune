@@ -67,20 +67,21 @@ module Lock_dir = struct
     | Some (Opam _) -> assert false
 
   let get (ctx : Context_name.t) : t Memo.t =
-    let* path = get_path ctx in
-    Fs_memo.dir_exists (In_source_dir path) >>= function
+    let* lock_dir_path = get_path ctx in
+    let path_source = Lock_dir_path.to_path_source lock_dir_path in
+    Fs_memo.dir_exists (In_source_dir path_source) >>= function
     | false ->
       (* TODO *)
       User_error.raise [ Pp.text "" ]
     | true -> (
-      Fs_memo.dir_contents (In_source_dir path) >>= function
+      Fs_memo.dir_contents (In_source_dir path_source) >>= function
       | Error _ ->
         (* TODO *)
         User_error.raise [ Pp.text "" ]
       | Ok content ->
         let* version =
           Fs_memo.with_lexbuf_from_file
-            (In_source_dir (Path.Source.relative path metadata))
+            (In_source_dir (Path.Source.relative path_source metadata))
             ~f:(fun lexbuf ->
               Metadata.parse_contents lexbuf ~f:(fun instance ->
                   Dune_sexp.Decoder.return instance.version))
@@ -99,7 +100,8 @@ module Lock_dir = struct
                  let+ package =
                    let+ sexp =
                      let path =
-                       Package.Name.to_string name |> Path.Source.relative path
+                       Package.Name.to_string name
+                       |> Path.Source.relative path_source
                      in
                      Fs_memo.with_lexbuf_from_file (In_source_dir path)
                        ~f:(Dune_sexp.Parser.parse ~mode:Many)
@@ -114,7 +116,7 @@ module Lock_dir = struct
                    in
                    (Dune_lang.Decoder.parse parser Univ_map.empty
                       (List (Loc.none, sexp)))
-                     ~lock_dir:path name
+                     ~lock_dir:lock_dir_path name
                  in
                  (name, package))
           >>| Package.Name.Map.of_list_exn
@@ -703,7 +705,8 @@ end = struct
       let paths = Paths.make name ctx in
       let* lock_dir = Lock_dir.get_path ctx in
       let files_dir =
-        Path.Source.relative lock_dir
+        Path.Source.relative
+          (Lock_dir_path.to_path_source lock_dir)
           (sprintf "%s.files" (Package.Name.to_string info.name))
       in
       let t =

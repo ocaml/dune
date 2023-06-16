@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686943713266,
+  "lastUpdate": 1686943876479,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20269,6 +20269,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.432542736760006",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "85bb97c2660444af73fed0887d2486591f00df2e",
+          "message": "refactor: cleanup imports in common (#7991)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-16T12:10:36-07:00",
+          "tree_id": "e719394fd51b5a7f8a474259da67b0183dbf7176",
+          "url": "https://github.com/ocaml/dune/commit/85bb97c2660444af73fed0887d2486591f00df2e"
+        },
+        "date": 1686943874310,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.42866627098667",
             "unit": "seconds"
           }
         ]

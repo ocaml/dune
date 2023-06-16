@@ -141,25 +141,6 @@ RUN wget https://github.com/ocaml-dune/ocaml-monorepo-benchmark/archive/refs/tag
   tar xf ocaml-monorepo-benchmark.tar.gz && \
   mv ocaml-monorepo-benchmark-$MONOREPO_BENCHMARK_TAG monorepo-benchmark
 
-WORKDIR $HOME/monorepo-benchmark/benchmark
-
-# Running `opam monorepo pull` with a large package set is very likely to fail on at least
-# one package in a non-deterministic manner. Repeating it several times reduces the chance
-# that all attempts fail.
-RUN opam monorepo pull || opam monorepo pull || opam monorepo pull
-
-# Initialize some projects' source code
-RUN . ~/.profile && cd duniverse/clangml && ./configure
-RUN cd duniverse/zelus && ./configure
-RUN rm -rf duniverse/magic-trace/vendor
-RUN cd duniverse/cpu && autoconf && autoheader && ./configure
-RUN cd duniverse/setcore && autoconf && autoheader && ./configure
-RUN cd duniverse/batsat-ocaml && ./build_rust.sh
-
-# Some packages define conflicting definitions of libraries so they must be removed for the build to succeed
-RUN rm -r duniverse/coq-of-ocaml
-RUN rm -r duniverse/coq
-
 # Build the dune binary that we'll be benchmarking.
 # Only copy the files needed to build dune so that changes to other files in this project
 # don't cause the docker image cache to be invalidated.
@@ -179,16 +160,8 @@ RUN . ~/.profile && opam pin add dune-rpc /home/user/dune -y
 RUN . ~/.profile && opam pin add dune-rpc-lwt /home/user/dune -y
 RUN . ~/.profile && opam reinstall dune-rpc dune-rpc-lwt -y --working-dir
 
-# Apply some custom packages to some packages
+# Switch to the benchmark project
 WORKDIR $HOME/monorepo-benchmark/benchmark
-RUN bash -c 'for f in patches/*; do p=$(basename ${f%.diff}); patch -p1 -d duniverse/$p < $f; done'
-
-# Setting PREBUILD will build the monorepo during `docker build` which can be useful for speeding up interactive experiments
-ENV PREBUILD=
-RUN opam switch bench && \
-    . ~/.profile && \
-    bash -c 'if [ "$PREBUILD" != "" ]; then /home/user/dune/_build/default/bin/main.exe build ./monorepo_bench.exe -j auto; fi' && \
-    opam switch prepare
 
 # Copy the custom makefile into the project
 COPY --chown=user:users bench/monorepo/Makefile .

@@ -14,6 +14,12 @@
 open OpamTypes
 open OpamStateTypes
 
+type configuration_error
+
+exception Configuration_error of configuration_error
+
+val string_of_configuration_error : configuration_error -> string
+
 (** Loads the global state (from the opam root obtained through
     [OpamStateConfig.(!r.root)]) *)
 val load: 'a lock -> 'a global_state

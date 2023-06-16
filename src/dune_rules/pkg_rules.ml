@@ -54,19 +54,20 @@ end
 module Lock_dir = struct
   include Dune_pkg.Lock_dir
 
+  let get_path ctx =
+    let+ workspace = Workspace.workspace () in
+    match
+      List.find_map workspace.contexts ~f:(fun ctx' ->
+          match Context_name.equal (Workspace.Context.name ctx') ctx with
+          | false -> None
+          | true -> Some ctx')
+    with
+    | None -> default_path
+    | Some (Default { lock; _ }) -> Option.value lock ~default:default_path
+    | Some (Opam _) -> assert false
+
   let get (ctx : Context_name.t) : t Memo.t =
-    let* path =
-      let+ workspace = Workspace.workspace () in
-      match
-        List.find_map workspace.contexts ~f:(fun ctx' ->
-            match Context_name.equal (Workspace.Context.name ctx') ctx with
-            | false -> None
-            | true -> Some ctx')
-      with
-      | None -> default_path
-      | Some (Default { lock; _ }) -> Option.value lock ~default:default_path
-      | Some (Opam _) -> assert false
-    in
+    let* path = get_path ctx in
     Fs_memo.dir_exists (In_source_dir path) >>= function
     | false ->
       (* TODO *)
@@ -690,7 +691,6 @@ end = struct
         ; deps
         ; info
         ; exported_env
-        ; lock_dir
         } ->
       assert (Package.Name.equal name info.name);
       let* deps =
@@ -701,6 +701,7 @@ end = struct
       in
       let id = Pkg.Id.gen () in
       let paths = Paths.make name ctx in
+      let* lock_dir = Lock_dir.get_path ctx in
       let files_dir =
         Path.Source.relative lock_dir
           (sprintf "%s.files" (Package.Name.to_string info.name))

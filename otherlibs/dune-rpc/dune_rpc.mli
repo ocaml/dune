@@ -181,6 +181,30 @@ module V1 : sig
       | Success
   end
 
+  module Job : sig
+    module Id : sig
+      type t
+
+      val compare : t -> t -> Ordering.t
+
+      val hash : t -> int
+    end
+
+    type t
+
+    val id : t -> Id.t
+
+    val description : t -> unit Pp.t
+
+    val started_at : t -> float
+
+    module Event : sig
+      type nonrec t =
+        | Start of t
+        | Stop of Id.t
+    end
+  end
+
   module Sub : sig
     type 'a t
 

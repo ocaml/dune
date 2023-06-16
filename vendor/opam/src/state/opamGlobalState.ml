@@ -18,6 +18,12 @@ open OpamStateTypes
 let log fmt = OpamConsole.log "GSTATE" fmt
 let slog = OpamConsole.slog
 
+type configuration_error = string
+
+exception Configuration_error of configuration_error
+
+let string_of_configuration_error configuration_error = configuration_error
+
 let load_config lock_kind global_lock root =
   let config =
     match OpamStateConfig.load ~lock_kind root with
@@ -29,11 +35,11 @@ let load_config lock_kind global_lock root =
       if OpamFilename.exists (root // "aliases") then
         OpamFile.Config.(with_opam_version (OpamVersion.of_string "1.1") empty)
       else
-        OpamConsole.error_and_exit `Configuration_error
+        raise (Configuration_error (Printf.sprintf
           "%s exists, but does not appear to be a valid opam root. Please \
            remove it and use `opam init', or specify a different `--root' \
            argument"
-          (OpamFilename.Dir.to_string root)
+          (OpamFilename.Dir.to_string root)))
   in
   let config =
     OpamFormatUpgrade.as_necessary lock_kind global_lock root config
@@ -57,8 +63,8 @@ let load lock_kind =
      the consistence thereof with the repository and switch sets, and the
      currently installed shell init scripts) *)
   if not has_root then
-    OpamConsole.error_and_exit `Configuration_error
-      "Opam has not been initialised, please run `opam init'";
+    raise (Configuration_error
+      "Opam has not been initialised, please run `opam init'");
   let config_lock = OpamFilename.flock lock_kind (OpamPath.config_lock root) in
   let config, global_state_to_upgrade =
     try load_config lock_kind global_lock root

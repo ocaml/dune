@@ -40,6 +40,8 @@ module Public = struct
     let diagnostic = Sub.of_procedure Procedures.Poll.diagnostic
 
     let progress = Sub.of_procedure Procedures.Poll.progress
+
+    let running_jobs = Sub.of_procedure Procedures.Poll.running_jobs
   end
 end
 
@@ -619,6 +621,7 @@ module Client = struct
          but very little to indicate this specific problem. *)
       Builder.declare_request t Procedures.Public.ping;
       Builder.declare_request t Procedures.Public.diagnostics;
+      Builder.declare_request t Procedures.Poll.(poll running_jobs);
       Builder.declare_notification t Procedures.Public.shutdown;
       Builder.declare_request t Procedures.Public.format_dune_file;
       Builder.declare_request t Procedures.Public.promote;
@@ -629,6 +632,7 @@ module Client = struct
           handler.log);
       Builder.declare_request t Procedures.Poll.(poll diagnostic);
       Builder.declare_request t Procedures.Poll.(poll progress);
+      Builder.declare_notification t Procedures.Poll.(cancel running_jobs);
       Builder.declare_notification t Procedures.Poll.(cancel diagnostic);
       Builder.declare_notification t Procedures.Poll.(cancel progress);
       List.iter private_menu ~f:(function

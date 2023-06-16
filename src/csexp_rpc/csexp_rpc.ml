@@ -135,8 +135,8 @@ module Session = struct
     match t.state with
     | Closed -> Fiber.return ()
     | Open { fd; _ } ->
-      let+ () = Async_io.close fd in
-      t.state <- Closed
+      t.state <- Closed;
+      Async_io.close fd
 
   module Lexer = Csexp.Parser.Lexer
   module Stack = Csexp.Parser.Stack
@@ -173,7 +173,7 @@ module Session = struct
                 | exception
                     Unix.Unix_error ((EAGAIN | EINTR | EWOULDBLOCK), _, _) ->
                   `Refill
-                | 0 ->
+                | (exception Unix.Unix_error (ECONNRESET, _, _)) | 0 ->
                   open_.read_eof <- true;
                   `Eof
                 | len ->
@@ -224,8 +224,9 @@ module Session = struct
         | Error exn ->
           Log.info
             [ Pp.textf "Unable to read (%d)" (Id.to_int t.id); Exn.pp exn ];
+          Dune_util.Report_error.report_exception exn;
           let+ () = close t in
-          reraise exn
+          None
         | Ok None ->
           let+ () = close t in
           None

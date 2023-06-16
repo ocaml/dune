@@ -7,7 +7,7 @@ module Scheduler = Dune_engine.Scheduler
 module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
 module Action_exec = Dune_engine.Action_exec
 
-let () = Dune_util.Log.init ~file:(Out_channel stderr) ()
+let () = Dune_util.Log.init_disabled ()
 
 let run () =
   let fname = "action-runner-test" in
@@ -118,5 +118,4 @@ let%expect_test "run an action runner and dispatch one job to it" =
     running action runner
     running action_runner_server
     server: client connected
-    # RPC accepted the last client. No more clients will be accepted.
     executed action |}]

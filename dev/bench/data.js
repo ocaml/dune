@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686944243279,
+  "lastUpdate": 1686949623623,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -57796,6 +57796,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.736889143573332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "23cad30a0e5c9cae65f0f3f0af3d15b235d646b5",
+          "message": "test: rpc server callbacks (#7993)\n\nmake sure that callbacks are called in the presence of exceptions\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-16T13:54:30-07:00",
+          "tree_id": "0dbadbbbdb0e2d08b41345db594f57000afd1a1f",
+          "url": "https://github.com/ocaml/dune/commit/23cad30a0e5c9cae65f0f3f0af3d15b235d646b5"
+        },
+        "date": 1686949617997,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.62346392671333",
             "unit": "seconds"
           }
         ]

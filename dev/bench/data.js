@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687000780932,
+  "lastUpdate": 1687021441753,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -58376,6 +58376,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.929001439886672",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7bc95457bcb534f56d07bf5aa5ac7e790c954ce9",
+          "message": "feature: trace loading/marshalling files (#7960)\n\nLoading/Marshalling can be slow if the files being loaded are huge. We\r\nrecord the overhead when --trace-file is enabled.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-17T09:50:54-07:00",
+          "tree_id": "f9db9348701752a5bdbc43afde774e62bd1d78de",
+          "url": "https://github.com/ocaml/dune/commit/7bc95457bcb534f56d07bf5aa5ac7e790c954ce9"
+        },
+        "date": 1687021436492,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.752824313853335",
             "unit": "seconds"
           }
         ]

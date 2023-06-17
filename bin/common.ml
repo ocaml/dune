@@ -1191,7 +1191,6 @@ let build (builder : Builder.t) ~default_root_is_cwd =
             (Out (open_out f))
         in
         Dune_stats.set_global stats;
-        at_exit (fun () -> Dune_stats.close stats);
         stats)
   in
   let rpc =

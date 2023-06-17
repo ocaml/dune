@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Include the time it takes to read/write state files when `--trace-file` is
+  enabled (#7960, @rgrinberg)
+
 - Add `dune show` command group which is an alias of `dune describe`. (#7946,
   @Alizter)
 

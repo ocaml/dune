@@ -120,6 +120,12 @@ let close { print; close; _ } =
 
 let global = ref None
 
+let () =
+  at_exit (fun () ->
+      match !global with
+      | None -> ()
+      | Some t -> close t)
+
 let set_global t =
   if Option.is_some !global then
     Code_error.raise "global stats have been set" [];

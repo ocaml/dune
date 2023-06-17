@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687024426313,
+  "lastUpdate": 1687026069614,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -58608,6 +58608,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.608281292333334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "76986297e378939f2b8477be34c285f69b1ca648",
+          "message": "chore(ci): remove trunk testing on macos (#8001)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-17T11:07:58-07:00",
+          "tree_id": "bcea9e2e2a3831766552a8db71a9dcb6178dad12",
+          "url": "https://github.com/ocaml/dune/commit/76986297e378939f2b8477be34c285f69b1ca648"
+        },
+        "date": 1687026064287,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.402394985553332",
             "unit": "seconds"
           }
         ]

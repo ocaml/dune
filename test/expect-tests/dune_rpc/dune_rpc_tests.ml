@@ -365,12 +365,12 @@ let%test_module "long polling" =
     let server f =
       let rpc = rpc () in
       let () =
-        let on_poll _session poller = f poller in
-        let on_cancel _session _poll =
+        let on_poll _session = f () in
+        let on_cancel _session =
           printfn "server: polling cancelled";
           Fiber.return ()
         in
-        Handler.Private.implement_poll rpc sub_proc ~on_poll ~on_cancel
+        Handler.For_tests.implement_poll rpc sub_proc ~on_poll ~on_cancel
       in
       rpc
 
@@ -405,7 +405,7 @@ let%test_module "long polling" =
       in
       let handler =
         let state = ref 0 in
-        server (fun _poller ->
+        server (fun () ->
             incr state;
             Fiber.return (Some !state))
       in

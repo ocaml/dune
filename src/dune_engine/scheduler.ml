@@ -63,7 +63,8 @@ let interrupt_signals : Signal.t list = [ Int; Quit; Term ]
 
 (* In addition, the scheduler also blocks some other signals so that only
    designated threads can handle them by unblocking *)
-let blocked_signals : Signal.t list = Winch :: interrupt_signals
+let blocked_signals : Signal.t list =
+  Dune_util.Terminal_signals.signals @ interrupt_signals
 
 module Thread : sig
   val spawn : signal_watcher:[ `Yes | `No ] -> (unit -> unit) -> unit

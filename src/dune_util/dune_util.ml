@@ -11,6 +11,7 @@ module Flock = Flock
 module Global_lock = Global_lock
 module Action = Action
 module Alias_name = Alias_name
+module Terminal_signals = Terminal_signals
 open Stdune
 
 let xdg =

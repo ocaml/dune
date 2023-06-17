@@ -107,7 +107,33 @@ let image_of_user_message_style_pp =
 module Tui () = struct
   module Term = Notty_unix.Term
 
-  let term = Term.create ~nosig:false ()
+  let nosig = false
+
+  let bytes = Bytes.make 64 '0'
+
+  let sigcont_r, sigcont_w = Unix.pipe ~cloexec:true ()
+
+  let term =
+    Unix.set_nonblock sigcont_r;
+    let term = ref (Term.create ~nosig ()) in
+    Sys.set_signal Sys.sigcont
+    @@ Sys.Signal_handle
+         (fun _ ->
+           Term.release !term;
+           term := Term.create ~nosig ();
+           assert (1 = Unix.single_write sigcont_w bytes 0 1));
+    let rec old =
+      lazy
+        (Sys.signal Sys.sigtstp
+        @@ Sys.Signal_handle
+             (fun i ->
+               Term.release !term;
+               match Lazy.force old with
+               | Sys.Signal_handle f -> f i
+               | _ -> Unix.kill (Unix.getpid ()) Sys.sigstop))
+    in
+    ignore (Lazy.force old);
+    fun () -> !term
 
   let start () = Unix.set_nonblock Unix.stdin
 
@@ -126,37 +152,44 @@ module Tui () = struct
   let render (state : Dune_threaded_console.state) =
     let messages = Queue.to_list state.messages in
     let image = image ~status_line:state.status_line ~messages in
-    Term.image term image
+    Term.image (term ()) image
 
   let resize mutex (state : Dune_threaded_console.state) =
     Mutex.lock mutex;
     state.dirty <- true;
-    Mutex.unlock mutex
+    Mutex.unlock mutex;
+    Unix.gettimeofday ()
 
   let rec handle_user_events ~now ~time_budget mutex state =
     (* We check for any user input and handle it. If we go over the
        [time_budget] we give up and continue. *)
     let input_fds =
-      match Unix.select [ Unix.stdin ] [] [] time_budget with
+      match Unix.select [ Unix.stdin; sigcont_r ] [] [] time_budget with
+      | exception Unix.Unix_error (EINTR, _, _) -> `Restore
       | [], _, _ -> `Timeout
-      | _ :: _, _, _ -> `Event
-      | exception Unix.Unix_error (EINTR, _, _) -> `Event
+      | fds, _, _ -> (
+        match List.exists fds ~f:(Poly.equal sigcont_r) with
+        | false -> `Event
+        | true ->
+          ignore (Unix.read sigcont_r bytes 0 1);
+          (* backgrounding could have changed the cursor settings for example.
+             we need to restore all this stuff *)
+          `Restore)
     in
     match input_fds with
+    | `Restore -> resize mutex state
     | `Timeout ->
       now +. time_budget
       (* Nothing to do, we return the time at the end of the time budget. *)
     | `Event -> (
       (* TODO if anything fancy is done in the UI in the future we need to lock
          the state with the provided mutex *)
-      match Term.event term with
+      match Term.event (term ()) with
       | `Key (`ASCII 'q', _) ->
         (* When we encounter q we make sure to quit by signaling termination. *)
         Unix.kill (Unix.getpid ()) Sys.sigterm;
         Unix.gettimeofday ()
-      | `Resize _ ->
-        resize mutex state;
-        Unix.gettimeofday ()
+      | `Resize _ -> resize mutex state
       | _ -> Unix.gettimeofday ()
       | exception Unix.Unix_error ((EAGAIN | EWOULDBLOCK), _, _) ->
         (* If we encounter an exception, we make sure to rehandle user events
@@ -172,7 +205,7 @@ module Tui () = struct
   let reset_flush_history () = ()
 
   let finish () =
-    Notty_unix.Term.release term;
+    Term.release (term ());
     Unix.clear_nonblock Unix.stdin
 end
 

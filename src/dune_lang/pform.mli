@@ -71,6 +71,7 @@ module Var : sig
     | Os_type
     | Architecture
     | Arch_sixtyfour
+    | Word_size
     | System
     | Model
     | Ignoring_promoted_rules

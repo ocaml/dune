@@ -36,6 +36,7 @@ let findlib =
     ; ocaml_version_string = "4.02.3"
     ; ocaml_version = Ocaml.Version.make (4, 2, 3)
     ; instrument_with = []
+    ; word_size = 64
     }
   in
   Memo.lazy_ (fun () ->

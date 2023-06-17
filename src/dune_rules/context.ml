@@ -411,6 +411,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocaml_version_string = Ocaml_config.version_string ocaml.ocaml_config
       ; ocaml_version = Ocaml.Version.of_ocaml_config ocaml.ocaml_config
       ; instrument_with
+      ; word_size = Ocaml_config.word_size ocaml.ocaml_config
       }
     in
     if Option.is_some fdo_target_exe then

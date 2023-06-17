@@ -105,6 +105,7 @@ module Var = struct
     | Os_type
     | Architecture
     | Arch_sixtyfour
+    | Word_size
     | System
     | Model
     | Ignoring_promoted_rules
@@ -158,6 +159,7 @@ module Var = struct
       | Os_type -> variant "Os_type" []
       | Architecture -> variant "Architecture" []
       | Arch_sixtyfour -> variant "Arch_sixtyfour" []
+      | Word_size -> variant "Word_size" []
       | System -> variant "System" []
       | Model -> variant "Model" []
       | Ignoring_promoted_rules -> variant "Ignoring_promoted_rules" []
@@ -370,6 +372,7 @@ let encode_to_latest_dune_lang_version t =
       | Os_type -> Some "os_type"
       | Architecture -> Some "architecture"
       | Arch_sixtyfour -> Some "arch_sixtyfour"
+      | Word_size -> Some "word_size"
       | System -> Some "system"
       | Model -> Some "model"
       | Ignoring_promoted_rules -> Some "ignoring_promoted_rules"

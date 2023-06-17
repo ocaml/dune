@@ -26,6 +26,7 @@ let common_vars ~since =
        ~f:(fun var ->
          match var with
          | "context_name" -> (var, (2, 7))
+         | "word_size" -> (var, (3, 9))
          | _ -> (var, since))
        common_vars_list)
 

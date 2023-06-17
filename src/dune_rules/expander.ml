@@ -485,6 +485,10 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
              (Ocaml_config.os_type context.ocaml.ocaml_config)
       | Architecture ->
         static (string (Ocaml_config.architecture context.ocaml.ocaml_config))
+      | Word_size ->
+        static
+          (string
+             (Int.to_string (Ocaml_config.word_size context.ocaml.ocaml_config)))
       | System ->
         static (string (Ocaml_config.system context.ocaml.ocaml_config))
       | Model -> static (string (Ocaml_config.model context.ocaml.ocaml_config))

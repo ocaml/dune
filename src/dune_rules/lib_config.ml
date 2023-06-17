@@ -15,6 +15,7 @@ type t =
   ; ocaml_version_string : string
   ; ocaml_version : Ocaml.Version.t
   ; instrument_with : Lib_name.t list
+  ; word_size : int
   }
 
 let allowed_in_enabled_if =
@@ -24,6 +25,7 @@ let allowed_in_enabled_if =
   ; ("os_type", (1, 0))
   ; ("ccomp_type", (2, 0))
   ; ("ocaml_version", (2, 5))
+  ; ("word_size", (3, 9))
   ]
 
 let get_for_enabled_if t (pform : Pform.t) =

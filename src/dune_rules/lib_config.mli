@@ -15,6 +15,7 @@ type t =
   ; ocaml_version_string : string
   ; ocaml_version : Ocaml.Version.t
   ; instrument_with : Lib_name.t list
+  ; word_size : int
   }
 
 val allowed_in_enabled_if : (string * Dune_lang.Syntax.Version.t) list

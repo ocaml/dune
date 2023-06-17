@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687026876703,
+  "lastUpdate": 1687028992828,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -58724,6 +58724,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.402394985553332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3f350f9f151a41665917fca25236fb9b8d82185e",
+          "message": "refactor(rpc): split close/write (#7995)\n\nInstead of having a single function for closing and writing, we now have\r\ntwo. The advantage is that the signature of our [close] function never\r\nraises, so unlike [write] we don't need to worry handling errors.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-17T11:57:41-07:00",
+          "tree_id": "686c45498accc59ed7e6f38938e72ac5ecb3f50f",
+          "url": "https://github.com/ocaml/dune/commit/3f350f9f151a41665917fca25236fb9b8d82185e"
+        },
+        "date": 1687028987069,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.430712502766667",
             "unit": "seconds"
           }
         ]

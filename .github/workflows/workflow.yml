@@ -34,9 +34,6 @@ jobs:
           - ocaml-compiler: ocaml-variants.5.1.0+trunk
             os: ubuntu-latest
             skip_test: true
-          - ocaml-compiler: ocaml-variants.5.1.0+trunk
-            os: macos-latest
-            skip_test: true
           # OCaml 5:
           - ocaml-compiler: 5.0.x
             os: ubuntu-latest

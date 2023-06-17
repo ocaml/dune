@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687000413187,
+  "lastUpdate": 1687000678759,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -46253,6 +46253,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.3148160821133335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1542085bb99d3d79406ea93f3438d56a5bbf90d6",
+          "message": "refactor: clean up [Dune_rpc_server] api (#7969)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-17T03:43:35-07:00",
+          "tree_id": "84c28c6cfa9359c016e5bf748abdf2b7ec80f653",
+          "url": "https://github.com/ocaml/dune/commit/1542085bb99d3d79406ea93f3438d56a5bbf90d6"
+        },
+        "date": 1687000677258,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "87.78644384378002",
             "unit": "seconds"
           }
         ]

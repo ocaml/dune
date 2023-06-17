@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687022246659,
+  "lastUpdate": 1687023644830,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -58492,6 +58492,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.752824313853335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3bb078f7d737dd02b90788452a4169924e5a4d9e",
+          "message": "feature: dune show targets and dune show aliases (#7770)\n\nAdd a `dune show targets` and `dune show aliases` command for showing\r\ntargets and aliases in a directory like `ls`.\r\n\r\nfix https://github.com/ocaml/dune/issues/265\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-17T10:28:01-07:00",
+          "tree_id": "e77657d90fc04be5bad101bd21fa3c3b572d3971",
+          "url": "https://github.com/ocaml/dune/commit/3bb078f7d737dd02b90788452a4169924e5a4d9e"
+        },
+        "date": 1687023639009,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.608281292333334",
             "unit": "seconds"
           }
         ]

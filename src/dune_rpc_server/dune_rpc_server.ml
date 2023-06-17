@@ -661,7 +661,9 @@ let create_sequence f ~version conv =
 module Make (S : sig
   type t
 
-  val write : t -> Sexp.t list option -> unit Fiber.t
+  val close : t -> unit Fiber.t
+
+  val write : t -> Sexp.t list -> unit Fiber.t
 
   val read : t -> Sexp.t option Fiber.t
 end) =
@@ -671,9 +673,10 @@ struct
   let serve sessions stats server =
     Fiber.Stream.In.parallel_iter sessions ~f:(fun session ->
         let session =
-          let send packets =
-            Option.map packets ~f:(List.map ~f:(Conv.to_sexp Packet.sexp))
-            |> S.write session
+          let send = function
+            | None -> S.close session
+            | Some packets ->
+              List.map packets ~f:(Conv.to_sexp Packet.sexp) |> S.write session
           in
           let queries =
             create_sequence

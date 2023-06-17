@@ -25,12 +25,11 @@ module Chan = struct
 
   let create () = { in_ = Fiber.Stream.pipe (); out = Fiber.Stream.pipe () }
 
+  let close t = Fiber.Stream.Out.write (snd t.out) None
+
   let write t s =
-    match s with
-    | None -> Fiber.Stream.Out.write (snd t.out) None
-    | Some s ->
-      Fiber.sequential_iter s ~f:(fun s ->
-          Fiber.Stream.Out.write (snd t.out) (Some s))
+    Fiber.sequential_iter s ~f:(fun s ->
+        Fiber.Stream.Out.write (snd t.out) (Some s))
 
   let read t = Fiber.Stream.In.read (fst t.in_)
 
@@ -41,7 +40,17 @@ module Chan = struct
 end
 
 module Drpc = struct
-  module Client = Dune_rpc.Client.Make (Dune_rpc_client.Private.Fiber) (Chan)
+  module Client =
+    Dune_rpc.Client.Make
+      (Dune_rpc_client.Private.Fiber)
+      (struct
+        include Chan
+
+        let write t = function
+          | None -> close t
+          | Some packets -> write t packets
+      end)
+
   module Server = Dune_rpc_server.Make (Chan)
 end
 
@@ -65,7 +74,7 @@ let test ?(private_menu = []) ?(real_methods = true) ~client ~handler ~init () =
     let client () =
       Drpc.Client.connect_with_menu client_chan init ~private_menu ~f:(fun c ->
           let* () = client c in
-          Chan.write client_chan None)
+          Chan.close client_chan)
     in
     let server () =
       let+ () =

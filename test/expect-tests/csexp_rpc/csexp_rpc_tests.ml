@@ -54,13 +54,13 @@ let%expect_test "csexp server life cycle" =
       (fun () ->
         let log fmt = Logger.log client_log fmt in
         let* client = Client.connect_exn client in
-        let* () = Session.write client (Some [ List [ Atom "from client" ] ]) in
+        let* () = Session.write client [ List [ Atom "from client" ] ] in
         log "written";
         let* response = Session.read client in
         (match response with
         | None -> log "no response"
         | Some sexp -> log "received %s" (Csexp.to_string sexp));
-        let* () = Session.write client None in
+        let* () = Session.close client in
         log "closed";
         Server.stop server)
       (fun () ->
@@ -75,7 +75,7 @@ let%expect_test "csexp server life cycle" =
                 Fiber.return ()
               | Some csexp ->
                 log "received %s" (Csexp.to_string csexp);
-                Session.write session (Some [ List [ Atom "from server" ] ]))
+                Session.write session [ List [ Atom "from server" ] ])
         in
         log "sessions finished")
   in

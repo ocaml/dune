@@ -51,6 +51,10 @@ Unreleased
 - Respect `-p` / `--only-packages` for `melange.emit` artifacts (#7849,
   @anmonteiro)
 
+- Add commands `dune show targets` and `dune show aliases` that display all the
+  available targets and aliases in a given directory respectively. (#7770,
+  grants #265, @Alizter)
+
 - Fix scanning of Coq installed files (@ejgallego, reported by
   @palmskog, #7895 , fixes #7893)
 

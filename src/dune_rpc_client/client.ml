@@ -9,7 +9,10 @@ include
 
       let write t = function
         | None -> close t
-        | Some packets -> write t packets
+        | Some packets -> (
+          write t packets >>| function
+          | Ok () -> ()
+          | Error `Closed -> raise Dune_util.Report_error.Already_reported)
     end)
 
 type chan = Csexp_rpc.Session.t

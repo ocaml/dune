@@ -16,9 +16,17 @@ module Session : sig
   (** [get session a] sets the current state to [a].*)
   val set : 'a t -> 'a -> unit
 
-  (** [notification session n a] Send notification [a] defined by [n] to
+  (** [prepare t n] prepares a notification [n] by checking if [t] supports it.
+      If it supports it, [Ok _] is returned. Otherwise [Error _] is returned. *)
+  val prepare_notification :
+       _ t
+    -> 'payload Decl.Notification.witness
+    -> ('payload Versioned.Staged.notification, Version_error.t) result
+
+  (** [send_notification session n a] Send notification [a] defined by [n] to
       [session] *)
-  val notification : _ t -> 'a Decl.Notification.witness -> 'a -> unit Fiber.t
+  val send_notification :
+    _ t -> 'a Versioned.Staged.notification -> 'a -> unit Fiber.t
 
   (** [request t r id payload] sends a request [r] to [t] with [id] and
       [payload].

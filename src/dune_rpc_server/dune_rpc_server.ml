@@ -206,14 +206,11 @@ module Session = struct
   let of_stage1 (base : _ Stage1.t) handler =
     { base; handler; pollers = Dune_rpc_private.Id.Map.empty }
 
-  let notification t decl n =
-    let* () = Fiber.return () in
-    match V.Handler.prepare_notification t.handler decl with
-    | Error _ ->
-      (* cwong: What to do here? *)
-      Fiber.return ()
-    | Ok { Versioned.Staged.encode } ->
-      t.base.send (Some [ Notification (encode n) ])
+  let prepare_notification t decl =
+    V.Handler.prepare_notification t.handler decl
+
+  let send_notification t { Versioned.Staged.encode } n =
+    t.base.send (Some [ Notification (encode n) ])
 
   let request t decl id req =
     let* () = Fiber.return () in

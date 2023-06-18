@@ -100,6 +100,11 @@ module Module = struct
     let ctx = Super_context.context sctx in
     let src = Path.Build.append_source ctx.build_dir mod_ in
     let dir = Path.Build.parent_exn src in
+    let filename = Path.Build.basename src in
+    if Sys.file_exists filename then ()
+    else User_error.raise [ Pp.text "file doesn't exist" ] ;
+    if Filename.extension filename  = ".ml" then ()
+    else User_error.raise [ Pp.text "file should have '.ml' extension" ] ;
     let open Memo.O in
     let module_name =
       let name = src |> Path.Build.basename |> Filename.chop_extension in

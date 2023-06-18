@@ -322,8 +322,8 @@ let bash_exn =
 (* When passing these to an extension, they shouldn't need to know about any
    kind of dynamic build dependency functions or prepped dependencies, etc,
    which should be handled here instead. *)
-let restrict_ctx { targets; context; metadata; rule_loc; build_deps = _ } =
-  { Action.Ext.targets; context; purpose = metadata.purpose; rule_loc }
+let restrict_ctx { targets; context; metadata; rule_loc; build_deps } =
+  { Action.Ext.targets; context; purpose = metadata.purpose; rule_loc; build_deps }
 ;;
 
 let restrict_env

@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Validate path for `$ dune ocaml top-module`. (#8005, fixes #8004, @3Rafal)
+
 - Include the time it takes to read/write state files when `--trace-file` is
   enabled (#7960, @rgrinberg)
 

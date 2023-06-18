@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687111109682,
+  "lastUpdate": 1687111122097,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -46775,6 +46775,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "70.35476979721334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b72084d3b6c51779aa4ead829e46341c0cc07a86",
+          "message": "fix(rpc): do not ignore unsent notifications (#7996)\n\nThe previous [Session.notification] would just drop unsupported\r\nnotifications. That's clearly bad and this commit splits the function\r\ninto:\r\n\r\n1. preparation\r\n2. sending\r\n\r\nAfter step 1. the user has the opporunity to check if the client\r\nactually supports the notification.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-18T10:31:52-07:00",
+          "tree_id": "ecfac71c27dd0f1825e0efc5343757f3f496e275",
+          "url": "https://github.com/ocaml/dune/commit/b72084d3b6c51779aa4ead829e46341c0cc07a86"
+        },
+        "date": 1687111121149,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.9442120815600001",
             "unit": "seconds"
           }
         ]

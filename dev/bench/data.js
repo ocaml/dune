@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687200124937,
+  "lastUpdate": 1687200450921,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -47442,6 +47442,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6016911128066667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7fdf0ca379f773deb21f97c7a66c1b9b0bbd4f98",
+          "message": "refactor: wrap help text for fmt (#7992)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-19T11:22:12-07:00",
+          "tree_id": "58da4af9bb78e095bf230971f3278a48248dc84b",
+          "url": "https://github.com/ocaml/dune/commit/7fdf0ca379f773deb21f97c7a66c1b9b0bbd4f98"
+        },
+        "date": 1687200450183,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "64.0070415423",
             "unit": "seconds"
           }
         ]

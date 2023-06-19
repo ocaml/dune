@@ -82,26 +82,26 @@ end
 let debug = Option.is_some (Env.get Env.initial "DUNE_RPC_DEBUG")
 
 module Session = struct
-  let fail = function
-    | `Cancelled -> raise Dune_util.Report_error.Already_reported
-    | `Exn exn -> raise exn
-
   module Id = Session_id
 
-  type state =
-    | Closed
-    | Open of
-        { out_buf : Io_buffer.t
-        ; in_buf : Io_buffer.t
-        ; fd : Unix.file_descr
-        ; mutable read_eof : bool
-        ; write_mutex : Fiber.Mutex.t
-        ; read_mutex : Fiber.Mutex.t
-        }
+  module State = struct
+    type t =
+      | Closed
+      | Open of
+          { out_buf : Io_buffer.t
+          ; in_buf : Io_buffer.t
+          ; fd : Unix.file_descr
+          ; mutable read_eof : bool
+          ; write_mutex : Fiber.Mutex.t
+          ; read_mutex : Fiber.Mutex.t
+          }
+  end
+
+  open State
 
   type t =
     { id : Id.t
-    ; mutable state : state
+    ; mutable state : State.t
     }
 
   let create fd =
@@ -289,10 +289,14 @@ module Session = struct
             csexp_write_loop fd out_buf flush_token)
       in
       match res with
-      | Ok () -> Fiber.return ()
+      | Ok () -> Fiber.return (Ok ())
       | Error error ->
+        (match error with
+        | `Cancelled -> ()
+        | `Exn exn ->
+          Dune_console.print [ Pp.textf "Rpc Cilent disconnected"; Exn.pp exn ]);
         let+ () = close t in
-        fail error)
+        Error `Closed)
 
   let close t =
     let* () = Fiber.return () in

@@ -28,8 +28,11 @@ module Chan = struct
   let close t = Fiber.Stream.Out.write (snd t.out) None
 
   let write t s =
-    Fiber.sequential_iter s ~f:(fun s ->
-        Fiber.Stream.Out.write (snd t.out) (Some s))
+    let+ () =
+      Fiber.sequential_iter s ~f:(fun s ->
+          Fiber.Stream.Out.write (snd t.out) (Some s))
+    in
+    Ok ()
 
   let read t = Fiber.Stream.In.read (fst t.in_)
 
@@ -48,7 +51,7 @@ module Drpc = struct
 
         let write t = function
           | None -> close t
-          | Some packets -> write t packets
+          | Some packets -> write t packets >>| Result.ok_exn
       end)
 
   module Server = Dune_rpc_server.Make (Chan)

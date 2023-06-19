@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687182818160,
+  "lastUpdate": 1687183253502,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20675,6 +20675,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.67987241934001",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0d482e9bdb105d7fc660b187e8f7eac3869b99f2",
+          "message": "add: build_if in test stanza (#7899)\n\nFixes #6938\r\n\r\nThe semantics of `(enabled_if)` in `(test)` can be confusing:\r\n`(test)` can be seen as the combination of `(executable)` and a `(rule\r\n(alias runtest))`; but `(enabled_if)` actually only controls the\r\n\"running\" part, not the \"building\" one.\r\n\r\nThis adds a new `(build_if)` field in `(test)`. When it evaluates to\r\nfalse, the test stanza is bypassed (no build is attempted).\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-06-19T15:40:48+02:00",
+          "tree_id": "5f3ff51d3989009e0e0c1e00edf9f95201c7c41a",
+          "url": "https://github.com/ocaml/dune/commit/0d482e9bdb105d7fc660b187e8f7eac3869b99f2"
+        },
+        "date": 1687183252218,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.07056144919334",
             "unit": "seconds"
           }
         ]

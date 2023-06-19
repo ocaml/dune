@@ -1,3 +1,5 @@
+open Import
+
 (** This module provides support for the [ocaml-uideps] indexing tool. Its role
     is to index every value in the project by their definition in order for
     language server to be able to fetch project-wide occurrences.
@@ -7,6 +9,8 @@
     - first, for all compilation contexts we generate the uideps for all the
       modules in that cctx in the corresponding obj_dir.
     - then we aggregate all these separate indexes into a unique one. *)
+
+val project_index : build_dir:Path.Build.t -> Path.Build.t
 
 (** [cctx_rules cctx] sets the rules needed to generate the indexes for every
     module in the compilation context [cctx] and aggregate them in a

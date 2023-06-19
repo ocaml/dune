@@ -18,6 +18,8 @@ let uideps_path_in_obj_dir ?for_cmt obj_dir =
     Path.Build.relative dir @@ Printf.sprintf ".uideps/%s.uideps" name
   | None -> Path.Build.relative dir "cctx.uideps"
 
+let project_index ~build_dir = Path.Build.relative build_dir "project.uideps"
+
 let build_path cctx =
   let open Memo.O in
   let+ requires_link = Compilation_context.requires_link cctx in
@@ -149,7 +151,7 @@ let project_rule sctx project =
               uideps_path_in_obj_dir obj_dir :: acc
             else acc)
     in
-    let target = Path.Build.relative dir "project.uideps" in
+    let target = project_index ~build_dir:dir in
     let uideps_alias = Alias.uideps ~dir in
     let* () =
       Rules.Produce.Alias.add_deps uideps_alias

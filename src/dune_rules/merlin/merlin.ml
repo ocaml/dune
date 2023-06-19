@@ -43,7 +43,7 @@ module Processed = struct
 
   (* Most of the configuration is shared across a same lib/exe... *)
   type config =
-    { build_dir : Path.t
+    { build_dir : Path.Build.t
     ; stdlib_dir : Path.t option
     ; obj_dirs : Path.Set.t
     ; src_dirs : Path.Set.t
@@ -63,7 +63,7 @@ module Processed = struct
       } =
     let open Dyn in
     record
-      [ ("build_dir", Path.to_dyn build_dir)
+      [ ("build_dir", Path.Build.to_dyn build_dir)
       ; ("stdlib_dir", option Path.to_dyn stdlib_dir)
       ; ("obj_dirs", Path.Set.to_dyn obj_dirs)
       ; ("src_dirs", Path.Set.to_dyn src_dirs)
@@ -147,7 +147,10 @@ module Processed = struct
     let make_directive_of_path tag path =
       make_directive tag (Sexp.Atom (serialize_path path))
     in
-    let build_dir = [ make_directive_of_path "BUILD_DIR" build_dir ] in
+    let index_file_path = Uideps.project_index ~build_dir in
+    let index_file =
+      [ make_directive_of_path "INDEX_FILE" (Path.build index_file_path) ]
+    in
     let stdlib_dir =
       match stdlib_dir with
       | None -> []
@@ -202,7 +205,7 @@ module Processed = struct
     in
     Sexp.List
       (List.concat
-         [ build_dir
+         [ index_file
          ; stdlib_dir
          ; exclude_query_dir
          ; obj_dirs
@@ -555,7 +558,6 @@ module Unprocessed = struct
 
       let build_dir =
         Super_context.context sctx |> Context.name |> Context_name.build_dir
-        |> Path.build
       in
       let src_dirs =
         Path.Set.union src_dirs

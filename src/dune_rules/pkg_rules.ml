@@ -89,9 +89,9 @@ module Lock_dir = struct
           Fs_cache.Dir_contents.to_list content
           |> List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
                  match kind with
-                 | S_REG when name <> metadata ->
-                   let name = Package.Name.of_string name in
-                   Some name
+                 | S_REG ->
+                   Lock_dir.Package_filename.to_package_name name
+                   |> Result.to_option
                  | _ ->
                    (* TODO *)
                    None)
@@ -99,7 +99,8 @@ module Lock_dir = struct
                  let+ package =
                    let+ sexp =
                      let path =
-                       Package.Name.to_string name |> Path.Source.relative path
+                       Lock_dir.Package_filename.of_package_name name
+                       |> Path.Source.relative path
                      in
                      Fs_memo.with_lexbuf_from_file (In_source_dir path)
                        ~f:(Dune_sexp.Parser.parse ~mode:Many)

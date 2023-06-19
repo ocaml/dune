@@ -5,9 +5,9 @@ Some environment variables are automatically exported by packages:
   > (lang package 0.1)
   > EOF
 
-  $ touch dune.lock/test
+  $ touch dune.lock/test.pkg
 
-  $ cat >dune.lock/usetest <<'EOF'
+  $ cat >dune.lock/usetest.pkg <<'EOF'
   > (deps test)
   > (build
   >  (system "\| echo MANPATH=$MANPATH

@@ -4,7 +4,7 @@ Test that we can set variables
   $ cat >dune.lock/lock.dune <<EOF
   > (lang package 0.1)
   > EOF
-  $ cat >dune.lock/test <<EOF
+  $ cat >dune.lock/test.pkg <<EOF
   > (build
   >  (system "\| cat >test.config <<EOF
   >          "\| opam-version: "2.0"
@@ -17,7 +17,7 @@ Test that we can set variables
   >  ))
   > EOF
 
-  $ cat >dune.lock/usetest <<EOF
+  $ cat >dune.lock/usetest.pkg <<EOF
   > (deps test)
   > (build
   >  (progn

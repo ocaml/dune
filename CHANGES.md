@@ -19,6 +19,9 @@ Unreleased
 - Do not re-run OCaml syntax files on every iteration of the watch mode. This
   is too memory consuming. (#7894, fix #6900, @rgrinberg)
 
+- Add `--all` option to `dune rpc status` to show all Dune RPC servers running.
+  (#8011, fix #7902, @Alizter)
+
 - Remove some compatibility code for old version of dune that generated
   `.merlin` files. Now dune will never remove `.merlin` files automatically
   (#7562)

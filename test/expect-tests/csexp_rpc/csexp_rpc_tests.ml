@@ -38,6 +38,11 @@ module Logger = struct
     List.rev messages |> List.iter ~f:(fun msg -> printfn "%s: %s" name msg)
 end
 
+let ok_exn = function
+  | Ok s -> s
+  | Error `Closed -> failwith "closed"
+  | Error (`Exn exn) -> raise exn
+
 let%expect_test "csexp server life cycle" =
   let tmp_dir = Temp.create Dir ~prefix:"test" ~suffix:"dune_rpc" in
   let addr : Unix.sockaddr =
@@ -54,13 +59,15 @@ let%expect_test "csexp server life cycle" =
       (fun () ->
         let log fmt = Logger.log client_log fmt in
         let* client = Client.connect_exn client in
-        let* () = Session.write client (Some [ List [ Atom "from client" ] ]) in
+        let* () =
+          Session.write client [ List [ Atom "from client" ] ] >>| ok_exn
+        in
         log "written";
         let* response = Session.read client in
         (match response with
         | None -> log "no response"
         | Some sexp -> log "received %s" (Csexp.to_string sexp));
-        let* () = Session.write client None in
+        let* () = Session.close client in
         log "closed";
         Server.stop server)
       (fun () ->
@@ -75,7 +82,7 @@ let%expect_test "csexp server life cycle" =
                 Fiber.return ()
               | Some csexp ->
                 log "received %s" (Csexp.to_string csexp);
-                Session.write session (Some [ List [ Atom "from server" ] ]))
+                Session.write session [ List [ Atom "from server" ] ] >>| ok_exn)
         in
         log "sessions finished")
   in

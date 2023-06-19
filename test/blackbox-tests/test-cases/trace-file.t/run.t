@@ -9,6 +9,8 @@ This captures the commands that are being run:
   {"args":{"process_args":["-w","@1..3@5..28@30..39@43@46..47@49..57@61..62-40","-strict-sequence","-strict-formats","-short-paths","-keep-locs","-g","-bin-annot","-I",".prog.eobjs/byte","-no-alias-deps","-opaque","-o",".prog.eobjs/byte/prog.cmo","-c","-impl","prog.ml"],"pid":...},"ph":"X","dur":...,"name":"ocamlc.opt","cat":"process","ts":...,"pid":...,"tid":...}
   {"args":{"process_args":["-w","@1..3@5..28@30..39@43@46..47@49..57@61..62-40","-strict-sequence","-strict-formats","-short-paths","-keep-locs","-g","-I",".prog.eobjs/byte","-I",".prog.eobjs/native","-intf-suffix",".ml","-no-alias-deps","-opaque","-o",".prog.eobjs/native/prog.cmx","-c","-impl","prog.ml"],"pid":...},"ph":"X","dur":...,"name":"ocamlopt.opt","cat":"process","ts":...,"pid":...,"tid":...}
   {"args":{"process_args":["-w","@1..3@5..28@30..39@43@46..47@49..57@61..62-40","-strict-sequence","-strict-formats","-short-paths","-keep-locs","-g","-o","prog.exe",".prog.eobjs/native/prog.cmx"],"pid":...},"ph":"X","dur":...,"name":"ocamlopt.opt","cat":"process","ts":...,"pid":...,"tid":...}
+  {"args":{"path":"_build/.db","module":"INCREMENTAL-DB"},"ph":"X","dur":...,"name":"Writing Persistent Dune State","cat":"","ts":...,"pid":...,"tid":...}
+  {"args":{"path":"_build/.digest-db","module":"DIGEST-DB"},"ph":"X","dur":...,"name":"Writing Persistent Dune State","cat":"","ts":...,"pid":...,"tid":...}
 
 As well as data about the garbage collector:
 

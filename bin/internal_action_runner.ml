@@ -1,4 +1,3 @@
-open Stdune
 open Import
 
 (* dummy dispatcher of action runners based on the rules. we just use the path

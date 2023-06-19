@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Include the time it takes to read/write state files when `--trace-file` is
+  enabled (#7960, @rgrinberg)
+
 - Add `dune show` command group which is an alias of `dune describe`. (#7946,
   @Alizter)
 
@@ -20,6 +23,9 @@ Unreleased
 - Remove some compatibility code for old version of dune that generated
   `.merlin` files. Now dune will never remove `.merlin` files automatically
   (#7562)
+
+- Add `dune show env` command and make `dune printenv` an alias of it. (#7985,
+  @Alizter)
 
 - Add additional metadata to the traces provided by `--trace-file` whenever
   `--trace-extended` is passed (#7778, @rleshchinskiy)
@@ -44,6 +50,10 @@ Unreleased
 
 - Respect `-p` / `--only-packages` for `melange.emit` artifacts (#7849,
   @anmonteiro)
+
+- Add commands `dune show targets` and `dune show aliases` that display all the
+  available targets and aliases in a given directory respectively. (#7770,
+  grants #265, @Alizter)
 
 - Fix scanning of Coq installed files (@ejgallego, reported by
   @palmskog, #7895 , fixes #7893)

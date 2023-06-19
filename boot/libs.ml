@@ -25,6 +25,9 @@ let local_libraries =
   ; ("otherlibs/dune-glob/src", Some "Dune_glob", false, None)
   ; ("otherlibs/xdg", Some "Xdg", false, None)
   ; ("otherlibs/dune-rpc/private", Some "Dune_rpc_private", false, None)
+  ; ("otherlibs/chrome-trace/src", Some "Chrome_trace", false, None)
+  ; ("vendor/spawn/src", Some "Spawn", false, None)
+  ; ("src/dune_stats", Some "Dune_stats", false, None)
   ; ("vendor/build_path_prefix_map/src", Some "Build_path_prefix_map", false,
     None)
   ; ("src/dune_config", Some "Dune_config", false, None)
@@ -33,13 +36,10 @@ let local_libraries =
   ; ("otherlibs/dune-private-libs/section", Some "Dune_section", false, None)
   ; ("src/dune_lang", Some "Dune_lang", false, None)
   ; ("vendor/opam-file-format", None, false, None)
-  ; ("otherlibs/chrome-trace/src", Some "Chrome_trace", false, None)
   ; ("src/dune_async_io", Some "Dune_async_io", false, None)
   ; ("src/fiber_util", Some "Fiber_util", false, None)
   ; ("src/dune_cache_storage", Some "Dune_cache_storage", false, None)
   ; ("src/dune_cache", Some "Dune_cache", false, None)
-  ; ("vendor/spawn/src", Some "Spawn", false, None)
-  ; ("src/dune_stats", Some "Dune_stats", false, None)
   ; ("otherlibs/dune-action-plugin/src", Some "Dune_action_plugin", false,
     None)
   ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)

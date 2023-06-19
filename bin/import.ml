@@ -1,4 +1,4 @@
-open Stdune
+include Stdune
 include Dune_config_file
 include Dune_vcs
 

@@ -1,16 +1,6 @@
 open Stdune
 open Dune_rpc_private
 
-module Poller : sig
-  type t
-
-  val to_dyn : t -> Dyn.t
-
-  val compare : t -> t -> Ordering.t
-
-  val name : t -> Procedures.Poll.Name.t
-end
-
 module Session : sig
   module Id : Stdune.Id.S
 
@@ -19,10 +9,6 @@ module Session : sig
 
   val id : _ t -> Id.t
 
-  (* [initialize session] returns the initialize request used to initialize this
-     session *)
-  val initialize : _ t -> Initialize.Request.t
-
   (** [get session] returns the current session state. It is an error to access
       the state after [on_terminate] finishes. *)
   val get : 'a t -> 'a
@@ -30,9 +16,17 @@ module Session : sig
   (** [get session a] sets the current state to [a].*)
   val set : 'a t -> 'a -> unit
 
-  (** [notification session n a] Send notification [a] defined by [n] to
+  (** [prepare t n] prepares a notification [n] by checking if [t] supports it.
+      If it supports it, [Ok _] is returned. Otherwise [Error _] is returned. *)
+  val prepare_notification :
+       _ t
+    -> 'payload Decl.Notification.witness
+    -> ('payload Versioned.Staged.notification, Version_error.t) result
+
+  (** [send_notification session n a] Send notification [a] defined by [n] to
       [session] *)
-  val notification : _ t -> 'a Decl.Notification.witness -> 'a -> unit Fiber.t
+  val send_notification :
+    _ t -> 'a Versioned.Staged.notification -> 'a -> unit Fiber.t
 
   (** [request t r id payload] sends a request [r] to [t] with [id] and
       [payload].
@@ -48,11 +42,7 @@ module Session : sig
 
   val compare : 'a t -> 'a t -> Ordering.t
 
-  val request_close : 'a t -> unit Fiber.t
-
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
-
-  val has_poller : _ t -> Poller.t -> bool
 
   val closed : _ t -> unit Fiber.t
 
@@ -66,9 +56,9 @@ module Session : sig
 
     val menu : _ t -> Menu.t option
 
+    (* [initialize session] returns the initialize request used to initialize this
+       session *)
     val initialize : _ t -> Initialize.Request.t
-
-    val compare : 'a t -> 'a t -> Ordering.t
 
     val request_close : 'a t -> unit Fiber.t
 
@@ -118,6 +108,10 @@ module Handler : sig
       according to the metadata [decl]. *)
   val declare_request : 's t -> ('a, 'b) Decl.request -> unit
 
+  (** [implement_long_poll t proc_diff svar ~equal ~diff] will implement long
+      polling routines to sync the state variable [svar]. [equal] is used to
+      prevent updates that do not modify the state. [diff] is used to generate
+      efficient operations to bring the state up to date. *)
   val implement_long_poll :
        _ t
     -> 'diff Procedures.Poll.t
@@ -126,12 +120,14 @@ module Handler : sig
     -> diff:(last:'state option -> now:'state -> 'diff)
     -> unit
 
-  module Private : sig
+  module For_tests : sig
+    (** Raw long polling machinery only good for tests *)
+
     val implement_poll :
          's t
       -> 'a Procedures.Poll.t
-      -> on_poll:('s Session.t -> Poller.t -> 'a option Fiber.t)
-      -> on_cancel:('s Session.t -> Poller.t -> unit Fiber.t)
+      -> on_poll:('s Session.t -> 'a option Fiber.t)
+      -> on_cancel:('s Session.t -> unit Fiber.t)
       -> unit
   end
 end
@@ -144,13 +140,15 @@ val make : 'a Handler.t -> t
 module Make (S : sig
   type t
 
-  (* [write t x] writes the s-expression when [x] is [Some _], and closes the
-     session if [x = None] *)
-  val write : t -> Sexp.t list option -> unit Fiber.t
+  (** [close t] closes the session *)
+  val close : t -> unit Fiber.t
 
-  (* [read t] attempts to read from [t]. If an s-expression is read, it is
-     returned as [Some sexp], otherwise [None] is returned and the session is
-     closed. *)
+  (** [write t x] writes the s-expression *)
+  val write : t -> Sexp.t list -> (unit, [ `Closed ]) result Fiber.t
+
+  (** [read t] attempts to read from [t]. If an s-expression is read, it is
+      returned as [Some sexp], otherwise [None] is returned and the session is
+      closed. *)
   val read : t -> Sexp.t option Fiber.t
 end) : sig
   (** [serve sessions handler] serve all [sessions] using [handler] *)

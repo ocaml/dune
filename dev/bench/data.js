@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687164336245,
+  "lastUpdate": 1687164717697,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20617,6 +20617,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.326387792026665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89c63fab3304934840739de4599ba3d7f28b02fe",
+          "message": "doc: commit promoted doc/dune.inc (#8008)\n\nThis is a leftover from #7985.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-06-19T10:31:12+02:00",
+          "tree_id": "41f50b18f481b30631c201dd793dfd67d40f143e",
+          "url": "https://github.com/ocaml/dune/commit/89c63fab3304934840739de4599ba3d7f28b02fe"
+        },
+        "date": 1687164716780,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.25231258906",
             "unit": "seconds"
           }
         ]

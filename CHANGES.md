@@ -7,9 +7,6 @@ Unreleased
 - Add `dune show` command group which is an alias of `dune describe`. (#7946,
   @Alizter)
 
-- Fix printing errors from excerpts whenever character offsets span multiple
-  lines (#7950, fixes #7905, @rgrinberg)
-
 - Include source tree scans in the traces produced by `--trace-file` (#7937,
   @rgrinberg)
 
@@ -42,21 +39,9 @@ Unreleased
 - The `interface` and `implementation` fields of a `(dialect)` are now optional
   (#7757, @gpetiot)
 
-- Fix RPC buffer corruption issues due to multi threading. This issue was only
-  reproducible with large RPC payloads (#7418)
-
-- Switch back to threaded console for all systems; fix unresponsive console on
-  Windows (#7906, @nojb)
-
-- Respect `-p` / `--only-packages` for `melange.emit` artifacts (#7849,
-  @anmonteiro)
-
 - Add commands `dune show targets` and `dune show aliases` that display all the
   available targets and aliases in a given directory respectively. (#7770,
   grants #265, @Alizter)
-
-- Fix scanning of Coq installed files (@ejgallego, reported by
-  @palmskog, #7895 , fixes #7893)
 
 - Allow multiple globs in library's `(stdlib (internal_modules ..))`
   (@anmonteiro, #7878)
@@ -71,6 +56,24 @@ Unreleased
 
 - Add `(build_if)` to the `(test)` stanza. When it evaluates to false, the
   executable is not built. (#7899, fixes #6938, @emillon)
+
+3.8.2 (2023-06-16)
+------------------
+
+- Switch back to threaded console for all systems; fix unresponsive console on
+  Windows (#7906, @nojb)
+
+- Respect `-p` / `--only-packages` for `melange.emit` artifacts (#7849,
+  @anmonteiro)
+
+- Fix scanning of Coq installed files (@ejgallego, reported by
+  @palmskog, #7895 , fixes #7893)
+
+- Fix RPC buffer corruption issues due to multi threading. This issue was only
+  reproducible with large RPC payloads (#7418)
+
+- Fix printing errors from excerpts whenever character offsets span multiple
+  lines (#7950, fixes #7905, @rgrinberg)
 
 3.8.1 (2023-06-05)
 ------------------

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687163562317,
+  "lastUpdate": 1687163996640,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20588,6 +20588,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.69314554879334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rafal.gwozdzinski@gmail.com",
+            "name": "Rafał Gwoździński",
+            "username": "3Rafal"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "30340e693fa5367fb394d8a6fc08a59b78d90e8a",
+          "message": "chore: Halve the number of CI runs (#8007)\n\n* chore: Halve the number of CI runs\r\n\r\nSigned-off-by: Rafal Gwozdzinski <rafal.gwozdzinski@gmail.com>",
+          "timestamp": "2023-06-19T09:14:22+01:00",
+          "tree_id": "cb58421a7208c717fe6f5cc630a5d3e2411de908",
+          "url": "https://github.com/ocaml/dune/commit/30340e693fa5367fb394d8a6fc08a59b78d90e8a"
+        },
+        "date": 1687163995767,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.326387792026665",
             "unit": "seconds"
           }
         ]

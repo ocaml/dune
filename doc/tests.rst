@@ -99,7 +99,7 @@ so for instance the ``dune`` file might look like this:
     (name foo)
     (preprocess (pps ppx_inline_test)))
 
-In order to tell Dune that our library contains inline tests, 
+In order to tell Dune that our library contains inline tests,
 we have to add an ``inline_tests`` field:
 
 .. code:: dune
@@ -141,8 +141,8 @@ in `qtest`'s own `dune` file.
 Inline Expectation Tests
 ------------------------
 
-Inline expectation tests are a special case of inline tests where written OCaml code 
-prints something followed by what you expect this code to print. 
+Inline expectation tests are a special case of inline tests where written OCaml code
+prints something followed by what you expect this code to print.
 For instance, using ppx_expect_:
 
 .. code:: ocaml
@@ -352,8 +352,8 @@ Defining Your Own Inline Test Backend
 
 If you are writing a test framework (or for other specific cases), you might
 want to define your own inline tests backend. If your framework is
-naturally implemented by a library or PPX rewriter that's necessary to write tests, 
-you should define this library as a backend. Otherwise simply create an 
+naturally implemented by a library or PPX rewriter that's necessary to write tests,
+you should define this library as a backend. Otherwise simply create an
 empty library with your chosen backend's name.
 
 In order to define a library as an inline tests backend, simply add an
@@ -446,7 +446,7 @@ Custom Tests
 ============
 
 We said in `Running tests`_ that to run tests, Dune simply builds
-the ``runtest`` alias. As a result, you simply need to add an action 
+the ``runtest`` alias. As a result, you simply need to add an action
 to this alias in any directory in order to define custom tests. For instance, if
 you have a binary ``tests.exe`` that you want to run as part of
 running your test suite, simply add this to a ``dune`` file:
@@ -512,7 +512,7 @@ This provides a nice way of dealing with the usual *write code*,
        -Hello, world!
        +Good bye!
        $ dune promote
-    
+
        Promoting _build/default/tests.output to tests.expected.
 
 Note that if available, the diffing is done using the patdiff_ tool,
@@ -598,7 +598,7 @@ Directory Tests
 
 In the above example we used ``cat`` to create the test artifact, but what if
 there are too many artifacts to comfortably fit in test file? Or some of the
-artifacts are binary? 
+artifacts are binary?
 
 It's possible to include the artifacts as normal files or
 directories, provided the test is defined as a directory. The name of the test
@@ -642,7 +642,7 @@ We can specify dependencies using the ``deps`` field using the usual syntax:
 
    (cram
     (deps ../foo.exe))
-    
+
 This introduces a dependency on ``foo.exe`` on all Cram tests in this directory.
 To apply the stanza to a particular test, it's possible to use ``applies_to``
 field:

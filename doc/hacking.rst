@@ -596,7 +596,7 @@ Good:
 - When ignoring the value of a let binding ``let _ = ...``,  we add type
   annotations to the ignored value ``let (_ : t) = ...``. We do this convention
   because:
-  
+
  * We need to make sure we never ignore ``Fiber.t`` accidentally. Functions that
    return ``Fiber.t`` are always free of side effects so we need to bind on the
    result to force the side effect.
@@ -646,7 +646,7 @@ to keep the code consistent.
 
 - Introduce bindings that will allow opportunities for record or label punning.
 
-- Do not write inverted if-else expressions. 
+- Do not write inverted if-else expressions.
 
 Bad:
 

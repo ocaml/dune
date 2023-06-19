@@ -52,7 +52,7 @@ in older versions of OCaml:
       | exception e ->
         always ();
         raise e
-    
+
     let use_output command =
       let fn = Filename.temp_file "ocaml" "_toploop.ml" in
       try_finally
@@ -63,7 +63,7 @@ in older versions of OCaml:
           with
           | 0 -> ignore (Toploop.use_file Format.std_formatter fn : bool)
           | n -> Format.printf "Command exited with code %d.@." n)
-    
+
     let () =
       let name = "use_output" in
       if not (Hashtbl.mem Toploop.directive_table name) then

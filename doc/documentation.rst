@@ -72,7 +72,7 @@ be named ``foo.mld``, ``bar.mld``, and ``baz.mld``
     (package foo)
      (mld_files foo bar baz))
 
-This stanza will attach all ``.mld`` files to the inferred package, 
+This stanza will attach all ``.mld`` files to the inferred package,
 excluding ``wip.mld``, in the current directory:
 
 .. code-block:: dune

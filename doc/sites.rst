@@ -34,7 +34,7 @@ consists of a name and a :ref:`section<install>` (e.g ``lib``, ``share``,
     (name mygui)
     (sites (share themes)))
 
-Adding Files to a Site 
+Adding Files to a Site
 ----------------------
 
 Here the package ``mygui`` defines a site named ``themes`` that will be located
@@ -95,16 +95,16 @@ Then inside ``mygui.ml`` module the locations can be recovered and used:
 
    (** Locations of the site for the themes *)
    let themes_locations : string list = Mysites.Sites.themes
-   
+
    (** Merge the contents of the directories in [dirs] *)
    let lookup_dirs dirs =
      List.filter Sys.file_exists dirs
      |> List.map (fun dir -> Array.to_list (Sys.readdir dir))
      |> List.concat
-   
+
    (** Get the available themes *)
    let find_available_themes () = lookup_dirs themes_locations
-   
+
    (** [lookup_file name dirs] finds the first file called [name] in [dirs] *)
    let lookup_file filename dirs =
      List.find_map
@@ -112,11 +112,11 @@ Then inside ``mygui.ml`` module the locations can be recovered and used:
          let filename' = Filename.concat dir filename in
          if Sys.file_exists filename' then Some filename' else None)
        dirs
-   
+
    (** [lookup_theme_file theme file] get the [file] of the [theme] *)
    let lookup_theme_file file theme =
      lookup_file (Filename.concat theme file) themes_locations
-   
+
    let get_layout_css = lookup_theme_file "layout.css"
    let get_ok_ico = lookup_theme_file "ok.png"
    let get_ko_ico = lookup_theme_file "ko.png"

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687191543395,
+  "lastUpdate": 1687191976414,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20733,6 +20733,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.487716658560004",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "fa448e24ea164a1446c53dcdd8e276ac8659463d",
+          "message": "fix: suggest setting --prefix on empty install\n\nWhen a user has not set --prefix they will get a confusing error message\nabout mandir. The suggestion here is to also set --mandir leading them\ndown a rabbit hole of specifying a complete install layout. What they\nprobably want to be doing is speciying --prefix so we change the error\nmessage here to suggest that instead.\n\nfix #7814\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-19T17:05:32+01:00",
+          "tree_id": "7b966f2585e586b6179ba9d64e56382f02340dc3",
+          "url": "https://github.com/ocaml/dune/commit/fa448e24ea164a1446c53dcdd8e276ac8659463d"
+        },
+        "date": 1687191975649,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.48490225135999",
             "unit": "seconds"
           }
         ]

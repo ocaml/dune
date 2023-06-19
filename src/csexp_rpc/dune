@@ -5,6 +5,7 @@
   stdune
   dyn
   dune_util
+  dune_console
   csexp
   fiber
   dune_async_io

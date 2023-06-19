@@ -44,8 +44,12 @@ let console_backend = function
   | Tui -> Dune_tui.backend ()
   | Simple { status_line; _ } -> (
     match status_line with
-    | false -> Dune_console.Backend.dumb
+    | false ->
+      Dune_util.Terminal_signals.unblock ();
+      Dune_console.Backend.dumb
     | true -> (
       match Config.(get threaded_console) with
       | `Enabled -> Dune_threaded_console.progress ()
-      | `Disabled -> Dune_console.Backend.progress))
+      | `Disabled ->
+        Dune_util.Terminal_signals.unblock ();
+        Dune_console.Backend.progress))

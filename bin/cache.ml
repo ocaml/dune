@@ -1,4 +1,3 @@
-open Stdune
 open Import
 
 (* CR-someday amokhov: Implement other commands supported by Jenga. *)

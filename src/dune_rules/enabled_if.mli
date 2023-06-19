@@ -12,3 +12,9 @@ val decode :
   -> since:Dune_lang.Syntax.Version.t option
   -> unit
   -> Blang.t Dune_lang.Decoder.fields_parser
+
+val decode_value :
+     allowed_vars:allowed_vars
+  -> ?is_error:bool
+  -> unit
+  -> Blang.t Dune_lang.Decoder.t

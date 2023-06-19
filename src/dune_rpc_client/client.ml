@@ -1,6 +1,19 @@
 open Import
 open Fiber.O
-include Dune_rpc.Client.Make (Private.Fiber) (Csexp_rpc.Session)
+
+include
+  Dune_rpc.Client.Make
+    (Private.Fiber)
+    (struct
+      include Csexp_rpc.Session
+
+      let write t = function
+        | None -> close t
+        | Some packets -> (
+          write t packets >>| function
+          | Ok () -> ()
+          | Error `Closed -> raise Dune_util.Report_error.Already_reported)
+    end)
 
 type chan = Csexp_rpc.Session.t
 
@@ -32,6 +45,6 @@ let client ?handler ~private_menu connection init ~f =
   let f client =
     Fiber.finalize
       (fun () -> f client)
-      ~finally:(fun () -> Csexp_rpc.Session.write connection None)
+      ~finally:(fun () -> Csexp_rpc.Session.close connection)
   in
   connect_with_menu ?handler ~private_menu connection init ~f

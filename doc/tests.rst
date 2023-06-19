@@ -478,7 +478,8 @@ command. For instance, let's consider this test:
 .. code:: dune
 
    (rule
-   (with-stdout-to tests.output (run ./tests.exe)))
+    (action
+     (with-stdout-to tests.output (run ./tests.exe))))
 
    (rule
     (alias runtest)

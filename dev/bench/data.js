@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687192351928,
+  "lastUpdate": 1687199033928,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -59652,6 +59652,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "24.287663687153337",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e004401173e704980b3df30f55866f7ee73b7546",
+          "message": "Lockdir package files have .pkg extension (#8014)\n\nThis will allow us to put a dune file in the lockdir without it\r\nconflicting with the package file for the package \"dune\".\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-06-19T11:07:47-07:00",
+          "tree_id": "620233d58f80e54d5ba74befec843a8d4cfaa560",
+          "url": "https://github.com/ocaml/dune/commit/e004401173e704980b3df30f55866f7ee73b7546"
+        },
+        "date": 1687199027570,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "20.42275553406",
             "unit": "seconds"
           }
         ]

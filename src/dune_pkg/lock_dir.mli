@@ -53,6 +53,14 @@ val metadata : Filename.t
 
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit
 
+module Package_filename : sig
+  type t = Filename.t
+
+  val of_package_name : Package_name.t -> t
+
+  val to_package_name : t -> (Package_name.t, [ `Bad_extension ]) result
+end
+
 val write_disk : lock_dir_path:Path.Source.t -> t -> unit
 
 val read_disk : lock_dir_path:Path.Source.t -> t Or_exn.t

@@ -262,11 +262,25 @@ let encode_metadata t =
     ; Dune_lang.Syntax.Version.encode t.version
     ]
 
+module Package_filename = struct
+  type t = Filename.t
+
+  let file_extension = ".pkg"
+
+  let of_package_name package_name =
+    Package_name.to_string package_name ^ file_extension
+
+  let to_package_name package_filename =
+    if String.equal (Filename.extension package_filename) file_extension then
+      Ok (Filename.chop_extension package_filename |> Package_name.of_string)
+    else Error `Bad_extension
+end
+
 let file_contents_by_path t =
   (metadata, [ encode_metadata t ])
   :: (Package_name.Map.to_list t.packages
      |> List.map ~f:(fun (name, pkg) ->
-            (Package_name.to_string name, Pkg.encode pkg)))
+            (Package_filename.of_package_name name, Pkg.encode pkg)))
 
 (* Checks whether path refers to a valid lock directory and returns a value
    indicating the status of the lock directory. [Ok _] values indicate that
@@ -352,7 +366,7 @@ let load_pkg ~parser_context ~lock_dir_path package_name =
     Result.try_with (fun () ->
         let source_path =
           Path.Source.relative lock_dir_path
-            (Package_name.to_string package_name)
+            (Package_filename.of_package_name package_name)
         in
         let pkg_string = Io.read_file (Path.source source_path) in
         let ast =
@@ -387,12 +401,12 @@ let read_disk ~lock_dir_path =
     Sys.readdir (Path.Source.to_string lock_dir_path)
     |> Array.to_list
     |> List.filter_map ~f:(fun filename ->
-           if Filename.equal filename metadata then None
-           else
+           match Package_filename.to_package_name filename with
+           | Error `Bad_extension -> None
+           | Ok package_name ->
              let package_path = Path.Source.relative lock_dir_path filename in
              if Path.is_directory (Path.source package_path) then None
              else
-               let package_name = Package_name.of_string filename in
                Some
                  ( load_pkg ~parser_context ~lock_dir_path package_name
                  >>| fun pkg -> (package_name, pkg) ))

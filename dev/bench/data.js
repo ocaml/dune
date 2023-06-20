@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687200461144,
+  "lastUpdate": 1687279876229,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -59884,6 +59884,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.932918945153332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1fe62b6fb6afaeabeae3ae15157eed1cdb1f91a2",
+          "message": "Don't take global lock in `dune pkg lock` (#8016)\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-06-20T09:34:42-07:00",
+          "tree_id": "ed7fc13c7ed8587e14552529fc704985e2bcbaba",
+          "url": "https://github.com/ocaml/dune/commit/1fe62b6fb6afaeabeae3ae15157eed1cdb1f91a2"
+        },
+        "date": 1687279869152,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.683485026820005",
             "unit": "seconds"
           }
         ]

@@ -103,6 +103,7 @@ module Lock = struct
   let term =
     let+ (common : Common.t) = Common.term
     and+ repo_selection = Repo_selection.term in
+    let common = Common.forbid_builds common in
     let config = Common.init common in
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in

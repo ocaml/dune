@@ -4,12 +4,14 @@ open Import
 open Dune_lang
 
 module Source : sig
+  type fetch =
+    { url : Loc.t * string
+    ; checksum : (Loc.t * Checksum.t) option
+    }
+
   type t =
     | External_copy of Loc.t * Path.External.t
-    | Fetch of
-        { url : Loc.t * string
-        ; checksum : (Loc.t * Checksum.t) option
-        }
+    | Fetch of fetch
 end
 
 module Pkg_info : sig
@@ -18,6 +20,7 @@ module Pkg_info : sig
     ; version : string
     ; dev : bool
     ; source : Source.t option
+    ; extra_sources : (Path.Local.t * Source.t) list
     }
 end
 

@@ -57,21 +57,24 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full { start; stop } :
   let stop_c = stop.pos_cnum - start.pos_bol in
   let file = start.pos_fname in
   let pp_file_excerpt () =
-    let line_num = start.pos_lnum in
-    let line_num_str = string_of_int line_num in
-    let padding_width = String.length line_num_str in
     let open Result.O in
-    let* line =
-      Result.try_with (fun () -> Io.String_path.file_line file line_num)
-    in
-    if stop_c <= String.length line then
+    match
+      if start.pos_lnum <> stop.pos_lnum then `Multiline else `Singleline
+    with
+    | `Singleline ->
+      let line_num = start.pos_lnum in
+      let line_num_str = string_of_int line_num in
+      let padding_width = String.length line_num_str in
+      let* line =
+        Result.try_with (fun () -> Io.String_path.file_line file line_num)
+      in
       let len = stop_c - start_c in
       let open Pp.O in
       Ok
         (pp_line padding_width (line_num_str, line)
         ++ pp_left_pad (stop_c + padding_width + 3) (String.make len '^')
         ++ Pp.newline)
-    else
+    | `Multiline ->
       let get_padding lines =
         let lnum, _ = Option.value_exn (List.last lines) in
         String.length lnum

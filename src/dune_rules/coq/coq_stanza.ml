@@ -185,7 +185,7 @@ module Theory = struct
        and+ synopsis = field_o "synopsis" string
        and+ boot =
          field_b "boot" ~check:(Dune_lang.Syntax.since coq_syntax (0, 2))
-       and+ modules = Stanza_common.modules_field "modules"
+       and+ modules = Ordered_set_lang.field "modules"
        and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
        and+ buildable = Buildable.decode
        and+ coqdoc_flags =

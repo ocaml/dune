@@ -27,7 +27,6 @@ module Pkg : sig
     ; install_command : Action.t option
     ; deps : Package_name.t list
     ; info : Pkg_info.t
-    ; lock_dir : Path.Source.t
     ; exported_env : String_with_vars.t Action.Env_update.t list
     }
 
@@ -40,6 +39,12 @@ type t =
   ; packages : Pkg.t Package_name.Map.t
   }
 
+val remove_locs : t -> t
+
+val equal : t -> t -> bool
+
+val to_dyn : t -> Dyn.t
+
 val create_latest_version : Pkg.t Package_name.Map.t -> t
 
 val default_path : Path.Source.t
@@ -48,4 +53,14 @@ val metadata : Filename.t
 
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit
 
+module Package_filename : sig
+  type t = Filename.t
+
+  val of_package_name : Package_name.t -> t
+
+  val to_package_name : t -> (Package_name.t, [ `Bad_extension ]) result
+end
+
 val write_disk : lock_dir_path:Path.Source.t -> t -> unit
+
+val read_disk : lock_dir_path:Path.Source.t -> t Or_exn.t

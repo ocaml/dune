@@ -1,6 +1,15 @@
 Unreleased
 ----------
 
+- Include the time it takes to read/write state files when `--trace-file` is
+  enabled (#7960, @rgrinberg)
+
+- Add `dune show` command group which is an alias of `dune describe`. (#7946,
+  @Alizter)
+
+- Include source tree scans in the traces produced by `--trace-file` (#7937,
+  @rgrinberg)
+
 - Cinaps: The promotion rules for cinaps would only offer one file at a time no
   matter how many promotions were available. Now we offer all the promotions at
   once (#7901, @rgrinberg)
@@ -12,6 +21,9 @@ Unreleased
   `.merlin` files. Now dune will never remove `.merlin` files automatically
   (#7562)
 
+- Add `dune show env` command and make `dune printenv` an alias of it. (#7985,
+  @Alizter)
+
 - Add additional metadata to the traces provided by `--trace-file` whenever
   `--trace-extended` is passed (#7778, @rleshchinskiy)
 
@@ -21,14 +33,47 @@ Unreleased
 - Allow `(include_subdirs qualified)` to be used when libraries define a
   `(modules ...)` field (#7797, fixes #7597, @anmonteiro)
 
+- `$ dune describe` is now a command group, so arguments to subcommands must be
+  passed after subcommand itself. (#7919, @Alizter)
+
 - The `interface` and `implementation` fields of a `(dialect)` are now optional
   (#7757, @gpetiot)
+
+- Add commands `dune show targets` and `dune show aliases` that display all the
+  available targets and aliases in a given directory respectively. (#7770,
+  grants #265, @Alizter)
+
+- Allow multiple globs in library's `(stdlib (internal_modules ..))`
+  (@anmonteiro, #7878)
+
+- Attach melange rules to the default alias (#7926, @haochenx)
+
+- In opam constraints, reject `(and)` and `(or)` with no arguments at parse
+  time (#7730, @emillon)
+
+- Compute digests and manage sandboxes in background threads (#7947,
+  @rgrinberg)
+
+- Add `(build_if)` to the `(test)` stanza. When it evaluates to false, the
+  executable is not built. (#7899, fixes #6938, @emillon)
+
+3.8.2 (2023-06-16)
+------------------
+
+- Switch back to threaded console for all systems; fix unresponsive console on
+  Windows (#7906, @nojb)
+
+- Respect `-p` / `--only-packages` for `melange.emit` artifacts (#7849,
+  @anmonteiro)
+
+- Fix scanning of Coq installed files (@ejgallego, reported by
+  @palmskog, #7895 , fixes #7893)
 
 - Fix RPC buffer corruption issues due to multi threading. This issue was only
   reproducible with large RPC payloads (#7418)
 
-- Switch back to threaded console for all systems; fix unresponsive console on
-  Windows (#7906, @nojb)
+- Fix printing errors from excerpts whenever character offsets span multiple
+  lines (#7950, fixes #7905, @rgrinberg)
 
 3.8.1 (2023-06-05)
 ------------------
@@ -42,8 +87,8 @@ Unreleased
   fixes an issue with install layouts based on COQPATH such as those found in
   nixpkgs. (#7790, @Alizter)
 
-- Revert #7415 and #7450 (Resolve `ppx_runtime_libraries` in the target context when
-  cross compiling) (#7887, fixes #7875, @emillon)
+- Revert #7415 and #7450 (Resolve `ppx_runtime_libraries` in the target context
+  when cross compiling) (#7887, fixes #7875, @emillon)
 
 3.8.0 (2023-05-23)
 ------------------

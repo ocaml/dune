@@ -1,98 +1,89 @@
-open Stdune
 open Import
 module Lock_dir = Dune_pkg.Lock_dir
 
-(* Takes a string containing a possibly absolute path and returns a
-   [Path.Source.t] referring to that path. In the case of an absolute path,
-   [Error `Absolute_path_outside_source_directory] is returned in the case that
-   the specified path is outside the source directory. *)
-let source_path_from_possibly_absolute_path path_string =
-  if Filename.is_relative path_string then
-    Ok (Path.Source.of_string path_string)
-  else
-    let path = Path.External.of_string path_string |> Path.external_ in
-    let source_dir_path = Path.external_ Path.External.initial_cwd in
-    match Path.drop_prefix path ~prefix:source_dir_path with
-    | None -> Error `Absolute_path_outside_source_directory
-    | Some relative_path -> Ok (Path.Source.of_local relative_path)
-
-let lock_dir_term =
-  let+ lock_dir_opt =
-    Arg.(
-      value
-      & opt (some string) None
-      & info [ "lock-dir" ] ~docv:"PATH"
-          ~doc:
-            (sprintf "Path to lock directory (default: %s)"
-               (Stdune.Path.Source.to_string Lock_dir.default_path)))
-  in
-  Option.map lock_dir_opt ~f:(fun path_string ->
-      match source_path_from_possibly_absolute_path path_string with
-      | Ok source_path -> source_path
-      | Error `Absolute_path_outside_source_directory ->
-        User_error.raise
-          [ Pp.textf
-              "Specified lock directory (%s) is not a descendant of the source \
-               directory."
-              (String.maybe_quoted path_string)
-          ])
-  |> Option.value ~default:Lock_dir.default_path
-
 module Lock = struct
-  module Repo = struct
-    open Dune_pkg.Opam.Repo
+  module Repo_selection = struct
+    module Env = struct
+      module Source = struct
+        type t =
+          | Global
+          | Pure
+
+        let to_string = function
+          | Global -> "global"
+          | Pure -> "pure"
+
+        let default = Global
+
+        let term =
+          let all = [ Global; Pure ] in
+          let all_with_strings = List.map all ~f:(fun t -> (to_string t, t)) in
+          let all_strings = List.map all_with_strings ~f:fst in
+          let doc =
+            sprintf
+              "How to initialize the opam environment when taking the opam \
+               repository from a local directory (may only be used along with \
+               the --opam-repository-path option). Possible values are %s. \
+               '%s' will use the environment associated with the current opam \
+               switch. '%s' will use an empty environment. The default is \
+               '%s'."
+              (String.enumerate_and all_strings)
+              (to_string Global) (to_string Pure) (to_string default)
+          in
+          Arg.(
+            value
+            & opt (some (enum all_with_strings)) None
+            & info [ "opam-env" ] ~doc)
+      end
+
+      let of_source =
+        let open Dune_pkg.Opam.Env in
+        function
+        | Source.Global -> global ()
+        | Pure -> empty
+    end
 
     let term =
       let+ opam_repository_path =
         Arg.(
-          required
+          value
           & opt (some string) None
           & info [ "opam-repository-path" ] ~docv:"PATH"
               ~doc:
                 "Path to a local opam repository. This should be a directory \
                  containing a valid opam repository such as the one at \
-                 https://github.com/ocaml/opam-repository.")
-      in
-      of_opam_repo_dir_path opam_repository_path
-  end
-
-  module Env = struct
-    module Source = struct
-      type t =
-        | Global
-        | Pure
-
-      let to_string = function
-        | Global -> "global"
-        | Pure -> "pure"
-
-      let default = Global
-
-      let term =
-        let all = [ Global; Pure ] in
-        let all_with_strings = List.map all ~f:(fun t -> (to_string t, t)) in
-        let all_strings = List.map all_with_strings ~f:fst in
-        let doc =
-          sprintf
-            "How to initialize the opam environment. Possible values are %s. \
-             '%s' will use the environment associated with the current opam \
-             switch. '%s' will use an empty environment. The default is '%s'."
-            (String.enumerate_and all_strings)
-            (to_string Global) (to_string Pure) (to_string default)
-        in
+                 https://github.com/ocaml/opam-repository. If this option is \
+                 omitted the dependencies will be locked using the current \
+                 switch instead.")
+      and+ opam_switch_name =
         Arg.(
           value
-          & opt (some (enum all_with_strings)) None
-          & info [ "opam-env" ] ~doc)
-    end
-
-    open Dune_pkg.Opam.Env
-
-    let term =
-      let+ source = Source.term in
-      match Option.value source ~default:Source.default with
-      | Global -> global ()
-      | Pure -> empty
+          & opt (some string) None
+          & info [ "opam-switch" ] ~docv:"SWITCH"
+              ~doc:
+                "Name or path of opam switch to use while solving \
+                 dependencies. Local switches may be specified with relative \
+                 paths (e.g. `--opam-switch=.`)")
+      and+ env_source = Env.Source.term in
+      let module Repo_selection = Dune_pkg.Opam.Repo_selection in
+      match (opam_switch_name, opam_repository_path, env_source) with
+      | None, None, _env_source | Some _, Some _, _env_source ->
+        User_error.raise
+          [ Pp.text
+              "Exactly one of --opam-switch and --opam-repository-path must be \
+               specified"
+          ]
+      | Some _opam_switch, None, Some _env_source ->
+        User_error.raise
+          [ Pp.text "--opam-env may only used with --opam-repository-path" ]
+      | Some opam_switch_name, None, None ->
+        Repo_selection.switch_with_name opam_switch_name
+      | None, Some opam_repo_dir_path, env_source_opt ->
+        let env =
+          Option.value env_source_opt ~default:Env.Source.default
+          |> Env.of_source
+        in
+        Repo_selection.local_repo_with_env ~opam_repo_dir_path ~env
   end
 
   (* Converts the package table found inside a [Dune_project.t] into the
@@ -111,9 +102,7 @@ module Lock = struct
 
   let term =
     let+ (common : Common.t) = Common.term
-    and+ env = Env.term
-    and+ repo = Repo.term
-    and+ lock_dir_path = lock_dir_term in
+    and+ repo_selection = Repo_selection.term in
     let config = Common.init common in
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in
@@ -123,8 +112,9 @@ module Lock = struct
         let opam_file_map =
           opam_file_map_of_dune_package_map dune_package_map
         in
+        let lock_dir_path = Lock_dir.default_path in
         let summary, lock_dir =
-          Dune_pkg.Opam.solve_lock_dir ~env ~repo ~lock_dir_path opam_file_map
+          Dune_pkg.Opam.solve_lock_dir ~repo_selection opam_file_map
         in
         Console.print_user_message
           (Dune_pkg.Opam.Summary.selected_packages_message summary);

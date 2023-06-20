@@ -1,3 +1,4 @@
+open Dune_config
 module Display = Dune_engine.Display
 
 type t =
@@ -43,5 +44,12 @@ let console_backend = function
   | Tui -> Dune_tui.backend ()
   | Simple { status_line; _ } -> (
     match status_line with
-    | false -> Dune_console.Backend.dumb
-    | true -> Dune_threaded_console.progress ())
+    | false ->
+      Dune_util.Terminal_signals.unblock ();
+      Dune_console.Backend.dumb
+    | true -> (
+      match Config.(get threaded_console) with
+      | `Enabled -> Dune_threaded_console.progress ()
+      | `Disabled ->
+        Dune_util.Terminal_signals.unblock ();
+        Dune_console.Backend.progress))

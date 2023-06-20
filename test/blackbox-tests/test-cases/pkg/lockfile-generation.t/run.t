@@ -21,19 +21,19 @@ Run the solver and generate a lock directory.
 Print the name and contents of each file in the lock directory separated by
 "---", sorting by filename for consistency.
   $ find dune.lock -type f | sort | xargs -I{} sh -c "printf '{}:\n\n'; cat {}; printf '\n\n---\n\n'"
-  dune.lock/bar:
+  dune.lock/bar.pkg:
   
   (version 0.4.0)
   
   ---
   
-  dune.lock/baz:
+  dune.lock/baz.pkg:
   
   (version 0.1.0)
   
   ---
   
-  dune.lock/foo:
+  dune.lock/foo.pkg:
   
   (version 0.0.1)
   (deps baz bar)

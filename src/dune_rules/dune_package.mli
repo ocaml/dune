@@ -76,7 +76,7 @@ module Or_meta : sig
   val pp :
     dune_version:Dune_lang.Syntax.Version.t -> Format.formatter -> t -> unit
 
-  val load : Dpath.t -> t Or_exn.t Memo.t
+  val load : Dpath.t -> (t, User_message.t) result Memo.t
 
   val to_dyn : t Dyn.builder
 end

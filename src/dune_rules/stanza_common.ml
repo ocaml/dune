@@ -116,8 +116,6 @@ module Pkg = struct
         | Some name -> resolve p name |> Result.map ~f:Option.some)
 end
 
-let modules_field name = Ordered_set_lang.field name
-
 let preprocess_fields =
   let+ preprocess =
     field "preprocess" Preprocess.Per_module.decode
@@ -193,7 +191,7 @@ module Modules_settings = struct
   let decode =
     let+ root_module = field_o "root_module" Module_name.decode_loc
     and+ modules_without_implementation =
-      modules_field "modules_without_implementation"
-    and+ modules = modules_field "modules" in
+      Ordered_set_lang.field "modules_without_implementation"
+    and+ modules = Ordered_set_lang.field "modules" in
     { root_module; modules; modules_without_implementation }
 end

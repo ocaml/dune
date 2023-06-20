@@ -42,7 +42,10 @@ On a fresh build, this should do nothing but should pass the correct flags:
   -I lib/coq/../coq-core/plugins/ssreflect
   -I lib/coq/../coq-core/plugins/ssrmatching
   -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/tutorial/p0
+  -I lib/coq/../coq-core/plugins/tutorial/p1
+  -I lib/coq/../coq-core/plugins/tutorial/p2
+  -I lib/coq/../coq-core/plugins/tutorial/p3
   -I lib/coq/../coq-core/plugins/zify
   -R coq/theories Coq
   -R $TESTCASE_ROOT/_build/default/dir basic
@@ -74,7 +77,10 @@ And for comparison normally a build would happen:
   -I lib/coq/../coq-core/plugins/ssreflect
   -I lib/coq/../coq-core/plugins/ssrmatching
   -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/tutorial/p0
+  -I lib/coq/../coq-core/plugins/tutorial/p1
+  -I lib/coq/../coq-core/plugins/tutorial/p2
+  -I lib/coq/../coq-core/plugins/tutorial/p3
   -I lib/coq/../coq-core/plugins/zify
   -R coq/theories Coq
   -R $TESTCASE_ROOT/_build/default/dir basic

@@ -54,19 +54,20 @@ end
 module Lock_dir = struct
   include Dune_pkg.Lock_dir
 
+  let get_path ctx =
+    let+ workspace = Workspace.workspace () in
+    match
+      List.find_map workspace.contexts ~f:(fun ctx' ->
+          match Context_name.equal (Workspace.Context.name ctx') ctx with
+          | false -> None
+          | true -> Some ctx')
+    with
+    | None -> default_path
+    | Some (Default { lock; _ }) -> Option.value lock ~default:default_path
+    | Some (Opam _) -> assert false
+
   let get (ctx : Context_name.t) : t Memo.t =
-    let* path =
-      let+ workspace = Workspace.workspace () in
-      match
-        List.find_map workspace.contexts ~f:(fun ctx' ->
-            match Context_name.equal (Workspace.Context.name ctx') ctx with
-            | false -> None
-            | true -> Some ctx')
-      with
-      | None -> default_path
-      | Some (Default { lock; _ }) -> Option.value lock ~default:default_path
-      | Some (Opam _) -> assert false
-    in
+    let* path = get_path ctx in
     Fs_memo.dir_exists (In_source_dir path) >>= function
     | false ->
       (* TODO *)
@@ -88,9 +89,9 @@ module Lock_dir = struct
           Fs_cache.Dir_contents.to_list content
           |> List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
                  match kind with
-                 | S_REG when name <> metadata ->
-                   let name = Package.Name.of_string name in
-                   Some name
+                 | S_REG ->
+                   Lock_dir.Package_filename.to_package_name name
+                   |> Result.to_option
                  | _ ->
                    (* TODO *)
                    None)
@@ -98,7 +99,8 @@ module Lock_dir = struct
                  let+ package =
                    let+ sexp =
                      let path =
-                       Package.Name.to_string name |> Path.Source.relative path
+                       Lock_dir.Package_filename.of_package_name name
+                       |> Path.Source.relative path
                      in
                      Fs_memo.with_lexbuf_from_file (In_source_dir path)
                        ~f:(Dune_sexp.Parser.parse ~mode:Many)
@@ -690,7 +692,6 @@ end = struct
         ; deps
         ; info
         ; exported_env
-        ; lock_dir
         } ->
       assert (Package.Name.equal name info.name);
       let* deps =
@@ -701,6 +702,7 @@ end = struct
       in
       let id = Pkg.Id.gen () in
       let paths = Paths.make name ctx in
+      let* lock_dir = Lock_dir.get_path ctx in
       let files_dir =
         Path.Source.relative lock_dir
           (sprintf "%s.files" (Package.Name.to_string info.name))

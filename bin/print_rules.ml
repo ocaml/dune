@@ -1,4 +1,3 @@
-open Stdune
 open Import
 
 let doc = "Dump rules."

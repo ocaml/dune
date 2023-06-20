@@ -80,15 +80,8 @@ module Dependency = struct
     let map =
       [ ("=", Eq); (">=", Gte); ("<=", Lte); (">", Gt); ("<", Lt); ("<>", Neq) ]
 
-    let to_dyn =
-      let open Dyn in
-      function
-      | Eq -> string "Eq"
-      | Gt -> string "Gt"
-      | Gte -> string "Gte"
-      | Lte -> string "Lte"
-      | Lt -> string "Lt"
-      | Neq -> string "Neq"
+    let to_dyn t =
+      Dyn.variant (fst (List.find_exn ~f:(fun (_, op) -> equal t op) map)) []
 
     let to_relop = function
       | Eq -> nopos `Eq
@@ -157,6 +150,17 @@ module Dependency = struct
       | And conjuncts -> list sexp (string "and" :: List.map ~f:encode conjuncts)
       | Or disjuncts -> list sexp (string "or" :: List.map ~f:encode disjuncts)
 
+    let logical_op t =
+      let open Dune_lang.Decoder in
+      let+ x = repeat t
+      and+ version = Syntax.get_exn Stanza.syntax
+      and+ loc = loc in
+      let empty_list_rejected_since = (3, 9) in
+      if List.is_empty x && version >= empty_list_rejected_since then
+        Syntax.Error.deleted_in loc Stanza.syntax empty_list_rejected_since
+          ~what:"Logical operators with no arguments";
+      x
+
     let decode =
       let open Dune_lang.Decoder in
       let ops =
@@ -183,10 +187,10 @@ module Dependency = struct
       fix (fun t ->
           let logops =
             [ ( "and"
-              , let+ x = repeat t in
+              , let+ x = logical_op t in
                 And x )
             ; ( "or"
-              , let+ x = repeat t in
+              , let+ x = logical_op t in
                 Or x )
             ]
           in
@@ -262,7 +266,9 @@ module Dependency = struct
     | Or [ c ] -> opam_constraint c
     | Or (c :: cs) ->
       nopos (Logop (nopos `Or, opam_constraint c, opam_constraint (And cs)))
-    | And [] | Or [] -> Code_error.raise "opam_constraint" []
+    | And [] | Or [] ->
+      User_error.raise
+        [ Pp.textf "logical operations with no arguments are not supported" ]
 
   let opam_depend { name; constraint_ } =
     let constraint_ = Option.map ~f:opam_constraint constraint_ in

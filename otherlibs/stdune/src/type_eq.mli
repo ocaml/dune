@@ -8,7 +8,7 @@ val cast : ('a, 'b) t -> 'a -> 'b
     at runtime if two identifiers are equal, and if so to get a proof of
     equality of their types. *)
 module Id : sig
-  type ('a, 'b) eq
+  type ('a, 'b) eq := ('a, 'b) t
 
   type 'a t
 
@@ -20,4 +20,3 @@ module Id : sig
 
   val same : 'a t -> 'b t -> ('a, 'b) eq option
 end
-with type ('a, 'b) eq := ('a, 'b) t

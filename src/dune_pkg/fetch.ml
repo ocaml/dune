@@ -72,10 +72,29 @@ let fetch ~checksum ~target url =
   let path = Path.to_string target in
   let fname = OpamFilename.of_string path in
   let label = "dune-fetch" in
+  let event =
+    Dune_stats.(
+      start (global ()) (fun () ->
+          { cat = None
+          ; name = label
+          ; args =
+              (let args =
+                 [ ("url", `String (OpamUrl.to_string url))
+                 ; ("target", `String path)
+                 ]
+               in
+               Some
+                 (match checksum with
+                 | None -> args
+                 | Some checksum ->
+                   ("checksum", `String (Checksum.to_string checksum)) :: args))
+          }))
+  in
   (* hashes have to be empty otherwise OPAM deletes the file after
      downloading if the hash does not match *)
   let job = OpamRepository.pull_file label fname [] [ url ] in
   let+ downloaded = Fiber_job.run job in
+  Dune_stats.finish event;
   match downloaded with
   | Up_to_date () | Result () -> (
     match checksum with

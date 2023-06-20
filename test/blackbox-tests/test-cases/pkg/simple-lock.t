@@ -4,7 +4,7 @@ Test that we run the build command
   $ cat >dune.lock/lock.dune <<EOF
   > (lang package 0.1)
   > EOF
-  $ cat >dune.lock/test <<EOF
+  $ cat >dune.lock/test.pkg <<EOF
   > (build
   >  (progn
   >   (run mkdir -p %{prefix}/bin)

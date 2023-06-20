@@ -4,7 +4,7 @@ Test that installed binaries are visible in dependent packages
   $ cat >dune.lock/lock.dune <<EOF
   > (lang package 0.1)
   > EOF
-  $ cat >dune.lock/test <<EOF
+  $ cat >dune.lock/test.pkg <<EOF
   > (build
   >  (system "\| echo "#!/bin/sh\necho from test package" > foo;
   >          "\| chmod +x foo;
@@ -18,7 +18,7 @@ Test that installed binaries are visible in dependent packages
   >  ))
   > EOF
 
-  $ cat >dune.lock/usetest <<EOF
+  $ cat >dune.lock/usetest.pkg <<EOF
   > (deps test)
   > (build
   >  (progn

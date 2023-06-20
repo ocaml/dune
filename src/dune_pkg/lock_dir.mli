@@ -61,6 +61,14 @@ module Package_filename : sig
   val to_package_name : t -> (Package_name.t, [ `Bad_extension ]) result
 end
 
-val write_disk : lock_dir_path:Path.Source.t -> t -> unit
+module Write_disk : sig
+  type lock_dir := t
+
+  type t
+
+  val prepare : lock_dir_path:Path.Source.t -> lock_dir -> t
+
+  val commit : t -> unit
+end
 
 val read_disk : lock_dir_path:Path.Source.t -> t Or_exn.t

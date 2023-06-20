@@ -100,27 +100,89 @@ module Lock = struct
         (opam_package_name, opam_file))
     |> OpamPackage.Name.Map.of_list
 
+  (* Logic for choosing the lockdir path(s) to generate *)
+  let choose_lock_dir_paths ~context_name_arg ~all_contexts_arg =
+    let open Fiber.O in
+    match (context_name_arg, all_contexts_arg) with
+    | Some _, true ->
+      User_error.raise
+        [ Pp.text "--context and --all-contexts are mutually exclusive" ]
+    | context_name_opt, false -> (
+      let+ workspace = Memo.run (Workspace.workspace ()) in
+      let context_name =
+        Option.value context_name_opt ~default:Dune_engine.Context_name.default
+      in
+      let context =
+        List.find workspace.contexts ~f:(fun context ->
+            Dune_engine.Context_name.equal
+              (Workspace.Context.name context)
+              context_name)
+      in
+      match context with
+      | None ->
+        User_error.raise
+          [ Pp.textf "Unknown build context: %s"
+              (Dune_engine.Context_name.to_string context_name
+              |> String.maybe_quoted)
+          ]
+      | Some (Default { lock; _ }) ->
+        [ Option.value lock ~default:Lock_dir.default_path ]
+      | Some (Opam _) ->
+        User_error.raise
+          [ Pp.textf "Unexpected opam build context: %s"
+              (Dune_engine.Context_name.to_string context_name
+              |> String.maybe_quoted)
+          ])
+    | None, true ->
+      let+ workspace = Memo.run (Workspace.workspace ()) in
+      List.filter_map workspace.contexts ~f:(function
+        | Workspace.Context.Default { lock; _ } -> lock
+        | Opam _ -> None)
+
+  let context_term =
+    Arg.(
+      value
+      & opt (some Arg.context_name) None
+      & info [ "context" ] ~docv:"CONTEXT"
+          ~doc:
+            "Generate the lockdir associated with this context (the default \
+             context will be used if this is omitted)")
+
   let term =
     let+ (common : Common.t) = Common.term
-    and+ repo_selection = Repo_selection.term in
+    and+ repo_selection = Repo_selection.term
+    and+ context_name = context_term
+    and+ all_contexts =
+      Arg.(
+        value & flag
+        & info [ "all-contexts" ] ~doc:"Generate the lockdir for all contexts")
+    in
     let common = Common.forbid_builds common in
     let config = Common.init common in
-    Scheduler.go ~common ~config (fun () ->
-        let open Fiber.O in
-        let* source_dir = Memo.run (Source_tree.root ()) in
-        let project = Source_tree.Dir.project source_dir in
-        let dune_package_map = Dune_project.packages project in
-        let opam_file_map =
-          opam_file_map_of_dune_package_map dune_package_map
-        in
-        let lock_dir_path = Lock_dir.default_path in
-        let summary, lock_dir =
-          Dune_pkg.Opam.solve_lock_dir ~repo_selection opam_file_map
-        in
-        Console.print_user_message
-          (Dune_pkg.Opam.Summary.selected_packages_message summary);
-        Lock_dir.write_disk ~lock_dir_path lock_dir;
-        Fiber.return ())
+    Scheduler.go ~common ~config @@ fun () ->
+    let open Fiber.O in
+    let* lock_dir_paths =
+      choose_lock_dir_paths ~context_name_arg:context_name
+        ~all_contexts_arg:all_contexts
+    in
+    let+ source_dir = Memo.run (Source_tree.root ()) in
+    let project = Source_tree.Dir.project source_dir in
+    let dune_package_map = Dune_project.packages project in
+    let opam_file_map = opam_file_map_of_dune_package_map dune_package_map in
+    (* Construct a list of thunks that will perform all the file IO side
+       effects after performing validation so that if materializing any
+       lockdir would fail then no side effect takes place. *)
+    let summary, lock_dir =
+      Dune_pkg.Opam.solve_lock_dir ~repo_selection opam_file_map
+    in
+    Console.print_user_message
+      (Dune_pkg.Opam.Summary.selected_packages_message summary);
+    let write_disk_list =
+      List.map lock_dir_paths ~f:(fun lock_dir_path ->
+          Lock_dir.Write_disk.prepare ~lock_dir_path lock_dir)
+    in
+    (* All the file IO side effects happen here: *)
+    List.iter write_disk_list ~f:Lock_dir.Write_disk.commit
 
   let info =
     let doc = "Create a lockfile" in

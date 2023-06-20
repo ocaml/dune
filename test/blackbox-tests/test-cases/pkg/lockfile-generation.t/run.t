@@ -25,11 +25,13 @@ Print the name and contents of each file in the lock directory separated by
   
   (version 0.4.0)
   
+  
   ---
   
   dune.lock/baz.pkg:
   
   (version 0.1.0)
+  
   
   ---
   
@@ -38,11 +40,13 @@ Print the name and contents of each file in the lock directory separated by
   (version 0.0.1)
   (deps baz bar)
   
+  
   ---
   
   dune.lock/lock.dune:
   
   (lang package 0.1)
+  
   
   ---
   

@@ -30,3 +30,9 @@ let () =
 {2 API documentation}
 
 The entry point for this library is {!Dune_glob.V1}.
+
+{2 Note on stability}
+
+This library is fairly stable, but does not come with strong stability
+guarantees. In particular, while the module name suggests the API is versioned,
+it is not in the strict sense.

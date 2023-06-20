@@ -40,66 +40,91 @@ type t =
   ; pipe_buf : Bytes.t
   }
 
-and 'a task =
-  { job : unit -> 'a
+and ('a, 'label) task =
+  { job : 'label -> Unix.file_descr -> 'a
   ; ivar : ('a, [ `Cancelled | `Exn of exn ]) result Fiber.Ivar.t
   ; select : t
   ; what : [ `Read | `Write ]
-  ; fd : Unix.file_descr
+  ; fds : Unix.file_descr list
   ; id : Task_id.t
+  ; mutable status : [ `Filled | `Waiting ]
   }
 
-and packed_task = Task : _ task -> packed_task
+and packed_task = Task : (_, 'label) task * 'label -> packed_task
 
 let interrupt t =
   if not t.interrupting then (
     assert (Unix.single_write t.pipe_write byte 0 1 = 1);
     t.interrupting <- true)
 
+let filter_queue q ~f =
+  let new_q = Queue.create () in
+  Queue.iter q ~f:(fun x -> if f x then Queue.push new_q x);
+  new_q
+
 module Task = struct
-  type 'a t = 'a task
+  type 'a t = User_task : ('a, 'label) task -> 'a t
 
-  let await task = Fiber.Ivar.read task.ivar
+  let await (User_task task) = Fiber.Ivar.read task.ivar
 
-  let cancel t =
+  let cancel (User_task t) =
     let* () = Fiber.return () in
     Mutex.lock t.select.mutex;
     let+ () =
-      Fiber.Ivar.peek t.ivar >>= function
-      | Some _ -> Fiber.return ()
-      | None ->
-        let module Scheduler = (val t.select.scheduler) in
+      match t.status with
+      | `Filled -> Fiber.return ()
+      | `Waiting ->
         let table =
           match t.what with
           | `Read -> t.select.readers
           | `Write -> t.select.writers
         in
         let should_interrupt =
-          match Table.find table t.fd with
-          | None -> false
-          | Some q ->
-            let new_q = Queue.create () in
-            Queue.iter q ~f:(fun (Task t' as task) ->
-                if Task_id.equal t.id t'.id then Scheduler.cancel_job_started ()
-                else Queue.push new_q task);
-            if Queue.is_empty new_q then (
-              Table.remove table t.fd;
-              Queue.is_empty q)
-            else (
-              Table.add_exn table t.fd new_q;
-              Queue.length new_q <> Queue.length q)
+          let should_interrupt = ref false in
+          List.iter t.fds ~f:(fun fd ->
+              match Table.find table fd with
+              | None -> ()
+              | Some q ->
+                let new_q =
+                  filter_queue q ~f:(fun (Task (t', _)) ->
+                      not (Task_id.equal t.id t'.id))
+                in
+                should_interrupt :=
+                  !should_interrupt || Queue.length new_q <> Queue.length q;
+                if Queue.is_empty new_q then Table.remove table fd
+                else Table.set table fd new_q);
+          !should_interrupt
         in
         if should_interrupt then interrupt t.select;
+        let module Scheduler = (val t.select.scheduler) in
+        t.status <- `Filled;
+        Scheduler.cancel_job_started ();
         Fiber.Ivar.fill t.ivar (Error `Cancelled)
     in
     Mutex.unlock t.select.mutex
 end
 
-let drain_until_ready queue acc =
+let cleanup_other_tasks waiters task =
+  List.iter task.fds ~f:(fun fd ->
+      match Table.find waiters fd with
+      | None ->
+        (* XXX this should be impossible? *)
+        ()
+      | Some q ->
+        let new_q =
+          filter_queue q ~f:(fun (Task (t, _)) ->
+              not (Task_id.equal t.id task.id))
+        in
+        if Queue.is_empty new_q then Table.remove waiters fd
+        else Table.set waiters fd new_q)
+
+let drain_until_ready fd waiters queue acc =
   match Queue.pop queue with
   | None -> acc
-  | Some (Task task) ->
-    let result = try Ok (task.job ()) with exn -> Error (`Exn exn) in
+  | Some (Task (task, label)) ->
+    let result = try Ok (task.job label fd) with exn -> Error (`Exn exn) in
+    task.status <- `Filled;
+    cleanup_other_tasks waiters task;
     Fiber.Fill (task.ivar, result) :: acc
 
 let make_fills fds pipe_fd waiters init =
@@ -110,7 +135,7 @@ let make_fills fds pipe_fd waiters init =
           match Table.find waiters fd with
           | None -> acc
           | Some w ->
-            let acc = drain_until_ready w acc in
+            let acc = drain_until_ready fd waiters w acc in
             if Queue.is_empty w then Table.remove waiters fd;
             acc
         in
@@ -124,7 +149,7 @@ let drain_pipe pipe buf =
 let rec drain_cancel q acc =
   match Queue.pop q with
   | None -> acc
-  | Some (Task task) ->
+  | Some (Task (task, _)) ->
     drain_cancel q (Fiber.Fill (task.ivar, Error `Cancelled) :: acc)
 
 let maybe_cancel table fd acc =
@@ -230,7 +255,7 @@ let cancel_fd scheduler table fd =
     Table.remove table fd;
     let module Scheduler = (val scheduler : Scheduler) in
     Queue.to_list tasks
-    |> Fiber.parallel_iter ~f:(fun (Task t) ->
+    |> Fiber.parallel_iter ~f:(fun (Task (t, _)) ->
            Scheduler.cancel_job_started ();
            Fiber.Ivar.fill t.ivar (Error `Cancelled))
 
@@ -248,28 +273,47 @@ let close fd =
   interrupt t;
   Mutex.unlock t.mutex
 
-let ready fd what ~f:job =
+let ready_one (type a label) (fds : (label * Unix.file_descr) list) what ~f:job
+    : a Task.t Fiber.t =
   with_ @@ fun t ->
   let module Scheduler = (val t.scheduler) in
   Scheduler.register_job_started ();
   let ivar = Fiber.Ivar.create () in
-  let q, interrupt_needed =
+  let queues, skip_interrupt =
     let table =
       match what with
       | `Read -> t.readers
       | `Write -> t.writers
     in
-    match Table.find table fd with
-    | Some q -> (q, false)
-    | None ->
-      let q = Queue.create () in
-      Table.add_exn table fd q;
-      (q, true)
+    let skip_interrupt = ref false in
+    ( List.map fds ~f:(fun (label, fd) ->
+          let q =
+            match Table.find table fd with
+            | Some q -> q
+            | None ->
+              let q = Queue.create () in
+              Table.add_exn table fd q;
+              skip_interrupt := false;
+              q
+          in
+          (label, q))
+    , !skip_interrupt )
   in
-  let task = { ivar; select = t; job; what; id = Task_id.gen (); fd } in
-  Queue.push q (Task task);
-  if interrupt_needed then interrupt t;
-  task
+  let task =
+    { ivar
+    ; select = t
+    ; job
+    ; what
+    ; id = Task_id.gen ()
+    ; fds = List.map fds ~f:snd
+    ; status = `Waiting
+    }
+  in
+  List.iter queues ~f:(fun (label, q) -> Queue.push q (Task (task, label)));
+  if not skip_interrupt then interrupt t;
+  Task.User_task task
+
+let ready fd what ~f:job = ready_one [ ((), fd) ] what ~f:(fun () _fd -> job ())
 
 let rec with_retry f fd =
   match f () with

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687284441300,
+  "lastUpdate": 1687284861658,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -47616,6 +47616,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.17342046904",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "af164ac09bddbad3101431b0c9bd6f9b1d2f1bab",
+          "message": "feature(pkg): Arguments to specify contexts to `dune pkg lock` (#7970)\n\nBuild contexts can specify custom lockdir paths. This commit adds an\r\noption --context when generating lockfiles to choose which build context\r\nto create the lockdir for, and a flag --all-contexts which generates\r\nlockdirs for all build contexts.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-06-20T10:43:30-07:00",
+          "tree_id": "a187737842130e6fee9949f2c19f1c133f48f068",
+          "url": "https://github.com/ocaml/dune/commit/af164ac09bddbad3101431b0c9bd6f9b1d2f1bab"
+        },
+        "date": 1687284860517,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "83.05795362921334",
             "unit": "seconds"
           }
         ]

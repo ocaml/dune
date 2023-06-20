@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687294697542,
+  "lastUpdate": 1687295080269,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -47790,6 +47790,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6093689616866669",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5c047d4ed5f4ccc797cf0cbd54f762fe69eec1dc",
+          "message": "refactor(dap): hide the implementation of dynamic dependencies (#8006)\n\nThe representation of dynamic dependencies as they're implemented by DAP\r\nis an implementation detail that the engine shouldn't be concerned with.\r\n\r\nInstead, we reuse the standard representation of dependencies.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-20T13:35:53-07:00",
+          "tree_id": "b3d2edfc0394d10113b7b5e0ca593bceb20e0bbc",
+          "url": "https://github.com/ocaml/dune/commit/5c047d4ed5f4ccc797cf0cbd54f762fe69eec1dc"
+        },
+        "date": 1687295079673,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "75.6554311668",
             "unit": "seconds"
           }
         ]

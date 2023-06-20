@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687287024103,
+  "lastUpdate": 1687287034785,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -47732,6 +47732,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "63.28817339041999",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cd153316228fc9c1c3e1dfc2d9ff15b2a8eb1c4e",
+          "message": "feature(pkg): extra sources (#8015)\n\nOpam allows for additional file sources to be specified. We add support\r\nfor these.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-20T11:26:02-07:00",
+          "tree_id": "649f9a8271191d67d1b48c93b679c8dfa1a648fb",
+          "url": "https://github.com/ocaml/dune/commit/cd153316228fc9c1c3e1dfc2d9ff15b2a8eb1c4e"
+        },
+        "date": 1687287033847,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6093689616866669",
             "unit": "seconds"
           }
         ]

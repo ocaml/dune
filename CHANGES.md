@@ -57,6 +57,9 @@ Unreleased
 - Add `(build_if)` to the `(test)` stanza. When it evaluates to false, the
   executable is not built. (#7899, fixes #6938, @emillon)
 
+- Add necessary parentheses in generated opam constraints (#7682, fixes #3431,
+  @Lucccyo)
+
 3.8.2 (2023-06-16)
 ------------------
 

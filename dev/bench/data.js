@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687339501650,
+  "lastUpdate": 1687339513048,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -47906,6 +47906,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "68.29666152585332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "78226952+Lucccyo@users.noreply.github.com",
+            "name": "Charlène_Gros",
+            "username": "Lucccyo"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "85543ec91035ad1b9ece2f3beb4169ccfa80723d",
+          "message": "fix(opam): honor precedence in constraints (#7682)\n\nFixes #3431\r\n\r\nThe printer in opam-file-format does not insert parentheses on its own,\r\nbut it is possible to use the Group constructor with a singleton to\r\nforce insertion of parentheses.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\nCo-authored-by: Charlène Gros <charlene@tarides.com>",
+          "timestamp": "2023-06-21T10:55:27+02:00",
+          "tree_id": "aa544b00c79b2829a7195a79afd9b0c6b2d26b79",
+          "url": "https://github.com/ocaml/dune/commit/85543ec91035ad1b9ece2f3beb4169ccfa80723d"
+        },
+        "date": 1687339512330,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8123344239666668",
             "unit": "seconds"
           }
         ]

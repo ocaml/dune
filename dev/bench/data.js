@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687374262047,
+  "lastUpdate": 1687374681968,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -21052,6 +21052,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.16233445930666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b14b5602e7f23da473d12f022df0233ea383286c",
+          "message": "coverage: fail if dependencies are not being installed (#7976)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-21T11:51:40-07:00",
+          "tree_id": "32e7fea88910b2f4d7fcb736718b81a34ddfa933",
+          "url": "https://github.com/ocaml/dune/commit/b14b5602e7f23da473d12f022df0233ea383286c"
+        },
+        "date": 1687374681255,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.923411084306665",
             "unit": "seconds"
           }
         ]

@@ -152,7 +152,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - macos-latest
+          # - macos-latest # disabled for now, see #8019
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687360848413,
+  "lastUpdate": 1687373207854,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -60696,6 +60696,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.764830209326664",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b224c9663ef7c12ebff146af7aef6a9decba8642",
+          "message": "ci: bump nix action to v22 (#8024)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-21T11:34:23-07:00",
+          "tree_id": "2bde8decedbe74c46abb176d3cb0b7a83fb6d40b",
+          "url": "https://github.com/ocaml/dune/commit/b224c9663ef7c12ebff146af7aef6a9decba8642"
+        },
+        "date": 1687373201836,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.051519061266664",
             "unit": "seconds"
           }
         ]

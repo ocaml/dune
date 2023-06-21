@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687345537439,
+  "lastUpdate": 1687345967371,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -20965,6 +20965,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.99994408012666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rafal@gwozdzinski.com",
+            "name": "Rafał Gwoździński",
+            "username": "3Rafal"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9cecc1f8a603cee5edb807a5df699eb5a7b1d631",
+          "message": "Validate top-module input (#8005)\n\nmake sure that filenames have extensions\r\n\r\nSigned-off-by: Rafal Gwozdzinski <rafal.gwozdzinski@gmail.com>",
+          "timestamp": "2023-06-21T11:52:14+01:00",
+          "tree_id": "8d894b65982afe8d5a94ce6dc8d408e6eb3f184d",
+          "url": "https://github.com/ocaml/dune/commit/9cecc1f8a603cee5edb807a5df699eb5a7b1d631"
+        },
+        "date": 1687345966656,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.60988318752",
             "unit": "seconds"
           }
         ]

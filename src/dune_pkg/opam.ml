@@ -299,13 +299,13 @@ let solve_package_list local_packages context =
   | Error e -> User_error.raise [ Pp.text (Solver.diagnostics e) ]
   | Ok packages -> Solver.packages_of_result packages
 
-let solve_lock_dir ~repo_selection local_packages =
+let solve_lock_dir ~repo_selection ~prefer_oldest local_packages =
   let is_local_package package =
     OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
   in
   Repo_selection.with_state repo_selection ~f:(fun repo_state ->
       let context =
-        Repo_state.create_context repo_state local_packages ~prefer_oldest:true
+        Repo_state.create_context repo_state local_packages ~prefer_oldest
       in
       let opam_packages_to_lock =
         solve_package_list local_packages context

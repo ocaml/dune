@@ -53,5 +53,6 @@ end
 
 val solve_lock_dir :
      repo_selection:Repo_selection.t
+  -> prefer_oldest:bool
   -> OpamFile.OPAM.t OpamTypes.name_map
   -> Summary.t * Lock_dir.t

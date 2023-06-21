@@ -156,6 +156,13 @@ module Lock = struct
       Arg.(
         value & flag
         & info [ "all-contexts" ] ~doc:"Generate the lockdir for all contexts")
+    and+ prefer_oldest =
+      Arg.(
+        value & flag
+        & info [ "prefer-oldest" ]
+            ~doc:
+              "Use the oldest possible version of packages when solving \
+               dependencies")
     in
     let common = Common.forbid_builds common in
     let config = Common.init common in
@@ -173,7 +180,7 @@ module Lock = struct
        effects after performing validation so that if materializing any
        lockdir would fail then no side effect takes place. *)
     let summary, lock_dir =
-      Dune_pkg.Opam.solve_lock_dir ~repo_selection opam_file_map
+      Dune_pkg.Opam.solve_lock_dir ~repo_selection ~prefer_oldest opam_file_map
     in
     Console.print_user_message
       (Dune_pkg.Opam.Summary.selected_packages_message summary);

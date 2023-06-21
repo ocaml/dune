@@ -43,7 +43,7 @@ Test that we get an error if an opam context is specified.
 Generate the lockdir for the default context.
   $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository
   Selected the following packages:
-  bar.0.4.0
+  bar.0.5.0
   baz.0.1.0
   foo.0.0.1
 
@@ -59,7 +59,7 @@ Only foo.lock (the default context's lockdir) was generated.
 Generate the lockdir with the default context explicitly specified.
   $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --context=default
   Selected the following packages:
-  bar.0.4.0
+  bar.0.5.0
   baz.0.1.0
   foo.0.0.1
 
@@ -75,7 +75,7 @@ Again, only foo.lock (the default context's lockdir) was generated.
 Generate the lockdir for the non-default context.
   $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --context=foo
   Selected the following packages:
-  bar.0.4.0
+  bar.0.5.0
   baz.0.1.0
   foo.0.0.1
 
@@ -91,7 +91,7 @@ Now only bar.lock was generated.
 Generate the lockdir for all (non-opam) contexts.
   $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --all-contexts
   Selected the following packages:
-  bar.0.4.0
+  bar.0.5.0
   baz.0.1.0
   foo.0.0.1
 

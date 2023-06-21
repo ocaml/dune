@@ -14,7 +14,7 @@ Generate a `dune-project` file.
 Run the solver and generate a lock directory.
   $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository
   Selected the following packages:
-  bar.0.4.0
+  bar.0.5.0
   baz.0.1.0
   foo.0.0.1
 
@@ -23,7 +23,7 @@ Print the name and contents of each file in the lock directory separated by
   $ find dune.lock -type f | sort | xargs -I{} sh -c "printf '{}:\n\n'; cat {}; printf '\n\n---\n\n'"
   dune.lock/bar.pkg:
   
-  (version 0.4.0)
+  (version 0.5.0)
   
   
   ---
@@ -50,6 +50,13 @@ Print the name and contents of each file in the lock directory separated by
   
   ---
   
+
+Run the solver again passing --prefer-oldest
+  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --prefer-oldest
+  Selected the following packages:
+  bar.0.4.0
+  baz.0.1.0
+  foo.0.0.1
 
 Regenerate the `dune-project` file introducing an unsatisfiable constraint.
   $ cat >dune-project <<EOF

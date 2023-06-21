@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687360465931,
+  "lastUpdate": 1687360835839,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -48051,6 +48051,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.9552568503400003",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "distinct": true,
+          "id": "a873b081ede132e2876285c8896c11ce440b1e4a",
+          "message": "fix(melange): don't crash when transitive PPX isn't found\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-06-21T07:54:25-07:00",
+          "tree_id": "51717c8a266200b5cccfa3094f914cc3d87beabc",
+          "url": "https://github.com/ocaml/dune/commit/a873b081ede132e2876285c8896c11ce440b1e4a"
+        },
+        "date": 1687360835113,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "74.24593707232",
             "unit": "seconds"
           }
         ]

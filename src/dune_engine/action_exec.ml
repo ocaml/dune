@@ -65,7 +65,7 @@ module Dynamic_dep = struct
 end
 
 module Exec_result = struct
-  type t = { dynamic_deps_stages : (Dynamic_dep.Set.t * Dep.Facts.t) List.t }
+  type t = { dynamic_deps_stages : (Dep.Set.t * Dep.Facts.t) list }
 end
 
 type done_or_more_deps =
@@ -540,9 +540,8 @@ let exec_until_all_deps_ready ~display ~ectx ~eenv t =
     match result with
     | Done -> Fiber.return stages
     | Need_more_deps (relative_deps, deps_to_build) ->
-      let* fact_map =
-        ectx.build_deps (Dynamic_dep.Set.to_dep_set deps_to_build)
-      in
+      let deps_to_build = Dynamic_dep.Set.to_dep_set deps_to_build in
+      let* fact_map = ectx.build_deps deps_to_build in
       let stages = (deps_to_build, fact_map) :: stages in
       let eenv =
         { eenv with

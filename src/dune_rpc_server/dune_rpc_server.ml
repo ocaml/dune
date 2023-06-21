@@ -660,7 +660,7 @@ module Make (S : sig
 
   val close : t -> unit Fiber.t
 
-  val write : t -> Sexp.t list -> unit Fiber.t
+  val write : t -> Sexp.t list -> (unit, [ `Closed ]) result Fiber.t
 
   val read : t -> Sexp.t option Fiber.t
 end) =
@@ -672,8 +672,11 @@ struct
         let session =
           let send = function
             | None -> S.close session
-            | Some packets ->
+            | Some packets -> (
               List.map packets ~f:(Conv.to_sexp Packet.sexp) |> S.write session
+              >>| function
+              | Ok () -> ()
+              | Error `Closed -> raise Dune_util.Report_error.Already_reported)
           in
           let queries =
             create_sequence

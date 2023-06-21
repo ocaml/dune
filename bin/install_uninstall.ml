@@ -45,9 +45,13 @@ let get_dirs context ~prefix_from_command_line ~from_command_line =
     match v with
     | Some v -> v
     | None ->
+      (* We suggest that the user sets --prefix first rather than the specific
+         missing option, since this is the most common case. *)
       User_error.raise
         [ Pp.textf "The %s installation directory is unknown." name ]
-        ~hints:[ Pp.textf "It could be specified with --%s" name ]
+        ~hints:
+          [ Pp.textf "It can be specified with --prefix or by setting --%s" name
+          ]
   in
   { Roots.lib_root = must_be_defined "libdir" roots.lib_root
   ; libexec_root = must_be_defined "libexecdir" roots.libexec_root

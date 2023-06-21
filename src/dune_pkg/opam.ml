@@ -355,6 +355,7 @@ let opam_package_to_lock_file_pkg ~repo_state ~local_packages opam_package =
     ; version
     ; dev
     ; source = None
+    ; extra_sources = []
     }
   in
   let opam_file =

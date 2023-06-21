@@ -144,7 +144,7 @@ module Make (S : sig
   val close : t -> unit Fiber.t
 
   (** [write t x] writes the s-expression *)
-  val write : t -> Sexp.t list -> unit Fiber.t
+  val write : t -> Sexp.t list -> (unit, [ `Closed ]) result Fiber.t
 
   (** [read t] attempts to read from [t]. If an s-expression is read, it is
       returned as [Some sexp], otherwise [None] is returned and the session is

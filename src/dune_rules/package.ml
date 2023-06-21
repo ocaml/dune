@@ -250,25 +250,50 @@ module Dependency = struct
     <|> let+ name = Name.decode in
         { name; constraint_ = None }
 
-  let rec opam_constraint : Constraint.t -> OpamParserTypes.FullPos.value =
-    let open OpamParserTypes.FullPos in
-    function
-    | Bvar v -> Constraint.Var.to_opam v
-    | Uop (op, x) ->
-      nopos (Prefix_relop (Op.to_relop op, Constraint.Var.to_opam x))
-    | Bop (op, x, y) ->
-      nopos
-        (Relop
-           (Op.to_relop op, Constraint.Var.to_opam x, Constraint.Var.to_opam y))
-    | And [ c ] -> opam_constraint c
-    | And (c :: cs) ->
-      nopos (Logop (nopos `And, opam_constraint c, opam_constraint (And cs)))
-    | Or [ c ] -> opam_constraint c
-    | Or (c :: cs) ->
-      nopos (Logop (nopos `Or, opam_constraint c, opam_constraint (And cs)))
-    | And [] | Or [] ->
+  type context =
+    | Root
+    | Ctx_and
+    | Ctx_or
+
+  (* The printer in opam-file-format does not insert parentheses on its own,
+     but it is possible to use the [Group] constructor with a singleton to
+     force insertion of parentheses. *)
+  let group e = nopos (Group (nopos [ e ]) : OpamParserTypes.FullPos.value_kind)
+
+  let group_if b e = if b then group e else e
+
+  let op_list op = function
+    | [] ->
       User_error.raise
         [ Pp.textf "logical operations with no arguments are not supported" ]
+    | v :: vs ->
+      List.fold_left ~init:v vs ~f:(fun a b ->
+          nopos (OpamParserTypes.FullPos.Logop (nopos op, a, b)))
+
+  let opam_constraint t : OpamParserTypes.FullPos.value =
+    let open OpamParserTypes.FullPos in
+    let rec opam_constraint context = function
+      | Constraint.Bvar v -> Constraint.Var.to_opam v
+      | Uop (op, x) ->
+        nopos (Prefix_relop (Op.to_relop op, Constraint.Var.to_opam x))
+      | Bop (op, x, y) ->
+        nopos
+          (Relop
+             (Op.to_relop op, Constraint.Var.to_opam x, Constraint.Var.to_opam y))
+      | And cs -> logical_op `And cs ~inner_ctx:Ctx_and ~group_needed:false
+      | Or cs ->
+        let group_needed =
+          match context with
+          | Root -> false
+          | Ctx_and -> true
+          | Ctx_or -> false
+        in
+        logical_op `Or cs ~inner_ctx:Ctx_or ~group_needed
+    and logical_op op cs ~inner_ctx ~group_needed =
+      List.map cs ~f:(opam_constraint inner_ctx)
+      |> op_list op |> group_if group_needed
+    in
+    opam_constraint Root t
 
   let opam_depend { name; constraint_ } =
     let constraint_ = Option.map ~f:opam_constraint constraint_ in

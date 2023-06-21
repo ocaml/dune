@@ -5,7 +5,7 @@ Test missing entries in the .install file
   > (lang package 0.1)
   > EOF
   $ lockfile() {
-  > cat >dune.lock/test <<EOF
+  > cat >dune.lock/test.pkg <<EOF
   > (build
   >  (system "echo 'lib: [ \"$1\" ]' > test.install"))
   > EOF

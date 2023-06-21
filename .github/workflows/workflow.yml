@@ -1,9 +1,11 @@
 name: CI
 
 on:
-  - push
-  - pull_request
-  - workflow_dispatch
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: "${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
@@ -33,9 +35,6 @@ jobs:
           # OCaml trunk:
           - ocaml-compiler: ocaml-variants.5.1.0+trunk
             os: ubuntu-latest
-            skip_test: true
-          - ocaml-compiler: ocaml-variants.5.1.0+trunk
-            os: macos-latest
             skip_test: true
           # OCaml 5:
           - ocaml-compiler: 5.0.x

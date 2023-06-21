@@ -17,7 +17,7 @@ let all : _ Cmdliner.Cmd.t list =
     ; Print_rules.command
     ; Utop.command
     ; Promotion.promote
-    ; Printenv.command
+    ; command_alias Printenv.command Printenv.term "printenv"
     ; Help.command
     ; Format_dune_file.command
     ; Upgrade.command
@@ -32,6 +32,7 @@ let all : _ Cmdliner.Cmd.t list =
     [ Ocaml_cmd.group
     ; Coq.group
     ; Describe.group
+    ; Describe.Show.group
     ; Rpc.group
     ; Internal.group
     ; Init.group

@@ -17,7 +17,7 @@ TODO: versioning will be added once this feature is stable
   $ cat >foo.lock/lock.dune <<EOF
   > (lang package 0.1)
   > EOF
-  $ cat >foo.lock/test <<EOF
+  $ cat >foo.lock/test.pkg <<EOF
   > (build
   >  (system "echo building from %{context_name}"))
   > EOF

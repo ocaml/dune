@@ -2,12 +2,14 @@ open Import
 open Dune_lang
 
 module Source = struct
+  type fetch =
+    { url : Loc.t * string
+    ; checksum : (Loc.t * Checksum.t) option
+    }
+
   type t =
     | External_copy of Loc.t * Path.External.t
-    | Fetch of
-        { url : Loc.t * string
-        ; checksum : (Loc.t * Checksum.t) option
-        }
+    | Fetch of fetch
 
   let remove_locs = function
     | External_copy (_loc, path) -> External_copy (Loc.none, path)
@@ -51,6 +53,20 @@ module Source = struct
     let checksum = "checksum"
   end
 
+  let decode_fetch =
+    let open Dune_sexp.Decoder in
+    let+ url = field Fields.url (located string)
+    and+ checksum = field_o Fields.checksum (located string) in
+    let checksum =
+      match checksum with
+      | None -> None
+      | Some ((loc, _) as checksum) -> (
+        match Checksum.of_string_user_error checksum with
+        | Ok checksum -> Some (loc, checksum)
+        | Error e -> raise (User_error.E e))
+    in
+    { url; checksum }
+
   let decode =
     let open Dune_lang.Decoder in
     sum
@@ -62,30 +78,22 @@ module Source = struct
                 Path.External.relative path source
               else Path.External.of_string source ) )
       ; ( Fields.fetch
-        , fields
-          @@ let+ url = field Fields.url (located string)
-             and+ checksum = field_o Fields.checksum (located string) in
-             let checksum =
-               match checksum with
-               | None -> None
-               | Some ((loc, _) as checksum) -> (
-                 match Checksum.of_string_user_error checksum with
-                 | Ok checksum -> Some (loc, checksum)
-                 | Error e -> raise (User_error.E e))
-             in
-             fun _ -> Fetch { url; checksum } )
+        , let+ fetch = fields decode_fetch in
+          fun _ -> Fetch fetch )
       ]
+
+  let encode_fetch_field { url = _loc, url; checksum } =
+    let open Dune_sexp.Encoder in
+    [ field Fields.url string url
+    ; field_o Fields.checksum Checksum.encode (Option.map checksum ~f:snd)
+    ]
 
   let encode t =
     let open Dune_lang.Encoder in
     match t with
     | External_copy (_loc, path) ->
       constr Fields.copy string (Path.External.to_string path)
-    | Fetch { url = _loc, url; checksum } ->
-      named_record_fields Fields.fetch
-        [ field Fields.url string url
-        ; field_o Fields.checksum Checksum.encode (Option.map checksum ~f:snd)
-        ]
+    | Fetch fetch -> named_record_fields Fields.fetch (encode_fetch_field fetch)
 end
 
 module Pkg_info = struct
@@ -94,28 +102,40 @@ module Pkg_info = struct
     ; version : string
     ; dev : bool
     ; source : Source.t option
+    ; extra_sources : (Path.Local.t * Source.t) list
     }
 
-  let equal { name; version; dev; source }
+  let equal { name; version; dev; source; extra_sources }
       { name = other_name
       ; version = other_version
       ; dev = other_dev
       ; source = other_source
+      ; extra_sources = other_extra_sources
       } =
     Package_name.equal name other_name
     && String.equal version other_version
     && Bool.equal dev other_dev
     && Option.equal Source.equal source other_source
+    && List.equal
+         (Tuple.T2.equal Path.Local.equal Source.equal)
+         extra_sources other_extra_sources
 
   let remove_locs t =
-    { t with source = Option.map ~f:Source.remove_locs t.source }
+    { t with
+      source = Option.map ~f:Source.remove_locs t.source
+    ; extra_sources =
+        List.map t.extra_sources ~f:(fun (local, source) ->
+            (local, Source.remove_locs source))
+    }
 
-  let to_dyn { name; version; dev; source } =
+  let to_dyn { name; version; dev; source; extra_sources } =
     Dyn.record
       [ ("name", Package_name.to_dyn name)
       ; ("version", Dyn.string version)
       ; ("dev", Dyn.bool dev)
       ; ("source", Dyn.option Source.to_dyn source)
+      ; ( "extra_sources"
+        , Dyn.list (Dyn.pair Path.Local.to_dyn Source.to_dyn) extra_sources )
       ]
 end
 
@@ -177,6 +197,8 @@ module Pkg = struct
     let dev = "dev"
 
     let exported_env = "exported_env"
+
+    let extra_sources = "extra_sources"
   end
 
   let decode =
@@ -191,23 +213,37 @@ module Pkg = struct
        and+ exported_env =
          field Fields.exported_env ~default:[]
            (repeat Dune_lang.Action.Env_update.decode)
+       and+ extra_sources =
+         field Fields.extra_sources ~default:[]
+           (repeat
+              (pair (plain_string Path.Local.parse_string_exn) Source.decode))
        in
        fun ~lock_dir name ->
          let info =
-           let source =
-             Option.map source ~f:(fun f ->
-                 Path.source lock_dir |> Path.to_absolute_filename
-                 |> Path.External.of_string |> f)
+           let make_source f =
+             Path.source lock_dir |> Path.to_absolute_filename
+             |> Path.External.of_string |> f
            in
-           { Pkg_info.name; version; dev; source }
+           let source = Option.map source ~f:make_source in
+           let extra_sources =
+             List.map extra_sources ~f:(fun (path, source) ->
+                 (path, make_source source))
+           in
+           { Pkg_info.name; version; dev; source; extra_sources }
          in
          { build_command; deps; install_command; info; exported_env }
+
+  let encode_extra_source (local, source) =
+    List
+      [ Dune_sexp.atom_or_quoted_string (Path.Local.to_string local)
+      ; Source.encode source
+      ]
 
   let encode
       { build_command
       ; install_command
       ; deps
-      ; info = { Pkg_info.name = _; version; dev; source }
+      ; info = { Pkg_info.name = _; extra_sources; version; dev; source }
       ; exported_env
       } =
     let open Dune_lang.Encoder in
@@ -220,6 +256,7 @@ module Pkg = struct
       ; field_b Fields.dev dev
       ; field_l Fields.exported_env Dune_lang.Action.Env_update.encode
           exported_env
+      ; field_l Fields.extra_sources encode_extra_source extra_sources
       ]
 end
 
@@ -262,69 +299,93 @@ let encode_metadata t =
     ; Dune_lang.Syntax.Version.encode t.version
     ]
 
+module Package_filename = struct
+  type t = Filename.t
+
+  let file_extension = ".pkg"
+
+  let of_package_name package_name =
+    Package_name.to_string package_name ^ file_extension
+
+  let to_package_name package_filename =
+    if String.equal (Filename.extension package_filename) file_extension then
+      Ok (Filename.chop_extension package_filename |> Package_name.of_string)
+    else Error `Bad_extension
+end
+
 let file_contents_by_path t =
   (metadata, [ encode_metadata t ])
   :: (Package_name.Map.to_list t.packages
      |> List.map ~f:(fun (name, pkg) ->
-            (Package_name.to_string name, Pkg.encode pkg)))
+            (Package_filename.of_package_name name, Pkg.encode pkg)))
 
-(* Checks whether path refers to a valid lock directory and returns a value
-   indicating the status of the lock directory. [Ok _] values indicate that
-   it's safe to proceed with regenerating the lock directory. [Error _]
-   values indicate that it's unsafe to remove the existing directory and lock
-   directory regeneration should not proceed. *)
-let check_existing_lock_dir path =
-  match Path.exists path with
-  | false -> Ok `Non_existant
-  | true -> (
-    match Path.is_directory path with
-    | false -> Error `Not_directory
+module Write_disk = struct
+  (* Checks whether path refers to a valid lock directory and returns a value
+     indicating the status of the lock directory. [Ok _] values indicate that
+     it's safe to proceed with regenerating the lock directory. [Error _]
+     values indicate that it's unsafe to remove the existing directory and lock
+     directory regeneration should not proceed. *)
+  let check_existing_lock_dir path =
+    match Path.exists path with
+    | false -> Ok `Non_existant
     | true -> (
-      let metadata_path = Path.relative path metadata in
-      match
-        Path.exists metadata_path && not (Path.is_directory metadata_path)
-      with
-      | false -> Error `No_metadata_file
+      match Path.is_directory path with
+      | false -> Error `Not_directory
       | true -> (
+        let metadata_path = Path.relative path metadata in
         match
-          Metadata.load metadata_path
-            ~f:(Fun.const (Dune_lang.Decoder.return ()))
+          Path.exists metadata_path && not (Path.is_directory metadata_path)
         with
-        | Ok () -> Ok `Is_existing_lock_dir
-        | Error exn -> Error (`Failed_to_parse_metadata exn))))
+        | false -> Error `No_metadata_file
+        | true -> (
+          match
+            Metadata.load metadata_path
+              ~f:(Fun.const (Dune_lang.Decoder.return ()))
+          with
+          | Ok () -> Ok `Is_existing_lock_dir
+          | Error exn -> Error (`Failed_to_parse_metadata exn))))
 
-(* Removes the exitsing lock directory at the specified path if it exists and
-   is a valid lock directory *)
-let safely_remove_lock_dir_if_exists path =
-  match check_existing_lock_dir path with
-  | Ok `Non_existant -> ()
-  | Ok `Is_existing_lock_dir -> Path.rm_rf path
-  | Error e ->
-    let error_reason_pp =
-      match e with
-      | `Not_directory -> Pp.text "Specified lock dir path is not a directory"
-      | `No_metadata_file ->
-        Pp.textf "Specified lock dir lacks metadata file (%s)" metadata
-      | `Failed_to_parse_metadata exn -> Exn.pp exn
+  (* Removes the exitsing lock directory at the specified path if it exists and
+     is a valid lock directory. Checks the validity of the existing lockdir (if
+     any) and raises if it's invalid before constructing the returned thunk, so
+     validation can happen separately from executing the side effect that removes
+     the directory. *)
+  let safely_remove_lock_dir_if_exists_thunk path =
+    match check_existing_lock_dir path with
+    | Ok `Non_existant -> Fun.const ()
+    | Ok `Is_existing_lock_dir -> fun () -> Path.rm_rf path
+    | Error e ->
+      let error_reason_pp =
+        match e with
+        | `Not_directory -> Pp.text "Specified lock dir path is not a directory"
+        | `No_metadata_file ->
+          Pp.textf "Specified lock dir lacks metadata file (%s)" metadata
+        | `Failed_to_parse_metadata exn -> Exn.pp exn
+      in
+      User_error.raise
+        [ Pp.textf "Refusing to regenerate lock directory %s"
+            (Path.to_string_maybe_quoted path)
+        ; error_reason_pp
+        ]
+
+  type t = unit -> unit
+
+  let prepare ~lock_dir_path lock_dir =
+    let lock_dir_path = Path.source lock_dir_path in
+    let remove_dir_if_exists =
+      safely_remove_lock_dir_if_exists_thunk lock_dir_path
     in
-    User_error.raise
-      [ Pp.textf "Refusing to regenerate lock directory %s"
-          (Path.to_string_maybe_quoted path)
-      ; error_reason_pp
-      ]
+    fun () ->
+      remove_dir_if_exists ();
+      Path.mkdir_p lock_dir_path;
+      file_contents_by_path lock_dir
+      |> List.iter ~f:(fun (path_within_lock_dir, contents) ->
+             let path = Path.relative lock_dir_path path_within_lock_dir in
+             Option.iter (Path.parent path) ~f:Path.mkdir_p;
+             List.map contents ~f:Dune_lang.to_string |> Io.write_lines path)
 
-let write_disk ~lock_dir_path t =
-  let lock_dir_path = Path.source lock_dir_path in
-  let () = safely_remove_lock_dir_if_exists lock_dir_path in
-  Path.mkdir_p lock_dir_path;
-  file_contents_by_path t
-  |> List.iter ~f:(fun (path_within_lock_dir, contents) ->
-         let path = Path.relative lock_dir_path path_within_lock_dir in
-         Option.iter (Path.parent path) ~f:Path.mkdir_p;
-         let contents_string =
-           List.map contents ~f:Dune_lang.to_string |> String.concat ~sep:"\n"
-         in
-         Io.write_file path contents_string)
+  let commit t = t ()
+end
 
 let load_metadata_version source_path =
   let open Or_exn.O in
@@ -352,7 +413,7 @@ let load_pkg ~parser_context ~lock_dir_path package_name =
     Result.try_with (fun () ->
         let source_path =
           Path.Source.relative lock_dir_path
-            (Package_name.to_string package_name)
+            (Package_filename.of_package_name package_name)
         in
         let pkg_string = Io.read_file (Path.source source_path) in
         let ast =
@@ -387,12 +448,12 @@ let read_disk ~lock_dir_path =
     Sys.readdir (Path.Source.to_string lock_dir_path)
     |> Array.to_list
     |> List.filter_map ~f:(fun filename ->
-           if Filename.equal filename metadata then None
-           else
+           match Package_filename.to_package_name filename with
+           | Error `Bad_extension -> None
+           | Ok package_name ->
              let package_path = Path.Source.relative lock_dir_path filename in
              if Path.is_directory (Path.source package_path) then None
              else
-               let package_name = Package_name.of_string filename in
                Some
                  ( load_pkg ~parser_context ~lock_dir_path package_name
                  >>| fun pkg -> (package_name, pkg) ))

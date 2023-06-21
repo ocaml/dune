@@ -4,12 +4,14 @@ open Import
 open Dune_lang
 
 module Source : sig
+  type fetch =
+    { url : Loc.t * string
+    ; checksum : (Loc.t * Checksum.t) option
+    }
+
   type t =
     | External_copy of Loc.t * Path.External.t
-    | Fetch of
-        { url : Loc.t * string
-        ; checksum : (Loc.t * Checksum.t) option
-        }
+    | Fetch of fetch
 end
 
 module Pkg_info : sig
@@ -18,6 +20,7 @@ module Pkg_info : sig
     ; version : string
     ; dev : bool
     ; source : Source.t option
+    ; extra_sources : (Path.Local.t * Source.t) list
     }
 end
 
@@ -53,6 +56,22 @@ val metadata : Filename.t
 
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit
 
-val write_disk : lock_dir_path:Path.Source.t -> t -> unit
+module Package_filename : sig
+  type t = Filename.t
+
+  val of_package_name : Package_name.t -> t
+
+  val to_package_name : t -> (Package_name.t, [ `Bad_extension ]) result
+end
+
+module Write_disk : sig
+  type lock_dir := t
+
+  type t
+
+  val prepare : lock_dir_path:Path.Source.t -> lock_dir -> t
+
+  val commit : t -> unit
+end
 
 val read_disk : lock_dir_path:Path.Source.t -> t Or_exn.t

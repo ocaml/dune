@@ -4,7 +4,6 @@ open Dune_pkg
 
 (* TODO
    - substitutions
-   - extra-files
    - post dependencies
    - build dependencies
    - cross compilation
@@ -89,9 +88,9 @@ module Lock_dir = struct
           Fs_cache.Dir_contents.to_list content
           |> List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
                  match kind with
-                 | S_REG when name <> metadata ->
-                   let name = Package.Name.of_string name in
-                   Some name
+                 | S_REG ->
+                   Lock_dir.Package_filename.to_package_name name
+                   |> Result.to_option
                  | _ ->
                    (* TODO *)
                    None)
@@ -99,7 +98,8 @@ module Lock_dir = struct
                  let+ package =
                    let+ sexp =
                      let path =
-                       Package.Name.to_string name |> Path.Source.relative path
+                       Lock_dir.Package_filename.of_package_name name
+                       |> Path.Source.relative path
                      in
                      Fs_memo.with_lexbuf_from_file (In_source_dir path)
                        ~f:(Dune_sexp.Parser.parse ~mode:Many)
@@ -126,6 +126,7 @@ module Paths = struct
   type t =
     { source_dir : Path.Build.t
     ; target_dir : Path.Build.t
+    ; extra_sources : Path.Build.t
     ; name : Package.Name.t
     ; install_roots : Path.t Install.Roots.t Lazy.t
     ; install_paths : Install.Paths.t Lazy.t
@@ -139,9 +140,19 @@ module Paths = struct
   let of_root name ~root =
     let source_dir = Path.Build.relative root "source" in
     let target_dir = Path.Build.relative root "target" in
+    let extra_sources = Path.Build.relative root "extra_source" in
     let install_roots = lazy (install_roots ~target_dir) in
     let install_paths = lazy (install_paths (Lazy.force install_roots) name) in
-    { source_dir; target_dir; name; install_paths; install_roots }
+    { source_dir
+    ; target_dir
+    ; extra_sources
+    ; name
+    ; install_paths
+    ; install_roots
+    }
+
+  let extra_source t extra_source =
+    Path.Build.append_local t.extra_sources extra_source
 
   let make name (ctx : Context_name.t) =
     let build_dir = Context_name.build_dir ctx in
@@ -1166,6 +1177,30 @@ let gen_rules context_name (pkg : Pkg.t) =
       in
       (Dep.Set.of_files source_files, rules)
   in
+  let extra_source_deps, extra_copy_rules =
+    List.map pkg.info.extra_sources ~f:(fun (local, fetch) ->
+        let extra_source = Paths.extra_source pkg.paths local in
+        let rule =
+          match (fetch : Source.t) with
+          | External_copy (loc, src) ->
+            ( loc
+            , Action_builder.copy ~src:(Path.external_ src) ~dst:extra_source )
+          | Fetch { url = (loc, _) as url; checksum } ->
+            let rule =
+              Fetch.action ~url ~target_dir:pkg.paths.source_dir ~checksum
+              |> Action.Full.make |> Action_builder.With_targets.return
+              |> Action_builder.With_targets.add_directories
+                   ~directory_targets:[ pkg.paths.source_dir ]
+            in
+            (loc, rule)
+        in
+        (Path.build extra_source, rule))
+    |> List.unzip
+  in
+  let copy_rules = copy_rules @ extra_copy_rules in
+  let source_deps =
+    Dep.Set.union source_deps (Dep.Set.of_files extra_source_deps)
+  in
   let* () =
     Memo.parallel_iter copy_rules ~f:(fun (loc, copy) -> rule ~loc copy)
   in
@@ -1182,6 +1217,14 @@ let gen_rules context_name (pkg : Pkg.t) =
                 ~dst:pkg.paths.source_dir
               |> Action.Full.make |> Action_builder.With_targets.return
             ]
+        in
+        let copy_action =
+          copy_action
+          @ List.map pkg.info.extra_sources ~f:(fun (local, _) ->
+                let src = Path.build (Paths.extra_source pkg.paths local) in
+                let dst = Path.Build.append_local pkg.paths.source_dir local in
+                Action.copy src dst |> Action.Full.make
+                |> Action_builder.With_targets.return)
         in
         let* build_action =
           match Action_expander.build_command context_name pkg with

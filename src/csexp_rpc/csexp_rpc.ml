@@ -82,26 +82,26 @@ end
 let debug = Option.is_some (Env.get Env.initial "DUNE_RPC_DEBUG")
 
 module Session = struct
-  let fail = function
-    | `Cancelled -> raise Dune_util.Report_error.Already_reported
-    | `Exn exn -> raise exn
-
   module Id = Session_id
 
-  type state =
-    | Closed
-    | Open of
-        { out_buf : Io_buffer.t
-        ; in_buf : Io_buffer.t
-        ; fd : Unix.file_descr
-        ; mutable read_eof : bool
-        ; write_mutex : Fiber.Mutex.t
-        ; read_mutex : Fiber.Mutex.t
-        }
+  module State = struct
+    type t =
+      | Closed
+      | Open of
+          { out_buf : Io_buffer.t
+          ; in_buf : Io_buffer.t
+          ; fd : Unix.file_descr
+          ; mutable read_eof : bool
+          ; write_mutex : Fiber.Mutex.t
+          ; read_mutex : Fiber.Mutex.t
+          }
+  end
+
+  open State
 
   type t =
     { id : Id.t
-    ; mutable state : state
+    ; mutable state : State.t
     }
 
   let create fd =
@@ -126,10 +126,6 @@ module Session = struct
     | None -> "EOF"
     | Some csexp -> Dyn.to_string (Sexp.to_dyn csexp)
 
-  let string_of_packets = function
-    | None -> "EOF"
-    | Some sexps -> String.concat ~sep:" " (List.map ~f:Sexp.to_string sexps)
-
   let close t =
     let* () = Fiber.return () in
     match t.state with
@@ -143,96 +139,98 @@ module Session = struct
 
   let min_read = 8192
 
-  let read t =
-    let* () = Fiber.return () in
-    let debug res =
+  let read =
+    let debug id res =
       if debug then
         Log.info
-          [ Pp.verbatim
-              (sprintf "RPC (%d) <<\n%s" (Id.to_int t.id) (string_of_packet res))
+          [ Pp.verbatim (sprintf "RPC (%d) <<" (Id.to_int id))
+          ; Pp.seq (Pp.verbatim "<< ") (Pp.verbatim (string_of_packet res))
           ; Pp.text "<<"
           ]
     in
-    match t.state with
-    | Closed ->
-      debug None;
-      Fiber.return None
-    | Open ({ fd; in_buf; read_mutex; _ } as open_) ->
-      let lexer = Lexer.create () in
-      let buf = Buffer.create 16 in
-      let rec refill () =
-        if Io_buffer.length in_buf > 0 then Fiber.return (Ok `Continue)
-        else if open_.read_eof then Fiber.return (Ok `Eof)
-        else
-          let* task =
-            Async_io.ready fd `Read ~f:(fun () ->
-                let () = Io_buffer.maybe_resize_to_fit in_buf min_read in
-                let pos = Io_buffer.write_pos in_buf in
-                let len = Io_buffer.max_write_len in_buf in
-                match Unix.read fd (Io_buffer.bytes in_buf) pos len with
-                | exception
-                    Unix.Unix_error ((EAGAIN | EINTR | EWOULDBLOCK), _, _) ->
-                  `Refill
-                | 0 ->
-                  open_.read_eof <- true;
-                  `Eof
-                | len ->
-                  Io_buffer.commit_write in_buf ~len;
-                  `Continue)
-          in
-          Async_io.Task.await task >>= function
-          | Error (`Exn e) -> Fiber.return (Error e)
-          | Error `Cancelled | Ok `Eof -> Fiber.return @@ Ok `Eof
-          | Ok `Continue -> Fiber.return @@ Ok `Continue
-          | Ok `Refill -> refill ()
-      and read parser =
-        let* res = refill () in
-        match res with
-        | Error _ as e -> Fiber.return e
-        | Ok `Eof -> Fiber.return (Ok None)
-        | Ok `Continue -> (
-          let char = Io_buffer.read_char_exn in_buf in
-          let token = Lexer.feed lexer char in
-          match token with
-          | Atom n ->
-            Buffer.clear buf;
-            atom parser n
-          | (Lparen | Rparen | Await) as token -> (
-            let parser = Stack.add_token token parser in
-            match parser with
-            | Sexp (sexp, Empty) -> Fiber.return (Ok (Some sexp))
-            | parser -> read parser))
-      and atom parser n =
-        if n = 0 then
-          let atom = Buffer.contents buf in
-          match Stack.add_atom atom parser with
-          | Sexp (sexp, Empty) -> Fiber.return (Ok (Some sexp))
-          | parser -> read parser
-        else
-          refill () >>= function
+    fun t ->
+      let* () = Fiber.return () in
+      match t.state with
+      | Closed ->
+        debug t.id None;
+        Fiber.return None
+      | Open ({ fd; in_buf; read_mutex; _ } as open_) ->
+        let lexer = Lexer.create () in
+        let buf = Buffer.create 16 in
+        let rec refill () =
+          if Io_buffer.length in_buf > 0 then Fiber.return (Ok `Continue)
+          else if open_.read_eof then Fiber.return (Ok `Eof)
+          else
+            let* task =
+              Async_io.ready fd `Read ~f:(fun () ->
+                  let () = Io_buffer.maybe_resize_to_fit in_buf min_read in
+                  let pos = Io_buffer.write_pos in_buf in
+                  let len = Io_buffer.max_write_len in_buf in
+                  match Unix.read fd (Io_buffer.bytes in_buf) pos len with
+                  | exception
+                      Unix.Unix_error ((EAGAIN | EINTR | EWOULDBLOCK), _, _) ->
+                    `Refill
+                  | (exception Unix.Unix_error (ECONNRESET, _, _)) | 0 ->
+                    open_.read_eof <- true;
+                    `Eof
+                  | len ->
+                    Io_buffer.commit_write in_buf ~len;
+                    `Continue)
+            in
+            Async_io.Task.await task >>= function
+            | Error (`Exn e) -> Fiber.return (Error e)
+            | Error `Cancelled | Ok `Eof -> Fiber.return @@ Ok `Eof
+            | Ok `Continue -> Fiber.return @@ Ok `Continue
+            | Ok `Refill -> refill ()
+        and read parser =
+          let* res = refill () in
+          match res with
           | Error _ as e -> Fiber.return e
           | Ok `Eof -> Fiber.return (Ok None)
-          | Ok `Continue ->
-            let n' = Io_buffer.read_into_buffer in_buf buf ~max_len:n in
-            atom parser (n - n')
-      in
-      let+ res =
-        let* res =
-          Fiber.Mutex.with_lock read_mutex ~f:(fun () -> read Stack.Empty)
+          | Ok `Continue -> (
+            let char = Io_buffer.read_char_exn in_buf in
+            let token = Lexer.feed lexer char in
+            match token with
+            | Atom n ->
+              Buffer.clear buf;
+              atom parser n
+            | (Lparen | Rparen | Await) as token -> (
+              let parser = Stack.add_token token parser in
+              match parser with
+              | Sexp (sexp, Empty) -> Fiber.return (Ok (Some sexp))
+              | parser -> read parser))
+        and atom parser n =
+          if n = 0 then
+            let atom = Buffer.contents buf in
+            match Stack.add_atom atom parser with
+            | Sexp (sexp, Empty) -> Fiber.return (Ok (Some sexp))
+            | parser -> read parser
+          else
+            refill () >>= function
+            | Error _ as e -> Fiber.return e
+            | Ok `Eof -> Fiber.return (Ok None)
+            | Ok `Continue ->
+              let n' = Io_buffer.read_into_buffer in_buf buf ~max_len:n in
+              atom parser (n - n')
         in
-        match res with
-        | Error exn ->
-          Log.info
-            [ Pp.textf "Unable to read (%d)" (Id.to_int t.id); Exn.pp exn ];
-          let+ () = close t in
-          reraise exn
-        | Ok None ->
-          let+ () = close t in
-          None
-        | Ok (Some sexp) -> Fiber.return @@ Some sexp
-      in
-      debug res;
-      res
+        let+ res =
+          let* res =
+            Fiber.Mutex.with_lock read_mutex ~f:(fun () -> read Stack.Empty)
+          in
+          match res with
+          | Error exn ->
+            Log.info
+              [ Pp.textf "Unable to read (%d)" (Id.to_int t.id); Exn.pp exn ];
+            Dune_util.Report_error.report_exception exn;
+            let+ () = close t in
+            None
+          | Ok None ->
+            let+ () = close t in
+            None
+          | Ok (Some sexp) -> Fiber.return @@ Some sexp
+        in
+        debug t.id res;
+        res
 
   external send : Unix.file_descr -> Bytes.t -> int -> int -> int = "dune_send"
 
@@ -274,38 +272,44 @@ module Session = struct
     let* () = Fiber.return () in
     if debug then
       Log.info
-        [ Pp.verbatim
-            (sprintf "RPC (%id) >>\n%s" (Id.to_int t.id)
-               (string_of_packets sexps))
+        [ Pp.verbatim (sprintf "RPC (%id) >>" (Id.to_int t.id))
+        ; Pp.concat_map sexps ~f:(fun sexp ->
+              Pp.seq (Pp.verbatim ">> ") (Pp.verbatim (Sexp.to_string sexp)))
         ; Pp.text ">>"
         ];
     match t.state with
-    | Closed -> (
-      match sexps with
-      | None -> Fiber.return ()
-      | Some sexps ->
-        Code_error.raise "attempting to write to a closed channel"
-          [ ("sexp", Dyn.(list Sexp.to_dyn) sexps) ])
+    | Closed ->
+      Code_error.raise "attempting to write to a closed channel"
+        [ ("sexp", Dyn.(list Sexp.to_dyn) sexps) ]
     | Open { fd; out_buf; write_mutex; _ } -> (
-      match sexps with
-      | None ->
-        (try
-           (* TODO this hack is temporary until we get rid of dune rpc init *)
-           Unix.shutdown fd Unix.SHUTDOWN_ALL
-         with Unix.Unix_error (_, _, _) -> ());
-        close t
-      | Some sexps -> (
-        let* res =
-          Fiber.Mutex.with_lock write_mutex ~f:(fun () ->
-              Io_buffer.write_csexps out_buf sexps;
-              let flush_token = Io_buffer.flush_token out_buf in
-              csexp_write_loop fd out_buf flush_token)
-        in
-        match res with
-        | Ok () -> Fiber.return ()
-        | Error error ->
-          let+ () = close t in
-          fail error))
+      let* res =
+        Fiber.Mutex.with_lock write_mutex ~f:(fun () ->
+            Io_buffer.write_csexps out_buf sexps;
+            let flush_token = Io_buffer.flush_token out_buf in
+            csexp_write_loop fd out_buf flush_token)
+      in
+      match res with
+      | Ok () -> Fiber.return (Ok ())
+      | Error error ->
+        (match error with
+        | `Cancelled -> ()
+        | `Exn exn ->
+          Dune_console.print [ Pp.textf "Rpc Cilent disconnected"; Exn.pp exn ]);
+        let+ () = close t in
+        Error `Closed)
+
+  let close t =
+    let* () = Fiber.return () in
+    if debug then
+      Log.info [ Pp.verbatim (sprintf "RPC (%id) >> closing" (Id.to_int t.id)) ];
+    match t.state with
+    | Closed -> Fiber.return ()
+    | Open { fd; _ } ->
+      (try
+         (* TODO this hack is temporary until we get rid of dune rpc init *)
+         Unix.shutdown fd Unix.SHUTDOWN_ALL
+       with Unix.Unix_error (_, _, _) -> ());
+      close t
 end
 
 module Server = struct

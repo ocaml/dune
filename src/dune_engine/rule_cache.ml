@@ -14,7 +14,7 @@ module Workspace_local = struct
     module Entry = struct
       type t =
         { rule_digest : Digest.t
-        ; dynamic_deps_stages : (Action_exec.Dynamic_dep.Set.t * Digest.t) list
+        ; dynamic_deps_stages : (Dep.Set.t * Digest.t) list
         ; targets_digest : Digest.t
         }
 
@@ -23,7 +23,7 @@ module Workspace_local = struct
           [ ("rule_digest", Digest.to_dyn rule_digest)
           ; ( "dynamic_deps_stages"
             , Dyn.list
-                (Dyn.pair Action_exec.Dynamic_dep.Set.to_dyn Digest.to_dyn)
+                (Dyn.pair Dep.Set.to_dyn Digest.to_dyn)
                 dynamic_deps_stages )
           ; ("targets_digest", Digest.to_dyn targets_digest)
           ]
@@ -167,7 +167,6 @@ module Workspace_local = struct
         match stages with
         | [] -> Fiber.return (Result.Hit produced_targets)
         | (deps, old_digest) :: rest -> (
-          let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
           let open Fiber.O in
           let* deps = Memo.run (build_deps deps) in
           let new_digest = Dep.Facts.digest deps ~env in

@@ -1892,6 +1892,7 @@ module Tests = struct
     ; package : Package.t option
     ; deps : Dep_conf.t Bindings.t
     ; enabled_if : Blang.t
+    ; build_if : Blang.t
     ; action : Dune_lang.Action.t option
     }
 
@@ -1923,6 +1924,10 @@ module Tests = struct
               (Dune_lang.Syntax.since Stanza.syntax (2, 0)
               >>> repeat (located Lib_name.decode))
               ~default:[]
+          and+ build_if =
+            field "build_if" ~default:Blang.true_
+              (Syntax.since Stanza.syntax (3, 9)
+              >>> Enabled_if.decode_value ~allowed_vars:Any ())
           in
           { exes =
               { Executables.link_flags
@@ -1944,6 +1949,7 @@ module Tests = struct
           ; package
           ; deps
           ; enabled_if
+          ; build_if
           ; action
           }))
 

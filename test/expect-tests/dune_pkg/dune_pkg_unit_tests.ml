@@ -155,7 +155,7 @@ let%expect_test "downloading, without any checksum" =
 
 let lock_dir_encode_decode_round_trip_test ~lock_dir_path ~lock_dir =
   let lock_dir_path = Path.Source.of_string lock_dir_path in
-  Lock_dir.write_disk ~lock_dir_path lock_dir;
+  Lock_dir.Write_disk.(prepare ~lock_dir_path lock_dir |> commit);
   let lock_dir_round_tripped =
     Lock_dir.read_disk ~lock_dir_path |> Result.ok_exn
   in
@@ -185,7 +185,12 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
            ; install_command = None
            ; deps = []
            ; info =
-               { Lock_dir.Pkg_info.name; version; dev = false; source = None }
+               { Lock_dir.Pkg_info.name
+               ; version
+               ; dev = false
+               ; source = None
+               ; extra_sources = []
+               }
            ; exported_env = []
            } )
        in
@@ -205,7 +210,12 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
               ; install_command = None
               ; deps = []
               ; info =
-                  { name = "bar"; version = "0.2.0"; dev = false; source = None }
+                  { name = "bar"
+                  ; version = "0.2.0"
+                  ; dev = false
+                  ; source = None
+                  ; extra_sources = []
+                  }
               ; exported_env = []
               }
           ; "foo" :
@@ -213,7 +223,12 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
               ; install_command = None
               ; deps = []
               ; info =
-                  { name = "foo"; version = "0.1.0"; dev = false; source = None }
+                  { name = "foo"
+                  ; version = "0.1.0"
+                  ; dev = false
+                  ; source = None
+                  ; extra_sources = []
+                  }
               ; exported_env = []
               }
           }
@@ -226,6 +241,9 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
     ~lock_dir:
       (let pkg_a =
          let name = Package_name.of_string "a" in
+         let extra_source : Lock_dir.Source.t =
+           External_copy (Loc.none, Path.External.of_string "/tmp/a")
+         in
          ( name
          , { Lock_dir.Pkg.build_command =
                Some
@@ -244,9 +262,13 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                { Lock_dir.Pkg_info.name
                ; version = "0.1.0"
                ; dev = false
-               ; source =
-                   Some
-                     (External_copy (Loc.none, Path.External.of_string "/tmp/a"))
+               ; source = Some extra_source
+               ; extra_sources =
+                   [ (Path.Local.of_string "one", extra_source)
+                   ; ( Path.Local.of_string "two"
+                     , Fetch { url = (Loc.none, "randomurl"); checksum = None }
+                     )
+                   ]
                }
            ; exported_env =
                [ { Action.Env_update.op = Eq
@@ -277,6 +299,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                                   "sha256=adfc38f14c0188a2ad80d61451d011d27ab8839b717492d7ad42f7cb911c54c3"
                               )
                         })
+               ; extra_sources = []
                }
            ; exported_env = []
            } )
@@ -297,6 +320,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                         { url = (Loc.none, "https://github.com/foo/c")
                         ; checksum = None
                         })
+               ; extra_sources = []
                }
            ; exported_env = []
            } )
@@ -318,6 +342,10 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   ; version = "0.1.0"
                   ; dev = false
                   ; source = Some External_copy External "/tmp/a"
+                  ; extra_sources =
+                      [ ("one", External_copy External "/tmp/a")
+                      ; ("two", Fetch "randomurl",None)
+                      ]
                   }
               ; exported_env = [ { op = "="; var = "foo"; value = "bar" } ]
               }
@@ -334,6 +362,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                         Fetch
                           "https://github.com/foo/b",Some
                                                        "sha256=adfc38f14c0188a2ad80d61451d011d27ab8839b717492d7ad42f7cb911c54c3"
+                  ; extra_sources = []
                   }
               ; exported_env = []
               }
@@ -346,6 +375,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   ; version = "0.2"
                   ; dev = false
                   ; source = Some Fetch "https://github.com/foo/c",None
+                  ; extra_sources = []
                   }
               ; exported_env = []
               }

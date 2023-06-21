@@ -100,9 +100,12 @@ module Module = struct
     let ctx = Super_context.context sctx in
     let src = Path.Build.append_source ctx.build_dir mod_ in
     let dir = Path.Build.parent_exn src in
+    let filename = Path.Build.basename src in
+    if Filename.extension filename = "" then
+      User_error.raise [ Pp.text "file is missing an extension" ];
     let open Memo.O in
     let module_name =
-      let name = src |> Path.Build.basename |> Filename.chop_extension in
+      let name = Filename.chop_extension filename in
       match Dune_rules.Module_name.of_string_user_error (Loc.none, name) with
       | Ok s -> s
       | Error e -> raise (User_error.E e)

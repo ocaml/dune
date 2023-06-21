@@ -195,7 +195,8 @@ jobs:
       - name: Install deps on Unix
         run: |
           opam install . --deps-only
-          opam exec -- make coverage-deps dev-deps
+          opam exec -- make dev-deps
+          opam exec -- make coverage-deps
       - run: opam exec -- make test-coverage
         continue-on-error: true
         env:

@@ -223,7 +223,7 @@ formatting
      .. code:: dune
 
         (formatting
-         (enabled_for <languages>)
+         (enabled_for <languages>))
 
      The list of `<languages>` can be either ``dune`` (formatting of dune
      files) or a :term:`dialect` name.

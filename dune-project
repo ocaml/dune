@@ -1,4 +1,4 @@
-(lang dune 3.5)
+(lang dune 3.8)
 ;          ^^^
 ; When changing the version, don't forget to regenerate *.opam files
 ; by running [dune build].
@@ -7,6 +7,9 @@
 (generate_opam_files true)
 
 (accept_alternative_dune_file_name)
+
+; Generate .opam files in opam/
+(opam_file_location inside_opam_directory)
 
 (strict_package_deps false)
 
@@ -24,7 +27,7 @@
 (package
  (name dune)
  (synopsis "Fast, portable, and opinionated build system")
- ; The "depends" and "build" field are written in dune.opam.template
+ ; The "depends" and "build" field are written in opam/dune.opam.template
  (conflicts
   (merlin (< 3.4.0))
   (ocaml-lsp-server (< 1.3.0))

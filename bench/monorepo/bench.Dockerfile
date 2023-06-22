@@ -153,9 +153,9 @@ COPY --chown=user:users otherlibs otherlibs
 COPY --chown=user:users vendor vendor
 COPY --chown=user:users dune-project dune-project
 COPY --chown=user:users dune-file dune-file
-COPY --chown=user:users dune-rpc.opam dune-rpc.opam
-COPY --chown=user:users dune-rpc-lwt.opam dune-rpc-lwt.opam
-COPY --chown=user:users dune-private-libs.opam.template dune-private-libs.opam.template
+COPY --chown=user:users opam/dune-rpc.opam opam/dune-rpc.opam
+COPY --chown=user:users opam/dune-rpc-lwt.opam opam/dune-rpc-lwt.opam
+COPY --chown=user:users opam/dune-private-libs.opam.template opam/dune-private-libs.opam.template
 RUN . ~/.profile && dune build bin/main.exe --release
 RUN . ~/.profile && opam pin add dune-rpc /home/user/dune -y
 RUN . ~/.profile && opam pin add dune-rpc-lwt /home/user/dune -y

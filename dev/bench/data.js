@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687461141555,
+  "lastUpdate": 1687461547884,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -48486,6 +48486,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8864826092666667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3abf19f600aea841899c2cc5ba246ce575ec674e",
+          "message": "test(coq): move extraction tests to coq/extraction/ (#7922)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-22T11:49:00-07:00",
+          "tree_id": "7c31d135088cd12aa8b01a26ac2767c0b2feba6f",
+          "url": "https://github.com/ocaml/dune/commit/3abf19f600aea841899c2cc5ba246ce575ec674e"
+        },
+        "date": 1687461547042,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "80.27684667392666",
             "unit": "seconds"
           }
         ]

@@ -41,7 +41,7 @@ Examples:
   the ``foo`` build context
 - ``dune build @runtest`` will run the tests for all build contexts
 
-User-defined Aliases
+User-Defined Aliases
 --------------------
 
 It is possible to use any name for alias names; it will then be available on
@@ -54,7 +54,7 @@ the command line. For example, if a Dune file contains the following, then
     (alias deploy)
     (action ./run-deployer.exe))
 
-Built-in Aliases
+Built-In Aliases
 ----------------
 
 Some aliases are defined and managed by Dune itself.
@@ -68,7 +68,7 @@ This alias corresponds to every known file target in a directory.
 ^^^^^^
 
 This alias corresponds to the set of targets necessary for development tools to
-work correctly. For example, it will build ``*.cmi``, ``*.cmt`` and ``*.cmti``
+work correctly. For example, it will build ``*.cmi``, ``*.cmt``, and ``*.cmti``
 files so that Merlin and ``ocaml-lsp-server`` can be used in the project.
 It is also useful in the development loop because it will catch compilation
 errors without executing expensive operations such as linking executables.
@@ -120,7 +120,7 @@ be executed (using :doc:`promotion <../concepts/promotion>`).
 
 ``dune fmt`` is a shortcut for ``dune build @fmt --auto-promote``.
 
-It is possible to build on top of this convention: if some actions are manually
+It is possible to build on top of this convention. If some actions are manually
 attached to the ``fmt`` alias, they will be executed by ``dune fmt``.
 
 Example:

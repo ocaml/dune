@@ -7,11 +7,9 @@ files. For example, the ``runtest`` alias corresponds to running tests.
 Model and Syntax
 ----------------
 
-Rules can be attached to an alias. When this alias is requested to be built,
-these rules fire and the actions attached to them are executed.
-
-Since rules are defined in a specific directory, aliases are attached to
-directories too.
+Dependencies and actions can be attached to an alias. When this alias is
+requested to be built, these dependencies are built and these actions are
+executed. Aliases are attached to specific directories.
 
 In commands such as ``dune build``, the syntax to refer to the ``x`` alias is
 ``@x``, for example ``dune build @x``. This is why it is common to refer to it

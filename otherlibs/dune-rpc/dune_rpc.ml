@@ -10,6 +10,7 @@ module V1 = struct
   module Diagnostic = Diagnostic
   module Path = Path
   module Progress = Progress
+  module Job = Job
   module Message = Message
   module Where = Where
   module Registry = Registry

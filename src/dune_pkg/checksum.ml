@@ -29,3 +29,5 @@ let of_opam_hash v = v
 let pp v =
   let s = to_string v in
   Pp.text s
+
+let equal = OpamHash.equal

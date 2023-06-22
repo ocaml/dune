@@ -40,3 +40,4 @@ module Rpc = Rpc
 module Dune_rpc_client = Dune_rpc_client
 module Action_runner = Action_runner
 module Action_exec = Action_exec
+module Running_jobs = Running_jobs

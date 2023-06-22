@@ -1,4 +1,3 @@
-open Stdune
 open Import
 module Utop = Dune_rules.Utop
 

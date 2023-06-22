@@ -23,9 +23,9 @@ constraints.
   >   ; or
   >   (p_or2 (or :a :b))
   >   (p_or1 (or :a))
-  >   (p_or3 (or :a :b :c)) ; buggy output
+  >   (p_or3 (or :a :b :c))
   >   ; mixed operations
-  >   (p_and_in_or (or :a (and :b :c))) ; buggy output, see #3431
+  >   (p_and_in_or (or :a (and :b :c)))
   >   (p_or_in_and (and :a (or :b :c)))
   >   ))
   > EOF
@@ -49,9 +49,9 @@ constraints.
     "p_and3" {a & b & c}
     "p_or2" {a | b}
     "p_or1" {a}
-    "p_or3" {a | b & c}
+    "p_or3" {a | b | c}
     "p_and_in_or" {a | b & c}
-    "p_or_in_and" {a & b | c}
+    "p_or_in_and" {a & (b | c)}
   ]
   build: [
     ["dune" "subst"] {pinned}
@@ -67,29 +67,3 @@ constraints.
       "@doc" {with-doc}
     ]
   ]
-
-`(and)`/`(or)` with no argument should get rejected.
-
-  $ cat > dune-project << EOF
-  > (lang dune 2.1)
-  > (generate_opam_files)
-  > (package
-  >  (name p)
-  >  (depends
-  >   (p (and))))
-  > EOF
-
-  $ dune build 2>&1 | grep 'Internal error'
-  Internal error, please report upstream including the contents of _build/log.
-
-  $ cat > dune-project << EOF
-  > (lang dune 2.1)
-  > (generate_opam_files)
-  > (package
-  >  (name p)
-  >  (depends
-  >   (p (or))))
-  > EOF
-
-  $ dune build 2>&1 | grep 'Internal error'
-  Internal error, please report upstream including the contents of _build/log.

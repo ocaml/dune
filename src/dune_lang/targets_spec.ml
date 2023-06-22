@@ -77,6 +77,6 @@ let decode_one_static ~allow_directory_targets =
 let field ~allow_directory_targets =
   let open Dune_sexp.Decoder in
   fields_mutually_exclusive ~default:Infer
-    [ ("targets", decode_static ~allow_directory_targets)
-    ; ("target", decode_one_static ~allow_directory_targets)
+    [ ("target", decode_one_static ~allow_directory_targets)
+    ; ("targets", decode_static ~allow_directory_targets)
     ]

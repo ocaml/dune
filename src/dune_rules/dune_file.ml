@@ -625,7 +625,9 @@ module Library = struct
          let+ _ = field_b "no_keep_locs" ~check in
          ()
        and+ sub_systems =
-         let* () = return () in
+         return ()
+         >>> (* CR rgrinberg: weird that we have to remember to delay this. Can't
+                this be pushed down to the [record_parser] itself *)
          Sub_system_info.record_parser ()
        and+ virtual_modules =
          field_o "virtual_modules"
@@ -641,8 +643,8 @@ module Library = struct
            >>> located Lib_name.decode)
        and+ private_modules =
          field_o "private_modules"
-           (let* () = Dune_lang.Syntax.since Stanza.syntax (1, 2) in
-            Ordered_set_lang.decode)
+           (Dune_lang.Syntax.since Stanza.syntax (1, 2)
+           >>> Ordered_set_lang.decode)
        and+ stdlib =
          field_o "stdlib"
            (Dune_lang.Syntax.since Ocaml_stdlib.syntax (0, 1)
@@ -1704,27 +1706,16 @@ module Rule = struct
          field_o "package"
            (Dune_lang.Syntax.since Stanza.syntax (2, 0)
            >>> Stanza_common.Pkg.decode)
-       and+ alias =
-         field_o "alias"
-           (Dune_lang.Syntax.since Stanza.syntax (2, 0)
-           >>> Dune_lang.Alias.decode)
        and+ aliases =
-         field_o "aliases"
-           (Dune_lang.Syntax.since Stanza.syntax (3, 5)
-           >>> repeat Dune_lang.Alias.decode)
-       in
-       let aliases =
-         match alias with
-         | None -> Option.value ~default:[] aliases
-         | Some alias -> (
-           match aliases with
-           | None -> [ alias ]
-           | Some _ ->
-             User_error.raise ~loc
-               [ Pp.text
-                   "The 'alias' and 'aliases' fields are mutually exclusive. \
-                    Please use only the 'aliases' field."
-               ])
+         let open Dune_sexp.Decoder in
+         fields_mutually_exclusive ~default:[]
+           [ ( "alias"
+             , Dune_lang.Syntax.since Stanza.syntax (2, 0)
+               >>> Dune_lang.Alias.decode >>| List.singleton )
+           ; ( "aliases"
+             , Dune_lang.Syntax.since Stanza.syntax (3, 5)
+               >>> repeat Dune_lang.Alias.decode )
+           ]
        in
        let mode, patch_back_source_tree =
          match mode with
@@ -1761,8 +1752,8 @@ module Rule = struct
       | Action -> short_form
       | Since (version, inner) ->
         let what = Printf.sprintf "'%s' in short-form 'rule'" atom in
-        let* () = Dune_lang.Syntax.since ~what Stanza.syntax version in
-        interpret atom inner
+        Dune_lang.Syntax.since ~what Stanza.syntax version
+        >>> interpret atom inner
     in
     peek_exn >>= function
     | List (_, Atom (loc, A s) :: _) -> (
@@ -1883,13 +1874,9 @@ module Alias_conf = struct
           and+ package = field_o "package" Stanza_common.Pkg.decode
           and+ action =
             field_o "action"
-              (let extra_info =
-                 "Use a rule stanza with the alias field instead"
-               in
-               let* () =
-                 Dune_lang.Syntax.deleted_in ~extra_info Stanza.syntax (2, 0)
-               in
-               located Dune_lang.Action.decode_dune_file)
+              (Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
+                 ~extra_info:"Use a rule stanza with the alias field instead"
+              >>> located Dune_lang.Action.decode_dune_file)
           and+ loc = loc
           and+ locks = Locks.field ()
           and+ enabled_if =
@@ -1905,6 +1892,7 @@ module Tests = struct
     ; package : Package.t option
     ; deps : Dep_conf.t Bindings.t
     ; enabled_if : Blang.t
+    ; build_if : Blang.t
     ; action : Dune_lang.Action.t option
     }
 
@@ -1936,6 +1924,10 @@ module Tests = struct
               (Dune_lang.Syntax.since Stanza.syntax (2, 0)
               >>> repeat (located Lib_name.decode))
               ~default:[]
+          and+ build_if =
+            field "build_if" ~default:Blang.true_
+              (Syntax.since Stanza.syntax (3, 9)
+              >>> Enabled_if.decode_value ~allowed_vars:Any ())
           in
           { exes =
               { Executables.link_flags
@@ -1957,6 +1949,7 @@ module Tests = struct
           ; package
           ; deps
           ; enabled_if
+          ; build_if
           ; action
           }))
 

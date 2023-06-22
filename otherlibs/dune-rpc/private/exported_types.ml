@@ -372,3 +372,53 @@ module Message = struct
 
   let to_sexp_unversioned = Conv.to_sexp sexp
 end
+
+module Job = struct
+  module Id = Diagnostic.Id
+
+  type t =
+    { id : Id.t
+    ; pid : int
+    ; description : unit Pp.t
+    ; started_at : float
+    }
+
+  let id t = t.id
+
+  let pid t = t.pid
+
+  let description t = t.description
+
+  let started_at t = t.started_at
+
+  let sexp =
+    let open Conv in
+    let from { id; pid; description; started_at } =
+      (id, pid, description, started_at)
+    in
+    let to_ (id, pid, description, started_at) =
+      { id; pid; description; started_at }
+    in
+    let id = field "id" (required Id.sexp) in
+    let started_at = field "started_at" (required float) in
+    let pid = field "pid" (required int) in
+    let description = field "description" (required Diagnostic.sexp_pp) in
+    iso (record (four id pid description started_at)) to_ from
+
+  module Event = struct
+    type nonrec t =
+      | Start of t
+      | Stop of Id.t
+
+    let sexp =
+      let job = sexp in
+      let open Conv in
+      let start = constr "Start" job (fun a -> Start a) in
+      let stop = constr "Stop" Id.sexp (fun a -> Stop a) in
+      sum
+        [ econstr start; econstr stop ]
+        (function
+          | Start t -> case t start
+          | Stop t -> case t stop)
+  end
+end

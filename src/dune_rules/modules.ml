@@ -87,7 +87,9 @@ module Stdlib = struct
      compilation unit name of such modules, so they cannot be wrapped. *)
   let special_compiler_module (stdlib : Ocaml_stdlib.t) m =
     let name = Module.name m in
-    Glob.test stdlib.internal_modules (Module_name.to_string name)
+    let name_str = Module_name.to_string name in
+    Predicate_lang.Glob.test stdlib.internal_modules
+      ~standard:Predicate_lang.false_ name_str
     ||
     match stdlib.exit_module with
     | None -> false

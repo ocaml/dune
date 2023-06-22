@@ -152,7 +152,7 @@ val obj_dir : 'path t -> 'path Obj_dir.t
 
 val virtual_ : _ t -> Modules.t Source.t option
 
-val entry_modules : _ t -> Module_name.t list Or_exn.t Source.t
+val entry_modules : _ t -> (Module_name.t list, User_message.t) result Source.t
 
 val main_module_name : _ t -> Main_module_name.t
 
@@ -248,7 +248,7 @@ val create :
   -> virtual_deps:(Loc.t * Lib_name.t) list
   -> dune_version:Dune_lang.Syntax.Version.t option
   -> virtual_:Modules.t Source.t option
-  -> entry_modules:Module_name.t list Or_exn.t Source.t
+  -> entry_modules:(Module_name.t list, User_message.t) result Source.t
   -> implements:(Loc.t * Lib_name.t) option
   -> default_implementation:(Loc.t * Lib_name.t) option
   -> modes:Lib_mode.Map.Set.t

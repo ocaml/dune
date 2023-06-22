@@ -4,7 +4,7 @@ Packages can export environment variables
   $ cat >dune.lock/lock.dune <<EOF
   > (lang package 0.1)
   > EOF
-  $ cat >dune.lock/test <<EOF
+  $ cat >dune.lock/test.pkg <<EOF
   > (exported_env
   >  (= FOO bar)
   >  (= BAR xxx)
@@ -12,7 +12,7 @@ Packages can export environment variables
   >  (:= BAR zzz))
   > EOF
 
-  $ cat >dune.lock/usetest <<'EOF'
+  $ cat >dune.lock/usetest.pkg <<'EOF'
   > (deps test)
   > (version 1.2.3)
   > (build

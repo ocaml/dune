@@ -1,6 +1,5 @@
 (** Initialize dune components *)
 
-open Stdune
 open Import
 
 (** The context in which the initialization is executed *)

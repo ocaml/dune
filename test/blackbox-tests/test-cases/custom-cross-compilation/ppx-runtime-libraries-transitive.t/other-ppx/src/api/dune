@@ -1,0 +1,5 @@
+(library
+ (name other_ppx_api)
+ (public_name other-ppx.api)
+ (wrapped false)
+ (ppx_runtime_libraries other_ppx_runtime))

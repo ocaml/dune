@@ -257,6 +257,8 @@ module Procedures : sig
     val progress : Progress.t t
 
     val diagnostic : Diagnostic.Event.t list t
+
+    val running_jobs : Job.Event.t list t
   end
 end
 
@@ -294,6 +296,8 @@ module Public : sig
     val diagnostic : Diagnostic.Event.t list t
 
     val progress : Progress.t t
+
+    val running_jobs : Job.Event.t list t
   end
 end
 

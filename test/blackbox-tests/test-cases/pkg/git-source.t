@@ -15,7 +15,7 @@ Test fetching from git
   $ cat >dune.lock/lock.dune <<EOF
   > (lang package 0.1)
   > EOF
-  $ cat >dune.lock/test <<EOF
+  $ cat >dune.lock/test.pkg <<EOF
   > (source (fetch (url "git+file://$MYGITREPO")))
   > (build (run cat foo))
   > EOF

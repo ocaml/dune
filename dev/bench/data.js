@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687424905299,
+  "lastUpdate": 1687425335341,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -21081,6 +21081,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.923411084306665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aa75e7563921a8723942b141f24beab125edd5ad",
+          "message": "refactor(dap): remove unnecessary intermediate type (#8018)\n\nWe have the following type:\r\n\r\n```ocaml\r\ntype t =\r\n  | File of Path.t\r\n  | Glob of Path.t * Glob.t\r\n```\r\n\r\nThat is exactly the same type as what we use to represent\r\ndune-action-plugin dependencies except it uses typed paths [Path.t]\r\ninstead of raw strings like the dune-action-plugin\r\n\r\nIt was used as an intermediate stage when converting DAP dependencies\r\ninto dune dependencies. So previously, the conversions would go as:\r\n\r\n```\r\nDAP with string paths -> DAP with Path.t -> Dep.Set.t\r\n```\r\n\r\nThe intermediate stage is unnecessary, and now we just convert:\r\n\r\n```\r\nDAP with string paths -> Dep.Set.t\r\n```\r\n\r\nThe new code is both shorter, simpler, and faster.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-22T09:55:26+01:00",
+          "tree_id": "802beb1c8e02214d71ea14c1d934e03216b25283",
+          "url": "https://github.com/ocaml/dune/commit/aa75e7563921a8723942b141f24beab125edd5ad"
+        },
+        "date": 1687425334388,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.92939937136",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687425700386,
+  "lastUpdate": 1687437535808,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -61044,6 +61044,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.73211969254",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0e7e20dc97babd1b35715d0a8b0fb03276c2a79a",
+          "message": "fix(doc): missing parenthesis (#8029)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-22T14:25:54+02:00",
+          "tree_id": "0baaebaa0f2add4bce85f671ce03b7377e964a1d",
+          "url": "https://github.com/ocaml/dune/commit/0e7e20dc97babd1b35715d0a8b0fb03276c2a79a"
+        },
+        "date": 1687437530096,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.405177999299998",
             "unit": "seconds"
           }
         ]

@@ -13,14 +13,55 @@ Generate a `dune-project` file.
 
 Run the solver and generate a lock directory.
   $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository
-  Selected the following packages:
+  Solution for dune.lock:
+  bar.0.5.0
+  baz.0.1.0
+  foo.0.0.1
+
+Helper to the name and contents of each file in the lock directory separated by
+"---", sorting by filename for consistency.
+  $ print_all() { find dune.lock -type f | sort | xargs -I{} sh -c "printf '{}:\n\n'; cat {}; printf '\n\n---\n\n'"; }
+
+Print the contents of each file in the lockdir:
+  $ print_all
+  dune.lock/bar.pkg:
+  
+  (version 0.5.0)
+  
+  
+  ---
+  
+  dune.lock/baz.pkg:
+  
+  (version 0.1.0)
+  
+  
+  ---
+  
+  dune.lock/foo.pkg:
+  
+  (version 0.0.1)
+  (deps baz bar)
+  
+  
+  ---
+  
+  dune.lock/lock.dune:
+  
+  (lang package 0.1)
+  
+  
+  ---
+  
+
+Run the solver again preferring oldest versions of dependencies:
+  $ dune pkg lock --opam-env=pure --version-preference=oldest --opam-repository=mock-opam-repository
+  Solution for dune.lock:
   bar.0.4.0
   baz.0.1.0
   foo.0.0.1
 
-Print the name and contents of each file in the lock directory separated by
-"---", sorting by filename for consistency.
-  $ find dune.lock -type f | sort | xargs -I{} sh -c "printf '{}:\n\n'; cat {}; printf '\n\n---\n\n'"
+  $ print_all
   dune.lock/bar.pkg:
   
   (version 0.4.0)

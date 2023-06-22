@@ -263,12 +263,16 @@ module Context = struct
     type t =
       { base : Common.t
       ; lock : Path.Source.t option
+      ; version_preference : Dune_pkg.Opam.Version_preference.t option
       }
 
-    let to_dyn { base; lock } =
+    let to_dyn { base; lock; version_preference } =
       Dyn.record
         [ ("base", Common.to_dyn base)
         ; ("lock", Dyn.(option Path.Source.to_dyn) lock)
+        ; ( "version_preference"
+          , Dyn.option Dune_pkg.Opam.Version_preference.to_dyn
+              version_preference )
         ]
 
     let decode =
@@ -283,6 +287,8 @@ module Context = struct
            2. allow external paths
         *)
         field_o "lock" (Dpath.Local.decode ~dir:(Path.source Path.Source.root))
+      and+ version_preference =
+        field_o "version_preference" Dune_pkg.Opam.Version_preference.decode
       in
       let lock = Option.map lock ~f:Path.as_in_source_tree_exn in
       fun ~profile_default ~instrument_with_default ~x ->
@@ -298,10 +304,13 @@ module Context = struct
         let base =
           { common with targets = Target.add common.targets x; name }
         in
-        { base; lock }
+        { base; lock; version_preference }
 
-    let equal { base; lock } t =
-      Common.equal base t.base && Option.equal Path.Source.equal lock t.lock
+    let equal { base; lock; version_preference } t =
+      Common.equal base t.base
+      && Option.equal Path.Source.equal lock t.lock
+      && Option.equal Dune_pkg.Opam.Version_preference.equal version_preference
+           t.version_preference
   end
 
   type t =
@@ -360,6 +369,7 @@ module Context = struct
   let default ~x ~profile ~instrument_with =
     Default
       { lock = None
+      ; version_preference = None
       ; base =
           { loc = Loc.of_pos __POS__
           ; targets = [ Option.value x ~default:Target.Native ]

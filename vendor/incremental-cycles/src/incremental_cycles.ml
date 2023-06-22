@@ -28,30 +28,6 @@ struct
 open Raw_graph
 
 (******************************************************************************)
-(* Interruptible fold_left.
-
-   At each step, the client function decides whether it wants to continue (by
-   using [Continue new_accumulator]) or stop (by using [Break return_value]).
-
-   Ultimately, [interruptible_fold] returns either the last accumulator or the
-   value returned by [Break], along with a boolean indicating whether it was
-   interrupted prematurely.
-*)
-
-type ('a, 'b) interruptible_fold_step =
-  | Continue of 'a
-  | Break of 'b
-
-let rec interruptible_fold f l acc =
-  match l with
-  | [] -> Continue acc
-  | x :: xs ->
-    let res = f x acc in
-    match res with
-    | Continue acc -> interruptible_fold f xs acc
-    | Break _ -> res
-
-(******************************************************************************)
 (* The cycle detection algorithm, implemented as an [add_edge] function on
    [graph], which either successfully inserts the edge, or reports a cycle. *)
 
@@ -78,29 +54,24 @@ let rec visit_backward
   match stack with
   | [] -> VisitBackwardCompleted
   | vertex :: stack ->
-    let res = interruptible_fold (fun y (stack, fuel) ->
-      if fuel = 0 then
-        (* There is no fuel left *)
-        Break true
-      else if is_marked g y mark then
-        (* This vertex has already been visited, skip it *)
-        Continue (stack, fuel - 1)
-      else if vertex_eq y target then
-        (* A path to [target] has been found *)
-        Break false
-      else begin
-        set_mark g y mark;
-        set_parent g y vertex;
-        Continue (y :: stack, fuel - 1)
-      end
-    ) (get_incoming g vertex) (stack, fuel)
-    in
-    match res with
-    | Break timeout ->
-      if timeout then VisitBackwardInterrupted
-      else (set_parent g target vertex; VisitBackwardCyclic)
-    | Continue (stack, fuel) ->
-      visit_backward g target mark fuel stack
+    visit_backward_aux g target mark vertex stack fuel (get_incoming g vertex)
+and visit_backward_aux g target mark vertex stack fuel = function
+  | [] -> visit_backward g target mark fuel stack
+  | y :: ys ->
+    if fuel = 0 then
+      (* There is no fuel left *)
+      VisitBackwardInterrupted
+    else if is_marked g y mark then
+      (* This vertex has already been visited, skip it *)
+      visit_backward_aux g target mark vertex stack fuel ys
+    else if vertex_eq y target then
+      (* A path to [target] has been found *)
+      (set_parent g target vertex; VisitBackwardCyclic)
+    else begin
+      set_mark g y mark;
+      set_parent g y vertex;
+      visit_backward_aux g target mark vertex (y :: stack) (fuel - 1) ys
+    end
 
 type backward_search_result =
   | BackwardForward of int * mark
@@ -162,30 +133,28 @@ let rec visit_forward
   =
   match stack with
   | [] -> ForwardCompleted
-  | x :: stack ->
-    let res = interruptible_fold (fun y stack ->
-      if is_marked g y visited then
-        (* We found a path to a marked vertex *)
-        Break y
-      else begin
-        let y_level = get_level g y in
-        set_parent g y x;
-        if y_level < new_level then begin
-          set_level g y new_level;
-          clear_incoming g y;
-          add_incoming g y x;
-          Continue (y :: stack)
-        end else if y_level = new_level then begin
-          add_incoming g y x;
-          Continue stack
-        end else (* y_level > new_level *)
-          Continue stack
-      end
-    ) (get_outgoing g x) stack
-    in
-    match res with
-    | Break y -> ForwardCyclic (x, y)
-    | Continue stack -> visit_forward g new_level visited stack
+  | x :: stack -> visit_forward_aux g new_level visited x stack (get_outgoing g x)
+and visit_forward_aux g new_level visited x stack = function
+  | [] -> visit_forward g new_level visited stack
+  | y :: ys ->
+    if is_marked g y visited then
+      (* We found a path to a marked vertex *)
+      ForwardCyclic (x, y)
+    else begin
+      let y_level = get_level g y in
+      set_parent g y x;
+      if y_level < new_level then begin
+        set_level g y new_level;
+        clear_incoming g y;
+        add_incoming g y x;
+        visit_forward_aux g new_level visited x (y :: stack) ys
+      end else if y_level = new_level then begin
+        add_incoming g y x;
+        visit_forward_aux g new_level visited x stack ys
+      end else (* y_level > new_level *)
+        visit_forward_aux g new_level visited x stack ys
+    end
+
 
 (* The whole forward search phase (Step 3 of the algorithm). Explores the
    graph forwards starting from [w], updating the levels and incoming edges

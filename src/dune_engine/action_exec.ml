@@ -11,58 +11,24 @@ let maybe_async =
   in
   fun f -> (Lazy.force maybe_async) f
 
-(** A version of [Dune_action_plugin.Private.Protocol.Dependency] where all
-    relative paths are replaced by [Path.t]. (except the protocol doesn't
-    support Globs yet) *)
-module Dynamic_dep = struct
-  module T = struct
-    type t =
-      | File of Path.t
-      | Glob of Path.t * Glob.t
-
-    let to_dep = function
-      | File fn -> Dep.file fn
-      | Glob (dir, glob) -> File_selector.of_glob ~dir glob |> Dep.file_selector
-
-    let of_DAP_dep ~loc ~working_dir : DAP.Dependency.t -> t =
-      let to_dune_path = Path.relative working_dir in
-      function
-      | File fn -> File (to_dune_path fn)
-      | Directory dir -> Glob (to_dune_path dir, Glob.universal)
-      | Glob { path; glob } ->
-        Glob (to_dune_path path, Glob.of_string_exn loc glob)
-
-    let compare x y =
-      match (x, y) with
-      | File x, File y -> Path.compare x y
-      | File _, _ -> Lt
-      | _, File _ -> Gt
-      | Glob (dir1, glob1), Glob (dir2, glob2) ->
-        let open Ordering.O in
-        let= () = Path.compare dir1 dir2 in
-        Glob.compare glob1 glob2
-
-    let to_dyn =
-      let open Dyn in
-      function
-      | File fn -> variant "File" [ Path.to_dyn fn ]
-      | Glob (dir, glob) -> variant "Glob" [ Path.to_dyn dir; Glob.to_dyn glob ]
-  end
-
-  include T
-  module O = Comparable.Make (T)
-  module Map = O.Map
-
-  module Set = struct
-    include O.Set
-
-    let to_dep_set t = to_list_map t ~f:to_dep |> Dep.Set.of_list
-
-    let of_DAP_dep_set t ~loc ~working_dir =
-      t |> DAP.Dependency.Set.to_list
-      |> of_list_map ~f:(of_DAP_dep ~loc ~working_dir)
-  end
-end
+let to_dune_dep_set =
+  let of_DAP_dep ~loc ~working_dir : DAP.Dependency.t -> Dep.t =
+    let to_dune_path = Path.relative working_dir in
+    function
+    | File fn -> Dep.file (to_dune_path fn)
+    | Directory dir ->
+      let dir = to_dune_path dir in
+      let selector = File_selector.of_glob ~dir Glob.universal in
+      Dep.file_selector selector
+    | Glob { path; glob } ->
+      let dir = to_dune_path path in
+      let glob = Glob.of_string_exn loc glob in
+      let selector = File_selector.of_glob ~dir glob in
+      Dep.file_selector selector
+  in
+  fun set ~loc ~working_dir ->
+    DAP.Dependency.Set.to_list_map set ~f:(of_DAP_dep ~loc ~working_dir)
+    |> Dep.Set.of_list
 
 module Exec_result = struct
   type t = { dynamic_deps_stages : (Dep.Set.t * Dep.Facts.t) list }
@@ -74,7 +40,7 @@ type done_or_more_deps =
      action. [DAP.Dependency.t] stores relative paths so name clash would be
      possible if multiple 'dynamic-run' would be executed in different
      subdirectories that contains targets having the same name. *)
-  | Need_more_deps of (DAP.Dependency.Set.t * Dynamic_dep.Set.t)
+  | Need_more_deps of (DAP.Dependency.Set.t * Dep.Set.t)
 
 let done_or_more_deps_union x y =
   match (x, y) with
@@ -82,8 +48,7 @@ let done_or_more_deps_union x y =
   | Done, Need_more_deps x | Need_more_deps x, Done -> Need_more_deps x
   | Need_more_deps (deps1, dyn_deps1), Need_more_deps (deps2, dyn_deps2) ->
     Need_more_deps
-      ( DAP.Dependency.Set.union deps1 deps2
-      , Dynamic_dep.Set.union dyn_deps1 dyn_deps2 )
+      (DAP.Dependency.Set.union deps1 deps2, Dep.Set.union dyn_deps1 dyn_deps2)
 
 type exec_context =
   { targets : Targets.Validated.t option
@@ -214,8 +179,7 @@ let exec_run_dynamic_client ~display ~ectx ~eenv prog args =
   | Ok (Need_more_deps deps) ->
     Need_more_deps
       ( deps
-      , Dynamic_dep.Set.of_DAP_dep_set deps ~loc:ectx.rule_loc
-          ~working_dir:eenv.working_dir )
+      , to_dune_dep_set deps ~loc:ectx.rule_loc ~working_dir:eenv.working_dir )
 
 let exec_echo stdout_to str =
   Fiber.return (output_string (Process.Io.out_channel stdout_to) str)
@@ -540,7 +504,6 @@ let exec_until_all_deps_ready ~display ~ectx ~eenv t =
     match result with
     | Done -> Fiber.return stages
     | Need_more_deps (relative_deps, deps_to_build) ->
-      let deps_to_build = Dynamic_dep.Set.to_dep_set deps_to_build in
       let* fact_map = ectx.build_deps deps_to_build in
       let stages = (deps_to_build, fact_map) :: stages in
       let eenv =

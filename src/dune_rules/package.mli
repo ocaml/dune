@@ -33,32 +33,18 @@ module Id : sig
 end
 
 module Dependency : sig
-  module Op : sig
-    type t =
-      | Eq
-      | Gte
-      | Lte
-      | Gt
-      | Lt
-      | Neq
-
-    val to_relop : t -> OpamParserTypes.FullPos.relop
-  end
-
   module Constraint : sig
-    module Var : sig
-      type t =
-        | Literal of string
-            (** A quoted string literal, such as a version number *)
-        | Var of string  (** A variable name such as :version or :with-test *)
+    module Op : sig
+      type t = Dune_lang.Package_constraint.Op.t
+
+      val to_relop : t -> OpamParserTypes.FullPos.relop
     end
 
-    type t =
-      | Bvar of Var.t
-      | Uop of Op.t * Var.t
-      | Bop of Op.t * Var.t * Var.t
-      | And of t list
-      | Or of t list
+    module Value : sig
+      type t = Dune_lang.Package_constraint.Value.t
+    end
+
+    type t = Dune_lang.Package_constraint.t
 
     val to_dyn : t -> Dyn.t
   end

@@ -60,7 +60,7 @@ module Session : sig
        session *)
     val initialize : _ t -> Initialize.Request.t
 
-    val request_close : 'a t -> unit Fiber.t
+    val close : 'a t -> unit Fiber.t
 
     val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
   end
@@ -75,7 +75,7 @@ module Handler : sig
   type 'a t
 
   val create :
-       ?on_terminate:('a Session.t -> unit Fiber.t)
+       ?on_terminate:('a Session.Stage1.t -> unit Fiber.t)
          (** Termination hook. It is guaranteed that the session state will not
              modified after this function is called *)
     -> on_init:('a Session.Stage1.t -> Initialize.Request.t -> 'a Fiber.t)

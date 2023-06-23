@@ -878,6 +878,25 @@ let wait_for_process t pid =
   | Cancelled () -> cancelled ()
   | Not_cancelled -> res
 
+type termination_reason =
+  | Normal
+  | Cancel
+
+(* We use this version privately in this module whenever we can pass the
+   scheduler explicitly *)
+let wait_for_build_process t pid =
+  let+ res, outcome =
+    Fiber.Cancel.with_handler t.cancel
+      ~on_cancel:(fun () ->
+        Process_watcher.killall t.process_watcher Sys.sigkill;
+        Fiber.return ())
+      (fun () -> wait_for_process t pid)
+  in
+  ( res
+  , match outcome with
+    | Cancelled () -> Cancel
+    | Not_cancelled -> Normal )
+
 let got_shutdown reason =
   if !Log.verbose then
     match (reason : Shutdown.Reason.t) with
@@ -1319,7 +1338,8 @@ let inject_memo_invalidation invalidation =
   Event.Queue.send_invalidation_event t.events invalidation;
   Fiber.return ()
 
-let wait_for_process_with_timeout t pid ~timeout ~is_process_group_leader =
+let wait_for_process_with_timeout t pid waiter ~timeout ~is_process_group_leader
+    =
   Fiber.of_thunk (fun () ->
       let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) timeout in
       Fiber.fork_and_join_unit
@@ -1330,16 +1350,25 @@ let wait_for_process_with_timeout t pid ~timeout ~is_process_group_leader =
             if is_process_group_leader then kill_process_group pid Sys.sigkill
             else Unix.kill (Pid.to_int pid) Sys.sigkill)
         (fun () ->
-          let+ res = wait_for_process t pid in
+          let+ res = waiter t pid in
           Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
           res))
+
+let wait_for_build_process ?timeout ?(is_process_group_leader = false) pid =
+  let* t = t () in
+  match timeout with
+  | None -> wait_for_build_process t pid
+  | Some timeout ->
+    wait_for_process_with_timeout t pid wait_for_build_process ~timeout
+      ~is_process_group_leader
 
 let wait_for_process ?timeout ?(is_process_group_leader = false) pid =
   let* t = t () in
   match timeout with
   | None -> wait_for_process t pid
   | Some timeout ->
-    wait_for_process_with_timeout t pid ~timeout ~is_process_group_leader
+    wait_for_process_with_timeout t pid wait_for_process ~timeout
+      ~is_process_group_leader
 
 let sleep duration =
   let* t = t () in

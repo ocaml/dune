@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687518631802,
+  "lastUpdate": 1687519031846,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -61392,6 +61392,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "24.993586778693338",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6b4c90d5a85f110b9b56bf30c930611d3d23fe72",
+          "message": "fix(rpc): proper finalization everywhere (#8010)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-23T04:03:31-07:00",
+          "tree_id": "de5eaa7381c40aaf7937e82a66e4b23028d89abe",
+          "url": "https://github.com/ocaml/dune/commit/6b4c90d5a85f110b9b56bf30c930611d3d23fe72"
+        },
+        "date": 1687519025980,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.848052376786665",
             "unit": "seconds"
           }
         ]

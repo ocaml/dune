@@ -10,14 +10,24 @@ module Env : sig
 
   (** Create an environment matching that of the global opam installation. *)
   val global : unit -> t
+
+  (** Adds a value to the environment *)
+  val add : var:Env.Var.t -> value:string -> t -> t
+
+  (** [union l r] merges two environments together. On key clashes prefers the
+      value from [r]. *)
+  val union : t -> t -> t
 end
 
 module Repo_selection : sig
   (** An opam repository *)
   type t
 
+  (** A t that does not yet have an environment added. Use [add_env]. *)
+  type pre
+
   (** An opam repo associated with a switch of a given name or directory *)
-  val switch_with_name : string -> t
+  val switch_with_name : string -> pre
 
   (** An opam repo in a local directory given by [opam_repo_dir_path]. Note that
       [opam_repo_dir_path] is a [Filename.t] rather than, say, a
@@ -40,7 +50,9 @@ module Repo_selection : sig
         to their project, and runs: `dune pkg lock --opam-repository-path
         ../opam-repository`. This rules out [Path.Outside_build_dir.t] as it
         doesn't permit relative paths outside the source directory. *)
-  val local_repo_with_env : opam_repo_dir_path:Filename.t -> env:Env.t -> t
+  val local_repo_with_env : opam_repo_dir_path:Filename.t -> env:Env.t -> pre
+
+  val add_env : Env.t -> pre -> t
 end
 
 module Summary : sig

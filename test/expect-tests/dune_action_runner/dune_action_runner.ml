@@ -4,7 +4,13 @@ module Action_runner = Dune_engine.Action_runner
 module Rpc_server = Action_runner.Rpc_server
 module Where = Dune_rpc_client.Where
 module Scheduler = Dune_engine.Scheduler
-module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
+
+module Server = Dune_rpc_server.Make (struct
+  include Csexp_rpc.Session
+
+  let name _ = "unnamed"
+end)
+
 module Action_exec = Dune_engine.Action_exec
 
 let () = Dune_util.Log.init_disabled ()

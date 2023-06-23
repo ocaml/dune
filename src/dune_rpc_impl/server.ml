@@ -28,7 +28,13 @@ end
 
 module Run = struct
   module Registry = Dune_rpc_private.Registry
-  module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
+
+  module Server = Dune_rpc_server.Make (struct
+    include Csexp_rpc.Session
+
+    (* only needed for action runners. can be safely omitted elsewhere *)
+    let name _ = "unnamed"
+  end)
 
   type t =
     { handler : Dune_rpc_server.t

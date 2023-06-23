@@ -150,6 +150,8 @@ module Make (S : sig
       returned as [Some sexp], otherwise [None] is returned and the session is
       closed. *)
   val read : t -> Sexp.t option Fiber.t
+
+  val name : t -> string
 end) : sig
   (** [serve sessions handler] serve all [sessions] using [handler] *)
   val serve : S.t Fiber.Stream.In.t -> Dune_stats.t option -> t -> unit Fiber.t

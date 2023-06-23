@@ -1,5 +1,5 @@
-Unreleased
-----------
+3.9.0~alpha1 (2023-06-23)
+-------------------------
 
 - Validate file extension for `$ dune ocaml top-module`. (#8005, fixes #8004, @3Rafal)
 

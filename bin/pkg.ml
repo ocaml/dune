@@ -86,6 +86,32 @@ module Lock = struct
         Repo_selection.local_repo_with_env ~opam_repo_dir_path ~env
   end
 
+  module Version_preference = struct
+    include Dune_pkg.Opam.Version_preference
+
+    let term =
+      let all_strings = List.map all_by_string ~f:fst in
+      let doc =
+        sprintf
+          "Whether to prefer the newest compatible version of a package or the \
+           oldest compatible version of packages while solving dependencies. \
+           This overrides any setting in the current workspace. The default is \
+           %s."
+          (to_string default)
+      in
+      let docv = String.concat ~sep:"|" all_strings |> sprintf "(%s)" in
+      Arg.(
+        value
+        & opt (some (enum all_by_string)) None
+        & info [ "version-preference" ] ~doc ~docv)
+
+    let choose ~from_arg ~from_context =
+      match (from_arg, from_context) with
+      | Some from_arg, _ -> from_arg
+      | None, Some from_context -> from_context
+      | None, None -> default
+  end
+
   (* Converts the package table found inside a [Dune_project.t] into the
      package table expected by the dependency solver *)
   let opam_file_map_of_dune_package_map
@@ -100,44 +126,65 @@ module Lock = struct
         (opam_package_name, opam_file))
     |> OpamPackage.Name.Map.of_list
 
-  (* Logic for choosing the lockdir path(s) to generate *)
-  let choose_lock_dir_paths ~context_name_arg ~all_contexts_arg =
-    let open Fiber.O in
-    match (context_name_arg, all_contexts_arg) with
-    | Some _, true ->
-      User_error.raise
-        [ Pp.text "--context and --all-contexts are mutually exclusive" ]
-    | context_name_opt, false -> (
-      let+ workspace = Memo.run (Workspace.workspace ()) in
-      let context_name =
-        Option.value context_name_opt ~default:Dune_engine.Context_name.default
-      in
-      let context =
-        List.find workspace.contexts ~f:(fun context ->
-            Dune_engine.Context_name.equal
-              (Workspace.Context.name context)
-              context_name)
-      in
-      match context with
-      | None ->
+  module Per_context = struct
+    type t =
+      { lock_dir_path : Path.Source.t
+      ; version_preference : Version_preference.t
+      }
+
+    let choose ~context_name_arg ~all_contexts_arg ~version_preference_arg =
+      let open Fiber.O in
+      match (context_name_arg, all_contexts_arg) with
+      | Some _, true ->
         User_error.raise
-          [ Pp.textf "Unknown build context: %s"
-              (Dune_engine.Context_name.to_string context_name
-              |> String.maybe_quoted)
+          [ Pp.text "--context and --all-contexts are mutually exclusive" ]
+      | context_name_opt, false -> (
+        let+ workspace = Memo.run (Workspace.workspace ()) in
+        let context_name =
+          Option.value context_name_opt
+            ~default:Dune_engine.Context_name.default
+        in
+        let context =
+          List.find workspace.contexts ~f:(fun context ->
+              Dune_engine.Context_name.equal
+                (Workspace.Context.name context)
+                context_name)
+        in
+        match context with
+        | None ->
+          User_error.raise
+            [ Pp.textf "Unknown build context: %s"
+                (Dune_engine.Context_name.to_string context_name
+                |> String.maybe_quoted)
+            ]
+        | Some
+            (Default
+              { lock; version_preference = version_preference_context; _ }) ->
+          [ { lock_dir_path = Option.value lock ~default:Lock_dir.default_path
+            ; version_preference =
+                Version_preference.choose ~from_arg:version_preference_arg
+                  ~from_context:version_preference_context
+            }
           ]
-      | Some (Default { lock; _ }) ->
-        [ Option.value lock ~default:Lock_dir.default_path ]
-      | Some (Opam _) ->
-        User_error.raise
-          [ Pp.textf "Unexpected opam build context: %s"
-              (Dune_engine.Context_name.to_string context_name
-              |> String.maybe_quoted)
-          ])
-    | None, true ->
-      let+ workspace = Memo.run (Workspace.workspace ()) in
-      List.filter_map workspace.contexts ~f:(function
-        | Workspace.Context.Default { lock; _ } -> lock
-        | Opam _ -> None)
+        | Some (Opam _) ->
+          User_error.raise
+            [ Pp.textf "Unexpected opam build context: %s"
+                (Dune_engine.Context_name.to_string context_name
+                |> String.maybe_quoted)
+            ])
+      | None, true ->
+        let+ workspace = Memo.run (Workspace.workspace ()) in
+        List.filter_map workspace.contexts ~f:(function
+          | Workspace.Context.Default
+              { lock; version_preference = version_preference_context; _ } ->
+            Option.map lock ~f:(fun lock_dir_path ->
+                { lock_dir_path
+                ; version_preference =
+                    Version_preference.choose ~from_arg:version_preference_arg
+                      ~from_context:version_preference_context
+                })
+          | Opam _ -> None)
+  end
 
   let context_term =
     Arg.(
@@ -156,14 +203,15 @@ module Lock = struct
       Arg.(
         value & flag
         & info [ "all-contexts" ] ~doc:"Generate the lockdir for all contexts")
-    in
+    and+ version_preference = Version_preference.term in
     let common = Common.forbid_builds common in
     let config = Common.init common in
     Scheduler.go ~common ~config @@ fun () ->
     let open Fiber.O in
-    let* lock_dir_paths =
-      choose_lock_dir_paths ~context_name_arg:context_name
+    let* per_context =
+      Per_context.choose ~context_name_arg:context_name
         ~all_contexts_arg:all_contexts
+        ~version_preference_arg:version_preference
     in
     let+ source_dir = Memo.run (Source_tree.root ()) in
     let project = Source_tree.Dir.project source_dir in
@@ -172,13 +220,16 @@ module Lock = struct
     (* Construct a list of thunks that will perform all the file IO side
        effects after performing validation so that if materializing any
        lockdir would fail then no side effect takes place. *)
-    let summary, lock_dir =
-      Dune_pkg.Opam.solve_lock_dir ~repo_selection opam_file_map
-    in
-    Console.print_user_message
-      (Dune_pkg.Opam.Summary.selected_packages_message summary);
     let write_disk_list =
-      List.map lock_dir_paths ~f:(fun lock_dir_path ->
+      List.map per_context
+        ~f:(fun { Per_context.lock_dir_path; version_preference } ->
+          let summary, lock_dir =
+            Dune_pkg.Opam.solve_lock_dir ~version_preference ~repo_selection
+              opam_file_map
+          in
+          Console.print_user_message
+            (Dune_pkg.Opam.Summary.selected_packages_message summary
+               ~lock_dir_path);
           Lock_dir.Write_disk.prepare ~lock_dir_path lock_dir)
     in
     (* All the file IO side effects happen here: *)

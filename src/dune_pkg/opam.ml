@@ -177,6 +177,31 @@ module Local_repo_with_env = struct
     }
 end
 
+module Version_preference = struct
+  type t =
+    | Newest
+    | Oldest
+
+  let equal a b =
+    match (a, b) with
+    | Newest, Newest | Oldest, Oldest -> true
+    | _ -> false
+
+  let to_string = function
+    | Newest -> "newest"
+    | Oldest -> "oldest"
+
+  let to_dyn t = Dyn.variant (to_string t) []
+
+  let default = Newest
+
+  let all = [ Newest; Oldest ]
+
+  let all_by_string = List.map all ~f:(fun t -> (to_string t, t))
+
+  let decode = Dune_sexp.Decoder.enum all_by_string
+end
+
 module Opam_solver = struct
   module type CONTEXT = Opam_0install.S.CONTEXT
 
@@ -255,9 +280,7 @@ module Opam_solver = struct
     include
       Context_with_local_packages (Context_either (Dir_context) (Switch_context))
 
-    let prefer_oldest = true
-
-    let create_dir_context ~local_repo_with_env ~local_packages =
+    let create_dir_context ~prefer_oldest ~local_repo_with_env ~local_packages =
       let { Local_repo_with_env.local_repo = { Local_repo.packages_dir_path }
           ; env
           } =
@@ -270,7 +293,7 @@ module Opam_solver = struct
       in
       create ~base_context:(Left dir_context) ~local_packages
 
-    let create_switch_context ~switch_state ~local_packages =
+    let create_switch_context ~prefer_oldest ~switch_state ~local_packages =
       let switch_context =
         Switch_context.create ~prefer_oldest
           ~constraints:OpamPackage.Name.Map.empty switch_state
@@ -329,18 +352,21 @@ end
 module Summary = struct
   type t = { opam_packages_to_lock : OpamPackage.t list }
 
-  let selected_packages_message t =
-    match t.opam_packages_to_lock with
-    | [] ->
-      User_message.make
-        [ Pp.tag User_message.Style.Success (Pp.text "No dependencies to lock")
+  let selected_packages_message t ~lock_dir_path =
+    let parts =
+      match t.opam_packages_to_lock with
+      | [] ->
+        [ Pp.tag User_message.Style.Success
+            (Pp.text "(no dependencies to lock)")
         ]
-    | opam_packages_to_lock ->
-      User_message.make
-        (Pp.tag User_message.Style.Success
-           (Pp.text "Selected the following packages:")
-        :: List.map opam_packages_to_lock ~f:(fun package ->
-               Pp.text (OpamPackage.to_string package)))
+      | opam_packages_to_lock ->
+        List.map opam_packages_to_lock ~f:(fun package ->
+            Pp.text (OpamPackage.to_string package))
+    in
+    User_message.make
+      (Pp.textf "Solution for %s:"
+         (Path.Source.to_string_maybe_quoted lock_dir_path)
+      :: parts)
 end
 
 let opam_package_to_lock_file_pkg ~repo_state ~local_packages opam_package =
@@ -399,12 +425,19 @@ let solve_package_list local_packages context =
   | Error e -> User_error.raise [ Pp.text (Solver.diagnostics e) ]
   | Ok packages -> Solver.packages_of_result packages
 
-let solve_lock_dir ~repo_selection local_packages =
+let solve_lock_dir ~version_preference ~repo_selection local_packages =
+  let prefer_oldest =
+    match (version_preference : Version_preference.t) with
+    | Oldest -> true
+    | Newest -> false
+  in
   let is_local_package package =
     OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
   in
   Repo_selection.with_state repo_selection ~f:(fun repo_state ->
-      let context = Repo_state.create_context repo_state local_packages in
+      let context =
+        Repo_state.create_context repo_state local_packages ~prefer_oldest
+      in
       let opam_packages_to_lock =
         solve_package_list local_packages context
         (* don't include local packages in the lock dir *)

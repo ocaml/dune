@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687518210323,
+  "lastUpdate": 1687518617848,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -48573,6 +48573,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.2588758129533333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "51b0bffb10756bea5bba1cc566b1c5362e7fc6e4",
+          "message": "Prefer newest packages by default (#8030)\n\nBased on the discussion at https://github.com/ocaml/dune/issues/8021,\r\ndune will prefer the newest versions of packages when solving\r\ndependencies. This policy can be configured by a command line argument\r\nto `dune pkg lock` and by a field of each context in dune-workspace.\r\n\r\nThis change includes some formatting changes to the messages printed\r\nwhen solving dependencies which were necessary to handle the fact that\r\ndifferent build contexts can now have different package solutions.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-06-23T11:40:13+01:00",
+          "tree_id": "0b9c41e0829c5fe711f32395033f26b8a669eff6",
+          "url": "https://github.com/ocaml/dune/commit/51b0bffb10756bea5bba1cc566b1c5362e7fc6e4"
+        },
+        "date": 1687518616677,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "79.62298231886",
             "unit": "seconds"
           }
         ]

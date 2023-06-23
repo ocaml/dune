@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687519830680,
+  "lastUpdate": 1687535413608,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -61508,6 +61508,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.848052376786665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e357e8f4291ac045d0d69c5d4dca68e12d0d4aec",
+          "message": "Implementation of `OpamSysPoll` in Dune-terms (#7868)\n\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-06-23T08:38:15-07:00",
+          "tree_id": "dc6cbf69503a772f81b27063528a8dcdcf908e56",
+          "url": "https://github.com/ocaml/dune/commit/e357e8f4291ac045d0d69c5d4dca68e12d0d4aec"
+        },
+        "date": 1687535407262,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.96893429204",
             "unit": "seconds"
           }
         ]

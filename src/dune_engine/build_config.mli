@@ -111,6 +111,7 @@ type t = private
   ; execution_parameters : dir:Path.Source.t -> Execution_parameters.t Memo.t
   ; source_tree : (module Source_tree)
   ; action_runner : Action_exec.input -> Action_runner.t option
+  ; shared_cache : (module Shared_cache_intf.S)
   }
 
 (** Initialise the build system. This must be called before running the build
@@ -134,6 +135,7 @@ val set :
        (Path.Build.t -> unit Action_builder.t option Memo.t)
   -> execution_parameters:(dir:Path.Source.t -> Execution_parameters.t Memo.t)
   -> source_tree:(module Source_tree)
+  -> shared_cache:(module Shared_cache_intf.S)
   -> unit
 
 val get : unit -> t

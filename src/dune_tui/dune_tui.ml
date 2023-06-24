@@ -104,36 +104,42 @@ let image_of_user_message_style_pp =
   Notty.I.strf "%a@."
     (Pp.to_fmt_with_tags ~tag_handler:attr_of_user_message_style)
 
-module Tui () = struct
+module Tui = struct
   module Term = Notty_unix.Term
 
   let create () = Term.create ~nosig:false ~output:Unix.stderr ()
 
   let bytes = Bytes.make 64 '0'
 
-  let sigcont_r, sigcont_w = Unix.pipe ~cloexec:true ()
+  let sigcont_pipe = lazy (Unix.pipe ~cloexec:true ())
 
   let term =
-    Unix.set_nonblock sigcont_r;
-    let term = ref (create ()) in
-    Sys.set_signal Sys.sigcont
-    @@ Sys.Signal_handle
-         (fun _ ->
-           Term.release !term;
-           term := create ();
-           assert (1 = Unix.single_write sigcont_w bytes 0 1));
-    let rec old =
+    let setup =
       lazy
-        (Sys.signal Sys.sigtstp
-        @@ Sys.Signal_handle
-             (fun i ->
-               Term.release !term;
-               match Lazy.force old with
-               | Sys.Signal_handle f -> f i
-               | _ -> Unix.kill (Unix.getpid ()) Sys.sigstop))
+        (Unix.set_nonblock (Lazy.force sigcont_pipe |> fst);
+         let term = ref (create ()) in
+         Sys.set_signal Sys.sigcont
+         @@ Sys.Signal_handle
+              (fun _ ->
+                Term.release !term;
+                term := create ();
+                assert (
+                  1
+                  = Unix.single_write (Lazy.force sigcont_pipe |> snd) bytes 0 1));
+         let rec old =
+           lazy
+             (Sys.signal Sys.sigtstp
+             @@ Sys.Signal_handle
+                  (fun i ->
+                    Term.release !term;
+                    match Lazy.force old with
+                    | Sys.Signal_handle f -> f i
+                    | _ -> Unix.kill (Unix.getpid ()) Sys.sigstop))
+         in
+         ignore (Lazy.force old);
+         term)
     in
-    ignore (Lazy.force old);
-    fun () -> !term
+    fun () -> !(Lazy.force setup)
 
   let start () = Unix.set_nonblock Unix.stdin
 
@@ -164,6 +170,7 @@ module Tui () = struct
     (* We check for any user input and handle it. If we go over the
        [time_budget] we give up and continue. *)
     let input_fds =
+      let sigcont_r, _ = Lazy.force sigcont_pipe in
       match Unix.select [ Unix.stdin; sigcont_r ] [] [] time_budget with
       | exception Unix.Unix_error (EINTR, _, _) -> `Restore
       | [], _, _ -> `Timeout
@@ -210,5 +217,5 @@ module Tui () = struct
 end
 
 let backend =
-  let t = lazy (Dune_threaded_console.make (module Tui ())) in
+  let t = lazy (Dune_threaded_console.make (module Tui)) in
   fun () -> Lazy.force t

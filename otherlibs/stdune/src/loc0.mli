@@ -20,10 +20,8 @@ val compare : t -> t -> Ordering.t
 
 val equal : t -> t -> bool
 
-val none_pos : string -> Lexing.position
-
 val none : t
 
-val dyn_of_position_no_file : Lexing.position -> Dyn.t
+val is_none : t -> bool
 
 val to_dyn : t -> Dyn.t

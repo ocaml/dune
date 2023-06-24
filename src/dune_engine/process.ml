@@ -775,8 +775,8 @@ let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
       in
       Io.release stdout_to;
       Io.release stderr_to;
-      let* process_info =
-        Scheduler.wait_for_process pid ~is_process_group_leader:true
+      let* process_info, _termination_reason =
+        Scheduler.wait_for_build_process pid ~is_process_group_leader:true
       in
       let+ () = Running_jobs.stop id in
       let times =

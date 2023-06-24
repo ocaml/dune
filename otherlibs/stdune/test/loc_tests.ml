@@ -12,7 +12,7 @@ let f () () = function
   let pos_fname = Path.to_string file in
   let start = { Lexing.pos_fname; pos_lnum = 4; pos_bol = 0; pos_cnum = 14 } in
   let stop = { start with pos_lnum = 5; pos_cnum = 11 } in
-  let loc = { Loc.start; stop } in
+  let loc = Loc.create ~start ~stop in
   Format.printf "%a@." Pp.to_fmt (Loc.pp loc);
   let output =
     [%expect.output] |> String.split_lines |> List.tl |> String.concat ~sep:"\n"

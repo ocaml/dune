@@ -101,7 +101,8 @@ end = struct
     in
     loop [] (Name.Map.values unparsed)
     |> List.sort ~compare:(fun a b ->
-           Int.compare (Ast.loc a).start.pos_cnum (Ast.loc b).start.pos_cnum)
+           Int.compare (Ast.loc a |> Loc.start).pos_cnum
+             (Ast.loc b |> Loc.start).pos_cnum)
 end
 
 type fields = Fields.t
@@ -260,7 +261,7 @@ let lazy_ t =
 let end_of_list (Values (loc, cstr, _)) =
   match cstr with
   | None ->
-    let loc = { loc with start = loc.stop } in
+    let loc = Loc.set_start loc (Loc.stop loc) in
     User_error.raise ~loc [ Pp.text "Premature end of list" ]
   | Some s -> User_error.raise ~loc [ Pp.textf "Not enough arguments for %s" s ]
   [@@inline never] [@@specialise never] [@@local never]
@@ -404,16 +405,16 @@ let loc_between_states : type k. k context -> k -> k -> Loc.t =
       Ast.loc sexp
     | [] ->
       let (Values (loc, _, _)) = ctx in
-      { loc with start = loc.stop }
+      Loc.set_start loc (Loc.stop loc)
     | sexp :: rest ->
       let loc = Ast.loc sexp in
       let rec search last l =
-        if l == state2 then { loc with stop = (Ast.loc last).stop }
+        if l == state2 then Loc.set_stop loc (Ast.loc last |> Loc.stop)
         else
           match l with
           | [] ->
-            let (Values (loc, _, _)) = ctx in
-            { (Ast.loc sexp) with stop = loc.stop }
+            let (Values (loc', _, _)) = ctx in
+            Loc.set_stop loc (Loc.stop loc')
           | sexp :: rest -> search sexp rest
       in
       search sexp rest)
@@ -428,14 +429,16 @@ let loc_between_states : type k. k context -> k -> k -> Loc.t =
     match
       Name.Map.to_list_map parsed ~f:(fun _ f -> Ast.loc f.entry)
       |> List.sort ~compare:(fun a b ->
-             Int.compare a.Loc.start.pos_cnum b.start.pos_cnum)
+             let a = Loc.start a in
+             let b = Loc.start b in
+             Int.compare a.pos_cnum b.pos_cnum)
     with
     | [] ->
       let (Fields (loc, _, _)) = ctx in
       loc
     | first :: l ->
       let last = List.fold_left l ~init:first ~f:(fun _ x -> x) in
-      { first with stop = last.stop })
+      Loc.set_stop first (Loc.stop last))
 
 let located t ctx state1 =
   let x, state2 = t ctx state1 in

@@ -1,9 +1,27 @@
-type t =
+type t = Lexbuf.Loc.t =
   { start : Lexing.position
   ; stop : Lexing.position
   }
 
+let to_lexbuf_loc x = x
+
+let of_lexbuf_loc x = x
+
+let start t = t.start
+
+let stop t = t.stop
+
+let set_stop t stop = { t with stop }
+
+let set_start t start = { t with start }
+
+let create ~start ~stop = { start; stop }
+
+let map_pos { start; stop } ~f = { start = f start; stop = f stop }
+
 let compare = Poly.compare
+
+let equal x y = Ordering.is_eq (compare x y)
 
 let none_pos p : Lexing.position =
   { pos_fname = p; pos_lnum = 1; pos_cnum = 0; pos_bol = 0 }

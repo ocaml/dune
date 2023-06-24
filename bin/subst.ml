@@ -32,7 +32,7 @@ let subst_string s path ~map =
           ; pos_bol = bol
           }
         in
-        { Loc.start = pos; stop = { pos with pos_cnum = pos.pos_cnum + len } }
+        Loc.create ~start:pos ~stop:{ pos with pos_cnum = pos.pos_cnum + len }
       else
         match s.[i] with
         | '\n' -> loop (lnum + 1) (i + 1) (i + 1)
@@ -175,7 +175,8 @@ module Dune_project = struct
         match t.version with
         | Some v ->
           (* There is a [version] field, overwrite its argument *)
-          replace_text v.loc_of_arg.start.pos_cnum v.loc_of_arg.stop.pos_cnum
+          replace_text (Loc.start v.loc_of_arg).pos_cnum
+            (Loc.stop v.loc_of_arg).pos_cnum
             (Dune_lang.to_string (Dune_lang.atom_or_quoted_string version))
         | None ->
           let version_field =
@@ -192,7 +193,7 @@ module Dune_project = struct
               | Some { loc; _ } ->
                 (* There is no [version] field but there is a [name] one, add
                    the version after it *)
-                loc.stop.pos_cnum
+                (Loc.stop loc).pos_cnum
               | None ->
                 (* If all else fails, add the [version] field after the first
                    line of the file *)

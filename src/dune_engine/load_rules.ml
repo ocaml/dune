@@ -145,7 +145,8 @@ let describe_rule (rule : Rule.t) =
   Pp.text
   @@
   match rule.info with
-  | From_dune_file { start; _ } ->
+  | From_dune_file loc ->
+    let start = Loc.start loc in
     start.pos_fname ^ ":" ^ string_of_int start.pos_lnum
   | Internal -> "<internal location>"
   | Source_file_copy _ -> "file present in source tree"

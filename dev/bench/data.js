@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687599752693,
+  "lastUpdate": 1687600237350,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -21255,6 +21255,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.73755362495333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3e4e50b3b285e89f2ac14d40b24e15321a3c75c8",
+          "message": "fix: correctly terminate jobs (#8032)\n\nPreviously, we would raise on cancelled jobs. This would introduce the\r\nfollowing two bugs:\r\n\r\n* It would leak resources that were supposed to be released after the\r\n  proces terminated\r\n* We would not report running jobs correctly.\r\n\r\nThis PR fixes both issues.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-24T02:27:35-07:00",
+          "tree_id": "81edba5e81fa77e90e69b38ca64df6da088c193f",
+          "url": "https://github.com/ocaml/dune/commit/3e4e50b3b285e89f2ac14d40b24e15321a3c75c8"
+        },
+        "date": 1687600235844,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.56432404453333",
             "unit": "seconds"
           }
         ]

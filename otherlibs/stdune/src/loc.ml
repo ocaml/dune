@@ -2,9 +2,7 @@ include Loc0
 module O = Comparable.Make (Loc0)
 include O
 
-let in_file p =
-  let pos = Lexbuf.Position.in_file ~fname:(Path.to_string p) in
-  create ~start:pos ~stop:pos
+let in_file p = Lexbuf.Loc.in_file ~fname:(Path.to_string p) |> of_lexbuf_loc
 
 let in_dir = in_file
 

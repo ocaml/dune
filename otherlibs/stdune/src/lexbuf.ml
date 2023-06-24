@@ -30,6 +30,10 @@ module Position = struct
       ; ("pos_bol", Int p.pos_bol)
       ; ("pos_cnum", Int p.pos_cnum)
       ]
+
+  let is_file_only { Lexing.pos_fname = _; pos_lnum; pos_cnum; pos_bol } =
+    pos_lnum = none.pos_lnum && pos_cnum = none.pos_cnum
+    && pos_bol = none.pos_bol
 end
 
 module Loc = struct
@@ -43,6 +47,17 @@ module Loc = struct
       { pos_fname; pos_lnum; pos_cnum = cnum; pos_bol = 0 }
     in
     { start; stop = { start with pos_cnum = enum } }
+
+  let map_pos { start; stop } ~f = { start = f start; stop = f stop }
+
+  let in_file ~fname =
+    let start = Position.in_file ~fname in
+    { start; stop = start }
+
+  let is_file_only t =
+    t.start.pos_fname = t.stop.pos_fname
+    && Position.is_file_only t.start
+    && Position.is_file_only t.stop
 
   let to_dyn t =
     let open Dyn in

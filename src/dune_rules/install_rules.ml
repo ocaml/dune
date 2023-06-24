@@ -880,7 +880,7 @@ let symlink_installed_artifacts_to_build_install
     in
     let src = Path.build entry.src in
     let rule { Action_builder.With_targets.targets; build } =
-      Rule.make ~info:(From_dune_file loc) ~context:(Some ctx) ~targets build
+      Rule.make ~loc ~info:From_dune_file ~context:(Some ctx) ~targets build
     in
     match entry.kind with
     | `Source_tree ->

@@ -6,11 +6,9 @@ module Action_builder := Action_builder0
 (** Information about the provenance of a build rule. *)
 module Info : sig
   type t =
-    | From_dune_file of Loc.t
+    | From_dune_file
     | Internal
-    | Source_file_copy of Path.Source.t
-
-  val of_loc_opt : Loc.t option -> t
+    | Source_file_copy
 end
 
 module Promote : sig
@@ -73,7 +71,8 @@ val to_dyn : t -> Dyn.t
 (** [make] raises an error if the set of [targets] is not well-formed. See the
     [Targets.Validation_result] data type for the list of possible problems. *)
 val make
-  :  ?mode:Mode.t
+  :  ?loc:Loc.t
+  -> ?mode:Mode.t
   -> context:Build_context.t option
   -> ?info:Info.t
   -> targets:Targets.t

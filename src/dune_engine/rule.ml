@@ -3,19 +3,14 @@ module Action_builder = Action_builder0
 
 module Info = struct
   type t =
-    | From_dune_file of Loc.t
+    | From_dune_file
     | Internal
-    | Source_file_copy of Path.Source.t
-
-  let of_loc_opt = function
-    | None -> Internal
-    | Some loc -> From_dune_file loc
-  ;;
+    | Source_file_copy
 
   let to_dyn : t -> Dyn.t = function
-    | From_dune_file loc -> Dyn.Variant ("From_dune_file", [ Loc.to_dyn loc ])
+    | From_dune_file -> Dyn.Variant ("From_dune_file", [])
     | Internal -> Dyn.Variant ("Internal", [])
-    | Source_file_copy p -> Dyn.Variant ("Source_file_copy", [ Path.Source.to_dyn p ])
+    | Source_file_copy -> Dyn.Variant ("Source_file_copy", [])
   ;;
 end
 
@@ -72,14 +67,14 @@ end
 include T
 include Comparable.Make (T)
 
-let make ?(mode = Mode.Standard) ~context ?(info = Info.Internal) ~targets action =
+let make ?loc ?(mode = Mode.Standard) ~context ?(info = Info.Internal) ~targets action =
   let action = Action_builder.memoize "Rule.make" action in
   let report_error ?(extra_pp = []) message =
     match info with
-    | From_dune_file loc ->
+    | From_dune_file ->
       let pp = [ Pp.text message ] @ extra_pp in
-      User_error.raise ~loc pp
-    | Internal | Source_file_copy _ ->
+      User_error.raise ?loc pp
+    | Internal | Source_file_copy ->
       Code_error.raise
         message
         [ "info", Info.to_dyn info; "targets", Targets.to_dyn targets ]
@@ -103,13 +98,20 @@ let make ?(mode = Mode.Standard) ~context ?(info = Info.Internal) ~targets actio
            (Dpath.describe_target path))
   in
   let loc =
-    match info with
-    | From_dune_file loc -> loc
-    | Internal ->
-      Loc.in_file
-        (Path.drop_optional_build_context
-           (Path.build (Path.Build.relative dir "_unknown_")))
-    | Source_file_copy p -> Loc.in_file (Path.source p)
+    match loc with
+    | Some loc -> loc
+    | None ->
+      (match info with
+       | From_dune_file -> Loc.none
+       | Internal ->
+         Loc.in_file
+           (Path.drop_optional_build_context
+              (Path.build (Path.Build.relative dir "_unknown_")))
+       | Source_file_copy ->
+         let p =
+           Path.Build.drop_build_context_exn @@ Path.Build.Set.choose_exn targets.files
+         in
+         Loc.in_file (Path.source p))
   in
   { id = Id.gen (); targets; context; action; mode; info; loc; dir }
 ;;

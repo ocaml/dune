@@ -139,18 +139,18 @@ let describe_rule (rule : Rule.t) =
   Pp.text
   @@
   match rule.info with
-  | From_dune_file loc ->
-    let start = Loc.start loc in
+  | From_dune_file ->
+    let start = Loc.start rule.loc in
     start.pos_fname ^ ":" ^ string_of_int start.pos_lnum
   | Internal -> "<internal location>"
-  | Source_file_copy _ -> "file present in source tree"
+  | Source_file_copy -> "file present in source tree"
 ;;
 
 let report_rule_src_dir_conflict dir fn (rule : Rule.t) =
   let loc =
     match rule.info with
-    | From_dune_file loc -> loc
-    | Internal | Source_file_copy _ ->
+    | From_dune_file -> rule.loc
+    | Internal | Source_file_copy ->
       let dir =
         match Path.Build.drop_build_context dir with
         | None -> Path.build dir
@@ -183,7 +183,7 @@ let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
     ]
     ~hints:
       (match rule.info, rule'.info with
-       | Source_file_copy _, _ | _, Source_file_copy _ ->
+       | Source_file_copy, _ | _, Source_file_copy ->
          [ Pp.textf
              "rm -f %s"
              (Path.to_string_maybe_quoted (Path.drop_optional_build_context fn))
@@ -351,7 +351,7 @@ end = struct
       in
       Rule.make
         ~context:None
-        ~info:(Source_file_copy path)
+        ~info:Source_file_copy
         ~targets:(Targets.File.create ctx_path)
         build)
   ;;

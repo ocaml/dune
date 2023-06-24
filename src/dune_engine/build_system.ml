@@ -787,7 +787,8 @@ end = struct
       let { Rule.Anonymous_action.context; action = _; loc; dir = _; alias = _ } = act in
       Rule.make
         ~context
-        ~info:(if Loc.is_none loc then Internal else From_dune_file loc)
+        ~loc
+        ~info:(if Loc.is_none loc then Internal else From_dune_file)
         ~targets:(Targets.File.create target)
         ~mode:Standard
         (Action_builder.of_thunk
@@ -1065,7 +1066,7 @@ end = struct
           rules_here.by_file_targets
           ~f:(fun s { Rule.info; _ } acc ->
             match info with
-            | Rule.Info.Source_file_copy _ when only_generated_files -> acc
+            | Rule.Info.Source_file_copy when only_generated_files -> acc
             | _ ->
               let s = Path.build s in
               if File_selector.test g s then s :: acc else acc)

@@ -258,8 +258,12 @@ let extend_action t ~dir build =
 let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =
   let build = extend_action t build ~dir in
   Rule.make
+    ?loc
     ?mode
-    ~info:(Rule.Info.of_loc_opt loc)
+    ~info:
+      (match loc with
+       | None -> Internal
+       | Some _ -> From_dune_file)
     ~context:(Some (Context.build_context (Env_tree.context t)))
     ~targets
     build

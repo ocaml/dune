@@ -1250,10 +1250,9 @@ let add_env env action =
   Action_builder.With_targets.map action ~f:(Action.Full.add_env env)
 ;;
 
-let rule ?loc { Action_builder.With_targets.build; targets } =
+let rule ~loc { Action_builder.With_targets.build; targets } =
   (* TODO this ignores the workspace file *)
-  Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build ~context:None
-  |> Rules.Produce.rule
+  Rule.make ~loc ~info:From_dune_file ~targets build ~context:None |> Rules.Produce.rule
 ;;
 
 let gen_rules context_name (pkg : Pkg.t) =

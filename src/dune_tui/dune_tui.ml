@@ -107,7 +107,7 @@ let image_of_user_message_style_pp =
 module Tui () = struct
   module Term = Notty_unix.Term
 
-  let nosig = false
+  let create () = Term.create ~nosig:false ~output:Unix.stderr ()
 
   let bytes = Bytes.make 64 '0'
 
@@ -115,12 +115,12 @@ module Tui () = struct
 
   let term =
     Unix.set_nonblock sigcont_r;
-    let term = ref (Term.create ~nosig ()) in
+    let term = ref (create ()) in
     Sys.set_signal Sys.sigcont
     @@ Sys.Signal_handle
          (fun _ ->
            Term.release !term;
-           term := Term.create ~nosig ();
+           term := create ();
            assert (1 = Unix.single_write sigcont_w bytes 0 1));
     let rec old =
       lazy

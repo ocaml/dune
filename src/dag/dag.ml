@@ -10,8 +10,6 @@ module Make (Value : Value) () : S with type value := Value.t = struct
 
     type graph = unit
 
-    module Node_map = Map.Make (Int)
-
     module Id = Id.Make ()
 
     type node_info =

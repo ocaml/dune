@@ -14,6 +14,22 @@ open Dune_pkg
    - sandboxing
 *)
 
+type sys_poll_vars =
+  { os_version : string option
+  ; os_distribution : string option
+  ; os_family : string option
+  }
+
+let sys_poll =
+  let path = Env_path.path Stdune.Env.initial in
+  let sys_poll_memo key = Memo.of_reproducible_fiber @@ key ~path in
+  Memo.lazy_ (fun () ->
+      let open Memo.O in
+      let* os_version = sys_poll_memo Sys_poll.os_version in
+      let* os_distribution = sys_poll_memo Sys_poll.os_distribution in
+      let+ os_family = sys_poll_memo Sys_poll.os_family in
+      { os_version; os_distribution; os_family })
+
 module Source = Dune_pkg.Lock_dir.Source
 
 module Variable = struct
@@ -400,8 +416,6 @@ end
 
 module Action_expander = struct
   module Expander = struct
-    module String_expander = String_with_vars.Make_expander (Applicative.Id)
-
     type t =
       { paths : Paths.t
       ; artifacts : Path.t Filename.Map.t
@@ -443,30 +457,44 @@ module Action_expander = struct
       | Stublibs -> Path.relative roots.lib_root "stublibs"
       | Misc -> assert false
 
+    let sys_poll_var accessor =
+      let+ map = Memo.Lazy.force sys_poll in
+      match accessor map with
+      | Some v -> [ Value.String v ]
+      | None ->
+        (* TODO: in OPAM an unset variable evaluates to false, but we
+           can't represent that in a string so it evaluates to an empty
+           string instead *)
+        [ Value.String "" ]
+
     let expand_pform
         { env = _; paths; artifacts = _; context; deps; version = _ } ~source
-        (pform : Pform.t) : Value.t list =
+        (pform : Pform.t) : Value.t list Memo.t =
       let loc = Dune_sexp.Template.Pform.loc source in
       match pform with
-      | Var (Pkg Switch) -> [ String "dune" ]
-      | Var (Pkg Os_version) -> [ String (assert false) ]
-      | Var (Pkg Os_distribution) -> [ String (assert false) ]
-      | Var (Pkg Os_family) -> [ String (assert false) ]
-      | Var (Pkg Build) -> [ Dir (Path.build paths.source_dir) ]
-      | Var (Pkg Prefix) -> [ Dir (Path.build paths.target_dir) ]
-      | Var (Pkg User) -> [ Value.String (Unix.getlogin ()) ]
-      | Var (Pkg Jobs) -> [ String "1" ]
-      | Var (Pkg Arch) -> [ String (assert false) ]
+      | Var (Pkg Switch) -> Memo.return [ Value.String "dune" ]
+      | Var (Pkg Os_version) ->
+        sys_poll_var (fun { os_version; _ } -> os_version)
+      | Var (Pkg Os_distribution) ->
+        sys_poll_var (fun { os_distribution; _ } -> os_distribution)
+      | Var (Pkg Os_family) -> sys_poll_var (fun { os_family; _ } -> os_family)
+      | Var (Pkg Build) ->
+        Memo.return [ Value.Dir (Path.build paths.source_dir) ]
+      | Var (Pkg Prefix) ->
+        Memo.return [ Value.Dir (Path.build paths.target_dir) ]
+      | Var (Pkg User) -> Memo.return [ Value.String (Unix.getlogin ()) ]
+      | Var (Pkg Jobs) -> Memo.return [ Value.String "1" ]
+      | Var (Pkg Arch) -> Memo.return [ Value.String (assert false) ]
       | Var Make ->
         (* TODO *)
         assert false
       | Var (Pkg Group) ->
         let group = Unix.getgid () |> Unix.getgrgid in
-        [ String group.gr_name ]
+        Memo.return [ Value.String group.gr_name ]
       | Var (Pkg (Section_dir section)) ->
         let roots = Paths.install_roots paths in
         let dir = section_dir_of_root roots section in
-        [ Value.Dir dir ]
+        Memo.return [ Value.Dir dir ]
       | Macro (Pkg, arg) -> (
         match String.split arg ~on:':' with
         | [ "var"; name; var ] -> (
@@ -480,12 +508,15 @@ module Action_expander = struct
           in
           let present = Option.is_some paths in
           match String.Map.find variables var with
-          | Some v -> Variable.dune_value v
+          | Some v -> Memo.return @@ Variable.dune_value v
           | None -> (
             match var with
-            | "pinned" -> [ String "false" ]
-            | "enable" -> [ String (if present then "enable" else "disable") ]
-            | "installed" -> [ String (Bool.to_string present) ]
+            | "pinned" -> Memo.return [ Value.String "false" ]
+            | "enable" ->
+              Memo.return
+                [ Value.String (if present then "enable" else "disable") ]
+            | "installed" ->
+              Memo.return [ Value.String (Bool.to_string present) ]
             | _ -> (
               match paths with
               | None -> assert false
@@ -496,20 +527,23 @@ module Action_expander = struct
                 | Some section ->
                   let section = dune_section_of_pform section in
                   let install_paths = Paths.install_paths paths in
-                  [ Dir (Install.Paths.get install_paths section) ]))))
+                  Memo.return
+                    [ Value.Dir (Install.Paths.get install_paths section) ]))))
         | _ -> assert false)
-      | Var Context_name -> [ Value.String (Context_name.to_string context) ]
+      | Var Context_name ->
+        Memo.return [ Value.String (Context_name.to_string context) ]
       | _ -> Expander.isn't_allowed_in_this_position ~source
 
     let expand_pform_gen t =
-      String_expander.expand ~f:(expand_pform t)
+      String_expander.Memo.expand ~f:(expand_pform t)
         ~dir:(Path.build t.paths.source_dir)
 
     let expand_pform = expand_pform_gen ~mode:Many
 
-    let expand_exe t sw =
+    let expand_exe t sw :
+        ((Path.t, Action.Prog.Not_found.t) result * Value.t list) Memo.t =
       let dir = Path.build t.paths.source_dir in
-      let prog, args = expand_pform_gen t sw ~mode:At_least_one in
+      let* prog, args = expand_pform_gen t sw ~mode:At_least_one in
       let+ prog =
         let loc = String_with_vars.loc sw in
         match prog with
@@ -546,26 +580,20 @@ module Action_expander = struct
     let dir = Path.build expander.paths.source_dir in
     match action with
     | Run (exe, args) ->
-      let+ exe, more_args = Expander.expand_exe expander exe in
-      let args =
-        more_args @ List.concat_map args ~f:(Expander.expand_pform expander)
-        |> Value.L.to_strings ~dir
-      in
+      let* exe, more_args = Expander.expand_exe expander exe in
+      let+ args = Memo.parallel_map args ~f:(Expander.expand_pform expander) in
+      let args = more_args @ List.concat args |> Value.L.to_strings ~dir in
       Action.Run (exe, args)
     | Progn t ->
       let+ args = Memo.parallel_map t ~f:(expand ~expander) in
       Action.Progn args
     | System arg ->
-      let arg =
-        Expander.expand_pform_gen ~mode:Single expander arg
-        |> Value.to_string ~dir
-      in
-      Memo.return @@ Action.System arg
+      let+ arg = Expander.expand_pform_gen ~mode:Single expander arg in
+      let arg = arg |> Value.to_string ~dir in
+      Action.System arg
     | Patch p ->
-      let input =
-        Expander.expand_pform_gen ~mode:Single expander p
-        |> Value.to_string ~dir
-      in
+      let* input = Expander.expand_pform_gen ~mode:Single expander p in
+      let input = input |> Value.to_string ~dir in
       let+ patch =
         let path = Global.env () |> Env_path.path in
         let program = "patch" in
@@ -580,25 +608,23 @@ module Action_expander = struct
       (* TODO opam has a preprocessing step that we should probably apply *)
       Action.Run (patch, [ "-p1"; "-i"; input ])
     | Substitute (input, output) ->
-      let input =
-        Expander.expand_pform_gen ~mode:Single expander input
-        |> Value.to_path ~dir
-      in
-      let output =
-        Expander.expand_pform_gen ~mode:Single expander output
-        |> Value.to_path ~dir |> Path.as_in_build_dir_exn
-      in
-      Memo.return @@ Substitute.action ~input ~output
+      let* input = Expander.expand_pform_gen ~mode:Single expander input in
+      let input = input |> Value.to_path ~dir in
+      let+ output = Expander.expand_pform_gen ~mode:Single expander output in
+      let output = output |> Value.to_path ~dir |> Path.as_in_build_dir_exn in
+      Substitute.action ~input ~output
     | Withenv (updates, action) ->
-      let+ action = expand action ~expander in
-      let _env, updates =
-        List.fold_left ~init:(expander.env, []) updates
+      let* action = expand action ~expander in
+      let+ _env, updates =
+        Memo.List.fold_left ~init:(expander.env, []) updates
           ~f:(fun (env, updates) ({ Env_update.op = _; var; value } as update)
              ->
-            let value =
+            let+ value =
               let expander = { expander with env } in
-              Expander.expand_pform_gen expander value ~mode:Single
-              |> Value.to_string ~dir
+              let+ value =
+                Expander.expand_pform_gen expander value ~mode:Single
+              in
+              Value.to_string ~dir value
             in
             let env = Env_update.set env { update with value } in
             let update =
@@ -679,9 +705,9 @@ module Action_expander = struct
     Option.map pkg.install_command ~f:(expand context pkg)
 
   let exported_env (expander : Expander.t) (env : _ Env_update.t) =
-    let value =
-      Expander.expand_pform_gen expander env.value ~mode:Single
-      |> Value.to_string ~dir:(Path.build expander.paths.source_dir)
+    let+ value =
+      let+ value = Expander.expand_pform_gen expander env.value ~mode:Single in
+      value |> Value.to_string ~dir:(Path.build expander.paths.source_dir)
     in
     { env with value }
 end
@@ -728,9 +754,12 @@ end = struct
         ; exported_env = []
         }
       in
-      let+ expander = Action_expander.expander ctx t in
-      t.exported_env <-
-        List.map exported_env ~f:(Action_expander.exported_env expander);
+      let* expander = Action_expander.expander ctx t in
+      let+ exported_env =
+        Memo.parallel_map exported_env
+          ~f:(Action_expander.exported_env expander)
+      in
+      t.exported_env <- exported_env;
       Some t
 
   let resolve =

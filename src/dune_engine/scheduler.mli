@@ -100,6 +100,16 @@ val wait_for_process :
   -> Pid.t
   -> Proc.Process_info.t Fiber.t
 
+type termination_reason =
+  | Normal
+  | Cancel
+
+val wait_for_build_process :
+     ?timeout:float
+  -> ?is_process_group_leader:bool
+  -> Pid.t
+  -> (Proc.Process_info.t * termination_reason) Fiber.t
+
 (** If the current build was cancelled, raise
     [Memo.Non_reproducible Run.Build_cancelled]. *)
 val abort_if_build_was_cancelled : unit Fiber.t

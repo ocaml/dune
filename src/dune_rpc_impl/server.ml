@@ -132,8 +132,8 @@ module Clients = struct
     let result = { session } in
     Session.Id.Map.add_exn t id result
 
-  let remove_session t (session : _ Session.t) =
-    let id = Session.id session in
+  let remove_session t (session : _ Session.Stage1.t) =
+    let id = Session.Stage1.id session in
     Session.Id.Map.remove t id
 
   let to_list = Session.Id.Map.to_list
@@ -348,7 +348,7 @@ let handler (t : _ t Fdecl.t) action_runner_server handle :
       let terminate_sessions () =
         Fiber.fork_and_join_unit cancel_pending_jobs (fun () ->
             Fiber.parallel_iter (Clients.to_list t.clients)
-              ~f:(fun (_, entry) -> Session.Stage1.request_close entry.session))
+              ~f:(fun (_, entry) -> Session.Stage1.close entry.session))
       in
       let shutdown () =
         Fiber.fork_and_join_unit Scheduler.shutdown (fun () ->

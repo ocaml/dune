@@ -568,6 +568,7 @@ end = struct
     match context with
     | Default
         { lock = _
+        ; version_preference = _
         ; base =
             { targets
             ; name

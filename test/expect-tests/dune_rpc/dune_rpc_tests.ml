@@ -624,9 +624,11 @@ let%test_module "finalization" =
         ]
 
     let handler { on_init; on_terminate; on_upgrade } =
-      let f name = function
-        | Print -> Fiber.return (printfn "server: %s" name)
-        | Fail -> failwith (sprintf "server: failed in %s" name)
+      let f name what =
+        printfn "server: %s" name;
+        match what with
+        | Print -> Fiber.return ()
+        | Fail -> raise Dune_util.Report_error.Already_reported
       in
       let on_init _ _ = f "init" on_init in
       let on_terminate _ = f "terminate" on_terminate in
@@ -670,7 +672,7 @@ let%test_module "finalization" =
           (try test callback
            with exn ->
              let exn = Exn_with_backtrace.capture exn in
-             Format.printf "%a.%!" Exn_with_backtrace.pp_uncaught exn);
+             Format.printf "%a@.@." Exn_with_backtrace.pp_uncaught exn);
           print_endline "---------------");
       [%expect
         {|
@@ -688,19 +690,19 @@ let%test_module "finalization" =
         ---------------
         { on_init = Print; on_terminate = Print; on_upgrade = Fail }
         server: init
-        Error: exception Failure("server: failed in upgrade")
-
-        I must not crash.  Uncertainty is the mind-killer. Exceptions are the
-        little-death that brings total obliteration.  I will fully express my cases.
-        Execution will pass over me and through me.  And when it has gone past, I
-        will unwind the stack along its path.  Where the cases are handled there will
-        be nothing.  Only I will remain.
+        server: upgrade
+        server: terminate
+        server: finished.
         client: sending request
-        /-----------------------------------------------------------------------
-        | Internal error: Uncaught exception.
-        | Test_scheduler.Never
-        \-----------------------------------------------------------------------
-        .---------------
+        { payload =
+            Some
+              [ [ "id"; [ "auto"; "0" ] ]
+              ; [ "req"; [ [ "method"; "double" ]; [ "params"; [] ] ] ]
+              ]
+        ; message = "request sent while connection is dead"
+        ; kind = Connection_dead
+        }
+        ---------------
         { on_init = Print; on_terminate = Fail; on_upgrade = Print }
         server: init
         server: upgrade
@@ -710,47 +712,70 @@ let%test_module "finalization" =
         ; message = "server error"
         ; kind = Code_error
         }
-        Error: exception Failure("server: failed in terminate")
-        /-----------------------------------------------------------------------
-        | Internal error: Uncaught exception.
-        | Test_scheduler.Never
-        \-----------------------------------------------------------------------
-        .---------------
+        server: terminate
+        server: finished.
+        ---------------
         { on_init = Print; on_terminate = Fail; on_upgrade = Fail }
         server: init
-        Error: exception Failure("server: failed in upgrade")
-        client: sending request
+        server: upgrade
+        server: terminate
         /-----------------------------------------------------------------------
         | Internal error: Uncaught exception.
-        | Test_scheduler.Never
+        | Dune_util__Report_error.Already_reported
         \-----------------------------------------------------------------------
-        .---------------
+
+
+        ---------------
         { on_init = Fail; on_terminate = Print; on_upgrade = Print }
-        Error: exception Failure("server: failed in init")
+        server: init
+        server: terminate
+        server: finished.
         /-----------------------------------------------------------------------
         | Internal error: Uncaught exception.
-        | Test_scheduler.Never
+        | Response.E
+        |   { payload = Some [ [ "id"; [ "initialize" ] ] ]
+        |   ; message =
+        |       "connection terminated. this request will never receive a response"
+        |   ; kind = Connection_dead
+        |   }
         \-----------------------------------------------------------------------
-        .---------------
+
+
+        ---------------
         { on_init = Fail; on_terminate = Print; on_upgrade = Fail }
-        Error: exception Failure("server: failed in init")
+        server: init
+        server: terminate
+        server: finished.
         /-----------------------------------------------------------------------
         | Internal error: Uncaught exception.
-        | Test_scheduler.Never
+        | Response.E
+        |   { payload = Some [ [ "id"; [ "initialize" ] ] ]
+        |   ; message =
+        |       "connection terminated. this request will never receive a response"
+        |   ; kind = Connection_dead
+        |   }
         \-----------------------------------------------------------------------
-        .---------------
+
+
+        ---------------
         { on_init = Fail; on_terminate = Fail; on_upgrade = Print }
-        Error: exception Failure("server: failed in init")
+        server: init
+        server: terminate
         /-----------------------------------------------------------------------
         | Internal error: Uncaught exception.
-        | Test_scheduler.Never
+        | Dune_util__Report_error.Already_reported
         \-----------------------------------------------------------------------
-        .---------------
+
+
+        ---------------
         { on_init = Fail; on_terminate = Fail; on_upgrade = Fail }
-        Error: exception Failure("server: failed in init")
+        server: init
+        server: terminate
         /-----------------------------------------------------------------------
         | Internal error: Uncaught exception.
-        | Test_scheduler.Never
+        | Dune_util__Report_error.Already_reported
         \-----------------------------------------------------------------------
-        .--------------- |}]
+
+
+        --------------- |}]
   end)

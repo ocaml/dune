@@ -48,6 +48,7 @@ module Context : sig
     type t =
       { base : Common.t
       ; lock : Path.Source.t option
+      ; version_preference : Dune_pkg.Opam.Version_preference.t option
       }
   end
 

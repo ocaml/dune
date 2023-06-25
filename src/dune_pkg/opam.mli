@@ -10,14 +10,24 @@ module Env : sig
 
   (** Create an environment matching that of the global opam installation. *)
   val global : unit -> t
+
+  (** Adds a value to the environment *)
+  val add : var:Env.Var.t -> value:string -> t -> t
+
+  (** [union l r] merges two environments together. On key clashes prefers the
+      value from [r]. *)
+  val union : t -> t -> t
 end
 
 module Repo_selection : sig
   (** An opam repository *)
   type t
 
+  (** A t that does not yet have an environment added. Use [add_env]. *)
+  type pre
+
   (** An opam repo associated with a switch of a given name or directory *)
-  val switch_with_name : string -> t
+  val switch_with_name : string -> pre
 
   (** An opam repo in a local directory given by [opam_repo_dir_path]. Note that
       [opam_repo_dir_path] is a [Filename.t] rather than, say, a
@@ -40,7 +50,9 @@ module Repo_selection : sig
         to their project, and runs: `dune pkg lock --opam-repository-path
         ../opam-repository`. This rules out [Path.Outside_build_dir.t] as it
         doesn't permit relative paths outside the source directory. *)
-  val local_repo_with_env : opam_repo_dir_path:Filename.t -> env:Env.t -> t
+  val local_repo_with_env : opam_repo_dir_path:Filename.t -> env:Env.t -> pre
+
+  val add_env : Env.t -> pre -> t
 end
 
 module Summary : sig
@@ -48,10 +60,30 @@ module Summary : sig
   type t
 
   (** A message listing selected packages *)
-  val selected_packages_message : t -> User_message.t
+  val selected_packages_message :
+    t -> lock_dir_path:Path.Source.t -> User_message.t
+end
+
+module Version_preference : sig
+  type t =
+    | Newest
+    | Oldest
+
+  val equal : t -> t -> bool
+
+  val to_string : t -> string
+
+  val to_dyn : t -> Dyn.t
+
+  val default : t
+
+  val all_by_string : (string * t) list
+
+  val decode : t Dune_sexp.Decoder.t
 end
 
 val solve_lock_dir :
-     repo_selection:Repo_selection.t
+     version_preference:Version_preference.t
+  -> repo_selection:Repo_selection.t
   -> OpamFile.OPAM.t OpamTypes.name_map
   -> Summary.t * Lock_dir.t

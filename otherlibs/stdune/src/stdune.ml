@@ -127,3 +127,7 @@ type ordering = Ordering.t =
 let sprintf = Printf.sprintf
 let ksprintf = Printf.ksprintf
 let printfn a = ksprintf print_endline a
+
+module For_tests = struct
+  module Compact_position = Compact_position
+end

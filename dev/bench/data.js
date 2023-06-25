@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687689335147,
+  "lastUpdate": 1687689672882,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -48921,6 +48921,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.235360019786667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2a3ca31d1058fae49ac63a7738fc5a41da767f83",
+          "message": "chore(memo): remove dead code (#8036)\n\nNode_map isn't used anywhere\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-25T03:14:47-07:00",
+          "tree_id": "b46eb281b008d28317b509be0c0b9370579ba69e",
+          "url": "https://github.com/ocaml/dune/commit/2a3ca31d1058fae49ac63a7738fc5a41da767f83"
+        },
+        "date": 1687689672172,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "66.87826674342",
             "unit": "seconds"
           }
         ]

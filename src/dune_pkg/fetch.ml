@@ -70,7 +70,7 @@ type failure =
 let fetch ~checksum ~target url =
   let open Fiber.O in
   let path = Path.to_string target in
-  let fname = OpamFilename.of_string path in
+  let dirname = OpamFilename.Dir.of_string path in
   let label = "dune-fetch" in
   let event =
     Dune_stats.(
@@ -92,11 +92,11 @@ let fetch ~checksum ~target url =
   in
   (* hashes have to be empty otherwise OPAM deletes the file after
      downloading if the hash does not match *)
-  let job = OpamRepository.pull_file label fname [] [ url ] in
+  let job = OpamRepository.pull_tree label dirname [] [ url ] in
   let+ downloaded = Fiber_job.run job in
   Dune_stats.finish event;
   match downloaded with
-  | Up_to_date () | Result () -> (
+  | Up_to_date _ | Result _ -> (
     match checksum with
     | None -> Ok ()
     | Some expected -> (

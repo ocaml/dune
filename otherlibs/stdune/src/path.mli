@@ -84,6 +84,8 @@ module External : sig
   val of_filename_relative_to_initial_cwd : string -> t
 
   val append_local : t -> Local.t -> t
+
+  module Table : Hashtbl.S with type key = t
 end
 
 (** In the source section of the current workspace. *)
@@ -113,6 +115,8 @@ module Source : sig
   val descendant : t -> of_:t -> t option
 
   val to_local : t -> Local.t
+
+  module Table : Hashtbl.S with type key = t
 end
 
 module Permissions : sig
@@ -221,6 +225,8 @@ module Build : sig
   val lstat : t -> Unix.stats
 
   val unlink_no_err : t -> unit
+
+  module Table : Hashtbl.S with type key = t
 end
 
 type t = private
@@ -229,6 +235,39 @@ type t = private
   | In_build_dir of Build.t
 
 include Path_intf.S with type t := t
+
+module Table : sig
+  (** Specialized tables for path. We do implement all of [Hashtbl_intf.S] -
+      only what we use in dune. *)
+
+  type path := t
+
+  type key = path
+
+  type 'a t
+
+  val create : unit -> 'a t
+
+  val clear : 'a t -> unit
+
+  val mem : 'a t -> path -> bool
+
+  val set : 'a t -> path -> 'a -> unit
+
+  val remove : 'a t -> path -> unit
+
+  val iter : 'a t -> f:('a -> unit) -> unit
+
+  val find : 'a t -> path -> 'a option
+
+  val filteri_inplace : 'a t -> f:(key:path -> data:'a -> bool) -> unit
+
+  val filter_inplace : 'a t -> f:('a -> bool) -> unit
+
+  val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
+end
+
+val equal : t -> t -> bool
 
 val as_outside_build_dir_exn : t -> Outside_build_dir.t
 

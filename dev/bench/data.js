@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687689684151,
+  "lastUpdate": 1687765435482,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -61856,6 +61856,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "24.605574472633336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "56c9140e007a2d71a38223c35a54954aa8b9a695",
+          "message": "doc: document opam_file_location (#8028)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-26T00:31:27-07:00",
+          "tree_id": "2a8e49b0eb43b36d440c1094472ab6489e52e968",
+          "url": "https://github.com/ocaml/dune/commit/56c9140e007a2d71a38223c35a54954aa8b9a695"
+        },
+        "date": 1687765429708,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.09037285974",
             "unit": "seconds"
           }
         ]

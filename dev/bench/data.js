@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687766199927,
+  "lastUpdate": 1687783917346,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -61972,6 +61972,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.09037285974",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a36ced8595a2fc5c3689768a56d91df9ab485552",
+          "message": "test: add repro for #8041 (#8048)\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-06-26T14:37:23+02:00",
+          "tree_id": "0e21304880e1833fcd79a454644054f59976648f",
+          "url": "https://github.com/ocaml/dune/commit/a36ced8595a2fc5c3689768a56d91df9ab485552"
+        },
+        "date": 1687783910342,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "25.023548689553337",
             "unit": "seconds"
           }
         ]

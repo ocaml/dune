@@ -64,6 +64,10 @@ Unreleased
 
 - Fix deadlock on Windows (#8044, @nojb)
 
+- When using `sendfile` to copy files on Linux, fall back to the portable
+  version if it fails at runtime for some reason (NFS, etc).
+  (#8049, fixes #8041, @emillon)
+
 3.8.2 (2023-06-16)
 ------------------
 

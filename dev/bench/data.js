@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687784821008,
+  "lastUpdate": 1687798665402,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -62088,6 +62088,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.023548689553337",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "71024ef2e27491753f8790b236eb6041d5947b5f",
+          "message": "async_io: adapt self-pipe trick to Windows (#8044)\n\nSigned-off-by: Nicolás Ojeda Bär <n.oje.bar@gmail.com>",
+          "timestamp": "2023-06-26T18:44:13+02:00",
+          "tree_id": "2d3af694d1884a96e421e2cb4513203070e1f7f5",
+          "url": "https://github.com/ocaml/dune/commit/71024ef2e27491753f8790b236eb6041d5947b5f"
+        },
+        "date": 1687798658812,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "24.042590180413338",
             "unit": "seconds"
           }
         ]

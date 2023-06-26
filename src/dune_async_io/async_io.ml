@@ -153,7 +153,8 @@ let rec select_loop t =
   match t.running with
   | false ->
     Unix.close t.pipe_write;
-    Unix.close t.pipe_read
+    if not Sys.win32 then Unix.close t.pipe_read
+      (* On Win32, both ends of the "pipe" are the same UDP socket *)
   | true ->
     let readers, writers, ex =
       let read = t.pipe_read :: Table.keys t.readers in
@@ -187,10 +188,17 @@ let t_var = Fiber.Var.create ()
 let with_io scheduler f =
   let module Scheduler = (val scheduler : Scheduler) in
   let t =
-    let pipe_read, pipe_write = Unix.pipe ~cloexec:true () in
-    if not Sys.win32 then (
-      Unix.set_nonblock pipe_read;
-      Unix.set_nonblock pipe_write);
+    let pipe_read, pipe_write =
+      if not Sys.win32 then Unix.pipe ~cloexec:true ()
+      else
+        (* Create a self-connected UDP socket *)
+        let udp_sock = Unix.socket ~cloexec:true PF_INET SOCK_DGRAM 0 in
+        Unix.bind udp_sock (ADDR_INET (Unix.inet_addr_loopback, 0));
+        Unix.connect udp_sock (Unix.getsockname udp_sock);
+        (udp_sock, udp_sock)
+    in
+    Unix.set_nonblock pipe_read;
+    Unix.set_nonblock pipe_write;
     { readers = Table.create (module Fd) 64
     ; writers = Table.create (module Fd) 64
     ; mutex = Mutex.create ()

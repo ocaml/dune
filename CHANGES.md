@@ -62,6 +62,8 @@ Unreleased
 - Add necessary parentheses in generated opam constraints (#7682, fixes #3431,
   @Lucccyo)
 
+- Fix deadlock on Windows (#8044, @nojb)
+
 3.8.2 (2023-06-16)
 ------------------
 

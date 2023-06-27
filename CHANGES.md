@@ -1,4 +1,4 @@
-3.8.3 (unreleased)
+3.8.3 (2023-06-27)
 ------------------
 
 - Fix deadlock on Windows (#8044, @nojb)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687864307110,
+  "lastUpdate": 1687864396148,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -62465,6 +62465,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.9679747253",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1b4c41aa461926b0599e5a5c8d831209e1b487b2",
+          "message": "chore: update nix flakes (#8057)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-27T03:59:45-07:00",
+          "tree_id": "52d27a22a5324a1040dcfb13560b3ca5c8bb8f25",
+          "url": "https://github.com/ocaml/dune/commit/1b4c41aa461926b0599e5a5c8d831209e1b487b2"
+        },
+        "date": 1687864390178,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "24.73266395386",
             "unit": "seconds"
           }
         ]

@@ -1,4 +1,4 @@
-2.8.3 (unreleased)
+3.8.3 (unreleased)
 ------------------
 
 - Fix deadlock on Windows (#8044, @nojb)

@@ -649,7 +649,7 @@ let set_temp_dir_when_running_actions = ref true
 let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
     ?(stderr_to = Io.stderr) ?(stdin_from = Io.null In) ?(env = Env.initial)
     ?(metadata = default_metadata) fail_mode prog args =
-  Scheduler.with_job_slot (fun cancel (config : Scheduler.Config.t) ->
+  Scheduler.with_job_slot (fun _cancel (config : Scheduler.Config.t) ->
       let dir =
         match dir with
         | None -> dir
@@ -775,7 +775,7 @@ let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
       in
       Io.release stdout_to;
       Io.release stderr_to;
-      let* process_info, _termination_reason =
+      let* process_info, termination_reason =
         Scheduler.wait_for_build_process pid ~is_process_group_leader:true
       in
       let+ () = Running_jobs.stop id in
@@ -820,41 +820,39 @@ let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
           report_process_finished stats ~metadata ~dir ~prog:prog_str ~pid ~args
             ~started_at ~exit_status:exit_status' ~stdout:actual_stdout
             ~stderr:actual_stderr times);
-      let success = Result.is_ok exit_status' in
-      let swallow_on_success_if_requested fn actual_output
-          (on_success : Action_output_on_success.t) =
-        let s =
-          match (success, on_success) with
-          | true, Swallow -> ""
-          | _ -> Lazy.force actual_output
-        in
-        Temp.destroy File fn;
-        s
-      in
-      let stdout =
-        match stdout_capture with
-        | `No_capture -> ""
-        | `Capture fn ->
-          swallow_on_success_if_requested fn actual_stdout stdout_on_success
-      in
-      let stderr =
-        match stderr_capture with
-        | `No_capture | `Merged_with_stdout -> ""
-        | `Capture fn ->
-          swallow_on_success_if_requested fn actual_stderr stderr_on_success
-      in
-      if Fiber.Cancel.fired cancel then
+      match termination_reason with
+      | Cancel ->
         (* if the cancellation token was fired, then we:
 
            1) aren't interested in printing the output from the cancelled job
 
            2) allowing callers to continue work with the already stale value
-           we're about to return. We reuse [Already_reported] to signal that
-           this exception is propagated without being reported. It's not the
-           original intention of [Already_reported] but it works adequately
-           here. *)
-        raise Dune_util.Report_error.Already_reported
-      else
+           we're about to return. *)
+        raise (Memo.Non_reproducible Scheduler.Run.Build_cancelled)
+      | Normal ->
+        let success = Result.is_ok exit_status' in
+        let swallow_on_success_if_requested fn actual_output
+            (on_success : Action_output_on_success.t) =
+          let s =
+            match (success, on_success) with
+            | true, Swallow -> ""
+            | _ -> Lazy.force actual_output
+          in
+          Temp.destroy File fn;
+          s
+        in
+        let stdout =
+          match stdout_capture with
+          | `No_capture -> ""
+          | `Capture fn ->
+            swallow_on_success_if_requested fn actual_stdout stdout_on_success
+        in
+        let stderr =
+          match stderr_capture with
+          | `No_capture | `Merged_with_stdout -> ""
+          | `Capture fn ->
+            swallow_on_success_if_requested fn actual_stderr stderr_on_success
+        in
         let output = stdout ^ stderr in
         Log.command ~command_line ~output ~exit_status:process_info.status;
         let res =

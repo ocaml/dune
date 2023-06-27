@@ -26,7 +26,8 @@ ppxlib \
 ctypes \
 "utop>=2.6.0" \
 "melange>=1.0.0" \
-"rescript-syntax"
+"rescript-syntax" \
+ocaml-uideps
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
 DEV_DEPS := \
@@ -70,6 +71,10 @@ install-ocamlformat:
 
 dev-depext:
 	opam depext -y $(TEST_DEPS)
+
+.PHONY: ocaml-uideps
+ocaml-uideps:
+	opam pin add ocaml-uideps https://github.com/voodoos/ocaml-uideps.git#fbc6881e103cf391286893589bce5afaedf2941e
 
 .PHONY: dev-deps
 dev-deps:

@@ -43,7 +43,8 @@ module Processed = struct
 
   (* Most of the configuration is shared across a same lib/exe... *)
   type config =
-    { stdlib_dir : Path.t option
+    { build_dir : Path.Build.t
+    ; stdlib_dir : Path.t option
     ; obj_dirs : Path.Set.t
     ; src_dirs : Path.Set.t
     ; flags : string list
@@ -52,10 +53,18 @@ module Processed = struct
     }
 
   let dyn_of_config
-      { stdlib_dir; obj_dirs; src_dirs; flags; extensions; melc_flags } =
+      { build_dir
+      ; stdlib_dir
+      ; obj_dirs
+      ; src_dirs
+      ; flags
+      ; extensions
+      ; melc_flags
+      } =
     let open Dyn in
     record
-      [ ("stdlib_dir", option Path.to_dyn stdlib_dir)
+      [ ("build_dir", Path.Build.to_dyn build_dir)
+      ; ("stdlib_dir", option Path.to_dyn stdlib_dir)
       ; ("obj_dirs", Path.Set.to_dyn obj_dirs)
       ; ("src_dirs", Path.Set.to_dyn src_dirs)
       ; ("flags", list string flags)
@@ -126,10 +135,21 @@ module Processed = struct
     | None, None -> None
 
   let to_sexp ~opens ~pp
-      { stdlib_dir; obj_dirs; src_dirs; flags; extensions; melc_flags } =
+      { build_dir
+      ; stdlib_dir
+      ; obj_dirs
+      ; src_dirs
+      ; flags
+      ; extensions
+      ; melc_flags
+      } =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
     let make_directive_of_path tag path =
       make_directive tag (Sexp.Atom (serialize_path path))
+    in
+    let index_file_path = Uideps.project_index ~build_dir in
+    let index_file =
+      [ make_directive_of_path "INDEX_FILE" (Path.build index_file_path) ]
     in
     let stdlib_dir =
       match stdlib_dir with
@@ -185,7 +205,14 @@ module Processed = struct
     in
     Sexp.List
       (List.concat
-         [ stdlib_dir; exclude_query_dir; obj_dirs; src_dirs; flags; suffixes ])
+         [ index_file
+         ; stdlib_dir
+         ; exclude_query_dir
+         ; obj_dirs
+         ; src_dirs
+         ; flags
+         ; suffixes
+         ])
 
   let quote_for_dot_merlin s =
     let s =
@@ -282,7 +309,8 @@ module Processed = struct
                { per_module_config = _
                ; pp_config
                ; config =
-                   { stdlib_dir = _
+                   { build_dir = _
+                   ; stdlib_dir = _
                    ; obj_dirs
                    ; src_dirs
                    ; flags
@@ -527,6 +555,10 @@ module Unprocessed = struct
                     in
                     Path.Set.add obj_dirs public_cmi_dir )))
       in
+
+      let build_dir =
+        Super_context.context sctx |> Context.name |> Context_name.build_dir
+      in
       let src_dirs =
         Path.Set.union src_dirs
           (Path.Set.of_list_map ~f:Path.source more_src_dirs)
@@ -545,7 +577,8 @@ module Unprocessed = struct
             ; Processed.serialize_path path ^ " -as-ppx"
             ])
       in
-      { Processed.stdlib_dir
+      { Processed.build_dir
+      ; stdlib_dir
       ; src_dirs
       ; obj_dirs
       ; flags

@@ -116,6 +116,8 @@ module Module : sig
     -> cm_kind:Lib_mode.Cm_kind.t
     -> 'path option
 
+  val uideps_file : 'path t -> Module.t -> 'path
+
   val obj_file :
     'path t -> Module.t -> kind:Lib_mode.Cm_kind.t -> ext:string -> 'path
 

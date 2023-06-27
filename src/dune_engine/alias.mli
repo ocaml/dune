@@ -12,6 +12,8 @@ module Name : sig
 
   val fmt : t
 
+  val uideps : t
+
   val all : t
 
   val parse_local_path : Loc.t * Path.Local.t -> Path.Local.t * t
@@ -49,6 +51,8 @@ val default : dir:Path.Build.t -> t
 val runtest : dir:Path.Build.t -> t
 
 val install : dir:Path.Build.t -> t
+
+val uideps : dir:Path.Build.t -> t
 
 val doc : dir:Path.Build.t -> t
 

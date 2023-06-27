@@ -444,6 +444,7 @@ let shared_with_config_file =
   { Dune_config.Partial.display
   ; concurrency
   ; sandboxing_preference = Option.map sandboxing_preference ~f:(fun x -> [ x ])
+  ; workspace_indexation = None
   ; terminal_persistence
   ; cache_enabled
   ; cache_reproducibility_check =

@@ -52,6 +52,14 @@ module Dune_config : sig
     val all : (string * t) list
   end
 
+  module Workspace_indexation : sig
+    type t =
+      | Enabled
+      | Disabled
+
+    val all : (string * t) list
+  end
+
   module Action_output_on_success : sig
     include module type of struct
       include Dune_engine.Execution_parameters.Action_output_on_success
@@ -65,6 +73,7 @@ module Dune_config : sig
       { display : Display.t field
       ; concurrency : Concurrency.t field
       ; terminal_persistence : Terminal_persistence.t field
+      ; workspace_indexation : Workspace_indexation.t field
       ; sandboxing_preference : Sandboxing_preference.t field
       ; cache_enabled : Cache.Enabled.t field
       ; cache_reproducibility_check :

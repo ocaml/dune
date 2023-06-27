@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687865071139,
+  "lastUpdate": 1687865082495,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -49501,6 +49501,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "65.50237971286666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2d9415913f78cb6daff5cd7454d699eacbf8122c",
+          "message": "refactor(tui): move initialization to UI thread (#8045)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-27T03:59:12-07:00",
+          "tree_id": "72b56c470b49d7fdbd3cb53743070764deeb8293",
+          "url": "https://github.com/ocaml/dune/commit/2d9415913f78cb6daff5cd7454d699eacbf8122c"
+        },
+        "date": 1687865081311,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6905157212",
             "unit": "seconds"
           }
         ]

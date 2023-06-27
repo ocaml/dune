@@ -62,6 +62,9 @@ Unreleased
 - Add necessary parentheses in generated opam constraints (#7682, fixes #3431,
   @Lucccyo)
 
+3.8.3 (2023-06-27)
+------------------
+
 - Fix deadlock on Windows (#8044, @nojb)
 
 - When using `sendfile` to copy files on Linux, fall back to the portable

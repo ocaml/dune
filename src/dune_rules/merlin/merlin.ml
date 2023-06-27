@@ -97,7 +97,7 @@ module Processed = struct
 
     let name = "merlin-conf"
 
-    let version = 4
+    let version = 5
 
     let to_dyn _ = Dyn.String "Use [dune ocaml dump-dot-merlin] instead"
 
@@ -540,7 +540,7 @@ module Unprocessed = struct
                let+ dirs = src_dirs sctx lib in
                (lib, dirs))
            >>| List.fold_left
-                 ~init:(Path.set_of_source_paths source_dirs, objs_dirs)
+                 ~init:(Path.Set.of_source_set source_dirs, objs_dirs)
                  ~f:(fun (src_dirs, obj_dirs) (lib, more_src_dirs) ->
                    ( Path.Set.union src_dirs more_src_dirs
                    , let public_cmi_dir =

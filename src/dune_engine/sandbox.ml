@@ -79,17 +79,15 @@ let link_function ~(mode : Sandbox_mode.some) =
 
 let link_deps t ~mode ~deps =
   let link = Staged.unstage (link_function ~mode) in
-  Path.Map.iteri deps ~f:(fun path (_ : Digest.t) ->
-      match Path.as_in_build_dir path with
-      | None ->
-        (* This can actually raise if we try to sandbox the "copy from source
-           dir" rules. There is no reason to do that though. *)
-        if Path.is_in_source_tree path then
-          Code_error.raise
-            "Action depends on source tree. All actions should depend on the \
-             copies in the build directory instead."
-            [ ("path", Path.to_dyn path) ]
-      | Some p -> link path (Path.build (map_path t p)))
+  Path.Map.source_only deps
+  |> Path.Source.Map.iteri ~f:(fun path (_ : Digest.t) ->
+         Code_error.raise
+           "Action depends on source tree. All actions should depend on the \
+            copies in the build directory instead."
+           [ ("path", Path.Source.to_dyn path) ]);
+  Path.Map.build_only deps
+  |> Path.Build.Map.iteri ~f:(fun path (_ : Digest.t) ->
+         link (Path.build path) (Path.build (map_path t path)))
 
 let snapshot t =
   (* CR-someday jeremiedimino: we do this kind of traversal in other places.

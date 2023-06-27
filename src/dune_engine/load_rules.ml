@@ -443,11 +443,11 @@ end = struct
               ; Pp.nop
               ; Pp.text "The following targets are present:"
               ; Pp.enumerate ~f:Path.pp
-                  (Path.set_of_source_paths present_targets |> Path.Set.to_list)
+                  (Path.Set.of_source_set present_targets |> Path.Set.to_list)
               ; Pp.nop
               ; Pp.text "The following targets are not:"
               ; Pp.enumerate ~f:Path.pp
-                  (Path.set_of_source_paths absent_targets |> Path.Set.to_list)
+                  (Path.Set.of_source_set absent_targets |> Path.Set.to_list)
               ])
 
   (** A directory is only allowed to be generated if its parent knows about it.

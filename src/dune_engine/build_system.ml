@@ -1014,11 +1014,11 @@ end = struct
       let dir = File_selector.dir g in
       Load_rules.load_dir ~dir >>= function
       | Source { files } ->
-        Path.set_of_source_paths files
+        Path.Set.of_source_set files
         |> Path.Set.filter ~f:(File_selector.test g)
         |> Memo.return
       | External { files } ->
-        Path.set_of_external_paths files
+        Path.Set.of_external_set files
         |> Path.Set.filter ~f:(File_selector.test g)
         |> Memo.return
       | Build { rules_here; _ } ->
@@ -1149,21 +1149,21 @@ let file_exists fn =
 
 let files_of ~dir =
   Load_rules.load_dir ~dir >>= function
-  | Source { files } -> Memo.return (Path.set_of_source_paths files)
-  | External { files } -> Memo.return (Path.set_of_external_paths files)
+  | Source { files } -> Memo.return (Path.Set.of_source_set files)
+  | External { files } -> Memo.return (Path.Set.of_external_set files)
   | Build { rules_here; _ } ->
-    Memo.return
-      (Path.Build.Map.keys rules_here.by_file_targets
-      |> Path.Set.of_list_map ~f:Path.build)
+    Path.Build.Set.of_keys rules_here.by_file_targets
+    |> Path.Set.of_build_set |> Memo.return
   | Build_under_directory_target { directory_target_ancestor } ->
     let+ _digest, path_map = build_dir (Path.build directory_target_ancestor) in
     let dir = Path.as_in_build_dir_exn dir in
-    Path.Build.Map.foldi path_map ~init:Path.Set.empty
+    Path.Build.Map.foldi path_map ~init:Path.Build.Set.empty
       ~f:(fun path _digest acc ->
         let parent = Path.Build.parent_exn path in
         match Path.Build.equal parent dir with
-        | true -> Path.Set.add acc (Path.build path)
+        | true -> Path.Build.Set.add acc path
         | false -> acc)
+    |> Path.Set.of_build_set
 
 let caused_by_cancellation (exn : Exn_with_backtrace.t) =
   match exn.exn with

@@ -947,10 +947,11 @@ let package_deps (pkg : Package.t) files =
         let rules_seen = Rule.Set.add rules_seen rule in
         let* res = Dune_engine.Build_system.execute_rule rule in
         loop_files rules_seen
-          (Dep.Facts.paths res.deps |> Path.Map.keys
-          |> (* if this file isn't in the build dir, it doesn't belong to any
-                package and it doesn't have dependencies that do *)
-          List.filter_map ~f:Path.as_in_build_dir)
+          (Dep.Facts.paths res.deps
+         (* if this file isn't in the build dir, it doesn't belong to any
+                           package and it doesn't have dependencies that do *)
+         |> Path.Map.build_only
+          |> Path.Build.Map.keys)
   and loop_files rules_seen files =
     Memo.List.fold_left ~init:(Package.Id.Set.empty, rules_seen) files
       ~f:(fun (sets, rules_seen) file ->

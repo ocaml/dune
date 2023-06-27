@@ -292,6 +292,14 @@ module Local : sig
 
   module Table : Hashtbl.S with type key = t
 
+  module Map : Map_intf.S with type key = t
+
+  module Set : sig
+    include Set_intf.S with type elt = t and type 'a map = 'a Map.t
+
+    val of_listing : dir:elt -> filenames:Filename.t list -> t
+  end
+
   val root : t
 
   val is_root : t -> bool
@@ -372,6 +380,14 @@ module External : sig
   include Path_intf.S
 
   module Table : Hashtbl.S with type key = t
+
+  module Map : Map_intf.S with type key = t
+
+  module Set : sig
+    include Set_intf.S with type elt = t and type 'a map = 'a Map.t
+
+    val of_listing : dir:elt -> filenames:Filename.t list -> t
+  end
 
   val relative : t -> string -> t
 
@@ -1192,14 +1208,285 @@ let map_extension t ~f =
   let base, ext = split_extension t in
   extend_basename ~suffix:(f ext) base
 
-module O = Comparable.Make (T)
-module Map = O.Map
+module Map = struct
+  type key = t
+
+  type 'a t =
+    { source : 'a Source0.Map.t
+    ; build : 'a Build.Map.t
+    ; external_ : 'a External.Map.t
+    }
+
+  let empty =
+    { source = Source0.Map.empty
+    ; build = Build.Map.empty
+    ; external_ = External.Map.empty
+    }
+
+  let singleton k v =
+    match k with
+    | In_source_tree p -> { empty with source = Source0.Map.singleton p v }
+    | In_build_dir p -> { empty with build = Build.Map.singleton p v }
+    | External p -> { empty with external_ = External.Map.singleton p v }
+
+  let find { source; build; external_ } = function
+    | In_source_tree p -> Source0.Map.find source p
+    | In_build_dir p -> Build.Map.find build p
+    | External p -> External.Map.find external_ p
+
+  let update t key ~f =
+    match key with
+    | In_source_tree p -> { t with source = Source0.Map.update t.source p ~f }
+    | In_build_dir p -> { t with build = Build.Map.update t.build p ~f }
+    | External p -> { t with external_ = External.Map.update t.external_ p ~f }
+
+  let set t key v =
+    match key with
+    | In_source_tree p -> { t with source = Source0.Map.set t.source p v }
+    | In_build_dir p -> { t with build = Build.Map.set t.build p v }
+    | External p -> { t with external_ = External.Map.set t.external_ p v }
+
+  let add (type v) t key (v : v) =
+    let exception E of v in
+    try
+      Ok
+        (update t key ~f:(function
+          | None -> Some v
+          | Some v -> raise_notrace (E v)))
+    with E v -> Error v
+
+  let add_exn t key v =
+    match add t key v with
+    | Ok t -> t
+    | Error _ ->
+      Code_error.raise "Path.Map.add_exn: key already exists"
+        [ ("key", to_dyn key) ]
+
+  let of_list (type a) (xs : (key * a) list) =
+    let exception E of key * a * a in
+    try
+      Ok
+        (List.fold_left xs ~init:empty ~f:(fun acc (k, v) ->
+             match add acc k v with
+             | Ok v -> v
+             | Error v' -> raise_notrace (E (k, v, v'))))
+    with E (k, v, v') -> Error (k, v, v')
+
+  let of_list_exn xs =
+    match of_list xs with
+    | Ok x -> x
+    | Error (key, _, _) ->
+      Code_error.raise "Path.Map.of_list_exn" [ ("key", to_dyn key) ]
+
+  let superpose { source; build; external_ } t =
+    { source = Source0.Map.superpose source t.source
+    ; build = Build.Map.superpose build t.build
+    ; external_ = External.Map.superpose external_ t.external_
+    }
+
+  let union { source; build; external_ } t ~f =
+    { source =
+        Source0.Map.union source t.source ~f:(fun key v v' ->
+            f (In_source_tree key) v v')
+    ; build =
+        Build.Map.union build t.build ~f:(fun key v v' ->
+            f (In_build_dir key) v v')
+    ; external_ =
+        External.Map.union external_ t.external_ ~f:(fun key v v' ->
+            f (External key) v v')
+    }
+
+  let iter2 { source; build; external_ } t ~f =
+    let (_ : _ External.Map.t) =
+      External.Map.merge external_ t.external_ ~f:(fun key v v' ->
+          f (External key) v v';
+          None)
+    in
+    let (_ : _ Source0.Map.t) =
+      Source0.Map.merge source t.source ~f:(fun key v v' ->
+          f (In_source_tree key) v v';
+          None)
+    in
+    let (_ : _ Build.Map.t) =
+      Build.Map.merge build t.build ~f:(fun key v v' ->
+          f (In_build_dir key) v v';
+          None)
+    in
+    ()
+
+  let foldi { source; build; external_ } ~init ~f =
+    let init =
+      External.Map.foldi external_ ~init ~f:(fun k v acc ->
+          f (External k) v acc)
+    in
+    let init =
+      Source0.Map.foldi source ~init ~f:(fun k v acc ->
+          f (In_source_tree k) v acc)
+    in
+    Build.Map.foldi build ~init ~f:(fun k v acc -> f (In_build_dir k) v acc)
+
+  let fold t ~init ~f = foldi t ~init ~f:(fun _ v acc -> f v acc)
+
+  let to_list_map t ~f =
+    foldi t ~init:[] ~f:(fun k v acc -> f k v :: acc) |> List.rev
+
+  let of_list_multi l =
+    List.fold_left (List.rev l) ~init:empty ~f:(fun t (key, data) ->
+        let l = Option.value (find t key) ~default:[] in
+        set t key (data :: l))
+
+  let values t = fold t ~init:[] ~f:(fun v acc -> v :: acc) |> List.rev
+
+  let keys t = foldi t ~init:[] ~f:(fun k _ acc -> k :: acc) |> List.rev
+
+  let to_dyn f { source; build; external_ } =
+    let open Dyn in
+    record
+      [ ("source", Source0.Map.to_dyn f source)
+      ; ("build", Build.Map.to_dyn f build)
+      ; ("external_", External.Map.to_dyn f external_)
+      ]
+
+  let is_empty { source; build; external_ } =
+    Source0.Map.is_empty source
+    && Build.Map.is_empty build
+    && External.Map.is_empty external_
+
+  let iteri { source; build; external_ } ~f =
+    External.Map.iteri external_ ~f:(fun p v -> f (External p) v);
+    Source0.Map.iteri source ~f:(fun p v -> f (In_source_tree p) v);
+    Build.Map.iteri build ~f:(fun p v -> f (In_build_dir p) v)
+
+  let build_only t = t.build
+
+  let source_only t = t.source
+end
 
 module Set = struct
-  include O.Set
+  type elt = t
+
+  type t =
+    { source : Source0.Set.t
+    ; build : Build.Set.t
+    ; external_ : External.Set.t
+    }
+
+  let empty =
+    { source = Source0.Set.empty
+    ; build = Build.Set.empty
+    ; external_ = External.Set.empty
+    }
+
+  let mem { source; build; external_ } = function
+    | In_source_tree p -> Source0.Set.mem source p
+    | In_build_dir p -> Build.Set.mem build p
+    | External p -> External.Set.mem external_ p
+
+  let add t = function
+    | In_source_tree p -> { t with source = Source0.Set.add t.source p }
+    | In_build_dir p -> { t with build = Build.Set.add t.build p }
+    | External p -> { t with external_ = External.Set.add t.external_ p }
+
+  let remove t = function
+    | In_source_tree p -> { t with source = Source0.Set.remove t.source p }
+    | In_build_dir p -> { t with build = Build.Set.remove t.build p }
+    | External p -> { t with external_ = External.Set.remove t.external_ p }
+
+  let iter { source; build; external_ } ~f =
+    External.Set.iter external_ ~f:(fun p -> f (External p));
+    Source0.Set.iter source ~f:(fun p -> f (In_source_tree p));
+    Build.Set.iter build ~f:(fun p -> f (In_build_dir p))
+
+  let filter { source; build; external_ } ~f =
+    { external_ = External.Set.filter external_ ~f:(fun p -> f (External p))
+    ; source = Source0.Set.filter source ~f:(fun p -> f (In_source_tree p))
+    ; build = Build.Set.filter build ~f:(fun p -> f (In_build_dir p))
+    }
+
+  let fold { source; build; external_ } ~init ~f =
+    let init =
+      External.Set.fold external_ ~init ~f:(fun p acc -> f (External p) acc)
+    in
+    let init =
+      Source0.Set.fold source ~init ~f:(fun p acc -> f (In_source_tree p) acc)
+    in
+    Build.Set.fold build ~init ~f:(fun p acc -> f (In_build_dir p) acc)
+
+  let of_list_map list ~f =
+    List.fold_left list ~init:empty ~f:(fun acc a -> add acc (f a))
+
+  let is_empty { source; build; external_ } =
+    Source0.Set.is_empty source
+    && Build.Set.is_empty build
+    && External.Set.is_empty external_
 
   let of_listing ~dir ~filenames =
     of_list_map filenames ~f:(fun f -> relative dir f)
+
+  let to_list_map t ~f =
+    fold t ~init:[] ~f:(fun a acc -> f a :: acc) |> List.rev
+
+  let to_list t = to_list_map t ~f:Fun.id
+
+  let to_seq { external_; source; build } =
+    let external_ =
+      External.Set.to_seq external_ |> Seq.map ~f:(fun p -> External p)
+    in
+    let source =
+      Source0.Set.to_seq source |> Seq.map ~f:(fun p -> In_source_tree p)
+    in
+    let build =
+      Build.Set.to_seq build |> Seq.map ~f:(fun p -> In_build_dir p)
+    in
+    Seq.append external_ (Seq.append source build)
+
+  let union { source; build; external_ } t =
+    { source = Source0.Set.union source t.source
+    ; build = Build.Set.union build t.build
+    ; external_ = External.Set.union external_ t.external_
+    }
+
+  let equal { source; build; external_ } t =
+    Source0.Set.equal source t.source
+    && Build.Set.equal t.build build
+    && External.Set.equal external_ t.external_
+
+  let diff { source; build; external_ } t =
+    { source = Source0.Set.diff source t.source
+    ; build = Build.Set.diff build t.build
+    ; external_ = External.Set.diff external_ t.external_
+    }
+
+  let of_list t = of_list_map t ~f:Fun.id
+
+  let map t ~f = fold t ~init:empty ~f:(fun a acc -> add acc (f a))
+
+  let union_all = List.fold_left ~init:empty ~f:union
+
+  let singleton = function
+    | In_source_tree p -> { empty with source = Source0.Set.singleton p }
+    | In_build_dir p -> { empty with build = Build.Set.singleton p }
+    | External p -> { empty with external_ = External.Set.singleton p }
+
+  let to_dyn { source; build; external_ } =
+    let open Dyn in
+    record
+      [ ("source", Source0.Set.to_dyn source)
+      ; ("build", Build.Set.to_dyn build)
+      ; ("external_", External.Set.to_dyn external_)
+      ]
+
+  let of_keys { Map.source; external_; build } : t =
+    { source = Source0.Set.of_keys source
+    ; external_ = External.Set.of_keys external_
+    ; build = Build.Set.of_keys build
+    }
+
+  let of_source_set source = { empty with source }
+
+  let of_build_set build = { empty with build }
+
+  let of_external_set external_ = { empty with external_ }
 end
 
 let in_source s = in_source_tree (Local.of_string s)
@@ -1310,14 +1597,8 @@ module Source = struct
   let to_local t = t
 end
 
-let set_of_source_paths set =
-  Source.Set.to_list set |> Set.of_list_map ~f:source
-
 let set_of_build_paths_list =
   List.fold_left ~init:Set.empty ~f:(fun acc e -> Set.add acc (build e))
-
-let set_of_external_paths set =
-  External.Set.to_list set |> Set.of_list_map ~f:external_
 
 let rename old_path new_path =
   Sys.rename (to_string old_path) (to_string new_path)

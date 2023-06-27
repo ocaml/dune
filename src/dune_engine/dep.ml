@@ -70,9 +70,12 @@ module Map = struct
   let has_universe t = mem t Universe
 end
 
+let forbid_source path =
+  Code_error.raise "we don't depend on paths from the source"
+    [ ("path", Path.Source.to_dyn path) ]
+
 let as_in_build_dir_no_source = function
-  | Path.In_source_tree _ ->
-    Code_error.raise "we don't depend on paths from the source" []
+  | Path.In_source_tree path -> forbid_source path
   | External _ -> None
   | In_build_dir p -> Some p
 
@@ -110,13 +113,18 @@ module Fact = struct
       }
 
     let necessary_dirs_for_sandboxing { files; dirs; digest = _ } =
-      let f (path : Path.t) (_ : Digest.t) acc =
-        match as_in_build_dir_no_source path with
-        | None -> acc
-        | Some p -> Path.Build.Set.add acc (Path.Build.parent_exn p)
+      Path.Map.source_only files
+      |> Path.Source.Map.iteri ~f:(fun p _ -> forbid_source p);
+      Path.Map.source_only dirs
+      |> Path.Source.Map.iteri ~f:(fun p _ -> forbid_source p);
+      let f p (_ : Digest.t) acc =
+        Path.Build.Set.add acc (Path.Build.parent_exn p)
       in
-      let init = Path.Map.foldi files ~init:Path.Build.Set.empty ~f in
-      Path.Map.foldi dirs ~init ~f
+      let init =
+        Path.Map.build_only files
+        |> Path.Build.Map.foldi ~init:Path.Build.Set.empty ~f
+      in
+      Path.Map.build_only dirs |> Path.Build.Map.foldi ~init ~f
 
     let empty = lazy (make ~files:Path.Map.empty ~dirs:Path.Map.empty)
 

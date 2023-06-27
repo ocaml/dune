@@ -51,7 +51,7 @@ let paths_matching :
   match mode with
   | Eager ->
     let+ files = Build_system.build_pred g in
-    ( Path.Map.keys (Dep.Fact.Files.paths files) |> Path.Set.of_list
+    ( Path.Set.of_keys (Dep.Fact.Files.paths files)
     , Dep.Map.singleton (Dep.file_selector g) (Dep.Fact.file_selector g files)
     )
   | Lazy ->

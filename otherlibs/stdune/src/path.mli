@@ -57,6 +57,10 @@ module Local : sig
 
   include Path_intf.S with type t := t
 
+  module Map : Map_intf.S with type key = t
+
+  module Set : Set_intf.S with type elt = t and type 'a map = 'a Map.t
+
   val root : t
 
   module L : sig
@@ -86,6 +90,14 @@ module External : sig
   val append_local : t -> Local.t -> t
 
   module Table : Hashtbl.S with type key = t
+
+  module Map : Map_intf.S with type key = t
+
+  module Set : sig
+    include Set_intf.S with type elt = t and type 'a map = 'a Map.t
+
+    val of_listing : dir:elt -> filenames:Filename.t list -> t
+  end
 end
 
 (** In the source section of the current workspace. *)
@@ -117,6 +129,14 @@ module Source : sig
   val to_local : t -> Local.t
 
   module Table : Hashtbl.S with type key = t
+
+  module Map : Map_intf.S with type key = t
+
+  module Set : sig
+    include Set_intf.S with type elt = t and type 'a map = 'a Map.t
+
+    val of_listing : dir:elt -> filenames:Filename.t list -> t
+  end
 end
 
 module Permissions : sig
@@ -227,6 +247,14 @@ module Build : sig
   val unlink_no_err : t -> unit
 
   module Table : Hashtbl.S with type key = t
+
+  module Map : Map_intf.S with type key = t
+
+  module Set : sig
+    include Set_intf.S with type elt = t and type 'a map = 'a Map.t
+
+    val of_listing : dir:elt -> filenames:Filename.t list -> t
+  end
 end
 
 type t = private
@@ -265,6 +293,112 @@ module Table : sig
   val filter_inplace : 'a t -> f:('a -> bool) -> unit
 
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
+end
+
+module Map : sig
+  type key = t
+
+  type 'a t
+
+  val empty : 'a t
+
+  val singleton : key -> 'a -> 'a t
+
+  val update : 'a t -> key -> f:('a option -> 'a option) -> 'a t
+
+  val values : 'a t -> 'a list
+
+  val find : 'a t -> key -> 'a option
+
+  val of_list : (key * 'a) list -> ('a t, key * 'a * 'a) result
+
+  val of_list_exn : (key * 'a) list -> 'a t
+
+  val of_list_multi : (key * 'a) list -> 'a list t
+
+  val to_list_map : 'a t -> f:(key -> 'a -> 'b) -> 'b list
+
+  val iteri : 'a t -> f:(key -> 'a -> unit) -> unit
+
+  val set : 'a t -> key -> 'a -> 'a t
+
+  val add_exn : 'a t -> key -> 'a -> 'a t
+
+  val iter2 : 'a t -> 'b t -> f:(key -> 'a option -> 'b option -> unit) -> unit
+
+  val keys : 'a t -> key list
+
+  val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
+
+  val is_empty : 'a t -> bool
+
+  val foldi : 'a t -> init:'b -> f:(key -> 'a -> 'b -> 'b) -> 'b
+
+  val union : 'a t -> 'a t -> f:(key -> 'a -> 'a -> 'a option) -> 'a t
+
+  val superpose : 'a t -> 'a t -> 'a t
+
+  val fold : 'a t -> init:'b -> f:('a -> 'b -> 'b) -> 'b
+
+  val build_only : 'a t -> 'a Build.Map.t
+
+  val source_only : 'a t -> 'a Source.Map.t
+end
+
+module Set : sig
+  type elt = t
+
+  type t
+
+  val empty : t
+
+  val of_keys : _ Map.t -> t
+
+  val add : t -> elt -> t
+
+  val remove : t -> elt -> t
+
+  val iter : t -> f:(elt -> unit) -> unit
+
+  val filter : t -> f:(elt -> bool) -> t
+
+  val fold : t -> init:'a -> f:(elt -> 'a -> 'a) -> 'a
+
+  val of_list_map : 'a list -> f:('a -> elt) -> t
+
+  val is_empty : t -> bool
+
+  val of_listing : dir:elt -> filenames:string list -> t
+
+  val to_list : t -> elt list
+
+  val to_seq : t -> elt Seq.t
+
+  val to_list_map : t -> f:(elt -> 'a) -> 'a list
+
+  val union : t -> t -> t
+
+  val equal : t -> t -> bool
+
+  val diff : t -> t -> t
+
+  val of_list : elt list -> t
+
+  val map : t -> f:(elt -> elt) -> t
+
+  val union_all : t list -> t
+
+  val singleton : elt -> t
+
+  val to_dyn : t -> Dyn.t
+
+  val mem : t -> elt -> bool
+
+  val of_source_set : Source.Set.t -> t
+
+  val of_build_set : Build.Set.t -> t
+
+  val of_external_set : External.Set.t -> t
 end
 
 val equal : t -> t -> bool
@@ -468,13 +602,7 @@ val lstat :
 
 val lstat_exn : t -> Unix.stats
 
-(* it would be nice to call this [Set.of_source_paths], but it's annoying to
-   change the [Set] signature because then we don't comply with [Path_intf.S] *)
-val set_of_source_paths : Source.Set.t -> Set.t
-
 val set_of_build_paths_list : Build.t list -> Set.t
-
-val set_of_external_paths : External.Set.t -> Set.t
 
 (** Rename a file. [rename oldpath newpath] renames the file called [oldpath] to
     [newpath], moving it between directories if needed. If [newpath] already

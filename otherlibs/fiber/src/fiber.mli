@@ -101,6 +101,8 @@ val all_concurrently_unit : unit t list -> unit t
 (** Iter over a list in parallel. *)
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
 
+val parallel_iter_seq : 'a Seq.t -> f:('a -> unit t) -> unit t
+
 val parallel_iter_set :
      (module Set.S with type elt = 'a and type t = 's)
   -> 's

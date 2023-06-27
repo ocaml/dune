@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687853920584,
+  "lastUpdate": 1687854338070,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -21400,6 +21400,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.405206746493334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "de45914cf2bdefcf4e062f333471a1bed919ada9",
+          "message": "fix: sendfile: fall back to portable copy (#8049)\n\nFixes #8041\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-06-27T10:06:10+02:00",
+          "tree_id": "19e0cbbe7a9be54ec6776a8fd720047af60dfbc5",
+          "url": "https://github.com/ocaml/dune/commit/de45914cf2bdefcf4e062f333471a1bed919ada9"
+        },
+        "date": 1687854336829,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.956732784273335",
             "unit": "seconds"
           }
         ]

@@ -315,19 +315,21 @@ end
 module Server = struct
   module Transport = struct
     type t =
-      { fd : Unix.file_descr
-      ; sockaddr : Unix.sockaddr
+      { sockets : (Unix.sockaddr * Unix.file_descr) list
       ; mutable task : (Unix.file_descr * Unix.sockaddr) Async_io.Task.t option
       ; mutable running : bool
       }
 
-    let create fd sockaddr ~backlog =
-      Unix.listen fd backlog;
-      Unix.set_nonblock fd;
-      { fd; sockaddr; task = None; running = true }
+    let create sockets ~backlog =
+      List.iter sockets ~f:(fun (_, fd) ->
+          Unix.listen fd backlog;
+          Unix.set_nonblock fd);
+      { sockets; task = None; running = true }
 
     let close t =
-      let+ () = Async_io.close t.fd in
+      let+ () =
+        Fiber.parallel_iter ~f:(fun (_, fd) -> Async_io.close fd) t.sockets
+      in
       Ok None
 
     let rec accept t =
@@ -336,8 +338,8 @@ module Server = struct
       | false -> close t
       | true -> (
         let* task =
-          Async_io.ready t.fd `Read ~f:(fun () ->
-              Unix.accept ~cloexec:true t.fd)
+          Async_io.ready_one t.sockets `Read ~f:(fun _ fd ->
+              Unix.accept ~cloexec:true fd)
         in
         t.task <- Some task;
         let* res = Async_io.Task.await task in
@@ -360,31 +362,36 @@ module Server = struct
         | None -> Fiber.return ()
         | Some task -> Async_io.Task.cancel task
       in
-      match t.sockaddr with
-      | ADDR_UNIX p -> Fpath.unlink_no_err p
-      | _ -> ()
+      List.iter t.sockets ~f:(fun (addr, _) ->
+          match (addr : Unix.sockaddr) with
+          | ADDR_UNIX p -> Fpath.unlink_no_err p
+          | _ -> ())
   end
 
   type t =
     { mutable state :
-        [ `Init of Unix.file_descr | `Running of Transport.t | `Closed ]
+        [ `Init of Unix.file_descr list | `Running of Transport.t | `Closed ]
     ; backlog : int
-    ; sockaddr : Unix.sockaddr
+    ; sockaddrs : Unix.sockaddr list
     ; ready : unit Fiber.Ivar.t
     }
 
-  let create sockaddr ~backlog =
-    let fd =
-      Unix.socket ~cloexec:true
-        (Unix.domain_of_sockaddr sockaddr)
-        Unix.SOCK_STREAM 0
-    in
-    Unix.set_nonblock fd;
-    Unix.setsockopt fd Unix.SO_REUSEADDR true;
-    match Socket.bind fd sockaddr with
-    | exception Unix.Unix_error (EADDRINUSE, _, _) -> Error `Already_in_use
-    | () ->
-      Ok { sockaddr; backlog; state = `Init fd; ready = Fiber.Ivar.create () }
+  let create sockaddrs ~backlog =
+    try
+      let fds =
+        List.map sockaddrs ~f:(fun sockaddr ->
+            let fd =
+              Unix.socket ~cloexec:true
+                (Unix.domain_of_sockaddr sockaddr)
+                Unix.SOCK_STREAM 0
+            in
+            Unix.set_nonblock fd;
+            Unix.setsockopt fd Unix.SO_REUSEADDR true;
+            Socket.bind fd sockaddr;
+            fd)
+      in
+      Ok { sockaddrs; backlog; state = `Init fds; ready = Fiber.Ivar.create () }
+    with Unix.Unix_error (EADDRINUSE, _, _) -> Error `Already_in_use
 
   let ready t = Fiber.Ivar.read t.ready
 
@@ -392,8 +399,10 @@ module Server = struct
     match t.state with
     | `Closed -> Code_error.raise "already closed" []
     | `Running _ -> Code_error.raise "already running" []
-    | `Init fd ->
-      let transport = Transport.create fd t.sockaddr ~backlog:t.backlog in
+    | `Init fds ->
+      let transport =
+        Transport.create (List.combine t.sockaddrs fds) ~backlog:t.backlog
+      in
       t.state <- `Running transport;
       let+ () = Fiber.Ivar.fill t.ready () in
       let loop () =
@@ -424,15 +433,16 @@ module Server = struct
       match t.state with
       | `Closed -> Fiber.return ()
       | `Running t -> Transport.stop t
-      | `Init fd ->
-        Unix.close fd;
+      | `Init fds ->
+        List.iter ~f:Unix.close fds;
         Fiber.return ()
     in
     t.state <- `Closed
 
   let listening_address t =
     match t.state with
-    | `Init fd | `Running { Transport.fd; _ } -> Unix.getsockname fd
+    | `Init fds -> List.map ~f:Unix.getsockname fds
+    | `Running { Transport.sockets; _ } -> List.map ~f:fst sockets
     | `Closed -> Code_error.raise "server is already closed" []
 end
 

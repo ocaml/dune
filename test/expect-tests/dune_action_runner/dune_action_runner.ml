@@ -14,7 +14,7 @@ let run () =
   let where = `Unix fname in
   let action_runner_server = Action_runner.Rpc_server.create () in
   let csexp_server =
-    match Csexp_rpc.Server.create (Where.to_socket where) ~backlog:10 with
+    match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:10 with
     | Ok s ->
       at_exit (fun () -> Fpath.unlink_no_err fname);
       s

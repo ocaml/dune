@@ -16,7 +16,7 @@ let server (where : Unix.sockaddr) =
     Path.unlink_no_err p;
     Path.mkdir_p (Path.parent_exn p)
   | _ -> ());
-  match Server.create where ~backlog:10 with
+  match Server.create [ where ] ~backlog:10 with
   | Ok t -> t
   | Error `Already_in_use -> assert false
 
@@ -54,7 +54,9 @@ let%expect_test "csexp server life cycle" =
   let run () =
     let server = server addr in
     let* sessions = Server.serve server in
-    let client = client (Csexp_rpc.Server.listening_address server) in
+    let client =
+      Csexp_rpc.Server.listening_address server |> List.hd |> client
+    in
     Fiber.fork_and_join_unit
       (fun () ->
         let log fmt = Logger.log client_log fmt in

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687937304215,
+  "lastUpdate": 1687937422947,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -21545,6 +21545,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "44.988413965406664",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "14789e23b0a5cc6932f13143532f09b805473a95",
+          "message": "refactor(console): safe finalization (#8038)\n\nWe improve the reporting of failures in two situations:\r\n\r\n* We fail unexpectedly when the base console is unable to handle user\r\n  events.\r\n\r\n* We fail unexpectly when trying to cleanup the console.\r\n\r\nIn both situations, we wrte to _build/log because the console is likely\r\nborked.\r\n\r\nThis is all mostly useful for debugging.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-28T00:10:45-07:00",
+          "tree_id": "6bf895c01e84f63cefe3ded303410319df96c501",
+          "url": "https://github.com/ocaml/dune/commit/14789e23b0a5cc6932f13143532f09b805473a95"
+        },
+        "date": 1687937422012,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.27362973808667",
             "unit": "seconds"
           }
         ]

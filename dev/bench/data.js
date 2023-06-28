@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687938874185,
+  "lastUpdate": 1687942261867,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -63132,6 +63132,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.2165134752",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b8d7acec81d931c59bcb2b47a400db6b9540560c",
+          "message": "refactor(rpc): add names to session (#8066)\n\nthis feature is only needed for compatibility with upstream action\r\nrunners\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-28T01:38:28-07:00",
+          "tree_id": "5fe3ea91989a9843d19a1b1cf71a7c5879eac86e",
+          "url": "https://github.com/ocaml/dune/commit/b8d7acec81d931c59bcb2b47a400db6b9540560c"
+        },
+        "date": 1687942255894,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.67098272177334",
             "unit": "seconds"
           }
         ]

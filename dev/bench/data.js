@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687966939698,
+  "lastUpdate": 1687967370260,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -21690,6 +21690,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "45.510858475506666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6e8f16534d95a073e583bb2bb1c2e7c62cff5862",
+          "message": "refactor: split rpc into per command files (#8069)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-06-28T08:29:30-07:00",
+          "tree_id": "7edbf79e8b9a54bacafa901daf7cc1b8b9824276",
+          "url": "https://github.com/ocaml/dune/commit/6e8f16534d95a073e583bb2bb1c2e7c62cff5862"
+        },
+        "date": 1687967369475,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.19058240772666",
             "unit": "seconds"
           }
         ]

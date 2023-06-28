@@ -153,7 +153,7 @@ consider the following example:
     (rule
      (targets x)
      (enabled_if %{read:y})
-     (action ...)
+     (action ...))
 
     (rule
      (with-stdout-to y (...)))
@@ -176,7 +176,7 @@ to a different directory, preferably a standalone one. You can use the
     (rule
      (targets x)
      (enabled_if %{read:dir-for-y/y})
-     (action ...)
+     (action ...))
 
     (subdir
      dir-for-y

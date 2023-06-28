@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687936433036,
+  "lastUpdate": 1687936911370,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -21516,6 +21516,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.83946338572667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "95071a33a95389abc3e303554622fb7f764ff5bb",
+          "message": "fix: correctly cancel failed builds (#8062)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-28T00:00:03-07:00",
+          "tree_id": "baea35a7482bd20e2df14e1c834d8d677d1b4e65",
+          "url": "https://github.com/ocaml/dune/commit/95071a33a95389abc3e303554622fb7f764ff5bb"
+        },
+        "date": 1687936910527,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "44.988413965406664",
             "unit": "seconds"
           }
         ]

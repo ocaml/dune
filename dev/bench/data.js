@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687991256976,
+  "lastUpdate": 1687991269220,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -50342,6 +50342,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "67.58358550839334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jules@j3s.fr",
+            "name": "Jules Aguillon",
+            "username": "Julow"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "16b247811779ec5b802443832e481b5b97aed5b4",
+          "message": "test: Reproduction for non-existent empty file promotion (#8074)\n\nRelated to issue https://github.com/ocaml/dune/issues/8073\r\nIt's a modified version of the test in\r\n`test/blackbox-tests/test-cases/promote/non-existent.t`.\r\n\r\nPromotion does not happen when diffing a non-existing file with an empty\r\nfile.\r\n\r\nSigned-off-by: Jules Aguillon <jules@j3s.fr>",
+          "timestamp": "2023-06-28T15:00:58-07:00",
+          "tree_id": "c25189d5494fef120fc8052a183fc6e5bb311bd9",
+          "url": "https://github.com/ocaml/dune/commit/16b247811779ec5b802443832e481b5b97aed5b4"
+        },
+        "date": 1687991268048,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8416514972866667",
             "unit": "seconds"
           }
         ]

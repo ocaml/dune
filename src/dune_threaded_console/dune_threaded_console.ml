@@ -64,9 +64,18 @@ let make (module Base : S) : (module Dune_console.Backend) =
       Dune_util.Terminal_signals.unblock ();
       let last = ref (Unix.gettimeofday ()) in
       let frame_rate = 1. /. 60. in
-      let cleanup () =
+      let cleanup exn =
         state.finished <- true;
-        Base.finish ();
+        Option.iter exn ~f:(fun exn ->
+            Dune_util.Log.info
+              [ Pp.text "Console failed"; Exn_with_backtrace.pp exn ]);
+        (match Exn_with_backtrace.try_with Base.finish with
+        | Ok () -> ()
+        | Error exn ->
+          (* we can't log to console because we are cleaning it up and we
+             borked it *)
+          Dune_util.Log.info
+            [ Pp.text "Error cleaning up console"; Exn_with_backtrace.pp exn ]);
         Condition.broadcast finish_cv;
         Mutex.unlock mutex
       in
@@ -111,13 +120,16 @@ let make (module Base : S) : (module Dune_console.Backend) =
           last := new_time
         done
       with
-      | Exit -> cleanup ()
+      | Exit -> cleanup None
       | exn ->
         (* If any unexpected exceptions are encountered, we catch them, make
            sure we [cleanup] and then re-raise them. *)
         let exn = Exn_with_backtrace.capture exn in
-        cleanup ();
-        Exn_with_backtrace.reraise exn
+        (* we re-acquire the mutex because we can only reach this by failing in
+           [Base.handle_user_events]. and [Base.handle_user_events] must release the
+           mutex even if it fails. *)
+        Mutex.lock mutex;
+        cleanup (Some exn)
   end in
   (module T)
 

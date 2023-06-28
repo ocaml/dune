@@ -4,6 +4,8 @@ Unreleased
 - Disable background operations on MacOS and other Unixes where we rely on
   fork. (#8100, fixes #8083, @rgrinberg)
 
+- Empty files are now registered for promotion. (#8077, fixes #8074, @Alizter)
+
 - Add `dune build --dump-gc-stats FILE` argument to dump Garbage Collection
   stats to a named file. (#8072, @Alizter)
 

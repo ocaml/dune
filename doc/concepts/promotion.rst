@@ -31,7 +31,8 @@ However, it is different for the following reason:
   produce ``b``, for cases where commands optionally produce a
   *corrected* file
 
-- If ``<file1>`` doesn't exist, it will compare with the empty file.
+- If ``<file1>`` doesn't exist, it will compare with the empty file. If
+  ``<file2>`` is also empty then the comparison will fail.
 
 - It allows promotion. See below.
 

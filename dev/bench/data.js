@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687938504794,
+  "lastUpdate": 1687938862360,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -49878,6 +49878,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8765177000000002",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f670e08236a4050e1a67bc19e7e7c70e0218f48f",
+          "message": "chore: merge 3.8.3 changelog (#8059)\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-06-28T09:25:46+02:00",
+          "tree_id": "a8b9560750082c567cdeb3feb0e70f98d925d7b0",
+          "url": "https://github.com/ocaml/dune/commit/f670e08236a4050e1a67bc19e7e7c70e0218f48f"
+        },
+        "date": 1687938861182,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "67.30652697186666",
             "unit": "seconds"
           }
         ]

@@ -101,6 +101,7 @@ module Session = struct
         pending : (Dune_rpc_private.Id.t, Response.t Fiber.Ivar.t) Table.t
             (** Pending requests sent to the client. When a response is
                 received, the ivar for the response will be filled. *)
+      ; name : string
       }
 
     let set t state =
@@ -118,7 +119,7 @@ module Session = struct
       | Initialized s -> s.init
       | Uninitialized -> Code_error.raise "initialize: request not available" []
 
-    let create ~queries ~send ~finalizer =
+    let create ~name ~queries ~send ~finalizer =
       { queries
       ; send
       ; menu = None
@@ -129,6 +130,7 @@ module Session = struct
       ; id = Id.gen ()
       ; pool = Fiber.Pool.create ()
       ; pending = Table.create (module Dune_rpc_private.Id) 16
+      ; name
       }
 
     let menu t = t.menu
@@ -170,14 +172,23 @@ module Session = struct
         variant "Initialized" [ record ]
 
     let to_dyn f
-        { id; state; close; queries = _; send = _; pool = _; pending = _; menu }
-        =
+        { id
+        ; state
+        ; close
+        ; queries = _
+        ; send = _
+        ; pool = _
+        ; pending = _
+        ; menu
+        ; name
+        } =
       let open Dyn in
       record
         [ ("id", Id.to_dyn id)
         ; ("state", dyn_of_state f state)
         ; ("menu", Dyn.option Menu.to_dyn menu)
         ; ("close", Close.to_dyn close)
+        ; ("name", Dyn.string name)
         ]
   end
 
@@ -608,10 +619,10 @@ let make (type a) (h : a H.Builder.t) : t = Server (H.Builder.to_handler h)
 
 let version (Server h) = h.base.version
 
-let new_session (Server handler) stats ~queries ~send =
+let new_session (Server handler) stats ~name ~queries ~send =
   let session = Fdecl.create Dyn.opaque in
   Fdecl.set session
-    (Session.Stage1.create ~queries ~send ~finalizer:(fun () ->
+    (Session.Stage1.create ~name ~queries ~send ~finalizer:(fun () ->
          let session : _ Session.Stage1.t = Fdecl.get session in
          Fiber.fork_and_join_unit
            (fun () -> Fiber.Pool.close session.pool)
@@ -650,6 +661,8 @@ module Make (S : sig
   val write : t -> Sexp.t list -> (unit, [ `Closed ]) result Fiber.t
 
   val read : t -> Sexp.t option Fiber.t
+
+  val name : t -> string
 end) =
 struct
   open Fiber.O
@@ -670,7 +683,8 @@ struct
               (fun () -> S.read session)
               ~version:(version server) Packet.sexp
           in
-          new_session server stats ~queries ~send
+          let name = S.name session in
+          new_session server stats ~name ~queries ~send
         in
         let id = session#id in
         Event.emit (Session Start) stats id;

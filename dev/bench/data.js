@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687938219503,
+  "lastUpdate": 1687938231734,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -49820,6 +49820,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "69.03530124290667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "6594d56298cd473ae4d3163668cca6cdc8b1915c",
+          "message": "Implement single file downloading for regular files\n\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-06-28T08:17:30+01:00",
+          "tree_id": "e3055a23f61aa1f5e37c3d900311f05a0ef3f51c",
+          "url": "https://github.com/ocaml/dune/commit/6594d56298cd473ae4d3163668cca6cdc8b1915c"
+        },
+        "date": 1687938230784,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8765177000000002",
             "unit": "seconds"
           }
         ]

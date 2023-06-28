@@ -20,7 +20,5 @@ Test fetching from git
   > (build (run cat foo))
   > EOF
 
-  $ dune build _build/default/.pkg/test/target 2>&1 | tail -n +4
-  Error: is a directory
-         is a directory
-         
+  $ dune build _build/default/.pkg/test/target
+  hello world

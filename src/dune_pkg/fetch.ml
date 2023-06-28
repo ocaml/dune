@@ -67,10 +67,26 @@ type failure =
   | Checksum_mismatch of Checksum.t
   | Unavailable of User_message.t option
 
-let fetch ~checksum ~target url =
+let fetch ~checksum ~target (url : OpamUrl.t) =
   let open Fiber.O in
   let path = Path.to_string target in
-  let fname = OpamFilename.of_string path in
+  let pull =
+    (* hashes have to be empty otherwise OPAM deletes the file after
+       downloading if the hash does not match *)
+    let hashes = [] in
+    match url.backend with
+    | #OpamUrl.version_control -> (
+      let dirname = OpamFilename.Dir.of_string path in
+      fun label url ->
+        let open OpamProcess.Job.Op in
+        OpamRepository.pull_tree label dirname hashes [ url ] @@| function
+        | Up_to_date _ -> OpamTypes.Up_to_date ()
+        | Result _ -> Result ()
+        | Not_available (a, b) -> Not_available (a, b))
+    | _ ->
+      let fname = OpamFilename.of_string path in
+      fun label url -> OpamRepository.pull_file label fname hashes [ url ]
+  in
   let label = "dune-fetch" in
   let event =
     Dune_stats.(
@@ -90,10 +106,7 @@ let fetch ~checksum ~target url =
                    ("checksum", `String (Checksum.to_string checksum)) :: args))
           }))
   in
-  (* hashes have to be empty otherwise OPAM deletes the file after
-     downloading if the hash does not match *)
-  let job = OpamRepository.pull_file label fname [] [ url ] in
-  let+ downloaded = Fiber_job.run job in
+  let+ downloaded = Fiber_job.run (pull label url) in
   Dune_stats.finish event;
   match downloaded with
   | Up_to_date () | Result () -> (

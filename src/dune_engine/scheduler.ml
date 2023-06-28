@@ -840,8 +840,6 @@ let cancelled () = raise (Memo.Non_reproducible Build_cancelled)
 
 let check_cancelled t = if Fiber.Cancel.fired t.cancel then cancelled ()
 
-let abort_if_build_was_cancelled = t_opt () >>| Option.iter ~f:check_cancelled
-
 let check_point =
   t_opt () >>= function
   | None -> Fiber.return ()

@@ -110,10 +110,6 @@ val wait_for_build_process :
   -> Pid.t
   -> (Proc.Process_info.t * termination_reason) Fiber.t
 
-(** If the current build was cancelled, raise
-    [Memo.Non_reproducible Run.Build_cancelled]. *)
-val abort_if_build_was_cancelled : unit Fiber.t
-
 (** Number of jobs currently running in the background *)
 val running_jobs_count : t -> int
 

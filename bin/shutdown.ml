@@ -14,7 +14,7 @@ let send_shutdown cli =
 
 let exec common =
   let open Fiber.O in
-  let where = Rpc.active_server common in
+  let where = Rpc_common.active_server common in
   let* conn = Client.Connection.connect_exn where in
   Dune_rpc_impl.Client.client conn ~f:send_shutdown
     (Dune_rpc_private.Initialize.Request.create
@@ -26,6 +26,6 @@ let info =
 
 let term =
   let+ (common : Common.t) = Common.term in
-  Rpc.client_term common exec
+  Rpc_common.client_term common exec
 
 let command = Cmd.v info term

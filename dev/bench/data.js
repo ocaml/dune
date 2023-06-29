@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688027002081,
+  "lastUpdate": 1688027012931,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -50516,6 +50516,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "62.75360633839333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7d37fb4aa7ad8a69982b0d096ee23c35f85641bf",
+          "message": "refactor(pkg): use our usual style for equality (#8078)\n\nIt's a little more concise while maintaining still giving us\r\nexhaustivity checks when adding new field.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-29T00:55:40-07:00",
+          "tree_id": "a7b1ce231d598e3dbd847f7008f1bde8446fad21",
+          "url": "https://github.com/ocaml/dune/commit/7d37fb4aa7ad8a69982b0d096ee23c35f85641bf"
+        },
+        "date": 1688027011972,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.63958827336",
             "unit": "seconds"
           }
         ]

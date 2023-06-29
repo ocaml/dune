@@ -1,4 +1,5 @@
 open Stdune
+module Lib_name = Dune_lang.Lib_name
 open Dune_rules
 open Dune_rules.For_tests
 open Dune_tests_common

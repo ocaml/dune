@@ -1,4 +1,5 @@
 include Dune_sexp
+module Lib_name = Lib_name
 module Alias = Alias
 module Format = Format
 module Stanza = Stanza

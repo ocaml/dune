@@ -59,6 +59,7 @@ module Syntax = Dune_sexp.Syntax
 
 include struct
   open Dune_lang
+  module Lib_name = Lib_name
   module Wrapped = Wrapped
   module Targets_spec = Targets_spec
   module Profile = Profile

@@ -1,3 +1,5 @@
+open Import
+
 (** Generate a META file *)
 
 val requires : ?preds:Meta.predicate list -> Lib_name.Set.t -> Meta.entry

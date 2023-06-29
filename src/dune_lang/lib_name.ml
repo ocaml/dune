@@ -1,4 +1,7 @@
-open Import
+open Stdune
+module Stringlike = Dune_util.Stringlike
+
+module type Stringlike = Dune_util.Stringlike
 
 let private_key = "__private__"
 
@@ -62,7 +65,7 @@ end
 let split t =
   match String.split t ~on:'.' with
   | [] -> assert false
-  | pkg :: rest -> (Package.Name.of_string pkg, rest)
+  | pkg :: rest -> (Package_name.of_string pkg, rest)
 
 let to_local = Local.of_string_user_error
 
@@ -93,8 +96,8 @@ include Stringlike.Make (struct
 end)
 
 type analyze =
-  | Public of Package.Name.t * string list
-  | Private of Package.Name.t * Local.t
+  | Public of Package_name.t * string list
+  | Private of Package_name.t * Local.t
 
 let analyze t =
   let pkg, rest = split t in
@@ -104,11 +107,11 @@ let analyze t =
 
 let mangled pkg local_name =
   let under_pkg = Local.mangled_path_under_package local_name in
-  Package.Name.to_string pkg :: under_pkg |> String.concat ~sep:"." |> of_string
+  Package_name.to_string pkg :: under_pkg |> String.concat ~sep:"." |> of_string
 
 let of_local (_loc, t) = t
 
-let of_package_name p = Package.Name.to_string p
+let of_package_name p = Package_name.to_string p
 
 let hash = String.hash
 
@@ -126,7 +129,7 @@ module Set = struct
 end
 
 let package_name t =
-  Package.Name.of_string
+  Package_name.of_string
     (match String.lsplit2 t ~on:'.' with
     | None -> t
     | Some (p, _) -> p)

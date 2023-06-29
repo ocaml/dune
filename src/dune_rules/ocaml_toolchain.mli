@@ -18,7 +18,7 @@ type t =
 val of_env_with_findlib
   :  Context_name.t
   -> Env.t
-  -> Findlib.Config.t option
+  -> Findlib_config.t option
   -> which:(Filename.t -> Path.t option Memo.t)
   -> t Memo.t
 

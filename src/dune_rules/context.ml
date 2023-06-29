@@ -228,7 +228,7 @@ module Build_environment_kind = struct
     match findlib, t with
     | ( Some findlib
       , (Cross_compilation_using_findlib_toolchain _ | Opam2_environment _ | Unknown) ) ->
-      Findlib.Config.path findlib
+      Findlib_config.path findlib
     | None, Cross_compilation_using_findlib_toolchain toolchain ->
       User_error.raise
         [ Pp.textf
@@ -292,10 +292,10 @@ type instance =
 
 let ocamlpath (kind : Kind.t) ~env ~findlib_toolchain =
   match kind, findlib_toolchain with
-  | Default, None -> Option.value ~default:[] (Findlib.Config.ocamlpath env)
+  | Default, None -> Option.value ~default:[] (Findlib_config.ocamlpath env)
   | _, _ ->
-    let initial_ocamlpath = Findlib.Config.ocamlpath Env.initial in
-    let env_ocamlpath = Findlib.Config.ocamlpath env in
+    let initial_ocamlpath = Findlib_config.ocamlpath Env.initial in
+    let env_ocamlpath = Findlib_config.ocamlpath env in
     (* If we are not in the default context, we can only use the OCAMLPATH
        variable if it is specific to this build context *)
     (* CR-someday diml: maybe we should actually clear OCAMLPATH in other
@@ -336,7 +336,7 @@ let context_env env name ocfg findlib env_nodes version ~profile ~host ~default_
     [ Dune_site_private.dune_ocaml_stdlib_env_var, Ocaml_config.standard_library ocfg
     ; ( Dune_site_private.dune_ocaml_hardcoded_env_var
       , List.map ~f:Path.to_string default_ocamlpath
-        |> String.concat ~sep:(Char.escaped Findlib.Config.ocamlpath_sep) )
+        |> String.concat ~sep:(Char.escaped Findlib_config.ocamlpath_sep) )
     ; ( Dune_site_private.dune_sourceroot_env_var
       , Path.to_absolute_filename (Path.source Path.Source.root) )
     ; Execution_env.Inside_dune.(var, value (In_context (Context_name.build_dir name)))
@@ -353,7 +353,7 @@ let context_env env name ocfg findlib env_nodes version ~profile ~host ~default_
     | None ->
       Some (Bin.cons_path (Path.build (Install.Context.bin_dir ~context:name)) ~_PATH))
   |> Env.extend_env
-       (Option.value ~default:Env.empty (Option.map findlib ~f:Findlib.Config.env))
+       (Option.value ~default:Env.empty (Option.map findlib ~f:Findlib_config.env))
   |> Env.extend_env (Env_nodes.extra_env ~profile env_nodes)
 ;;
 
@@ -377,7 +377,7 @@ let create
     let ocamlpath = ocamlpath kind ~env ~findlib_toolchain in
     let* findlib =
       let findlib_toolchain = Option.map findlib_toolchain ~f:Context_name.to_string in
-      Findlib.Config.discover_from_env ~env ~which ~ocamlpath ~findlib_toolchain
+      Findlib_config.discover_from_env ~env ~which ~ocamlpath ~findlib_toolchain
     in
     let* ocaml = Ocaml_toolchain.of_env_with_findlib name env findlib ~which in
     let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocaml.ocaml_config) in

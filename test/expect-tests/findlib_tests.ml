@@ -138,7 +138,7 @@ let%expect_test _ =
 let conf () =
   let memo =
     let open Memo.O in
-    Findlib.Config.discover_from_env
+    Findlib_config.discover_from_env
       ~which:(fun _ -> assert false)
       ~ocamlpath:[]
       ~env:
@@ -156,7 +156,7 @@ let conf () =
 
 let%expect_test _ =
   let conf = conf () in
-  print_dyn (Findlib.Config.to_dyn conf);
+  print_dyn (Findlib_config.to_dyn conf);
   [%expect
     {|
     { config =
@@ -177,6 +177,6 @@ let%expect_test _ =
     ; ocamlpath = []
     ; toolchain = Some "tlc"
     } |}];
-  print_dyn (Env.to_dyn (Findlib.Config.env conf));
+  print_dyn (Env.to_dyn (Findlib_config.env conf));
   [%expect {| map { "FOO_BAR" : "my variable" } |}]
 ;;

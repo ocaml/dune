@@ -93,12 +93,16 @@ module Lock_dir = struct
         (* TODO *)
         User_error.raise [ Pp.text "" ]
       | Ok content ->
-        let* version =
+        let* version, ocaml =
           Fs_memo.with_lexbuf_from_file
             (In_source_dir (Path.Source.relative path metadata))
             ~f:(fun lexbuf ->
               Metadata.parse_contents lexbuf ~f:(fun instance ->
-                  Dune_sexp.Decoder.return instance.version))
+                  let open Dune_sexp.Decoder in
+                  let+ ocaml =
+                    fields @@ field_o "ocaml" (located Package.Name.decode)
+                  in
+                  (instance.version, ocaml)))
         in
         let+ packages =
           Fs_cache.Dir_contents.to_list content
@@ -135,7 +139,7 @@ module Lock_dir = struct
                  (name, package))
           >>| Package.Name.Map.of_list_exn
         in
-        { packages; version })
+        { packages; version; ocaml })
 end
 
 module Paths = struct

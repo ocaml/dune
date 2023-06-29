@@ -475,6 +475,7 @@ let solve_lock_dir ~version_preference ~repo_selection local_packages =
             (sprintf "Solver selected multiple packages named \"%s\""
                (Package_name.to_string name))
             []
-        | Ok pkgs_by_name -> Lock_dir.create_latest_version pkgs_by_name
+        | Ok pkgs_by_name ->
+          Lock_dir.create_latest_version pkgs_by_name ~ocaml:None
       in
       (summary, lock_dir))

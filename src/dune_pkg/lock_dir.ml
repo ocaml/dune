@@ -105,20 +105,14 @@ module Pkg_info = struct
     ; extra_sources : (Path.Local.t * Source.t) list
     }
 
-  let equal { name; version; dev; source; extra_sources }
-      { name = other_name
-      ; version = other_version
-      ; dev = other_dev
-      ; source = other_source
-      ; extra_sources = other_extra_sources
-      } =
-    Package_name.equal name other_name
-    && String.equal version other_version
-    && Bool.equal dev other_dev
-    && Option.equal Source.equal source other_source
+  let equal { name; version; dev; source; extra_sources } t =
+    Package_name.equal name t.name
+    && String.equal version t.version
+    && Bool.equal dev t.dev
+    && Option.equal Source.equal source t.source
     && List.equal
          (Tuple.T2.equal Path.Local.equal Source.equal)
-         extra_sources other_extra_sources
+         extra_sources t.extra_sources
 
   let remove_locs t =
     { t with
@@ -148,20 +142,14 @@ module Pkg = struct
     ; exported_env : String_with_vars.t Dune_lang.Action.Env_update.t list
     }
 
-  let equal { build_command; install_command; deps; info; exported_env }
-      { build_command = other_build_command
-      ; install_command = other_install_command
-      ; deps = other_deps
-      ; info = other_info
-      ; exported_env = other_exported_env
-      } =
-    Option.equal Action.equal_no_locs build_command other_build_command
-    && Option.equal Action.equal_no_locs install_command other_install_command
-    && List.equal Package_name.equal deps other_deps
-    && Pkg_info.equal info other_info
+  let equal { build_command; install_command; deps; info; exported_env } t =
+    Option.equal Action.equal_no_locs build_command t.build_command
+    && Option.equal Action.equal_no_locs install_command t.install_command
+    && List.equal Package_name.equal deps t.deps
+    && Pkg_info.equal info t.info
     && List.equal
          (Dune_lang.Action.Env_update.equal String_with_vars.equal)
-         exported_env other_exported_env
+         exported_env t.exported_env
 
   let remove_locs t =
     { t with
@@ -268,10 +256,9 @@ type t =
 let remove_locs t =
   { t with packages = Package_name.Map.map t.packages ~f:Pkg.remove_locs }
 
-let equal { version; packages }
-    { version = other_version; packages = other_packages } =
-  Syntax.Version.equal version other_version
-  && Package_name.Map.equal packages other_packages ~equal:Pkg.equal
+let equal { version; packages } t =
+  Syntax.Version.equal version t.version
+  && Package_name.Map.equal packages t.packages ~equal:Pkg.equal
 
 let to_dyn { version; packages } =
   Dyn.record

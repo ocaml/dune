@@ -42,11 +42,11 @@ let term =
       let open Option.O in
       let path = Env_path.path Env.initial in
       let* cmd_name, args =
-        match Platform.OS.value with
-        | Platform.OS.Darwin -> Some ("open", [ "-u" ])
-        | Platform.OS.Linux -> Some ("xdg-open", [])
-        | Platform.OS.Windows -> Some ("start", [])
-        | Platform.OS.Other -> None
+        match (Platform.OS.value : Platform.OS.t) with
+        | Darwin -> Some ("open", [ "-u" ])
+        | Linux -> Some ("xdg-open", [])
+        | Windows -> None
+        | Other -> None
       in
       let+ p = Bin.which ~path cmd_name in
       ( p
@@ -59,10 +59,10 @@ let term =
         (Path.to_absolute_filename cmd)
         args ~env:Env.initial
     | None ->
-      Console.print
+      User_warning.emit
         [ Pp.text
             "No browser could be found, you will have to open the \
-             documentation yourself.\n"
+             documentation yourself."
         ]
   in
   Build_cmd.run_build_command ~common ~config ~request

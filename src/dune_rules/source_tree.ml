@@ -133,7 +133,7 @@ module Readdir : sig
   type t = private
     { path : Path.Source.t
     ; files : Filename.Set.t
-    ; dirs : (Filename.t * Path.Source.t * File.t) list
+    ; dirs : (Filename.t * File.t) list
     }
 
   val empty : Path.Source.t -> t
@@ -144,12 +144,12 @@ end = struct
   type t =
     { path : Path.Source.t
     ; files : Filename.Set.t
-    ; dirs : (Filename.t * Path.Source.t * File.t) list
+    ; dirs : (Filename.t * File.t) list
     }
 
   let equal =
-    let dirs_equal (s1, p1, f1) (s2, p2, f2) =
-      Filename.equal s1 s2 && Path.Source.equal p1 p2 && File.compare f1 f2 = Eq
+    let dirs_equal (s1, f1) (s2, f2) =
+      Filename.equal s1 s2 && File.compare f1 f2 = Eq
     in
     fun x y ->
       Path.Source.equal x.path y.path
@@ -163,7 +163,7 @@ end = struct
     record
       [ ("path", Path.Source.to_dyn path)
       ; ("files", Filename.Set.to_dyn files)
-      ; ("dirs", list (triple string Path.Source.to_dyn File.to_dyn) dirs)
+      ; ("dirs", list (pair string File.to_dyn) dirs)
       ]
 
   (* Returns [true] for special files such as character devices of sockets; see
@@ -214,7 +214,7 @@ end = struct
                   | Ok _ | Error _ -> (false, File.dummy))
                 | _ -> Memo.return (false, File.dummy)
               in
-              if is_directory then List.Right (fn, path, file)
+              if is_directory then List.Right (fn, file)
               else if is_special kind then Skip
               else Left fn)
         >>| List.filter_partition_map ~f:Fun.id
@@ -249,7 +249,8 @@ module Dirs_visited : sig
 
     val find : t -> Path.Source.t -> dirs_visited
 
-    val add : t -> dirs_visited -> Filename.t * Path.Source.t * File.t -> t
+    val add :
+      t -> dirs_visited -> path:Path.Source.t -> Filename.t * File.t -> t
   end
 end = struct
   type t = Path.Source.t File.Map.t
@@ -265,7 +266,7 @@ end = struct
       Filename.Map.find t (Path.Source.basename path)
       |> Option.value ~default:File.Map.empty
 
-    let add (acc : t) dirs_visited (fn, path, file) =
+    let add (acc : t) dirs_visited ~path (fn, file) =
       if Sys.win32 then acc
       else
         let new_dirs_visited =
@@ -388,7 +389,7 @@ end = struct
     (** Get all the sub directories of [path].*)
     val all :
          dirs_visited:Dirs_visited.t
-      -> dirs:(Filename.t * Path.Source.t * File.t) list
+      -> dirs:(Filename.t * File.t) list
       -> sub_dirs:Predicate_lang.Glob.t Sub_dirs.Status.Map.t
       -> parent_status:Sub_dirs.Status.t
       -> dune_file:Dune_file.t option (** to interpret [(subdir ..)] stanzas *)
@@ -411,19 +412,23 @@ end = struct
       let sub_dir_as_t = find_dir_raw path in
       { Dir0.sub_dir_status = dir_status; sub_dir_as_t; virtual_ }
 
-    let physical ~dirs_visited ~dirs ~sub_dirs ~parent_status =
+    let physical ~dir ~dirs_visited ~dirs ~sub_dirs ~parent_status =
       let status_map =
-        Sub_dirs.eval sub_dirs ~dirs:(List.map ~f:(fun (a, _, _) -> a) dirs)
+        Sub_dirs.eval sub_dirs ~dirs:(List.map ~f:(fun (a, _) -> a) dirs)
       in
       List.fold_left dirs ~init:(Dirs_visited.Per_fn.init, Filename.Map.empty)
-        ~f:(fun (dirs_visited_acc, subdirs) ((fn, path, _) as dir) ->
+        ~f:(fun (dirs_visited_acc, subdirs) ((fn, _) as info) ->
           match status ~status_map ~parent_status fn with
           | None -> (dirs_visited_acc, subdirs)
           | Some dir_status ->
+            let path = Path.Source.relative dir fn in
             let dirs_visited_acc =
-              Dirs_visited.Per_fn.add dirs_visited_acc dirs_visited dir
+              Dirs_visited.Per_fn.add dirs_visited_acc dirs_visited ~path info
             in
-            let sub_dir = make_subdir ~dir_status ~virtual_:false path in
+            let sub_dir =
+              make_subdir ~dir_status ~virtual_:false
+                (Path.Source.relative dir fn)
+            in
             let subdirs = Filename.Map.add_exn subdirs fn sub_dir in
             (dirs_visited_acc, subdirs))
 
@@ -447,7 +452,7 @@ end = struct
 
     let all ~dirs_visited ~dirs ~sub_dirs ~parent_status ~dune_file ~path =
       let visited, init =
-        physical ~dirs_visited ~dirs ~sub_dirs ~parent_status
+        physical ~dir:path ~dirs_visited ~dirs ~sub_dirs ~parent_status
       in
       let init = virtual_ ~sub_dirs ~parent_status ~dune_file ~init ~path in
       (visited, init)
@@ -820,7 +825,7 @@ let nearest_vcs =
     | Error _ -> acc
     | Ok readdir -> (
       match
-        List.find_map readdir.dirs ~f:(fun (s, _, _) -> Vcs.Kind.of_dir_name s)
+        List.find_map readdir.dirs ~f:(fun (s, _) -> Vcs.Kind.of_dir_name s)
       with
       | None -> acc
       | Some kind -> Some { Vcs.kind; root = Path.source @@ Dir.path dir })

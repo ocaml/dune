@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688023630432,
+  "lastUpdate": 1688024062057,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -21777,6 +21777,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.13709980138",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c212053c0ae964e8a6978f36e8609dd4bbeef8a1",
+          "message": "refactor(source_tree): remove pointless file path (#8046)\n\nit's already determined by the directory\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-29T00:08:32-07:00",
+          "tree_id": "39797d5db48205fc9bf5dde7c36c9b85a68adcd4",
+          "url": "https://github.com/ocaml/dune/commit/c212053c0ae964e8a6978f36e8609dd4bbeef8a1"
+        },
+        "date": 1688024061296,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.301774243826664",
             "unit": "seconds"
           }
         ]

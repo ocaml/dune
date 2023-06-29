@@ -327,8 +327,6 @@ type t = DB.t
 
 let builtins (db : DB.t) = db.builtins
 
-let paths (db : DB.t) = db.paths
-
 let findlib_predicates_set_by_dune =
   Ps.of_list [ P.ppx_driver; P.mt; P.mt_posix ]
 

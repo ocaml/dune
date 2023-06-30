@@ -223,7 +223,6 @@ let with_io scheduler f =
         (udp_sock, udp_sock)
     in
     Unix.set_nonblock pipe_read;
-    Unix.set_nonblock pipe_write;
     { readers = Table.create (module Fd) 64
     ; writers = Table.create (module Fd) 64
     ; mutex = Mutex.create ()

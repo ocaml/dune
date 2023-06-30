@@ -14,3 +14,6 @@ val setup_package_rules :
   -> dir:Path.Build.t
   -> pkg_name:string
   -> Build_config.gen_rules_result Memo.t
+
+val ocaml_toolchain :
+  Context_name.t -> Ocaml_toolchain.t Action_builder.t Memo.t

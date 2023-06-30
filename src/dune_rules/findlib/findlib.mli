@@ -40,9 +40,6 @@ val all_packages : t -> Dune_package.Entry.t list Memo.t
 (** List all the packages that have broken [dune-package] files *)
 val all_broken_packages : t -> (Package.Name.t * User_message.t) list Memo.t
 
-(** A dummy package. This is used to implement [external-lib-deps] *)
-val dummy_lib : t -> name:Lib_name.t -> Dune_package.Lib.t Memo.t
-
 module Config : sig
   type t
 

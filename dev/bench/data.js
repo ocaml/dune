@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688131323136,
+  "lastUpdate": 1688144279339,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -64292,6 +64292,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "29.270324384406667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b3f033b6dc584becd743eae6069ff0e210653808",
+          "message": "fix: block on interrupting async_io (#8085)\n\nThe write end of the pipe should be blocking when interrupting async_io.\r\nThe code does not handle the interrupt returning non blocking writes.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-06-30T09:45:57-07:00",
+          "tree_id": "5101f631f8c7d4e2c962fd36d6e153f90e243313",
+          "url": "https://github.com/ocaml/dune/commit/b3f033b6dc584becd743eae6069ff0e210653808"
+        },
+        "date": 1688144272722,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.61215403412",
             "unit": "seconds"
           }
         ]

@@ -100,6 +100,7 @@ external spawn_unix :
   -> stderr:Unix.file_descr
   -> use_vfork:bool
   -> setpgid:int option
+  -> sigprocmask:(Unix.sigprocmask_command * int list) option
   -> int = "spawn_unix_byte" "spawn_unix"
 
 external spawn_windows :
@@ -122,7 +123,7 @@ let maybe_quote f =
     f
 
 let spawn_windows ~env ~cwd ~prog ~argv ~stdin ~stdout ~stderr ~use_vfork:_
-    ~setpgid:_ =
+    ~setpgid:_ ~sigprocmask:_ =
   let cwd =
     match (cwd : Working_dir.t) with
     | Path p -> Some p
@@ -146,7 +147,7 @@ let no_null s =
 
 let spawn ?env ?(cwd = Working_dir.Inherit) ~prog ~argv ?(stdin = Unix.stdin)
     ?(stdout = Unix.stdout) ?(stderr = Unix.stderr)
-    ?(unix_backend = Unix_backend.default) ?setpgid () =
+    ?(unix_backend = Unix_backend.default) ?setpgid ?sigprocmask () =
   (match cwd with
   | Path s -> no_null s
   | Fd _
@@ -166,6 +167,7 @@ let spawn ?env ?(cwd = Working_dir.Inherit) ~prog ~argv ?(stdin = Unix.stdin)
     | Fork -> false
   in
   backend ~env ~cwd ~prog ~argv ~stdin ~stdout ~stderr ~use_vfork ~setpgid
+    ~sigprocmask
 
 external safe_pipe : unit -> Unix.file_descr * Unix.file_descr = "spawn_pipe"
 

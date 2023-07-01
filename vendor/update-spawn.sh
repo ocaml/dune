@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=48a7145ca41e60d7124e6215bb19139b846985be
+version=posix_spawn
 
 set -e -o pipefail
 
@@ -12,7 +12,7 @@ mkdir -p spawn/src
 
 (
     cd $TMP
-    git clone https://github.com/ocaml-dune/spawn.git
+    git clone https://github.com/rgrinberg/spawn.git
     cd spawn
     git checkout $version
 )

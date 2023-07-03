@@ -30,8 +30,6 @@ let sys_poll =
       let+ os_family = sys_poll_memo Sys_poll.os_family in
       { os_version; os_distribution; os_family })
 
-module Source = Dune_pkg.Lock_dir.Source
-
 module Variable = struct
   type value = OpamVariable.variable_contents =
     | B of bool
@@ -1210,7 +1208,7 @@ let gen_rules context_name (pkg : Pkg.t) =
     List.map pkg.info.extra_sources ~f:(fun (local, fetch) ->
         let extra_source = Paths.extra_source pkg.paths local in
         let rule =
-          match (fetch : Source.t) with
+          match (fetch : Lock_dir.Source.t) with
           | External_copy (loc, src) ->
             ( loc
             , Action_builder.copy ~src:(Path.external_ src) ~dst:extra_source )

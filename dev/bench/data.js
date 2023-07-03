@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688392654021,
+  "lastUpdate": 1688392668467,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -51038,6 +51038,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "83.04592817526667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e265a44d213dd415584d59b978b6daba76fe17da",
+          "message": "chore: update spawn bindings (#8086)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-03T06:26:39-07:00",
+          "tree_id": "3edcb083674badf4abad854914f86630656f320a",
+          "url": "https://github.com/ocaml/dune/commit/e265a44d213dd415584d59b978b6daba76fe17da"
+        },
+        "date": 1688392667338,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.261430597066667",
             "unit": "seconds"
           }
         ]

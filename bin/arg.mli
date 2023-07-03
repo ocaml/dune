@@ -49,6 +49,6 @@ val package_name : Package.Name.t conv
 
 val profile : Dune_lang.Profile.t conv
 
-val lib_name : Lib_name.t conv
+val lib_name : Dune_lang.Lib_name.t conv
 
 val version : Dune_lang.Syntax.Version.t conv

@@ -25,7 +25,6 @@ include struct
   open Dune_rules
   module Super_context = Super_context
   module Context = Context
-  module Lib_name = Lib_name
   module Workspace = Workspace
   module Package = Package
   module Section = Install.Section
@@ -59,6 +58,7 @@ include struct
   open Dune_lang
   module Stanza = Stanza
   module Profile = Profile
+  module Lib_name = Lib_name
 end
 
 module Log = Dune_util.Log

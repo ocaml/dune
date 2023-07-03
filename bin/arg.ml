@@ -1,9 +1,15 @@
 open Stdune
 include Cmdliner.Arg
-module Stanza = Dune_lang.Stanza
-module String_with_vars = Dune_lang.String_with_vars
-module Profile = Dune_lang.Profile
-module Pform = Dune_lang.Pform
+
+include struct
+  open Dune_lang
+  module Stanza = Stanza
+  module String_with_vars = String_with_vars
+  module Profile = Profile
+  module Pform = Pform
+  module Lib_name = Lib_name
+end
+
 module Dep_conf = Dune_rules.Dep_conf
 module Package = Dune_rules.Package
 module Context_name = Dune_engine.Context_name
@@ -132,6 +138,6 @@ let graph_format : Dune_graph.Graph.File_format.t conv =
 
 let context_name : Context_name.t conv = conv Context_name.conv
 
-let lib_name = conv Dune_rules.Lib_name.conv
+let lib_name = conv Lib_name.conv
 
 let version = pair ~sep:'.' int int

@@ -1,13 +1,13 @@
-open Import
+open Stdune
 
 type t
 
 val hash : t -> int
 
-include Stringlike with type t := t
+include Dune_util.Stringlike with type t := t
 
 module Local : sig
-  include Stringlike
+  include Dune_util.Stringlike
 
   (** Description of valid library names *)
   val valid_format_doc : User_message.Style.t Pp.t
@@ -25,19 +25,19 @@ val to_local : Loc.t * t -> (Local.t, User_message.t) result
 
 val to_local_exn : t -> Local.t
 
-val split : t -> Package.Name.t * string list
+val split : t -> Package_name.t * string list
 
-val package_name : t -> Package.Name.t
+val package_name : t -> Package_name.t
 
-val of_package_name : Package.Name.t -> t
+val of_package_name : Package_name.t -> t
 
 type analyze =
-  | Public of Package.Name.t * string list
-  | Private of Package.Name.t * Local.t
+  | Public of Package_name.t * string list
+  | Private of Package_name.t * Local.t
 
 val analyze : t -> analyze
 
-val mangled : Package.Name.t -> Local.t -> t
+val mangled : Package_name.t -> Local.t -> t
 
 module Map : Map.S with type key = t
 

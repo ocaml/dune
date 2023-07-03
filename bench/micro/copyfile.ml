@@ -2,9 +2,9 @@ open Stdune
 
 let dir =
   (if Array.length Sys.argv > 1 then
-   let dir = Path.of_filename_relative_to_initial_cwd Sys.argv.(1) in
-   Temp.temp_in_dir Dir ~dir
-  else Temp.create Dir)
+     let dir = Path.of_filename_relative_to_initial_cwd Sys.argv.(1) in
+     Temp.temp_in_dir Dir ~dir
+   else Temp.create Dir)
     ~prefix:"copyfile" ~suffix:"bench"
 
 let contents =

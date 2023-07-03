@@ -652,7 +652,7 @@ end = struct
       | None, Some _ ->
         Resolve.Memo.return
           (if Set.mem t.implemented lib then t
-          else { t with unimplemented = Set.add t.unimplemented lib })
+           else { t with unimplemented = Set.add t.unimplemented lib })
       | Some vlib, None ->
         let+ vlib = Memo.return vlib in
         { implemented = Set.add t.implemented vlib
@@ -884,8 +884,8 @@ end = struct
           let* requires_for_closure_check =
             Memo.return
               (let open Resolve.O in
-              let+ requires = requires in
-              List.filter requires ~f:(fun lib -> not (equal lib vlib)))
+               let+ requires = requires in
+               List.filter requires ~f:(fun lib -> not (equal lib vlib)))
           in
           linking_closure_with_overlap_checks None requires_for_closure_check
             ~forbidden_libraries:(Map.singleton vlib Loc.none)
@@ -938,12 +938,12 @@ end = struct
     let* requires =
       Memo.return
         (let open Resolve.O in
-        let* requires = requires in
-        match implements with
-        | None -> Resolve.return requires
-        | Some impl ->
-          let+ impl = impl in
-          impl :: requires)
+         let* requires = requires in
+         match implements with
+         | None -> Resolve.return requires
+         | Some impl ->
+           let+ impl = impl in
+           impl :: requires)
     in
     let* ppx_runtime_deps =
       Lib_info.ppx_runtime_deps info |> resolve_simple_deps db ~private_deps
@@ -968,27 +968,27 @@ end = struct
     let rec t =
       lazy
         (let open Resolve.O in
-        let resolved_selects = resolved >>| fun r -> r.selects in
-        let pps = resolved >>= fun r -> r.pps in
-        let re_exports = resolved >>= fun r -> r.re_exports in
-        { info
-        ; name
-        ; unique_id
-        ; requires
-        ; ppx_runtime_deps
-        ; pps
-        ; resolved_selects
-        ; re_exports
-        ; implements
-        ; default_implementation
-        ; lib_config = db.lib_config
-        ; project
-        ; sub_systems =
-            Sub_system_name.Map.mapi (Lib_info.sub_systems info)
-              ~f:(fun name info ->
-                Memo.Lazy.create (fun () ->
-                    Sub_system.instantiate name info (Lazy.force t) ~resolve))
-        })
+         let resolved_selects = resolved >>| fun r -> r.selects in
+         let pps = resolved >>= fun r -> r.pps in
+         let re_exports = resolved >>= fun r -> r.re_exports in
+         { info
+         ; name
+         ; unique_id
+         ; requires
+         ; ppx_runtime_deps
+         ; pps
+         ; resolved_selects
+         ; re_exports
+         ; implements
+         ; default_implementation
+         ; lib_config = db.lib_config
+         ; project
+         ; sub_systems =
+             Sub_system_name.Map.mapi (Lib_info.sub_systems info)
+               ~f:(fun name info ->
+                 Memo.Lazy.create (fun () ->
+                     Sub_system.instantiate name info (Lazy.force t) ~resolve))
+         })
     in
     let t = Lazy.force t in
     let res =
@@ -1522,18 +1522,18 @@ end = struct
               | _ ->
                 R.lift
                   (let open Memo.O in
-                  find_internal db lib.name >>= function
-                  | Status.Found lib' ->
-                    if lib = lib' then Resolve.Memo.return ()
-                    else
-                      let req_by = Dep_stack.to_required_by stack in
-                      Error.overlap ~in_workspace:lib'.info
-                        ~installed:(lib.info, req_by)
-                  | found ->
-                    Code_error.raise "Unexpected find result"
-                      [ ("found", Status.to_dyn found)
-                      ; ("lib.name", Lib_name.to_dyn lib.name)
-                      ]))
+                   find_internal db lib.name >>= function
+                   | Status.Found lib' ->
+                     if lib = lib' then Resolve.Memo.return ()
+                     else
+                       let req_by = Dep_stack.to_required_by stack in
+                       Error.overlap ~in_workspace:lib'.info
+                         ~installed:(lib.info, req_by)
+                   | found ->
+                     Code_error.raise "Unexpected find result"
+                       [ ("found", Status.to_dyn found)
+                       ; ("lib.name", Lib_name.to_dyn lib.name)
+                       ]))
           in
           let* new_stack =
             R.lift (Dep_stack.push stack ~implements_via lib.unique_id)

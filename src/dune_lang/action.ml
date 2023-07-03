@@ -283,9 +283,9 @@ let cstrs_dune_file t =
   ; ( "cat"
     , let* xs = repeat1 sw in
       (if List.length xs > 1 then
-       Syntax.since ~what:"Passing several arguments to 'cat'" Stanza.syntax
-         (3, 4)
-      else return ())
+         Syntax.since ~what:"Passing several arguments to 'cat'" Stanza.syntax
+           (3, 4)
+       else return ())
       >>> return (Cat xs) )
   ; ( "copy"
     , let+ src = sw

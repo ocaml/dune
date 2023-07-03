@@ -24,12 +24,12 @@ let register rpc =
       let+ version =
         Memo.run
           (let open Memo.O in
-          let source_path =
-            Dune_rpc_impl.For_handlers.source_path_of_string path
-          in
-          let+ dir = Source_tree.nearest_dir source_path in
-          let project = Source_tree.Dir.project dir in
-          Dune_project.dune_version project)
+           let source_path =
+             Dune_rpc_impl.For_handlers.source_path_of_string path
+           in
+           let+ dir = Source_tree.nearest_dir source_path in
+           let project = Source_tree.Dir.project dir in
+           Dune_project.dune_version project)
       in
       Dune_lang.Format.format_string ~version contents
     in

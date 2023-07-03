@@ -89,8 +89,8 @@ module Run = struct
                   | `Unix a ->
                     `Unix
                       (if Filename.is_relative a then
-                       Filename.concat (Sys.getcwd ()) a
-                      else a)
+                         Filename.concat (Sys.getcwd ()) a
+                       else a)
                 in
                 Registry.Dune.create ~where ~root:t.root ~pid
               in

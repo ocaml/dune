@@ -23,8 +23,8 @@
     {[
       add_rule
         (let open Action_builder.O in
-        let* libs = Resolve.read requires in
-        gen_action libs)
+         let* libs = Resolve.read requires in
+         gen_action libs)
     ]}
 
     or:
@@ -33,8 +33,8 @@
       Command.run prog
         [ Resolve.args
             (let open Resolve.O in
-            let+ libs = Resolve.args requires in
-            Command.Args.S [ gen_args libs ])
+             let+ libs = Resolve.args requires in
+             Command.Args.S [ gen_args libs ])
         ]
     ]}
 

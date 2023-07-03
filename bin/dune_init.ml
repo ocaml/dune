@@ -64,13 +64,13 @@ module File = struct
     let csts_conflict project (a : Cst.t) (b : Cst.t) =
       let of_ast = Dune_file.of_ast project in
       (let open Option.O in
-      let* a_ast = Cst.abstract a in
-      let+ b_ast = Cst.abstract b in
-      let a_asts = of_ast a_ast in
-      let b_asts = of_ast b_ast in
-      List.exists
-        ~f:(fun x -> List.exists ~f:(stanzas_conflict x) a_asts)
-        b_asts)
+       let* a_ast = Cst.abstract a in
+       let+ b_ast = Cst.abstract b in
+       let a_asts = of_ast a_ast in
+       let b_asts = of_ast b_ast in
+       List.exists
+         ~f:(fun x -> List.exists ~f:(stanzas_conflict x) a_asts)
+         b_asts)
       |> Option.value ~default:false
 
     (* TODO(shonfeder): replace with stanza merging *)

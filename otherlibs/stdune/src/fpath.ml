@@ -53,8 +53,8 @@ let resolve_link path =
     Ok
       (Some
          (if Filename.is_relative link then
-          Filename.concat (Filename.dirname path) link
-         else link))
+            Filename.concat (Filename.dirname path) link
+          else link))
 
 type follow_symlink_error =
   | Not_a_symlink

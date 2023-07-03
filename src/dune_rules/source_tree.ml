@@ -751,7 +751,7 @@ module Dir = struct
               else
                 Some
                   (if Filename.Set.mem files fname then Ok test
-                  else Error (Missing_run_t test)))
+                   else Error (Missing_run_t test)))
         >>| List.filter_opt
       in
       file_tests @ dir_tests

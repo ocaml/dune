@@ -213,13 +213,13 @@ let run_odoc sctx ~dir command ~flags_for args =
 let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
   Action_builder.dyn_paths_unit
     (let open Action_builder.O in
-    let+ deps =
-      if Module.has m ~ml_kind:Intf then Dep_graph.deps_of dep_graphs.intf m
-      else
-        (* When a module has no .mli, use the dependencies for the .ml *)
-        Dep_graph.deps_of dep_graphs.impl m
-    in
-    List.map deps ~f:(fun m -> Path.build (Obj_dir.Module.odoc obj_dir m)))
+     let+ deps =
+       if Module.has m ~ml_kind:Intf then Dep_graph.deps_of dep_graphs.intf m
+       else
+         (* When a module has no .mli, use the dependencies for the .ml *)
+         Dep_graph.deps_of dep_graphs.impl m
+     in
+     List.map deps ~f:(fun m -> Path.build (Obj_dir.Module.odoc obj_dir m)))
 
 let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
     ~dep_graphs ~pkg_or_lnu ~mode =
@@ -275,22 +275,22 @@ let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
 let odoc_include_flags ctx pkg requires =
   Resolve.args
     (let open Resolve.O in
-    let+ libs = requires in
-    let paths =
-      List.fold_left libs ~init:Path.Set.empty ~f:(fun paths lib ->
-          match Lib.Local.of_lib lib with
-          | None -> paths
-          | Some lib ->
-            Path.Set.add paths (Path.build (Paths.odocs ctx (Lib lib))))
-    in
-    let paths =
-      match pkg with
-      | Some p -> Path.Set.add paths (Path.build (Paths.odocs ctx (Pkg p)))
-      | None -> paths
-    in
-    Command.Args.S
-      (List.concat_map (Path.Set.to_list paths) ~f:(fun dir ->
-           [ Command.Args.A "-I"; Path dir ])))
+     let+ libs = requires in
+     let paths =
+       List.fold_left libs ~init:Path.Set.empty ~f:(fun paths lib ->
+           match Lib.Local.of_lib lib with
+           | None -> paths
+           | Some lib ->
+             Path.Set.add paths (Path.build (Paths.odocs ctx (Lib lib))))
+     in
+     let paths =
+       match pkg with
+       | Some p -> Path.Set.add paths (Path.build (Paths.odocs ctx (Pkg p)))
+       | None -> paths
+     in
+     Command.Args.S
+       (List.concat_map (Path.Set.to_list paths) ~f:(fun dir ->
+            [ Command.Args.A "-I"; Path dir ])))
 
 let link_odoc_rules sctx (odoc_file : odoc_artefact) ~pkg ~requires =
   let ctx = Super_context.context sctx in
@@ -308,7 +308,7 @@ let link_odoc_rules sctx (odoc_file : odoc_artefact) ~pkg ~requires =
   in
   add_rule sctx
     (let open Action_builder.With_targets.O in
-    Action_builder.with_no_targets deps >>> run_odoc)
+     Action_builder.with_no_targets deps >>> run_odoc)
 
 let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
   let open Memo.O in

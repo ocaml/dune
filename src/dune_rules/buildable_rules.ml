@@ -11,11 +11,11 @@ let gen_select_rules sctx ~dir compile_info =
           Super_context.add_rule sctx ~dir
             (Action_builder.with_file_targets ~file_targets:[ dst ]
                (let open Action_builder.O in
-               let* src_fn = Resolve.read src_fn in
-               let src = Path.build (Path.Build.relative dir src_fn) in
-               let+ () = Action_builder.path src in
-               let context = Super_context.context sctx in
-               Action.Full.make (Copy_line_directive.action context ~src ~dst))))
+                let* src_fn = Resolve.read src_fn in
+                let src = Path.build (Path.Build.relative dir src_fn) in
+                let+ () = Action_builder.path src in
+                let context = Super_context.context sctx in
+                Action.Full.make (Copy_line_directive.action context ~src ~dst))))
 
 let with_lib_deps (t : Context.t) compile_info ~dir ~f =
   let prefix =

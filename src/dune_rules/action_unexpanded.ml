@@ -288,17 +288,17 @@ end = struct
     let register_dep x ~f env acc =
       Memo.return
         (if not env.infer then (x, acc)
-        else
-          let x = Action_builder.memoize "dep" x in
-          ( x
-          , { acc with
-              deps =
-                (let+ x = x
-                 and+ set = acc.deps in
-                 match f x with
-                 | None -> set
-                 | Some fn -> Path.Set.add set fn)
-            } ))
+         else
+           let x = Action_builder.memoize "dep" x in
+           ( x
+           , { acc with
+               deps =
+                 (let+ x = x
+                  and+ set = acc.deps in
+                  match f x with
+                  | None -> set
+                  | Some fn -> Path.Set.add set fn)
+             } ))
 
     let dep sw env acc =
       let fn = Expander.expand_path env sw in

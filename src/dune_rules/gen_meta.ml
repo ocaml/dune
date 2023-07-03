@@ -119,12 +119,12 @@ let gen_lib pub_name lib ~path ~version =
     ; [ description desc; requires ~preds lib_deps ]
     ; archives ~preds lib
     ; (if Lib_name.Set.is_empty ppx_rt_deps then []
-      else
-        [ Comment
-            "This is what dune uses to find out the runtime dependencies of"
-        ; Comment "a preprocessor"
-        ; ppx_runtime_deps ppx_rt_deps
-        ])
+       else
+         [ Comment
+             "This is what dune uses to find out the runtime dependencies of"
+         ; Comment "a preprocessor"
+         ; ppx_runtime_deps ppx_rt_deps
+         ])
     ; (match kind with
       | Normal -> []
       | Ppx_rewriter _ | Ppx_deriver _ ->

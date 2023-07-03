@@ -677,7 +677,7 @@ let encode : t -> Dune_lang.t list =
           then Some (constr "use_standard_c_and_cxx_flags" bool b)
           else None)
       ; (if Bool.equal cram (cram_default ~lang) then None
-        else Some (constr "cram" Toggle.encode (Toggle.of_bool cram)))
+         else Some (constr "cram" Toggle.encode (Toggle.of_bool cram)))
       ; flag "expand_aliases_in_sandbox" expand_aliases_in_sandbox
           expand_aliases_in_sandbox_default
       ]

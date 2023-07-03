@@ -398,7 +398,7 @@ end = struct
     let mangled_module_re =
       lazy
         (let open Re in
-        [ rep any; str "__"; rep any ] |> seq |> compile)
+         [ rep any; str "__"; rep any ] |> seq |> compile)
 
     let exists t ~is_builtin =
       let exists_if = Vars.get_words t.vars "exists_if" Ps.empty in
@@ -628,8 +628,8 @@ end = struct
     { Dune_package.name = Lib_name.package_name name
     ; version =
         (let open Option.O in
-        let* e = Lib_name.Map.find entries name in
-        Dune_package.Entry.version e)
+         let* e = Lib_name.Map.find entries name in
+         Dune_package.Entry.version e)
     ; entries
     ; dir
     ; sections = Section.Map.empty

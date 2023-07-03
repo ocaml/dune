@@ -6,8 +6,8 @@ let absolutize_paths ~dir (loc : Loc.t) =
   let make_path name =
     Path.to_absolute_filename
       (if Filename.is_relative name then
-       Path.append_local dir (Path.Local.parse_string_exn ~loc name)
-      else Path.of_string name)
+         Path.append_local dir (Path.Local.parse_string_exn ~loc name)
+       else Path.of_string name)
   in
   { Loc.start = { loc.start with pos_fname = make_path loc.start.pos_fname }
   ; stop = { loc.stop with pos_fname = make_path loc.stop.pos_fname }

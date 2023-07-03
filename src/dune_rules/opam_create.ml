@@ -88,16 +88,16 @@ let default_build_command =
   fun project ->
     Lazy.force
       (if Dune_project.dune_version project < (1, 11) then before_1_11
-      else if Dune_project.dune_version project < (2, 7) then
-        from_1_11_before_2_7
-      else if Dune_project.dune_version project < (2, 9) then from_2_7
-      else if Dune_project.dune_version project < (3, 0) then from_2_9
-      else
-        from_3_0
-          ~with_subst:
-            (Subst_config.is_enabled (Dune_project.subst_config project))
-          ~with_sites:
-            Dune_project.(is_extension_set project dune_site_extension))
+       else if Dune_project.dune_version project < (2, 7) then
+         from_1_11_before_2_7
+       else if Dune_project.dune_version project < (2, 9) then from_2_7
+       else if Dune_project.dune_version project < (3, 0) then from_2_9
+       else
+         from_3_0
+           ~with_subst:
+             (Subst_config.is_enabled (Dune_project.subst_config project))
+           ~with_sites:
+             Dune_project.(is_extension_set project dune_site_extension))
 
 let package_fields
     { Package.synopsis

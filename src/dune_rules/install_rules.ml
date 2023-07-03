@@ -659,15 +659,15 @@ end = struct
       let meta_template = Package_paths.meta_template ctx pkg in
       Action_builder.write_file_dyn dune_package_file
         (let open Action_builder.O in
-        let+ pkg =
-          Action_builder.if_file_exists (Path.build meta_template)
-            ~then_:(Action_builder.return Dune_package.Or_meta.Use_meta)
-            ~else_:
-              (Action_builder.of_memo
-                 (Memo.bind (Memo.return ()) ~f:(fun () ->
-                      make_dune_package sctx lib_entries pkg)))
-        in
-        Format.asprintf "%a" (Dune_package.Or_meta.pp ~dune_version) pkg)
+         let+ pkg =
+           Action_builder.if_file_exists (Path.build meta_template)
+             ~then_:(Action_builder.return Dune_package.Or_meta.Use_meta)
+             ~else_:
+               (Action_builder.of_memo
+                  (Memo.bind (Memo.return ()) ~f:(fun () ->
+                       make_dune_package sctx lib_entries pkg)))
+         in
+         Format.asprintf "%a" (Dune_package.Or_meta.pp ~dune_version) pkg)
     in
     let deprecated_dune_packages =
       List.filter_map lib_entries ~f:(function
@@ -783,24 +783,24 @@ end = struct
     let* () =
       Super_context.add_rule sctx ~dir:ctx.build_dir
         (let open Action_builder.O in
-        (let* template = template in
-         let+ meta =
-           Action_builder.of_memo
-             (Gen_meta.gen ~package:pkg ~add_directory_entry:true entries)
-         in
-         let pp =
-           Pp.vbox
-             (Pp.concat_map template ~sep:Pp.newline ~f:(fun s ->
-                  if String.is_prefix s ~prefix:"#" then
-                    match
-                      String.extract_blank_separated_words (String.drop s 1)
-                    with
-                    | [ ("JBUILDER_GEN" | "DUNE_GEN") ] -> Meta.pp meta.entries
-                    | _ -> Pp.verbatim s
-                  else Pp.verbatim s))
-         in
-         Format.asprintf "%a" Pp.to_fmt pp)
-        |> Action_builder.write_file_dyn meta)
+         (let* template = template in
+          let+ meta =
+            Action_builder.of_memo
+              (Gen_meta.gen ~package:pkg ~add_directory_entry:true entries)
+          in
+          let pp =
+            Pp.vbox
+              (Pp.concat_map template ~sep:Pp.newline ~f:(fun s ->
+                   if String.is_prefix s ~prefix:"#" then
+                     match
+                       String.extract_blank_separated_words (String.drop s 1)
+                     with
+                     | [ ("JBUILDER_GEN" | "DUNE_GEN") ] -> Meta.pp meta.entries
+                     | _ -> Pp.verbatim s
+                   else Pp.verbatim s))
+          in
+          Format.asprintf "%a" Pp.to_fmt pp)
+         |> Action_builder.write_file_dyn meta)
     in
     let deprecated_packages =
       Package.Name.Map.of_list_multi deprecated_packages
@@ -811,20 +811,20 @@ end = struct
         Super_context.add_rule sctx ~dir:ctx.build_dir ~loc
           (Action_builder.write_file_dyn meta
              (let open Action_builder.O in
-             let+ meta =
-               let entries =
-                 match Package.Name.Map.find deprecated_packages name with
-                 | None -> []
-                 | Some entries -> entries
-               in
-               Action_builder.of_memo
-                 (Gen_meta.gen ~package:pkg entries ~add_directory_entry:false)
-             in
-             let pp =
-               let open Pp.O in
-               Pp.vbox (Meta.pp meta.entries ++ Pp.cut)
-             in
-             Format.asprintf "%a" Pp.to_fmt pp)))
+              let+ meta =
+                let entries =
+                  match Package.Name.Map.find deprecated_packages name with
+                  | None -> []
+                  | Some entries -> entries
+                in
+                Action_builder.of_memo
+                  (Gen_meta.gen ~package:pkg entries ~add_directory_entry:false)
+              in
+              let pp =
+                let open Pp.O in
+                Pp.vbox (Meta.pp meta.entries ++ Pp.cut)
+              in
+              Format.asprintf "%a" Pp.to_fmt pp)))
 
   let meta_and_dune_package_rules sctx project =
     Dune_project.packages project
@@ -901,8 +901,8 @@ let packages =
 let packages_file_is_part_of path =
   Memo.Option.bind
     (let open Option.O in
-    let* ctx_name, _ = Path.Build.extract_build_context path in
-    Context_name.of_string_opt ctx_name)
+     let* ctx_name, _ = Path.Build.extract_build_context path in
+     Context_name.of_string_opt ctx_name)
     ~f:Super_context.find
   >>= function
   | None -> Memo.return Package.Id.Set.empty
@@ -1129,20 +1129,20 @@ let gen_package_install_file_rules sctx (package : Package.t) =
               })
       in
       (if not package.allow_empty then
-       if
-         List.for_all entries ~f:(fun (e : Install.Entry.Sourced.t) ->
-             match e.source with
-             | Dune -> true
-             | User _ -> false)
-       then
-         let is_error = Dune_project.dune_version dune_project >= (3, 0) in
-         User_warning.emit ~is_error
-           [ Pp.textf
-               "The package %s does not have any user defined stanzas attached \
-                to it. If this is intentional, add (allow_empty) to the \
-                package definition in the dune-project file"
-               (Package.Name.to_string package_name)
-           ]);
+         if
+           List.for_all entries ~f:(fun (e : Install.Entry.Sourced.t) ->
+               match e.source with
+               | Dune -> true
+               | User _ -> false)
+         then
+           let is_error = Dune_project.dune_version dune_project >= (3, 0) in
+           User_warning.emit ~is_error
+             [ Pp.textf
+                 "The package %s does not have any user defined stanzas \
+                  attached to it. If this is intentional, add (allow_empty) to \
+                  the package definition in the dune-project file"
+                 (Package.Name.to_string package_name)
+             ]);
       List.map entries ~f:(fun (e : Install.Entry.Sourced.t) ->
           Install.Entry.set_src e.entry (Path.build e.entry.src))
     in
@@ -1155,11 +1155,11 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   Super_context.add_rule sctx ~dir:pkg_build_dir
     ~mode:
       (if promote_install_file ctx then
-       Promote { lifetime = Until_clean; into = None; only = None }
-      else
-        (* We must ignore the source file since it might be copied to the source
-           tree by another context. *)
-        Ignore_source_files)
+         Promote { lifetime = Until_clean; into = None; only = None }
+       else
+         (* We must ignore the source file since it might be copied to the source
+            tree by another context. *)
+         Ignore_source_files)
     action
 
 let memo =

@@ -345,8 +345,8 @@ let rec exec t ~display ~ectx ~eenv =
                 { Diff_promotion.Annot.in_source = source_file
                 ; in_build =
                     (if optional && in_source_or_target then
-                     Diff_promotion.File.in_staging_area source_file
-                    else file2)
+                       Diff_promotion.File.in_staging_area source_file
+                     else file2)
                 }
             in
             if mode = Binary then

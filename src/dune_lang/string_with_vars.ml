@@ -269,7 +269,7 @@ struct
                | Some v ->
                  Text
                    (if t.quoted then Value.L.concat v ~dir
-                   else Value.to_string ~dir (Mode.value Single v ~source)))))
+                    else Value.to_string ~dir (Mode.value Single v ~source)))))
     in
     let commit_text acc_text acc =
       let s = concat_rev acc_text in

@@ -241,7 +241,7 @@ let extend_action t ~dir build =
   and+ env =
     Action_builder.of_memo
       (let open Memo.O in
-      Env_tree.get_node t ~dir >>= Env_node.external_env)
+       Env_tree.get_node t ~dir >>= Env_node.external_env)
   in
   act |> Action.Full.add_env env
   |> Action.Full.map ~f:(function

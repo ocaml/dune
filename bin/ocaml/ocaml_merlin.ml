@@ -52,7 +52,7 @@ end = struct
     let p = Path.to_absolute_filename p in
     let prefix = Path.(to_absolute_filename root) in
     (if Sys.win32 || Sys.cygwin then String.Caseless.drop_prefix
-    else String.drop_prefix)
+     else String.drop_prefix)
       ~prefix p
     (* After dropping the prefix we need to remove the leading path separator *)
     |> Option.map ~f:(fun s -> String.drop s 1)

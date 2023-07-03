@@ -14,9 +14,9 @@ let rec pp = function
   | List xs ->
     Pp.box ~indent:1
       (let open Pp.O in
-      Pp.text "("
-      ++ Pp.hvbox (List.map xs ~f:pp |> Pp.concat ~sep:Pp.space)
-      ++ Pp.text ")")
+       Pp.text "("
+       ++ Pp.hvbox (List.map xs ~f:pp |> Pp.concat ~sep:Pp.space)
+       ++ Pp.text ")")
 
 let hash = Stdlib.Hashtbl.hash
 

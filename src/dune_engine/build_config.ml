@@ -46,9 +46,9 @@ module Rules = struct
         Path.Build.Map.union_exn r.directory_targets directory_targets
     ; rules =
         (let open Memo.O in
-        let+ r = r.rules
-        and+ r' = rules in
-        Rules.union r r')
+         let+ r = r.rules
+         and+ r' = rules in
+         Rules.union r r')
     }
 end
 

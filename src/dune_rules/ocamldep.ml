@@ -73,19 +73,19 @@ let deps_of
   let* () =
     Super_context.add_rule sctx ~dir
       (let open Action_builder.With_targets.O in
-      let flags, sandbox =
-        Option.value (Module.pp_flags unit)
-          ~default:(Action_builder.return [], sandbox)
-      in
-      Command.run context.ocaml.ocamldep
-        ~dir:(Path.build context.build_dir)
-        ~stdout_to:ocamldep_output
-        [ A "-modules"
-        ; Command.Args.dyn flags
-        ; Command.Ml_kind.flag ml_kind
-        ; Dep (Module.File.path source)
-        ]
-      >>| Action.Full.add_sandbox sandbox)
+       let flags, sandbox =
+         Option.value (Module.pp_flags unit)
+           ~default:(Action_builder.return [], sandbox)
+       in
+       Command.run context.ocaml.ocamldep
+         ~dir:(Path.build context.build_dir)
+         ~stdout_to:ocamldep_output
+         [ A "-modules"
+         ; Command.Args.dyn flags
+         ; Command.Ml_kind.flag ml_kind
+         ; Dep (Module.File.path source)
+         ]
+       >>| Action.Full.add_sandbox sandbox)
   in
   let+ () =
     let produce_all_deps =

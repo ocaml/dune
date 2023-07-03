@@ -286,8 +286,8 @@ let check_supported ~dune_lang_ver t (loc, ver) =
     in
     let supported =
       (if List.is_empty l then
-       Pp.textf "There are no supported versions of this extension in %s."
-      else Pp.textf "Supported versions of this extension in %s:")
+         Pp.textf "There are no supported versions of this extension in %s."
+       else Pp.textf "Supported versions of this extension in %s:")
         (dune_ver_text dune_lang_ver)
     in
     let message =

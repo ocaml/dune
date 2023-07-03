@@ -42,8 +42,8 @@ module Query = struct
     let* bin =
       Action_builder.of_memo
         (let open Memo.O in
-        let* pkg_config = pkg_config_binary sctx ~dir in
-        Super_context.resolve_program sctx ~loc:None ~dir pkg_config)
+         let* pkg_config = pkg_config_binary sctx ~dir in
+         Super_context.resolve_program sctx ~loc:None ~dir pkg_config)
     in
     match bin with
     | Error _ -> Action_builder.return (default t)

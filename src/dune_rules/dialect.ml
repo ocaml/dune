@@ -82,9 +82,9 @@ let decode =
     and+ syntax_ver = Syntax.get_exn Stanza.syntax in
     let ver = (3, 9) in
     (if syntax_ver < ver && Option.is_some (String.index_from extension 1 '.')
-    then
-     let what = "the possibility of defining extensions containing periods" in
-     Syntax.Error.since loc Stanza.syntax ver ~what);
+     then
+       let what = "the possibility of defining extensions containing periods" in
+       Syntax.Error.since loc Stanza.syntax ver ~what);
     { File_kind.kind; extension; preprocess; format }
   in
   fields

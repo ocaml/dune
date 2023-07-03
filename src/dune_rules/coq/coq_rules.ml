@@ -127,8 +127,8 @@ let theory_coqc_flag lib =
 let theories_flags ~theories_deps =
   Resolve.Memo.args
     (let open Resolve.Memo.O in
-    let+ libs = theories_deps in
-    Command.Args.S (List.map ~f:theory_coqc_flag libs))
+     let+ libs = theories_deps in
+     Command.Args.S (List.map ~f:theory_coqc_flag libs))
 
 let boot_flags ~coq_lang_version t : _ Command.Args.t =
   let boot_flag = if coq_lang_version >= (0, 8) then [ "-boot" ] else [] in
@@ -321,8 +321,8 @@ let boot_type ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module =
     match boot_lib with
     | None ->
       `No_boot
-      (* XXX: use_stdlib + no_boot is
-         actually a workspace error, cleanup *)
+        (* XXX: use_stdlib + no_boot is
+           actually a workspace error, cleanup *)
     | Some (_loc, lib) ->
       (* This is here as an optimization, TODO; replace with per_file flags *)
       let init =
@@ -367,9 +367,9 @@ let setup_coqdep_for_theory_rule ~sctx ~dir ~loc ~theories_deps ~wrapper_name
   (* Coqdep has to be called in the stanza's directory *)
   Super_context.add_rule ~loc sctx ~dir
     (let open Action_builder.With_targets.O in
-    Action_builder.with_no_targets mlpack_rule
-    >>> Action_builder.(with_no_targets (goal source_rule))
-    >>> Command.run ~dir:(Path.build dir) ~stdout_to coqdep file_flags)
+     Action_builder.with_no_targets mlpack_rule
+     >>> Action_builder.(with_no_targets (goal source_rule))
+     >>> Command.run ~dir:(Path.build dir) ~stdout_to coqdep file_flags)
 
 module Dep_map = Stdune.Map.Make (Path)
 
@@ -530,10 +530,10 @@ let source_rule ~sctx theories =
      tree to produce correct dependencies, including those of dependencies *)
   Action_builder.dyn_paths_unit
     (let open Action_builder.O in
-    let+ l =
-      Action_builder.List.map theories ~f:(coq_modules_of_theory ~sctx)
-    in
-    List.concat l)
+     let+ l =
+       Action_builder.List.map theories ~f:(coq_modules_of_theory ~sctx)
+     in
+     List.concat l)
 
 let coqdoc_directory ~mode ~obj_dir ~name =
   Path.Build.relative obj_dir

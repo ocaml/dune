@@ -647,37 +647,36 @@ module Action_expander = struct
       (* TODO *)
       assert false
 
+  let artifacts_and_deps closure =
+    Memo.parallel_map closure ~f:(fun (pkg : Pkg.t) ->
+        let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+        Action_builder.run cookie Eager
+        |> Memo.map ~f:(fun ((cookie : Install_cookie.t), _) -> (pkg, cookie)))
+    |> Memo.map ~f:(fun cookies ->
+           List.fold_left cookies
+             ~init:(Filename.Map.empty, Package.Name.Map.empty)
+             ~f:(fun
+                  (bins, dep_info)
+                  ((pkg : Pkg.t), (cookie : Install_cookie.t))
+                ->
+               let bins =
+                 Section.Map.Multi.find cookie.files Bin
+                 |> List.fold_left ~init:bins ~f:(fun acc bin ->
+                        Filename.Map.set acc (Path.basename bin) bin)
+               in
+               let dep_info =
+                 let variables =
+                   String.Map.superpose
+                     (Pkg_info.variables pkg.info)
+                     (String.Map.of_list_exn cookie.variables)
+                 in
+                 Package.Name.Map.add_exn dep_info pkg.info.name
+                   (variables, pkg.paths)
+               in
+               (bins, dep_info)))
+
   let expander context (pkg : Pkg.t) =
-    let+ artifacts, deps =
-      Pkg.deps_closure pkg
-      |> Memo.parallel_map ~f:(fun (pkg : Pkg.t) ->
-             let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-             Action_builder.run cookie Eager
-             |> Memo.map ~f:(fun ((cookie : Install_cookie.t), _) ->
-                    (pkg, cookie)))
-      |> Memo.map ~f:(fun cookies ->
-             List.fold_left cookies
-               ~init:(Filename.Map.empty, Package.Name.Map.empty)
-               ~f:(fun
-                    (bins, dep_info)
-                    ((pkg : Pkg.t), (cookie : Install_cookie.t))
-                  ->
-                 let bins =
-                   Section.Map.Multi.find cookie.files Bin
-                   |> List.fold_left ~init:bins ~f:(fun acc bin ->
-                          Filename.Map.set acc (Path.basename bin) bin)
-                 in
-                 let dep_info =
-                   let variables =
-                     String.Map.superpose
-                       (Pkg_info.variables pkg.info)
-                       (String.Map.of_list_exn cookie.variables)
-                   in
-                   Package.Name.Map.add_exn dep_info pkg.info.name
-                     (variables, pkg.paths)
-                 in
-                 (bins, dep_info)))
-    in
+    let+ artifacts, deps = Pkg.deps_closure pkg |> artifacts_and_deps in
     let env = Pkg.build_env pkg in
     let deps =
       Package.Name.Map.add_exn deps pkg.info.name
@@ -1339,3 +1338,13 @@ let ocaml_toolchain context =
     Action_builder.of_memo @@ Ocaml_toolchain.of_binaries context env binaries
   in
   Action_builder.memoize "ocaml_toolchain" toolchain
+
+let which context program =
+  let* db = Lock_dir.get context in
+  let+ artifacts, _ =
+    Package.Name.Map.values db.packages
+    |> Memo.parallel_map ~f:(fun (pkg : Lock_dir.Pkg.t) ->
+           resolve db.packages context (Loc.none, pkg.info.name))
+    >>= Action_expander.artifacts_and_deps
+  in
+  Filename.Map.find artifacts program

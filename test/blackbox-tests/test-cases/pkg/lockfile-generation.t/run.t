@@ -12,7 +12,7 @@ Generate a `dune-project` file.
   > EOF
 
 Run the solver and generate a lock directory.
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   bar.0.5.0
   baz.0.1.0
@@ -56,7 +56,7 @@ Print the contents of each file in the lockdir:
   
 
 Run the solver again preferring oldest versions of dependencies:
-  $ dune pkg lock --opam-env=pure --version-preference=oldest --opam-repository=mock-opam-repository
+  $ dune pkg lock --opam-env=pure --version-preference=oldest --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   bar.0.4.0
   baz.0.1.0
@@ -106,7 +106,7 @@ Regenerate the `dune-project` file introducing an unsatisfiable constraint.
   > EOF
 
 Run the solver again. This time it will fail.
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository
   Error: Can't find all required versions.
   Selected: baz.0.1.0 foo.0.0.1 lockfile_generation_test.dev
   - bar -> (problem)

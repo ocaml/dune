@@ -9,7 +9,7 @@ Helper shell function that generates an opam file for a package:
 Helper shell function to generate a dune-project file and generate lockdir:
   $ solve_project() {
   >   cat >dune-project
-  >   dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --all-contexts
+  >   dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository --all-contexts
   > }
 
 Create a workspace file with some contexts with different combinations of with-test and with-doc flags

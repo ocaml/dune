@@ -39,7 +39,7 @@ let wrong_checksum =
 let download ~port ~filename ~target ?checksum () =
   let open Fiber.O in
   let url = url ~port ~filename in
-  let* res = Fetch.fetch ~checksum ~target url in
+  let* res = Fetch.fetch ~unpack:false ~checksum ~target url in
   match res with
   | Error (Unavailable None) ->
     let errs = [ Pp.text "Failure while downloading" ] in

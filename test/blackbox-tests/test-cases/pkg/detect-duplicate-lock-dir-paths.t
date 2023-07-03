@@ -15,21 +15,21 @@ Define several build contexts that all use the default lockdir
   > EOF
 
 Check that we can still generate lockdirs for individual contexts:
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   (no dependencies to lock)
   
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --context=default
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository --context=default
   Solution for dune.lock:
   (no dependencies to lock)
   
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --context=custom-context-with-default-lock-dir
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository --context=custom-context-with-default-lock-dir
   Solution for dune.lock:
   (no dependencies to lock)
   
 
 It's an error to use --all-contexts when there are multiple contexts with the same lockdir:
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --all-contexts
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository --all-contexts
   File "dune-workspace", line 5, characters 1-56:
   5 |  (default
   6 |   (name custom-context-with-default-lock-dir)))
@@ -54,17 +54,17 @@ Define several build contexts that all use the same custom lockdir:
   > EOF
 
 Check that we can still generate lockdirs for individual contexts:
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --context=a
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository --context=a
   Solution for foo.lock:
   (no dependencies to lock)
   
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --context=b
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository --context=b
   Solution for foo.lock:
   (no dependencies to lock)
   
 
 It's an error to use --all-contexts when there are multiple contexts with the same lockdir:
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --all-contexts
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository --all-contexts
   File "dune-workspace", line 7, characters 1-39:
   7 |  (default
   8 |   (name a)

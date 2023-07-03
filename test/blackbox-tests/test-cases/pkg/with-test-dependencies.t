@@ -113,7 +113,7 @@ Conflicting packages can't be co-installed:
   >   ))
   > EOF
   Error: Can't find all required versions.
-  Selected: foo.0.0.1 foo-dependency.0.0.1 x.LOCAL
+  Selected: foo.0.0.1 foo-dependency.0.0.1 x.dev
   - conflicts-with-foo -> (problem)
       Rejected candidates:
         conflicts-with-foo.0.0.1: Requires foo conflict with all versions
@@ -130,7 +130,7 @@ Conflicting packages in transitive dependencies can't be co-installed:
   >   ))
   > EOF
   Error: Can't find all required versions.
-  Selected: depends-on-foo.0.0.1 foo.0.0.1 foo-dependency.0.0.1 x.LOCAL
+  Selected: depends-on-foo.0.0.1 foo.0.0.1 foo-dependency.0.0.1 x.dev
   - conflicts-with-foo -> (problem)
       Rejected candidates:
         conflicts-with-foo.0.0.1: Requires foo conflict with all versions

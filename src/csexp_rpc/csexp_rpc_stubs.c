@@ -24,7 +24,7 @@ CAMLprim value dune_pthread_chdir_is_osx(value unit) {
 #define SYS___pthread_chdir 348
 #endif
 
-int __pthread_chdir(const char *path) {
+static int __pthread_chdir(const char *path) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated"
   return syscall(SYS___pthread_chdir, path);

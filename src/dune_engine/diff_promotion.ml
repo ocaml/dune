@@ -75,18 +75,18 @@ module File = struct
     Console.print
       [ Pp.box ~indent:2
           (if correction_exists then
-           Pp.textf "Promoting %s to %s."
-             (Path.to_string_maybe_quoted (Path.build src))
-             (Path.Source.to_string_maybe_quoted dst)
-          else
-            Pp.textf "Skipping promotion of %s to %s as the %s is missing."
-              (Path.to_string_maybe_quoted (Path.build src))
-              (Path.Source.to_string_maybe_quoted dst)
-              (match staging with
-              | None -> "file"
-              | Some staging ->
-                Format.sprintf "staging file (%s)"
-                  (Path.to_string_maybe_quoted (Path.build staging))))
+             Pp.textf "Promoting %s to %s."
+               (Path.to_string_maybe_quoted (Path.build src))
+               (Path.Source.to_string_maybe_quoted dst)
+           else
+             Pp.textf "Skipping promotion of %s to %s as the %s is missing."
+               (Path.to_string_maybe_quoted (Path.build src))
+               (Path.Source.to_string_maybe_quoted dst)
+               (match staging with
+               | None -> "file"
+               | Some staging ->
+                 Format.sprintf "staging file (%s)"
+                   (Path.to_string_maybe_quoted (Path.build staging))))
       ];
     if correction_exists then do_promote ~correction_file ~dst
 end

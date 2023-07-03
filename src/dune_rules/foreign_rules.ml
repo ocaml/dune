@@ -34,80 +34,80 @@ let include_dir_flags ~expander ~dir ~include_dirs =
     in
     Command.Args.Dyn
       (let open Action_builder.O in
-      let* include_dir = include_dir in
-      let+ dep_args =
-        match Path.extract_build_context_dir include_dir with
-        | None ->
-          (* This branch corresponds to an external directory. The
-             current implementation tracks its contents
-             NON-recursively. *)
-          (* TODO: Track the contents recursively. One way to implement
-             this is to change [Build_system.Loaded.Non_build] so that it
-             contains not only files but also directories and traverse
-             them recursively in [Build_system.Exported.Pred]. *)
-          let+ () =
-            let error msg =
-              User_error.raise ~loc
-                [ Pp.textf "Unable to read the include directory."
-                ; Pp.textf "Reason: %s." msg
-                ]
-            in
-            Action_builder.of_memo
-            @@ Fs_memo.is_directory (Path.as_outside_build_dir_exn include_dir)
-            >>| function
-            | Error msg -> error (Unix_error.Detailed.to_string_hum msg)
-            | Ok true -> ()
-            | Ok false ->
-              error
-                (sprintf "%S is not a directory" (Path.to_string include_dir))
-          in
-          let deps =
-            File_selector.of_predicate_lang ~dir:include_dir
-              Predicate_lang.true_
-            |> Dep.file_selector |> Dep.Set.singleton
-          in
-          Command.Args.Hidden_deps deps
-        | Some (build_dir, source_dir) ->
-          Action_builder.return
-          @@ Command.Args.Dyn
-               ((* This branch corresponds to a source directory. We
-                   track its contents recursively. *)
-                Action_builder.of_memo (Source_tree.find_dir source_dir)
-                >>= function
-                | None ->
-                  User_error.raise ~loc
-                    [ Pp.textf "Include directory %S does not exist."
-                        (Path.reach ~from:(Path.build dir) include_dir)
-                    ]
-                | Some dir ->
-                  let+ l =
-                    Source_tree_map_reduce.map_reduce dir
-                      ~traverse:Sub_dirs.Status.Set.all ~f:(fun t ->
-                        let deps =
-                          let dir =
-                            Path.append_source build_dir
-                              (Source_tree.Dir.path t)
-                          in
-                          File_selector.of_predicate_lang ~dir
-                            Predicate_lang.true_
-                          |> Dep.file_selector |> Dep.Set.singleton
-                        in
-                        Command.Args.Hidden_deps deps
-                        |> Appendable_list.singleton |> Action_builder.return)
-                  in
-                  Command.Args.S (Appendable_list.to_list l))
-      in
-      Command.Args.S [ A "-I"; Path include_dir; dep_args ])
+       let* include_dir = include_dir in
+       let+ dep_args =
+         match Path.extract_build_context_dir include_dir with
+         | None ->
+           (* This branch corresponds to an external directory. The
+              current implementation tracks its contents
+              NON-recursively. *)
+           (* TODO: Track the contents recursively. One way to implement
+              this is to change [Build_system.Loaded.Non_build] so that it
+              contains not only files but also directories and traverse
+              them recursively in [Build_system.Exported.Pred]. *)
+           let+ () =
+             let error msg =
+               User_error.raise ~loc
+                 [ Pp.textf "Unable to read the include directory."
+                 ; Pp.textf "Reason: %s." msg
+                 ]
+             in
+             Action_builder.of_memo
+             @@ Fs_memo.is_directory (Path.as_outside_build_dir_exn include_dir)
+             >>| function
+             | Error msg -> error (Unix_error.Detailed.to_string_hum msg)
+             | Ok true -> ()
+             | Ok false ->
+               error
+                 (sprintf "%S is not a directory" (Path.to_string include_dir))
+           in
+           let deps =
+             File_selector.of_predicate_lang ~dir:include_dir
+               Predicate_lang.true_
+             |> Dep.file_selector |> Dep.Set.singleton
+           in
+           Command.Args.Hidden_deps deps
+         | Some (build_dir, source_dir) ->
+           Action_builder.return
+           @@ Command.Args.Dyn
+                ((* This branch corresponds to a source directory. We
+                    track its contents recursively. *)
+                 Action_builder.of_memo (Source_tree.find_dir source_dir)
+                 >>= function
+                 | None ->
+                   User_error.raise ~loc
+                     [ Pp.textf "Include directory %S does not exist."
+                         (Path.reach ~from:(Path.build dir) include_dir)
+                     ]
+                 | Some dir ->
+                   let+ l =
+                     Source_tree_map_reduce.map_reduce dir
+                       ~traverse:Sub_dirs.Status.Set.all ~f:(fun t ->
+                         let deps =
+                           let dir =
+                             Path.append_source build_dir
+                               (Source_tree.Dir.path t)
+                           in
+                           File_selector.of_predicate_lang ~dir
+                             Predicate_lang.true_
+                           |> Dep.file_selector |> Dep.Set.singleton
+                         in
+                         Command.Args.Hidden_deps deps
+                         |> Appendable_list.singleton |> Action_builder.return)
+                   in
+                   Command.Args.S (Appendable_list.to_list l))
+       in
+       Command.Args.S [ A "-I"; Path include_dir; dep_args ])
   in
   Command.Args.Dyn
     (let open Action_builder.O in
-    let+ include_dirs_expanded =
-      let expand_str = Expander.No_deps.expand_str expander in
-      Memo.List.concat_map include_dirs
-        ~f:(Foreign.Stubs.Include_dir.expand_include ~expand_str ~dir)
-      |> Action_builder.of_memo
-    in
-    Command.Args.S (List.map include_dirs_expanded ~f:args_of_include_dir))
+     let+ include_dirs_expanded =
+       let expand_str = Expander.No_deps.expand_str expander in
+       Memo.List.concat_map include_dirs
+         ~f:(Foreign.Stubs.Include_dir.expand_include ~expand_str ~dir)
+       |> Action_builder.of_memo
+     in
+     Command.Args.S (List.map include_dirs_expanded ~f:args_of_include_dir))
 
 let build_c ~(kind : Foreign_language.t) ~sctx ~dir ~expander ~include_flags
     (loc, (src : Foreign.Source.t), dst) =
@@ -190,19 +190,19 @@ let build_c ~(kind : Foreign_language.t) ~sctx ~dir ~expander ~include_flags
   in
   Super_context.add_rule sctx ~loc ~dir
     (let open Action_builder.With_targets.O in
-    let src = Path.build (Foreign.Source.path src) in
-    (* We have to execute the rule in the library directory as the .o is
-       produced in the current directory *)
-    Command.run ~dir:(Path.build dir) c_compiler
-      ([ Command.Args.dyn with_user_and_std_flags
-       ; S [ A "-I"; Path ctx.lib_config.stdlib_dir ]
-       ; include_flags
-       ]
-      @ output_param @ [ A "-c"; Dep src ])
-    (* With sandboxing we get errors like: bar.c:2:19: fatal error: foo.cxx:
-       No such file or directory #include "foo.cxx". (These errors happen only
-       when compiling c files.) *)
-    >>| Action.Full.add_sandbox Sandbox_config.no_sandboxing)
+     let src = Path.build (Foreign.Source.path src) in
+     (* We have to execute the rule in the library directory as the .o is
+        produced in the current directory *)
+     Command.run ~dir:(Path.build dir) c_compiler
+       ([ Command.Args.dyn with_user_and_std_flags
+        ; S [ A "-I"; Path ctx.lib_config.stdlib_dir ]
+        ; include_flags
+        ]
+       @ output_param @ [ A "-c"; Dep src ])
+     (* With sandboxing we get errors like: bar.c:2:19: fatal error: foo.cxx:
+        No such file or directory #include "foo.cxx". (These errors happen only
+        when compiling c files.) *)
+     >>| Action.Full.add_sandbox Sandbox_config.no_sandboxing)
 
 (* TODO: [requires] is a confusing name, probably because it's too general: it
    looks like it's a list of libraries we depend on. *)
@@ -225,11 +225,11 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
       [ Hidden_deps (Dep.Set.of_files h_files)
       ; Resolve.args
           (let open Resolve.O in
-          let+ libs = requires in
-          Command.Args.S
-            [ Lib_flags.L.c_include_flags libs sctx
-            ; Hidden_deps (Lib_file_deps.deps libs ~groups:[ Header ])
-            ])
+           let+ libs = requires in
+           Command.Args.S
+             [ Lib_flags.L.c_include_flags libs sctx
+             ; Hidden_deps (Lib_file_deps.deps libs ~groups:[ Header ])
+             ])
       ]
   in
   String.Map.to_list_map foreign_sources

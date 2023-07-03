@@ -242,27 +242,27 @@ let check_invalid_module_listing ~stanza_loc ~modules_without_implementation
     print_undelared_modules "private_modules" undeclared_private_modules;
     print_undelared_modules "virtual_modules" undeclared_virtual_modules;
     (if missing_intf_only <> [] then
-     match Ordered_set_lang.loc modules_without_implementation with
-     | None ->
-       User_error.raise ~loc:stanza_loc
-         [ Pp.text "Some modules don't have an implementation."
-         ; Pp.text "You need to add the following field to this stanza:"
-         ; Pp.nop
-         ; Pp.textf "  %s"
-             (let tag = Dune_lang.atom "modules_without_implementation" in
-              let modules =
-                missing_intf_only |> uncapitalized
-                |> List.map ~f:Dune_lang.Encoder.string
-              in
-              Dune_lang.to_string (List (tag :: modules)))
-         ]
-     | Some loc ->
-       User_error.raise ~loc
-         [ Pp.text
-             "The following modules must be listed here as they don't have an \
-              implementation:"
-         ; line_list missing_intf_only
-         ]);
+       match Ordered_set_lang.loc modules_without_implementation with
+       | None ->
+         User_error.raise ~loc:stanza_loc
+           [ Pp.text "Some modules don't have an implementation."
+           ; Pp.text "You need to add the following field to this stanza:"
+           ; Pp.nop
+           ; Pp.textf "  %s"
+               (let tag = Dune_lang.atom "modules_without_implementation" in
+                let modules =
+                  missing_intf_only |> uncapitalized
+                  |> List.map ~f:Dune_lang.Encoder.string
+                in
+                Dune_lang.to_string (List (tag :: modules)))
+           ]
+       | Some loc ->
+         User_error.raise ~loc
+           [ Pp.text
+               "The following modules must be listed here as they don't have \
+                an implementation:"
+           ; line_list missing_intf_only
+           ]);
     print
       [ Pp.text
           "The following modules have an implementation, they cannot be listed \

@@ -15,7 +15,7 @@ let%expect_test "test fiber scheduler" =
     let step =
       Scheduler.advance s
         (let open Nonempty_list in
-        [ Fiber.Fill (ivar, ()) ])
+         [ Fiber.Fill (ivar, ()) ])
     in
     match step with
     | Done () -> ()

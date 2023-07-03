@@ -312,28 +312,28 @@ include Sub_system.Register_end_point (struct
         Super_context.add_alias_action sctx ~dir ~loc:(Some info.loc)
           (Alias.make ~dir runtest_alias)
           (let open Action_builder.O in
-          let+ actions =
-            let* partitions_flags =
-              match partitions_flags with
-              | None -> Action_builder.return [ None ]
-              | Some _ ->
-                let+ partitions =
-                  Action_builder.lines_of (Path.build partition_file)
-                in
-                List.map ~f:(fun x -> Some x) partitions
-            in
-            List.map partitions_flags ~f:(fun p -> action mode (flags p))
-            |> Action_builder.all
-          and+ () = Action_builder.paths source_files in
-          let run_tests = Action.concurrent actions in
-          let diffs =
-            List.map source_files ~f:(fun fn ->
-                Path.as_in_build_dir_exn fn
-                |> Path.Build.extend_basename ~suffix:".corrected"
-                |> Action.diff ~optional:true fn)
-            |> Action.concurrent
-          in
-          Action.Full.make ~sandbox @@ Action.progn [ run_tests; diffs ]))
+           let+ actions =
+             let* partitions_flags =
+               match partitions_flags with
+               | None -> Action_builder.return [ None ]
+               | Some _ ->
+                 let+ partitions =
+                   Action_builder.lines_of (Path.build partition_file)
+                 in
+                 List.map ~f:(fun x -> Some x) partitions
+             in
+             List.map partitions_flags ~f:(fun p -> action mode (flags p))
+             |> Action_builder.all
+           and+ () = Action_builder.paths source_files in
+           let run_tests = Action.concurrent actions in
+           let diffs =
+             List.map source_files ~f:(fun fn ->
+                 Path.as_in_build_dir_exn fn
+                 |> Path.Build.extend_basename ~suffix:".corrected"
+                 |> Action.diff ~optional:true fn)
+             |> Action.concurrent
+           in
+           Action.Full.make ~sandbox @@ Action.progn [ run_tests; diffs ]))
 
   let gen_rules c ~(info : Info.t) ~backends =
     let open Memo.O in

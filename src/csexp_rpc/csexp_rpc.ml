@@ -2,7 +2,6 @@ open Stdune
 open Fiber.O
 open Dune_async_io
 module Log = Dune_util.Log
-
 module Session_id = Id.Make ()
 
 module Socket = struct
@@ -61,9 +60,11 @@ module Socket = struct
 
   external is_osx : unit -> bool = "dune_pthread_chdir_is_osx" [@@noalloc]
 
-  module Sel = (val if is_osx () then (module Mac)
-                    else if Sys.unix then (module Unix)
-                    else (module Fail) : Unix_socket)
+  module Sel =
+    (val if is_osx () then (module Mac)
+         else if Sys.unix then (module Unix)
+         else (module Fail)
+        : Unix_socket)
 
   let max_len = 104 (* 108 on some systems but we keep it conservative *)
 

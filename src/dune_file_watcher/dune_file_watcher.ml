@@ -222,11 +222,11 @@ module Buffer = struct
            let c = Bytes.get buffer.data i in
            if c = '\n' || c = '\r' then (
              (if !line_start < i then
-              let line =
-                Bytes.sub_string buffer.data ~pos:!line_start
-                  ~len:(i - !line_start)
-              in
-              lines := line :: !lines);
+                let line =
+                  Bytes.sub_string buffer.data ~pos:!line_start
+                    ~len:(i - !line_start)
+                in
+                lines := line :: !lines);
              line_start := i + 1)
          done;
          buffer.size <- buffer.size - !line_start;

@@ -570,13 +570,13 @@ end = struct
     let wrap_fiber f =
       Memo.of_reproducible_fiber
         (if Loc.is_none loc then f ()
-        else
-          Fiber.with_error_handler f ~on_error:(fun exn ->
-              match exn.exn with
-              | User_error.E msg when not (User_message.has_location msg) ->
-                let msg = { msg with loc = Some loc } in
-                Exn_with_backtrace.reraise { exn with exn = User_error.E msg }
-              | _ -> Exn_with_backtrace.reraise exn))
+         else
+           Fiber.with_error_handler f ~on_error:(fun exn ->
+               match exn.exn with
+               | User_error.E msg when not (User_message.has_location msg) ->
+                 let msg = { msg with loc = Some loc } in
+                 Exn_with_backtrace.reraise { exn with exn = User_error.E msg }
+               | _ -> Exn_with_backtrace.reraise exn))
     in
     let config = Build_config.get () in
     wrap_fiber (fun () ->

@@ -1,7 +1,6 @@
 open Stdune
 open Dune_rpc_private
 open Fiber.O
-
 module Session_id = Stdune.Id.Make ()
 
 type error =

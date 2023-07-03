@@ -74,7 +74,7 @@ module Dune = struct
         Some
           (Dyn.to_string
              (let open Dyn in
-             record [ ("message", string message); ("position", int position) ]))
+              record [ ("message", string message); ("position", int position) ]))
       | _ -> None)
 
   let of_file (f : File.t) =

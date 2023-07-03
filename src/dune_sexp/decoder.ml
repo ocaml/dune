@@ -540,8 +540,7 @@ let sum ?(force_parens = false) cstrs =
       | List (loc, []) ->
         User_error.raise ~loc
           [ Pp.textf "S-expression of the form %s expected"
-              (if force_parens then "(<atom> ...)"
-              else "(<atom> ...) or <atom>")
+              (if force_parens then "(<atom> ...)" else "(<atom> ...) or <atom>")
           ]
       | List (loc, name :: args) -> (
         match name with

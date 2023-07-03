@@ -558,10 +558,10 @@ module Info = struct
         (Dune_lang.Syntax.since Stanza.syntax (v (1, 9))
         >>> let* l = repeat1 string in
             (if List.length l > 1 then
-             Dune_lang.Syntax.since ~what:"Parsing several licenses"
-               Stanza.syntax
-               (v (3, 2))
-            else return ())
+               Dune_lang.Syntax.since ~what:"Parsing several licenses"
+                 Stanza.syntax
+                 (v (3, 2))
+             else return ())
             >>> return l)
     and+ homepage =
       field_o "homepage"

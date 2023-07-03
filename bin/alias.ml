@@ -107,5 +107,5 @@ let dep_on_alias_rec_multi_contexts ~dir:src_dir ~name ~contexts =
 let request { name; recursive; dir; contexts } =
   let contexts = List.map ~f:Dune_rules.Context.name contexts in
   (if recursive then dep_on_alias_rec_multi_contexts
-  else dep_on_alias_multi_contexts)
+   else dep_on_alias_multi_contexts)
     ~dir ~name ~contexts

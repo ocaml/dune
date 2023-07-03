@@ -81,7 +81,7 @@ let rule sctx ~requires_link (exes : Dune_file.Executables.t) =
           ; Pp.nop
           ; def "link_flags"
               (let open Dyn in
-              list (pair string (list string)) link_flags)
+               list (pair string (list string)) link_flags)
           ]))
 
 let gen_rules sctx (exes : Dune_file.Executables.t) ~dir ~requires_link =

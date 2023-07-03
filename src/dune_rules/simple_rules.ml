@@ -206,7 +206,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
         let context = Super_context.context sctx in
         Super_context.add_rule sctx ~loc ~dir ~mode:def.mode
           ((if def.add_line_directive then Copy_line_directive.builder context
-           else Action_builder.copy)
+            else Action_builder.copy)
              ~src:file_src ~dst:file_dst))
   in
 

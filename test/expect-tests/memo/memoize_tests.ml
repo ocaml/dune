@@ -1586,7 +1586,7 @@ let%expect_test "errors work with early cutoff" =
           Some
             (sprintf "Input_too_large <%s run>"
                (if Memo.Run.For_tests.compare first_run run = Eq then "first"
-               else "second"))
+                else "second"))
         | _ -> None);
     Memo.create "divide 100 by input"
       ~input:(module Int)

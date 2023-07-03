@@ -473,8 +473,8 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
         static (string (Ocaml_config.ext_exe context.ocaml.ocaml_config))
       | Ext_plugin ->
         (if Ocaml_config.natdynlink_supported context.ocaml.ocaml_config then
-         Mode.Native
-        else Byte)
+           Mode.Native
+         else Byte)
         |> Mode.plugin_ext |> string |> static
       | Profile -> static (string (Profile.to_string context.profile))
       | Workspace_root -> static [ Value.Dir (Path.build context.build_dir) ]
@@ -601,8 +601,8 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
           (fun t ->
             Without
               (let open Memo.O in
-              let+ b = Artifacts.Bin.binary_available t.bin_artifacts_host s in
-              b |> string_of_bool |> string))
+               let+ b = Artifacts.Bin.binary_available t.bin_artifacts_host s in
+               b |> string_of_bool |> string))
       | Read -> expand_read_macro ~dir ~source s ~read:Io.read_file ~pack:string
       | Read_lines ->
         expand_read_macro ~dir ~source s ~read:Io.lines_of_file ~pack:strings
@@ -625,20 +625,20 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
           (fun t ->
             Without
               (let open Memo.O in
-              let* coqc =
-                Artifacts.Bin.binary t.bin_artifacts_host ~loc:None "coqc"
-              in
-              let+ t = Coq_config.make ~coqc in
-              match Coq_config.by_name t s with
-              | None ->
-                User_error.raise
-                  ~loc:(Dune_lang.Template.Pform.loc source)
-                  [ Pp.textf "Unknown Coq configuration variable %S" s ]
-              | Some v -> (
-                match v with
-                | Int x -> string (string_of_int x)
-                | String x -> string x
-                | Path x -> Value.L.paths [ x ])))))
+               let* coqc =
+                 Artifacts.Bin.binary t.bin_artifacts_host ~loc:None "coqc"
+               in
+               let+ t = Coq_config.make ~coqc in
+               match Coq_config.by_name t s with
+               | None ->
+                 User_error.raise
+                   ~loc:(Dune_lang.Template.Pform.loc source)
+                   [ Pp.textf "Unknown Coq configuration variable %S" s ]
+               | Some v -> (
+                 match v with
+                 | Int x -> string (string_of_int x)
+                 | String x -> string x
+                 | Path x -> Value.L.paths [ x ])))))
 
 (* Make sure to delay exceptions *)
 let expand_pform_gen ~context ~bindings ~dir ~source pform =
@@ -647,8 +647,8 @@ let expand_pform_gen ~context ~bindings ~dir ~source pform =
     Direct
       (Without
          (let open Memo.O in
-         let+ () = Memo.return () in
-         reraise exn))
+          let+ () = Memo.return () in
+          reraise exn))
   | Direct _ as x -> x
   | Need_full_expander f ->
     Need_full_expander
@@ -657,8 +657,8 @@ let expand_pform_gen ~context ~bindings ~dir ~source pform =
         with User_error.E _ as exn ->
           Without
             (let open Memo.O in
-            let+ () = Memo.return () in
-            reraise exn))
+             let+ () = Memo.return () in
+             reraise exn))
 
 let describe_source ~source =
   Pp.textf "%s at %s"

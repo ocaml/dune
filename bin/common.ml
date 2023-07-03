@@ -1067,9 +1067,9 @@ let init ?action_runner ?log_file c =
       | Yes _ -> true);
   Dune_engine.Execution_parameters.init
     (let open Memo.O in
-    let+ w = Dune_rules.Workspace.workspace () in
-    Dune_engine.Execution_parameters.builtin_default
-    |> Dune_rules.Workspace.update_execution_parameters w);
+     let+ w = Dune_rules.Workspace.workspace () in
+     Dune_engine.Execution_parameters.builtin_default
+     |> Dune_rules.Workspace.update_execution_parameters w);
   Dune_rules.Global.init ~capture_outputs:c.builder.capture_outputs;
   let cache_config =
     match config.cache_enabled with

@@ -135,8 +135,8 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
       inherited ~field:inline_tests Memo.return
         ~root:
           (if Profile.is_inline_test profile then
-           Dune_env.Stanza.Inline_tests.Enabled
-          else Disabled)
+             Dune_env.Stanza.Inline_tests.Enabled
+           else Disabled)
   in
   let js_of_ocaml =
     inherited

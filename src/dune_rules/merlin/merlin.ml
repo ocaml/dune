@@ -495,37 +495,37 @@ module Unprocessed = struct
         | Melange ->
           Action_builder.of_memo
             (let open Memo.O in
-            let scope = Expander.scope expander in
-            let libs = Scope.libs scope in
-            Lib.DB.find libs (Lib_name.of_string "melange") >>= function
-            | Some lib ->
-              let+ libs =
-                let linking =
-                  Dune_project.implicit_transitive_deps (Scope.project scope)
-                in
-                Lib.closure [ lib ] ~linking |> Resolve.Memo.peek >>| function
-                | Ok libs -> libs
-                | Error _ -> []
-              in
-              Lib.Set.union requires (Lib.Set.of_list libs)
-            | None -> Memo.return requires)
+             let scope = Expander.scope expander in
+             let libs = Scope.libs scope in
+             Lib.DB.find libs (Lib_name.of_string "melange") >>= function
+             | Some lib ->
+               let+ libs =
+                 let linking =
+                   Dune_project.implicit_transitive_deps (Scope.project scope)
+                 in
+                 Lib.closure [ lib ] ~linking |> Resolve.Memo.peek >>| function
+                 | Ok libs -> libs
+                 | Error _ -> []
+               in
+               Lib.Set.union requires (Lib.Set.of_list libs)
+             | None -> Memo.return requires)
       in
       let* flags = flags
       and* src_dirs, obj_dirs =
         Action_builder.of_memo
           (let open Memo.O in
-          Memo.parallel_map (Lib.Set.to_list requires) ~f:(fun lib ->
-              let+ dirs = src_dirs sctx lib in
-              (lib, dirs))
-          >>| List.fold_left
-                ~init:(Path.set_of_source_paths source_dirs, objs_dirs)
-                ~f:(fun (src_dirs, obj_dirs) (lib, more_src_dirs) ->
-                  ( Path.Set.union src_dirs more_src_dirs
-                  , let public_cmi_dir =
-                      let info = Lib.info lib in
-                      obj_dir_of_lib `Public mode (Lib_info.obj_dir info)
-                    in
-                    Path.Set.add obj_dirs public_cmi_dir )))
+           Memo.parallel_map (Lib.Set.to_list requires) ~f:(fun lib ->
+               let+ dirs = src_dirs sctx lib in
+               (lib, dirs))
+           >>| List.fold_left
+                 ~init:(Path.set_of_source_paths source_dirs, objs_dirs)
+                 ~f:(fun (src_dirs, obj_dirs) (lib, more_src_dirs) ->
+                   ( Path.Set.union src_dirs more_src_dirs
+                   , let public_cmi_dir =
+                       let info = Lib.info lib in
+                       obj_dir_of_lib `Public mode (Lib_info.obj_dir info)
+                     in
+                     Path.Set.add obj_dirs public_cmi_dir )))
       in
       let src_dirs =
         Path.Set.union src_dirs

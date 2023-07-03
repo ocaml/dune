@@ -1159,10 +1159,10 @@ module Run = struct
     let cancel = Fiber.Cancel.create () in
     t.status := Building cancel;
     (if Memo.Invalidation.is_empty invalidation then Memo.Perf_counters.reset ()
-    else
-      let details_hum = Memo.Invalidation.details_hum invalidation in
-      t.handler t.config (Source_files_changed { details_hum });
-      Memo.reset invalidation);
+     else
+       let details_hum = Memo.Invalidation.details_hum invalidation in
+       t.handler t.config (Source_files_changed { details_hum });
+       Memo.reset invalidation);
     let* res = set { t with cancel } (fun () -> step) in
     match !(t.status) with
     | Standing_by _ ->

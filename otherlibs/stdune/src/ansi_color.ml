@@ -354,9 +354,9 @@ let make_printer supports_color ppf =
   let f =
     lazy
       (if Lazy.force supports_color then
-       let buf = Buffer.create 16 in
-       Pp.to_fmt_with_tags ppf ~tag_handler:(tag_handler buf [])
-      else Pp.to_fmt ppf)
+         let buf = Buffer.create 16 in
+         Pp.to_fmt_with_tags ppf ~tag_handler:(tag_handler buf [])
+       else Pp.to_fmt ppf)
   in
   Staged.stage (fun pp ->
       Lazy.force f pp;

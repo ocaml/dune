@@ -246,8 +246,7 @@ module Public_lib = struct
       |> Result.map ~f:(fun pkg ->
              { package = pkg
              ; sub_dir =
-                 (if rest = [] then None
-                 else Some (String.concat rest ~sep:"/"))
+                 (if rest = [] then None else Some (String.concat rest ~sep:"/"))
              ; name = loc_name
              })
 
@@ -706,8 +705,8 @@ module Library = struct
            User_error.raise ~loc:stanza_loc
              [ Pp.text
                  (if dune_version >= (1, 1) then
-                  "supply at least one of name or public_name fields"
-                 else "name field is missing")
+                    "supply at least one of name or public_name fields"
+                  else "name field is missing")
              ]
        in
        let visibility =
@@ -949,8 +948,8 @@ module Library = struct
           in
           { Mode.Dict.native =
               (if Dynlink_supported.get conf.dynlink natdynlink_supported then
-               archive_file ~mode:Native
-              else [])
+                 archive_file ~mode:Native
+               else [])
           ; byte = archive_file ~mode:Byte
           }
         in

@@ -121,8 +121,8 @@ let () = at_exit dump
 
 let invalidate_cached_timestamps () =
   (if Lazy.is_val cache then
-   let cache = Lazy.force cache in
-   cache.checked_key <- cache.checked_key + 1);
+     let cache = Lazy.force cache in
+     cache.checked_key <- cache.checked_key + 1);
   delete_very_recent_entries ()
 
 let set_max_timestamp cache (stat : Unix.stats) =
@@ -276,47 +276,49 @@ let peek_file ~allow_dirs path =
   | Some x ->
     Some
       (if x.stats_checked = cache.checked_key then Digest_result.Ok x.digest
-      else
-        (* The [stat_exn] below follows symlinks. *)
-        match Path.Untracked.stat_exn path with
-        | exception Unix.Unix_error (ELOOP, _, _) -> Cyclic_symlink
-        | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
-        | exception Unix.Unix_error (error, syscall, arg) ->
-          Unix_error (Unix_error.Detailed.create ~syscall ~arg error)
-        | exception exn -> Error exn
-        | stats -> (
-          let reduced_stats = Reduced_stats.of_unix_stats stats in
-          match Reduced_stats.compare x.stats reduced_stats with
-          | Eq ->
-            (* Even though we're modifying the [stats_checked] field, we don't
-               need to set [needs_dumping := true] here. This is because
-               [checked_key] is incremented every time we load from disk, which
-               makes it so that [stats_checked < checked_key] for all entries
-               after loading, regardless of whether we save the new value here
-               or not. *)
-            x.stats_checked <- cache.checked_key;
-            Ok x.digest
-          | Gt | Lt ->
-            let digest_result = digest_path_with_stats ~allow_dirs path stats in
-            Digest_result.iter digest_result ~f:(fun digest ->
-                if !Clflags.debug_digests then
-                  Console.print
-                    [ Pp.textf "Re-digested file %s because its stats changed:"
-                        (Path.to_string_maybe_quoted path)
-                    ; Dyn.pp
-                        (Dyn.Record
-                           [ ("old_digest", Digest.to_dyn x.digest)
-                           ; ("new_digest", Digest.to_dyn digest)
-                           ; ("old_stats", Reduced_stats.to_dyn x.stats)
-                           ; ("new_stats", Reduced_stats.to_dyn reduced_stats)
-                           ])
-                    ];
-                needs_dumping := true;
-                set_max_timestamp cache stats;
-                x.digest <- digest;
-                x.stats <- reduced_stats;
-                x.stats_checked <- cache.checked_key);
-            digest_result))
+       else
+         (* The [stat_exn] below follows symlinks. *)
+         match Path.Untracked.stat_exn path with
+         | exception Unix.Unix_error (ELOOP, _, _) -> Cyclic_symlink
+         | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
+         | exception Unix.Unix_error (error, syscall, arg) ->
+           Unix_error (Unix_error.Detailed.create ~syscall ~arg error)
+         | exception exn -> Error exn
+         | stats -> (
+           let reduced_stats = Reduced_stats.of_unix_stats stats in
+           match Reduced_stats.compare x.stats reduced_stats with
+           | Eq ->
+             (* Even though we're modifying the [stats_checked] field, we don't
+                need to set [needs_dumping := true] here. This is because
+                [checked_key] is incremented every time we load from disk, which
+                makes it so that [stats_checked < checked_key] for all entries
+                after loading, regardless of whether we save the new value here
+                or not. *)
+             x.stats_checked <- cache.checked_key;
+             Ok x.digest
+           | Gt | Lt ->
+             let digest_result =
+               digest_path_with_stats ~allow_dirs path stats
+             in
+             Digest_result.iter digest_result ~f:(fun digest ->
+                 if !Clflags.debug_digests then
+                   Console.print
+                     [ Pp.textf "Re-digested file %s because its stats changed:"
+                         (Path.to_string_maybe_quoted path)
+                     ; Dyn.pp
+                         (Dyn.Record
+                            [ ("old_digest", Digest.to_dyn x.digest)
+                            ; ("new_digest", Digest.to_dyn digest)
+                            ; ("old_stats", Reduced_stats.to_dyn x.stats)
+                            ; ("new_stats", Reduced_stats.to_dyn reduced_stats)
+                            ])
+                     ];
+                 needs_dumping := true;
+                 set_max_timestamp cache stats;
+                 x.digest <- digest;
+                 x.stats <- reduced_stats;
+                 x.stats_checked <- cache.checked_key);
+             digest_result))
 
 let peek_or_refresh_file ~allow_dirs path =
   match peek_file ~allow_dirs path with

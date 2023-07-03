@@ -25,15 +25,15 @@ module Includes = struct
               [ iflags libs (Ocaml Native)
               ; Hidden_deps
                   (if opaque then
-                   List.map libs ~f:(fun lib ->
-                       ( lib
-                       , if Lib.is_local lib then
-                           [ Lib_file_deps.Group.Ocaml Cmi ]
-                         else [ Ocaml Cmi; Ocaml Cmx ] ))
-                   |> Lib_file_deps.deps_with_exts
-                  else
-                    Lib_file_deps.deps libs
-                      ~groups:[ Lib_file_deps.Group.Ocaml Cmi; Ocaml Cmx ])
+                     List.map libs ~f:(fun lib ->
+                         ( lib
+                         , if Lib.is_local lib then
+                             [ Lib_file_deps.Group.Ocaml Cmi ]
+                           else [ Ocaml Cmi; Ocaml Cmx ] ))
+                     |> Lib_file_deps.deps_with_exts
+                   else
+                     Lib_file_deps.deps libs
+                       ~groups:[ Lib_file_deps.Group.Ocaml Cmi; Ocaml Cmx ])
               ]))
     in
     let melange_cmi_includes =

@@ -106,10 +106,10 @@ Regenerate the `dune-project` file introducing an unsatisfiable constraint.
 Run the solver again. This time it will fail.
   $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository
   Error: Can't find all required versions.
-  Selected: baz.0.1.0 foo.0.0.1 lockfile_generation_test.LOCAL
+  Selected: baz.0.1.0 foo.0.0.1 lockfile_generation_test.dev
   - bar -> (problem)
       foo 0.0.1 requires >= 0.2
-      lockfile_generation_test LOCAL requires >= 0.6
+      lockfile_generation_test dev requires >= 0.6
       Rejected candidates:
         bar.0.5.0: Incompatible with restriction: >= 0.6
         bar.0.4.0: Incompatible with restriction: >= 0.6

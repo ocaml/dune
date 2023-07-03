@@ -131,6 +131,8 @@ module Pkg_info = struct
       ; ( "extra_sources"
         , Dyn.list (Dyn.pair Path.Local.to_dyn Source.to_dyn) extra_sources )
       ]
+
+  let default_version = "dev"
 end
 
 module Pkg = struct
@@ -193,7 +195,8 @@ module Pkg = struct
   let decode =
     let open Dune_lang.Decoder in
     enter @@ fields
-    @@ let+ version = field ~default:"dev" Fields.version string
+    @@ let+ version =
+         field ~default:Pkg_info.default_version Fields.version string
        and+ install_command = field_o Fields.install Dune_lang.Action.decode_pkg
        and+ build_command = field_o Fields.build Dune_lang.Action.decode_pkg
        and+ deps =

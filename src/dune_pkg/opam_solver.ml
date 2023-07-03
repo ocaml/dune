@@ -35,7 +35,7 @@ module Filtered_formula : sig
 
   (** Update a filtered formula setting the "with-test" and "with-doc" variables
       to true. *)
-  val with_test_and_doc : filtered_formula -> filtered_formula
+  val with_flags : Solver_env.Flag.Set.t -> filtered_formula -> filtered_formula
 end = struct
   open OpamTypes
 
@@ -55,11 +55,10 @@ end = struct
         else filter
       | other -> other)
 
-  let with_test_and_doc filtered_formula =
-    List.fold_left [ "with-test"; "with-doc" ] ~init:filtered_formula
-      ~f:(fun acc variable_name ->
+  let with_flags flags filtered_formula =
+    Solver_env.Flag.Set.fold flags ~init:filtered_formula ~f:(fun flag acc ->
         resolve_simple_bool_variable acc
-          (OpamVariable.of_string variable_name)
+          (OpamVariable.of_string (Solver_env.Flag.to_string flag))
           true)
 end
 
@@ -70,16 +69,20 @@ module Context_with_local_packages (Base_context : CONTEXT) : sig
   val create :
        base_context:Base_context.t
     -> local_packages:OpamFile.OPAM.t OpamPackage.Name.Map.t
+    -> solver_env:Solver_env.t
     -> t
 end = struct
-  let local_package_default_version = OpamPackage.Version.of_string "LOCAL"
+  let local_package_default_version =
+    OpamPackage.Version.of_string Lock_dir.Pkg_info.default_version
 
   type t =
     { base_context : Base_context.t
     ; local_packages : OpamFile.OPAM.t OpamPackage.Name.Map.t
+    ; solver_env : Solver_env.t
     }
 
-  let create ~base_context ~local_packages = { base_context; local_packages }
+  let create ~base_context ~local_packages ~solver_env =
+    { base_context; local_packages; solver_env }
 
   type rejection = Base_context.rejection
 
@@ -103,7 +106,7 @@ end = struct
     in
     let filtered_formula =
       if package_is_local then
-        Filtered_formula.with_test_and_doc filtered_formula
+        Filtered_formula.with_flags t.solver_env.flags filtered_formula
       else filtered_formula
     in
     Base_context.filter_deps t.base_context package filtered_formula
@@ -115,18 +118,25 @@ module Context_for_dune = struct
   include
     Context_with_local_packages (Context_either (Dir_context) (Switch_context))
 
-  let create_dir_context ~env ~packages_dir_path ~local_packages ~prefer_oldest
-      =
-    let dir_context =
-      Dir_context.create ~prefer_oldest ~constraints:OpamPackage.Name.Map.empty
-        ~env packages_dir_path
-    in
-    create ~base_context:(Left dir_context) ~local_packages
+  let prefer_oldest = function
+    | Version_preference.Oldest -> true
+    | Newest -> false
 
-  let create_switch_context ~switch_state ~local_packages ~prefer_oldest =
+  let create_dir_context ~solver_env ~env ~packages_dir_path ~local_packages
+      ~version_preference =
+    let dir_context =
+      Dir_context.create
+        ~prefer_oldest:(prefer_oldest version_preference)
+        ~constraints:OpamPackage.Name.Map.empty ~env packages_dir_path
+    in
+    create ~base_context:(Left dir_context) ~local_packages ~solver_env
+
+  let create_switch_context ~solver_env ~switch_state ~local_packages
+      ~version_preference =
     let switch_context =
-      Switch_context.create ~prefer_oldest
+      Switch_context.create
+        ~prefer_oldest:(prefer_oldest version_preference)
         ~constraints:OpamPackage.Name.Map.empty switch_state
     in
-    create ~base_context:(Right switch_context) ~local_packages
+    create ~base_context:(Right switch_context) ~local_packages ~solver_env
 end

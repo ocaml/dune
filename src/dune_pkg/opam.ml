@@ -184,31 +184,6 @@ module Local_repo_with_env = struct
     }
 end
 
-module Version_preference = struct
-  type t =
-    | Newest
-    | Oldest
-
-  let equal a b =
-    match (a, b) with
-    | Newest, Newest | Oldest, Oldest -> true
-    | _ -> false
-
-  let to_string = function
-    | Newest -> "newest"
-    | Oldest -> "oldest"
-
-  let to_dyn t = Dyn.variant (to_string t) []
-
-  let default = Newest
-
-  let all = [ Newest; Oldest ]
-
-  let all_by_string = List.map all ~f:(fun t -> (to_string t, t))
-
-  let decode = Dune_sexp.Decoder.enum all_by_string
-end
-
 module Solver = Opam_0install.Solver.Make (Opam_solver.Context_for_dune)
 
 module Repo_state = struct
@@ -222,15 +197,15 @@ module Repo_state = struct
     | Local_repo_with_env { local_repo; _ } ->
       Local_repo.load_opam_package local_repo opam_package
 
-  let create_context t local_packages ~prefer_oldest =
+  let create_context t local_packages ~solver_env ~version_preference =
     match t with
     | Switch switch_state ->
-      Opam_solver.Context_for_dune.create_switch_context ~local_packages
-        ~switch_state ~prefer_oldest
+      Opam_solver.Context_for_dune.create_switch_context ~solver_env
+        ~local_packages ~switch_state ~version_preference
     | Local_repo_with_env { local_repo = { packages_dir_path }; env } ->
-      Opam_solver.Context_for_dune.create_dir_context
+      Opam_solver.Context_for_dune.create_dir_context ~solver_env
         ~env:(fun name -> Env.find_by_name env ~name)
-        ~packages_dir_path ~local_packages ~prefer_oldest
+        ~packages_dir_path ~local_packages ~version_preference
 end
 
 module Repo_selection = struct
@@ -343,18 +318,15 @@ let solve_package_list local_packages context =
   | Error e -> User_error.raise [ Pp.text (Solver.diagnostics e) ]
   | Ok packages -> Solver.packages_of_result packages
 
-let solve_lock_dir ~version_preference ~repo_selection local_packages =
-  let prefer_oldest =
-    match (version_preference : Version_preference.t) with
-    | Oldest -> true
-    | Newest -> false
-  in
+let solve_lock_dir ~solver_env ~version_preference ~repo_selection
+    local_packages =
   let is_local_package package =
     OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
   in
   Repo_selection.with_state repo_selection ~f:(fun repo_state ->
       let context =
-        Repo_state.create_context repo_state local_packages ~prefer_oldest
+        Repo_state.create_context repo_state local_packages ~solver_env
+          ~version_preference
       in
       let opam_packages_to_lock =
         solve_package_list local_packages context

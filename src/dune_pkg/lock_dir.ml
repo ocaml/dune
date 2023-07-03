@@ -137,7 +137,7 @@ module Pkg = struct
   type t =
     { build_command : Action.t option
     ; install_command : Action.t option
-    ; deps : Package_name.t list
+    ; deps : (Loc.t * Package_name.t) list
     ; info : Pkg_info.t
     ; exported_env : String_with_vars.t Dune_lang.Action.Env_update.t list
     }
@@ -145,7 +145,7 @@ module Pkg = struct
   let equal { build_command; install_command; deps; info; exported_env } t =
     Option.equal Action.equal_no_locs build_command t.build_command
     && Option.equal Action.equal_no_locs install_command t.install_command
-    && List.equal Package_name.equal deps t.deps
+    && List.equal (Tuple.T2.equal Loc.equal Package_name.equal) deps t.deps
     && Pkg_info.equal info t.info
     && List.equal
          (Dune_lang.Action.Env_update.equal String_with_vars.equal)
@@ -157,13 +157,14 @@ module Pkg = struct
     ; exported_env =
         List.map t.exported_env
           ~f:(Dune_lang.Action.Env_update.map ~f:String_with_vars.remove_locs)
+    ; deps = List.map t.deps ~f:(fun (_, pkg) -> (Loc.none, pkg))
     }
 
   let to_dyn { build_command; install_command; deps; info; exported_env } =
     Dyn.record
       [ ("build_command", Dyn.option Action.to_dyn build_command)
       ; ("install_command", Dyn.option Action.to_dyn install_command)
-      ; ("deps", Dyn.list Package_name.to_dyn deps)
+      ; ("deps", Dyn.list (Dyn.pair Loc.to_dyn_hum Package_name.to_dyn) deps)
       ; ("info", Pkg_info.to_dyn info)
       ; ( "exported_env"
         , Dyn.list
@@ -195,7 +196,8 @@ module Pkg = struct
     @@ let+ version = field ~default:"dev" Fields.version string
        and+ install_command = field_o Fields.install Dune_lang.Action.decode_pkg
        and+ build_command = field_o Fields.build Dune_lang.Action.decode_pkg
-       and+ deps = field ~default:[] Fields.deps (repeat Package_name.decode)
+       and+ deps =
+         field ~default:[] Fields.deps (repeat (located Package_name.decode))
        and+ source = field_o Fields.source Source.decode
        and+ dev = field_b Fields.dev
        and+ exported_env =
@@ -239,7 +241,7 @@ module Pkg = struct
       [ field Fields.version string version
       ; field_o Fields.install Dune_lang.Action.encode install_command
       ; field_o Fields.build Dune_lang.Action.encode build_command
-      ; field_l Fields.deps Package_name.encode deps
+      ; field_l Fields.deps Package_name.encode (List.map deps ~f:snd)
       ; field_o Fields.source Source.encode source
       ; field_b Fields.dev dev
       ; field_l Fields.exported_env Dune_lang.Action.Env_update.encode

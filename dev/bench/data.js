@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688404006194,
+  "lastUpdate": 1688404064804,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -22096,6 +22096,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.20548270953333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "56623a3be21970e5560de523bdb4f94afcaf4c0f",
+          "message": "refactor: remove pointless module alias (#8097)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-03T09:48:01-07:00",
+          "tree_id": "64adf50dff61d0fde0883c78164dcc309a4a6d6a",
+          "url": "https://github.com/ocaml/dune/commit/56623a3be21970e5560de523bdb4f94afcaf4c0f"
+        },
+        "date": 1688404063463,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.88234212752",
             "unit": "seconds"
           }
         ]

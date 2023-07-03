@@ -243,25 +243,37 @@ let apply_changes_to_source_tree t ~old_snapshot =
 
 let move_targets_to_build_dir t ~loc ~should_be_skipped
     ~(targets : Targets.Validated.t) : unit Targets.Produced.t Fiber.t =
-  maybe_async (fun () ->
-      Option.iter t.snapshot ~f:(fun old_snapshot ->
-          apply_changes_to_source_tree t ~old_snapshot);
-      Path.Build.Set.iter targets.files ~f:(fun target ->
-          if not (should_be_skipped target) then
-            rename_optional_file ~src:(map_path t target) ~dst:target);
-      let discovered_targets =
-        Path.Build.Set.to_list_map targets.dirs ~f:(fun target ->
-            let src_dir = map_path t target in
-            let files = collect_dir_recursively ~loc ~src_dir ~dst_dir:target in
-            if Path.Untracked.exists (Path.build target) then
-              (* We clean up all targets (including directory targets) before running an
-                 action, so this branch should be unreachable. *)
-              Code_error.raise "Stale directory target in the build directory"
-                [ ("dst_dir", Path.Build.to_dyn target) ];
-            Path.rename (Path.build src_dir) (Path.build target);
-            files)
-        |> Appendable_list.concat |> Appendable_list.to_list
-      in
-      Targets.Produced.expand_validated_exn targets discovered_targets)
+  let open Fiber.O in
+  let* () =
+    maybe_async (fun () ->
+        Option.iter t.snapshot ~f:(fun old_snapshot ->
+            apply_changes_to_source_tree t ~old_snapshot))
+  in
+  let* () =
+    maybe_async (fun () ->
+        Path.Build.Set.iter targets.files ~f:(fun target ->
+            if not (should_be_skipped target) then
+              rename_optional_file ~src:(map_path t target) ~dst:target))
+  in
+  let+ targets =
+    maybe_async (fun () ->
+        let discovered_targets =
+          Path.Build.Set.to_list_map targets.dirs ~f:(fun target ->
+              let src_dir = map_path t target in
+              let files =
+                collect_dir_recursively ~loc ~src_dir ~dst_dir:target
+              in
+              if Path.Untracked.exists (Path.build target) then
+                (* We clean up all targets (including directory targets) before running an
+                   action, so this branch should be unreachable. *)
+                Code_error.raise "Stale directory target in the build directory"
+                  [ ("dst_dir", Path.Build.to_dyn target) ];
+              Path.rename (Path.build src_dir) (Path.build target);
+              files)
+          |> Appendable_list.concat |> Appendable_list.to_list
+        in
+        Targets.Produced.expand_validated_exn targets discovered_targets)
+  in
+  targets
 
 let destroy t = maybe_async (fun () -> Path.rm_rf (Path.build t.dir))

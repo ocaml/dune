@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688404064804,
+  "lastUpdate": 1688404350271,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -51299,6 +51299,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.4811226257466665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2c8c7a423d941aba591ffa8f53f696937152c2ff",
+          "message": "feature(pkg): add field to indicate ocaml package (#8079)\n\nWe can now write:\r\n\r\n```\r\n(ocaml foo)\r\n```\r\n\r\nTo designate the package `foo` as the one providing the ocaml toolchain.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-03T09:47:06-07:00",
+          "tree_id": "a71248a211d1d5e72384a93b2f01c869cd670bc7",
+          "url": "https://github.com/ocaml/dune/commit/2c8c7a423d941aba591ffa8f53f696937152c2ff"
+        },
+        "date": 1688404349402,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "68.0742597292",
             "unit": "seconds"
           }
         ]

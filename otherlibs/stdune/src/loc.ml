@@ -138,7 +138,14 @@ let on_same_line loc1 loc2 =
   let same_line = Int.equal start1.pos_lnum start2.pos_lnum in
   same_file && same_line
 
-let span begin_ end_ = set_stop begin_ (stop end_)
+let span (a : t) (b : t) =
+  let earliest_start =
+    if (start a).pos_cnum < (start b).pos_cnum then start a else start b
+  in
+  let latest_stop =
+    if (stop a).pos_cnum > (stop b).pos_cnum then stop a else stop b
+  in
+  create ~start:earliest_start ~stop:latest_stop
 
 let rec render ppf pp =
   Pp.to_fmt_with_tags ppf pp ~tag_handler:(fun ppf Loc pp ->

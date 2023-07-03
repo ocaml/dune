@@ -62,6 +62,7 @@ Regular dependencies are resolved transitively:
   depends-on-foo.0.0.1
   foo.0.0.1
   foo-dependency.0.0.1
+  
 
 Transitive test dependencies are not included:
   $ solve_project <<EOF
@@ -72,6 +73,7 @@ Transitive test dependencies are not included:
   > EOF
   Solution for dune.lock:
   depends-on-foo-with-test.0.0.1
+  
 
 Test dependencies of the project are included:
   $ solve_project <<EOF
@@ -84,6 +86,7 @@ Test dependencies of the project are included:
   Solution for dune.lock:
   foo.0.0.1
   foo-dependency.0.0.1
+  
 
 Test dependencies of test dependencies are excluded:
   $ solve_project <<EOF
@@ -94,6 +97,7 @@ Test dependencies of test dependencies are excluded:
   > EOF
   Solution for dune.lock:
   depends-on-foo-with-test.0.0.1
+  
 
 Conflicting packages can't be co-installed:
   $ solve_project <<EOF
@@ -133,4 +137,5 @@ Conflicts with transitive test dependencies don't affect the solution:
   Solution for dune.lock:
   conflicts-with-foo.0.0.1
   depends-on-foo-with-test.0.0.1
+  
 

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688471169849,
+  "lastUpdate": 1688472951531,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -65336,6 +65336,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.30742984657333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dfd3c4f2353d95e0f407c1bc34ce1be3cd5866c8",
+          "message": "refactor: simplify User_message.Annots api (#8102)\n\nremove everything from Univ_map that we don't actually use\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-04T05:00:06-07:00",
+          "tree_id": "4e563a737d133a7566cbec6ebba7a48d57c9399c",
+          "url": "https://github.com/ocaml/dune/commit/dfd3c4f2353d95e0f407c1bc34ce1be3cd5866c8"
+        },
+        "date": 1688472943244,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "27.9888544221",
             "unit": "seconds"
           }
         ]

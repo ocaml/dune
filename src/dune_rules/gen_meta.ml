@@ -158,6 +158,11 @@ let gen_lib pub_name lib ~version =
        | l ->
          let l = List.map l ~f:Path.basename in
          [ rule "jsoo_runtime" [] Set (String.concat l ~sep:" ") ])
+    ; (match Lib_info.wasmoo_runtime info with
+       | [] -> []
+       | l ->
+         let l = List.map l ~f:Path.basename in
+         [ rule "wasmoo_runtime" [] Set (String.concat l ~sep:" ") ])
     ]
 ;;
 

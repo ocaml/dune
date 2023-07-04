@@ -55,6 +55,7 @@ module In_buildable : sig
   type t =
     { flags : Flags.Spec.t
     ; javascript_files : string list
+    ; wasm_files : string list
     ; compilation_mode : Compilation_mode.t option
     ; sourcemap : Sourcemap.t option
     }
@@ -67,6 +68,7 @@ module In_context : sig
   type t =
     { flags : Flags.Spec.t
     ; javascript_files : Path.Build.t list
+    ; wasm_files : Path.Build.t list
     ; compilation_mode : Compilation_mode.t option
     ; sourcemap : Sourcemap.t option
     }

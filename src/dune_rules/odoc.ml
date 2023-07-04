@@ -355,10 +355,6 @@ let setup_html sctx (odoc_file : odoc_artefact) =
   in
   let open Memo.O in
   let odoc_support_path = Paths.odoc_support ctx in
-  let html_output = Paths.html_root ctx in
-  let support_relative =
-    Path.reach (Path.build odoc_support_path) ~from:(Path.build html_output)
-  in
   let* run_odoc =
     run_odoc sctx
       ~dir:(Path.build (Paths.html_root ctx))
@@ -366,9 +362,9 @@ let setup_html sctx (odoc_file : odoc_artefact) =
       [ A "-o"
       ; Path (Path.build (Paths.html_root ctx))
       ; A "--support-uri"
-      ; A support_relative
+      ; Path (Path.build odoc_support_path)
       ; A "--theme-uri"
-      ; A support_relative
+      ; Path (Path.build odoc_support_path)
       ; Dep (Path.build odoc_file.odocl_file)
       ; Hidden_targets [ odoc_file.html_file ]
       ]

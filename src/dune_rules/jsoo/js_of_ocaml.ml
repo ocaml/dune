@@ -91,6 +91,7 @@ module In_buildable = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t Flags.t
     ; javascript_files : string list
+    ; wasm_files : string list
     }
 
   let decode =
@@ -106,31 +107,40 @@ module In_buildable = struct
              ; link = flags (* we set link as well to preserve the old semantic *)
              }
          ; javascript_files
+         ; wasm_files = []
          })
     else
       fields
         (let+ flags = Flags.decode
-         and+ javascript_files = field "javascript_files" (repeat string) ~default:[] in
-         { flags; javascript_files })
+         and+ javascript_files = field "javascript_files" (repeat string) ~default:[]
+         and+ wasm_files =
+           field
+             "wasm_files"
+             (Dune_lang.Syntax.since Stanza.syntax (3, 11) >>> repeat string)
+             ~default:[]
+         in
+         { flags; javascript_files; wasm_files })
   ;;
 
-  let default = { flags = Flags.standard; javascript_files = [] }
+  let default = { flags = Flags.standard; javascript_files = []; wasm_files = [] }
 end
 
 module In_context = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t Flags.t
     ; javascript_files : Path.Build.t list
+    ; wasm_files : Path.Build.t list
     }
 
   let make ~(dir : Path.Build.t) (x : In_buildable.t) =
     { flags = x.flags
     ; javascript_files =
         List.map ~f:(fun name -> Path.Build.relative dir name) x.javascript_files
+    ; wasm_files = List.map ~f:(fun name -> Path.Build.relative dir name) x.wasm_files
     }
   ;;
 
-  let default = { flags = Flags.standard; javascript_files = [] }
+  let default = { flags = Flags.standard; javascript_files = []; wasm_files = [] }
 end
 
 module Compilation_mode = struct

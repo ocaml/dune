@@ -111,6 +111,7 @@ module Lib = struct
     in
     let melange_runtime_deps = additional_paths (Lib_info.melange_runtime_deps info) in
     let jsoo_runtime = Lib_info.jsoo_runtime info in
+    let wasm_runtime = Lib_info.wasm_runtime info in
     let virtual_ = Option.is_some (Lib_info.virtual_ info) in
     let instrumentation_backend = Lib_info.instrumentation_backend info in
     let native_archives =
@@ -144,6 +145,7 @@ module Lib = struct
        ; paths "foreign_dll_files" foreign_dll_files
        ; paths "native_archives" native_archives
        ; paths "jsoo_runtime" jsoo_runtime
+       ; paths "wasm_runtime" wasm_runtime
        ; Lib_dep.L.field_encode requires ~name:"requires"
        ; libs "ppx_runtime_deps" ppx_runtime_deps
        ; field_o "implements" (no_loc Lib_name.encode) implements
@@ -219,6 +221,7 @@ module Lib = struct
        and+ foreign_dll_files = paths "foreign_dll_files"
        and+ native_archives = paths "native_archives"
        and+ jsoo_runtime = paths "jsoo_runtime"
+       and+ wasm_runtime = paths "wasm_runtime"
        and+ melange_runtime_deps = paths "melange_runtime_deps"
        and+ requires = field_l "requires" (Lib_dep.decode ~allow_re_export:true)
        and+ ppx_runtime_deps = libs "ppx_runtime_deps"
@@ -281,6 +284,7 @@ module Lib = struct
            ~native_archives:(Files native_archives)
            ~foreign_dll_files
            ~jsoo_runtime
+           ~wasm_runtime
            ~preprocess
            ~enabled
            ~virtual_deps

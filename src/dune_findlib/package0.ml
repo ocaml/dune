@@ -25,6 +25,7 @@ let make_archives t var preds =
 let version t = Vars.get t.vars "version" Ps.empty
 let description t = Vars.get t.vars "description" Ps.empty
 let jsoo_runtime t = get_paths t "jsoo_runtime" Ps.empty
+let wasm_runtime t = get_paths t "wasm_runtime" Ps.empty
 
 let requires t =
   Vars.get_words t.vars "requires" preds

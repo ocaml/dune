@@ -946,6 +946,9 @@ module Library = struct
     let jsoo_runtime =
       List.map conf.buildable.js_of_ocaml.javascript_files ~f:(Path.Build.relative dir)
     in
+    let wasm_runtime =
+      List.map conf.buildable.js_of_ocaml.wasm_files ~f:(Path.Build.relative dir)
+    in
     let status =
       match conf.visibility with
       | Private pkg -> Lib_info.Status.Private (conf.project, pkg)
@@ -1074,6 +1077,7 @@ module Library = struct
       ~native_archives
       ~foreign_dll_files
       ~jsoo_runtime
+      ~wasm_runtime
       ~preprocess
       ~enabled
       ~virtual_deps

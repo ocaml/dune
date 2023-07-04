@@ -156,7 +156,7 @@ include Sub_system.Register_end_point (struct
         let js_of_ocaml =
           Js_of_ocaml.In_context.make
             ~dir
-            { lib.buildable.js_of_ocaml with javascript_files = [] }
+            { lib.buildable.js_of_ocaml with javascript_files = []; wasm_files = [] }
         in
         Compilation_context.create
           ()

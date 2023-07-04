@@ -366,6 +366,7 @@ type 'path t =
   ; native_archives : 'path native_archives
   ; foreign_dll_files : 'path list
   ; jsoo_runtime : 'path list
+  ; wasm_runtime : 'path list
   ; requires : Lib_dep.t list
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
   ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
@@ -408,6 +409,7 @@ let equal
   ; native_archives
   ; foreign_dll_files
   ; jsoo_runtime
+  ; wasm_runtime
   ; requires
   ; ppx_runtime_deps
   ; preprocess
@@ -452,6 +454,7 @@ let equal
   && equal_native_archives path_equal native_archives t.native_archives
   && List.equal path_equal foreign_dll_files t.foreign_dll_files
   && List.equal path_equal jsoo_runtime t.jsoo_runtime
+  && List.equal path_equal wasm_runtime t.wasm_runtime
   && List.equal Lib_dep.equal requires t.requires
   && List.equal
        (Tuple.T2.equal Loc.equal Lib_name.equal)
@@ -524,6 +527,7 @@ let synopsis t = t.synopsis
 let wrapped t = t.wrapped
 let special_builtin_support t = t.special_builtin_support
 let jsoo_runtime t = t.jsoo_runtime
+let wasm_runtime t = t.wasm_runtime
 let main_module_name t = t.main_module_name
 let orig_src_dir t = t.orig_src_dir
 let best_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
@@ -613,6 +617,7 @@ let create
   ~native_archives
   ~foreign_dll_files
   ~jsoo_runtime
+  ~wasm_runtime
   ~preprocess
   ~enabled
   ~virtual_deps
@@ -649,6 +654,7 @@ let create
   ; native_archives
   ; foreign_dll_files
   ; jsoo_runtime
+  ; wasm_runtime
   ; preprocess
   ; enabled
   ; virtual_deps
@@ -693,6 +699,7 @@ let map t ~path_kind ~f_path ~f_obj_dir ~f_public_deps =
   ; foreign_dll_files = List.map ~f t.foreign_dll_files
   ; native_archives
   ; jsoo_runtime = List.map ~f t.jsoo_runtime
+  ; wasm_runtime = List.map ~f t.wasm_runtime
   ; melange_runtime_deps = File_deps.map ~f:f_public_deps t.melange_runtime_deps
   ; path_kind
   }
@@ -741,6 +748,7 @@ let to_dyn
   ; native_archives
   ; foreign_dll_files
   ; jsoo_runtime
+  ; wasm_runtime
   ; preprocess = _
   ; enabled
   ; virtual_deps
@@ -779,6 +787,7 @@ let to_dyn
     ; "native_archives", dyn_of_native_archives path native_archives
     ; "foreign_dll_files", list path foreign_dll_files
     ; "jsoo_runtime", list path jsoo_runtime
+    ; "wasm_runtime", list path wasm_runtime
     ; "requires", list Lib_dep.to_dyn requires
     ; "ppx_runtime_deps", list (snd Lib_name.to_dyn) ppx_runtime_deps
     ; "enabled", Enabled_status.to_dyn enabled

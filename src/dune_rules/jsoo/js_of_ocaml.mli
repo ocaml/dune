@@ -42,6 +42,7 @@ module In_buildable : sig
   type t =
     { flags : Flags.Spec.t
     ; javascript_files : string list
+    ; wasm_files : string list
     }
 
   val decode : t Dune_lang.Decoder.t
@@ -52,6 +53,7 @@ module In_context : sig
   type t =
     { flags : Flags.Spec.t
     ; javascript_files : Path.Build.t list
+    ; wasm_files : Path.Build.t list
     }
 
   val make : dir:Path.Build.t -> In_buildable.t -> t

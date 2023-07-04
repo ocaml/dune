@@ -428,6 +428,9 @@ let to_lib_info
   let jsoo_runtime =
     List.map conf.buildable.js_of_ocaml.javascript_files ~f:(Path.Build.relative dir)
   in
+  let wasmoo_runtime =
+    List.map conf.buildable.js_of_ocaml.wasm_files ~f:(Path.Build.relative dir)
+  in
   let status =
     match conf.visibility with
     | Private pkg -> Lib_info.Status.Private (conf.project, pkg)
@@ -566,6 +569,7 @@ let to_lib_info
     ~native_archives
     ~foreign_dll_files
     ~jsoo_runtime
+    ~wasmoo_runtime
     ~preprocess
     ~enabled
     ~virtual_deps

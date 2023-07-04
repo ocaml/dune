@@ -433,6 +433,7 @@ let setup_separate_compilation_rules sctx components =
          let in_context =
            { Js_of_ocaml.In_context.flags = Js_of_ocaml.Flags.standard
            ; javascript_files = []
+           ; wasm_files = []
            }
          in
          let src =
@@ -474,7 +475,7 @@ let build_exe
   =
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in
-  let { Js_of_ocaml.In_context.javascript_files; flags } = in_context in
+  let { Js_of_ocaml.In_context.javascript_files; flags; _ } = in_context in
   let target = Path.Build.set_extension src ~ext:Js_of_ocaml.Ext.exe in
   let standalone_runtime =
     in_obj_dir

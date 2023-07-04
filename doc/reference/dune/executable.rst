@@ -259,6 +259,9 @@ options using ``(js_of_ocaml (<js_of_ocaml-options>))``.
 - ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
   runtime files.
 
+- ``(wasm_files (<files-list>))`` to specify ``wasm_of_ocaml``
+  JavaScript and Wasm runtime files.
+
 ``<flags>`` is specified in the :doc:`/reference/ordered-set-language`.
 
 The default value for ``(flags ...)`` depends on the selected build profile. The

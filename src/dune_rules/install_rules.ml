@@ -110,11 +110,17 @@ end = struct
       (List.rev_concat_map
          ~f:(List.rev_map ~f:(fun f -> Section.Lib, f))
          (let { Mode.Dict.byte; native } = Lib_info.archives lib in
+          let jsoo_files =
+            (* A same runtime file can be used both for jsoo and wasmoo *)
+            List.sort_uniq
+              ~compare:Path.Build.compare
+              (Lib_info.jsoo_runtime lib @ Lib_info.wasmoo_runtime lib)
+          in
           [ byte
           ; native
           ; foreign_archives
           ; Lib_info.eval_native_archives_exn lib ~modules
-          ; Lib_info.jsoo_runtime lib
+          ; jsoo_files
           ]))
       (List.rev_map ~f:(fun f -> Section.Libexec, f) (Lib_info.plugins lib).native)
   ;;

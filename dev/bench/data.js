@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688470410407,
+  "lastUpdate": 1688470837248,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -22154,6 +22154,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "45.07469933889333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "102458362d26941fdaada6a478da174976c848b0",
+          "message": "refactor: remove [Univ_map.to_dyns] (#8101)\n\nthis function is unused and not particularly useful\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-04T04:21:26-07:00",
+          "tree_id": "16bcf042844ba52e0bfc8993b76ee6b2c64a836b",
+          "url": "https://github.com/ocaml/dune/commit/102458362d26941fdaada6a478da174976c848b0"
+        },
+        "date": 1688470836225,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.54721522910667",
             "unit": "seconds"
           }
         ]

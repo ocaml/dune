@@ -411,7 +411,7 @@ let opam_package_to_lock_file_pkg ~repo_state ~local_packages opam_package =
       (fun acc (name, _condition) -> name :: acc)
       [] opam_file.depends
     |> List.map ~f:(fun name ->
-           Package_name.of_string (OpamPackage.Name.to_string name))
+           (Loc.none, Package_name.of_string (OpamPackage.Name.to_string name)))
   in
   { Lock_dir.Pkg.build_command = None
   ; install_command = None

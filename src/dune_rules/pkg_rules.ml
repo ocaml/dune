@@ -717,7 +717,7 @@ end
 type db = Lock_dir.Pkg.t Package.Name.Map.t
 
 module rec Resolve : sig
-  val resolve : db -> Context_name.t -> Package.Name.t -> Pkg.t option Memo.t
+  val resolve : db -> Context_name.t -> Loc.t * Package.Name.t -> Pkg.t Memo.t
 end = struct
   open Resolve
 
@@ -732,12 +732,7 @@ end = struct
         ; exported_env
         } ->
       assert (Package.Name.equal name info.name);
-      let* deps =
-        Memo.parallel_map deps ~f:(fun name ->
-            resolve db ctx name >>| function
-            | Some pkg -> pkg
-            | None -> User_error.raise [ Pp.text "invalid dependencies" ])
-      in
+      let* deps = Memo.parallel_map deps ~f:(resolve db ctx) in
       let id = Pkg.Id.gen () in
       let paths = Paths.make name ctx in
       let* lock_dir = Lock_dir.get_path ctx in
@@ -781,7 +776,10 @@ end = struct
           Pp.textf "- package %s" (Package.Name.to_string pkg))
         resolve_impl
     in
-    fun db ctx name -> Memo.exec memo (db, ctx, name)
+    fun db ctx (loc, name) ->
+      Memo.exec memo (db, ctx, name) >>| function
+      | None -> User_error.raise ~loc [ Pp.text "Unknown package" ]
+      | Some s -> s
 end
 
 open Resolve
@@ -1303,26 +1301,21 @@ let setup_package_rules context ~dir ~pkg_name :
     Build_config.gen_rules_result Memo.t =
   match Package.Name.of_string_user_error (Loc.none, pkg_name) with
   | Error m -> raise (User_error.E m)
-  | Ok name -> (
+  | Ok name ->
     let* db = Lock_dir.get context in
-    resolve db.packages context name >>| function
-    | None ->
-      User_error.raise
-        [ Pp.textf "unknown package %S" (Package.Name.to_string name) ]
-    | Some pkg ->
-      let paths = Paths.make name context in
-      let rules =
-        { Build_config.Rules.directory_targets =
-            (let target_dir = paths.target_dir in
-             let map = Path.Build.Map.singleton target_dir Loc.none in
-             match pkg.info.source with
-             | Some (Fetch f) ->
-               Path.Build.Map.add_exn map paths.source_dir (fst f.url)
-             | _ -> map)
-        ; build_dir_only_sub_dirs =
-            Build_config.Rules.Build_only_sub_dirs.singleton ~dir
-              Subdir_set.empty
-        ; rules = Rules.collect_unit (fun () -> gen_rules context pkg)
-        }
-      in
-      Build_config.Rules rules)
+    let+ pkg = resolve db.packages context (Loc.none, name) in
+    let paths = Paths.make name context in
+    let rules =
+      { Build_config.Rules.directory_targets =
+          (let target_dir = paths.target_dir in
+           let map = Path.Build.Map.singleton target_dir Loc.none in
+           match pkg.info.source with
+           | Some (Fetch f) ->
+             Path.Build.Map.add_exn map paths.source_dir (fst f.url)
+           | _ -> map)
+      ; build_dir_only_sub_dirs =
+          Build_config.Rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty
+      ; rules = Rules.collect_unit (fun () -> gen_rules context pkg)
+      }
+    in
+    Build_config.Rules rules

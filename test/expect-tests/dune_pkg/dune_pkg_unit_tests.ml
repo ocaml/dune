@@ -286,7 +286,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
          ( name
          , { Lock_dir.Pkg.build_command = None
            ; install_command = None
-           ; deps = [ fst pkg_a ]
+           ; deps = [ (Loc.none, fst pkg_a) ]
            ; info =
                { Lock_dir.Pkg_info.name
                ; version = "dev"
@@ -312,7 +312,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
          ( name
          , { Lock_dir.Pkg.build_command = None
            ; install_command = None
-           ; deps = [ fst pkg_a; fst pkg_b ]
+           ; deps = [ (Loc.none, fst pkg_a); (Loc.none, fst pkg_b) ]
            ; info =
                { Lock_dir.Pkg_info.name
                ; version = "0.2"
@@ -356,7 +356,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
           ; "b" :
               { build_command = None
               ; install_command = None
-              ; deps = [ "a" ]
+              ; deps = [ ("complex_lock_dir/b.pkg:2", "a") ]
               ; info =
                   { name = "b"
                   ; version = "dev"
@@ -373,7 +373,10 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
           ; "c" :
               { build_command = None
               ; install_command = None
-              ; deps = [ "a"; "b" ]
+              ; deps =
+                  [ ("complex_lock_dir/c.pkg:2", "a")
+                  ; ("complex_lock_dir/c.pkg:2", "b")
+                  ]
               ; info =
                   { name = "c"
                   ; version = "0.2"

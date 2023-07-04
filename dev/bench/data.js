@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688463916894,
+  "lastUpdate": 1688463930248,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -51473,6 +51473,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "75.49094992926",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dccec210e772cf879d0cea16aebda1d549146c9f",
+          "message": "fix(pkg): add locations to package deps (#8098)\n\nTo give proper error messages when packages are missing\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-04T02:16:46-07:00",
+          "tree_id": "baaf3f6d8517cc60813d1e1ff79b8f4b3d0b47d1",
+          "url": "https://github.com/ocaml/dune/commit/dccec210e772cf879d0cea16aebda1d549146c9f"
+        },
+        "date": 1688463929052,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.0174007212666667",
             "unit": "seconds"
           }
         ]

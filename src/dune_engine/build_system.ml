@@ -503,7 +503,10 @@ end = struct
             in
             match (Build_config.get ()).action_runner input with
             | None -> Action_exec.exec input ~build_deps
-            | Some runner -> Action_runner.exec_action runner input
+            | Some runner -> (
+              Action_runner.exec_action runner input >>= function
+              | Ok res -> Fiber.return res
+              | Error exns -> Fiber.reraise_all exns)
           in
           let+ produced_targets =
             match sandbox with

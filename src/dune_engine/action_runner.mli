@@ -1,3 +1,5 @@
+open Import
+
 (** Action runners are instances capabale of executing dune actions outside of
     the build engine's process. *)
 
@@ -27,7 +29,10 @@ val create : Rpc_server.t -> name:string -> t
 val name : t -> string
 
 (** [exec_action worker action] dispatches [action] to [worker] *)
-val exec_action : t -> Action_exec.input -> Action_exec.Exec_result.t Fiber.t
+val exec_action :
+     t
+  -> Action_exec.input
+  -> (Action_exec.Exec_result.t, Exn_with_backtrace.t list) result Fiber.t
 
 module Worker : sig
   (** A worker is a runner of action *)

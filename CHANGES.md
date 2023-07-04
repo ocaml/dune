@@ -1,3 +1,9 @@
+Unreleased
+----------
+
+- Disable background operations on MacOS and other Unixes where we rely on
+  fork. (#8100, fixes #8083, @rgrinberg)
+
 3.9.0 (2023-06-28)
 ------------------
 

@@ -97,6 +97,11 @@ let copy_file =
   register t;
   t
 
+let background_default =
+  match Platform.OS.value with
+  | Linux | Windows -> `Enabled
+  | _ -> `Disabled
+
 let background_actions =
   let t =
     { name = "background_actions"
@@ -111,7 +116,7 @@ let background_digests =
   let t =
     { name = "background_digests"
     ; of_string = Toggle.of_string
-    ; value = `Enabled
+    ; value = background_default
     }
   in
   register t;
@@ -121,7 +126,7 @@ let background_sandboxes =
   let t =
     { name = "background_sandboxes"
     ; of_string = Toggle.of_string
-    ; value = `Enabled
+    ; value = background_default
     }
   in
   register t;

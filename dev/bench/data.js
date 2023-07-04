@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688476411807,
+  "lastUpdate": 1688476456055,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -51792,6 +51792,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6184035736733335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0afe0186f10887479d3fd6dbf647c359e67321e6",
+          "message": "fix: rally action runner errors (#8104)\n\nWhenever an action runner raises, it would not send back the response\r\nfor executing the action.\r\n\r\nThis PR changes the behavior to catch the action runner errors and pass\r\nthem along to the server as needed.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-04T05:49:02-07:00",
+          "tree_id": "c877ccf229e5a87c607ee1ff5d4e5b0d8303ee42",
+          "url": "https://github.com/ocaml/dune/commit/0afe0186f10887479d3fd6dbf647c359e67321e6"
+        },
+        "date": 1688476454671,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.70667276191334",
             "unit": "seconds"
           }
         ]

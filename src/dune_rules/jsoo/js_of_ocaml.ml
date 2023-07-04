@@ -120,6 +120,7 @@ module In_buildable = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t Flags.t
     ; javascript_files : string list
+    ; wasm_files : string list
     ; compilation_mode : Compilation_mode.t option
     ; sourcemap : Sourcemap.t option
     }
@@ -137,6 +138,7 @@ module In_buildable = struct
              ; link = flags (* we set link as well to preserve the old semantic *)
              }
          ; javascript_files
+         ; wasm_files = []
          ; compilation_mode = None
          ; sourcemap = None
          })
@@ -144,6 +146,11 @@ module In_buildable = struct
       fields
         (let+ flags = Flags.decode
          and+ javascript_files = field "javascript_files" (repeat string) ~default:[]
+         and+ wasm_files =
+           field
+             "wasm_files"
+             (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> repeat string)
+             ~default:[]
          and+ compilation_mode =
            if executable
            then
@@ -159,12 +166,13 @@ module In_buildable = struct
                (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode)
            else return None
          in
-         { flags; javascript_files; compilation_mode; sourcemap })
+         { flags; javascript_files; wasm_files; compilation_mode; sourcemap })
   ;;
 
   let default =
     { flags = Flags.standard
     ; javascript_files = []
+    ; wasm_files = []
     ; compilation_mode = None
     ; sourcemap = None
     }
@@ -175,6 +183,7 @@ module In_context = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t Flags.t
     ; javascript_files : Path.Build.t list
+    ; wasm_files : Path.Build.t list
     ; compilation_mode : Compilation_mode.t option
     ; sourcemap : Sourcemap.t option
     }
@@ -183,6 +192,7 @@ module In_context = struct
     { flags = x.flags
     ; javascript_files =
         List.map ~f:(fun name -> Path.Build.relative dir name) x.javascript_files
+    ; wasm_files = List.map ~f:(fun name -> Path.Build.relative dir name) x.wasm_files
     ; compilation_mode = x.compilation_mode
     ; sourcemap = x.sourcemap
     }
@@ -191,6 +201,7 @@ module In_context = struct
   let default =
     { flags = Flags.standard
     ; javascript_files = []
+    ; wasm_files = []
     ; compilation_mode = None
     ; sourcemap = None
     }

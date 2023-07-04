@@ -100,7 +100,8 @@ let run () =
           ; action
           }
         in
-        let+ (_ : Action_exec.Exec_result.t) =
+        let+ (_ : (Action_exec.Exec_result.t, Exn_with_backtrace.t list) result)
+            =
           Action_runner.exec_action worker action
         in
         print_endline "executed action";

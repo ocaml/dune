@@ -1,7 +1,13 @@
 module type S = Univ_map_intf.S
 
-module Make () = struct
+module Make (Info : sig
+  type 'a t
+end)
+() =
+struct
   module Key = struct
+    type 'a info = 'a Info.t
+
     module Witness = struct
       type 'a t = ..
     end
@@ -13,16 +19,14 @@ module Make () = struct
 
       val id : int
 
-      val name : string
-
-      val to_dyn : t -> Dyn.t
+      val info : t Info.t
     end
 
     type 'a t = (module T with type t = 'a)
 
     let next = ref 0
 
-    let create (type a) ~name to_dyn =
+    let create (type a) info =
       let n = !next in
       next := n + 1;
       let module M = struct
@@ -32,9 +36,7 @@ module Make () = struct
 
         let id = n
 
-        let to_dyn = to_dyn
-
-        let name = name
+        let info = info
       end in
       (module M : T with type t = a)
 
@@ -102,13 +104,38 @@ module Make () = struct
 
   let superpose = Int.Map.superpose
 
-  let to_dyn (t : t) =
-    let open Dyn in
-    Dyn.Map
-      (Int.Map.values t
-      |> List.map ~f:(fun (Binding.T (key, v)) ->
-             let (module K) = key in
-             (string K.name, K.to_dyn v)))
+  type 'acc fold = { fold : 'a. 'a Info.t -> 'a -> 'acc -> 'acc }
+
+  let fold (t : t) ~init ~f =
+    Int.Map.fold t ~init ~f:(fun (Binding.T (key, v)) acc ->
+        let (module K) = key in
+        f.fold K.info v acc)
 end
 
-include Make ()
+module Info = struct
+  type 'a t =
+    { name : string
+    ; to_dyn : 'a -> Dyn.t
+    }
+end
+
+module T = Make (Info) ()
+
+module Key = struct
+  include T.Key
+
+  type 'a info = 'a Info.t
+
+  let create ~name to_dyn = create { Info.to_dyn; name }
+end
+
+include (T : S with type t = T.t and module Key := Key)
+
+let to_dyn t =
+  Dyn.Map
+    (let f =
+       { T.fold =
+           (fun info a acc -> (Dyn.string info.name, info.to_dyn a) :: acc)
+       }
+     in
+     T.fold t ~init:[] ~f)

@@ -9,6 +9,4 @@ let%expect_test "user errors are serializable" =
   in
   let error = User_error.make ~loc ~annots [ Pp.text "testing" ] in
   let (_ : string) = Marshal.to_string error [] in
-  [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {| (Invalid_argument "output_value: functional value") |}]
+  [%expect {||}]

@@ -15,12 +15,84 @@ module Style = struct
 end
 
 module Annots = struct
-  include Univ_map.Make ()
+  module Info = struct
+    module Id = struct
+      type 'a t =
+        { id : 'a Type_eq.Id.t
+        ; name : string
+        }
+
+      module Packed = struct
+        type 'a unpacked = 'a t
+
+        type t = Id : 'a unpacked -> t
+
+        let equal (Id { id; name }) (Id t) =
+          Type_eq.Id.equal id t.id && String.equal name t.name
+
+        let hash (Id { id; name }) =
+          Tuple.T2.hash Type_eq.Id.hash String.hash (id, name)
+
+        let to_dyn (Id { name; _ }) = Dyn.variant "Info.Id" [ Dyn.string name ]
+      end
+    end
+
+    type 'a info =
+      { id : 'a Id.t
+      ; to_dyn : 'a -> Dyn.t
+      }
+
+    type packed_info = E : 'a info -> packed_info
+
+    let all : (Id.Packed.t, packed_info) Table.t =
+      Table.create (module Id.Packed) 12
+
+    (* morally, this should be ['a info], but we need all this circus to make
+       sure we don't store functions in the map's keys so that it remains
+       marshabllable *)
+    type 'a t = 'a Id.t
+
+    let to_dyn : 'a. 'a t -> 'a -> Dyn.t =
+      fun (type a) (info : a t) (a : a) ->
+       let (E packed) = Table.find_exn all (Id.Packed.Id info) in
+       match Type_eq.Id.same info.id packed.id.id with
+       | Some eq -> packed.to_dyn (Type_eq.cast eq a)
+       | None ->
+         Code_error.raise "type id's disagree for the same name"
+           [ ("info.name", Dyn.string info.name) ]
+
+    let create ~name to_dyn =
+      let type_id = Type_eq.Id.create () in
+      let id = { Id.id = type_id; name } in
+      let info = { id; to_dyn } in
+      Table.add_exn all (Id.Packed.Id id) (E info);
+      id
+  end
+
+  module T = Univ_map.Make (Info) ()
+
+  module Key = struct
+    include T.Key
+
+    let create ~name to_dyn = create (Info.create ~name to_dyn)
+  end
+
+  include (T : Univ_map.S with type t = T.t and module Key := Key)
 
   let has_embedded_location =
     Key.create ~name:"has-embedded-location" Unit.to_dyn
 
   let needs_stack_trace = Key.create ~name:"needs-stack-trace" Unit.to_dyn
+
+  let to_dyn t =
+    Dyn.Map
+      (let f =
+         { T.fold =
+             (fun (info : _ Info.t) a acc ->
+               (Dyn.string info.name, Info.to_dyn info a) :: acc)
+         }
+       in
+       T.fold t ~init:[] ~f)
 end
 
 module Print_config = struct

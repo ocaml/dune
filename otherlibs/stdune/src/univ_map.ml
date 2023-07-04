@@ -109,12 +109,6 @@ module Make () = struct
       |> List.map ~f:(fun (Binding.T (key, v)) ->
              let (module K) = key in
              (string K.name, K.to_dyn v)))
-
-  let to_dyns (t : t) =
-    Int.Map.values t
-    |> List.map ~f:(fun (Binding.T (key, v)) ->
-           let (module K) = key in
-           (K.name, K.to_dyn v))
 end
 
 include Make ()

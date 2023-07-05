@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688572496546,
+  "lastUpdate": 1688572667218,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -66177,6 +66177,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "28.371237821713336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d0eaad44dd6914c97a3b88d59c2a2f9618ea0ff9",
+          "message": "chore: fix commit in .git-blame-ignore-revs (#8115)\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-05T17:42:38+02:00",
+          "tree_id": "022625e3e137e24d4e035741d943e70a3e9b1fb8",
+          "url": "https://github.com/ocaml/dune/commit/d0eaad44dd6914c97a3b88d59c2a2f9618ea0ff9"
+        },
+        "date": 1688572659008,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "27.405557384406666",
             "unit": "seconds"
           }
         ]

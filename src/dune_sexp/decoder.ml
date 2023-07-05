@@ -492,8 +492,8 @@ let unit_number_generic ~of_string ~mul name suffixes =
       | Some i -> String.split_n s i
     in
     let suffixes =
-      List.map ~f:(fun (xs, y) -> List.map ~f:(fun x -> (x, y)) xs) suffixes
-      |> List.flatten
+      List.concat_map suffixes ~f:(fun (xs, y) ->
+          List.map ~f:(fun x -> (x, y)) xs)
     in
     let factor =
       match List.assoc suffixes suffix with

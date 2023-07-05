@@ -29,9 +29,7 @@ let init ?(file = File.Default) () =
   in
   Option.iter oc ~f:(fun oc ->
       Printf.fprintf oc "# %s\n# OCAMLPARAM: %s\n%!"
-        (String.concat
-           (List.map (Array.to_list Sys.argv) ~f:String.quote_for_shell)
-           ~sep:" ")
+        (String.quote_list_for_shell (Array.to_list Sys.argv))
         (match Env.get Env.initial "OCAMLPARAM" with
         | Some s -> Printf.sprintf "%S" s
         | None -> "unset"));

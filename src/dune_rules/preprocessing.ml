@@ -625,23 +625,20 @@ let pp_one_module sctx ~lib_name ~scope ~preprocessor_deps
     @@
     if staged then
       let dash_ppx_flag =
-        Command.Args.S
-          [ A "-ppx"
-          ; Command.Args.dyn_as_single_arg
-              (Action_builder.memoize ~cutoff:(List.equal String.equal)
-                 "ppx command"
-                 (let* exe, driver, flags =
-                    ppx_driver_and_flags sctx ~expander ~loc ~scope ~flags
-                      ~lib_name pps
-                  in
-                  let* driver_flags =
-                    Expander.expand_and_eval_set expander
-                      driver.info.as_ppx_flags
-                      ~standard:(Action_builder.return [ "--as-ppx" ])
-                  and* () = preprocessor_deps in
-                  Command.expand_no_targets ~dir:(Path.build dir)
-                    (S [ Dep (Path.build exe); As driver_flags; As flags ])))
-          ]
+        let+ args =
+          Action_builder.memoize ~cutoff:(List.equal String.equal) "ppx command"
+            (let* exe, driver, flags =
+               ppx_driver_and_flags sctx ~expander ~loc ~scope ~flags ~lib_name
+                 pps
+             in
+             let* driver_flags =
+               Expander.expand_and_eval_set expander driver.info.as_ppx_flags
+                 ~standard:(Action_builder.return [ "--as-ppx" ])
+             and* () = preprocessor_deps in
+             Command.expand_no_targets ~dir:(Path.build dir)
+               (S [ Dep (Path.build exe); As driver_flags; As flags ]))
+        in
+        [ "-ppx"; String.quote_list_for_shell args ]
       in
       let pp =
         let sandbox =

@@ -207,7 +207,7 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
      match Module.pp_flags m with
      | None -> (flags, sandbox)
      | Some (pp, sandbox') ->
-       (S [ flags; pp ], Sandbox_config.inter sandbox sandbox')
+       (S [ flags; Command.Args.dyn pp ], Sandbox_config.inter sandbox sandbox')
    in
    let output =
      match phase with
@@ -247,7 +247,7 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
       Action_builder.with_no_targets (Action_builder.paths extra_deps)
       >>> Action_builder.with_no_targets other_cm_files
       >>> Command.run ~dir:(Path.build ctx.build_dir) compiler
-            [ Command.Args.as_any flags
+            [ flags
             ; cmt_args
             ; Command.Args.S obj_dirs
             ; Command.Args.as_any

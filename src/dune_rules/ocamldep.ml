@@ -75,13 +75,13 @@ let deps_of
       (let open Action_builder.With_targets.O in
        let flags, sandbox =
          Option.value (Module.pp_flags unit)
-           ~default:(Command.Args.empty, sandbox)
+           ~default:(Action_builder.return [], sandbox)
        in
        Command.run context.ocaml.ocamldep
          ~dir:(Path.build context.build_dir)
          ~stdout_to:ocamldep_output
          [ A "-modules"
-         ; Command.Args.as_any flags
+         ; Command.Args.dyn flags
          ; Command.Ml_kind.flag ml_kind
          ; Dep (Module.File.path source)
          ]

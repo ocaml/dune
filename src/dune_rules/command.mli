@@ -63,9 +63,6 @@ module Args : sig
   (** Create dynamic command line arguments. *)
   val dyn : string list Action_builder.t -> _ t
 
-  (** Like [dyn] but output in a single argument, quoted and concatenated. *)
-  val dyn_as_single_arg : string list Action_builder.t -> _ t
-
   (** Create an empty command line. *)
   val empty : _ t
 

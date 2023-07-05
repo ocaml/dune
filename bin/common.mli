@@ -27,7 +27,7 @@ val stats : t -> Dune_stats.t option
 
 val print_metrics : t -> bool
 
-val dump_memo_graph_file : t -> string option
+val dump_memo_graph_file : t -> Path.External.t option
 
 val dump_memo_graph_format : t -> Dune_graph.Graph.File_format.t
 

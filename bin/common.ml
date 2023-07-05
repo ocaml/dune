@@ -531,7 +531,7 @@ module Builder = struct
     ; default_target : Arg.Dep.t (* For build & runtest only *)
     ; watch : Dune_rpc_impl.Watch_mode_config.t
     ; print_metrics : bool
-    ; dump_memo_graph_file : string option
+    ; dump_memo_graph_file : Path.External.t option
     ; dump_memo_graph_format : Graph.File_format.t
     ; dump_memo_graph_with_timing : bool
     ; dump_gc_stats : Path.External.t option
@@ -899,7 +899,9 @@ module Builder = struct
     ; default_target
     ; watch
     ; print_metrics
-    ; dump_memo_graph_file
+    ; dump_memo_graph_file =
+        Option.map dump_memo_graph_file
+          ~f:Path.External.of_filename_relative_to_initial_cwd
     ; dump_memo_graph_format
     ; dump_memo_graph_with_timing
     ; dump_gc_stats =

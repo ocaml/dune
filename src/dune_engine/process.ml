@@ -699,15 +699,15 @@ let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
       let (stdout_capture, stdout_to), (stderr_capture, stderr_to) =
         match (stdout_to.kind, stderr_to.kind) with
         | (Terminal _, _ | _, Terminal _) when !Clflags.capture_outputs ->
-          let capture () =
-            let fn = Temp.create File ~prefix:"dune" ~suffix:"output" in
+          let capture ~suffix =
+            let fn = Temp.create File ~prefix:"dune" ~suffix in
             (`Capture fn, Io.file fn Io.Out)
           in
           let stdout =
             match stdout_to.kind with
             | Terminal _ ->
               Io.flush stdout_to;
-              capture ()
+              capture ~suffix:"stdout"
             | _ -> (`No_capture, stdout_to)
           in
           let stderr =
@@ -723,7 +723,7 @@ let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
               (`Merged_with_stdout, snd stdout)
             | _, Terminal _ ->
               Io.flush stderr_to;
-              capture ()
+              capture ~suffix:"stderr"
             | _ -> (`No_capture, stderr_to)
           in
           (stdout, stderr)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688575748970,
+  "lastUpdate": 1688575763167,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -52430,6 +52430,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "80.96232065048001",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "156bd688334032d8e53e3c0a6af305ac767071c6",
+          "message": "feature: add --dump-gc-stats option to dune build (#8072)\n\nThis will dump a sexp into a file given by the --dump-gc-stats option\r\nwhich contains the data from Gc.stat after a collection.\r\n\r\nWe will use this in the bench.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-05T09:18:22-07:00",
+          "tree_id": "c7e8523095b3dd1043da817e2902cb59c9610a49",
+          "url": "https://github.com/ocaml/dune/commit/156bd688334032d8e53e3c0a6af305ac767071c6"
+        },
+        "date": 1688575761922,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.1862050929733337",
             "unit": "seconds"
           }
         ]

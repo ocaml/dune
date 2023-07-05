@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688565734673,
+  "lastUpdate": 1688571331015,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -66032,6 +66032,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "24.72769514534667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3f778f8189fa98210784f0c6c28003ac5f0bb857",
+          "message": "refactor: use Tuple.Tx.hash when possible (#8112)\n\nThis is Poly.hash under a different name but more monomorphic.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-05T17:22:56+02:00",
+          "tree_id": "1b0162829ac1e01b8409cfd442ee00705eec1cb1",
+          "url": "https://github.com/ocaml/dune/commit/3f778f8189fa98210784f0c6c28003ac5f0bb857"
+        },
+        "date": 1688571323524,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.342774255873334",
             "unit": "seconds"
           }
         ]

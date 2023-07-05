@@ -184,7 +184,7 @@ end
 type t =
   { source : Source.t
   ; obj_name : Module_name.Unique.t
-  ; pp : (Command.Args.any Command.Args.t * Sandbox_config.t) option
+  ; pp : (Command.Args.without_targets Command.Args.t * Sandbox_config.t) option
   ; visibility : Visibility.t
   ; kind : Kind.t
   ; install_as : Path.Local.t option

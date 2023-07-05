@@ -61,7 +61,8 @@ val path : t -> Module_name.Path.t
 
 val source : t -> ml_kind:Ml_kind.t -> File.t option
 
-val pp_flags : t -> (Command.Args.any Command.Args.t * Sandbox_config.t) option
+val pp_flags :
+  t -> (Command.Args.without_targets Command.Args.t * Sandbox_config.t) option
 
 val install_as : t -> Path.Local.t option
 
@@ -85,7 +86,9 @@ val map_files : t -> f:(Ml_kind.t -> File.t -> File.t) -> t
 
 (** Set preprocessing flags *)
 val set_pp :
-  t -> (Command.Args.any Command.Args.t * Sandbox_config.t) option -> t
+     t
+  -> (Command.Args.without_targets Command.Args.t * Sandbox_config.t) option
+  -> t
 
 val wrapped_compat : t -> t
 

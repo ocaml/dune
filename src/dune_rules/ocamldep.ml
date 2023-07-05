@@ -81,7 +81,7 @@ let deps_of
          ~dir:(Path.build context.build_dir)
          ~stdout_to:ocamldep_output
          [ A "-modules"
-         ; flags
+         ; Command.Args.as_any flags
          ; Command.Ml_kind.flag ml_kind
          ; Dep (Module.File.path source)
          ]

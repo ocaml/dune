@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688583063737,
+  "lastUpdate": 1688583493068,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -22473,6 +22473,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "48.14637210940666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bb0668329ee4a48bdd7727703ca131f025070e5e",
+          "message": "refactor: use Path.External.t for dump_memo_graph_file (#8117)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-05T11:38:05-07:00",
+          "tree_id": "adbcdd5b625ec79d512e933c58a7fd25f85831c0",
+          "url": "https://github.com/ocaml/dune/commit/bb0668329ee4a48bdd7727703ca131f025070e5e"
+        },
+        "date": 1688583491895,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.202221813339996",
             "unit": "seconds"
           }
         ]

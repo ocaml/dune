@@ -59,7 +59,7 @@ let run_build_system ~common ~request =
         match Common.dump_memo_graph_file common with
         | None -> Fiber.return ()
         | Some file ->
-          let path = Path.of_filename_relative_to_initial_cwd file in
+          let path = Path.external_ file in
           let+ graph =
             Memo.dump_cached_graph
               ~time_nodes:(Common.dump_memo_graph_with_timing common)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688553052814,
+  "lastUpdate": 1688564914371,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -65916,6 +65916,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "20.803172370373332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "940608df234431529215259a989523eadfaa3666",
+          "message": "refactor: better file names for process output (#8107)\n\nwe use \"stdout\" and \"stderr\" to distinguish stderr and stdout\r\n\r\nrather than suffixing everything \"output\"\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-05T06:35:06-07:00",
+          "tree_id": "138ce60c3e18d1e3a7bccfb9ee491b4778d2977d",
+          "url": "https://github.com/ocaml/dune/commit/940608df234431529215259a989523eadfaa3666"
+        },
+        "date": 1688564906685,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "24.72769514534667",
             "unit": "seconds"
           }
         ]

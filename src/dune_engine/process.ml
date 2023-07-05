@@ -8,25 +8,27 @@ module Action_output_on_success = Execution_parameters.Action_output_on_success
 let with_directory_annot =
   User_message.Annots.Key.create ~name:"with-directory" Path.to_dyn
 
-type ('a, 'b) failure_mode =
-  | Strict : ('a, 'a) failure_mode
-  | Accept : int Predicate.t -> ('a, ('a, int) result) failure_mode
-  | Return : ('a, 'a * int) failure_mode
+module Failure_mode = struct
+  type ('a, 'b) t =
+    | Strict : ('a, 'a) t
+    | Accept : int Predicate.t -> ('a, ('a, int) result) t
+    | Return : ('a, 'a * int) t
 
-let accepted_codes : type a b. (a, b) failure_mode -> int -> bool = function
-  | Strict -> Int.equal 0
-  | Accept exit_codes -> fun i -> Predicate.test exit_codes i
-  | Return -> fun _ -> true
+  let accepted_codes : type a b. (a, b) t -> int -> bool = function
+    | Strict -> Int.equal 0
+    | Accept exit_codes -> fun i -> Predicate.test exit_codes i
+    | Return -> fun _ -> true
 
-let map_result : type a b. (a, b) failure_mode -> int -> f:(unit -> a) -> b =
- fun mode t ~f ->
-  match mode with
-  | Strict -> f ()
-  | Accept _ -> (
-    match t with
-    | 0 -> Ok (f ())
-    | n -> Error n)
-  | Return -> (f (), t)
+  let map_result : type a b. (a, b) t -> int -> f:(unit -> a) -> b =
+   fun mode t ~f ->
+    match mode with
+    | Strict -> f ()
+    | Accept _ -> (
+      match t with
+      | 0 -> Ok (f ())
+      | n -> Error n)
+    | Return -> (f (), t)
+end
 
 module Io = struct
   type input = Input
@@ -662,7 +664,7 @@ module Result = struct
     let stderr = Out.make stderr stderr_on_success in
     let exit_status : Exit_status.t =
       match process_info.status with
-      | WEXITED n when accepted_codes fail_mode n ->
+      | WEXITED n when Failure_mode.accepted_codes fail_mode n ->
         Out.check_unexpected_output_and_swallow_on_success stdout;
         Out.check_unexpected_output_and_swallow_on_success stderr;
         if stdout.unexpected_output || stderr.unexpected_output then
@@ -937,7 +939,7 @@ let run ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode
       fail_mode prog args
     >>| fst
   in
-  map_result fail_mode run ~f:ignore
+  Failure_mode.map_result fail_mode run ~f:ignore
 
 let run_with_times ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env
     ?metadata prog args =
@@ -953,7 +955,7 @@ let run_capture_gen ?dir ~display ?stderr_to ?stdin_from ?env ?metadata
       ?stdin_from ?env ?metadata fail_mode prog args
     >>| fst
   in
-  map_result fail_mode run ~f:(fun () ->
+  Failure_mode.map_result fail_mode run ~f:(fun () ->
       let x = f fn in
       Temp.destroy File fn;
       x)

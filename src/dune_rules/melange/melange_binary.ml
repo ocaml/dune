@@ -10,8 +10,7 @@ let where =
     let* _ = Build_system.build_file bin in
     let+ where =
       Memo.of_reproducible_fiber
-      @@ Process.run_capture_line ~display:Quiet Process.Strict bin
-           [ "--where" ]
+      @@ Process.run_capture_line ~display:Quiet Strict bin [ "--where" ]
     in
     where
   in

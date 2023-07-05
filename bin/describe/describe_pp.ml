@@ -20,7 +20,7 @@ let pp_with_ocamlc sctx project pp_file =
   let+ () =
     Process.run ~display:!Clflags.display
       ~env:(Super_context.context_env sctx)
-      Process.Strict (Super_context.context sctx).ocaml.ocamlc
+      Strict (Super_context.context sctx).ocaml.ocamlc
       [ "-stop-after"
       ; "parsing"
       ; "-dsource"

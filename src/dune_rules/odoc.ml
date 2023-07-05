@@ -644,7 +644,7 @@ let setup_lib_html_rules_def =
     let equal (sc1, l1) (sc2, l2) =
       Super_context.equal sc1 sc2 && Lib.Local.equal l1 l2
 
-    let hash (sc, l) = Poly.hash (Super_context.hash sc, Lib.Local.hash l)
+    let hash = Tuple.T2.hash Super_context.hash Lib.Local.hash
 
     let to_dyn _ = Dyn.Opaque
   end in

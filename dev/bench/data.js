@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688544017639,
+  "lastUpdate": 1688544029352,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -51908,6 +51908,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "68.68501580276667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "697b61b91bb9f5a2613fbb649256b1f03996fcf0",
+          "message": "refactor: use Path in odoc command (#8106)\n\nWe build `Path.reach` from the current directory, which is the same\r\nthing that `Command.expand` does.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-05T09:34:22+02:00",
+          "tree_id": "bd97a2f0c7d88a192d01808020d31f0c6cdf4314",
+          "url": "https://github.com/ocaml/dune/commit/697b61b91bb9f5a2613fbb649256b1f03996fcf0"
+        },
+        "date": 1688544028509,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.83745144006",
             "unit": "seconds"
           }
         ]

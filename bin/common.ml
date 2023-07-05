@@ -534,6 +534,7 @@ module Builder = struct
     ; dump_memo_graph_file : string option
     ; dump_memo_graph_format : Graph.File_format.t
     ; dump_memo_graph_with_timing : bool
+    ; dump_gc_stats : Path.External.t option
     ; always_show_command_line : bool
     ; promote_install_files : bool
     ; file_watcher : Dune_engine.Scheduler.Run.file_watcher
@@ -709,6 +710,14 @@ module Builder = struct
                the Memo graph after building and include the runtime in the \
                output. Since all nodes contain a cached value, this will \
                measure just the runtime of each node")
+    and+ dump_gc_stats =
+      Arg.(
+        value
+        & opt (some string) None
+        & info [ "dump-gc-stats" ] ~docs ~docv:"FILE"
+            ~doc:
+              "Dumps the Garbage Collector stats to a file after the build is \
+               complete.")
     and+ { Options_implied_by_dash_p.root
          ; only_packages
          ; ignore_promoted_rules
@@ -893,6 +902,9 @@ module Builder = struct
     ; dump_memo_graph_file
     ; dump_memo_graph_format
     ; dump_memo_graph_with_timing
+    ; dump_gc_stats =
+        Option.map dump_gc_stats
+          ~f:Path.External.of_filename_relative_to_initial_cwd
     ; always_show_command_line
     ; promote_install_files
     ; file_watcher
@@ -1136,6 +1148,15 @@ let init ?action_runner ?log_file c =
         in
         let event = Event.instant ~args common in
         Dune_stats.emit stats event);
+  (* Setup hook for printing GC stats to a file *)
+  at_exit (fun () ->
+      match c.builder.dump_gc_stats with
+      | None -> ()
+      | Some file ->
+        Gc.full_major ();
+        Gc.compact ();
+        let path = Path.external_ file in
+        Dune_util.Gc.serialize ~path (Gc.stat ()));
   config
 
 let footer =

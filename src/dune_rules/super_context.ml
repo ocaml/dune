@@ -574,7 +574,7 @@ module As_memo_key = struct
   module And_package = struct
     type nonrec t = t * Package.t
 
-    let hash (x, y) = Poly.hash (hash x, Package.hash y)
+    let hash = Tuple.T2.hash hash Package.hash
 
     let equal (x1, y1) (x2, y2) = equal x1 x2 && y1 == y2
 

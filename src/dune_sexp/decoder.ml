@@ -1,10 +1,5 @@
 open Stdune
-
-type ast = Ast.t =
-  | Atom of Loc.t * Atom.t
-  | Quoted_string of Loc.t * string
-  | Template of Template.t
-  | List of Loc.t * ast list
+open Ast
 
 type hint =
   { on : string
@@ -248,7 +243,7 @@ let parse t context sexp =
   let ctx = Values (Ast.loc sexp, None, context) in
   result ctx (t ctx [ sexp ])
 
-let set_input : type k. ast list -> (unit, k) parser =
+let set_input : type k. Ast.t list -> (unit, k) parser =
  fun sexps context _ ->
   match context with
   | Values _ -> ((), sexps)

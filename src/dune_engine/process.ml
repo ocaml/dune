@@ -203,9 +203,7 @@ let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
   (prefix, suffix)
 
 let command_line ~prog ~args ~dir ~stdout_to ~stderr_to ~stdin_from =
-  let s =
-    List.map (prog :: args) ~f:String.quote_for_shell |> String.concat ~sep:" "
-  in
+  let s = String.quote_list_for_shell (prog :: args) in
   let prefix, suffix =
     command_line_enclosers ~dir ~stdout_to ~stderr_to ~stdin_from
   in

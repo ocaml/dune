@@ -159,9 +159,8 @@ end = struct
                      "variable %S present multiple times in the output of:" var
                  ; Pp.tag User_message.Style.Details
                      (Pp.text
-                        (String.concat ~sep:" "
-                           (List.map ~f:String.quote_for_shell
-                              (Path.to_string opam :: args))))
+                        (String.quote_list_for_shell
+                           (Path.to_string opam :: args)))
                  ];
                x)
     in

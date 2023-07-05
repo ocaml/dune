@@ -86,7 +86,7 @@ let simplify act =
         (Printf.sprintf "{ echo -ne %s; cat %s; } | sort -u > %s"
            (Filename.quote
               (List.map extras ~f:(sprintf "%s\n") |> String.concat ~sep:""))
-           (List.map srcs ~f:String.quote_for_shell |> String.concat ~sep:" ")
+           (String.quote_list_for_shell srcs)
            (String.quote_for_shell target))
       :: acc
     | Pipe (outputs, l) -> Pipe (List.map ~f:block l, outputs) :: acc

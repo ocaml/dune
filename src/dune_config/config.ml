@@ -146,7 +146,7 @@ let threaded_console =
   let t =
     { name = "threaded_console"
     ; of_string = Toggle.of_string
-    ; value = `Enabled
+    ; value = background_default
     }
   in
   register t;

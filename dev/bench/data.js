@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688676146985,
+  "lastUpdate": 1688676153498,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -53010,6 +53010,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "64.99584755288667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5264e353d26d7dff3f66b6e51c0a88884acdc519",
+          "message": "refactor: replace map + flatten with concat_map (#8131)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-06T13:16:55-07:00",
+          "tree_id": "cd70a196a77bac3655e70d6a4f0a639ac61fd198",
+          "url": "https://github.com/ocaml/dune/commit/5264e353d26d7dff3f66b6e51c0a88884acdc519"
+        },
+        "date": 1688676152229,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "66.29762135674",
             "unit": "seconds"
           }
         ]

@@ -5,7 +5,7 @@ type applies_to =
   | Files_matching_in_this_dir of Predicate_lang.Glob.t
 
 type shell_spec =
-  | System_shell (** the default *)
+  | System_shell  (** the default *)
   | Bash_shell
   | Exec_file_shell of String_with_vars.t
 

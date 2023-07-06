@@ -222,7 +222,7 @@ module T_var : sig
 
   val get_exn : unit -> t Fiber.t
 
-  val set : t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+  val setup : t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
 end = struct
   let t_var = Fiber.Var.create ()
 
@@ -233,7 +233,15 @@ end = struct
       t.started <- true);
     t
 
-  let set f = Fiber.Var.set t_var f
+  let setup t f =
+    Fiber.Var.set t_var t (fun () ->
+        Fiber.finalize f ~finally:(fun () ->
+            if t.started then (
+              Mutex.lock t.mutex;
+              t.running <- false;
+              interrupt t;
+              Mutex.unlock t.mutex);
+            Fiber.return ()))
 end
 
 let with_io scheduler f =
@@ -261,13 +269,7 @@ let with_io scheduler f =
     ; started = false
     }
   in
-  T_var.set t (fun () ->
-      Fiber.finalize f ~finally:(fun () ->
-          Mutex.lock t.mutex;
-          t.running <- false;
-          interrupt t;
-          Mutex.unlock t.mutex;
-          Fiber.return ()))
+  T_var.setup t f
 
 let with_ f =
   let+ t = T_var.get_exn () in

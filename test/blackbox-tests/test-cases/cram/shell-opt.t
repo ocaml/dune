@@ -147,8 +147,9 @@ Check that shell = %{bin:bash} uses bash
   $ cat > foo.t <<EOF
   >   $ echo "foo from foo.t"
   > 
-  >   $ [ ! -z $BASH ] && echo "shell = bash" || echo "shell <> bash"
   > EOF
+  $ echo '  $ [ ! -z $BASH ] && echo "shell = bash" || echo "shell <> bash"' >> foo.t
+
 
   $ dune runtest --auto-promote
   File "foo.t", line 1, characters 0-0:
@@ -161,7 +162,7 @@ Check that shell = %{bin:bash} uses bash
     $ echo "foo from foo.t"
     foo from foo.t
   
-    $ [ ! -z /bin/sh ] && echo "shell = bash" || echo "shell <> bash"
+    $ [ ! -z $BASH ] && echo "shell = bash" || echo "shell <> bash"
     shell = bash
 
 Check that shell = %{dep:./custom_shell.exe} uses executable compiled

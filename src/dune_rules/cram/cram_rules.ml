@@ -61,7 +61,10 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
       in
       let action =
         Action.progn
-          [ Cram_exec.action (Path.build script)
+          [ Cram_exec.action
+              { script = Path.build script
+              ; shell_spec = Cram_exec.Shell_spec.default
+              }
           ; Diff
               { Diff.optional = true
               ; mode = Text

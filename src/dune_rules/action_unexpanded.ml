@@ -480,7 +480,7 @@ let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
     O.Pipe (outputs, l)
   | Cram script ->
     let+ script = E.dep script in
-    Cram_exec.action script
+    Cram_exec.(action { script; shell_spec = Shell_spec.default })
   | Withenv _ | Substitute _ | Patch _ ->
     (* these can only be provided by the package language which isn't expanded here *)
     assert false

@@ -1,0 +1,5 @@
+(cram)
+
+(cram
+ (enabled_if %{bin-available:zsh})
+ (applies_to shell-opt-zsh))

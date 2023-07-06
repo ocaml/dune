@@ -30,6 +30,12 @@ module Args0 = struct
 
   let dyn args = Dyn (Action_builder.map args ~f:(fun x -> As x))
 
+  let dyn_as_single_arg args =
+    Dyn
+      (let open Action_builder.O in
+       let+ args = args in
+       A (args |> List.map ~f:String.quote_for_shell |> String.concat ~sep:" "))
+
   let empty = S []
 
   let rec as_any : without_targets t -> any t = function

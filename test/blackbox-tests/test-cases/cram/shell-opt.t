@@ -206,3 +206,46 @@ from custom_shell.ml
   dune-project
   foo.t
   sh.ml
+
+Check that shell = ./custom_shell.exe uses executable compiled
+from custom_shell.ml
+
+  $ cat > dune <<EOF
+  > (cram (shell ./custom_shell.exe))
+  > (executables (names custom_shell))
+  > EOF
+
+  $ dune build && ls
+  _build
+  bash.ml
+  custom_shell.ml
+  dune
+  dune-project
+  foo.t
+  sh.ml
+
+  $ cat > foo.t <<EOF
+  >   $ echo "foo from foo.t"
+  > EOF
+
+  $ dune runtest --auto-promote
+  custom_shell.ml
+  File "foo.t", line 1, characters 0-0:
+  Error: Files _build/default/foo.t and _build/default/foo.t.corrected differ.
+  Promoting _build/default/foo.t.corrected to foo.t.
+  [1]
+
+  $ dune runtest -f
+  custom_shell.ml
+  $ cat foo.t
+    $ echo "foo from foo.t"
+    ***** UNREACHABLE *****
+
+  $ ls
+  _build
+  bash.ml
+  custom_shell.ml
+  dune
+  dune-project
+  foo.t
+  sh.ml

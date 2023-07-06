@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688583848947,
+  "lastUpdate": 1688634688343,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -66612,6 +66612,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.200141362506667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "721b4cd726a860f71d9e86e5ce49f400b4f3b961",
+          "message": "fix: disable threaded console when we use fork (#8121)\n\nThis is similar to #8100 for the threaded console. The reason we're\r\ndoing that is to avoid threads when fork is involved.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-06T10:58:27+02:00",
+          "tree_id": "91b2abe17f8bc518d651e4e625eaca444ce32a23",
+          "url": "https://github.com/ocaml/dune/commit/721b4cd726a860f71d9e86e5ce49f400b4f3b961"
+        },
+        "date": 1688634681431,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.723922348320002",
             "unit": "seconds"
           }
         ]

@@ -6,6 +6,8 @@ Unreleased
 
 - Initialize async IO thread lazily. (#8122, @emillon)
 
+- Add `dune show rules` as alias of `dune rules` command. (#8000, @Alizter)
+
 - Add `dune build --dump-gc-stats FILE` argument to dump Garbage Collection
   stats to a named file. (#8072, @Alizter)
 

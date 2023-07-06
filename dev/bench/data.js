@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688676153498,
+  "lastUpdate": 1688676158793,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -53039,6 +53039,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "66.29762135674",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9c1c460663f40914d0fa1c1348b671c21152009e",
+          "message": "refactor(sexp): remove pointless ast alias (#8132)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-06T13:17:28-07:00",
+          "tree_id": "f62dd0fa99733d71a080fd26cd88a2cddbc28fc3",
+          "url": "https://github.com/ocaml/dune/commit/9c1c460663f40914d0fa1c1348b671c21152009e"
+        },
+        "date": 1688676157664,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.7842785393533334",
             "unit": "seconds"
           }
         ]

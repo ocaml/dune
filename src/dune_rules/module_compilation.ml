@@ -203,15 +203,11 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
      else Command.Args.empty
    in
    let flags, sandbox =
-     let flags = Ocaml_flags.get (CC.flags cctx) mode in
+     let flags = Command.Args.dyn (Ocaml_flags.get (CC.flags cctx) mode) in
      match Module.pp_flags m with
      | None -> (flags, sandbox)
      | Some (pp, sandbox') ->
-       ( (let open Action_builder.O in
-          let+ flags = flags
-          and+ pp_flags = pp in
-          flags @ pp_flags)
-       , Sandbox_config.inter sandbox sandbox' )
+       (S [ flags; Command.Args.dyn pp ], Sandbox_config.inter sandbox sandbox')
    in
    let output =
      match phase with
@@ -251,7 +247,7 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
       Action_builder.with_no_targets (Action_builder.paths extra_deps)
       >>> Action_builder.with_no_targets other_cm_files
       >>> Command.run ~dir:(Path.build ctx.build_dir) compiler
-            [ Command.Args.dyn flags
+            [ flags
             ; cmt_args
             ; Command.Args.S obj_dirs
             ; Command.Args.as_any

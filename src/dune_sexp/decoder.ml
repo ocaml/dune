@@ -431,8 +431,7 @@ let loc_between_states : type k. k context -> k -> k -> Loc.t =
           | _ -> None)
     in
     match
-      Name.Map.values parsed
-      |> List.map ~f:(fun f -> Ast.loc f.Fields.Unparsed.entry)
+      Name.Map.to_list_map parsed ~f:(fun _ f -> Ast.loc f.entry)
       |> List.sort ~compare:(fun a b ->
              Int.compare a.Loc.start.pos_cnum b.start.pos_cnum)
     with

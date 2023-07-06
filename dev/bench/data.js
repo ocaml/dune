@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688644979824,
+  "lastUpdate": 1688645255742,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -22531,6 +22531,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.04538178544667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1d0030a29777c7711081184edafe0e09b14f8aa9",
+          "message": "refactor: use Command.Args.t for Modules.pp (#8109)\n\n* refactor: use Command.Args.t for Modules.pp\r\n\r\nThis allows using the concatenation DSL instead of list and string\r\nmanipulation.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-06T13:43:02+02:00",
+          "tree_id": "9b47e98ebabf6a8ba3f2c41a8198d986e458bb68",
+          "url": "https://github.com/ocaml/dune/commit/1d0030a29777c7711081184edafe0e09b14f8aa9"
+        },
+        "date": 1688645254597,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "48.2414813088",
             "unit": "seconds"
           }
         ]

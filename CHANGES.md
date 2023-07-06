@@ -1,4 +1,4 @@
-3.9.1 (unreleased)
+3.9.1 (2023-07-06)
 ------------------
 
 - Disable background operations and threaded console on MacOS and other Unixes

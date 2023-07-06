@@ -1,8 +1,8 @@
-Unreleased
-----------
+3.9.1 (unreleased)
+------------------
 
-- Disable background operations on MacOS and other Unixes where we rely on
-  fork. (#8100, fixes #8083, @rgrinberg)
+- Disable background operations and threaded console on MacOS and other Unixes
+  where we rely on fork. (#8100, #8121, fixes #8083, @rgrinberg, @emillon)
 
 3.9.0 (2023-06-28)
 ------------------

@@ -4,6 +4,7 @@ type effective =
   { loc : Loc.t
   ; alias : Alias.Name.Set.t
   ; deps : unit Action_builder.t list
+  ; shell : Path.t Cram_exec.Shell_spec.t Action_builder.t
   ; sandbox : Sandbox_config.t
   ; enabled_if : Blang.t list
   ; locks : Path.Set.t
@@ -16,6 +17,7 @@ let empty_effective =
   ; enabled_if = [ Blang.true_ ]
   ; locks = Path.Set.empty
   ; deps = []
+  ; shell = Action_builder.return Cram_exec.Shell_spec.default
   ; sandbox = Sandbox_config.needs_sandboxing
   ; packages = Package.Name.Set.empty
   }
@@ -59,12 +61,9 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
       let script =
         Path.Build.append_source prefix_with (Cram_test.script test)
       in
-      let action =
+      let action ~shell_spec =
         Action.progn
-          [ Cram_exec.action
-              { script = Path.build script
-              ; shell_spec = Cram_exec.Shell_spec.default
-              }
+          [ Cram_exec.action { script = Path.build script; shell_spec }
           ; Diff
               { Diff.optional = true
               ; mode = Text
@@ -87,8 +86,8 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
               |> Path.build |> Source_deps.files
             in
             Action_builder.dyn_memo_deps deps
-        in
-        Action.Full.make action ~locks ~sandbox:spec.sandbox
+        and+ shell_spec = spec.shell in
+        Action.Full.make (action ~shell_spec) ~locks ~sandbox:spec.sandbox
       in
       Memo.parallel_iter aliases ~f:(fun alias ->
           Alias_rules.add sctx ~alias ~loc cram))
@@ -149,15 +148,44 @@ let rules ~sctx ~expander ~dir tests =
             | false -> acc
             | true ->
               let* acc = acc in
-              let* deps, sandbox =
-                match spec.deps with
-                | None -> Memo.return (acc.deps, acc.sandbox)
-                | Some deps ->
-                  let+ (deps : unit Action_builder.t), _, sandbox =
-                    let+ expander = Super_context.expander sctx ~dir in
-                    Dep_conf_eval.named ~expander deps
+              let* expander = Super_context.expander sctx ~dir in
+              let shell, deps, sandbox =
+                let return ?shell_deps ?sandbox shell =
+                  let sandbox =
+                    match sandbox with
+                    | None -> acc.sandbox
+                    | Some s -> Sandbox_config.inter acc.sandbox s
+                  and deps =
+                    match shell_deps with
+                    | None -> acc.deps
+                    | Some dep -> dep :: acc.deps
                   in
-                  (deps :: acc.deps, Sandbox_config.inter acc.sandbox sandbox)
+                  (shell, deps, sandbox)
+                in
+                let open Cram_exec.Shell_spec in
+                match spec.shell with
+                | System_shell -> return (Action_builder.return System_shell)
+                | Bash_shell -> return (Action_builder.return Bash_shell)
+                | Exec_file_shell p ->
+                  let shell_deps, sandbox =
+                    Dep_conf_eval.unnamed ~expander [ File p ]
+                  in
+                  let shell =
+                    Expander.(
+                      With_deps_if_necessary.expand_single_path expander p
+                      |> Deps.action_builder)
+                    |> Action_builder.map ~f:(fun p -> Exec_file_shell p)
+                  in
+                  return ~shell_deps ~sandbox shell
+              in
+              let deps, sandbox =
+                match spec.deps with
+                | None -> (deps, sandbox)
+                | Some deps' ->
+                  let (deps' : unit Action_builder.t), _, sandbox' =
+                    Dep_conf_eval.named ~expander deps'
+                  in
+                  (deps' :: deps, Sandbox_config.inter sandbox sandbox')
               in
               let enabled_if = spec.enabled_if :: acc.enabled_if in
               let alias =
@@ -178,7 +206,15 @@ let rules ~sctx ~expander ~dir tests =
                 Expander.expand_locks ~base expander spec.locks
                 >>| Path.Set.of_list >>| Path.Set.union acc.locks
               in
-              { acc with enabled_if; locks; deps; alias; packages; sandbox })
+              { acc with
+                enabled_if
+              ; locks
+              ; deps
+              ; shell
+              ; alias
+              ; packages
+              ; sandbox
+              })
       in
       let test_rule () = test_rule ~sctx ~expander ~dir effective test in
       Only_packages.get_mask () >>= function

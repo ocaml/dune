@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688644726468,
+  "lastUpdate": 1688644979824,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -66757,6 +66757,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "28.582283330760003",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b5c752f35962f0423d81a13d9211cd6af221b0d1",
+          "message": "fix: Initialize async IO thread lazily (#8122)\n\n* fix: Initialize async IO thread lazily\r\n\r\nThe goal of that change is to avoid effects of threads when they are not\r\nactually needed.\r\n\r\n---------\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-06T13:50:12+02:00",
+          "tree_id": "62380031a6c7e0165f3ddc3f1c89f13d2c73b8c6",
+          "url": "https://github.com/ocaml/dune/commit/b5c752f35962f0423d81a13d9211cd6af221b0d1"
+        },
+        "date": 1688644973245,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.68921871178",
             "unit": "seconds"
           }
         ]

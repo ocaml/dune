@@ -4,6 +4,8 @@ Unreleased
 - Disable background operations and threaded console on MacOS and other Unixes
   where we rely on fork. (#8100, #8121, fixes #8083, @rgrinberg, @emillon)
 
+- Initialize async IO thread lazily. (#8122, @emillon)
+
 - Add `dune build --dump-gc-stats FILE` argument to dump Garbage Collection
   stats to a named file. (#8072, @Alizter)
 

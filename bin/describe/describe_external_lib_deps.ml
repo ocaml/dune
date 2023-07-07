@@ -42,7 +42,7 @@ module Item = struct
     ; extensions : string list
     }
 
-  let to_dyn t =
+  let to_dyn {kind; dir; external_deps; internal_deps; names; package; extensions} =
     let open Dyn in
     let record =
       record

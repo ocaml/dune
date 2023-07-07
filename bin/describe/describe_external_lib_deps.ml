@@ -42,20 +42,21 @@ module Item = struct
     ; extensions : string list
     }
 
-  let to_dyn {kind; dir; external_deps; internal_deps; names; package; extensions} =
+  let to_dyn
+      { kind; dir; external_deps; internal_deps; names; package; extensions } =
     let open Dyn in
     let record =
       record
-        [ ("names", (list string) t.names)
-        ; ("extensions", (list string) t.extensions)
+        [ ("names", (list string) names)
+        ; ("extensions", (list string) extensions)
         ; ( "package"
-          , option Package.Name.to_dyn (Option.map ~f:Package.name t.package) )
-        ; ("source_dir", String (Path.Source.to_string t.dir))
-        ; ("external_deps", list lib_dep_to_dyn t.external_deps)
-        ; ("internal_deps", list lib_dep_to_dyn t.internal_deps)
+          , option Package.Name.to_dyn (Option.map ~f:Package.name package) )
+        ; ("source_dir", String (Path.Source.to_string dir))
+        ; ("external_deps", list lib_dep_to_dyn external_deps)
+        ; ("internal_deps", list lib_dep_to_dyn internal_deps)
         ]
     in
-    Variant (Kind.to_string t.kind, [ record ])
+    Variant (Kind.to_string kind, [ record ])
 end
 
 type dep =
@@ -171,7 +172,7 @@ let external_resolved_libs setup super_context =
   let db = Dune_rules.Scope.libs scope in
   libs db context setup
   >>| List.filter ~f:(fun (x : Item.t) ->
-          not (List.is_empty x.external_deps && List.is_empty x.internal_deps)
+          not (List.is_empty x.external_deps && List.is_empty x.internal_deps))
 
 let to_dyn context_name external_resolved_libs =
   let open Dyn in

@@ -52,3 +52,22 @@ Test that installed binaries are visible in dependent packages
         }
   ; variables = []
   }
+
+It should also be visible in the workspace:
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.9)
+  > EOF
+
+  $ cat >dune <<EOF
+  > (rule
+  >  (with-stdout-to testout (run %{bin:foo})))
+  > EOF
+
+  $ dune build ./testout && cat _build/default/testout
+  File "dune", line 2, characters 30-40:
+  2 |  (with-stdout-to testout (run %{bin:foo})))
+                                    ^^^^^^^^^^
+  Error: Program foo not found in the tree or in PATH
+   (context: default)
+  [1]

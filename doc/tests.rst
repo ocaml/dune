@@ -637,7 +637,7 @@ for two reasons:
 
 We can specify dependencies using the ``deps`` field using the usual syntax:
 
-.. code:: bash
+.. code:: dune
 
    (cram
     (deps ../foo.exe))
@@ -646,7 +646,7 @@ This introduces a dependency on ``foo.exe`` on all Cram tests in this directory.
 To apply the stanza to a particular test, it's possible to use ``applies_to``
 field:
 
-.. code::
+.. code:: dune
 
    (cram
     (applies_to * \ foo bar)

@@ -1,9 +1,4 @@
-open! Stdune
 open Import
-module Dune_file = Dune_rules.Dune_file
-module Stanza = Dune_lang.Stanza
-module Package = Dune_rules.Package
-module Dialect = Dune_rules.Dialect
 
 (** Because the dune_init utility deals with the addition of stanzas and fields
     to dune projects and files, we need to inspect and manipulate the concrete

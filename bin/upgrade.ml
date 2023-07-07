@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 
 let doc = "Upgrade projects across major Dune versions."

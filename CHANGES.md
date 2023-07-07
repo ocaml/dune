@@ -14,6 +14,9 @@ Unreleased
 - Add `dune build --dump-gc-stats FILE` argument to dump Garbage Collection
   stats to a named file. (#8072, @Alizter)
 
+- Add `(shell ..)` option to cram test stanza and user action specification.
+  (#8134, @haochenx)
+
 3.9.0 (2023-06-28)
 ------------------
 

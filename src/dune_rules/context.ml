@@ -636,7 +636,11 @@ module DB = struct
             ]);
       all
     in
-    let memo = Memo.lazy_ ~name:"build-contexts" impl in
+    let memo =
+      Memo.lazy_ ~name:"build-contexts"
+        ~human_readable_description:(fun () -> Pp.text "Loading all contexts")
+        impl
+    in
     fun () -> Memo.Lazy.force memo
 
   let get =

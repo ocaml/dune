@@ -521,7 +521,9 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
     ~bin_artifacts:artifacts.bin ~context_env
 
 let all =
-  Memo.lazy_ ~name:"Super_context.all" (fun () ->
+  Memo.lazy_ ~name:"Super_context.all"
+    ~human_readable_description:(fun () -> Pp.text "Loading all super contexts")
+    (fun () ->
       let open Memo.O in
       let* packages = Only_packages.get ()
       and* contexts = Context.DB.all () in

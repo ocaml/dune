@@ -92,7 +92,9 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
         | _ -> None)
 
 let filtered_stanzas_by_contexts =
-  Memo.lazy_ @@ fun () ->
+  Memo.lazy_ ~human_readable_description:(fun () ->
+      Pp.text "filtered stanzas by context")
+  @@ fun () ->
   let* contexts = Context.DB.all () in
   let+ { Dune_load.dune_files; packages = _; projects = _ } =
     Dune_load.load ()

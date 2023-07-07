@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688676390484,
+  "lastUpdate": 1688725084505,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -67424,6 +67424,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.475649397806666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8fdc3a1bbbdcb5b1c4c3b63b7d07db7a80592601",
+          "message": "refactor: remove make from context (#8136)\n\nit's only used in the expander so this is where it should be defined.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-07T03:02:18-07:00",
+          "tree_id": "a2586d013cd8b53fbbcfa90291261d781814acca",
+          "url": "https://github.com/ocaml/dune/commit/8fdc3a1bbbdcb5b1c4c3b63b7d07db7a80592601"
+        },
+        "date": 1688725075663,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "27.949492317586664",
             "unit": "seconds"
           }
         ]

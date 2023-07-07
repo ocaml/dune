@@ -156,7 +156,7 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system)
               tests.exes.buildable.preprocess
               (List.map tests.exes.names ~f:snd)
               (if Option.is_none tests.package then tests.exes.package
-              else tests.package)
+               else tests.package)
               Item.Kind.Tests
               (exes_extensions context tests.exes.modes)
             >>| List.singleton
@@ -170,7 +170,8 @@ let external_resolved_libs setup super_context =
   let* scope = Dune_rules.Scope.DB.find_by_dir context.build_dir in
   let db = Dune_rules.Scope.libs scope in
   libs db context setup
-  >>| List.filter ~f:(fun (x : Item.t) -> not (x.external_deps = []))
+  >>| List.filter ~f:(fun (x : Item.t) ->
+          (not (x.external_deps = [])) || not (x.internal_deps = []))
 
 let to_dyn context_name external_resolved_libs =
   let open Dyn in

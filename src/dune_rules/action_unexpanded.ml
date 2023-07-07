@@ -478,9 +478,18 @@ let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
   | Pipe (outputs, l) ->
     let+ l = A.all (List.map l ~f:expand) in
     O.Pipe (outputs, l)
-  | Cram script ->
-    let+ script = E.dep script in
-    Cram_exec.(action { script; shell_spec = Shell_spec.default })
+  | Cram { script; shell_spec } ->
+    let+ script = E.dep script
+    and+ shell_spec =
+      let open Cram_exec.Shell_spec in
+      match shell_spec with
+      | System_shell -> A.return System_shell
+      | Bash_shell -> A.return Bash_shell
+      | Exec_file_shell p ->
+        let+ p = E.dep p in
+        Exec_file_shell p
+    in
+    Cram_exec.(action { script; shell_spec })
   | Withenv _ | Substitute _ | Patch _ ->
     (* these can only be provided by the package language which isn't expanded here *)
     assert false

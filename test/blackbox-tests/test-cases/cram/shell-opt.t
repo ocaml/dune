@@ -1,6 +1,6 @@
 Check that cram tests run without shell option specified
 
-  $ echo '(lang dune 3.0)' > dune-project
+  $ echo '(lang dune 3.10)' > dune-project
 
   $ cat > foo.t <<EOF
   >   $ echo "foo from foo.t"

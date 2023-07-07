@@ -1,7 +1,7 @@
 Test for the `dune describe package-entries` command
 
   $ cat >dune-project <<EOF
-  > (lang dune 2.7)
+  > (lang dune 3.10)
   > (package
   >  (name foo)
   >  (synopsis "describe package-entries"))
@@ -30,7 +30,7 @@ Test for the `dune describe package-entries` command
 
   $ dune describe package-entries
   ((foo
-    (((source dune)
+    (((source Dune)
       (entry
        ((src
          (In_build_dir default/META.foo))
@@ -38,7 +38,7 @@ Test for the `dune describe package-entries` command
         (dst META)
         (section LIB)
         (optional false))))
-     ((source dune)
+     ((source Dune)
       (entry
        ((src
          (In_build_dir default/foo.dune-package))
@@ -47,7 +47,7 @@ Test for the `dune describe package-entries` command
         (section LIB)
         (optional false))))
      ((source
-       (user
+       (User
         ((pos_fname dune)
          (start
           ((pos_lnum 1)
@@ -65,7 +65,7 @@ Test for the `dune describe package-entries` command
         (section LIB)
         (optional false))))
      ((source
-       (user
+       (User
         ((pos_fname dune)
          (start
           ((pos_lnum 1)
@@ -83,7 +83,7 @@ Test for the `dune describe package-entries` command
         (section LIB)
         (optional false))))
      ((source
-       (user
+       (User
         ((pos_fname dune)
          (start
           ((pos_lnum 1)
@@ -101,7 +101,7 @@ Test for the `dune describe package-entries` command
         (section LIB)
         (optional false))))
      ((source
-       (user
+       (User
         ((pos_fname dune)
          (start
           ((pos_lnum 1)
@@ -119,7 +119,7 @@ Test for the `dune describe package-entries` command
         (section LIB)
         (optional false))))
      ((source
-       (user
+       (User
         ((pos_fname dune)
          (start
           ((pos_lnum 1)
@@ -137,7 +137,7 @@ Test for the `dune describe package-entries` command
         (section LIB)
         (optional false))))
      ((source
-       (user
+       (User
         ((pos_fname dune)
          (start
           ((pos_lnum 1)
@@ -155,7 +155,7 @@ Test for the `dune describe package-entries` command
         (section LIB)
         (optional false))))
      ((source
-       (user
+       (User
         ((pos_fname dune)
          (start
           ((pos_lnum 1)
@@ -172,7 +172,7 @@ Test for the `dune describe package-entries` command
         (dst foo.ml)
         (section LIB)
         (optional false))))
-     ((source dune)
+     ((source Dune)
       (entry
        ((src
          (In_build_dir default/foo.opam))
@@ -181,7 +181,7 @@ Test for the `dune describe package-entries` command
         (section LIB)
         (optional false))))
      ((source
-       (user
+       (User
         ((pos_fname dune)
          (start
           ((pos_lnum 1)
@@ -199,7 +199,7 @@ Test for the `dune describe package-entries` command
         (section LIBEXEC)
         (optional false))))
      ((source
-       (user
+       (User
         ((pos_fname dune)
          (start
           ((pos_lnum 13)

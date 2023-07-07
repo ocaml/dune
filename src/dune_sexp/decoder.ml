@@ -1,10 +1,5 @@
 open Stdune
-
-type ast = Ast.t =
-  | Atom of Loc.t * Atom.t
-  | Quoted_string of Loc.t * string
-  | Template of Template.t
-  | List of Loc.t * ast list
+open Ast
 
 type hint =
   { on : string
@@ -248,7 +243,7 @@ let parse t context sexp =
   let ctx = Values (Ast.loc sexp, None, context) in
   result ctx (t ctx [ sexp ])
 
-let set_input : type k. ast list -> (unit, k) parser =
+let set_input : type k. Ast.t list -> (unit, k) parser =
  fun sexps context _ ->
   match context with
   | Values _ -> ((), sexps)
@@ -431,8 +426,7 @@ let loc_between_states : type k. k context -> k -> k -> Loc.t =
           | _ -> None)
     in
     match
-      Name.Map.values parsed
-      |> List.map ~f:(fun f -> Ast.loc f.Fields.Unparsed.entry)
+      Name.Map.to_list_map parsed ~f:(fun _ f -> Ast.loc f.entry)
       |> List.sort ~compare:(fun a b ->
              Int.compare a.Loc.start.pos_cnum b.start.pos_cnum)
     with
@@ -492,8 +486,8 @@ let unit_number_generic ~of_string ~mul name suffixes =
       | Some i -> String.split_n s i
     in
     let suffixes =
-      List.map ~f:(fun (xs, y) -> List.map ~f:(fun x -> (x, y)) xs) suffixes
-      |> List.flatten
+      List.concat_map suffixes ~f:(fun (xs, y) ->
+          List.map ~f:(fun x -> (x, y)) xs)
     in
     let factor =
       match List.assoc suffixes suffix with

@@ -14,6 +14,7 @@ let subcommands =
   ; Describe_pp.command
   ; Printenv.command
   ; Print_rules.command
+  ; Installed_libraries.command
   ; Aliases_targets.Targets_cmd.command
   ; Aliases_targets.Aliases_cmd.command
   ]

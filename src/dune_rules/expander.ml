@@ -1,5 +1,6 @@
 open Import
 open Action_builder.O
+open Expander0
 
 module Expanding_what = struct
   type t =
@@ -156,15 +157,6 @@ let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
              installed either."
             s
         ])
-
-let isn't_allowed_in_this_position ~(source : Dune_lang.Template.Pform.t) =
-  let exn =
-    User_error.make ~loc:source.loc
-      [ Pp.textf "%s isn't allowed in this position."
-          (Dune_lang.Template.Pform.describe source)
-      ]
-  in
-  raise (User_error.E exn)
 
 let expand_artifact ~source t a s =
   match t.lookup_artifacts with

@@ -534,7 +534,7 @@ module Action_expander = struct
         | _ -> assert false)
       | Var Context_name ->
         Memo.return [ Value.String (Context_name.to_string context) ]
-      | _ -> Expander.isn't_allowed_in_this_position ~source
+      | _ -> Expander0.isn't_allowed_in_this_position ~source
 
     let expand_pform_gen t =
       String_expander.Memo.expand ~f:(expand_pform t)

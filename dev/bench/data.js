@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688766486706,
+  "lastUpdate": 1688769564853,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -67888,6 +67888,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.763294735213336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8f7bcffb1f797bf2d240430d1be09be462654857",
+          "message": "fix: compilation error (#8141)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-07T15:24:13-07:00",
+          "tree_id": "0e354e46a0ea87e7f241b274dae90ba8a615a858",
+          "url": "https://github.com/ocaml/dune/commit/8f7bcffb1f797bf2d240430d1be09be462654857"
+        },
+        "date": 1688769556818,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "27.637023144819995",
             "unit": "seconds"
           }
         ]

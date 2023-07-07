@@ -661,9 +661,6 @@ end = struct
       ({ Dir_triage.Build_directory.dir; context_or_install; sub_dir } as
       build_dir) =
     (* Load all the rules *)
-    let (module RG : Build_config.Rule_generator) =
-      (Build_config.get ()).rule_generator
-    in
     Gen_rules.gen_rules build_dir >>= function
     | Under_directory_target { directory_target_ancestor } ->
       Memo.return

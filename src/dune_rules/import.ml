@@ -77,6 +77,7 @@ include struct
   module Value = Value
   module Blang = Blang
   module Binary_kind = Binary_kind
+  module Shell_spec = Shell_spec
 end
 
 include Dune_engine.No_io

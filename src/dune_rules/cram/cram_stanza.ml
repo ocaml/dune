@@ -19,29 +19,12 @@ let decode_applies_to =
   in
   subtree <|> predicate
 
-type shell_spec =
-  | System_shell
-  | Bash_shell
-  | Exec_file_shell of String_with_vars.t
-
-let default_shell_spec = System_shell
-
-let decode_shell_spec =
-  let open Dune_lang.Decoder in
-  let kw lit v =
-    let+ _ = keyword lit in
-    v
-  in
-  kw ":system" System_shell <|> kw ":bash" Bash_shell
-  <|> let+ p = String_with_vars.decode in
-      Exec_file_shell p
-
 type t =
   { loc : Loc.t
   ; applies_to : applies_to
   ; alias : Alias.Name.t option
   ; deps : Dep_conf.t Bindings.t option
-  ; shell : shell_spec
+  ; shell : Shell_spec.t
   ; enabled_if : Blang.t
   ; locks : Locks.t
   ; package : Package.t option
@@ -56,7 +39,7 @@ let decode =
        field "applies_to" decode_applies_to ~default:default_applies_to
      and+ alias = field_o "alias" Dune_lang.Alias.decode
      and+ deps = field_o "deps" (Bindings.decode Dep_conf.decode)
-     and+ shell = field "shell" decode_shell_spec ~default:default_shell_spec
+     and+ shell = field "shell" Shell_spec.decode ~default:Shell_spec.default
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
      and+ locks =
        Locks.field ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9)) ()

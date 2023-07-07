@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688766474985,
+  "lastUpdate": 1688766486706,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -53474,6 +53474,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "71.13247979378667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1bc86f23cf904eabcab9ca7c533384418601d787",
+          "message": "refactor: break [Pkg_rules] -> [Expander] dep (#8140)\n\nIntroduce [Expander0] and use that in [Pkg_rules]\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-07T14:20:20-07:00",
+          "tree_id": "4b2a40da37ce7393020f172be64ecf4ef0b6a7db",
+          "url": "https://github.com/ocaml/dune/commit/1bc86f23cf904eabcab9ca7c533384418601d787"
+        },
+        "date": 1688766486011,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8690201721866668",
             "unit": "seconds"
           }
         ]

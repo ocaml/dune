@@ -1,6 +1,5 @@
-open Stdune
-open Dune_engine
-module Source_tree = Dune_rules.Source_tree
+open Import
+module Alias = Dune_engine.Alias
 
 type t =
   { name : Dune_engine.Alias.Name.t

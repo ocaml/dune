@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 module Client = Dune_rpc_client.Client
 

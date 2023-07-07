@@ -1,5 +1,4 @@
 open Import
-open Stdune
 
 module Options = struct
   (** Option flags for what to do while crawling the workspace *)

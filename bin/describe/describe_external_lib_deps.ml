@@ -171,7 +171,7 @@ let external_resolved_libs setup super_context =
   let db = Dune_rules.Scope.libs scope in
   libs db context setup
   >>| List.filter ~f:(fun (x : Item.t) ->
-          (not (x.external_deps = [])) || not (x.internal_deps = []))
+          not (List.is_empty x.external_deps && List.is_empty x.internal_deps)
 
 let to_dyn context_name external_resolved_libs =
   let open Dyn in

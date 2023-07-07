@@ -130,8 +130,8 @@ module Sourced = struct
   let to_dyn { source; entry } =
     let open Dyn in
     let source_to_dyn = function
-      | Dune -> String "dune"
-      | User loc -> Variant ("user", [ Loc.to_dyn loc ])
+      | Dune -> Variant ("Dune", [])
+      | User loc -> Variant ("User", [ Loc.to_dyn loc ])
     in
     Record [ ("source", source_to_dyn source); ("entry", to_dyn entry) ]
 end

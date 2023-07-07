@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688760539597,
+  "lastUpdate": 1688760551059,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -53300,6 +53300,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "65.07447426648666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "990544aee271e0a5f87431d884e3ba215b67bffb",
+          "message": "test(pkg): binary visibility in workspace (#8137)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-07T12:43:47-07:00",
+          "tree_id": "3d62209a9658be14acfff107384aea4f960e79e4",
+          "url": "https://github.com/ocaml/dune/commit/990544aee271e0a5f87431d884e3ba215b67bffb"
+        },
+        "date": 1688760549984,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.7443009892933334",
             "unit": "seconds"
           }
         ]

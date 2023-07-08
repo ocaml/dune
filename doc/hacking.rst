@@ -686,7 +686,8 @@ Dune Bench
 ----------
 
 You can benchmark Dune's performance by running `make bench`. This will run a
-subset of the Duniverse.
+subset of the Duniverse. If you are running the bench locally, make sure that
+you bootstrap since that is the executable that the bench will run.
 
 Inline Benchmarks
 -----------------

@@ -1,19 +1,5 @@
 open Import
 
-module Shell_spec = struct
-  type 'path t =
-    | System_shell
-    | Bash_shell
-    | Exec_file_shell of 'path
-
-  let default = System_shell
-
-  let conv f = function
-    | System_shell -> System_shell
-    | Bash_shell -> Bash_shell
-    | Exec_file_shell p -> Exec_file_shell (f p)
-end
-
 module Sanitizer : sig
   [@@@ocaml.warning "-32"]
 
@@ -390,7 +376,7 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
 let _display_with_bars s =
   List.iter (String.split_lines s) ~f:(Printf.eprintf "| %s\n")
 
-let run ~env ~script ~shell_spec lexbuf : string Fiber.t =
+let run ~env ~script ~shell lexbuf : string Fiber.t =
   let temp_dir =
     let suffix =
       let basename = Path.basename script in
@@ -427,16 +413,6 @@ let run ~env ~script ~shell_spec lexbuf : string Fiber.t =
   in
   let open Fiber.O in
   let+ () =
-    let sh =
-      let which shell_name =
-        let path = Env_path.path Env.initial in
-        Option.value_exn (Bin.which ~path shell_name)
-      in
-      match shell_spec with
-      | Shell_spec.System_shell -> which "sh"
-      | Bash_shell -> which "bash"
-      | Exec_file_shell sh -> sh
-    in
     let metadata =
       let name =
         let base = Path.basename sh_script.script in
@@ -449,19 +425,19 @@ let run ~env ~script ~shell_spec lexbuf : string Fiber.t =
       in
       Process.create_metadata ~name ~categories:[ "cram" ] ()
     in
-    Process.run ~display:Quiet ~metadata ~dir:cwd ~env Strict sh
+    Process.run ~display:Quiet ~metadata ~dir:cwd ~env Strict shell
       [ Path.to_string sh_script.script ]
   in
   let raw = read_and_attach_exit_codes sh_script in
   let sanitized = sanitize ~parent_script:sh_script.script raw in
   compose_cram_output sanitized
 
-let run ~env ~script ~shell_spec =
-  run_expect_test script ~f:(fun lexbuf -> run ~env ~script ~shell_spec lexbuf)
+let run ~env ~script ~shell =
+  run_expect_test script ~f:(fun lexbuf -> run ~env ~script ~shell lexbuf)
 
 type ('path, _) spec =
   { script : 'path
-  ; shell_spec : 'path Shell_spec.t
+  ; shell : 'path
   }
 
 module Spec = struct
@@ -471,23 +447,16 @@ module Spec = struct
 
   let version = 1
 
-  let bimap spec f _ =
-    { script = f spec.script; shell_spec = Shell_spec.conv f spec.shell_spec }
+  let bimap spec f _ = { script = f spec.script; shell = f spec.shell }
 
   let is_useful_to ~distribute:_ ~memoize:_ = true
 
-  let encode { script; shell_spec } path _ : Dune_sexp.t =
+  let encode { script; shell } path _ : Dune_sexp.t =
     let atom = Dune_lang.atom_or_quoted_string in
-    let sh : Dune_lang.t =
-      match shell_spec with
-      | System_shell -> List [ atom "system" ]
-      | Bash_shell -> List [ atom "bash" ]
-      | Exec_file_shell p -> List [ atom "executable"; path p ]
-    in
-    List [ atom "cram"; path script; List [ atom "shell"; sh ] ]
+    List [ atom "cram"; path script; List [ atom "shell"; path shell ] ]
 
-  let action { script; shell_spec } ~ectx:_ ~(eenv : Action.Ext.env) =
-    run ~env:eenv.env ~script ~shell_spec
+  let action { script; shell } ~ectx:_ ~(eenv : Action.Ext.env) =
+    run ~env:eenv.env ~script ~shell
 end
 
 let action script =

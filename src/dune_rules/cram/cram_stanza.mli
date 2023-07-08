@@ -18,3 +18,6 @@ type t =
 type Stanza.t += T of t
 
 val decode : t Dune_lang.Decoder.t
+
+val path_of_shell :
+  ?env:Env.t -> [ `system | `bash | `exec of Path.t ] -> Path.t

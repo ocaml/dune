@@ -53,3 +53,13 @@ let decode =
          ()
      in
      { loc; alias; deps; shell; enabled_if; locks; applies_to; package })
+
+let path_of_shell ?(env = Env.initial) shell =
+  let which shell_name =
+    let path = Env_path.path env in
+    Option.value_exn (Bin.which ~path shell_name)
+  in
+  match shell with
+  | `system -> which "sh"
+  | `bash -> which "bash"
+  | `exec sh -> sh

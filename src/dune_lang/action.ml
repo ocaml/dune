@@ -504,13 +504,7 @@ let rec map_string_with_vars t ~f =
   | Diff diff -> Diff (Diff.map diff ~path:f ~target:f)
   | No_infer t -> No_infer (map_string_with_vars t ~f)
   | Pipe (o, ts) -> Pipe (o, List.map ts ~f:(map_string_with_vars ~f))
-  | Cram (script, shell_spec) ->
-    let shell_spec =
-      match shell_spec with
-      | System_shell | Bash_shell -> shell_spec
-      | Exec_file_shell p -> Exec_file_shell (f p)
-    in
-    Cram (f script, shell_spec)
+  | Cram (script, shell_spec) -> Cram (f script, Shell_spec.map f shell_spec)
   | Patch i -> Patch (f i)
   | Substitute (i, o) -> Substitute (f i, f o)
   | Withenv (ops, t) ->

@@ -7,6 +7,10 @@ type t =
 
 let default : t = System_shell
 
+let map f = function
+  | (System_shell | Bash_shell) as s -> s
+  | Exec_file_shell p -> Exec_file_shell (f p)
+
 let encode : t Encoder.t = function
   | System_shell -> atom ":system"
   | Bash_shell -> atom ":bash"

@@ -1,3 +1,6 @@
+(** {!type:t} holds settings directly present in [dune] files and no expansion
+    of {!Exec_file_shell} is performed *)
+
 open Dune_sexp
 
 type t =
@@ -10,6 +13,8 @@ type t =
           which is then used as the shell program *)
 
 val default : t
+
+val map : (String_with_vars.t -> String_with_vars.t) -> t -> t
 
 val encode : t Encoder.t
 

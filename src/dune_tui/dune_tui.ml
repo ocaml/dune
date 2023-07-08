@@ -37,7 +37,6 @@ module Tui = struct
   ;;
 
   let term_input_fds, _ = Term.fds (term ())
-
   let start () = Unix.set_nonblock term_input_fds
 
   type ui_attrs =
@@ -57,9 +56,6 @@ module Tui = struct
     ; mutable reset_count : int
     ; mutable help_screen : bool
     ; mutable proc_screen : bool
-    ; processes : (Pid.t, Dune_console.Process_info.t) Table.t
-    ; finished_processes : (Pid.t, Dune_console.Process_info.t) Table.t
-    ; recently_finished_processes : Dune_console.Process_info.t Queue.t
     ; mutable long_proc_names : bool
     ; mutable hscroll_pos : float
     ; mutable vscroll_pos : float
@@ -80,9 +76,6 @@ module Tui = struct
     ; reset_count = 0
     ; help_screen = false
     ; proc_screen = false
-    ; processes = Table.create (module Pid) 64 (* good size? *)
-    ; finished_processes = Table.create (module Pid) 4096
-    ; recently_finished_processes = Queue.create ()
     ; long_proc_names = false
     ; hscroll_pos = 0.
     ; vscroll_pos = 0.
@@ -109,9 +102,6 @@ module Tui = struct
         ; reset_count
         ; help_screen
         ; proc_screen
-        ; processes
-        ; finished_processes
-        ; recently_finished_processes = _
         ; long_proc_names
         ; hscroll_pos
         ; vscroll_pos
@@ -133,11 +123,6 @@ module Tui = struct
     ; (reset_count |> string_of_int |> fun x -> "Reset count: " ^ x)
     ; (help_screen |> string_of_bool |> fun x -> "Help screen: " ^ x)
     ; (proc_screen |> string_of_bool |> fun x -> "Proc screen: " ^ x)
-    ; (processes |> Table.length |> string_of_int |> fun x -> "Process count: " ^ x)
-    ; (finished_processes
-       |> Table.length
-       |> string_of_int
-       |> fun x -> "Finished process count: " ^ x)
     ; (long_proc_names |> string_of_bool |> fun x -> "Long proc names: " ^ x)
     ; (hscroll_pos |> string_of_float |> fun x -> "Hscroll pos: " ^ x)
     ; (vscroll_pos |> string_of_float |> fun x -> "Vscroll pos: " ^ x)
@@ -332,71 +317,65 @@ module Tui = struct
          (mod_float time_diff 1e6 *. 1e3))
   ;;
 
-  let elapsed_time started_at ended_at = ended_at -. started_at |> time_image
+  let _elapsed_time started_at ended_at = ended_at -. started_at |> time_image
 
-  let process_image { Dune_console.Process_info.pid; started_at; ended_at; prog_str } =
-    let ended_at = Option.value ~default:(Unix.gettimeofday ()) ended_at in
-    let split_prog s =
-      let len = String.length s in
-      if len = 0
-      then "", "", ""
-      else (
-        let rec find_prog_start i =
-          if i < 0
-          then 0
-          else (
-            match s.[i] with
-            | '\\' | '/' -> i + 1
-            | _ -> find_prog_start (i - 1))
-        in
-        let prog_end =
-          match s.[len - 1] with
-          | '"' -> len - 1
-          | _ -> len
-        in
-        let prog_start = find_prog_start (prog_end - 1) in
-        let prog_end =
-          match String.index_from s prog_start '.' with
-          | None -> prog_end
-          | Some i -> i
-        in
-        let before = String.take s prog_start in
-        let after = String.drop s prog_end in
-        let prog = String.sub s ~pos:prog_start ~len:(prog_end - prog_start) in
-        before, prog, after)
-    in
-    let short_prog_name_of_prog s =
-      if ui_state.long_proc_names
-      then s
-      else (
-        let _, s, _ = split_prog s in
-        s)
-    in
-    I.hcat
-      [ I.string ui_state.ui_attrs.user_feedback_attr (sprintf "%d " (Pid.to_int pid))
-      ; elapsed_time started_at ended_at
-      ; I.char A.empty ' ' 1 1
-      ; I.string ui_state.ui_attrs.helper_attr (short_prog_name_of_prog prog_str)
-      ]
-  ;;
+  (* let process_image
+       { Dune_console.Process_info.pid; started_at; ended_at; prog_str } =
+     let ended_at = Option.value ~default:(Unix.gettimeofday ()) ended_at in
+     let split_prog s =
+       let len = String.length s in
+       if len = 0 then ("", "", "")
+       else
+         let rec find_prog_start i =
+           if i < 0 then 0
+           else
+             match s.[i] with
+             | '\\' | '/' -> i + 1
+             | _ -> find_prog_start (i - 1)
+         in
+         let prog_end =
+           match s.[len - 1] with
+           | '"' -> len - 1
+           | _ -> len
+         in
+         let prog_start = find_prog_start (prog_end - 1) in
+         let prog_end =
+           match String.index_from s prog_start '.' with
+           | None -> prog_end
+           | Some i -> i
+         in
+         let before = String.take s prog_start in
+         let after = String.drop s prog_end in
+         let prog = String.sub s ~pos:prog_start ~len:(prog_end - prog_start) in
+         (before, prog, after)
+     in
+     let short_prog_name_of_prog s =
+       if ui_state.long_proc_names then s
+       else
+         let _, s, _ = split_prog s in
+         s
+     in
+     I.hcat
+       [ I.string ui_state.ui_attrs.user_feedback_attr
+           (sprintf "%d " (Pid.to_int pid))
+       ; elapsed_time started_at ended_at
+       ; I.char A.empty ' ' 1 1
+       ; I.string ui_state.ui_attrs.helper_attr
+           (short_prog_name_of_prog prog_str)
+       ] *)
 
-  let proc_screen width height =
-    [ Table.fold ui_state.processes ~init:I.empty ~f:(fun proc_info acc ->
-        I.(process_image proc_info <-> acc))
-    ; I.string ui_state.ui_attrs.helper_attr "Recently finished processes:"
-    ; Queue.fold
-        ui_state.recently_finished_processes
-        ~init:I.empty
-        ~f:(fun acc proc_info -> I.(process_image proc_info <-> acc))
-    ; I.string
-        ui_state.ui_attrs.helper_attr
-        (sprintf
-           "Number of finished processes: %d"
-           (ui_state.finished_processes |> Table.length))
-    ]
-    |> I.vcat
-    |> dialogue_box ~title:"Processes" ~width ~height
-  ;;
+  (* let proc_screen width height =
+     [ Table.fold ui_state.processes ~init:I.empty ~f:(fun proc_info acc ->
+           I.(process_image proc_info <-> acc))
+     ; I.string ui_state.ui_attrs.helper_attr "Recently finished processes:"
+     ; Queue.fold ui_state.recently_finished_processes ~init:I.empty
+         ~f:(fun acc proc_info -> I.(process_image proc_info <-> acc))
+     ; I.string ui_state.ui_attrs.helper_attr
+         (sprintf "Number of finished processes: %d"
+            (ui_state.finished_processes |> Table.length))
+     ]
+     |> I.vcat
+     |> dialogue_box ~title:"Processes" ~width ~height *)
 
   let top_frame image =
     (* The top frame is our main UI element. It contains all other widgets that
@@ -433,7 +412,9 @@ module Tui = struct
       I.crop ~l ~r ~t ~b image
     in
     let help_screen = if ui_state.help_screen then help_screen tw th else I.empty in
-    let proc_screen = if ui_state.proc_screen then proc_screen tw th else I.empty in
+    (* let proc_screen =
+       if ui_state.proc_screen then proc_screen tw th else I.empty
+       in *)
     let debug_box =
       if ui_state.debug then debug_image () |> box_with_title ~title:"Debug" else I.empty
     in
@@ -455,8 +436,7 @@ module Tui = struct
     in
     I.zcat
       [ debug_box
-      ; help_screen
-      ; proc_screen
+      ; help_screen (* ; proc_screen *)
       ; corner_decoration
       ; vertical_scroll_bar
       ; horizontal_scroll_bar
@@ -799,7 +779,7 @@ module Tui = struct
     Unix.clear_nonblock Unix.stdin
   ;;
 end
-  
+
 let backend =
   let t = lazy (Dune_threaded_console.make (module Tui)) in
   fun () -> Lazy.force t

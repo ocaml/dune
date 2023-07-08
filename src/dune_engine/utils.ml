@@ -1,12 +1,32 @@
 open Import
 
-let system_shell_exn =
-  let cmd, arg, os =
-    if Sys.win32 then ("cmd", "/c", "on Windows") else ("sh", "-c", "")
+let lookup_os_shell_path' ?(env = Env.initial) shell_variant =
+  let path = Env_path.path env in
+  let shell_prog_name =
+    match shell_variant with
+    | `system when Sys.win32 -> "cmd"
+    | `system -> "sh"
+    | `bash -> "bash"
   in
-  let bin = lazy (Bin.which ~path:(Env_path.path Env.initial) cmd) in
-  fun ~needed_to ->
-    match Lazy.force bin with
+  let shell =
+    match Bin.which ~path shell_prog_name with
+    | None -> Bin.which ~path:(Env_path.path Env.initial) shell_prog_name
+    | Some _ as s -> s
+  in
+  (shell_prog_name, shell)
+
+let lookup_os_shell_path ?env shell = snd (lookup_os_shell_path' ?env shell)
+
+let system_shell_exn =
+  let arg, os = if Sys.win32 then ("/c", "on Windows") else ("-c", "") in
+  let vanilla_bin = lazy (lookup_os_shell_path' `system) in
+  fun ?env ~needed_to () ->
+    let cmd, bin =
+      match env with
+      | None -> Lazy.force vanilla_bin
+      | Some env -> lookup_os_shell_path' ~env `system
+    in
+    match bin with
     | Some path -> (path, arg)
     | None ->
       User_error.raise

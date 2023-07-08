@@ -142,7 +142,7 @@ let prepare ~skip_trailing_cr annots path1 path2 =
   match !Clflags.diff_command with
   | Some "-" -> fallback
   | Some cmd ->
-    let sh, arg = Utils.system_shell_exn ~needed_to:"print diffs" in
+    let sh, arg = Utils.system_shell_exn () ~needed_to:"print diffs" in
     let cmd =
       sprintf "%s %s %s" cmd
         (String.quote_for_shell file1)

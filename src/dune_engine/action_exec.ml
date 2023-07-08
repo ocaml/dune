@@ -185,9 +185,14 @@ let exec_echo stdout_to str =
   Fiber.return (output_string (Process.Io.out_channel stdout_to) str)
 
 let bash_exn =
-  let bin = lazy (Bin.which ~path:(Env_path.path Env.initial) "bash") in
-  fun ~loc ~needed_to ->
-    match Lazy.force bin with
+  let vanilla_bin = lazy (Utils.lookup_os_shell_path `bash) in
+  fun ?env ~loc ~needed_to () ->
+    let bin =
+      match env with
+      | None -> Lazy.force vanilla_bin
+      | Some env -> Utils.lookup_os_shell_path ~env `system
+    in
+    match bin with
     | Some path -> path
     | None ->
       User_error.raise ~loc
@@ -288,14 +293,16 @@ let rec exec t ~display ~ectx ~eenv =
     Done
   | System cmd ->
     let path, arg =
-      Utils.system_shell_exn ~needed_to:"interpret (system ...) actions"
+      Utils.system_shell_exn () ~env:eenv.env
+        ~needed_to:"interpret (system ...) actions"
     in
     let+ () = exec_run ~display ~ectx ~eenv path [ arg; cmd ] in
     Done
   | Bash cmd ->
     let+ () =
       exec_run ~display ~ectx ~eenv
-        (bash_exn ~loc:ectx.rule_loc ~needed_to:"interpret (bash ...) actions")
+        (bash_exn () ~env:eenv.env ~loc:ectx.rule_loc
+           ~needed_to:"interpret (bash ...) actions")
         [ "-e"; "-u"; "-o"; "pipefail"; "-c"; cmd ]
     in
     Done

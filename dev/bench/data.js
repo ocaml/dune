@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688770508233,
+  "lastUpdate": 1688806938304,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -68004,6 +68004,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.637023144819995",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a0364ad9849d469db6f7b11d49f6270008fcaa10",
+          "message": "fix: add Context_name to import list (#8143)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-08T01:49:56-07:00",
+          "tree_id": "8937810c2cc666ba7327e8f3efdcab8badb968ab",
+          "url": "https://github.com/ocaml/dune/commit/a0364ad9849d469db6f7b11d49f6270008fcaa10"
+        },
+        "date": 1688806930294,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.58122501006667",
             "unit": "seconds"
           }
         ]

@@ -299,28 +299,10 @@ module Fd_count = struct
   ;;
 end
 
-let record_gc_and_fd stats =
+let record_fd stats =
   let module Event = Chrome_trace.Event in
   let module Json = Chrome_trace.Json in
   let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
-  let () =
-    let common = Event.common_fields ~name:"gc" ~ts () in
-    let args =
-      let stat = Gc.quick_stat () in
-      [ "stack_size", `Int stat.stack_size
-      ; "heap_words", `Int stat.heap_words
-      ; "top_heap_words", `Int stat.top_heap_words
-      ; "minor_words", `Float stat.minor_words
-      ; "major_words", `Float stat.major_words
-      ; "promoted_words", `Float stat.promoted_words
-      ; "compactions", `Int stat.compactions
-      ; "major_collections", `Int stat.major_collections
-      ; "minor_collections", `Int stat.minor_collections
-      ]
-    in
-    let event = Event.counter common args in
-    emit stats event
-  in
   match Fd_count.get () with
   | Unknown -> ()
   | This fds ->

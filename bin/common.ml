@@ -1308,14 +1308,24 @@ let init (builder : Builder.t) =
       Dune_stats.emit stats event);
   (* Setup hook for printing GC stats to a file *)
   at_exit (fun () ->
-    match c.builder.dump_gc_stats with
-    | None -> ()
-    | Some file ->
-      Gc.full_major ();
-      Gc.compact ();
-      let stat = Gc.stat () in
-      let path = Path.external_ file in
-      Dune_util.Gc.serialize ~path stat);
+    if Option.is_some c.builder.dump_gc_stats || Option.is_some c.stats
+    then (
+      (* First take a full major GC, then compact, then get stats *)
+      let gc_stat =
+        Gc.full_major ();
+        Gc.compact ();
+        Gc.stat ()
+      in
+      (* Dump gc stats to file if requested *)
+      (match c.builder.dump_gc_stats with
+       | None -> ()
+       | Some file ->
+         let path = Path.external_ file in
+         Dune_util.Gc.serialize ~path gc_stat);
+      (* Dump gc stats to chrome trace if enabled *)
+      match c.stats with
+      | None -> ()
+      | Some stats -> Dune_stats.emit stats (Dune_util.Gc.event gc_stat)));
   c, config
 ;;
 

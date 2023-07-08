@@ -1,0 +1,1 @@
+- Dune will now emit garbage collection stats with `--trace-file`.

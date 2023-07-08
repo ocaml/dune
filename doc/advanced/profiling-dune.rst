@@ -2,7 +2,8 @@ Profiling Dune
 ==============
 
 If ``--trace-file FILE`` is passed, Dune will write detailed data about internal
-operations, such as the timing of commands that Dune runs.
+operations, such as the timing of commands that Dune runs and garbage collection stats
+from running Dune.
 
 The format is compatible with `Catapult trace-viewer`_. In particular, these
 files can be loaded into Chromium's ``chrome://tracing``. Note that the exact

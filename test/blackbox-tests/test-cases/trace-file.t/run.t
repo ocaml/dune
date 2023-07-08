@@ -15,6 +15,6 @@ This captures the commands that are being run:
 As well as data about the garbage collector:
 
   $ <trace.json grep '"C"' | cut -c 2- | sed -E 's/([^0-9])[0-9]+/\1.../g' | sort -u
-  {"ph":"C","args":{"stack_size":...,"heap_words":...,"top_heap_words":...,"minor_words":...,"major_words":...,"promoted_words":...,"compactions":...,"major_collections":...,"minor_collections":...},"name":"gc","cat":"","ts":...,"pid":...,"tid":...}
+  {"ph":"C","args":{"minor_words":...,"promoted_words":...,"major_words":...,"minor_collections":...,"major_collections":...,"heap_words":...,"heap_chunks":...,"live_words":...,"live_blocks":...,"free_words":...,"free_blocks":...,"largest_free":...,"fragments":...,"compactions":...,"top_heap_words":...,"stack_size":...},"name":"gc","cat":"","ts":...,"pid":...,"tid":...}
   {"ph":"C","args":{"value":...},"name":"evaluated_rules","cat":"","ts":...,"pid":...,"tid":...}
   {"ph":"C","args":{"value":...},"name":"fds","cat":"","ts":...,"pid":...,"tid":...}

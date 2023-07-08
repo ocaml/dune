@@ -94,3 +94,49 @@ let decode =
      ; stack_size
      }
 ;;
+
+let event
+  { Stdlib.Gc.minor_words
+  ; promoted_words
+  ; major_words
+  ; minor_collections
+  ; major_collections
+  ; heap_words
+  ; heap_chunks
+  ; live_words
+  ; live_blocks
+  ; free_words
+  ; free_blocks
+  ; largest_free
+  ; fragments
+  ; compactions
+  ; top_heap_words
+  ; stack_size
+  ; _
+  }
+  =
+  let open Chrome_trace in
+  (* Now we convert the gc stat to a chrome trace json format *)
+  let args =
+    [ "minor_words", `Float minor_words
+    ; "promoted_words", `Float promoted_words
+    ; "major_words", `Float major_words
+    ; "minor_collections", `Int minor_collections
+    ; "major_collections", `Int major_collections
+    ; "heap_words", `Int heap_words
+    ; "heap_chunks", `Int heap_chunks
+    ; "live_words", `Int live_words
+    ; "live_blocks", `Int live_blocks
+    ; "free_words", `Int free_words
+    ; "free_blocks", `Int free_blocks
+    ; "largest_free", `Int largest_free
+    ; "fragments", `Int fragments
+    ; "compactions", `Int compactions
+    ; "top_heap_words", `Int top_heap_words
+    ; "stack_size", `Int stack_size
+    ]
+  in
+  let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
+  let common = Event.common_fields ~name:"gc" ~ts () in
+  Event.counter common args
+;;

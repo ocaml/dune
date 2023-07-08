@@ -365,7 +365,10 @@ end = struct
     end
 
     let next q =
-      Option.iter q.stats ~f:Dune_stats.record_gc_and_fd;
+      Option.iter q.stats ~f:(fun stats ->
+        Dune_stats.record_fd stats;
+        (* Only [Gc.quick_stat] is querried since it is much faster. *)
+        Dune_stats.emit stats (Dune_util.Gc.event (Gc.quick_stat ())));
       Mutex.lock q.mutex;
       let rec loop () =
         match

@@ -4,10 +4,9 @@ Check that cram tests run without shell option specified
 
   $ cat > dune <<EOF
   > (rule
-  >   (target foo.cram.corrected)
-  >   (mode (promote (until-clean)))
-  >   (action (cram foo.cram))
-  > )
+  >  (target foo.cram.corrected)
+  >  (mode (promote (until-clean)))
+  >  (action (cram foo.cram)))
   > EOF
 
   $ cat > foo.cram <<EOF
@@ -62,10 +61,9 @@ Check that shell option unset uses `env sh`
   $ PATH=$PWD:$PATH
   $ cat > dune <<EOF
   > (rule
-  >   (target foo.cram.corrected)
-  >   (mode (promote (until-clean)))
-  >   (action (cram foo.cram))
-  > )
+  >  (target foo.cram.corrected)
+  >  (mode (promote (until-clean)))
+  >  (action (cram foo.cram)))
   > EOF
 
   $ cat > foo.cram <<EOF
@@ -83,11 +81,10 @@ Check that shell = :bash uses `env bash`
   $ PATH=$PWD:$PATH
   $ cat > dune <<EOF
   > (rule
-  >   (target foo.cram.corrected)
-  >   (mode (promote (until-clean)))
-  >   (deps sh)
-  >   (action (cram foo.cram (shell :bash)))
-  > )
+  >  (target foo.cram.corrected)
+  >  (mode (promote (until-clean)))
+  >  (deps sh)
+  >  (action (cram foo.cram (shell :bash))))
   > EOF
 
   $ cat > foo.cram <<EOF
@@ -105,11 +102,10 @@ Check that shell = :system uses `env sh`
   $ PATH=$PWD:$PATH
   $ cat > dune <<EOF
   > (rule
-  >   (target foo.cram.corrected)
-  >   (mode (promote (until-clean)))
-  >   (deps sh)
-  >   (action (cram foo.cram (shell :system)))
-  > )
+  >  (target foo.cram.corrected)
+  >  (mode (promote (until-clean)))
+  >  (deps sh)
+  >  (action (cram foo.cram (shell :system))))
   > EOF
 
   $ cat > foo.cram <<EOF
@@ -140,11 +136,10 @@ from custom_shell.ml
   $ cat > dune <<EOF
   > (executables (names custom_shell))
   > (rule
-  >   (target foo.cram.corrected)
-  >   (mode (promote (until-clean)))
-  >   (deps ./custom_shell.exe)
-  >   (action (cram foo.cram (shell ./custom_shell.exe)))
-  > )
+  >  (target foo.cram.corrected)
+  >  (mode (promote (until-clean)))
+  >  (deps ./custom_shell.exe)
+  >  (action (cram foo.cram (shell ./custom_shell.exe))))
   > EOF
 
   $ cat > foo.cram <<EOF

@@ -478,7 +478,7 @@ let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
   | Pipe (outputs, l) ->
     let+ l = A.all (List.map l ~f:expand) in
     O.Pipe (outputs, l)
-  | Cram { script; shell_spec } ->
+  | Cram (script, shell_spec) ->
     let+ script = E.dep script
     and+ shell_spec =
       let open Cram_exec.Shell_spec in

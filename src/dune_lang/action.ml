@@ -156,10 +156,7 @@ type t =
   | Diff of (String_with_vars.t, String_with_vars.t) Diff.t
   | No_infer of t
   | Pipe of Outputs.t * t list
-  | Cram of
-      { script : String_with_vars.t
-      ; shell_spec : Shell_spec.t
-      }
+  | Cram of String_with_vars.t * Shell_spec.t
   | Patch of String_with_vars.t
   | Substitute of String_with_vars.t * String_with_vars.t
   | Withenv of String_with_vars.t Env_update.t list * t
@@ -339,7 +336,7 @@ let cstrs_dune_file t =
                  (Syntax.since Stanza.syntax (3, 10) >>> Shell_spec.decode)
                  ~default:Shell_spec.default)
           in
-          Cram { script; shell_spec } )
+          Cram (script, shell_spec) )
   ]
 
 let decode_dune_file = Decoder.fix @@ fun t -> Decoder.sum (cstrs_dune_file t)
@@ -419,7 +416,7 @@ let rec encode =
     List
       (atom (sprintf "pipe-%s" (Outputs.to_string outputs))
       :: List.map l ~f:encode)
-  | Cram { script; shell_spec } ->
+  | Cram (script, shell_spec) ->
     let shell_spec =
       if shell_spec = Shell_spec.default then []
       else [ List [ atom "script"; Shell_spec.encode shell_spec ] ]
@@ -507,13 +504,13 @@ let rec map_string_with_vars t ~f =
   | Diff diff -> Diff (Diff.map diff ~path:f ~target:f)
   | No_infer t -> No_infer (map_string_with_vars t ~f)
   | Pipe (o, ts) -> Pipe (o, List.map ts ~f:(map_string_with_vars ~f))
-  | Cram { script; shell_spec } ->
+  | Cram (script, shell_spec) ->
     let shell_spec =
       match shell_spec with
       | System_shell | Bash_shell -> shell_spec
       | Exec_file_shell p -> Exec_file_shell (f p)
     in
-    Cram { script = f script; shell_spec }
+    Cram (f script, shell_spec)
   | Patch i -> Patch (f i)
   | Substitute (i, o) -> Substitute (f i, f o)
   | Withenv (ops, t) ->

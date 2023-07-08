@@ -414,8 +414,7 @@ let run ~env ~script lexbuf : string Fiber.t =
   let open Fiber.O in
   let+ () =
     let sh =
-      let path = Env_path.path Env.initial in
-      Option.value_exn (Bin.which ~path "sh")
+      Dune_engine.Utils.lookup_os_shell_path ~env `system |> Option.value_exn
     in
     let metadata =
       let name =

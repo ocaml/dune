@@ -4,7 +4,7 @@ type effective =
   { loc : Loc.t
   ; alias : Alias.Name.Set.t
   ; deps : unit Action_builder.t list
-  ; shell : Path.t Action_builder.t
+  ; shell : Path.t Action_builder.t option
   ; sandbox : Sandbox_config.t
   ; enabled_if : Blang.t list
   ; locks : Path.Set.t
@@ -17,7 +17,7 @@ let empty_effective =
   ; enabled_if = [ Blang.true_ ]
   ; locks = Path.Set.empty
   ; deps = []
-  ; shell = Action_builder.return (Cram_stanza.path_of_shell `system)
+  ; shell = None
   ; sandbox = Sandbox_config.needs_sandboxing
   ; packages = Package.Name.Set.empty
   }
@@ -86,7 +86,11 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
               |> Path.build |> Source_deps.files
             in
             Action_builder.dyn_memo_deps deps
-        and+ shell = spec.shell in
+        and+ shell =
+          match spec.shell with
+          | None -> Action_builder.return (Cram_stanza.path_of_shell `system)
+          | Some p -> p
+        in
         Action.Full.make (action ~shell) ~locks ~sandbox:spec.sandbox
       in
       Memo.parallel_iter aliases ~f:(fun alias ->
@@ -212,7 +216,7 @@ let rules ~sctx ~expander ~dir tests =
                 enabled_if
               ; locks
               ; deps
-              ; shell
+              ; shell = Some shell
               ; alias
               ; packages
               ; sandbox

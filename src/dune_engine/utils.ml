@@ -1,19 +1,52 @@
 open Import
 
 let lookup_os_shell_path' ?(env = Env.initial) shell_variant =
-  let path = Env_path.path env in
-  let shell_prog_name =
+  let open Option.O in
+  let envar_key =
     match shell_variant with
-    | `system when Sys.win32 -> "cmd"
-    | `system -> "sh"
-    | `bash -> "bash"
+    | `system -> "DUNE_ACTION_SYSTEM_SHELL"
+    | `bash -> "DUNE_ACTION_BASH_SHELL"
   in
-  let shell =
-    match Bin.which ~path shell_prog_name with
-    | None -> Bin.which ~path:(Env_path.path Env.initial) shell_prog_name
+  let which progn =
+    let path = Env_path.path env in
+    match Bin.which ~path progn with
+    | None -> Bin.which ~path:(Env_path.path Env.initial) progn
     | Some _ as s -> s
   in
-  (shell_prog_name, shell)
+  let candidate =
+    let classify p =
+      let module Filename = Stdlib.Filename in
+      if Filename.basename p = p then `program_name
+      else if Filename.is_relative p then `relative_path
+      else `absolute_path
+    in
+    Env.get env envar_key >>= fun v ->
+    if String.is_empty v then None
+    else
+      match classify v with
+      | `absolute_path ->
+        let path = Path.external_ (Path.External.of_string v) in
+        if Bin.exists path then Some (Filename.basename v, path)
+        else
+          User_error.raise
+            [ Pp.textf "%s set to path which does not exist: " envar_key
+            ; Pp.verbatim v
+            ]
+      | `program_name -> which v >>| fun p -> (v, p)
+      | `relative_path ->
+        User_error.raise
+          [ Pp.textf "%s cannot be a relative path: " envar_key; Pp.verbatim v ]
+  in
+  match candidate with
+  | Some (progn, shell) -> (progn, Some shell)
+  | None ->
+    let progn =
+      match shell_variant with
+      | `system when Sys.win32 -> "cmd"
+      | `system -> "sh"
+      | `bash -> "bash"
+    in
+    (progn, which progn)
 
 let lookup_os_shell_path ?env shell = snd (lookup_os_shell_path' ?env shell)
 

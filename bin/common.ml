@@ -1263,6 +1263,19 @@ let envs =
           "If different than $(b,0), ANSI colors should be enabled no matter \
            what."
         "CLICOLOR_FORCE"
+    ; info
+        ~doc:
+          "If set, the specified shell (either the name of the shell program \
+           or an absolute path) will be used to execute the $(i,(system ..)) \
+           user actions and cram test commands."
+        "DUNE_ACTION_SYSTEM_SHELL"
+    ; info
+        ~doc:
+          "If set, the specified shell (either the name of the shell program \
+           or an absolute path) will be used to execute the $(i,(bash ..)) \
+           user actions and cram test commands when option $(i,(shell :bash)) \
+           is set."
+        "DUNE_ACTION_BASH_SHELL"
     ]
 
 let config_from_config_file = Options_implied_by_dash_p.config_term

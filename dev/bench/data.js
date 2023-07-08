@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688806938304,
+  "lastUpdate": 1688807369088,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -22850,6 +22850,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "49.0639195919",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a0364ad9849d469db6f7b11d49f6270008fcaa10",
+          "message": "fix: add Context_name to import list (#8143)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-08T01:49:56-07:00",
+          "tree_id": "8937810c2cc666ba7327e8f3efdcab8badb968ab",
+          "url": "https://github.com/ocaml/dune/commit/a0364ad9849d469db6f7b11d49f6270008fcaa10"
+        },
+        "date": 1688807367919,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.904358749433335",
             "unit": "seconds"
           }
         ]

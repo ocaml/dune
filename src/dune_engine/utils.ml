@@ -1,6 +1,7 @@
 open Import
 
-let lookup_os_shell_path' ?(env = Env.initial) shell_variant =
+let lookup_os_shell_path' ?(env = Env.initial) ?(cmd_on_windows = true)
+    shell_variant =
   let open Option.O in
   let envar_key =
     match shell_variant with
@@ -42,13 +43,14 @@ let lookup_os_shell_path' ?(env = Env.initial) shell_variant =
   | None ->
     let progn =
       match shell_variant with
-      | `system when Sys.win32 -> "cmd"
+      | `system when cmd_on_windows && Sys.win32 -> "cmd"
       | `system -> "sh"
       | `bash -> "bash"
     in
     (progn, which progn)
 
-let lookup_os_shell_path ?env shell = snd (lookup_os_shell_path' ?env shell)
+let lookup_os_shell_path ?env ?cmd_on_windows shell =
+  snd (lookup_os_shell_path' ?env ?cmd_on_windows shell)
 
 let system_shell_exn =
   let arg, os = if Sys.win32 then ("/c", "on Windows") else ("-c", "") in

@@ -20,4 +20,5 @@ val program_not_found_message :
 (** Pretty-printer for suggesting a given shell command to the user *)
 val pp_command_hint : string -> _ Pp.t
 
-val lookup_os_shell_path : ?env:Env.t -> [ `system | `bash ] -> Path.t option
+val lookup_os_shell_path :
+  ?env:Env.t -> ?cmd_on_windows:bool -> [ `system | `bash ] -> Path.t option

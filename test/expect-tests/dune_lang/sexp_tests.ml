@@ -353,3 +353,37 @@ comment)
 block
 comment|#
 |}
+
+let print_shell_spec : Dune_lang.Shell_spec.t -> unit =
+ fun spec -> Dune_lang.pp (Dune_lang.Shell_spec.encode spec) |> print
+
+let shell_path = Dune_lang.String_with_vars.make_text loc "/bin/zsh"
+
+let%expect_test _ =
+  print_shell_spec System_shell;
+  [%expect {| :system |}]
+
+let%expect_test _ =
+  print_shell_spec Bash_shell;
+  [%expect {| :bash |}]
+
+let%expect_test _ =
+  print_shell_spec (Exec_file_shell shell_path);
+  [%expect {| /bin/zsh |}]
+
+let print_action : Dune_lang.Action.t -> unit =
+ fun spec -> Dune_lang.pp (Dune_lang.Action.encode spec) |> print
+
+let cram_script = Dune_lang.String_with_vars.make_text loc "test.t"
+
+let%expect_test _ =
+  print_action (Cram (cram_script, System_shell));
+  [%expect {| (cram test.t) |}]
+
+let%expect_test _ =
+  print_action (Cram (cram_script, Bash_shell));
+  [%expect {| (cram test.t (shell :bash)) |}]
+
+let%expect_test _ =
+  print_action (Cram (cram_script, Exec_file_shell shell_path));
+  [%expect {| (cram test.t (shell /bin/zsh)) |}]

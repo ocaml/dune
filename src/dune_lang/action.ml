@@ -419,7 +419,7 @@ let rec encode =
   | Cram (script, shell_spec) ->
     let shell_spec =
       if shell_spec = Shell_spec.default then []
-      else [ List [ atom "script"; Shell_spec.encode shell_spec ] ]
+      else [ List [ atom "shell"; Shell_spec.encode shell_spec ] ]
     in
     List (atom "cram" :: sw script :: shell_spec)
   | Patch i -> List [ atom "patch"; sw i ]

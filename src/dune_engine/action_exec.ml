@@ -190,7 +190,7 @@ let bash_exn =
     let bin =
       match env with
       | None -> Lazy.force vanilla_bin
-      | Some env -> Utils.lookup_os_shell_path ~env `system
+      | Some env -> Utils.lookup_os_shell_path ~env `bash
     in
     match bin with
     | Some path -> path

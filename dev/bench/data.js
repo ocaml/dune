@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688892754145,
+  "lastUpdate": 1688892767766,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -53996,6 +53996,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "75.35421694760667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e1932792022a6ddf4012380600db6c6038556ee4",
+          "message": "refactor: separate loc types (#8065)\n\nIntroduce a Lexbuf.Loc.t that now represents the raw\r\nlocations we get from the lexer.\r\n\r\nDune's own locations are now abstract. This gives us an opportunity to\r\npick a better representation for them.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-09T01:23:23-07:00",
+          "tree_id": "2d224075838a762aa3fe6a502f82cac4e59fd97e",
+          "url": "https://github.com/ocaml/dune/commit/e1932792022a6ddf4012380600db6c6038556ee4"
+        },
+        "date": 1688892766756,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.1601864917399998",
             "unit": "seconds"
           }
         ]

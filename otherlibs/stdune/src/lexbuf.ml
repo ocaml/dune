@@ -8,6 +8,28 @@ module Position = struct
       { Lexing.pos_fname = f_b; pos_lnum = l_b; pos_bol = b_b; pos_cnum = c_b }
       =
     f_a = f_b && l_a = l_b && b_a = b_b && c_a = c_b
+
+  let in_file ~fname =
+    { Lexing.pos_fname = fname; pos_lnum = 1; pos_cnum = 0; pos_bol = 0 }
+
+  let none = in_file ~fname:"<none>"
+
+  let to_dyn { Lexing.pos_fname; pos_lnum; pos_bol; pos_cnum } =
+    let open Dyn in
+    Record
+      [ ("pos_lnum", Int pos_lnum)
+      ; ("pos_bol", Int pos_bol)
+      ; ("pos_cnum", Int pos_cnum)
+      ; ("pos_fname", String pos_fname)
+      ]
+
+  let to_dyn_no_file (p : t) =
+    let open Dyn in
+    Record
+      [ ("pos_lnum", Int p.pos_lnum)
+      ; ("pos_bol", Int p.pos_bol)
+      ; ("pos_cnum", Int p.pos_cnum)
+      ]
 end
 
 module Loc = struct
@@ -15,6 +37,26 @@ module Loc = struct
     { start : Lexing.position
     ; stop : Lexing.position
     }
+
+  let of_pos (pos_fname, pos_lnum, cnum, enum) =
+    let start : Lexing.position =
+      { pos_fname; pos_lnum; pos_cnum = cnum; pos_bol = 0 }
+    in
+    { start; stop = { start with pos_cnum = enum } }
+
+  let to_dyn t =
+    let open Dyn in
+    Record
+      [ ("pos_fname", String t.start.pos_fname)
+      ; ("start", Position.to_dyn_no_file t.start)
+      ; ("stop", Position.to_dyn_no_file t.stop)
+      ]
+
+  let compare = Poly.compare
+
+  let equal x y = Ordering.is_eq (compare x y)
+
+  let none = { start = Position.none; stop = Position.none }
 end
 
 let init (t : t) ~fname =

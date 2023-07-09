@@ -3,13 +3,13 @@ module O = Comparable.Make (Loc0)
 include O
 
 let in_file p =
-  let pos = none_pos (Path.to_string p) in
+  let pos = Lexbuf.Position.in_file ~fname:(Path.to_string p) in
   create ~start:pos ~stop:pos
 
 let in_dir = in_file
 
 let drop_position (t : t) =
-  let pos = none_pos (start t).pos_fname in
+  let pos = Lexbuf.Position.in_file ~fname:(start t).pos_fname in
   create ~start:pos ~stop:pos
 
 let of_lexbuf lexbuf : t =
@@ -17,13 +17,7 @@ let of_lexbuf lexbuf : t =
     ~start:(Lexing.lexeme_start_p lexbuf)
     ~stop:(Lexing.lexeme_end_p lexbuf)
 
-let of_pos (fname, lnum, cnum, enum) =
-  let pos : Lexing.position =
-    { pos_fname = fname; pos_lnum = lnum; pos_cnum = cnum; pos_bol = 0 }
-  in
-  create ~start:pos ~stop:{ pos with pos_cnum = enum }
-
-let is_none = equal none
+let of_pos pos = Lexbuf.Loc.of_pos pos |> of_lexbuf_loc
 
 let to_file_colon_line t =
   let start = start t in

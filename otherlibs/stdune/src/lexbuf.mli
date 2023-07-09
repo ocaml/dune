@@ -6,6 +6,14 @@ module Position : sig
   type t = Lexing.position
 
   val equal : t -> t -> bool
+
+  val in_file : fname:string -> t
+
+  val none : t
+
+  val to_dyn : t -> Dyn.t
+
+  val to_dyn_no_file : t -> Dyn.t
 end
 
 module Loc : sig
@@ -13,6 +21,17 @@ module Loc : sig
     { start : Lexing.position
     ; stop : Lexing.position
     }
+
+  val to_dyn : t -> Dyn.t
+
+  val compare : t -> t -> Ordering.t
+
+  val equal : t -> t -> bool
+
+  (** To be used with [__POS__] *)
+  val of_pos : string * int * int * int -> t
+
+  val none : t
 end
 
 (** Same as [Lexing.from_xxx] but also initialise the location to the beginning

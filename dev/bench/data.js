@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688901566522,
+  "lastUpdate": 1688901993509,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -54054,6 +54054,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.1601864917399998",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "44241c98b7523cc63988253cc6d2fe10bbca5b88",
+          "message": "refactor(stdune): move more functions to [Lexbuf] (#8150)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-09T03:54:17-07:00",
+          "tree_id": "1e0e2077dab6163f957de01bad24d26897645dfa",
+          "url": "https://github.com/ocaml/dune/commit/44241c98b7523cc63988253cc6d2fe10bbca5b88"
+        },
+        "date": 1688901992626,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "84.04966973094666",
             "unit": "seconds"
           }
         ]

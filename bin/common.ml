@@ -716,7 +716,7 @@ module Builder = struct
         & opt (some string) None
         & info [ "dump-gc-stats" ] ~docs ~docv:"FILE"
             ~doc:
-              "Dumps the Garbage Collector stats to a file after the build is \
+              "Dump the garbage collector stats to a file after the build is \
                complete.")
     and+ { Options_implied_by_dash_p.root
          ; only_packages
@@ -1157,8 +1157,9 @@ let init ?action_runner ?log_file c =
       | Some file ->
         Gc.full_major ();
         Gc.compact ();
+        let stat = Gc.stat () in
         let path = Path.external_ file in
-        Dune_util.Gc.serialize ~path (Gc.stat ()));
+        Dune_util.Gc.serialize ~path stat);
   config
 
 let footer =

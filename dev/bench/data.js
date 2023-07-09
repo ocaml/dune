@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688934133681,
+  "lastUpdate": 1688934635038,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23024,6 +23024,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "50.469642461366675",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5cb1958adf5f2d3cb400d5c8a2466af200399a4a",
+          "message": "refactor(memo): remove [node_info] (#8147)\n\nThe distinction between [node] and [node_info] wasn't used anywhere.\r\nOnce it's removed, we gain two things:\r\n\r\n* One less pointer to chase on all node operations\r\n* Save two additional words of memory for every node\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-09T13:07:20-07:00",
+          "tree_id": "c41a83c76d580418b4161d2feb2004cd89de8abf",
+          "url": "https://github.com/ocaml/dune/commit/5cb1958adf5f2d3cb400d5c8a2466af200399a4a"
+        },
+        "date": 1688934633737,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "46.868464626573335",
             "unit": "seconds"
           }
         ]

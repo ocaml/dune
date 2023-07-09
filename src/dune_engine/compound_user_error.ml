@@ -55,10 +55,11 @@ let make_loc ~dir { Ocamlc_loc.path; chars; lines } : Loc.t =
     | Some (x, y) -> (x, y)
   in
   let pos = { Lexing.pos_fname; pos_lnum = 0; pos_bol = 0; pos_cnum = 0 } in
-  { Loc.start =
-      { pos with pos_lnum = pos_lnum_start; pos_cnum = pos_cnum_start }
-  ; Loc.stop = { pos with pos_lnum = pos_lnum_stop; pos_cnum = pos_cnum_stop }
-  }
+  let start =
+    { pos with pos_lnum = pos_lnum_start; pos_cnum = pos_cnum_start }
+  in
+  let stop = { pos with pos_lnum = pos_lnum_stop; pos_cnum = pos_cnum_stop } in
+  Loc.create ~start ~stop
 
 let parse_output ~dir s =
   Ocamlc_loc.parse s

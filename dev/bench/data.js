@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688891875772,
+  "lastUpdate": 1688892210756,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -22937,6 +22937,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.41028421047999",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a34cd6a2625e2771ed8098a4ee6834d0f8c8df13",
+          "message": "chore: dump-stats cleanups (#8145)\n\nCount stats immediately after compacting\r\n\r\nDo not rely on prefix in tests\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-09T01:24:11-07:00",
+          "tree_id": "2e339a397085428243850f29b19c9e9cb76b067d",
+          "url": "https://github.com/ocaml/dune/commit/a34cd6a2625e2771ed8098a4ee6834d0f8c8df13"
+        },
+        "date": 1688892209820,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.855666587213335",
             "unit": "seconds"
           }
         ]

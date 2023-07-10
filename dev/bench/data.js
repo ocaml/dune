@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689004767498,
+  "lastUpdate": 1689005200598,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23169,6 +23169,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.46552457646666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "81008f6d5f41746fd9b685f645d06066b8bbfd9a",
+          "message": "refactor: use precise types in sub_dirs (#8163)\n\nIn particular Filename.t over String.t\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-10T08:46:55-07:00",
+          "tree_id": "c250bc615a04eb03b76f1154459ea3cdf3ba6853",
+          "url": "https://github.com/ocaml/dune/commit/81008f6d5f41746fd9b685f645d06066b8bbfd9a"
+        },
+        "date": 1689005199519,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.53678164179334",
             "unit": "seconds"
           }
         ]

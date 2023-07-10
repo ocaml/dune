@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689002403008,
+  "lastUpdate": 1689002413631,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -54518,6 +54518,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "64.63905407905334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "51ec71ea4ff9f11f814bf6ae765bce25a4977ad2",
+          "message": "doc: minor CHANGES.md adjustment (#8157)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-10T07:55:00-07:00",
+          "tree_id": "1b1e6b24deaf2d4b2f8a92ac997de26a104e8f7c",
+          "url": "https://github.com/ocaml/dune/commit/51ec71ea4ff9f11f814bf6ae765bce25a4977ad2"
+        },
+        "date": 1689002412908,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.633926460186667",
             "unit": "seconds"
           }
         ]

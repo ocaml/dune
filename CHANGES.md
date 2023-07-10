@@ -1,6 +1,10 @@
 Unreleased
 ----------
 
+- Add `--all` option to `dune show targets` which shows source files in addition
+  to targets. Souce files are no longer shown by default in `dune show targets`.
+  (#8167, @Alizter)
+
 - Add `dune show rules` as alias of the `dune rules` command. (#8000, @Alizter)
 
 - Add `dune show installed-libraries` as an alias of the `dune

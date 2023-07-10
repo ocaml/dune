@@ -8,6 +8,17 @@ With no directory provided to the command, it should default to the current
 working directory.
 
   $ dune show targets
+  d/
+  simple.a
+  simple.cma
+  simple.cmxa
+  simple.cmxs
+  simple.ml-gen
+
+The --all argument will show all targets since source files are omitted by
+default.
+
+  $ dune show targets --all
   a.ml
   d/
   dune
@@ -23,10 +34,7 @@ used, and only the targets available in that directory will be displayed.
 
   $ dune show targets . b/
   .:
-  a.ml
   d/
-  dune
-  dune-project
   simple.a
   simple.cma
   simple.cmxa
@@ -34,8 +42,6 @@ used, and only the targets available in that directory will be displayed.
   simple.ml-gen
   
   b:
-  c.ml
-  dune
   simple2.a
   simple2.cma
   simple2.cmxa
@@ -45,10 +51,7 @@ used, and only the targets available in that directory will be displayed.
 The command also works with files in the _build directory.
 
   $ dune show targets _build/default/
-  a.ml
   d/
-  dune
-  dune-project
   simple.a
   simple.cma
   simple.cmxa
@@ -56,8 +59,6 @@ The command also works with files in the _build directory.
   simple.ml-gen
 
   $ dune show targets _build/default/b
-  c.ml
-  dune
   simple2.a
   simple2.cma
   simple2.cmxa

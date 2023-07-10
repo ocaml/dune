@@ -1,12 +1,16 @@
 open Import
 
-let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
+let common_args =
   let+ common = Common.term
   and+ paths = Arg.(value & pos_all string [ "." ] & info [] ~docv:"DIR")
   and+ context =
     Common.context_arg
       ~doc:"The context to look in. Defaults to the default context."
   in
+  (common, paths, context)
+
+let ls_term ~common ~paths ~context
+    (fetch_results : Path.Build.t -> string list Action_builder.t) =
   let config = Common.init common in
   let request (_ : Dune_rules.Main.build_system) =
     let header = List.length paths > 1 in
@@ -104,7 +108,9 @@ module Aliases_cmd = struct
     in
     List.map ~f:Dune_engine.Alias.Name.to_string alias_targets
 
-  let term = ls_term fetch_results
+  let term =
+    let+ common, paths, context = common_args in
+    ls_term ~common ~paths ~context fetch_results
 
   let command =
     let doc = "Print aliases in a given directory. Works similalry to ls." in
@@ -112,25 +118,46 @@ module Aliases_cmd = struct
 end
 
 module Targets_cmd = struct
-  let fetch_results (dir : Path.Build.t) =
+  let fetch_results ~all (dir : Path.Build.t) =
     let open Action_builder.O in
-    let+ targets =
+    let* targets =
       let open Memo.O in
       Target.all_direct_targets (Some (Path.Build.drop_build_context_exn dir))
       >>| Path.Build.Map.to_list |> Action_builder.of_memo
     in
-    List.filter_map targets ~f:(fun (path, kind) ->
+    Action_builder.List.filter_map targets ~f:(fun (path, kind) ->
         match Path.Build.equal (Path.Build.parent_exn path) dir with
-        | false -> None
-        | true ->
-          (* directory targets can be distinguied by the trailing path seperator
-          *)
-          Some
-            (match kind with
-            | Target.File -> Path.Build.basename path
-            | Directory -> Path.Build.basename path ^ Filename.dir_sep))
+        | false -> Action_builder.return None
+        | true -> (
+          (* directory targets can be distinguished by the trailing path
+             seperator. *)
+          match kind with
+          | Target.File ->
+            let+ exists =
+              Dune_engine.Fs_memo.file_exists
+                (Path.as_outside_build_dir_exn
+                   (Path.source (Path.Build.drop_build_context_exn path)))
+              |> Action_builder.of_memo
+            in
+            (* Check if the file exists in the source tree. If it does, we
+               skip printing this target unless the `--all` option was passed *)
+            if (not all) && exists then None
+            else Some (Path.Build.basename path)
+          | Directory ->
+            Action_builder.return
+              (Some (Path.Build.basename path ^ Filename.dir_sep))))
 
-  let term = ls_term fetch_results
+  let term =
+    let+ common, paths, context = common_args
+    and+ all =
+      Arg.(
+        value & flag
+        & info [ "all" ]
+            ~doc:
+              "Print all targets, including those that exist in the source \
+               tree.")
+    in
+    ls_term ~common ~paths ~context (fetch_results ~all)
 
   let command =
     let doc = "Print targets in a given directory. Works similalry to ls." in

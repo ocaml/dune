@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688989211607,
+  "lastUpdate": 1688989574054,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -54402,6 +54402,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.18272500408",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2ebaa8788ccb9e608203d15829c254e7c7d672ee",
+          "message": "chore: fix types in rule streaming rfc (#8156)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-10T04:18:11-07:00",
+          "tree_id": "b0ff31e1c6acf3e5a40f12e992f12538d7e2d686",
+          "url": "https://github.com/ocaml/dune/commit/2ebaa8788ccb9e608203d15829c254e7c7d672ee"
+        },
+        "date": 1688989572898,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "71.72029265974",
             "unit": "seconds"
           }
         ]

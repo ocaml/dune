@@ -688,7 +688,7 @@ Dune Bench
 You can benchmark Dune's performance by running `make bench`. This will run a
 subset of the Duniverse.
 
-The bench will build a specially selected portion of the duniverse once, called
+The bench will build a specially selected portion of the Duniverse once, called
 a "clean build". Afterwards, the build will be run 5 more times and are termed
 the "Null builds".
 
@@ -701,7 +701,7 @@ The report contains the following information:
 - The size of the `dune.exe` binary.
 - User CPU times for the Clean and Null builds.
 - System CPU times for the Clean and Null builds.
-- All the Garbage Collection stats apart from "forced collections" for Clean and
+- All the garbage collection stats apart from "forced collections" for Clean and
   Null builds.
 
 Pull requests that add new libraries are likely to increase the size of the dune
@@ -709,7 +709,7 @@ binary.
 
 Performance gains in Dune can be observed in the Clean and Null build times.
 
-Memory usage can be observed in the Garbage Collection stats.
+Memory usage can be observed in the garbage collection stats.
 
 Inline Benchmarks
 -----------------

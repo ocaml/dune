@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689007089227,
+  "lastUpdate": 1689007512612,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23198,6 +23198,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.53678164179334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "etienne.millon@gmail.com",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "distinct": true,
+          "id": "cf710dc44a73a775c63d3ee057bb6f980fe3e7ba",
+          "message": "Remove dependency on ppxlib\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-10T18:25:38+02:00",
+          "tree_id": "42e34f16f2a8c6db6b541a048906805502935c65",
+          "url": "https://github.com/ocaml/dune/commit/cf710dc44a73a775c63d3ee057bb6f980fe3e7ba"
+        },
+        "date": 1689007511467,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.94311352125334",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689016720112,
+  "lastUpdate": 1689016823360,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23256,6 +23256,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.413531602333336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2bdd59669afed7f21af7240a12b1d5bf55def281",
+          "message": "refactor: memoize Action_builder.lines_of (#8169)\n\nIn particular, just make it based on the existing [contents] function\r\nthat memoizes.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-10T11:53:08-07:00",
+          "tree_id": "62e8a4f7de9fb4ee329ed192c32964c111b244a6",
+          "url": "https://github.com/ocaml/dune/commit/2bdd59669afed7f21af7240a12b1d5bf55def281"
+        },
+        "date": 1689016821772,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "54.554895648586665",
             "unit": "seconds"
           }
         ]

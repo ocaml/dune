@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688986503523,
+  "lastUpdate": 1688986517723,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -54344,6 +54344,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "82.00143674904",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "809fccfb90c82e373444c55299421a51bbfcf294",
+          "message": "chore: fix sexp formatting\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-10T11:24:36+01:00",
+          "tree_id": "8a14672bdba81212a11518ab9e1f21ba8e8fe912",
+          "url": "https://github.com/ocaml/dune/commit/809fccfb90c82e373444c55299421a51bbfcf294"
+        },
+        "date": 1688986516570,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.18272500408",
             "unit": "seconds"
           }
         ]

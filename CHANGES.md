@@ -6,7 +6,7 @@ Unreleased
 - Add `dune show installed-libraries` as an alias of the `dune
   installed-libraries` command. (#8135, @Alizter)
 
-- Add `dune build --dump-gc-stats FILE` argument to dump Garbage Collection
+- Add `dune build --dump-gc-stats FILE` argument to dump garbage collection
   stats to a named file. (#8072, @Alizter)
 
 3.9.1 (2023-07-06)

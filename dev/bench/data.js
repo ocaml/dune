@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689016240231,
+  "lastUpdate": 1689016351776,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23227,6 +23227,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.94311352125334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ef9776ad23e44ce3a9a608963f9fa7b7a649fa38",
+          "message": "chore: remove useless inlining annotations (#8155)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-10T11:52:22-07:00",
+          "tree_id": "0347f9c0a5a79e940c98a5aa8917b9098dc8b57d",
+          "url": "https://github.com/ocaml/dune/commit/ef9776ad23e44ce3a9a608963f9fa7b7a649fa38"
+        },
+        "date": 1689016350794,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.413531602333336",
             "unit": "seconds"
           }
         ]

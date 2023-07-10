@@ -96,14 +96,7 @@ let contents =
   in
   fun path -> exec_memo memo path
 
-let lines_of p =
-  of_thunk
-    { f =
-        (fun _mode ->
-          let open Memo.O in
-          let+ x = Build_system.read_file p ~f:Io.lines_of_file in
-          (x, Dep.Map.empty))
-    }
+let lines_of p = contents p >>| String.split_lines
 
 let read_sexp p =
   let+ s = contents p in

@@ -92,6 +92,9 @@ let delete_very_recent_entries () =
   let cache = Lazy.force cache in
   if !Clflags.wait_for_filesystem_clock then wait_for_fs_clock_to_advance ();
   let now = get_current_filesystem_time () in
+  (* We can only trust digests with timestamps in the past. We had issues in
+     the past with file systems having a slow internal clock, where we cached
+     digests too aggressively. *)
   match Float.compare cache.max_timestamp now with
   | Lt -> ()
   | Eq | Gt ->

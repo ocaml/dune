@@ -10,7 +10,7 @@ module type Option = Monad_intf.Option
 
 module type Result = Monad_intf.Result
 
-module Make (M : Basic) : S with type 'a t := 'a M.t [@@inlined always]
+module Make (M : Basic) : S with type 'a t := 'a M.t
 
 module Id : S with type 'a t = 'a
 

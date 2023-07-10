@@ -33,10 +33,6 @@ directory.
   > EOF
   $ touch bin/e.ml
 
-This fails, but should work (and print nothing):
+This works:
 
-  $ dune exec bin/e.exe 2>&1 | sed -e 's/camlppx....../camlppxXXXXXX/g' -e 's/build_......_dune/build_XXXXXX_dune/g'
-  File "bin/.e.eobjs/_unknown_", line 1, characters 0-0:
-  sh: 1: ../.ppx/059965dd2a1761d0e00c111505aef5ac/ppx.exe: not found
-  File "bin/e.ml", line 1:
-  Error: I/O error: ../.ppx/059965dd2a1761d0e00c111505aef5ac/ppx.exe --as-ppx '/tmp/build_XXXXXX_dune/build_XXXXXX_dune/camlppxXXXXXX' '/tmp/build_XXXXXX_dune/build_XXXXXX_dune/camlppxXXXXXX'
+  $ dune exec bin/e.exe

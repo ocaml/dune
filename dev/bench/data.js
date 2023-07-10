@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689005544350,
+  "lastUpdate": 1689007089227,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -69396,6 +69396,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.36656168574",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "etienne.millon@gmail.com",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "distinct": true,
+          "id": "cf710dc44a73a775c63d3ee057bb6f980fe3e7ba",
+          "message": "Remove dependency on ppxlib\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-10T18:25:38+02:00",
+          "tree_id": "42e34f16f2a8c6db6b541a048906805502935c65",
+          "url": "https://github.com/ocaml/dune/commit/cf710dc44a73a775c63d3ee057bb6f980fe3e7ba"
+        },
+        "date": 1689007081789,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.557161090959998",
             "unit": "seconds"
           }
         ]

@@ -11,10 +11,18 @@ directory.
   $ cat > ppx/dune << EOF
   > (library
   >  (name ppx_noop)
-  >  (libraries ppxlib)
-  >  (kind ppx_rewriter))
+  >  (kind ppx_rewriter)
+  >  (ppx.driver (main Ppx_noop.main)))
   > EOF
-  $ touch ppx/ppx_noop.ml
+  $ cat > ppx/ppx_noop.ml << EOF
+  > let main () =
+  >   match Sys.argv with
+  >   | [| _; "--as-ppx"; input_file; output_file |] ->
+  >      Filename.quote_command "cp" [input_file; output_file]
+  >      |> Sys.command
+  >      |> exit
+  >   | _ -> assert false
+  > EOF
 
   $ mkdir bin
   $ cat > bin/dune << EOF

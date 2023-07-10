@@ -1,11 +1,6 @@
 Unreleased
 ----------
 
-- Disable background operations and threaded console on MacOS and other Unixes
-  where we rely on fork. (#8100, #8121, fixes #8083, @rgrinberg, @emillon)
-
-- Initialize async IO thread lazily. (#8122, @emillon)
-
 - Add `dune show rules` as alias of the `dune rules` command. (#8000, @Alizter)
 
 - Add `dune show installed-libraries` as an alias of the `dune
@@ -13,6 +8,14 @@ Unreleased
 
 - Add `dune build --dump-gc-stats FILE` argument to dump Garbage Collection
   stats to a named file. (#8072, @Alizter)
+
+3.9.1 (2023-07-06)
+------------------
+
+- Disable background operations and threaded console on MacOS and other Unixes
+  where we rely on fork. (#8100, #8121, fixes #8083, @rgrinberg, @emillon)
+
+- Initialize async IO thread lazily. (#8122, @emillon)
 
 3.9.0 (2023-06-28)
 ------------------

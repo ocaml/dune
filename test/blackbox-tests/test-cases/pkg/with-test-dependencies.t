@@ -56,9 +56,7 @@ Regular dependencies are resolved transitively:
   > (lang dune 3.8)
   > (package
   >  (name x)
-  >  (depends
-  >    depends-on-foo
-  >   ))
+  >  (depends depends-on-foo))
   > EOF
   Solution for dune.lock:
   depends-on-foo.0.0.1
@@ -70,9 +68,7 @@ Transitive test dependencies are not included:
   > (lang dune 3.8)
   > (package
   >  (name x)
-  >  (depends
-  >    depends-on-foo-with-test
-  >   ))
+  >  (depends depends-on-foo-with-test))
   > EOF
   Solution for dune.lock:
   depends-on-foo-with-test.0.0.1
@@ -83,8 +79,7 @@ Test dependencies of the project are included:
   > (package
   >  (name x)
   >  (depends
-  >    (foo :with-test)
-  >   ))
+  >   (foo :with-test)))
   > EOF
   Solution for dune.lock:
   foo.0.0.1
@@ -95,9 +90,7 @@ Test dependencies of test dependencies are excluded:
   > (lang dune 3.8)
   > (package
   >  (name x)
-  >  (depends
-  >    (depends-on-foo-with-test :with-test)
-  >   ))
+  >  (depends (depends-on-foo-with-test :with-test)))
   > EOF
   Solution for dune.lock:
   depends-on-foo-with-test.0.0.1
@@ -107,10 +100,7 @@ Conflicting packages can't be co-installed:
   > (lang dune 3.8)
   > (package
   >  (name x)
-  >  (depends
-  >    foo
-  >    conflicts-with-foo
-  >   ))
+  >  (depends foo conflicts-with-foo))
   > EOF
   Error: Can't find all required versions.
   Selected: foo.0.0.1 foo-dependency.0.0.1 x.dev
@@ -124,10 +114,7 @@ Conflicting packages in transitive dependencies can't be co-installed:
   > (lang dune 3.8)
   > (package
   >  (name x)
-  >  (depends
-  >    depends-on-foo
-  >    conflicts-with-foo
-  >   ))
+  >  (depends depends-on-foo conflicts-with-foo))
   > EOF
   Error: Can't find all required versions.
   Selected: depends-on-foo.0.0.1 foo.0.0.1 foo-dependency.0.0.1 x.dev
@@ -141,10 +128,7 @@ Conflicts with transitive test dependencies don't affect the solution:
   > (lang dune 3.8)
   > (package
   >  (name x)
-  >  (depends
-  >    depends-on-foo-with-test
-  >    conflicts-with-foo
-  >   ))
+  >  (depends depends-on-foo-with-test conflicts-with-foo))
   > EOF
   Solution for dune.lock:
   conflicts-with-foo.0.0.1

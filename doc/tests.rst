@@ -670,7 +670,7 @@ The ``cram`` stanza accepts the following fields:
 - ``(package <package-name>)`` - attach the tests selected by this stanza to the
   specified package
 - ``(shell <shell-spec>)`` - (available since Dune 3.10) specify the shell to be
-  used when executing the commands in cram test files. ``<shell-spec>`` can now
+  used when executing the commands in Cram test files. ``<shell-spec>`` can now
   be one of the following values:
 
   - ``:system`` - this stipulates that the system shell (that is, what you get

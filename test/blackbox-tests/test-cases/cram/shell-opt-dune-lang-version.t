@@ -1,4 +1,4 @@
-Check that (shell ..) option on (cram ..) stanza fail before (lang dune 3.10)
+Check that `(shell ..)` option on `(cram ..)` stanza fail before `(lang dune 3.10)`
 
   $ echo '(lang dune 3.9)' > dune-project
 
@@ -18,7 +18,7 @@ Check that (shell ..) option on (cram ..) stanza fail before (lang dune 3.10)
   Please update your dune-project file to have (lang dune 3.10).
   [1]
 
-Check that (shell ..) option on (cram ..) user action fail before (lang dune 3.10)
+Check that `(shell ..)` option on `(cram ..)` user action fail before `(lang dune 3.10)`
 
   $ echo '(lang dune 3.9)' > dune-project
 

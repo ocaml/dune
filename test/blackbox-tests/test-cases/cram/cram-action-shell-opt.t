@@ -1,4 +1,4 @@
-Check that cram tests run without shell option specified
+Check that Cram tests run without shell option specified
 
   $ echo '(lang dune 3.10)' > dune-project
 

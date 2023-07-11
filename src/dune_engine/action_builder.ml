@@ -82,7 +82,8 @@ let alias a = dep (Dep.alias a)
 let contents =
   let read_file =
     Memo.exec
-      (Memo.create "Action_builder.contents"
+      (Memo.create_with_store "Action_builder.contents"
+         ~store:(module Path.Table)
          ~input:(module Path)
          ~cutoff:String.equal
          (fun p -> Build_system.read_file p ~f:Io.read_file))

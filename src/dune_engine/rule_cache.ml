@@ -55,7 +55,7 @@ module Workspace_local = struct
         (* This mutable table is safe: it's only used by [execute_rule_impl] to
            decide whether to rebuild a rule or not; [execute_rule_impl] ensures
            that the targets are produced deterministically. *)
-        | None -> Path.Table.create 1024)
+        | None -> Path.Table.create ())
 
     let dump () =
       if !needs_dumping && Path.build_dir_exists () then (

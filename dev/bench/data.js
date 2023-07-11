@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689110828427,
+  "lastUpdate": 1689111149721,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23604,6 +23604,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "46.75774610449333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "03c3f0b2fdb1534bc5d944082842ba4ed0b28653",
+          "message": "chore: leave a comment about the weirdness of File_selector.dir (#8176)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-11T14:07:54-07:00",
+          "tree_id": "3deaaff04e0915d29dfd59af6cdccc3c2e2a1cc0",
+          "url": "https://github.com/ocaml/dune/commit/03c3f0b2fdb1534bc5d944082842ba4ed0b28653"
+        },
+        "date": 1689111148065,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "48.258789735680004",
             "unit": "seconds"
           }
         ]

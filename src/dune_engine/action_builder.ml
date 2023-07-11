@@ -79,22 +79,22 @@ let env_var s = deps (Dep.Set.singleton (Dep.env s))
 
 let alias a = dep (Dep.alias a)
 
-let contents_impl p =
-  of_thunk
-    { f =
-        (fun _mode ->
-          let open Memo.O in
-          let+ x = Build_system.read_file p ~f:Io.read_file in
-          (x, Dep.Map.empty))
-    }
-
 let contents =
-  let memo =
-    create_memo "file-contents"
-      ~input:(module Path)
-      ~cutoff:String.equal contents_impl
+  let read_file =
+    Memo.exec
+      (Memo.create "Action_builder.contents"
+         ~input:(module Path)
+         ~cutoff:String.equal
+         (fun p -> Build_system.read_file p ~f:Io.read_file))
   in
-  fun path -> exec_memo memo path
+  fun p ->
+    of_thunk
+      { f =
+          (fun _mode ->
+            let open Memo.O in
+            let+ x = read_file p in
+            (x, Dep.Map.empty))
+      }
 
 let lines_of p = contents p >>| String.split_lines
 

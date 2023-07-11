@@ -10,6 +10,8 @@ val map_pos : t -> f:(Lexing.position -> Lexing.position) -> t
 
 val create : start:Lexing.position -> stop:Lexing.position -> t
 
+val in_file : fname:string -> t
+
 val set_stop : t -> Lexing.position -> t
 
 val set_start : t -> Lexing.position -> t

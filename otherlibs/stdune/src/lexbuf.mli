@@ -28,6 +28,12 @@ module Loc : sig
 
   val equal : t -> t -> bool
 
+  val map_pos : t -> f:(Position.t -> Position.t) -> t
+
+  val in_file : fname:string -> t
+
+  val is_file_only : t -> bool
+
   (** To be used with [__POS__] *)
   val of_pos : string * int * int * int -> t
 

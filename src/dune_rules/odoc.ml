@@ -343,15 +343,15 @@ let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
 
 let setup_html sctx (odoc_file : odoc_artefact) =
   let ctx = Super_context.context sctx in
-  let to_remove, dummy =
+  let dummy =
     match odoc_file.source with
-    | Mld -> (odoc_file.html_file, [])
+    | Mld -> []
     | Module ->
       (* Dummy target so that the below rule as at least one target. We do this
          because we don't know the targets of odoc in this case. The proper way
          to support this would be to have directory targets. *)
       let dummy = Action_builder.create_file (odoc_file.html_dir ++ ".dummy") in
-      (odoc_file.html_dir, [ dummy ])
+      [ dummy ]
   in
   let open Memo.O in
   let odoc_support_path = Paths.odoc_support ctx in
@@ -369,16 +369,7 @@ let setup_html sctx (odoc_file : odoc_artefact) =
       ; Hidden_targets [ odoc_file.html_file ]
       ]
   in
-  add_rule sctx
-    (Action_builder.progn
-       (Action_builder.with_no_targets
-          (Action_builder.return
-             (Action.Full.make
-                (Action.Progn
-                   [ Action.Remove_tree to_remove
-                   ; Action.Mkdir odoc_file.html_dir
-                   ])))
-       :: run_odoc :: dummy))
+  add_rule sctx (Action_builder.progn (run_odoc :: dummy))
 
 let setup_css_rule sctx =
   let open Memo.O in

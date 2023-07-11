@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689093880776,
+  "lastUpdate": 1689094387670,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23488,6 +23488,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.528611875660005",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a38e4f79f7461ad60339ad133197c83368f7a00a",
+          "message": "refactor: remove extra word from stable digest (#8181)\n\nThe following constructor\r\n\r\n```\r\nFile of (string * Digest.t)\r\n```\r\n\r\nIs strictly worse than:\r\n\r\n```\r\nFile of string * Digest.t\r\n```\r\n\r\nBecause of the extra layer of boxing.\r\n\r\nI don't know if this was intentional, but it doesn't seem useful to me.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-11T09:29:03-07:00",
+          "tree_id": "2b197a22a72aa3fdaf88d4aa45a240fd3eaa02f2",
+          "url": "https://github.com/ocaml/dune/commit/a38e4f79f7461ad60339ad133197c83368f7a00a"
+        },
+        "date": 1689094386365,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "46.98131466279333",
             "unit": "seconds"
           }
         ]

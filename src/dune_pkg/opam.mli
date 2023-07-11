@@ -1,30 +1,12 @@
 open Stdune
 
-module Env : sig
-  (** An opam environment consisting of assignments to variables (e.g. "arch"
-      and "os") *)
-  type t
-
-  (** An environment containing no variables *)
-  val empty : t
-
-  (** Create an environment matching that of the global opam installation. *)
-  val global : unit -> t
-
-  (** Adds a value to the environment *)
-  val add : var:Env.Var.t -> value:string -> t -> t
-
-  (** [union l r] merges two environments together. On key clashes prefers the
-      value from [r]. *)
-  val union : t -> t -> t
-end
-
 module Repo : sig
   (** An opam repository *)
   type t
 
-  (** An opam repo in a local directory given by [opam_repo_dir]. *)
-  val local_repo_with_env : opam_repo_dir:Path.t -> env:Env.t -> t
+  (** [of_opam_repo_dir_path opam_repo_dir] creates a repo representedy by a
+      local directory in the path given by [opam_repo_dir]. *)
+  val of_opam_repo_dir_path : Path.t -> t
 end
 
 module Summary : sig

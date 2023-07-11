@@ -93,8 +93,18 @@ module Context_for_dune = struct
     | Version_preference.Oldest -> true
     | Newest -> false
 
-  let create_dir_context ~solver_env ~env ~packages_dir_path ~local_packages
+  let dir_context_env_of_solver_env { Solver_env.flags; sys } variable_name =
+    match Solver_env.Flag.of_string_opt variable_name with
+    | Some flag -> Some (OpamVariable.B (Solver_env.Flag.Set.mem flags flag))
+    | None ->
+      Solver_env.Sys_var.of_string_opt variable_name
+      |> Option.bind ~f:(fun sys_var ->
+             Solver_env.Sys_var.Bindings.get sys sys_var
+             |> Option.map ~f:OpamVariable.string)
+
+  let create_dir_context ~solver_env ~packages_dir_path ~local_packages
       ~version_preference =
+    let env = dir_context_env_of_solver_env solver_env in
     let dir_context =
       Dir_context.create
         ~prefer_oldest:(prefer_oldest version_preference)

@@ -1,7 +1,7 @@
 open Stdune
 module Package_name = Dune_lang.Package_name
 
-module Local_repo = struct
+module Repo = struct
   let ( / ) = Filename.concat
 
   type t = { packages_dir_path : Filename.t }
@@ -55,6 +55,7 @@ module Local_repo = struct
             ]
 
   let of_opam_repo_dir_path opam_repo_dir_path =
+    let opam_repo_dir_path = Path.to_string opam_repo_dir_path in
     if not (Sys.file_exists opam_repo_dir_path) then
       User_error.raise
         [ Pp.textf "%s does not exist" (String.maybe_quoted opam_repo_dir_path)
@@ -101,49 +102,7 @@ module Local_repo = struct
     OpamFile.OPAM.read (OpamFile.make (OpamFilename.raw opam_file_path))
 end
 
-module Env = struct
-  type t = OpamVariable.variable_contents OpamVariable.Map.t
-
-  let empty : t = OpamVariable.Map.empty
-
-  let global () : t =
-    OpamGlobalState.with_ `Lock_none (fun global_state ->
-        OpamVariable.Map.filter_map
-          (fun _variable (contents, _description) -> Lazy.force contents)
-          global_state.global_variables)
-
-  let find_by_name (t : t) ~name =
-    OpamVariable.Map.find_opt (OpamVariable.of_string name) t
-
-  let add ~var ~value t =
-    let variable = OpamVariable.of_string var in
-    let content = OpamVariable.string value in
-    OpamVariable.Map.add variable content t
-
-  let union = OpamVariable.Map.union (fun _left right -> right)
-end
-
 module Solver = Opam_0install.Solver.Make (Opam_solver.Context_for_dune)
-
-module Repo = struct
-  type t =
-    { local_repo : Local_repo.t
-    ; env : Env.t
-    }
-
-  let local_repo_with_env ~opam_repo_dir ~env =
-    let opam_repo_dir_path = Path.to_string opam_repo_dir in
-    { local_repo = Local_repo.of_opam_repo_dir_path opam_repo_dir_path; env }
-
-  let load_opam_package { local_repo; _ } opam_package =
-    Local_repo.load_opam_package local_repo opam_package
-
-  let create_context { local_repo = { packages_dir_path }; env } local_packages
-      ~solver_env ~version_preference =
-    Opam_solver.Context_for_dune.create_dir_context ~solver_env
-      ~env:(fun name -> Env.find_by_name env ~name)
-      ~packages_dir_path ~local_packages ~version_preference
-end
 
 module Summary = struct
   type t = { opam_packages_to_lock : OpamPackage.t list }
@@ -221,12 +180,15 @@ let solve_package_list local_packages context =
   | Error e -> User_error.raise [ Pp.text (Solver.diagnostics e) ]
   | Ok packages -> Solver.packages_of_result packages
 
-let solve_lock_dir ~solver_env ~version_preference ~repo local_packages =
+let solve_lock_dir ~solver_env ~version_preference ~(repo : Repo.t)
+    local_packages =
   let is_local_package package =
     OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
   in
   let context =
-    Repo.create_context repo local_packages ~solver_env ~version_preference
+    Opam_solver.Context_for_dune.create_dir_context ~solver_env
+      ~packages_dir_path:repo.packages_dir_path ~local_packages
+      ~version_preference
   in
   let opam_packages_to_lock =
     solve_package_list local_packages context

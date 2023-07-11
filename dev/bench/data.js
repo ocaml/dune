@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689111220012,
+  "lastUpdate": 1689111234256,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -55852,6 +55852,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "76.51105978555334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8bb4f089670004c9073afc47afa894c040de05fc",
+          "message": "refactor: introduce specialized location constructors (#8153)\n\nIntroduce special constructors for:\r\n\r\n* None locations\r\n* A location in a particular file without the line/column set\r\n* A location where start/stop are in the same file (basically all\r\n  locations)\r\n* A location where start/stop are on the same line (a large chunk of\r\n  locations)\r\n\r\nFor [Same_file], we end up saving 2 words per location.\r\n\r\nFor [Same_line], we end up saving 5 words per location.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-11T14:04:03-07:00",
+          "tree_id": "1768a834d734628875ba648b772cbb1fe1740fd3",
+          "url": "https://github.com/ocaml/dune/commit/8bb4f089670004c9073afc47afa894c040de05fc"
+        },
+        "date": 1689111233025,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.212119367806667",
             "unit": "seconds"
           }
         ]

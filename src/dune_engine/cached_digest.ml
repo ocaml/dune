@@ -97,19 +97,27 @@ let delete_very_recent_entries () =
      digests too aggressively. *)
   match Float.compare cache.max_timestamp now with
   | Lt -> ()
-  | Eq | Gt ->
-    Path.Table.filteri_inplace cache.table ~f:(fun ~key:path ~data ->
-        match Float.compare data.stats.mtime now with
-        | Lt -> true
-        | Gt | Eq ->
-          if !Clflags.debug_digests then
+  | Eq | Gt -> (
+    let filter (data : file) =
+      match Float.compare data.stats.mtime now with
+      | Lt -> true
+      | Gt | Eq -> false
+    in
+    match !Clflags.debug_digests with
+    | false ->
+      Path.Table.filteri_inplace cache.table ~f:(fun ~key:_ ~data ->
+          filter data)
+    | true ->
+      Path.Table.filteri_inplace cache.table ~f:(fun ~key:path ~data ->
+          let filter = filter data in
+          if not filter then
             Console.print
               [ Pp.textf
                   "Dropping cached digest for %s because it has exactly the \
                    same mtime as the file system clock."
                   (Path.to_string_maybe_quoted path)
               ];
-          false)
+          filter))
 
 let dump () =
   if !needs_dumping && Path.build_dir_exists () then (

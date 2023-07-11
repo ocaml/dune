@@ -68,16 +68,10 @@ type target =
   | Lib of Lib.Local.t
   | Pkg of Package.Name.t
 
-type source =
-  | Module
-  | Mld
-
 type odoc_artefact =
   { odoc_file : Path.Build.t
   ; odocl_file : Path.Build.t
-  ; html_dir : Path.Build.t
   ; html_file : Path.Build.t
-  ; source : source  (** source of the [odoc_file], either module or mld *)
   }
 
 let add_rule sctx =
@@ -343,16 +337,6 @@ let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
 
 let setup_html sctx (odoc_file : odoc_artefact) =
   let ctx = Super_context.context sctx in
-  let dummy =
-    match odoc_file.source with
-    | Mld -> []
-    | Module ->
-      (* Dummy target so that the below rule as at least one target. We do this
-         because we don't know the targets of odoc in this case. The proper way
-         to support this would be to have directory targets. *)
-      let dummy = Action_builder.create_file (odoc_file.html_dir ++ ".dummy") in
-      [ dummy ]
-  in
   let open Memo.O in
   let odoc_support_path = Paths.odoc_support ctx in
   let* run_odoc =
@@ -369,7 +353,7 @@ let setup_html sctx (odoc_file : odoc_artefact) =
       ; Hidden_targets [ odoc_file.html_file ]
       ]
   in
-  add_rule sctx (Action_builder.progn (run_odoc :: dummy))
+  add_rule sctx run_odoc
 
 let setup_css_rule sctx =
   let open Memo.O in
@@ -469,21 +453,14 @@ let create_odoc ctx ~target odoc_file =
   match target with
   | Lib _ ->
     let html_dir = html_base ++ Stdune.String.capitalize basename in
-    { odoc_file
-    ; odocl_file
-    ; html_dir
-    ; html_file = html_dir ++ "index.html"
-    ; source = Module
-    }
+    { odoc_file; odocl_file; html_file = html_dir ++ "index.html" }
   | Pkg _ ->
     { odoc_file
     ; odocl_file
-    ; html_dir = html_base
     ; html_file =
         html_base
         ++ sprintf "%s.html"
              (basename |> String.drop_prefix ~prefix:"page-" |> Option.value_exn)
-    ; source = Mld
     }
 
 let static_html ctx =

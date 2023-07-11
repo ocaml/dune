@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689071423135,
+  "lastUpdate": 1689071435204,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -55214,6 +55214,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "68.576434013",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "644ec7ceadf5345c4ac7cdec43e68378c3a685db",
+          "message": "bench: remove fragments and stacksize (#8175)\n\nThe results appear to differ after each run so no point keeping them\r\naround really.",
+          "timestamp": "2023-07-11T03:04:24-07:00",
+          "tree_id": "ad98fec7dd498ba0913b9180e882e0a3eceb676d",
+          "url": "https://github.com/ocaml/dune/commit/644ec7ceadf5345c4ac7cdec43e68378c3a685db"
+        },
+        "date": 1689071434245,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8865487637400002",
             "unit": "seconds"
           }
         ]

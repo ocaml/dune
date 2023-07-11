@@ -172,11 +172,9 @@ module Fact = struct
       Dyn.Variant ("Alias", [ Dyn.Record [ ("files", Files.to_dyn files) ] ])
 
   module Stable_for_digest = struct
-    type file = string * Digest.t
-
     type t =
       | Env of string * string option
-      | File of file
+      | File of string * Digest.t
       | File_selector of Dyn.t * Digest.t
       | Alias of Digest.t
   end
@@ -277,7 +275,6 @@ module Facts = struct
 
   let digest t ~env =
     let facts =
-      let file (p, d) = (Path.to_string p, d) in
       Map.foldi t ~init:[]
         ~f:(fun dep fact acc : Fact.Stable_for_digest.t list ->
           match dep with
@@ -286,7 +283,7 @@ module Facts = struct
           | File _ | File_selector _ | Alias _ -> (
             match (fact : Fact.t) with
             | Nothing -> acc
-            | File (p, d) -> File (file (p, d)) :: acc
+            | File (p, d) -> File (Path.to_string p, d) :: acc
             | File_selector (id, ps) -> File_selector (id, ps.digest) :: acc
             | Alias ps -> Alias ps.digest :: acc))
     in

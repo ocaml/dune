@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689085376481,
+  "lastUpdate": 1689085388821,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -55301,6 +55301,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "68.55520299086",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f6cc7756791805ef969049947a8c1bc047d007a3",
+          "message": "refactor: add cutoff to command arguments (#8171)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-11T06:57:07-07:00",
+          "tree_id": "ac02b17d3194ce2358bb4ce8b2faecd06397465c",
+          "url": "https://github.com/ocaml/dune/commit/f6cc7756791805ef969049947a8c1bc047d007a3"
+        },
+        "date": 1689085387960,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.91544965522",
             "unit": "seconds"
           }
         ]

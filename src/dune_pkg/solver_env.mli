@@ -45,12 +45,12 @@ module Sys_var : sig
 
     val get : t -> sys_var -> string option
 
-    type merge_error =
+    type union_error =
       [ `Var_in_both_with_different_values of sys_var * string * string ]
 
     (** Merge two environments returning an error if they both contain a binding
         of the same variable to different values. *)
-    val merge : t -> t -> (t, merge_error) result
+    val union : t -> t -> (t, union_error) result
   end
 end
 

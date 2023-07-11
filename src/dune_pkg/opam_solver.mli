@@ -10,8 +10,8 @@ module Summary : sig
 end
 
 val solve_lock_dir :
-     solver_env:Solver_env.t
-  -> version_preference:Version_preference.t
-  -> repo:Opam_repo.t
-  -> OpamFile.OPAM.t OpamTypes.name_map
-  -> Summary.t * Lock_dir.t
+     Solver_env.t
+  -> Version_preference.t
+  -> Opam_repo.t
+  -> local_packages:OpamFile.OPAM.t OpamTypes.name_map
+  -> (Summary.t * Lock_dir.t, [ `Diagnostic_message of _ Pp.t ]) result

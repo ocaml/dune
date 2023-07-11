@@ -52,6 +52,7 @@ Generate the lockdir for the default context.
   bar.0.5.0
   baz.0.1.0
   foo.0.0.1
+  
 
 Only foo.lock (the default context's lockdir) was generated.
   $ find *.lock | sort
@@ -68,6 +69,7 @@ Generate the lockdir with the default context explicitly specified.
   bar.0.5.0
   baz.0.1.0
   foo.0.0.1
+  
 
 Again, only foo.lock (the default context's lockdir) was generated.
   $ find *.lock | sort
@@ -84,6 +86,7 @@ Generate the lockdir for the non-default context.
   bar.0.5.0
   baz.0.1.0
   foo.0.0.1
+  
 
 Now only bar.lock was generated.
   $ find *.lock | sort
@@ -100,6 +103,7 @@ Generate the lockdir for a context which prefers oldest package versions.
   bar.0.4.0
   baz.0.1.0
   foo.0.0.1
+  
 
 Re-generate the lockdir for a context which prefers oldest package versions,
 but override it to prefer newest with a command line argument.
@@ -108,6 +112,7 @@ but override it to prefer newest with a command line argument.
   bar.0.5.0
   baz.0.1.0
   foo.0.0.1
+  
 
 Generate the lockdir for all (non-opam) contexts.
   $ dune pkg lock --opam-repository-path=mock-opam-repository --all-contexts
@@ -115,14 +120,17 @@ Generate the lockdir for all (non-opam) contexts.
   bar.0.4.0
   baz.0.1.0
   foo.0.0.1
+  
   Solution for bar.lock:
   bar.0.5.0
   baz.0.1.0
   foo.0.0.1
+  
   Solution for foo.lock:
   bar.0.5.0
   baz.0.1.0
   foo.0.0.1
+  
 
 Now both lockdirs were generated.
   $ find *.lock | sort

@@ -225,7 +225,7 @@ module Lock = struct
       ~solver_env_from_context ~sys_bindings_from_current_system =
     let sys =
       match
-        Dune_pkg.Solver_env.Sys_var.Bindings.merge
+        Dune_pkg.Solver_env.Sys_var.Bindings.union
           solver_env_from_context.Dune_pkg.Solver_env.sys
           sys_bindings_from_current_system
       with
@@ -234,7 +234,7 @@ module Lock = struct
           (`Var_in_both_with_different_values
             (var, value_from_context, value_from_system)) ->
         User_error.raise
-          [ Pp.textf "Can't create solver environment for context: %s"
+          [ Pp.textf "Can't create solver environment for context %s"
               (String.maybe_quoted
               @@ Dune_engine.Context_name.to_string context_name)
           ; Pp.text
@@ -287,7 +287,7 @@ module Lock = struct
                of the environment variables infered from the current system \
                and the environment variables set in the build context(s). If \
                the current system and the build context(s) disagree on the \
-               value of an environment variable then an error is thrown.")
+               value of an environment variable then an error is raised.")
     and+ just_print_solver_env =
       Arg.(
         value & flag
@@ -309,34 +309,31 @@ module Lock = struct
         ~all_contexts_arg:all_contexts
         ~version_preference_arg:version_preference
     in
-    Per_context.check_for_dup_lock_dir_paths per_context;
     let* sys_bindings_from_current_system =
       if use_env_from_current_system then
         Dune_pkg.Sys_poll.sys_bindings ~path:(Env_path.path Stdune.Env.initial)
       else Fiber.return Dune_pkg.Solver_env.Sys_var.Bindings.empty
     in
     if just_print_solver_env then
-      Fiber.return
-      @@ List.iter per_context
-           ~f:(fun
-                { Per_context.solver_env = solver_env_from_context
-                ; context_common = { name = context_name; _ }
-                ; _
-                }
-              ->
-             let solver_env =
-               merge_current_system_bindings_into_solver_env_from_context
-                 ~context_name ~solver_env_from_context
-                 ~sys_bindings_from_current_system
-             in
-             User_message.make
-               [ Pp.textf "Solver environment for context %s:\n%s"
-                   (String.maybe_quoted
-                   @@ Dune_engine.Context_name.to_string context_name)
-                   (Dune_sexp.to_string @@ Dune_pkg.Solver_env.encode solver_env)
-               ]
-             |> Console.print_user_message)
-    else
+      let+ () = Fiber.return () in
+      List.iter per_context
+        ~f:(fun
+             { Per_context.solver_env = solver_env_from_context
+             ; context_common = { name = context_name; _ }
+             ; _
+             }
+           ->
+          let solver_env =
+            merge_current_system_bindings_into_solver_env_from_context
+              ~context_name ~solver_env_from_context
+              ~sys_bindings_from_current_system
+          in
+          Console.printf "Solver environment for context %s:\n%s"
+            (String.maybe_quoted
+            @@ Dune_engine.Context_name.to_string context_name)
+            (Dune_sexp.to_string @@ Dune_pkg.Solver_env.encode solver_env))
+    else (
+      Per_context.check_for_dup_lock_dir_paths per_context;
       let* source_dir = Memo.run (Source_tree.root ()) in
       let+ opam_repo_dir =
         match opam_repository_path with
@@ -359,31 +356,49 @@ module Lock = struct
       (* Construct a list of thunks that will perform all the file IO side
          effects after performing validation so that if materializing any
          lockdir would fail then no side effect takes place. *)
-      let write_disk_list =
-        List.map per_context
-          ~f:(fun
-               { Per_context.lock_dir_path
-               ; version_preference
-               ; solver_env = solver_env_from_context
-               ; context_common = { name = context_name; _ }
-               }
-             ->
-            let solver_env =
-              merge_current_system_bindings_into_solver_env_from_context
-                ~context_name ~solver_env_from_context
-                ~sys_bindings_from_current_system
+      List.map per_context
+        ~f:(fun
+             { Per_context.lock_dir_path
+             ; version_preference
+             ; solver_env = solver_env_from_context
+             ; context_common = { name = context_name; _ }
+             }
+           ->
+          let solver_env =
+            merge_current_system_bindings_into_solver_env_from_context
+              ~context_name ~solver_env_from_context
+              ~sys_bindings_from_current_system
+          in
+          match
+            Dune_pkg.Opam_solver.solve_lock_dir solver_env version_preference
+              repo ~local_packages:opam_file_map
+          with
+          | Ok (summary, lock_dir) ->
+            let summary_message =
+              Dune_pkg.Opam_solver.Summary.selected_packages_message summary
+                ~lock_dir_path
+              |> User_message.pp
             in
-            let summary, lock_dir =
-              Dune_pkg.Opam_solver.solve_lock_dir ~solver_env
-                ~version_preference ~repo opam_file_map
-            in
-            Console.print_user_message
-              (Dune_pkg.Opam_solver.Summary.selected_packages_message summary
-                 ~lock_dir_path);
-            Lock_dir.Write_disk.prepare ~lock_dir_path lock_dir)
-      in
-      (* All the file IO side effects happen here: *)
-      List.iter write_disk_list ~f:Lock_dir.Write_disk.commit
+            Ok
+              ( Lock_dir.Write_disk.prepare ~lock_dir_path lock_dir
+              , summary_message )
+          | Error (`Diagnostic_message message) -> Error (context_name, message))
+      |> Result.List.all
+      |> function
+      | Error (context_name, message) ->
+        User_error.raise
+          [ Pp.textf "Unable to solve dependencies in build context: %s"
+              (Dune_engine.Context_name.to_string context_name
+              |> String.maybe_quoted)
+          ; message
+          ]
+      | Ok write_disks_with_summaries ->
+        let write_disk_list, summary_pps =
+          List.split write_disks_with_summaries
+        in
+        Dune_console.print summary_pps;
+        (* All the file IO side effects happen here: *)
+        List.iter write_disk_list ~f:Lock_dir.Write_disk.commit)
 
   let info =
     let doc = "Create a lockfile" in

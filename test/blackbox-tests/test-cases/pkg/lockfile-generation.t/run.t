@@ -17,6 +17,7 @@ Run the solver and generate a lock directory.
   bar.0.5.0
   baz.0.1.0
   foo.0.0.1
+  
 
 Helper to the name and contents of each file in the lock directory separated by
 "---", sorting by filename for consistency.
@@ -60,6 +61,7 @@ Run the solver again preferring oldest versions of dependencies:
   bar.0.4.0
   baz.0.1.0
   foo.0.0.1
+  
 
   $ print_all
   dune.lock/bar.pkg:
@@ -105,7 +107,8 @@ Regenerate the `dune-project` file introducing an unsatisfiable constraint.
 
 Run the solver again. This time it will fail.
   $ dune pkg lock --opam-repository-path=mock-opam-repository
-  Error: Can't find all required versions.
+  Error: Unable to solve dependencies in build context: default
+  Can't find all required versions.
   Selected: baz.0.1.0 foo.0.0.1 lockfile_generation_test.dev
   - bar -> (problem)
       foo 0.0.1 requires >= 0.2

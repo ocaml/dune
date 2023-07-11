@@ -136,20 +136,22 @@ module Sys_var = struct
       let open Dune_lang.Encoder in
       list (pair encode string) (Map.to_list t)
 
-    type merge_error =
+    type union_error =
       [ `Var_in_both_with_different_values of T.t * string * string ]
 
-    let merge a b =
-      let b_without_dup_values =
-        Map.filteri b ~f:(fun var b_value ->
-            match get a var with
-            | None -> true
-            | Some a_value -> not (String.equal a_value b_value))
-      in
-      Map.of_list (Map.to_list a @ Map.to_list b_without_dup_values)
-      |> Result.map_error ~f:(fun (key, a, b) ->
-             assert (not (String.equal a b));
-             `Var_in_both_with_different_values (key, a, b))
+    exception E of union_error
+
+    let union a b =
+      try
+        Map.union a b ~f:(fun common_key a_value b_value ->
+            if String.equal a_value b_value then Some a_value
+            else
+              raise
+                (E
+                   (`Var_in_both_with_different_values
+                     (common_key, a_value, b_value))))
+        |> Result.ok
+      with E union_error -> Error union_error
   end
 end
 

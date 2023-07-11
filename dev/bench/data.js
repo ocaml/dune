@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689059399524,
+  "lastUpdate": 1689059413018,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -55127,6 +55127,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "78.54599600912",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "etienne.millon@gmail.com",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "distinct": true,
+          "id": "9f1ad68fa4d2438a14ccfe51a5006eb2e7e09e9f",
+          "message": "fix(staged_pps): expand path relative to root\n\nFixes #8158\n\nThis is an error introduced in #8109, not part of a release.\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-11T08:40:37+02:00",
+          "tree_id": "f87249e4c0b145b44a9a34782b859ca3682c0892",
+          "url": "https://github.com/ocaml/dune/commit/9f1ad68fa4d2438a14ccfe51a5006eb2e7e09e9f"
+        },
+        "date": 1689059412170,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.224575949066667",
             "unit": "seconds"
           }
         ]

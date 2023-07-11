@@ -265,13 +265,7 @@ module Facts = struct
             let p = Path.Build.parent_exn p in
             Path.Build.Set.add acc p)
         | File_selector (_, ps) | Alias ps ->
-          Path.Build.Set.union_all
-            [ acc
-            ; Path.Map.keys ps.dirs
-              |> List.filter_map ~f:as_in_build_dir_no_source
-              |> Path.Build.Set.of_list
-            ; Fact.Files.necessary_dirs_for_sandboxing ps
-            ])
+          Path.Build.Set.union acc (Fact.Files.necessary_dirs_for_sandboxing ps))
 
   let digest t ~env =
     let facts =

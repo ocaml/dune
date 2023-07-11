@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689055504037,
+  "lastUpdate": 1689055767171,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23285,6 +23285,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "54.554895648586665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1b87892f314d9245bd00af77a9fcf7505d34b0bc",
+          "message": "refactor: halve the work of [Action_builder.contents] (#8166)\n\nI noticed that [Action_builder.contents] shares no work between [Eager]\r\nand [Lazy]. This is wrong because its implementation just ignores this\r\nargument.\r\n\r\nThe result is that we should do half the work reading files and store\r\nhalf the table as well.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-10T22:51:13-07:00",
+          "tree_id": "94b8f2ff9d5cda9ce62c0dcf60ccdd87f13b0341",
+          "url": "https://github.com/ocaml/dune/commit/1b87892f314d9245bd00af77a9fcf7505d34b0bc"
+        },
+        "date": 1689055766266,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.90914193344",
             "unit": "seconds"
           }
         ]

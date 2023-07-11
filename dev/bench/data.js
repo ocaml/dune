@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689055767171,
+  "lastUpdate": 1689055912493,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23314,6 +23314,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.90914193344",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8aa752a79fda20f6831be9146e01c528698ff535",
+          "message": "Pin stdune in monorepo benchmark (#8170)\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-07-10T22:52:44-07:00",
+          "tree_id": "c3eed9253d8888b3ce3d39ad5bb9b316f067c51e",
+          "url": "https://github.com/ocaml/dune/commit/8aa752a79fda20f6831be9146e01c528698ff535"
+        },
+        "date": 1689055911555,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.78580113561333",
             "unit": "seconds"
           }
         ]

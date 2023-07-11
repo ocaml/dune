@@ -161,10 +161,8 @@ let results clean zero size =
   ; display "Free Words" "Words" clean.free_words zero.free_words
   ; display "Free Blocks" "Blocks" clean.free_blocks zero.free_blocks
   ; display "Largest Free" "Words" clean.largest_free zero.largest_free
-  ; display "Fragments" "Fragments" clean.fragments zero.fragments
   ; display "Compactions" "Compactions" clean.compactions zero.compactions
   ; display "Top Heap Words" "Words" clean.top_heap_words zero.top_heap_words
-  ; display "Stack Size" "Words" clean.stack_size zero.stack_size
   ]
 
 let () =

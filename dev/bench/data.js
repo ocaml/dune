@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689087342925,
+  "lastUpdate": 1689087354732,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -55388,6 +55388,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "69.34191777104",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "50b181b0e016c2647b2069b49c6e512c666c1d8a",
+          "message": "refactor: improve flushing unreliable digest (#8172)\n\ndo the debug check only once\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-11T07:29:53-07:00",
+          "tree_id": "6e3455d774bb39c9c48b2f18fa26bc706e86783a",
+          "url": "https://github.com/ocaml/dune/commit/50b181b0e016c2647b2069b49c6e512c666c1d8a"
+        },
+        "date": 1689087354096,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.9177593014733334",
             "unit": "seconds"
           }
         ]

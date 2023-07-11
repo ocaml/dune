@@ -1,8 +1,4 @@
-open! Stdune
-module Context = Dune_rules.Context
-module Workspace = Dune_rules.Workspace
-module Dune_project = Dune_rules.Dune_project
-module Vcs = Dune_vcs.Vcs
+open Import
 
 type checked =
   | In_build_dir of (Context.t * Path.Source.t)

@@ -8,16 +8,12 @@ end
 
 (** A DAG (Directed Acyclic Graph). *)
 module type S = sig
-  (** Info about a node in the DAG. *)
-  type node_info
-
   (** Type of values attached to nodes. *)
   type value
 
-  type node =
-    { data : value
-    ; info : node_info
-    }
+  type node
+
+  val value : node -> value
 
   module Id : Id.S
 
@@ -26,8 +22,8 @@ module type S = sig
   (** A cycle has been found while adding an arc. *)
   exception Cycle of node list
 
-  (** [create_node_info dag v] creates new node info that belongs to [dag]. *)
-  val create_node_info : unit -> node_info
+  (** [create_node v] creates new node info that belongs to [dag]. *)
+  val create_node : value -> node
 
   (** [add_assuming_missing dag v w] creates an arc going from [v] to [w]
       assuming it doesn't already exists. If the arc does exist, the behaviour

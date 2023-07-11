@@ -18,10 +18,6 @@ val of_lexbuf : Lexing.lexbuf -> t
 
 val to_dyn : t -> Dyn.t
 
-val dyn_of_position_no_file : Lexing.position -> Dyn.t
-
-val equal : t -> t -> bool
-
 (** To be used with [__POS__] *)
 val of_pos : string * int * int * int -> t
 

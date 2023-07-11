@@ -17,7 +17,7 @@ let error { current_file = file; include_stack } =
   let line_loc (loc, file) =
     sprintf "%s:%d"
       (Path.Source.to_string_maybe_quoted file)
-      loc.Loc.start.pos_lnum
+      (Loc.start loc).pos_lnum
   in
   User_error.raise ~loc
     [ Pp.text "Recursive inclusion of dune files detected:"

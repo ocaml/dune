@@ -64,26 +64,9 @@ module Summary : sig
     t -> lock_dir_path:Path.Source.t -> User_message.t
 end
 
-module Version_preference : sig
-  type t =
-    | Newest
-    | Oldest
-
-  val equal : t -> t -> bool
-
-  val to_string : t -> string
-
-  val to_dyn : t -> Dyn.t
-
-  val default : t
-
-  val all_by_string : (string * t) list
-
-  val decode : t Dune_sexp.Decoder.t
-end
-
 val solve_lock_dir :
-     version_preference:Version_preference.t
+     solver_env:Solver_env.t
+  -> version_preference:Version_preference.t
   -> repo_selection:Repo_selection.t
   -> OpamFile.OPAM.t OpamTypes.name_map
   -> Summary.t * Lock_dir.t

@@ -145,7 +145,8 @@ let describe_rule (rule : Rule.t) =
   Pp.text
   @@
   match rule.info with
-  | From_dune_file { start; _ } ->
+  | From_dune_file loc ->
+    let start = Loc.start loc in
     start.pos_fname ^ ":" ^ string_of_int start.pos_lnum
   | Internal -> "<internal location>"
   | Source_file_copy _ -> "file present in source tree"
@@ -661,9 +662,6 @@ end = struct
       ({ Dir_triage.Build_directory.dir; context_or_install; sub_dir } as
       build_dir) =
     (* Load all the rules *)
-    let (module RG : Build_config.Rule_generator) =
-      (Build_config.get ()).rule_generator
-    in
     Gen_rules.gen_rules build_dir >>= function
     | Under_directory_target { directory_target_ancestor } ->
       Memo.return

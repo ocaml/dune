@@ -726,7 +726,7 @@ let forbid_opam_files_relative_to_project opam_file_location packages =
              files must live in the opam/ subdirecotry. The following opam \
              files must be moved:"
         ; Pp.enumerate (Package.Name.Map.values packages)
-            ~f:(fun ((loc : Loc.t), _) -> Pp.text loc.start.pos_fname)
+            ~f:(fun ((loc : Loc.t), _) -> Pp.text (Loc.start loc).pos_fname)
         ]
 
 let parse_packages (name : Name.t option) ~info ~dir ~version packages

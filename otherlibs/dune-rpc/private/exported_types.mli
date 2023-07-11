@@ -1,7 +1,7 @@
 (** Types exposed to end-user consumers of [dune_rpc.mli]. *)
 
 module Loc : sig
-  type t = Stdune.Loc.t =
+  type t = Stdune.Lexbuf.Loc.t =
     { start : Lexing.position
     ; stop : Lexing.position
     }

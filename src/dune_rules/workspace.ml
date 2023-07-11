@@ -263,16 +263,17 @@ module Context = struct
     type t =
       { base : Common.t
       ; lock : Path.Source.t option
-      ; version_preference : Dune_pkg.Opam.Version_preference.t option
+      ; version_preference : Dune_pkg.Version_preference.t option
+      ; solver_env : Dune_pkg.Solver_env.t option
       }
 
-    let to_dyn { base; lock; version_preference } =
+    let to_dyn { base; lock; version_preference; solver_env } =
       Dyn.record
         [ ("base", Common.to_dyn base)
         ; ("lock", Dyn.(option Path.Source.to_dyn) lock)
         ; ( "version_preference"
-          , Dyn.option Dune_pkg.Opam.Version_preference.to_dyn
-              version_preference )
+          , Dyn.option Dune_pkg.Version_preference.to_dyn version_preference )
+        ; ("solver_env", Dyn.option Dune_pkg.Solver_env.to_dyn solver_env)
         ]
 
     let decode =
@@ -288,8 +289,8 @@ module Context = struct
         *)
         field_o "lock" (Dpath.Local.decode ~dir:(Path.source Path.Source.root))
       and+ version_preference =
-        field_o "version_preference" Dune_pkg.Opam.Version_preference.decode
-      in
+        field_o "version_preference" Dune_pkg.Version_preference.decode
+      and+ solver_env = field_o "solver_env" Dune_pkg.Solver_env.decode in
       let lock = Option.map lock ~f:Path.as_in_source_tree_exn in
       fun ~profile_default ~instrument_with_default ~x ->
         let common = common ~profile_default ~instrument_with_default in
@@ -304,13 +305,14 @@ module Context = struct
         let base =
           { common with targets = Target.add common.targets x; name }
         in
-        { base; lock; version_preference }
+        { base; lock; version_preference; solver_env }
 
-    let equal { base; lock; version_preference } t =
+    let equal { base; lock; version_preference; solver_env } t =
       Common.equal base t.base
       && Option.equal Path.Source.equal lock t.lock
-      && Option.equal Dune_pkg.Opam.Version_preference.equal version_preference
+      && Option.equal Dune_pkg.Version_preference.equal version_preference
            t.version_preference
+      && Option.equal Dune_pkg.Solver_env.equal solver_env t.solver_env
   end
 
   type t =
@@ -370,6 +372,7 @@ module Context = struct
     Default
       { lock = None
       ; version_preference = None
+      ; solver_env = None
       ; base =
           { loc = Loc.of_pos __POS__
           ; targets = [ Option.value x ~default:Target.Native ]

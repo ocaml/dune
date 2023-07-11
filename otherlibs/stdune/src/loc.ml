@@ -3,37 +3,25 @@ module O = Comparable.Make (Loc0)
 include O
 
 let in_file p =
-  let pos = none_pos (Path.to_string p) in
-  { start = pos; stop = pos }
+  let pos = Lexbuf.Position.in_file ~fname:(Path.to_string p) in
+  create ~start:pos ~stop:pos
 
 let in_dir = in_file
 
 let drop_position (t : t) =
-  let pos = none_pos t.start.pos_fname in
-  { start = pos; stop = pos }
+  let pos = Lexbuf.Position.in_file ~fname:(start t).pos_fname in
+  create ~start:pos ~stop:pos
 
 let of_lexbuf lexbuf : t =
-  { start = Lexing.lexeme_start_p lexbuf; stop = Lexing.lexeme_end_p lexbuf }
+  create
+    ~start:(Lexing.lexeme_start_p lexbuf)
+    ~stop:(Lexing.lexeme_end_p lexbuf)
 
-let equal_position
-    { Lexing.pos_fname = f_a; pos_lnum = l_a; pos_bol = b_a; pos_cnum = c_a }
-    { Lexing.pos_fname = f_b; pos_lnum = l_b; pos_bol = b_b; pos_cnum = c_b } =
-  f_a = f_b && l_a = l_b && b_a = b_b && c_a = c_b
-
-let equal { start = start_a; stop = stop_a } { start = start_b; stop = stop_b }
-    =
-  equal_position start_a start_b && equal_position stop_a stop_b
-
-let of_pos (fname, lnum, cnum, enum) =
-  let pos : Lexing.position =
-    { pos_fname = fname; pos_lnum = lnum; pos_cnum = cnum; pos_bol = 0 }
-  in
-  { start = pos; stop = { pos with pos_cnum = enum } }
-
-let is_none = equal none
+let of_pos pos = Lexbuf.Loc.of_pos pos |> of_lexbuf_loc
 
 let to_file_colon_line t =
-  Printf.sprintf "%s:%d" t.start.pos_fname t.start.pos_lnum
+  let start = start t in
+  Printf.sprintf "%s:%d" start.pos_fname start.pos_lnum
 
 let to_dyn_hum t : Dyn.t = String (to_file_colon_line t)
 
@@ -51,8 +39,9 @@ let pp_line padding_width (lnum, l) =
 
 type tag = Loc
 
-let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full { start; stop } :
-    tag Pp.t =
+let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full loc : tag Pp.t =
+  let start = start loc in
+  let stop = stop loc in
   let start_c = start.pos_cnum - start.pos_bol in
   let stop_c = stop.pos_cnum - start.pos_bol in
   let file = start.pos_fname in
@@ -131,7 +120,9 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full { start; stop } :
         exn;
       Pp.nop
 
-let pp ({ start; stop } as loc) =
+let pp loc =
+  let start = start loc in
+  let stop = stop loc in
   let start_c = start.pos_cnum - start.pos_bol in
   let stop_c = stop.pos_cnum - start.pos_bol in
   let open Pp.O in
@@ -143,13 +134,13 @@ let pp ({ start; stop } as loc) =
   ++ pp_file_excerpt ~context_lines:2 ~max_lines_to_print_in_full:10 loc
 
 let on_same_line loc1 loc2 =
-  let start1 = loc1.start in
-  let start2 = loc2.start in
+  let start1 = start loc1 in
+  let start2 = start loc2 in
   let same_file = String.equal start1.pos_fname start2.pos_fname in
   let same_line = Int.equal start1.pos_lnum start2.pos_lnum in
   same_file && same_line
 
-let span begin_ end_ = { begin_ with stop = end_.stop }
+let span begin_ end_ = set_stop begin_ (stop end_)
 
 let rec render ppf pp =
   Pp.to_fmt_with_tags ppf pp ~tag_handler:(fun ppf Loc pp ->

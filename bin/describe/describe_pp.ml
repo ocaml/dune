@@ -1,5 +1,4 @@
 open Import
-open Stdune
 
 let pp_with_ocamlc sctx project pp_file =
   let open Dune_engine in

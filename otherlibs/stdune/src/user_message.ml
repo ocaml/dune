@@ -152,7 +152,9 @@ let pp { loc; paragraphs; hints; annots = _ } =
   let paragraphs =
     match loc with
     | None -> paragraphs
-    | Some { Loc0.start; stop } ->
+    | Some loc ->
+      let start = Loc0.start loc in
+      let stop = Loc0.stop loc in
       let start_c = start.pos_cnum - start.pos_bol in
       let stop_c = stop.pos_cnum - start.pos_bol in
       Pp.box

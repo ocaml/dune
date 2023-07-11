@@ -555,6 +555,7 @@ end = struct
     | Default
         { lock = _
         ; version_preference = _
+        ; solver_env = _
         ; base =
             { targets
             ; name

@@ -1,5 +1,4 @@
 open Import
-open Stdune
 
 let doc = "Format dune files."
 

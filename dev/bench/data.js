@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689109916175,
+  "lastUpdate": 1689110248033,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -55649,6 +55649,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.25496180352",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c7a543aaf6d77e439da68ab67c8ce319544ae642",
+          "message": "refactor: use stdlib for filter_inplace (#8185)\n\nThe primitive from the stdlib is a lot faster\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-11T13:51:30-07:00",
+          "tree_id": "5116f9039657d96fe231cded2ed8319733e9eebc",
+          "url": "https://github.com/ocaml/dune/commit/c7a543aaf6d77e439da68ab67c8ce319544ae642"
+        },
+        "date": 1689110247156,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "69.92821049592",
             "unit": "seconds"
           }
         ]

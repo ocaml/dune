@@ -1,12 +1,17 @@
-open Stdune
+open! Stdune
 
-module Context_for_dune : sig
-  include Opam_0install.S.CONTEXT
+module Summary : sig
+  (** Some intermediate state from the solve exposed for logging purposes *)
+  type t
 
-  val create_dir_context :
-       solver_env:Solver_env.t
-    -> packages_dir_path:Filename.t
-    -> local_packages:OpamFile.OPAM.t OpamTypes.name_map
-    -> version_preference:Version_preference.t
-    -> t
+  (** A message listing selected packages *)
+  val selected_packages_message :
+    t -> lock_dir_path:Path.Source.t -> User_message.t
 end
+
+val solve_lock_dir :
+     solver_env:Solver_env.t
+  -> version_preference:Version_preference.t
+  -> repo:Opam_repo.t
+  -> OpamFile.OPAM.t OpamTypes.name_map
+  -> Summary.t * Lock_dir.t

@@ -1,7 +1,6 @@
 open Import
 module Lock_dir = Dune_pkg.Lock_dir
 module Fetch = Dune_pkg.Fetch
-module Opam = Dune_pkg.Opam
 
 module Opam_repository = struct
   type t = { url : OpamUrl.t }
@@ -353,7 +352,7 @@ module Lock = struct
           | Ok path -> path
           | Error _ -> failwith "TODO")
       in
-      let repo = Opam.Repo.of_opam_repo_dir_path opam_repo_dir in
+      let repo = Dune_pkg.Opam_repo.of_opam_repo_dir_path opam_repo_dir in
       let project = Source_tree.Dir.project source_dir in
       let dune_package_map = Dune_project.packages project in
       let opam_file_map = opam_file_map_of_dune_package_map dune_package_map in
@@ -375,11 +374,11 @@ module Lock = struct
                 ~sys_bindings_from_current_system
             in
             let summary, lock_dir =
-              Dune_pkg.Opam.solve_lock_dir ~solver_env ~version_preference ~repo
-                opam_file_map
+              Dune_pkg.Opam_solver.solve_lock_dir ~solver_env
+                ~version_preference ~repo opam_file_map
             in
             Console.print_user_message
-              (Dune_pkg.Opam.Summary.selected_packages_message summary
+              (Dune_pkg.Opam_solver.Summary.selected_packages_message summary
                  ~lock_dir_path);
             Lock_dir.Write_disk.prepare ~lock_dir_path lock_dir)
       in

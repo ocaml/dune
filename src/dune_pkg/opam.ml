@@ -123,46 +123,26 @@ module Env = struct
   let union = OpamVariable.Map.union (fun _left right -> right)
 end
 
-module Local_repo_with_env = struct
+module Solver = Opam_0install.Solver.Make (Opam_solver.Context_for_dune)
+
+module Repo = struct
   type t =
     { local_repo : Local_repo.t
     ; env : Env.t
     }
-end
-
-module Solver = Opam_0install.Solver.Make (Opam_solver.Context_for_dune)
-
-module Repo_state = struct
-  type t = Local_repo_with_env of Local_repo_with_env.t
-
-  let load_opam_package t opam_package =
-    match t with
-    | Local_repo_with_env { local_repo; _ } ->
-      Local_repo.load_opam_package local_repo opam_package
-
-  let create_context t local_packages ~solver_env ~version_preference =
-    match t with
-    | Local_repo_with_env { local_repo = { packages_dir_path }; env } ->
-      Opam_solver.Context_for_dune.create_dir_context ~solver_env
-        ~env:(fun name -> Env.find_by_name env ~name)
-        ~packages_dir_path ~local_packages ~version_preference
-end
-
-module Repo_selection = struct
-  type t = Local_repo_with_env.t
 
   let local_repo_with_env ~opam_repo_dir ~env =
     let opam_repo_dir_path = Path.to_string opam_repo_dir in
-    { Local_repo_with_env.local_repo =
-        Local_repo.of_opam_repo_dir_path opam_repo_dir_path
-    ; env
-    }
+    { local_repo = Local_repo.of_opam_repo_dir_path opam_repo_dir_path; env }
 
-  (* [with_state ~f t] calls [f] on a [Repo_state.t] implied by [t] and
-     returns the result. Don't let the [Repo_state.t] escape the function [f].
-  *)
-  let with_state ~f local_repo_with_env =
-    f (Repo_state.Local_repo_with_env local_repo_with_env)
+  let load_opam_package { local_repo; _ } opam_package =
+    Local_repo.load_opam_package local_repo opam_package
+
+  let create_context { local_repo = { packages_dir_path }; env } local_packages
+      ~solver_env ~version_preference =
+    Opam_solver.Context_for_dune.create_dir_context ~solver_env
+      ~env:(fun name -> Env.find_by_name env ~name)
+      ~packages_dir_path ~local_packages ~version_preference
 end
 
 module Summary = struct
@@ -185,7 +165,7 @@ module Summary = struct
       :: parts)
 end
 
-let opam_package_to_lock_file_pkg ~repo_state ~local_packages opam_package =
+let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
   let name = OpamPackage.name opam_package in
   let version =
     OpamPackage.version opam_package |> OpamPackage.Version.to_string
@@ -202,7 +182,7 @@ let opam_package_to_lock_file_pkg ~repo_state ~local_packages opam_package =
   in
   let opam_file =
     match OpamPackage.Name.Map.find_opt name local_packages with
-    | None -> Repo_state.load_opam_package repo_state opam_package
+    | None -> Repo.load_opam_package repo opam_package
     | Some local_package -> local_package
   in
   (* This will collect all the atoms from the package's dependency formula regardless of conditions *)
@@ -241,38 +221,33 @@ let solve_package_list local_packages context =
   | Error e -> User_error.raise [ Pp.text (Solver.diagnostics e) ]
   | Ok packages -> Solver.packages_of_result packages
 
-let solve_lock_dir ~solver_env ~version_preference ~repo_selection
-    local_packages =
+let solve_lock_dir ~solver_env ~version_preference ~repo local_packages =
   let is_local_package package =
     OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
   in
-  Repo_selection.with_state repo_selection ~f:(fun repo_state ->
-      let context =
-        Repo_state.create_context repo_state local_packages ~solver_env
-          ~version_preference
-      in
-      let opam_packages_to_lock =
-        solve_package_list local_packages context
-        (* don't include local packages in the lock dir *)
-        |> List.filter ~f:(Fun.negate is_local_package)
-      in
-      let summary = { Summary.opam_packages_to_lock } in
-      let lock_dir =
-        match
-          List.map opam_packages_to_lock ~f:(fun opam_package ->
-              let pkg =
-                opam_package_to_lock_file_pkg ~repo_state ~local_packages
-                  opam_package
-              in
-              (pkg.info.name, pkg))
-          |> Package_name.Map.of_list
-        with
-        | Error (name, _pkg1, _pkg2) ->
-          Code_error.raise
-            (sprintf "Solver selected multiple packages named \"%s\""
-               (Package_name.to_string name))
-            []
-        | Ok pkgs_by_name ->
-          Lock_dir.create_latest_version pkgs_by_name ~ocaml:None
-      in
-      (summary, lock_dir))
+  let context =
+    Repo.create_context repo local_packages ~solver_env ~version_preference
+  in
+  let opam_packages_to_lock =
+    solve_package_list local_packages context
+    (* don't include local packages in the lock dir *)
+    |> List.filter ~f:(Fun.negate is_local_package)
+  in
+  let summary = { Summary.opam_packages_to_lock } in
+  let lock_dir =
+    match
+      List.map opam_packages_to_lock ~f:(fun opam_package ->
+          let pkg =
+            opam_package_to_lock_file_pkg ~repo ~local_packages opam_package
+          in
+          (pkg.info.name, pkg))
+      |> Package_name.Map.of_list
+    with
+    | Error (name, _pkg1, _pkg2) ->
+      Code_error.raise
+        (sprintf "Solver selected multiple packages named \"%s\""
+           (Package_name.to_string name))
+        []
+    | Ok pkgs_by_name -> Lock_dir.create_latest_version pkgs_by_name ~ocaml:None
+  in
+  (summary, lock_dir)

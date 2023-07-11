@@ -2,7 +2,6 @@ open Import
 module Lock_dir = Dune_pkg.Lock_dir
 module Fetch = Dune_pkg.Fetch
 module Opam = Dune_pkg.Opam
-module Repo_selection = Opam.Repo_selection
 
 module Opam_repository = struct
   type t = { url : OpamUrl.t }
@@ -311,9 +310,7 @@ module Lock = struct
       Dune_pkg.Sys_poll.sys_env ~path:(Env_path.path Stdune.Env.initial)
     in
     let env = Dune_pkg.Opam.Env.union env sys_env in
-    let repo_selection =
-      Repo_selection.local_repo_with_env ~opam_repo_dir ~env
-    in
+    let repo = Opam.Repo.local_repo_with_env ~opam_repo_dir ~env in
     let project = Source_tree.Dir.project source_dir in
     let dune_package_map = Dune_project.packages project in
     let opam_file_map = opam_file_map_of_dune_package_map dune_package_map in
@@ -325,8 +322,8 @@ module Lock = struct
         ~f:(fun { Per_context.lock_dir_path; version_preference; solver_env; _ }
            ->
           let summary, lock_dir =
-            Dune_pkg.Opam.solve_lock_dir ~solver_env ~version_preference
-              ~repo_selection opam_file_map
+            Dune_pkg.Opam.solve_lock_dir ~solver_env ~version_preference ~repo
+              opam_file_map
           in
           let summary_message =
             Dune_pkg.Opam.Summary.selected_packages_message summary

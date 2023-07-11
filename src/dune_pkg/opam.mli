@@ -19,7 +19,7 @@ module Env : sig
   val union : t -> t -> t
 end
 
-module Repo_selection : sig
+module Repo : sig
   (** An opam repository *)
   type t
 
@@ -39,6 +39,6 @@ end
 val solve_lock_dir :
      solver_env:Solver_env.t
   -> version_preference:Version_preference.t
-  -> repo_selection:Repo_selection.t
+  -> repo:Repo.t
   -> OpamFile.OPAM.t OpamTypes.name_map
   -> Summary.t * Lock_dir.t

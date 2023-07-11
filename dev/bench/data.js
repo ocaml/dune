@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689109893309,
+  "lastUpdate": 1689109916175,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23546,6 +23546,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.38676394434",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9a079d06bbee9b8eeadfd9b9ae992d991d8e4752",
+          "message": "refactor(stdune): improve path tables (#8052)\n\nUse a more memory efficient path table. Instead of using the variant for\r\nthe key, combine 3 tables all for the individual paths.\r\n\r\nThis makes the empty table a little more bloated (3x bigger), but gives\r\nus a saving of 2 words for every single key we store.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-11T13:50:26-07:00",
+          "tree_id": "385a810f31d690f77ce40e72fe3d4a9df6b5cc25",
+          "url": "https://github.com/ocaml/dune/commit/9a079d06bbee9b8eeadfd9b9ae992d991d8e4752"
+        },
+        "date": 1689109914603,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.97745852324001",
             "unit": "seconds"
           }
         ]

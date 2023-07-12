@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689197702613,
+  "lastUpdate": 1689197704311,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -71774,6 +71774,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "28.64791327132667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a0145b21715168354ec380ef8d9362e427035fb0",
+          "message": "refactor: process handling (#8113)\n\nRefactor process handling. This is has two purposes:\r\n\r\n* Simplify the implementation and make it easier to follow\r\n* Prepare it for making it friendly for action runners\r\n\r\nAt a high level, the refactoring does the following:\r\n\r\n* Introduce a type for a running process [Process.t]\r\n* Introduce a type for the result of running a process\r\n  [Process.Result.t]\r\n* Introduce a type for handling stdout/stderr without accidentally\r\n  forgetting to clean it up or reading it after they've been deleted.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-12T14:21:47-07:00",
+          "tree_id": "a9e3850496faf3d2e54ab0bee457627ba6ce2b0d",
+          "url": "https://github.com/ocaml/dune/commit/a0145b21715168354ec380ef8d9362e427035fb0"
+        },
+        "date": 1689197694969,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.489764400973332",
             "unit": "seconds"
           }
         ]

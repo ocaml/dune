@@ -305,8 +305,11 @@ let handler (t : _ t Fdecl.t) action_runner_server handle : 'a Dune_rpc_server.H
       | Build_succeeded__now_waiting_for_changes -> Success
       | Build_failed__now_waiting_for_changes -> Failed
       | Building now ->
-        let remaining = now.number_of_rules_discovered - now.number_of_rules_executed in
-        In_progress { complete = now.number_of_rules_executed; remaining }
+        In_progress
+          { complete = now.number_of_rules_executed
+          ; remaining = now.number_of_rules_discovered - now.number_of_rules_executed
+          ; failed = now.number_of_rules_failed
+          }
     in
     Handler.implement_long_poll
       rpc

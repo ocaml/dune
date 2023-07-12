@@ -32,11 +32,12 @@ let () =
          | Some Success -> "Success"
          | Some Failed -> "Failed"
          | Some Interrupted -> "Interrupted"
-         | Some (In_progress { complete; remaining }) ->
+         | Some (In_progress { complete; remaining; failed }) ->
            Printf.sprintf
-             "In_progress { complete = %d;  remaining = %d }"
+             "In_progress { complete = %d;  remaining = %d;  failed = %d }"
              complete
              remaining
+             failed
          | Some Waiting -> "Waiting"
        in
        print_endline (Printf.sprintf "Got progress_event: %s" message);

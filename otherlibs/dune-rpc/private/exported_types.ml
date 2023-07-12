@@ -6,6 +6,8 @@ module Loc = struct
     ; stop : Lexing.position
     }
 
+  let compare = Stdune.Lexbuf.Loc.compare
+
   let start t = t.start
 
   let stop t = t.stop
@@ -41,6 +43,26 @@ module Target = struct
     | Executables of string list
     | Preprocess of string list
     | Loc of Loc.t
+
+  let compare x y =
+    match (x, y) with
+    | Path x, Path y -> String.compare x y
+    | Path _, _ -> Lt
+    | _, Path _ -> Gt
+    | Alias x, Alias y -> String.compare x y
+    | Alias _, _ -> Lt
+    | _, Alias _ -> Gt
+    | Library x, Library y -> String.compare x y
+    | Library _, _ -> Lt
+    | _, Library _ -> Gt
+    | Executables xs, Executables ys ->
+      List.compare xs ys ~compare:String.compare
+    | Executables _, _ -> Lt
+    | _, Executables _ -> Gt
+    | Preprocess xs, Preprocess ys -> List.compare xs ys ~compare:String.compare
+    | Preprocess _, _ -> Lt
+    | _, Preprocess _ -> Gt
+    | Loc x, Loc y -> Loc.compare x y
 
   let sexp =
     let open Conv in
@@ -94,11 +116,22 @@ module Diagnostic = struct
     | Error
     | Warning
 
+  let compare_severity x y : Ordering.t =
+    match (x, y) with
+    | Error, Error | Warning, Warning -> Eq
+    | Error, _ -> Gt
+    | _, Error -> Lt
+
   module Promotion = struct
     type t =
       { in_build : string
       ; in_source : string
       }
+
+    let compare t { in_build; in_source } =
+      let open Ordering.O in
+      let= () = String.compare t.in_build in_build in
+      String.compare t.in_source in_source
 
     let in_build t = t.in_build
 
@@ -199,6 +232,10 @@ module Diagnostic = struct
       ; loc : Loc.t
       }
 
+    let compare t { message = _; loc } =
+      (* let= () = Pp.compare t.message message in *)
+      Loc.compare t.loc loc
+
     let message t = t.message
 
     let loc t = t.loc
@@ -212,16 +249,71 @@ module Diagnostic = struct
       iso (record (both loc message)) to_ from
   end
 
-  type t =
-    { targets : Target.t list
-    ; id : Id.t
-    ; message : unit Pp.t
-    ; loc : Loc.t option
-    ; severity : severity option
-    ; promotion : Promotion.t list
-    ; directory : string option
-    ; related : Related.t list
-    }
+  module T = struct
+    type t =
+      { targets : Target.t list
+      ; id : Id.t
+      ; message : unit Pp.t
+      ; loc : Loc.t option
+      ; severity : severity option
+      ; promotion : Promotion.t list
+      ; directory : string option
+      ; related : Related.t list
+      }
+
+    let compare t
+        { targets
+        ; id
+        ; message = _
+        ; loc
+        ; severity
+        ; promotion
+        ; directory
+        ; related
+        } : Ordering.t =
+      let open Ordering.O in
+      let= () = List.compare ~compare:Target.compare t.targets targets in
+      let= () = Id.compare t.id id in
+      (* let= () = Pp.compare t.message message in *)
+      let= () = Option.compare Loc.compare t.loc loc in
+      let= () = Option.compare compare_severity t.severity severity in
+      let= () = List.compare ~compare:Promotion.compare t.promotion promotion in
+      let= () = Option.compare String.compare t.directory directory in
+      List.compare ~compare:Related.compare t.related related
+
+    let sexp_severity =
+      let open Conv in
+      enum [ ("error", Error); ("warning", Warning) ]
+
+    let sexp =
+      let open Conv in
+      let from
+          { targets; message; loc; severity; promotion; directory; id; related }
+          =
+        (targets, message, loc, severity, promotion, directory, id, related)
+      in
+      let to_
+          (targets, message, loc, severity, promotion, directory, id, related) =
+        { targets; message; loc; severity; promotion; directory; id; related }
+      in
+      let loc = field "loc" (optional Loc.sexp) in
+      let message = field "message" (required sexp_pp) in
+      let targets = field "targets" (required (list Target.sexp)) in
+      let severity = field "severity" (optional sexp_severity) in
+      let directory = field "directory" (optional string) in
+      let promotion = field "promotion" (required (list Promotion.sexp)) in
+      let id = field "id" (required Id.sexp) in
+      let related = field "related" (required (list Related.sexp)) in
+      iso
+        (record
+           (eight targets message loc severity promotion directory id related))
+        to_ from
+
+    let to_dyn t = Sexp.to_dyn (Conv.to_sexp sexp t)
+  end
+
+  include T
+  include Comparable.Make (T)
 
   let loc t = t.loc
 
@@ -238,35 +330,6 @@ module Diagnostic = struct
   let related t = t.related
 
   let id t = t.id
-
-  let sexp_severity =
-    let open Conv in
-    enum [ ("error", Error); ("warning", Warning) ]
-
-  let sexp =
-    let open Conv in
-    let from
-        { targets; message; loc; severity; promotion; directory; id; related } =
-      (targets, message, loc, severity, promotion, directory, id, related)
-    in
-    let to_ (targets, message, loc, severity, promotion, directory, id, related)
-        =
-      { targets; message; loc; severity; promotion; directory; id; related }
-    in
-    let loc = field "loc" (optional Loc.sexp) in
-    let message = field "message" (required sexp_pp) in
-    let targets = field "targets" (required (list Target.sexp)) in
-    let severity = field "severity" (optional sexp_severity) in
-    let directory = field "directory" (optional string) in
-    let promotion = field "promotion" (required (list Promotion.sexp)) in
-    let id = field "id" (required Id.sexp) in
-    let related = field "related" (required (list Related.sexp)) in
-    iso
-      (record
-         (eight targets message loc severity promotion directory id related))
-      to_ from
-
-  let to_dyn t = Sexp.to_dyn (Conv.to_sexp sexp t)
 
   let to_user_message t =
     let prefix =

@@ -93,6 +93,8 @@ module Diagnostic : sig
     ; related : Related.t list
     }
 
+  include Stdune.Comparable_intf.S with type key := t
+
   val related : t -> Related.t list
 
   val id : t -> Id.t

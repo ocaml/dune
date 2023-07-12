@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689196015917,
+  "lastUpdate": 1689196083065,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -56142,6 +56142,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.4537786993333337",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "42988a444f257702ac5a5978ffc122158c53052f",
+          "message": "chore: use Temp in inotify_tests (#8186)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-12T13:37:52-07:00",
+          "tree_id": "598fbb8ee81b6196ecf6ccf3b635f88fce7206b6",
+          "url": "https://github.com/ocaml/dune/commit/42988a444f257702ac5a5978ffc122158c53052f"
+        },
+        "date": 1689196081635,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "79.22437479854001",
             "unit": "seconds"
           }
         ]

@@ -689,6 +689,29 @@ You can benchmark Dune's performance by running `make bench`. This will run a
 subset of the Duniverse. If you are running the bench locally, make sure that
 you bootstrap since that is the executable that the bench will run.
 
+The bench will build a specially selected portion of the Duniverse once, called
+a "clean build". Afterwards, the build will be run 5 more times and are termed
+the "Null builds".
+
+In each run of the CI, there will be an `ocaml-benchmarks` status in the
+sumamry. Clicking `Details` will show a bench report.
+
+The report contains the following information:
+
+- The build times for Clean and Null builds.
+- The size of the `dune.exe` binary.
+- User CPU times for the Clean and Null builds.
+- System CPU times for the Clean and Null builds.
+- All the garbage collection stats apart from "forced collections" for Clean and
+  Null builds.
+
+Pull requests that add new libraries are likely to increase the size of the dune
+binary.
+
+Performance gains in Dune can be observed in the Clean and Null build times.
+
+Memory usage can be observed in the garbage collection stats.
+
 Inline Benchmarks
 -----------------
 

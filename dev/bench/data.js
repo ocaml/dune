@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689195682042,
+  "lastUpdate": 1689195850111,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23691,6 +23691,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "46.556263164873336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "32c68c2a743d4324433d91e196b5a1f65fa274f1",
+          "message": "rpc: improve error message (#8191)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-12T13:39:56-07:00",
+          "tree_id": "b2517744b983157f60aeef245ccaf0abd4b38b08",
+          "url": "https://github.com/ocaml/dune/commit/32c68c2a743d4324433d91e196b5a1f65fa274f1"
+        },
+        "date": 1689195848725,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "47.99907880654666",
             "unit": "seconds"
           }
         ]

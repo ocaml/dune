@@ -885,7 +885,12 @@ end = struct
 
   let load_dir =
     let load_dir_impl dir = load_dir_impl ~dir in
-    let memo = Memo.create "load-dir" ~input:(module Path) load_dir_impl in
+    let memo =
+      Memo.create_with_store "load-dir"
+        ~store:(module Path.Table)
+        ~input:(module Path)
+        load_dir_impl
+    in
     fun ~dir -> Memo.exec memo dir
 
   let is_under_directory_target p =

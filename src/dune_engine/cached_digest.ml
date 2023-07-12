@@ -70,7 +70,7 @@ let cache =
   lazy
     (match P.load db_file with
     | None ->
-      { checked_key = 0; table = Path.Table.create 1024; max_timestamp = 0. }
+      { checked_key = 0; table = Path.Table.create (); max_timestamp = 0. }
     | Some cache ->
       cache.checked_key <- cache.checked_key + 1;
       cache)

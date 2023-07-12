@@ -6,6 +6,9 @@ Unreleased
 - Add `dune show installed-libraries` as an alias of the `dune
   installed-libraries` command. (#8135, @Alizter)
 
+- Fix the `severity` of error messages sent over RPC which was missing. (#8193,
+  @Alizter)
+
 - Add `dune build --dump-gc-stats FILE` argument to dump garbage collection
   stats to a named file. (#8072, @Alizter)
 

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689198319616,
+  "lastUpdate": 1689198332075,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -56490,6 +56490,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "75.04896493266668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "49b4fe08392ac27dd3b08e7bc4417a29adad737c",
+          "message": "feature: package look up (#8184)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-12T14:16:57-07:00",
+          "tree_id": "44f8bb2166cd1897a6fece43a802842d172fd765",
+          "url": "https://github.com/ocaml/dune/commit/49b4fe08392ac27dd3b08e7bc4417a29adad737c"
+        },
+        "date": 1689198331281,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.019206498973333",
             "unit": "seconds"
           }
         ]

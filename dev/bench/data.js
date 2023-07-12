@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689111577492,
+  "lastUpdate": 1689151580477,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -71136,6 +71136,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.279113997773333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "etienne.millon@gmail.com",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "distinct": true,
+          "id": "f535d4cb4adc46f7e214a6878d9aaa10003dc86c",
+          "message": "refactor(odoc): remove rmdir/mkdir before odoc\n\nThe odoc binary is able to create the directory by itself since 1.4.0\n(which we require), so it is not necessary to do it.\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-12T10:30:25+02:00",
+          "tree_id": "ac943e39804a4a24b79ccc3f37ed85dd927d256f",
+          "url": "https://github.com/ocaml/dune/commit/f535d4cb4adc46f7e214a6878d9aaa10003dc86c"
+        },
+        "date": 1689151570635,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "28.588385628553336",
             "unit": "seconds"
           }
         ]

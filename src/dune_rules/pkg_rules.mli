@@ -17,3 +17,5 @@ val setup_package_rules :
 
 val ocaml_toolchain :
   Context_name.t -> Ocaml_toolchain.t Action_builder.t Memo.t
+
+val which : Context_name.t -> Filename.t -> Path.t option Memo.t

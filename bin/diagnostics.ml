@@ -1,6 +1,4 @@
-open! Stdune
 open Import
-module Client = Dune_rpc_impl.Client
 
 let exec () =
   let open Fiber.O in

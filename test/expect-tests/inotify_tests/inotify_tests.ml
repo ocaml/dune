@@ -44,10 +44,15 @@ let remove_dot_slash_from_event : Async_inotify.Event.t -> Async_inotify.Event.t
   | Queue_overflow -> Queue_overflow
 
 let watch, collect_events =
-  (* File used to mark the beginning and end of tests. *)
-  let cwd = Sys.getcwd () in
-  let beginning_of_test_file = cwd / "BEGINNING_OF_TEST" in
-  let end_of_test_file = cwd / "END_OF_TEST" in
+  (* Files used to mark the beginning and end of tests. *)
+  let beginning_of_test_file =
+    Temp.create Temp.File ~prefix:"BEGINNING_OF_TEST" ~suffix:""
+  in
+  let end_of_test_file =
+    Temp.create Temp.File ~prefix:"END_OF_TEST" ~suffix:""
+  in
+  let beginning_of_test_file = Path.to_string beginning_of_test_file in
+  let end_of_test_file = Path.to_string end_of_test_file in
   create_file beginning_of_test_file;
   create_file end_of_test_file;
   let events = Queue.create () in

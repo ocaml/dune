@@ -139,6 +139,11 @@ module Io = struct
       else Unix.close (Lazy.force t.fd)
 
   let multi_use t = { t with status = Keep_open }
+
+  let output_on_success (out : output t) =
+    match out.kind with
+    | Terminal x -> x
+    | _ -> Print
 end
 
 type purpose =
@@ -572,6 +577,104 @@ end = struct
       fail ~loc ~annots paragraphs
 end
 
+type t =
+  { started_at : float
+  ; pid : Pid.t
+  ; response_file : Path.t option
+  ; stdout : Path.t option
+  ; stderr : Path.t option
+  ; stdout_on_success : Action_output_on_success.t
+  ; stderr_on_success : Action_output_on_success.t
+  }
+
+module Result = struct
+  type nonrec process = t
+
+  module Out = struct
+    type state =
+      | No_capture
+      | File of Path.t
+      | Read of string
+      | Closed
+
+    type t =
+      { on_success : Action_output_on_success.t
+      ; mutable unexpected_output : bool
+      ; mutable state : state
+      }
+
+    let get t =
+      match t.state with
+      | Closed ->
+        Code_error.raise
+          "it is an error to access the contents after it's closed" []
+      | No_capture -> ""
+      | Read s -> s
+      | File p ->
+        let contents = Stdune.Io.read_file p in
+        Temp.destroy File p;
+        t.state <- Read contents;
+        contents
+
+    let cleanup_file t =
+      match t.state with
+      | File p -> Temp.destroy File p
+      | _ -> ()
+
+    let close t =
+      cleanup_file t;
+      t.state <- Closed
+
+    let make f on_success =
+      let state =
+        match f with
+        | None -> No_capture
+        | Some p -> File p
+      in
+      { state; on_success; unexpected_output = false }
+
+    let check_unexpected_output_and_swallow_on_success t =
+      (match t.state with
+      | Closed -> Code_error.raise "already closed" []
+      | _ -> ());
+      match t.on_success with
+      | Must_be_empty -> t.unexpected_output <- get t <> ""
+      | Swallow ->
+        cleanup_file t;
+        t.state <- No_capture
+      | Print -> ()
+  end
+
+  type t =
+    { stdout : Out.t
+    ; stderr : Out.t
+    ; exit_status : Exit_status.t
+    }
+
+  let close t =
+    Out.close t.stdout;
+    Out.close t.stderr
+
+  let make
+      ({ stdout_on_success; stderr_on_success; stdout; stderr; _ } : process)
+      (process_info : Proc.Process_info.t) fail_mode =
+    let stdout = Out.make stdout stdout_on_success in
+    let stderr = Out.make stderr stderr_on_success in
+    let exit_status : Exit_status.t =
+      match process_info.status with
+      | WEXITED n when accepted_codes fail_mode n ->
+        Out.check_unexpected_output_and_swallow_on_success stdout;
+        Out.check_unexpected_output_and_swallow_on_success stderr;
+        if stdout.unexpected_output || stderr.unexpected_output then
+          Error (Failed n)
+        else Ok n
+      | WEXITED n -> Error (Failed n)
+      | WSIGNALED n -> Error (Signaled (Signal.of_int n))
+      | WSTOPPED _ -> assert false
+    in
+    { stdout; stderr; exit_status }
+end
+
 let report_process_finished stats ~metadata ~dir ~prog ~pid ~args ~started_at
     ~exit_status ~stdout ~stderr (times : Proc.Times.t) =
   let common =
@@ -620,7 +723,7 @@ let report_process_finished stats ~metadata ~dir ~prog ~pid ~args ~started_at
           ]
       in
       let output name s =
-        match Lazy.force s with
+        match Result.Out.get s with
         | "" -> []
         | s -> [ (name, `String s) ]
       in
@@ -644,8 +747,102 @@ let report_process_finished stats ~metadata ~dir ~prog ~pid ~args ~started_at
 
 let set_temp_dir_when_running_actions = ref true
 
+let await { response_file; pid; _ } =
+  let+ process_info, termination_reason =
+    Scheduler.wait_for_build_process pid ~is_process_group_leader:true
+  in
+  Option.iter response_file ~f:Path.unlink;
+  (process_info, termination_reason)
+
+let spawn ?dir ?(env = Env.initial) ~(stdout : _ Io.t) ~(stderr : _ Io.t)
+    ~(stdin : _ Io.t) ~prog ~args () =
+  let stdout_on_success = Io.output_on_success stdout
+  and stderr_on_success = Io.output_on_success stderr in
+  let (stdout_capture, stdout), (stderr_capture, stderr) =
+    match (stdout.kind, stderr.kind) with
+    | (Terminal _, _ | _, Terminal _) when !Clflags.capture_outputs ->
+      let capture ~suffix =
+        let fn = Temp.create File ~prefix:"dune" ~suffix in
+        (Some fn, Io.file fn Io.Out)
+      in
+      let stdout_capture, stdout =
+        match stdout.kind with
+        | Terminal _ ->
+          Io.flush stdout;
+          capture ~suffix:"stdout"
+        | _ -> (None, stdout)
+      in
+      let stderr =
+        match (stdout.kind, stderr.kind) with
+        | Terminal Print, Terminal Print | Terminal Swallow, Terminal Swallow ->
+          (* We don't merge when both are [Must_be_empty]. If we did and an
+             action had unexpected output on both stdout and stderr the
+             error message would be "has unexpected output on stdout". With
+             the current code, it is "has unexpected output on stdout and
+             stderr", which is more precise. *)
+          Io.flush stderr;
+          (None, stdout)
+        | _, Terminal _ ->
+          Io.flush stderr;
+          capture ~suffix:"stderr"
+        | _ -> (None, stderr)
+      in
+      ((stdout_capture, stdout), stderr)
+    | _ -> ((None, stdout), (None, stderr))
+  in
+  let prog_str = Path.reach_for_running ?from:dir prog in
+  let args, response_file =
+    if Sys.win32 && cmdline_approximate_length prog_str args >= 1024 then (
+      match Response_file.get ~prog with
+      | Not_supported -> (args, None)
+      | Zero_terminated_strings arg ->
+        let fn = Temp.create File ~prefix:"responsefile" ~suffix:"data" in
+        Stdune.Io.with_file_out fn ~f:(fun oc ->
+            List.iter args ~f:(fun arg ->
+                output_string oc arg;
+                output_char oc '\000'));
+        ([ arg; Path.to_string fn ], Some fn))
+    else (args, None)
+  in
+  let started_at =
+    (* jeremiedimino: I think we should do this just before the [execve]
+       in the stub for [Spawn.spawn] to be as precise as possible *)
+    Unix.gettimeofday ()
+  in
+  let pid =
+    let env =
+      let env =
+        match !set_temp_dir_when_running_actions with
+        | true -> Dtemp.add_to_env env
+        | false -> env
+      in
+      Env.to_unix env |> Spawn.Env.of_list
+    in
+    let stdout = Io.fd stdout in
+    let stderr = Io.fd stderr in
+    let stdin = Io.fd stdin in
+    let argv = prog_str :: args in
+    Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin
+      ~setpgid:Spawn.Pgid.new_process_group
+      ~cwd:
+        (match dir with
+        | None -> Inherit
+        | Some dir -> Path (Path.to_string dir))
+    |> Pid.of_int
+  in
+  Io.release stdout;
+  Io.release stderr;
+  { started_at
+  ; pid
+  ; response_file
+  ; stdout = stdout_capture
+  ; stderr = stderr_capture
+  ; stdout_on_success
+  ; stderr_on_success
+  }
+
 let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
-    ?(stderr_to = Io.stderr) ?(stdin_from = Io.null In) ?(env = Env.initial)
+    ?(stderr_to = Io.stderr) ?(stdin_from = Io.null In) ?env
     ?(metadata = default_metadata) fail_mode prog args =
   Scheduler.with_job_slot (fun _cancel (config : Scheduler.Config.t) ->
       let dir =
@@ -654,7 +851,6 @@ let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
         | Some p -> if Path.is_root p then None else Some p
       in
       let id = Running_jobs.Id.gen () in
-      let ok_codes = accepted_codes fail_mode in
       let prog_str = Path.reach_for_running ?from:dir prog in
       let command_line =
         command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from
@@ -675,88 +871,9 @@ let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
           cmdline
         | _ -> Pp.nop
       in
-      let args, response_file =
-        if Sys.win32 && cmdline_approximate_length prog_str args >= 1024 then (
-          match Response_file.get ~prog with
-          | Not_supported -> (args, None)
-          | Zero_terminated_strings arg ->
-            let fn = Temp.create File ~prefix:"responsefile" ~suffix:"data" in
-            Stdune.Io.with_file_out fn ~f:(fun oc ->
-                List.iter args ~f:(fun arg ->
-                    output_string oc arg;
-                    output_char oc '\000'));
-            ([ arg; Path.to_string fn ], Some fn))
-        else (args, None)
-      in
-      let argv = prog_str :: args in
-      let output_on_success (out : Io.output Io.t) =
-        match out.kind with
-        | Terminal x -> x
-        | _ -> Print
-      in
-      let stdout_on_success = output_on_success stdout_to in
-      let stderr_on_success = output_on_success stderr_to in
-      let (stdout_capture, stdout_to), (stderr_capture, stderr_to) =
-        match (stdout_to.kind, stderr_to.kind) with
-        | (Terminal _, _ | _, Terminal _) when !Clflags.capture_outputs ->
-          let capture ~suffix =
-            let fn = Temp.create File ~prefix:"dune" ~suffix in
-            (`Capture fn, Io.file fn Io.Out)
-          in
-          let stdout =
-            match stdout_to.kind with
-            | Terminal _ ->
-              Io.flush stdout_to;
-              capture ~suffix:"stdout"
-            | _ -> (`No_capture, stdout_to)
-          in
-          let stderr =
-            match (stdout_to.kind, stderr_to.kind) with
-            | Terminal Print, Terminal Print
-            | Terminal Swallow, Terminal Swallow ->
-              (* We don't merge when both are [Must_be_empty]. If we did and an
-                 action had unexpected output on both stdout and stderr the
-                 error message would be "has unexpected output on stdout". With
-                 the current code, it is "has unexpected output on stdout and
-                 stderr", which is more precise. *)
-              Io.flush stderr_to;
-              (`Merged_with_stdout, snd stdout)
-            | _, Terminal _ ->
-              Io.flush stderr_to;
-              capture ~suffix:"stderr"
-            | _ -> (`No_capture, stderr_to)
-          in
-          (stdout, stderr)
-        | _ -> ((`No_capture, stdout_to), (`No_capture, stderr_to))
-      in
-      let started_at, pid =
-        (* Output.fd might create the file with Unix.openfile. We need to make
-           sure to call it before doing the chdir as the path might be
-           relative. *)
-        let stdout = Io.fd stdout_to in
-        let stderr = Io.fd stderr_to in
-        let stdin = Io.fd stdin_from in
-        let env =
-          match !set_temp_dir_when_running_actions with
-          | true -> Dtemp.add_to_env env
-          | false -> env
-        in
-        let env = Env.to_unix env |> Spawn.Env.of_list in
-        let started_at =
-          (* jeremiedimino: I think we should do this just before the [execve]
-             in the stub for [Spawn.spawn] to be as precise as possible *)
-          Unix.gettimeofday ()
-        in
-        let pid =
-          Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin
-            ~setpgid:Spawn.Pgid.new_process_group
-            ~cwd:
-              (match dir with
-              | None -> Inherit
-              | Some dir -> Path (Path.to_string dir))
-          |> Pid.of_int
-        in
-        (started_at, pid)
+      let t =
+        spawn ?dir ?env ~stdout:stdout_to ~stderr:stderr_to ~stdin:stdin_from
+          ~prog ~args ()
       in
       let* () =
         let description =
@@ -769,55 +886,20 @@ let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
             Targets.Validated.head target
             |> Path.Build.to_string_maybe_quoted |> Pp.verbatim
         in
-        Running_jobs.start id pid ~description ~started_at
+        Running_jobs.start id t.pid ~description ~started_at:t.started_at
       in
-      Io.release stdout_to;
-      Io.release stderr_to;
-      let* process_info, termination_reason =
-        Scheduler.wait_for_build_process pid ~is_process_group_leader:true
-      in
+      let* process_info, termination_reason = await t in
       let+ () = Running_jobs.stop id in
+      let result = Result.make t process_info fail_mode in
       let times =
-        { Proc.Times.elapsed_time = process_info.end_time -. started_at
+        { Proc.Times.elapsed_time = process_info.end_time -. t.started_at
         ; resource_usage = process_info.resource_usage
         }
       in
-      Option.iter response_file ~f:Path.unlink;
-      let actual_stdout =
-        match stdout_capture with
-        | `No_capture -> lazy ""
-        | `Capture fn -> lazy (Stdune.Io.read_file fn)
-      in
-      let actual_stderr =
-        match stderr_capture with
-        | `No_capture | `Merged_with_stdout -> lazy ""
-        | `Capture fn -> lazy (Stdune.Io.read_file fn)
-      in
-      let has_unexpected_output (on_success : Action_output_on_success.t)
-          actual_output =
-        match on_success with
-        | Must_be_empty -> Lazy.force actual_output <> ""
-        | Print | Swallow -> false
-      in
-      let has_unexpected_stdout =
-        has_unexpected_output stdout_on_success actual_stdout
-      and has_unexpected_stderr =
-        has_unexpected_output stderr_on_success actual_stderr
-      in
-      let exit_status' : Exit_status.t =
-        match process_info.status with
-        | WEXITED n
-          when (not has_unexpected_stdout)
-               && (not has_unexpected_stderr)
-               && ok_codes n -> Ok n
-        | WEXITED n -> Error (Failed n)
-        | WSIGNALED n -> Error (Signaled (Signal.of_int n))
-        | WSTOPPED _ -> assert false
-      in
       Option.iter config.stats ~f:(fun stats ->
-          report_process_finished stats ~metadata ~dir ~prog:prog_str ~pid ~args
-            ~started_at ~exit_status:exit_status' ~stdout:actual_stdout
-            ~stderr:actual_stderr times);
+          report_process_finished stats ~metadata ~dir ~prog:prog_str ~pid:t.pid
+            ~args ~started_at:t.started_at ~exit_status:result.exit_status
+            ~stdout:result.stdout ~stderr:result.stderr times);
       match termination_reason with
       | Cancel ->
         (* if the cancellation token was fired, then we:
@@ -826,44 +908,26 @@ let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
 
            2) allowing callers to continue work with the already stale value
            we're about to return. *)
+        Result.close result;
         raise (Memo.Non_reproducible Scheduler.Run.Build_cancelled)
       | Normal ->
-        let success = Result.is_ok exit_status' in
-        let swallow_on_success_if_requested fn actual_output
-            (on_success : Action_output_on_success.t) =
-          let s =
-            match (success, on_success) with
-            | true, Swallow -> ""
-            | _ -> Lazy.force actual_output
-          in
-          Temp.destroy File fn;
-          s
+        let output =
+          Result.Out.get result.stdout ^ Result.Out.get result.stderr
         in
-        let stdout =
-          match stdout_capture with
-          | `No_capture -> ""
-          | `Capture fn ->
-            swallow_on_success_if_requested fn actual_stdout stdout_on_success
-        in
-        let stderr =
-          match stderr_capture with
-          | `No_capture | `Merged_with_stdout -> ""
-          | `Capture fn ->
-            swallow_on_success_if_requested fn actual_stderr stderr_on_success
-        in
-        let output = stdout ^ stderr in
         Log.command ~command_line ~output ~exit_status:process_info.status;
         let res =
-          match (display, exit_status', output) with
+          match (display, result.exit_status, output) with
           | Quiet, Ok n, "" -> n (* Optimisation for the common case *)
           | Verbose, _, _ ->
-            Handle_exit_status.verbose exit_status' ~id ~metadata ~dir
+            Handle_exit_status.verbose result.exit_status ~id ~metadata ~dir
               ~command_line:fancy_command_line ~output
           | _ ->
-            Handle_exit_status.non_verbose exit_status' ~prog:prog_str ~dir
-              ~command_line ~output ~metadata ~verbosity:display
-              ~has_unexpected_stdout ~has_unexpected_stderr
+            Handle_exit_status.non_verbose result.exit_status ~prog:prog_str
+              ~dir ~command_line ~output ~metadata ~verbosity:display
+              ~has_unexpected_stdout:result.stdout.unexpected_output
+              ~has_unexpected_stderr:result.stderr.unexpected_output
         in
+        Result.close result;
         (res, times))
 
 let run ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode

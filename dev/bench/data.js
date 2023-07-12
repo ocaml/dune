@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689195850111,
+  "lastUpdate": 1689195887684,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23720,6 +23720,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "47.99907880654666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "52c1f280f44cd97249b885e1855b723e0ec826b3",
+          "message": "refactor: cleanup unused imports (#8192)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-12T13:43:57-07:00",
+          "tree_id": "8e622d19f19249bbde17f8d6bf18cf33e18fa707",
+          "url": "https://github.com/ocaml/dune/commit/52c1f280f44cd97249b885e1855b723e0ec826b3"
+        },
+        "date": 1689195886418,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.527389914480004",
             "unit": "seconds"
           }
         ]

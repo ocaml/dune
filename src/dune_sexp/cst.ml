@@ -57,11 +57,15 @@ let tokenize ts =
     | Comment (loc, comment) -> emit loc (Comment comment)
     | List (loc, l) ->
       emit
-        { loc with stop = { loc.start with pos_cnum = loc.start.pos_cnum + 1 } }
+        (Loc.set_stop loc
+           (let start = Loc.start loc in
+            { start with pos_cnum = start.pos_cnum + 1 }))
         Lparen;
       List.iter l ~f:iter;
       emit
-        { loc with start = { loc.stop with pos_cnum = loc.stop.pos_cnum - 1 } }
+        (Loc.set_start loc
+           (let stop = Loc.stop loc in
+            { stop with pos_cnum = stop.pos_cnum - 1 }))
         Rparen
   in
   List.iter ts ~f:iter;

@@ -76,7 +76,6 @@ type t = private
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; lib_config : Lib_config.t
   ; build_context : Build_context.t
-  ; make : Path.t option Memo.Lazy.t
   }
 
 val which : t -> string -> Path.t option Memo.t
@@ -91,9 +90,6 @@ val to_dyn_concise : t -> Dyn.t
 
 (** Compare the context names *)
 val compare : t -> t -> Ordering.t
-
-(** Return what [%{make}] should expand into *)
-val make : t -> Path.t option Memo.t
 
 val name : t -> Context_name.t
 

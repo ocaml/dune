@@ -625,32 +625,21 @@ let pp_one_module sctx ~lib_name ~scope ~preprocessor_deps
     @@
     if staged then
       let dash_ppx_flag =
-        Action_builder.memoize ~cutoff:(List.equal String.equal) "ppx command"
-          (let* () = Action_builder.return () in
-           let* exe, driver, flags =
-             ppx_driver_and_flags sctx ~expander ~loc ~scope ~flags ~lib_name
-               pps
-           in
-           let+ () = Action_builder.path (Path.build exe)
-           and+ () = preprocessor_deps
-           and+ driver_flags =
-             Expander.expand_and_eval_set expander driver.info.as_ppx_flags
-               ~standard:(Action_builder.return [ "--as-ppx" ])
-           in
-           let driver_flags = driver_flags in
-           let command =
-             List.map ~f:String.quote_for_shell
-               (List.concat
-                  [ [ Path.reach (Path.build exe)
-                        ~from:
-                          (Path.build (Super_context.context sctx).build_dir)
-                    ]
-                  ; driver_flags
-                  ; flags
-                  ])
-             |> String.concat ~sep:" "
-           in
-           [ "-ppx"; command ])
+        let+ args =
+          Action_builder.memoize ~cutoff:(List.equal String.equal) "ppx command"
+            (let* exe, driver, flags =
+               ppx_driver_and_flags sctx ~expander ~loc ~scope ~flags ~lib_name
+                 pps
+             in
+             let* driver_flags =
+               Expander.expand_and_eval_set expander driver.info.as_ppx_flags
+                 ~standard:(Action_builder.return [ "--as-ppx" ])
+             and* () = preprocessor_deps in
+             Command.expand_no_targets
+               ~dir:(Path.build (Super_context.context sctx).build_dir)
+               (S [ Dep (Path.build exe); As driver_flags; As flags ]))
+        in
+        [ "-ppx"; String.quote_list_for_shell args ]
       in
       let pp =
         let sandbox =

@@ -70,7 +70,7 @@ let cache =
   lazy
     (match P.load db_file with
     | None ->
-      { checked_key = 0; table = Path.Table.create 1024; max_timestamp = 0. }
+      { checked_key = 0; table = Path.Table.create (); max_timestamp = 0. }
     | Some cache ->
       cache.checked_key <- cache.checked_key + 1;
       cache)
@@ -92,21 +92,32 @@ let delete_very_recent_entries () =
   let cache = Lazy.force cache in
   if !Clflags.wait_for_filesystem_clock then wait_for_fs_clock_to_advance ();
   let now = get_current_filesystem_time () in
+  (* We can only trust digests with timestamps in the past. We had issues in
+     the past with file systems having a slow internal clock, where we cached
+     digests too aggressively. *)
   match Float.compare cache.max_timestamp now with
   | Lt -> ()
-  | Eq | Gt ->
-    Path.Table.filteri_inplace cache.table ~f:(fun ~key:path ~data ->
-        match Float.compare data.stats.mtime now with
-        | Lt -> true
-        | Gt | Eq ->
-          if !Clflags.debug_digests then
+  | Eq | Gt -> (
+    let filter (data : file) =
+      match Float.compare data.stats.mtime now with
+      | Lt -> true
+      | Gt | Eq -> false
+    in
+    match !Clflags.debug_digests with
+    | false ->
+      Path.Table.filteri_inplace cache.table ~f:(fun ~key:_ ~data ->
+          filter data)
+    | true ->
+      Path.Table.filteri_inplace cache.table ~f:(fun ~key:path ~data ->
+          let filter = filter data in
+          if not filter then
             Console.print
               [ Pp.textf
                   "Dropping cached digest for %s because it has exactly the \
                    same mtime as the file system clock."
                   (Path.to_string_maybe_quoted path)
               ];
-          false)
+          filter))
 
 let dump () =
   if !needs_dumping && Path.build_dir_exists () then (

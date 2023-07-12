@@ -88,7 +88,7 @@ module Lock = struct
   end
 
   module Version_preference = struct
-    include Dune_pkg.Opam.Version_preference
+    include Dune_pkg.Version_preference
 
     let term =
       let all_strings = List.map all_by_string ~f:fst in
@@ -131,6 +131,7 @@ module Lock = struct
     type t =
       { lock_dir_path : Path.Source.t
       ; version_preference : Version_preference.t
+      ; solver_env : Dune_pkg.Solver_env.t
       }
 
     let choose ~context_name_arg ~all_contexts_arg ~version_preference_arg =
@@ -160,11 +161,17 @@ module Lock = struct
             ]
         | Some
             (Default
-              { lock; version_preference = version_preference_context; _ }) ->
+              { lock
+              ; version_preference = version_preference_context
+              ; solver_env
+              ; _
+              }) ->
           [ { lock_dir_path = Option.value lock ~default:Lock_dir.default_path
             ; version_preference =
                 Version_preference.choose ~from_arg:version_preference_arg
                   ~from_context:version_preference_context
+            ; solver_env =
+                Option.value solver_env ~default:Dune_pkg.Solver_env.default
             }
           ]
         | Some (Opam _) ->
@@ -177,12 +184,18 @@ module Lock = struct
         let+ workspace = Memo.run (Workspace.workspace ()) in
         List.filter_map workspace.contexts ~f:(function
           | Workspace.Context.Default
-              { lock; version_preference = version_preference_context; _ } ->
+              { lock
+              ; version_preference = version_preference_context
+              ; solver_env
+              ; _
+              } ->
             Option.map lock ~f:(fun lock_dir_path ->
                 { lock_dir_path
                 ; version_preference =
                     Version_preference.choose ~from_arg:version_preference_arg
                       ~from_context:version_preference_context
+                ; solver_env =
+                    Option.value solver_env ~default:Dune_pkg.Solver_env.default
                 })
           | Opam _ -> None)
   end
@@ -229,10 +242,10 @@ module Lock = struct
        lockdir would fail then no side effect takes place. *)
     let write_disk_list =
       List.map per_context
-        ~f:(fun { Per_context.lock_dir_path; version_preference } ->
+        ~f:(fun { Per_context.lock_dir_path; version_preference; solver_env } ->
           let summary, lock_dir =
-            Dune_pkg.Opam.solve_lock_dir ~version_preference ~repo_selection
-              opam_file_map
+            Dune_pkg.Opam.solve_lock_dir ~solver_env ~version_preference
+              ~repo_selection opam_file_map
           in
           Console.print_user_message
             (Dune_pkg.Opam.Summary.selected_packages_message summary

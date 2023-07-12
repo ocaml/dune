@@ -360,7 +360,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 13
+  let rule_digest_version = 14
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode
       ~execution_parameters =
@@ -1069,7 +1069,10 @@ end = struct
          | `Disabled -> None
          | `Enabled -> Some (Tuple.T2.equal Digest.equal target_kind_equal)
        in
-       Memo.create "build-file" ~input:(module Path) ?cutoff build_file_impl)
+       Memo.create_with_store "build-file"
+         ~store:(module Path.Table)
+         ~input:(module Path)
+         ?cutoff build_file_impl)
 
   let build_file path = Memo.exec (Lazy.force build_file_memo) path >>| fst
 

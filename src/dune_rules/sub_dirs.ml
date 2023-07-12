@@ -74,7 +74,7 @@ module Status = struct
 end
 
 let status status_by_dir ~dir : Status.Or_ignored.t =
-  match String.Map.find status_by_dir dir with
+  match Filename.Map.find status_by_dir dir with
   | None -> Ignored
   | Some d -> Status d
 
@@ -103,7 +103,7 @@ let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs =
   in
   { Status.Map.normal = dirs; data_only; vendored = vendored_dirs }
 
-type status_map = Status.t String.Map.t
+type status_map = Status.t Filename.Map.t
 
 let eval (t : _ Status.Map.t) ~dirs =
   (* This function defines the unexpected behavior of: (dirs foo)
@@ -111,9 +111,9 @@ let eval (t : _ Status.Map.t) ~dirs =
 
      In this setup, bar is actually ignored rather than being data only. Because
      it was excluded from the total set of directories. *)
-  String.Set.of_list dirs
-  |> String.Set.to_map ~f:(fun _ -> ())
-  |> String.Map.filter_mapi ~f:(fun dir () : Status.t option ->
+  Filename.Set.of_list dirs
+  |> Filename.Set.to_map ~f:(fun _ -> ())
+  |> Filename.Map.filter_mapi ~f:(fun dir () : Status.t option ->
          let statuses =
            Status.Map.merge t default ~f:(fun pred standard ->
                Predicate_lang.Glob.test pred ~standard dir)
@@ -160,32 +160,32 @@ module Dir_map = struct
 
   type t =
     { data : per_dir
-    ; nodes : t String.Map.t
+    ; nodes : t Filename.Map.t
     }
 
   let rec to_dyn { data; nodes } =
     let open Dyn in
     record
       [ ("data", dyn_of_per_dir data)
-      ; ("nodes", String.Map.to_dyn to_dyn nodes)
+      ; ("nodes", Filename.Map.to_dyn to_dyn nodes)
       ]
 
   let empty_per_dir =
     { sexps = []; subdir_status = Status.Map.init ~f:(fun _ -> None) }
 
-  let empty = { data = empty_per_dir; nodes = String.Map.empty }
+  let empty = { data = empty_per_dir; nodes = Filename.Map.empty }
 
   let root t = t.data
 
-  let descend t (p : string) = String.Map.find t.nodes p
+  let descend t (p : Filename.t) = Filename.Map.find t.nodes p
 
-  let sub_dirs t = String.Map.keys t.nodes
+  let sub_dirs t = Filename.Map.keys t.nodes
 
   let rec make_at_path path data =
     match path with
     | [] -> data
     | x :: xs ->
-      let nodes = String.Map.singleton x (make_at_path xs data) in
+      let nodes = Filename.Map.singleton x (make_at_path xs data) in
       { empty with nodes }
 
   let singleton data = { empty with data }
@@ -215,7 +215,7 @@ module Dir_map = struct
   let rec merge t1 t2 : t =
     let data = merge_data t1.data t2.data in
     let nodes =
-      String.Map.union t1.nodes t2.nodes ~f:(fun _ l r -> Some (merge l r))
+      Filename.Map.union t1.nodes t2.nodes ~f:(fun _ l r -> Some (merge l r))
     in
     { data; nodes }
 

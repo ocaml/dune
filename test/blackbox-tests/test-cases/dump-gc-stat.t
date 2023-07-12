@@ -1,7 +1,7 @@
-Testing the --dump-gc-stat option
+Testing the --dump-gc-stats option
 
-  $ dune build --dump-gc-stat stats
-  $ cat stats | sed -r 's/[ ]+[0-9]+//g'
+  $ dune build --dump-gc-stats stats
+  $ sed -r 's/[ ]+[0-9]+//g' < stats
   ((minor_words.)
    (promoted_words.)
    (major_words.)

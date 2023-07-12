@@ -2,12 +2,6 @@
 
 open Stdune
 
-type ast = Ast.t =
-  | Atom of Loc.t * Atom.t
-  | Quoted_string of Loc.t * string
-  | Template of Template.t
-  | List of Loc.t * ast list
-
 type hint =
   { on : string
   ; candidates : string list
@@ -45,9 +39,9 @@ type 'a fields_parser = ('a, fields) parser
 (** [parse parser context sexp] parse a S-expression using the following parser.
     The input consist of a single S-expression. [context] allows to pass extra
     information such as versions to individual parsers. *)
-val parse : 'a t -> Univ_map.t -> ast -> 'a
+val parse : 'a t -> Univ_map.t -> Ast.t -> 'a
 
-val set_input : ast list -> (unit, 'k) parser
+val set_input : Ast.t list -> (unit, 'k) parser
 
 val return : 'a -> ('a, _) parser
 
@@ -168,13 +162,13 @@ val duration : int t
 val bytes_unit : int64 t
 
 (** Unparsed next element of the input *)
-val raw : ast t
+val raw : Ast.t t
 
 (** Inspect the next element of the input without consuming it *)
-val peek : ast option t
+val peek : Ast.t option t
 
 (** Same as [peek] but fail if the end of input is reached *)
-val peek_exn : ast t
+val peek_exn : Ast.t t
 
 (** Consume and ignore the next element of the input *)
 val junk : unit t

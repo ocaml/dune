@@ -1,5 +1,4 @@
 open Stdune
-open Dune_rules
 
 include module type of struct
   include Cmdliner.Arg
@@ -22,7 +21,7 @@ module Path : sig
 end
 
 module Dep : sig
-  type t = Dep_conf.t
+  type t = Dune_rules.Dep_conf.t
 
   val file : string -> t
 
@@ -45,7 +44,7 @@ val path : Path.t conv
 
 val external_path : Path.External.t conv
 
-val package_name : Package.Name.t conv
+val package_name : Dune_rules.Package.Name.t conv
 
 val profile : Dune_lang.Profile.t conv
 

@@ -1,7 +1,10 @@
 open Import
 
 module Loc = struct
-  include Loc
+  type t = Stdune.Lexbuf.Loc.t =
+    { start : Lexing.position
+    ; stop : Lexing.position
+    }
 
   let start t = t.start
 
@@ -286,7 +289,10 @@ module Diagnostic = struct
       match t.loc with
       | None -> []
       | Some l ->
-        [ Pp.map_tags ~f:(fun _ -> Stdune.User_message.Style.Loc) (Loc.pp l) ]
+        [ Pp.map_tags
+            ~f:(fun _ -> Stdune.User_message.Style.Loc)
+            (Stdune.Loc.of_lexbuf_loc l |> Stdune.Loc.pp)
+        ]
     in
     Stdune.User_message.make ?prefix
       (directory @ formatted_loc

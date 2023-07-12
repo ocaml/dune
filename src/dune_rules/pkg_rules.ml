@@ -534,7 +534,7 @@ module Action_expander = struct
         | _ -> assert false)
       | Var Context_name ->
         Memo.return [ Value.String (Context_name.to_string context) ]
-      | _ -> Expander.isn't_allowed_in_this_position ~source
+      | _ -> Expander0.isn't_allowed_in_this_position ~source
 
     let expand_pform_gen t =
       String_expander.Memo.expand ~f:(expand_pform t)
@@ -1319,3 +1319,23 @@ let setup_package_rules context ~dir ~pkg_name :
       }
     in
     Build_config.Rules rules
+
+let ocaml_toolchain context =
+  let* db = Lock_dir.get context in
+  let+ pkg =
+    match db.ocaml with
+    | None -> User_error.raise [ Pp.text "no ocaml toolchain defined" ]
+    | Some ocaml -> resolve db.packages context ocaml
+  in
+  let toolchain =
+    let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+    let open Action_builder.O in
+    let* cookie = cookie in
+    let binaries =
+      Section.Map.find cookie.files Bin
+      |> Option.value ~default:[] |> Path.Set.of_list
+    in
+    let env = Pkg.exported_env pkg in
+    Action_builder.of_memo @@ Ocaml_toolchain.of_binaries context env binaries
+  in
+  Action_builder.memoize "ocaml_toolchain" toolchain

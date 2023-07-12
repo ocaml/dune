@@ -1,5 +1,6 @@
 open Import
 open Action_builder.O
+open Expander0
 
 module Expanding_what = struct
   type t =
@@ -156,15 +157,6 @@ let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
              installed either."
             s
         ])
-
-let isn't_allowed_in_this_position ~(source : Dune_lang.Template.Pform.t) =
-  let exn =
-    User_error.make ~loc:source.loc
-      [ Pp.textf "%s isn't allowed in this position."
-          (Dune_lang.Template.Pform.describe source)
-      ]
-  in
-  raise (User_error.E exn)
 
 let expand_artifact ~source t a s =
   match t.lookup_artifacts with
@@ -401,6 +393,28 @@ let expand_lib_variable t source ~arg:s ~lib_exec ~lib_private =
   in
   Action_builder.of_memo_join p
 
+let make =
+  let open Memo.O in
+  let make context =
+    let which = Context.which context in
+    match Sys.unix with
+    | false -> which "make"
+    | true -> (
+      let* res = which "gmake" in
+      match res with
+      | Some _ as s -> Memo.return s
+      | None -> which "make")
+  in
+  let memo =
+    Memo.create "make"
+      ~input:(module Context_name)
+      ~cutoff:(Option.equal Path.equal)
+      (fun name ->
+        let* context = Context.DB.get name in
+        make context)
+  in
+  fun (context : Context.t) -> Memo.exec memo context.name
+
 let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
     (pform : Pform.t) : expansion_result =
   match Pform.Map.find bindings pform with
@@ -441,7 +455,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
         let open Memo.O in
         Direct
           (Without
-             (Context.make context >>| function
+             (make context >>| function
               | Some p -> path p
               | None ->
                 Utils.program_not_found ~context:context.name

@@ -17,6 +17,7 @@ include struct
   module Diff_promotion = Diff_promotion
   module Cached_digest = Cached_digest
   module Targets = Targets
+  module Context_name = Context_name
 end
 
 module Execution_env = Dune_util.Execution_env
@@ -33,6 +34,7 @@ include struct
   module Resolve = Resolve
   module Sub_dirs = Sub_dirs
   module Source_tree = Source_tree
+  module Dune_file = Dune_file
 end
 
 include struct

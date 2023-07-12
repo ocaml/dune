@@ -1,5 +1,4 @@
 open Import
-open Stdune
 
 let term =
   let+ common = Common.term

@@ -290,6 +290,8 @@ module Local : sig
 
   include Path_intf.S with type t := t
 
+  module Table : Hashtbl.S with type key = t
+
   val root : t
 
   val is_root : t -> bool
@@ -368,6 +370,8 @@ end
 
 module External : sig
   include Path_intf.S
+
+  module Table : Hashtbl.S with type key = t
 
   val relative : t -> string -> t
 
@@ -741,8 +745,6 @@ module T : sig
       Path of the same kind are compared using the standard lexical order *)
   val compare : t -> t -> Ordering.t
 
-  val equal : t -> t -> bool
-
   val hash : t -> int
 
   val in_build_dir : Local.t -> t
@@ -766,8 +768,6 @@ end = struct
     | In_build_dir _, In_source_tree _ -> Gt
     | In_build_dir x, In_build_dir y -> Local.compare x y
 
-  let equal (x : t) (y : t) = x = y
-
   let hash = Poly.hash
 
   let in_build_dir s = In_build_dir s
@@ -783,8 +783,6 @@ end = struct
 end
 
 include T
-
-let hash (t : t) = Poly.hash t
 
 let build_dir = in_build_dir Local.root
 
@@ -1167,16 +1165,6 @@ let touch ?(create = true) p =
     (* OCaml PR#8857 *)
     create ()
 
-let compare x y =
-  match (x, y) with
-  | External x, External y -> External.compare x y
-  | External _, _ -> Lt
-  | _, External _ -> Gt
-  | In_source_tree x, In_source_tree y -> Local.compare x y
-  | In_source_tree _, _ -> Lt
-  | _, In_source_tree _ -> Gt
-  | In_build_dir x, In_build_dir y -> Local.compare x y
-
 let extension t =
   match t with
   | External t -> External.extension t
@@ -1220,7 +1208,77 @@ let source s = in_source_tree s
 
 let build s = in_build_dir s
 
-module Table = Hashtbl.Make (T)
+module Table = struct
+  type key = t
+
+  type 'a t =
+    { source : 'a Source0.Table.t
+    ; build : 'a Build.Table.t
+    ; external_ : 'a External.Table.t
+    }
+
+  let create () =
+    { source = Source0.Table.create 0
+    ; build = Build.Table.create 0
+    ; external_ = External.Table.create 0
+    }
+
+  let clear { source; build; external_ } =
+    Source0.Table.clear source;
+    Build.Table.clear build;
+    External.Table.clear external_
+
+  let[@inline] mem { source; build; external_ } key =
+    match key with
+    | In_source_tree p -> Source0.Table.mem source p
+    | In_build_dir p -> Build.Table.mem build p
+    | External p -> External.Table.mem external_ p
+
+  let[@inline] set { source; build; external_ } k v =
+    match k with
+    | In_source_tree p -> Source0.Table.set source p v
+    | In_build_dir p -> Build.Table.set build p v
+    | External p -> External.Table.set external_ p v
+
+  let[@inline] remove { source; build; external_ } k =
+    match k with
+    | In_source_tree p -> Source0.Table.remove source p
+    | In_build_dir p -> Build.Table.remove build p
+    | External p -> External.Table.remove external_ p
+
+  let iter { source; build; external_ } ~f =
+    Source0.Table.iter source ~f;
+    Build.Table.iter build ~f;
+    External.Table.iter external_ ~f
+
+  let[@inline] find { source; build; external_ } = function
+    | In_source_tree p -> Source0.Table.find source p
+    | In_build_dir p -> Build.Table.find build p
+    | External p -> External.Table.find external_ p
+
+  let filteri_inplace { source; build; external_ } ~f =
+    Source0.Table.filteri_inplace source ~f:(fun [@inline] ~key ~data ->
+        f ~key:(In_source_tree key) ~data);
+    Build.Table.filteri_inplace build ~f:(fun [@inline] ~key ~data ->
+        f ~key:(In_build_dir key) ~data);
+    External.Table.filteri_inplace external_ ~f:(fun [@inline] ~key ~data ->
+        f ~key:(External key) ~data)
+
+  let filter_inplace { source; build; external_ } ~f =
+    Source0.Table.filteri_inplace source ~f:(fun [@inline] ~key:_ ~data ->
+        f data);
+    Build.Table.filteri_inplace build ~f:(fun [@inline] ~key:_ ~data -> f data);
+    External.Table.filteri_inplace external_ ~f:(fun [@inline] ~key:_ ~data ->
+        f data)
+
+  let to_dyn f { source; build; external_ } =
+    let open Dyn in
+    record
+      [ ("source", Source0.Table.to_dyn f source)
+      ; ("build", Build.Table.to_dyn f build)
+      ; ("external_", External.Table.to_dyn f external_)
+      ]
+end
 
 module L = struct
   (* TODO more efficient implementation *)

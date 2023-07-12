@@ -42,7 +42,7 @@ module type S = sig
     val of_listing : dir:elt -> filenames:string list -> t
   end
 
-  module Table : Hashtbl.S with type key = t
+  val equal : t -> t -> bool
 
   val relative : ?error_loc:Loc0.t -> t -> string -> t
 

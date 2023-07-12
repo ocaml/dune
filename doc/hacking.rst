@@ -251,7 +251,7 @@ Such languages must be enabled in the ``dune`` project file separately:
 
 .. code:: dune
 
-   (lang dune 3.9)
+   (lang dune 3.10)
    (using coq 0.8)
 
 If such extensions are experimental, it's recommended that they pass
@@ -686,7 +686,8 @@ Dune Bench
 ----------
 
 You can benchmark Dune's performance by running `make bench`. This will run a
-subset of the Duniverse.
+subset of the Duniverse. If you are running the bench locally, make sure that
+you bootstrap since that is the executable that the bench will run.
 
 Inline Benchmarks
 -----------------

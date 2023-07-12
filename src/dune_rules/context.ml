@@ -51,7 +51,6 @@ type t =
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; lib_config : Lib_config.t
   ; build_context : Build_context.t
-  ; make : Path.t option Memo.Lazy.t
   }
 
 let equal x y = Context_name.equal x.name y.name
@@ -421,17 +420,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let dynamically_linked_foreign_archives =
       supports_shared_libraries && dynamically_linked_foreign_archives
     in
-    let make =
-      let make = Memo.lazy_ (fun () -> which "make") in
-      match Sys.unix with
-      | false -> make
-      | true ->
-        Memo.lazy_ (fun () ->
-            let* res = which "gmake" in
-            match res with
-            | Some _ as s -> Memo.return s
-            | None -> Memo.Lazy.force make)
-    in
     let t =
       let build_context =
         Build_context.create ~name ~host:(Option.map host ~f:(fun c -> c.name))
@@ -456,7 +444,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           Dynlink_supported.By_the_os.of_bool supports_shared_libraries
       ; lib_config
       ; build_context
-      ; make
       }
     in
     if Ocaml.Version.supports_response_file ocaml.version then (
@@ -568,6 +555,7 @@ end = struct
     | Default
         { lock = _
         ; version_preference = _
+        ; solver_env = _
         ; base =
             { targets
             ; name
@@ -715,5 +703,3 @@ let roots t =
     let setup_roots = Roots.map ~f:(Option.map ~f:Path.of_string) Setup.roots in
     Roots.first_has_priority setup_roots prefix_roots
   | Opam _ -> prefix_roots
-
-let make t = Memo.Lazy.force t.make

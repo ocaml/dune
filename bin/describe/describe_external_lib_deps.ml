@@ -1,5 +1,4 @@
 open Import
-open Stdune
 
 module Kind = struct
   type t =

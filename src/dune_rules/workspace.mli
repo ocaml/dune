@@ -48,7 +48,8 @@ module Context : sig
     type t =
       { base : Common.t
       ; lock : Path.Source.t option
-      ; version_preference : Dune_pkg.Opam.Version_preference.t option
+      ; version_preference : Dune_pkg.Version_preference.t option
+      ; solver_env : Dune_pkg.Solver_env.t option
       }
   end
 

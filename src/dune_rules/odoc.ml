@@ -381,8 +381,7 @@ let setup_css_rule sctx =
         ~flags_for:None
         [ A "-o"; Path (Path.build dir) ]
     in
-    cmd
-    |> Action_builder.With_targets.add_directories ~directory_targets:[ dir ]
+    Action_builder.With_targets.add_directories ~directory_targets:[ dir ] cmd
   in
   add_rule sctx run_odoc
 
@@ -434,20 +433,17 @@ let libs_of_pkg ctx ~pkg =
   (* Filter out all implementations of virtual libraries *)
   List.filter_map entries ~f:(fun (entry : Scope.DB.Lib_entry.t) ->
       match entry with
-      | Library lib ->
-        let is_impl =
-          Lib.Local.to_lib lib |> Lib.info |> Lib_info.implements
-          |> Option.is_some
-        in
-        Option.some_if (not is_impl) lib
-      | Deprecated_library_name _ -> None)
+      | Deprecated_library_name _ -> None
+      | Library lib -> (
+        match Lib.Local.to_lib lib |> Lib.info |> Lib_info.implements with
+        | None -> Some lib
+        | Some _ -> None))
 
 let load_all_odoc_rules_pkg sctx ~pkg =
   let* pkg_libs = libs_of_pkg sctx ~pkg in
   let+ () =
-    Memo.parallel_iter
-      (Pkg pkg :: List.map pkg_libs ~f:(fun lib -> Lib lib))
-      ~f:(fun _ -> Memo.return ())
+    Pkg pkg :: List.map pkg_libs ~f:(fun lib -> Lib lib)
+    |> Memo.parallel_iter ~f:(fun _ -> Memo.return ())
   in
   pkg_libs
 
@@ -504,9 +500,9 @@ let static_html ctx =
 
 let check_mlds_no_dupes ~pkg ~mlds =
   match
-    List.map mlds ~f:(fun mld ->
+    List.rev_map mlds ~f:(fun mld ->
         (Filename.chop_extension (Path.Build.basename mld), mld))
-    |> String.Map.of_list
+    |> Filename.Map.of_list
   with
   | Ok m -> m
   | Error (_, p1, p2) ->
@@ -525,12 +521,11 @@ let odoc_artefacts sctx target =
     let+ mlds =
       let+ mlds = Packages.mlds sctx pkg in
       let mlds = check_mlds_no_dupes ~pkg ~mlds in
-      if String.Map.mem mlds "index" then mlds
-      else
-        let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
-        String.Map.add_exn mlds "index" gen_mld
+      Filename.Map.update mlds "index" ~f:(function
+        | None -> Some (Paths.gen_mld_dir ctx pkg ++ "index.mld")
+        | Some _ as s -> s)
     in
-    String.Map.to_list_map mlds ~f:(fun _ mld ->
+    Filename.Map.to_list_map mlds ~f:(fun _ mld ->
         Mld.create mld |> Mld.odoc_file ~doc_dir:dir |> create_odoc ctx ~target)
   | Lib lib ->
     let info = Lib.Local.info lib in
@@ -739,7 +734,7 @@ let package_mlds =
             let* mlds = Packages.mlds sctx pkg in
             let mlds = check_mlds_no_dupes ~pkg ~mlds in
             let ctx = Super_context.context sctx in
-            if String.Map.mem mlds "index" then Memo.return mlds
+            if Filename.Map.mem mlds "index" then Memo.return mlds
             else
               let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
               let* entry_modules = entry_modules sctx ~pkg in
@@ -748,7 +743,7 @@ let package_mlds =
                   (Action_builder.write_file gen_mld
                      (default_index ~pkg entry_modules))
               in
-              String.Map.set mlds "index" gen_mld))
+              Filename.Map.set mlds "index" gen_mld))
   in
   fun sctx ~pkg -> Memo.exec memo (sctx, pkg)
 
@@ -759,10 +754,11 @@ let setup_package_odoc_rules sctx ~pkg =
      back to a package name here. Need to try and change that one day. *)
   let pkg = Package.name pkg in
   let* odocs =
-    Memo.parallel_map (String.Map.values mlds) ~f:(fun mld ->
-        compile_mld sctx (Mld.create mld) ~pkg
-          ~doc_dir:(Paths.odocs ctx (Pkg pkg))
-          ~includes:(Action_builder.return []))
+    Filename.Map.values mlds
+    |> Memo.parallel_map ~f:(fun mld ->
+           compile_mld sctx (Mld.create mld) ~pkg
+             ~doc_dir:(Paths.odocs ctx (Pkg pkg))
+             ~includes:(Action_builder.return []))
   in
   Dep.setup_deps ctx (Pkg pkg) (Path.set_of_build_paths_list odocs)
 

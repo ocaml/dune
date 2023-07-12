@@ -635,7 +635,8 @@ let pp_one_module sctx ~lib_name ~scope ~preprocessor_deps
                Expander.expand_and_eval_set expander driver.info.as_ppx_flags
                  ~standard:(Action_builder.return [ "--as-ppx" ])
              and* () = preprocessor_deps in
-             Command.expand_no_targets ~dir:(Path.build dir)
+             Command.expand_no_targets
+               ~dir:(Path.build (Super_context.context sctx).build_dir)
                (S [ Dep (Path.build exe); As driver_flags; As flags ]))
         in
         [ "-ppx"; String.quote_list_for_shell args ]

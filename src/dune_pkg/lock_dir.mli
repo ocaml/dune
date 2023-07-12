@@ -22,6 +22,8 @@ module Pkg_info : sig
     ; source : Source.t option
     ; extra_sources : (Path.Local.t * Source.t) list
     }
+
+  val default_version : string
 end
 
 module Pkg : sig

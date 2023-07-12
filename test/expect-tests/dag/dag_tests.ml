@@ -14,7 +14,7 @@ let%expect_test _ =
         type t = mynode
       end)
       () in
-  let node data = { info = create_node_info (); data } in
+  let node data = create_node data in
   let root = node { name = "root" } in
   let node11 = node { name = "child 1 1" } in
   let node12 = node { name = "child 1 2" } in
@@ -29,7 +29,7 @@ let%expect_test _ =
   let node41 = node { name = "child 4 1" } in
   add_assuming_missing node31 node41;
   Format.printf "%a@." dag_pp_mynode root;
-  let name node = node.data.name in
+  let name node = (value node).name in
   try
     add_assuming_missing node41 root;
     print_endline "no cycle"
@@ -63,10 +63,10 @@ let cycle_test variant =
         type t = int
       end)
       () in
-  let node data = { info = create_node_info (); data } in
+  let node data = create_node data in
   let edges = ref [] in
   let add n1 n2 =
-    edges := (n1.data, n2.data) :: !edges;
+    edges := (value n1, value n2) :: !edges;
     add_assuming_missing n1 n2
   in
   let _n1 = node 1 in
@@ -136,7 +136,7 @@ let cycle_test variant =
   match add n23 n11 with
   | _ -> assert false
   | exception Cycle c ->
-    let c = List.map c ~f:(fun x -> x.data) in
+    let c = List.map c ~f:value in
     List.iter (adjacent_pairs c) ~f:(fun (b, a) ->
         match List.exists !edges ~f:(fun edge -> edge = (a, b)) with
         | true -> ()
@@ -164,7 +164,7 @@ let%expect_test "creating a cycle can succeed on the second attempt" =
         type t = mynode
       end)
       () in
-  let node data = { info = create_node_info (); data } in
+  let node = create_node in
   let c1 = node { name = "c1" } in
   let c2 = node { name = "c2" } in
   let c3 = node { name = "c3" } in

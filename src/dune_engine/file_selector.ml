@@ -1,7 +1,10 @@
 open Import
 
 type t =
-  { dir : Path.t
+  { (* CR-someday rgrinberg: this [dir] is ignored when evaluating the
+       selector with [test]. It's better to just drop it completely and
+       provide the directory explicitly when building or evaluating *)
+    dir : Path.t
   ; predicate : Predicate_lang.Glob.t
   ; only_generated_files : bool
   }

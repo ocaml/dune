@@ -251,7 +251,8 @@ let load_install_file path =
     in
     let start = position_of_loc start in
     let stop = position_of_loc stop in
-    User_error.raise ~loc:{ start; stop } [ Pp.text msg ]
+    let loc = Loc.create ~start ~stop in
+    User_error.raise ~loc [ Pp.text msg ]
   in
   List.concat_map file.file_contents ~f:(function
     | { pelem = Variable (section, files); pos } -> (

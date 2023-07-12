@@ -90,7 +90,7 @@ end = struct
               ; pos_bol = 0
               }
             in
-            { start; stop = { start with pos_cnum = String.length line } }
+            Loc.create ~start ~stop:{ start with pos_cnum = String.length line }
           in
           User_error.raise ~loc
             [ Pp.text "#require is no longer supported in dune files."

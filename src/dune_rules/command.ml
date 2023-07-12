@@ -132,6 +132,7 @@ module Args = struct
     let memo =
       Action_builder.create_memo "Command.Args.memo"
         ~input:(module Path)
+        ~cutoff:(List.equal String.equal)
         (fun dir -> expand_no_targets ~dir t)
     in
     Expand (fun ~dir -> Action_builder.exec_memo memo dir)

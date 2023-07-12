@@ -13,7 +13,8 @@ let action_runner runners server =
   let module Action_runner = Dune_engine.Action_runner in
   Staged.stage @@ fun (input : Dune_engine.Action_exec.input) ->
   match
-    Path.Source.of_string input.rule_loc.start.pos_fname |> Path.Source.explode
+    Path.Source.of_string (Loc.start input.rule_loc).pos_fname
+    |> Path.Source.explode
   with
   | [] -> None
   | runner :: _ ->

@@ -145,7 +145,8 @@ let describe_rule (rule : Rule.t) =
   Pp.text
   @@
   match rule.info with
-  | From_dune_file { start; _ } ->
+  | From_dune_file loc ->
+    let start = Loc.start loc in
     start.pos_fname ^ ":" ^ string_of_int start.pos_lnum
   | Internal -> "<internal location>"
   | Source_file_copy _ -> "file present in source tree"
@@ -884,7 +885,12 @@ end = struct
 
   let load_dir =
     let load_dir_impl dir = load_dir_impl ~dir in
-    let memo = Memo.create "load-dir" ~input:(module Path) load_dir_impl in
+    let memo =
+      Memo.create_with_store "load-dir"
+        ~store:(module Path.Table)
+        ~input:(module Path)
+        load_dir_impl
+    in
     fun ~dir -> Memo.exec memo dir
 
   let is_under_directory_target p =

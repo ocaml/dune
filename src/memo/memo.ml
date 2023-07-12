@@ -347,7 +347,8 @@ module Lazy_dag_node = struct
 
   let force t ~(dep_node : _ Dep_node_without_state.t) =
     match !t with
-    | Some (({ data = T dep_node_passed_first; _ } : Dag.node) as dag_node) ->
+    | Some (dag_node : Dag.node) ->
+      let (T dep_node_passed_first) = Dag.value dag_node in
       (* CR-someday amokhov: It would be great to restructure the code to rule
          out the potential inconsistency between [dep_node]s passed to
          [force]. *)
@@ -356,9 +357,7 @@ module Lazy_dag_node = struct
     | None ->
       let (dag_node : Dag.node) =
         if !Counters.enabled then incr Counters.nodes_in_cycle_detection_graph;
-        { info = Dag.create_node_info ()
-        ; data = Dep_node_without_state.T dep_node
-        }
+        Dag.create_node (Dep_node_without_state.T dep_node)
       in
       t := Some dag_node;
       dag_node
@@ -707,8 +706,7 @@ module Call_stack = struct
         | false -> (
           let caller_dag_node = Stack_frame_with_state.dag_node frame in
           match Dag.add_assuming_missing caller_dag_node dag_node with
-          | exception Dag.Cycle cycle ->
-            Error (List.map cycle ~f:(fun dag_node -> dag_node.Dag.data))
+          | exception Dag.Cycle cycle -> Error (List.map cycle ~f:Dag.value)
           | () -> (
             if !Counters.enabled then
               incr Counters.edges_in_cycle_detection_graph;

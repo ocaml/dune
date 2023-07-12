@@ -90,31 +90,120 @@ let prepare_workspace () =
       Format.eprintf "cloning %s/%s@." pkg.org pkg.name;
       Package.clone pkg)
 
-let dune_build () =
+let dune_build ~name ~sandbox =
   let stdin_from = Process.(Io.null In) in
   let stdout_to = Process.Io.make_stdout Swallow in
   let stderr_to = Process.Io.make_stderr Swallow in
+  let gc_dump = Temp.create File ~prefix:"gc_stat" ~suffix:name in
   let open Fiber.O in
+  (* Build with timings and gc stats *)
   let+ times =
     Process.run_with_times dune ~display:Quiet ~stdin_from ~stdout_to ~stderr_to
-      [ "build"; "@install"; "--release" ]
+      ([ "build"
+       ; "@install"
+       ; "--release"
+       ; "--cache" (* explicitly disable cache *)
+       ; "disabled"
+       ; "--dump-gc-stats"
+       ; Path.to_string gc_dump
+       ]
+      @
+      match sandbox with
+      | `Yes -> [ "--sandbox"; "hardlink" ]
+      | `No -> [])
   in
-  times.elapsed_time
+  (* Read the gc stats from the dump file *)
+  Dune_lang.Parser.parse_string ~mode:Single ~fname:(Path.to_string gc_dump)
+    (Io.read_file gc_dump)
+  |> Dune_lang.Decoder.parse Dune_util.Gc.decode Univ_map.empty
+  |> Metrics.make times
 
-let run_bench () =
+let dune_clean () =
+  let stdin_from = Process.(Io.null In) in
+  let stdout_to = Process.Io.make_stdout Swallow in
+  let stderr_to = Process.Io.make_stderr Swallow in
+  Process.run Strict ~display:Quiet ~stdout_to ~stderr_to ~stdin_from dune
+    [ "clean" ]
+
+let run_bench ~sandbox =
   let open Fiber.O in
-  let* clean = dune_build () in
+  let* clean = dune_build ~name:"clean" ~sandbox in
   let+ zero =
-    let open Fiber.O in
     let rec zero acc n =
       if n = 0 then Fiber.return (List.rev acc)
       else
-        let* time = dune_build () in
+        let* time = dune_build ~name:("zero" ^ string_of_int n) ~sandbox in
         zero (time :: acc) (pred n)
     in
     zero [] 5
   in
   (clean, zero)
+
+type ('float, 'int) bench_results =
+  { size : int
+  ; clean : ('float, 'int) Metrics.t
+  ; zero : ('float, 'int) Metrics.t list
+  ; clean_sandbox : ('float, 'int) Metrics.t
+  ; zero_sandbox : ('float, 'int) Metrics.t list
+  }
+
+let tag_results { size; clean; zero; clean_sandbox; zero_sandbox } =
+  let tag data = Metrics.map ~f:(fun t -> `Float t) ~g:(fun t -> `Int t) data in
+  let list_tag data =
+    List.map data ~f:tag |> Metrics.unzip
+    |> Metrics.map ~f:(fun x -> `List x) ~g:(fun x -> `List x)
+  in
+  (`Int size, tag clean, list_tag zero, tag clean_sandbox, list_tag zero_sandbox)
+
+(** Display all clean and null builds with a few exceptions:
+
+    - fragments - not consistent between builds
+    - stack_size - not very useful
+    - forced_collections - only available in OCaml >= 4.12 *)
+let display_clean_and_zero ~name_suffix (clean : _ Metrics.t)
+    (zero : _ Metrics.t) =
+  (* Display single what stat clean and null build *)
+  let display what units clean zero =
+    { Output.name = what ^ name_suffix
+    ; metrics =
+        [ ("[Clean] " ^ what, clean, units); ("[Null] " ^ what, zero, units) ]
+    }
+  in
+  [ display "Build Time" "Seconds" clean.elapsed_time zero.elapsed_time
+  ; display "User CPU Time" "Seconds" clean.user_cpu_time zero.user_cpu_time
+  ; display "System CPU Time" "Seconds" clean.system_cpu_time
+      zero.system_cpu_time
+  ; display "Minor Words" "Approx. Words" clean.minor_words zero.minor_words
+  ; display "Major Words" "Approx. Words" clean.major_words zero.major_words
+  ; display "Minor Collections" "Collections" clean.minor_collections
+      zero.minor_collections
+  ; display "Major Collections" "Collections" clean.major_collections
+      zero.major_collections
+  ; display "Heap Words" "Words" clean.heap_words zero.heap_words
+  ; display "Heap Chunks" "Chunks" clean.heap_chunks zero.heap_chunks
+  ; display "Live Words" "Words" clean.live_words zero.live_words
+  ; display "Live Blocks" "Blocks" clean.live_blocks zero.live_blocks
+  ; display "Free Words" "Words" clean.free_words zero.free_words
+  ; display "Free Blocks" "Blocks" clean.free_blocks zero.free_blocks
+  ; display "Largest Free" "Words" clean.largest_free zero.largest_free
+  ; display "Compactions" "Compactions" clean.compactions zero.compactions
+  ; display "Top Heap Words" "Words" clean.top_heap_words zero.top_heap_words
+  ]
+
+let format_results bench_results =
+  (* tagging data for json conversion *)
+  let size, clean, zero, clean_sandbox, zero_sandbox =
+    tag_results bench_results
+  in
+  (* bench results *)
+  [ { Output.name = "Misc"
+    ; metrics = [ ("Size of _boot/dune.exe", size, "Bytes") ]
+    }
+  ]
+  (* clean and null builds *)
+  @ display_clean_and_zero ~name_suffix:"" clean zero
+  (* clean and null builds with sandbox *)
+  @ display_clean_and_zero ~name_suffix:" [sandbox]" clean_sandbox zero_sandbox
 
 let () =
   Dune_util.Log.init ~file:No_log_file ();
@@ -132,32 +221,25 @@ let () =
     ; watch_exclusions = []
     }
   in
-  let clean, zero =
-    Scheduler.Run.go config
-      ~on_event:(fun _ _ -> ())
-      (fun () ->
-        let open Fiber.O in
-        let* () = prepare_workspace () in
-        run_bench ())
-  in
-  let zero = List.map zero ~f:(fun t -> `Float t) in
   let size =
     let stat : Unix.stats = Path.stat_exn dune in
     stat.st_size
   in
   let results =
-    [ { Output.name = "Build times"
-      ; metrics =
-          [ ("Clean build time", `Float clean, "secs")
-          ; ("Null build time", `List zero, "secs")
-          ]
-      }
-    ; { Output.name = "Misc"
-      ; metrics = [ ("Size of _boot/dune.exe", `Int size, "bytes") ]
-      }
-    ]
+    Scheduler.Run.go config ~on_event:(fun _ _ -> ()) @@ fun () ->
+    let open Fiber.O in
+    (* Prepare the workspace *)
+    let* () = prepare_workspace () in
+    (* Build the clean and null builds *)
+    let* clean, zero = run_bench ~sandbox:`No in
+    (* Clean the workspace *)
+    let* () = dune_clean () in
+    (* Build the clean and null builds with sandbox *)
+    let+ clean_sandbox, zero_sandbox = run_bench ~sandbox:`Yes in
+    (* Return the bench results *)
+    format_results { size; clean; zero; clean_sandbox; zero_sandbox }
   in
-  let version = 2 in
+  let version = 4 in
   let output = { Output.config = []; version; results } in
   print_string (Json.to_string (Output.to_json output));
   flush stdout

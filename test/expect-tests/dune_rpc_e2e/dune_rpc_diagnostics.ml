@@ -36,10 +36,10 @@ let on_diagnostic_event diagnostics =
     let sanitize_position (p : Lexing.position) =
       { p with pos_fname = sanitize_path p.pos_fname }
     in
-    fun (loc : Loc.t) ->
-      { Loc.start = sanitize_position loc.start
-      ; stop = sanitize_position loc.stop
-      }
+    fun (loc : Lexbuf.Loc.t) ->
+      Loc.of_lexbuf_loc loc
+      |> Loc.map_pos ~f:sanitize_position
+      |> Loc.to_lexbuf_loc
   in
   (* function to remove remove pp tags and hide junk from paths *)
   let map_event (d : Diagnostic.Event.t) f : Diagnostic.Event.t =

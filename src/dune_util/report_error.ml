@@ -93,7 +93,8 @@ let get_error_from_exn = function
           { pos_fname = fname; pos_lnum = line; pos_cnum = start; pos_bol = 0 }
         in
         let stop = { start with pos_cnum = stop } in
-        (Some { Loc.start; stop }, Pp.text s)
+        let loc = Loc.create ~start ~stop in
+        (Some loc, Pp.text s)
     in
     { responsible = Developer
     ; msg = User_message.make ?loc [ pp ]
@@ -170,7 +171,7 @@ let gen_report exn backtrace =
         match msg.loc with
         | None -> if has_embedded_location then [] else memo_stack
         | Some loc ->
-          if Filename.is_relative loc.start.pos_fname then
+          if Filename.is_relative (Loc.start loc).pos_fname then
             (* If the error points to a local file, we assume that we don't need
                to explain to the user how we reached this error. *)
             []

@@ -104,9 +104,7 @@ let delete_very_recent_entries () =
       | Gt | Eq -> false
     in
     match !Clflags.debug_digests with
-    | false ->
-      Path.Table.filteri_inplace cache.table ~f:(fun ~key:_ ~data ->
-          filter data)
+    | false -> Path.Table.filter_inplace cache.table ~f:filter
     | true ->
       Path.Table.filteri_inplace cache.table ~f:(fun ~key:path ~data ->
           let filter = filter data in

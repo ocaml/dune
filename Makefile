@@ -91,6 +91,14 @@ dev-switch:
 		opam switch create -y . $(TEST_OCAMLVERSION) --deps-only --with-test
 	opam install -y --update-invariant ocaml.$(TEST_OCAMLVERSION) $(TEST_DEPS) $(DEV_DEPS)
 
+.PHONY: changelog
+changelog:
+	$(BIN) exec -- doc/changes/add.exe
+
+.PHONY: compile-changelog
+compile-changelog:
+	$(BIN) build @doc/changes/compile-changelog
+
 .PHONY: test
 test: $(BIN)
 	$(BIN) runtest

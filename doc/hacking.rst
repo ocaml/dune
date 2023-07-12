@@ -406,6 +406,18 @@ For project names, use the following capitalization:
 - **PPX,** rather than ppx or Ppx; ``ppxlib``
 - **UTop,** rather than utop or Utop.
 
+Changelog
+=========
+
+All changes observable by the user should be documented in the changelog.
+
+Use ``make changelog`` to run an interactive script for adding a changelog
+entry. Unreleased changes are collected in their own files in the
+``doc/changes/`` directory.
+
+During the release process, the changelog entries will be compiled into
+``CHANGES.md``.
+
 Vendoring
 =========
 

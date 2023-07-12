@@ -1,0 +1,25 @@
+(executable
+ (name add)
+ (libraries stdune pp dune_console))
+
+(cram
+ (deps add.exe))
+
+(rule
+ (alias compile-changelog)
+ (deps
+  (glob_files *.md))
+ (action
+  (with-stdout-to
+   changes-new.md
+   (progn
+    (echo "Unreleased\n")
+    (echo "----------\n")
+    (echo "\n")
+    (cat %{deps})
+    (cat ../../CHANGES.md)))))
+
+(rule
+ (alias compile-changelog)
+ (action
+  (diff ../../CHANGES.md changes-new.md)))

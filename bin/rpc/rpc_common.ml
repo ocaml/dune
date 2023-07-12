@@ -4,7 +4,7 @@ module Client = Dune_rpc_client.Client
 let active_server () =
   match Dune_rpc_impl.Where.get () with
   | Some p -> p
-  | None -> User_error.raise [ Pp.text "rpc server not running" ]
+  | None -> User_error.raise [ Pp.text "RPC server not running." ]
 
 (* cwong: Should we put this into [dune-rpc]? *)
 let interpret_kind = function

@@ -261,9 +261,7 @@ module Sanitize_for_tests = struct
         paths *)
     let really_sanitize (context : Context.t) items =
       let rename_path =
-        let findlib_paths =
-          context.findlib_paths |> List.map ~f:Path.to_string
-        in
+        let findlib_paths = context.findlib_paths in
         function
         (* we have found a path for OCaml's root: let's define the renaming
            function *)
@@ -272,27 +270,27 @@ module Sanitize_for_tests = struct
             List.find_map findlib_paths ~f:(fun prefix ->
                 (* if the path to rename is an external path, try to find the
                    OCaml root inside, and replace it with a fixed string *)
-                let s = Path.External.to_string ext_path in
-                match String.drop_prefix ~prefix s with
+                match Path.drop_prefix ~prefix (Path.external_ ext_path) with
                 | None -> None
                 | Some s' ->
                   (* we have found the OCaml root path: let's replace it with a
                      constant string *)
                   Some
                     (Path.external_
-                    @@ Path.External.of_string
-                         Filename.(concat dir_sep @@ concat "FINDLIB" s')))
+                    @@ Path.External.append_local
+                         (Path.External.of_string "/FINDLIB")
+                         s'))
           with
           | None -> path
           | Some p -> p)
         | Path.In_source_tree p ->
           (* Replace the workspace root with a fixed string *)
           let p =
-            let new_root = Filename.(concat dir_sep "WORKSPACE_ROOT") in
+            let new_root = Path.External.of_string "/WORKSPACE_ROOT" in
             if Path.Source.is_root p then new_root
-            else Filename.(concat new_root (Path.Source.to_string p))
+            else Path.External.append_local new_root (Path.Source.to_local p)
           in
-          Path.external_ (Path.External.of_string p)
+          Path.external_ p
         | path ->
           (* Otherwise, it should not be changed *)
           path

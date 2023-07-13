@@ -163,7 +163,7 @@ Test with an opam like installation
   $ test -e a/a.install
   [1]
 
-  $ dune install -p a --create-install-files a
+  $ dune install -p a --create-install-files a --prefix "_destdir"
 
   $ grep "_destdir" a/a.install -c
   7

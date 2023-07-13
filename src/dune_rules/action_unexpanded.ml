@@ -68,6 +68,9 @@ module Action_expander : sig
     (* Evaluate a path in a position of dependency, such as in [(cat <dep>)] *)
     val dep : String_with_vars.t -> Path.t t
 
+    (* Evaluate paths in the position of dependencies, such as in [(cat <deps>)] *)
+    val deps : String_with_vars.t -> Path.t list t
+
     (* Evaluate a path in a position of optional dependency, such as in [(diff
        <dep_if_exists> ...)] *)
     val dep_if_exists : String_with_vars.t -> Path.t t
@@ -241,6 +244,14 @@ end = struct
         Value.to_path_in_build_or_external v
           ~error_loc:(String_with_vars.loc sw) ~dir:t.dir
 
+      let expand_paths t sw =
+        let+ v, vs = expand t ~mode:At_least_one sw in
+        List.map
+          ~f:
+            (Value.to_path_in_build_or_external
+               ~error_loc:(String_with_vars.loc sw) ~dir:t.dir)
+          (v :: vs)
+
       let expand_string env sw =
         let+ v = expand env ~mode:Single sw in
         Value.to_string v ~dir:(Path.build env.dir)
@@ -285,24 +296,26 @@ end = struct
       let path sw ~f = make ~expand:Expander.No_deps.expand_path sw ~f
     end
 
-    let register_dep x ~f env acc =
+    let register_deps x ~f env acc =
       Memo.return
         (if not env.infer then (x, acc)
          else
-           let x = Action_builder.memoize "dep" x in
+           let x = Action_builder.memoize "deps" x in
            ( x
            , { acc with
                deps =
                  (let+ x = x
                   and+ set = acc.deps in
-                  match f x with
-                  | None -> set
-                  | Some fn -> Path.Set.add set fn)
+                  Path.Set.union set (Path.Set.of_list (f x)))
              } ))
 
     let dep sw env acc =
       let fn = Expander.expand_path env sw in
-      register_dep fn ~f:Option.some env acc
+      register_deps fn ~f:List.singleton env acc
+
+    let deps sw env acc =
+      let fn = Expander.expand_paths env sw in
+      register_deps fn ~f:Fun.id env acc
 
     let dep_if_exists sw env acc =
       Memo.return
@@ -366,18 +379,18 @@ end = struct
         let args = Value.L.to_strings ~dir args in
         (prog, args)
       in
-      register_dep b env acc ~f:(function
-        | Ok p, _ -> Some p
-        | Error _, _ -> None)
+      register_deps b env acc ~f:(function
+        | Ok p, _ -> [ p ]
+        | Error _, _ -> [])
   end
 end
 
-let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
+let rec expand (t : Dune_lang.Action.t) ~expander : Action.t Action_expander.t =
   let module A = Action_expander in
   let module E = Action_expander.E in
   let open Action_expander.O in
   let module O (* [O] for "outcome" *) = Action in
-  let expand = expand ~context in
+  let expand = expand ~expander in
   let expand_run prog args =
     let+ args = A.all (List.map args ~f:E.strings)
     and+ prog, more_args = E.prog_and_args prog in
@@ -427,8 +440,15 @@ let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
     let l = List.concat l in
     O.Echo l
   | Cat xs ->
-    let+ xs = A.all (List.map xs ~f:E.dep) in
-    O.Cat xs
+    let version =
+      Dune_project.dune_version (Scope.project (Expander.scope expander))
+    in
+    if version >= (3, 10) then
+      let+ xs = A.all (List.map xs ~f:E.deps) in
+      O.Cat (List.concat xs)
+    else
+      let+ xs = A.all (List.map xs ~f:E.dep) in
+      O.Cat xs
   | Copy (x, y) ->
     let+ x = E.dep x
     and+ y = E.target y in
@@ -438,6 +458,8 @@ let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
     and+ y = E.target y in
     O.Symlink (x, y)
   | Copy_and_add_line_directive (x, y) ->
+    let context = Expander.context expander in
+
     let+ x = E.dep x
     and+ y = E.target y in
     Copy_line_directive.action context ~src:x ~dst:y
@@ -494,8 +516,7 @@ let expand_no_targets t ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
     Expander.set_expanding_what expander (User_action_without_targets { what })
   in
   let* { Action_builder.With_targets.build; targets } =
-    let context = Expander.context expander in
-    expand ~context t
+    expand ~expander t
     |> Action_expander.run ~chdir ~targets_dir:None ~expander
     |> Action_builder.of_memo
   in
@@ -540,8 +561,7 @@ let expand t ~loc ~chdir ~deps:deps_written_by_user ~targets_dir
     Expander.set_expanding_what expander (User_action targets_written_by_user)
   in
   let+! { Action_builder.With_targets.build; targets } =
-    let context = Expander.context expander in
-    expand ~context t
+    expand ~expander t
     |> Action_expander.run ~chdir ~targets_dir:(Some targets_dir) ~expander
   in
   let targets =

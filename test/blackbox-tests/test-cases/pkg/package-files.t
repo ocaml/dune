@@ -12,7 +12,7 @@ Additional files overlaid on top of the source can be found in the
   > (source
   >  (copy $PWD/test-source))
   > (build
-  >  (system "echo foo:; cat foo; echo bar:; cat bar"))
+  >  ((action (system "echo foo:; cat foo; echo bar:; cat bar"))))
   > EOF
 
   $ mkdir dune.lock/test.files

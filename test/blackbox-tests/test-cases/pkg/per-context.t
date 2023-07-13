@@ -19,7 +19,7 @@ TODO: versioning will be added once this feature is stable
   > EOF
   $ cat >foo.lock/test.pkg <<EOF
   > (build
-  >  (system "echo building from %{context_name}"))
+  >  ((action (system "echo building from %{context_name}"))))
   > EOF
   $ ln -s foo.lock bar.lock
 

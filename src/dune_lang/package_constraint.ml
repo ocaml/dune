@@ -31,6 +31,8 @@ module Variable = struct
 
   let of_name name = { name }
 
+  let equal { name } t = String.equal name t.name
+
   let to_dyn { name } = Dyn.record [ ("name", Dyn.string name) ]
 
   let encode { name } = Dune_sexp.Encoder.string (":" ^ name)
@@ -50,6 +52,12 @@ module Value = struct
     | String_literal s -> Dyn.variant "String_literal" [ Dyn.string s ]
     | Variable v -> Dyn.variant "Variable" [ Variable.to_dyn v ]
 
+  let equal a b =
+    match (a, b) with
+    | String_literal a, String_literal b -> String.equal a b
+    | Variable a, Variable b -> Variable.equal a b
+    | _ -> false
+
   let encode = function
     | String_literal s -> Dune_sexp.Encoder.string s
     | Variable v -> Variable.encode v
@@ -68,6 +76,17 @@ type t =
   | Bop of Op.t * Value.t * Value.t
   | And of t list
   | Or of t list
+
+let rec equal a b =
+  match (a, b) with
+  | Bvar a, Bvar b -> Variable.equal a b
+  | Uop (a_op, a_value), Uop (b_op, b_value) ->
+    Op.equal a_op b_op && Value.equal a_value b_value
+  | Bop (a_op, a_lhs, a_rhs), Bop (b_op, b_lhs, b_rhs) ->
+    Op.equal a_op b_op && Value.equal a_lhs b_lhs && Value.equal a_rhs b_rhs
+  | And a, And b -> List.equal equal a b
+  | Or a, Or b -> List.equal equal a b
+  | _ -> false
 
 let rec encode c =
   let open Dune_sexp.Encoder in

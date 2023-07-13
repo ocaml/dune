@@ -8,9 +8,10 @@ Applying patches
   $ cat >dune.lock/test.pkg <<EOF
   > (source (copy $PWD/test-source))
   > (build
-  >  (progn
-  >   (patch foo.patch)
-  >   (system "cat foo.ml")))
+  >  ((action
+  >    (progn
+  >     (patch foo.patch)
+  >     (system "cat foo.ml")))))
   > EOF
 
   $ mkdir dune.lock/test.files

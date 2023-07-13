@@ -6,26 +6,27 @@ Test that we can set variables
   > EOF
   $ cat >dune.lock/test.pkg <<EOF
   > (build
-  >  (system "\| cat >test.config <<EOF
-  >          "\| opam-version: "2.0"
-  >          "\| variables {
-  >          "\|   abool: true
-  >          "\|   astring: "foobar"
-  >          "\|   somestrings: ["foo" "bar"]
-  >          "\| }
-  >          "\| EOF
-  >  ))
+  >  ((action
+  >    (system "\| cat >test.config <<EOF
+  >            "\| opam-version: "2.0"
+  >            "\| variables {
+  >            "\|   abool: true
+  >            "\|   astring: "foobar"
+  >            "\|   somestrings: ["foo" "bar"]
+  >            "\| }
+  >            "\| EOF
+  >    ))))
   > EOF
 
   $ cat >dune.lock/usetest.pkg <<EOF
   > (deps test)
   > (build
-  >  (progn
-  >   (system "\| echo %{pkg:var:test:abool}
-  >           "\| echo %{pkg:var:test:astring}
-  >           "\| echo %{pkg:var:test:somestrings}
-  >   )
-  >   (run mkdir -p %{prefix})))
+  >  ((action
+  >    (system "\| echo %{pkg:var:test:abool}
+  >            "\| echo %{pkg:var:test:astring}
+  >            "\| echo %{pkg:var:test:somestrings}
+  >    )))
+  >  ((action (run mkdir -p %{prefix}))))
   > EOF
 
   $ dune build .pkg/usetest/target/

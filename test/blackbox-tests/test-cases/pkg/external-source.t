@@ -10,9 +10,10 @@ Test that can fetch the sources from an external dir
   $ cat >dune.lock/test.pkg <<EOF
   > (source (copy $PWD/foo))
   > (build
-  >  (progn
-  >   (run mkdir -p %{prefix}/bin)
-  >   (run cp x %{prefix}/bin/x )))
+  >  ((action
+  >    (progn
+  >     (run mkdir -p %{prefix}/bin)
+  >     (run cp x %{prefix}/bin/x )))))
   > EOF
 
   $ dune build .pkg/test/target/bin/x

@@ -180,8 +180,8 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
       (let mk_pkg_basic ~name ~version =
          let name = Package_name.of_string name in
          ( name
-         , { Lock_dir.Pkg.build_command = None
-           ; install_command = None
+         , { Lock_dir.Pkg.build_commands = []
+           ; install_commands = []
            ; deps = []
            ; info =
                { Lock_dir.Pkg_info.name
@@ -206,8 +206,8 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
     ; packages =
         map
           { "bar" :
-              { build_command = None
-              ; install_command = None
+              { build_commands = []
+              ; install_commands = []
               ; deps = []
               ; info =
                   { name = "bar"
@@ -219,8 +219,8 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
               ; exported_env = []
               }
           ; "foo" :
-              { build_command = None
-              ; install_command = None
+              { build_commands = []
+              ; install_commands = []
               ; deps = []
               ; info =
                   { name = "foo"
@@ -246,18 +246,34 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
            External_copy (Loc.none, Path.External.of_string "/tmp/a")
          in
          ( name
-         , { Lock_dir.Pkg.build_command =
-               Some
-                 Action.(
-                   Progn
-                     [ Echo [ String_with_vars.make_text Loc.none "hello" ] ])
-           ; install_command =
-               Some
-                 (Action.System
-                    (* String_with_vars.t doesn't round trip so we have to set
-                       [quoted] if the string would be quoted *)
-                    (String_with_vars.make_text ~quoted:true Loc.none
-                       "echo 'world'"))
+         , { Lock_dir.Pkg.build_commands =
+               [ { Lock_dir.Conditional_action.action =
+                     Action.(
+                       Progn
+                         [ Echo [ String_with_vars.make_text Loc.none "hello" ]
+                         ])
+                 ; constraint_ =
+                     Some
+                       Dune_lang.Package_constraint.(
+                         Bop
+                           ( Op.Eq
+                           , Value.Variable { Variable.name = "os" }
+                           , Value.String_literal "linux" ))
+                 }
+               ]
+           ; install_commands =
+               [ { Lock_dir.Conditional_action.action =
+                     Action.System
+                       (* String_with_vars.t doesn't round trip so we have to set
+                          [quoted] if the string would be quoted *)
+                       (String_with_vars.make_text ~quoted:true Loc.none
+                          "echo 'world'")
+                 ; constraint_ =
+                     Some
+                       Dune_lang.Package_constraint.(
+                         And [ Bvar { Variable.name = "with-test" } ])
+                 }
+               ]
            ; deps = []
            ; info =
                { Lock_dir.Pkg_info.name
@@ -282,8 +298,8 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
        let pkg_b =
          let name = Package_name.of_string "b" in
          ( name
-         , { Lock_dir.Pkg.build_command = None
-           ; install_command = None
+         , { Lock_dir.Pkg.build_commands = []
+           ; install_commands = []
            ; deps = [ (Loc.none, fst pkg_a) ]
            ; info =
                { Lock_dir.Pkg_info.name
@@ -308,8 +324,8 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
        let pkg_c =
          let name = Package_name.of_string "c" in
          ( name
-         , { Lock_dir.Pkg.build_command = None
-           ; install_command = None
+         , { Lock_dir.Pkg.build_commands = []
+           ; install_commands = []
            ; deps = [ (Loc.none, fst pkg_a); (Loc.none, fst pkg_b) ]
            ; info =
                { Lock_dir.Pkg_info.name
@@ -336,8 +352,18 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
     ; packages =
         map
           { "a" :
-              { build_command = Some [ "progn"; [ "echo"; "hello" ] ]
-              ; install_command = Some [ "system"; "echo 'world'" ]
+              { build_commands =
+                  [ { action = [ "progn"; [ "echo"; "hello" ] ]
+                    ; constraint_ =
+                        Some
+                          Bop =,Variable { name = "os" },String_literal "linux"
+                    }
+                  ]
+              ; install_commands =
+                  [ { action = [ "system"; "echo 'world'" ]
+                    ; constraint_ = Some And Bvar { name = "with-test" }
+                    }
+                  ]
               ; deps = []
               ; info =
                   { name = "a"
@@ -352,8 +378,8 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               ; exported_env = [ { op = "="; var = "foo"; value = "bar" } ]
               }
           ; "b" :
-              { build_command = None
-              ; install_command = None
+              { build_commands = []
+              ; install_commands = []
               ; deps = [ ("complex_lock_dir/b.pkg:2", "a") ]
               ; info =
                   { name = "b"
@@ -369,8 +395,8 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               ; exported_env = []
               }
           ; "c" :
-              { build_command = None
-              ; install_command = None
+              { build_commands = []
+              ; install_commands = []
               ; deps =
                   [ ("complex_lock_dir/c.pkg:2", "a")
                   ; ("complex_lock_dir/c.pkg:2", "b")

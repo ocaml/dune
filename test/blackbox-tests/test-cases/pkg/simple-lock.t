@@ -6,9 +6,8 @@ Test that we run the build command
   > EOF
   $ cat >dune.lock/test.pkg <<EOF
   > (build
-  >  (progn
-  >   (run mkdir -p %{prefix}/bin)
-  >   (run touch %{prefix}/bin/foo)))
+  >  ((action (run mkdir -p %{prefix}/bin)))
+  >  ((action (run touch %{prefix}/bin/foo))))
   > EOF
 
   $ dune build .pkg/test/target/bin/foo

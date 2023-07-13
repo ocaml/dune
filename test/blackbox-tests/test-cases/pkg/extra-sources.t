@@ -18,7 +18,7 @@ Fetch from more than one source
   > (source (copy $PWD/foo))
   > (extra_sources (mybaz (copy $PWD/baz)))
   > (build
-  >  (system "find . | sort -u"))
+  >  ((action (system "find . | sort -u"))))
   > EOF
 
   $ dune build .pkg/test/target/

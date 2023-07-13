@@ -38,6 +38,8 @@ type t =
   | And of t list  (** The conjunction of a list of boolean expressions *)
   | Or of t list  (** The disjunction of a list of boolean expressions *)
 
+val equal : t -> t -> bool
+
 val encode : t Dune_sexp.Encoder.t
 
 val decode : t Dune_sexp.Decoder.t

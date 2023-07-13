@@ -5,7 +5,7 @@ Install actions should have the switch directory prepared:
   > (lang package 0.1)
   > EOF
   $ cat >dune.lock/test.pkg <<'EOF'
-  > (install (system "find %{prefix} | sort"))
+  > (install ((action (system "find %{prefix} | sort"))))
   > EOF
 
   $ dune build .pkg/test/target/

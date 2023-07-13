@@ -17,7 +17,7 @@ Test fetching from git
   > EOF
   $ cat >dune.lock/test.pkg <<EOF
   > (source (fetch (url "git+file://$MYGITREPO")))
-  > (build (run cat foo))
+  > (build ((action (run cat foo))))
   > EOF
 
   $ dune build _build/default/.pkg/test/target

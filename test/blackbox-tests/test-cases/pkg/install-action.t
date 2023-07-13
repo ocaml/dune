@@ -5,7 +5,7 @@ Testing install actions
   > (lang package 0.1)
   > EOF
   $ cat >dune.lock/test.pkg <<'EOF'
-  > (install (system "echo foobar; mkdir -p %{lib}; touch %{lib}/xxx"))
+  > (install ((action (system "echo foobar; mkdir -p %{lib}; touch %{lib}/xxx"))))
   > EOF
 
   $ dune build .pkg/test/target/

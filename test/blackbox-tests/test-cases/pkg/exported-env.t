@@ -16,13 +16,14 @@ Packages can export environment variables
   > (deps test)
   > (version 1.2.3)
   > (build
-  >  (progn
-  >   (system "\| echo FOO=$FOO
-  >           "\| echo BAR=$BAR
-  >           "\| echo OPAM_PACKAGE_NAME=$OPAM_PACKAGE_NAME
-  >           "\| echo OPAM_PACKAGE_VERSION=$OPAM_PACKAGE_VERSION
-  >   )
-  >   (run mkdir -p %{prefix})))
+  >  ((action
+  >    (progn
+  >     (system "\| echo FOO=$FOO
+  >             "\| echo BAR=$BAR
+  >             "\| echo OPAM_PACKAGE_NAME=$OPAM_PACKAGE_NAME
+  >             "\| echo OPAM_PACKAGE_VERSION=$OPAM_PACKAGE_VERSION
+  >     )
+  >     (run mkdir -p %{prefix})))))
   > EOF
 
   $ dune build .pkg/usetest/target/

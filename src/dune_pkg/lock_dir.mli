@@ -26,10 +26,17 @@ module Pkg_info : sig
   val default_version : string
 end
 
+module Conditional_action : sig
+  type t =
+    { action : Action.t
+    ; constraint_ : Package_constraint.t option
+    }
+end
+
 module Pkg : sig
   type t =
-    { build_command : Action.t option
-    ; install_command : Action.t option
+    { build_commands : Conditional_action.t list
+    ; install_commands : Conditional_action.t list
     ; deps : (Loc.t * Package_name.t) list
     ; info : Pkg_info.t
     ; exported_env : String_with_vars.t Action.Env_update.t list

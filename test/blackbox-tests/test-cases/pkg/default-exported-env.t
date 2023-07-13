@@ -10,12 +10,12 @@ Some environment variables are automatically exported by packages:
   $ cat >dune.lock/usetest.pkg <<'EOF'
   > (deps test)
   > (build
-  >  (system "\| echo MANPATH=$MANPATH
-  >          "\| echo OCAMLPATH=$OCAMLPATH
-  >          "\| echo CAML_LD_LIBRARY_PATH=$CAML_LD_LIBRARY_PATH
-  >          "\| echo OCAMLTOP_INCLUDE_PATH=$OCAMLTOP_INCLUDE_PATH
-  >          "\| echo PATH=$PATH
-  >  ))
+  >  ((action (system "\| echo MANPATH=$MANPATH
+  >                   "\| echo OCAMLPATH=$OCAMLPATH
+  >                   "\| echo CAML_LD_LIBRARY_PATH=$CAML_LD_LIBRARY_PATH
+  >                   "\| echo OCAMLTOP_INCLUDE_PATH=$OCAMLTOP_INCLUDE_PATH
+  >                   "\| echo PATH=$PATH
+  >  ))))
   > EOF
 
   $ mkdir .bin

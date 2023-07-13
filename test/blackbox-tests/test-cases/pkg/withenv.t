@@ -6,15 +6,16 @@ Setting environment variables in actions
   > EOF
   $ cat >dune.lock/test.pkg <<'EOF'
   > (build
-  >  (withenv
-  >   ((= FOO myfoo)
-  >    (= XYZ 000)
-  >    (+= XYZ 111)
-  >    (= BAR xxx)
-  >    (+= BAR yyy)
-  >    (:= BAR "")
-  >    (+= BAR ""))
-  >   (system "echo XYZ=$XYZ; echo FOO=$FOO; echo BAR=$BAR")))
+  >  ((action
+  >    (withenv
+  >     ((= FOO myfoo)
+  >      (= XYZ 000)
+  >      (+= XYZ 111)
+  >      (= BAR xxx)
+  >      (+= BAR yyy)
+  >      (:= BAR "")
+  >      (+= BAR ""))
+  >     (system "echo XYZ=$XYZ; echo FOO=$FOO; echo BAR=$BAR")))))
   > EOF
   $ dune build .pkg/test/target/
   XYZ=111:000

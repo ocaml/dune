@@ -6,24 +6,24 @@ Test that installed binaries are visible in dependent packages
   > EOF
   $ cat >dune.lock/test.pkg <<EOF
   > (build
-  >  (system "\| echo "#!/bin/sh\necho from test package" > foo;
-  >          "\| chmod +x foo;
-  >          "\| touch libxxx lib_rootxxx;
-  >          "\| cat >test.install <<EOF
-  >          "\| bin: [ "foo" ]
-  >          "\| lib: [ "libxxx" ]
-  >          "\| lib_root: [ "lib_rootxxx" ]
-  >          "\| share_root: [ "lib_rootxxx" ]
-  >          "\| EOF
-  >  ))
+  >  ((action
+  >    (system "\| echo "#!/bin/sh\necho from test package" > foo;
+  >            "\| chmod +x foo;
+  >            "\| touch libxxx lib_rootxxx;
+  >            "\| cat >test.install <<EOF
+  >            "\| bin: [ "foo" ]
+  >            "\| lib: [ "libxxx" ]
+  >            "\| lib_root: [ "lib_rootxxx" ]
+  >            "\| share_root: [ "lib_rootxxx" ]
+  >            "\| EOF
+  >    ))))
   > EOF
 
   $ cat >dune.lock/usetest.pkg <<EOF
   > (deps test)
   > (build
-  >  (progn
-  >   (run foo)
-  >   (run mkdir -p %{prefix})))
+  >  ((action (run foo)))
+  >  ((action (run mkdir -p %{prefix}))))
   > EOF
 
   $ dune build .pkg/usetest/target/

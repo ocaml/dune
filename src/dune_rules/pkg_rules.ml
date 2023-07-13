@@ -678,12 +678,21 @@ module rec Resolve : sig
 end = struct
   open Resolve
 
+  let filter_conditional_actions conditional_actions =
+    (* TODO: filter actions based on the environment *)
+    let filtered =
+      List.map conditional_actions
+        ~f:(fun { Lock_dir.Conditional_action.action; _ } -> action)
+    in
+    if List.is_empty filtered then None
+    else Some (Action_unexpanded.Progn filtered)
+
   let resolve_impl ((db : db), ctx, (name : Package.Name.t)) =
     match Package.Name.Map.find db name with
     | None -> Memo.return None
     | Some
-        { Lock_dir.Pkg.build_command
-        ; install_command
+        { Lock_dir.Pkg.build_commands
+        ; install_commands
         ; deps
         ; info
         ; exported_env
@@ -699,8 +708,8 @@ end = struct
       in
       let t =
         { Pkg.id
-        ; build_command
-        ; install_command
+        ; build_command = filter_conditional_actions build_commands
+        ; install_command = filter_conditional_actions install_commands
         ; deps
         ; paths
         ; info

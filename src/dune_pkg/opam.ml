@@ -213,8 +213,9 @@ let opam_package_to_lock_file_pkg ~repo_state ~local_packages opam_package =
     |> List.map ~f:(fun name ->
            (Loc.none, Package_name.of_string (OpamPackage.Name.to_string name)))
   in
-  { Lock_dir.Pkg.build_command = None
-  ; install_command = None
+  (* TODO set these from the commands in the opam file *)
+  { Lock_dir.Pkg.build_commands = []
+  ; install_commands = []
   ; deps
   ; info
   ; exported_env = []

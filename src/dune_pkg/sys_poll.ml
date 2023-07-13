@@ -33,9 +33,7 @@ let run_capture_line ~path ~prog ~args =
   | None -> Fiber.return None
   | Some prog ->
     let open Fiber.O in
-    let failure_mode = Process.Strict in
-    let display = Display.Quiet in
-    let+ res = Process.run_capture_line ~display failure_mode prog args in
+    let+ res = Process.run_capture_line ~display:Quiet Strict prog args in
     norm res
 
 let uname ~path args = run_capture_line ~path ~prog:"uname" ~args

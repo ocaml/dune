@@ -17,9 +17,7 @@ end = struct
 
     let make_error msg = Sexp.(List [ List [ Atom "ERROR"; Atom msg ] ])
 
-    let to_stdout (t : t) =
-      Csexp.to_channel stdout t;
-      flush stdout
+    let print (t : t) = Console.print [ Pp.vbox (Sexp.pp t) ]
   end
 
   module Commands = struct
@@ -138,7 +136,7 @@ end = struct
       | Error s -> Merlin_conf.make_error s
       | Ok file -> load_merlin_file file
     in
-    Merlin_conf.to_stdout answer
+    Merlin_conf.print answer
 
   let dump s =
     let+ file = to_local s in
@@ -163,7 +161,7 @@ end = struct
         let* () = print_merlin_conf path in
         main ()
       | Unknown msg ->
-        Merlin_conf.to_stdout (Merlin_conf.make_error msg);
+        Merlin_conf.print (Merlin_conf.make_error msg);
         main ()
     in
     main ()

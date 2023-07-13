@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689245109244,
+  "lastUpdate": 1689245120527,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -56867,6 +56867,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "66.73551152108668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1fe98093b2ef32980812dfc111d5bfe6538467e9",
+          "message": "refactor: move failure mode to own module (#8199)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-13T03:19:25-07:00",
+          "tree_id": "c5e213f72f0fb508bb0bcda1c0e77dba41aa87f6",
+          "url": "https://github.com/ocaml/dune/commit/1fe98093b2ef32980812dfc111d5bfe6538467e9"
+        },
+        "date": 1689245119783,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.7219774048066665",
             "unit": "seconds"
           }
         ]

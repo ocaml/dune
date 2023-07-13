@@ -82,34 +82,42 @@ module Dependency = struct
         pelem
     end
 
-    module Var = struct
-      include Var
+    module Variable = struct
+      include Variable
+
+      let to_opam { name } = nopos (OpamParserTypes.FullPos.Ident name)
+
+      let to_opam_filter { name } =
+        OpamTypes.FIdent ([], OpamVariable.of_string name, None)
+    end
+
+    module Value = struct
+      include Value
 
       let to_opam v =
-        let value_kind : OpamParserTypes.FullPos.value_kind =
-          match v with
-          | Literal x -> String x
-          | Var x -> Ident x
-        in
-        nopos value_kind
+        match v with
+        | String_literal x -> nopos (OpamParserTypes.FullPos.String x)
+        | Variable variable -> Variable.to_opam variable
 
       let to_opam_filter = function
-        | Literal literal -> OpamTypes.FString literal
-        | Var var -> OpamTypes.FIdent ([], OpamVariable.of_string var, None)
+        | String_literal literal -> OpamTypes.FString literal
+        | Variable variable -> Variable.to_opam_filter variable
     end
 
     let rec to_opam_condition = function
-      | Bvar var -> OpamTypes.Atom (OpamTypes.Filter (Var.to_opam_filter var))
-      | Uop (op, var) ->
+      | Bvar variable ->
+        OpamTypes.Atom (OpamTypes.Filter (Variable.to_opam_filter variable))
+      | Uop (op, value) ->
         OpamTypes.Atom
-          (OpamTypes.Constraint (Op.to_relop_pelem op, Var.to_opam_filter var))
+          (OpamTypes.Constraint
+             (Op.to_relop_pelem op, Value.to_opam_filter value))
       | Bop (op, lhs, rhs) ->
         OpamTypes.Atom
           (OpamTypes.Filter
              (OpamTypes.FOp
-                ( Var.to_opam_filter lhs
+                ( Value.to_opam_filter lhs
                 , Op.to_relop_pelem op
-                , Var.to_opam_filter rhs )))
+                , Value.to_opam_filter rhs )))
       | And conjunction ->
         OpamFormula.ands (List.map conjunction ~f:to_opam_condition)
       | Or disjunction ->
@@ -168,16 +176,16 @@ module Dependency = struct
   let opam_constraint t : OpamParserTypes.FullPos.value =
     let open OpamParserTypes.FullPos in
     let rec opam_constraint context = function
-      | Constraint.Bvar v -> Constraint.Var.to_opam v
+      | Constraint.Bvar v -> Constraint.Variable.to_opam v
       | Uop (op, x) ->
         nopos
-          (Prefix_relop (Constraint.Op.to_relop op, Constraint.Var.to_opam x))
+          (Prefix_relop (Constraint.Op.to_relop op, Constraint.Value.to_opam x))
       | Bop (op, x, y) ->
         nopos
           (Relop
              ( Constraint.Op.to_relop op
-             , Constraint.Var.to_opam x
-             , Constraint.Var.to_opam y ))
+             , Constraint.Value.to_opam x
+             , Constraint.Value.to_opam y ))
       | And cs -> logical_op `And cs ~inner_ctx:Ctx_and ~group_needed:false
       | Or cs ->
         let group_needed =

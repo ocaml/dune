@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689242954206,
+  "lastUpdate": 1689243282493,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -56751,6 +56751,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6780239512200001",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "etienne.millon@gmail.com",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "distinct": true,
+          "id": "78f803f2baa4b95f70aa1e058bc2452195644b8d",
+          "message": "refactor(odoc): remove dummy file\n\nIt might have been the case that Dune wouldn't work without it but it\nnow seems fine.\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-13T11:49:00+02:00",
+          "tree_id": "ed572eebf15488f33cbbceaaa94c0a59c8c1ec69",
+          "url": "https://github.com/ocaml/dune/commit/78f803f2baa4b95f70aa1e058bc2452195644b8d"
+        },
+        "date": 1689243281756,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.11528950109334",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,4 @@
 (cram
- (deps
-  (package utop))
+ (deps %{bin:utop})
  (enabled_if
   (>= %{ocaml_version} 4.05.0)))

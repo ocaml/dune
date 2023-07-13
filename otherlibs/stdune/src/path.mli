@@ -268,6 +268,8 @@ val descendant : t -> of_:t -> t option
 val is_descendant : t -> of_:t -> bool
 val append_local : t -> Local.t -> t
 val append_source : t -> Source.t -> t
+
+(** [extend_basename p ~suffix] adds [suffix] at the end of the path *)
 val extend_basename : t -> suffix:Filename.t -> t
 
 (** Extract the build context from a path. For instance, representing paths as

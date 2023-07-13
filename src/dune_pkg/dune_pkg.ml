@@ -5,5 +5,6 @@ module Opam_file = Opam_file
 module Opam_repo = Opam_repo
 module Opam_solver = Opam_solver
 module Solver_env = Solver_env
+module Substs = Substs
 module Sys_poll = Sys_poll
 module Version_preference = Version_preference

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689239289438,
+  "lastUpdate": 1689239620621,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -56664,6 +56664,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.28705874172",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "etienne.millon@gmail.com",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "distinct": true,
+          "id": "aae416132d5ca470ac96c68f56f3085a9b0bc65e",
+          "message": "refactor(odoc): remove redundant arguments\n\nThe functions `setup_pkg_odocl_rules` and `setup_pkg_html_rules` are\nalways called with `~lib` computed from `libs_of_pkg`. We move that\ninside the function.\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-13T10:48:04+02:00",
+          "tree_id": "ccbddf2559b2c42b198940279d3e0737e4906a9d",
+          "url": "https://github.com/ocaml/dune/commit/aae416132d5ca470ac96c68f56f3085a9b0bc65e"
+        },
+        "date": 1689239619518,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.37677448609999",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689364606682,
+  "lastUpdate": 1689364618879,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -57389,6 +57389,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "70.48311826662666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d9e3b55c1c504dc03764b89911614abc586051aa",
+          "message": "test: fix github2629 repro on nix (#8205)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-14T12:30:15-07:00",
+          "tree_id": "545dfa9426f59c832a06a61a7573c9db35460101",
+          "url": "https://github.com/ocaml/dune/commit/d9e3b55c1c504dc03764b89911614abc586051aa"
+        },
+        "date": 1689364618198,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.9419424776466665",
             "unit": "seconds"
           }
         ]

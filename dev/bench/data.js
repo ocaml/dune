@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689320806957,
+  "lastUpdate": 1689320961885,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23952,6 +23952,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.92672649992",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "b1eab1f2a0b3e095f6bdb006ac2b058efaac3371",
+          "message": "Clarify handling of values in package constraints\n\nThis restricts the argument to the `Bvar` constructor to variables.\nPreviously string literals were also permitted in this position though\nthe parser never produced such values. Also adds some documentation\nabout the constraint language.\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-07-14T08:27:40+01:00",
+          "tree_id": "7f1e29ac0ddcee9db4f0836239a6365f35c51655",
+          "url": "https://github.com/ocaml/dune/commit/b1eab1f2a0b3e095f6bdb006ac2b058efaac3371"
+        },
+        "date": 1689320960844,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "45.37528674050666",
             "unit": "seconds"
           }
         ]

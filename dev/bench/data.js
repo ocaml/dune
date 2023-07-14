@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689345185709,
+  "lastUpdate": 1689362005722,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -72876,6 +72876,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.157264152226663",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "329ba3d710f89ea18a1640e62541c97dba39c669",
+          "message": "fix: update digest and incremental db versions (#8198)\n\nhttps://github.com/ocaml/dune/pull/8052 updated the representation for\r\nthese, but didn't bump the version.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-14T11:58:11-07:00",
+          "tree_id": "3a1dbb5e44baef78d294fb200b11149b2de9c1b5",
+          "url": "https://github.com/ocaml/dune/commit/329ba3d710f89ea18a1640e62541c97dba39c669"
+        },
+        "date": 1689361996342,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.885971638033336",
             "unit": "seconds"
           }
         ]

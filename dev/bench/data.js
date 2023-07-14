@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689320679262,
+  "lastUpdate": 1689320806957,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -72470,6 +72470,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.908893153453334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "103c503ff5601fef2a9b47a0b1e3344cfb57653f",
+          "message": "refactor: replace filteri_inplace with filter_inplace (#8197)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-14T00:33:39-07:00",
+          "tree_id": "cde182e70dd4e35f237459e2c966d0b9d52a0814",
+          "url": "https://github.com/ocaml/dune/commit/103c503ff5601fef2a9b47a0b1e3344cfb57653f"
+        },
+        "date": 1689320798143,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.199729173133335",
             "unit": "seconds"
           }
         ]

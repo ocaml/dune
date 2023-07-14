@@ -394,78 +394,111 @@ module Write_disk = struct
   let commit t = t ()
 end
 
-let load_metadata_version source_path =
-  let open Or_exn.O in
-  let* syntax, version, ocaml =
-    Metadata.load (Path.source source_path)
-      ~f:(fun { Metadata.Lang.Instance.syntax; data = (); version } ->
-        let open Dune_sexp.Decoder in
-        let+ ocaml = fields @@ field_o "ocaml" (located Package_name.decode) in
-        (syntax, version, ocaml))
-  in
-  if String.equal (Syntax.name syntax) (Syntax.name Dune_lang.Pkg.syntax) then
-    Ok (version, ocaml)
-  else
-    Error
-      User_error.(
-        E
-          (make
-             [ Pp.textf "In %s, expected language to be %s, but found %s"
-                 (Path.Source.to_string source_path)
-                 (Syntax.name Dune_lang.Pkg.syntax)
-                 (Syntax.name syntax)
-             ]))
+module Make_load (Io : sig
+  include Monad.S
 
-let load_pkg ~parser_context ~lock_dir_path package_name =
-  let open Or_exn.O in
-  let+ mk_pkg =
-    Result.try_with (fun () ->
-        let source_path =
-          Path.Source.relative lock_dir_path
-            (Package_filename.of_package_name package_name)
-        in
-        let pkg_string = Io.read_file (Path.source source_path) in
-        let ast =
-          Dune_lang.Parser.parse_string pkg_string ~mode:Many_as_one
-            ~fname:(Path.Source.to_string source_path)
-        in
-        Dune_lang.Decoder.parse Pkg.decode parser_context ast)
-  in
-  mk_pkg ~lock_dir:lock_dir_path package_name
+  val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
-let read_disk ~lock_dir_path =
-  let open Or_exn.O in
-  let* () =
-    if Path.is_directory (Path.source lock_dir_path) then Ok ()
+  val readdir_with_kinds : Path.Source.t -> (Filename.t * Unix.file_kind) list t
+
+  val with_lexbuf_from_file : Path.Source.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
+end) =
+struct
+  let load_metadata metadata_file_path =
+    let open Io.O in
+    let+ syntax, version, ocaml =
+      Io.with_lexbuf_from_file metadata_file_path ~f:(fun lexbuf ->
+          Metadata.parse_contents lexbuf
+            ~f:(fun { Metadata.Lang.Instance.syntax; data = (); version } ->
+              let open Dune_sexp.Decoder in
+              let+ ocaml =
+                fields @@ field_o "ocaml" (located Package_name.decode)
+              in
+              (syntax, version, ocaml)))
+    in
+    if String.equal (Syntax.name syntax) (Syntax.name Dune_lang.Pkg.syntax) then
+      (version, ocaml)
     else
-      Error
-        User_error.(
-          E
-            (make
-               [ Pp.textf "%s is not a directory"
-                   (Path.Source.to_string lock_dir_path)
-               ]))
-  in
-  let* version, ocaml =
-    load_metadata_version (Path.Source.relative lock_dir_path metadata)
-  in
-  let parser_context =
-    Univ_map.singleton String_with_vars.decoding_env_key
-      (Pform.Env.initial version)
-  in
-  let+ packages =
-    Sys.readdir (Path.Source.to_string lock_dir_path)
-    |> Array.to_list
-    |> List.filter_map ~f:(fun filename ->
-           match Package_filename.to_package_name filename with
-           | Error `Bad_extension -> None
-           | Ok package_name ->
-             let package_path = Path.Source.relative lock_dir_path filename in
-             if Path.is_directory (Path.source package_path) then None
-             else
-               Some
-                 ( load_pkg ~parser_context ~lock_dir_path package_name
-                 >>| fun pkg -> (package_name, pkg) ))
-    |> Result.List.all >>| Package_name.Map.of_list_exn
-  in
-  { version; packages; ocaml }
+      User_error.raise
+        [ Pp.textf "In %s, expected language to be %s, but found %s"
+            (Path.Source.to_string metadata_file_path)
+            (Syntax.name Dune_lang.Pkg.syntax)
+            (Syntax.name syntax)
+        ]
+
+  let load_pkg ~version ~lock_dir_path package_name =
+    let open Io.O in
+    let pkg_file_path =
+      Path.Source.relative lock_dir_path
+        (Package_filename.of_package_name package_name)
+    in
+    let+ sexp =
+      Io.with_lexbuf_from_file pkg_file_path
+        ~f:(Dune_sexp.Parser.parse ~mode:Many)
+    in
+    let parser =
+      let env = Pform.Env.pkg version in
+      let decode =
+        Syntax.set Dune_lang.Pkg.syntax (Active version) Pkg.decode
+        |> Syntax.set Dune_lang.Stanza.syntax
+             (Active Dune_lang.Stanza.latest_version)
+      in
+      String_with_vars.set_decoding_env env decode
+    in
+    (Dune_lang.Decoder.parse parser Univ_map.empty (List (Loc.none, sexp)))
+      ~lock_dir:lock_dir_path package_name
+
+  let check_path lock_dir_path =
+    match Path.exists (Path.source lock_dir_path) with
+    | false ->
+      User_error.raise
+        [ Pp.textf "%s does not exist" (Path.Source.to_string lock_dir_path) ]
+    | true -> (
+      match Path.is_directory (Path.source lock_dir_path) with
+      | false ->
+        User_error.raise
+          [ Pp.textf "%s is not a directory"
+              (Path.Source.to_string lock_dir_path)
+          ]
+      | true -> ())
+
+  let load lock_dir_path =
+    let open Io.O in
+    check_path lock_dir_path;
+    let* version, ocaml =
+      load_metadata (Path.Source.relative lock_dir_path metadata)
+    in
+    let+ packages =
+      Io.readdir_with_kinds lock_dir_path
+      >>| List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
+              match kind with
+              | S_REG ->
+                Package_filename.to_package_name name |> Result.to_option
+              | _ ->
+                (* TODO *)
+                None)
+      >>= Io.parallel_map ~f:(fun package_name ->
+              let+ pkg = load_pkg ~version ~lock_dir_path package_name in
+              (package_name, pkg))
+      >>| Package_name.Map.of_list_exn
+    in
+    { version; packages; ocaml }
+end
+
+module Load_immediate = Make_load (struct
+  include Monad.Id
+
+  let parallel_map xs ~f = List.map xs ~f
+
+  let readdir_with_kinds path =
+    match Path.readdir_unsorted_with_kinds (Path.source path) with
+    | Ok entries -> entries
+    | Error e ->
+      User_error.raise
+        [ Pp.text (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e) ]
+
+  let with_lexbuf_from_file path ~f =
+    Io.with_lexbuf_from_file (Path.source path) ~f
+end)
+
+let read_disk = Load_immediate.load

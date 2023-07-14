@@ -156,9 +156,7 @@ let%expect_test "downloading, without any checksum" =
 let lock_dir_encode_decode_round_trip_test ~lock_dir_path ~lock_dir =
   let lock_dir_path = Path.Source.of_string lock_dir_path in
   Lock_dir.Write_disk.(prepare ~lock_dir_path lock_dir |> commit);
-  let lock_dir_round_tripped =
-    Lock_dir.read_disk ~lock_dir_path |> Result.ok_exn
-  in
+  let lock_dir_round_tripped = Lock_dir.read_disk lock_dir_path in
   if
     Lock_dir.equal
       (Lock_dir.remove_locs lock_dir_round_tripped)

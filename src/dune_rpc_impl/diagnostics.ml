@@ -55,7 +55,8 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
         ; loc = make_loc (Option.value_exn related.loc)
         })
   in
-  { Dune_rpc_private.Diagnostic.severity = None
+  { Dune_rpc_private.Diagnostic.severity =
+      Some Dune_rpc_private.Diagnostic.Error
   ; id
   ; targets = []
   ; message = make_message message.paragraphs

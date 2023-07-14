@@ -41,7 +41,7 @@ module Workspace_local = struct
 
       let name = "INCREMENTAL-DB"
 
-      let version = 4
+      let version = 5
 
       let to_dyn = to_dyn
     end)

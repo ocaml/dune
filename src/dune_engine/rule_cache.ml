@@ -44,6 +44,16 @@ module Workspace_local = struct
       let version = 5
 
       let to_dyn = to_dyn
+
+      let test_example () =
+        let table = Path.Table.create () in
+        Path.Table.set table
+          (Path.external_ (Path.External.of_string "/"))
+          { Entry.rule_digest = Digest.string "foo"
+          ; dynamic_deps_stages = [ (Dep.Set.empty, Digest.string "bar") ]
+          ; targets_digest = Digest.string "zzz"
+          };
+        table
     end)
 
     let needs_dumping = ref false

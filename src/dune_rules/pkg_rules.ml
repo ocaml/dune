@@ -220,6 +220,8 @@ module Install_cookie = struct
     let version = 1
 
     let to_dyn = to_dyn
+
+    let test_example () = { files = Section.Map.empty; variables = [] }
   end)
 
   let load_exn f =

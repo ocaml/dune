@@ -77,7 +77,7 @@ let mem t ~var = Map.mem t.vars var
 let remove t ~var = make (Map.remove t.vars var)
 
 let extend t ~vars =
-  if Map.is_empty vars then t else make (Map.superpose t.vars vars)
+  if Map.is_empty vars then t else make (Map.superpose vars t.vars)
 
 let extend_env x y = if Map.is_empty x.vars then y else extend x ~vars:y.vars
 

@@ -327,7 +327,7 @@ module Pkg = struct
         ]
     in
     let env = build_env t |> Env.Map.map ~f:Env_update.string_of_env_values in
-    Env.extend Env.empty ~vars:(Env.Map.superpose env base)
+    Env.extend Env.empty ~vars:(Env.Map.superpose base env)
 end
 
 module Pkg_installed = struct
@@ -625,8 +625,8 @@ module Action_expander = struct
                let dep_info =
                  let variables =
                    String.Map.superpose
-                     (Pkg_info.variables pkg.info)
                      (String.Map.of_list_exn cookie.variables)
+                     (Pkg_info.variables pkg.info)
                  in
                  Package.Name.Map.add_exn dep_info pkg.info.name
                    (variables, pkg.paths)

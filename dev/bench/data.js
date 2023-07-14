@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689345172576,
+  "lastUpdate": 1689345185709,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -57215,6 +57215,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "74.34936140768001",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a8cd7e4a369c0a83ef8cf3634a0a3f372a6120c5",
+          "message": "fix(rpc): correct severity of error diagnostic (#8193)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-14T07:04:50-07:00",
+          "tree_id": "c36114e4c413893847cf7857277defc4e6c3d158",
+          "url": "https://github.com/ocaml/dune/commit/a8cd7e4a369c0a83ef8cf3634a0a3f372a6120c5"
+        },
+        "date": 1689345184590,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.0434572579266668",
             "unit": "seconds"
           }
         ]

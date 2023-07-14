@@ -37,7 +37,7 @@ module type S = sig
   (** Like [union] but raises a code error if a key appears in both maps. *)
   val union_exn : 'a t -> 'a t -> 'a t
 
-  (** [superpose a b] is [b] augmented with bindings of [a] that are not in [b]. *)
+  (** [superpose a b] is [a] augmented with bindings of [b] that are not in [a]. *)
   val superpose : 'a t -> 'a t -> 'a t
 
   val compare : 'a t -> 'a t -> compare:('a -> 'a -> Ordering.t) -> Ordering.t

@@ -39,7 +39,7 @@ module type S = sig
 
   val singleton : 'a Key.t -> 'a -> t
 
-  (** [superpose a b] is [b] augmented with bindings of [a] that are not in [b]. *)
+  (** [superpose a b] is [a] augmented with bindings of [b] that are not in [a]. *)
   val superpose : t -> t -> t
 
   type 'acc fold = { fold : 'a. 'a Key.info -> 'a -> 'acc -> 'acc }

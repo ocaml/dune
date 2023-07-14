@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689372036379,
+  "lastUpdate": 1689372047877,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -57563,6 +57563,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "66.02389263835335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d7ac324861b0ead823cddd26496acb8bd3150e01",
+          "message": "fix: value tracking mechanism for [Persistent] (#8213)\n\nEvery instantce of [Persistence] will now need to provide a\r\n[test_example] that can be constructed of the data being stored. This\r\ndata is used to record a digest number that will be committed. Anytime,\r\nthe test data type changes, the example should also change and so should\r\nthe digest. This way, we won't forget to update the digest version.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-14T14:34:40-07:00",
+          "tree_id": "83abadb8fd5ec3e5ba822dbd4191df09c4e93980",
+          "url": "https://github.com/ocaml/dune/commit/d7ac324861b0ead823cddd26496acb8bd3150e01"
+        },
+        "date": 1689372046686,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.69991409226",
             "unit": "seconds"
           }
         ]

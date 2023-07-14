@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689375823997,
+  "lastUpdate": 1689375837213,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -57650,6 +57650,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "73.29836877598666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "463ba9adf182a3a4734ef2c92b6ce7b343530328",
+          "message": "refactor: switch order of [Map.superpose] (#8214)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-14T15:34:55-07:00",
+          "tree_id": "8bd08402057a49c35ecd22295bac13464c6fa3a6",
+          "url": "https://github.com/ocaml/dune/commit/463ba9adf182a3a4734ef2c92b6ce7b343530328"
+        },
+        "date": 1689375836035,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.00680236504",
             "unit": "seconds"
           }
         ]

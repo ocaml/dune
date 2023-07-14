@@ -67,6 +67,20 @@ end
 module Lock_dir = struct
   include Dune_pkg.Lock_dir
 
+  module Load = Make_load (struct
+    include Memo
+
+    let readdir_with_kinds path =
+      Fs_memo.dir_contents (In_source_dir path) >>| function
+      | Error _ ->
+        (* TODO *)
+        User_error.raise [ Pp.text "" ]
+      | Ok content -> Fs_cache.Dir_contents.to_list content
+
+    let with_lexbuf_from_file path ~f =
+      Fs_memo.with_lexbuf_from_file (In_source_dir path) ~f
+  end)
+
   let get_path ctx =
     let+ workspace = Workspace.workspace () in
     match
@@ -79,65 +93,7 @@ module Lock_dir = struct
     | Some (Default { lock; _ }) -> Option.value lock ~default:default_path
     | Some (Opam _) -> assert false
 
-  let get (ctx : Context_name.t) : t Memo.t =
-    let* path = get_path ctx in
-    Fs_memo.dir_exists (In_source_dir path) >>= function
-    | false ->
-      (* TODO *)
-      User_error.raise [ Pp.text "" ]
-    | true -> (
-      Fs_memo.dir_contents (In_source_dir path) >>= function
-      | Error _ ->
-        (* TODO *)
-        User_error.raise [ Pp.text "" ]
-      | Ok content ->
-        let* version, ocaml =
-          Fs_memo.with_lexbuf_from_file
-            (In_source_dir (Path.Source.relative path metadata))
-            ~f:(fun lexbuf ->
-              Metadata.parse_contents lexbuf ~f:(fun instance ->
-                  let open Dune_sexp.Decoder in
-                  let+ ocaml =
-                    fields @@ field_o "ocaml" (located Package.Name.decode)
-                  in
-                  (instance.version, ocaml)))
-        in
-        let+ packages =
-          Fs_cache.Dir_contents.to_list content
-          |> List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
-                 match kind with
-                 | S_REG ->
-                   Lock_dir.Package_filename.to_package_name name
-                   |> Result.to_option
-                 | _ ->
-                   (* TODO *)
-                   None)
-          |> Memo.parallel_map ~f:(fun name ->
-                 let+ package =
-                   let+ sexp =
-                     let path =
-                       Lock_dir.Package_filename.of_package_name name
-                       |> Path.Source.relative path
-                     in
-                     Fs_memo.with_lexbuf_from_file (In_source_dir path)
-                       ~f:(Dune_sexp.Parser.parse ~mode:Many)
-                   in
-                   let parser =
-                     let env = Pform.Env.pkg version in
-                     let decode =
-                       Syntax.set Dune_lang.Pkg.syntax (Active version)
-                         Pkg.decode
-                     in
-                     String_with_vars.set_decoding_env env decode
-                   in
-                   (Dune_lang.Decoder.parse parser Univ_map.empty
-                      (List (Loc.none, sexp)))
-                     ~lock_dir:path name
-                 in
-                 (name, package))
-          >>| Package.Name.Map.of_list_exn
-        in
-        { packages; version; ocaml })
+  let get (ctx : Context_name.t) : t Memo.t = get_path ctx >>= Load.load
 end
 
 module Paths = struct

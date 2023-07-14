@@ -103,6 +103,13 @@ module P = Persistent.Make (struct
   let version = 2
 
   let to_dyn = Dyn.list File.to_dyn
+
+  let test_example () =
+    [ { File.src = Path.Build.(relative root "foo")
+      ; dst = Path.Source.of_string "bar"
+      ; staging = Some Path.Build.(relative root "baz")
+      }
+    ]
 end)
 
 let db_file = Path.relative Path.build_dir ".to-promote"

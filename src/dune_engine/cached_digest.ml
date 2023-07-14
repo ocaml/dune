@@ -57,6 +57,16 @@ module P = Persistent.Make (struct
   let version = 6
 
   let to_dyn = to_dyn
+
+  let test_example () =
+    let table = Path.Table.create () in
+    Path.Table.set table
+      (Path.external_ (Path.External.of_string "/"))
+      { stats_checked = 1
+      ; digest = Digest.string "xxx"
+      ; stats = { Reduced_stats.mtime = 0.; size = 1; perm = 0 }
+      };
+    { checked_key = 1; max_timestamp = 0.; table }
 end)
 
 let needs_dumping = ref false

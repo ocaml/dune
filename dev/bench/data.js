@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689364618879,
+  "lastUpdate": 1689365992898,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -73108,6 +73108,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.91500172223333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "33a19f2181f2cb99584c6f5b938ccf66224a9eb5",
+          "message": "test: fix dune-site tests for Nix (#8206)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-14T13:02:11-07:00",
+          "tree_id": "e2d797371930ce005ffe1446d0c8a1507dfb3944",
+          "url": "https://github.com/ocaml/dune/commit/33a19f2181f2cb99584c6f5b938ccf66224a9eb5"
+        },
+        "date": 1689365982729,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "30.9952070452",
             "unit": "seconds"
           }
         ]

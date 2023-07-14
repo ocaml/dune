@@ -76,8 +76,8 @@ let run t args =
   in
   String.trim s
 
-let git_accept () =
-  Process.Accept (Predicate.create (fun x -> Int.equal x 0 || Int.equal x 128))
+let git_accept () : (_, _) Process.Failure_mode.t =
+  Accept (Predicate.create (fun x -> Int.equal x 0 || Int.equal x 128))
 
 let run_git t args =
   let res =

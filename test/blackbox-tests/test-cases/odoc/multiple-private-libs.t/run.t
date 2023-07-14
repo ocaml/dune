@@ -8,5 +8,5 @@ This test checks that there is no clash when two private libraries have the same
           odoc b/.test.objs/byte/test.odoc
           odoc _doc/_odocls/test@6aabb9861046/test.odocl
           odoc _doc/_odocls/test@ea8c79305c05/test.odocl
-          odoc _doc/_html/test@6aabb9861046/Test/.dummy,_doc/_html/test@6aabb9861046/Test/index.html
-          odoc _doc/_html/test@ea8c79305c05/Test/.dummy,_doc/_html/test@ea8c79305c05/Test/index.html
+          odoc _doc/_html/test@6aabb9861046/Test/index.html
+          odoc _doc/_html/test@ea8c79305c05/Test/index.html

@@ -127,8 +127,7 @@ module Version = struct
   let impl_version bin =
     let* _ = Build_system.build_file bin in
     Memo.of_reproducible_fiber
-    @@ Process.run_capture_line ~display:Quiet Process.Strict bin
-         [ "--print-version" ]
+    @@ Process.run_capture_line ~display:Quiet Strict bin [ "--print-version" ]
 
   let version_memo =
     Memo.create "coq-and-ocaml-version" ~input:(module Path) impl_version
@@ -178,7 +177,7 @@ type t =
 let impl_config bin =
   let* _ = Build_system.build_file bin in
   Memo.of_reproducible_fiber
-  @@ Process.run_capture_lines ~display:Quiet Process.Return bin [ "--config" ]
+  @@ Process.run_capture_lines ~display:Quiet Return bin [ "--config" ]
 
 let config_memo = Memo.create "coq-config" ~input:(module Path) impl_config
 

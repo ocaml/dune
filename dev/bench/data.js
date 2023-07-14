@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689375837213,
+  "lastUpdate": 1689376861999,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -73485,6 +73485,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.393108482046667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a461e7ba6e4399ec6e179414f97050563677f74d",
+          "message": "refactor: replace union with superpose (#8174)\n\nRemove an unnecessary closure allocation\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-14T16:04:12-07:00",
+          "tree_id": "506486e15b585e65d4bcc967c46eb0aeaf62b838",
+          "url": "https://github.com/ocaml/dune/commit/a461e7ba6e4399ec6e179414f97050563677f74d"
+        },
+        "date": 1689376852452,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "27.28479014304",
             "unit": "seconds"
           }
         ]

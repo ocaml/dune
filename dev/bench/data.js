@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689320961885,
+  "lastUpdate": 1689321112701,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -23981,6 +23981,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "45.37528674050666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "26a4664a15b999f70e00e23a400be38eaf81557a",
+          "message": "test: make toplevel-integration.t Nix compatible (#8209)\n\n`topfind` is not installed in the usual place next to OCaml on Nix\r\nmeaning that this test would not succeed. The use statement is not\r\nactually needed so we remove it from this test allowing for the test to\r\nsucceed on Nix.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-14T00:32:06-07:00",
+          "tree_id": "10bbee553674b29d3c773079618e18cb3671cb46",
+          "url": "https://github.com/ocaml/dune/commit/26a4664a15b999f70e00e23a400be38eaf81557a"
+        },
+        "date": 1689321110626,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.00732163654",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689365992898,
+  "lastUpdate": 1689369844525,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -73137,6 +73137,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "30.9952070452",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e4ae4d8edf41d573798efcbd18f18bfacaa6b6a4",
+          "message": "Unify lockdir loading with functor (#8211)\n\nWe have two use cases for loading lockdirs:\r\n- rules, which memoise the result of file IO\r\n- tests, where we just want a simple function that loads lockdirs\r\n\r\nWe had two separate loaders for rules and tests which both read lockdirs\r\nfrom disk - one memoised and one not. This change introduces a functor\r\nwhich generalises ofe these two use cases with a common implementation\r\nof lockdir loading.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-07-14T14:10:20-07:00",
+          "tree_id": "24ed37b8fd433b20ff0f94696d1f90949405ff99",
+          "url": "https://github.com/ocaml/dune/commit/e4ae4d8edf41d573798efcbd18f18bfacaa6b6a4"
+        },
+        "date": 1689369836645,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "24.743714635986663",
             "unit": "seconds"
           }
         ]

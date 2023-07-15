@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689420468954,
+  "lastUpdate": 1689420482082,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -57911,6 +57911,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "74.36650881638",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a38b1180465d47f899df0bd0d00454d47fca9f88",
+          "message": "refactor(engine): extract shared cache into library (#8034)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-15T03:58:44-07:00",
+          "tree_id": "46c49b847c058a28d5caed739ddffd8b43926188",
+          "url": "https://github.com/ocaml/dune/commit/a38b1180465d47f899df0bd0d00454d47fca9f88"
+        },
+        "date": 1689420481009,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.0465181586333334",
             "unit": "seconds"
           }
         ]

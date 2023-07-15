@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689419870170,
+  "lastUpdate": 1689419882968,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -57824,6 +57824,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "77.99078255283334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "95b050cc536587f269862de8e6d9e0dd3536f031",
+          "message": "Don't solve for multiple contexts if lockdirs collide (#8091)\n\nWhen running `dune pkg lock --all-contexts` it is now an error if there\r\nare multiple build contexts which specify the same lockdir path. Also\r\nadds whitespace between the log when solving dependencies to make it\r\neasier to read the output of `dune pkg lock --all-contexts`.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-07-15T03:48:38-07:00",
+          "tree_id": "c556d8e32d95a850cd03c892c20a5905f1056eb7",
+          "url": "https://github.com/ocaml/dune/commit/95b050cc536587f269862de8e6d9e0dd3536f031"
+        },
+        "date": 1689419882115,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.06293944296",
             "unit": "seconds"
           }
         ]

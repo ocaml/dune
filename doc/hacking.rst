@@ -178,16 +178,16 @@ consists of two steps:
 Major & Feature Releases
 ------------------------
 
-Given a new version `x.y.z`, a major release increments `x`, and a feature
-release increments `y`.  Such a release must be done from the `main` branch.
-Once you publish the release, be sure to publish a release branch named `x.y`.
+Given a new version ``x.y.z``, a major release increments ``x``, and a feature
+release increments ``y``.  Such a release must be done from the ``main`` branch.
+Once you publish the release, be sure to publish a release branch named ``x.y``.
 
 Point Releases
 --------------
 
-Point releases increment the `z` in `x.y.z`. Such releases are done from the
-respective `x.y` branch of the respective feature release. Once released, be
-sure to update `CHANGES` in the `main` branch.
+Point releases increment the ``z`` in ``x.y.z``. Such releases are done from the
+respective ``x.y`` branch of the respective feature release. Once released, be
+sure to update ``CHANGES.md`` in the ``main`` branch.
 
 Adding Stanzas
 ==============
@@ -292,14 +292,14 @@ Loading Rules
 -------------
 
 Dune rules are loaded lazily to improve performance. Here's a sketch of the
-algorithm that tries to load the rule that generates some target file `t`.
+algorithm that tries to load the rule that generates some target file ``t``.
 
-- Get the directory that of `t`. Call it `d`.
+- Get the directory that of ``t``. Call it ``d``.
 
-- Load all rules in `d` into a map from targets in that directory to rules that
-  produce it.
+- Load all rules in ``d`` into a map from targets in that directory to rules
+  that produce it.
 
-- Look up the rule for `t` in this map.
+- Look up the rule for ``t`` in this map.
 
 To adhere to this loading scheme, we must generate our rules as part of the
 callback that creates targets in that directory. See the ``Gen_rules`` module
@@ -383,7 +383,9 @@ For project names, use the following capitalization:
 - **OCaml**
 - **OCamlFormat**, and ``ocamlformat`` is the command.
 - ``odoc``, always in monospace.
-- **opam**. Can be capitalised as Opam in titles and at the beginning of sentences only, as the official name is formatted opam. The command is ``opam``.
+- **opam**. Can be capitalised as Opam in titles and at the beginning of
+  sentences only, as the official name is formatted opam. The command is
+  ``opam``.
 - **esy**. Can be capitalised as Esy.
 - **Nix**. The command is ``nix``.
 - **Js_of_ocaml** can be abbreviated **JSOO**.
@@ -534,7 +536,7 @@ Good:
   no idea what invariant is broken by the ``assert false``. Kindly describe it
   to the reader in the error message.
 
-- Avoid meaningless names like `x`, `a`, `b`, `f`. Try to find a more
+- Avoid meaningless names like ``x``, ``a``, ``b``, ``f``. Try to find a more
   descriptive name or just inline it altogether.
 
 - If a module ``Foo`` has a module type ``Foo.S`` and you'd like to avoid
@@ -687,7 +689,7 @@ Benchmarking
 Dune Bench
 ----------
 
-You can benchmark Dune's performance by running `make bench`. This will run a
+You can benchmark Dune's performance by running ``make bench``. This will run a
 subset of the Duniverse. If you are running the bench locally, make sure that
 you bootstrap since that is the executable that the bench will run.
 
@@ -695,13 +697,13 @@ The bench will build a specially selected portion of the Duniverse once, called
 a "clean build". Afterwards, the build will be run 5 more times and are termed
 the "Null builds".
 
-In each run of the CI, there will be an `ocaml-benchmarks` status in the
-sumamry. Clicking `Details` will show a bench report.
+In each run of the CI, there will be an ``ocaml-benchmarks`` status in the
+sumamry. Clicking ``Details`` will show a bench report.
 
 The report contains the following information:
 
 - The build times for Clean and Null builds.
-- The size of the `dune.exe` binary.
+- The size of the ``dune.exe`` binary.
 - User CPU times for the Clean and Null builds.
 - System CPU times for the Clean and Null builds.
 - All the garbage collection stats apart from "forced collections" for Clean and

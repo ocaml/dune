@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689502708016,
+  "lastUpdate": 1689503136086,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -57969,6 +57969,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.0465181586333334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fed944409fd5c97207eb793531a47c8ef200e652",
+          "message": "feature(pkg): Automatic fetching of opam-repository (#8105)\n\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-07-16T02:53:02-07:00",
+          "tree_id": "f3918d12ba7f52c8b724ac4c71266e5aa828b13f",
+          "url": "https://github.com/ocaml/dune/commit/fed944409fd5c97207eb793531a47c8ef200e652"
+        },
+        "date": 1689503134915,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "84.44538037278",
             "unit": "seconds"
           }
         ]

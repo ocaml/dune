@@ -781,7 +781,7 @@ containing exactly:
 
 .. code:: dune
 
-    (lang dune 3.2)
+    (lang dune 3.10)
     (context default)
 
 This allows you to use an empty ``dune-workspace`` file to mark the root of your

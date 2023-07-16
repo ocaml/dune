@@ -8,6 +8,5 @@ is fine, but you then need to update the list of such exceptions below.
 
   $ DUNE_LANG=$(dune internal latest-lang-version)
   $ grep '(lang dune' ../*.rst | grep -v "$DUNE_LANG"
-  ../dune-files.rst:    (lang dune 3.2)
   ../hacking.rst:``(lang dune 2.7)`` in their ``dune`` project file to use it.
   ../tests.rst:   (lang dune 2.7)

@@ -1,60 +1,6 @@
 open Stdune
 module Package_name = Dune_lang.Package_name
 
-module Global : sig
-  val with_switch_state :
-       switch_name:string
-    -> f:(OpamStateTypes.unlocked OpamStateTypes.switch_state -> 'a)
-    -> 'a
-end = struct
-  let initialized = ref false
-
-  let ensure_initialized () =
-    if not !initialized then (
-      OpamSystem.init ();
-      let root = OpamStateConfig.opamroot () in
-      let (_ : OpamFile.Config.t option) =
-        OpamStateConfig.load_defaults ~lock_kind:`Lock_read root
-      in
-      OpamFormatConfig.init ();
-      OpamCoreConfig.init ~safe_mode:true ();
-      OpamRepositoryConfig.init ();
-      OpamStateConfig.init ~root_dir:root ();
-      initialized := true)
-
-  let with_switch_state ~switch_name ~f =
-    ensure_initialized ();
-    try
-      OpamGlobalState.with_ `Lock_read (fun global_state ->
-          Dune_console.print
-            [ Pp.textf "Using opam installation: %s"
-                (OpamFilename.Dir.to_string global_state.root)
-            ];
-          let switch = OpamSwitch.of_string switch_name in
-          if not (OpamGlobalState.switch_exists global_state switch) then
-            User_error.raise
-              [ Pp.textf
-                  "There is no opam switch named %s. Run `opam switch list` to \
-                   see a list of switches."
-                  (String.maybe_quoted switch_name)
-              ];
-          OpamSwitchState.with_ ~switch `Lock_read global_state
-            (fun switch_state ->
-              Dune_console.print
-                [ Pp.textf "Using opam switch: %s"
-                    (OpamSwitch.to_string switch_state.switch)
-                ];
-              f switch_state))
-    with
-    | OpamPp.Bad_version _ as bad_version ->
-      User_error.raise [ Pp.text (OpamPp.string_of_bad_format bad_version) ]
-    | OpamGlobalState.Configuration_error configuration_error ->
-      User_error.raise
-        [ Pp.text
-            (OpamGlobalState.string_of_configuration_error configuration_error)
-        ]
-end
-
 module Local_repo = struct
   let ( / ) = Filename.concat
 
@@ -187,21 +133,15 @@ end
 module Solver = Opam_0install.Solver.Make (Opam_solver.Context_for_dune)
 
 module Repo_state = struct
-  type t =
-    | Switch of OpamStateTypes.unlocked OpamStateTypes.switch_state
-    | Local_repo_with_env of Local_repo_with_env.t
+  type t = Local_repo_with_env of Local_repo_with_env.t
 
   let load_opam_package t opam_package =
     match t with
-    | Switch switch_state -> OpamSwitchState.opam switch_state opam_package
     | Local_repo_with_env { local_repo; _ } ->
       Local_repo.load_opam_package local_repo opam_package
 
   let create_context t local_packages ~solver_env ~version_preference =
     match t with
-    | Switch switch_state ->
-      Opam_solver.Context_for_dune.create_switch_context ~solver_env
-        ~local_packages ~switch_state ~version_preference
     | Local_repo_with_env { local_repo = { packages_dir_path }; env } ->
       Opam_solver.Context_for_dune.create_dir_context ~solver_env
         ~env:(fun name -> Env.find_by_name env ~name)
@@ -209,37 +149,20 @@ module Repo_state = struct
 end
 
 module Repo_selection = struct
-  type pre =
-    | Switch_with_name of string
-    | Local_repo_with_env of Local_repo_with_env.t
+  type t = Local_repo_with_env.t
 
-  type t = pre
-
-  let switch_with_name switch_name = Switch_with_name switch_name
-
-  let local_repo_with_env ~opam_repo_dir_path ~env =
-    Local_repo_with_env
-      { Local_repo_with_env.local_repo =
-          Local_repo.of_opam_repo_dir_path opam_repo_dir_path
-      ; env
-      }
-
-  let add_env env' = function
-    | Switch_with_name _ as rs -> rs
-    | Local_repo_with_env ({ env; _ } as local) ->
-      let env = Env.union env env' in
-      let local = { local with env } in
-      Local_repo_with_env local
+  let local_repo_with_env ~opam_repo_dir ~env =
+    let opam_repo_dir_path = Path.to_string opam_repo_dir in
+    { Local_repo_with_env.local_repo =
+        Local_repo.of_opam_repo_dir_path opam_repo_dir_path
+    ; env
+    }
 
   (* [with_state ~f t] calls [f] on a [Repo_state.t] implied by [t] and
      returns the result. Don't let the [Repo_state.t] escape the function [f].
   *)
-  let with_state ~f = function
-    | Switch_with_name switch_name ->
-      Global.with_switch_state ~switch_name ~f:(fun switch_state ->
-          f (Repo_state.Switch switch_state))
-    | Local_repo_with_env local_repo_with_env ->
-      f (Repo_state.Local_repo_with_env local_repo_with_env)
+  let with_state ~f local_repo_with_env =
+    f (Repo_state.Local_repo_with_env local_repo_with_env)
 end
 
 module Summary = struct

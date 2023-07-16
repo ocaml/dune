@@ -100,6 +100,28 @@ module Processed = struct
     let version = 4
 
     let to_dyn _ = Dyn.String "Use [dune ocaml dump-dot-merlin] instead"
+
+    let test_example () =
+      { config =
+          { stdlib_dir = None
+          ; obj_dirs = Path.Set.empty
+          ; src_dirs = Path.Set.empty
+          ; flags = [ "-x" ]
+          ; extensions = [ { Ml_kind.Dict.intf = None; impl = Some "ext" } ]
+          ; melc_flags = [ "-y" ]
+          }
+      ; per_module_config = Path.Build.Map.empty
+      ; pp_config =
+          (match
+             Module_name.Per_item.of_mapping
+               [ ( [ Module_name.of_string "Test" ]
+                 , Some { flag = Ppx; args = "-x" } )
+               ]
+               ~default:None
+           with
+          | Ok s -> s
+          | Error (_, _, _) -> assert false)
+      }
   end
 
   module Persist = Dune_util.Persistent.Make (D)

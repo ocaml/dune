@@ -8,6 +8,8 @@ module type Desc = sig
   val version : int
 
   val to_dyn : t -> Dyn.t
+
+  val test_example : unit -> t
 end
 
 type data = ..
@@ -117,6 +119,12 @@ module Make (D : Desc) = struct
 end
 
 type t = T : (module Desc with type t = 'a) * 'a -> t
+
+let test_examples () =
+  String.Table.to_seq_values registry
+  |> Seq.map ~f:(fun desc ->
+         let module Desc = (val desc : Desc_with_data) in
+         T ((module Desc), Desc.test_example ()))
 
 let load_exn path =
   Io.with_file_in path ~f:(fun ic ->

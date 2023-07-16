@@ -2,33 +2,6 @@ open Stdune
 
 module type CONTEXT = Opam_0install.S.CONTEXT
 
-(* Helper functor which implements [CONTEXT] for [(L.t, R.t) Either.t] where
-   [L] and [R] both implement [CONTEXT] *)
-module Context_either (L : CONTEXT) (R : CONTEXT) :
-  CONTEXT with type t = (L.t, R.t) Either.t = struct
-  type t = (L.t, R.t) Either.t
-
-  type rejection = (L.rejection, R.rejection) Either.t
-
-  let pp_rejection f = Either.map ~l:(L.pp_rejection f) ~r:(R.pp_rejection f)
-
-  let candidates =
-    let convert_rejections ~f =
-      List.map ~f:(fun (version, result) ->
-          (version, Result.map_error ~f result))
-    in
-    Either.map
-      ~l:(fun l name ->
-        L.candidates l name |> convert_rejections ~f:Either.left)
-      ~r:(fun r name ->
-        R.candidates r name |> convert_rejections ~f:Either.right)
-
-  let user_restrictions =
-    Either.map ~l:L.user_restrictions ~r:R.user_restrictions
-
-  let filter_deps = Either.map ~l:L.filter_deps ~r:R.filter_deps
-end
-
 (* Helper module for working with [OpamTypes.filtered_formula] *)
 module Filtered_formula : sig
   open OpamTypes
@@ -114,9 +87,7 @@ end
 
 module Context_for_dune = struct
   module Dir_context = Opam_0install.Dir_context
-  module Switch_context = Opam_0install.Switch_context
-  include
-    Context_with_local_packages (Context_either (Dir_context) (Switch_context))
+  include Context_with_local_packages (Dir_context)
 
   let prefer_oldest = function
     | Version_preference.Oldest -> true
@@ -129,14 +100,5 @@ module Context_for_dune = struct
         ~prefer_oldest:(prefer_oldest version_preference)
         ~constraints:OpamPackage.Name.Map.empty ~env packages_dir_path
     in
-    create ~base_context:(Left dir_context) ~local_packages ~solver_env
-
-  let create_switch_context ~solver_env ~switch_state ~local_packages
-      ~version_preference =
-    let switch_context =
-      Switch_context.create
-        ~prefer_oldest:(prefer_oldest version_preference)
-        ~constraints:OpamPackage.Name.Map.empty switch_state
-    in
-    create ~base_context:(Right switch_context) ~local_packages ~solver_env
+    create ~base_context:dir_context ~local_packages ~solver_env
 end

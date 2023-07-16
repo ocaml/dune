@@ -67,15 +67,15 @@ type failure =
   | Checksum_mismatch of Checksum.t
   | Unavailable of User_message.t option
 
-let fetch ~checksum ~target (url : OpamUrl.t) =
+let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
   let open Fiber.O in
   let path = Path.to_string target in
   let pull =
     (* hashes have to be empty otherwise OPAM deletes the file after
        downloading if the hash does not match *)
     let hashes = [] in
-    match url.backend with
-    | #OpamUrl.version_control -> (
+    match (url.backend, unpack) with
+    | #OpamUrl.version_control, _ | _, true -> (
       let dirname = OpamFilename.Dir.of_string path in
       fun label url ->
         let open OpamProcess.Job.Op in

@@ -32,22 +32,22 @@ Generate a `dune-project` file listing some dependencies.
   > EOF
 
 Test that we get an error when --context and --all-contexts are passed at the same time.
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --all-contexts --context=foo
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository --all-contexts --context=foo
   Error: --context and --all-contexts are mutually exclusive
   [1]
 
 Test that we get an error if a non-existant context is specified.
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --context=baz
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository --context=baz
   Error: Unknown build context: baz
   [1]
 
 Test that we get an error if an opam context is specified.
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --context=bar
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository --context=bar
   Error: Unexpected opam build context: bar
   [1]
 
 Generate the lockdir for the default context.
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository
   Solution for foo.lock:
   bar.0.5.0
   baz.0.1.0
@@ -64,7 +64,7 @@ Only foo.lock (the default context's lockdir) was generated.
   $ rm -rf *.lock
 
 Generate the lockdir with the default context explicitly specified.
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --context=default
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository --context=default
   Solution for foo.lock:
   bar.0.5.0
   baz.0.1.0
@@ -81,7 +81,7 @@ Again, only foo.lock (the default context's lockdir) was generated.
   $ rm -rf *.lock
 
 Generate the lockdir for the non-default context.
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --context=foo
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository --context=foo
   Solution for bar.lock:
   bar.0.5.0
   baz.0.1.0
@@ -98,7 +98,7 @@ Now only bar.lock was generated.
   $ rm -rf *.lock
 
 Generate the lockdir for a context which prefers oldest package versions.
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --context=prefers_oldest
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository --context=prefers_oldest
   Solution for prefers_oldest.lock:
   bar.0.4.0
   baz.0.1.0
@@ -107,7 +107,7 @@ Generate the lockdir for a context which prefers oldest package versions.
 
 Re-generate the lockdir for a context which prefers oldest package versions,
 but override it to prefer newest with a command line argument.
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --context=prefers_oldest --version-preference=newest
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository --context=prefers_oldest --version-preference=newest
   Solution for prefers_oldest.lock:
   bar.0.5.0
   baz.0.1.0
@@ -115,7 +115,7 @@ but override it to prefer newest with a command line argument.
   
 
 Generate the lockdir for all (non-opam) contexts.
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --all-contexts
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository --all-contexts
   Solution for prefers_oldest.lock:
   bar.0.4.0
   baz.0.1.0

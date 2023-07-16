@@ -10,11 +10,4 @@ module Context_for_dune : sig
     -> local_packages:OpamFile.OPAM.t OpamTypes.name_map
     -> version_preference:Version_preference.t
     -> t
-
-  val create_switch_context :
-       solver_env:Solver_env.t
-    -> switch_state:OpamStateTypes.unlocked OpamStateTypes.switch_state
-    -> local_packages:OpamFile.OPAM.t OpamTypes.name_map
-    -> version_preference:Version_preference.t
-    -> t
 end

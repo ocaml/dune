@@ -1043,8 +1043,8 @@ module Fetch = struct
       let* () = Fiber.return () in
       let* res =
         let checksum = Option.map checksum ~f:snd in
-        Dune_pkg.Fetch.fetch ~checksum ~target:(Path.build target_dir)
-          (OpamUrl.of_string url)
+        Dune_pkg.Fetch.fetch ~unpack:false ~checksum
+          ~target:(Path.build target_dir) (OpamUrl.of_string url)
       in
       match res with
       | Ok () -> Fiber.return ()

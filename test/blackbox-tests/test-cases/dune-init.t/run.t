@@ -134,11 +134,12 @@ Clean up from the dune file created in ./_test_dir
 
   $ rm -rf ./_test_dir
 
-Add a library to a dune file in a directory specified with an absolute path
-
+Adding a library to a dune file with using an absolute path is forbidden.
   $ dune init lib test_lib $PWD/_test_dir
-  Success: initialized library component named test_lib
-  $ test -f $PWD/_test_dir/dune
+  Error: Path
+  $TESTCASE_ROOT/_test_dir
+  is not relative.
+  [1]
 
 Clean up from the dune file created at an absolute path
 

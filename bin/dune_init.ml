@@ -169,7 +169,14 @@ module Init_context = struct
     let dir =
       match path with
       | None -> Path.root
-      | Some p -> Path.of_string p
+      | Some p ->
+        let dir = Path.of_string p in
+        if Filename.is_relative p then dir
+        else
+          User_error.raise
+            [ Pp.textf "Path %s is not relative."
+                (Path.to_string_maybe_quoted dir)
+            ]
     in
     File.create_dir dir;
     { dir; project }

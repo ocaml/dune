@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix `dune init project` crash when passed an absolute directory. Now it gives
+  an error message. (#8223, fixes #7806, @Alizter)
+
 - Add `dune show rules` as alias of the `dune rules` command. (#8000, @Alizter)
 
 - Add `dune show installed-libraries` as an alias of the `dune

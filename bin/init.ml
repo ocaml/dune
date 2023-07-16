@@ -81,7 +81,10 @@ let common : Component.Options.Common.t Term.t =
 
 let path =
   let docv = "PATH" in
-  Arg.(value & pos 1 (some string) None & info [] ~docv)
+  let doc =
+    "A relative path inside the project in which to create the project files."
+  in
+  Arg.(value & pos 1 (some string) None & info [] ~docv ~doc)
 
 let context_cwd : Init_context.t Term.t =
   let+ common_term = Common.term_with_default_root_is_cwd

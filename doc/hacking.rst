@@ -30,14 +30,16 @@ Running:
 ```
 make dev
 ```
-bootstraps (if necessary) and runs `./dune.exe build @install`.
+bootstraps (if necessary) and runs ``./dune.exe build @install``.
 
-If you want to just run the bootstrapping step itself, build the
-``_boot/dune.exe`` target with
+If you want to just run the bootstrapping step itself, build the ``bootstrap``
+phony target with
 
 .. code:: sh
 
-   make _boot/dune.exe
+   make bootstrap
+
+You can always rerun this to bootstrap again.
 
 Once you've bootstrapped Dune, you should be using it to develop Dune itself.
 Here are the most common commands you'll be running:

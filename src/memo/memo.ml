@@ -594,7 +594,7 @@ module Stack_frame_with_state : sig
      Calling it in the [Restore_from_cache] frame raises an exception. *)
   val add_dep : t -> dep_node:_ Dep_node.t -> unit
   val deps_rev : t -> Dep_node.packed list
-  val children_added_to_dag : t -> Dag.Id.Set.t
+  val children_added_to_dag : t -> Dag.Id.Hashset.t
   val record_child_added_to_dag : t -> dag_node_id:Dag.Id.t -> unit
 end = struct
   type phase =
@@ -614,13 +614,8 @@ end = struct
 
          For the purpose (2) a simple [bool] could suffice instead, but we can't
          ensure (1) without an explicit set representation.
-
-         Implementation note: We use [Dag.Id.Set.t] instead of [Dag.Id.Table.t]
-         for two reasons: (i) the new cycle detection algorithm reduces the size
-         of the DAG, so [children_added_to_dag] will often be empty or small,
-         and in these cases [Set] is fast enough; (ii) we don't have hash sets
-         in Stdune and using [unit] hash maps is disturbing. *)
-      mutable children_added_to_dag : Dag.Id.Set.t
+      *)
+      children_added_to_dag : Dag.Id.Hashset.t
     ; (* The only purpose of storing [phase] is to ensure (via an [assert]) that
          we are accumulating dependencies only during the [Compute] phase. We
          can drop it if we find a way to statically guarantee this property. *)
@@ -640,7 +635,7 @@ end = struct
       ; phase
       ; deps_rev = []
       ; dag_node
-      ; children_added_to_dag = Dag.Id.Set.empty
+      ; children_added_to_dag = Dag.Id.Hashset.create ()
       }
   ;;
 
@@ -656,7 +651,7 @@ end = struct
   let deps_rev (T t) = t.deps_rev
 
   let record_child_added_to_dag (T t) ~dag_node_id =
-    t.children_added_to_dag <- Dag.Id.Set.add t.children_added_to_dag dag_node_id
+    Dag.Id.Hashset.add t.children_added_to_dag dag_node_id
   ;;
 
   let children_added_to_dag (T t) = t.children_added_to_dag
@@ -695,7 +690,7 @@ module Call_stack = struct
       | frame :: stack ->
         let dag_node_id = Dag.node_id dag_node in
         let children_added_to_dag = Stack_frame_with_state.children_added_to_dag frame in
-        (match Dag.Id.Set.mem children_added_to_dag dag_node_id with
+        (match Dag.Id.Hashset.mem children_added_to_dag dag_node_id with
          | true ->
            (* Here we know that the current [frame] has already been traversed in
               a previous [add_path_to] call. Therefore, the DAG already contains
@@ -708,7 +703,7 @@ module Call_stack = struct
             | exception Dag.Cycle cycle -> Error (List.map cycle ~f:Dag.value)
             | () ->
               if !Counters.enabled then incr Counters.edges_in_cycle_detection_graph;
-              let not_traversed_before = Dag.Id.Set.is_empty children_added_to_dag in
+              let not_traversed_before = Dag.Id.Hashset.is_empty children_added_to_dag in
               Stack_frame_with_state.record_child_added_to_dag frame ~dag_node_id;
               (match not_traversed_before with
                | true -> add_path_impl stack caller_dag_node

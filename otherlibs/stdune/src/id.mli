@@ -4,6 +4,17 @@ module type S = sig
   include Comparable_intf.S with type key := t
   module Table : Hashtbl.S with type key = t
 
+  module Hashset : sig
+    type id := t
+    type t
+
+    val create : unit -> t
+    val is_empty : t -> bool
+    val add : t -> id -> unit
+    val mem : t -> id -> bool
+    val to_dyn : t -> Dyn.t
+  end
+
   (** Generate a new id. *)
   val gen : unit -> t
 

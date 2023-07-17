@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689592843924,
+  "lastUpdate": 1689593336605,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -24358,6 +24358,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "48.33382910005333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a54f23a1392ed521562dda194bd536393aee9bac",
+          "message": "ci: add merge_queue support (#8216)\n\nThis should let us use the merge queue feature.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-17T04:05:34-07:00",
+          "tree_id": "91ff4dae3c3760b9aacc851970ec8605c40de58b",
+          "url": "https://github.com/ocaml/dune/commit/a54f23a1392ed521562dda194bd536393aee9bac"
+        },
+        "date": 1689593335493,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "45.70759458905332",
             "unit": "seconds"
           }
         ]

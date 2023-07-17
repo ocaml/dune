@@ -1,6 +1,12 @@
 open! Stdune
 
+(** A typed variable environment used by the dependency solver to evaluate
+    package filters. Opam packages can declare conditional dependencies on other
+    packages using a language made up of boolean operators and comparisons of
+    strings. Variables in this language can represent booleans and strings. *)
+
 module Flag : sig
+  (** A boolean variable *)
   type t =
     [ `With_test
     | `With_doc
@@ -13,6 +19,8 @@ module Flag : sig
   module Set : sig
     type flag := t
 
+    (** A set flags. The presence of a flag in the set indicates that the flag
+        is set to true. *)
     type t
 
     val fold : t -> init:'a -> f:(flag -> 'a -> 'a) -> 'a
@@ -22,6 +30,10 @@ module Flag : sig
 end
 
 module Sys_var : sig
+  (** A system environment variable. Each of these variables may be assigned a
+      string value. If system environment variable has a value then that
+      variable binding will be used when evaluating opam dependency filters.
+      Unset variables are treated as wildcards. *)
   type t =
     [ `Arch
     | `Os
@@ -37,6 +49,7 @@ module Sys_var : sig
   module Bindings : sig
     type sys_var := t
 
+    (** A mapping from system environment variables to their values *)
     type t
 
     val empty : t

@@ -381,9 +381,9 @@ For project names, use the following capitalization:
 - **OCaml**
 - **OCamlFormat**, and ``ocamlformat`` is the command.
 - ``odoc``, always in monospace.
-- **opam**. Can be capitalised as Opam in titles and at the beginning of
-  sentences only, as the official name is formatted opam. The command is
-  ``opam``.
+- **opam**. Can be capitalised as Opam at the beginning of sentences only, as
+  the official name is formatted opam. Even in titles, headers, and subheaders,
+  it should be all lowercase: opam. The command is ``opam``.
 - **esy**. Can be capitalised as Esy.
 - **Nix**. The command is ``nix``.
 - **Js_of_ocaml** can be abbreviated **JSOO**.

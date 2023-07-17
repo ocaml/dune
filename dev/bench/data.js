@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689503150614,
+  "lastUpdate": 1689591009777,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -73949,6 +73949,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "28.61313675504",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9b5d75c5b043b136dea65062b1726a7e25958a5e",
+          "message": "makefile: slightly easier bootstrapping (#8217)\n\nWe introduce a phony \"bootstrap\" target in the makefile that will always\r\nbuild the bootstrapped version of dune. Before the only way to bootstrap\r\nproperly was to use `make _boot/dune.exe` and many times this would not\r\nwork so it would have to be changed to `make -B _boot/dune.exe`.\r\n\r\nThis new target is easier to remember and write, and allows devs to\r\nquickly rebootstrap dune when needed. This is not something that needs\r\nto be done very often, but we make it easier anyway.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-17T03:34:12-07:00",
+          "tree_id": "87ab4980c241f65b4a4fb88a16f41bdd01cb3ca5",
+          "url": "https://github.com/ocaml/dune/commit/9b5d75c5b043b136dea65062b1726a7e25958a5e"
+        },
+        "date": 1689590999650,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "28.214875947699998",
             "unit": "seconds"
           }
         ]

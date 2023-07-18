@@ -1,5 +1,6 @@
 open Import
 open Action_builder.O
+open Expander0
 
 module Expanding_what = struct
   type t =
@@ -99,7 +100,7 @@ let extend_env t ~env =
   { t with env = Env.extend_env t.env env }
 
 let add_bindings_full t ~bindings =
-  { t with bindings = Pform.Map.superpose t.bindings bindings }
+  { t with bindings = Pform.Map.superpose bindings t.bindings }
 
 let add_bindings t ~bindings =
   add_bindings_full t
@@ -156,15 +157,6 @@ let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
              installed either."
             s
         ])
-
-let isn't_allowed_in_this_position ~(source : Dune_lang.Template.Pform.t) =
-  let exn =
-    User_error.make ~loc:source.loc
-      [ Pp.textf "%s isn't allowed in this position."
-          (Dune_lang.Template.Pform.describe source)
-      ]
-  in
-  raise (User_error.E exn)
 
 let expand_artifact ~source t a s =
   match t.lookup_artifacts with
@@ -401,6 +393,28 @@ let expand_lib_variable t source ~arg:s ~lib_exec ~lib_private =
   in
   Action_builder.of_memo_join p
 
+let make =
+  let open Memo.O in
+  let make context =
+    let which = Context.which context in
+    match Sys.unix with
+    | false -> which "make"
+    | true -> (
+      let* res = which "gmake" in
+      match res with
+      | Some _ as s -> Memo.return s
+      | None -> which "make")
+  in
+  let memo =
+    Memo.create "make"
+      ~input:(module Context_name)
+      ~cutoff:(Option.equal Path.equal)
+      (fun name ->
+        let* context = Context.DB.get name in
+        make context)
+  in
+  fun (context : Context.t) -> Memo.exec memo context.name
+
 let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
     (pform : Pform.t) : expansion_result =
   match Pform.Map.find bindings pform with
@@ -441,7 +455,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
         let open Memo.O in
         Direct
           (Without
-             (Context.make context >>| function
+             (make context >>| function
               | Some p -> path p
               | None ->
                 Utils.program_not_found ~context:context.name
@@ -473,8 +487,8 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
         static (string (Ocaml_config.ext_exe context.ocaml.ocaml_config))
       | Ext_plugin ->
         (if Ocaml_config.natdynlink_supported context.ocaml.ocaml_config then
-         Mode.Native
-        else Byte)
+           Mode.Native
+         else Byte)
         |> Mode.plugin_ext |> string |> static
       | Profile -> static (string (Profile.to_string context.profile))
       | Workspace_root -> static [ Value.Dir (Path.build context.build_dir) ]
@@ -601,8 +615,8 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
           (fun t ->
             Without
               (let open Memo.O in
-              let+ b = Artifacts.Bin.binary_available t.bin_artifacts_host s in
-              b |> string_of_bool |> string))
+               let+ b = Artifacts.Bin.binary_available t.bin_artifacts_host s in
+               b |> string_of_bool |> string))
       | Read -> expand_read_macro ~dir ~source s ~read:Io.read_file ~pack:string
       | Read_lines ->
         expand_read_macro ~dir ~source s ~read:Io.lines_of_file ~pack:strings
@@ -625,20 +639,20 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
           (fun t ->
             Without
               (let open Memo.O in
-              let* coqc =
-                Artifacts.Bin.binary t.bin_artifacts_host ~loc:None "coqc"
-              in
-              let+ t = Coq_config.make ~coqc in
-              match Coq_config.by_name t s with
-              | None ->
-                User_error.raise
-                  ~loc:(Dune_lang.Template.Pform.loc source)
-                  [ Pp.textf "Unknown Coq configuration variable %S" s ]
-              | Some v -> (
-                match v with
-                | Int x -> string (string_of_int x)
-                | String x -> string x
-                | Path x -> Value.L.paths [ x ])))))
+               let* coqc =
+                 Artifacts.Bin.binary t.bin_artifacts_host ~loc:None "coqc"
+               in
+               let+ t = Coq_config.make ~coqc in
+               match Coq_config.by_name t s with
+               | None ->
+                 User_error.raise
+                   ~loc:(Dune_lang.Template.Pform.loc source)
+                   [ Pp.textf "Unknown Coq configuration variable %S" s ]
+               | Some v -> (
+                 match v with
+                 | Int x -> string (string_of_int x)
+                 | String x -> string x
+                 | Path x -> Value.L.paths [ x ])))))
 
 (* Make sure to delay exceptions *)
 let expand_pform_gen ~context ~bindings ~dir ~source pform =
@@ -647,8 +661,8 @@ let expand_pform_gen ~context ~bindings ~dir ~source pform =
     Direct
       (Without
          (let open Memo.O in
-         let+ () = Memo.return () in
-         reraise exn))
+          let+ () = Memo.return () in
+          reraise exn))
   | Direct _ as x -> x
   | Need_full_expander f ->
     Need_full_expander
@@ -657,8 +671,8 @@ let expand_pform_gen ~context ~bindings ~dir ~source pform =
         with User_error.E _ as exn ->
           Without
             (let open Memo.O in
-            let+ () = Memo.return () in
-            reraise exn))
+             let+ () = Memo.return () in
+             reraise exn))
 
 let describe_source ~source =
   Pp.textf "%s at %s"

@@ -11,7 +11,7 @@ Duplicate mld's in different scope
           odoc _doc/_odocls/scope1/page-index.odocl
           odoc _doc/_odocls/scope2/scope2.odocl
           odoc _doc/_odocls/scope2/page-index.odocl
-          odoc _doc/_html/scope1/Scope1/.dummy,_doc/_html/scope1/Scope1/index.html
+          odoc _doc/_html/scope1/Scope1/index.html
           odoc _doc/_html/scope1/index.html
-          odoc _doc/_html/scope2/Scope2/.dummy,_doc/_html/scope2/Scope2/index.html
+          odoc _doc/_html/scope2/Scope2/index.html
           odoc _doc/_html/scope2/index.html

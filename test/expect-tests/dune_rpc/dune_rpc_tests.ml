@@ -40,6 +40,8 @@ module Chan = struct
     Fiber.fork_and_join_unit
       (fun () -> Fiber.Stream.connect (fst c1.out) (snd c2.in_))
       (fun () -> Fiber.Stream.connect (fst c2.out) (snd c1.in_))
+
+  let name _ = "unnamed"
 end
 
 module Drpc = struct

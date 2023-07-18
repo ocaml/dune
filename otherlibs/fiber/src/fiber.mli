@@ -2,7 +2,7 @@
 
     This module implements
     {{:https://en.wikipedia.org/wiki/Structured_concurrency} "structured
-    concurrency"}. *)
+      concurrency"}. *)
 
 open! Stdune
 

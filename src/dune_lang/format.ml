@@ -52,7 +52,7 @@ let rec pp_sexp ~version : Cst.t -> _ = function
   | List (_, sexps) ->
     Pp.vbox ~indent:1
       (if can_be_displayed_wrapped sexps then print_wrapped_list ~version sexps
-      else pp_sexp_list ~version sexps)
+       else pp_sexp_list ~version sexps)
   | Comment (_, c) -> pp_comment c
 
 and pp_sexp_list ~version sexps =

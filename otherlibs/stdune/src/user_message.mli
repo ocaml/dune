@@ -24,7 +24,25 @@ module Style : sig
 end
 
 module Annots : sig
-  include Univ_map.S
+  module Key : sig
+    type 'a t
+
+    val create : name:string -> ('a -> Dyn.t) -> 'a t
+  end
+
+  type t
+
+  val to_dyn : t -> Dyn.t
+
+  val find : t -> 'a Key.t -> 'a option
+
+  val set : t -> 'a Key.t -> 'a -> t
+
+  val empty : t
+
+  val is_empty : t -> bool
+
+  val singleton : 'a Key.t -> 'a -> t
 
   (** The message has a location embed in the text. *)
   val has_embedded_location : unit Key.t

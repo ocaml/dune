@@ -176,9 +176,14 @@ module Copyfile = struct
     Exn.protectx (setup_copy ?chmod ~src ~dst ()) ~finally:close_both
       ~f:(fun (ic, oc) -> copy_channels ic oc)
 
+  let sendfile_with_fallback ?chmod ~src ~dst () =
+    try sendfile ?chmod ~src ~dst ()
+    with Unix.Unix_error (EINVAL, "sendfile", _) ->
+      copy_file_portable ?chmod ~src ~dst ()
+
   let copy_file_best =
     match available with
-    | `Sendfile -> sendfile
+    | `Sendfile -> sendfile_with_fallback
     | `Copyfile -> copyfile
     | `Nothing -> copy_file_portable
 

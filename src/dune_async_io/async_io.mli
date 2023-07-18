@@ -52,6 +52,12 @@ end
 val ready :
   Unix.file_descr -> [ `Read | `Write ] -> f:(unit -> 'a) -> 'a Task.t Fiber.t
 
+val ready_one :
+     ('label * Unix.file_descr) list
+  -> [ `Read | `Write ]
+  -> f:('label -> Unix.file_descr -> 'a)
+  -> 'a Task.t Fiber.t
+
 (** [connect fd sock] will do the equivalent of [Unix.connect fd sock] but
     without blocking. As in the other functions, you must call
     [Unix.set_nonblock fd] before calling this function.

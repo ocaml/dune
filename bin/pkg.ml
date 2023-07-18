@@ -1,94 +1,120 @@
 open Import
 module Lock_dir = Dune_pkg.Lock_dir
+module Fetch = Dune_pkg.Fetch
+module Opam = Dune_pkg.Opam
+module Repo_selection = Opam.Repo_selection
+
+module Opam_repository = struct
+  type t = { url : OpamUrl.t }
+
+  let of_url url = { url }
+
+  let default =
+    of_url @@ OpamUrl.of_string "https://opam.ocaml.org/index.tar.gz"
+
+  let is_archive name =
+    List.exists
+      ~f:(fun suffix -> String.is_suffix ~suffix name)
+      [ ".tar.gz"; ".tgz"; ".tar.bz2"; ".tbz"; ".zip" ]
+
+  let path =
+    let open Fiber.O in
+    let ( / ) = Filename.concat in
+    fun { url } ->
+      Fiber.of_thunk @@ fun () ->
+      let target_dir =
+        Xdg.cache_dir (Lazy.force Dune_util.xdg) / "dune/opam-repository"
+      in
+      let target = target_dir |> Path.External.of_string |> Path.external_ in
+      let unpack = url |> OpamUrl.to_string |> is_archive in
+      let+ res = Fetch.fetch ~unpack ~checksum:None ~target url in
+      match res with
+      | Ok () -> Ok target
+      | Error _ as failure -> failure
+end
 
 module Lock = struct
-  module Repo_selection = struct
-    module Env = struct
-      module Source = struct
-        type t =
-          | Global
-          | Pure
+  module Env = struct
+    module Source = struct
+      type t =
+        | Global
+        | Pure
 
-        let to_string = function
-          | Global -> "global"
-          | Pure -> "pure"
+      let to_string = function
+        | Global -> "global"
+        | Pure -> "pure"
 
-        let default = Global
+      let default = Global
 
-        let term =
-          let all = [ Global; Pure ] in
-          let all_with_strings = List.map all ~f:(fun t -> (to_string t, t)) in
-          let all_strings = List.map all_with_strings ~f:fst in
-          let doc =
-            sprintf
-              "How to initialize the opam environment when taking the opam \
-               repository from a local directory (may only be used along with \
-               the --opam-repository-path option). Possible values are %s. \
-               '%s' will use the environment associated with the current opam \
-               switch. '%s' will use an empty environment. The default is \
-               '%s'."
-              (String.enumerate_and all_strings)
-              (to_string Global) (to_string Pure) (to_string default)
-          in
-          Arg.(
-            value
-            & opt (some (enum all_with_strings)) None
-            & info [ "opam-env" ] ~doc)
-      end
-
-      let of_source =
-        let open Dune_pkg.Opam.Env in
-        function
-        | Source.Global -> global ()
-        | Pure -> empty
+      let term =
+        let all = [ Global; Pure ] in
+        let all_with_strings = List.map all ~f:(fun t -> (to_string t, t)) in
+        let all_strings = List.map all_with_strings ~f:fst in
+        let doc =
+          sprintf
+            "How to initialize the opam environment when taking the opam \
+             repository from a local directory (may only be used along with \
+             the --opam-repository-path option). Possible values are %s. '%s' \
+             will use the environment associated with the current opam switch. \
+             '%s' will use an empty environment. The default is '%s'."
+            (String.enumerate_and all_strings)
+            (to_string Global) (to_string Pure) (to_string default)
+        in
+        Arg.(
+          value
+          & opt (some (enum all_with_strings)) None
+          & info [ "opam-env" ] ~doc)
     end
 
+    let of_source =
+      let open Dune_pkg.Opam.Env in
+      function
+      | Source.Global -> global ()
+      | Pure -> empty
+  end
+
+  module Opam_repository_path = struct
     let term =
-      let+ opam_repository_path =
-        Arg.(
-          value
-          & opt (some string) None
-          & info [ "opam-repository-path" ] ~docv:"PATH"
-              ~doc:
-                "Path to a local opam repository. This should be a directory \
-                 containing a valid opam repository such as the one at \
-                 https://github.com/ocaml/opam-repository. If this option is \
-                 omitted the dependencies will be locked using the current \
-                 switch instead.")
-      and+ opam_switch_name =
-        Arg.(
-          value
-          & opt (some string) None
-          & info [ "opam-switch" ] ~docv:"SWITCH"
-              ~doc:
-                "Name or path of opam switch to use while solving \
-                 dependencies. Local switches may be specified with relative \
-                 paths (e.g. `--opam-switch=.`)")
-      and+ env_source = Env.Source.term in
-      let module Repo_selection = Dune_pkg.Opam.Repo_selection in
-      match (opam_switch_name, opam_repository_path, env_source) with
-      | None, None, _env_source | Some _, Some _, _env_source ->
-        User_error.raise
-          [ Pp.text
-              "Exactly one of --opam-switch and --opam-repository-path must be \
-               specified"
-          ]
-      | Some _opam_switch, None, Some _env_source ->
-        User_error.raise
-          [ Pp.text "--opam-env may only used with --opam-repository-path" ]
-      | Some opam_switch_name, None, None ->
-        (* switch with name does not support environments *)
-        Repo_selection.switch_with_name opam_switch_name
-      | None, Some opam_repo_dir_path, env_source_opt ->
-        let env =
-          Option.value env_source_opt ~default:Env.Source.default
-          |> Env.of_source
+      let dune_path =
+        let parser s =
+          s |> Path.External.of_filename_relative_to_initial_cwd
+          |> Path.external_ |> Result.ok
         in
-        Repo_selection.local_repo_with_env ~opam_repo_dir_path ~env
+        let printer pf p = Pp.to_fmt pf (Path.pp p) in
+        Arg.conv (parser, printer)
+      in
+      Arg.(
+        value
+        & opt (some dune_path) None
+        & info [ "opam-repository-path" ] ~docv:"PATH"
+            ~doc:
+              "Path to a local opam repository. This should be a directory \
+               containing a valid opam repository such as the one at \
+               https://github.com/ocaml/opam-repository. If this option is \
+               omitted the dependencies will be locked using the current \
+               switch instead.")
+  end
+
+  module Opam_repository_url = struct
+    let term =
+      let parser s =
+        match OpamUrl.parse_opt s with
+        | Some url -> Ok url
+        | None -> Error (`Msg "URL can't be parsed")
+      in
+      let printer pf u = Pp.to_fmt pf (Pp.text (OpamUrl.to_string u)) in
+      let opam_url = Arg.conv (parser, printer) in
+      Arg.(
+        value
+        & opt (some opam_url) None
+        & info [ "opam-repository-url" ] ~docv:"URL"
+            ~doc:
+              "URL of opam repository to download. Can be either a git \
+               repository or a link to the tarball of a repository.")
   end
 
   module Version_preference = struct
-    include Dune_pkg.Opam.Version_preference
+    include Dune_pkg.Version_preference
 
     let term =
       let all_strings = List.map all_by_string ~f:fst in
@@ -131,6 +157,8 @@ module Lock = struct
     type t =
       { lock_dir_path : Path.Source.t
       ; version_preference : Version_preference.t
+      ; solver_env : Dune_pkg.Solver_env.t
+      ; context_common : Dune_rules.Workspace.Context.Common.t
       }
 
     let choose ~context_name_arg ~all_contexts_arg ~version_preference_arg =
@@ -160,11 +188,19 @@ module Lock = struct
             ]
         | Some
             (Default
-              { lock; version_preference = version_preference_context; _ }) ->
+              { lock
+              ; version_preference = version_preference_context
+              ; solver_env
+              ; base = context_common
+              ; _
+              }) ->
           [ { lock_dir_path = Option.value lock ~default:Lock_dir.default_path
             ; version_preference =
                 Version_preference.choose ~from_arg:version_preference_arg
                   ~from_context:version_preference_context
+            ; solver_env =
+                Option.value solver_env ~default:Dune_pkg.Solver_env.default
+            ; context_common
             }
           ]
         | Some (Opam _) ->
@@ -177,14 +213,50 @@ module Lock = struct
         let+ workspace = Memo.run (Workspace.workspace ()) in
         List.filter_map workspace.contexts ~f:(function
           | Workspace.Context.Default
-              { lock; version_preference = version_preference_context; _ } ->
-            Option.map lock ~f:(fun lock_dir_path ->
-                { lock_dir_path
-                ; version_preference =
-                    Version_preference.choose ~from_arg:version_preference_arg
-                      ~from_context:version_preference_context
-                })
+              { lock
+              ; version_preference = version_preference_context
+              ; base = context_common
+              ; solver_env
+              } ->
+            let lock_dir_path =
+              Option.value lock ~default:Dune_pkg.Lock_dir.default_path
+            in
+            Some
+              { lock_dir_path
+              ; version_preference =
+                  Version_preference.choose ~from_arg:version_preference_arg
+                    ~from_context:version_preference_context
+              ; context_common
+              ; solver_env =
+                  Option.value solver_env ~default:Dune_pkg.Solver_env.default
+              }
           | Opam _ -> None)
+
+    let contexts_with_dup_lock_dir_paths ts =
+      List.map ts ~f:(fun { lock_dir_path; context_common; _ } ->
+          (lock_dir_path, context_common))
+      |> Path.Source.Map.of_list_multi |> Path.Source.Map.to_list
+      |> List.find_opt ~f:(fun (_, context_commons) ->
+             List.length context_commons > 1)
+
+    let check_for_dup_lock_dir_paths ts =
+      contexts_with_dup_lock_dir_paths ts
+      |> Option.iter ~f:(fun (lock_dir_path, context_commons) ->
+             let loc =
+               (List.hd context_commons : Workspace.Context.Common.t).loc
+             in
+             User_error.raise ~loc
+               ([ Pp.text
+                    "Refusing to proceed as multiple selected contexts would \
+                     create a lock dir at the same path."
+                ; Pp.textf "These contexts all create a lock dir: %s"
+                    (Path.Source.to_string_maybe_quoted lock_dir_path)
+                ]
+               @ List.map context_commons
+                   ~f:(fun (c : Dune_rules.Workspace.Context.Common.t) ->
+                     Pp.textf "- %s (defined at %s)"
+                       (Context_name.to_string c.name |> String.maybe_quoted)
+                       (Loc.to_file_colon_line c.loc))))
   end
 
   let context_term =
@@ -198,7 +270,9 @@ module Lock = struct
 
   let term =
     let+ (common : Common.t) = Common.term
-    and+ repo_selection = Repo_selection.term
+    and+ env_source = Env.Source.term
+    and+ opam_repository_path = Opam_repository_path.term
+    and+ opam_repository_url = Opam_repository_url.term
     and+ context_name = context_term
     and+ all_contexts =
       Arg.(
@@ -214,31 +288,55 @@ module Lock = struct
         ~all_contexts_arg:all_contexts
         ~version_preference_arg:version_preference
     in
+    Per_context.check_for_dup_lock_dir_paths per_context;
     let* source_dir = Memo.run (Source_tree.root ()) in
-    let project = Source_tree.Dir.project source_dir in
-    let dune_package_map = Dune_project.packages project in
-    let opam_file_map = opam_file_map_of_dune_package_map dune_package_map in
+    let* opam_repo_dir =
+      match opam_repository_path with
+      | Some path -> Fiber.return path
+      | None -> (
+        let repo =
+          opam_repository_url
+          |> Option.map ~f:Opam_repository.of_url
+          |> Option.value ~default:Opam_repository.default
+        in
+        let+ opam_repository = Opam_repository.path repo in
+        match opam_repository with
+        | Ok path -> path
+        | Error _ -> failwith "TODO")
+    in
+    let env =
+      Option.value env_source ~default:Env.Source.default |> Env.of_source
+    in
     let+ sys_env =
       Dune_pkg.Sys_poll.sys_env ~path:(Env_path.path Stdune.Env.initial)
     in
+    let env = Dune_pkg.Opam.Env.union env sys_env in
     let repo_selection =
-      Dune_pkg.Opam.Repo_selection.add_env sys_env repo_selection
+      Repo_selection.local_repo_with_env ~opam_repo_dir ~env
     in
+    let project = Source_tree.Dir.project source_dir in
+    let dune_package_map = Dune_project.packages project in
+    let opam_file_map = opam_file_map_of_dune_package_map dune_package_map in
     (* Construct a list of thunks that will perform all the file IO side
        effects after performing validation so that if materializing any
        lockdir would fail then no side effect takes place. *)
-    let write_disk_list =
+    let write_disk_list, summary_pps =
       List.map per_context
-        ~f:(fun { Per_context.lock_dir_path; version_preference } ->
+        ~f:(fun { Per_context.lock_dir_path; version_preference; solver_env; _ }
+           ->
           let summary, lock_dir =
-            Dune_pkg.Opam.solve_lock_dir ~version_preference ~repo_selection
-              opam_file_map
+            Dune_pkg.Opam.solve_lock_dir ~solver_env ~version_preference
+              ~repo_selection opam_file_map
           in
-          Console.print_user_message
-            (Dune_pkg.Opam.Summary.selected_packages_message summary
-               ~lock_dir_path);
-          Lock_dir.Write_disk.prepare ~lock_dir_path lock_dir)
+          let summary_message =
+            Dune_pkg.Opam.Summary.selected_packages_message summary
+              ~lock_dir_path
+            |> User_message.pp
+          in
+          (Lock_dir.Write_disk.prepare ~lock_dir_path lock_dir, summary_message))
+      |> List.split
     in
+    Console.print summary_pps;
     (* All the file IO side effects happen here: *)
     List.iter write_disk_list ~f:Lock_dir.Write_disk.commit
 

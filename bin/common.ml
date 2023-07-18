@@ -531,9 +531,10 @@ module Builder = struct
     ; default_target : Arg.Dep.t (* For build & runtest only *)
     ; watch : Dune_rpc_impl.Watch_mode_config.t
     ; print_metrics : bool
-    ; dump_memo_graph_file : string option
+    ; dump_memo_graph_file : Path.External.t option
     ; dump_memo_graph_format : Graph.File_format.t
     ; dump_memo_graph_with_timing : bool
+    ; dump_gc_stats : Path.External.t option
     ; always_show_command_line : bool
     ; promote_install_files : bool
     ; file_watcher : Dune_engine.Scheduler.Run.file_watcher
@@ -709,6 +710,14 @@ module Builder = struct
                the Memo graph after building and include the runtime in the \
                output. Since all nodes contain a cached value, this will \
                measure just the runtime of each node")
+    and+ dump_gc_stats =
+      Arg.(
+        value
+        & opt (some string) None
+        & info [ "dump-gc-stats" ] ~docs ~docv:"FILE"
+            ~doc:
+              "Dump the garbage collector stats to a file after the build is \
+               complete.")
     and+ { Options_implied_by_dash_p.root
          ; only_packages
          ; ignore_promoted_rules
@@ -890,9 +899,14 @@ module Builder = struct
     ; default_target
     ; watch
     ; print_metrics
-    ; dump_memo_graph_file
+    ; dump_memo_graph_file =
+        Option.map dump_memo_graph_file
+          ~f:Path.External.of_filename_relative_to_initial_cwd
     ; dump_memo_graph_format
     ; dump_memo_graph_with_timing
+    ; dump_gc_stats =
+        Option.map dump_gc_stats
+          ~f:Path.External.of_filename_relative_to_initial_cwd
     ; always_show_command_line
     ; promote_install_files
     ; file_watcher
@@ -1067,9 +1081,9 @@ let init ?action_runner ?log_file c =
       | Yes _ -> true);
   Dune_engine.Execution_parameters.init
     (let open Memo.O in
-    let+ w = Dune_rules.Workspace.workspace () in
-    Dune_engine.Execution_parameters.builtin_default
-    |> Dune_rules.Workspace.update_execution_parameters w);
+     let+ w = Dune_rules.Workspace.workspace () in
+     Dune_engine.Execution_parameters.builtin_default
+     |> Dune_rules.Workspace.update_execution_parameters w);
   Dune_rules.Global.init ~capture_outputs:c.builder.capture_outputs;
   let cache_config =
     match config.cache_enabled with
@@ -1136,6 +1150,16 @@ let init ?action_runner ?log_file c =
         in
         let event = Event.instant ~args common in
         Dune_stats.emit stats event);
+  (* Setup hook for printing GC stats to a file *)
+  at_exit (fun () ->
+      match c.builder.dump_gc_stats with
+      | None -> ()
+      | Some file ->
+        Gc.full_major ();
+        Gc.compact ();
+        let stat = Gc.stat () in
+        let path = Path.external_ file in
+        Dune_util.Gc.serialize ~path stat);
   config
 
 let footer =

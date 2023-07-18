@@ -201,13 +201,11 @@ let findlib_predicates_set_by_dune pred =
   pr buf "open Dune_site_plugins.Private_.Meta_parser";
   prlist buf "builtin_library" (Package.Name.Map.to_list builtins)
     ~f:(fun (name, meta) ->
-      let meta = Meta.complexify meta in
       let meta =
-        Meta.filter_variable
-          ~f:(function
-            | "plugin" | "directory" | "requires" -> true
-            | _ -> false)
-          meta
+        Meta.complexify meta
+        |> Meta.filter_variable ~f:(function
+             | "plugin" | "directory" | "requires" -> true
+             | _ -> false)
       in
       pr buf "(%S,%s)"
         (Package.Name.to_string name)

@@ -1,5 +1,13 @@
 (** Universal maps *)
 
+module type Key = sig
+  type 'a t
+
+  type 'a info
+
+  val create : 'a info -> 'a t
+end
+
 module type S = sig
   (** A universal map is a map that can store values for arbitrary keys. It is
       the the key that conveys the type of the data associated to it. *)
@@ -8,7 +16,7 @@ module type S = sig
   module Key : sig
     type 'a t
 
-    val create : name:string -> ('a -> Dyn.t) -> 'a t
+    type 'a info
   end
 
   val empty : t
@@ -31,11 +39,10 @@ module type S = sig
 
   val singleton : 'a Key.t -> 'a -> t
 
-  (** [superpose a b] is [b] augmented with bindings of [a] that are not in [b]. *)
+  (** [superpose a b] is [a] augmented with bindings of [b] that are not in [a]. *)
   val superpose : t -> t -> t
 
-  val to_dyn : t -> Dyn.t
+  type 'acc fold = { fold : 'a. 'a Key.info -> 'a -> 'acc -> 'acc }
 
-  (** [to_dyns m] is an assoc list pairing keys to (representations of) values *)
-  val to_dyns : t -> (string * Dyn.t) list
+  val fold : t -> init:'acc -> f:'acc fold -> 'acc
 end

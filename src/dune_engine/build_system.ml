@@ -360,7 +360,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 13
+  let rule_digest_version = 14
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode
       ~execution_parameters =
@@ -503,7 +503,10 @@ end = struct
             in
             match (Build_config.get ()).action_runner input with
             | None -> Action_exec.exec input ~build_deps
-            | Some runner -> Action_runner.exec_action runner input
+            | Some runner -> (
+              Action_runner.exec_action runner input >>= function
+              | Ok res -> Fiber.return res
+              | Error exns -> Fiber.reraise_all exns)
           in
           let+ produced_targets =
             match sandbox with
@@ -567,13 +570,13 @@ end = struct
     let wrap_fiber f =
       Memo.of_reproducible_fiber
         (if Loc.is_none loc then f ()
-        else
-          Fiber.with_error_handler f ~on_error:(fun exn ->
-              match exn.exn with
-              | User_error.E msg when not (User_message.has_location msg) ->
-                let msg = { msg with loc = Some loc } in
-                Exn_with_backtrace.reraise { exn with exn = User_error.E msg }
-              | _ -> Exn_with_backtrace.reraise exn))
+         else
+           Fiber.with_error_handler f ~on_error:(fun exn ->
+               match exn.exn with
+               | User_error.E msg when not (User_message.has_location msg) ->
+                 let msg = { msg with loc = Some loc } in
+                 Exn_with_backtrace.reraise { exn with exn = User_error.E msg }
+               | _ -> Exn_with_backtrace.reraise exn))
     in
     let config = Build_config.get () in
     wrap_fiber (fun () ->
@@ -662,10 +665,9 @@ end = struct
             in
             let* produced_targets, dynamic_deps_stages =
               (* Step III. Try to restore artifacts from the shared cache. *)
-              match
-                Rule_cache.Shared.lookup ~can_go_in_shared_cache ~rule_digest
-                  ~targets ~target_dir:rule.dir
-              with
+              Rule_cache.Shared.lookup ~can_go_in_shared_cache ~rule_digest
+                ~targets ~target_dir:rule.dir
+              >>= function
               | Some produced_targets ->
                 (* Rules with dynamic deps can't be stored to the shared cache
                    (see the [is_action_dynamic] check above), so we know this is
@@ -1066,7 +1068,10 @@ end = struct
          | `Disabled -> None
          | `Enabled -> Some (Tuple.T2.equal Digest.equal target_kind_equal)
        in
-       Memo.create "build-file" ~input:(module Path) ?cutoff build_file_impl)
+       Memo.create_with_store "build-file"
+         ~store:(module Path.Table)
+         ~input:(module Path)
+         ?cutoff build_file_impl)
 
   let build_file path = Memo.exec (Lazy.force build_file_memo) path >>| fst
 

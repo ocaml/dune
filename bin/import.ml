@@ -17,6 +17,7 @@ include struct
   module Diff_promotion = Diff_promotion
   module Cached_digest = Cached_digest
   module Targets = Targets
+  module Context_name = Context_name
 end
 
 module Execution_env = Dune_util.Execution_env
@@ -25,7 +26,6 @@ include struct
   open Dune_rules
   module Super_context = Super_context
   module Context = Context
-  module Lib_name = Lib_name
   module Workspace = Workspace
   module Package = Package
   module Section = Install.Section
@@ -34,6 +34,7 @@ include struct
   module Resolve = Resolve
   module Sub_dirs = Sub_dirs
   module Source_tree = Source_tree
+  module Dune_file = Dune_file
 end
 
 include struct
@@ -59,6 +60,7 @@ include struct
   open Dune_lang
   module Stanza = Stanza
   module Profile = Profile
+  module Lib_name = Lib_name
 end
 
 module Log = Dune_util.Log

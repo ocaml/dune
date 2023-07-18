@@ -4,7 +4,13 @@ module Action_runner = Dune_engine.Action_runner
 module Rpc_server = Action_runner.Rpc_server
 module Where = Dune_rpc_client.Where
 module Scheduler = Dune_engine.Scheduler
-module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
+
+module Server = Dune_rpc_server.Make (struct
+  include Csexp_rpc.Session
+
+  let name _ = "unnamed"
+end)
+
 module Action_exec = Dune_engine.Action_exec
 
 let () = Dune_util.Log.init_disabled ()
@@ -14,7 +20,7 @@ let run () =
   let where = `Unix fname in
   let action_runner_server = Action_runner.Rpc_server.create () in
   let csexp_server =
-    match Csexp_rpc.Server.create (Where.to_socket where) ~backlog:10 with
+    match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:10 with
     | Ok s ->
       at_exit (fun () -> Fpath.unlink_no_err fname);
       s
@@ -94,7 +100,8 @@ let run () =
           ; action
           }
         in
-        let+ (_ : Action_exec.Exec_result.t) =
+        let+ (_ : (Action_exec.Exec_result.t, Exn_with_backtrace.t list) result)
+            =
           Action_runner.exec_action worker action
         in
         print_endline "executed action";

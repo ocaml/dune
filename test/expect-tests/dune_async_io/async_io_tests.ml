@@ -42,6 +42,29 @@ let%expect_test "write readiness" =
       print_endline "succesful write" );
   [%expect {| succesful write |}]
 
+let%expect_test "first ready" =
+  ( Scheduler.Run.go config ~on_event:(fun _ _ -> ()) @@ fun () ->
+    let r1, w1 = Unix.pipe ~cloexec:true () in
+    let r2, w2 = Unix.pipe ~cloexec:true () in
+    if not Sys.win32 then (
+      Unix.set_nonblock w1;
+      Unix.set_nonblock w2);
+    let* task =
+      Async_io.ready_one
+        [ ((), w1); ((), w2) ]
+        `Write
+        ~f:(fun () fd -> assert (Unix.write fd (Bytes.of_string "0") 0 1 = 1))
+    in
+    Async_io.Task.await task >>= function
+    | Error _ -> assert false
+    | Ok () ->
+      Unix.close r1;
+      Unix.close r2;
+      let* () = Async_io.close w1 in
+      let+ () = Async_io.close w2 in
+      print_endline "succesful write" );
+  [%expect {| succesful write |}]
+
 let%expect_test "cancel task" =
   ( Scheduler.Run.go config ~on_event:(fun _ _ -> ()) @@ fun () ->
     let r, w = Unix.pipe ~cloexec:true () in

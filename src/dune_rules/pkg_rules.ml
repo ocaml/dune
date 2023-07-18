@@ -30,8 +30,6 @@ let sys_poll =
       let+ os_family = sys_poll_memo Sys_poll.os_family in
       { os_version; os_distribution; os_family })
 
-module Source = Dune_pkg.Lock_dir.Source
-
 module Variable = struct
   type value = OpamVariable.variable_contents =
     | B of bool
@@ -69,6 +67,20 @@ end
 module Lock_dir = struct
   include Dune_pkg.Lock_dir
 
+  module Load = Make_load (struct
+    include Memo
+
+    let readdir_with_kinds path =
+      Fs_memo.dir_contents (In_source_dir path) >>| function
+      | Error _ ->
+        (* TODO *)
+        User_error.raise [ Pp.text "" ]
+      | Ok content -> Fs_cache.Dir_contents.to_list content
+
+    let with_lexbuf_from_file path ~f =
+      Fs_memo.with_lexbuf_from_file (In_source_dir path) ~f
+  end)
+
   let get_path ctx =
     let+ workspace = Workspace.workspace () in
     match
@@ -81,61 +93,7 @@ module Lock_dir = struct
     | Some (Default { lock; _ }) -> Option.value lock ~default:default_path
     | Some (Opam _) -> assert false
 
-  let get (ctx : Context_name.t) : t Memo.t =
-    let* path = get_path ctx in
-    Fs_memo.dir_exists (In_source_dir path) >>= function
-    | false ->
-      (* TODO *)
-      User_error.raise [ Pp.text "" ]
-    | true -> (
-      Fs_memo.dir_contents (In_source_dir path) >>= function
-      | Error _ ->
-        (* TODO *)
-        User_error.raise [ Pp.text "" ]
-      | Ok content ->
-        let* version =
-          Fs_memo.with_lexbuf_from_file
-            (In_source_dir (Path.Source.relative path metadata))
-            ~f:(fun lexbuf ->
-              Metadata.parse_contents lexbuf ~f:(fun instance ->
-                  Dune_sexp.Decoder.return instance.version))
-        in
-        let+ packages =
-          Fs_cache.Dir_contents.to_list content
-          |> List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
-                 match kind with
-                 | S_REG ->
-                   Lock_dir.Package_filename.to_package_name name
-                   |> Result.to_option
-                 | _ ->
-                   (* TODO *)
-                   None)
-          |> Memo.parallel_map ~f:(fun name ->
-                 let+ package =
-                   let+ sexp =
-                     let path =
-                       Lock_dir.Package_filename.of_package_name name
-                       |> Path.Source.relative path
-                     in
-                     Fs_memo.with_lexbuf_from_file (In_source_dir path)
-                       ~f:(Dune_sexp.Parser.parse ~mode:Many)
-                   in
-                   let parser =
-                     let env = Pform.Env.pkg version in
-                     let decode =
-                       Syntax.set Dune_lang.Pkg.syntax (Active version)
-                         Pkg.decode
-                     in
-                     String_with_vars.set_decoding_env env decode
-                   in
-                   (Dune_lang.Decoder.parse parser Univ_map.empty
-                      (List (Loc.none, sexp)))
-                     ~lock_dir:path name
-                 in
-                 (name, package))
-          >>| Package.Name.Map.of_list_exn
-        in
-        { packages; version })
+  let get (ctx : Context_name.t) : t Memo.t = get_path ctx >>= Load.load
 end
 
 module Paths = struct
@@ -218,6 +176,8 @@ module Install_cookie = struct
     let version = 1
 
     let to_dyn = to_dyn
+
+    let test_example () = { files = Section.Map.empty; variables = [] }
   end)
 
   let load_exn f =
@@ -367,7 +327,7 @@ module Pkg = struct
         ]
     in
     let env = build_env t |> Env.Map.map ~f:Env_update.string_of_env_values in
-    Env.extend Env.empty ~vars:(Env.Map.superpose env base)
+    Env.extend Env.empty ~vars:(Env.Map.superpose base env)
 end
 
 module Pkg_installed = struct
@@ -532,7 +492,7 @@ module Action_expander = struct
         | _ -> assert false)
       | Var Context_name ->
         Memo.return [ Value.String (Context_name.to_string context) ]
-      | _ -> Expander.isn't_allowed_in_this_position ~source
+      | _ -> Expander0.isn't_allowed_in_this_position ~source
 
     let expand_pform_gen t =
       String_expander.Memo.expand ~f:(expand_pform t)
@@ -645,37 +605,36 @@ module Action_expander = struct
       (* TODO *)
       assert false
 
+  let artifacts_and_deps closure =
+    Memo.parallel_map closure ~f:(fun (pkg : Pkg.t) ->
+        let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+        Action_builder.run cookie Eager
+        |> Memo.map ~f:(fun ((cookie : Install_cookie.t), _) -> (pkg, cookie)))
+    |> Memo.map ~f:(fun cookies ->
+           List.fold_left cookies
+             ~init:(Filename.Map.empty, Package.Name.Map.empty)
+             ~f:(fun
+                  (bins, dep_info)
+                  ((pkg : Pkg.t), (cookie : Install_cookie.t))
+                ->
+               let bins =
+                 Section.Map.Multi.find cookie.files Bin
+                 |> List.fold_left ~init:bins ~f:(fun acc bin ->
+                        Filename.Map.set acc (Path.basename bin) bin)
+               in
+               let dep_info =
+                 let variables =
+                   String.Map.superpose
+                     (String.Map.of_list_exn cookie.variables)
+                     (Pkg_info.variables pkg.info)
+                 in
+                 Package.Name.Map.add_exn dep_info pkg.info.name
+                   (variables, pkg.paths)
+               in
+               (bins, dep_info)))
+
   let expander context (pkg : Pkg.t) =
-    let+ artifacts, deps =
-      Pkg.deps_closure pkg
-      |> Memo.parallel_map ~f:(fun (pkg : Pkg.t) ->
-             let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-             Action_builder.run cookie Eager
-             |> Memo.map ~f:(fun ((cookie : Install_cookie.t), _) ->
-                    (pkg, cookie)))
-      |> Memo.map ~f:(fun cookies ->
-             List.fold_left cookies
-               ~init:(Filename.Map.empty, Package.Name.Map.empty)
-               ~f:(fun
-                    (bins, dep_info)
-                    ((pkg : Pkg.t), (cookie : Install_cookie.t))
-                  ->
-                 let bins =
-                   Section.Map.Multi.find cookie.files Bin
-                   |> List.fold_left ~init:bins ~f:(fun acc bin ->
-                          Filename.Map.set acc (Path.basename bin) bin)
-                 in
-                 let dep_info =
-                   let variables =
-                     String.Map.superpose
-                       (Pkg_info.variables pkg.info)
-                       (String.Map.of_list_exn cookie.variables)
-                   in
-                   Package.Name.Map.add_exn dep_info pkg.info.name
-                     (variables, pkg.paths)
-                 in
-                 (bins, dep_info)))
-    in
+    let+ artifacts, deps = Pkg.deps_closure pkg |> artifacts_and_deps in
     let env = Pkg.build_env pkg in
     let deps =
       Package.Name.Map.add_exn deps pkg.info.name
@@ -715,7 +674,7 @@ end
 type db = Lock_dir.Pkg.t Package.Name.Map.t
 
 module rec Resolve : sig
-  val resolve : db -> Context_name.t -> Package.Name.t -> Pkg.t option Memo.t
+  val resolve : db -> Context_name.t -> Loc.t * Package.Name.t -> Pkg.t Memo.t
 end = struct
   open Resolve
 
@@ -730,12 +689,7 @@ end = struct
         ; exported_env
         } ->
       assert (Package.Name.equal name info.name);
-      let* deps =
-        Memo.parallel_map deps ~f:(fun name ->
-            resolve db ctx name >>| function
-            | Some pkg -> pkg
-            | None -> User_error.raise [ Pp.text "invalid dependencies" ])
-      in
+      let* deps = Memo.parallel_map deps ~f:(resolve db ctx) in
       let id = Pkg.Id.gen () in
       let paths = Paths.make name ctx in
       let* lock_dir = Lock_dir.get_path ctx in
@@ -779,7 +733,10 @@ end = struct
           Pp.textf "- package %s" (Package.Name.to_string pkg))
         resolve_impl
     in
-    fun db ctx name -> Memo.exec memo (db, ctx, name)
+    fun db ctx (loc, name) ->
+      Memo.exec memo (db, ctx, name) >>| function
+      | None -> User_error.raise ~loc [ Pp.text "Unknown package" ]
+      | Some s -> s
 end
 
 open Resolve
@@ -1086,8 +1043,8 @@ module Fetch = struct
       let* () = Fiber.return () in
       let* res =
         let checksum = Option.map checksum ~f:snd in
-        Dune_pkg.Fetch.fetch ~checksum ~target:(Path.build target_dir)
-          (OpamUrl.of_string url)
+        Dune_pkg.Fetch.fetch ~unpack:false ~checksum
+          ~target:(Path.build target_dir) (OpamUrl.of_string url)
       in
       match res with
       | Ok () -> Fiber.return ()
@@ -1210,7 +1167,7 @@ let gen_rules context_name (pkg : Pkg.t) =
     List.map pkg.info.extra_sources ~f:(fun (local, fetch) ->
         let extra_source = Paths.extra_source pkg.paths local in
         let rule =
-          match (fetch : Source.t) with
+          match (fetch : Lock_dir.Source.t) with
           | External_copy (loc, src) ->
             ( loc
             , Action_builder.copy ~src:(Path.external_ src) ~dst:extra_source )
@@ -1301,26 +1258,51 @@ let setup_package_rules context ~dir ~pkg_name :
     Build_config.gen_rules_result Memo.t =
   match Package.Name.of_string_user_error (Loc.none, pkg_name) with
   | Error m -> raise (User_error.E m)
-  | Ok name -> (
+  | Ok name ->
     let* db = Lock_dir.get context in
-    resolve db.packages context name >>| function
-    | None ->
-      User_error.raise
-        [ Pp.textf "unknown package %S" (Package.Name.to_string name) ]
-    | Some pkg ->
-      let paths = Paths.make name context in
-      let rules =
-        { Build_config.Rules.directory_targets =
-            (let target_dir = paths.target_dir in
-             let map = Path.Build.Map.singleton target_dir Loc.none in
-             match pkg.info.source with
-             | Some (Fetch f) ->
-               Path.Build.Map.add_exn map paths.source_dir (fst f.url)
-             | _ -> map)
-        ; build_dir_only_sub_dirs =
-            Build_config.Rules.Build_only_sub_dirs.singleton ~dir
-              Subdir_set.empty
-        ; rules = Rules.collect_unit (fun () -> gen_rules context pkg)
-        }
-      in
-      Build_config.Rules rules)
+    let+ pkg = resolve db.packages context (Loc.none, name) in
+    let paths = Paths.make name context in
+    let rules =
+      { Build_config.Rules.directory_targets =
+          (let target_dir = paths.target_dir in
+           let map = Path.Build.Map.singleton target_dir Loc.none in
+           match pkg.info.source with
+           | Some (Fetch f) ->
+             Path.Build.Map.add_exn map paths.source_dir (fst f.url)
+           | _ -> map)
+      ; build_dir_only_sub_dirs =
+          Build_config.Rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty
+      ; rules = Rules.collect_unit (fun () -> gen_rules context pkg)
+      }
+    in
+    Build_config.Rules rules
+
+let ocaml_toolchain context =
+  let* db = Lock_dir.get context in
+  let+ pkg =
+    match db.ocaml with
+    | None -> User_error.raise [ Pp.text "no ocaml toolchain defined" ]
+    | Some ocaml -> resolve db.packages context ocaml
+  in
+  let toolchain =
+    let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+    let open Action_builder.O in
+    let* cookie = cookie in
+    let binaries =
+      Section.Map.find cookie.files Bin
+      |> Option.value ~default:[] |> Path.Set.of_list
+    in
+    let env = Pkg.exported_env pkg in
+    Action_builder.of_memo @@ Ocaml_toolchain.of_binaries context env binaries
+  in
+  Action_builder.memoize "ocaml_toolchain" toolchain
+
+let which context program =
+  let* db = Lock_dir.get context in
+  let+ artifacts, _ =
+    Package.Name.Map.values db.packages
+    |> Memo.parallel_map ~f:(fun (pkg : Lock_dir.Pkg.t) ->
+           resolve db.packages context (Loc.none, pkg.info.name))
+    >>= Action_expander.artifacts_and_deps
+  in
+  Filename.Map.find artifacts program

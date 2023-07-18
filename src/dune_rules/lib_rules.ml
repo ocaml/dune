@@ -85,35 +85,35 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
          in
          Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc
            (let open Action_builder.With_targets.O in
-           Action_builder.with_no_targets obj_deps
-           >>> Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
-                 [ Command.Args.dyn ocaml_flags
-                 ; A "-a"
-                 ; A "-o"
-                 ; Target target
-                 ; As stubs_flags
-                 ; Dyn
-                     (Action_builder.map cclibs ~f:(fun x ->
-                          Command.quote_args "-cclib" (map_cclibs x)))
-                 ; Command.Args.dyn library_flags
-                 ; As
-                     (match lib.kind with
-                     | Normal -> []
-                     | Ppx_deriver _ | Ppx_rewriter _ -> [ "-linkall" ])
-                 ; Dyn
-                     (Cm_files.top_sorted_cms cm_files ~mode
-                     |> Action_builder.map ~f:(fun x -> Command.Args.Deps x))
-                 ; Hidden_targets
-                     (match mode with
-                     | Byte -> []
-                     | Native -> native_archives)
-                 ; Dyn
-                     (Action_builder.map ctypes_cclib_flags ~f:(fun x ->
-                          Command.quote_args "-cclib" (map_cclibs x)))
-                 ; Deps
-                     (Foreign.Objects.build_paths lib.buildable.extra_objects
-                        ~ext_obj:ctx.lib_config.ext_obj ~dir)
-                 ]))
+            Action_builder.with_no_targets obj_deps
+            >>> Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
+                  [ Command.Args.dyn ocaml_flags
+                  ; A "-a"
+                  ; A "-o"
+                  ; Target target
+                  ; As stubs_flags
+                  ; Dyn
+                      (Action_builder.map cclibs ~f:(fun x ->
+                           Command.quote_args "-cclib" (map_cclibs x)))
+                  ; Command.Args.dyn library_flags
+                  ; As
+                      (match lib.kind with
+                      | Normal -> []
+                      | Ppx_deriver _ | Ppx_rewriter _ -> [ "-linkall" ])
+                  ; Dyn
+                      (Cm_files.top_sorted_cms cm_files ~mode
+                      |> Action_builder.map ~f:(fun x -> Command.Args.Deps x))
+                  ; Hidden_targets
+                      (match mode with
+                      | Byte -> []
+                      | Native -> native_archives)
+                  ; Dyn
+                      (Action_builder.map ctypes_cclib_flags ~f:(fun x ->
+                           Command.quote_args "-cclib" (map_cclibs x)))
+                  ; Deps
+                      (Foreign.Objects.build_paths lib.buildable.extra_objects
+                         ~ext_obj:ctx.lib_config.ext_obj ~dir)
+                  ]))
 
 let gen_wrapped_compat_modules (lib : Library.t) cctx =
   let modules = Compilation_context.modules cctx in
@@ -165,21 +165,21 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~o_files ~archive_name
   let build ~custom ~sandbox targets =
     Super_context.add_rule sctx ~dir ~loc
       (let open Action_builder.With_targets.O in
-      let ctx = Super_context.context sctx in
-      Command.run ~dir:(Path.build ctx.build_dir) ctx.ocaml.ocamlmklib
-        [ A "-g"
-        ; (if custom then A "-custom" else Command.Args.empty)
-        ; A "-o"
-        ; Path
-            (Path.build
-               (Foreign.Archive.Name.path ~dir archive_name ~mode:stubs_mode))
-        ; Deps o_files
-          (* The [c_library_flags] is needed only for the [dynamic_target] case,
-             but we pass them unconditionally for simplicity. *)
-        ; Dyn cclibs
-        ; Hidden_targets targets
-        ]
-      >>| Action.Full.add_sandbox sandbox)
+       let ctx = Super_context.context sctx in
+       Command.run ~dir:(Path.build ctx.build_dir) ctx.ocaml.ocamlmklib
+         [ A "-g"
+         ; (if custom then A "-custom" else Command.Args.empty)
+         ; A "-o"
+         ; Path
+             (Path.build
+                (Foreign.Archive.Name.path ~dir archive_name ~mode:stubs_mode))
+         ; Deps o_files
+           (* The [c_library_flags] is needed only for the [dynamic_target] case,
+              but we pass them unconditionally for simplicity. *)
+         ; Dyn cclibs
+         ; Hidden_targets targets
+         ]
+       >>| Action.Full.add_sandbox sandbox)
   in
   let dynamic_target =
     Foreign.Archive.Name.dll_file archive_name ~dir ~ext_dll ~mode:stubs_mode
@@ -189,8 +189,8 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~o_files ~archive_name
        unless dynamically linked foreign archives are disabled. *)
     build ~sandbox:Sandbox_config.no_special_requirements ~custom:false
       (if ctx.dynamically_linked_foreign_archives then
-       [ static_target; dynamic_target ]
-      else [ static_target ])
+         [ static_target; dynamic_target ]
+       else [ static_target ])
   else
     let open Memo.O in
     (* Build the static target only by passing the [-custom] flag. *)

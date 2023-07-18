@@ -6,4 +6,3 @@ module String :
 
 module Make (Keys : Top_closure_intf.Keys) (Monad : Monad_intf.S) :
   Top_closure_intf.S with type key := Keys.elt and type 'a monad := 'a Monad.t
-[@@inlined always]

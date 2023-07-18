@@ -5,8 +5,8 @@ let mdx_version_required = "1.6.0"
 let color_always : _ Command.Args.t Lazy.t =
   lazy
     (if Lazy.force Ansi_color.stderr_supports_color then
-     S [ A "--color=always" ]
-    else S [])
+       S [ A "--color=always" ]
+     else S [])
 
 module Files = struct
   type t =
@@ -287,37 +287,37 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
         let* dep_set = Deps.read files in
         Action_builder.of_memo
           (let open Memo.O in
-          let+ dsr = Deps.to_dep_set dep_set ~version ~dir in
-          let src_path_msg =
-            Pp.seq (Pp.text "Source path: ") (Path.pp (Path.build src))
-          in
-          match dsr with
-          | Result.Ok r -> r
-          | Error (`Absolute str) ->
-            User_error.raise ~loc
-              [ Pp.text
-                  "Paths referenced in mdx files must be relative. This stanza \
-                   refers to the following absolute path:"
-              ; src_path_msg
-              ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
-              ]
-          | Error (`Escapes_workspace str) ->
-            User_error.raise ~loc
-              [ Pp.text
-                  "Paths referenced in mdx files must stay within the \
-                   workspace. This stanza refers to the following path which \
-                   escapes:"
-              ; src_path_msg
-              ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
-              ]
-          | Error (`Escapes_dir str) ->
-            User_error.raise ~loc
-              [ Pp.text
-                  "Paths referenced in mdx files cannot escape the directory. \
-                   This stanza refers to the following path which escapes:"
-              ; src_path_msg
-              ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
-              ])
+           let+ dsr = Deps.to_dep_set dep_set ~version ~dir in
+           let src_path_msg =
+             Pp.seq (Pp.text "Source path: ") (Path.pp (Path.build src))
+           in
+           match dsr with
+           | Result.Ok r -> r
+           | Error (`Absolute str) ->
+             User_error.raise ~loc
+               [ Pp.text
+                   "Paths referenced in mdx files must be relative. This \
+                    stanza refers to the following absolute path:"
+               ; src_path_msg
+               ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
+               ]
+           | Error (`Escapes_workspace str) ->
+             User_error.raise ~loc
+               [ Pp.text
+                   "Paths referenced in mdx files must stay within the \
+                    workspace. This stanza refers to the following path which \
+                    escapes:"
+               ; src_path_msg
+               ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
+               ]
+           | Error (`Escapes_dir str) ->
+             User_error.raise ~loc
+               [ Pp.text
+                   "Paths referenced in mdx files cannot escape the directory. \
+                    This stanza refers to the following path which escapes:"
+               ; src_path_msg
+               ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
+               ])
       in
 
       let dyn_deps =

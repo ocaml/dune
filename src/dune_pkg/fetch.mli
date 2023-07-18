@@ -13,7 +13,8 @@ type failure =
     @raise Unavailable
       When the file can't be retrieved, e.g. not available at the location. *)
 val fetch :
-     checksum:Checksum.t option
+     unpack:bool
+  -> checksum:Checksum.t option
   -> target:Path.t
   -> OpamUrl.t
   -> (unit, failure) result Fiber.t

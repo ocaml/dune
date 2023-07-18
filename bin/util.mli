@@ -1,5 +1,4 @@
-open Stdune
-open Dune_rules
+open Import
 
 type checked =
   | In_build_dir of (Context.t * Path.Source.t)

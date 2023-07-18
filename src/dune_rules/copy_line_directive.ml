@@ -14,6 +14,8 @@ module DB = struct
     let version = 1
 
     let to_dyn = Path.Build.Table.to_dyn Path.Build.to_dyn
+
+    let test_example () = Path.Build.Table.create 1
   end)
 
   let needs_dumping = ref false

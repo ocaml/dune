@@ -199,16 +199,16 @@ module Driver = struct
     let public_info t =
       Memo.return
         (let open Resolve.O in
-        let+ replaces = t.replaces in
-        { Info.loc = t.info.loc
-        ; flags = t.info.flags
-        ; as_ppx_flags = t.info.as_ppx_flags
-        ; lint_flags = t.info.lint_flags
-        ; main = t.info.main
-        ; replaces =
-            List.map2 t.info.replaces replaces ~f:(fun (loc, _) t ->
-                (loc, Lib.name t.lib))
-        })
+         let+ replaces = t.replaces in
+         { Info.loc = t.info.loc
+         ; flags = t.info.flags
+         ; as_ppx_flags = t.info.as_ppx_flags
+         ; lint_flags = t.info.lint_flags
+         ; main = t.info.main
+         ; replaces =
+             List.map2 t.info.replaces replaces ~f:(fun (loc, _) t ->
+                 (loc, Lib.name t.lib))
+         })
   end
 
   include M
@@ -309,8 +309,8 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
       (Action_builder.write_file_dyn ml_source
          (Resolve.read
             (let open Resolve.O in
-            let+ driver, _ = driver_and_libs in
-            sprintf "let () = %s ()\n" driver.info.main)))
+             let+ driver, _ = driver_and_libs in
+             sprintf "let () = %s ()\n" driver.info.main)))
   in
   let linkages = [ Exe.Linkage.native_or_custom ctx ] in
   let program : Exe.Program.t =
@@ -615,7 +615,7 @@ let pp_one_module sctx ~lib_name ~scope ~preprocessor_deps
           in
           Super_context.add_rule sctx ~loc ~dir
             (let open Action_builder.With_targets.O in
-            Action_builder.with_no_targets preprocessor_deps >>> action))
+             Action_builder.with_no_targets preprocessor_deps >>> action))
       >>= setup_dialect_rules sctx ~sandbox ~dir ~expander
     in
     let+ () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
@@ -625,32 +625,21 @@ let pp_one_module sctx ~lib_name ~scope ~preprocessor_deps
     @@
     if staged then
       let dash_ppx_flag =
-        Action_builder.memoize ~cutoff:(List.equal String.equal) "ppx command"
-          (let* () = Action_builder.return () in
-           let* exe, driver, flags =
-             ppx_driver_and_flags sctx ~expander ~loc ~scope ~flags ~lib_name
-               pps
-           in
-           let+ () = Action_builder.path (Path.build exe)
-           and+ () = preprocessor_deps
-           and+ driver_flags =
-             Expander.expand_and_eval_set expander driver.info.as_ppx_flags
-               ~standard:(Action_builder.return [ "--as-ppx" ])
-           in
-           let driver_flags = driver_flags in
-           let command =
-             List.map ~f:String.quote_for_shell
-               (List.concat
-                  [ [ Path.reach (Path.build exe)
-                        ~from:
-                          (Path.build (Super_context.context sctx).build_dir)
-                    ]
-                  ; driver_flags
-                  ; flags
-                  ])
-             |> String.concat ~sep:" "
-           in
-           [ "-ppx"; command ])
+        let+ args =
+          Action_builder.memoize ~cutoff:(List.equal String.equal) "ppx command"
+            (let* exe, driver, flags =
+               ppx_driver_and_flags sctx ~expander ~loc ~scope ~flags ~lib_name
+                 pps
+             in
+             let* driver_flags =
+               Expander.expand_and_eval_set expander driver.info.as_ppx_flags
+                 ~standard:(Action_builder.return [ "--as-ppx" ])
+             and* () = preprocessor_deps in
+             Command.expand_no_targets
+               ~dir:(Path.build (Super_context.context sctx).build_dir)
+               (S [ Dep (Path.build exe); As driver_flags; As flags ]))
+        in
+        [ "-ppx"; String.quote_list_for_shell args ]
       in
       let pp =
         let sandbox =
@@ -698,21 +687,21 @@ let pp_one_module sctx ~lib_name ~scope ~preprocessor_deps
                     (Option.value_exn (Module.file m ~ml_kind)))
                  (Action_builder.with_file_targets ~file_targets:[ dst ]
                     (let open Action_builder.O in
-                    preprocessor_deps
-                    >>> let* exe, flags, args = driver_and_flags in
-                        let dir =
-                          Path.build (Super_context.context sctx).build_dir
-                        in
-                        Command.run' ~dir
-                          (Ok (Path.build exe))
-                          [ As args
-                          ; A "-o"
-                          ; Path (Path.build dst)
-                          ; Command.Ml_kind.ppx_driver_flag ml_kind
-                          ; Dep (Path.build src)
-                          ; As flags
-                          ]
-                        >>| Action.Full.add_sandbox sandbox))))
+                     preprocessor_deps
+                     >>> let* exe, flags, args = driver_and_flags in
+                         let dir =
+                           Path.build (Super_context.context sctx).build_dir
+                         in
+                         Command.run' ~dir
+                           (Ok (Path.build exe))
+                           [ As args
+                           ; A "-o"
+                           ; Path (Path.build dst)
+                           ; Command.Ml_kind.ppx_driver_flag ml_kind
+                           ; Dep (Path.build src)
+                           ; As flags
+                           ]
+                         >>| Action.Full.add_sandbox sandbox))))
 
 let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
     ~instrumentation_deps ~lib_name ~scope =
@@ -735,7 +724,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
       let dune_version = Dune_project.dune_version project in
       `Default
         (if dune_version >= (3, 3) then Sandbox_config.needs_sandboxing
-        else sandbox)
+         else sandbox)
   in
   let preprocessor_deps =
     Action_builder.memoize "preprocessor deps" preprocessor_deps

@@ -121,8 +121,7 @@ module Version = struct
     let open Memo.O in
     let* _ = Build_system.build_file bin in
     Memo.of_reproducible_fiber
-    @@ Process.run_capture_line ~display:Quiet Process.Strict bin
-         [ "--version" ]
+    @@ Process.run_capture_line ~display:Quiet Strict bin [ "--version" ]
     |> Memo.map ~f:of_string
 
   let version_memo =
@@ -216,8 +215,8 @@ let standalone_runtime_rule cc ~javascript_files ~target ~flags =
     Command.Args.S
       [ Resolve.Memo.args
           (let open Resolve.Memo.O in
-          let+ libs = libs in
-          Command.Args.Deps (jsoo_runtime_files libs))
+           let+ libs = libs in
+           Command.Args.Deps (jsoo_runtime_files libs))
       ; Deps (List.map ~f:Path.build javascript_files)
       ]
   in
@@ -234,8 +233,8 @@ let exe_rule cc ~javascript_files ~src ~target ~flags =
     Command.Args.S
       [ Resolve.Memo.args
           (let open Resolve.Memo.O in
-          let+ libs = libs in
-          Command.Args.Deps (jsoo_runtime_files libs))
+           let+ libs = libs in
+           Command.Args.Deps (jsoo_runtime_files libs))
       ; Deps (List.map ~f:Path.build javascript_files)
       ; Dep (Path.build src)
       ]

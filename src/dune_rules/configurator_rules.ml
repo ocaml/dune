@@ -17,30 +17,30 @@ let gen_rules (t : Context.t) =
   let* () =
     let fn = configurator_v1 t in
     (let open Action_builder.O in
-    let+ () = Action_builder.return () in
-    (let open Dune_lang.Encoder in
-    record_fields
-      [ field "ocamlc" string ocamlc
-      ; field_l "ocaml_config_vars" (pair string string) ocaml_config_vars
-      ])
-    |> List.map ~f:(fun x -> Dune_lang.to_string x ^ "\n")
-    |> String.concat ~sep:"" |> Action.write_file fn |> Action.Full.make)
+     let+ () = Action_builder.return () in
+     (let open Dune_lang.Encoder in
+      record_fields
+        [ field "ocamlc" string ocamlc
+        ; field_l "ocaml_config_vars" (pair string string) ocaml_config_vars
+        ])
+     |> List.map ~f:(fun x -> Dune_lang.to_string x ^ "\n")
+     |> String.concat ~sep:"" |> Action.write_file fn |> Action.Full.make)
     |> Rule.make ~targets:(Targets.File.create fn) ~context:None
     |> Rules.Produce.rule
   in
   let fn = configurator_v2 t in
   (let open Action_builder.O in
-  let+ () = Action_builder.return () in
-  (let open Sexp in
-  let ocaml_config_vars =
-    Sexp.List
-      (List.map ocaml_config_vars ~f:(fun (k, v) -> List [ Atom k; Atom v ]))
-  in
-  List
-    [ List [ Atom "ocamlc"; Atom ocamlc ]
-    ; List [ Atom "ocaml_config_vars"; ocaml_config_vars ]
-    ])
-  |> Csexp.to_string |> Action.write_file fn |> Action.Full.make)
+   let+ () = Action_builder.return () in
+   (let open Sexp in
+    let ocaml_config_vars =
+      Sexp.List
+        (List.map ocaml_config_vars ~f:(fun (k, v) -> List [ Atom k; Atom v ]))
+    in
+    List
+      [ List [ Atom "ocamlc"; Atom ocamlc ]
+      ; List [ Atom "ocaml_config_vars"; ocaml_config_vars ]
+      ])
+   |> Csexp.to_string |> Action.write_file fn |> Action.Full.make)
   |> Rule.make ~targets:(Targets.File.create fn) ~context:None
   |> Rules.Produce.rule
 

@@ -840,8 +840,6 @@ let cancelled () = raise (Memo.Non_reproducible Build_cancelled)
 
 let check_cancelled t = if Fiber.Cancel.fired t.cancel then cancelled ()
 
-let abort_if_build_was_cancelled = t_opt () >>| Option.iter ~f:check_cancelled
-
 let check_point =
   t_opt () >>= function
   | None -> Fiber.return ()
@@ -1161,10 +1159,10 @@ module Run = struct
     let cancel = Fiber.Cancel.create () in
     t.status := Building cancel;
     (if Memo.Invalidation.is_empty invalidation then Memo.Perf_counters.reset ()
-    else
-      let details_hum = Memo.Invalidation.details_hum invalidation in
-      t.handler t.config (Source_files_changed { details_hum });
-      Memo.reset invalidation);
+     else
+       let details_hum = Memo.Invalidation.details_hum invalidation in
+       t.handler t.config (Source_files_changed { details_hum });
+       Memo.reset invalidation);
     let* res = set { t with cancel } (fun () -> step) in
     match !(t.status) with
     | Standing_by _ ->

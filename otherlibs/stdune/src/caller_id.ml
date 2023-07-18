@@ -23,6 +23,6 @@ let get ~skip =
             }
           in
           let stop = { start with pos_cnum = loc.end_char } in
-          Some { Loc.start; stop }
+          Some (Loc.create ~start ~stop)
   in
   loop 0

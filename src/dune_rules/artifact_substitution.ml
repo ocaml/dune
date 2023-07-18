@@ -152,19 +152,19 @@ let eval t ~conf =
   | Vcs_describe p ->
     Memo.run
       (let open Memo.O in
-      conf.get_vcs p >>= function
-      | None -> Memo.return ""
-      | Some vcs ->
-        let+ res = Vcs.describe vcs in
-        Option.value res ~default:"")
+       conf.get_vcs p >>= function
+       | None -> Memo.return ""
+       | Some vcs ->
+         let+ res = Vcs.describe vcs in
+         Option.value res ~default:"")
   | Location (name, lib_name) ->
     Fiber.return (relocatable (conf.get_location name lib_name))
   | Configpath d ->
     Fiber.return
       (Option.value ~default:""
          (let open Option.O in
-         let+ dir = conf.get_config_path d in
-         relocatable dir))
+          let+ dir = conf.get_config_path d in
+          relocatable dir))
   | Hardcoded_ocaml_path ->
     Fiber.return
       (match conf.hardcoded_ocaml_path with
@@ -499,15 +499,15 @@ let parse ~input ~mode =
         | Copy { output; input_file; conf } ->
           let* s = eval t ~conf in
           (if !Clflags.debug_artifact_substitution then
-           let open Pp.O in
-           Console.print
-             [ Pp.textf "Found placeholder in %s:"
-                 (Path.to_string_maybe_quoted input_file)
-             ; Pp.enumerate ~f:Fun.id
-                 [ Pp.text "placeholder: " ++ Dyn.pp (to_dyn t)
-                 ; Pp.text "evaluates to: " ++ Dyn.pp (String s)
-                 ]
-             ]);
+             let open Pp.O in
+             Console.print
+               [ Pp.textf "Found placeholder in %s:"
+                   (Path.to_string_maybe_quoted input_file)
+               ; Pp.enumerate ~f:Fun.id
+                   [ Pp.text "placeholder: " ++ Dyn.pp (to_dyn t)
+                   ; Pp.text "evaluates to: " ++ Dyn.pp (String s)
+                   ]
+               ]);
           let s = encode_replacement ~len ~repl:s in
           output (Bytes.unsafe_of_string s) 0 len;
           let pos = placeholder_start + len in

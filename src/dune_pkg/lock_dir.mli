@@ -22,13 +22,15 @@ module Pkg_info : sig
     ; source : Source.t option
     ; extra_sources : (Path.Local.t * Source.t) list
     }
+
+  val default_version : string
 end
 
 module Pkg : sig
   type t =
     { build_command : Action.t option
     ; install_command : Action.t option
-    ; deps : Package_name.t list
+    ; deps : (Loc.t * Package_name.t) list
     ; info : Pkg_info.t
     ; exported_env : String_with_vars.t Action.Env_update.t list
     }
@@ -40,6 +42,7 @@ end
 type t =
   { version : Syntax.Version.t
   ; packages : Pkg.t Package_name.Map.t
+  ; ocaml : (Loc.t * Package_name.t) option
   }
 
 val remove_locs : t -> t
@@ -48,7 +51,8 @@ val equal : t -> t -> bool
 
 val to_dyn : t -> Dyn.t
 
-val create_latest_version : Pkg.t Package_name.Map.t -> t
+val create_latest_version :
+  Pkg.t Package_name.Map.t -> ocaml:(Loc.t * Package_name.t) option -> t
 
 val default_path : Path.Source.t
 
@@ -74,4 +78,16 @@ module Write_disk : sig
   val commit : t -> unit
 end
 
-val read_disk : lock_dir_path:Path.Source.t -> t Or_exn.t
+val read_disk : Path.Source.t -> t
+
+module Make_load (Io : sig
+  include Monad.S
+
+  val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
+
+  val readdir_with_kinds : Path.Source.t -> (Filename.t * Unix.file_kind) list t
+
+  val with_lexbuf_from_file : Path.Source.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
+end) : sig
+  val load : Path.Source.t -> t Io.t
+end

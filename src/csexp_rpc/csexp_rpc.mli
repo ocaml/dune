@@ -47,7 +47,8 @@ module Server : sig
   (** RPC Server *)
   type t
 
-  val create : Unix.sockaddr -> backlog:int -> (t, [ `Already_in_use ]) result
+  val create :
+    Unix.sockaddr list -> backlog:int -> (t, [ `Already_in_use ]) result
 
   (** [ready t] returns a fiber that completes when clients can start connecting
       to the server *)
@@ -57,7 +58,7 @@ module Server : sig
 
   val serve : t -> Session.t Fiber.Stream.In.t Fiber.t
 
-  val listening_address : t -> Unix.sockaddr
+  val listening_address : t -> Unix.sockaddr list
 end
 
 module Private : sig

@@ -154,10 +154,10 @@ let prepare ~skip_trailing_cr annots path1 path2 =
            (User_error.make ~loc ~annots
               [ Pp.textf "command reported no differences: %s"
                   (if Path.is_root dir then cmd
-                  else
-                    sprintf "cd %s && %s"
-                      (String.quote_for_shell (Path.to_string dir))
-                      cmd)
+                   else
+                     sprintf "cd %s && %s"
+                       (String.quote_for_shell (Path.to_string dir))
+                       cmd)
               ]))
   | None -> (
     if Execution_env.inside_dune then fallback
@@ -168,7 +168,7 @@ let prepare ~skip_trailing_cr annots path1 path2 =
         run prog
           ([ "-keep-whitespace"; "-location-style"; "omake" ]
           @ (if Lazy.force Ansi_color.stderr_supports_color then []
-            else [ "-ascii" ])
+             else [ "-ascii" ])
           @ [ file1; file2 ])
           ~metadata:
             ((* Because of the [-location-style omake], patdiff will print the

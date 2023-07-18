@@ -4,10 +4,12 @@
 #include <caml/memory.h>
 #include <caml/alloc.h>
 #include <caml/unixsupport.h>
-#include <caml/signals.h>
 #include <caml/fail.h>
 
 #include <errno.h>
+
+#include <caml/signals.h>
+CAMLextern int caml_convert_signal_number(int);
 
 #if defined(__APPLE__)
 
@@ -45,6 +47,13 @@ CAMLprim value spawn_is_osx()
    +-----------------------------------------------------------------+ */
 
 #if defined(__APPLE__)
+
+/* vfork(2) is deprecated on macOS >= 12, so we use fork(2) instead. */
+# if defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
+#  if __MAC_OS_X_VERSION_MAX_ALLOWED >= 120000
+#   define vfork fork
+#  endif
+# endif
 
 static int safe_pipe(int fd[2])
 {
@@ -170,7 +179,7 @@ static void subprocess_failure(int failure_fd,
 
   /* Block all signals to avoid being interrupted in write.
      Although most of the call sites of [subprocess_failure] already block
-     signals, the one after the [exec] does not. */
+     signals, the one after the [exec] might not. */
   sigfillset(&sigset);
   pthread_sigmask(SIG_SETMASK, &sigset, NULL);
 
@@ -212,13 +221,13 @@ struct spawn_info {
   int std_fds[3];
   int set_pgid;
   pid_t pgid;
+  sigset_t child_sigmask;
 };
 
 static void subprocess(int failure_fd, struct spawn_info *info)
 {
   int i, fd, tmp_fds[3];
   struct sigaction sa;
-  sigset_t sigset;
 
   if (info->set_pgid) {
     if (setpgid(0, info->pgid) == -1) {
@@ -227,8 +236,9 @@ static void subprocess(int failure_fd, struct spawn_info *info)
     }
   }
 
-  /* Restore all signals to their default behavior before unblocking
-     them, to avoid invoking handlers from the parent */
+  /* Restore all signals to their default behavior before setting the
+     desired signal mask for the subprocess to avoid invoking handlers
+     from the parent */
   sa.sa_handler = SIG_DFL;
   sigemptyset(&sa.sa_mask);
   sa.sa_flags = 0;
@@ -264,8 +274,7 @@ static void subprocess(int failure_fd, struct spawn_info *info)
     close(tmp_fds[fd]);
   }
 
-  sigemptyset(&sigset);
-  pthread_sigmask(SIG_SETMASK, &sigset, NULL);
+  pthread_sigmask(SIG_SETMASK, &info->child_sigmask, NULL);
 
   execve(info->prog, info->argv, info->env);
   subprocess_failure(failure_fd, "execve", PROG);
@@ -353,6 +362,12 @@ static void free_spawn_info(struct spawn_info *info)
 
 extern char ** environ;
 
+enum caml_unix_sigprocmask_command {
+  CAML_SIG_SETMASK,
+  CAML_SIG_BLOCK,
+  CAML_SIG_UNBLOCK,
+};
+
 CAMLprim value spawn_unix(value v_env,
                           value v_cwd,
                           value v_prog,
@@ -361,7 +376,8 @@ CAMLprim value spawn_unix(value v_env,
                           value v_stdout,
                           value v_stderr,
                           value v_use_vfork,
-                          value v_setpgid)
+                          value v_setpgid,
+                          value v_sigprocmask)
 {
   CAMLparam4(v_env, v_cwd, v_prog, v_argv);
   pid_t ret;
@@ -435,6 +451,47 @@ CAMLprim value spawn_unix(value v_env,
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
   sigfillset(&sigset);
   pthread_sigmask(SIG_SETMASK, &sigset, &saved_procmask);
+
+  if (v_sigprocmask == Val_long(0)) {
+    sigemptyset(&info.child_sigmask);
+  } else {
+    v_sigprocmask = Field(v_sigprocmask, 0);
+    value v_sigprocmask_command = Field(v_sigprocmask, 0);
+    enum caml_unix_sigprocmask_command sigprocmask_command = Long_val(v_sigprocmask_command);
+
+    switch (sigprocmask_command) {
+      case CAML_SIG_SETMASK:
+        sigemptyset(&info.child_sigmask);
+        break;
+
+      case CAML_SIG_BLOCK:
+      case CAML_SIG_UNBLOCK:
+        info.child_sigmask = saved_procmask;
+        break;
+
+      default:
+        caml_failwith("Unknown sigprocmask action");
+    }
+
+    for (value v_signals_list = Field(v_sigprocmask, 1);
+         v_signals_list != Val_emptylist;
+         v_signals_list = Field(v_signals_list, 1)) {
+      int signal = caml_convert_signal_number(Long_val(Field(v_signals_list, 0)));
+      switch (sigprocmask_command) {
+        case CAML_SIG_SETMASK:
+        case CAML_SIG_BLOCK:
+          sigaddset(&info.child_sigmask, signal);
+          break;
+
+        case CAML_SIG_UNBLOCK:
+          sigdelset(&info.child_sigmask, signal);
+          break;
+
+        default:
+          assert(0);
+      }
+    }
+  }
 
   ret = Bool_val(v_use_vfork) ? vfork() : fork();
 
@@ -525,7 +582,8 @@ CAMLprim value spawn_unix(value v_env,
                           value v_stdout,
                           value v_stderr,
                           value v_use_vfork,
-                          value v_setpgid)
+                          value v_setpgid,
+                          value v_sigprocmask)
 {
   (void)v_env;
   (void)v_cwd;
@@ -536,6 +594,7 @@ CAMLprim value spawn_unix(value v_env,
   (void)v_stderr;
   (void)v_use_vfork;
   (void)v_setpgid;
+  (void)v_sigprocmask;
   unix_error(ENOSYS, "spawn_unix", Nothing);
 }
 
@@ -617,7 +676,8 @@ CAMLprim value spawn_unix_byte(value * argv)
                     argv[5],
                     argv[6],
                     argv[7],
-                    argv[8]);
+                    argv[8],
+                    argv[9]);
 }
 
 CAMLprim value spawn_windows_byte(value * argv)

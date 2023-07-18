@@ -41,9 +41,9 @@ end = struct
 
        - the template is empty and un-quoted *)
     let loc : Loc.t =
-      { start = { pos_fname = ""; pos_cnum = -1; pos_lnum = -1; pos_bol = -1 }
-      ; stop = { pos_fname = ""; pos_cnum = -2; pos_lnum = -2; pos_bol = -2 }
-      }
+      Loc.create
+        ~start:{ pos_fname = ""; pos_cnum = -1; pos_lnum = -1; pos_bol = -1 }
+        ~stop:{ pos_fname = ""; pos_cnum = -2; pos_lnum = -2; pos_bol = -2 }
     in
     { loc; parts = []; quoted = false }
 
@@ -109,7 +109,7 @@ module Mode = struct
       | [] -> List (Loc.in_file (Path.of_string lexbuf.lex_curr_p.pos_fname), [])
       | x :: l ->
         let last = List.fold_left l ~init:x ~f:(fun _ x -> x) in
-        let loc = { (Ast.loc x) with stop = (Ast.loc last).stop } in
+        let loc = Loc.set_stop (Ast.loc x) (Ast.loc last |> Loc.stop) in
         List (loc, x :: l))
     | Cst -> Encoded.to_csts sexps
 end
@@ -130,8 +130,8 @@ let rec loop with_comments depth lexer lexbuf acc =
     let start = Lexing.lexeme_start_p lexbuf in
     let sexps = loop with_comments (depth + 1) lexer lexbuf [] in
     let stop = Lexing.lexeme_end_p lexbuf in
-    loop with_comments depth lexer lexbuf
-      (Encoded.list { start; stop } sexps :: acc)
+    let loc = Loc.create ~start ~stop in
+    loop with_comments depth lexer lexbuf (Encoded.list loc sexps :: acc)
   | Rparen ->
     if depth = 0 then
       error (Loc.of_lexbuf lexbuf)
@@ -163,7 +163,7 @@ let insert_comments csts comments =
      streams and parse the result again. This is not the fastest implementation,
      but at least it is simple. *)
   let compare (a, _) (b, _) =
-    Int.compare a.Loc.start.pos_cnum b.Loc.start.pos_cnum
+    Int.compare (Loc.start a).pos_cnum (Loc.start b).pos_cnum
   in
   let rec reconciliate acc tokens1 tokens2 =
     match (tokens1, tokens2) with
@@ -185,10 +185,10 @@ let insert_comments csts comments =
     | [] ->
       lb.lex_curr_p <- lb.lex_start_p;
       Lexer.Token.Eof
-    | ({ start; stop }, tok) :: rest ->
+    | (loc, tok) :: rest ->
       tokens := rest;
-      lb.lex_start_p <- start;
-      lb.lex_curr_p <- stop;
+      lb.lex_start_p <- Loc.start loc;
+      lb.lex_curr_p <- Loc.stop loc;
       tok
   in
   parse (Lexing.from_string "") ~lexer ~mode:Cst

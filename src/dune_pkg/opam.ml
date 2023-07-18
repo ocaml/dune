@@ -1,60 +1,6 @@
 open Stdune
 module Package_name = Dune_lang.Package_name
 
-module Global : sig
-  val with_switch_state :
-       switch_name:string
-    -> f:(OpamStateTypes.unlocked OpamStateTypes.switch_state -> 'a)
-    -> 'a
-end = struct
-  let initialized = ref false
-
-  let ensure_initialized () =
-    if not !initialized then (
-      OpamSystem.init ();
-      let root = OpamStateConfig.opamroot () in
-      let (_ : OpamFile.Config.t option) =
-        OpamStateConfig.load_defaults ~lock_kind:`Lock_read root
-      in
-      OpamFormatConfig.init ();
-      OpamCoreConfig.init ~safe_mode:true ();
-      OpamRepositoryConfig.init ();
-      OpamStateConfig.init ~root_dir:root ();
-      initialized := true)
-
-  let with_switch_state ~switch_name ~f =
-    ensure_initialized ();
-    try
-      OpamGlobalState.with_ `Lock_read (fun global_state ->
-          Dune_console.print
-            [ Pp.textf "Using opam installation: %s"
-                (OpamFilename.Dir.to_string global_state.root)
-            ];
-          let switch = OpamSwitch.of_string switch_name in
-          if not (OpamGlobalState.switch_exists global_state switch) then
-            User_error.raise
-              [ Pp.textf
-                  "There is no opam switch named %s. Run `opam switch list` to \
-                   see a list of switches."
-                  (String.maybe_quoted switch_name)
-              ];
-          OpamSwitchState.with_ ~switch `Lock_read global_state
-            (fun switch_state ->
-              Dune_console.print
-                [ Pp.textf "Using opam switch: %s"
-                    (OpamSwitch.to_string switch_state.switch)
-                ];
-              f switch_state))
-    with
-    | OpamPp.Bad_version _ as bad_version ->
-      User_error.raise [ Pp.text (OpamPp.string_of_bad_format bad_version) ]
-    | OpamGlobalState.Configuration_error configuration_error ->
-      User_error.raise
-        [ Pp.text
-            (OpamGlobalState.string_of_configuration_error configuration_error)
-        ]
-end
-
 module Local_repo = struct
   let ( / ) = Filename.concat
 
@@ -184,185 +130,39 @@ module Local_repo_with_env = struct
     }
 end
 
-module Version_preference = struct
-  type t =
-    | Newest
-    | Oldest
-
-  let equal a b =
-    match (a, b) with
-    | Newest, Newest | Oldest, Oldest -> true
-    | _ -> false
-
-  let to_string = function
-    | Newest -> "newest"
-    | Oldest -> "oldest"
-
-  let to_dyn t = Dyn.variant (to_string t) []
-
-  let default = Newest
-
-  let all = [ Newest; Oldest ]
-
-  let all_by_string = List.map all ~f:(fun t -> (to_string t, t))
-
-  let decode = Dune_sexp.Decoder.enum all_by_string
-end
-
-module Opam_solver = struct
-  module type CONTEXT = Opam_0install.S.CONTEXT
-
-  (* Helper functor which implements [CONTEXT] for [(L.t, R.t) Either.t] where
-     [L] and [R] both implement [CONTEXT] *)
-  module Context_either (L : CONTEXT) (R : CONTEXT) :
-    CONTEXT with type t = (L.t, R.t) Either.t = struct
-    type t = (L.t, R.t) Either.t
-
-    type rejection = (L.rejection, R.rejection) Either.t
-
-    let pp_rejection f = function
-      | Left l -> L.pp_rejection f l
-      | Right r -> R.pp_rejection f r
-
-    let candidates t name =
-      let convert_rejections ~f =
-        List.map ~f:(fun (version, result) ->
-            (version, Result.map_error ~f result))
-      in
-      match t with
-      | Left l -> L.candidates l name |> convert_rejections ~f:Either.left
-      | Right r -> R.candidates r name |> convert_rejections ~f:Either.right
-
-    let user_restrictions = function
-      | Left l -> L.user_restrictions l
-      | Right r -> R.user_restrictions r
-
-    let filter_deps = function
-      | Left l -> L.filter_deps l
-      | Right r -> R.filter_deps r
-  end
-
-  (* Helper functor which adds a set of local packages to a [CONTEXT] *)
-  module Context_with_local_packages (Base_context : CONTEXT) : sig
-    include CONTEXT
-
-    val create :
-         base_context:Base_context.t
-      -> local_packages:OpamFile.OPAM.t OpamPackage.Name.Map.t
-      -> t
-  end = struct
-    let local_package_default_version = OpamPackage.Version.of_string "LOCAL"
-
-    type t =
-      { base_context : Base_context.t
-      ; local_packages : OpamFile.OPAM.t OpamPackage.Name.Map.t
-      }
-
-    let create ~base_context ~local_packages = { base_context; local_packages }
-
-    type rejection = Base_context.rejection
-
-    let pp_rejection = Base_context.pp_rejection
-
-    let candidates t name =
-      match OpamPackage.Name.Map.find_opt name t.local_packages with
-      | None -> Base_context.candidates t.base_context name
-      | Some opam_file ->
-        let version =
-          Option.value opam_file.version ~default:local_package_default_version
-        in
-        [ (version, Ok opam_file) ]
-
-    let user_restrictions t = Base_context.user_restrictions t.base_context
-
-    let filter_deps t = Base_context.filter_deps t.base_context
-  end
-
-  (* A [CONTEXT] that can be based on an opam repository in a local directory
-     or an opam repository taken from the current switch with an additional set
-     of local packages *)
-  module Context = struct
-    module Dir_context = Opam_0install.Dir_context
-    module Switch_context = Opam_0install.Switch_context
-    include
-      Context_with_local_packages (Context_either (Dir_context) (Switch_context))
-
-    let create_dir_context ~prefer_oldest ~local_repo_with_env ~local_packages =
-      let { Local_repo_with_env.local_repo = { Local_repo.packages_dir_path }
-          ; env
-          } =
-        local_repo_with_env
-      in
-      let env name = Env.find_by_name env ~name in
-      let dir_context =
-        Dir_context.create ~prefer_oldest
-          ~constraints:OpamPackage.Name.Map.empty ~env packages_dir_path
-      in
-      create ~base_context:(Left dir_context) ~local_packages
-
-    let create_switch_context ~prefer_oldest ~switch_state ~local_packages =
-      let switch_context =
-        Switch_context.create ~prefer_oldest
-          ~constraints:OpamPackage.Name.Map.empty switch_state
-      in
-      create ~base_context:(Right switch_context) ~local_packages
-  end
-end
-
-module Solver = Opam_0install.Solver.Make (Opam_solver.Context)
+module Solver = Opam_0install.Solver.Make (Opam_solver.Context_for_dune)
 
 module Repo_state = struct
-  type t =
-    | Switch of OpamStateTypes.unlocked OpamStateTypes.switch_state
-    | Local_repo_with_env of Local_repo_with_env.t
+  type t = Local_repo_with_env of Local_repo_with_env.t
 
   let load_opam_package t opam_package =
     match t with
-    | Switch switch_state -> OpamSwitchState.opam switch_state opam_package
     | Local_repo_with_env { local_repo; _ } ->
       Local_repo.load_opam_package local_repo opam_package
 
-  let create_context t local_packages =
+  let create_context t local_packages ~solver_env ~version_preference =
     match t with
-    | Switch switch_state ->
-      Opam_solver.Context.create_switch_context ~local_packages ~switch_state
-    | Local_repo_with_env local_repo_with_env ->
-      Opam_solver.Context.create_dir_context ~local_packages
-        ~local_repo_with_env
+    | Local_repo_with_env { local_repo = { packages_dir_path }; env } ->
+      Opam_solver.Context_for_dune.create_dir_context ~solver_env
+        ~env:(fun name -> Env.find_by_name env ~name)
+        ~packages_dir_path ~local_packages ~version_preference
 end
 
 module Repo_selection = struct
-  type pre =
-    | Switch_with_name of string
-    | Local_repo_with_env of Local_repo_with_env.t
+  type t = Local_repo_with_env.t
 
-  type t = pre
-
-  let switch_with_name switch_name = Switch_with_name switch_name
-
-  let local_repo_with_env ~opam_repo_dir_path ~env =
-    Local_repo_with_env
-      { Local_repo_with_env.local_repo =
-          Local_repo.of_opam_repo_dir_path opam_repo_dir_path
-      ; env
-      }
-
-  let add_env env' = function
-    | Switch_with_name _ as rs -> rs
-    | Local_repo_with_env ({ env; _ } as local) ->
-      let env = Env.union env env' in
-      let local = { local with env } in
-      Local_repo_with_env local
+  let local_repo_with_env ~opam_repo_dir ~env =
+    let opam_repo_dir_path = Path.to_string opam_repo_dir in
+    { Local_repo_with_env.local_repo =
+        Local_repo.of_opam_repo_dir_path opam_repo_dir_path
+    ; env
+    }
 
   (* [with_state ~f t] calls [f] on a [Repo_state.t] implied by [t] and
      returns the result. Don't let the [Repo_state.t] escape the function [f].
   *)
-  let with_state ~f = function
-    | Switch_with_name switch_name ->
-      Global.with_switch_state ~switch_name ~f:(fun switch_state ->
-          f (Repo_state.Switch switch_state))
-    | Local_repo_with_env local_repo_with_env ->
-      f (Repo_state.Local_repo_with_env local_repo_with_env)
+  let with_state ~f local_repo_with_env =
+    f (Repo_state.Local_repo_with_env local_repo_with_env)
 end
 
 module Summary = struct
@@ -411,7 +211,7 @@ let opam_package_to_lock_file_pkg ~repo_state ~local_packages opam_package =
       (fun acc (name, _condition) -> name :: acc)
       [] opam_file.depends
     |> List.map ~f:(fun name ->
-           Package_name.of_string (OpamPackage.Name.to_string name))
+           (Loc.none, Package_name.of_string (OpamPackage.Name.to_string name)))
   in
   { Lock_dir.Pkg.build_command = None
   ; install_command = None
@@ -441,18 +241,15 @@ let solve_package_list local_packages context =
   | Error e -> User_error.raise [ Pp.text (Solver.diagnostics e) ]
   | Ok packages -> Solver.packages_of_result packages
 
-let solve_lock_dir ~version_preference ~repo_selection local_packages =
-  let prefer_oldest =
-    match (version_preference : Version_preference.t) with
-    | Oldest -> true
-    | Newest -> false
-  in
+let solve_lock_dir ~solver_env ~version_preference ~repo_selection
+    local_packages =
   let is_local_package package =
     OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
   in
   Repo_selection.with_state repo_selection ~f:(fun repo_state ->
       let context =
-        Repo_state.create_context repo_state local_packages ~prefer_oldest
+        Repo_state.create_context repo_state local_packages ~solver_env
+          ~version_preference
       in
       let opam_packages_to_lock =
         solve_package_list local_packages context
@@ -475,6 +272,7 @@ let solve_lock_dir ~version_preference ~repo_selection local_packages =
             (sprintf "Solver selected multiple packages named \"%s\""
                (Package_name.to_string name))
             []
-        | Ok pkgs_by_name -> Lock_dir.create_latest_version pkgs_by_name
+        | Ok pkgs_by_name ->
+          Lock_dir.create_latest_version pkgs_by_name ~ocaml:None
       in
       (summary, lock_dir))

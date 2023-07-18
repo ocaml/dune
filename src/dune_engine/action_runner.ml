@@ -4,7 +4,9 @@ module Dune_rpc = Dune_rpc_private
 
 module Decl : sig
   val exec :
-    (Action_exec.input, Action_exec.Exec_result.t) Dune_rpc.Decl.request
+    ( Action_exec.input
+    , (Action_exec.Exec_result.t, Exn_with_backtrace.t list) result )
+    Dune_rpc.Decl.request
 
   val ready : (string, unit) Dune_rpc.Decl.request
 end = struct
@@ -189,7 +191,7 @@ module Worker = struct
         [ Pp.text "action runner executing action:"
         ; Action.for_shell action.action |> Action_to_sh.pp
         ];
-      Action_exec.exec ~build_deps action
+      Fiber.collect_errors (fun () -> Action_exec.exec ~build_deps action)
 
   let start ~name ~where =
     let* connection = Client.Connection.connect_exn where in

@@ -1,9 +1,4 @@
-open! Stdune
 open Import
-module Dune_file = Dune_rules.Dune_file
-module Stanza = Dune_lang.Stanza
-module Package = Dune_rules.Package
-module Dialect = Dune_rules.Dialect
 
 (** Because the dune_init utility deals with the addition of stanzas and fields
     to dune projects and files, we need to inspect and manipulate the concrete
@@ -64,13 +59,13 @@ module File = struct
     let csts_conflict project (a : Cst.t) (b : Cst.t) =
       let of_ast = Dune_file.of_ast project in
       (let open Option.O in
-      let* a_ast = Cst.abstract a in
-      let+ b_ast = Cst.abstract b in
-      let a_asts = of_ast a_ast in
-      let b_asts = of_ast b_ast in
-      List.exists
-        ~f:(fun x -> List.exists ~f:(stanzas_conflict x) a_asts)
-        b_asts)
+       let* a_ast = Cst.abstract a in
+       let+ b_ast = Cst.abstract b in
+       let a_asts = of_ast a_ast in
+       let b_asts = of_ast b_ast in
+       List.exists
+         ~f:(fun x -> List.exists ~f:(stanzas_conflict x) a_asts)
+         b_asts)
       |> Option.value ~default:false
 
     (* TODO(shonfeder): replace with stanza merging *)

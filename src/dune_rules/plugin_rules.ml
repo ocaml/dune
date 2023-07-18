@@ -21,17 +21,17 @@ let setup_rules ~sctx ~dir t =
     (Action_builder.write_file_dyn meta
        (Resolve.Memo.read
           (let open Resolve.Memo.O in
-          let+ requires = resolve_libs t public_libs in
-          let meta =
-            { Meta.name = None
-            ; entries =
-                [ Gen_meta.requires
-                    (Lib_name.Set.of_list_map ~f:Lib.name requires)
-                ]
-            }
-          in
-          Format.asprintf "%a" Pp.to_fmt
-            (Pp.vbox (Pp.seq (Meta.pp meta.entries) Pp.cut)))))
+           let+ requires = resolve_libs t public_libs in
+           let meta =
+             { Meta.name = None
+             ; entries =
+                 [ Gen_meta.requires
+                     (Lib_name.Set.of_list_map ~f:Lib.name requires)
+                 ]
+             }
+           in
+           Format.asprintf "%a" Pp.to_fmt
+             (Pp.vbox (Pp.seq (Meta.pp meta.entries) Pp.cut)))))
 
 let install_rules ~sctx ~sites ~dir ({ name; site = loc, (pkg, site); _ } as t)
     =

@@ -679,8 +679,8 @@ let install_uninstall ~what =
         let destdir =
           Option.map ~f:Path.of_string
             (if create_install_files then
-             Some (Option.value ~default:"_destdir" destdir)
-            else destdir)
+               Some (Option.value ~default:"_destdir" destdir)
+             else destdir)
         in
         let relocatable =
           if relocatable then

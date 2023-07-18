@@ -36,10 +36,10 @@ let on_diagnostic_event diagnostics =
     let sanitize_position (p : Lexing.position) =
       { p with pos_fname = sanitize_path p.pos_fname }
     in
-    fun (loc : Loc.t) ->
-      { Loc.start = sanitize_position loc.start
-      ; stop = sanitize_position loc.stop
-      }
+    fun (loc : Lexbuf.Loc.t) ->
+      Loc.of_lexbuf_loc loc
+      |> Loc.map_pos ~f:sanitize_position
+      |> Loc.to_lexbuf_loc
   in
   (* function to remove remove pp tags and hide junk from paths *)
   let map_event (d : Diagnostic.Event.t) f : Diagnostic.Event.t =
@@ -209,6 +209,7 @@ let%expect_test "related error" =
           ]
         ]
       ]
+    ; [ "severity"; "error" ]
     ; [ "targets"; [] ]
     ]
   ] |}];
@@ -268,6 +269,7 @@ let%expect_test "related error" =
             ]
           ]
         ]
+      ; [ "severity"; "error" ]
       ; [ "targets"; [] ]
       ]
     ] |}]
@@ -320,6 +322,7 @@ let%expect_test "promotion" =
           ]
         ]
       ; [ "related"; [] ]
+      ; [ "severity"; "error" ]
       ; [ "targets"; [] ]
       ]
     ] |}]
@@ -377,6 +380,7 @@ let%expect_test "optional promotion" =
           ]
         ]
       ; [ "related"; [] ]
+      ; [ "severity"; "error" ]
       ; [ "targets"; [] ]
       ]
     ] |}]
@@ -429,6 +433,7 @@ let%expect_test "error from user rule" =
         ]
       ; [ "promotion"; [] ]
       ; [ "related"; [] ]
+      ; [ "severity"; "error" ]
       ; [ "targets"; [] ]
       ]
     ] |}]
@@ -469,6 +474,7 @@ let%expect_test "library error location" =
         ]
       ; [ "promotion"; [] ]
       ; [ "related"; [] ]
+      ; [ "severity"; "error" ]
       ; [ "targets"; [] ]
       ]
     ] |}]
@@ -519,6 +525,7 @@ let%expect_test "create and fix error" =
             ]
           ; [ "promotion"; [] ]
           ; [ "related"; [] ]
+          ; [ "severity"; "error" ]
           ; [ "targets"; [] ]
           ]
         ] |}];
@@ -560,6 +567,7 @@ let%expect_test "create and fix error" =
             ]
           ; [ "promotion"; [] ]
           ; [ "related"; [] ]
+          ; [ "severity"; "error" ]
           ; [ "targets"; [] ]
           ]
         ] |}]);
@@ -709,6 +717,7 @@ let g = A.f
                                         " ] ]
           ; [ "promotion"; [] ]
           ; [ "related"; [] ]
+          ; [ "severity"; "error" ]
           ; [ "targets"; [] ]
           ]
         ]
@@ -736,6 +745,7 @@ let g = A.f
                                         " ] ]
           ; [ "promotion"; [] ]
           ; [ "related"; [] ]
+          ; [ "severity"; "error" ]
           ; [ "targets"; [] ]
           ]
         ]
@@ -763,6 +773,7 @@ let g = A.f
                                         " ] ]
           ; [ "promotion"; [] ]
           ; [ "related"; [] ]
+          ; [ "severity"; "error" ]
           ; [ "targets"; [] ]
           ]
         ]
@@ -790,6 +801,7 @@ let g = A.f
                                         " ] ]
           ; [ "promotion"; [] ]
           ; [ "related"; [] ]
+          ; [ "severity"; "error" ]
           ; [ "targets"; [] ]
           ]
         ] |}]);

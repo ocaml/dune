@@ -1,6 +1,28 @@
 Unreleased
 ----------
 
+- Add `dune show rules` as alias of the `dune rules` command. (#8000, @Alizter)
+
+- Add `dune show installed-libraries` as an alias of the `dune
+  installed-libraries` command. (#8135, @Alizter)
+
+- Fix the `severity` of error messages sent over RPC which was missing. (#8193,
+  @Alizter)
+
+- Add `dune build --dump-gc-stats FILE` argument to dump garbage collection
+  stats to a named file. (#8072, @Alizter)
+
+3.9.1 (2023-07-06)
+------------------
+
+- Disable background operations and threaded console on MacOS and other Unixes
+  where we rely on fork. (#8100, #8121, fixes #8083, @rgrinberg, @emillon)
+
+- Initialize async IO thread lazily. (#8122, @emillon)
+
+3.9.0 (2023-06-28)
+------------------
+
 - Validate file extension for `$ dune ocaml top-module`. (#8005, fixes #8004, @3Rafal)
 
 - Include the time it takes to read/write state files when `--trace-file` is
@@ -18,6 +40,9 @@ Unreleased
 
 - Do not re-run OCaml syntax files on every iteration of the watch mode. This
   is too memory consuming. (#7894, fix #6900, @rgrinberg)
+
+- Add `--all` option to `dune rpc status` to show all Dune RPC servers running.
+  (#8011, fix #7902, @Alizter)
 
 - Remove some compatibility code for old version of dune that generated
   `.merlin` files. Now dune will never remove `.merlin` files automatically
@@ -61,6 +86,15 @@ Unreleased
 
 - Add necessary parentheses in generated opam constraints (#7682, fixes #3431,
   @Lucccyo)
+
+3.8.3 (2023-06-27)
+------------------
+
+- Fix deadlock on Windows (#8044, @nojb)
+
+- When using `sendfile` to copy files on Linux, fall back to the portable
+  version if it fails at runtime for some reason (NFS, etc).
+  (#8049, fixes #8041, @emillon)
 
 3.8.2 (2023-06-16)
 ------------------

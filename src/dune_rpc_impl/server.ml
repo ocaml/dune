@@ -28,7 +28,13 @@ end
 
 module Run = struct
   module Registry = Dune_rpc_private.Registry
-  module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
+
+  module Server = Dune_rpc_server.Make (struct
+    include Csexp_rpc.Session
+
+    (* only needed for action runners. can be safely omitted elsewhere *)
+    let name _ = "unnamed"
+  end)
 
   type t =
     { handler : Dune_rpc_server.t
@@ -83,8 +89,8 @@ module Run = struct
                   | `Unix a ->
                     `Unix
                       (if Filename.is_relative a then
-                       Filename.concat (Sys.getcwd ()) a
-                      else a)
+                         Filename.concat (Sys.getcwd ()) a
+                       else a)
                 in
                 Registry.Dune.create ~where ~root:t.root ~pid
               in
@@ -413,7 +419,7 @@ let create ~lock_timeout ~registry ~root ~watch_mode_config ~handle stats
       (let socket_file = Where.rpc_socket_file () in
        Path.unlink_no_err (Path.build socket_file);
        Path.mkdir_p (Path.build (Path.Build.parent_exn socket_file));
-       match Csexp_rpc.Server.create (Where.to_socket where) ~backlog:10 with
+       match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:10 with
        | Ok s ->
          at_exit (fun () -> Path.Build.unlink_no_err socket_file);
          s

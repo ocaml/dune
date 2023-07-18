@@ -39,7 +39,7 @@ let wrong_checksum =
 let download ~port ~filename ~target ?checksum () =
   let open Fiber.O in
   let url = url ~port ~filename in
-  let* res = Fetch.fetch ~checksum ~target url in
+  let* res = Fetch.fetch ~unpack:false ~checksum ~target url in
   match res with
   | Error (Unavailable None) ->
     let errs = [ Pp.text "Failure while downloading" ] in
@@ -156,9 +156,7 @@ let%expect_test "downloading, without any checksum" =
 let lock_dir_encode_decode_round_trip_test ~lock_dir_path ~lock_dir =
   let lock_dir_path = Path.Source.of_string lock_dir_path in
   Lock_dir.Write_disk.(prepare ~lock_dir_path lock_dir |> commit);
-  let lock_dir_round_tripped =
-    Lock_dir.read_disk ~lock_dir_path |> Result.ok_exn
-  in
+  let lock_dir_round_tripped = Lock_dir.read_disk lock_dir_path in
   if
     Lock_dir.equal
       (Lock_dir.remove_locs lock_dir_round_tripped)
@@ -169,11 +167,12 @@ let lock_dir_encode_decode_round_trip_test ~lock_dir_path ~lock_dir =
 
 let%expect_test "encode/decode round trip test for lockdir with no deps" =
   lock_dir_encode_decode_round_trip_test ~lock_dir_path:"empty_lock_dir"
-    ~lock_dir:(Lock_dir.create_latest_version Package_name.Map.empty);
+    ~lock_dir:
+      (Lock_dir.create_latest_version Package_name.Map.empty ~ocaml:None);
   [%expect
     {|
     lockdir matches after roundtrip:
-    { version = (0, 1); packages = map {} } |}]
+    { version = (0, 1); packages = map {}; ocaml = None } |}]
 
 let%expect_test "encode/decode round trip test for lockdir with simple deps" =
   lock_dir_encode_decode_round_trip_test ~lock_dir_path:"simple_lock_dir"
@@ -195,6 +194,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
            } )
        in
        Lock_dir.create_latest_version
+         ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
          (Package_name.Map.of_list_exn
             [ mk_pkg_basic ~name:"foo" ~version:"0.1.0"
             ; mk_pkg_basic ~name:"bar" ~version:"0.2.0"
@@ -232,6 +232,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
               ; exported_env = []
               }
           }
+    ; ocaml = Some ("simple_lock_dir/lock.dune:2", "ocaml")
     } |}]
 
 let%expect_test "encode/decode round trip test for lockdir with complex deps" =
@@ -283,7 +284,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
          ( name
          , { Lock_dir.Pkg.build_command = None
            ; install_command = None
-           ; deps = [ fst pkg_a ]
+           ; deps = [ (Loc.none, fst pkg_a) ]
            ; info =
                { Lock_dir.Pkg_info.name
                ; version = "dev"
@@ -309,7 +310,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
          ( name
          , { Lock_dir.Pkg.build_command = None
            ; install_command = None
-           ; deps = [ fst pkg_a; fst pkg_b ]
+           ; deps = [ (Loc.none, fst pkg_a); (Loc.none, fst pkg_b) ]
            ; info =
                { Lock_dir.Pkg_info.name
                ; version = "0.2"
@@ -326,6 +327,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
            } )
        in
        Lock_dir.create_latest_version
+         ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
          (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ]));
   [%expect
     {|
@@ -352,7 +354,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
           ; "b" :
               { build_command = None
               ; install_command = None
-              ; deps = [ "a" ]
+              ; deps = [ ("complex_lock_dir/b.pkg:2", "a") ]
               ; info =
                   { name = "b"
                   ; version = "dev"
@@ -369,7 +371,10 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
           ; "c" :
               { build_command = None
               ; install_command = None
-              ; deps = [ "a"; "b" ]
+              ; deps =
+                  [ ("complex_lock_dir/c.pkg:2", "a")
+                  ; ("complex_lock_dir/c.pkg:2", "b")
+                  ]
               ; info =
                   { name = "c"
                   ; version = "0.2"
@@ -380,4 +385,5 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               ; exported_env = []
               }
           }
+    ; ocaml = Some ("complex_lock_dir/lock.dune:2", "ocaml")
     } |}]

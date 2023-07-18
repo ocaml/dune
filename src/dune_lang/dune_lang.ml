@@ -1,4 +1,5 @@
 include Dune_sexp
+module Lib_name = Lib_name
 module Alias = Alias
 module Format = Format
 module Stanza = Stanza
@@ -10,6 +11,7 @@ module Dune_file_script = Dune_file_script
 module Value = Value
 module Blang = Blang
 module Binary_kind = Binary_kind
+module Package_constraint = Package_constraint
 module Package_name = Package_name
 module Pkg = Pkg
 module Ordered_set_lang = Ordered_set_lang

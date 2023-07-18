@@ -1,6 +1,4 @@
 open Import
-module Vcs = Dune_vcs.Vcs
-module Subst_config = Dune_lang.Subst_config
 
 let is_a_source_file path =
   (match Path.extension path with
@@ -34,7 +32,7 @@ let subst_string s path ~map =
           ; pos_bol = bol
           }
         in
-        { Loc.start = pos; stop = { pos with pos_cnum = pos.pos_cnum + len } }
+        Loc.create ~start:pos ~stop:{ pos with pos_cnum = pos.pos_cnum + len }
       else
         match s.[i] with
         | '\n' -> loop (lnum + 1) (i + 1) (i + 1)
@@ -177,7 +175,8 @@ module Dune_project = struct
         match t.version with
         | Some v ->
           (* There is a [version] field, overwrite its argument *)
-          replace_text v.loc_of_arg.start.pos_cnum v.loc_of_arg.stop.pos_cnum
+          replace_text (Loc.start v.loc_of_arg).pos_cnum
+            (Loc.stop v.loc_of_arg).pos_cnum
             (Dune_lang.to_string (Dune_lang.atom_or_quoted_string version))
         | None ->
           let version_field =
@@ -194,7 +193,7 @@ module Dune_project = struct
               | Some { loc; _ } ->
                 (* There is no [version] field but there is a [name] one, add
                    the version after it *)
-                loc.stop.pos_cnum
+                (Loc.stop loc).pos_cnum
               | None ->
                 (* If all else fails, add the [version] field after the first
                    line of the file *)
@@ -292,7 +291,7 @@ let subst vcs =
           ]
   in
   (match Dune_project.subst_config dune_project.project with
-  | Subst_config.Disabled ->
+  | Dune_lang.Subst_config.Disabled ->
     User_error.raise
       [ Pp.text
           "dune subst has been disabled in this project. Any use of it is \
@@ -303,7 +302,7 @@ let subst vcs =
             "If you wish to re-enable it, change to (subst enabled) in the \
              dune-project file."
         ]
-  | Subst_config.Enabled -> ());
+  | Enabled -> ());
   let info =
     let loc, name =
       match dune_project.name with

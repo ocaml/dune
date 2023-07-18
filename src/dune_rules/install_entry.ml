@@ -5,9 +5,9 @@ open Import
 let expand_str_with_check_for_local_path ~expand_str sw =
   Memo.map (expand_str sw) ~f:(fun str ->
       (if not (Filename.is_relative str) then
-       let loc = String_with_vars.loc sw in
-       User_error.raise ~loc
-         [ Pp.textf "Absolute paths are not allowed in the install stanza." ]);
+         let loc = String_with_vars.loc sw in
+         User_error.raise ~loc
+           [ Pp.textf "Absolute paths are not allowed in the install stanza." ]);
       str)
 
 module File = struct

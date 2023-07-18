@@ -4,15 +4,16 @@ open Import
 
 val with_directory_annot : Path.t User_message.Annots.Key.t
 
-(** How to handle sub-process failures *)
-type ('a, 'b) failure_mode =
-  | Strict : ('a, 'a) failure_mode
-      (** Fail if the process exits with anything else than [0] *)
-  | Accept : int Predicate.t -> ('a, ('a, int) result) failure_mode
-      (** Accept the following non-zero exit codes, and return [Error code] if
-          the process exists with one of these codes. *)
-  | Return : ('a, 'a * int) failure_mode
-      (** Accept any error code and return it. *)
+module Failure_mode : sig
+  (** How to handle sub-process failures *)
+  type ('a, 'b) t =
+    | Strict : ('a, 'a) t
+        (** Fail if the process exits with anything else than [0] *)
+    | Accept : int Predicate.t -> ('a, ('a, int) result) t
+        (** Accept the following non-zero exit codes, and return [Error code] if
+            the process exists with one of these codes. *)
+    | Return : ('a, 'a * int) t  (** Accept any error code and return it. *)
+end
 
 module Io : sig
   (** Where to redirect stdout/stderr/stdin *)
@@ -93,7 +94,7 @@ val run :
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
   -> ?metadata:metadata
-  -> (unit, 'a) failure_mode
+  -> (unit, 'a) Failure_mode.t
   -> Path.t
   -> string list
   -> 'a Fiber.t
@@ -118,7 +119,7 @@ val run_capture :
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
   -> ?metadata:metadata
-  -> (string, 'a) failure_mode
+  -> (string, 'a) Failure_mode.t
   -> Path.t
   -> string list
   -> 'a Fiber.t
@@ -130,7 +131,7 @@ val run_capture_line :
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
   -> ?metadata:metadata
-  -> (string, 'a) failure_mode
+  -> (string, 'a) Failure_mode.t
   -> Path.t
   -> string list
   -> 'a Fiber.t
@@ -142,7 +143,7 @@ val run_capture_lines :
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
   -> ?metadata:metadata
-  -> (string list, 'a) failure_mode
+  -> (string list, 'a) Failure_mode.t
   -> Path.t
   -> string list
   -> 'a Fiber.t
@@ -154,7 +155,7 @@ val run_capture_zero_separated :
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
   -> ?metadata:metadata
-  -> (string list, 'a) failure_mode
+  -> (string list, 'a) Failure_mode.t
   -> Path.t
   -> string list
   -> 'a Fiber.t

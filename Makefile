@@ -41,6 +41,10 @@ TEST_OCAMLVERSION := 4.14.1
 help:
 	@cat doc/make-help.txt
 
+.PHONY: bootstrap
+bootstrap:
+	$(MAKE) -B _boot/dune.exe
+
 .PHONY: release
 release: $(BIN)
 	@$(BIN) build @install -p dune --profile dune-bootstrap
@@ -216,7 +220,3 @@ docker-build-image:
 .PHONY: docker-compose
 docker-compose:
 	docker compose -f docker/dev.yml run dune bash
-
-.PHONY: bootstrap
-bootstrap:
-	$(BIN) build @install -p dune --profile dune-bootstrap

@@ -12,11 +12,12 @@ Generate a `dune-project` file.
   > EOF
 
 Run the solver and generate a lock directory.
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   bar.0.5.0
   baz.0.1.0
   foo.0.0.1
+  
 
 Helper to the name and contents of each file in the lock directory separated by
 "---", sorting by filename for consistency.
@@ -55,11 +56,12 @@ Print the contents of each file in the lockdir:
   
 
 Run the solver again preferring oldest versions of dependencies:
-  $ dune pkg lock --opam-env=pure --version-preference=oldest --opam-repository=mock-opam-repository
+  $ dune pkg lock --opam-env=pure --version-preference=oldest --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   bar.0.4.0
   baz.0.1.0
   foo.0.0.1
+  
 
   $ print_all
   dune.lock/bar.pkg:
@@ -104,12 +106,12 @@ Regenerate the `dune-project` file introducing an unsatisfiable constraint.
   > EOF
 
 Run the solver again. This time it will fail.
-  $ dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository
+  $ dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository
   Error: Can't find all required versions.
-  Selected: baz.0.1.0 foo.0.0.1 lockfile_generation_test.LOCAL
+  Selected: baz.0.1.0 foo.0.0.1 lockfile_generation_test.dev
   - bar -> (problem)
       foo 0.0.1 requires >= 0.2
-      lockfile_generation_test LOCAL requires >= 0.6
+      lockfile_generation_test dev requires >= 0.6
       Rejected candidates:
         bar.0.5.0: Incompatible with restriction: >= 0.6
         bar.0.4.0: Incompatible with restriction: >= 0.6

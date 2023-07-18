@@ -35,9 +35,7 @@ let run (vcs : Vcs.t) args =
           | [ "commit"; "-m"; msg; "-u"; _ ] -> [ "commit"; "-m"; msg ]
           | _ -> args ))
   in
-  printf "$ %s\n"
-    (List.map (prog_str :: args) ~f:String.quote_for_shell
-    |> String.concat ~sep:" ");
+  printf "$ %s\n" (String.quote_list_for_shell (prog_str :: args));
   Process.run Strict (Lazy.force prog) real_args ~display:Quiet
     ~env:
       ((* One of the reasons to set GIT_DIR is to override any GIT_DIR set by

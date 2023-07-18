@@ -327,8 +327,6 @@ type t = DB.t
 
 let builtins (db : DB.t) = db.builtins
 
-let paths (db : DB.t) = db.paths
-
 let findlib_predicates_set_by_dune =
   Ps.of_list [ P.ppx_driver; P.mt; P.mt_posix ]
 
@@ -339,8 +337,6 @@ module Loader : sig
        DB.t
     -> Package.Name.t
     -> (Dune_package.t, Unavailable_reason.t) result Memo.t
-
-  val dummy_package : DB.t -> Lib_name.t -> Dune_package.t Memo.t
 end = struct
   module Findlib_package : sig
     type t =
@@ -402,7 +398,7 @@ end = struct
     let mangled_module_re =
       lazy
         (let open Re in
-        [ rep any; str "__"; rep any ] |> seq |> compile)
+         [ rep any; str "__"; rep any ] |> seq |> compile)
 
     let exists t ~is_builtin =
       let exists_if = Vars.get_words t.vars "exists_if" Ps.empty in
@@ -632,8 +628,8 @@ end = struct
     { Dune_package.name = Lib_name.package_name name
     ; version =
         (let open Option.O in
-        let* e = Lib_name.Map.find entries name in
-        Dune_package.Entry.version e)
+         let* e = Lib_name.Map.find entries name in
+         Dune_package.Entry.version e)
     ; entries
     ; dir
     ; sections = Section.Map.empty
@@ -651,22 +647,6 @@ end = struct
     dune_package_of_meta db ~dir:db.stdlib_dir
       ~meta_file:(Path.of_string "<internal>")
       ~meta
-
-  let dummy_package db lib_name =
-    let pkg, names = Lib_name.split lib_name in
-    let top_lib = Lib_name.of_package_name pkg in
-    let dummy name subs =
-      { Meta.Simplified.name = Some name; vars = String.Map.empty; subs }
-    in
-    let subs : Meta.Simplified.t list =
-      let rec loop = function
-        | [] -> []
-        | name :: names -> [ dummy (Lib_name.of_string name) (loop names) ]
-      in
-      loop names
-    in
-    let meta = dummy top_lib subs in
-    load_builtin db meta
 
   let lookup_and_load (db : DB.t) name =
     let rec loop dirs : (Dune_package.t, Unavailable_reason.t) Result.t Memo.t =
@@ -734,12 +714,6 @@ let memo =
   Memo.create "findlib"
     ~input:(module Input)
     (fun (db, name) -> Loader.lookup_and_load db name)
-
-let dummy_lib db ~name =
-  let+ p = Loader.dummy_package db name in
-  match Lib_name.Map.find_exn p.entries name with
-  | Library lib -> lib
-  | _ -> assert false
 
 let find_root_package db name :
     (Dune_package.t, Unavailable_reason.t) result Memo.t =

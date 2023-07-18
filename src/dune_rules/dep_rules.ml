@@ -32,11 +32,11 @@ let ooi_deps { vimpl; sctx; dir; obj_dir; modules = _; stdlib = _; sandbox = _ }
   let read =
     Action_builder.memoize "ocamlobjinfo"
       (let open Action_builder.O in
-      let+ (ooi : Ocamlobjinfo.t) = read in
-      Module_name.Unique.Set.to_list ooi.intf
-      |> List.filter_map ~f:(fun dep ->
-             if Module.obj_name m = dep then None
-             else Module_name.Unique.Map.find vlib_obj_map dep))
+       let+ (ooi : Ocamlobjinfo.t) = read in
+       Module_name.Unique.Set.to_list ooi.intf
+       |> List.filter_map ~f:(fun dep ->
+              if Module.obj_name m = dep then None
+              else Module_name.Unique.Map.find vlib_obj_map dep))
   in
   let+ () = add_rule write
   and+ () =

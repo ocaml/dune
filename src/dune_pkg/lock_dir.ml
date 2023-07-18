@@ -105,20 +105,14 @@ module Pkg_info = struct
     ; extra_sources : (Path.Local.t * Source.t) list
     }
 
-  let equal { name; version; dev; source; extra_sources }
-      { name = other_name
-      ; version = other_version
-      ; dev = other_dev
-      ; source = other_source
-      ; extra_sources = other_extra_sources
-      } =
-    Package_name.equal name other_name
-    && String.equal version other_version
-    && Bool.equal dev other_dev
-    && Option.equal Source.equal source other_source
+  let equal { name; version; dev; source; extra_sources } t =
+    Package_name.equal name t.name
+    && String.equal version t.version
+    && Bool.equal dev t.dev
+    && Option.equal Source.equal source t.source
     && List.equal
          (Tuple.T2.equal Path.Local.equal Source.equal)
-         extra_sources other_extra_sources
+         extra_sources t.extra_sources
 
   let remove_locs t =
     { t with
@@ -137,31 +131,27 @@ module Pkg_info = struct
       ; ( "extra_sources"
         , Dyn.list (Dyn.pair Path.Local.to_dyn Source.to_dyn) extra_sources )
       ]
+
+  let default_version = "dev"
 end
 
 module Pkg = struct
   type t =
     { build_command : Action.t option
     ; install_command : Action.t option
-    ; deps : Package_name.t list
+    ; deps : (Loc.t * Package_name.t) list
     ; info : Pkg_info.t
     ; exported_env : String_with_vars.t Dune_lang.Action.Env_update.t list
     }
 
-  let equal { build_command; install_command; deps; info; exported_env }
-      { build_command = other_build_command
-      ; install_command = other_install_command
-      ; deps = other_deps
-      ; info = other_info
-      ; exported_env = other_exported_env
-      } =
-    Option.equal Action.equal_no_locs build_command other_build_command
-    && Option.equal Action.equal_no_locs install_command other_install_command
-    && List.equal Package_name.equal deps other_deps
-    && Pkg_info.equal info other_info
+  let equal { build_command; install_command; deps; info; exported_env } t =
+    Option.equal Action.equal_no_locs build_command t.build_command
+    && Option.equal Action.equal_no_locs install_command t.install_command
+    && List.equal (Tuple.T2.equal Loc.equal Package_name.equal) deps t.deps
+    && Pkg_info.equal info t.info
     && List.equal
          (Dune_lang.Action.Env_update.equal String_with_vars.equal)
-         exported_env other_exported_env
+         exported_env t.exported_env
 
   let remove_locs t =
     { t with
@@ -169,13 +159,14 @@ module Pkg = struct
     ; exported_env =
         List.map t.exported_env
           ~f:(Dune_lang.Action.Env_update.map ~f:String_with_vars.remove_locs)
+    ; deps = List.map t.deps ~f:(fun (_, pkg) -> (Loc.none, pkg))
     }
 
   let to_dyn { build_command; install_command; deps; info; exported_env } =
     Dyn.record
       [ ("build_command", Dyn.option Action.to_dyn build_command)
       ; ("install_command", Dyn.option Action.to_dyn install_command)
-      ; ("deps", Dyn.list Package_name.to_dyn deps)
+      ; ("deps", Dyn.list (Dyn.pair Loc.to_dyn_hum Package_name.to_dyn) deps)
       ; ("info", Pkg_info.to_dyn info)
       ; ( "exported_env"
         , Dyn.list
@@ -204,10 +195,12 @@ module Pkg = struct
   let decode =
     let open Dune_lang.Decoder in
     enter @@ fields
-    @@ let+ version = field ~default:"dev" Fields.version string
+    @@ let+ version =
+         field ~default:Pkg_info.default_version Fields.version string
        and+ install_command = field_o Fields.install Dune_lang.Action.decode_pkg
        and+ build_command = field_o Fields.build Dune_lang.Action.decode_pkg
-       and+ deps = field ~default:[] Fields.deps (repeat Package_name.decode)
+       and+ deps =
+         field ~default:[] Fields.deps (repeat (located Package_name.decode))
        and+ source = field_o Fields.source Source.decode
        and+ dev = field_b Fields.dev
        and+ exported_env =
@@ -251,7 +244,7 @@ module Pkg = struct
       [ field Fields.version string version
       ; field_o Fields.install Dune_lang.Action.encode install_command
       ; field_o Fields.build Dune_lang.Action.encode build_command
-      ; field_l Fields.deps Package_name.encode deps
+      ; field_l Fields.deps Package_name.encode (List.map deps ~f:snd)
       ; field_o Fields.source Source.encode source
       ; field_b Fields.dev dev
       ; field_l Fields.exported_env Dune_lang.Action.Env_update.encode
@@ -263,25 +256,31 @@ end
 type t =
   { version : Syntax.Version.t
   ; packages : Pkg.t Package_name.Map.t
+  ; ocaml : (Loc.t * Package_name.t) option
   }
 
 let remove_locs t =
-  { t with packages = Package_name.Map.map t.packages ~f:Pkg.remove_locs }
+  { t with
+    packages = Package_name.Map.map t.packages ~f:Pkg.remove_locs
+  ; ocaml = Option.map t.ocaml ~f:(fun (_, ocaml) -> (Loc.none, ocaml))
+  }
 
-let equal { version; packages }
-    { version = other_version; packages = other_packages } =
-  Syntax.Version.equal version other_version
-  && Package_name.Map.equal packages other_packages ~equal:Pkg.equal
+let equal { version; packages; ocaml } t =
+  Syntax.Version.equal version t.version
+  && Option.equal (Tuple.T2.equal Loc.equal Package_name.equal) ocaml t.ocaml
+  && Package_name.Map.equal packages t.packages ~equal:Pkg.equal
 
-let to_dyn { version; packages } =
+let to_dyn { version; packages; ocaml } =
   Dyn.record
     [ ("version", Syntax.Version.to_dyn version)
     ; ("packages", Package_name.Map.to_dyn Pkg.to_dyn packages)
+    ; ( "ocaml"
+      , Dyn.option (Tuple.T2.to_dyn Loc.to_dyn_hum Package_name.to_dyn) ocaml )
     ]
 
-let create_latest_version packages =
+let create_latest_version packages ~ocaml =
   let version = Syntax.greatest_supported_version Dune_lang.Pkg.syntax in
-  { version; packages }
+  { version; packages; ocaml }
 
 let default_path = Path.Source.(relative root "dune.lock")
 
@@ -291,13 +290,21 @@ module Metadata = Dune_sexp.Versioned_file.Make (Unit)
 
 let () = Metadata.Lang.register Dune_lang.Pkg.syntax ()
 
-let encode_metadata t =
+let encode_metadata { version; ocaml; packages = _ } =
   let open Dune_lang.Encoder in
-  list sexp
-    [ string "lang"
-    ; string (Syntax.name Dune_lang.Pkg.syntax)
-    ; Dune_lang.Syntax.Version.encode t.version
-    ]
+  let base =
+    list sexp
+      [ string "lang"
+      ; string (Syntax.name Dune_lang.Pkg.syntax)
+      ; Dune_lang.Syntax.Version.encode version
+      ]
+  in
+  [ base ]
+  @
+  match ocaml with
+  | None -> []
+  | Some ocaml ->
+    [ list sexp [ string "ocaml"; Package_name.encode (snd ocaml) ] ]
 
 module Package_filename = struct
   type t = Filename.t
@@ -314,7 +321,7 @@ module Package_filename = struct
 end
 
 let file_contents_by_path t =
-  (metadata, [ encode_metadata t ])
+  (metadata, encode_metadata t)
   :: (Package_name.Map.to_list t.packages
      |> List.map ~f:(fun (name, pkg) ->
             (Package_filename.of_package_name name, Pkg.encode pkg)))
@@ -387,76 +394,111 @@ module Write_disk = struct
   let commit t = t ()
 end
 
-let load_metadata_version source_path =
-  let open Or_exn.O in
-  let* syntax, version =
-    Metadata.load (Path.source source_path)
-      ~f:(fun { Metadata.Lang.Instance.syntax; data = (); version } ->
-        Dune_lang.Decoder.return (syntax, version))
-  in
-  if String.equal (Syntax.name syntax) (Syntax.name Dune_lang.Pkg.syntax) then
-    Ok version
-  else
-    Error
-      User_error.(
-        E
-          (make
-             [ Pp.textf "In %s, expected language to be %s, but found %s"
-                 (Path.Source.to_string source_path)
-                 (Syntax.name Dune_lang.Pkg.syntax)
-                 (Syntax.name syntax)
-             ]))
+module Make_load (Io : sig
+  include Monad.S
 
-let load_pkg ~parser_context ~lock_dir_path package_name =
-  let open Or_exn.O in
-  let+ mk_pkg =
-    Result.try_with (fun () ->
-        let source_path =
-          Path.Source.relative lock_dir_path
-            (Package_filename.of_package_name package_name)
-        in
-        let pkg_string = Io.read_file (Path.source source_path) in
-        let ast =
-          Dune_lang.Parser.parse_string pkg_string ~mode:Many_as_one
-            ~fname:(Path.Source.to_string source_path)
-        in
-        Dune_lang.Decoder.parse Pkg.decode parser_context ast)
-  in
-  mk_pkg ~lock_dir:lock_dir_path package_name
+  val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
-let read_disk ~lock_dir_path =
-  let open Or_exn.O in
-  let* () =
-    if Path.is_directory (Path.source lock_dir_path) then Ok ()
+  val readdir_with_kinds : Path.Source.t -> (Filename.t * Unix.file_kind) list t
+
+  val with_lexbuf_from_file : Path.Source.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
+end) =
+struct
+  let load_metadata metadata_file_path =
+    let open Io.O in
+    let+ syntax, version, ocaml =
+      Io.with_lexbuf_from_file metadata_file_path ~f:(fun lexbuf ->
+          Metadata.parse_contents lexbuf
+            ~f:(fun { Metadata.Lang.Instance.syntax; data = (); version } ->
+              let open Dune_sexp.Decoder in
+              let+ ocaml =
+                fields @@ field_o "ocaml" (located Package_name.decode)
+              in
+              (syntax, version, ocaml)))
+    in
+    if String.equal (Syntax.name syntax) (Syntax.name Dune_lang.Pkg.syntax) then
+      (version, ocaml)
     else
-      Error
-        User_error.(
-          E
-            (make
-               [ Pp.textf "%s is not a directory"
-                   (Path.Source.to_string lock_dir_path)
-               ]))
-  in
-  let* version =
-    load_metadata_version (Path.Source.relative lock_dir_path metadata)
-  in
-  let parser_context =
-    Univ_map.singleton String_with_vars.decoding_env_key
-      (Pform.Env.initial version)
-  in
-  let+ packages =
-    Sys.readdir (Path.Source.to_string lock_dir_path)
-    |> Array.to_list
-    |> List.filter_map ~f:(fun filename ->
-           match Package_filename.to_package_name filename with
-           | Error `Bad_extension -> None
-           | Ok package_name ->
-             let package_path = Path.Source.relative lock_dir_path filename in
-             if Path.is_directory (Path.source package_path) then None
-             else
-               Some
-                 ( load_pkg ~parser_context ~lock_dir_path package_name
-                 >>| fun pkg -> (package_name, pkg) ))
-    |> Result.List.all >>| Package_name.Map.of_list_exn
-  in
-  { version; packages }
+      User_error.raise
+        [ Pp.textf "In %s, expected language to be %s, but found %s"
+            (Path.Source.to_string metadata_file_path)
+            (Syntax.name Dune_lang.Pkg.syntax)
+            (Syntax.name syntax)
+        ]
+
+  let load_pkg ~version ~lock_dir_path package_name =
+    let open Io.O in
+    let pkg_file_path =
+      Path.Source.relative lock_dir_path
+        (Package_filename.of_package_name package_name)
+    in
+    let+ sexp =
+      Io.with_lexbuf_from_file pkg_file_path
+        ~f:(Dune_sexp.Parser.parse ~mode:Many)
+    in
+    let parser =
+      let env = Pform.Env.pkg version in
+      let decode =
+        Syntax.set Dune_lang.Pkg.syntax (Active version) Pkg.decode
+        |> Syntax.set Dune_lang.Stanza.syntax
+             (Active Dune_lang.Stanza.latest_version)
+      in
+      String_with_vars.set_decoding_env env decode
+    in
+    (Dune_lang.Decoder.parse parser Univ_map.empty (List (Loc.none, sexp)))
+      ~lock_dir:lock_dir_path package_name
+
+  let check_path lock_dir_path =
+    match Path.exists (Path.source lock_dir_path) with
+    | false ->
+      User_error.raise
+        [ Pp.textf "%s does not exist" (Path.Source.to_string lock_dir_path) ]
+    | true -> (
+      match Path.is_directory (Path.source lock_dir_path) with
+      | false ->
+        User_error.raise
+          [ Pp.textf "%s is not a directory"
+              (Path.Source.to_string lock_dir_path)
+          ]
+      | true -> ())
+
+  let load lock_dir_path =
+    let open Io.O in
+    check_path lock_dir_path;
+    let* version, ocaml =
+      load_metadata (Path.Source.relative lock_dir_path metadata)
+    in
+    let+ packages =
+      Io.readdir_with_kinds lock_dir_path
+      >>| List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
+              match kind with
+              | S_REG ->
+                Package_filename.to_package_name name |> Result.to_option
+              | _ ->
+                (* TODO *)
+                None)
+      >>= Io.parallel_map ~f:(fun package_name ->
+              let+ pkg = load_pkg ~version ~lock_dir_path package_name in
+              (package_name, pkg))
+      >>| Package_name.Map.of_list_exn
+    in
+    { version; packages; ocaml }
+end
+
+module Load_immediate = Make_load (struct
+  include Monad.Id
+
+  let parallel_map xs ~f = List.map xs ~f
+
+  let readdir_with_kinds path =
+    match Path.readdir_unsorted_with_kinds (Path.source path) with
+    | Ok entries -> entries
+    | Error e ->
+      User_error.raise
+        [ Pp.text (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e) ]
+
+  let with_lexbuf_from_file path ~f =
+    Io.with_lexbuf_from_file (Path.source path) ~f
+end)
+
+let read_disk = Load_immediate.load

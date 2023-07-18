@@ -43,6 +43,10 @@ module Action_expander : sig
 
   val of_memo : 'a Memo.t -> 'a t
 
+  module List : sig
+    val map : 'a list -> f:('a -> 'b t) -> 'b list t
+  end
+
   (* Disable targets/dependencies inference detection *)
   val no_infer : 'a t -> 'a t
 
@@ -389,6 +393,10 @@ end = struct
         | Ok p, _ -> [ p ]
         | Error _, _ -> [])
   end
+
+  module List = struct
+    let map l ~f = all (List.map l ~f)
+  end
 end
 
 let rec expand (t : Dune_lang.Action.t) ~expander : Action.t Action_expander.t =
@@ -398,7 +406,7 @@ let rec expand (t : Dune_lang.Action.t) ~expander : Action.t Action_expander.t =
   let module O (* [O] for "outcome" *) = Action in
   let expand = expand ~expander in
   let expand_run prog args =
-    let+ args = A.all (List.map args ~f:E.strings)
+    let+ args = A.List.map args ~f:E.strings
     and+ prog, more_args = E.prog_and_args prog in
     let args = List.concat args in
     (prog, more_args @ args)
@@ -436,13 +444,13 @@ let rec expand (t : Dune_lang.Action.t) ~expander : Action.t Action_expander.t =
     let+ t = expand t in
     O.Ignore (outputs, t)
   | Progn l ->
-    let+ l = A.all (List.map l ~f:expand) in
+    let+ l = A.List.map l ~f:expand in
     O.Progn l
   | Concurrent l ->
-    let+ l = A.all (List.map l ~f:expand) in
+    let+ l = A.List.map l ~f:expand in
     O.Concurrent l
   | Echo xs ->
-    let+ l = A.all (List.map xs ~f:E.strings) in
+    let+ l = A.List.map xs ~f:E.strings in
     let l = List.concat l in
     O.Echo l
   | Cat xs ->
@@ -450,10 +458,10 @@ let rec expand (t : Dune_lang.Action.t) ~expander : Action.t Action_expander.t =
       Dune_project.dune_version (Scope.project (Expander.scope expander))
     in
     if version >= (3, 10) then
-      let+ xs = A.all (List.map xs ~f:E.deps) in
+      let+ xs = A.List.map xs ~f:E.deps in
       O.Cat (List.concat xs)
     else
-      let+ xs = A.all (List.map xs ~f:E.dep) in
+      let+ xs = A.List.map xs ~f:E.dep in
       O.Cat xs
   | Copy (x, y) ->
     let+ x = E.dep x
@@ -504,7 +512,7 @@ let rec expand (t : Dune_lang.Action.t) ~expander : Action.t Action_expander.t =
     O.Diff { optional; file1; file2; mode }
   | No_infer t -> A.no_infer (expand t)
   | Pipe (outputs, l) ->
-    let+ l = A.all (List.map l ~f:expand) in
+    let+ l = A.List.map l ~f:expand in
     O.Pipe (outputs, l)
   | Cram script ->
     let+ script = E.dep script in
@@ -515,17 +523,16 @@ let rec expand (t : Dune_lang.Action.t) ~expander : Action.t Action_expander.t =
   | Case (arg, cases, default) -> (
     let+ arg = E.string arg
     and+ cases =
-      A.all (List.map ~f:(fun (k, a) -> A.both (E.string k) (expand a)) cases)
+      A.List.map ~f:(fun (k, a) -> A.both (E.string k) (expand a)) cases
     and+ default = expand default in
     match List.assoc cases arg with
     | Some a -> a
     | None -> default)
   | Cond (cases, default) -> (
     let+ cases =
-      A.all
-        (List.map cases ~f:(fun (b, a) ->
-             let cond = A.of_memo @@ Expander.eval_blang expander b in
-             A.both cond (expand a)))
+      A.List.map cases ~f:(fun (b, a) ->
+          let cond = A.of_memo @@ Expander.eval_blang expander b in
+          A.both cond (expand a))
     and+ default = expand default in
     match List.find cases ~f:fst with
     | Some (_, a) -> a

@@ -98,6 +98,19 @@ For integration tests, we use a system similar to `Cram tests
 
 .. _ppx_expect:      https://github.com/janestreet/ppx_expect
 
+When running dune inside tests, the ``INSIDE_DUNE`` environment variable is set.
+This has the following effects:
+
+* Change the default root detection behaviour to use the current directory
+  rather than the top most ``dune-project`` / ``dune-workspace`` file.
+* Be less verbose various times Dune outputs a user message.
+* Error reporting is deterministic by default.
+* Prefer not to use a diff program for displaying diffs.
+
+This list is not exhaustive, and may change in the future. In order to find the
+exact behaviour, it is recommended to search for ``INSIDE_DUNE`` in the
+codebase.
+
 Guidelines
 ----------
 

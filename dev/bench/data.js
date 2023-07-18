@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689671573879,
+  "lastUpdate": 1689689326937,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -74297,6 +74297,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.973710852293333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "etienne.millon@gmail.com",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "distinct": true,
+          "id": "4f3a16f93e0a84e0164b663ad5517cdf632b5419",
+          "message": "test: repro #7430\n\nTest case for #7430. We demonstrate that the `dune describe pp` command\nleaves behind the dump file.\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-18T15:55:58+02:00",
+          "tree_id": "25c1936d8eeb16eee97c9e837be349a5912cfedb",
+          "url": "https://github.com/ocaml/dune/commit/4f3a16f93e0a84e0164b663ad5517cdf632b5419"
+        },
+        "date": 1689689319093,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.093156219093334",
             "unit": "seconds"
           }
         ]

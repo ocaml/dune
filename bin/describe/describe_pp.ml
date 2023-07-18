@@ -18,15 +18,21 @@ let pp_with_ocamlc sctx project pp_file =
   let+ () =
     Process.run
       ~display:!Clflags.display
+      ~dir:(Path.build (Super_context.context sctx).build_dir)
       ~env:(Super_context.context_env sctx)
       Strict
       (Super_context.context sctx).ocaml.ocamlc
-      [ "-stop-after"; "parsing"; "-dsource"; Path.to_string pp_file; "-dump-into-file" ]
+      [ "-stop-after"
+      ; "parsing"
+      ; "-dsource"
+      ; Path.to_string (Path.drop_optional_build_context_maybe_sandboxed pp_file)
+      ; "-dump-into-file"
+      ]
   in
   match Path.stat dump_file with
   | Ok { st_kind = S_REG; _ } ->
     Io.cat dump_file;
-    Path.unlink_no_err dump_file
+    Path.unlink dump_file
   | _ ->
     User_error.raise [ Pp.textf "cannot find a dump file: %s" (Path.to_string dump_file) ]
 ;;

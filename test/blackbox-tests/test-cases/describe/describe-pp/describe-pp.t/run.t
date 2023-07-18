@@ -11,4 +11,4 @@ We can also show the original source if it is not preprocessed
 We also make sure that the dump file is not present
 
   $ dune_cmd exists profile.dump
-  true
+  false

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689689749364,
+  "lastUpdate": 1689689932633,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -24445,6 +24445,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.101845840213336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "etienne.millon@gmail.com",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "distinct": true,
+          "id": "cf9bb4da84c5231d856d7d13c04d665c1e6746cb",
+          "message": "doc: clarify capitalization of opam\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-18T15:58:14+02:00",
+          "tree_id": "008b63c94bae689b881e6b2ca1897df845e815a1",
+          "url": "https://github.com/ocaml/dune/commit/cf9bb4da84c5231d856d7d13c04d665c1e6746cb"
+        },
+        "date": 1689689931873,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.16990330799333",
             "unit": "seconds"
           }
         ]

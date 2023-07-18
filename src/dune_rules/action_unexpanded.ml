@@ -484,6 +484,14 @@ let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
   | Withenv _ | Substitute _ | Patch _ ->
     (* these can only be provided by the package language which isn't expanded here *)
     assert false
+  | Case (arg, cases, default) -> (
+    let+ arg = E.string arg
+    and+ cases =
+      A.all (List.map ~f:(fun (k, a) -> A.both (E.string k) (expand a)) cases)
+    and+ default = expand default in
+    match List.assoc cases arg with
+    | Some a -> a
+    | None -> default)
 
 let expand_no_targets t ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
   let open Action_builder.O in

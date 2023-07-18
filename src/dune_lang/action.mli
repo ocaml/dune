@@ -124,6 +124,7 @@ type t =
   | Patch of String_with_vars.t
   | Substitute of String_with_vars.t * String_with_vars.t
   | Withenv of String_with_vars.t Env_update.t list * t
+  | Case of String_with_vars.t * (String_with_vars.t * t) list * t
 
 val encode : t Encoder.t
 

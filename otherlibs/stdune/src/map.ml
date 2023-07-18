@@ -204,7 +204,9 @@ module Make (Key : Key) : S with type key = Key.t = struct
 
   let filter_opt t = filter_map t ~f:Fun.id
 
-  let superpose a b = union a b ~f:(fun _ _ y -> Some y)
+  let superpose =
+    let f _ x _ = Some x in
+    fun a b -> union a b ~f
 
   let is_subset t ~of_ ~f =
     let not_subset () = raise_notrace Exit in

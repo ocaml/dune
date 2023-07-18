@@ -78,4 +78,16 @@ module Write_disk : sig
   val commit : t -> unit
 end
 
-val read_disk : lock_dir_path:Path.Source.t -> t Or_exn.t
+val read_disk : Path.Source.t -> t
+
+module Make_load (Io : sig
+  include Monad.S
+
+  val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
+
+  val readdir_with_kinds : Path.Source.t -> (Filename.t * Unix.file_kind) list t
+
+  val with_lexbuf_from_file : Path.Source.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
+end) : sig
+  val load : Path.Source.t -> t Io.t
+end

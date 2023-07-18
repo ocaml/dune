@@ -97,13 +97,14 @@ type t =
   ; execution_parameters : dir:Path.Source.t -> Execution_parameters.t Memo.t
   ; source_tree : (module Source_tree)
   ; action_runner : Action_exec.input -> Action_runner.t option
+  ; shared_cache : (module Shared_cache_intf.S)
   }
 
 let t = Fdecl.create Dyn.opaque
 
 let set ~action_runner ~stats ~contexts ~promote_source ~cache_config
     ~cache_debug_flags ~sandboxing_preference ~rule_generator
-    ~implicit_default_alias ~execution_parameters ~source_tree =
+    ~implicit_default_alias ~execution_parameters ~source_tree ~shared_cache =
   let contexts =
     Memo.lazy_ ~name:"Build_config.set" (fun () ->
         let open Memo.O in
@@ -129,6 +130,7 @@ let set ~action_runner ~stats ~contexts ~promote_source ~cache_config
     ; execution_parameters
     ; source_tree
     ; action_runner
+    ; shared_cache
     }
 
 let get () = Fdecl.get t

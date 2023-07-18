@@ -16,6 +16,8 @@ module To_delete = struct
     let version = 2
 
     let to_dyn = Path.Source.Set.to_dyn
+
+    let test_example () = Path.Source.Set.empty
   end)
 
   let fn = Path.relative Path.build_dir ".to-delete-in-source-tree"

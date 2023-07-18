@@ -31,6 +31,7 @@
   dune_engine
   dune_vcs
   dune_config_file
+  dune_shared_cache
   unix)
  (synopsis "Internal Dune library, do not use!")
  (instrumentation

@@ -40,7 +40,8 @@ let execution_parameters =
   fun ~dir -> Memo.exec memo dir
 
 let init ?(action_runner = fun _ -> None) ~stats ~sandboxing_preference
-    ~cache_config ~cache_debug_flags () : unit =
+    ~cache_config ~(cache_debug_flags : Dune_engine.Cache_debug_flags.t) () :
+    unit =
   let promote_source ~chmod ~delete_dst_if_it_is_a_directory ~src ~dst ctx =
     let open Fiber.O in
     let* ctx =
@@ -54,6 +55,15 @@ let init ?(action_runner = fun _ -> None) ~stats ~sandboxing_preference
     Artifact_substitution.copy_file ~chmod ~delete_dst_if_it_is_a_directory ~src
       ~dst ~conf ()
   in
+  let module Shared_cache = Dune_shared_cache.Make (struct
+    let debug_shared_cache = cache_debug_flags.shared_cache
+
+    let config = cache_config
+
+    let upload ~rule_digest:_ = Fiber.return ()
+
+    let download ~rule_digest:_ = Fiber.return ()
+  end) in
   Build_config.set ~stats ~sandboxing_preference ~promote_source
     ~contexts:
       (Memo.lazy_ (fun () ->
@@ -63,6 +73,7 @@ let init ?(action_runner = fun _ -> None) ~stats ~sandboxing_preference
     ~rule_generator:(module Gen_rules)
     ~implicit_default_alias ~execution_parameters
     ~source_tree:(module Source_tree)
+    ~shared_cache:(module Shared_cache)
     ~action_runner
 
 let get () =

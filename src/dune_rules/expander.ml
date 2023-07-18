@@ -100,7 +100,7 @@ let extend_env t ~env =
   { t with env = Env.extend_env t.env env }
 
 let add_bindings_full t ~bindings =
-  { t with bindings = Pform.Map.superpose t.bindings bindings }
+  { t with bindings = Pform.Map.superpose bindings t.bindings }
 
 let add_bindings t ~bindings =
   add_bindings_full t

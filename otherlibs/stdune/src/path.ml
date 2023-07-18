@@ -1097,7 +1097,8 @@ let is_directory_with_error t =
   | exception Sys_error e -> Error e
   | bool -> Ok bool
 
-let is_file t = not (is_directory t)
+let is_file t =
+  try not (Sys.is_directory (to_string t)) with Sys_error _ -> false
 
 let rmdir t = Unix.rmdir (to_string t)
 

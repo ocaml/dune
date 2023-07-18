@@ -414,15 +414,6 @@ end = struct
 
   let to_dyn t = Dyn.variant "External" [ Dyn.string t ]
 
-  (* let rec cd_dot_dot t = match Unix.readlink t with | exception _ ->
-     Filename.dirname t | t -> cd_dot_dot t
-
-     let relative initial_t path = let rec loop t components = match components
-     with | [] | ["." | ".."] -> die "invalid filename concatenation: %s / %s"
-     initial_t path | [fn] -> Filename.concat t fn | "." :: rest -> loop t rest
-     | ".." :: rest -> loop (cd_dot_dot t) rest | comp :: rest -> loop
-     (Filename.concat t comp) rest in loop initial_t (explode_path path) *)
-
   let relative x y =
     match y with
     | "." -> x

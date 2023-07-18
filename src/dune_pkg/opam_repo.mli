@@ -6,9 +6,6 @@ type t
     directory in the path given by [opam_repo_dir]. *)
 val of_opam_repo_dir_path : Path.t -> t
 
-(** Returns a path to the "packages" directory of the repo *)
-val packages_dir_path : t -> Filename.t
-
 (** Load package metadata for a single package *)
 val load_opam_package : t -> OpamPackage.t -> OpamFile.OPAM.t
 

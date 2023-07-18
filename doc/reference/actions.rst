@@ -284,6 +284,39 @@ The following constructions are available:
        (run ./list-tests.exe)
        (run ./exec-tests.exe))
 
+.. dune:action:: case
+   :param: <string> (<pattern1> <DSL>) (<pattern2> <DSL>) ... (_ <DSL>)
+
+   .. versionadded:: 3.11
+
+   Execute the action corresponding to the first ``<pattern>`` that matches
+   ``<string>``. The ``_`` pattern is always required and is executed if no
+   other pattern matches ``<string>``.
+
+   Example::
+
+      (case %{os_type}
+       ("unix" (copy unix_impl.ml impl.ml))
+       ("windows" (copy windows_impl.ml impl.ml))
+       (_ (echo "Unsupported system")))
+
+.. dune:action:: cond
+   :param: (<blang1> <DSL>) (<blang2> <DSL>) ... (_ <DSL>)
+
+   .. versionadded:: 3.11
+
+   Execute the action corresponding to the first ``<blang>`` expression of the
+   :doc:`boolean-language` that evaluates to ``true``. The ``_`` pattern is
+   always required and is executed if no other pattern evaluates to ``true``.
+
+   Example::
+
+      (cond
+       ((= %{os_type} "unix") (copy unix_impl.ml impl.ml))
+       ((= %{os_type} "windows") (copy windows_impl.ml impl.ml))
+       ((> %{version} "4.02") (copy new_impl.ml impl.ml))
+       (_ (echo "Unsupported system")))
+
 Note: expansion of the special ``%{<kind>:...}`` is done relative to the current
 working directory of the DSL being executed. So for instance, if you
 have this action in a ``src/foo/dune``:

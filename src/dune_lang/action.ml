@@ -175,6 +175,8 @@ type t =
   | Patch of String_with_vars.t
   | Substitute of String_with_vars.t * String_with_vars.t
   | Withenv of String_with_vars.t Env_update.t list * t
+  | Case of String_with_vars.t * (String_with_vars.t * t) list * t
+  | Cond of (Blang.t * t) list * t
 
 let is_dev_null t = String_with_vars.is_pform t (Var Dev_null)
 
@@ -252,6 +254,107 @@ let decode_with_accepted_exit_codes =
                 (String.enumerate_or (quote [ "run"; "bash"; "system" ]))
             ]
 ;;
+
+module Cases : sig
+  (** Helper module for parising [Case] and [Cond] expressions. *)
+
+  module type Pattern = sig
+    (** Patterns must be decodable and comparable (ideally without locations). *)
+    type t
+
+    val decode : t Decoder.t
+    val equal_no_loc : t -> t -> bool
+  end
+
+  (** [Cases.decode (module P : Pattern) t] is a function for decoding [Case]
+      and [Cond] expressions. It takes a decoder and equality for the pattern
+      type in a module [P] of module type [Pattern], a decoder [t] for the
+      branch type, and returns a decoder for the whole expression.
+
+      The decoder returns the patterns and corresponding branches as a list of
+      key value pairs and the default branch.
+
+      Expressions are lists of the form:
+
+      {[
+        (<pattern1> <branch1>) (<pattern2> <branch2>)
+        ...
+        (_ <default-branch>)
+      ]}
+
+      The following conditions must hold:
+
+      - There must be a default branch.
+      - The default branch must be at the end.
+      - There must be no duplicate patterns.
+      - There must be no duplicate default branches.
+
+      If any of these conditions are not met, an appropriate error is raised. *)
+  val decode
+    :  (module Pattern with type t = 'pattern)
+    -> 'branch Decoder.t
+    -> (('pattern * 'branch) list * 'branch) Decoder.t
+end = struct
+  module type Pattern = sig
+    type t
+
+    val decode : t Decoder.t
+    val equal_no_loc : t -> t -> bool
+  end
+
+  let decode (type pat) (module P : Pattern with type t = pat) t =
+    let open Decoder in
+    let+ cases =
+      repeat1
+      @@ enter
+      @@ let+ pat =
+           (let+ loc, _ = located (keyword "_") in
+            `Default loc)
+           <|> let+ loc, pat = located P.decode in
+               `Case (loc, pat)
+         and+ branch = t in
+         pat, branch
+    in
+    (* we need to check that there is at most one default case and that it
+       appears last *)
+    let cases, default =
+      match List.rev cases with
+      | [] -> Code_error.raise "Cases.decode: empty cases list" []
+      | (`Case (loc, _), _) :: _ ->
+        User_error.raise
+          ~loc
+          ~hints:[ Pp.text "Add a (_ (...)) case at the end." ]
+          [ Pp.text "The final branch must be the default one." ]
+      | (`Default default_loc, default) :: l ->
+        let err_duplicate_case loc1 loc2 msg =
+          User_error.raise
+            [ Pp.text msg
+            ; Pp.map_tags ~f:(fun _ -> User_message.Style.Loc) (Loc.pp loc1)
+            ; Pp.map_tags ~f:(fun _ -> User_message.Style.Loc) (Loc.pp loc2)
+            ]
+        in
+        let rec loop (patterns : (Loc.t * P.t) list) cases =
+          match cases with
+          | [] -> []
+          (* The default case has already been handled, any other is an error *)
+          | (`Default loc, _) :: _ ->
+            err_duplicate_case loc default_loc "Multiple default cases."
+          (* If a pattern has been seen before, it's an error *)
+          | (`Case (loc, pat), _) :: _
+            when List.mem (List.map ~f:snd patterns) pat ~equal:P.equal_no_loc ->
+            let other_loc =
+              List.find_exn patterns ~f:(fun (_, x) -> P.equal_no_loc pat x) |> fst
+            in
+            err_duplicate_case loc other_loc "Duplicate case."
+          (* If a pattern is new, we add it to the list of seen patterns *)
+          | (`Case (loc, pat), branch) :: cases ->
+            (pat, branch) :: loop ((loc, pat) :: patterns) cases
+        in
+        loop [] l, default
+    in
+    cases, default
+  ;;
+end
 
 let sw = String_with_vars.decode
 
@@ -353,6 +456,15 @@ let cstrs_dune_file t =
     , Syntax.since Stanza.syntax (2, 7)
       >>> let+ script = sw in
           Cram script )
+  ; ( "case"
+    , Syntax.since Stanza.syntax (3, 11)
+      >>> let+ arg = sw
+          and+ cases, default = Cases.decode (module String_with_vars) t in
+          Case (arg, cases, default) )
+  ; ( "cond"
+    , Syntax.since Stanza.syntax (3, 11)
+      >>> let+ cases, default = Cases.decode (module Blang) t in
+          Cond (cases, default) )
   ]
 ;;
 
@@ -430,6 +542,16 @@ let rec encode =
   | Substitute (i, o) -> List [ atom "substitute"; sw i; sw o ]
   | Withenv (ops, t) ->
     List [ atom "withenv"; List (List.map ~f:Env_update.encode ops); encode t ]
+  | Case (var, cases, default) ->
+    List
+      ([ atom "case"; sw var ]
+       @ List.map cases ~f:(fun (var, t) -> List [ sw var; encode t ])
+       @ [ List [ atom "_"; encode default ] ])
+  | Cond (cases, default) ->
+    List
+      ((atom "cond"
+        :: List.map cases ~f:(fun (cond, t) -> List [ Blang.encode cond; encode t ]))
+       @ [ List [ atom "_"; encode default ] ])
 ;;
 
 (* In [Action_exec] we rely on one-to-one mapping between the cwd-relative paths
@@ -443,7 +565,18 @@ let rec encode =
    Moreover, we also check that 'dynamic-run' is not used within
    'with-exit-codes', since the meaning of this interaction is not clear. *)
 let ensure_at_most_one_dynamic_run ~loc action =
-  let rec loop : t -> bool = function
+  let rec ensure_at_most_one_dynamic_run_list ts =
+    List.fold_left ts ~init:false ~f:(fun acc t ->
+      let have_dyn = loop t in
+      if acc && have_dyn
+      then
+        User_error.raise
+          ~loc
+          [ Pp.text
+              "Multiple 'dynamic-run' commands within single action are not supported."
+          ]
+      else acc || have_dyn)
+  and loop : t -> bool = function
     | Dynamic_run _ -> true
     | Chdir (_, t)
     | Setenv (_, _, t)
@@ -467,17 +600,11 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Substitute _
     | Patch _
     | Cram _ -> false
-    | Pipe (_, ts) | Progn ts | Concurrent ts ->
-      List.fold_left ts ~init:false ~f:(fun acc t ->
-        let have_dyn = loop t in
-        if acc && have_dyn
-        then
-          User_error.raise
-            ~loc
-            [ Pp.text
-                "Multiple 'dynamic-run' commands within single action are not supported."
-            ]
-        else acc || have_dyn)
+    | Pipe (_, ts) | Progn ts | Concurrent ts -> ensure_at_most_one_dynamic_run_list ts
+    | Case (_, cases, default) ->
+      ensure_at_most_one_dynamic_run_list (default :: List.map ~f:snd cases)
+    | Cond (cases, default) ->
+      ensure_at_most_one_dynamic_run_list (default :: List.map ~f:snd cases)
   in
   ignore (loop action)
 ;;
@@ -516,6 +643,16 @@ let rec map_string_with_vars t ~f =
     Withenv
       ( List.map ops ~f:(fun (op : _ Env_update.t) -> { op with value = f op.value })
       , map_string_with_vars t ~f )
+  | Case (sw, cases, default) ->
+    Case
+      ( f sw
+      , List.map cases ~f:(fun (sw, t) -> f sw, map_string_with_vars t ~f)
+      , map_string_with_vars default ~f )
+  | Cond (cases, default) ->
+    Cond
+      ( List.map cases ~f:(fun (cond, t) ->
+          Blang.map_string_with_vars cond ~f, map_string_with_vars t ~f)
+      , map_string_with_vars default ~f )
 ;;
 
 let remove_locs = map_string_with_vars ~f:String_with_vars.remove_locs

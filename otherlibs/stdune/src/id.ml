@@ -23,7 +23,6 @@ end
 module Make () : S = struct
   module Set = Int.Set
   module Map = Int.Map
-  module Table = Hashtbl.Make (Int)
 
   type t = int
 
@@ -45,4 +44,14 @@ module Make () : S = struct
   let hash (t : t) = t
 
   let to_dyn t = Dyn.Int t
+
+  module Table = Hashtbl.Make (struct
+    type nonrec t = t
+
+    let equal = equal
+
+    let hash t = t
+
+    let to_dyn = to_dyn
+  end)
 end

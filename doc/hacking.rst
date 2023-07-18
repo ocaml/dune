@@ -107,7 +107,7 @@ This has the following effects:
 * Error reporting is deterministic by default.
 * Prefer not to use a diff program for displaying diffs.
 
-This list is not exhaustive, and may change in the future. In order to find the
+This list is not exhaustive and may change in the future. In order to find the
 exact behaviour, it is recommended to search for ``INSIDE_DUNE`` in the
 codebase.
 

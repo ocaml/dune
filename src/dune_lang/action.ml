@@ -161,6 +161,7 @@ type t =
   | Substitute of String_with_vars.t * String_with_vars.t
   | Withenv of String_with_vars.t Env_update.t list * t
   | Case of String_with_vars.t * (String_with_vars.t * t) list * t
+  | Cond of (Blang.t * t) list * t
 
 let is_dev_null t = String_with_vars.is_pform t (Var Dev_null)
 
@@ -232,16 +233,24 @@ let decode_with_accepted_exit_codes =
 
 let sw = String_with_vars.decode
 
-let decode_case t =
+module type Pattern = sig
+  type t
+
+  val decode : t Decoder.t
+
+  val equal_no_loc : t -> t -> bool
+end
+
+let decode_case_cond (type pattern) (module P : Pattern with type t = pattern) t
+    =
   let open Decoder in
-  let+ arg = sw
-  and+ cases =
+  let+ cases =
     repeat1 @@ enter
     @@ let+ pat =
          (let+ loc, _ = located (keyword "_") in
           `Default loc)
-         <|> let+ pat = sw in
-             `Case pat
+         <|> let+ loc, pat = located P.decode in
+             `Case (loc, pat)
        and+ branch = t in
        (pat, branch)
   in
@@ -249,9 +258,9 @@ let decode_case t =
      appears last *)
   let cases, default =
     match List.rev cases with
-    | [] -> Code_error.raise "decode_case: empty cases list" []
-    | (`Case pat, _) :: _ ->
-      User_error.raise ~loc:(String_with_vars.loc pat)
+    | [] -> Code_error.raise "decode_case_cond: empty cases list" []
+    | (`Case (loc, _), _) :: _ ->
+      User_error.raise ~loc
         ~hints:[ Pp.text "Add a (_ (...)) case at the end." ]
         [ Pp.text "Only the default case can be at the end." ]
     | (`Default default_loc, default) :: l ->
@@ -262,29 +271,27 @@ let decode_case t =
           ; Pp.map_tags ~f:(fun _ -> User_message.Style.Loc) (Loc.pp loc2)
           ]
       in
-      let rec loop patterns cases =
+      let rec loop (patterns : (Loc.t * P.t) list) cases =
         match cases with
         | [] -> []
         (* The default case has already been handled, any other is an error *)
         | (`Default loc, _) :: _ ->
           err_duplicate_case loc default_loc "Multiple default cases."
         (* If a pattern has been seen before, it's an error *)
-        | (`Case pat, _) :: _
-          when List.mem patterns pat ~equal:String_with_vars.equal_no_loc ->
+        | (`Case (loc, pat), _) :: _
+          when List.mem (List.map ~f:snd patterns) pat ~equal:P.equal_no_loc ->
           let other_loc =
-            List.find_exn patterns ~f:(fun p ->
-                String_with_vars.equal_no_loc p pat)
-            |> String_with_vars.loc
+            List.find_exn patterns ~f:(fun (_, x) -> P.equal_no_loc pat x)
+            |> fst
           in
-          err_duplicate_case (String_with_vars.loc pat) other_loc
-            "Duplicate case."
+          err_duplicate_case loc other_loc "Duplicate case."
         (* If a pattern is new, we add it to the list of seen patterns *)
-        | (`Case pat, branch) :: cases ->
-          (pat, branch) :: loop (pat :: patterns) cases
+        | (`Case (loc, pat), branch) :: cases ->
+          (pat, branch) :: loop ((loc, pat) :: patterns) cases
       in
       (loop [] l, default)
   in
-  Case (arg, cases, default)
+  (cases, default)
 
 let cstrs_dune_file t =
   let open Decoder in
@@ -386,7 +393,15 @@ let cstrs_dune_file t =
     , Syntax.since Stanza.syntax (2, 7)
       >>> let+ script = sw in
           Cram script )
-  ; ("case", Syntax.since Stanza.syntax (3, 10) >>> decode_case t)
+  ; ( "case"
+    , Syntax.since Stanza.syntax (3, 10)
+      >>> let+ arg = sw
+          and+ cases, default = decode_case_cond (module String_with_vars) t in
+          Case (arg, cases, default) )
+  ; ( "cond"
+    , Syntax.since Stanza.syntax (3, 10)
+      >>> let+ cases, default = decode_case_cond (module Blang) t in
+          Cond (cases, default) )
   ]
 
 let decode_dune_file = Decoder.fix @@ fun t -> Decoder.sum (cstrs_dune_file t)
@@ -476,6 +491,12 @@ let rec encode =
       ([ atom "case"; sw var ]
       @ List.map cases ~f:(fun (var, t) -> List [ sw var; encode t ])
       @ [ List [ atom "_"; encode default ] ])
+  | Cond (cases, default) ->
+    List
+      (atom "cond"
+       :: List.map cases ~f:(fun (cond, t) ->
+              List [ Blang.encode cond; encode t ])
+      @ [ List [ atom "_"; encode default ] ])
 
 (* In [Action_exec] we rely on one-to-one mapping between the cwd-relative paths
    seen by the action and [Path.t] seen by dune.
@@ -526,7 +547,10 @@ let ensure_at_most_one_dynamic_run ~loc action =
       ensure_at_most_one_dynamic_run_list ts
     | Case (_, cases, default) ->
       ensure_at_most_one_dynamic_run_list (default :: List.map ~f:snd cases)
+    | Cond (cases, default) ->
+      ensure_at_most_one_dynamic_run_list (default :: List.map ~f:snd cases)
   in
+
   ignore (loop action)
 
 let validate ~loc t = ensure_at_most_one_dynamic_run ~loc t
@@ -570,6 +594,11 @@ let rec map_string_with_vars t ~f =
     Case
       ( f sw
       , List.map cases ~f:(fun (sw, t) -> (f sw, map_string_with_vars t ~f))
+      , map_string_with_vars default ~f )
+  | Cond (cases, default) ->
+    Cond
+      ( List.map cases ~f:(fun (cond, t) ->
+            (Blang.map_string_with_vars cond ~f, map_string_with_vars t ~f))
       , map_string_with_vars default ~f )
 
 let remove_locs = map_string_with_vars ~f:String_with_vars.remove_locs

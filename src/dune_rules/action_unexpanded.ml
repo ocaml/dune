@@ -41,6 +41,8 @@ module Action_expander : sig
 
   include Applicative
 
+  val of_memo : 'a Memo.t -> 'a t
+
   (* Disable targets/dependencies inference detection *)
   val no_infer : 'a t -> 'a t
 
@@ -136,6 +138,10 @@ end = struct
         loop (x :: res) l env acc
     in
     fun l env acc -> loop [] l env acc
+
+  let of_memo x _env acc =
+    let+! x = x in
+    (Action_builder.return x, acc)
 
   let run t ~chdir ~targets_dir ~expander =
     let deps = Action_builder.return Path.Set.empty in
@@ -513,6 +519,16 @@ let rec expand (t : Dune_lang.Action.t) ~expander : Action.t Action_expander.t =
     and+ default = expand default in
     match List.assoc cases arg with
     | Some a -> a
+    | None -> default)
+  | Cond (cases, default) -> (
+    let+ cases =
+      A.all
+        (List.map cases ~f:(fun (b, a) ->
+             let cond = A.of_memo @@ Expander.eval_blang expander b in
+             A.both cond (expand a)))
+    and+ default = expand default in
+    match List.find cases ~f:fst with
+    | Some (_, a) -> a
     | None -> default)
 
 let expand_no_targets t ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =

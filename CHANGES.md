@@ -21,6 +21,9 @@ Unreleased
 - Improve `dune describe external-lib-deps` by adding the internal dependencies
   for more information. (#7478, @moyodiallo)
 
+- Fix permission errors when `sendfile` is not available (#8234, fixes #8120,
+  @emillon)
+
 3.9.1 (2023-07-06)
 ------------------
 

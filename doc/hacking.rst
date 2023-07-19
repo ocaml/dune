@@ -103,7 +103,7 @@ This has the following effects:
 
 * Change the default root detection behaviour to use the current directory
   rather than the top most ``dune-project`` / ``dune-workspace`` file.
-* Be less verbose various times Dune outputs a user message.
+* Be less verbose when Dune outputs a user message.
 * Error reporting is deterministic by default.
 * Prefer not to use a diff program for displaying diffs.
 

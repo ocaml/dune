@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689774400535,
+  "lastUpdate": 1689774415187,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -58520,6 +58520,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "83.27090580175333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "etienne.millon@gmail.com",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "distinct": true,
+          "id": "aff2207cc68abe330a9b85015211295fc1d47dfa",
+          "message": "test: repro for #8210 (EACCESS if sendfile fails)\n\nWhat's happening here is:\n\n- input and output files are open\n- sendfile is attempted and fails\n- both files are closed\n- input file is opened again\n- output file is opened again (but already exists)\n\nThis throws an error if the output file is not writable.\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-19T15:14:45+02:00",
+          "tree_id": "0c8144ec0268a731e59d0211f9f1dcf839631d05",
+          "url": "https://github.com/ocaml/dune/commit/aff2207cc68abe330a9b85015211295fc1d47dfa"
+        },
+        "date": 1689774414245,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.314719661533333",
             "unit": "seconds"
           }
         ]

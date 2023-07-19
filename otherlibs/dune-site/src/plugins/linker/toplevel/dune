@@ -3,4 +3,4 @@
  (modes byte)
  (public_name dune-site.toplevel)
  (implements dune-site.linker)
- (libraries compiler-libs.toplevel))
+ (libraries compiler-libs.toplevel dune-site.private))

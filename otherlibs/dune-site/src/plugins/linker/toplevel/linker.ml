@@ -11,6 +11,8 @@ open Toploop [@@ocaml.warning "-33"]
 let load filename =
   let buf = Buffer.create 16 in
   let ppf = Format.formatter_of_buffer buf in
+  if Dune_site_private.debug then
+    Printf.printf "DUNE_SITE_DEBUG[toplevel]: loading %s\n" filename;
   match load_file ppf filename with
   | true -> ()
   | false ->

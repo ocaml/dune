@@ -66,6 +66,11 @@
   > (lang dune 2.2)
   > EOF
 
+Enable debugging
+----------------
+
+  $ export DUNE_SITE_DEBUG=1
+
 Build everything
 ----------------
 
@@ -74,6 +79,7 @@ Build everything
 Test with dune exec
 --------------------------------
   $ dune exec -- c/c.exe "c-plugins-b.b"
+  DUNE_SITE_DEBUG[dynlink]: loading $TESTCASE_ROOT/_build/install/default/lib/b/b/b/b.cmxs
   run b
   run c: registered:b.
 
@@ -100,6 +106,7 @@ Test error messages
   The library "inexistent" can't be found in the search paths "$TESTCASE_ROOT/_build/install/default/lib:..."
 
   $ dune exec -- c/c.exe "b.b.b"
+  DUNE_SITE_DEBUG[dynlink]: loading $TESTCASE_ROOT/_build/install/default/lib/b/b/b/b.cmxs
   run b
 
   $ dune exec -- c/c.exe "b.b.inexistent" 2>&1  | sed -e 's&default/lib:.*&default/lib:..."&g'

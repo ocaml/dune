@@ -9,6 +9,13 @@ let dune_ocaml_hardcoded_env_var = "DUNE_OCAML_HARDCODED"
 
 let dune_sourceroot_env_var = "DUNE_SOURCEROOT"
 
+let dune_site_debug = "DUNE_SITE_DEBUG"
+
+let debug =
+  match Sys.getenv_opt dune_site_debug with
+  | Some _ -> true
+  | None -> false
+
 type entry =
   { package : string
   ; section : Dune_section.t

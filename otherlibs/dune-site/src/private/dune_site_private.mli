@@ -8,6 +8,8 @@ val dune_ocaml_hardcoded_env_var : string
 
 val dune_sourceroot_env_var : string
 
+val debug : bool
+
 type entry =
   { package : string
   ; section : Dune_section.t

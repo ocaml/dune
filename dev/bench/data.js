@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689857347152,
+  "lastUpdate": 1689857773279,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -24503,6 +24503,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "49.06809914905333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "92d88482edb5c97a28609257ea0cec5271a5a017",
+          "message": "doc: document INSIDE_DUNE in hacking.rst (#8221)\n\n* doc: document INSIDE_DUNE in hacking.rst\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>\r\nCo-authored-by: Christine Rose <christinerose@users.noreply.github.com>",
+          "timestamp": "2023-07-20T14:35:57+02:00",
+          "tree_id": "81194e0ecf69e746276c651f600d3f6b0c59b567",
+          "url": "https://github.com/ocaml/dune/commit/92d88482edb5c97a28609257ea0cec5271a5a017"
+        },
+        "date": 1689857772096,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.74356276102",
             "unit": "seconds"
           }
         ]

@@ -124,7 +124,6 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     in
     inherited ~field:ocaml_flags ~root:default_ocaml_flags (fun flags ->
         let+ expander = Memo.Lazy.force expander in
-        let expander = Expander.set_dir expander ~dir in
         Ocaml_flags.make ~spec:config.flags ~default:flags
           ~eval:(Expander.expand_and_eval_set expander))
   in
@@ -145,7 +144,6 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
       (fun (jsoo : _ Action_builder.t Js_of_ocaml.Env.t) ->
         let local = config.js_of_ocaml in
         let+ expander = Memo.Lazy.force expander in
-        let expander = Expander.set_dir expander ~dir in
         { Js_of_ocaml.Env.compilation_mode =
             Option.first_some local.compilation_mode jsoo.compilation_mode
         ; runtest_alias =
@@ -165,7 +163,6 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
             ~root:(Foreign_language.Dict.get default_context_flags lang)
             (fun flags ->
               let+ expander = Memo.Lazy.force expander in
-              let expander = Expander.set_dir expander ~dir in
               let f = Foreign_language.Dict.get config.foreign_flags lang in
               Expander.expand_and_eval_set expander f ~standard:flags)))
   in
@@ -176,7 +173,6 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     let default_link_flags = Link_flags.default ~default_cxx_link_flags in
     inherited ~field:link_flags ~root:default_link_flags (fun link_flags ->
         let+ expander = Memo.Lazy.force expander in
-        let expander = Expander.set_dir expander ~dir in
         Link_flags.make ~spec:config.link_flags ~default:link_flags
           ~eval:(Expander.expand_and_eval_set expander))
   in
@@ -186,7 +182,6 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
       ~root:(Action_builder.return [])
       (fun flags ->
         let+ expander = Memo.Lazy.force expander in
-        let expander = Expander.set_dir expander ~dir in
         Expander.expand_and_eval_set expander config.menhir_flags
           ~standard:flags)
   in
@@ -204,7 +199,6 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   let coq : Coq.t Action_builder.t Memo.Lazy.t =
     inherited ~field:coq ~root:default_coq_flags (fun flags ->
         let+ expander = Memo.Lazy.force expander in
-        let expander = Expander.set_dir expander ~dir in
         let standard = flags in
         Expander.expand_and_eval_set expander config.coq ~standard)
   in

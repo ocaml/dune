@@ -165,7 +165,8 @@ end = struct
           let* expander_for_artifacts =
             Memo.Lazy.force expander_for_artifacts
           in
-          extend_expander t ~dir ~expander_for_artifacts)
+          extend_expander t ~dir ~expander_for_artifacts
+          >>| Expander.set_dir ~dir)
     in
     let default_cxx_link_flags = Cxx_flags.get_flags ~for_:Link t.context in
     Env_node.make ~dir ~scope ~config_stanza ~inherit_from:(Some inherit_from)
@@ -502,7 +503,9 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
           let profile = context.profile in
           Dune_env.Stanza.fire_hooks config_stanza ~profile;
           let default_cxx_link_flags = Cxx_flags.get_flags ~for_:Link context in
-          let expander = Memo.Lazy.of_val root_expander in
+          let expander =
+            Memo.Lazy.of_val (Expander.set_dir ~dir root_expander)
+          in
           Env_node.make ~dir ~scope ~inherit_from ~config_stanza ~profile
             ~expander ~expander_for_artifacts ~default_context_flags
             ~default_env:context_env ~default_bin_artifacts:artifacts.bin

@@ -44,6 +44,10 @@ val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 
 val hash : ('a -> int) -> 'a t -> int
 
+(** [first_some t1 t2] returns [t1] if it has an underlying value, or [t2]
+    otherwise. *)
+val first_some : 'a t -> 'a t -> 'a t
+
 val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
 
 val try_with : (unit -> 'a) -> 'a option

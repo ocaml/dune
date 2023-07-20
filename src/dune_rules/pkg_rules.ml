@@ -327,7 +327,14 @@ module Pkg = struct
         ]
     in
     let env = build_env t |> Env.Map.map ~f:Env_update.string_of_env_values in
-    Env.extend Env.empty ~vars:(Env.Map.superpose base env)
+    (* TODO: Run actions in a constrained environment. [Env.initial] is the
+       environment from which dune was executed, and some of the environment
+       variables may affect builds in unintended ways and make builds less
+       reproducible. However other environment variables must be set in order
+       for build actions to run successfully, such as $PATH on systems where the
+       shell's default $PATH variable doesn't include the location of standard
+       programs or build tools (e.g. NixOS). *)
+    Env.extend Env.initial ~vars:(Env.Map.superpose base env)
 end
 
 module Pkg_installed = struct

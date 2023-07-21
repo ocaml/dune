@@ -11,11 +11,11 @@ let trim =
       ; `Pre
           {|Trimming the Dune cache to 1 GB.
 
-           \$ dune cache trim --trimmed-size=1GB |}
+           \$ dune cache trim --size=1GB |}
       ; `Pre
           {|Trimming 500 MB from the Dune cache.
 
-           \$ dune cache trim --size=500MB |}
+           \$ dune cache trim --trimmed-size=500MB |}
       ]
     in
     Cmd.info "trim" ~doc ~man

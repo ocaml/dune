@@ -37,7 +37,9 @@ Paths to Melange stdlib appear in B and S entries without melange.emit stanza
   B /MELC_STDLIB/melange
   B /MELC_STDLIB/melange
   B /MELC_STDLIB/melange
+  B /MELC_STDLIB/melange
   B $TESTCASE_ROOT/_build/default/.foo.objs/melange
+  S /MELC_STDLIB
   S /MELC_STDLIB
   S /MELC_STDLIB
   S /MELC_STDLIB
@@ -75,7 +77,9 @@ Dump-dot-merlin includes the melange flags
   B /MELC_STDLIB/melange
   B /MELC_STDLIB/melange
   B /MELC_STDLIB/melange
+  B /MELC_STDLIB/melange
   B $TESTCASE_ROOT/_build/default/.output.mobjs/melange
+  S /MELC_STDLIB
   S /MELC_STDLIB
   S /MELC_STDLIB
   S /MELC_STDLIB

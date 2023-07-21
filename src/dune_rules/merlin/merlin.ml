@@ -482,6 +482,22 @@ module Unprocessed = struct
     Per_item_action_builder.map t.config.preprocess
       ~f:(pp_flags sctx ~expander t.config.libname)
 
+  let add_lib ~requires ~scope lib_name =
+    let open Memo.O in
+    let libs = Scope.libs scope in
+    Lib.DB.find libs lib_name >>= function
+    | Some lib ->
+      let+ libs =
+        let linking =
+          Dune_project.implicit_transitive_deps (Scope.project scope)
+        in
+        Lib.closure [ lib ] ~linking |> Resolve.Memo.peek >>| function
+        | Ok libs -> libs
+        | Error _ -> []
+      in
+      Lib.Set.union requires (Lib.Set.of_list libs)
+    | None -> Memo.return requires
+
   let process
       ({ modules
        ; ident = _
@@ -518,19 +534,10 @@ module Unprocessed = struct
           Action_builder.of_memo
             (let open Memo.O in
              let scope = Expander.scope expander in
-             let libs = Scope.libs scope in
-             Lib.DB.find libs (Lib_name.of_string "melange") >>= function
-             | Some lib ->
-               let+ libs =
-                 let linking =
-                   Dune_project.implicit_transitive_deps (Scope.project scope)
-                 in
-                 Lib.closure [ lib ] ~linking |> Resolve.Memo.peek >>| function
-                 | Ok libs -> libs
-                 | Error _ -> []
-               in
-               Lib.Set.union requires (Lib.Set.of_list libs)
-             | None -> Memo.return requires)
+             let* requires =
+               add_lib ~requires ~scope (Lib_name.of_string "melange")
+             in
+             add_lib ~requires ~scope (Lib_name.of_string "melange.dom"))
       in
       let* flags = flags
       and* src_dirs, obj_dirs =

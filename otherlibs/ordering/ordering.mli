@@ -18,6 +18,10 @@ val min : ('a -> 'a -> t) -> 'a -> 'a -> 'a
 
 val max : ('a -> 'a -> t) -> 'a -> 'a -> 'a
 
+(** [reverse cmp] takes a comparison function [cmp] and returns a new comparison
+    function whose comparisons are the opposite of that of [cmp]. *)
+val reverse : ('a -> 'a -> t) -> 'a -> 'a -> t
+
 module O : sig
   (** A convenient operator for efficiently chaining multiple comparisons
       together. For example, you can write

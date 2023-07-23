@@ -48,7 +48,7 @@ Generate a mock opam repository including some test dependencies:
 Helper shell function to generate a dune-project file and generate lockdir:
   $ solve_project() {
   >   cat >dune-project
-  >   dune pkg lock --opam-env=pure --opam-repository-path=mock-opam-repository
+  >   dune pkg lock --opam-repository-path=mock-opam-repository
   > }
 
 Regular dependencies are resolved transitively:
@@ -106,7 +106,8 @@ Conflicting packages can't be co-installed:
   >  (name x)
   >  (depends foo conflicts-with-foo))
   > EOF
-  Error: Can't find all required versions.
+  Error: Unable to solve dependencies in build context: default
+  Can't find all required versions.
   Selected: foo.0.0.1 foo-dependency.0.0.1 x.dev
   - conflicts-with-foo -> (problem)
       Rejected candidates:
@@ -120,7 +121,8 @@ Conflicting packages in transitive dependencies can't be co-installed:
   >  (name x)
   >  (depends depends-on-foo conflicts-with-foo))
   > EOF
-  Error: Can't find all required versions.
+  Error: Unable to solve dependencies in build context: default
+  Can't find all required versions.
   Selected: depends-on-foo.0.0.1 foo.0.0.1 foo-dependency.0.0.1 x.dev
   - conflicts-with-foo -> (problem)
       Rejected candidates:

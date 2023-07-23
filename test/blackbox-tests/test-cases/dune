@@ -119,12 +119,6 @@
   (<> %{system} macosx)))
 
 (cram
- (applies_to github6607)
- (deps
-  (package stdune)
-  (package ppx_expect)))
-
-(cram
  (applies_to link-time-transitive-deps)
  (deps
   (package dune-build-info)))
@@ -138,12 +132,6 @@
  (enabled_if
   (= %{system} linux))
  (deps %{bin:strace}))
-
-(cram
- (applies_to reason-expect)
- (deps
-  (package ppx_expect)
-  %{bin:refmt}))
 
 (cram
  (applies_to reason)

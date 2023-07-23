@@ -16,7 +16,7 @@ let is_a_source_file path =
   | ".ttf"
   | ".woff" -> false
   | _ -> true)
-  && Path.is_file path
+  && (Path.stat_exn path).st_kind = Unix.S_REG
 
 let subst_string s path ~map =
   let len = String.length s in

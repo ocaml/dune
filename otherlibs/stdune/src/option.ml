@@ -114,3 +114,8 @@ let merge x y ~f =
   | None, res -> res
   | res, None -> res
   | Some x, Some y -> Some (f x y)
+
+let first_some x y =
+  match x with
+  | None -> y
+  | Some _ -> x

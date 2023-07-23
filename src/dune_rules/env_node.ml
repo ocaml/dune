@@ -81,35 +81,35 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         | Some t -> Memo.Lazy.force t >>= field)
         >>= extend)
   in
-  let inherited_if_absent ~field ~root f_absent =
+  let inherited_if_absent ~field ~root ~f_absent =
     Memo.lazy_ (fun () ->
         match root with
+        | Some x -> Memo.return x
         | None -> (
           match inherit_from with
           | None -> f_absent None
           | Some t ->
             let* field = Memo.Lazy.force t >>= field in
-            f_absent (Some field))
-        | Some x -> Memo.return x)
+            f_absent (Some field)))
   in
   let local_binaries =
     Memo.lazy_ (fun () ->
-        Memo.sequential_map config.binaries
+        Memo.parallel_map config.binaries
           ~f:
             (File_binding.Unexpanded.expand ~dir
                ~f:(expand_str_lazy expander_for_artifacts)))
   in
   let external_env =
     inherited ~field:external_env ~root:default_env (fun env ->
-        let env, have_binaries =
-          (Env.extend_env env config.env_vars, List.is_non_empty config.binaries)
+        let env =
+          let env = Env.extend_env env config.env_vars in
+          match config.binaries with
+          | [] -> env
+          | _ :: _ ->
+            let dir = Artifacts.Bin.local_bin dir |> Path.build in
+            Env_path.cons env ~dir
         in
-        Memo.return
-        @@
-        if have_binaries then
-          let dir = Artifacts.Bin.local_bin dir |> Path.build in
-          Env_path.cons env ~dir
-        else env)
+        Memo.return env)
   in
   let bin_artifacts =
     inherited ~field:bin_artifacts ~root:default_bin_artifacts (fun binaries ->
@@ -146,15 +146,10 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         let local = config.js_of_ocaml in
         let+ expander = Memo.Lazy.force expander in
         let expander = Expander.set_dir expander ~dir in
-        let pick ~first ~second =
-          match first with
-          | None -> second
-          | Some _ as x -> x
-        in
         { Js_of_ocaml.Env.compilation_mode =
-            pick ~first:local.compilation_mode ~second:jsoo.compilation_mode
+            Option.first_some local.compilation_mode jsoo.compilation_mode
         ; runtest_alias =
-            pick ~first:local.runtest_alias ~second:jsoo.runtest_alias
+            Option.first_some local.runtest_alias jsoo.runtest_alias
         ; flags =
             Js_of_ocaml.Flags.make ~spec:local.flags ~default:jsoo.flags
               ~eval:(Expander.expand_and_eval_set expander)
@@ -198,7 +193,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   let odoc =
     let open Odoc in
     let root =
-      (* DUNE3: Enable for dev profile in the future *)
+      (* DUNE4: Enable for dev profile in the future *)
       { warnings = Nonfatal }
     in
     inherited ~field:odoc ~root (fun { warnings } ->
@@ -215,13 +210,13 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   in
   let format_config =
     inherited_if_absent ~field:format_config ~root:config.format_config
-      (function
+      ~f_absent:(function
+      | Some x -> Memo.return x
       | None ->
         Code_error.raise
           "format config should always have a default value taken from the \
            project root"
-          []
-      | Some x -> Memo.return x)
+          [])
   in
   let bin_annot =
     inherited ~field:bin_annot ~root:default_bin_annot (fun default ->

@@ -137,8 +137,6 @@ end = struct
       | _ -> None)
 
   let get_impl t dir =
-    (* We recompute the scope on every recursive call, even though it should be
-       unchanged. If this becomes a problem, we can memoize [find_by_dir]. *)
     let* scope = Scope.DB.find_by_dir dir in
     let inherit_from =
       if Path.Build.equal dir (Scope.root scope) then

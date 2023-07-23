@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690122123556,
+  "lastUpdate": 1690122468559,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -58868,6 +58868,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8954490015466667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "hirrolot@gmail.com",
+            "name": "Tima Kinsart",
+            "username": "Hirrolot"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "52ccdbf10d2bdef5618b748fc04197c8347defe2",
+          "message": "doc: fix a few typos in `foreign-code.rst` (#8230)\n\nSigned-off-by: Tima Kinsart <hirrolot@gmail.com>",
+          "timestamp": "2023-07-23T07:01:15-07:00",
+          "tree_id": "5969ff2b918bbba288ab337dca6eb567f2d74ce5",
+          "url": "https://github.com/ocaml/dune/commit/52ccdbf10d2bdef5618b748fc04197c8347defe2"
+        },
+        "date": 1690122467673,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "71.33096005722666",
             "unit": "seconds"
           }
         ]

@@ -328,63 +328,70 @@ module Lock = struct
               ~context_name ~solver_env_from_context
               ~sys_bindings_from_current_system
           in
-          Console.printf "Solver environment for context %s:\n%s"
-            (String.maybe_quoted
-            @@ Dune_engine.Context_name.to_string context_name)
-            (Dune_sexp.to_string @@ Dune_pkg.Solver_env.encode solver_env))
+          Console.print
+            [ Pp.textf "Solver environment for context %s:"
+                (String.maybe_quoted
+                @@ Dune_engine.Context_name.to_string context_name)
+            ; Pp.verbatim
+                (Dune_sexp.to_string @@ Dune_pkg.Solver_env.encode solver_env)
+            ])
     else (
       Per_context.check_for_dup_lock_dir_paths per_context;
-      let* source_dir = Memo.run (Source_tree.root ()) in
-      let+ opam_repo_dir =
-        match opam_repository_path with
-        | Some path -> Fiber.return path
-        | None -> (
-          let repo =
-            opam_repository_url
-            |> Option.map ~f:Opam_repository.of_url
-            |> Option.value ~default:Opam_repository.default
-          in
-          let+ opam_repository = Opam_repository.path repo in
-          match opam_repository with
-          | Ok path -> path
-          | Error _ -> failwith "TODO")
-      in
-      let repo = Dune_pkg.Opam_repo.of_opam_repo_dir_path opam_repo_dir in
-      let project = Source_tree.Dir.project source_dir in
-      let dune_package_map = Dune_project.packages project in
-      let opam_file_map = opam_file_map_of_dune_package_map dune_package_map in
-      (* Construct a list of thunks that will perform all the file IO side
+      (* a list of thunks that will perform all the file IO side
          effects after performing validation so that if materializing any
          lockdir would fail then no side effect takes place. *)
-      List.map per_context
-        ~f:(fun
-             { Per_context.lock_dir_path
-             ; version_preference
-             ; solver_env = solver_env_from_context
-             ; context_common = { name = context_name; _ }
-             }
-           ->
-          let solver_env =
-            merge_current_system_bindings_into_solver_env_from_context
-              ~context_name ~solver_env_from_context
-              ~sys_bindings_from_current_system
-          in
-          match
-            Dune_pkg.Opam_solver.solve_lock_dir solver_env version_preference
-              repo ~local_packages:opam_file_map
-          with
-          | Ok (summary, lock_dir) ->
-            let summary_message =
-              Dune_pkg.Opam_solver.Summary.selected_packages_message summary
-                ~lock_dir_path
-              |> User_message.pp
-            in
-            Ok
-              ( Lock_dir.Write_disk.prepare ~lock_dir_path lock_dir
-              , summary_message )
-          | Error (`Diagnostic_message message) -> Error (context_name, message))
-      |> Result.List.all
-      |> function
+      (let+ opam_file_map =
+         let+ dune_package_map =
+           let+ source_dir = Memo.run (Source_tree.root ()) in
+           let project = Source_tree.Dir.project source_dir in
+           Dune_project.packages project
+         in
+         opam_file_map_of_dune_package_map dune_package_map
+       and+ repo =
+         let+ opam_repo_dir =
+           match opam_repository_path with
+           | Some path -> Fiber.return path
+           | None -> (
+             let repo =
+               Option.map ~f:Opam_repository.of_url opam_repository_url
+               |> Option.value ~default:Opam_repository.default
+             in
+             let+ opam_repository = Opam_repository.path repo in
+             match opam_repository with
+             | Ok path -> path
+             | Error _ -> failwith "TODO")
+         in
+         Dune_pkg.Opam_repo.of_opam_repo_dir_path opam_repo_dir
+       in
+       List.map per_context
+         ~f:(fun
+              { Per_context.lock_dir_path
+              ; version_preference
+              ; solver_env = solver_env_from_context
+              ; context_common = { name = context_name; _ }
+              }
+            ->
+           let solver_env =
+             merge_current_system_bindings_into_solver_env_from_context
+               ~context_name ~solver_env_from_context
+               ~sys_bindings_from_current_system
+           in
+           match
+             Dune_pkg.Opam_solver.solve_lock_dir solver_env version_preference
+               repo ~local_packages:opam_file_map
+           with
+           | Error (`Diagnostic_message message) -> Error (context_name, message)
+           | Ok (summary, lock_dir) ->
+             let summary_message =
+               Dune_pkg.Opam_solver.Summary.selected_packages_message summary
+                 ~lock_dir_path
+               |> User_message.pp
+             in
+             Ok
+               ( Lock_dir.Write_disk.prepare ~lock_dir_path lock_dir
+               , summary_message ))
+       |> Result.List.all)
+      >>| function
       | Error (context_name, message) ->
         User_error.raise
           [ Pp.textf "Unable to solve dependencies in build context: %s"

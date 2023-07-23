@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690122482102,
+  "lastUpdate": 1690122851992,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -75225,6 +75225,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.898124098440004",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "67be91651bf7245307afa72d9b478bc6618e1541",
+          "message": "refactor: cleanup some [Env_node] code (#8248)\n\n* remove wrong comments\r\n* move general purpose functinos to stdune\r\n* add labels for readability\r\n* re-order branches for readability\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-23T07:18:59-07:00",
+          "tree_id": "efb86b8d70bc380fb85bfd520fa66d97b5b8b99c",
+          "url": "https://github.com/ocaml/dune/commit/67be91651bf7245307afa72d9b478bc6618e1541"
+        },
+        "date": 1690122841783,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.54820722142",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690123774756,
+  "lastUpdate": 1690124789814,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -75341,6 +75341,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "26.54820722142",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0d423f5f31e10f6348be78de49de1e0451a54068",
+          "message": "Merge pull request #8188 from gridbugs/add-system-vars-to-solver-env\n\nSolver can solve for multiple environments in single lockdir",
+          "timestamp": "2023-07-23T16:54:19+02:00",
+          "tree_id": "c64d39e38a1ae78f2f24b5a9718ff8f7282bdbc1",
+          "url": "https://github.com/ocaml/dune/commit/0d423f5f31e10f6348be78de49de1e0451a54068"
+        },
+        "date": 1690124781053,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.435827605866667",
             "unit": "seconds"
           }
         ]

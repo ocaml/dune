@@ -699,6 +699,10 @@ let pp_one_module sctx ~lib_name ~scope ~preprocessor_deps
                            ; Path (Path.build dst)
                            ; Command.Ml_kind.ppx_driver_flag ml_kind
                            ; Dep (Path.build src)
+                           ; Hidden_deps
+                               (Module.source m ~ml_kind |> Option.value_exn
+                              |> Module.File.path |> Dep.file
+                              |> Dep.Set.singleton)
                            ; As flags
                            ]
                          >>| Action.Full.add_sandbox sandbox))))

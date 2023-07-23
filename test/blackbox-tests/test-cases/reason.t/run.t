@@ -19,7 +19,6 @@ We make sure to install reason source files:
     "_build/install/default/lib/rlib/hello.rei"
     "_build/install/default/lib/rlib/pped.re"
     "_build/install/default/lib/rlib/pped.rei"
-    "_build/install/default/bin/refmt"
 
 virtual libraries in reason
   $ PATH="_build/install/default/bin:$PATH" dune build --root vlib-impl @all

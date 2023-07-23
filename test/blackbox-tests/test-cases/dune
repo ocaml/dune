@@ -6,7 +6,8 @@
   (binaries
    ../utils/dune_cmd.exe
    ../utils/dunepp.exe
-   ../utils/melc_stdlib_prefix.exe)))
+   ../utils/melc_stdlib_prefix.exe
+   ../utils/refmt.exe)))
 
 (cram
  (applies_to pp-cwd)
@@ -137,3 +138,13 @@
  (enabled_if
   (= %{system} linux))
  (deps %{bin:strace}))
+
+(cram
+ (applies_to reason-expect)
+ (deps
+  (package ppx_expect)
+  %{bin:refmt}))
+
+(cram
+ (applies_to reason)
+ (deps %{bin:refmt}))

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690148394544,
+  "lastUpdate": 1690148432611,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -24793,6 +24793,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "49.32394571176",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c18c1447b0787e4a088c6e2c8b06bb7de562a555",
+          "message": "Merge pull request #8245 from anmonteiro/anmonteiro/fix-dune-cache-docs\n\ndocs: fix the `dune cache trim` documentation",
+          "timestamp": "2023-07-23T23:15:20+02:00",
+          "tree_id": "cf681dbfb9bffc0f62f2868fea5d395f5225c430",
+          "url": "https://github.com/ocaml/dune/commit/c18c1447b0787e4a088c6e2c8b06bb7de562a555"
+        },
+        "date": 1690148431266,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "50.05412400513333",
             "unit": "seconds"
           }
         ]

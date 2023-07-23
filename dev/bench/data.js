@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690110169218,
+  "lastUpdate": 1690110499747,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -58665,6 +58665,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.9144409830600002",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "95689995+unfode@users.noreply.github.com",
+            "name": "unfode",
+            "username": "unfode"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "015015e9f728e4d310228ee60f60886334d452d5",
+          "message": "chore: In Makefile, use the variable BIN instead of repeating the file path (#8244)\n\nSigned-off-by: Futao Wei <forrest.futao.wei@gmail.com>",
+          "timestamp": "2023-07-23T03:42:43-07:00",
+          "tree_id": "d4a1d19d11a6b18390a3890715c115b3f17fb70c",
+          "url": "https://github.com/ocaml/dune/commit/015015e9f728e4d310228ee60f60886334d452d5"
+        },
+        "date": 1690110498819,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.57848929796667",
             "unit": "seconds"
           }
         ]

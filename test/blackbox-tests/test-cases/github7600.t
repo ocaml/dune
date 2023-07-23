@@ -22,7 +22,7 @@ directories too.
   $ dune build @install
   File "src/baz-bar", line 1, characters 0-0:
   Error: "baz-bar" is an invalid module name.
-  Module names must be non-empty and composed only of the following characters:
-  'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
+  Module names must be non-empty, start with a letter, and composed only of the
+  following characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
   Hint: baz_bar would be a correct module name
   [1]

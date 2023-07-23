@@ -4,7 +4,7 @@ We can set preprocessing options for nested modules
   8 |      (run cat %{input-file})) bar/ppme))))
                                     ^^^^^^^^
   Error: "bar/ppme" is an invalid module name.
-  Module names must be non-empty and composed only of the following characters:
-  'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
+  Module names must be non-empty, start with a letter, and composed only of the
+  following characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
   Hint: barppme would be a correct module name
   [1]

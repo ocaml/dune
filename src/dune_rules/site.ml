@@ -2,8 +2,8 @@ open Import
 
 let valid_format_doc =
   Pp.text
-    "Module names must be non-empty and composed only of the following characters: \
-     'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'."
+    "Module names must be non-empty, start with a letter, and composed only of the \
+     following characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'."
 ;;
 
 module Modulelike (S : sig

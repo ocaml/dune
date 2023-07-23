@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690110510787,
+  "lastUpdate": 1690110899852,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -74877,6 +74877,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.352307300926668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "23cba839a0d8a0e714edb49cc7c7afe8d6f7471c",
+          "message": "chore: remove commented out code in Path (#8224)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-23T04:01:54-07:00",
+          "tree_id": "027cfc491d12c4b2b2e1ad52a85c2a511ce2f163",
+          "url": "https://github.com/ocaml/dune/commit/23cba839a0d8a0e714edb49cc7c7afe8d6f7471c"
+        },
+        "date": 1690110891257,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.976670591620003",
             "unit": "seconds"
           }
         ]

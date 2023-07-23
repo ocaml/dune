@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690122480507,
+  "lastUpdate": 1690122482102,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -58955,6 +58955,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.9586940807666666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "08376aefdc58a1bde5c8777e431903a4660767f6",
+          "message": "bug: dune ocaml top-module crashes on absolute path (#7369)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-23T07:01:54-07:00",
+          "tree_id": "9b9e565830746df5a3e53a5dd447e426c96a1913",
+          "url": "https://github.com/ocaml/dune/commit/08376aefdc58a1bde5c8777e431903a4660767f6"
+        },
+        "date": 1690122480694,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8708207380466668",
             "unit": "seconds"
           }
         ]

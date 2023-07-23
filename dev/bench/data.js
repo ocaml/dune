@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690147898563,
+  "lastUpdate": 1690148394544,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -24764,6 +24764,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "47.01553855816667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6eecf7edf503e2327fc101ca26f33e1693b8cda6",
+          "message": "Merge pull request #8251 from ocaml/ps/rr/chore__re_arrange_ppx_expect_tests\n\nchore: re-arrange ppx_expect tests",
+          "timestamp": "2023-07-23T23:15:32+02:00",
+          "tree_id": "267758005b0f5e1a1c8b6899aae321c2420d0788",
+          "url": "https://github.com/ocaml/dune/commit/6eecf7edf503e2327fc101ca26f33e1693b8cda6"
+        },
+        "date": 1690148393166,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "49.32394571176",
             "unit": "seconds"
           }
         ]

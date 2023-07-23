@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690125549111,
+  "lastUpdate": 1690137776412,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -75457,6 +75457,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.435827605866667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "937f541d5e6d902c75c57161399330ed0462e1ab",
+          "message": "Merge pull request #8250 from ocaml/ps/rr/refactor__pass_correct_expander_to__env_node_make_\n\nrefactor: pass correct expander to [Env_node.make]",
+          "timestamp": "2023-07-23T20:30:21+02:00",
+          "tree_id": "0eca0ceeae8292c67188b6ced7bc910fde496872",
+          "url": "https://github.com/ocaml/dune/commit/937f541d5e6d902c75c57161399330ed0462e1ab"
+        },
+        "date": 1690137768264,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.936233904973335",
             "unit": "seconds"
           }
         ]

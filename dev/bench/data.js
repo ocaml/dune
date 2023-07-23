@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690138862103,
+  "lastUpdate": 1690139360621,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -24735,6 +24735,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.10596525108",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8fe927e61c637356283b4903c445c0740ca2267f",
+          "message": "Merge pull request #7932 from Alizter/ps/branch/test__repro__7930\n\nfix: ppx and reason bug",
+          "timestamp": "2023-07-23T20:46:10+02:00",
+          "tree_id": "531cbd89ff1bf3bf053044b24bf87dafbde51097",
+          "url": "https://github.com/ocaml/dune/commit/8fe927e61c637356283b4903c445c0740ca2267f"
+        },
+        "date": 1690139359112,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "47.01553855816667",
             "unit": "seconds"
           }
         ]

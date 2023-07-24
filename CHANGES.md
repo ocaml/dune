@@ -5,6 +5,9 @@
   unremovable files would make dune crash when the shared cache is enabled.
   (#8243, fixes #8228, @emillon)
 
+- Fix permission errors when `sendfile` is not available (#8234, fixes #8120,
+  @emillon)
+
 3.9.1 (2023-07-06)
 ------------------
 

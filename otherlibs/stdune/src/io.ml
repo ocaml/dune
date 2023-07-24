@@ -101,7 +101,7 @@ module Copyfile = struct
     | Linux -> `Sendfile
     | Windows | Other -> `Nothing
 
-  let sendfile =
+  let sendfile_with_fallback =
     let setup_copy ?(chmod = Fun.id) ~src ~dst () =
       match Unix.openfile src [ O_RDONLY ] 0 with
       | exception Unix.Unix_error (Unix.ENOENT, _, _) -> Error `Src_missing
@@ -147,7 +147,12 @@ module Copyfile = struct
         raise (Sys_error message)
       | Ok (src, dst, src_size) ->
         Exn.protect
-          ~f:(fun () -> sendfile ~src ~dst src_size)
+          ~f:(fun () ->
+            try sendfile ~src ~dst src_size
+            with Unix.Unix_error (EINVAL, "sendfile", _) ->
+              let ic = Unix.in_channel_of_descr src in
+              let oc = Unix.out_channel_of_descr dst in
+              copy_channels ic oc)
           ~finally:(fun () ->
             Unix.close src;
             Unix.close dst)
@@ -175,11 +180,6 @@ module Copyfile = struct
   let copy_file_portable ?chmod ~src ~dst () =
     Exn.protectx (setup_copy ?chmod ~src ~dst ()) ~finally:close_both
       ~f:(fun (ic, oc) -> copy_channels ic oc)
-
-  let sendfile_with_fallback ?chmod ~src ~dst () =
-    try sendfile ?chmod ~src ~dst ()
-    with Unix.Unix_error (EINVAL, "sendfile", _) ->
-      copy_file_portable ?chmod ~src ~dst ()
 
   let copy_file_best =
     match available with

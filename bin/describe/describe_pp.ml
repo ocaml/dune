@@ -28,12 +28,13 @@ let pp_with_ocamlc sctx project pp_file =
       ; "-dump-into-file"
       ]
   in
-  if not (Path.exists dump_file && Path.is_file dump_file) then
+  match Path.stat dump_file with
+  | Ok { st_kind = S_REG; _ } ->
+    Io.cat dump_file;
+    Path.unlink_no_err dump_file
+  | _ ->
     User_error.raise
       [ Pp.textf "cannot find a dump file: %s" (Path.to_string dump_file) ]
-  else Io.cat dump_file;
-  Path.unlink_no_err dump_file;
-  ()
 
 let get_pped_file super_context file =
   let open Memo.O in

@@ -1088,8 +1088,6 @@ let is_directory_with_error t =
   | exception Sys_error e -> Error e
   | bool -> Ok bool
 
-let is_file t = not (is_directory t)
-
 let rmdir t = Unix.rmdir (to_string t)
 
 let unlink t = Fpath.unlink (to_string t)

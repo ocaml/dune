@@ -410,8 +410,6 @@ val is_directory : t -> bool
 
 val is_directory_with_error : t -> (bool, string) Result.t
 
-val is_file : t -> bool
-
 val rmdir : t -> unit
 
 val unlink : t -> unit

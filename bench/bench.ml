@@ -1,6 +1,12 @@
 open Stdune
 module Process = Dune_engine.Process
 
+module Console = struct
+  include Dune_console
+
+  let printf fmt = printf ("[Bench] " ^^ fmt)
+end
+
 module Json = struct
   include Chrome_trace.Json
   include Dune_stats.Json
@@ -87,8 +93,12 @@ let duniverse =
 let prepare_workspace () =
   Fiber.parallel_iter duniverse ~f:(fun (pkg : Package.t) ->
       Fpath.rm_rf pkg.name;
-      Format.eprintf "cloning %s/%s@." pkg.org pkg.name;
-      Package.clone pkg)
+      Console.printf "cloning %s/%s" pkg.org pkg.name;
+      Fiber.finalize
+        (fun () -> Package.clone pkg)
+        ~finally:(fun () ->
+          Fiber.return
+          @@ Console.printf "finished cloning %s/%s" pkg.org pkg.name))
 
 let dune_build ~name ~sandbox =
   let stdin_from = Process.(Io.null In) in
@@ -231,11 +241,15 @@ let () =
     (* Prepare the workspace *)
     let* () = prepare_workspace () in
     (* Build the clean and null builds *)
+    Console.printf "Building clean and null builds";
     let* clean, zero = run_bench ~sandbox:`No in
+    Console.printf "Finished building clean and null builds";
     (* Clean the workspace *)
     let* () = dune_clean () in
+    Console.printf "Building clean and null builds with sandbox";
     (* Build the clean and null builds with sandbox *)
     let+ clean_sandbox, zero_sandbox = run_bench ~sandbox:`Yes in
+    Console.printf "Finished building clean and null builds with sandbox";
     (* Return the bench results *)
     format_results { size; clean; zero; clean_sandbox; zero_sandbox }
   in

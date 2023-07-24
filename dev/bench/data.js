@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690200257254,
+  "lastUpdate": 1690200268108,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -59912,6 +59912,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "64.45720905919333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "74893232e3bbcce8f308ca9fca92abf6419617c1",
+          "message": "Merge pull request #8256 from ocaml/ps/rr/refactor__use_precise_path_types\n\nrefactor: use precise path types",
+          "timestamp": "2023-07-24T13:39:31+02:00",
+          "tree_id": "f3c2ba2f4d8bdf798c3355241cb923b6d5128367",
+          "url": "https://github.com/ocaml/dune/commit/74893232e3bbcce8f308ca9fca92abf6419617c1"
+        },
+        "date": 1690200267094,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6240042952933333",
             "unit": "seconds"
           }
         ]

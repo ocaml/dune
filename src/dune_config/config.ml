@@ -116,7 +116,10 @@ let background_digests =
   let t =
     { name = "background_digests"
     ; of_string = Toggle.of_string
-    ; value = background_default
+    ; value =
+        (match Platform.OS.value with
+        | Linux -> `Enabled
+        | _ -> `Disabled)
     }
   in
   register t;

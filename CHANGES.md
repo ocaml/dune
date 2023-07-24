@@ -24,6 +24,10 @@ Unreleased
 - Fix permission errors when `sendfile` is not available (#8234, fixes #8120,
   @emillon)
 
+- Disable background digests on Windows. This prevents an issue where
+  unremovable files would make dune crash when the shared cache is enabled.
+  (#8243, fixes #8228, @emillon)
+
 3.9.1 (2023-07-06)
 ------------------
 

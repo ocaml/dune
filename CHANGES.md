@@ -15,6 +15,9 @@ Unreleased
 - Fix bug with ppx and Reason syntax due to missing dependency in sandboxed
   action (#7932, fixes #7930, @Alizter)
 
+- Add `dune describe package-entries` to print all package entries (#7480,
+  @moyodiallo)
+
 3.9.1 (2023-07-06)
 ------------------
 

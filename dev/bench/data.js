@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690198071135,
+  "lastUpdate": 1690198239145,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -24851,6 +24851,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.63734999112",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "moyodiallo@gmail.com",
+            "name": "Alpha Issiaga DIALLO",
+            "username": "moyodiallo"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8aeadd5cd4c7d0b1539b4db86e74a1846defeebe",
+          "message": "Add \"dune describe package-entries\" (#7480)\n\n* Add \"dune describe entries\"\r\n\r\n    The need is about knowing if a private executable is going to be\r\n    installed before building the project.\r\n\r\nSigned-off-by: Alpha DIALLO <moyodiallo@gmail.com>\r\nCo-authored-by: Etienne Millon <etienne.millon@gmail.com>",
+          "timestamp": "2023-07-24T13:10:08+02:00",
+          "tree_id": "92254b2a577984ce6300b321e9cc02674d0bf338",
+          "url": "https://github.com/ocaml/dune/commit/8aeadd5cd4c7d0b1539b4db86e74a1846defeebe"
+        },
+        "date": 1690198238190,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.62086972409333",
             "unit": "seconds"
           }
         ]

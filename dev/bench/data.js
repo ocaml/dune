@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690196905393,
+  "lastUpdate": 1690197331321,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -24822,6 +24822,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "50.05412400513333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4b18d523e1e20fe3c94f397a8c5563472bcc72dd",
+          "message": "Merge pull request #8255 from Alizter/ps/branch/refactor__remove_path_is_directory_with_error\n\nrefactor: remove Path.is_directory_with_error",
+          "timestamp": "2023-07-24T12:55:38+02:00",
+          "tree_id": "ef387bf62bfe7879cf578e9772a068b532a07f5f",
+          "url": "https://github.com/ocaml/dune/commit/4b18d523e1e20fe3c94f397a8c5563472bcc72dd"
+        },
+        "date": 1690197330503,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.63734999112",
             "unit": "seconds"
           }
         ]

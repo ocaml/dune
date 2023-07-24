@@ -112,20 +112,21 @@ module File = struct
     let name = "dune" in
     let full_path = Path.relative path name in
     let content =
-      if not (Path.exists full_path) then []
-      else if Path.is_directory full_path then
-        User_error.raise
-          [ Pp.textf "\"%s\" already exists and is a directory"
-              (Path.to_absolute_filename full_path)
-          ]
-      else
+      match Path.stat full_path with
+      | Ok { Unix.st_kind = S_REG; _ } -> (
         match Io.with_lexbuf_from_file ~f:Dune_lang.Format.parse full_path with
         | Dune_lang.Format.Sexps content -> content
         | Dune_lang.Format.OCaml_syntax _ ->
           User_error.raise
             [ Pp.textf "Cannot load dune file %s because it uses OCaml syntax"
                 (Path.to_string_maybe_quoted full_path)
-            ]
+            ])
+      | Ok { Unix.st_kind = S_DIR; _ } ->
+        User_error.raise
+          [ Pp.textf "\"%s\" already exists and is a directory"
+              (Path.to_absolute_filename full_path)
+          ]
+      | _ -> []
     in
     Dune { path; name; content }
 

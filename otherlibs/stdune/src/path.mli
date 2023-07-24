@@ -406,8 +406,6 @@ val readdir_unsorted_with_kinds :
 
 val is_dir_sep : char -> bool
 
-val is_directory : t -> bool
-
 val rmdir : t -> unit
 
 val unlink : t -> unit

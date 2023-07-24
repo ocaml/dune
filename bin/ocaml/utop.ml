@@ -20,9 +20,13 @@ let term =
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
   let config = Common.init common in
   let dir = Common.prefix_target common dir in
-  if not (Path.is_directory (Path.of_string dir)) then
-    User_error.raise
-      [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
+  let () =
+    match Path.stat (Path.of_string dir) with
+    | Ok { Unix.st_kind = S_DIR; _ } -> ()
+    | _ ->
+      User_error.raise
+        [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ]
+  in
   let sctx, utop_path =
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in

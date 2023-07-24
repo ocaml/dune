@@ -591,15 +591,16 @@ let term : unit Term.t =
              Path.Source.(relative root) (Common.prefix_target common dir)
            in
            let s = Path.source p in
-           if not @@ Path.exists s then
-             User_error.raise
-               [ Pp.textf "No such file or directory: %s" (Path.to_string s) ];
-           if not @@ Path.is_directory s then
+           match Path.stat s with
+           | Ok { Unix.st_kind = Unix.S_DIR; _ } -> Memo.return p
+           | Ok _ ->
              User_error.raise
                [ Pp.textf "File exists, but is not a directory: %s"
                    (Path.to_string s)
-               ];
-           Memo.return p))
+               ]
+           | Error _ ->
+             User_error.raise
+               [ Pp.textf "No such file or directory: %s" (Path.to_string s) ]))
   >>= Crawl.workspace options setup context
   >>| Sanitize_for_tests.Workspace.sanitize context
   >>| Descr.Workspace.to_dyn options

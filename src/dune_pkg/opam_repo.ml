@@ -50,27 +50,28 @@ let validate_repo_file opam_repo_dir_path =
           ]
 
 let of_opam_repo_dir_path opam_repo_dir_path =
-  if not (Path.exists opam_repo_dir_path) then
-    User_error.raise
-      [ Pp.textf "%s does not exist"
-          (Path.to_string_maybe_quoted opam_repo_dir_path)
-      ];
-  if not (Path.is_directory opam_repo_dir_path) then
-    User_error.raise
-      [ Pp.textf "%s is not a directory"
-          (Path.to_string_maybe_quoted opam_repo_dir_path)
-      ];
   let packages_dir_path = opam_repo_dir_path / "packages" in
-  if not (Path.exists packages_dir_path && Path.is_directory packages_dir_path)
-  then
+  match (Path.stat opam_repo_dir_path, Path.stat packages_dir_path) with
+  | Ok { Unix.st_kind = S_DIR; _ }, Ok { Unix.st_kind = S_DIR; _ } ->
+    validate_repo_file opam_repo_dir_path;
+    { packages_dir_path }
+  | Ok { Unix.st_kind = S_DIR; _ }, _ ->
     User_error.raise
       [ Pp.textf
           "%s doesn't look like a path to an opam repository as it lacks a \
            subdirectory named \"packages\""
           (Path.to_string_maybe_quoted opam_repo_dir_path)
-      ];
-  validate_repo_file opam_repo_dir_path;
-  { packages_dir_path }
+      ]
+  | Ok _, _ ->
+    User_error.raise
+      [ Pp.textf "%s is not a directory"
+          (Path.to_string_maybe_quoted opam_repo_dir_path)
+      ]
+  | Error _, _ ->
+    User_error.raise
+      [ Pp.textf "%s does not exist"
+          (Path.to_string_maybe_quoted opam_repo_dir_path)
+      ]
 
 (* Return the path to the directory containing the version directories for a package name *)
 let get_opam_package_version_dir_path t opam_package_name =

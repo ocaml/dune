@@ -654,14 +654,16 @@ let wait_for_initial_watches_established_blocking t =
 (* Return the parent directory of [ext] if [ext] denotes a file. *)
 let parent_directory ext =
   let rec loop p =
-    if Path.is_directory (Path.external_ p) then Some ext
-    else
+    match Path.stat (Path.external_ p) with
+    | Ok { Unix.st_kind = S_DIR; _ } -> Some p
+    | Ok { Unix.st_kind = S_REG; _ } -> (
       match Path.External.parent p with
       | None ->
         User_warning.emit
           [ Pp.textf "Refusing to watch %s" (Path.External.to_string ext) ];
         None
-      | Some ext -> loop ext
+      | Some p -> loop p)
+    | _ -> None
   in
   loop ext
 

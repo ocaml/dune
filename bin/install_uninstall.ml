@@ -370,9 +370,9 @@ end) : File_operations = struct
     match Fpath.mkdir_p (Path.to_string p) with
     | Created -> ()
     | Already_exists -> (
-      match Path.is_directory p with
-      | true -> ()
-      | false ->
+      match Path.stat_exn p with
+      | { Unix.st_kind = S_DIR; _ } -> ()
+      | _ ->
         User_error.raise
           [ Pp.textf "Please delete file %s manually."
               (Path.to_string_maybe_quoted p)
@@ -756,10 +756,12 @@ let install_uninstall ~what =
                           in
                           if copy then
                             let* () =
-                              (match Path.is_directory dst with
-                              | true ->
+                              (match Path.stat dst with
+                              | Ok { Unix.st_kind = S_DIR; _ } ->
                                 Ops.remove_dir_if_exists ~if_non_empty:Fail dst
-                              | false -> Ops.remove_file_if_exists dst);
+                              | Ok { Unix.st_kind = S_REG; _ } ->
+                                Ops.remove_file_if_exists dst
+                              | _ -> ());
                               print_line ~verbosity "%s %s" msg
                                 (Path.to_string_maybe_quoted dst);
                               Ops.mkdir_p dir;

@@ -17,6 +17,7 @@ let subcommands =
   ; Installed_libraries.command
   ; Aliases_targets.Targets_cmd.command
   ; Aliases_targets.Aliases_cmd.command
+  ; Package_entries.command
   ]
 
 let group =

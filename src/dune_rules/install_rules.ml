@@ -1217,6 +1217,8 @@ let gen_install_alias sctx (package : Package.t) =
     Rules.Produce.Alias.add_deps install_alias
       (Action_builder.path install_file)
 
+let stanzas_to_entries = Stanzas_to_entries.stanzas_to_entries
+
 let gen_project_rules sctx project =
   let* () = meta_and_dune_package_rules sctx project in
   let* packages = Only_packages.packages_of_project project in

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690197802984,
+  "lastUpdate": 1690198071135,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -76066,6 +76066,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "24.455558075386666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "moyodiallo@gmail.com",
+            "name": "Alpha Issiaga DIALLO",
+            "username": "moyodiallo"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "875fc237d37995d51bdf038dc37c6f16ead03cc8",
+          "message": "Improve \"dune describe external-lib-deps\" : printing out more information  (#7478)\n\n* refactor: improve \"dune describe external-lib-deps\"\r\n\r\n    Instead of having only external dependencies, we could also add the\r\n    internal dependencies for more information.\r\n\r\nIf a private lib is a dependency and have an external lib as dependency,\r\nthat information should be known. In order to reach all external\r\ndependencies.\r\n\r\nSigned-off-by: Alpha DIALLO <moyodiallo@gmail.com>\r\nCo-authored-by: Etienne Millon <etienne.millon@gmail.com>",
+          "timestamp": "2023-07-24T13:15:52+02:00",
+          "tree_id": "bc20eb6a4982918a56fe0976a66a757caaa1f197",
+          "url": "https://github.com/ocaml/dune/commit/875fc237d37995d51bdf038dc37c6f16ead03cc8"
+        },
+        "date": 1690198062268,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.51266769306",
             "unit": "seconds"
           }
         ]

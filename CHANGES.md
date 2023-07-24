@@ -18,6 +18,9 @@ Unreleased
 - Add `dune describe package-entries` to print all package entries (#7480,
   @moyodiallo)
 
+- Improve `dune describe external-lib-deps` by adding the internal dependencies
+  for more information. (#7478, @moyodiallo)
+
 3.9.1 (2023-07-06)
 ------------------
 

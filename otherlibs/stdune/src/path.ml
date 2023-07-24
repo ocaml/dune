@@ -1291,6 +1291,8 @@ module Source = struct
 
   let is_in_build_dir s = is_in_build_dir (path_of_local s)
 
+  let append_local = append
+
   let to_local t = t
 end
 

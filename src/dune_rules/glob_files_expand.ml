@@ -10,7 +10,7 @@ let get_descendants_of_relative_dir_relative_to_base_dir_local ~base_dir
     ~relative_dir =
   let base_dir = Path.Build.drop_build_context_exn base_dir in
   let rec get_descendants_rec relative_dir =
-    let absolute_dir = Path.Source.relative base_dir relative_dir in
+    let absolute_dir = Path.Source.append_local base_dir relative_dir in
     let open Memo.O in
     let* children =
       Source_tree.find_dir absolute_dir >>| function
@@ -19,7 +19,7 @@ let get_descendants_of_relative_dir_relative_to_base_dir_local ~base_dir
     in
     let+ rest =
       Memo.List.concat_map children ~f:(fun child ->
-          get_descendants_rec (Filename.concat relative_dir child))
+          get_descendants_rec (Path.Local.relative relative_dir child))
     in
     relative_dir :: rest
   in
@@ -29,7 +29,7 @@ let get_descendants_of_relative_dir_relative_to_base_dir_local ~base_dir
    returns the path to a file of the same name as that of [old_path],
    contained in the directory [new_dir]. *)
 let replace_path_dir new_dir old_path =
-  Filename.concat new_dir (Path.basename old_path)
+  Path.relative new_dir (Path.basename old_path)
 
 let split_glob_string_into_parent_and_pattern glob_string =
   (* Extract the component of the string after the last path separator. This
@@ -60,7 +60,7 @@ module Glob_dir = struct
   type t =
     | Absolute of Path.External.t
     | Relative of
-        { relative_dir : string
+        { relative_dir : Path.Local.t
         ; base_dir : Path.Build.t
         }
 end
@@ -87,7 +87,7 @@ module Without_vars = struct
     match (dir : Glob_dir.t) with
     | Relative { relative_dir; base_dir } ->
       let make_file_selector relative_dir =
-        let dir = Path.Build.relative base_dir relative_dir in
+        let dir = Path.Build.append_local base_dir relative_dir in
         File_selector.of_glob ~dir:(Path.build dir) glob
       in
       if recursive then
@@ -96,8 +96,13 @@ module Without_vars = struct
         |> Memo.map
              ~f:
                (List.map ~f:(fun relative_dir ->
-                    (make_file_selector relative_dir, relative_dir)))
-      else Memo.return [ (make_file_selector relative_dir, relative_dir) ]
+                    ( make_file_selector relative_dir
+                    , Path.source @@ Path.Source.of_local relative_dir )))
+      else
+        Memo.return
+          [ ( make_file_selector relative_dir
+            , Path.source @@ Path.Source.of_local relative_dir )
+          ]
     | Absolute dir ->
       if recursive then
         User_error.raise ~loc
@@ -105,7 +110,7 @@ module Without_vars = struct
       else
         Memo.return
           [ ( File_selector.of_glob ~dir:(Path.external_ dir) glob
-            , Path.External.to_string dir )
+            , Path.external_ dir )
           ]
 end
 
@@ -124,7 +129,7 @@ struct
     let glob = Glob.of_string_exn loc pattern_str in
     let dir : Glob_dir.t =
       if Filename.is_relative parent_str then
-        Relative { relative_dir = parent_str; base_dir }
+        Relative { relative_dir = Path.Local.of_string parent_str; base_dir }
       else Absolute (Path.External.of_string parent_str)
     in
     { Without_vars.glob; dir; recursive }
@@ -138,7 +143,7 @@ struct
     >>= M.List.concat_map ~f:(fun (file_selector, relative_dir) ->
             C.collect_files ~loc file_selector
             >>| Path.Set.to_list_map ~f:(replace_path_dir relative_dir))
-    >>| List.sort ~compare:String.compare
+    >>| List.sort ~compare:Path.compare
 end
 
 let action_builder =

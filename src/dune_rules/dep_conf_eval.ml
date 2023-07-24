@@ -130,10 +130,13 @@ let rec dep expander = function
       (Glob_files_expand.action_builder glob_files
          ~f:(Expander.expand_str expander)
          ~base_dir:(Expander.dir expander)
-      >>| List.map ~f:(fun path ->
-              if Filename.is_relative path then
-                Path.Build.relative (Expander.dir expander) path |> Path.build
-              else Path.of_string path))
+      >>| List.map ~f:(fun (path : Path.t) ->
+              match path with
+              | External _ -> path
+              | In_build_dir _ -> assert false
+              | In_source_tree path ->
+                Path.Build.append_source (Expander.dir expander) path
+                |> Path.build))
   | Source_tree s ->
     Other
       (let* path = Expander.expand_path expander s in

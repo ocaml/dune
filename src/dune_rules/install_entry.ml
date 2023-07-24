@@ -48,7 +48,14 @@ module File = struct
         in
         let glob_loc = String_with_vars.loc glob_files.glob in
         List.map paths ~f:(fun path ->
-            let src = (glob_loc, path) in
+            let src =
+              ( glob_loc
+              , match (path : Path.t) with
+                | External s -> Path.External.to_string s
+                | In_build_dir d -> Path.Local.to_string @@ Path.Build.local d
+                | In_source_tree d ->
+                  Path.Local.to_string @@ Path.Source.to_local d )
+            in
             File_binding.Unexpanded.make ~src ~dst:src)
 
     let to_file_bindings_expanded t ~expand_str ~dir =

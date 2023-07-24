@@ -116,6 +116,8 @@ module Source : sig
 
   val to_local : t -> Local.t
 
+  val append_local : t -> Local.t -> t
+
   module Table : Hashtbl.S with type key = t
 end
 

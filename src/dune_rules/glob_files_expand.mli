@@ -12,7 +12,7 @@ val memo :
      Dep_conf.Glob_files.t
   -> f:(String_with_vars.t -> string Memo.t)
   -> base_dir:Path.Build.t
-  -> string list Memo.t
+  -> Path.t list Memo.t
 
 (** Expand a glob inside the [Action_builder] context. The result of calling
     [Glob_files.Action_builder.expand] is an action builder which will resolve
@@ -22,4 +22,4 @@ val action_builder :
      Dep_conf.Glob_files.t
   -> f:(String_with_vars.t -> string Action_builder.t)
   -> base_dir:Path.Build.t
-  -> string list Action_builder.t
+  -> Path.t list Action_builder.t

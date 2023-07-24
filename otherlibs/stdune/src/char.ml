@@ -7,3 +7,5 @@ let is_digit = function
 let is_lowercase_hex = function
   | '0' .. '9' | 'a' .. 'f' -> true
   | _non_lowercase_hex_char -> false
+
+let[@inline always] hash c = Int.hash (code c)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690198825116,
+  "lastUpdate": 1690199048862,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -24909,6 +24909,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.111504188519994",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c04be7b8fd0ac3665920c2cb5d1e8a6663389279",
+          "message": "refactor: use Exn.protect instead of protectx (#8235)\n\nThis adds a layer of rebinding that obscures what is going on.\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-24T13:19:50+02:00",
+          "tree_id": "e2d599fe301d825bf315e42361418c6fd6cd0e2c",
+          "url": "https://github.com/ocaml/dune/commit/c04be7b8fd0ac3665920c2cb5d1e8a6663389279"
+        },
+        "date": 1690199047611,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "47.91577620222",
             "unit": "seconds"
           }
         ]

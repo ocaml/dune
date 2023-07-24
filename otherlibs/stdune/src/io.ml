@@ -145,10 +145,10 @@ module Copyfile = struct
       | Error `Src_missing ->
         let message = Printf.sprintf "%s: No such file or directory" src in
         raise (Sys_error message)
-      | Ok (fd_src, fd_dst, src_size) ->
-        Exn.protectx (fd_src, fd_dst, src_size)
-          ~f:(fun (src, dst, src_size) -> sendfile ~src ~dst src_size)
-          ~finally:(fun (src, dst, _) ->
+      | Ok (src, dst, src_size) ->
+        Exn.protect
+          ~f:(fun () -> sendfile ~src ~dst src_size)
+          ~finally:(fun () ->
             Unix.close src;
             Unix.close dst)
 

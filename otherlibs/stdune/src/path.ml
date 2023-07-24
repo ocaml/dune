@@ -1083,11 +1083,6 @@ let readdir_unsorted_with_kinds t =
 let is_directory t =
   try Sys.is_directory (to_string t) with Sys_error _ -> false
 
-let is_directory_with_error t =
-  match Sys.is_directory (to_string t) with
-  | exception Sys_error e -> Error e
-  | bool -> Ok bool
-
 let rmdir t = Unix.rmdir (to_string t)
 
 let unlink t = Fpath.unlink (to_string t)

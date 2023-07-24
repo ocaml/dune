@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690200268108,
+  "lastUpdate": 1690209417282,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -76501,6 +76501,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.693601819733335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cb3489de05b31b9e9be90a415a52eb3550349bdb",
+          "message": "fix(sendfile): unlink dst before fallback (#8234)\n\nFixes #8210\n\nIf the `sendfile` branch failed, it leaves an empty target file, so\nretrying will fail. Instead we reuse the fd directly.\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-24T16:24:15+02:00",
+          "tree_id": "baaf9d86379eefc47ed9b2ec9021a3fd119255b7",
+          "url": "https://github.com/ocaml/dune/commit/cb3489de05b31b9e9be90a415a52eb3550349bdb"
+        },
+        "date": 1690209407804,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.876181636453335",
             "unit": "seconds"
           }
         ]

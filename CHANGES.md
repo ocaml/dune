@@ -1,4 +1,4 @@
-3.9.2 (unreleased)
+3.9.2 (2023-07-25)
 ------------------
 
 - Disable background digests on Windows. This prevents an issue where

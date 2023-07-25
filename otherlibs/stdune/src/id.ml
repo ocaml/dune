@@ -21,11 +21,8 @@ module type S = sig
 end
 
 module Make () : S = struct
-  module Set = Int.Set
-  module Map = Int.Map
+  include Int
   module Table = Hashtbl.Make (Int)
-
-  type t = int
 
   let next = ref 0
 
@@ -37,12 +34,4 @@ module Make () : S = struct
   let peek () = !next
 
   let to_int x = x
-
-  let compare = Int.compare
-
-  let equal = Int.equal
-
-  let hash (t : t) = t
-
-  let to_dyn t = Dyn.Int t
 end

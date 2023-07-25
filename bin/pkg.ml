@@ -253,6 +253,28 @@ module Lock = struct
     in
     { solver_env_from_context with Dune_pkg.Solver_env.sys }
 
+  (* Set the opam-version variable, raising a user error if it's already set. *)
+  let add_opam_version_to_solver_env context_name
+      (solver_env : Dune_pkg.Solver_env.t) =
+    match
+      Dune_pkg.Solver_env.Sys_var.Bindings.get solver_env.sys `Opam_version
+    with
+    | Some _ ->
+      User_error.raise
+        [ Pp.textf
+            "Context %s would override solver variable %s. This variable may \
+             not be overriden."
+            (String.maybe_quoted
+            @@ Dune_engine.Context_name.to_string context_name)
+            (Dune_pkg.Solver_env.Sys_var.to_string `Opam_version)
+        ]
+    | None ->
+      { solver_env with
+        sys =
+          Dune_pkg.Solver_env.Sys_var.Bindings.set solver_env.sys `Opam_version
+            (OpamVersion.to_string OpamVersion.current)
+      }
+
   let context_term =
     Arg.(
       value
@@ -327,6 +349,7 @@ module Lock = struct
             merge_current_system_bindings_into_solver_env_from_context
               ~context_name ~solver_env_from_context
               ~sys_bindings_from_current_system
+            |> add_opam_version_to_solver_env context_name
           in
           Console.print
             [ Pp.textf "Solver environment for context %s:"
@@ -375,6 +398,7 @@ module Lock = struct
              merge_current_system_bindings_into_solver_env_from_context
                ~context_name ~solver_env_from_context
                ~sys_bindings_from_current_system
+             |> add_opam_version_to_solver_env context_name
            in
            match
              Dune_pkg.Opam_solver.solve_lock_dir solver_env version_preference

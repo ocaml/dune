@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690279350334,
+  "lastUpdate": 1690279360630,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -60260,6 +60260,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "63.353449866686674",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "979cd2cec0b794b917a56ab52df8e8e6b93e3236",
+          "message": "fix: disable background digests on Windows (#8243)\n\nFixes #8228\r\n\r\nIn some cases when the shared cache is enabled, some temporary\r\ndirectories cannot be removed.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-25T11:37:59+02:00",
+          "tree_id": "83bbb8a34948ae2c6cfde0f415a7dfc9a044c56b",
+          "url": "https://github.com/ocaml/dune/commit/979cd2cec0b794b917a56ab52df8e8e6b93e3236"
+        },
+        "date": 1690279359953,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6211713241666665",
             "unit": "seconds"
           }
         ]

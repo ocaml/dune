@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690279029586,
+  "lastUpdate": 1690279237304,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -60173,6 +60173,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.99320766256",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "940a313433b9b5aa84bf94855a7f5a1a3d54b1a1",
+          "message": "fix: use good hash function for id's and integers (#8258)\n\nAlso remove some duplication between the [Id] and [Int] modules.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\n\r\n<!-- ps-id: b2da0ebf-5b7c-4f11-9a1c-8f422815d953 -->",
+          "timestamp": "2023-07-25T02:35:52-07:00",
+          "tree_id": "810520ad10df16d824ad9014cafdf4a9d72a92f2",
+          "url": "https://github.com/ocaml/dune/commit/940a313433b9b5aa84bf94855a7f5a1a3d54b1a1"
+        },
+        "date": 1690279236084,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "63.67936328794",
             "unit": "seconds"
           }
         ]

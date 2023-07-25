@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690290437354,
+  "lastUpdate": 1690290766709,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -60318,6 +60318,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6211713241666665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2bcf5e9c3277d610318304d605da6928b6131ba5",
+          "message": "refactor: describe_workspace path sanitation (#8204)\n\nWe refactor how describe_workspace handles path sanitiation by switching\r\nfrom manual string manipulations to their Path equivalents. This makes\r\nthe test reproducible on Nix.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-07-25T05:47:48-07:00",
+          "tree_id": "a72c27f6cec1a8f419f8089b32ba4a0d05402ef1",
+          "url": "https://github.com/ocaml/dune/commit/2bcf5e9c3277d610318304d605da6928b6131ba5"
+        },
+        "date": 1690290765970,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.30446446619332",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690210187343,
+  "lastUpdate": 1690275695765,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -76617,6 +76617,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.876181636453335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b3afb6aa12b129ed93720aee7ab3696b76c9e851",
+          "message": "Merge pull request #8237 from gridbugs/pkg-actions-run-in-user-env\n\nExpose user environment when running pkg actions",
+          "timestamp": "2023-07-25T10:47:57+02:00",
+          "tree_id": "123796721b25b98d30bc8c8b98dad79e428d54c4",
+          "url": "https://github.com/ocaml/dune/commit/b3afb6aa12b129ed93720aee7ab3696b76c9e851"
+        },
+        "date": 1690275686229,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "24.267370128746666",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690290777294,
+  "lastUpdate": 1690293005851,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -77081,6 +77081,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.55276407046",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5e2e7ec3193cebe55358aebd2fee7e0ce3541091",
+          "message": "Merge pull request #8196 from Alizter/ps/branch/test__expand___deps__in__cat_\n\ntest: expand %{deps} in (cat)",
+          "timestamp": "2023-07-25T15:33:35+02:00",
+          "tree_id": "5cfe1ead012f4939f49a000e6f40c12b00d8f4cf",
+          "url": "https://github.com/ocaml/dune/commit/5e2e7ec3193cebe55358aebd2fee7e0ce3541091"
+        },
+        "date": 1690292994734,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "29.99532859653333",
             "unit": "seconds"
           }
         ]

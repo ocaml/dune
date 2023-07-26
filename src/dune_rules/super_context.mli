@@ -27,7 +27,6 @@ val context : t -> Context.t
 val context_env : t -> Env.t
 
 val env_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
-val bin_annot : t -> dir:Path.Build.t -> bool Memo.t
 
 val add_rule
   :  t

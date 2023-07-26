@@ -279,7 +279,7 @@ end = struct
       in
       let set_dir m = List.map ~f:(fun (cm_kind, p) -> cm_dir m cm_kind, p) in
       let+ modules_impl =
-        let+ bin_annot = Super_context.bin_annot sctx ~dir in
+        let+ bin_annot = Env_stanza_db.bin_annot ~dir in
         List.concat_map installable_modules.impl ~f:(fun m ->
           let cmt_files =
             match bin_annot with

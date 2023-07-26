@@ -180,7 +180,7 @@ let create
   and+ bin_annot =
     match bin_annot with
     | Some b -> Memo.return b
-    | None -> Super_context.bin_annot super_context ~dir:(Obj_dir.dir obj_dir)
+    | None -> Env_stanza_db.bin_annot ~dir:(Obj_dir.dir obj_dir)
   in
   { super_context
   ; scope

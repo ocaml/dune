@@ -69,7 +69,7 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
            in
            match Dune_project.use_standard_c_and_cxx_flags project with
            | Some true when Buildable.has_foreign_cxx lib.buildable ->
-             Cxx_flags.get_flags ~for_:Link ctx
+             Cxx_flags.get_flags ~for_:Link ctx.build_context
            | _ -> Action_builder.return []
          in
          let cclibs =
@@ -239,7 +239,7 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
     let ctx = Super_context.context sctx in
     match Dune_project.use_standard_c_and_cxx_flags project with
     | Some true when Foreign.Sources.has_cxx_sources foreign_sources ->
-      Cxx_flags.get_flags ~for_:Link ctx
+      Cxx_flags.get_flags ~for_:Link ctx.build_context
     | _ -> Action_builder.return []
   in
   let c_library_flags =
@@ -286,7 +286,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
       let+ project = Scope.DB.find_by_dir dir >>| Scope.project in
       match Dune_project.use_standard_c_and_cxx_flags project with
       | Some true when Foreign.Sources.has_cxx_sources foreign_sources ->
-        Cxx_flags.get_flags ~for_:Link ctx
+        Cxx_flags.get_flags ~for_:Link ctx.build_context
       | _ -> Action_builder.return []
     in
     let c_library_flags =

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690387207068,
+  "lastUpdate": 1690387613439,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -60753,6 +60753,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.36368290014",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5837be0dee0abb306f715955f918d9afe831f39b",
+          "message": "Merge 3.9.2 changelog (#8272)\n\n(also fixes issue number)\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-26T17:36:11+02:00",
+          "tree_id": "451cd8b23c52704c944bd3fabc1f0f54b4c8ba4e",
+          "url": "https://github.com/ocaml/dune/commit/5837be0dee0abb306f715955f918d9afe831f39b"
+        },
+        "date": 1690387612116,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "79.48824841482",
             "unit": "seconds"
           }
         ]

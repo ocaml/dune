@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690359431052,
+  "lastUpdate": 1690359442136,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -60521,6 +60521,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "63.59491039957334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d5c81fc9427d424327ac6bf113bb97926a32162d",
+          "message": "Don't warn on undefined opam variables when solving (#8275)\n\nUndefined variables don't indicate a problem and packages expect\r\ncomparisons with undefined variables to resolve to false.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-07-26T00:52:01-07:00",
+          "tree_id": "fdce5de4db1289e9b12ba3c3947d57436f852c5e",
+          "url": "https://github.com/ocaml/dune/commit/d5c81fc9427d424327ac6bf113bb97926a32162d"
+        },
+        "date": 1690359441197,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.69992700342",
             "unit": "seconds"
           }
         ]

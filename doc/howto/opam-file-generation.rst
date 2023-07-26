@@ -52,7 +52,7 @@ For example, if your opam file looks like:
 
    opam-version: 2.0
    authors: ["Anil Madhavapeddy" "Rudi Grinberg"]
-   maintainers: ["team@mirage.org"]
+   maintainer: ["team@mirage.org"]
    name: "cohttp-async"
    synopsis: "HTTP client and server for the Async library"
    description: "A _really_ long description"

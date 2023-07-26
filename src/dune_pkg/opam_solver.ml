@@ -287,9 +287,9 @@ let solve_package_list local_packages context =
     with
     | OpamPp.(Bad_format _ | Bad_format_list _ | Bad_version _) as bad_format ->
       User_error.raise [ Pp.text (OpamPp.string_of_bad_format bad_format) ]
-    (* | unexpected_exn ->
-       Code_error.raise "Unexpected exception raised while solving dependencies"
-         [ ("exception", Exn.to_dyn unexpected_exn) ] *)
+    | unexpected_exn ->
+      Code_error.raise "Unexpected exception raised while solving dependencies"
+        [ ("exception", Exn.to_dyn unexpected_exn) ]
   in
   match result with
   | Error e -> Error (`Diagnostic_message (Solver.diagnostics e |> Pp.text))

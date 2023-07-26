@@ -24,12 +24,15 @@ Unreleased
 - Improve `dune describe external-lib-deps` by adding the internal dependencies
   for more information. (#7478, @moyodiallo)
 
-- Fix permission errors when `sendfile` is not available (#8234, fixes #8120,
-  @emillon)
+3.9.2 (2023-07-25)
+------------------
 
 - Disable background digests on Windows. This prevents an issue where
   unremovable files would make dune crash when the shared cache is enabled.
   (#8243, fixes #8228, @emillon)
+
+- Fix permission errors when `sendfile` is not available (#8234, fixes #8210,
+  @emillon)
 
 3.9.1 (2023-07-06)
 ------------------

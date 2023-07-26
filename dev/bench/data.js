@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690372052616,
+  "lastUpdate": 1690376583113,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -77429,6 +77429,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.733118197893333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f1c7cc1d1366c135482509317b7ebadc62664de9",
+          "message": "doc: fix \"maintainer\" field in example (#8277)\n\nFixes #8273\r\n\r\nThe opam field name is \"maintainer\", singular.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-26T14:48:13+02:00",
+          "tree_id": "3aab5446d5794b8ef362cb8e1749436c488c8cf6",
+          "url": "https://github.com/ocaml/dune/commit/f1c7cc1d1366c135482509317b7ebadc62664de9"
+        },
+        "date": 1690376573022,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.062126545639998",
             "unit": "seconds"
           }
         ]

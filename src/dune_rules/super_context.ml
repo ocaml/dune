@@ -11,15 +11,15 @@ let default_context_flags (ctx : Context.t) ~project =
     | Some true ->
       let open Action_builder.O in
       let c =
-        let+ cc = Cxx_flags.ccomp_type ctx in
+        let+ cc = Cxx_flags.ccomp_type ctx.build_context in
         let fdiagnostics_color = Cxx_flags.fdiagnostics_color cc in
         cflags
         @ Ocaml_config.ocamlc_cppflags ctx.ocaml.ocaml_config
         @ fdiagnostics_color
       in
       let cxx =
-        let+ cc = Cxx_flags.ccomp_type ctx
-        and+ db_flags = Cxx_flags.get_flags ~for_:Compile ctx in
+        let+ cc = Cxx_flags.ccomp_type ctx.build_context
+        and+ db_flags = Cxx_flags.get_flags ~for_:Compile ctx.build_context in
         let fdiagnostics_color = Cxx_flags.fdiagnostics_color cc in
         db_flags @ cxxflags @ fdiagnostics_color
       in
@@ -168,7 +168,9 @@ end = struct
           extend_expander t ~dir ~expander_for_artifacts
           >>| Expander.set_dir ~dir)
     in
-    let default_cxx_link_flags = Cxx_flags.get_flags ~for_:Link t.context in
+    let default_cxx_link_flags =
+      Cxx_flags.get_flags ~for_:Link t.context.build_context
+    in
     Env_node.make ~dir ~scope ~config_stanza ~inherit_from:(Some inherit_from)
       ~profile:t.context.profile ~expander ~expander_for_artifacts
       ~default_context_flags ~default_env:t.context_env
@@ -502,7 +504,9 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
           in
           let profile = context.profile in
           Dune_env.Stanza.fire_hooks config_stanza ~profile;
-          let default_cxx_link_flags = Cxx_flags.get_flags ~for_:Link context in
+          let default_cxx_link_flags =
+            Cxx_flags.get_flags ~for_:Link context.build_context
+          in
           let expander =
             Memo.Lazy.of_val (Expander.set_dir ~dir root_expander)
           in

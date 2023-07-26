@@ -133,17 +133,9 @@ variable in its `available` filter. The undefined-var.0.0.2 package has a valid
   >  (name x)
   >  (depends undefined-var))
   > EOF
-  Warning: Ignoring package undefined-var.0.0.1 as its `available` filter
-  contains an undefined variable.
-  available: xos = "linux"
-  The variable xos is undefined.
   Solution for dune.lock:
   undefined-var.0.0.2
   
-  Warning: Ignoring package undefined-var.0.0.1 as its `available` filter
-  contains an undefined variable.
-  available: xos = "linux"
-  The variable xos is undefined.
   Error: Unable to solve dependencies in build context: macos
   Can't find all required versions.
   Selected: x.dev
@@ -161,14 +153,6 @@ filter resolves to a string instead of to a boolean.
   >  (name x)
   >  (depends availability-string))
   > EOF
-  Warning: Ignoring package availability-string.0.0.2 as its `available` filter
-  resolves to a system environment variable instead of a boolean.
-  available: os
-  os is an system environment variable.
-  Warning: Ignoring package availability-string.0.0.1 as its `available` filter
-  can't be resolved to a boolean value.
-  available: "foo"
-  value_bool: "foo"
   Error: Unable to solve dependencies in build context: default
   Can't find all required versions.
   Selected: x.dev
@@ -176,14 +160,6 @@ filter resolves to a string instead of to a boolean.
       No usable implementations:
         availability-string.0.0.2: Availability condition not satisfied
         availability-string.0.0.1: Availability condition not satisfied
-  Warning: Ignoring package availability-string.0.0.2 as its `available` filter
-  can't be resolved to a boolean value.
-  available: os
-  value_bool: "macos"
-  Warning: Ignoring package availability-string.0.0.1 as its `available` filter
-  can't be resolved to a boolean value.
-  available: "foo"
-  value_bool: "foo"
   Error: Unable to solve dependencies in build context: macos
   Can't find all required versions.
   Selected: x.dev

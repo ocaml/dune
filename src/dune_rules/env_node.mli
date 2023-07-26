@@ -17,7 +17,8 @@ end
 type t
 
 val make :
-     dir:Path.Build.t
+     Build_context.t
+  -> dir:Path.Build.t
   -> inherit_from:t Memo.Lazy.t option
   -> scope:Scope.t
   -> config_stanza:Dune_env.Stanza.t
@@ -27,7 +28,6 @@ val make :
   -> default_context_flags:string list Action_builder.t Foreign_language.Dict.t
   -> default_env:Env.t
   -> default_bin_artifacts:Artifacts.Bin.t
-  -> default_cxx_link_flags:string list Action_builder.t
   -> default_bin_annot:bool
   -> t
 

@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Fix flushing when using `sendfile` fallback (#8288, @alan-j-hu)
+
 - Add `dune show rules` as alias of the `dune rules` command. (#8000, @Alizter)
 
 - Fix `%{deps}` to expand properly in `(cat ...)` when containing 2 or more

@@ -30,4 +30,4 @@ larger files.
   > else
   >   echo "File copied incorrectly"
   > fi
-  File copied incorrectly
+  File copied correctly

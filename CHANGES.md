@@ -24,6 +24,9 @@ Unreleased
 - Improve `dune describe external-lib-deps` by adding the internal dependencies
   for more information. (#7478, @moyodiallo)
 
+- Re-enable background file digests on Windows. The files are now open in a way
+  that prevents race condition around deletion. (#8262, fixes #8268, @emillon)
+
 3.9.2 (2023-07-25)
 ------------------
 

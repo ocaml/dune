@@ -90,14 +90,14 @@ How to Turn Specific Errors into Warnings
 =========================================
 
 Dune is strict about warnings by default in that all warnings are treated as
-fatal errors. To change certain errors into warnings for a project you can add
+fatal errors. To change certain errors into warnings for a project, you can add
 the following to ``dune-workspace``:
 
 .. code:: dune
 
   (env (dev (flags :standard -warn-error -27-32)))
 
-In this example the warnings 27 (unused-var-strict) and 32
+In this example, the warnings 27 (unused-var-strict) and 32
 (unused-value-declaration) are treated as warnings rather than errors.
 
 How to Display the Output of Commands as They Run
@@ -141,9 +141,9 @@ How Can I Build a Single Library?
 =================================
 
 You might want to do this when you don't have all the dependencies installed to
-compile an entire project or parts of the project don't build for whatever
+compile an entire project, or parts of the project don't build for whatever
 reason. Maybe you want to check if your changes compile or produce build
-artifacts needed by ocaml-lsp-server.
+artifacts needed by ``ocaml-lsp-server``.
 
 Suppose you have a library defined in ``src/foo/dune``:
 
@@ -173,8 +173,8 @@ when copying directories with ``source_tree``. This is to avoid accidentally
 copying the ``.git`` directory into the ``_build`` directory during a build.
 
 This is a common source of confusion when interoperating with other libraries
-that use hidden directories for configuration, such as rust. For example
-consider this rule which builds a rust library contained in a subdirectory
+that use hidden directories for configuration, such as Rust. For example
+consider this rule which builds a Rust library contained in a subdirectory
 foo-rs:
 
 .. code:: dune
@@ -195,15 +195,15 @@ The build config for the rust project will be in a directory
 get copied into the ``_build`` directory and so the rust project will build
 with an incorrect configuration.
 
-To fix this, create a ``dune`` file at the top level of the rust project (ie.
+To fix this, create a ``dune`` file at the top level of the rust project (i.e.,
 ``foo-rs/dune``):
 
 .. code:: dune
 
     (dirs :standard .cargo)
 
-If you're following the standard advice for embedding rust projects into dune
-projects then you likely already have a ``dune`` project inside your rust
+If you're following the standard advice for embedding Rust projects into Dune
+projects then you likely already have a ``dune`` project inside your Rust
 project that looks like:
 
 .. code:: dune
@@ -221,7 +221,7 @@ In this case you can update it to look like this:
 How Can I Write Inline Tests in a Package Without my Users Needing to Install ``ppx_inline_test``?
 ==================================================================================================
 
-If you came to OCaml from rust and noticed that dune has a feature for running
+If you came to OCaml from rust and noticed that Dune has a feature for running
 inline tests you might be wondering how to do the OCaml equivalent of:
 
 .. code:: rust

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690448024023,
+  "lastUpdate": 1690465914823,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -77893,6 +77893,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "24.233948961426666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "76861ec5391e88fcd594efd25aabd8f0d19fff64",
+          "message": "ci: add an action to test mirage (#8061)\n\n* ci: add an action to test mirage\r\n\r\nThis gives us a known-good configuration of Mirage to test against. The\r\nvast majority of the changes on the Dune side will not affect this, so\r\nit is not useful to add this to the regular CI; instead, this gives us a\r\nmanual run to trigger at release time or on changes for which that can\r\nbe useful.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-27T15:35:09+02:00",
+          "tree_id": "b5e510563e709cdeef3263c6b0e038895a16f361",
+          "url": "https://github.com/ocaml/dune/commit/76861ec5391e88fcd594efd25aabd8f0d19fff64"
+        },
+        "date": 1690465903762,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "28.965384049473332",
             "unit": "seconds"
           }
         ]

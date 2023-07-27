@@ -41,7 +41,7 @@ let debug_backtraces =
     & info
         [ "debug-backtraces" ]
         ~docs:copts_sect
-        ~doc:{|Always print exception backtraces.|})
+        ~doc:"Always print exception backtraces.")
 ;;
 
 let default_build_dir = "_build"
@@ -196,9 +196,7 @@ module Options_implied_by_dash_p = struct
             [ "default-target" ]
             ~docs
             ~docv:"TARGET"
-            ~doc:
-              {|Set the default target that when none is specified to
-                      $(b,dune build).|})
+            ~doc:"Set the default target that when none is specified to $(b,dune build).")
     and+ always_show_command_line =
       let doc = "Always show the full command lines of programs executed by dune" in
       Arg.(value & flag & info [ "always-show-command-line" ] ~docs ~doc)
@@ -270,13 +268,12 @@ module Options_implied_by_dash_p = struct
               ~docs
               ~docv:"PACKAGES"
               ~doc:
-                {|Ignore stanzas referring to a package that is not in
-                      $(b,PACKAGES). $(b,PACKAGES) is a comma-separated list
-                      of package names. Note that this has the same effect
-                      as deleting the relevant stanzas from dune files.
-                      It is mostly meant for releases. During development,
-                      it is likely that what you want instead is to
-                      build a particular $(b,<package>.install) target.|})
+                "Ignore stanzas referring to a package that is not in $(b,PACKAGES). \
+                 $(b,PACKAGES) is a comma-separated list of package names. Note that \
+                 this has the same effect as deleting the relevant stanzas from dune \
+                 files. It is mostly meant for releases. During development, it is \
+                 likely that what you want instead is to build a particular \
+                 $(b,<package>.install) target.")
       in
       match names with
       | None -> Only_packages.Clflags.No_restriction
@@ -364,7 +361,7 @@ let shared_with_config_file =
           [ "j" ]
           ~docs
           ~docv:"JOBS"
-          ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|})
+          ~doc:"Run no more than $(i,JOBS) commands simultaneously.")
   and+ sandboxing_preference =
     let all =
       List.map Dune_engine.Sandbox_mode.all_except_patch_back_source_tree ~f:(fun s ->
@@ -394,9 +391,8 @@ let shared_with_config_file =
     let doc =
       let f s = fst s |> Printf.sprintf "$(b,%s)" in
       Printf.sprintf
-        {|Changes how the log of build results are displayed to the
-          console between rebuilds while in $(b,--watch) mode. Supported modes:
-          %s.|}
+        "Changes how the log of build results are displayed to the console between \
+         rebuilds while in $(b,--watch) mode. Supported modes: %s."
         (List.map ~f modes |> String.concat ~sep:", ")
     in
     Arg.(
@@ -541,9 +537,9 @@ let cache_debug_flags_term : Cache_debug_flags.t Term.t =
           ~docs:copts_sect
           ~doc:
             (sprintf
-               {|Show debug messages on cache misses for the given cache layers.
-Value is a comma-separated list of cache layer names.
-All available cache layers: %s.|}
+               "Show debug messages on cache misses for the given cache layers. Value is \
+                a comma-separated list of cache layer names. All available cache layers: \
+                %s."
                all_layer_names))
   in
   value initial
@@ -617,9 +613,8 @@ module Builder = struct
             [ "debug-dependency-path" ]
             ~docs
             ~doc:
-              {|In case of error, print the dependency path from
-                    the targets on the command line to the rule that failed.
-                  |})
+              "In case of error, print the dependency path from the targets on the \
+               command line to the rule that failed.")
     and+ debug_backtraces = debug_backtraces
     and+ debug_artifact_substitution =
       Arg.(
@@ -660,16 +655,14 @@ module Builder = struct
                the shared cache.")
     and+ no_buffer =
       let doc =
-        {|Do not buffer the output of commands executed by dune. By default dune
-        buffers the output of subcommands, in order to prevent interleaving when
-        multiple commands are executed in parallel. However, this can be an
-        issue when debugging long running tests. With $(b,--no-buffer), commands
-        have direct access to the terminal. Note that as a result their output
-        won't be captured in the log file.
-
-        You should use this option in conjunction with $(b,-j 1), to avoid
-        interleaving. Additionally you should use $(b,--verbose) as well, to
-        make sure that commands are printed before they are being executed.|}
+        "Do not buffer the output of commands executed by dune. By default dune buffers \
+         the output of subcommands, in order to prevent interleaving when multiple \
+         commands are executed in parallel. However, this can be an issue when debugging \
+         long running tests. With $(b,--no-buffer), commands have direct access to the \
+         terminal. Note that as a result their output won't be captured in the log file. \
+         You should use this option in conjunction with $(b,-j 1), to avoid \
+         interleaving. Additionally you should use $(b,--verbose) as well, to make sure \
+         that commands are printed before they are being executed."
       in
       Arg.(value & flag & info [ "no-buffer" ] ~docs ~docv:"DIR" ~doc)
     and+ workspace_file =
@@ -693,8 +686,8 @@ module Builder = struct
                  [ "auto-promote" ]
                  ~docs
                  ~doc:
-                   "Automatically promote files. This is similar to running\n\
-                   \                   $(b,dune promote) after the build.")
+                   "Automatically promote files. This is similar to running $(b,dune \
+                    promote) after the build.")
          in
          Option.some_if auto Dune_engine.Clflags.Promote.Automatically)
         (let+ disable =
@@ -710,8 +703,8 @@ module Builder = struct
         & info
             [ "force"; "f" ]
             ~doc:
-              "Force actions associated to aliases to be re-executed even\n\
-              \                   if their dependencies haven't changed.")
+              "Force actions associated to aliases to be re-executed even if their \
+               dependencies haven't changed.")
     and+ watch =
       let+ res =
         one_of
@@ -804,7 +797,7 @@ module Builder = struct
       Arg.(
         value
         & opt (some Arg.context_name) None
-        & info [ "x" ] ~docs ~doc:{|Cross-compile using this toolchain.|})
+        & info [ "x" ] ~docs ~doc:"Cross-compile using this toolchain.")
     and+ build_dir =
       let doc = "Specified build directory. _build if unspecified" in
       Arg.(
@@ -818,8 +811,7 @@ module Builder = struct
             ~doc)
     and+ diff_command =
       let doc =
-        "Shell command to use to diff files.\n\
-        \                   Use - to disable printing the diff."
+        "Shell command to use to diff files. Use - to disable printing the diff."
       in
       Arg.(
         value
@@ -833,9 +825,7 @@ module Builder = struct
             [ "trace-file" ]
             ~docs
             ~docv:"FILE"
-            ~doc:
-              "Output trace data in catapult format\n\
-              \                   (compatible with chrome://tracing)")
+            ~doc:"Output trace data in catapult format (compatible with chrome://tracing)")
     and+ stats_trace_extended =
       Arg.(
         value
@@ -865,9 +855,9 @@ module Builder = struct
     and+ () = build_info
     and+ instrument_with =
       let doc =
-        {|"Enable instrumentation by $(b,BACKENDS).
-        $(b,BACKENDS) is a comma-separated list of library names,
-        each one of which must declare an instrumentation backend.|}
+        "Enable instrumentation by $(b,BACKENDS). $(b,BACKENDS) is a comma-separated \
+         list of library names, each one of which must declare an instrumentation \
+         backend."
       in
       Arg.(
         value
@@ -880,9 +870,9 @@ module Builder = struct
             ~doc)
     and+ file_watcher =
       let doc =
-        {|Mechanism to detect changes in the source. Automatic to make dune run an
-        external program to detect changes. Manual to notify dune that files
-        have changed manually."|}
+        "Mechanism to detect changes in the source. Automatic to make dune run an \
+         external program to detect changes. Manual to notify dune that files have \
+         changed manually."
       in
       Arg.(
         value
@@ -938,13 +928,11 @@ module Builder = struct
         & info
             [ "error-reporting" ]
             ~doc:
-              "Controls when the build errors are reported.\n\
-               $(b,early) - report errors as soon as they are discovered.\n\
-               $(b,deterministic) - report errors at the end of the build in a \
-               deterministic order.\n\
-               $(b,twice) - report each error twice: once as soon as the error is \
-               discovered and then again at the end of the build, in a deterministic \
-               order.")
+              "Controls when the build errors are reported. $(b,early) - report errors \
+               as soon as they are discovered. $(b,deterministic) - report errors at the \
+               end of the build in a deterministic order. $(b,twice) - report each error \
+               twice: once as soon as the error is discovered and then again at the end \
+               of the build, in a deterministic order.")
     and+ react_to_insignificant_changes =
       Arg.(
         value

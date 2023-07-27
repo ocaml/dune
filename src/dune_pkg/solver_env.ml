@@ -68,6 +68,7 @@ module Sys_var = struct
       | `Os_version
       | `Os_distribution
       | `Os_family
+      | `Opam_version
       ]
 
     let to_string = function
@@ -76,12 +77,14 @@ module Sys_var = struct
       | `Os_version -> "os-version"
       | `Os_distribution -> "os-distribution"
       | `Os_family -> "os-family"
+      | `Opam_version -> "opam-version"
 
     let compare a b = String.compare (to_string a) (to_string b)
 
     let to_dyn t = Dyn.string (to_string t)
 
-    let all = [ `Arch; `Os; `Os_version; `Os_distribution; `Os_family ]
+    let all =
+      [ `Arch; `Os; `Os_version; `Os_distribution; `Os_family; `Opam_version ]
   end
 
   include T

@@ -40,6 +40,7 @@ module Sys_var : sig
     | `Os_version
     | `Os_distribution
     | `Os_family
+    | `Opam_version
     ]
 
   val to_string : t -> string

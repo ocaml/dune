@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690466912073,
+  "lastUpdate": 1690477257042,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -78009,6 +78009,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "28.965384049473332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ba8db49795485e598b3326403ad931e7335ea825",
+          "message": "Set the opam-version variable during solving (#8267)\n\nThe variable is always set to the version of opam vendored inside dune.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-07-27T09:45:10-07:00",
+          "tree_id": "c127434e094d5d253983c1ea773070340c91f4ad",
+          "url": "https://github.com/ocaml/dune/commit/ba8db49795485e598b3326403ad931e7335ea825"
+        },
+        "date": 1690477246044,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "27.710169900020002",
             "unit": "seconds"
           }
         ]

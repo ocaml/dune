@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690447652596,
+  "lastUpdate": 1690448011928,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -60927,6 +60927,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8961317682866667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d8bd6fa346777d05076163250d3bbfa5f5e57c87",
+          "message": "fix: pass O_SHARE_DELETE when digesting files (#8262)\n\nFixes #8268\r\n\r\nThis flag corresponds to what `Stdlib.open_in` does. When passed, the\r\nfiles can be removed while they are still open. This condition can\r\nhappen when background digests are enabled. This is a no-op everywhere\r\nelse.\r\n\r\nThis allows enabling background digests on Windows.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-27T10:25:44+02:00",
+          "tree_id": "8796a7cc27e4e623f530f58ea433dda3bb8208cb",
+          "url": "https://github.com/ocaml/dune/commit/d8bd6fa346777d05076163250d3bbfa5f5e57c87"
+        },
+        "date": 1690448011093,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "71.13644088120002",
             "unit": "seconds"
           }
         ]

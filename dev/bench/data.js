@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690580133570,
+  "lastUpdate": 1690580548711,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -61449,6 +61449,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8849777218400001",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f4f217dd9b8727382463b37fce3ffb3578575333",
+          "message": "fix: reraise errors on unrelated sendfile failures (#8295)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-28T14:11:33-07:00",
+          "tree_id": "8a95a54b18776812e2ab77c28218e09533d231f7",
+          "url": "https://github.com/ocaml/dune/commit/f4f217dd9b8727382463b37fce3ffb3578575333"
+        },
+        "date": 1690580547753,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "82.05215202455334",
             "unit": "seconds"
           }
         ]

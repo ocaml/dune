@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690558696982,
+  "lastUpdate": 1690559046140,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -61362,6 +61362,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.7099997958533335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alanh@ccs.neu.edu",
+            "name": "Alan",
+            "username": "alan-j-hu"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "22c63dffb061103197114c96fda8d4c7f2ed9c46",
+          "message": "fix(sendfile): Flush the out_channel used in the fallback path (#8288)\n\nFixes #8284\r\n\r\nSigned-off-by: Alan Hu <alanh@ccs.neu.edu>",
+          "timestamp": "2023-07-28T16:15:35+01:00",
+          "tree_id": "e059f32675d5c3e108a980fda951471d6f716249",
+          "url": "https://github.com/ocaml/dune/commit/22c63dffb061103197114c96fda8d4c7f2ed9c46"
+        },
+        "date": 1690559045170,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "68.92867077178",
             "unit": "seconds"
           }
         ]

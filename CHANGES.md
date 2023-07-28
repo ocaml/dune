@@ -1,3 +1,8 @@
+3.9.3 (unreleased)
+------------------
+
+- Fix flushing when using `sendfile` fallback (#8288, @alan-j-hu)
+
 3.9.2 (2023-07-25)
 ------------------
 

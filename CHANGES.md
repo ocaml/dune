@@ -1,5 +1,5 @@
-Unreleased
-----------
+3.10.0~alpha1 (2023-07-28)
+-------------------------
 
 - Add `dune show rules` as alias of the `dune rules` command. (#8000, @Alizter)
 

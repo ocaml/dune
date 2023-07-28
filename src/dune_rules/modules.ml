@@ -1185,12 +1185,6 @@ let as_singleton t =
   | Singleton m -> Some m
   | _ -> None
 
-let source_dirs =
-  fold_user_written ~init:Path.Set.empty ~f:(fun m acc ->
-      Module.sources m
-      |> List.fold_left ~init:acc ~f:(fun acc f ->
-             Path.Set.add acc (Path.parent_exn f)))
-
 let canonical_path t (group : Group.t) m =
   let path =
     let path = Module.path m in

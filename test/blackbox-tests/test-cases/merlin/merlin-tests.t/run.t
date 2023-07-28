@@ -21,6 +21,8 @@ CRAM sanitization
     $TESTCASE_ROOT/exe)
    (S
     $TESTCASE_ROOT/lib)
+   (S
+    $TESTCASE_ROOT/lib/subdir)
    (FLG
     (-pp
      $TESTCASE_ROOT/_build/default/pp/pp.exe))

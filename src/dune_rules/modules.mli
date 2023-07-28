@@ -124,8 +124,6 @@ val exit_module : t -> Module.t option
 
 val as_singleton : t -> Module.t option
 
-val source_dirs : t -> Path.Set.t
-
 type split_by_lib =
   { vlib : Module.t list
   ; impl : Module.t list

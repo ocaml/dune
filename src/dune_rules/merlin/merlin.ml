@@ -462,18 +462,16 @@ module Unprocessed = struct
       Some { Processed.flag = Processed.Pp_kind.Ppx; args }
 
   let src_dirs sctx lib =
-    let info = Lib.info lib in
-    match
-      let obj_dir = Lib_info.obj_dir info in
-      Path.is_managed (Obj_dir.byte_dir obj_dir)
-    with
-    | false -> Memo.return (Path.Set.singleton (Lib_info.src_dir info))
-    | true ->
+    match Lib_info.src_dir (Lib.info lib) with
+    | (In_source_tree _ | External _) as src_dir ->
+      Memo.return (Path.Set.singleton src_dir)
+    | In_build_dir dir ->
       let open Memo.O in
-      let+ modules = Dir_contents.modules_of_lib sctx lib in
-      let modules = Option.value_exn modules in
-      Path.Set.map ~f:Path.drop_optional_build_context
-        (Modules.source_dirs modules)
+      let+ contents = Dir_contents.get sctx ~dir in
+      Dir_contents.dirs contents
+      |> Path.Set.of_list_map ~f:(fun dc ->
+             Dir_contents.dir dc |> Path.Build.drop_build_context_exn
+             |> Path.source)
 
   module Per_item_action_builder =
     Module_name.Per_item.Make_monad_traversals (Action_builder)

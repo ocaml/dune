@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690581647836,
+  "lastUpdate": 1690581658973,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -61565,6 +61565,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "64.67677870804667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "05a4d3e668bd1f7ab6dbf7df8b2202977985dc69",
+          "message": "test: directory targets + globs + sandboxing (#8296)\n\nWe test the following scenario:\r\n\r\nA rule depends on a glob inside a directory target. The glob matches\r\nnothing. The rule runs in a sandbox.\r\n\r\nThe directory target should be copied to sandbox, even if it's empty.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-28T14:35:44-07:00",
+          "tree_id": "54195d10ddbac40a6f02257bd8501a9cd66218ca",
+          "url": "https://github.com/ocaml/dune/commit/05a4d3e668bd1f7ab6dbf7df8b2202977985dc69"
+        },
+        "date": 1690581657914,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6721497865000001",
             "unit": "seconds"
           }
         ]

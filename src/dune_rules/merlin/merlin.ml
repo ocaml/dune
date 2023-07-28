@@ -613,4 +613,12 @@ let add_rules sctx ~dir ~more_src_dirs ~expander merlin =
   Memo.when_ (Super_context.context sctx).merlin (fun () ->
       dot_merlin sctx ~more_src_dirs ~expander ~dir merlin)
 
+let more_src_dirs dir_contents ~source_dirs =
+  let lib_src_dirs =
+    Dir_contents.dirs dir_contents
+    |> List.map ~f:(fun dc ->
+           Path.Build.drop_build_context_exn (Dir_contents.dir dc))
+  in
+  List.rev_append source_dirs lib_src_dirs
+
 include Unprocessed

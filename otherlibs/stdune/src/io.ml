@@ -152,16 +152,16 @@ module Copyfile = struct
         in
         match sendfile ~src ~dst src_size with
         | exception Unix.Unix_error (EINVAL, "sendfile", _) ->
-          let ic = Unix.in_channel_of_descr src in
-          let oc = Unix.out_channel_of_descr dst in
-          Exn.protect
-            ~f:(fun () -> copy_channels ic oc)
-            ~finally:(fun () ->
-              (* we make sure to close the fd's with the channel api to make
-                 sure everything has been flushed *)
-              close_both (ic, oc))
+          Exn.protectx
+            (Unix.in_channel_of_descr src, Unix.out_channel_of_descr dst)
+            (* we make sure to close the fd's with the channel api to make
+               sure everything has been flushed *)
+            ~f:(fun (ic, oc) -> copy_channels ic oc)
+            ~finally:close_both
         | () -> close_fds ()
-        | exception _ -> close_fds ())
+        | exception exn ->
+          close_fds ();
+          Exn.reraise exn)
 
   let copyfile ?chmod ~src ~dst () =
     let src_stats =

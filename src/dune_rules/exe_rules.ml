@@ -220,7 +220,7 @@ let executables_rules
         ~promote:exes.promote
         ~embed_in_plugin_libraries
         ~sandbox
-    | Some { version; _ } ->
+    | Some _ ->
       (* Ctypes stubgen builds utility .exe files that need to share modules
          with this compilation context. To support that, we extract the one-time
          run bits from [Exe.build_and_link_many] and run them here, then pass
@@ -228,7 +228,7 @@ let executables_rules
          dance is done to avoid triggering duplicate rule exceptions. *)
       let* () =
         let loc = fst (List.hd exes.Executables.names) in
-        Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir ~version
+        Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir
       in
       let* () = Module_compilation.build_all cctx in
       Exe.link_many

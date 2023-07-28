@@ -7,7 +7,7 @@ let syntax =
   Dune_lang.Syntax.create
     ~name
     ~desc:"the ctypes extension"
-    [ (0, 1), `Since (3, 0); (0, 2), `Since (3, 4); (0, 3), `Since (3, 7) ]
+    [ (0, 1), `Deleted_in (3, 11); (0, 2), `Deleted_in (3, 11); (0, 3), `Since (3, 7) ]
 ;;
 
 module Build_flags_resolver = struct
@@ -115,10 +115,7 @@ module Function_description = struct
     let open Dune_lang.Decoder in
     fields
       (let+ concurrency = field_o "concurrency" Concurrency_policy.decode
-       and+ errno_policy =
-         field_o
-           "errno_policy"
-           (Dune_lang.Syntax.since syntax (0, 2) >>> Errno_policy.decode)
+       and+ errno_policy = field_o "errno_policy" Errno_policy.decode
        and+ functor_ = field "functor" Module_name.decode
        and+ instance = field "instance" Module_name.decode in
        { concurrency = Option.value concurrency ~default:Concurrency_policy.default

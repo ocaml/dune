@@ -1,6 +1,6 @@
   $ cat >dune-project <<EOF
-  > (lang dune 3.5)
-  > (using ctypes 0.1)
+  > (lang dune 3.7)
+  > (using ctypes 0.3)
   > EOF
 
   $ cat >dune <<EOF

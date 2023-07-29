@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690634102143,
+  "lastUpdate": 1690634112708,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -61652,6 +61652,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "64.30031372710668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6517d38291fcfc08a14a694ab99ee183284b66b2",
+          "message": "refacor(merlin): move source handling to merlin (#8299)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-29T05:10:15-07:00",
+          "tree_id": "a05335fe178eb0d448d4da99b682c71b28a13d12",
+          "url": "https://github.com/ocaml/dune/commit/6517d38291fcfc08a14a694ab99ee183284b66b2"
+        },
+        "date": 1690634112002,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6624671408333336",
             "unit": "seconds"
           }
         ]

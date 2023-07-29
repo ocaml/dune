@@ -174,16 +174,6 @@ end = struct
     |> rev
 end
 
-(* This is used to determine the list of source directories to give to Merlin.
-   This serves the same purpose as [Merlin.lib_src_dirs] and has a similar
-   implementation, but this definition is used for the current library, while
-   [Merlin.lib_src_dirs] is used for the dependencies. It would be nice to unify
-   them at some point. *)
-let lib_src_dirs ~dir_contents =
-  Dir_contents.dirs dir_contents
-  |> List.map ~f:(fun dc ->
-         Path.Build.drop_build_context_exn (Dir_contents.dir dc))
-
 let define_all_alias ~dir ~project ~js_targets =
   let deps =
     let predicate =
@@ -235,11 +225,11 @@ let gen_rules sctx dir_contents cctxs expander
       ~dir_contents ~expander ~files_to_install
   in
   let* () =
-    Memo.sequential_iter merlins ~f:(fun merlin ->
-        let more_src_dirs =
-          lib_src_dirs ~dir_contents |> List.rev_append (src_dir :: source_dirs)
-        in
-        Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander merlin)
+    let more_src_dirs =
+      Merlin.more_src_dirs dir_contents ~source_dirs:(src_dir :: source_dirs)
+    in
+    Memo.sequential_iter merlins
+      ~f:(Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander)
   in
   let* () =
     Memo.parallel_iter stanzas ~f:(fun stanza ->

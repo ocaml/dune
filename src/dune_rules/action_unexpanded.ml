@@ -404,7 +404,7 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
   match t with
   | Run (prog, args) ->
     let+ prog, args = expand_run prog args in
-    O.Run (prog, args)
+    O.Run (prog, Array.Immutable.of_list args)
   | With_accepted_exit_codes (pred, t) ->
     let+ t = expand t in
     O.With_accepted_exit_codes (pred, t)

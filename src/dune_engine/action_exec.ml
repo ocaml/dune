@@ -226,7 +226,9 @@ let rec exec t ~display ~ectx ~eenv =
   match (t : Action.t) with
   | Run (Error e, _) -> Action.Prog.Not_found.raise e
   | Run (Ok prog, args) ->
-    let+ () = exec_run ~display ~ectx ~eenv prog args in
+    let+ () =
+      exec_run ~display ~ectx ~eenv prog (Array.Immutable.to_list args)
+    in
     Done
   | With_accepted_exit_codes (exit_codes, t) ->
     let eenv =

@@ -30,7 +30,7 @@ module type Ast = sig
   type ext
 
   type t =
-    | Run of program * string list
+    | Run of program * string Array.Immutable.t
     | With_accepted_exit_codes of int Predicate_lang.t * t
     | Dynamic_run of program * string list
     | Chdir of path * t
@@ -71,6 +71,7 @@ module type Helpers = sig
 
   type t
 
+  (* TODO consider changing this to a [string array] to save some conversion *)
   val run : program -> string list -> t
 
   val chdir : path -> t -> t

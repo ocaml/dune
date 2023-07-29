@@ -60,3 +60,22 @@ module List : sig
 end
 
 val merge : 'a t -> 'a t -> f:('a -> 'a -> 'a) -> 'a t
+
+module Unboxed : sig
+  (** Poor man's unboxed option types. The value stored must not be immediate. A
+      consequence of that is that such option types cannot be nested *)
+
+  type 'a t
+
+  val get_exn : 'a t -> 'a
+
+  (** [some a] will construct the present value. If [a] is immediate, this
+      function will raise *)
+  val some : 'a -> 'a t
+
+  val none : 'a t
+
+  val is_none : 'a t -> bool
+
+  val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
+end

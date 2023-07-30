@@ -183,8 +183,8 @@ let test_with_multiple_fsevents ~setup ~test:f =
         res, sync)
       |> List.unzip
     in
-    let runloop = Fsevents.RunLoop.in_current_thread () in
-    List.iter fsevents ~f:(fun f -> Fsevents.start f runloop);
+    let dispatch_queue = Fsevents.Dispatch_queue.create () in
+    List.iter fsevents ~f:(fun f -> Fsevents.start f dispatch_queue);
     let (t : Thread.t) =
       Thread.create
         (fun () ->
@@ -206,7 +206,7 @@ let test_with_multiple_fsevents ~setup ~test:f =
             syncs)
         ()
     in
-    (match Fsevents.RunLoop.run_current_thread runloop with
+    (match Fsevents.Dispatch_queue.wait_until_stopped dispatch_queue with
      | Error Exit -> print_endline "[EXIT]"
      | Error _ -> assert false
      | Ok () -> ());

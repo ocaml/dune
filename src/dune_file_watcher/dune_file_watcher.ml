@@ -138,7 +138,7 @@ type kind =
       }
   | Fsevents of
       { mutable external_ : Fsevents.t Watch_trie.t
-      ; runloop : Fsevents.RunLoop.t
+      ; dispatch_queue : Fsevents.Dispatch_queue.t
       ; scheduler : Scheduler.t
       ; source : Fsevents.t
       ; sync : Fsevents.t
@@ -577,29 +577,31 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
     fsevents ~latency scheduler ~exclusion_paths ~paths fsevents_standard_event
   in
   let cv = Condition.create () in
-  let runloop_ref = ref None in
+  let dispatch_queue_ref = ref None in
   let mutex = Mutex.create () in
   scheduler.spawn_thread (fun () ->
-    let runloop = Fsevents.RunLoop.in_current_thread () in
+    let dispatch_queue = Fsevents.Dispatch_queue.create () in
     Mutex.lock mutex;
-    runloop_ref := Some runloop;
+    dispatch_queue_ref := Some dispatch_queue;
     Condition.signal cv;
     Mutex.unlock mutex;
-    Fsevents.start source runloop;
-    Fsevents.start sync runloop;
-    match Fsevents.RunLoop.run_current_thread runloop with
+    Fsevents.start source dispatch_queue;
+    Fsevents.start sync dispatch_queue;
+    match Fsevents.Dispatch_queue.wait_until_stopped dispatch_queue with
     | Ok () -> ()
     | Error exn -> Code_error.raise "fsevents callback raised" [ "exn", Exn.to_dyn exn ]);
   let external_ = Watch_trie.empty in
-  let runloop =
+  let dispatch_queue =
     Mutex.lock mutex;
-    while !runloop_ref = None do
+    while !dispatch_queue_ref = None do
       Condition.wait cv mutex
     done;
     Mutex.unlock mutex;
-    Option.value_exn !runloop_ref
+    Option.value_exn !dispatch_queue_ref
   in
-  { kind = Fsevents { latency; scheduler; sync; source; external_; runloop }; sync_table }
+  { kind = Fsevents { latency; scheduler; sync; source; external_; dispatch_queue }
+  ; sync_table
+  }
 ;;
 
 let fswatch_win_callback ~(scheduler : Scheduler.t) ~sync_table ~should_exclude event =
@@ -724,7 +726,7 @@ let add_watch t path =
            | Watch_trie.Under_existing_node -> Ok ()
            | Inserted { new_t; removed } ->
              let watch = Lazy.force watch in
-             Fsevents.start watch f.runloop;
+             Fsevents.start watch f.dispatch_queue;
              List.iter removed ~f:(fun (_, fs) -> Fsevents.stop fs);
              f.external_ <- new_t;
              Ok ())))

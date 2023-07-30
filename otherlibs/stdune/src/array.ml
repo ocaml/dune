@@ -11,3 +11,15 @@ let equal f x y =
       done;
       true
     with Exit -> false
+
+module Immutable = struct
+  type 'a t = 'a array
+
+  let of_array a = copy a
+
+  let to_list a = to_list a
+
+  let of_list a = of_list a
+
+  let map t ~f = map t ~f
+end

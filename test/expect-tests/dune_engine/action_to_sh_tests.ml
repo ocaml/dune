@@ -1,3 +1,4 @@
+open Stdune
 open Dune_engine
 open Action.For_shell
 module Action = Dune_engine.Action
@@ -5,7 +6,7 @@ module Action = Dune_engine.Action
 let print x = x |> Action_to_sh.pp |> Dune_tests_common.print
 
 let%expect_test "run" =
-  Run ("my_program", [ "my"; "-I"; "args" ]) |> print;
+  Run ("my_program", Array.Immutable.of_array [| "my"; "-I"; "args" |]) |> print;
   [%expect {|
     my_program my -I args |}]
 

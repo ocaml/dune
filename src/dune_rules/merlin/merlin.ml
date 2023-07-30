@@ -429,7 +429,10 @@ module Unprocessed = struct
           match exe with
           | Error _ -> None
           | Ok bin ->
-            let args = encode_command ~bin ~args in
+            let args =
+              let args = Array.Immutable.to_list args in
+              encode_command ~bin ~args
+            in
             Some { Processed.flag = Processed.Pp_kind.Pp; args }
         in
         Action_builder.map action ~f:(fun act ->

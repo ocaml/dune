@@ -22,7 +22,7 @@ with_timeout () {
 
 stop_dune () {
     with_timeout dune shutdown;
-    wait $DUNE_PID;
+    tail --pid=$DUNE_PID -f /dev/null;
     cat .#dune-output;
 }
 

@@ -131,7 +131,7 @@
  (applies_to github8041)
  (enabled_if
   (= %{system} linux))
- (deps %{bin:strace}))
+ (deps %{bin:strace} %{bin:head}))
 
 (cram
  (applies_to reason)

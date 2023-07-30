@@ -51,9 +51,9 @@ let check_warn = function
       ]
   | _ -> ()
 
-let ccomp_type ctx =
+let ccomp_type (ctx : Build_context.t) =
   let open Action_builder.O in
-  let+ ccomp_type = ccomp_type ctx.Context.build_dir in
+  let+ ccomp_type = ccomp_type ctx.build_dir in
   check_warn ccomp_type;
   ccomp_type
 

@@ -69,9 +69,9 @@ let expand_str_lazy expander sw =
     let* expander = Memo.Lazy.force expander in
     Expander.No_deps.expand_str expander sw
 
-let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
-    ~expander_for_artifacts ~default_context_flags ~default_env
-    ~default_bin_artifacts ~default_cxx_link_flags ~default_bin_annot =
+let make build_context ~dir ~inherit_from ~scope ~config_stanza ~profile
+    ~expander ~expander_for_artifacts ~default_context_flags ~default_env
+    ~default_bin_artifacts ~default_bin_annot =
   let open Memo.O in
   let config = Dune_env.Stanza.find config_stanza ~profile in
   let inherited ~field ~root extend =
@@ -170,7 +170,12 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     Foreign_language.Dict.make ~c:(foreign_flags C) ~cxx:(foreign_flags Cxx)
   in
   let link_flags =
-    let default_link_flags = Link_flags.default ~default_cxx_link_flags in
+    let default_link_flags =
+      let default_cxx_link_flags =
+        Cxx_flags.get_flags ~for_:Link build_context
+      in
+      Link_flags.default ~default_cxx_link_flags
+    in
     inherited ~field:link_flags ~root:default_link_flags (fun link_flags ->
         let+ expander = Memo.Lazy.force expander in
         Link_flags.make ~spec:config.link_flags ~default:link_flags

@@ -57,6 +57,9 @@ val make :
   -> modes:[ `Lib of Lib_mode.Map.Set.t | `Exe | `Melange_emit ]
   -> t
 
+val more_src_dirs :
+  Dir_contents.t -> source_dirs:Path.Source.t list -> Path.Source.t list
+
 (** Add rules for generating the merlin configuration of a specific stanza
     identified by [ident] in a directory *)
 val add_rules :

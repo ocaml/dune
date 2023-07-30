@@ -1,7 +1,12 @@
 Unreleased
 ----------
 
+- Fix flushing when using `sendfile` fallback (#8288, @alan-j-hu)
+
 - Add `dune show rules` as alias of the `dune rules` command. (#8000, @Alizter)
+
+- Fix `%{deps}` to expand properly in `(cat ...)` when containing 2 or more
+  items. (#8196, @Alizter)
 
 - Add `dune show installed-libraries` as an alias of the `dune
   installed-libraries` command. (#8135, @Alizter)
@@ -21,7 +26,17 @@ Unreleased
 - Improve `dune describe external-lib-deps` by adding the internal dependencies
   for more information. (#7478, @moyodiallo)
 
-- Fix permission errors when `sendfile` is not available (#8234, fixes #8120,
+- Re-enable background file digests on Windows. The files are now open in a way
+  that prevents race condition around deletion. (#8262, fixes #8268, @emillon)
+
+3.9.2 (2023-07-25)
+------------------
+
+- Disable background digests on Windows. This prevents an issue where
+  unremovable files would make dune crash when the shared cache is enabled.
+  (#8243, fixes #8228, @emillon)
+
+- Fix permission errors when `sendfile` is not available (#8234, fixes #8210,
   @emillon)
 
 3.9.1 (2023-07-06)

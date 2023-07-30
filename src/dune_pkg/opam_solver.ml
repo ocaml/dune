@@ -33,13 +33,7 @@ module Filter : sig
   val resolve_solver_env_treating_unset_sys_vars_as_wildcards :
     Solver_env.t -> filter -> filter
 
-  type eval_to_bool_error :=
-    [ `Not_a_bool of string
-    | `Undefined_sys_env_var of OpamVariable.t
-    | `Undefined_var of OpamVariable.t
-    ]
-
-  val eval_to_bool : filter -> (bool, eval_to_bool_error) result
+  val eval_to_bool : filter -> (bool, [ `Not_a_bool of string ]) result
 end = struct
   open OpamTypes
 
@@ -92,24 +86,9 @@ end = struct
     filter |> resolve_flags flags
     |> resolve_sys_var_treating_unset_vars_as_wildcards sys
 
-  let first_variable filter =
-    OpamFilter.fold_down_left
-      (fun acc filter ->
-        match (acc, filter) with
-        | None, FIdent (_, variable, _) -> Some variable
-        | _ -> acc)
-      None filter
-
   let eval_to_bool filter =
-    match filter with
-    | FIdent (_, variable, _) when is_variable_sys variable ->
-      Error (`Undefined_sys_env_var variable)
-    | _ -> (
-      match first_variable filter with
-      | Some variable -> Error (`Undefined_var variable)
-      | None -> (
-        try Ok (OpamFilter.eval_to_bool (Fun.const None) filter)
-        with Invalid_argument msg -> Error (`Not_a_bool msg)))
+    try Ok (OpamFilter.eval_to_bool ~default:false (Fun.const None) filter)
+    with Invalid_argument msg -> Error (`Not_a_bool msg)
 end
 
 (* Helper module for working with [OpamTypes.filtered_formula] *)
@@ -190,26 +169,6 @@ module Context_for_dune = struct
                   package_string
               ; Pp.textf "available: %s" available_string
               ; Pp.text msg
-              ]
-          | `Undefined_sys_env_var variable ->
-            User_warning.emit
-              [ Pp.textf
-                  "Ignoring package %s as its `available` filter resolves to a \
-                   system environment variable instead of a boolean."
-                  package_string
-              ; Pp.textf "available: %s" available_string
-              ; Pp.textf "%s is an system environment variable."
-                  (OpamVariable.to_string variable)
-              ]
-          | `Undefined_var variable ->
-            User_warning.emit
-              [ Pp.textf
-                  "Ignoring package %s as its `available` filter contains an \
-                   undefined variable."
-                  package_string
-              ; Pp.textf "available: %s" available_string
-              ; Pp.textf "The variable %s is undefined."
-                  (OpamVariable.to_string variable)
               ]);
         false
 
@@ -328,9 +287,9 @@ let solve_package_list local_packages context =
     with
     | OpamPp.(Bad_format _ | Bad_format_list _ | Bad_version _) as bad_format ->
       User_error.raise [ Pp.text (OpamPp.string_of_bad_format bad_format) ]
-    (* | unexpected_exn ->
-       Code_error.raise "Unexpected exception raised while solving dependencies"
-         [ ("exception", Exn.to_dyn unexpected_exn) ] *)
+    | unexpected_exn ->
+      Code_error.raise "Unexpected exception raised while solving dependencies"
+        [ ("exception", Exn.to_dyn unexpected_exn) ]
   in
   match result with
   | Error e -> Error (`Diagnostic_message (Solver.diagnostics e |> Pp.text))

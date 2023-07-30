@@ -16,4 +16,6 @@ let of_string s = bool_of_string_opt s
 
 let to_dyn t = Dyn.Bool t
 
-let hash (t : bool) = Poly.hash t
+let[@inline always] hash = function
+  | true -> 1
+  | false -> 0

@@ -7,7 +7,7 @@ Dune supports installing packages on the system, i.e., copying freshly built
 artifacts from the workspace to the system. The ``install`` stanza takes three
 pieces of information:
 
-- The list of files to install.
+- The list of files or directories to install.
 - The package to attach these files. This field is optional if your project
   contains a single package.
 - The section in which the files will be installed.
@@ -177,3 +177,14 @@ to ensure that executables are always installed with this extension on Windows.
 More precisely, when installing a file via an ``(install ...)`` stanza, Dune
 implicitly adds the ``.exe`` extension to the destination, if the source file
 has extension ``.exe`` or ``.bc`` and if it's not already present
+
+Installing Source Directories
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To install entire source directories, the ``source_tree`` field can be used:
+
+.. code:: dune
+
+   (install
+    (section doc)
+    (source_trees doc))

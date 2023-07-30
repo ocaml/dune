@@ -9,6 +9,7 @@ module Dst : sig
   val to_string : t -> string
   val concat_all : t -> string list -> t
   val add_prefix : string -> t -> t
+  val add_suffix : t -> string -> t
   val to_install_file : t -> src_basename:string -> section:Section.t -> string option
   val of_install_file : string option -> src_basename:string -> section:Section.t -> t
   val explicit : string -> t
@@ -25,6 +26,7 @@ end = struct
   let to_string t = t
   let concat_all t suffixes = List.fold_left suffixes ~init:t ~f:Filename.concat
   let add_prefix p t = Filename.concat p t
+  let add_suffix t p = Filename.concat t p
   let explicit t = t
   let compare = String.compare
 
@@ -71,9 +73,15 @@ end = struct
   let install_path t section p = Path.relative (Paths.get t section) (to_string p)
 end
 
+type kind =
+  [ `File
+  | `Directory
+  | `Source_tree
+  ]
+
 type 'src t =
   { src : 'src
-  ; kind : [ `File | `Directory ]
+  ; kind : kind
   ; dst : Dst.t
   ; section : Section.t
   ; optional : bool
@@ -86,6 +94,7 @@ let to_dyn { src; kind; dst; section; optional } =
   let dyn_of_kind = function
     | `File -> String "file"
     | `Directory -> String "directory"
+    | `Source_tree -> String "source_tree"
   in
   record
     [ "src", Path.Build.to_dyn src
@@ -196,6 +205,7 @@ let make section ?dst ~kind src =
 
 let make_with_dst section dst ~kind ~src = { optional = false; src; dst; section; kind }
 let set_src t src = { t with src }
+let set_kind t kind = { t with kind }
 let relative_installed_path t ~paths = Dst.install_path paths t.section t.dst
 
 let add_install_prefix t ~paths ~prefix =
@@ -225,6 +235,7 @@ let dyn_of_kind =
   function
   | `File -> variant "File" []
   | `Directory -> variant "Directory" []
+  | `Source_tree -> variant "Source_tree" []
 ;;
 
 let to_dyn f { optional; src; kind; dst; section } =

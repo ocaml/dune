@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690747723094,
+  "lastUpdate": 1690747736502,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -61826,6 +61826,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "77.42855282626",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "082f9317130927e256111cc16b26145ed7ebab09",
+          "message": "refactor: arrays instead of lists for arguments (#8298)\n\nShould cost us about half the storage\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-30T12:38:32-07:00",
+          "tree_id": "a54ee08331d47e7e76a4ef46b4c89c591d6c41e1",
+          "url": "https://github.com/ocaml/dune/commit/082f9317130927e256111cc16b26145ed7ebab09"
+        },
+        "date": 1690747735448,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.0875844472466665",
             "unit": "seconds"
           }
         ]

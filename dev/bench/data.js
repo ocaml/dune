@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690719631214,
+  "lastUpdate": 1690719642519,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -61739,6 +61739,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "64.33353372274",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ddf8344ea5b3aa9babf00ebb703c032e1e343f37",
+          "message": "refactor: remove some allocations in decoder (#8301)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-07-30T04:55:21-07:00",
+          "tree_id": "229f0162ec9ea7bf6a840612bd1898271ebfc694",
+          "url": "https://github.com/ocaml/dune/commit/ddf8344ea5b3aa9babf00ebb703c032e1e343f37"
+        },
+        "date": 1690719641365,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6789460190333336",
             "unit": "seconds"
           }
         ]

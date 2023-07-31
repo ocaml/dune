@@ -452,22 +452,32 @@ let setup_css_rule sctx =
 
 let sp = Printf.sprintf
 
-let setup_toplevel_index_rule sctx =
-  let* list_items =
-    let+ packages = Only_packages.get () in
-    Package.Name.Map.to_list packages
-    |> List.filter_map ~f:(fun (name, pkg) ->
+module Toplevel_index = struct
+  type item =
+    { name : string
+    ; version : string option
+    ; link : string
+    }
+
+  let of_packages packages =
+    Package.Name.Map.to_list_map packages ~f:(fun name { Package.version; _ } ->
       let name = Package.Name.to_string name in
-      let link = sp {|<a href="%s/index.html">%s</a>|} name name in
+      { name; version; link = sp "%s/index.html" name })
+  ;;
+
+  let html_list_items t =
+    List.map t ~f:(fun { name; version; link } ->
+      let link = sp {|<a href="%s">%s</a>|} link name in
       let version_suffix =
-        match pkg.Package.version with
+        match version with
         | None -> ""
         | Some v -> sp {| <span class="version">%s</span>|} v
       in
-      Some (sp "<li>%s%s</li>" link version_suffix))
+      sp "<li>%s%s</li>" link version_suffix)
     |> String.concat ~sep:"\n      "
-  in
-  let html =
+  ;;
+
+  let html t =
     sp
       {|<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -489,8 +499,14 @@ let setup_toplevel_index_rule sctx =
   </body>
 </html>|}
       Paths.odoc_support_dirname
-      list_items
-  in
+      (html_list_items t)
+  ;;
+end
+
+let setup_toplevel_index_rule sctx =
+  let* packages = Only_packages.get () in
+  let index = Toplevel_index.of_packages packages in
+  let html = Toplevel_index.html index in
   let ctx = Super_context.context sctx in
   add_rule sctx (Action_builder.write_file (Paths.toplevel_index ctx) html)
 ;;

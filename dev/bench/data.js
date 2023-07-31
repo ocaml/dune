@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690803441552,
+  "lastUpdate": 1690803455472,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -61913,6 +61913,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "79.37913566886",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cc60bc3c362dbaa0601509ad2018b96b259cf3d7",
+          "message": "feat: add a way to mark extensions as deleted (#8294)\n\nOur extension mechanism is versioned, but we only support adding new\r\nversions. However, for experimental extensions or 0.x versions we've\r\nalways said that these could be removed. This PR adds such a mechanism.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-31T13:06:55+02:00",
+          "tree_id": "7c615d51cf86589d3ac7221b23b30dcccc1140ef",
+          "url": "https://github.com/ocaml/dune/commit/cc60bc3c362dbaa0601509ad2018b96b259cf3d7"
+        },
+        "date": 1690803454624,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.248135351266667",
             "unit": "seconds"
           }
         ]

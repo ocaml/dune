@@ -35,7 +35,7 @@ let eval s =
     let vlen = min vlen (len - colon_pos - 1) in
     Some (String.sub s (colon_pos + 1) vlen)
   else None
-  [@@inline never]
+[@@inline never]
 
 let get_dir ~package ~section = Hashtbl.find_all dirs (package, section)
 
@@ -84,7 +84,7 @@ let site ~package ~section ~suffix ~encoded =
     | Some d -> relocate_if_needed d :: dirs
   in
   List.rev_map (fun dir -> Filename.concat dir suffix) dirs
-  [@@inline never]
+[@@inline never]
 
 let sourceroot local =
   match eval local with

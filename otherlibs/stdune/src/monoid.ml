@@ -132,10 +132,11 @@ module Product3 (A : Basic) (B : Basic) (C : Basic) = Make (struct
     (A.combine a1 a2, B.combine b1 b2, C.combine c1 c2)
 end)
 
-module Function (A : sig
-  type t
-end)
-(M : Basic) =
+module Function
+    (A : sig
+      type t
+    end)
+    (M : Basic) =
 Make (struct
   type t = A.t -> M.t
 
@@ -190,9 +191,10 @@ module Commutative = struct
   module Product (A : Basic) (B : Basic) = Make_commutative (Product (A) (B))
   module Product3 (A : Basic) (B : Basic) (C : Basic) =
     Make_commutative (Product3 (A) (B) (C))
-  module Function (A : sig
-    type t
-  end)
-  (M : Basic) =
+  module Function
+      (A : sig
+        type t
+      end)
+      (M : Basic) =
     Make_commutative (Function (A) (M))
 end

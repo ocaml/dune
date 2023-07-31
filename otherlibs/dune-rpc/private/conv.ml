@@ -313,94 +313,94 @@ let check_version ~version ~since ~until _ctx =
 let of_sexp : 'a. ('a, values) t -> version:int * int -> Sexp.t -> 'a =
  fun t ~version sexp ->
   let rec loop : type a k. (a, k) t -> k -> a * k ret =
-    fun (type a k) (t : (a, k) t) (ctx : k) : (a * k ret) ->
-     match t with
-     | Sexp -> (ctx, Values)
-     | Version (t, { since; until }) ->
-       check_version ~version ~since ~until ctx;
-       loop t ctx
-     | Fdecl t -> loop (Fdecl.get t) ctx
-     | List t -> (
-       match ctx with
-       | List xs -> (List.map xs ~f:(fun x -> discard_values (loop t x)), Values)
-       | Atom _ -> raise_of_sexp "expected list")
-     | Pair (x, y) -> (
-       match ctx with
-       | List [ a; b ] ->
-         let a, Values = loop x a in
-         let b, Values = loop y b in
-         ((a, b), Values)
-       | _ -> raise_of_sexp "expected field entry")
-     | Triple (x, y, z) -> (
-       match ctx with
-       | List [ a; b; c ] ->
-         let a, Values = loop x a in
-         let b, Values = loop y b in
-         let c, Values = loop z c in
-         ((a, b, c), Values)
-       | _ -> raise_of_sexp "expected field entry")
-     | Record (r : (a, fields) t) ->
-       let (fields : Fields.t) = Fields.of_sexp ctx in
-       let a, Fields f = loop r fields in
-       Fields.check_empty f;
-       (a, Values)
-     | Field (name, spec) -> (
-       match spec with
-       | Required v ->
-         let field, rest = Fields.required ctx name in
-         let t, Values = loop v field in
-         (t, Fields rest)
-       | Optional v ->
-         let field, rest = Fields.optional ctx name in
-         let t =
-           match field with
-           | None -> None
-           | Some f ->
-             let a, Values = loop v f in
-             Some a
-         in
-         (t, Fields rest))
-     | Either (x, y) -> (
-       try
-         (* TODO share computation somehow *)
-         let a, x = loop x ctx in
-         (Left a, x)
-       with Of_sexp _ ->
-         let a, y = loop y ctx in
-         (Right a, y))
-     | Iso (t, f, _) ->
-       let a, k = loop t ctx in
-       (f a, k)
-     | Iso_result (t, f, _) -> (
-       let a, k = loop t ctx in
-       match f a with
-       | Error exn -> raise exn
-       | Ok a -> (a, k))
-     | Both (x, y) ->
-       let a, Fields k = loop x ctx in
-       let b, k = loop y k in
-       ((a, b), k)
-     | Sum (constrs, _) -> (
-       match ctx with
-       | List [ Atom head; args ] -> (
-         match
-           List.find_map constrs ~f:(fun (Constr c) ->
-               if head = c.name then
-                 Some
-                   (let a, k = loop c.arg args in
-                    (c.inj a, k))
-               else None)
-         with
-         | None -> raise_of_sexp "invalid constructor name"
-         | Some p -> p)
-       | _ -> raise_of_sexp "expected constructor")
-     | Enum choices -> (
-       match ctx with
-       | List _ -> raise_of_sexp "expected list"
-       | Atom a -> (
-         match List.assoc choices a with
-         | None -> raise_of_sexp "unable to read enum"
-         | Some s -> (s, Values)))
+   fun (type a k) (t : (a, k) t) (ctx : k) : (a * k ret) ->
+    match t with
+    | Sexp -> (ctx, Values)
+    | Version (t, { since; until }) ->
+      check_version ~version ~since ~until ctx;
+      loop t ctx
+    | Fdecl t -> loop (Fdecl.get t) ctx
+    | List t -> (
+      match ctx with
+      | List xs -> (List.map xs ~f:(fun x -> discard_values (loop t x)), Values)
+      | Atom _ -> raise_of_sexp "expected list")
+    | Pair (x, y) -> (
+      match ctx with
+      | List [ a; b ] ->
+        let a, Values = loop x a in
+        let b, Values = loop y b in
+        ((a, b), Values)
+      | _ -> raise_of_sexp "expected field entry")
+    | Triple (x, y, z) -> (
+      match ctx with
+      | List [ a; b; c ] ->
+        let a, Values = loop x a in
+        let b, Values = loop y b in
+        let c, Values = loop z c in
+        ((a, b, c), Values)
+      | _ -> raise_of_sexp "expected field entry")
+    | Record (r : (a, fields) t) ->
+      let (fields : Fields.t) = Fields.of_sexp ctx in
+      let a, Fields f = loop r fields in
+      Fields.check_empty f;
+      (a, Values)
+    | Field (name, spec) -> (
+      match spec with
+      | Required v ->
+        let field, rest = Fields.required ctx name in
+        let t, Values = loop v field in
+        (t, Fields rest)
+      | Optional v ->
+        let field, rest = Fields.optional ctx name in
+        let t =
+          match field with
+          | None -> None
+          | Some f ->
+            let a, Values = loop v f in
+            Some a
+        in
+        (t, Fields rest))
+    | Either (x, y) -> (
+      try
+        (* TODO share computation somehow *)
+        let a, x = loop x ctx in
+        (Left a, x)
+      with Of_sexp _ ->
+        let a, y = loop y ctx in
+        (Right a, y))
+    | Iso (t, f, _) ->
+      let a, k = loop t ctx in
+      (f a, k)
+    | Iso_result (t, f, _) -> (
+      let a, k = loop t ctx in
+      match f a with
+      | Error exn -> raise exn
+      | Ok a -> (a, k))
+    | Both (x, y) ->
+      let a, Fields k = loop x ctx in
+      let b, k = loop y k in
+      ((a, b), k)
+    | Sum (constrs, _) -> (
+      match ctx with
+      | List [ Atom head; args ] -> (
+        match
+          List.find_map constrs ~f:(fun (Constr c) ->
+              if head = c.name then
+                Some
+                  (let a, k = loop c.arg args in
+                   (c.inj a, k))
+              else None)
+        with
+        | None -> raise_of_sexp "invalid constructor name"
+        | Some p -> p)
+      | _ -> raise_of_sexp "expected constructor")
+    | Enum choices -> (
+      match ctx with
+      | List _ -> raise_of_sexp "expected list"
+      | Atom a -> (
+        match List.assoc choices a with
+        | None -> raise_of_sexp "unable to read enum"
+        | Some s -> (s, Values)))
   in
   discard_values (loop t sexp)
 

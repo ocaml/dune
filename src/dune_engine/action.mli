@@ -161,7 +161,7 @@ module Full : sig
 
   val make :
        ?env:Env.t (** default [Env.empty] *)
-    -> ?locks:Path.t list (** default [\[\]] *)
+    -> ?locks:Path.t list (** default [[]] *)
     -> ?can_go_in_shared_cache:bool (** default [true] *)
     -> ?sandbox:Sandbox_config.t (** default [Sandbox_config.default] *)
     -> action

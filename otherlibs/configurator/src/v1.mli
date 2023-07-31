@@ -91,7 +91,7 @@ module Pkg_config : sig
   val query : t -> package:string -> package_conf option
 
   val query_expr : t -> package:string -> expr:string -> package_conf option
-    [@@ocaml.deprecated "please use [query_expr_err]"]
+  [@@ocaml.deprecated "please use [query_expr_err]"]
 
   (** [query_expr_err t ~package ~expr] query pkg-config for the [package].
       [expr] may contain a version constraint, for example "gtk+-3.0 >= 3.18".
@@ -107,7 +107,7 @@ with type configurator := t
 module Flags : sig
   (** [write_sexp fname s] writes the list of strings [s] to the file [fname] in
       an appropriate format so that it can used in [dune] files with
-      [(:include \[fname\])]. *)
+      [(:include [fname])]. *)
   val write_sexp : string -> string list -> unit
 
   (** [write_lines fname s] writes the list of string [s] to the file [fname]

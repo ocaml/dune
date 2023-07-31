@@ -660,7 +660,7 @@ end = struct
 
   let load_build_directory_exn
       ({ Dir_triage.Build_directory.dir; context_or_install; sub_dir } as
-      build_dir) =
+       build_dir) =
     (* Load all the rules *)
     Gen_rules.gen_rules build_dir >>= function
     | Under_directory_target { directory_target_ancestor } ->

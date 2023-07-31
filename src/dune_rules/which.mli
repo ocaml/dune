@@ -2,7 +2,8 @@ open Import
 
 module Best_path : sig
   module Make
-      (Monad : Monad.S) (_ : sig
+      (Monad : Monad.S)
+      (_ : sig
         val file_exists : Path.t -> bool Monad.t
       end) : sig
     (** [best_path ~dir prog] if [prog] is one of the special programs that can

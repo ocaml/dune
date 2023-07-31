@@ -71,7 +71,7 @@ val create :
      ?experimental:bool
   -> name:string
   -> desc:string
-  -> (Version.t * [ `Since of Version.t ]) list
+  -> (Version.t * [ `Since of Version.t | `Deleted_in of Version.t ]) list
   -> t
 
 (** Return the name of the syntax. *)

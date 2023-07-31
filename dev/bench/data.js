@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690822270058,
+  "lastUpdate": 1690822676001,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -62232,6 +62232,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.0948226642866667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1bd6a8f8ec4d8034be56ce7dff854b3fcffa57ae",
+          "message": "chore(ignore-revs): add ocamlformat 0.20.1 (#8310)\n\nThis commit is visible in the \"plugin\" directory.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-07-31T18:21:47+02:00",
+          "tree_id": "8b97c5ae7383dac5d70e7e4b8f9f88a194d747a9",
+          "url": "https://github.com/ocaml/dune/commit/1bd6a8f8ec4d8034be56ce7dff854b3fcffa57ae"
+        },
+        "date": 1690822674869,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "79.52576565020667",
             "unit": "seconds"
           }
         ]

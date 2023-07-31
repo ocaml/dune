@@ -1,8 +1,6 @@
 Unreleased
 ----------
 
-- Fix flushing when using `sendfile` fallback (#8288, @alan-j-hu)
-
 - Add `dune show rules` as alias of the `dune rules` command. (#8000, @Alizter)
 
 - Fix `%{deps}` to expand properly in `(cat ...)` when containing 2 or more
@@ -28,6 +26,11 @@ Unreleased
 
 - Re-enable background file digests on Windows. The files are now open in a way
   that prevents race condition around deletion. (#8262, fixes #8268, @emillon)
+
+3.9.3 (2023-07-31)
+------------------
+
+- Fix flushing when using `sendfile` fallback (#8288, fixes #8284, @alan-j-hu)
 
 3.9.2 (2023-07-25)
 ------------------

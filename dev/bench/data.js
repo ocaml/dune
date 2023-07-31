@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690805944489,
+  "lastUpdate": 1690806429368,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -25634,6 +25634,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "46.78740829817334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7d4ac77cd14efcb1b39259925866009a46c459c5",
+          "message": "Add some questions and answers to the FAQ (#8282)\n\n* Add some questions and answers to the FAQ\r\n\r\n---------\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>\r\nSigned-off-by: Christine Rose <christinerose@users.noreply.github.com>\r\nCo-authored-by: Christine Rose <christinerose@users.noreply.github.com>",
+          "timestamp": "2023-07-31T13:04:46+01:00",
+          "tree_id": "5374469fafe39c7fcaf5b6ee790735f366289292",
+          "url": "https://github.com/ocaml/dune/commit/7d4ac77cd14efcb1b39259925866009a46c459c5"
+        },
+        "date": 1690806427679,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.304541339800004",
             "unit": "seconds"
           }
         ]

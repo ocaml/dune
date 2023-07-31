@@ -136,4 +136,4 @@
  (applies_to github8041)
  (enabled_if
   (= %{system} linux))
- (deps %{bin:strace}))
+ (deps %{bin:strace} %{bin:head}))

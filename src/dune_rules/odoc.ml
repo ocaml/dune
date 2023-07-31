@@ -141,6 +141,13 @@ module Output_format = struct
     | Html -> Alias.make Alias0.doc ~dir
     | Json -> Alias.make Alias0.doc_json ~dir
   ;;
+
+  let toplevel_index_path format ctx =
+    let base = Paths.toplevel_index ctx in
+    match format with
+    | Html -> base
+    | Json -> Path.Build.extend_basename base ~suffix:".json"
+  ;;
 end
 
 module Dep : sig
@@ -501,14 +508,46 @@ module Toplevel_index = struct
       Paths.odoc_support_dirname
       (html_list_items t)
   ;;
+
+  let string_to_json s = `String s
+  let list_to_json ~f l = `List (List.map ~f l)
+
+  let option_to_json ~f = function
+    | None -> `Null
+    | Some x -> f x
+  ;;
+
+  let item_to_json { name; version; link } =
+    `Assoc
+      [ "name", string_to_json name
+      ; "version", option_to_json ~f:string_to_json version
+      ; "link", string_to_json link
+      ]
+  ;;
+
+  (** This format is public API. *)
+  let to_json items = `Assoc [ "packages", list_to_json items ~f:item_to_json ]
+
+  let json t = Dune_stats.Json.to_string (to_json t)
+
+  let content (output : Output_format.t) t =
+    match output with
+    | Html -> html t
+    | Json -> json t
+  ;;
 end
 
-let setup_toplevel_index_rule sctx =
+let setup_toplevel_index_rule sctx output =
   let* packages = Only_packages.get () in
   let index = Toplevel_index.of_packages packages in
-  let html = Toplevel_index.html index in
+  let content = Toplevel_index.content output index in
   let ctx = Super_context.context sctx in
-  add_rule sctx (Action_builder.write_file (Paths.toplevel_index ctx) html)
+  let path = Output_format.toplevel_index_path output ctx in
+  add_rule sctx (Action_builder.write_file path content)
+;;
+
+let setup_toplevel_index_rules sctx =
+  Output_format.iter ~f:(setup_toplevel_index_rule sctx)
 ;;
 
 let libs_of_pkg ctx ~pkg =
@@ -566,11 +605,6 @@ let create_odoc ctx ~target odoc_file =
       |> Path.Build.extend_basename ~suffix:(Output_format.extension output)
     in
     { odoc_file; odocl_file; html_file = file Html; json_file = file Json }
-;;
-
-let static_html ctx =
-  let open Paths in
-  [ odoc_support ctx; toplevel_index ctx ]
 ;;
 
 let check_mlds_no_dupes ~pkg ~mlds =
@@ -702,12 +736,13 @@ let out_file (output : Output_format.t) odoc =
 let out_files ctx (output : Output_format.t) odocs =
   let extra_files =
     match output with
-    | Html -> List.map ~f:Path.build (static_html ctx)
+    | Html -> [ Path.build (Paths.odoc_support ctx) ]
     | Json -> []
   in
-  List.rev_append
-    extra_files
-    (List.map odocs ~f:(fun odoc -> Path.build (out_file output odoc)))
+  Path.build (Output_format.toplevel_index_path output ctx)
+  :: List.rev_append
+       extra_files
+       (List.map odocs ~f:(fun odoc -> Path.build (out_file output odoc)))
 ;;
 
 let setup_lib_html_rules_def =
@@ -911,7 +946,7 @@ let gen_rules sctx ~dir rest =
   | [ "_html" ] ->
     let ctx = Super_context.context sctx in
     let directory_targets = Path.Build.Map.singleton (Paths.odoc_support ctx) Loc.none in
-    has_rules ~directory_targets (setup_css_rule sctx >>> setup_toplevel_index_rule sctx)
+    has_rules ~directory_targets (setup_css_rule sctx >>> setup_toplevel_index_rules sctx)
   | [ "_mlds"; pkg ] ->
     with_package pkg ~f:(fun pkg ->
       let* _mlds, rules = package_mlds sctx ~pkg in

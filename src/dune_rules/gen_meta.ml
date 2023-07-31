@@ -20,10 +20,6 @@ module Pub_name = struct
     let pkg, xs = Lib_name.split s in
     of_list (Package.Name.to_string pkg :: xs)
 
-  let rec root = function
-    | Dot (t, _) -> root t
-    | Id n -> n
-
   let to_list =
     let rec loop acc = function
       | Dot (t, n) -> loop (n :: acc) t
@@ -64,7 +60,7 @@ let archives ?(preds = []) lib =
   ; plugin (preds @ [ Pos "native" ]) (make plugins.native)
   ]
 
-let gen_lib pub_name lib ~path ~version =
+let gen_lib pub_name lib ~version =
   let open Memo.O in
   let info = Lib.info lib in
   let synopsis = Lib_info.synopsis info in
@@ -161,7 +157,6 @@ let gen_lib pub_name lib ~path ~version =
     ; (match Lib_info.jsoo_runtime info with
       | [] -> []
       | l ->
-        let root = Pub_name.root pub_name in
         let l = List.map l ~f:Path.basename in
         [ rule "jsoo_runtime" [] Set (String.concat l ~sep:" ") ])
     ]
@@ -185,7 +180,7 @@ let gen ~(package : Package.t) ~add_directory_entry entries =
           match Pub_name.to_list pub_name with
           | [] -> assert false
           | package :: path ->
-            let pub_name, path =
+            let pub_name =
               match Lib_info.status info with
               | Private (_, None) ->
                 (* Not possible b/c we wouldn't be generating a META file for a
@@ -201,12 +196,10 @@ let gen ~(package : Package.t) ~add_directory_entry entries =
                   let name = Package.name pkg in
                   Pub_name.of_list (Package.Name.to_string name :: path)
                 in
-                (pub_name, path)
-              | _ -> (pub_name, path)
+                pub_name
+              | _ -> pub_name
             in
-            let+ entries =
-              gen_lib pub_name ~path (Lib.Local.to_lib lib) ~version
-            in
+            let+ entries = gen_lib pub_name (Lib.Local.to_lib lib) ~version in
             (pub_name, entries))
         | Deprecated_library_name
             { old_name = old_public_name, _

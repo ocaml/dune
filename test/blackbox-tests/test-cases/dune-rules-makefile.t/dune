@@ -1,0 +1,8 @@
+(executable
+ (name simple_exec)
+ (modules simple_exec)
+ (libraries simple_lib))
+
+(library
+ (name simple_lib)
+ (modules simple_lib))

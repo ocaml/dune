@@ -196,12 +196,14 @@ module Options_implied_by_dash_p = struct
             [ "default-target" ]
             ~docs
             ~docv:"TARGET"
-            ~doc:"Set the default target that when none is specified to $(b,dune build).")
+            ~doc:
+              "Set the default target that is used when none is specified to $(b,dune \
+               build).")
     and+ always_show_command_line =
-      let doc = "Always show the full command lines of programs executed by dune" in
+      let doc = "Always show the full command lines of programs executed by dune." in
       Arg.(value & flag & info [ "always-show-command-line" ] ~docs ~doc)
     and+ promote_install_files =
-      let doc = "Promote the generated <package>.install files to the source tree" in
+      let doc = "Promote any generated <package>.install files to the source tree." in
       Arg.(
         last
         & opt_all ~vopt:true bool [ false ]
@@ -226,33 +228,34 @@ module Options_implied_by_dash_p = struct
   ;;
 
   let dash_dash_release =
+    let shorthand_for =
+      [ "--root"
+      ; "."
+      ; "--ignore-promoted-rules"
+      ; "--no-config"
+      ; "--profile"
+      ; "release"
+      ; "--always-show-command-line"
+      ; "--promote-install-files"
+      ; "--require-dune-project-file"
+      ; "--default-target"
+      ; "@install"
+      ]
+    in
     Arg.(
       value
-      & alias
-          [ "--root"
-          ; "."
-          ; "--ignore-promoted-rules"
-          ; "--no-config"
-          ; "--profile"
-          ; "release"
-          ; "--always-show-command-line"
-          ; "--promote-install-files"
-          ; "--require-dune-project-file"
-          ; "--default-target"
-          ; "@install"
-          ]
+      & alias shorthand_for
       & info
           [ "release" ]
           ~docs
           ~docv:"PACKAGES"
           ~doc:
-            "Put $(b,dune) into a reproducible $(i,release) mode. This is in fact a \
-             shorthand for $(b,--root . --ignore-promoted-rules --no-config --profile \
-             release --always-show-command-line --promote-install-files --default-target \
-             @install --require-dune-project-file). You should use this option for \
-             release builds. For instance, you must use this option in your \
-             $(i,<package>.opam) files. Except if you already use $(b,-p), as $(b,-p) \
-             implies this option.")
+            (sprintf
+               "Put $(b,dune) into a reproducible $(i,release) mode. Shorthand for \
+                $(b,%s). You should use this option for release builds. For instance, \
+                you must use this option in your $(i,<package>.opam) files. Except if \
+                you already use $(b,-p), as $(b,-p) implies this option."
+               (String.concat ~sep:" " shorthand_for)))
   ;;
 
   let options =
@@ -378,9 +381,8 @@ let shared_with_config_file =
                "DUNE_SANDBOX")
           ~doc:
             (Printf.sprintf
-               "Sandboxing mode to use by default. Some actions require a certain \
-                sandboxing mode, so they will ignore this setting. The allowed values \
-                are: %s."
+               "Set sandboxing mode. Some actions require a certain sandboxing mode, so \
+                they will ignore this setting. The allowed values are: %s."
                (String.concat
                   ~sep:", "
                   (List.map
@@ -391,7 +393,7 @@ let shared_with_config_file =
     let doc =
       let f s = fst s |> Printf.sprintf "$(b,%s)" in
       Printf.sprintf
-        "Changes how the log of build results are displayed to the console between \
+        "Change how the log of build results are displayed to the console between \
          rebuilds while in $(b,--watch) mode. Supported modes: %s."
         (List.map ~f modes |> String.concat ~sep:", ")
     in
@@ -462,8 +464,8 @@ let shared_with_config_file =
       & info
           [ "action-stderr-on-success" ]
           ~doc:
-            "Same as $(b,--action-stdout-on-success) but for the standard output for \
-             error messages. A good default for large mono-repositories is \
+            "Same as $(b,--action-stdout-on-success) but for standard error instead of \
+             standard output. A good default for large mono-repositories is \
              $(b,--action-stdout-on-success=swallow \
              --action-stderr-on-success=must-be-empty). This ensures that a successful \
              build has a \"clean\" empty output.")
@@ -741,7 +743,7 @@ module Builder = struct
         & info
             [ "print-metrics" ]
             ~docs
-            ~doc:"Print out various performance metrics after every build")
+            ~doc:"Print out various performance metrics after every build.")
     and+ dump_memo_graph_file =
       Arg.(
         value
@@ -750,7 +752,7 @@ module Builder = struct
             [ "dump-memo-graph" ]
             ~docs
             ~docv:"FILE"
-            ~doc:"Dumps the dependency graph to a file after the build is complete")
+            ~doc:"Dump the dependency graph to a file after the build is complete.")
     and+ dump_memo_graph_format =
       Arg.(
         value
@@ -759,7 +761,7 @@ module Builder = struct
             [ "dump-memo-graph-format" ]
             ~docs
             ~docv:"FORMAT"
-            ~doc:"File format to be used when dumping dependency graph")
+            ~doc:"Set the file format used by $(b,--dump-memo-graph)")
     and+ dump_memo_graph_with_timing =
       Arg.(
         value
@@ -768,10 +770,10 @@ module Builder = struct
             [ "dump-memo-graph-with-timing" ]
             ~docs
             ~doc:
-              "With $(b,--dump-memo-graph), will re-run each cached node in the Memo \
-               graph after building and include the runtime in the output. Since all \
-               nodes contain a cached value, this will measure just the runtime of each \
-               node")
+              "Re-run each cached node in the Memo graph after building and include the \
+               run duration in the output of $(b,--dump-memo-graph). Since all nodes \
+               contain a cached value, each measurement will only account for a single \
+               node.")
     and+ dump_gc_stats =
       Arg.(
         value
@@ -825,7 +827,8 @@ module Builder = struct
             [ "trace-file" ]
             ~docs
             ~docv:"FILE"
-            ~doc:"Output trace data in catapult format (compatible with chrome://tracing)")
+            ~doc:
+              "Output trace data in catapult format (compatible with chrome://tracing).")
     and+ stats_trace_extended =
       Arg.(
         value
@@ -833,7 +836,7 @@ module Builder = struct
         & info
             [ "trace-extended" ]
             ~docs
-            ~doc:"Output extended trace data (requires trace-file)")
+            ~doc:"Output extended trace data (requires trace-file).")
     and+ no_print_directory =
       Arg.(
         value
@@ -841,9 +844,9 @@ module Builder = struct
         & info
             [ "no-print-directory" ]
             ~docs
-            ~doc:"Suppress \"Entering directory\" messages")
+            ~doc:"Suppress \"Entering directory\" messages.")
     and+ store_orig_src_dir =
-      let doc = "Store original source location in dune-package metadata" in
+      let doc = "Store original source location in dune-package metadata." in
       Arg.(
         value
         & flag
@@ -928,9 +931,9 @@ module Builder = struct
         & info
             [ "error-reporting" ]
             ~doc:
-              "Controls when the build errors are reported. $(b,early) - report errors \
-               as soon as they are discovered. $(b,deterministic) - report errors at the \
-               end of the build in a deterministic order. $(b,twice) - report each error \
+              "Controls when the build errors are reported. $(b,early) reports errors as \
+               soon as they are discovered. $(b,deterministic) reports errors at the end \
+               of the build in a deterministic order. $(b,twice) reports each error \
                twice: once as soon as the error is discovered and then again at the end \
                of the build, in a deterministic order.")
     and+ react_to_insignificant_changes =
@@ -940,8 +943,8 @@ module Builder = struct
         & info
             [ "react-to-insignificant-changes" ]
             ~doc:
-              "react to insignificant file system changes; this is only useful for \
-               benchmarking dune")
+              "React to insignificant file system changes; this is only useful for \
+               benchmarking dune.")
     and+ separate_error_messages =
       Arg.(
         value

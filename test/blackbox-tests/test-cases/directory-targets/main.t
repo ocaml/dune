@@ -114,6 +114,10 @@ Hints for directory targets.
 Print rules:
 
   $ dune rules -m output | tr '\t' ' '
+  _build/default/src_x: src_x
+   mkdir -p _build/default; \
+   cp src_x _build/default/src_x
+  
   _build/default/output: _build/default/src_x
    mkdir -p _build/default; \
    mkdir -p _build/default; \

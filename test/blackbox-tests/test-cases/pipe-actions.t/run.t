@@ -50,7 +50,7 @@ The makefile version of pipe actions uses actual pipes:
   >    (pipe-outputs (run a) (run b) (run c)))))
   > EOF
 
-  $ dune rules -m target
+  $ dune rules -m target | tail -n7
   _build/default/target: _build/install/default/bin/a \
     _build/install/default/bin/b _build/install/default/bin/c
   	mkdir -p _build/default; \

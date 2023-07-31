@@ -19,4 +19,5 @@ val os_family : path:Path.t list -> string option Fiber.t
 
 (** Returns system variable bindings where all the system-dependent values that
     could be retrieved are set *)
-val sys_bindings : path:Path.t list -> Solver_env.Sys_var.Bindings.t Fiber.t
+val sys_bindings :
+  path:Path.t list -> Solver_env.Variable.Sys.Bindings.t Fiber.t

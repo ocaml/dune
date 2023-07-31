@@ -7,32 +7,18 @@ module type CONTEXT = Opam_0install.S.CONTEXT
 module Filter : sig
   type filter := OpamTypes.filter
 
-  (** Replace all flags with their values. Variables that aren't defined in
-      [Solver_env.Flag] are left unresolved. *)
-  val resolve_flags : Solver_env.Flag.Set.t -> filter -> filter
+  (** Substitute variables with their values.
 
-  (** Perform two transformations on a [filter]:
-
-      - Substitute system environment variables with their values
-      - Resolves comparisons with unset system environment variables to true
-
-      This creates a formula which is as permissive as possible within the
-      constraints for system environment variables specified by the user. The
-      intention is to generate lockdirs which will work on as many systems as
-      possible, but to allow the user to constrain this by setting environment
-      variables to handle situations where the most permissive solve is not
-      possible or otherwise produces undesirable outcomes (e.g. when there are
-      mutually-incompatible os-specific packages for different operating
-      systems). *)
-  val resolve_sys_var_treating_unset_vars_as_wildcards
-    :  Solver_env.Sys_var.Bindings.t
-    -> filter
-    -> filter
-
-  (** Replace all variables from a [Solver_env.t] with their values treating
-      unset system environment variables as wildcards. See the documentation of
-      [resolve_sys_var_treating_unset_vars_as_wildcards] for more information. *)
-  val resolve_solver_env_treating_unset_sys_vars_as_wildcards
+      Comparisons with unset system environment variables resolve to true,
+      treating them as wildcards. This creates a formula which is as permissive
+      as possible within the constraints for system environment variables
+      specified by the user. The intention is to generate lockdirs which will
+      work on as many systems as possible, but to allow the user to constrain
+      this by setting environment variables to handle situations where the most
+      permissive solve is not possible or otherwise produces undesirable
+      outcomes (e.g. when there are mutually-incompatible os-specific packages
+      for different operating systems). *)
+  val resolve_solver_env_treating_unset_sys_variables_as_wildcards
     :  Solver_env.t
     -> filter
     -> filter
@@ -41,55 +27,40 @@ module Filter : sig
 end = struct
   open OpamTypes
 
-  let resolve_flags flags =
-    OpamFilter.map_up (function
-      | FIdent ([], variable, None) as filter ->
-        (match Solver_env.Flag.of_string_opt (OpamVariable.to_string variable) with
-         | Some flag -> FBool (Solver_env.Flag.Set.mem flags flag)
-         | None -> filter)
-      | other -> other)
-  ;;
-
   (* Returns true iff a variable is an opam system environment variable *)
   let is_variable_sys variable =
-    Solver_env.Sys_var.of_string_opt (OpamVariable.to_string variable) |> Option.is_some
+    Solver_env.Variable.Sys.of_string_opt (OpamVariable.to_string variable)
+    |> Option.is_some
   ;;
 
-  let resolve_sys_var_treating_unset_vars_as_wildcards sys_var_bindings =
+  let resolve_solver_env_treating_unset_sys_variables_as_wildcards solver_env =
     OpamFilter.map_up (function
       | FIdent ([], variable, None) as filter ->
-        (* System environment variables which are set in the solver environment
-           are substituted for their values here. *)
-        let sys_var_value_opt =
-          Solver_env.Sys_var.of_string_opt (OpamVariable.to_string variable)
-          |> Option.bind ~f:(Solver_env.Sys_var.Bindings.get sys_var_bindings)
-        in
-        (match sys_var_value_opt with
+        (match Solver_env.Variable.of_string_opt (OpamVariable.to_string variable) with
          | None -> filter
-         | Some sys_var_value -> FString sys_var_value)
+         | Some variable ->
+           (match Solver_env.get solver_env variable with
+            | Unset_sys -> filter
+            | String string -> FString string
+            | Bool bool -> FBool bool))
       | (FOp (FIdent (_, variable, _), _, _) | FOp (_, _, FIdent (_, variable, _))) as
         filter ->
-        (* Comparisons with unset system environment variables resolve to
-           true. This is so that we add dependencies guarded by filters on
-           unset system variables. For example if a package has a
-           linux-only and a macos-only dependency and the user hasn't
-           specified that they only want to solve for a specific os, then
-           we should add both the linux-only and macos-only dependencies
-           to the solution.
+        if is_variable_sys variable
+        then
+          (* Comparisons with unset system environment variables resolve to
+             true. This is so that we add dependencies guarded by filters on
+             unset system variables. For example if a package has a linux-only
+             and a macos-only dependency and the user hasn't specified that they
+             only want to solve for a specific os, then we should add both the
+             linux-only and macos-only dependencies to the solution.
 
-           Note that this branch is only followed for unset variables as
-           [OpamFilter.map_up] traverses the formula bottom up, so variables
-           with values in [sys_var_bindings] will have been substituted for
-           those values already by the time control gets here.*)
-        if is_variable_sys variable then FBool true else filter
+             Note that this branch is only followed for unset variables as
+             [OpamFilter.map_up] traverses the formula bottom up, so variables
+             with values in [solver_env] will have been substituted for those
+             values already by the time control gets here.*)
+          FBool true
+        else filter
       | other -> other)
-  ;;
-
-  let resolve_solver_env_treating_unset_sys_vars_as_wildcards
-    { Solver_env.flags; sys }
-    filter
-    =
-    filter |> resolve_flags flags |> resolve_sys_var_treating_unset_vars_as_wildcards sys
   ;;
 
   let eval_to_bool filter =
@@ -158,7 +129,7 @@ module Context_for_dune = struct
     fun t opam ->
       let available = OpamFile.OPAM.available opam in
       let available_vars_resolved =
-        Filter.resolve_solver_env_treating_unset_sys_vars_as_wildcards
+        Filter.resolve_solver_env_treating_unset_sys_variables_as_wildcards
           t.solver_env
           available
       in
@@ -217,14 +188,19 @@ module Context_for_dune = struct
     let package_is_local =
       OpamPackage.Name.Map.mem (OpamPackage.name package) t.local_packages
     in
-    (if package_is_local
-     then
-       Filtered_formula.map_filters
-         filtered_formula
-         ~f:(Filter.resolve_flags t.solver_env.flags)
-     else filtered_formula)
-    |> Filtered_formula.map_filters
-         ~f:(Filter.resolve_sys_var_treating_unset_vars_as_wildcards t.solver_env.sys)
+    let solver_env =
+      if package_is_local
+      then t.solver_env
+      else
+        (* Flag variables pertain only to local packages. This is because these
+           variables enable dependencies on test and documentation packages and
+           we don't want to pull in test and doc dependencies for dependencies
+           of local packages. *)
+        Solver_env.clear_flags t.solver_env
+    in
+    Filtered_formula.map_filters
+      filtered_formula
+      ~f:(Filter.resolve_solver_env_treating_unset_sys_variables_as_wildcards solver_env)
     |> OpamFilter.filter_deps
          ~build:true
          ~post:true

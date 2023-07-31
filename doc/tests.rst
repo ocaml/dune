@@ -137,6 +137,11 @@ field:
 In the example above, the name `qtest.lib` comes from the `public_name` field
 in `qtest`'s own `dune` file.
 
+Note that using ``ppx_inline_test`` requires that the opam package
+``ppx_inline_test`` be installed in your switch. If you use ``ppx_inline_test``
+in a package then that package must `unconditionally` depend on
+``ppx_inline_test`` (ie. ``ppx_inline_test`` can't be a ``with-test``
+dependency).
 
 Inline Expectation Tests
 ------------------------

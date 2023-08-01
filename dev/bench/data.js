@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690877708297,
+  "lastUpdate": 1690878046638,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -62319,6 +62319,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.1111162630533333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c15ce83157295318482f94479c750ab5590767b5",
+          "message": "chore: update nixpkgs (#8311)\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-08-01T09:55:30+02:00",
+          "tree_id": "a2ff11c9c25b5e75cd1acdedc9bca6b9c5ea74bd",
+          "url": "https://github.com/ocaml/dune/commit/c15ce83157295318482f94479c750ab5590767b5"
+        },
+        "date": 1690878045850,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "66.83394418016667",
             "unit": "seconds"
           }
         ]

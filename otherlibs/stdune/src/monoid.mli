@@ -17,12 +17,12 @@ module Forall : S with type t = bool
 (** The string concatenation monoid with [empty = ""] and [combine = ( ^ )]. *)
 module String : S with type t = string
 
-(** The list monoid with [empty = \[\]] and [combine = ( @ )]. *)
+(** The list monoid with [empty = []] and [combine = ( @ )]. *)
 module List (M : sig
   type t
 end) : S with type t = M.t list
 
-(** The list monoid with [empty = \[\]] and [combine = ( @ )]. *)
+(** The list monoid with [empty = []] and [combine = ( @ )]. *)
 module Appendable_list (M : sig
   type t
 end) : S with type t = M.t Appendable_list.t
@@ -68,10 +68,11 @@ module Product3 (A : Basic) (B : Basic) (C : Basic) :
 
     - empty = fun _ -> M.empty
     - combine f g = fun x -> M.combine (f x) (g x) *)
-module Function (A : sig
-  type t
-end)
-(M : Basic) : S with type t = A.t -> M.t
+module Function
+    (A : sig
+      type t
+    end)
+    (M : Basic) : S with type t = A.t -> M.t
 
 (** Endofunctions, i.e., functions of type [t -> t], form two monoids. *)
 module Endofunction : sig
@@ -155,8 +156,9 @@ module Commutative : sig
 
       - empty = fun _ -> M.empty
       - combine f g = fun x -> M.combine (f x) (g x) *)
-  module Function (A : sig
-    type t
-  end)
-  (M : Basic) : S with type t = A.t -> M.t
+  module Function
+      (A : sig
+        type t
+      end)
+      (M : Basic) : S with type t = A.t -> M.t
 end

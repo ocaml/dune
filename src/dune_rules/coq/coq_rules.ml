@@ -844,8 +844,9 @@ let install_rules ~sctx ~dir s =
              Coq_module.obj_files ~wrapper_name ~mode ~obj_dir:dir
                ~obj_files_mode:Coq_module.Install vfile
              |> List.map
-                  ~f:(fun ((vo_file : Path.Build.t), (install_vo_file : string))
-                     -> make_entry vo_file install_vo_file)
+                  ~f:(fun
+                      ((vo_file : Path.Build.t), (install_vo_file : string)) ->
+                    make_entry vo_file install_vo_file)
            in
            let vfile = Coq_module.source vfile |> Path.as_in_build_dir_exn in
            let vfile_dst = to_path vfile in

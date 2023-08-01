@@ -114,8 +114,8 @@ let%expect_test "no methods in common" =
   let init = init ~version:(2, 5) () in
   test ~init ~real_methods:false ~client:(fun _ -> assert false) ~handler ();
   [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+[@@expect.uncaught_exn
+  {|
   ( "Server_aborted\
    \n  [ [ \"message\"; \"Server and client have no method versions in common\" ] ]")
   Trailing output
@@ -499,8 +499,8 @@ let%test_module "long polling" =
       in
       test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
       [%expect.unreachable]
-      [@@expect.uncaught_exn
-        {|
+    [@@expect.uncaught_exn
+      {|
       (Test_scheduler.Never)
       Trailing output
       ---------------

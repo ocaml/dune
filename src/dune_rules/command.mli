@@ -92,7 +92,7 @@ val run' :
   -> Args.without_targets Args.t list
   -> Action.Full.t Action_builder.t
 
-(** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
+(** [quote_args quote args] is [As [quote; arg1; quote; arg2; ...]] *)
 val quote_args : string -> string list -> _ Args.t
 
 val fail : exn -> _ Args.t

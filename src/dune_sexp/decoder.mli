@@ -13,10 +13,10 @@ type hint =
     The input can be seen either as a plain sequence of S-expressions or a list
     of fields. The ['kind] parameter indicates how the input is seen:
 
-    - with ['kind = \[values\]], the input is seen as an ordered sequence of
+    - with ['kind = [values]], the input is seen as an ordered sequence of
       S-expressions
 
-    - with [!'kind = \[fields\]], the input is seen as an unordered sequence of
+    - with [!'kind = [fields]], the input is seen as an unordered sequence of
       fields
 
     A field is a S-expression of the form: [(<atom> <values>...)] where [atom]

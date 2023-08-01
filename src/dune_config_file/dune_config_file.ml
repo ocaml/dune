@@ -149,7 +149,8 @@ module Dune_config = struct
   module Make_superpose
       (A : S)
       (B : S)
-      (C : S) (Merge_field : sig
+      (C : S)
+      (Merge_field : sig
         val merge_field : 'a A.field -> 'a B.field -> 'a C.field
       end) =
   struct
@@ -175,7 +176,8 @@ module Dune_config = struct
   end
 
   module Make_to_dyn
-      (M : S) (To_dyn : sig
+      (M : S)
+      (To_dyn : sig
         val field : ('a -> Dyn.t) -> 'a M.field -> Dyn.t
       end) =
   struct

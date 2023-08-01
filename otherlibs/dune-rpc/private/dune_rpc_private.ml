@@ -149,7 +149,8 @@ module Client = struct
   end
 
   module Make
-      (Fiber : Fiber_intf.S) (Chan : sig
+      (Fiber : Fiber_intf.S)
+      (Chan : sig
         type t
 
         val write : t -> Sexp.t list option -> unit Fiber.t

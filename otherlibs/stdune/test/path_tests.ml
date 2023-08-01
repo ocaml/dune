@@ -312,8 +312,8 @@ let%expect_test _ =
   Path.rm_rf (Path.of_string "/does/not/exist/foo/bar/baz")
   |> Dyn.unit |> print_dyn;
   [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+[@@expect.uncaught_exn
+  {|
   ( "(\"Path.rm_rf called on external dir\",\
    \n{ t = External \"/does/not/exist/foo/bar/baz\" })") |}]
 

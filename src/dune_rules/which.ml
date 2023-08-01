@@ -6,7 +6,8 @@ let programs_for_which_we_prefer_opt_ext =
 
 module Best_path = struct
   module Make
-      (Monad : Monad.S) (Fs : sig
+      (Monad : Monad.S)
+      (Fs : sig
         val file_exists : Path.t -> bool Monad.t
       end) =
   struct

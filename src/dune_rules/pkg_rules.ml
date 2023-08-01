@@ -584,8 +584,8 @@ module Action_expander = struct
       let* action = expand action ~expander in
       let+ _env, updates =
         Memo.List.fold_left ~init:(expander.env, []) updates
-          ~f:(fun (env, updates) ({ Env_update.op = _; var; value } as update)
-             ->
+          ~f:(fun
+              (env, updates) ({ Env_update.op = _; var; value } as update) ->
             let+ value =
               let expander = { expander with env } in
               let+ value =
@@ -621,9 +621,9 @@ module Action_expander = struct
            List.fold_left cookies
              ~init:(Filename.Map.empty, Package.Name.Map.empty)
              ~f:(fun
-                  (bins, dep_info)
-                  ((pkg : Pkg.t), (cookie : Install_cookie.t))
-                ->
+                 (bins, dep_info)
+                 ((pkg : Pkg.t), (cookie : Install_cookie.t))
+               ->
                let bins =
                  Section.Map.Multi.find cookie.files Bin
                  |> List.fold_left ~init:bins ~f:(fun acc bin ->

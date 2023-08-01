@@ -290,10 +290,10 @@ and Exported : sig
      "Undefined_recursive_module" exception. *)
 
   val build_file_memo : (Path.t, Digest.t * target_kind) Memo.Table.t Lazy.t
-    [@@warning "-32"]
+  [@@warning "-32"]
 
   val build_alias_memo : (Alias.t, Dep.Fact.Files.t) Memo.Table.t
-    [@@warning "-32"]
+  [@@warning "-32"]
 
   val dep_on_alias_definition :
     Rules.Dir_rules.Alias_spec.item -> unit Action_builder.t

@@ -59,7 +59,7 @@ let merge_nontrivial a b ~f_one ~f_set =
   let default = f_one a.default b.default in
   create ~here:(f_one a.here b.here) ~default
     ~exceptions:(merge_exceptions a b ~default ~f:f_set)
-  [@@inline always]
+[@@inline always]
 
 let rec union x y =
   match (x, y) with

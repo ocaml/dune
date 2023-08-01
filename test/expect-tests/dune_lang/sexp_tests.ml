@@ -275,8 +275,8 @@ let%expect_test _ =
 let%expect_test _ =
   test Dune (t [ Text "x%{" ]);
   [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+[@@expect.uncaught_exn
+  {|
   ( "({ pos_fname = \"<none>\"\
    \n ; start = { pos_lnum = 1; pos_bol = 0; pos_cnum = 0 }\
    \n ; stop = { pos_lnum = 1; pos_bol = 0; pos_cnum = 0 }\
@@ -286,8 +286,8 @@ let%expect_test _ =
 let%expect_test _ =
   test Dune (t [ Text "x%"; Text "{" ]);
   [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+[@@expect.uncaught_exn
+  {|
   ( "({ pos_fname = \"<none>\"\
    \n ; start = { pos_lnum = 1; pos_bol = 0; pos_cnum = 0 }\
    \n ; stop = { pos_lnum = 1; pos_bol = 0; pos_cnum = 0 }\

@@ -35,7 +35,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
             binaries_from_install files
           | Dune_file.Executables
               ({ install_conf = Some { section = Section Bin; files; _ }; _ } as
-              exes) -> (
+               exes) -> (
             let* enabled_if =
               Expander.With_reduced_var_set.eval_blang ~context ~dir
                 exes.enabled_if

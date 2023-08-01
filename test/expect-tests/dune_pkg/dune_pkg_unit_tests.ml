@@ -129,8 +129,8 @@ let%expect_test "downloading but the checksums don't match" =
   Thread.join server;
   print_endline "Finished successfully?";
   [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+[@@expect.uncaught_exn
+  {|
   (Dune_util__Report_error.Already_reported)
   Trailing output
   ---------------

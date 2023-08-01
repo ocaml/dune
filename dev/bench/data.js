@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690882518982,
+  "lastUpdate": 1690882947358,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -25779,6 +25779,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.507002985060005",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4338b51cc5a8d0880f3f950324695fe4b03b33a7",
+          "message": "refactor(memo): remove unnecessary tupling of a constructor (#8313)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-01T10:22:28+01:00",
+          "tree_id": "03673abee34607248df971790c926ab033317f70",
+          "url": "https://github.com/ocaml/dune/commit/4338b51cc5a8d0880f3f950324695fe4b03b33a7"
+        },
+        "date": 1690882946575,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.10908837044",
             "unit": "seconds"
           }
         ]

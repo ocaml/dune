@@ -1,3 +1,8 @@
+Unreleased
+----------
+
+- No longer emit linkopts(javascript) in META files (#8168, @hhugo)
+
 3.10.0 (2023-07-31)
 -------------------
 

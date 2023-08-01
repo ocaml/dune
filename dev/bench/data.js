@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690917074835,
+  "lastUpdate": 1690917214253,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -25808,6 +25808,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.10908837044",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "eb43938b2265024ba7ce6f5b355a3ba556ca40b6",
+          "message": "refactor: use unboxed optionals in memo (#8300)\n\nThis saves us 2 words in storage and one less pointer indirection\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-01T11:53:30-07:00",
+          "tree_id": "aec0f2725caffa62362599f9d2ffb60661c1e9aa",
+          "url": "https://github.com/ocaml/dune/commit/eb43938b2265024ba7ce6f5b355a3ba556ca40b6"
+        },
+        "date": 1690917212948,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.206975848553334",
             "unit": "seconds"
           }
         ]

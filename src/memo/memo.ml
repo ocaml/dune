@@ -1627,7 +1627,7 @@ struct
   end
 
   module Value = struct
-    type t = T : ('a Type_eq.Id.t * 'a output) -> t
+    type t = T : 'a Type_eq.Id.t * 'a output -> t
 
     let get (type a) ~(input_with_matching_id : a input) value : a output =
       match value with

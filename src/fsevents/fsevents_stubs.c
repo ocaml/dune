@@ -10,7 +10,7 @@
 #include <AvailabilityMacros.h>
 #endif
 
-#if defined(__APPLE__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 100700
+#if defined(__APPLE__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>

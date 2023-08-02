@@ -266,7 +266,7 @@ Such languages must be enabled in the ``dune`` project file separately:
 
 .. code:: dune
 
-   (lang dune 3.10)
+   (lang dune 3.11)
    (using coq 0.8)
 
 If such extensions are experimental, it's recommended that they pass

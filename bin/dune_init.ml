@@ -185,23 +185,13 @@ module Component = struct
         }
     end
 
-    (** TODO(shonfeder): Use separate types for executables and libs (which
-        would use Lib_name.t) *)
-    type public_name =
-      | Use_name
-      | Public_name of Dune_lang.Atom.t
-
-    let public_name_to_string = function
-      | Use_name -> "<default>"
-      | Public_name p -> Dune_lang.Atom.to_string p
-
     module Executable = struct
-      type t = { public : public_name option }
+      type t = { public : Dune_lang.Atom.t option }
     end
 
     module Library = struct
       type t =
-        { public : public_name option
+        { public : Dune_lang.Atom.t option
         ; inline_tests : bool
         }
     end
@@ -291,21 +281,13 @@ module Component = struct
     let add_to_list_set elem set =
       if List.mem ~equal:Dune_lang.Atom.equal set elem then set else elem :: set
 
-    let public_name_encoder ~default (p : Options.public_name) =
-      let atom =
-        match p with
-        | Use_name -> default
-        | Public_name x -> x
-      in
-      Atom atom
+    let public_name_encoder atom = Atom atom
 
-    let public_name_field ~default =
-      Encoder.field_o "public_name" (public_name_encoder ~default)
+    let public_name_field = Encoder.field_o "public_name" public_name_encoder
 
     let executable (common : Options.Common.t) (options : Options.Executable.t)
         =
-      make "executable" common
-        [ public_name_field ~default:common.name options.public ]
+      make "executable" common [ public_name_field options.public ]
 
     let library (common : Options.Common.t)
         { Options.Library.inline_tests; public } =
@@ -320,9 +302,7 @@ module Component = struct
         else common
       in
       make "library" common
-        [ public_name_field ~default:common.name public
-        ; Field.inline_tests inline_tests
-        ]
+        [ public_name_field public; Field.inline_tests inline_tests ]
 
     let test common (() : Options.Test.t) = make "test" common []
 
@@ -433,7 +413,7 @@ module Component = struct
         in
         bin
           { context = { context with dir = Path.relative dir "bin" }
-          ; options = { public = Some (Options.Public_name common.name) }
+          ; options = { public = Some common.name }
           ; common =
               { common with libraries; name = Dune_lang.Atom.of_string "main" }
           }
@@ -446,9 +426,7 @@ module Component = struct
         src
           { context = { context with dir = Path.relative dir "lib" }
           ; options =
-              { public = Some (Options.Public_name common.name)
-              ; inline_tests = options.inline_tests
-              }
+              { public = Some common.name; inline_tests = options.inline_tests }
           ; common
           }
       in

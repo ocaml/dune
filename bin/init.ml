@@ -35,17 +35,6 @@ let atom_conv = Arg.conv (atom_parser, atom_printer)
 
 let component_name_conv = Arg.conv (component_name_parser, atom_printer)
 
-let public_name_conv =
-  let open Component.Options in
-  let parser = function
-    | "" -> Ok Use_name
-    | s -> component_name_parser s |> Result.map ~f:(fun a -> Public_name a)
-  in
-  let printer ppf public_name =
-    Format.pp_print_string ppf (public_name_to_string public_name)
-  in
-  Arg.conv (parser, printer)
-
 (** {2 Status reporting} *)
 
 let print_completion kind name =
@@ -90,7 +79,32 @@ let context_cwd : Init_context.t Term.t =
   Scheduler.go ~common:common_term ~config (fun () ->
       Memo.run (Init_context.make path))
 
-let public : Component.Options.public_name option Term.t =
+module Public_name = struct
+  type t =
+    | Use_name
+    | Public_name of Dune_lang.Atom.t
+
+  let public_name_to_string = function
+    | Use_name -> "<default>"
+    | Public_name p -> Dune_lang.Atom.to_string p
+
+  let public_name (common : Component.Options.Common.t) = function
+    | None -> None
+    | Some Use_name -> Some common.name
+    | Some (Public_name n) -> Some n
+
+  let conv =
+    let parser = function
+      | "" -> Ok Use_name
+      | s -> component_name_parser s |> Result.map ~f:(fun a -> Public_name a)
+    in
+    let printer ppf public_name =
+      Format.pp_print_string ppf (public_name_to_string public_name)
+    in
+    Arg.conv (parser, printer)
+end
+
+let public : Public_name.t option Term.t =
   let docv = "PUBLIC_NAME" in
   let doc =
     "If called with an argument, make the component public under the given \
@@ -98,7 +112,7 @@ let public : Component.Options.public_name option Term.t =
   in
   Arg.(
     value
-    & opt ~vopt:(Some Component.Options.Use_name) (some public_name_conv) None
+    & opt ~vopt:(Some Public_name.Use_name) (some Public_name.conv) None
     & info [ "public" ] ~docv ~doc)
 
 let inline_tests : bool Term.t =
@@ -119,6 +133,7 @@ let executable =
   @@ let+ context = context_cwd
      and+ common = common
      and+ public = public in
+     let public = Public_name.public_name common public in
      Component.init (Executable { context; common; options = { public } });
      print_completion kind common.name
 
@@ -131,6 +146,7 @@ let library =
      and+ common = common
      and+ public = public
      and+ inline_tests = inline_tests in
+     let public = Public_name.public_name common public in
      Component.init
        (Library { context; common; options = { public; inline_tests } });
      print_completion kind common.name

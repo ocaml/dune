@@ -17,8 +17,12 @@ end
 
 module Direct_impl : Digest_impl = struct
   let file file =
+    (* On Windows, if this function is invoked in a background thread,
+       if can happen that the file is not properly closed.
+       [O_SHARE_DELETE] ensures that the main thread can delete it even if it
+       is still open. See #8243. *)
     let fd =
-      match Unix.openfile file [ Unix.O_RDONLY ] 0 with
+      match Unix.openfile file [ Unix.O_RDONLY; O_SHARE_DELETE ] 0 with
       | fd -> fd
       | exception Unix.Unix_error (Unix.EACCES, _, _) ->
         raise (Sys_error (sprintf "%s: Permission denied" file))

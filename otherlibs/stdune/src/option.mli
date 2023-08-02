@@ -44,6 +44,10 @@ val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 
 val hash : ('a -> int) -> 'a t -> int
 
+(** [first_some t1 t2] returns [t1] if it has an underlying value, or [t2]
+    otherwise. *)
+val first_some : 'a t -> 'a t -> 'a t
+
 val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
 
 val try_with : (unit -> 'a) -> 'a option
@@ -56,3 +60,22 @@ module List : sig
 end
 
 val merge : 'a t -> 'a t -> f:('a -> 'a -> 'a) -> 'a t
+
+module Unboxed : sig
+  (** Poor man's unboxed option types. The value stored must not be immediate. A
+      consequence of that is that such option types cannot be nested *)
+
+  type 'a t
+
+  val get_exn : 'a t -> 'a
+
+  (** [some a] will construct the present value. If [a] is immediate, this
+      function will raise *)
+  val some : 'a -> 'a t
+
+  val none : 'a t
+
+  val is_none : 'a t -> bool
+
+  val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
+end

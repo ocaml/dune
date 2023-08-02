@@ -1,7 +1,15 @@
 Unreleased
 ----------
 
+- No longer emit linkopts(javascript) in META files (#8168, @hhugo)
+
+3.10.0 (2023-07-31)
+-------------------
+
 - Add `dune show rules` as alias of the `dune rules` command. (#8000, @Alizter)
+
+- Fix `%{deps}` to expand properly in `(cat ...)` when containing 2 or more
+  items. (#8196, @Alizter)
 
 - Add `dune show installed-libraries` as an alias of the `dune
   installed-libraries` command. (#8135, @Alizter)
@@ -11,6 +19,33 @@ Unreleased
 
 - Add `dune build --dump-gc-stats FILE` argument to dump garbage collection
   stats to a named file. (#8072, @Alizter)
+
+- Fix bug with ppx and Reason syntax due to missing dependency in sandboxed
+  action (#7932, fixes #7930, @Alizter)
+
+- Add `dune describe package-entries` to print all package entries (#7480,
+  @moyodiallo)
+
+- Improve `dune describe external-lib-deps` by adding the internal dependencies
+  for more information. (#7478, @moyodiallo)
+
+- Re-enable background file digests on Windows. The files are now open in a way
+  that prevents race condition around deletion. (#8262, fixes #8268, @emillon)
+
+3.9.3 (2023-07-31)
+------------------
+
+- Fix flushing when using `sendfile` fallback (#8288, fixes #8284, @alan-j-hu)
+
+3.9.2 (2023-07-25)
+------------------
+
+- Disable background digests on Windows. This prevents an issue where
+  unremovable files would make dune crash when the shared cache is enabled.
+  (#8243, fixes #8228, @emillon)
+
+- Fix permission errors when `sendfile` is not available (#8234, fixes #8210,
+  @emillon)
 
 3.9.1 (2023-07-06)
 ------------------

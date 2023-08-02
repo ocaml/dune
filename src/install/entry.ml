@@ -95,6 +95,20 @@ type 'src t =
 
 let map_dst t ~f = { t with dst = f t.dst }
 
+let to_dyn { src; kind; dst; section; optional } =
+  let open Dyn in
+  let dyn_of_kind = function
+    | `File -> String "file"
+    | `Directory -> String "directory"
+  in
+  record
+    [ ("src", Path.Build.to_dyn src)
+    ; ("kind", dyn_of_kind kind)
+    ; ("dst", Dst.to_dyn dst)
+    ; ("section", Section.to_dyn section)
+    ; ("optional", Dyn.Bool optional)
+    ]
+
 module Sourced = struct
   type source =
     | User of Loc.t
@@ -112,6 +126,14 @@ module Sourced = struct
         | Some loc -> User loc)
     ; entry
     }
+
+  let to_dyn { source; entry } =
+    let open Dyn in
+    let source_to_dyn = function
+      | Dune -> Variant ("Dune", [])
+      | User loc -> Variant ("User", [ Loc.to_dyn loc ])
+    in
+    Record [ ("source", source_to_dyn source); ("entry", to_dyn entry) ]
 end
 
 let compare compare_src { optional; src; dst; section; kind } t =

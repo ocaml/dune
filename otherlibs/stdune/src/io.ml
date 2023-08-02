@@ -101,7 +101,7 @@ module Copyfile = struct
     | Linux -> `Sendfile
     | Windows | Other -> `Nothing
 
-  let sendfile =
+  let sendfile_with_fallback =
     let setup_copy ?(chmod = Fun.id) ~src ~dst () =
       match Unix.openfile src [ O_RDONLY ] 0 with
       | exception Unix.Unix_error (Unix.ENOENT, _, _) -> Error `Src_missing
@@ -145,12 +145,23 @@ module Copyfile = struct
       | Error `Src_missing ->
         let message = Printf.sprintf "%s: No such file or directory" src in
         raise (Sys_error message)
-      | Ok (fd_src, fd_dst, src_size) ->
-        Exn.protectx (fd_src, fd_dst, src_size)
-          ~f:(fun (src, dst, src_size) -> sendfile ~src ~dst src_size)
-          ~finally:(fun (src, dst, _) ->
-            Unix.close src;
-            Unix.close dst)
+      | Ok (src, dst, src_size) -> (
+        let close_fds () =
+          Unix.close src;
+          Unix.close dst
+        in
+        match sendfile ~src ~dst src_size with
+        | exception Unix.Unix_error (EINVAL, "sendfile", _) ->
+          Exn.protectx
+            (Unix.in_channel_of_descr src, Unix.out_channel_of_descr dst)
+            (* we make sure to close the fd's with the channel api to make
+               sure everything has been flushed *)
+            ~f:(fun (ic, oc) -> copy_channels ic oc)
+            ~finally:close_both
+        | () -> close_fds ()
+        | exception exn ->
+          close_fds ();
+          Exn.reraise exn)
 
   let copyfile ?chmod ~src ~dst () =
     let src_stats =
@@ -175,11 +186,6 @@ module Copyfile = struct
   let copy_file_portable ?chmod ~src ~dst () =
     Exn.protectx (setup_copy ?chmod ~src ~dst ()) ~finally:close_both
       ~f:(fun (ic, oc) -> copy_channels ic oc)
-
-  let sendfile_with_fallback ?chmod ~src ~dst () =
-    try sendfile ?chmod ~src ~dst ()
-    with Unix.Unix_error (EINVAL, "sendfile", _) ->
-      copy_file_portable ?chmod ~src ~dst ()
 
   let copy_file_best =
     match available with

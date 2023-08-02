@@ -29,6 +29,13 @@ let max f x y =
   | Eq | Gt -> x
   | Lt -> y
 
+let opposite = function
+  | Lt -> Gt
+  | Eq -> Eq
+  | Gt -> Lt
+
+let reverse f a b = opposite (f a b)
+
 module O = struct
   let ( let= ) t f =
     match t with

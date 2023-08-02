@@ -58,7 +58,7 @@ val init :
   -> t
   -> Dune_config.t
 
-(** [examples \[("description", "dune cmd foo"); ...\]] is an [EXAMPLES] manpage
+(** [examples [("description", "dune cmd foo"); ...]] is an [EXAMPLES] manpage
     section of enumerated examples illustrating how to run the documented
     commands. *)
 val examples : (string * string) list -> Cmdliner.Manpage.block

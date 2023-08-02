@@ -21,7 +21,7 @@ module Make
 struct
   include Ast
 
-  let run prog args = Run (prog, args)
+  let run prog args = Run (prog, Array.Immutable.of_list args)
 
   let chdir path t = Chdir (path, t)
 

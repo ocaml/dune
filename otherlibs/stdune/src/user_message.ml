@@ -53,13 +53,13 @@ module Annots = struct
     type 'a t = 'a Id.t
 
     let to_dyn : 'a. 'a t -> 'a -> Dyn.t =
-      fun (type a) (info : a t) (a : a) ->
-       let (E packed) = Table.find_exn all (Id.Packed.Id info) in
-       match Type_eq.Id.same info.id packed.id.id with
-       | Some eq -> packed.to_dyn (Type_eq.cast eq a)
-       | None ->
-         Code_error.raise "type id's disagree for the same name"
-           [ ("info.name", Dyn.string info.name) ]
+     fun (type a) (info : a t) (a : a) ->
+      let (E packed) = Table.find_exn all (Id.Packed.Id info) in
+      match Type_eq.Id.same info.id packed.id.id with
+      | Some eq -> packed.to_dyn (Type_eq.cast eq a)
+      | None ->
+        Code_error.raise "type id's disagree for the same name"
+          [ ("info.name", Dyn.string info.name) ]
 
     let create ~name to_dyn =
       let type_id = Type_eq.Id.create () in

@@ -188,7 +188,7 @@ let os_family ~path =
   | Some ("win32" | "cygwin") -> Fiber.return @@ Some "windows"
   | _ -> os_distribution ~path
 
-let sys_env ~path =
+let sys_bindings ~path =
   let open Fiber.O in
   let entry k f =
     let+ v = f ~path in
@@ -198,16 +198,16 @@ let sys_env ~path =
      unless it is memoized *)
   let+ mappings =
     Fiber.all
-      [ entry "arch" arch
-      ; entry "os" os
-      ; entry "os-version" os_version
-      ; entry "os-distribution" os_distribution
-      ; entry "os-family" os_family
+      [ entry `Arch arch
+      ; entry `Os os
+      ; entry `Os_version os_version
+      ; entry `Os_distribution os_distribution
+      ; entry `Os_family os_family
       ]
   in
-  List.fold_left ~init:Opam.Env.empty
-    ~f:(fun env (var, data) ->
+  List.fold_left ~init:Solver_env.Sys_var.Bindings.empty
+    ~f:(fun sys_bindings (var, data) ->
       match data with
-      | Some value -> Opam.Env.add ~var ~value env
-      | None -> env)
+      | Some value -> Solver_env.Sys_var.Bindings.set sys_bindings var value
+      | None -> sys_bindings)
     mappings

@@ -6,7 +6,8 @@
   (binaries
    ../utils/dune_cmd.exe
    ../utils/dunepp.exe
-   ../utils/melc_stdlib_prefix.exe)))
+   ../utils/melc_stdlib_prefix.exe
+   ../utils/refmt.exe)))
 
 (cram
  (applies_to pp-cwd)
@@ -118,12 +119,6 @@
   (<> %{system} macosx)))
 
 (cram
- (applies_to github6607)
- (deps
-  (package stdune)
-  (package ppx_expect)))
-
-(cram
  (applies_to link-time-transitive-deps)
  (deps
   (package dune-build-info)))
@@ -136,4 +131,8 @@
  (applies_to github8041)
  (enabled_if
   (= %{system} linux))
- (deps %{bin:strace}))
+ (deps %{bin:strace} %{bin:head}))
+
+(cram
+ (applies_to reason)
+ (deps %{bin:refmt}))

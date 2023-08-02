@@ -887,7 +887,7 @@ module Library = struct
   let to_lib_info conf ~dir
       ~lib_config:
         ({ Lib_config.has_native; ext_lib; ext_dll; natdynlink_supported; _ } as
-        lib_config) =
+         lib_config) =
     let open Memo.O in
     let obj_dir = obj_dir ~dir conf in
     let archive ?(dir = dir) ext = archive conf ~dir ~ext in

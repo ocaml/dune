@@ -43,7 +43,7 @@ help:
 
 .PHONY: bootstrap
 bootstrap:
-	$(MAKE) -B _boot/dune.exe
+	$(MAKE) -B $(BIN)
 
 .PHONY: release
 release: $(BIN)

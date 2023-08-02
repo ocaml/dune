@@ -58,7 +58,7 @@ module Glob_dir = struct
      base dir (typically the directory containing the dune file which contains
      the glob) or absolute. *)
   type t =
-    | Absolute of string
+    | Absolute of Path.External.t
     | Relative of
         { relative_dir : string
         ; base_dir : Path.Build.t
@@ -104,11 +104,14 @@ module Without_vars = struct
           [ Pp.textf "Absolute paths in recursive globs are not supported." ]
       else
         Memo.return
-          [ (File_selector.of_glob ~dir:(Path.of_string dir) glob, dir) ]
+          [ ( File_selector.of_glob ~dir:(Path.external_ dir) glob
+            , Path.External.to_string dir )
+          ]
 end
 
 module Expand
-    (M : Memo.S) (C : sig
+    (M : Memo.S)
+    (C : sig
       val collect_files : loc:Loc.t -> File_selector.t -> Path.Set.t M.t
     end) =
 struct
@@ -123,7 +126,7 @@ struct
     let dir : Glob_dir.t =
       if Filename.is_relative parent_str then
         Relative { relative_dir = parent_str; base_dir }
-      else Absolute parent_str
+      else Absolute (Path.External.of_string parent_str)
     in
     { Without_vars.glob; dir; recursive }
 

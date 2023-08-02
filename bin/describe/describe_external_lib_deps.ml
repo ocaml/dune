@@ -10,12 +10,12 @@ module Kind = struct
     | Optional -> String "optional"
 end
 
-type external_lib_dep =
+type lib_dep =
   { name : Lib_name.t
   ; kind : Kind.t
   }
 
-let external_lib_dep_to_dyn t =
+let lib_dep_to_dyn t =
   let open Dyn in
   List [ String (Lib_name.to_string t.name); Kind.to_dyn t.kind ]
 
@@ -35,24 +35,33 @@ module Item = struct
   type t =
     { kind : Kind.t
     ; dir : Path.Source.t
-    ; external_deps : external_lib_dep list
+    ; external_deps : lib_dep list
+    ; internal_deps : lib_dep list
     ; names : string list
     ; package : Package.t option
+    ; extensions : string list
     }
 
-  let to_dyn t =
+  let to_dyn
+      { kind; dir; external_deps; internal_deps; names; package; extensions } =
     let open Dyn in
     let record =
       record
-        [ ("names", (list string) t.names)
+        [ ("names", (list string) names)
+        ; ("extensions", (list string) extensions)
         ; ( "package"
-          , option Package.Name.to_dyn (Option.map ~f:Package.name t.package) )
-        ; ("source_dir", String (Path.Source.to_string t.dir))
-        ; ("external_deps", list external_lib_dep_to_dyn t.external_deps)
+          , option Package.Name.to_dyn (Option.map ~f:Package.name package) )
+        ; ("source_dir", String (Path.Source.to_string dir))
+        ; ("external_deps", list lib_dep_to_dyn external_deps)
+        ; ("internal_deps", list lib_dep_to_dyn internal_deps)
         ]
     in
-    Variant (Kind.to_string t.kind, [ record ])
+    Variant (Kind.to_string kind, [ record ])
 end
+
+type dep =
+  | Local of lib_dep
+  | External of lib_dep
 
 let is_external db name =
   let open Memo.O in
@@ -64,7 +73,12 @@ let is_external db name =
     | Installed_private | Public _ | Private _ -> false
     | Installed -> true)
 
-let external_lib_pps db preprocess =
+let resolve_lib db name kind =
+  let open Memo.O in
+  let+ is_external = is_external db name in
+  if is_external then External { name; kind } else Local { name; kind }
+
+let resolve_lib_pps db preprocess =
   let open Memo.O in
   let* pps =
     Resolve.Memo.read_memo
@@ -72,45 +86,46 @@ let external_lib_pps db preprocess =
          ~instrumentation_backend:(Dune_rules.Lib.DB.instrumentation_backend db))
     >>| Dune_rules.Preprocess.Per_module.pps
   in
-  Memo.parallel_map
-    ~f:(fun (_, name) ->
-      let+ is_external = is_external db name in
-      if is_external then Some { name; kind = Kind.Required } else None)
-    pps
-  >>| List.filter_opt
+  Memo.parallel_map ~f:(fun (_, name) -> resolve_lib db name Kind.Required) pps
 
-let external_resolve db name kind =
+let resolve_lib_deps db lib_deps =
   let open Memo.O in
-  let+ is_external = is_external db name in
-  if is_external then Some { name; kind } else None
-
-let external_lib_deps db lib_deps =
-  let open Memo.O in
-  Memo.parallel_map lib_deps ~f:(fun lib ->
+  Memo.parallel_map lib_deps ~f:(fun (lib : Dune_rules.Lib_dep.t) ->
       match lib with
-      | Dune_rules.Lib_dep.Direct (_, name) | Re_export (_, name) -> (
-        let+ v = external_resolve db name Kind.Required in
-        match v with
-        | Some x -> [ x ]
-        | None -> [])
+      | Direct (_, name) | Re_export (_, name) ->
+        let+ v = resolve_lib db name Kind.Required in
+        [ v ]
       | Select select ->
-        Memo.parallel_map select.choices
-          ~f:(fun (choice : Dune_rules.Lib_dep.Select.Choice.t) ->
-            Memo.parallel_map
-              (Lib_name.Set.to_string_list choice.required
-              @ Lib_name.Set.to_string_list choice.forbidden)
-              ~f:(fun name ->
-                external_resolve db (Lib_name.of_string name) Kind.Optional)
-            >>| List.filter_opt)
+        select.choices
+        |> Memo.parallel_map
+             ~f:(fun (choice : Dune_rules.Lib_dep.Select.Choice.t) ->
+               Lib_name.Set.to_string_list choice.required
+               @ Lib_name.Set.to_string_list choice.forbidden
+               |> Memo.parallel_map ~f:(fun name ->
+                      let name = Lib_name.of_string name in
+                      resolve_lib db name Kind.Optional))
         >>| List.concat)
   >>| List.concat
 
-let external_libs db dir libraries preprocess names package kind =
+let resolve_libs db dir libraries preprocess names package kind extensions =
   let open Memo.O in
   let open Item in
-  let* lib_deps = external_lib_deps db libraries in
-  let+ lib_pps = external_lib_pps db preprocess in
-  Some { kind; dir; names; package; external_deps = lib_deps @ lib_pps }
+  let* lib_deps = resolve_lib_deps db libraries in
+  let+ lib_pps = resolve_lib_pps db preprocess in
+  let deps = lib_deps @ lib_pps in
+  let internal_deps, external_deps =
+    deps
+    |> List.partition_map ~f:(function
+         | Local lib -> Either.Left lib
+         | External lib -> Either.Right lib)
+  in
+  { external_deps; internal_deps; kind; names; package; dir; extensions }
+
+let exes_extensions (ctx : Context.t) modes =
+  Dune_rules.Dune_file.Executables.Link_mode.Map.to_list modes
+  |> List.map ~f:(fun (m, loc) ->
+         Dune_rules.Dune_file.Executables.Link_mode.extension m ~loc
+           ~ext_obj:ctx.lib_config.ext_obj ~ext_dll:ctx.lib_config.ext_dll)
 
 let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system)
     =
@@ -124,24 +139,30 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system)
           let dir = dune_file.dir in
           match stanza with
           | Dune_rules.Dune_file.Executables exes ->
-            external_libs db dir exes.buildable.libraries
+            resolve_libs db dir exes.buildable.libraries
               exes.buildable.preprocess
               (List.map exes.names ~f:snd)
               exes.package Item.Kind.Executables
+              (exes_extensions context exes.modes)
+            >>| List.singleton
           | Dune_rules.Dune_file.Library lib ->
-            external_libs db dir lib.buildable.libraries
-              lib.buildable.preprocess
+            resolve_libs db dir lib.buildable.libraries lib.buildable.preprocess
               [ Dune_rules.Dune_file.Library.best_name lib |> Lib_name.to_string
               ]
               (Dune_rules.Dune_file.Library.package lib)
-              Item.Kind.Library
+              Item.Kind.Library []
+            >>| List.singleton
           | Dune_rules.Dune_file.Tests tests ->
-            external_libs db dir tests.exes.buildable.libraries
+            resolve_libs db dir tests.exes.buildable.libraries
               tests.exes.buildable.preprocess
               (List.map tests.exes.names ~f:snd)
-              tests.exes.package Item.Kind.Tests
-          | _ -> Memo.return None)
-      >>| List.filter_opt)
+              (if Option.is_none tests.package then tests.exes.package
+               else tests.package)
+              Item.Kind.Tests
+              (exes_extensions context tests.exes.modes)
+            >>| List.singleton
+          | _ -> Memo.return [])
+      >>| List.concat)
   >>| List.concat
 
 let external_resolved_libs setup super_context =
@@ -150,7 +171,8 @@ let external_resolved_libs setup super_context =
   let* scope = Dune_rules.Scope.DB.find_by_dir context.build_dir in
   let db = Dune_rules.Scope.libs scope in
   libs db context setup
-  >>| List.filter ~f:(fun (x : Item.t) -> not (x.external_deps = []))
+  >>| List.filter ~f:(fun (x : Item.t) ->
+          not (List.is_empty x.external_deps && List.is_empty x.internal_deps))
 
 let to_dyn context_name external_resolved_libs =
   let open Dyn in

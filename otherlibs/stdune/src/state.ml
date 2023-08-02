@@ -1,7 +1,8 @@
-module Make (S : sig
-  type t
-end)
-(M : Monad.S) =
+module Make
+    (S : sig
+      type t
+    end)
+    (M : Monad.S) =
 struct
   module T = struct
     type 'a t = S.t -> (S.t * 'a) M.t

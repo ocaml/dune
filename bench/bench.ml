@@ -1,6 +1,12 @@
 open Stdune
 module Process = Dune_engine.Process
 
+module Console = struct
+  include Dune_console
+
+  let printf fmt = printf ("[Bench] " ^^ fmt)
+end
+
 module Json = struct
   include Chrome_trace.Json
   include Dune_stats.Json
@@ -87,8 +93,12 @@ let duniverse =
 let prepare_workspace () =
   Fiber.parallel_iter duniverse ~f:(fun (pkg : Package.t) ->
       Fpath.rm_rf pkg.name;
-      Format.eprintf "cloning %s/%s@." pkg.org pkg.name;
-      Package.clone pkg)
+      Console.printf "cloning %s/%s" pkg.org pkg.name;
+      Fiber.finalize
+        (fun () -> Package.clone pkg)
+        ~finally:(fun () ->
+          Fiber.return
+          @@ Console.printf "finished cloning %s/%s" pkg.org pkg.name))
 
 let dune_build ~name ~sandbox =
   let stdin_from = Process.(Io.null In) in
@@ -160,8 +170,28 @@ let tag_results { size; clean; zero; clean_sandbox; zero_sandbox } =
     - fragments - not consistent between builds
     - stack_size - not very useful
     - forced_collections - only available in OCaml >= 4.12 *)
-let display_clean_and_zero ~name_suffix (clean : _ Metrics.t)
-    (zero : _ Metrics.t) =
+let display_clean_and_zero ~name_suffix
+    ({ elapsed_time
+     ; user_cpu_time
+     ; system_cpu_time
+     ; minor_words
+     ; promoted_words
+     ; major_words
+     ; minor_collections
+     ; major_collections
+     ; heap_words
+     ; heap_chunks
+     ; live_words
+     ; live_blocks
+     ; free_words
+     ; free_blocks
+     ; largest_free
+     ; fragments = _
+     ; compactions
+     ; top_heap_words
+     ; stack_size = _
+     } :
+      _ Metrics.t) (zero : _ Metrics.t) =
   (* Display single what stat clean and null build *)
   let display what units clean zero =
     { Output.name = what ^ name_suffix
@@ -169,25 +199,25 @@ let display_clean_and_zero ~name_suffix (clean : _ Metrics.t)
         [ ("[Clean] " ^ what, clean, units); ("[Null] " ^ what, zero, units) ]
     }
   in
-  [ display "Build Time" "Seconds" clean.elapsed_time zero.elapsed_time
-  ; display "User CPU Time" "Seconds" clean.user_cpu_time zero.user_cpu_time
-  ; display "System CPU Time" "Seconds" clean.system_cpu_time
-      zero.system_cpu_time
-  ; display "Minor Words" "Approx. Words" clean.minor_words zero.minor_words
-  ; display "Major Words" "Approx. Words" clean.major_words zero.major_words
-  ; display "Minor Collections" "Collections" clean.minor_collections
+  [ display "Build Time" "Seconds" elapsed_time zero.elapsed_time
+  ; display "User CPU Time" "Seconds" user_cpu_time zero.user_cpu_time
+  ; display "System CPU Time" "Seconds" system_cpu_time zero.system_cpu_time
+  ; display "Minor Words" "Approx. Words" minor_words zero.minor_words
+  ; display "Promoted Words" "Approx. Words" promoted_words zero.promoted_words
+  ; display "Major Words" "Approx. Words" major_words zero.major_words
+  ; display "Minor Collections" "Collections" minor_collections
       zero.minor_collections
-  ; display "Major Collections" "Collections" clean.major_collections
+  ; display "Major Collections" "Collections" major_collections
       zero.major_collections
-  ; display "Heap Words" "Words" clean.heap_words zero.heap_words
-  ; display "Heap Chunks" "Chunks" clean.heap_chunks zero.heap_chunks
-  ; display "Live Words" "Words" clean.live_words zero.live_words
-  ; display "Live Blocks" "Blocks" clean.live_blocks zero.live_blocks
-  ; display "Free Words" "Words" clean.free_words zero.free_words
-  ; display "Free Blocks" "Blocks" clean.free_blocks zero.free_blocks
-  ; display "Largest Free" "Words" clean.largest_free zero.largest_free
-  ; display "Compactions" "Compactions" clean.compactions zero.compactions
-  ; display "Top Heap Words" "Words" clean.top_heap_words zero.top_heap_words
+  ; display "Heap Words" "Words" heap_words zero.heap_words
+  ; display "Heap Chunks" "Chunks" heap_chunks zero.heap_chunks
+  ; display "Live Words" "Words" live_words zero.live_words
+  ; display "Live Blocks" "Blocks" live_blocks zero.live_blocks
+  ; display "Free Words" "Words" free_words zero.free_words
+  ; display "Free Blocks" "Blocks" free_blocks zero.free_blocks
+  ; display "Largest Free" "Words" largest_free zero.largest_free
+  ; display "Compactions" "Compactions" compactions zero.compactions
+  ; display "Top Heap Words" "Words" top_heap_words zero.top_heap_words
   ]
 
 let format_results bench_results =
@@ -231,11 +261,15 @@ let () =
     (* Prepare the workspace *)
     let* () = prepare_workspace () in
     (* Build the clean and null builds *)
+    Console.printf "Building clean and null builds";
     let* clean, zero = run_bench ~sandbox:`No in
+    Console.printf "Finished building clean and null builds";
     (* Clean the workspace *)
     let* () = dune_clean () in
+    Console.printf "Building clean and null builds with sandbox";
     (* Build the clean and null builds with sandbox *)
     let+ clean_sandbox, zero_sandbox = run_bench ~sandbox:`Yes in
+    Console.printf "Finished building clean and null builds with sandbox";
     (* Return the bench results *)
     format_results { size; clean; zero; clean_sandbox; zero_sandbox }
   in

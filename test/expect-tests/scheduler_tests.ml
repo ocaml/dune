@@ -100,8 +100,8 @@ let%expect_test "empty invalidation wakes up waiter" =
     awaited invalidation |}];
   test `Ignore;
   [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+[@@expect.uncaught_exn
+  {|
   ("shutdown: timeout")
   Trailing output
   ---------------

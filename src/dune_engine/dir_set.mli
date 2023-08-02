@@ -34,7 +34,7 @@ val is_universal : 'w t -> bool
 (** [descend t comp] is the set [t'] such that for all path [p], [p] is in [t']
     iff [comp/p] is in [t]. [comp] must be a path component, i.e. without
     directory separator characters. *)
-val descend : 'w t -> string -> Path.Local.w t
+val descend : 'w t -> Filename.t -> Path.Local.w t
 
 (** [exceptions t] is the set of all bindings of the form [(comp, t')] such
     that:
@@ -53,7 +53,7 @@ val default : 'w t -> bool
 val create :
      default:bool
   -> here:bool
-  -> exceptions:Path.Unspecified.w t String.Map.t
+  -> exceptions:Path.Unspecified.w t Filename.Map.t
   -> Path.Unspecified.w t
 
 (** [singleton p] is the set containing only [p] *)

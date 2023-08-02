@@ -91,18 +91,20 @@ end = struct
 
   let add_known state name = { state with known = name :: state.known }
 
-  let unparsed_ast { unparsed; _ } =
+  let unparsed_ast =
     let rec loop acc = function
       | [] -> acc
-      | x :: xs -> (
-        match x.Unparsed.prev with
-        | None -> loop (x.entry :: acc) xs
-        | Some p -> loop (x.entry :: acc) (p :: xs))
+      | (x : Unparsed.t) :: xs ->
+        loop (x.entry :: acc)
+          (match x.prev with
+          | None -> xs
+          | Some p -> p :: xs)
     in
-    loop [] (Name.Map.values unparsed)
-    |> List.sort ~compare:(fun a b ->
-           Int.compare (Ast.loc a |> Loc.start).pos_cnum
-             (Ast.loc b |> Loc.start).pos_cnum)
+    fun { unparsed; _ } ->
+      loop [] (Name.Map.values unparsed)
+      |> List.sort ~compare:(fun a b ->
+             Int.compare (Ast.loc a |> Loc.start).pos_cnum
+               (Ast.loc b |> Loc.start).pos_cnum)
 end
 
 type fields = Fields.t
@@ -264,31 +266,31 @@ let end_of_list (Values (loc, cstr, _)) =
     let loc = Loc.set_start loc (Loc.stop loc) in
     User_error.raise ~loc [ Pp.text "Premature end of list" ]
   | Some s -> User_error.raise ~loc [ Pp.textf "Not enough arguments for %s" s ]
-  [@@inline never] [@@specialise never] [@@local never]
+[@@inline never] [@@specialise never] [@@local never]
 
 let next f ctx sexps =
   match sexps with
   | [] -> end_of_list ctx
   | sexp :: sexps -> (f sexp, sexps)
-  [@@inline always]
+[@@inline always]
 
 let next_with_user_context f ctx sexps =
   match sexps with
   | [] -> end_of_list ctx
   | sexp :: sexps -> (f (get_user_context ctx) sexp, sexps)
-  [@@inline always]
+[@@inline always]
 
 let peek _ctx sexps =
   match sexps with
   | [] -> (None, sexps)
   | sexp :: _ -> (Some sexp, sexps)
-  [@@inline always]
+[@@inline always]
 
 let peek_exn ctx sexps =
   match sexps with
   | [] -> end_of_list ctx
   | sexp :: _ -> (sexp, sexps)
-  [@@inline always]
+[@@inline always]
 
 let junk = next ignore
 
@@ -315,15 +317,18 @@ let atom_matching f ~desc =
       | None ->
         User_error.raise ~loc:(Ast.loc sexp) [ Pp.textf "%s expected" desc ])
 
-let until_keyword kwd ~before ~after =
-  let rec loop acc =
+let until_keyword =
+  let rec loop kwd before after acc =
     peek >>= function
     | None -> return (List.rev acc, None)
     | Some (Atom (_, A s)) when s = kwd ->
-      junk >>> after >>= fun x -> return (List.rev acc, Some x)
-    | _ -> before >>= fun x -> loop (x :: acc)
+      let+ x = junk >>> after in
+      (List.rev acc, Some x)
+    | _ ->
+      let* x = before in
+      loop kwd before after (x :: acc)
   in
-  loop []
+  fun kwd ~before ~after -> loop kwd before after []
 
 let plain_string f =
   next (function
@@ -396,49 +401,49 @@ let fix f =
   r
 
 let loc_between_states : type k. k context -> k -> k -> Loc.t =
- fun ctx state1 state2 ->
-  match ctx with
-  | Values _ -> (
-    match state1 with
-    | sexp :: rest when rest == state2 ->
-      (* common case *)
-      Ast.loc sexp
-    | [] ->
-      let (Values (loc, _, _)) = ctx in
-      Loc.set_start loc (Loc.stop loc)
-    | sexp :: rest ->
-      let loc = Ast.loc sexp in
-      let rec search last l =
-        if l == state2 then Loc.set_stop loc (Ast.loc last |> Loc.stop)
-        else
-          match l with
-          | [] ->
-            let (Values (loc', _, _)) = ctx in
-            Loc.set_stop loc (Loc.stop loc')
-          | sexp :: rest -> search sexp rest
+  let rec search ctx state2 loc last l =
+    if l == state2 then Loc.set_stop loc (Ast.loc last |> Loc.stop)
+    else
+      match l with
+      | [] ->
+        let (Values (loc', _, _)) = ctx in
+        Loc.set_stop loc (Loc.stop loc')
+      | sexp :: rest -> search ctx state2 loc sexp rest
+  in
+  fun ctx state1 state2 ->
+    match ctx with
+    | Values _ -> (
+      match state1 with
+      | sexp :: rest when rest == state2 ->
+        (* common case *)
+        Ast.loc sexp
+      | [] ->
+        let (Values (loc, _, _)) = ctx in
+        Loc.set_start loc (Loc.stop loc)
+      | sexp :: rest ->
+        let loc = Ast.loc sexp in
+        search ctx state2 loc sexp rest)
+    | Fields _ -> (
+      let parsed =
+        Name.Map.merge state1.unparsed state2.unparsed
+          ~f:(fun _key before after ->
+            match (before, after) with
+            | Some _, None -> before
+            | _ -> None)
       in
-      search sexp rest)
-  | Fields _ -> (
-    let parsed =
-      Name.Map.merge state1.unparsed state2.unparsed
-        ~f:(fun _key before after ->
-          match (before, after) with
-          | Some _, None -> before
-          | _ -> None)
-    in
-    match
-      Name.Map.to_list_map parsed ~f:(fun _ f -> Ast.loc f.entry)
-      |> List.sort ~compare:(fun a b ->
-             let a = Loc.start a in
-             let b = Loc.start b in
-             Int.compare a.pos_cnum b.pos_cnum)
-    with
-    | [] ->
-      let (Fields (loc, _, _)) = ctx in
-      loc
-    | first :: l ->
-      let last = List.fold_left l ~init:first ~f:(fun _ x -> x) in
-      Loc.set_stop first (Loc.stop last))
+      match
+        Name.Map.to_list_map parsed ~f:(fun _ f -> Ast.loc f.entry)
+        |> List.sort ~compare:(fun a b ->
+               let a = Loc.start a in
+               let b = Loc.start b in
+               Int.compare a.pos_cnum b.pos_cnum)
+      with
+      | [] ->
+        let (Fields (loc, _, _)) = ctx in
+        loc
+      | first :: l ->
+        let last = List.fold_left l ~init:first ~f:(fun _ x -> x) in
+        Loc.set_stop first (Loc.stop last))
 
 let located t ctx state1 =
   let x, state2 = t ctx state1 in
@@ -582,7 +587,7 @@ let map_validate t ~f ctx state1 =
     field names: see [field_missing] and [field_present_too_many_times]. *)
 let field_missing loc name =
   User_error.raise ~loc [ Pp.textf "field %s missing" name ]
-  [@@inline never] [@@specialise never] [@@local never]
+[@@inline never] [@@specialise never] [@@local never]
 
 let field_present_too_many_times _ name entries =
   match entries with
@@ -591,15 +596,15 @@ let field_present_too_many_times _ name entries =
       [ Pp.textf "Field %S is present too many times" name ]
   | _ -> assert false
 
-let multiple_occurrences ?(on_dup = field_present_too_many_times) uc name last =
+let multiple_occurrences =
   let rec collect acc (x : Fields.Unparsed.t) =
     let acc = x.entry :: acc in
     match x.prev with
     | None -> acc
     | Some prev -> collect acc prev
   in
-  on_dup uc name (collect [] last)
-  [@@inline never] [@@specialise never] [@@local never]
+  fun ?(on_dup = field_present_too_many_times) uc name last ->
+    on_dup uc name (collect [] last)
 
 let find_single ?on_dup uc (state : Fields.t) name =
   let res = Name.Map.find state.unparsed name in
@@ -639,17 +644,18 @@ let field_b = field_b_gen (field ~default:false)
 
 let field_o_b = field_b_gen field_o
 
-let multi_field name t (Fields (_, _, uc)) (state : Fields.t) =
-  let rec loop acc (field : Fields.Unparsed.t option) =
+let multi_field =
+  let rec loop t uc name acc (field : Fields.Unparsed.t option) =
     match field with
     | None -> acc
     | Some { values; prev; entry } ->
       let ctx = Values (Ast.loc entry, Some name, uc) in
       let x = result ctx (t ctx values) in
-      loop (x :: acc) prev
+      loop t uc name (x :: acc) prev
   in
-  let res = loop [] (Name.Map.find state.unparsed name) in
-  (res, Fields.consume state name)
+  fun name t (Fields (_, _, uc)) (state : Fields.t) ->
+    let res = loop t uc name [] (Name.Map.find state.unparsed name) in
+    (res, Fields.consume state name)
 
 let fields t (Values (loc, cstr, uc)) sexps =
   let ctx = Fields (loc, cstr, uc) in
@@ -691,14 +697,14 @@ let fields_missing_need_exactly_one loc names =
     [ Pp.textf "fields %s are all missing (exactly one is needed)"
         (String.concat ~sep:", " names)
     ]
-  [@@inline never] [@@specialise never] [@@local never]
+[@@inline never] [@@specialise never] [@@local never]
 
 let fields_mutual_exclusion_violation loc names =
   let names = List.map names ~f:String.quoted in
   User_error.raise ~loc
     [ Pp.textf "fields %s are mutually exclusive." (String.enumerate_and names)
     ]
-  [@@inline never] [@@specialise never] [@@local never]
+[@@inline never] [@@specialise never] [@@local never]
 
 let fields_mutually_exclusive ?on_dup ?default fields
     ((Fields (loc, _, _) : _ context) as ctx) state =

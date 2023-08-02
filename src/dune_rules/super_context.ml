@@ -11,15 +11,15 @@ let default_context_flags (ctx : Context.t) ~project =
     | Some true ->
       let open Action_builder.O in
       let c =
-        let+ cc = Cxx_flags.ccomp_type ctx in
+        let+ cc = Cxx_flags.ccomp_type ctx.build_context in
         let fdiagnostics_color = Cxx_flags.fdiagnostics_color cc in
         cflags
         @ Ocaml_config.ocamlc_cppflags ctx.ocaml.ocaml_config
         @ fdiagnostics_color
       in
       let cxx =
-        let+ cc = Cxx_flags.ccomp_type ctx
-        and+ db_flags = Cxx_flags.get_flags ~for_:Compile ctx in
+        let+ cc = Cxx_flags.ccomp_type ctx.build_context
+        and+ db_flags = Cxx_flags.get_flags ~for_:Compile ctx.build_context in
         let fdiagnostics_color = Cxx_flags.fdiagnostics_color cc in
         db_flags @ cxxflags @ fdiagnostics_color
       in
@@ -137,8 +137,6 @@ end = struct
       | _ -> None)
 
   let get_impl t dir =
-    (* We recompute the scope on every recursive call, even though it should be
-       unchanged. If this becomes a problem, we can memoize [find_by_dir]. *)
     let* scope = Scope.DB.find_by_dir dir in
     let inherit_from =
       if Path.Build.equal dir (Scope.root scope) then
@@ -167,14 +165,13 @@ end = struct
           let* expander_for_artifacts =
             Memo.Lazy.force expander_for_artifacts
           in
-          extend_expander t ~dir ~expander_for_artifacts)
+          extend_expander t ~dir ~expander_for_artifacts
+          >>| Expander.set_dir ~dir)
     in
-    let default_cxx_link_flags = Cxx_flags.get_flags ~for_:Link t.context in
-    Env_node.make ~dir ~scope ~config_stanza ~inherit_from:(Some inherit_from)
-      ~profile:t.context.profile ~expander ~expander_for_artifacts
-      ~default_context_flags ~default_env:t.context_env
-      ~default_bin_artifacts:t.bin_artifacts ~default_cxx_link_flags
-      ~default_bin_annot:true
+    Env_node.make t.context.build_context ~dir ~scope ~config_stanza
+      ~inherit_from:(Some inherit_from) ~profile:t.context.profile ~expander
+      ~expander_for_artifacts ~default_context_flags ~default_env:t.context_env
+      ~default_bin_artifacts:t.bin_artifacts ~default_bin_annot:true
 
   (* Here we jump through some hoops to construct [t] as well as create a
      memoization table that has access to [t] and is used in [t.get_node].
@@ -503,12 +500,13 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
           in
           let profile = context.profile in
           Dune_env.Stanza.fire_hooks config_stanza ~profile;
-          let default_cxx_link_flags = Cxx_flags.get_flags ~for_:Link context in
-          let expander = Memo.Lazy.of_val root_expander in
-          Env_node.make ~dir ~scope ~inherit_from ~config_stanza ~profile
-            ~expander ~expander_for_artifacts ~default_context_flags
-            ~default_env:context_env ~default_bin_artifacts:artifacts.bin
-            ~default_cxx_link_flags ~default_bin_annot:true
+          let expander =
+            Memo.Lazy.of_val (Expander.set_dir ~dir root_expander)
+          in
+          Env_node.make context.build_context ~dir ~scope ~inherit_from
+            ~config_stanza ~profile ~expander ~expander_for_artifacts
+            ~default_context_flags ~default_env:context_env
+            ~default_bin_artifacts:artifacts.bin ~default_bin_annot:true
         in
         make ~config_stanza:context.env_nodes.context
           ~inherit_from:

@@ -120,22 +120,24 @@ let create ~mode ~dune_stats ~rule_loc ~deps ~rule_dir ~rule_digest
         { cat; name; args })
   in
   init ();
-  let sandbox_suffix = rule_digest |> Digest.to_string in
-  let sandbox_dir = Path.Build.relative sandbox_dir sandbox_suffix in
+  let sandbox_dir =
+    let sandbox_suffix = rule_digest |> Digest.to_string in
+    Path.Build.relative sandbox_dir sandbox_suffix
+  in
   let t = { dir = sandbox_dir; snapshot = None } in
   let open Fiber.O in
-  let* () =
+  let+ () =
     maybe_async (fun () ->
         Path.rm_rf (Path.build sandbox_dir);
-        create_dirs t ~deps ~rule_dir)
+        create_dirs t ~deps ~rule_dir;
+        (* CR-someday amokhov: Note that this doesn't link dynamic dependencies, so
+           targets produced dynamically will be unavailable. *)
+        let deps =
+          if expand_aliases then Dep.Facts.paths deps
+          else Dep.Facts.paths_without_expanding_aliases deps
+        in
+        link_deps t ~mode ~deps)
   in
-  let deps =
-    if expand_aliases then Dep.Facts.paths deps
-    else Dep.Facts.paths_without_expanding_aliases deps
-  in
-  (* CR-someday amokhov: Note that this doesn't link dynamic dependencies, so
-     targets produced dynamically will be unavailable. *)
-  let+ () = maybe_async (fun () -> link_deps t ~mode ~deps) in
   Dune_stats.finish event;
   match mode with
   | Patch_back_source_tree ->

@@ -26,21 +26,15 @@ module Component : sig
         }
     end
 
-    type public_name =
-      | Use_name
-      | Public_name of Dune_lang.Atom.t
-
-    val public_name_to_string : public_name -> string
-
     (** Options for executable components *)
     module Executable : sig
-      type t = { public : public_name option }
+      type t = { public : Dune_lang.Atom.t option }
     end
 
     (** Options for library components *)
     module Library : sig
       type t =
-        { public : public_name option
+        { public : Dune_lang.Atom.t option
         ; inline_tests : bool
         }
     end

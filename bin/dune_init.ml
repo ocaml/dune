@@ -1,16 +1,11 @@
 open Import
 
-(** Because the dune_init utility deals with the addition of stanzas and fields
-    to dune projects and files, we need to inspect and manipulate the concrete
-    syntax tree (CST) a good deal. *)
-module Cst = Dune_lang.Cst
-
 (** Abstractions around the kinds of files handled during initialization *)
 module File = struct
   type dune =
     { path : Path.t
     ; name : string
-    ; content : Cst.t list
+    ; content : Dune_lang.Cst.t list
     }
 
   type text =
@@ -32,7 +27,7 @@ module File = struct
   (** Inspection and manipulation of stanzas in a file *)
   module Stanza = struct
     let pp s =
-      match Cst.to_sexp s with
+      match Dune_lang.Cst.to_sexp s with
       | None -> Pp.nop
       | Some s -> Dune_lang.pp s
     ;;
@@ -61,11 +56,11 @@ module File = struct
       | _ -> false
     ;;
 
-    let csts_conflict project (a : Cst.t) (b : Cst.t) =
+    let csts_conflict project (a : Dune_lang.Cst.t) (b : Dune_lang.Cst.t) =
       let of_ast = Dune_file.of_ast project in
       (let open Option.O in
-       let* a_ast = Cst.abstract a in
-       let+ b_ast = Cst.abstract b in
+       let* a_ast = Dune_lang.Cst.abstract a in
+       let+ b_ast = Dune_lang.Cst.abstract b in
        let a_asts = of_ast a_ast in
        let b_asts = of_ast b_ast in
        List.exists ~f:(fun x -> List.exists ~f:(stanzas_conflict x) a_asts) b_asts)

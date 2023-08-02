@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690984238744,
+  "lastUpdate": 1690984252507,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -62957,6 +62957,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "66.80317964472665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ac6d3b9ae6452eaef913e50435d637b4b3ac1193",
+          "message": "bench: log more info (#8264)\n\nWe add more info to the log in order to understand what the bench is\r\ndoing, especially if something goes wrong.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-08-02T14:25:07+01:00",
+          "tree_id": "e68a3e087de8792cd586e45f9e28432903864bd5",
+          "url": "https://github.com/ocaml/dune/commit/ac6d3b9ae6452eaef913e50435d637b4b3ac1193"
+        },
+        "date": 1690984251166,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.848879969273333",
             "unit": "seconds"
           }
         ]

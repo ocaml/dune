@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690992344649,
+  "lastUpdate": 1690992752809,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -63189,6 +63189,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.79439568932",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dfb6330c5d97bb78754e25b6321ba6e0efef3922",
+          "message": "chore: add devcontainer (#8220)\n\nThis will allow developers to set up a dev environment in VSCode very\r\neasily even in a web browser.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-08-02T16:42:05+01:00",
+          "tree_id": "43ad79edac79be8540f3dda5c5ecee3f6a099b39",
+          "url": "https://github.com/ocaml/dune/commit/dfb6330c5d97bb78754e25b6321ba6e0efef3922"
+        },
+        "date": 1690992751614,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "80.48511104520001",
             "unit": "seconds"
           }
         ]

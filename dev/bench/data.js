@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690977462290,
+  "lastUpdate": 1690977646016,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -62696,6 +62696,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.2190886850533333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d01a2b7c521060927b8a9fd0735175542c46e6c0",
+          "message": "refactor(init): use Encoder API (#8322)\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-08-02T13:34:42+02:00",
+          "tree_id": "8d06b6fafd884b6d7ea6ba5d03f74909cdad0c9f",
+          "url": "https://github.com/ocaml/dune/commit/d01a2b7c521060927b8a9fd0735175542c46e6c0"
+        },
+        "date": 1690977645110,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "69.88179324910665",
             "unit": "seconds"
           }
         ]

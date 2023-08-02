@@ -266,31 +266,31 @@ let end_of_list (Values (loc, cstr, _)) =
     let loc = Loc.set_start loc (Loc.stop loc) in
     User_error.raise ~loc [ Pp.text "Premature end of list" ]
   | Some s -> User_error.raise ~loc [ Pp.textf "Not enough arguments for %s" s ]
-  [@@inline never] [@@specialise never] [@@local never]
+[@@inline never] [@@specialise never] [@@local never]
 
 let next f ctx sexps =
   match sexps with
   | [] -> end_of_list ctx
   | sexp :: sexps -> (f sexp, sexps)
-  [@@inline always]
+[@@inline always]
 
 let next_with_user_context f ctx sexps =
   match sexps with
   | [] -> end_of_list ctx
   | sexp :: sexps -> (f (get_user_context ctx) sexp, sexps)
-  [@@inline always]
+[@@inline always]
 
 let peek _ctx sexps =
   match sexps with
   | [] -> (None, sexps)
   | sexp :: _ -> (Some sexp, sexps)
-  [@@inline always]
+[@@inline always]
 
 let peek_exn ctx sexps =
   match sexps with
   | [] -> end_of_list ctx
   | sexp :: _ -> (sexp, sexps)
-  [@@inline always]
+[@@inline always]
 
 let junk = next ignore
 
@@ -587,7 +587,7 @@ let map_validate t ~f ctx state1 =
     field names: see [field_missing] and [field_present_too_many_times]. *)
 let field_missing loc name =
   User_error.raise ~loc [ Pp.textf "field %s missing" name ]
-  [@@inline never] [@@specialise never] [@@local never]
+[@@inline never] [@@specialise never] [@@local never]
 
 let field_present_too_many_times _ name entries =
   match entries with
@@ -697,14 +697,14 @@ let fields_missing_need_exactly_one loc names =
     [ Pp.textf "fields %s are all missing (exactly one is needed)"
         (String.concat ~sep:", " names)
     ]
-  [@@inline never] [@@specialise never] [@@local never]
+[@@inline never] [@@specialise never] [@@local never]
 
 let fields_mutual_exclusion_violation loc names =
   let names = List.map names ~f:String.quoted in
   User_error.raise ~loc
     [ Pp.textf "fields %s are mutually exclusive." (String.enumerate_and names)
     ]
-  [@@inline never] [@@specialise never] [@@local never]
+[@@inline never] [@@specialise never] [@@local never]
 
 let fields_mutually_exclusive ?on_dup ?default fields
     ((Fields (loc, _, _) : _ context) as ctx) state =

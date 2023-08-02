@@ -44,7 +44,7 @@ let interpret_perm (perm : Action.File_perm.t) fn acc =
 let simplify act =
   let rec loop (act : Action.For_shell.t) acc =
     match act with
-    | Run (prog, args) -> Run (prog, args) :: acc
+    | Run (prog, args) -> Run (prog, Array.Immutable.to_list args) :: acc
     | With_accepted_exit_codes (_, t) -> loop t acc
     | Dynamic_run (prog, args) -> Run (prog, args) :: acc
     | Chdir (p, act) -> loop act (Chdir p :: mkdir p :: acc)

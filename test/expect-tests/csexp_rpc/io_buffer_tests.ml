@@ -43,8 +43,8 @@ let%expect_test "reading" =
   Io_buffer.read buf 2;
   print_dyn buf;
   [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+[@@expect.uncaught_exn
+  {|
   ("(\"not enough bytes in buffer\", { len = 2; length = 1 })") |}]
 
 let%expect_test "reading" =

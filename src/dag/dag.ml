@@ -18,7 +18,7 @@ module Make (Value : Value) () : S with type value := Value.t = struct
       ; mutable level : int
       ; mutable deps : node list
       ; mutable rev_deps : node list
-      ; mutable parent : node option
+      ; mutable parent : node Option.Unboxed.t
       ; value : Value.t
       }
 
@@ -51,12 +51,9 @@ module Make (Value : Value) () : S with type value := Value.t = struct
 
     let get_outgoing _ v = v.deps
 
-    let get_parent _ v =
-      match v.parent with
-      | None -> assert false
-      | Some v -> v
+    let get_parent _ v = Option.Unboxed.get_exn v.parent
 
-    let set_parent _ v p = v.parent <- Some p
+    let set_parent _ v p = v.parent <- Option.Unboxed.some p
 
     let raw_add_edge _ v w = v.deps <- w :: v.deps
 
@@ -70,7 +67,14 @@ module Make (Value : Value) () : S with type value := Value.t = struct
 
   let create_node value =
     let id = Id.gen () in
-    { id; mark = -1; level = 1; deps = []; rev_deps = []; parent = None; value }
+    { id
+    ; mark = -1
+    ; level = 1
+    ; deps = []
+    ; rev_deps = []
+    ; parent = Option.Unboxed.none
+    ; value
+    }
 
   let value t = t.value
 

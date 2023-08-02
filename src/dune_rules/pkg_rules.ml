@@ -550,7 +550,7 @@ module Action_expander = struct
       let* exe, more_args = Expander.expand_exe expander exe in
       let+ args = Memo.parallel_map args ~f:(Expander.expand_pform expander) in
       let args = more_args @ List.concat args |> Value.L.to_strings ~dir in
-      Action.Run (exe, args)
+      Action.Run (exe, Array.Immutable.of_list args)
     | Progn t ->
       let+ args = Memo.parallel_map t ~f:(expand ~expander) in
       Action.Progn args
@@ -573,7 +573,7 @@ module Action_expander = struct
                ~loc ())
       in
       (* TODO opam has a preprocessing step that we should probably apply *)
-      Action.Run (patch, [ "-p1"; "-i"; input ])
+      Action.Run (patch, Array.Immutable.of_array [| "-p1"; "-i"; input |])
     | Substitute (input, output) ->
       let* input = Expander.expand_pform_gen ~mode:Single expander input in
       let input = input |> Value.to_path ~dir in
@@ -584,8 +584,8 @@ module Action_expander = struct
       let* action = expand action ~expander in
       let+ _env, updates =
         Memo.List.fold_left ~init:(expander.env, []) updates
-          ~f:(fun (env, updates) ({ Env_update.op = _; var; value } as update)
-             ->
+          ~f:(fun
+              (env, updates) ({ Env_update.op = _; var; value } as update) ->
             let+ value =
               let expander = { expander with env } in
               let+ value =
@@ -621,9 +621,9 @@ module Action_expander = struct
            List.fold_left cookies
              ~init:(Filename.Map.empty, Package.Name.Map.empty)
              ~f:(fun
-                  (bins, dep_info)
-                  ((pkg : Pkg.t), (cookie : Install_cookie.t))
-                ->
+                 (bins, dep_info)
+                 ((pkg : Pkg.t), (cookie : Install_cookie.t))
+               ->
                let bins =
                  Section.Map.Multi.find cookie.files Bin
                  |> List.fold_left ~init:bins ~f:(fun acc bin ->

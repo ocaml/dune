@@ -114,8 +114,8 @@ let process_raw_events t events =
   in
   let pending_mv, actions =
     List.fold_left ev_kinds ~init:(None, [])
-      ~f:(fun (pending_mv, actions) ((kind : Inotify.event_kind), trans_id, fn)
-         ->
+      ~f:(fun
+          (pending_mv, actions) ((kind : Inotify.event_kind), trans_id, fn) ->
         let add_pending lst =
           match pending_mv with
           | None -> lst

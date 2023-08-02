@@ -110,7 +110,8 @@ module Without_vars = struct
 end
 
 module Expand
-    (M : Memo.S) (C : sig
+    (M : Memo.S)
+    (C : sig
       val collect_files : loc:Loc.t -> File_selector.t -> Path.Set.t M.t
     end) =
 struct

@@ -1,9 +1,10 @@
 module type S = Univ_map_intf.S
 
-module Make (Info : sig
-  type 'a t
-end)
-() =
+module Make
+    (Info : sig
+      type 'a t
+    end)
+    () =
 struct
   module Key = struct
     type 'a info = 'a Info.t

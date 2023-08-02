@@ -54,7 +54,7 @@ let%expect_test "copy file - src is a directory" =
   Unix.mkdir (Path.to_string src) 0o755;
   Io.copy_file ~src ~dst ();
   [%expect.unreachable]
-  [@@expect.uncaught_exn {| (Sys_error "Is a directory") |}]
+[@@expect.uncaught_exn {| (Sys_error "Is a directory") |}]
 
 let%expect_test "copy file - dst is a directory" =
   let dir = temp_dir () in

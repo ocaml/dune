@@ -314,7 +314,13 @@ module Cache_lookup = struct
      outcome would have been [Out_of_date {old_value = None}] instead. *)
   module Failure = struct
     type 'a t =
-      | Out_of_date of { old_value : 'a option }
+      | Out_of_date of
+          { (* ['a] is instantiated to ['a Cached_value.t] below but making
+               this explicit would require us to move this type and [Result]
+               into the recursive module of [M]. We leave this comment to
+               explain why using [Option.Unboxed.t] is OK here. *)
+            old_value : 'a Option.Unboxed.t
+          }
       | Cancelled of { dependency_cycle : Cycle_error.t }
   end
 
@@ -325,9 +331,11 @@ module Cache_lookup = struct
 
     let _to_string_hum = function
       | Ok _ -> "Ok"
-      | Failure (Out_of_date { old_value = None }) -> "Failed (no value)"
-      | Failure (Out_of_date { old_value = Some _ }) -> "Failed (old value)"
       | Failure (Cancelled _) -> "Failed (dependency cycle)"
+      | Failure (Out_of_date { old_value }) -> (
+        match Option.Unboxed.is_none old_value with
+        | true -> "Failed (no value)"
+        | false -> "Failed (old value)")
   end
 end
 
@@ -341,25 +349,26 @@ module Dag : Dag.S with type value := Dep_node_without_state.packed =
 (* This is similar to [type t = Dag.node Lazy.t] but avoids creating a closure
    with a [dep_node]; the latter is available when we need to [force] a [t]. *)
 module Lazy_dag_node = struct
-  type t = Dag.node option ref
+  type t = Dag.node Option.Unboxed.t ref
 
-  let create () = ref None
+  let create () = ref Option.Unboxed.none
 
   let force t ~(dep_node : _ Dep_node_without_state.t) =
-    match !t with
-    | Some (dag_node : Dag.node) ->
+    match Option.Unboxed.is_none !t with
+    | false ->
+      let (dag_node : Dag.node) = Option.Unboxed.get_exn !t in
       let (T dep_node_passed_first) = Dag.value dag_node in
       (* CR-someday amokhov: It would be great to restructure the code to rule
          out the potential inconsistency between [dep_node]s passed to
          [force]. *)
       assert (Id.equal dep_node.id dep_node_passed_first.id);
       dag_node
-    | None ->
+    | true ->
       let (dag_node : Dag.node) =
         if !Counters.enabled then incr Counters.nodes_in_cycle_detection_graph;
         Dag.create_node (Dep_node_without_state.T dep_node)
       in
-      t := Some dag_node;
+      t := Option.Unboxed.some dag_node;
       dag_node
 end
 
@@ -525,13 +534,13 @@ module M = struct
   and State : sig
     type 'a t =
       | Cached_value of 'a Cached_value.t
-      | Out_of_date of { old_value : 'a Cached_value.t option }
+      | Out_of_date of { old_value : 'a Cached_value.t Option.Unboxed.t }
       | Restoring of
           { restore_from_cache :
               'a Cached_value.t Cache_lookup.Result.t Computation0.t
           }
       | Computing of
-          { old_value : 'a Cached_value.t option
+          { old_value : 'a Cached_value.t Option.Unboxed.t
           ; compute : 'a Cached_value.t Computation0.t
           }
   end =
@@ -978,7 +987,9 @@ module State = struct
     | Computing _ -> Dyn.variant "Computing" [ Opaque ]
     | Out_of_date { old_value } ->
       Dyn.variant "Out_of_date"
-        [ Dyn.record [ ("old_value", Dyn.option Cached_value.to_dyn old_value) ]
+        [ Dyn.record
+            [ ("old_value", Option.Unboxed.to_dyn Cached_value.to_dyn old_value)
+            ]
         ]
 end
 
@@ -1028,7 +1039,8 @@ end
 let invalidate_dep_node (dep_node : _ Dep_node.t) =
   match dep_node.state with
   | Cached_value cached_value ->
-    dep_node.state <- Out_of_date { old_value = Some cached_value }
+    dep_node.state <-
+      Out_of_date { old_value = Option.Unboxed.some cached_value }
   | Out_of_date { old_value = _ } -> ()
   | Restoring _ ->
     Code_error.raise "invalidate_dep_node called on a node in Restoring state"
@@ -1067,7 +1079,7 @@ let make_dep_node ~spec ~input : _ Dep_node.t =
     { id = Id.gen (); input; spec }
   in
   { without_state = dep_node_without_state
-  ; state = Out_of_date { old_value = None }
+  ; state = Out_of_date { old_value = Option.Unboxed.none }
   ; has_cutoff =
       (match spec.allow_cutoff with
       | Yes _equal -> true
@@ -1112,11 +1124,13 @@ end = struct
          are set to [Deps.empty]), so we can't use [deps_changed] in this
          case. *)
       Fiber.return
-        (Cache_lookup.Result.Failure (Out_of_date { old_value = None }))
+        (Cache_lookup.Result.Failure
+           (Out_of_date { old_value = Option.Unboxed.none }))
     | Error { reproducible = false; _ } ->
       (* We do not cache non-reproducible errors. *)
       Fiber.return
-        (Cache_lookup.Result.Failure (Out_of_date { old_value = None }))
+        (Cache_lookup.Result.Failure
+           (Out_of_date { old_value = Option.Unboxed.none }))
     | Ok _ | Error { reproducible = true; _ } -> (
       (* We cache reproducible errors just like normal values. We assume that
          all [Memo] computations are deterministic, which means if we rerun a
@@ -1174,14 +1188,15 @@ end = struct
       | Unchanged ->
         cached_value.last_validated_at <- Run.current ();
         Cache_lookup.Result.Ok cached_value
-      | Changed -> Failure (Out_of_date { old_value = Some cached_value })
+      | Changed ->
+        Failure (Out_of_date { old_value = Option.Unboxed.some cached_value })
       | Cancelled { dependency_cycle } ->
         Failure (Cancelled { dependency_cycle }))
 
   and compute :
         'i 'o.
            dep_node:('i, 'o) Dep_node.t
-        -> old_value:'o Cached_value.t option
+        -> old_value:'o Cached_value.t Option.Unboxed.t
         -> stack_frame:Stack_frame_with_state.t
         -> 'o Cached_value.t Fiber.t =
    fun ~dep_node ~old_value ~stack_frame ->
@@ -1196,9 +1211,10 @@ end = struct
       | Error errors -> Error errors
     in
     let deps_rev = Stack_frame_with_state.deps_rev stack_frame in
-    match old_value with
-    | None -> Cached_value.create value ~deps_rev
-    | Some old_cv -> (
+    match Option.Unboxed.is_none old_value with
+    | true -> Cached_value.create value ~deps_rev
+    | false -> (
+      let old_cv = Option.Unboxed.get_exn old_value in
       match Cached_value.value_changed dep_node old_cv.value value with
       | true -> Cached_value.create value ~deps_rev
       | false -> Cached_value.confirm_old_value ~deps_rev old_cv)
@@ -1227,7 +1243,7 @@ end = struct
   and start_computing :
         'i 'o.
            dep_node:('i, 'o) Dep_node.t
-        -> old_value:'o Cached_value.t option
+        -> old_value:'o Cached_value.t Option.Unboxed.t
         -> 'o Cached_value.t Fiber.t =
    fun ~dep_node ~old_value ->
     let computation = Computation.create () in
@@ -1627,7 +1643,7 @@ struct
   end
 
   module Value = struct
-    type t = T : ('a Type_eq.Id.t * 'a output) -> t
+    type t = T : 'a Type_eq.Id.t * 'a output -> t
 
     let get (type a) ~(input_with_matching_id : a input) value : a output =
       match value with

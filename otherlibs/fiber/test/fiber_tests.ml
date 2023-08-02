@@ -750,8 +750,8 @@ let%expect_test "Stream: multiple readers is an error" =
          printf "Reader 2 reading\n";
          let+ _x = Fiber.Stream.In.read stream in
          printf "Reader 2 done\n"))
-  [@@expect.uncaught_exn
-    {|
+[@@expect.uncaught_exn
+  {|
   ("(\"Fiber.Stream.In: already reading\", {})")
   Trailing output
   ---------------
@@ -780,8 +780,8 @@ let%expect_test "Stream: multiple writers is an error" =
          printf "Writer 2 writing\n";
          let+ _x = Fiber.Stream.Out.write stream (Some 2) in
          printf "Writer 2 done\n"))
-  [@@expect.uncaught_exn
-    {|
+[@@expect.uncaught_exn
+  {|
   ("(\"Fiber.Stream.Out: already writing\", {})")
   Trailing output
   ---------------
@@ -797,8 +797,8 @@ let%expect_test "Stream: writing on a closed stream is an error" =
      in
      let* () = Fiber.Stream.Out.write out None in
      Fiber.Stream.Out.write out (Some ()))
-  [@@expect.uncaught_exn
-    {|
+[@@expect.uncaught_exn
+  {|
   ("(\"Fiber.Stream.Out: stream output closed\", {})")
   Trailing output
   ---------------
@@ -858,8 +858,8 @@ let%expect_test "double run a pool" =
   let pool = Pool.create () in
   Fiber.fork_and_join_unit (fun () -> Pool.run pool) (fun () -> Pool.run pool));
   [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {| ("(\"Fiber.Pool.run: concurent calls to run aren't allowed\", {})") |}]
+[@@expect.uncaught_exn
+  {| ("(\"Fiber.Pool.run: concurent calls to run aren't allowed\", {})") |}]
 
 let%expect_test "run -> stop -> run a pool" =
   (* We shouldn't be able to call [Pool.run] again after we already called
@@ -874,8 +874,8 @@ let%expect_test "run -> stop -> run a pool" =
   in
   Pool.run pool);
   [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {| ("(\"Fiber.Pool.run: concurent calls to run aren't allowed\", {})") |}]
+[@@expect.uncaught_exn
+  {| ("(\"Fiber.Pool.run: concurent calls to run aren't allowed\", {})") |}]
 
 let%expect_test "stop a pool and then run it" =
   (Scheduler.run
@@ -912,8 +912,8 @@ let%expect_test "nested run in task" =
   Fiber.fork_and_join_unit (fun () -> Pool.close pool) (fun () -> Pool.run pool)
   );
   [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {| ("(\"Fiber.Pool.run: concurent calls to run aren't allowed\", {})") |}]
+[@@expect.uncaught_exn
+  {| ("(\"Fiber.Pool.run: concurent calls to run aren't allowed\", {})") |}]
 
 let%expect_test "nested tasks" =
   (Scheduler.run

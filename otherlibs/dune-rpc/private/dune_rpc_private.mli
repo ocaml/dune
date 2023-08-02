@@ -530,7 +530,8 @@ module Client : sig
   end
 
   module Make
-      (Fiber : Fiber) (Chan : sig
+      (Fiber : Fiber)
+      (Chan : sig
         type t
 
         val write : t -> Csexp.t list option -> unit Fiber.t

@@ -510,9 +510,7 @@ end = struct
               for all. *)
            List.sort entries
              ~compare:(fun
-                        (a : Install.Entry.Sourced.t)
-                        (b : Install.Entry.Sourced.t)
-                      ->
+                 (a : Install.Entry.Sourced.t) (b : Install.Entry.Sourced.t) ->
                Install.Entry.compare Path.Build.compare a.entry b.entry))
 
   let stanzas_to_entries =
@@ -691,14 +689,13 @@ end = struct
               | Some entries ->
                 List.fold_left entries ~init:Lib_name.Map.empty
                   ~f:(fun
-                       acc
-                       { Dune_file.Library_redirect.old_name =
-                           old_public_name, _
-                       ; new_public_name = _, new_public_name
-                       ; loc
-                       ; _
-                       }
-                     ->
+                      acc
+                      { Dune_file.Library_redirect.old_name = old_public_name, _
+                      ; new_public_name = _, new_public_name
+                      ; loc
+                      ; _
+                      }
+                    ->
                     let old_public_name =
                       Dune_file.Public_lib.name old_public_name
                     in
@@ -986,8 +983,9 @@ include (
                 |> Install.Entry.map_dst ~f:(fun dst ->
                        Install.Entry.Dst.concat_all dst comps))
             |> List.sort
-                 ~compare:(fun (x : _ Install.Entry.t) (y : _ Install.Entry.t)
-                          -> Path.compare x.src y.src)
+                 ~compare:(fun
+                     (x : _ Install.Entry.t) (y : _ Install.Entry.t) ->
+                   Path.compare x.src y.src)
           | (dir, comps) :: dirs -> (
             match Path.Untracked.readdir_unsorted_with_kinds dir with
             | Error _ -> Code_error.raise "unable to read directory" []

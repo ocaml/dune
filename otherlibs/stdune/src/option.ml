@@ -119,3 +119,38 @@ let first_some x y =
   match x with
   | None -> y
   | Some _ -> x
+
+module Unboxed = struct
+  module T : sig
+    type 'a t
+
+    val get_exn : 'a t -> 'a
+
+    val some : 'a -> 'a t
+
+    val none : 'a t
+
+    val is_none : 'a t -> bool
+  end = struct
+    type 'a t = 'a
+
+    let none : 'a. 'a t = Obj.magic 0
+
+    let is_none x = x == none
+
+    let get_exn x =
+      if is_none x then Code_error.raise "Option.Unboxed.get_exn: x is none" [];
+      x
+
+    let some x =
+      if Obj.is_int (Obj.repr x) then
+        Code_error.raise "Option.Unboxed.some: x must not be immediate" [];
+      x
+  end
+
+  include T
+
+  let to_dyn f x =
+    if is_none x then Dyn.variant "None" []
+    else Dyn.variant "Some" [ f (get_exn x) ]
+end

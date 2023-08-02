@@ -14,9 +14,9 @@ let with_metrics ~common f =
                ; Pp.text "Timers:"
                ]
               @ List.map
-                  ~f:
-                    (fun ( timer
-                         , { Metrics.Timer.Measure.cumulative_time; count } ) ->
+                  ~f:(fun
+                      (timer, { Metrics.Timer.Measure.cumulative_time; count })
+                    ->
                     Pp.textf "%s - time spent = %.2fs, count = %d" timer
                       cumulative_time count)
                   (String.Map.to_list (Metrics.Timer.aggregated_timers ())))));

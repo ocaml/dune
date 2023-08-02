@@ -300,19 +300,19 @@ module Processed = struct
             , init.config.extensions
             , init.config.melc_flags )
           ~f:(fun
-               (acc_pp, acc_obj, acc_src, acc_flags, acc_ext, acc_melc_flags)
-               { per_module_config = _
-               ; pp_config
-               ; config =
-                   { stdlib_dir = _
-                   ; obj_dirs
-                   ; src_dirs
-                   ; flags
-                   ; extensions
-                   ; melc_flags
-                   }
-               }
-             ->
+              (acc_pp, acc_obj, acc_src, acc_flags, acc_ext, acc_melc_flags)
+              { per_module_config = _
+              ; pp_config
+              ; config =
+                  { stdlib_dir = _
+                  ; obj_dirs
+                  ; src_dirs
+                  ; flags
+                  ; extensions
+                  ; melc_flags
+                  }
+              }
+            ->
             ( pp_config :: acc_pp
             , Path.Set.union acc_obj obj_dirs
             , Path.Set.union acc_src src_dirs
@@ -429,7 +429,10 @@ module Unprocessed = struct
           match exe with
           | Error _ -> None
           | Ok bin ->
-            let args = encode_command ~bin ~args in
+            let args =
+              let args = Array.Immutable.to_list args in
+              encode_command ~bin ~args
+            in
             Some { Processed.flag = Processed.Pp_kind.Pp; args }
         in
         Action_builder.map action ~f:(fun act ->

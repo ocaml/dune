@@ -340,11 +340,11 @@ module Lock = struct
       let+ () = Fiber.return () in
       List.iter per_context
         ~f:(fun
-             { Per_context.solver_env = solver_env_from_context
-             ; context_common = { name = context_name; _ }
-             ; _
-             }
-           ->
+            { Per_context.solver_env = solver_env_from_context
+            ; context_common = { name = context_name; _ }
+            ; _
+            }
+          ->
           let solver_env =
             merge_current_system_bindings_into_solver_env_from_context
               ~context_name ~solver_env_from_context
@@ -388,12 +388,12 @@ module Lock = struct
        in
        List.map per_context
          ~f:(fun
-              { Per_context.lock_dir_path
-              ; version_preference
-              ; solver_env = solver_env_from_context
-              ; context_common = { name = context_name; _ }
-              }
-            ->
+             { Per_context.lock_dir_path
+             ; version_preference
+             ; solver_env = solver_env_from_context
+             ; context_common = { name = context_name; _ }
+             }
+           ->
            let solver_env =
              merge_current_system_bindings_into_solver_env_from_context
                ~context_name ~solver_env_from_context

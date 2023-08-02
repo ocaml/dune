@@ -33,6 +33,12 @@ let lib_output_path ~output_dir ~lib_dir src =
   | "" -> output_dir
   | dir -> Path.Build.relative output_dir dir
 
+let emit_dst_dir target_dir m =
+  Path.Build.append_source target_dir
+    (Module.file m ~ml_kind:Impl
+    |> Option.value_exn |> Path.as_in_build_dir_exn |> Path.Build.parent_exn
+    |> Path.Build.drop_build_context_exn)
+
 let make_js_name ~js_ext ~output m =
   let basename = Melange.js_basename m ^ js_ext in
   match output with
@@ -43,12 +49,7 @@ let make_js_name ~js_ext ~output m =
     let output_dir = lib_output_path ~output_dir ~lib_dir src_dir in
     Path.Build.relative output_dir basename
   | `Private_library_or_emit target_dir ->
-    let dst_dir =
-      Path.Build.append_source target_dir
-        (Module.file m ~ml_kind:Impl
-        |> Option.value_exn |> Path.as_in_build_dir_exn |> Path.Build.parent_exn
-        |> Path.Build.drop_build_context_exn)
-    in
+    let dst_dir = emit_dst_dir target_dir m in
     Path.Build.relative dst_dir basename
 
 let impl_only_modules_defined_in_this_lib sctx lib =
@@ -376,6 +377,22 @@ let setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
   let* () =
     setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_:`Emit
       mel
+  in
+  let bindings =
+    Pform.Map.of_list_map_exn modules_for_js ~f:(fun m ->
+        let emit_dir = emit_dst_dir target_dir m in
+        (* TODO: add js extension? *)
+        ( Pform.Var
+            (User_var
+               (Printf.sprintf "melange.emit:%s:%s" mel.target
+                  (Module.name m |> Module_name.to_string)))
+        , [ Value.Path
+              (Path.Build.drop_build_context_exn emit_dir |> Path.source)
+          ] ))
+  in
+  let* expander =
+    let+ expander = Super_context.expander sctx ~dir in
+    Expander.add_bindings expander ~bindings
   in
   Memo.parallel_iter modules_for_js ~f:(fun m ->
       build_js ~dir ~loc ~pkg_name ~mode ~module_systems ~output ~obj_dir ~sctx

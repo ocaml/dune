@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690990236919,
+  "lastUpdate": 1690990432936,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -80590,6 +80590,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.63604930063333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8a4da2f7a187f57dd70cb92b8ad7b1a4369c71f9",
+          "message": "refactor(init): move Use_name handling to parsing (#8326)\n\n`dune init` supports the following pattern:\r\n\r\n- `--public pub` will use `pub` as public name\r\n- no `--public` argument means no public name\r\n- `--public` with no argument will reuse the name as the public name\r\n\r\nThe third case is replaced later, requiring a custom type and some\r\nparameter passing. Instead, we just set the right public name at parse\r\ntime.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-08-02T15:21:16Z",
+          "tree_id": "7c77e946faf64e21212b4506cceb6fe97c1e06e9",
+          "url": "https://github.com/ocaml/dune/commit/8a4da2f7a187f57dd70cb92b8ad7b1a4369c71f9"
+        },
+        "date": 1690990423586,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.358903463526662",
             "unit": "seconds"
           }
         ]

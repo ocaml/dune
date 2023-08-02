@@ -265,33 +265,25 @@ module Component = struct
     open Dune_lang
 
     module Field = struct
-      let atoms : Atom.t list -> Dune_lang.t list =
-        List.map ~f:(fun x -> Atom x)
+      let inline_tests = Encoder.field_b "inline_tests"
 
-      let public_name name = List [ atom "public_name"; Atom name ]
+      let pps_encoder pps = Encoder.list Encoder.string ("pps" :: pps)
 
-      let name name = List [ atom "name"; Atom name ]
-
-      let inline_tests = List [ atom "inline_tests" ]
-
-      let libraries libs = List (atom "libraries" :: atoms libs)
-
-      let pps pps = List [ atom "preprocess"; List (atom "pps" :: atoms pps) ]
-
-      let optional_field ~f = function
+      let preprocess_field = function
         | [] -> []
-        | args -> [ f args ]
+        | pps -> [ Encoder.field "preprocess" pps_encoder pps ]
 
       let common (options : Options.Common.t) =
-        name options.name
-        :: (optional_field ~f:libraries options.libraries
-           @ optional_field ~f:pps options.pps)
+        [ Encoder.field "name" Encoder.string (Atom.to_string options.name)
+        ; Encoder.field_l "libraries" Encoder.string
+            (List.map ~f:Atom.to_string options.libraries)
+        ]
+        @ preprocess_field (List.map ~f:Atom.to_string options.pps)
     end
 
     (* Make CST representation of a stanza for the given `kind` *)
     let make kind common_options fields =
-      (* Form the AST *)
-      List ((atom kind :: fields) @ Field.common common_options)
+      Encoder.named_record_fields kind (fields @ Field.common common_options)
       (* Convert to a CST *)
       |> Dune_lang.Ast.add_loc ~loc:Loc.none
       |> Cst.concrete (* Package as a list CSTs *) |> List.singleton
@@ -299,29 +291,38 @@ module Component = struct
     let add_to_list_set elem set =
       if List.mem ~equal:Dune_lang.Atom.equal set elem then set else elem :: set
 
-    let public_name_field ~default = function
-      | (None : Options.public_name option) -> []
-      | Some Use_name -> [ Field.public_name default ]
-      | Some (Public_name name) -> [ Field.public_name name ]
+    let public_name_encoder ~default (p : Options.public_name) =
+      let atom =
+        match p with
+        | Use_name -> default
+        | Public_name x -> x
+      in
+      Atom atom
+
+    let public_name_field ~default =
+      Encoder.field_o "public_name" (public_name_encoder ~default)
 
     let executable (common : Options.Common.t) (options : Options.Executable.t)
         =
-      let public_name = public_name_field ~default:common.name options.public in
-      make "executable" common public_name
+      make "executable" common
+        [ public_name_field ~default:common.name options.public ]
 
-    let library (common : Options.Common.t) (options : Options.Library.t) =
-      let common, inline_tests =
-        if not options.inline_tests then (common, [])
-        else
+    let library (common : Options.Common.t)
+        { Options.Library.inline_tests; public } =
+      let common =
+        if inline_tests then
           let pps =
             add_to_list_set
               (Dune_lang.Atom.of_string "ppx_inline_test")
               common.pps
           in
-          ({ common with pps }, [ Field.inline_tests ])
+          { common with pps }
+        else common
       in
-      let public_name = public_name_field ~default:common.name options.public in
-      make "library" common (public_name @ inline_tests)
+      make "library" common
+        [ public_name_field ~default:common.name public
+        ; Field.inline_tests inline_tests
+        ]
 
     let test common (() : Options.Test.t) = make "test" common []
 

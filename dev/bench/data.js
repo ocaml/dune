@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691059360818,
+  "lastUpdate": 1691059750814,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -26098,6 +26098,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.988213984506665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4d8e08fd131f605f5c2efab602ac5988c0f94f3b",
+          "message": "refactor: batch async sandbox operations (#8328)\n\nWe now create the sandboxing directories and link them in the same async\r\ntask\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\n\r\n<!-- ps-id: 047b4c90-4beb-4cf6-b962-90bf86a9eef9 -->",
+          "timestamp": "2023-08-03T11:27:44+01:00",
+          "tree_id": "e714149af3d5d51441d0e026a63d4360dd990f07",
+          "url": "https://github.com/ocaml/dune/commit/4d8e08fd131f605f5c2efab602ac5988c0f94f3b"
+        },
+        "date": 1691059748979,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.72883156798667",
             "unit": "seconds"
           }
         ]

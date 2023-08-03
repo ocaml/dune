@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691060174466,
+  "lastUpdate": 1691060186589,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -63479,6 +63479,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "72.87011605053333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5a73cbafd10b6a3271b4e03c9328d78d9f43abab",
+          "message": "Add reproduction case for cat not working due to wrong PATH (#8325)\n\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-08-03T11:22:53+01:00",
+          "tree_id": "98e8ca6a4865e0c02bec3459598531e1be9c91fd",
+          "url": "https://github.com/ocaml/dune/commit/5a73cbafd10b6a3271b4e03c9328d78d9f43abab"
+        },
+        "date": 1691060185863,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.9632381146333333",
             "unit": "seconds"
           }
         ]

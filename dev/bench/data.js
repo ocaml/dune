@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691086378113,
+  "lastUpdate": 1691086422120,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -63624,6 +63624,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8652929964333334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bb86a4a8283cbbd829f3dc2b808df91a35666c76",
+          "message": "test: use custom wait for watching/helpers.sh (#8201)\n\nThis allows the fs-memo.t test to succeed on Nix. Before the pid of Dune\r\nwas being thrown away by a bash bug causing wait to think it was not a\r\nchild process and rejecting it. We therefore wait instead for all child\r\nprocesses.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-08-03T10:45:14-07:00",
+          "tree_id": "17177cf4165df247b7c05592a017232197146116",
+          "url": "https://github.com/ocaml/dune/commit/bb86a4a8283cbbd829f3dc2b808df91a35666c76"
+        },
+        "date": 1691086420726,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "78.25288052551332",
             "unit": "seconds"
           }
         ]

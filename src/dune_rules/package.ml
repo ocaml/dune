@@ -26,6 +26,10 @@ module Name = struct
 
   module Infix = Comparator.Operators (String)
   module Map_traversals = Memo.Make_map_traversals (Map)
+
+  let decode_opam_compatible =
+    Dune_lang.Decoder.map ~f:Opam_compatible.to_package_name Opam_compatible.decode
+  ;;
 end
 
 module Id = struct
@@ -571,6 +575,10 @@ let encode
   list sexp (string "package" :: fields)
 ;;
 
+let decode_name ~version =
+  if version >= (3, 11) then Name.decode_opam_compatible else Name.decode
+;;
+
 let decode ~dir =
   let open Dune_lang.Decoder in
   let name_map syntax of_list_map to_string name decode print_value error_msg =
@@ -586,8 +594,9 @@ let decode ~dir =
         ]
   in
   fields
-  @@ let+ loc = loc
-     and+ name = field "name" Name.decode
+  @@ let* version = Syntax.get_exn Stanza.syntax in
+     let+ loc = loc
+     and+ name = field "name" (decode_name ~version)
      and+ synopsis = field_o "synopsis" string
      and+ description = field_o "description" string
      and+ version =

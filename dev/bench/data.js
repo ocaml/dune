@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690992766675,
+  "lastUpdate": 1691053312544,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -80909,6 +80909,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.278993294473334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "69109f0e2575deb38b9f33325955bec7691c17e3",
+          "message": "refactor: scan alias dirs in parallel (#8261)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-03T09:49:05+01:00",
+          "tree_id": "7ef0ef2b1fd719561165985deb71038adf10952e",
+          "url": "https://github.com/ocaml/dune/commit/69109f0e2575deb38b9f33325955bec7691c17e3"
+        },
+        "date": 1691053303152,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.621875794113333",
             "unit": "seconds"
           }
         ]

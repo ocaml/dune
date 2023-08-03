@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691086025334,
+  "lastUpdate": 1691086366482,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -63566,6 +63566,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.9632381146333333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aaf6305f4dc1b80785a4ed0978ff7683316d3e2a",
+          "message": "refactor: update Option.Unboxed (#8332)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-03T10:46:22-07:00",
+          "tree_id": "d911a03ff3a5afbdd4f94f24da9434c42a8cf9d9",
+          "url": "https://github.com/ocaml/dune/commit/aaf6305f4dc1b80785a4ed0978ff7683316d3e2a"
+        },
+        "date": 1691086365600,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "70.25974433501334",
             "unit": "seconds"
           }
         ]

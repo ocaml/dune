@@ -1,3 +1,6 @@
+(* Note that operations relating to the PATH environment variable are defined
+   in a separate module [Env_path]. *)
+
 module Var : sig
   type t = string
 
@@ -25,8 +28,15 @@ val initial : t
 val to_unix : t -> string list
 val of_unix : string array -> t
 val get : t -> Var.t -> string option
+
+(** [extend env ~vars] adds all variables from [vars] to [env] overwriting any
+    existing values of those variables in [env] *)
 val extend : t -> vars:string Map.t -> t
+
+(** [extend_env a b] adds all variables from [b] to [a] overwriting any
+    existing values of those variables in [a]. *)
 val extend_env : t -> t -> t
+
 val add : t -> var:Var.t -> value:string -> t
 val mem : t -> var:Var.t -> bool
 val remove : t -> var:Var.t -> t

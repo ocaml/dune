@@ -32,4 +32,3 @@ Now it fails since adding the dependency modified PATH.
   >  (system "command -v cat > /dev/null 2>&1 || echo no cat"))
   > EOF
   $ dune build .pkg/test/target/
-  no cat

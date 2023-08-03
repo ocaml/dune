@@ -356,7 +356,7 @@ module Lazy_dag_node = struct
   let force t ~(dep_node : _ Dep_node_without_state.t) =
     match Option.Unboxed.is_none !t with
     | false ->
-      let (dag_node : Dag.node) = Option.Unboxed.get_exn !t in
+      let (dag_node : Dag.node) = Option.Unboxed.value_exn !t in
       let (T dep_node_passed_first) = Dag.value dag_node in
       (* CR-someday amokhov: It would be great to restructure the code to rule
          out the potential inconsistency between [dep_node]s passed to
@@ -1214,7 +1214,7 @@ end = struct
     match Option.Unboxed.is_none old_value with
     | true -> Cached_value.create value ~deps_rev
     | false -> (
-      let old_cv = Option.Unboxed.get_exn old_value in
+      let old_cv = Option.Unboxed.value_exn old_value in
       match Cached_value.value_changed dep_node old_cv.value value with
       | true -> Cached_value.create value ~deps_rev
       | false -> Cached_value.confirm_old_value ~deps_rev old_cv)

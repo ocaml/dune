@@ -431,8 +431,11 @@ However, deleting [another-dir] isn't handled correctly.
 
   $ test "rm another-dir/file-7; sleep 0.001; rmdir another-dir"
   ------------------------------------------
+  Failure
   Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
+  File "dir/file-7", line 1, characters 0-0:
+  Error: File unavailable: dir/file-7
+  Had errors, waiting for filesystem changes...
   ------------------------------------------
   result = '357' -> '357' -> '357'
   ------------------------------------------

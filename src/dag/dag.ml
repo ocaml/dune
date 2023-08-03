@@ -51,7 +51,7 @@ module Make (Value : Value) () : S with type value := Value.t = struct
 
     let get_outgoing _ v = v.deps
 
-    let get_parent _ v = Option.Unboxed.get_exn v.parent
+    let get_parent _ v = Option.Unboxed.value_exn v.parent
 
     let set_parent _ v p = v.parent <- Option.Unboxed.some p
 

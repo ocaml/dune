@@ -61,21 +61,27 @@ end
 
 val merge : 'a t -> 'a t -> f:('a -> 'a -> 'a) -> 'a t
 
+(** A poor man's unboxed option type. The value stored must not be immediate,
+    unless it is a non-negative integer. In particular, unboxed options cannot
+    be nested. *)
 module Unboxed : sig
-  (** Poor man's unboxed option types. The value stored must not be immediate. A
-      consequence of that is that such option types cannot be nested *)
-
   type 'a t
-
-  val get_exn : 'a t -> 'a
-
-  (** [some a] will construct the present value. If [a] is immediate, this
-      function will raise *)
-  val some : 'a -> 'a t
 
   val none : 'a t
 
+  val some : 'a -> 'a t
+
   val is_none : 'a t -> bool
+
+  val is_some : 'a t -> bool
+
+  val value_exn : 'a t -> 'a
+
+  val to_option : 'a t -> 'a option
+
+  val iter : 'a t -> f:('a -> unit) -> unit
+
+  val match_ : 'a t -> none:(unit -> 'b) -> some:('a -> 'b) -> 'b
 
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 end

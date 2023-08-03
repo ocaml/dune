@@ -121,36 +121,37 @@ let first_some x y =
   | Some _ -> x
 
 module Unboxed = struct
-  module T : sig
-    type 'a t
+  type 'a t = Obj.t
 
-    val get_exn : 'a t -> 'a
+  let some x = Obj.repr x
 
-    val some : 'a -> 'a t
+  (* [Sys.opaque_identity] is a paranoid thing to protect against potential compiler
+     optimisations looking through the [none] and seeing the type.
 
-    val none : 'a t
+     The "memory corruption" issue discussed in [option_array.ml] served as an
+     inspiration, but we don't know if it's really necessary. (Empirically, it's not.)
+  *)
+  let none = Obj.repr (Sys.opaque_identity (-1))
 
-    val is_none : 'a t -> bool
-  end = struct
-    type 'a t = 'a
+  (* CR-someday amokhov: Let's expose [phys_equal] somewhere from Stdune? *)
+  let phys_equal = Stdlib.( == )
 
-    let none : 'a. 'a t = Obj.magic 0
+  let is_none t = phys_equal t none
 
-    let is_none x = x == none
+  let is_some t = not (phys_equal t none)
 
-    let get_exn x =
-      if is_none x then Code_error.raise "Option.Unboxed.get_exn: x is none" [];
-      x
+  let value_exn t =
+    if is_none t then
+      Code_error.raise "Option.Unboxed.value_exn called on None" [];
+    Obj.obj t
 
-    let some x =
-      if Obj.is_int (Obj.repr x) then
-        Code_error.raise "Option.Unboxed.some: x must not be immediate" [];
-      x
-  end
+  let to_option t = if is_none t then None else Some (value_exn t)
 
-  include T
+  let iter t ~f = if is_none t then () else f (value_exn t)
+
+  let match_ t ~none ~some = if is_none t then none () else some (value_exn t)
 
   let to_dyn f x =
     if is_none x then Dyn.variant "None" []
-    else Dyn.variant "Some" [ f (get_exn x) ]
+    else Dyn.variant "Some" [ f (value_exn x) ]
 end

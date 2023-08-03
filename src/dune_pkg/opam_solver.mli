@@ -5,12 +5,11 @@ module Summary : sig
   type t
 
   (** A message listing selected packages *)
-  val selected_packages_message :
-    t -> lock_dir_path:Path.Source.t -> User_message.t
+  val selected_packages_message : t -> lock_dir_path:Path.Source.t -> User_message.t
 end
 
-val solve_lock_dir :
-     Solver_env.t
+val solve_lock_dir
+  :  Solver_env.t
   -> Version_preference.t
   -> Opam_repo.t
   -> local_packages:OpamFile.OPAM.t OpamTypes.name_map

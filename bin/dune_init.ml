@@ -27,6 +27,7 @@ module File = struct
 
   let full_path = function
     | Dune { path; name; _ } | Text { path; name; _ } -> Path.relative path name
+  ;;
 
   (** Inspection and manipulation of stanzas in a file *)
   module Stanza = struct
@@ -34,27 +35,31 @@ module File = struct
       match Cst.to_sexp s with
       | None -> Pp.nop
       | Some s -> Dune_lang.pp s
+    ;;
 
     let libraries_conflict (a : Dune_file.Library.t) (b : Dune_file.Library.t) =
       a.name = b.name
+    ;;
 
-    let executables_conflict (a : Dune_file.Executables.t)
-        (b : Dune_file.Executables.t) =
+    let executables_conflict (a : Dune_file.Executables.t) (b : Dune_file.Executables.t) =
       let a_names = String.Set.of_list_map ~f:snd a.names in
       let b_names = String.Set.of_list_map ~f:snd b.names in
       String.Set.inter a_names b_names |> String.Set.is_empty |> not
+    ;;
 
     let tests_conflict (a : Dune_file.Tests.t) (b : Dune_file.Tests.t) =
       executables_conflict a.exes b.exes
+    ;;
 
     let stanzas_conflict (a : Stanza.t) (b : Stanza.t) =
       let open Dune_file in
-      match (a, b) with
+      match a, b with
       | Executables a, Executables b -> executables_conflict a b
       | Library a, Library b -> libraries_conflict a b
       | Tests a, Tests b -> tests_conflict a b
       (* NOTE No other stanza types currently supported *)
       | _ -> false
+    ;;
 
     let csts_conflict project (a : Cst.t) (b : Cst.t) =
       let of_ast = Dune_file.of_ast project in
@@ -63,10 +68,9 @@ module File = struct
        let+ b_ast = Cst.abstract b in
        let a_asts = of_ast a_ast in
        let b_asts = of_ast b_ast in
-       List.exists
-         ~f:(fun x -> List.exists ~f:(stanzas_conflict x) a_asts)
-         b_asts)
+       List.exists ~f:(fun x -> List.exists ~f:(stanzas_conflict x) a_asts) b_asts)
       |> Option.value ~default:false
+    ;;
 
     (* TODO(shonfeder): replace with stanza merging *)
     let find_conflicting project new_stanzas existing_stanzas =
@@ -76,78 +80,91 @@ module File = struct
         | None -> None
       in
       List.find_map ~f:conflicting_stanza new_stanzas
+    ;;
 
     let add (project : Dune_project.t) stanzas = function
       | Text f -> Text f (* Adding a stanza to a text file isn't meaningful *)
-      | Dune f -> (
-        match find_conflicting project stanzas f.content with
-        | None -> Dune { f with content = f.content @ stanzas }
-        | Some (a, b) ->
-          User_error.raise
-            [ Pp.text "Updating existing stanzas is not yet supported."
-            ; Pp.text
-                "A preexisting dune stanza conflicts with a generated stanza:"
-            ; Pp.nop
-            ; Pp.text "Generated stanza:"
-            ; pp a
-            ; Pp.nop
-            ; Pp.text "Pre-existing stanza:"
-            ; pp b
-            ])
+      | Dune f ->
+        (match find_conflicting project stanzas f.content with
+         | None -> Dune { f with content = f.content @ stanzas }
+         | Some (a, b) ->
+           User_error.raise
+             [ Pp.text "Updating existing stanzas is not yet supported."
+             ; Pp.text "A preexisting dune stanza conflicts with a generated stanza:"
+             ; Pp.nop
+             ; Pp.text "Generated stanza:"
+             ; pp a
+             ; Pp.nop
+             ; Pp.text "Pre-existing stanza:"
+             ; pp b
+             ])
+    ;;
   end
 
   (* Stanza *)
 
   let create_dir path =
-    try Path.mkdir_p path
-    with Unix.Unix_error (EACCES, _, _) ->
+    try Path.mkdir_p path with
+    | Unix.Unix_error (EACCES, _, _) ->
       User_error.raise
         [ Pp.textf
-            "A project directory cannot be created or accessed: Lacking \
-             permissions needed to create directory %s"
+            "A project directory cannot be created or accessed: Lacking permissions \
+             needed to create directory %s"
             (Path.to_string_maybe_quoted path)
         ]
+  ;;
 
   let load_dune_file ~path =
     let name = "dune" in
     let full_path = Path.relative path name in
     let content =
-      if not (Path.exists full_path) then []
-      else if Path.is_directory full_path then
+      if not (Path.exists full_path)
+      then []
+      else if Path.is_directory full_path
+      then
         User_error.raise
-          [ Pp.textf "\"%s\" already exists and is a directory"
+          [ Pp.textf
+              "\"%s\" already exists and is a directory"
               (Path.to_absolute_filename full_path)
           ]
-      else
+      else (
         match Io.with_lexbuf_from_file ~f:Dune_lang.Format.parse full_path with
         | Dune_lang.Format.Sexps content -> content
         | Dune_lang.Format.OCaml_syntax _ ->
           User_error.raise
-            [ Pp.textf "Cannot load dune file %s because it uses OCaml syntax"
+            [ Pp.textf
+                "Cannot load dune file %s because it uses OCaml syntax"
                 (Path.to_string_maybe_quoted full_path)
-            ]
+            ])
     in
     Dune { path; name; content }
+  ;;
 
   let write_dune_file (dune_file : dune) =
     let path = Path.relative dune_file.path dune_file.name in
-    let version =
-      Dune_lang.Syntax.greatest_supported_version Dune_lang.Stanza.syntax
-    in
-    Io.with_file_out ~binary:true
+    let version = Dune_lang.Syntax.greatest_supported_version Dune_lang.Stanza.syntax in
+    Io.with_file_out
+      ~binary:true
       (* Why do we pass [~binary:true] but not anywhere else when formatting? *)
-      path ~f:(fun oc ->
+      path
+      ~f:(fun oc ->
         let fmt = Format.formatter_of_out_channel oc in
-        Format.fprintf fmt "%a%!" Pp.to_fmt
+        Format.fprintf
+          fmt
+          "%a%!"
+          Pp.to_fmt
           (Dune_lang.Format.pp_top_sexps ~version dune_file.content))
+  ;;
 
   let write f =
     let path = full_path f in
     match f with
     | Dune f -> Ok (write_dune_file f)
     | Text f ->
-      if Path.exists path then Error path
+      if Path.exists path
+      then Error path
       else Ok (Io.write_file ~binary:false path f.content)
+  ;;
 end
 
 (** The context in which the initialization is executed *)
@@ -160,7 +177,9 @@ module Init_context = struct
   let make path =
     let open Memo.O in
     let+ project =
-      Dune_project.load ~dir:Path.Source.root ~files:Filename.Set.empty
+      Dune_project.load
+        ~dir:Path.Source.root
+        ~files:Filename.Set.empty
         ~infer_from_opam_files:true
       >>| function
       | Some p -> p
@@ -173,6 +192,7 @@ module Init_context = struct
     in
     File.create_dir dir;
     { dir; project }
+  ;;
 end
 
 module Component = struct
@@ -206,8 +226,9 @@ module Component = struct
           | "executable" -> Some Exec
           | "library" -> Some Lib
           | _ -> None
+        ;;
 
-        let commands = [ ("executable", Exec); ("library", Lib) ]
+        let commands = [ "executable", Exec; "library", Lib ]
       end
 
       module Pkg = struct
@@ -215,7 +236,7 @@ module Component = struct
           | Opam
           | Esy
 
-        let commands = [ ("opam", Opam); ("esy", Esy) ]
+        let commands = [ "opam", Opam; "esy", Esy ]
       end
 
       type t =
@@ -256,19 +277,22 @@ module Component = struct
 
     module Field = struct
       let inline_tests = Encoder.field_b "inline_tests"
-
       let pps_encoder pps = Encoder.list Encoder.string ("pps" :: pps)
 
       let preprocess_field = function
         | [] -> []
         | pps -> [ Encoder.field "preprocess" pps_encoder pps ]
+      ;;
 
       let common (options : Options.Common.t) =
         [ Encoder.field "name" Encoder.string (Atom.to_string options.name)
-        ; Encoder.field_l "libraries" Encoder.string
+        ; Encoder.field_l
+            "libraries"
+            Encoder.string
             (List.map ~f:Atom.to_string options.libraries)
         ]
         @ preprocess_field (List.map ~f:Atom.to_string options.pps)
+      ;;
     end
 
     (* Make CST representation of a stanza for the given `kind` *)
@@ -276,65 +300,64 @@ module Component = struct
       Encoder.named_record_fields kind (fields @ Field.common common_options)
       (* Convert to a CST *)
       |> Dune_lang.Ast.add_loc ~loc:Loc.none
-      |> Cst.concrete (* Package as a list CSTs *) |> List.singleton
+      |> Cst.concrete
+      (* Package as a list CSTs *) |> List.singleton
+    ;;
 
     let add_to_list_set elem set =
       if List.mem ~equal:Dune_lang.Atom.equal set elem then set else elem :: set
+    ;;
 
     let public_name_encoder atom = Atom atom
-
     let public_name_field = Encoder.field_o "public_name" public_name_encoder
 
-    let executable (common : Options.Common.t) (options : Options.Executable.t)
-        =
+    let executable (common : Options.Common.t) (options : Options.Executable.t) =
       make "executable" common [ public_name_field options.public ]
+    ;;
 
-    let library (common : Options.Common.t)
-        { Options.Library.inline_tests; public } =
+    let library (common : Options.Common.t) { Options.Library.inline_tests; public } =
       let common =
-        if inline_tests then
+        if inline_tests
+        then (
           let pps =
-            add_to_list_set
-              (Dune_lang.Atom.of_string "ppx_inline_test")
-              common.pps
+            add_to_list_set (Dune_lang.Atom.of_string "ppx_inline_test") common.pps
           in
-          { common with pps }
+          { common with pps })
         else common
       in
-      make "library" common
-        [ public_name_field public; Field.inline_tests inline_tests ]
+      make "library" common [ public_name_field public; Field.inline_tests inline_tests ]
+    ;;
 
     let test common (() : Options.Test.t) = make "test" common []
 
     (* A list of CSTs for dune-project file content *)
     let dune_project ?(opam_file_gen = true) dir (common : Options.Common.t) =
       let package =
-        Package.default
-          (Package.Name.of_string (Atom.to_string common.name))
-          dir
+        Package.default (Package.Name.of_string (Atom.to_string common.name)) dir
       in
-      let packages =
-        Package.Name.Map.singleton (Package.name package) package
-      in
+      let packages = Package.Name.Map.singleton (Package.name package) package in
       let info = Package.Info.example in
       Dune_project.anonymous ~dir ~packages ~info ()
       |> Dune_project.set_generate_opam_files opam_file_gen
       |> Dune_project.encode
       |> List.map ~f:(fun exp ->
-             exp |> Dune_lang.Ast.add_loc ~loc:Loc.none |> Cst.concrete)
+        exp |> Dune_lang.Ast.add_loc ~loc:Loc.none |> Cst.concrete)
       |> fun cst ->
-      List.append cst
+      List.append
+        cst
         [ Cst.Comment
             ( Loc.none
             , [ " See the complete stanza docs at \
                  https://dune.readthedocs.io/en/stable/dune-files.html#dune-project"
               ] )
         ]
+    ;;
   end
 
   (* TODO Support for merging in changes to an existing stanza *)
   let add_stanza_to_dune_file ~(project : Dune_project.t) ~dir stanza =
     File.load_dune_file ~path:dir |> File.Stanza.add project stanza
+  ;;
 
   (* Functions to make the various components, represented as lists of files *)
   module Make = struct
@@ -351,6 +374,7 @@ module Component = struct
       in
       let files = [ bin_dune; bin_ml ] in
       [ { dir; files } ]
+    ;;
 
     let src ({ context; common; options } : Options.Library.t Options.t) =
       let dir = context.dir in
@@ -360,6 +384,7 @@ module Component = struct
       in
       let files = [ lib_dune ] in
       [ { dir; files } ]
+    ;;
 
     let test ({ context; common; options } : Options.Test.t Options.t) =
       (* Marking the current absence of test-specific options *)
@@ -375,23 +400,25 @@ module Component = struct
       in
       let files = [ test_dune; test_ml ] in
       [ { dir; files } ]
+    ;;
 
-    let dune_project_file dir
-        ({ context; common; options } : Options.Project.t Options.t) =
+    let dune_project_file dir ({ context; common; options } : Options.Project.t Options.t)
+      =
       let opam_file_gen =
         match options.pkg with
         | Opam -> true
         | Esy -> false
       in
       let content =
-        Stanza_cst.dune_project ~opam_file_gen
+        Stanza_cst.dune_project
+          ~opam_file_gen
           Path.(as_in_source_tree_exn context.dir)
           common
       in
       File.Dune { path = dir; content; name = "dune-project" }
+    ;;
 
-    let proj_exec dir
-        ({ context; common; options } : Options.Project.t Options.t) =
+    let proj_exec dir ({ context; common; options } : Options.Project.t Options.t) =
       let lib_target =
         src
           { context = { context with dir = Path.relative dir "lib" }
@@ -408,25 +435,21 @@ module Component = struct
       in
       let bin_target =
         (* Add the lib_target as a library to the executable*)
-        let libraries =
-          Stanza_cst.add_to_list_set common.name common.libraries
-        in
+        let libraries = Stanza_cst.add_to_list_set common.name common.libraries in
         bin
           { context = { context with dir = Path.relative dir "bin" }
           ; options = { public = Some common.name }
-          ; common =
-              { common with libraries; name = Dune_lang.Atom.of_string "main" }
+          ; common = { common with libraries; name = Dune_lang.Atom.of_string "main" }
           }
       in
       bin_target @ lib_target @ test_target
+    ;;
 
-    let proj_lib dir
-        ({ context; common; options } : Options.Project.t Options.t) =
+    let proj_lib dir ({ context; common; options } : Options.Project.t Options.t) =
       let lib_target =
         src
           { context = { context with dir = Path.relative dir "lib" }
-          ; options =
-              { public = Some common.name; inline_tests = options.inline_tests }
+          ; options = { public = Some common.name; inline_tests = options.inline_tests }
           ; common
           }
       in
@@ -438,23 +461,20 @@ module Component = struct
           }
       in
       lib_target @ test_target
+    ;;
 
     let proj ({ common; options; _ } as opts : Options.Project.t Options.t) =
       let ({ template; pkg; _ } : Options.Project.t) = options in
       let dir = Path.root in
       let name =
-        Package.Name.parse_string_exn
-          (Loc.none, Dune_lang.Atom.to_string common.name)
+        Package.Name.parse_string_exn (Loc.none, Dune_lang.Atom.to_string common.name)
       in
       let proj_target =
         let package_files =
           match (pkg : Options.Project.Pkg.t) with
           | Opam ->
             let opam_file = Package.file ~dir ~name in
-            [ File.make_text
-                (Path.parent_exn opam_file)
-                (Path.basename opam_file) ""
-            ]
+            [ File.make_text (Path.parent_exn opam_file) (Path.basename opam_file) "" ]
           | Esy -> [ File.make_text dir "package.json" "" ]
         in
         { dir; files = dune_project_file dir opts :: package_files }
@@ -465,6 +485,7 @@ module Component = struct
         | Lib -> proj_lib dir opts
       in
       proj_target :: component_targets
+    ;;
   end
 
   let report_uncreated_file = function
@@ -473,15 +494,18 @@ module Component = struct
       let open Pp.O in
       User_warning.emit
         [ Pp.textf "File "
-          ++ Pp.tag User_message.Style.Kwd
+          ++ Pp.tag
+               User_message.Style.Kwd
                (Pp.verbatim (Path.to_string_maybe_quoted path))
           ++ Pp.text " was not created because it already exists"
         ]
+  ;;
 
   (** Creates a component, writing the files to disk *)
   let create target =
     File.create_dir target.dir;
     List.map ~f:File.write target.files
+  ;;
 
   let init (type options) (t : options t) =
     let target =
@@ -492,4 +516,5 @@ module Component = struct
       | Test params -> Make.test params
     in
     List.concat_map ~f:create target |> List.iter ~f:report_uncreated_file
+  ;;
 end

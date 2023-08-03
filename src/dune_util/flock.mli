@@ -4,7 +4,6 @@
 type t
 
 val fd : t -> Unix.file_descr
-
 val create : Unix.file_descr -> t
 
 type lock =
@@ -12,7 +11,5 @@ type lock =
   | Exclusive
 
 val lock_block : t -> lock -> (unit, Unix.error) result
-
 val lock_non_block : t -> lock -> ([ `Success | `Failure ], Unix.error) result
-
 val unlock : t -> (unit, Unix.error) result

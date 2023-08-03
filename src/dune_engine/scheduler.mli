@@ -62,12 +62,12 @@ module Run : sig
 
       The fiber [get_build_request] is run at the beginning of every iteration
       to wait for the build signal. *)
-  val poll_passive :
-       get_build_request:(step * Build_outcome.t Fiber.Ivar.t) Fiber.t
+  val poll_passive
+    :  get_build_request:(step * Build_outcome.t Fiber.Ivar.t) Fiber.t
     -> unit Fiber.t
 
-  val go :
-       Config.t
+  val go
+    :  Config.t
     -> ?timeout:float
     -> ?file_watcher:file_watcher
     -> on_event:(Config.t -> Event.t -> unit)
@@ -94,8 +94,8 @@ val with_job_slot : (Fiber.Cancel.t -> Config.t -> 'a Fiber.t) -> 'a Fiber.t
 (** Wait for the following process to terminate. If [is_process_group_leader] is
     true, kill the entire process group instead of just the process in case of
     timeout. *)
-val wait_for_process :
-     ?timeout:float
+val wait_for_process
+  :  ?timeout:float
   -> ?is_process_group_leader:bool
   -> Pid.t
   -> Proc.Process_info.t Fiber.t
@@ -104,8 +104,8 @@ type termination_reason =
   | Normal
   | Cancel
 
-val wait_for_build_process :
-     ?timeout:float
+val wait_for_build_process
+  :  ?timeout:float
   -> ?is_process_group_leader:bool
   -> Pid.t
   -> (Proc.Process_info.t * termination_reason) Fiber.t

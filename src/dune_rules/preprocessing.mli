@@ -2,13 +2,13 @@
 
 open Import
 
-val pped_modules_map :
-     Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
+val pped_modules_map
+  :  Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
   -> Ocaml.Version.t
   -> (Module.t -> Module.t) Staged.t
 
-val make :
-     Super_context.t
+val make
+  :  Super_context.t
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> lint:Preprocess.Without_instrumentation.t Preprocess.Per_module.t
@@ -20,8 +20,8 @@ val make :
   -> Pp_spec.t
 
 (** Get a path to a cached ppx driver with some extra flags for cookies. *)
-val get_ppx_driver :
-     Super_context.t
+val get_ppx_driver
+  :  Super_context.t
   -> loc:Loc.t
   -> expander:Expander.t
   -> scope:Scope.t
@@ -32,8 +32,8 @@ val get_ppx_driver :
 
 val gen_rules : Super_context.t -> string list -> unit Memo.t
 
-val action_for_pp_with_target :
-     sandbox:Sandbox_config.t
+val action_for_pp_with_target
+  :  sandbox:Sandbox_config.t
   -> loc:Loc.t
   -> expander:Expander.t
   -> action:Action_unexpanded.t
@@ -41,5 +41,4 @@ val action_for_pp_with_target :
   -> target:Path.Build.t
   -> Action.Full.t Action_builder.With_targets.t
 
-val ppx_exe :
-  Context.t -> scope:Scope.t -> Lib_name.t -> Path.Build.t Resolve.Memo.t
+val ppx_exe : Context.t -> scope:Scope.t -> Lib_name.t -> Path.Build.t Resolve.Memo.t

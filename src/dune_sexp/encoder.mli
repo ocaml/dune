@@ -3,18 +3,13 @@
 include Combinators.S with type 'a t = 'a -> T.t
 
 val sexp : T.t t
-
 val record : (string * T.t) list -> T.t
-
 val constr : string -> 'a t -> 'a t
 
 type field
 
-val field :
-  string -> 'a t -> ?equal:('a -> 'a -> bool) -> ?default:'a -> 'a -> field
-
+val field : string -> 'a t -> ?equal:('a -> 'a -> bool) -> ?default:'a -> 'a -> field
 val field_o : string -> 'a t -> 'a option -> field
-
 val field_b : string -> bool -> field
 
 (** Field with inlined list as value
@@ -31,5 +26,4 @@ val record_fields : field list -> T.t list
 val named_record_fields : string -> field list t
 
 val unknown : _ t
-
 val enum : (string * 'a) list -> 'a t

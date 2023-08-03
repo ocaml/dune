@@ -58,8 +58,8 @@ module Prog : sig
       ; loc : Loc.t option
       }
 
-    val create :
-         ?hint:string
+    val create
+      :  ?hint:string
       -> context:Context_name.t
       -> program:string
       -> loc:Loc.t option
@@ -72,7 +72,6 @@ module Prog : sig
   type t = (Path.t, Not_found.t) result
 
   val to_dyn : t -> Dyn.t
-
   val ok_exn : t -> Path.t
 end
 
@@ -83,9 +82,7 @@ include
     with type target := Path.Build.t
     with type string := string
     with type ext :=
-      (module Ext.Instance
-         with type target = Path.Build.t
-          and type path = Path.t)
+      (module Ext.Instance with type target = Path.Build.t and type path = Path.t)
 
 include
   Action_intf.Helpers
@@ -159,8 +156,8 @@ module Full : sig
     ; sandbox : Sandbox_config.t
     }
 
-  val make :
-       ?env:Env.t (** default [Env.empty] *)
+  val make
+    :  ?env:Env.t (** default [Env.empty] *)
     -> ?locks:Path.t list (** default [[]] *)
     -> ?can_go_in_shared_cache:bool (** default [true] *)
     -> ?sandbox:Sandbox_config.t (** default [Sandbox_config.default] *)
@@ -177,11 +174,8 @@ module Full : sig
       ]} *)
 
   val add_env : Env.t -> t -> t
-
   val add_locks : Path.t list -> t -> t
-
   val add_sandbox : Sandbox_config.t -> t -> t
-
   val add_can_go_in_shared_cache : bool -> t -> t
 
   include Monoid with type t := t

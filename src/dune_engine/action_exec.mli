@@ -10,11 +10,10 @@ module Exec_result : sig
 end
 
 type input =
-  { targets :
-      Targets.Validated.t option (* Some Jane Street actions use [None] *)
+  { targets : Targets.Validated.t option (* Some Jane Street actions use [None] *)
   ; root : Path.t
-        (** [root] should be the root of the current build context, or the root
-            of the sandbox if the action is sandboxed. *)
+      (** [root] should be the root of the current build context, or the root
+          of the sandbox if the action is sandboxed. *)
   ; context : Build_context.t option
   ; env : Env.t
   ; rule_loc : Loc.t
@@ -22,7 +21,7 @@ type input =
   ; action : Action.t
   }
 
-val exec :
-     input
+val exec
+  :  input
   -> build_deps:(Dep.Set.t -> Dep.Fact.t Dep.Map.t Fiber.t)
   -> Exec_result.t Fiber.t

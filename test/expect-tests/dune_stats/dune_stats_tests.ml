@@ -18,3 +18,4 @@ let%expect_test "fd counting" =
   Unix.close w;
   log ();
   [%expect {| fd count: 0 |}]
+;;

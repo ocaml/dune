@@ -4,8 +4,8 @@ open Stdune
 
 module Multiplicity : sig
   type t =
-    | One  (** [target] field or variable *)
-    | Multiple  (** [targets] field or variable *)
+    | One (** [target] field or variable *)
+    | Multiple (** [targets] field or variable *)
 
   val check_variable_matches_field : loc:Loc.t -> field:t -> variable:t -> unit
 end
@@ -31,6 +31,6 @@ type 'a t =
   | Infer
 
 (** [target] or [targets] field with the correct multiplicity. *)
-val field :
-     allow_directory_targets:bool
+val field
+  :  allow_directory_targets:bool
   -> String_with_vars.t t Dune_sexp.Decoder.fields_parser

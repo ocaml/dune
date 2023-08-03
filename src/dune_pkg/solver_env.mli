@@ -13,7 +13,6 @@ module Flag : sig
     ]
 
   val to_string : t -> string
-
   val of_string_opt : string -> t option
 
   module Set : sig
@@ -24,7 +23,6 @@ module Flag : sig
     type t
 
     val fold : t -> init:'a -> f:(flag -> 'a -> 'a) -> 'a
-
     val mem : t -> flag -> bool
   end
 end
@@ -44,7 +42,6 @@ module Sys_var : sig
     ]
 
   val to_string : t -> string
-
   val of_string_opt : string -> t option
 
   module Bindings : sig
@@ -54,13 +51,10 @@ module Sys_var : sig
     type t
 
     val empty : t
-
     val set : t -> sys_var -> string -> t
-
     val get : t -> sys_var -> string option
 
-    type union_error =
-      [ `Var_in_both_with_different_values of sys_var * string * string ]
+    type union_error = [ `Var_in_both_with_different_values of sys_var * string * string ]
 
     (** Merge two environments returning an error if they both contain a binding
         of the same variable to different values. *)
@@ -74,11 +68,7 @@ type t =
   }
 
 val decode : t Dune_lang.Decoder.t
-
 val encode : t Dune_lang.Encoder.t
-
 val to_dyn : t -> Dyn.t
-
 val equal : t -> t -> bool
-
 val default : t

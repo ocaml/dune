@@ -7,7 +7,6 @@ module Make (Value : Value) () : S with type value := Value.t = struct
      in constant time. *)
   module Raw_graph = struct
     type mark = int
-
     type graph = unit
 
     module Id = Id.Make ()
@@ -32,31 +31,20 @@ module Make (Value : Value) () : S with type value := Value.t = struct
         let mark = !fresh_mark in
         incr fresh_mark;
         mark
+    ;;
 
     let vertex_eq v1 v2 = v1 == v2
-
     let is_marked _ v m = v.mark = m
-
     let set_mark _ v m = v.mark <- m
-
     let get_level _ v = v.level
-
     let set_level _ v l = v.level <- l
-
     let get_incoming _ v = v.rev_deps
-
     let clear_incoming _ v = v.rev_deps <- []
-
     let add_incoming _ v w = v.rev_deps <- w :: v.rev_deps
-
     let get_outgoing _ v = v.deps
-
     let get_parent _ v = Option.Unboxed.value_exn v.parent
-
     let set_parent _ v p = v.parent <- Option.Unboxed.some p
-
     let raw_add_edge _ v w = v.deps <- w :: v.deps
-
     let raw_add_vertex _ _ = ()
   end
 
@@ -75,6 +63,7 @@ module Make (Value : Value) () : S with type value := Value.t = struct
     ; parent = Option.Unboxed.none
     ; value
     }
+  ;;
 
   let value t = t.value
 
@@ -91,16 +80,23 @@ module Make (Value : Value) () : S with type value := Value.t = struct
             assert (List.hd path == w);
             assert (Option.value_exn (List.last path) == v);
             List.rev path))
+  ;;
 
   let rec pp_depth depth pp_value fmt n =
-    if depth >= 20 then Format.fprintf fmt "..."
+    if depth >= 20
+    then Format.fprintf fmt "..."
     else
-      Format.fprintf fmt "(%d: k=%d) (%a) [@[%a@]]" (Id.to_int n.id) n.level
-        pp_value n.value
+      Format.fprintf
+        fmt
+        "(%d: k=%d) (%a) [@[%a@]]"
+        (Id.to_int n.id)
+        n.level
+        pp_value
+        n.value
         (pp_depth (depth + 1) pp_value
-        |> Format.pp_print_list ~pp_sep:(fun fmt () ->
-               Format.fprintf fmt ";@, "))
+         |> Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ";@, "))
         n.deps
+  ;;
 
   let pp_node pp_value fmt n = pp_depth 0 pp_value fmt n
 end

@@ -2,7 +2,7 @@
 
     This module implements
     {{:https://en.wikipedia.org/wiki/Structured_concurrency} "structured
-      concurrency"}. *)
+    concurrency"}. *)
 
 open! Stdune
 
@@ -41,7 +41,6 @@ module O : sig
   val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
 
   val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
   val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
 
   (** Similar to [fork_and_join] *)
@@ -51,7 +50,6 @@ module O : sig
 end
 
 val map : 'a t -> f:('a -> 'b) -> 'b t
-
 val bind : 'a t -> f:('a -> 'b t) -> 'b t
 
 (** {1 Joining} *)
@@ -66,7 +64,6 @@ val both : 'a t -> 'b t -> ('a * 'b) t
 val all : 'a t list -> 'a list t
 
 val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
-
 val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
 
 (** {1 Forking + joining} *)
@@ -101,8 +98,8 @@ val all_concurrently_unit : unit t list -> unit t
 (** Iter over a list in parallel. *)
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
 
-val parallel_iter_set :
-     (module Set.S with type elt = 'a and type t = 's)
+val parallel_iter_set
+  :  (module Set.S with type elt = 'a and type t = 's)
   -> 's
   -> f:('a -> unit t)
   -> unit t
@@ -112,7 +109,6 @@ val sequential_iter_seq : 'a Seq.t -> f:('a -> unit t) -> unit t
 (** Provide efficient parallel iter/map functions for maps. *)
 module Make_map_traversals (Map : Map.S) : sig
   val parallel_iter : 'a Map.t -> f:(Map.key -> 'a -> unit t) -> unit t
-
   val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
 end
 [@@inline always]
@@ -154,19 +150,20 @@ end
 
     It is guaranteed that after the fiber has returned a value, [on_error] will
     never be called. *)
-val with_error_handler :
-  (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> Nothing.t t) -> 'a t
+val with_error_handler
+  :  (unit -> 'a t)
+  -> on_error:(Exn_with_backtrace.t -> Nothing.t t)
+  -> 'a t
 
-val map_reduce_errors :
-     (module Monoid with type t = 'a)
+val map_reduce_errors
+  :  (module Monoid with type t = 'a)
   -> on_error:(Exn_with_backtrace.t -> 'a t)
   -> (unit -> 'b t)
   -> ('b, 'a) result t
 
 (** [collect_errors f] is:
     [fold_errors f ~init:[] ~on_error:(fun e l -> e :: l)] *)
-val collect_errors :
-  (unit -> 'a t) -> ('a, Exn_with_backtrace.t list) Result.t t
+val collect_errors : (unit -> 'a t) -> ('a, Exn_with_backtrace.t list) Result.t t
 
 (** [finalize f ~finally] runs [finally] after [f ()] has terminated, whether it
     fails or succeeds. *)
@@ -209,11 +206,8 @@ module Mvar : sig
   type 'a t
 
   val create : unit -> 'a t
-
   val create_full : 'a -> 'a t
-
   val read : 'a t -> 'a fiber
-
   val write : 'a t -> 'a -> unit fiber
 end
 
@@ -255,7 +249,6 @@ module Mutex : sig
   type t
 
   val create : unit -> t
-
   val with_lock : t -> f:(unit -> 'a fiber) -> 'a fiber
 end
 
@@ -320,13 +313,9 @@ module Stream : sig
     val read : 'a t -> 'a option fiber
 
     val filter_map : 'a t -> f:('a -> 'b option) -> 'b t
-
     val sequential_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
-
     val parallel_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
-
     val append : 'a t -> 'a t -> 'a t
-
     val cons : 'a -> 'a t -> 'a t
   end
 
@@ -343,7 +332,6 @@ module Stream : sig
     val create : ('a option -> unit fiber) -> 'a t
 
     val write : 'a t -> 'a option -> unit fiber
-
     val null : unit -> 'a t
   end
 
@@ -457,8 +445,8 @@ module Cancel : sig
 
       If [f ()] finished before [t] is fired, then [on_cancel] will never be
       invoked. *)
-  val with_handler :
-       t
+  val with_handler
+    :  t
     -> (unit -> 'a fiber)
     -> on_cancel:(unit -> 'b fiber)
     -> ('a * 'b outcome) fiber

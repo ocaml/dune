@@ -16,12 +16,14 @@ let decode =
      and+ module_ = field "module" Module_name.decode
      and+ sourceroot = field_b "sourceroot"
      and+ relocatable = field_b "relocatable"
-     and+ sites =
-       field "sites" ~default:[] (repeat (located Package.Name.decode))
+     and+ sites = field "sites" ~default:[] (repeat (located Package.Name.decode))
      and+ plugins =
-       field "plugins" ~default:[]
+       field
+         "plugins"
+         ~default:[]
          (repeat (located (pair Package.Name.decode (located Site.decode))))
      in
      { loc; module_; sourceroot; relocatable; sites; plugins })
+;;
 
 type Stanza.t += T of t

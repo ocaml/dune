@@ -7,8 +7,5 @@ open Import
 val utop_exe : string
 
 val utop_dir_basename : string
-
-val libs_under_dir :
-  Super_context.t -> db:Lib.DB.t -> dir:Path.t -> Lib.t list Memo.t
-
+val libs_under_dir : Super_context.t -> db:Lib.DB.t -> dir:Path.t -> Lib.t list Memo.t
 val setup : Super_context.t -> dir:Path.Build.t -> unit Memo.t

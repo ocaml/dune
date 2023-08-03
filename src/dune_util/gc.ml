@@ -1,25 +1,27 @@
 open Stdune
 
 let to_sexp
-    ({ Stdlib.Gc.minor_words
-     ; promoted_words
-     ; major_words
-     ; minor_collections
-     ; major_collections
-     ; heap_words
-     ; heap_chunks
-     ; live_words
-     ; live_blocks
-     ; free_words
-     ; free_blocks
-     ; largest_free
-     ; fragments
-     ; compactions
-     ; top_heap_words
-     ; stack_size
-     ; _
-     } :
-      Stdlib.Gc.stat) : Sexp.t =
+  ({ Stdlib.Gc.minor_words
+   ; promoted_words
+   ; major_words
+   ; minor_collections
+   ; major_collections
+   ; heap_words
+   ; heap_chunks
+   ; live_words
+   ; live_blocks
+   ; free_words
+   ; free_blocks
+   ; largest_free
+   ; fragments
+   ; compactions
+   ; top_heap_words
+   ; stack_size
+   ; _
+   } :
+    Stdlib.Gc.stat)
+  : Sexp.t
+  =
   let open Sexp in
   List
     [ List [ Atom "minor_words"; Atom (string_of_float minor_words) ]
@@ -40,11 +42,13 @@ let to_sexp
     ; List [ Atom "stack_size"; Atom (string_of_int stack_size) ]
       (* forced_major_collections is only available from 4.12 so not worth it *)
     ]
+;;
 
 let serialize (t : Stdlib.Gc.stat) ~path =
   Io.with_file_out path ~f:(fun oc ->
-      let fmt = Format.formatter_of_out_channel oc in
-      Format.fprintf fmt "%a%!" Pp.to_fmt (Sexp.pp (to_sexp t)))
+    let fmt = Format.formatter_of_out_channel oc in
+    Format.fprintf fmt "%a%!" Pp.to_fmt (Sexp.pp (to_sexp t)))
+;;
 
 let decode =
   (* In order to stay version independent, we use a trick with `with` by
@@ -53,7 +57,8 @@ let decode =
      4.12. *)
   let dummy = Stdlib.Gc.quick_stat () in
   let open Dune_sexp.Decoder in
-  enter @@ fields
+  enter
+  @@ fields
   @@ let+ minor_words = field "minor_words" float
      and+ promoted_words = field "promoted_words" float
      and+ major_words = field "major_words" float
@@ -88,3 +93,4 @@ let decode =
      ; top_heap_words
      ; stack_size
      }
+;;

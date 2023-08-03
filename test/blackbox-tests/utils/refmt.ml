@@ -6,13 +6,17 @@ type ('impl, 'intf) intf_or_impl =
 
 module File = struct
   let of_filename s =
-    if Filename.check_suffix s ".re" then Impl s
-    else if Filename.check_suffix s ".rei" then Intf s
+    if Filename.check_suffix s ".re"
+    then Impl s
+    else if Filename.check_suffix s ".rei"
+    then Intf s
     else failwith (sprintf "unknown filename %S" s)
+  ;;
 
   let output_fn = function
     | Impl fn -> fn ^ ".ml"
     | Intf fn -> fn ^ ".mli"
+  ;;
 end
 
 let () =
@@ -20,7 +24,7 @@ let () =
     | "binary" -> ()
     | _ -> failwith "Only the value 'binary' is allowed for --print"
   in
-  let args = [ ("--print", Arg.String set_binary, "") ] in
+  let args = [ "--print", Arg.String set_binary, "" ] in
   let source = ref None in
   let anon s =
     match !source with
@@ -47,3 +51,4 @@ let () =
   in
   loop ();
   close_out_noerr out
+;;

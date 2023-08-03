@@ -25,12 +25,18 @@ module Fiber_job = struct
       let dir =
         command.cmd_dir
         |> Option.map ~f:(fun path ->
-               path |> Path.Outside_build_dir.of_string
-               |> Path.outside_build_dir)
+          path |> Path.Outside_build_dir.of_string |> Path.outside_build_dir)
       in
       let env = command.cmd_env |> Option.map ~f:Env.of_unix in
-      Process.run_with_times ~display:Quiet ?dir ?env ?stdin_from ~stderr_to
-        ~stdout_to prog args
+      Process.run_with_times
+        ~display:Quiet
+        ?dir
+        ?env
+        ?stdin_from
+        ~stderr_to
+        ~stdout_to
+        prog
+        args
     in
     let result : OpamProcess.result =
       let r_stdout = Io.lines_of_file stdout_file in
@@ -50,6 +56,7 @@ module Fiber_job = struct
       }
     in
     Fiber.return result
+  ;;
 
   let run =
     let open Fiber.O in
@@ -61,6 +68,7 @@ module Fiber_job = struct
         run1 k
     in
     run1
+  ;;
 end
 
 type failure =
@@ -74,12 +82,13 @@ let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
     (* hashes have to be empty otherwise OPAM deletes the file after
        downloading if the hash does not match *)
     let hashes = [] in
-    match (url.backend, unpack) with
-    | #OpamUrl.version_control, _ | _, true -> (
+    match url.backend, unpack with
+    | #OpamUrl.version_control, _ | _, true ->
       let dirname = OpamFilename.Dir.of_string path in
       fun label url ->
         let open OpamProcess.Job.Op in
-        OpamRepository.pull_tree label dirname hashes [ url ] @@| function
+        OpamRepository.pull_tree label dirname hashes [ url ]
+        @@| (function
         | Up_to_date _ -> OpamTypes.Up_to_date ()
         | Result _ -> Result ()
         | Not_available (a, b) -> Not_available (a, b))
@@ -91,36 +100,35 @@ let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
   let event =
     Dune_stats.(
       start (global ()) (fun () ->
-          { cat = None
-          ; name = label
-          ; args =
-              (let args =
-                 [ ("url", `String (OpamUrl.to_string url))
-                 ; ("target", `String path)
-                 ]
-               in
-               Some
-                 (match checksum with
-                 | None -> args
-                 | Some checksum ->
-                   ("checksum", `String (Checksum.to_string checksum)) :: args))
-          }))
+        { cat = None
+        ; name = label
+        ; args =
+            (let args =
+               [ "url", `String (OpamUrl.to_string url); "target", `String path ]
+             in
+             Some
+               (match checksum with
+                | None -> args
+                | Some checksum ->
+                  ("checksum", `String (Checksum.to_string checksum)) :: args))
+        }))
   in
   let+ downloaded = Fiber_job.run (pull label url) in
   Dune_stats.finish event;
   match downloaded with
-  | Up_to_date () | Result () -> (
-    match checksum with
-    | None -> Ok ()
-    | Some expected -> (
-      let expected = Checksum.to_opam_hash expected in
-      match OpamHash.mismatch path expected with
-      | None -> Ok ()
-      | Some actual ->
-        (* the file is invalid, so remove it before returning to the user *)
-        Path.unlink target;
-        Error (Checksum_mismatch (Checksum.of_opam_hash actual))))
+  | Up_to_date () | Result () ->
+    (match checksum with
+     | None -> Ok ()
+     | Some expected ->
+       let expected = Checksum.to_opam_hash expected in
+       (match OpamHash.mismatch path expected with
+        | None -> Ok ()
+        | Some actual ->
+          (* the file is invalid, so remove it before returning to the user *)
+          Path.unlink target;
+          Error (Checksum_mismatch (Checksum.of_opam_hash actual))))
   | Not_available (None, _verbose) -> Error (Unavailable None)
   | Not_available (Some normal, verbose) ->
     let msg = User_message.make [ Pp.text normal; Pp.text verbose ] in
     Error (Unavailable (Some msg))
+;;

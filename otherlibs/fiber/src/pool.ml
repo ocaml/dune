@@ -21,8 +21,7 @@ type runner =
 
 type nonrec t =
   { tasks : (unit -> unit t) Queue.t (* pending tasks *)
-  ; mutable runner : runner
-        (* The continuation to resume the runner set by [run] *)
+  ; mutable runner : runner (* The continuation to resume the runner set by [run] *)
   ; mutable status : status
   }
 
@@ -30,32 +29,33 @@ let running t k =
   match t.status with
   | Open -> k true
   | Closed -> k false
+;;
 
-let create () =
-  { tasks = Queue.create (); runner = Awaiting_run; status = Open }
+let create () = { tasks = Queue.create (); runner = Awaiting_run; status = Open }
 
 let task t ~f k =
   match t.status with
-  | Closed ->
-    Code_error.raise "pool is closed. new tasks may not be submitted" []
-  | Open -> (
+  | Closed -> Code_error.raise "pool is closed. new tasks may not be submitted" []
+  | Open ->
     Queue.push t.tasks f;
-    match t.runner with
-    | Running | Awaiting_run -> k ()
-    | Awaiting_resume r ->
-      t.runner <- Running;
-      resume r () k)
+    (match t.runner with
+     | Running | Awaiting_run -> k ()
+     | Awaiting_resume r ->
+       t.runner <- Running;
+       resume r () k)
+;;
 
 let close t k =
   match t.status with
   | Closed -> k ()
-  | Open -> (
+  | Open ->
     t.status <- Closed;
-    match t.runner with
-    | Running | Awaiting_run -> k ()
-    | Awaiting_resume r ->
-      t.runner <- Running;
-      resume r () k)
+    (match t.runner with
+     | Running | Awaiting_run -> k ()
+     | Awaiting_resume r ->
+       t.runner <- Running;
+       resume r () k)
+;;
 
 let run t k =
   match t.runner with
@@ -64,7 +64,7 @@ let run t k =
   | Awaiting_run ->
     t.runner <- Running;
     (* The number of currently running fibers in the pool. Only when this
-        number reaches zero we may call the final continuation [k]. *)
+       number reaches zero we may call the final continuation [k]. *)
     let n = ref 1 in
     let done_fiber () =
       decr n;
@@ -87,3 +87,4 @@ let run t k =
       | Open -> suspend suspend_k read_delayed
     in
     read t
+;;

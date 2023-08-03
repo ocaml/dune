@@ -6,10 +6,7 @@ module Immutable : sig
   type 'a t
 
   val of_array : 'a array -> 'a t
-
   val to_list : 'a t -> 'a list
-
   val of_list : 'a list -> 'a t
-
   val map : 'a t -> f:('a -> 'b) -> 'b t
 end

@@ -1,5 +1,4 @@
-[@@@alert
-unstable "The API of this library is not stable and may change without notice."]
+[@@@alert unstable "The API of this library is not stable and may change without notice."]
 
 type code =
   { code : int
@@ -36,9 +35,6 @@ type report =
   }
 
 val dyn_of_report : report -> Dyn.t
-
 val dyn_of_raw : [ `Loc of loc | `Message of string ] list -> Dyn.t
-
 val parse_raw : string -> [ `Loc of loc | `Message of string ] list
-
 val parse : string -> report list

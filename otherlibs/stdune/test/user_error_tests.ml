@@ -10,3 +10,4 @@ let%expect_test "user errors are serializable" =
   let error = User_error.make ~loc ~annots [ Pp.text "testing" ] in
   let (_ : string) = Marshal.to_string error [] in
   [%expect {||}]
+;;

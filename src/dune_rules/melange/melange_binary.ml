@@ -1,8 +1,8 @@
 open Import
 
 let melc sctx ~loc ~dir =
-  Super_context.resolve_program sctx ~loc ~dir ~hint:"opam install melange"
-    "melc"
+  Super_context.resolve_program sctx ~loc ~dir ~hint:"opam install melange" "melc"
+;;
 
 let where =
   let impl bin =
@@ -14,23 +14,22 @@ let where =
     in
     where
   in
-  let memo =
-    Memo.create "melange-where" ~input:(module Path) ~cutoff:String.equal impl
-  in
+  let memo = Memo.create "melange-where" ~input:(module Path) ~cutoff:String.equal impl in
   fun sctx ~loc ~dir ->
     let open Memo.O in
     let* env = Super_context.env_node sctx ~dir >>= Env_node.external_env in
     let+ melange_dirs =
       match Env.get env "MELANGELIB" with
       | Some p -> Memo.return (Some p)
-      | None -> (
+      | None ->
         let* melc = melc sctx ~loc ~dir in
-        match melc with
-        | Error _ -> Memo.return None
-        | Ok melc ->
-          let+ res = Memo.exec memo melc in
-          Some res)
+        (match melc with
+         | Error _ -> Memo.return None
+         | Ok melc ->
+           let+ res = Memo.exec memo melc in
+           Some res)
     in
     match melange_dirs with
     | None -> []
     | Some dirs -> Bin.parse_path dirs
+;;

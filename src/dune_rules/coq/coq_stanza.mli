@@ -6,8 +6,8 @@ module Buildable : sig
     ; coq_lang_version : Dune_sexp.Syntax.Version.t
     ; mode : Coq_mode.t option
     ; use_stdlib : bool
-    ; plugins : (Loc.t * Lib_name.t) list  (** ocaml plugins *)
-    ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
+    ; plugins : (Loc.t * Lib_name.t) list (** ocaml plugins *)
+    ; theories : (Loc.t * Coq_lib_name.t) list (** coq libraries *)
     ; loc : Loc.t
     }
 end

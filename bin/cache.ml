@@ -25,8 +25,7 @@ let trim =
        Arg.(
          value
          & opt (some bytes) None
-         & info ~docv:"BYTES" [ "trimmed-size" ]
-             ~doc:"Size to trim from the cache.")
+         & info ~docv:"BYTES" [ "trimmed-size" ] ~doc:"Size to trim from the cache.")
      and+ size =
        Arg.(
          value
@@ -37,7 +36,7 @@ let trim =
      let open Result.O in
      match
        let+ goal =
-         match (trimmed_size, size) with
+         match trimmed_size, size with
          | Some trimmed_size, None -> Result.Ok trimmed_size
          | None, Some size ->
            Result.Ok (Int64.sub (Dune_cache.Trimmer.overhead_size ()) size)
@@ -48,17 +47,16 @@ let trim =
      | Error s -> User_error.raise [ Pp.text s ]
      | Ok { trimmed_bytes } ->
        User_message.print
-         (User_message.make
-            [ Pp.textf "Freed %s" (Bytes_unit.pp trimmed_bytes) ])
+         (User_message.make [ Pp.textf "Freed %s" (Bytes_unit.pp trimmed_bytes) ])
+;;
 
 let size =
   let info =
     let doc = "Query the size of the Dune cache." in
     let man =
       [ `P
-          "Compute the total size of files in the Dune cache which are not \
-           hardlinked from any build directory and output it in a \
-           human-readable form."
+          "Compute the total size of files in the Dune cache which are not hardlinked \
+           from any build directory and output it in a human-readable form."
       ]
     in
     Cmd.info "size" ~doc ~man
@@ -66,16 +64,15 @@ let size =
   Cmd.v info
   @@ let+ machine_readble =
        Arg.(
-         value & flag
-         & info [ "machine-readable" ]
-             ~doc:"Outputs size as a plain number of bytes.")
+         value
+         & flag
+         & info [ "machine-readable" ] ~doc:"Outputs size as a plain number of bytes.")
      in
      let size = Dune_cache.Trimmer.overhead_size () in
-     if machine_readble then
-       User_message.print (User_message.make [ Pp.textf "%Ld" size ])
-     else
-       User_message.print
-         (User_message.make [ Pp.textf "%s" (Bytes_unit.pp size) ])
+     if machine_readble
+     then User_message.print (User_message.make [ Pp.textf "%Ld" size ])
+     else User_message.print (User_message.make [ Pp.textf "%s" (Bytes_unit.pp size) ])
+;;
 
 let command =
   let info =
@@ -83,11 +80,11 @@ let command =
     let man =
       [ `S "DESCRIPTION"
       ; `P
-          "Dune can share build artifacts between workspaces. We currently \
-           only support a few subcommands; however, we plan to provide more \
-           functionality soon."
+          "Dune can share build artifacts between workspaces. We currently only support \
+           a few subcommands; however, we plan to provide more functionality soon."
       ]
     in
     Cmd.info "cache" ~doc ~man
   in
   Cmd.group info [ trim; size ]
+;;

@@ -1,7 +1,7 @@
 open Import
 
-val build_o_files :
-     sctx:Super_context.t
+val build_o_files
+  :  sctx:Super_context.t
   -> foreign_sources:Foreign.Sources.t
   -> dir:Path.Build.t
   -> expander:Expander.t

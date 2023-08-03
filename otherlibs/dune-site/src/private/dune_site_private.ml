@@ -1,12 +1,8 @@
 (* TODO already exists in stdune/bin.ml *)
 let path_sep = if Sys.win32 then ';' else ':'
-
 let dune_dir_locations_env_var = "DUNE_DIR_LOCATIONS"
-
 let dune_ocaml_stdlib_env_var = "DUNE_OCAML_STDLIB"
-
 let dune_ocaml_hardcoded_env_var = "DUNE_OCAML_HARDCODED"
-
 let dune_sourceroot_env_var = "DUNE_SOURCEROOT"
 
 type entry =
@@ -30,6 +26,7 @@ let decode_dune_dir_locations =
   fun s ->
     let l = String.split_on_char path_sep s in
     aux [] l
+;;
 
 let encode_dune_dir_locations =
   let add b { package; section; dir } =
@@ -51,3 +48,4 @@ let encode_dune_dir_locations =
     let b = Buffer.create 16 in
     loop b s;
     Buffer.contents b
+;;

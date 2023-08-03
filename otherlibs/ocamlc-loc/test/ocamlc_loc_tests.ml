@@ -6,6 +6,7 @@ let cmd fmt =
       let (_ : int) = Sys.command s in
       ())
     fmt
+;;
 
 module Test = struct
   type t = { dir : Path.t }
@@ -13,16 +14,19 @@ module Test = struct
   let restore_cwd =
     let cwd = Sys.getcwd () in
     fun () -> Sys.chdir cwd
+  ;;
 
   let file t ~fname ~contents =
     let path = Path.relative t.dir fname in
     Io.write_file path contents;
     path
+  ;;
 
   let print_errors =
     List.iteri ~f:(fun i report ->
-        printfn ">> error %d" i;
-        print_endline (Dyn.to_string (Ocamlc_loc.dyn_of_report report)))
+      printfn ">> error %d" i;
+      print_endline (Dyn.to_string (Ocamlc_loc.dyn_of_report report)))
+  ;;
 
   let create f =
     let dir = Temp.create Dir ~prefix:"dune." ~suffix:".test" in
@@ -35,6 +39,7 @@ module Test = struct
     in
     (* Format.eprintf "print raw output:@.%s@.%!" output; *)
     Ocamlc_loc.parse output |> print_errors
+  ;;
 end
 
 (* FIXME: unused value warning isn't parsed correctly - the file excerpt isn't
@@ -50,7 +55,9 @@ Error (warning 32 [unused-value-declaration]): unused value foo.
     |}
   in
   String.split_lines raw_error
-  |> String.concat ~sep:"\r\n" |> Ocamlc_loc.parse |> Test.print_errors;
+  |> String.concat ~sep:"\r\n"
+  |> Ocamlc_loc.parse
+  |> Test.print_errors;
   [%expect
     {|
     >> error 0
@@ -59,13 +66,17 @@ Error (warning 32 [unused-value-declaration]): unused value foo.
     ; related = []
     ; severity = Error Some { code = 32; name = "unused-value-declaration" }
     } |}]
+;;
 
-let test_error raw_error =
-  String.trim raw_error |> Ocamlc_loc.parse |> Test.print_errors
+let test_error raw_error = String.trim raw_error |> Ocamlc_loc.parse |> Test.print_errors
 
 let test_error_raw raw_error =
-  String.trim raw_error |> Ocamlc_loc.parse_raw |> Ocamlc_loc.dyn_of_raw
-  |> Dyn.to_string |> print_endline
+  String.trim raw_error
+  |> Ocamlc_loc.parse_raw
+  |> Ocamlc_loc.dyn_of_raw
+  |> Dyn.to_string
+  |> print_endline
+;;
 
 let%expect_test "mli mismatch" =
   test_error
@@ -93,6 +104,7 @@ Error: The implementation test.ml does not match the interface test.cmi:
         ]
     ; severity = Error None
     } |}]
+;;
 
 let%expect_test "" =
   test_error
@@ -113,6 +125,7 @@ Error: This expression has type int but an expression was expected of type
     ; related = []
     ; severity = Error None
     } |}]
+;;
 
 let%expect_test "warning" =
   test_error
@@ -130,6 +143,7 @@ Warning 26 [unused-var]: unused variable x.
     ; related = []
     ; severity = Warning { code = 26; name = "unused-var" }
     } |}]
+;;
 
 let%expect_test "" =
   test_error
@@ -176,6 +190,7 @@ Error: Signature mismatch:
         ]
     ; severity = Error None
     } |}]
+;;
 
 let%expect_test "ml mli mismatch 2" =
   test_error
@@ -236,6 +251,7 @@ Error: The implementation src/dune_rules/artifacts.ml
         ]
     ; severity = Error None
     } |}]
+;;
 
 let%expect_test "" =
   test_error
@@ -282,6 +298,7 @@ Will be removed past 2020-20-20. Use Mylib.Intf_only instead.
     ; related = []
     ; severity = Error Some "deprecated"
     } |}]
+;;
 
 let%expect_test "undefined fields" =
   test_error
@@ -306,14 +323,15 @@ Error: Some record fields are undefined: signal_watcher
     ; related = []
     ; severity = Error None
     } |}]
+;;
 
 let%expect_test "undefined fields" =
   test_error_raw {|
 Error: Some record fields are undefined: signal_watcher
 |};
-  [%expect
-    {|
+  [%expect {|
     [ "Error: Some record fields are undefined: signal_watcher" ] |}]
+;;
 
 let%expect_test "test error from merlin" =
   test_error_raw
@@ -341,6 +359,7 @@ File "test.ml", line 4, characters 6-7: Actual declaration
     ; { path = "test.ml"; line = Single 4; chars = Some (6, 7) }
     ; "Actual declaration"
     ] |}]
+;;
 
 let%expect_test "ml/mli error" =
   test_error
@@ -373,6 +392,7 @@ Error: The implementation src/dune_engine/build_system.ml
         ]
     ; severity = Error None
     } |}]
+;;
 
 let%expect_test "ml/mli error" =
   test_error
@@ -390,6 +410,7 @@ Error: Unbound value Dune_engine.Build_system.dune_stats
     ; related = []
     ; severity = Error None
     } |}]
+;;
 
 let%expect_test "alert" =
   test_error
@@ -424,6 +445,7 @@ blah
     ; related = []
     ; severity = Alert { name = "foobar"; source = "A.f" }
     } |}]
+;;
 
 let%expect_test "multiple errors in one file" =
   test_error
@@ -464,6 +486,7 @@ foo
     ; related = []
     ; severity = Alert { name = "deprecated"; source = "A.f" }
     } |}]
+;;
 
 let%expect_test "fatal alert" =
   test_error
@@ -483,6 +506,7 @@ testing
     ; related = []
     ; severity = Error Some "foobar"
     } |}]
+;;
 
 let%expect_test "nultiple errors from multiple files at once" =
   test_error
@@ -598,6 +622,7 @@ Case
     ; related = []
     ; severity = Error Some { code = 8; name = "partial-match" }
     } |}]
+;;
 
 let%expect_test "two errors, second without 'error:'" =
   test_error
@@ -624,3 +649,4 @@ File "src/dune_threaded_console/dune_threaded_console.ml", line 9, characters 17
 ; related = []
 ; severity = Error None
 } |}]
+;;

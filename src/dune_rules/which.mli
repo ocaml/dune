@@ -4,8 +4,8 @@ module Best_path : sig
   module Make
       (Monad : Monad.S)
       (_ : sig
-        val file_exists : Path.t -> bool Monad.t
-      end) : sig
+         val file_exists : Path.t -> bool Monad.t
+       end) : sig
     (** [best_path ~dir prog] if [prog] is one of the special programs that can
         be installed with an .opt extension, look it up in [dir] using this
         extension *)

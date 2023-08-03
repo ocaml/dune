@@ -10,10 +10,7 @@ open Import
     [ocamlc -o src/foo.exe src/foo.ml], one might write:
 
     {[
-      [ A "-o"
-      ; Target (Path.relatie dir "foo.exe")
-      ; Dep (Path.relative dir "foo.ml")
-      ]
+      [ A "-o"; Target (Path.relatie dir "foo.exe"); Dep (Path.relative dir "foo.ml") ]
     ]}
 
     This DSL was inspired from the ocamlbuild API. *)
@@ -77,8 +74,8 @@ end
 
 (* TODO: Using list in [with_targets t list] complicates the API unnecessarily:
    we can use the constructor [S] to concatenate lists instead. *)
-val run :
-     dir:Path.t
+val run
+  :  dir:Path.t
   -> ?sandbox:Sandbox_config.t
   -> ?stdout_to:Path.Build.t
   -> Action.Prog.t
@@ -86,8 +83,8 @@ val run :
   -> Action.Full.t Action_builder.With_targets.t
 
 (** Same as [run], but for actions that don't produce targets *)
-val run' :
-     dir:Path.t
+val run'
+  :  dir:Path.t
   -> Action.Prog.t
   -> Args.without_targets Args.t list
   -> Action.Full.t Action_builder.t
@@ -99,18 +96,18 @@ val fail : exn -> _ Args.t
 
 module Ml_kind : sig
   val flag : Ml_kind.t -> _ Args.t
-
   val ppx_driver_flag : Ml_kind.t -> _ Args.t
 end
 
 (** [expand ~dir args] interprets the command line arguments [args] to produce
     corresponding strings, assuming they will be used as arguments to run a
     command in directory [dir]. *)
-val expand :
-  dir:Path.t -> 'a Args.t -> string list Action_builder.With_targets.t
+val expand : dir:Path.t -> 'a Args.t -> string list Action_builder.With_targets.t
 
 (** [expand_no_targets ~dir args] interprets the command line arguments [args]
     to produce corresponding strings, assuming they will be used as arguments to
     run a command in directory [dir]. *)
-val expand_no_targets :
-  dir:Path.t -> Args.without_targets Args.t -> string list Action_builder.t
+val expand_no_targets
+  :  dir:Path.t
+  -> Args.without_targets Args.t
+  -> string list Action_builder.t

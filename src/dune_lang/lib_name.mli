@@ -16,19 +16,12 @@ module Local : sig
 end
 
 val compare : t -> t -> Ordering.t
-
 val equal : t -> t -> bool
-
 val of_local : Loc.t * Local.t -> t
-
 val to_local : Loc.t * t -> (Local.t, User_message.t) result
-
 val to_local_exn : t -> Local.t
-
 val split : t -> Package_name.t * string list
-
 val package_name : t -> Package_name.t
-
 val of_package_name : Package_name.t -> t
 
 type analyze =
@@ -36,7 +29,6 @@ type analyze =
   | Private of Package_name.t * Local.t
 
 val analyze : t -> analyze
-
 val mangled : Package_name.t -> Local.t -> t
 
 module Map : Map.S with type key = t

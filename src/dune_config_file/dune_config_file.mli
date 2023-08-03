@@ -2,7 +2,6 @@ module Dune_config : sig
   (** Dune configuration (visible to the user) *)
 
   open Stdune
-
   module Display : module type of Display
 
   module Concurrency : sig
@@ -11,7 +10,6 @@ module Dune_config : sig
       | Auto
 
     val of_string : string -> (t, string) result
-
     val to_string : t -> string
   end
 
@@ -26,9 +24,7 @@ module Dune_config : sig
         | Disabled
 
       val all : (string * t) list
-
       val decode : t Dune_lang.Decoder.t
-
       val to_string : t -> string
     end
 
@@ -36,9 +32,7 @@ module Dune_config : sig
       type t = Dune_cache_storage.Mode.t option
 
       val all : (string * t) list
-
       val decode : t Dune_lang.Decoder.t
-
       val to_string : t -> string
     end
   end
@@ -67,8 +61,7 @@ module Dune_config : sig
       ; terminal_persistence : Terminal_persistence.t field
       ; sandboxing_preference : Sandboxing_preference.t field
       ; cache_enabled : Cache.Enabled.t field
-      ; cache_reproducibility_check :
-          Dune_cache.Config.Reproducibility_check.t field
+      ; cache_reproducibility_check : Dune_cache.Config.Reproducibility_check.t field
       ; cache_storage_mode : Cache.Storage_mode.t field
       ; action_stdout_on_success : Action_output_on_success.t field
       ; action_stderr_on_success : Action_output_on_success.t field
@@ -82,9 +75,7 @@ module Dune_config : sig
     include S with type 'a field := 'a option
 
     val empty : t
-
     val superpose : t -> t -> t
-
     val to_dyn : t -> Dyn.t
   end
 
@@ -97,13 +88,10 @@ module Dune_config : sig
       coming from the [dune-workspace] file. The main difference is that we
       started accepting such parameters in the [dune-workspace] file starting
       from Dune 3.0.0, so the version checks are different. *)
-  val decode_fields_of_workspace_file :
-    Partial.t Dune_lang.Decoder.fields_parser
+  val decode_fields_of_workspace_file : Partial.t Dune_lang.Decoder.fields_parser
 
   val superpose : t -> Partial.t -> t
-
   val default : t
-
   val user_config_file : Path.t
 
   (** We return a [Partial.t] here so that the result can easily be merged with
@@ -120,17 +108,15 @@ module Dune_config : sig
   val init : t -> watch:bool -> unit
 
   val to_dyn : t -> Dyn.t
-
   val hash : t -> int
-
   val equal : t -> t -> bool
 
   (** [for_scheduler config ?watch_exclusions stats_opt ~insignificant_changes
       ~signal_watcher]
       creates a configuration for a scheduler from the user-visible Dune
       [config]. *)
-  val for_scheduler :
-       t
+  val for_scheduler
+    :  t
     -> watch_exclusions:string list
     -> Dune_stats.t option
     -> insignificant_changes:[ `React | `Ignore ]

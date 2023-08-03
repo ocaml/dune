@@ -10,12 +10,11 @@ open Import
     function has returned. Consider adding a type annotation to make sure this
     doesn't happen by mistake. *)
 
-val gen_select_rules :
-  Super_context.t -> dir:Path.Build.t -> Lib.Compile.t -> unit Memo.t
+val gen_select_rules : Super_context.t -> dir:Path.Build.t -> Lib.Compile.t -> unit Memo.t
 
 (** Generate the rules for the [(select ...)] forms in library dependencies *)
-val with_lib_deps :
-     Context.t
+val with_lib_deps
+  :  Context.t
   -> Lib.Compile.t
   -> dir:Path.Build.t
   -> f:(unit -> 'a Memo.t)
@@ -31,8 +30,8 @@ type kind =
       ; empty_module_interface_if_absent : bool
       }
 
-val modules_rules :
-     Super_context.t
+val modules_rules
+  :  Super_context.t
   -> kind
   -> Expander.t
   -> dir:Path.Build.t

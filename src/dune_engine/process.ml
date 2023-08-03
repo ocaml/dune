@@ -7,6 +7,7 @@ module Action_output_on_success = Execution_parameters.Action_output_on_success
 
 let with_directory_annot =
   User_message.Annots.Key.create ~name:"with-directory" Path.to_dyn
+;;
 
 module Failure_mode = struct
   type ('a, 'b) t =
@@ -18,21 +19,22 @@ module Failure_mode = struct
     | Strict -> Int.equal 0
     | Accept exit_codes -> fun i -> Predicate.test exit_codes i
     | Return -> fun _ -> true
+  ;;
 
   let map_result : type a b. (a, b) t -> int -> f:(unit -> a) -> b =
-   fun mode t ~f ->
+    fun mode t ~f ->
     match mode with
     | Strict -> f ()
-    | Accept _ -> (
-      match t with
-      | 0 -> Ok (f ())
-      | n -> Error n)
-    | Return -> (f (), t)
+    | Accept _ ->
+      (match t with
+       | 0 -> Ok (f ())
+       | n -> Error n)
+    | Return -> f (), t
+  ;;
 end
 
 module Io = struct
   type input = Input
-
   type output = Output
 
   type 'a mode =
@@ -59,16 +61,19 @@ module Io = struct
   let descr_of_channel : type a. a channel -> _ = function
     | In_chan ic -> Unix.descr_of_in_channel ic
     | Out_chan oc -> Unix.descr_of_out_channel oc
+  ;;
 
   let channel_of_descr : type a. _ -> a mode -> a channel =
-   fun fd mode ->
+    fun fd mode ->
     match mode with
     | In -> In_chan (Unix.in_channel_of_descr fd)
     | Out -> Out_chan (Unix.out_channel_of_descr fd)
+  ;;
 
   let close_channel : type a. a channel -> unit = function
     | Out_chan ch -> close_out ch
     | In_chan ch -> close_in ch
+  ;;
 
   type 'a t =
     { kind : kind
@@ -84,17 +89,12 @@ module Io = struct
     ; channel = lazy ch
     ; status = Keep_open
     }
+  ;;
 
-  let make_stdout output_on_success =
-    terminal (Out_chan stdout) output_on_success
-
+  let make_stdout output_on_success = terminal (Out_chan stdout) output_on_success
   let stdout = make_stdout Print
-
-  let make_stderr output_on_success =
-    terminal (Out_chan stderr) output_on_success
-
+  let make_stderr output_on_success = terminal (Out_chan stderr) output_on_success
   let stderr = make_stderr Print
-
   let stdin = terminal (In_chan stdin) Print
 
   let null (type a) (mode : a mode) : a t =
@@ -105,9 +105,10 @@ module Io = struct
     in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
     { kind = Null; fd; channel; status = Keep_open }
+  ;;
 
   let file : type a. _ -> ?perm:int -> a mode -> a t =
-   fun fn ?(perm = 0o666) mode ->
+    fun fn ?(perm = 0o666) mode ->
     let flags =
       match mode with
       | Out -> [ Unix.O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE ]
@@ -116,20 +117,25 @@ module Io = struct
     let fd = lazy (Unix.openfile (Path.to_string fn) flags perm) in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
     { kind = File fn; fd; channel; status = Close_after_exec }
+  ;;
 
   let flush : type a. a t -> unit =
-   fun t ->
-    if Lazy.is_val t.channel then
+    fun t ->
+    if Lazy.is_val t.channel
+    then (
       match Lazy.force t.channel with
       | Out_chan oc -> flush oc
-      | In_chan _ -> ()
+      | In_chan _ -> ())
+  ;;
 
   let fd t =
     flush t;
     Lazy.force t.fd
+  ;;
 
   let out_channel = function
     | { channel = (lazy (Out_chan oc)); _ } -> oc
+  ;;
 
   let release t =
     match t.status with
@@ -137,8 +143,10 @@ module Io = struct
     | Keep_open -> flush t
     | Close_after_exec ->
       t.status <- Closed;
-      if Lazy.is_val t.channel then close_channel (Lazy.force t.channel)
+      if Lazy.is_val t.channel
+      then close_channel (Lazy.force t.channel)
       else Unix.close (Lazy.force t.fd)
+  ;;
 
   let multi_use t = { t with status = Keep_open }
 
@@ -146,6 +154,7 @@ module Io = struct
     match out.kind with
     | Terminal x -> x
     | _ -> Print
+  ;;
 end
 
 type purpose =
@@ -167,24 +176,37 @@ let default_metadata =
   ; categories = []
   ; name = None
   }
+;;
 
-let create_metadata ?loc ?(annots = default_metadata.annots) ?name
-    ?(categories = default_metadata.categories) ?(purpose = Internal_job) () =
+let create_metadata
+  ?loc
+  ?(annots = default_metadata.annots)
+  ?name
+  ?(categories = default_metadata.categories)
+  ?(purpose = Internal_job)
+  ()
+  =
   { loc; annots; name; categories; purpose }
+;;
 
 let io_to_redirection_path (kind : Io.kind) =
   match kind with
   | Terminal _ -> None
   | Null -> Some (Path.to_string Dev_null.path)
   | File fn -> Some (Path.to_string fn)
+;;
 
-let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
-    ~(stderr_to : Io.output Io.t) ~(stdin_from : Io.input Io.t) =
+let command_line_enclosers
+  ~dir
+  ~(stdout_to : Io.output Io.t)
+  ~(stderr_to : Io.output Io.t)
+  ~(stdin_from : Io.input Io.t)
+  =
   let quote fn = String.quote_for_shell (Path.to_string fn) in
   let prefix, suffix =
     match dir with
-    | None -> ("", "")
-    | Some dir -> (sprintf "(cd %s && " (quote dir), ")")
+    | None -> "", ""
+    | Some dir -> sprintf "(cd %s && " (quote dir), ")"
   in
   let suffix =
     match stdin_from.kind with
@@ -193,8 +215,7 @@ let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
   in
   let suffix =
     match
-      ( io_to_redirection_path stdout_to.kind
-      , io_to_redirection_path stderr_to.kind )
+      io_to_redirection_path stdout_to.kind, io_to_redirection_path stderr_to.kind
     with
     | Some fn1, Some fn2 when String.equal fn1 fn2 ->
       suffix ^ " &> " ^ String.quote_for_shell fn1
@@ -207,14 +228,14 @@ let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
       let suffix = add_to_suffix suffix path_out " > " in
       add_to_suffix suffix path_err " 2> "
   in
-  (prefix, suffix)
+  prefix, suffix
+;;
 
 let command_line ~prog ~args ~dir ~stdout_to ~stderr_to ~stdin_from =
   let s = String.quote_list_for_shell (prog :: args) in
-  let prefix, suffix =
-    command_line_enclosers ~dir ~stdout_to ~stderr_to ~stdin_from
-  in
+  let prefix, suffix = command_line_enclosers ~dir ~stdout_to ~stderr_to ~stdin_from in
   prefix ^ s ^ suffix
+;;
 
 module Exit_status = struct
   type error =
@@ -227,14 +248,16 @@ end
 module Fancy = struct
   let split_prog s =
     let len = String.length s in
-    if len = 0 then ("", "", "")
-    else
+    if len = 0
+    then "", "", ""
+    else (
       let rec find_prog_start i =
-        if i < 0 then 0
-        else
+        if i < 0
+        then 0
+        else (
           match s.[i] with
           | '\\' | '/' -> i + 1
-          | _ -> find_prog_start (i - 1)
+          | _ -> find_prog_start (i - 1))
       in
       let prog_end =
         match s.[len - 1] with
@@ -250,11 +273,13 @@ module Fancy = struct
       let before = String.take s prog_start in
       let after = String.drop s prog_end in
       let prog = String.sub s ~pos:prog_start ~len:(prog_end - prog_start) in
-      (before, prog, after)
+      before, prog, after)
+  ;;
 
   let short_prog_name_of_prog s =
     let _, s, _ = split_prog s in
     s
+  ;;
 
   let color_combos =
     [| [ `Fg_blue; `Bg_bright_green ]
@@ -266,19 +291,23 @@ module Fancy = struct
      ; [ `Fg_blue; `Bg_yellow ]
      ; [ `Fg_bright_cyan; `Bg_magenta ]
     |]
+  ;;
 
   let colorize_prog s =
     let len = String.length s in
-    if len = 0 then Pp.verbatim s
-    else
+    if len = 0
+    then Pp.verbatim s
+    else (
       let before, prog, after = split_prog s in
       let styles =
         let hash = Poly.hash prog in
         let styles = color_combos.(hash mod Array.length color_combos) in
         User_message.Style.Ansi_styles styles
       in
-      Pp.seq (Pp.verbatim before)
-        (Pp.seq (Pp.tag styles (Pp.verbatim prog)) (Pp.verbatim after))
+      Pp.seq
+        (Pp.verbatim before)
+        (Pp.seq (Pp.tag styles (Pp.verbatim prog)) (Pp.verbatim after)))
+  ;;
 
   let rec colorize_args = function
     | [] -> []
@@ -289,23 +318,23 @@ module Fancy = struct
            (Pp.verbatim (String.quote_for_shell fn))
       :: colorize_args rest
     | x :: rest -> Pp.verbatim (String.quote_for_shell x) :: colorize_args rest
+  ;;
 
   let command_line ~prog ~args ~dir ~stdout_to ~stderr_to ~stdin_from =
     let open Pp.O in
     let prog = colorize_prog (String.quote_for_shell prog) in
     let pp = Pp.concat ~sep:(Pp.char ' ') (prog :: colorize_args args) in
-    let prefix, suffix =
-      command_line_enclosers ~dir ~stdout_to ~stderr_to ~stdin_from
-    in
+    let prefix, suffix = command_line_enclosers ~dir ~stdout_to ~stderr_to ~stdin_from in
     Pp.verbatim prefix ++ pp ++ Pp.verbatim suffix
+  ;;
 end
 
 (* Implemt the rendering for [--display short] *)
 module Short_display : sig
   val pp_ok : prog:string -> purpose:purpose -> User_message.Style.t Pp.t
 
-  val pp_error :
-       prog:string
+  val pp_error
+    :  prog:string
     -> purpose:purpose
     -> has_unexpected_stdout:bool
     -> has_unexpected_stderr:bool
@@ -314,41 +343,40 @@ module Short_display : sig
 end = struct
   let pp_purpose = function
     | Internal_job -> Pp.verbatim "(internal)"
-    | Build_job targets -> (
+    | Build_job targets ->
       let rec split_paths targets_acc ctxs_acc = function
-        | [] -> (List.rev targets_acc, Context_name.Set.to_list ctxs_acc)
-        | path :: rest -> (
+        | [] -> List.rev targets_acc, Context_name.Set.to_list ctxs_acc
+        | path :: rest ->
           let add_ctx ctx acc =
-            if Context_name.is_default ctx then acc
-            else Context_name.Set.add acc ctx
+            if Context_name.is_default ctx then acc else Context_name.Set.add acc ctx
           in
-          match Dpath.analyse_target path with
-          | Other path ->
-            split_paths (Path.Build.to_string path :: targets_acc) ctxs_acc rest
-          | Regular (ctx, filename) ->
-            split_paths
-              (Path.Source.to_string filename :: targets_acc)
-              (add_ctx ctx ctxs_acc) rest
-          | Alias (ctx, name) ->
-            split_paths
-              (("alias " ^ Path.Source.to_string name) :: targets_acc)
-              (add_ctx ctx ctxs_acc) rest
-          | Install (ctx, name) ->
-            split_paths
-              (("install " ^ Path.Source.to_string name) :: targets_acc)
-              (add_ctx ctx ctxs_acc) rest
-          | Anonymous_action ctx ->
-            split_paths
-              ("(internal)" :: targets_acc)
-              (add_ctx ctx ctxs_acc) rest)
+          (match Dpath.analyse_target path with
+           | Other path ->
+             split_paths (Path.Build.to_string path :: targets_acc) ctxs_acc rest
+           | Regular (ctx, filename) ->
+             split_paths
+               (Path.Source.to_string filename :: targets_acc)
+               (add_ctx ctx ctxs_acc)
+               rest
+           | Alias (ctx, name) ->
+             split_paths
+               (("alias " ^ Path.Source.to_string name) :: targets_acc)
+               (add_ctx ctx ctxs_acc)
+               rest
+           | Install (ctx, name) ->
+             split_paths
+               (("install " ^ Path.Source.to_string name) :: targets_acc)
+               (add_ctx ctx ctxs_acc)
+               rest
+           | Anonymous_action ctx ->
+             split_paths ("(internal)" :: targets_acc) (add_ctx ctx ctxs_acc) rest)
       in
       let target_names, contexts =
         let file_targets, directory_targets =
           match targets with
-          | None -> ([], [])
+          | None -> [], []
           | Some targets ->
-            ( Path.Build.Set.to_list targets.files
-            , Path.Build.Set.to_list targets.dirs )
+            Path.Build.Set.to_list targets.files, Path.Build.Set.to_list targets.dirs
         in
         split_paths [] Context_name.Set.empty (file_targets @ directory_targets)
       in
@@ -356,71 +384,82 @@ end = struct
         List.map target_names ~f:Filename.split_extension_after_dot
         |> String.Map.of_list_multi
         |> String.Map.to_list_map ~f:(fun prefix suffixes ->
-               match suffixes with
-               | [] -> assert false
-               | [ suffix ] -> prefix ^ suffix
-               | _ -> sprintf "%s{%s}" prefix (String.concat ~sep:"," suffixes))
+          match suffixes with
+          | [] -> assert false
+          | [ suffix ] -> prefix ^ suffix
+          | _ -> sprintf "%s{%s}" prefix (String.concat ~sep:"," suffixes))
         |> String.concat ~sep:","
       in
       let pp = Pp.verbatim targets in
-      match contexts with
-      | [] -> pp
-      | l ->
-        let open Pp.O in
-        pp ++ Pp.char ' '
-        ++ Pp.tag User_message.Style.Details
-             (Pp.char '['
-             ++ Pp.concat_map l ~sep:(Pp.char ',') ~f:(fun ctx ->
-                    Pp.verbatim (Context_name.to_string ctx))
-             ++ Pp.char ']'))
+      (match contexts with
+       | [] -> pp
+       | l ->
+         let open Pp.O in
+         pp
+         ++ Pp.char ' '
+         ++ Pp.tag
+              User_message.Style.Details
+              (Pp.char '['
+               ++ Pp.concat_map l ~sep:(Pp.char ',') ~f:(fun ctx ->
+                 Pp.verbatim (Context_name.to_string ctx))
+               ++ Pp.char ']'))
+  ;;
 
   let progname_and_purpose ~tag ~prog ~purpose =
     let open Pp.O in
     let progname = sprintf "%12s" (Fancy.short_prog_name_of_prog prog) in
     Pp.tag tag (Pp.verbatim progname) ++ Pp.char ' ' ++ pp_purpose purpose
+  ;;
 
   let pp_ok = progname_and_purpose ~tag:Ok
 
-  let pp_error ~prog ~purpose ~has_unexpected_stdout ~has_unexpected_stderr
-      ~(error : Exit_status.error) =
+  let pp_error
+    ~prog
+    ~purpose
+    ~has_unexpected_stdout
+    ~has_unexpected_stderr
+    ~(error : Exit_status.error)
+    =
     let open Pp.O in
     let msg =
       match error with
       | Signaled signame -> sprintf "(got signal %s)" (Signal.name signame)
-      | Failed n -> (
+      | Failed n ->
         let unexpected_outputs =
           List.filter_map
-            [ (has_unexpected_stdout, "stdout")
-            ; (has_unexpected_stderr, "stderr")
-            ]
+            [ has_unexpected_stdout, "stdout"; has_unexpected_stderr, "stderr" ]
             ~f:(fun (b, name) -> Option.some_if b name)
         in
-        match (n, unexpected_outputs) with
-        | 0, _ :: _ ->
-          sprintf "(had unexpected output on %s)"
-            (String.enumerate_and unexpected_outputs)
-        | _ -> sprintf "(exit %d)" n)
+        (match n, unexpected_outputs with
+         | 0, _ :: _ ->
+           sprintf
+             "(had unexpected output on %s)"
+             (String.enumerate_and unexpected_outputs)
+         | _ -> sprintf "(exit %d)" n)
     in
     progname_and_purpose ~prog ~tag:Error ~purpose
     ++ Pp.char ' '
     ++ Pp.tag User_message.Style.Error (Pp.verbatim msg)
+  ;;
 end
 
 let cmdline_approximate_length prog args =
   List.fold_left args ~init:(String.length prog) ~f:(fun acc arg ->
-      acc + String.length arg)
+    acc + String.length arg)
+;;
 
 let pp_id id =
   let open Pp.O in
   Pp.char '['
   ++ Pp.tag User_message.Style.Id (Pp.textf "%d" (Running_jobs.Id.to_int id))
   ++ Pp.char ']'
+;;
 
 module Handle_exit_status : sig
   open Exit_status
 
-  val verbose :
-       ('a, error) result
+  val verbose
+    :  ('a, error) result
     -> id:Running_jobs.Id.t
     -> metadata:metadata
     -> output:string
@@ -428,8 +467,8 @@ module Handle_exit_status : sig
     -> dir:Path.t option
     -> 'a
 
-  val non_verbose :
-       ('a, error) result
+  val non_verbose
+    :  ('a, error) result
     -> verbosity:Display.t
     -> metadata:metadata
     -> output:string
@@ -453,19 +492,19 @@ end = struct
   let pp_output = function
     | No_output -> []
     | Has_output t -> [ t.with_color ]
+  ;;
 
   let parse_output = function
     | "" -> No_output
     | s ->
       let with_color =
         Pp.map_tags (Ansi_color.parse s) ~f:(fun styles ->
-            User_message.Style.Ansi_styles styles)
+          User_message.Style.Ansi_styles styles)
       in
       let without_color = Ansi_color.strip s in
-      let has_embedded_location =
-        String.is_prefix ~prefix:"File " without_color
-      in
+      let has_embedded_location = String.is_prefix ~prefix:"File " without_color in
       Has_output { with_color; without_color; has_embedded_location }
+  ;;
 
   let get_loc_and_annots ~dir ~metadata ~output =
     let { loc; annots; _ } = metadata in
@@ -475,24 +514,25 @@ end = struct
       match output with
       | No_output -> annots
       | Has_output output ->
-        if output.has_embedded_location then
+        if output.has_embedded_location
+        then (
           let annots =
-            User_message.Annots.set annots
-              User_message.Annots.has_embedded_location ()
+            User_message.Annots.set annots User_message.Annots.has_embedded_location ()
           in
           match Compound_user_error.parse_output ~dir output.without_color with
           | [] -> annots
-          | errors ->
-            User_message.Annots.set annots Compound_user_error.annot errors
+          | errors -> User_message.Annots.set annots Compound_user_error.annot errors)
         else annots
     in
-    (loc, annots)
+    loc, annots
+  ;;
 
   let fail ~loc ~annots paragraphs =
     (* We don't use [User_error.make] as it would add the "Error: " prefix. We
        don't need this prefix as it is already included in the output of the
        command. *)
     raise (User_error.E (User_message.make ?loc ~annots paragraphs))
+  ;;
 
   let verbose t ~id ~metadata ~output ~command_line ~dir =
     let open Pp.O in
@@ -500,14 +540,15 @@ end = struct
     match t with
     | Ok n ->
       (match output with
-      | No_output -> ()
-      | Has_output output ->
-        Console.print_user_message
-          (User_message.make
-             [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Output")
-               ++ pp_id id ++ Pp.char ':'
-             ; output.with_color
-             ]));
+       | No_output -> ()
+       | Has_output output ->
+         Console.print_user_message
+           (User_message.make
+              [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Output")
+                ++ pp_id id
+                ++ Pp.char ':'
+              ; output.with_color
+              ]));
       n
     | Error err ->
       let msg =
@@ -516,15 +557,30 @@ end = struct
         | Signaled signame -> sprintf "got signal %s" (Signal.name signame)
       in
       let loc, annots = get_loc_and_annots ~dir ~metadata ~output in
-      fail ~loc ~annots
-        (Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
-         ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
-        :: Pp.tag User_message.Style.Prompt (Pp.char '$')
-           ++ Pp.char ' ' ++ command_line
-        :: pp_output output)
+      fail
+        ~loc
+        ~annots
+        ((Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
+          ++ Pp.space
+          ++ pp_id id
+          ++ Pp.space
+          ++ Pp.text msg
+          ++ Pp.char ':')
+         :: (Pp.tag User_message.Style.Prompt (Pp.char '$') ++ Pp.char ' ' ++ command_line)
+         :: pp_output output)
+  ;;
 
-  let non_verbose t ~(verbosity : Display.t) ~metadata ~output ~prog
-      ~command_line ~dir ~has_unexpected_stdout ~has_unexpected_stderr =
+  let non_verbose
+    t
+    ~(verbosity : Display.t)
+    ~metadata
+    ~output
+    ~prog
+    ~command_line
+    ~dir
+    ~has_unexpected_stdout
+    ~has_unexpected_stderr
+    =
     let output = parse_output output in
     let show_command =
       !Clflags.always_show_command_line
@@ -534,9 +590,8 @@ end = struct
       (Execution_env.inside_ci && not Execution_env.inside_dune)
     in
     let add_command_line paragraphs =
-      if show_command then
-        Pp.tag User_message.Style.Details (Pp.verbatim command_line)
-        :: paragraphs
+      if show_command
+      then Pp.tag User_message.Style.Details (Pp.verbatim command_line) :: paragraphs
       else paragraphs
     in
     let purpose = metadata.purpose in
@@ -548,35 +603,40 @@ end = struct
         | Has_output output -> add_command_line [ output.with_color ]
       in
       let paragraphs =
-        match (verbosity, purpose, output) with
+        match verbosity, purpose, output with
         | Short, Build_job _, _ | Short, Internal_job, Has_output _ ->
           Short_display.pp_ok ~prog ~purpose :: paragraphs
         | _ -> paragraphs
       in
-      if not (List.is_empty paragraphs) then
-        Console.print_user_message (User_message.make paragraphs);
+      if not (List.is_empty paragraphs)
+      then Console.print_user_message (User_message.make paragraphs);
       n
     | Error error ->
       let loc, annots = get_loc_and_annots ~dir ~metadata ~output in
       let paragraphs =
         match verbosity with
         | Short ->
-          Short_display.pp_error ~prog ~purpose ~error ~has_unexpected_stdout
+          Short_display.pp_error
+            ~prog
+            ~purpose
+            ~error
+            ~has_unexpected_stdout
             ~has_unexpected_stderr
           :: add_command_line (pp_output output)
         | _ ->
           add_command_line
             (match output with
-            | Has_output output -> [ output.with_color ]
-            | No_output -> (
-              (* If the command has no output, we need to say something.
-                 Otherwise it's not clear what's going on. *)
-              match error with
-              | Failed n -> [ Pp.textf "Command exited with code %d." n ]
-              | Signaled signame ->
-                [ Pp.textf "Command got signal %s." (Signal.name signame) ]))
+             | Has_output output -> [ output.with_color ]
+             | No_output ->
+               (* If the command has no output, we need to say something.
+                  Otherwise it's not clear what's going on. *)
+               (match error with
+                | Failed n -> [ Pp.textf "Command exited with code %d." n ]
+                | Signaled signame ->
+                  [ Pp.textf "Command got signal %s." (Signal.name signame) ]))
       in
       fail ~loc ~annots paragraphs
+  ;;
 end
 
 type t =
@@ -608,8 +668,7 @@ module Result = struct
     let get t =
       match t.state with
       | Closed ->
-        Code_error.raise
-          "it is an error to access the contents after it's closed" []
+        Code_error.raise "it is an error to access the contents after it's closed" []
       | No_capture -> ""
       | Read s -> s
       | File p ->
@@ -617,15 +676,18 @@ module Result = struct
         Temp.destroy File p;
         t.state <- Read contents;
         contents
+    ;;
 
     let cleanup_file t =
       match t.state with
       | File p -> Temp.destroy File p
       | _ -> ()
+    ;;
 
     let close t =
       cleanup_file t;
       t.state <- Closed
+    ;;
 
     let make f on_success =
       let state =
@@ -634,17 +696,19 @@ module Result = struct
         | Some p -> File p
       in
       { state; on_success; unexpected_output = false }
+    ;;
 
     let check_unexpected_output_and_swallow_on_success t =
       (match t.state with
-      | Closed -> Code_error.raise "already closed" []
-      | _ -> ());
+       | Closed -> Code_error.raise "already closed" []
+       | _ -> ());
       match t.on_success with
       | Must_be_empty -> t.unexpected_output <- get t <> ""
       | Swallow ->
         cleanup_file t;
         t.state <- No_capture
       | Print -> ()
+    ;;
   end
 
   type t =
@@ -656,10 +720,13 @@ module Result = struct
   let close t =
     Out.close t.stdout;
     Out.close t.stderr
+  ;;
 
   let make
-      ({ stdout_on_success; stderr_on_success; stdout; stderr; _ } : process)
-      (process_info : Proc.Process_info.t) fail_mode =
+    ({ stdout_on_success; stderr_on_success; stdout; stderr; _ } : process)
+    (process_info : Proc.Process_info.t)
+    fail_mode
+    =
     let stdout = Out.make stdout stdout_on_success in
     let stderr = Out.make stderr stderr_on_success in
     let exit_status : Exit_status.t =
@@ -667,18 +734,30 @@ module Result = struct
       | WEXITED n when Failure_mode.accepted_codes fail_mode n ->
         Out.check_unexpected_output_and_swallow_on_success stdout;
         Out.check_unexpected_output_and_swallow_on_success stderr;
-        if stdout.unexpected_output || stderr.unexpected_output then
-          Error (Failed n)
+        if stdout.unexpected_output || stderr.unexpected_output
+        then Error (Failed n)
         else Ok n
       | WEXITED n -> Error (Failed n)
       | WSIGNALED n -> Error (Signaled (Signal.of_int n))
       | WSTOPPED _ -> assert false
     in
     { stdout; stderr; exit_status }
+  ;;
 end
 
-let report_process_finished stats ~metadata ~dir ~prog ~pid ~args ~started_at
-    ~exit_status ~stdout ~stderr (times : Proc.Times.t) =
+let report_process_finished
+  stats
+  ~metadata
+  ~dir
+  ~prog
+  ~pid
+  ~args
+  ~started_at
+  ~exit_status
+  ~stdout
+  ~stderr
+  (times : Proc.Times.t)
+  =
   let common =
     let name =
       match metadata.name with
@@ -689,13 +768,14 @@ let report_process_finished stats ~metadata ~dir ~prog ~pid ~args ~started_at
     Event.common_fields ~cat:("process" :: metadata.categories) ~name ~ts ()
   in
   let always =
-    [ ("process_args", `List (List.map args ~f:(fun arg -> `String arg)))
-    ; ("pid", `Int (Pid.to_int pid))
+    [ "process_args", `List (List.map args ~f:(fun arg -> `String arg))
+    ; "pid", `Int (Pid.to_int pid)
     ]
   in
   let extended =
-    if not (Dune_stats.extended_build_job_info stats) then []
-    else
+    if not (Dune_stats.extended_build_job_info stats)
+    then []
+    else (
       let targets =
         match metadata.purpose with
         | Internal_job -> []
@@ -703,49 +783,43 @@ let report_process_finished stats ~metadata ~dir ~prog ~pid ~args ~started_at
         | Build_job (Some { files; dirs }) ->
           let mkset s xs =
             match
-              Path.Build.Set.to_list_map
-                ~f:(fun x -> `String (Path.Build.to_string x))
-                xs
+              Path.Build.Set.to_list_map ~f:(fun x -> `String (Path.Build.to_string x)) xs
             with
             | [] -> []
-            | xs -> [ (s, `List xs) ]
+            | xs -> [ s, `List xs ]
           in
-          [ ("targets", `Assoc (mkset "files" files @ mkset "dirs" dirs)) ]
+          [ "targets", `Assoc (mkset "files" files @ mkset "dirs" dirs) ]
       in
       let exit =
         match exit_status with
-        | Ok n -> [ ("exit", `Int n) ]
+        | Ok n -> [ "exit", `Int n ]
         | Error (Exit_status.Failed n) ->
-          [ ("exit", `Int n)
-          ; ("error", `String (sprintf "exited with code %d" n))
-          ]
+          [ "exit", `Int n; "error", `String (sprintf "exited with code %d" n) ]
         | Error (Signaled s) ->
-          [ ("exit", `Int (Signal.to_int s))
-          ; ("error", `String (sprintf "got signal %s" (Signal.name s)))
+          [ "exit", `Int (Signal.to_int s)
+          ; "error", `String (sprintf "got signal %s" (Signal.name s))
           ]
       in
       let output name s =
         match Result.Out.get s with
         | "" -> []
-        | s -> [ (name, `String s) ]
+        | s -> [ name, `String s ]
       in
       List.concat
-        [ [ ("prog", `String prog)
-          ; ( "dir"
-            , `String
-                (Option.map ~f:Path.to_string dir |> Option.value ~default:".")
-            )
+        [ [ "prog", `String prog
+          ; "dir", `String (Option.map ~f:Path.to_string dir |> Option.value ~default:".")
           ]
         ; targets
         ; exit
         ; output "stdout" stdout
         ; output "stderr" stderr
-        ]
+        ])
   in
   let args = always @ extended in
   let dur = Event.Timestamp.of_float_seconds times.elapsed_time in
   let event = Event.complete ~args ~dur common in
   Dune_stats.emit stats event
+;;
 
 let set_temp_dir_when_running_actions = ref true
 
@@ -754,28 +828,37 @@ let await { response_file; pid; _ } =
     Scheduler.wait_for_build_process pid ~is_process_group_leader:true
   in
   Option.iter response_file ~f:Path.unlink;
-  (process_info, termination_reason)
+  process_info, termination_reason
+;;
 
-let spawn ?dir ?(env = Env.initial) ~(stdout : _ Io.t) ~(stderr : _ Io.t)
-    ~(stdin : _ Io.t) ~prog ~args () =
+let spawn
+  ?dir
+  ?(env = Env.initial)
+  ~(stdout : _ Io.t)
+  ~(stderr : _ Io.t)
+  ~(stdin : _ Io.t)
+  ~prog
+  ~args
+  ()
+  =
   let stdout_on_success = Io.output_on_success stdout
   and stderr_on_success = Io.output_on_success stderr in
   let (stdout_capture, stdout), (stderr_capture, stderr) =
-    match (stdout.kind, stderr.kind) with
+    match stdout.kind, stderr.kind with
     | (Terminal _, _ | _, Terminal _) when !Clflags.capture_outputs ->
       let capture ~suffix =
         let fn = Temp.create File ~prefix:"dune" ~suffix in
-        (Some fn, Io.file fn Io.Out)
+        Some fn, Io.file fn Io.Out
       in
       let stdout_capture, stdout =
         match stdout.kind with
         | Terminal _ ->
           Io.flush stdout;
           capture ~suffix:"stdout"
-        | _ -> (None, stdout)
+        | _ -> None, stdout
       in
       let stderr =
-        match (stdout.kind, stderr.kind) with
+        match stdout.kind, stderr.kind with
         | Terminal Print, Terminal Print | Terminal Swallow, Terminal Swallow ->
           (* We don't merge when both are [Must_be_empty]. If we did and an
              action had unexpected output on both stdout and stderr the
@@ -783,28 +866,29 @@ let spawn ?dir ?(env = Env.initial) ~(stdout : _ Io.t) ~(stderr : _ Io.t)
              the current code, it is "has unexpected output on stdout and
              stderr", which is more precise. *)
           Io.flush stderr;
-          (None, stdout)
+          None, stdout
         | _, Terminal _ ->
           Io.flush stderr;
           capture ~suffix:"stderr"
-        | _ -> (None, stderr)
+        | _ -> None, stderr
       in
-      ((stdout_capture, stdout), stderr)
-    | _ -> ((None, stdout), (None, stderr))
+      (stdout_capture, stdout), stderr
+    | _ -> (None, stdout), (None, stderr)
   in
   let prog_str = Path.reach_for_running ?from:dir prog in
   let args, response_file =
-    if Sys.win32 && cmdline_approximate_length prog_str args >= 1024 then (
+    if Sys.win32 && cmdline_approximate_length prog_str args >= 1024
+    then (
       match Response_file.get ~prog with
-      | Not_supported -> (args, None)
+      | Not_supported -> args, None
       | Zero_terminated_strings arg ->
         let fn = Temp.create File ~prefix:"responsefile" ~suffix:"data" in
         Stdune.Io.with_file_out fn ~f:(fun oc ->
-            List.iter args ~f:(fun arg ->
-                output_string oc arg;
-                output_char oc '\000'));
-        ([ arg; Path.to_string fn ], Some fn))
-    else (args, None)
+          List.iter args ~f:(fun arg ->
+            output_string oc arg;
+            output_char oc '\000'));
+        [ arg; Path.to_string fn ], Some fn)
+    else args, None
   in
   let started_at =
     (* jeremiedimino: I think we should do this just before the [execve]
@@ -824,12 +908,19 @@ let spawn ?dir ?(env = Env.initial) ~(stdout : _ Io.t) ~(stderr : _ Io.t)
     let stderr = Io.fd stderr in
     let stdin = Io.fd stdin in
     let argv = prog_str :: args in
-    Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin
+    Spawn.spawn
+      ()
+      ~prog:prog_str
+      ~argv
+      ~env
+      ~stdout
+      ~stderr
+      ~stdin
       ~setpgid:Spawn.Pgid.new_process_group
       ~cwd:
         (match dir with
-        | None -> Inherit
-        | Some dir -> Path (Path.to_string dir))
+         | None -> Inherit
+         | Some dir -> Path (Path.to_string dir))
     |> Pid.of_int
   in
   Io.release stdout;
@@ -842,138 +933,232 @@ let spawn ?dir ?(env = Env.initial) ~(stdout : _ Io.t) ~(stderr : _ Io.t)
   ; stdout_on_success
   ; stderr_on_success
   }
+;;
 
-let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
-    ?(stderr_to = Io.stderr) ?(stdin_from = Io.null In) ?env
-    ?(metadata = default_metadata) fail_mode prog args =
+let run_internal
+  ?dir
+  ~(display : Display.t)
+  ?(stdout_to = Io.stdout)
+  ?(stderr_to = Io.stderr)
+  ?(stdin_from = Io.null In)
+  ?env
+  ?(metadata = default_metadata)
+  fail_mode
+  prog
+  args
+  =
   Scheduler.with_job_slot (fun _cancel (config : Scheduler.Config.t) ->
-      let dir =
-        match dir with
-        | None -> dir
-        | Some p -> if Path.is_root p then None else Some p
-      in
-      let id = Running_jobs.Id.gen () in
-      let prog_str = Path.reach_for_running ?from:dir prog in
-      let command_line =
-        command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from
-      in
-      let fancy_command_line =
-        match display with
-        | Verbose ->
-          let open Pp.O in
-          let cmdline =
-            Fancy.command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to
-              ~stdin_from
-          in
-          Console.print_user_message
-            (User_message.make
-               [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Running")
-                 ++ pp_id id ++ Pp.verbatim ": " ++ cmdline
-               ]);
-          cmdline
-        | _ -> Pp.nop
-      in
-      let t =
-        spawn ?dir ?env ~stdout:stdout_to ~stderr:stderr_to ~stdin:stdin_from
-          ~prog ~args ()
-      in
-      let* () =
-        let description =
-          (* CR-soon amokhov: What happens with actions attached to aliases? Do they go into
-             [Build_job None] category? Can produce more informative description for them? *)
-          match metadata.purpose with
-          | Internal_job -> Pp.text "(internal)"
-          | Build_job None -> Pp.text "(no targets)"
-          | Build_job (Some target) ->
-            Targets.Validated.head target
-            |> Path.Build.to_string_maybe_quoted |> Pp.verbatim
+    let dir =
+      match dir with
+      | None -> dir
+      | Some p -> if Path.is_root p then None else Some p
+    in
+    let id = Running_jobs.Id.gen () in
+    let prog_str = Path.reach_for_running ?from:dir prog in
+    let command_line =
+      command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from
+    in
+    let fancy_command_line =
+      match display with
+      | Verbose ->
+        let open Pp.O in
+        let cmdline =
+          Fancy.command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from
         in
-        Running_jobs.start id t.pid ~description ~started_at:t.started_at
+        Console.print_user_message
+          (User_message.make
+             [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Running")
+               ++ pp_id id
+               ++ Pp.verbatim ": "
+               ++ cmdline
+             ]);
+        cmdline
+      | _ -> Pp.nop
+    in
+    let t =
+      spawn ?dir ?env ~stdout:stdout_to ~stderr:stderr_to ~stdin:stdin_from ~prog ~args ()
+    in
+    let* () =
+      let description =
+        (* CR-soon amokhov: What happens with actions attached to aliases? Do they go into
+           [Build_job None] category? Can produce more informative description for them? *)
+        match metadata.purpose with
+        | Internal_job -> Pp.text "(internal)"
+        | Build_job None -> Pp.text "(no targets)"
+        | Build_job (Some target) ->
+          Targets.Validated.head target
+          |> Path.Build.to_string_maybe_quoted
+          |> Pp.verbatim
       in
-      let* process_info, termination_reason = await t in
-      let+ () = Running_jobs.stop id in
-      let result = Result.make t process_info fail_mode in
-      let times =
-        { Proc.Times.elapsed_time = process_info.end_time -. t.started_at
-        ; resource_usage = process_info.resource_usage
-        }
+      Running_jobs.start id t.pid ~description ~started_at:t.started_at
+    in
+    let* process_info, termination_reason = await t in
+    let+ () = Running_jobs.stop id in
+    let result = Result.make t process_info fail_mode in
+    let times =
+      { Proc.Times.elapsed_time = process_info.end_time -. t.started_at
+      ; resource_usage = process_info.resource_usage
+      }
+    in
+    Option.iter config.stats ~f:(fun stats ->
+      report_process_finished
+        stats
+        ~metadata
+        ~dir
+        ~prog:prog_str
+        ~pid:t.pid
+        ~args
+        ~started_at:t.started_at
+        ~exit_status:result.exit_status
+        ~stdout:result.stdout
+        ~stderr:result.stderr
+        times);
+    match termination_reason with
+    | Cancel ->
+      (* if the cancellation token was fired, then we:
+
+         1) aren't interested in printing the output from the cancelled job
+
+         2) allowing callers to continue work with the already stale value
+         we're about to return. *)
+      Result.close result;
+      raise (Memo.Non_reproducible Scheduler.Run.Build_cancelled)
+    | Normal ->
+      let output = Result.Out.get result.stdout ^ Result.Out.get result.stderr in
+      Log.command ~command_line ~output ~exit_status:process_info.status;
+      let res =
+        match display, result.exit_status, output with
+        | Quiet, Ok n, "" -> n (* Optimisation for the common case *)
+        | Verbose, _, _ ->
+          Handle_exit_status.verbose
+            result.exit_status
+            ~id
+            ~metadata
+            ~dir
+            ~command_line:fancy_command_line
+            ~output
+        | _ ->
+          Handle_exit_status.non_verbose
+            result.exit_status
+            ~prog:prog_str
+            ~dir
+            ~command_line
+            ~output
+            ~metadata
+            ~verbosity:display
+            ~has_unexpected_stdout:result.stdout.unexpected_output
+            ~has_unexpected_stderr:result.stderr.unexpected_output
       in
-      Option.iter config.stats ~f:(fun stats ->
-          report_process_finished stats ~metadata ~dir ~prog:prog_str ~pid:t.pid
-            ~args ~started_at:t.started_at ~exit_status:result.exit_status
-            ~stdout:result.stdout ~stderr:result.stderr times);
-      match termination_reason with
-      | Cancel ->
-        (* if the cancellation token was fired, then we:
+      Result.close result;
+      res, times)
+;;
 
-           1) aren't interested in printing the output from the cancelled job
-
-           2) allowing callers to continue work with the already stale value
-           we're about to return. *)
-        Result.close result;
-        raise (Memo.Non_reproducible Scheduler.Run.Build_cancelled)
-      | Normal ->
-        let output =
-          Result.Out.get result.stdout ^ Result.Out.get result.stderr
-        in
-        Log.command ~command_line ~output ~exit_status:process_info.status;
-        let res =
-          match (display, result.exit_status, output) with
-          | Quiet, Ok n, "" -> n (* Optimisation for the common case *)
-          | Verbose, _, _ ->
-            Handle_exit_status.verbose result.exit_status ~id ~metadata ~dir
-              ~command_line:fancy_command_line ~output
-          | _ ->
-            Handle_exit_status.non_verbose result.exit_status ~prog:prog_str
-              ~dir ~command_line ~output ~metadata ~verbosity:display
-              ~has_unexpected_stdout:result.stdout.unexpected_output
-              ~has_unexpected_stderr:result.stderr.unexpected_output
-        in
-        Result.close result;
-        (res, times))
-
-let run ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode
-    prog args =
+let run ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode prog args
+  =
   let+ run =
-    run_internal ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata
-      fail_mode prog args
+    run_internal
+      ?dir
+      ~display
+      ?stdout_to
+      ?stderr_to
+      ?stdin_from
+      ?env
+      ?metadata
+      fail_mode
+      prog
+      args
     >>| fst
   in
   Failure_mode.map_result fail_mode run ~f:ignore
+;;
 
-let run_with_times ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env
-    ?metadata prog args =
-  run_internal ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata
-    Strict prog args
+let run_with_times
+  ?dir
+  ~display
+  ?stdout_to
+  ?stderr_to
+  ?stdin_from
+  ?env
+  ?metadata
+  prog
+  args
+  =
+  run_internal
+    ?dir
+    ~display
+    ?stdout_to
+    ?stderr_to
+    ?stdin_from
+    ?env
+    ?metadata
+    Strict
+    prog
+    args
   >>| snd
+;;
 
-let run_capture_gen ?dir ~display ?stderr_to ?stdin_from ?env ?metadata
-    fail_mode prog args ~f =
+let run_capture_gen
+  ?dir
+  ~display
+  ?stderr_to
+  ?stdin_from
+  ?env
+  ?metadata
+  fail_mode
+  prog
+  args
+  ~f
+  =
   let fn = Temp.create File ~prefix:"dune" ~suffix:"output" in
   let+ run =
-    run_internal ?dir ~display ~stdout_to:(Io.file fn Io.Out) ?stderr_to
-      ?stdin_from ?env ?metadata fail_mode prog args
+    run_internal
+      ?dir
+      ~display
+      ~stdout_to:(Io.file fn Io.Out)
+      ?stderr_to
+      ?stdin_from
+      ?env
+      ?metadata
+      fail_mode
+      prog
+      args
     >>| fst
   in
   Failure_mode.map_result fail_mode run ~f:(fun () ->
-      let x = f fn in
-      Temp.destroy File fn;
-      x)
+    let x = f fn in
+    Temp.destroy File fn;
+    x)
+;;
 
 let run_capture = run_capture_gen ~f:Stdune.Io.read_file
-
 let run_capture_lines = run_capture_gen ~f:Stdune.Io.lines_of_file
+let run_capture_zero_separated = run_capture_gen ~f:Stdune.Io.zero_strings_of_file
 
-let run_capture_zero_separated =
-  run_capture_gen ~f:Stdune.Io.zero_strings_of_file
-
-let run_capture_line ?dir ~display ?stderr_to ?stdin_from ?env ?metadata
-    fail_mode prog args =
-  run_capture_gen ?dir ~display ?stderr_to ?stdin_from ?env ?metadata fail_mode
-    prog args ~f:(fun fn ->
+let run_capture_line
+  ?dir
+  ~display
+  ?stderr_to
+  ?stdin_from
+  ?env
+  ?metadata
+  fail_mode
+  prog
+  args
+  =
+  run_capture_gen
+    ?dir
+    ~display
+    ?stderr_to
+    ?stdin_from
+    ?env
+    ?metadata
+    fail_mode
+    prog
+    args
+    ~f:(fun fn ->
       match Stdune.Io.lines_of_file fn with
       | [ x ] -> x
-      | l -> (
+      | l ->
         let cmdline =
           let prog = Path.reach_for_running ?from:dir prog in
           let prog_display = String.concat (prog :: args) ~sep:" " in
@@ -981,17 +1166,20 @@ let run_capture_line ?dir ~display ?stderr_to ?stdin_from ?env ?metadata
           | None -> prog_display
           | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) prog_display
         in
-        let { loc; annots; _ } =
-          Option.value metadata ~default:default_metadata
-        in
-        match l with
-        | [] ->
-          User_error.raise ?loc ~annots
-            [ Pp.textf "Command returned nothing: %s" cmdline ]
-        | _ ->
-          User_error.raise ?loc ~annots
-            [ Pp.textf "command returned too many lines: %s" cmdline
-            ; Pp.vbox
-                (Pp.concat_map l ~sep:Pp.cut ~f:(fun line ->
-                     Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
-            ]))
+        let { loc; annots; _ } = Option.value metadata ~default:default_metadata in
+        (match l with
+         | [] ->
+           User_error.raise
+             ?loc
+             ~annots
+             [ Pp.textf "Command returned nothing: %s" cmdline ]
+         | _ ->
+           User_error.raise
+             ?loc
+             ~annots
+             [ Pp.textf "command returned too many lines: %s" cmdline
+             ; Pp.vbox
+                 (Pp.concat_map l ~sep:Pp.cut ~f:(fun line ->
+                    Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
+             ]))
+;;

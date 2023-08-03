@@ -3,11 +3,10 @@ open Import
 let env = Fdecl.create Env.to_dyn
 
 let init ~capture_outputs =
-  Fdecl.set env
+  Fdecl.set
+    env
     (let env =
-       if
-         (not capture_outputs)
-         || not (Lazy.force Ansi_color.stderr_supports_color)
+       if (not capture_outputs) || not (Lazy.force Ansi_color.stderr_supports_color)
        then Env.initial
        else Colors.setup_env_for_colors Env.initial
      in
@@ -18,5 +17,6 @@ let init ~capture_outputs =
         run Dune from inside Dune, for instance in cram tests, so it is
         important to do this. *)
      Env.remove env ~var:"INSIDE_EMACS")
+;;
 
 let env () = Fdecl.get env

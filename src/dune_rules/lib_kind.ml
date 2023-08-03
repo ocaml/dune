@@ -9,8 +9,8 @@ module Ppx_args = struct
 
     let to_dyn x =
       let open Dyn in
-      record
-        [ ("name", string x.name); ("value", String_with_vars.to_dyn x.value) ]
+      record [ "name", string x.name; "value", String_with_vars.to_dyn x.value ]
+    ;;
 
     let decode =
       let open Dune_lang.Decoder in
@@ -18,16 +18,20 @@ module Ppx_args = struct
       enter
         (let+ name =
            plain_string (fun ~loc str ->
-               if String.contains str '=' then
-                 User_error.raise ~loc
-                   [ Pp.text "Character '=' is not allowed in cookie names" ]
-               else str)
+             if String.contains str '='
+             then
+               User_error.raise
+                 ~loc
+                 [ Pp.text "Character '=' is not allowed in cookie names" ]
+             else str)
          and+ value = String_with_vars.decode in
          { name; value })
+    ;;
 
     let encode { name; value } =
       let open Dune_lang in
       List [ Encoder.string name; String_with_vars.encode value ]
+    ;;
   end
 
   type t = { cookies : Cookie.t list }
@@ -36,7 +40,8 @@ module Ppx_args = struct
 
   let to_dyn { cookies } =
     let open Dyn in
-    record [ ("cookies", list Cookie.to_dyn cookies) ]
+    record [ "cookies", list Cookie.to_dyn cookies ]
+  ;;
 
   let decode =
     let open Dune_lang.Decoder in
@@ -45,10 +50,12 @@ module Ppx_args = struct
       { cookies }
     in
     fields args
+  ;;
 
   let encode { cookies } =
     let open Dune_lang.Encoder in
     record_fields [ field_l "cookies" Cookie.encode cookies ]
+  ;;
 end
 
 type t =
@@ -64,11 +71,12 @@ let to_dyn x =
   | Normal -> variant "Normal" []
   | Ppx_deriver args -> variant "Ppx_deriver" [ Ppx_args.to_dyn args ]
   | Ppx_rewriter args -> variant "Ppx_rewriter" [ Ppx_args.to_dyn args ]
+;;
 
 let decode =
   let open Dune_lang.Decoder in
   sum
-    [ ("normal", return Normal)
+    [ "normal", return Normal
     ; ( "ppx_deriver"
       , let+ args = Ppx_args.decode in
         Ppx_deriver args )
@@ -76,6 +84,7 @@ let decode =
       , let+ args = Ppx_args.decode in
         Ppx_rewriter args )
     ]
+;;
 
 let encode t =
   match
@@ -86,3 +95,4 @@ let encode t =
   with
   | List [ x ] -> x
   | x -> x
+;;

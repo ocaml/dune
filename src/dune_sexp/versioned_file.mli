@@ -37,13 +37,12 @@ module type S = sig
   val load : Path.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a Or_exn.t
 
   (** Parse the contents of a versioned file after the first line has been read. *)
-  val parse_contents :
-    Lexing.lexbuf -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
+  val parse_contents : Lexing.lexbuf -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
 end
 
 module Make (Data : sig
-  type t
-end) : S with type data := Data.t
+    type t
+  end) : S with type data := Data.t
 
 (** Raise with an informative message when seeing a (lang ...) field. *)
 val no_more_lang : unit Decoder.fields_parser

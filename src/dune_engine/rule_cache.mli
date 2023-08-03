@@ -21,8 +21,8 @@ end
 module Workspace_local : sig
   (** Check if the workspace-local cache contains up-to-date results for a rule
       using the information stored in the rule database. *)
-  val lookup :
-       always_rerun:bool
+  val lookup
+    :  always_rerun:bool
     -> rule_digest:Digest.t
     -> targets:Targets.Validated.t
     -> env:Env.t
@@ -30,8 +30,8 @@ module Workspace_local : sig
     -> Digest.t Targets.Produced.t option Fiber.t
 
   (** Add a new record to the rule database. *)
-  val store :
-       head_target:Path.Build.t
+  val store
+    :  head_target:Path.Build.t
     -> rule_digest:Digest.t
     -> dynamic_deps_stages:(Dep.Set.t * Digest.t) list
     -> targets_digest:Digest.t

@@ -10,9 +10,6 @@ open! Import
 val dir : context:Context_name.t -> Path.Build.t
 
 val lib_root : context:Context_name.t -> Path.Build.t
-
 val bin_dir : context:Context_name.t -> Path.Build.t
-
 val man_dir : context:Context_name.t -> Path.Build.t
-
 val lib_dir : context:Context_name.t -> package:Package_name.t -> Path.Build.t

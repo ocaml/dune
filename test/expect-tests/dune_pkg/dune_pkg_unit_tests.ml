@@ -18,23 +18,28 @@ let serve_once ~filename ~port () =
       let content = Io.String_path.read_file filename in
       let content_length = String.length content in
       let write_end = Unix.out_channel_of_descr descr in
-      Printf.fprintf write_end {|HTTP/1.1 200 Ok
+      Printf.fprintf
+        write_end
+        {|HTTP/1.1 200 Ok
 Content-Length: %d
 
 %s|}
-        content_length content;
+        content_length
+        content;
       close_out write_end)
     sock
+;;
 
 let url ~port ~filename =
   let localhost = Unix.inet_addr_loopback |> Unix.string_of_inet_addr in
   Format.sprintf "http://%s:%d/%s" localhost port filename |> OpamUrl.of_string
+;;
 
-let calculate_checksum ~filename =
-  OpamHash.compute filename |> Checksum.of_opam_hash
+let calculate_checksum ~filename = OpamHash.compute filename |> Checksum.of_opam_hash
 
 let wrong_checksum =
   OpamHash.compute_from_string "random content" |> Checksum.of_opam_hash
+;;
 
 let download ~port ~filename ~target ?checksum () =
   let open Fiber.O in
@@ -52,7 +57,8 @@ let download ~port ~filename ~target ?checksum () =
       | Some v -> v
       | None -> assert false
     in
-    User_error.raise ~loc:Loc.none
+    User_error.raise
+      ~loc:Loc.none
       [ Pp.text "Expected checksum was"
       ; Pp.text @@ Checksum.to_string expected_checksum
       ; Pp.text "but got"
@@ -61,6 +67,7 @@ let download ~port ~filename ~target ?checksum () =
   | Ok () ->
     print_endline "Done downloading";
     Fiber.return ()
+;;
 
 let run thunk =
   let on_event _config _event = () in
@@ -73,15 +80,18 @@ let run thunk =
     }
   in
   Scheduler.Run.go config ~on_event thunk
+;;
 
 let random_port () =
   let state = Base.Random.State.make_self_init ~allow_in_tests:true () in
   (* ephemeral port range that is not assinged by IANA to prevent collisions *)
   Base.Random.State.int_incl state 49152 65535
+;;
 
 let target destination =
   let ext = Path.External.of_filename_relative_to_initial_cwd destination in
   Path.external_ ext
+;;
 
 let%expect_test "downloading simple file" =
   Dune_tests_common.init ();
@@ -90,13 +100,18 @@ let%expect_test "downloading simple file" =
   let server = serve_once ~filename ~port () in
   let destination = "destination.md" in
   run
-    (download ~port ~filename ~target:(target destination)
+    (download
+       ~port
+       ~filename
+       ~target:(target destination)
        ~checksum:(calculate_checksum ~filename));
   Thread.join server;
   let served_content = Io.String_path.read_file filename in
   let downloaded_content = Io.String_path.read_file destination in
-  Printf.printf "Served file:\n%s\nDownloaded file:\n%s\nEqual: %B"
-    served_content downloaded_content
+  Printf.printf
+    "Served file:\n%s\nDownloaded file:\n%s\nEqual: %B"
+    served_content
+    downloaded_content
     (String.equal served_content downloaded_content);
   [%expect
     {|
@@ -116,6 +131,7 @@ let%expect_test "downloading simple file" =
     webserver works as desired.
 
     Equal: true |}]
+;;
 
 let%expect_test "downloading but the checksums don't match" =
   Dune_tests_common.init ();
@@ -123,9 +139,7 @@ let%expect_test "downloading but the checksums don't match" =
   let port = random_port () in
   let server = serve_once ~filename ~port () in
   let destination = "destination.md" in
-  run
-    (download ~port ~filename ~target:(target destination)
-       ~checksum:wrong_checksum);
+  run (download ~port ~filename ~target:(target destination) ~checksum:wrong_checksum);
   Thread.join server;
   print_endline "Finished successfully?";
   [%expect.unreachable]
@@ -138,6 +152,7 @@ let%expect_test "downloading but the checksums don't match" =
   md5=c533195dc4253503071a19d42f08e877
   but got
   md5=cbe78b067d4739684e86edfd2cb518bd |}]
+;;
 
 let%expect_test "downloading, without any checksum" =
   Dune_tests_common.init ();
@@ -148,34 +163,36 @@ let%expect_test "downloading, without any checksum" =
   run (download ~port ~filename ~target:(target destination));
   Thread.join server;
   print_endline "Finished successfully, no checksum verification";
-  [%expect
-    {|
+  [%expect {|
     Done downloading
     Finished successfully, no checksum verification |}]
+;;
 
 let lock_dir_encode_decode_round_trip_test ~lock_dir_path ~lock_dir =
   let lock_dir_path = Path.Source.of_string lock_dir_path in
   Lock_dir.Write_disk.(prepare ~lock_dir_path lock_dir |> commit);
   let lock_dir_round_tripped = Lock_dir.read_disk lock_dir_path in
-  if
-    Lock_dir.equal
-      (Lock_dir.remove_locs lock_dir_round_tripped)
-      (Lock_dir.remove_locs lock_dir)
+  if Lock_dir.equal
+       (Lock_dir.remove_locs lock_dir_round_tripped)
+       (Lock_dir.remove_locs lock_dir)
   then print_endline "lockdir matches after roundtrip:"
   else print_endline "lockdir doesn't match after roundtrip:";
   print_endline (Lock_dir.to_dyn lock_dir_round_tripped |> Dyn.to_string)
+;;
 
 let%expect_test "encode/decode round trip test for lockdir with no deps" =
-  lock_dir_encode_decode_round_trip_test ~lock_dir_path:"empty_lock_dir"
-    ~lock_dir:
-      (Lock_dir.create_latest_version Package_name.Map.empty ~ocaml:None);
+  lock_dir_encode_decode_round_trip_test
+    ~lock_dir_path:"empty_lock_dir"
+    ~lock_dir:(Lock_dir.create_latest_version Package_name.Map.empty ~ocaml:None);
   [%expect
     {|
     lockdir matches after roundtrip:
     { version = (0, 1); packages = map {}; ocaml = None } |}]
+;;
 
 let%expect_test "encode/decode round trip test for lockdir with simple deps" =
-  lock_dir_encode_decode_round_trip_test ~lock_dir_path:"simple_lock_dir"
+  lock_dir_encode_decode_round_trip_test
+    ~lock_dir_path:"simple_lock_dir"
     ~lock_dir:
       (let mk_pkg_basic ~name ~version =
          let name = Package_name.of_string name in
@@ -234,11 +251,13 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
           }
     ; ocaml = Some ("simple_lock_dir/lock.dune:2", "ocaml")
     } |}]
+;;
 
 let%expect_test "encode/decode round trip test for lockdir with complex deps" =
   let module Action = Dune_lang.Action in
   let module String_with_vars = Dune_lang.String_with_vars in
-  lock_dir_encode_decode_round_trip_test ~lock_dir_path:"complex_lock_dir"
+  lock_dir_encode_decode_round_trip_test
+    ~lock_dir_path:"complex_lock_dir"
     ~lock_dir:
       (let pkg_a =
          let name = Package_name.of_string "a" in
@@ -248,16 +267,13 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
          ( name
          , { Lock_dir.Pkg.build_command =
                Some
-                 Action.(
-                   Progn
-                     [ Echo [ String_with_vars.make_text Loc.none "hello" ] ])
+                 Action.(Progn [ Echo [ String_with_vars.make_text Loc.none "hello" ] ])
            ; install_command =
                Some
                  (Action.System
                     (* String_with_vars.t doesn't round trip so we have to set
                        [quoted] if the string would be quoted *)
-                    (String_with_vars.make_text ~quoted:true Loc.none
-                       "echo 'world'"))
+                    (String_with_vars.make_text ~quoted:true Loc.none "echo 'world'"))
            ; deps = []
            ; info =
                { Lock_dir.Pkg_info.name
@@ -265,10 +281,9 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                ; dev = false
                ; source = Some extra_source
                ; extra_sources =
-                   [ (Path.Local.of_string "one", extra_source)
+                   [ Path.Local.of_string "one", extra_source
                    ; ( Path.Local.of_string "two"
-                     , Fetch { url = (Loc.none, "randomurl"); checksum = None }
-                     )
+                     , Fetch { url = Loc.none, "randomurl"; checksum = None } )
                    ]
                }
            ; exported_env =
@@ -284,7 +299,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
          ( name
          , { Lock_dir.Pkg.build_command = None
            ; install_command = None
-           ; deps = [ (Loc.none, fst pkg_a) ]
+           ; deps = [ Loc.none, fst pkg_a ]
            ; info =
                { Lock_dir.Pkg_info.name
                ; version = "dev"
@@ -292,7 +307,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                ; source =
                    Some
                      (Fetch
-                        { url = (Loc.none, "https://github.com/foo/b")
+                        { url = Loc.none, "https://github.com/foo/b"
                         ; checksum =
                             Some
                               ( Loc.none
@@ -310,7 +325,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
          ( name
          , { Lock_dir.Pkg.build_command = None
            ; install_command = None
-           ; deps = [ (Loc.none, fst pkg_a); (Loc.none, fst pkg_b) ]
+           ; deps = [ Loc.none, fst pkg_a; Loc.none, fst pkg_b ]
            ; info =
                { Lock_dir.Pkg_info.name
                ; version = "0.2"
@@ -318,9 +333,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                ; source =
                    Some
                      (Fetch
-                        { url = (Loc.none, "https://github.com/foo/c")
-                        ; checksum = None
-                        })
+                        { url = Loc.none, "https://github.com/foo/c"; checksum = None })
                ; extra_sources = []
                }
            ; exported_env = []
@@ -387,3 +400,4 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
           }
     ; ocaml = Some ("complex_lock_dir/lock.dune:2", "ocaml")
     } |}]
+;;

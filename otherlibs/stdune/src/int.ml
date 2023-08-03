@@ -1,9 +1,7 @@
 module T = struct
   type t = int
 
-  let compare (a : int) b : Ordering.t =
-    if a < b then Lt else if a = b then Eq else Gt
-
+  let compare (a : int) b : Ordering.t = if a < b then Lt else if a = b then Eq else Gt
   let to_dyn x = Dyn.Int x
 end
 
@@ -25,7 +23,7 @@ let equal (a : t) b = a = b
      each other.
    - all bits of the input are used in generating the output
 
-     In our case we also want it to be fast, non-allocating, and inlinable. *)
+   In our case we also want it to be fast, non-allocating, and inlinable. *)
 let[@inline always] hash (t : t) =
   let t = lnot t + (t lsl 21) in
   let t = t lxor (t lsr 24) in
@@ -34,19 +32,18 @@ let[@inline always] hash (t : t) =
   let t = t + (t lsl 2) + (t lsl 4) in
   let t = t lxor (t lsr 28) in
   t + (t lsl 31)
+;;
 
 let of_string_exn s =
   match int_of_string s with
-  | exception Failure _ ->
-    failwith (Printf.sprintf "of_string_exn: invalid int %S" s)
+  | exception Failure _ -> failwith (Printf.sprintf "of_string_exn: invalid int %S" s)
   | s -> s
+;;
 
 let to_string i = string_of_int i
 
 module Infix = Comparator.Operators (T)
 
 let of_string s = int_of_string_opt s
-
 let shift_left = Stdlib.Int.shift_left
-
 let shift_right = Stdlib.Int.shift_right

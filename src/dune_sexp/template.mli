@@ -8,13 +8,9 @@ module Pform : sig
     }
 
   val to_string : t -> string
-
   val to_dyn : t -> Dyn.t
-
   val name : t -> string
-
   val loc : t -> Loc.t
-
   val full_name : t -> string
 
   (** Variables do not have a payload. While macros always do. *)
@@ -40,13 +36,8 @@ type t =
   }
 
 val to_string : t -> string
-
 val compare_no_loc : t -> t -> Ordering.t
-
 val pp : t -> _ Pp.t
-
 val pp_split_strings : Stdlib.Format.formatter -> t -> unit
-
 val remove_locs : t -> t
-
 val to_dyn : t -> Dyn.t

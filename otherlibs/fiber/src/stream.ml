@@ -20,10 +20,12 @@ module In = struct
     in
     t.read <- read;
     t
+  ;;
 
   let lock t =
     if t.reading then Code_error.raise "Fiber.Stream.In: already reading" [];
     t.reading <- true
+  ;;
 
   let unlock t = t.reading <- false
 
@@ -32,6 +34,7 @@ module In = struct
     let+ x = t.read () in
     unlock t;
     x
+  ;;
 
   let empty () = create_unchecked (fun () -> return None)
 
@@ -40,46 +43,51 @@ module In = struct
     let rec go () =
       match !remains with
       | [] -> return None
-      | x :: xs -> (
+      | x :: xs ->
         let* v = read x in
-        match v with
-        | Some v -> return (Some v)
-        | None ->
-          remains := xs;
-          go ())
+        (match v with
+         | Some v -> return (Some v)
+         | None ->
+           remains := xs;
+           go ())
     in
     create go
+  ;;
 
   let append x y = concat [ x; y ]
 
   let of_list xs =
     let xs = ref xs in
     create_unchecked (fun () ->
-        match !xs with
-        | [] -> return None
-        | x :: xs' ->
-          xs := xs';
-          return (Some x))
+      match !xs with
+      | [] -> return None
+      | x :: xs' ->
+        xs := xs';
+        return (Some x))
+  ;;
 
   let cons a t = concat [ of_list [ a ]; t ]
 
   let filter_map t ~f =
     let rec read () =
-      t.read () >>= function
+      t.read ()
+      >>= function
       | None ->
         unlock t;
         return None
-      | Some x -> (
-        match f x with
-        | None -> read ()
-        | Some y -> return (Some y))
+      | Some x ->
+        (match f x with
+         | None -> read ()
+         | Some y -> return (Some y))
     in
     lock t;
     create_unchecked read
+  ;;
 
   let sequential_iter t ~f =
     let rec loop t ~f =
-      t.read () >>= function
+      t.read ()
+      >>= function
       | None ->
         unlock t;
         return ()
@@ -89,12 +97,14 @@ module In = struct
     in
     lock t;
     loop t ~f
+  ;;
 
   let parallel_iter t ~f k =
     let n = ref 1 in
     let k () =
       decr n;
-      if !n = 0 then (
+      if !n = 0
+      then (
         unlock t;
         k ())
       else end_of_fiber
@@ -108,6 +118,7 @@ module In = struct
     in
     lock t;
     loop t
+  ;;
 end
 
 module Out = struct
@@ -119,27 +130,30 @@ module Out = struct
   let lock t =
     if t.writing then Code_error.raise "Fiber.Stream.Out: already writing" [];
     t.writing <- true
+  ;;
 
   let unlock t = t.writing <- false
 
   let create write =
     let t = { write; writing = false } in
     let write x =
-      if Option.is_none x then
-        t.write <-
-          (function
-          | None -> return ()
-          | Some _ ->
-            Code_error.raise "Fiber.Stream.Out: stream output closed" []);
+      if Option.is_none x
+      then
+        t.write
+          <- (function
+              | None -> return ()
+              | Some _ -> Code_error.raise "Fiber.Stream.Out: stream output closed" []);
       write x
     in
     t.write <- write;
     t
+  ;;
 
   let write t x =
     lock t;
     let+ () = t.write x in
     unlock t
+  ;;
 
   let null () = create (fun _ -> return ())
 end
@@ -158,6 +172,7 @@ let connect i o =
     | Some _ -> go ()
   in
   go ()
+;;
 
 let supply i o =
   In.lock i;
@@ -174,9 +189,11 @@ let supply i o =
       go ()
   in
   go ()
+;;
 
 let pipe () =
   let mvar = Mvar.create () in
   let i = In.create (fun () -> Mvar.read mvar) in
   let o = Out.create (fun x -> Mvar.write mvar x) in
-  (i, o)
+  i, o
+;;

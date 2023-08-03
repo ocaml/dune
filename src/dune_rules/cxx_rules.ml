@@ -14,14 +14,14 @@ let header_file_content =
 
 CCOMP
 |}
+;;
 
 let rules ~sctx ~dir =
   let file = Path.Build.relative dir Cxx_flags.preprocessed_filename in
   let ocfg = (Super_context.context sctx).ocaml.ocaml_config in
   let open Memo.O in
   let* prog =
-    Super_context.resolve_program sctx ~dir ~loc:None
-      (Ocaml_config.c_compiler ocfg)
+    Super_context.resolve_program sctx ~dir ~loc:None (Ocaml_config.c_compiler ocfg)
   in
   (* let tmp = Path.External.of_string (Filename.get_temp_dir_name ()) in *)
   let header_file = Path.Build.relative dir "header_check.h" in
@@ -29,16 +29,15 @@ let rules ~sctx ~dir =
   let args =
     let open Command.Args in
     [ (match Ocaml_config.ccomp_type ocfg with
-      | Msvc -> A "/EP"
-      | Other _ -> As [ "-E"; "-P" ])
+       | Msvc -> A "/EP"
+       | Other _ -> As [ "-E"; "-P" ])
     ; Path (Path.build header_file)
     ]
   in
   let action =
     let open Action_builder.With_targets.O in
-    let+ run_preprocessor =
-      Command.run ~dir:(Path.build dir) ~stdout_to:file prog args
-    in
+    let+ run_preprocessor = Command.run ~dir:(Path.build dir) ~stdout_to:file prog args in
     Action.Full.reduce [ Action.Full.make write_test_file; run_preprocessor ]
   in
   Super_context.add_rule sctx ~dir action
+;;

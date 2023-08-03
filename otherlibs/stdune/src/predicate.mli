@@ -11,5 +11,4 @@ val true_ : _ t
 val false_ : _ t
 
 val contramap : 'a t -> f:('b -> 'a) -> 'b t
-
 val test : 'a t -> 'a -> bool

@@ -73,8 +73,7 @@ module Style : sig
   val escape_sequence : t list -> string
 end
 
-val make_printer :
-  bool Lazy.t -> Format.formatter -> (Style.t list Pp.t -> unit) Staged.t
+val make_printer : bool Lazy.t -> Format.formatter -> (Style.t list Pp.t -> unit) Staged.t
 
 (** Print to [Format.std_formatter] *)
 val print : Style.t list Pp.t -> unit
@@ -86,7 +85,6 @@ val prerr : Style.t list Pp.t -> unit
 val stdout_supports_color : bool Lazy.t
 
 val stderr_supports_color : bool Lazy.t
-
 val output_is_a_tty : bool Lazy.t
 
 (** Filter out escape sequences in a string *)

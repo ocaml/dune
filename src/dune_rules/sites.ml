@@ -13,13 +13,15 @@ type any_package =
 let find_package t pkg =
   match Package.Name.Map.find t.packages pkg with
   | Some p -> Memo.return (Some (Local p))
-  | None -> (
+  | None ->
     let open Memo.O in
-    Findlib.find_root_package t.findlib pkg >>| function
+    Findlib.find_root_package t.findlib pkg
+    >>| (function
     | Ok p -> Some (Installed p)
     | Error Not_found -> None
     | Error (Invalid_dune_package user_message) ->
       User_error.raise [ User_message.pp user_message ])
+;;
 
 let create (context : Context.t) =
   let* packages = Only_packages.get () in
@@ -27,6 +29,7 @@ let create (context : Context.t) =
     Findlib.create ~paths:context.findlib_paths ~lib_config:context.lib_config
   in
   { packages; findlib }
+;;
 
 let section_of_site t ~loc ~pkg ~site =
   let+ sites =
@@ -37,14 +40,18 @@ let section_of_site t ~loc ~pkg ~site =
   in
   match sites with
   | None ->
-    User_error.raise ~loc
+    User_error.raise
+      ~loc
       [ Pp.textf "The package %s is not found" (Package.Name.to_string pkg) ]
-  | Some sites -> (
-    match Site.Map.find sites site with
-    | Some section -> section
-    | None ->
-      User_error.raise ~loc
-        [ Pp.textf "Package %s doesn't define a site %s"
-            (Package.Name.to_string pkg)
-            (Site.to_string site)
-        ])
+  | Some sites ->
+    (match Site.Map.find sites site with
+     | Some section -> section
+     | None ->
+       User_error.raise
+         ~loc
+         [ Pp.textf
+             "Package %s doesn't define a site %s"
+             (Package.Name.to_string pkg)
+             (Site.to_string site)
+         ])
+;;

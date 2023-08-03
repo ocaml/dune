@@ -22,12 +22,12 @@ module Context : sig
       ; host_context : Context_name.t option
       ; paths : (string * Ordered_set_lang.t) list
       ; fdo_target_exe : Path.t option
-            (** By default Dune builds and installs dynamically linked foreign
-                archives (usually named [dll*.so]). It is possible to disable
-                this by setting [disable_dynamically_linked_foreign_archives] to
-                [true] in the workspace file, in which case bytecode executables
-                will be built with all foreign archives statically linked into
-                the runtime system. *)
+          (** By default Dune builds and installs dynamically linked foreign
+              archives (usually named [dll*.so]). It is possible to disable
+              this by setting [disable_dynamically_linked_foreign_archives] to
+              [true] in the workspace file, in which case bytecode executables
+              will be built with all foreign archives statically linked into
+              the runtime system. *)
       ; dynamically_linked_foreign_archives : bool
       ; instrument_with : Lib_name.t list
       ; merlin : bool
@@ -37,8 +37,8 @@ module Context : sig
   module Opam : sig
     type t =
       { base : Common.t
-            (** Either a switch name or a path to a local switch. This argument
-                is left opaque as we leave to opam to interpret it. *)
+          (** Either a switch name or a path to a local switch. This argument
+              is left opaque as we leave to opam to interpret it. *)
       ; switch : string
       ; root : string option
       }
@@ -58,13 +58,9 @@ module Context : sig
     | Opam of Opam.t
 
   val loc : t -> Loc.t
-
   val name : t -> Context_name.t
-
   val env : t -> Dune_env.Stanza.t
-
   val host_context : t -> Context_name.t option
-
   val to_dyn : t -> Dyn.t
 end
 
@@ -86,9 +82,7 @@ type t = private
   }
 
 val equal : t -> t -> bool
-
 val to_dyn : t -> Dyn.t
-
 val hash : t -> int
 
 module Clflags : sig
@@ -116,8 +110,7 @@ val workspace_config : unit -> Dune_config.t Memo.t
 
 (** Update the execution parameters according to what is written in the
     [dune-workspace] file. *)
-val update_execution_parameters :
-  t -> Execution_parameters.t -> Execution_parameters.t
+val update_execution_parameters : t -> Execution_parameters.t -> Execution_parameters.t
 
 (** All the build contexts defined in the workspace. *)
 val build_contexts : t -> Build_context.t list

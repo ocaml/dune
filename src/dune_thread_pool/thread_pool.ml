@@ -37,10 +37,9 @@ let spawn_worker t =
     t.idle <- t.idle - 1;
     Mutex.unlock t.mutex;
     (match task () with
-    | () -> ()
-    | exception exn ->
-      Code_error.raise "thread pool tasks must not raise"
-        [ ("exn", Exn.to_dyn exn) ]);
+     | () -> ()
+     | exception exn ->
+       Code_error.raise "thread pool tasks must not raise" [ "exn", Exn.to_dyn exn ]);
     Mutex.lock t.mutex;
     maybe_retry ()
   and start () =
@@ -48,7 +47,8 @@ let spawn_worker t =
     t.idle <- t.idle + 1;
     loop ()
   and maybe_retry () =
-    if t.running <= t.min_workers then loop ()
+    if t.running <= t.min_workers
+    then loop ()
     else (
       t.running <- t.running - 1;
       t.dead <- Thread.self () :: t.dead;
@@ -56,9 +56,9 @@ let spawn_worker t =
   in
   t.running <- t.running + 1;
   t.spawn_thread start
+;;
 
-let maybe_spawn_worker t =
-  if t.idle = 0 && t.running < t.max_workers then spawn_worker t
+let maybe_spawn_worker t = if t.idle = 0 && t.running < t.max_workers then spawn_worker t
 
 let create ~min_workers ~max_workers ~spawn_thread =
   let t =
@@ -77,15 +77,17 @@ let create ~min_workers ~max_workers ~spawn_thread =
     spawn_worker t
   done;
   t
+;;
 
 let task t ~f =
   Mutex.lock t.mutex;
   (match t.dead with
-  | [] -> ()
-  | dead ->
-    t.dead <- [];
-    List.iter dead ~f:Thread.join);
+   | [] -> ()
+   | dead ->
+     t.dead <- [];
+     List.iter dead ~f:Thread.join);
   Queue.push t.tasks f;
   maybe_spawn_worker t;
   Condition.signal t.cv;
   Mutex.unlock t.mutex
+;;

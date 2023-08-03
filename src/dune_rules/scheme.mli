@@ -3,7 +3,7 @@
 open Import
 
 type 'rules t =
-  | Empty  (** [Empty] is a scheme that has no rules *)
+  | Empty (** [Empty] is a scheme that has no rules *)
   | Union of 'rules t * 'rules t
       (** [Union (a, b)] produces all the rules produced by a and b *)
   | Approximation of Path.Build.w Dir_set.t * 'rules t
@@ -30,8 +30,7 @@ module Evaluated : sig
 
   (** returns the rules and the set of child directories that could have rules
       defined in this scheme *)
-  val get_rules :
-    'a t -> dir:Path.Build.t -> ('a option * Filename.Set.t) Memo.t
+  val get_rules : 'a t -> dir:Path.Build.t -> ('a option * Filename.Set.t) Memo.t
 end
 
 (** [Evaluated.t] shares the work of scheme evaluation between multiple

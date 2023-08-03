@@ -1,9 +1,8 @@
 open Import
 
 (** Tie the knot between [Dune_engine] and [Dune_rules]. *)
-val init :
-     ?action_runner:
-       (Dune_engine.Action_exec.input -> Dune_engine.Action_runner.t option)
+val init
+  :  ?action_runner:(Dune_engine.Action_exec.input -> Dune_engine.Action_runner.t option)
   -> stats:Dune_stats.t option
   -> sandboxing_preference:Sandbox_mode.t list
   -> cache_config:Dune_cache.Config.t
@@ -18,7 +17,5 @@ type build_system =
   }
 
 val get : unit -> build_system Memo.t
-
 val find_context_exn : build_system -> name:Context_name.t -> Context.t
-
 val find_scontext_exn : build_system -> name:Context_name.t -> Super_context.t

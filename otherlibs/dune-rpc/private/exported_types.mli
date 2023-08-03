@@ -7,9 +7,7 @@ module Loc : sig
     }
 
   val start : t -> Lexing.position
-
   val stop : t -> Lexing.position
-
   val sexp : (t, Conv.values) Conv.t
 end
 
@@ -29,13 +27,9 @@ module Path : sig
   type t = string
 
   val dune_root : t
-
   val absolute : string -> t
-
   val relative : t -> string -> t
-
   val to_string_absolute : t -> string
-
   val sexp : t Conv.value
 end
 
@@ -51,9 +45,7 @@ module Diagnostic : sig
       }
 
     val in_build : t -> string
-
     val in_source : t -> string
-
     val sexp : (t, Conv.values) Conv.t
   end
 
@@ -61,11 +53,8 @@ module Diagnostic : sig
     type t
 
     val compare : t -> t -> Ordering.t
-
     val hash : t -> int
-
     val create : int -> t
-
     val sexp : (t, Conv.values) Conv.t
   end
 
@@ -76,9 +65,7 @@ module Diagnostic : sig
       }
 
     val message : t -> unit Pp.t
-
     val loc : t -> Loc.t
-
     val sexp : (t, Conv.values) Conv.t
   end
 
@@ -94,23 +81,14 @@ module Diagnostic : sig
     }
 
   val related : t -> Related.t list
-
   val id : t -> Id.t
-
   val loc : t -> Loc.t option
-
   val message : t -> unit Pp.t
-
   val severity : t -> severity option
-
   val promotion : t -> Promotion.t list
-
   val targets : t -> Target.t list
-
   val directory : t -> string option
-
   val to_dyn : t -> Dyn.t
-
   val to_user_message : t -> Stdune.User_message.t
 
   module Event : sig
@@ -119,7 +97,6 @@ module Diagnostic : sig
       | Remove of t
 
     val to_dyn : t -> Dyn.t
-
     val sexp : (t, Conv.values) Conv.t
   end
 
@@ -147,11 +124,8 @@ module Message : sig
     }
 
   val payload : t -> Csexp.t option
-
   val message : t -> string
-
   val sexp : (t, Conv.values) Conv.t
-
   val to_sexp_unversioned : t -> Csexp.t
 end
 
@@ -160,11 +134,8 @@ module Job : sig
     type t
 
     val compare : t -> t -> Ordering.t
-
     val hash : t -> int
-
     val create : int -> t
-
     val sexp : (t, Conv.values) Conv.t
   end
 
@@ -176,11 +147,8 @@ module Job : sig
     }
 
   val id : t -> Id.t
-
   val pid : t -> int
-
   val description : t -> unit Pp.t
-
   val started_at : t -> float
 
   module Event : sig

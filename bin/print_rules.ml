@@ -23,27 +23,29 @@ let man =
            as described in the manual.|}
   ; `Blocks Common.help_secs
   ]
+;;
 
 let info = Cmd.info "rules" ~doc ~man
 
 let print_rule_makefile ppf (rule : Dune_engine.Reflection.Rule.t) =
   let action =
     Action.For_shell.Progn
-      [ Mkdir (Path.to_string (Path.build rule.dir))
-      ; Action.for_shell rule.action
-      ]
+      [ Mkdir (Path.to_string (Path.build rule.dir)); Action.for_shell rule.action ]
   in
   (* Makefiles seem to allow directory targets, so we include them. *)
   let targets = Path.Build.Set.union rule.targets.files rule.targets.dirs in
-  Format.fprintf ppf
+  Format.fprintf
+    ppf
     "@[<hov 2>@{<makefile-stuff>%a:%t@}@]@,@<0>\t@{<makefile-action>%a@}\n"
     (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun ppf p ->
-         Format.pp_print_string ppf (Path.to_string p)))
+       Format.pp_print_string ppf (Path.to_string p)))
     (List.map ~f:Path.build (Path.Build.Set.to_list targets))
     (fun ppf ->
       Path.Set.iter rule.expanded_deps ~f:(fun dep ->
-          Format.fprintf ppf "@ %s" (Path.to_string dep)))
-    Pp.to_fmt (Action_to_sh.pp action)
+        Format.fprintf ppf "@ %s" (Path.to_string dep)))
+    Pp.to_fmt
+    (Action_to_sh.pp action)
+;;
 
 let rec encode : Action.For_shell.t -> Dune_lang.t =
   let module Outputs = Dune_lang.Action.Outputs in
@@ -56,34 +58,24 @@ let rec encode : Action.For_shell.t -> Dune_lang.t =
   let target = Encoder.string in
   function
   | Run (a, xs) ->
-    List
-      (atom "run" :: program a
-      :: List.map (Array.Immutable.to_list xs) ~f:string)
+    List (atom "run" :: program a :: List.map (Array.Immutable.to_list xs) ~f:string)
   | With_accepted_exit_codes (pred, t) ->
     List
       [ atom "with-accepted-exit-codes"
       ; Predicate_lang.encode Dune_lang.Encoder.int pred
       ; encode t
       ]
-  | Dynamic_run (a, xs) ->
-    List (atom "run_dynamic" :: program a :: List.map xs ~f:string)
+  | Dynamic_run (a, xs) -> List (atom "run_dynamic" :: program a :: List.map xs ~f:string)
   | Chdir (a, r) -> List [ atom "chdir"; path a; encode r ]
   | Setenv (k, v, r) -> List [ atom "setenv"; string k; string v; encode r ]
   | Redirect_out (outputs, fn, perm, r) ->
     List
-      [ atom
-          (sprintf "with-%s-to%s"
-             (Outputs.to_string outputs)
-             (File_perm.suffix perm))
+      [ atom (sprintf "with-%s-to%s" (Outputs.to_string outputs) (File_perm.suffix perm))
       ; target fn
       ; encode r
       ]
   | Redirect_in (inputs, fn, r) ->
-    List
-      [ atom (sprintf "with-%s-from" (Inputs.to_string inputs))
-      ; path fn
-      ; encode r
-      ]
+    List [ atom (sprintf "with-%s-from" (Inputs.to_string inputs)); path fn; encode r ]
   | Ignore (outputs, r) ->
     List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs)); encode r ]
   | Progn l -> List (atom "progn" :: List.map l ~f:encode)
@@ -115,33 +107,31 @@ let rec encode : Action.For_shell.t -> Dune_lang.t =
       ; target into
       ]
   | Pipe (outputs, l) ->
-    List
-      (atom (sprintf "pipe-%s" (Outputs.to_string outputs))
-      :: List.map l ~f:encode)
+    List (atom (sprintf "pipe-%s" (Outputs.to_string outputs)) :: List.map l ~f:encode)
   | Extension ext -> List [ atom "ext"; ext ]
+;;
 
 let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
   let sexp_of_action action = Action.for_shell action |> encode in
-  let paths ps =
-    Dune_lang.Encoder.list Dpath.Build.encode (Path.Build.Set.to_list ps)
-  in
+  let paths ps = Dune_lang.Encoder.list Dpath.Build.encode (Path.Build.Set.to_list ps) in
   let sexp =
     Dune_lang.Encoder.record
       (List.concat
-         [ [ ("deps", Dep.Set.encode rule.deps)
+         [ [ "deps", Dep.Set.encode rule.deps
            ; ( "targets"
              , Dune_lang.Encoder.record
-                 [ ("files", paths rule.targets.files)
-                 ; ("directories", paths rule.targets.dirs)
+                 [ "files", paths rule.targets.files
+                 ; "directories", paths rule.targets.dirs
                  ] )
            ]
          ; (match rule.context with
-           | None -> []
-           | Some c -> [ ("context", Dune_engine.Context_name.encode c.name) ])
-         ; [ ("action", sexp_of_action rule.action) ]
+            | None -> []
+            | Some c -> [ "context", Dune_engine.Context_name.encode c.name ])
+         ; [ "action", sexp_of_action rule.action ]
          ])
   in
   Format.fprintf ppf "%a@," Dune_lang.Deprecated.pp_split_strings sexp
+;;
 
 module Syntax = struct
   type t =
@@ -152,16 +142,19 @@ module Syntax = struct
     let doc = "Output the rules in Makefile syntax." in
     let+ makefile = Arg.(value & flag & info [ "m"; "makefile" ] ~doc) in
     if makefile then Makefile else Sexp
+  ;;
 
   let print_rule = function
     | Makefile -> print_rule_makefile
     | Sexp -> print_rule_sexp
+  ;;
 
   let print_rules syntax ppf rules =
     Dune_lang.Deprecated.prepare_formatter ppf;
     Format.pp_open_vbox ppf 0;
     Format.pp_print_list (print_rule syntax) ppf rules;
     Format.pp_print_flush ppf ()
+  ;;
 end
 
 let term =
@@ -173,40 +166,40 @@ let term =
       & info [ "o" ] ~docv:"FILE" ~doc:"Output to a file instead of stdout.")
   and+ recursive =
     Arg.(
-      value & flag
-      & info [ "r"; "recursive" ]
+      value
+      & flag
+      & info
+          [ "r"; "recursive" ]
           ~doc:
-            "Print all rules needed to build the transitive dependencies of \
-             the given targets.")
+            "Print all rules needed to build the transitive dependencies of the given \
+             targets.")
   and+ syntax = Syntax.term
   and+ targets = Arg.(value & pos_all dep [] & Arg.info [] ~docv:"TARGET") in
   let config = Common.init common in
   let out = Option.map ~f:Path.of_string out in
   Scheduler.go ~common ~config (fun () ->
-      let open Fiber.O in
-      let* setup = Import.Main.setup () in
-      Build_system.run_exn (fun () ->
-          let open Memo.O in
-          let* setup = setup in
-          let* request =
-            match targets with
-            | [] ->
-              Target.all_direct_targets None
-              >>| Path.Build.Map.foldi ~init:[] ~f:(fun p _ acc ->
-                      Path.build p :: acc)
-              >>| Action_builder.paths
-            | _ ->
-              Memo.return
-                (Target.interpret_targets (Common.root common) config setup
-                   targets)
-          in
-          let+ rules = Dune_engine.Reflection.eval ~request ~recursive in
-          let print oc =
-            let ppf = Format.formatter_of_out_channel oc in
-            Syntax.print_rules syntax ppf rules
-          in
-          match out with
-          | None -> print stdout
-          | Some fn -> Io.with_file_out fn ~f:print))
+    let open Fiber.O in
+    let* setup = Import.Main.setup () in
+    Build_system.run_exn (fun () ->
+      let open Memo.O in
+      let* setup = setup in
+      let* request =
+        match targets with
+        | [] ->
+          Target.all_direct_targets None
+          >>| Path.Build.Map.foldi ~init:[] ~f:(fun p _ acc -> Path.build p :: acc)
+          >>| Action_builder.paths
+        | _ ->
+          Memo.return (Target.interpret_targets (Common.root common) config setup targets)
+      in
+      let+ rules = Dune_engine.Reflection.eval ~request ~recursive in
+      let print oc =
+        let ppf = Format.formatter_of_out_channel oc in
+        Syntax.print_rules syntax ppf rules
+      in
+      match out with
+      | None -> print stdout
+      | Some fn -> Io.with_file_out fn ~f:print))
+;;
 
 let command = Cmd.v info term

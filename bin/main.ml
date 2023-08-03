@@ -40,6 +40,7 @@ let all : _ Cmdliner.Cmd.t list =
     ]
   in
   terms @ groups
+;;
 
 (* Short reminders for the most used and useful commands *)
 let common_commands_synopsis =
@@ -51,14 +52,18 @@ let common_commands_synopsis =
     ; "install"
     ; "init project NAME [PATH] [--libs=l1,l2 --ppx=p1,p2 --inline-tests]"
     ]
+;;
 
 let info =
   let doc = "composable build system for OCaml" in
-  Cmd.info "dune" ~doc ~envs:Common.envs
+  Cmd.info
+    "dune"
+    ~doc
+    ~envs:Common.envs
     ~version:
       (match Build_info.V1.version () with
-      | None -> "n/a"
-      | Some v -> Build_info.V1.Version.to_string v)
+       | None -> "n/a"
+       | Some v -> Build_info.V1.Version.to_string v)
     ~man:
       [ `Blocks common_commands_synopsis
       ; `S "DESCRIPTION"
@@ -77,20 +82,22 @@ let info =
             |}
       ; `Blocks Common.help_secs
       ; Common.examples
-          [ ("Initialise a new project named `foo'", "dune init project foo")
-          ; ("Build all targets in the current source tree", "dune build")
-          ; ("Run the executable named `bar'", "dune exec bar")
-          ; ("Run all tests in the current source tree", "dune runtest")
-          ; ("Install all components defined in the project", "dune install")
-          ; ("Remove all build artefacts", "dune clean")
+          [ "Initialise a new project named `foo'", "dune init project foo"
+          ; "Build all targets in the current source tree", "dune build"
+          ; "Run the executable named `bar'", "dune exec bar"
+          ; "Run all tests in the current source tree", "dune runtest"
+          ; "Install all components defined in the project", "dune install"
+          ; "Remove all build artefacts", "dune clean"
           ]
       ]
+;;
 
 let cmd = Cmd.group info all
 
 let exit_and_flush code =
   Console.finish ();
   exit (Exit_code.code code)
+;;
 
 let () =
   Dune_rules.Colors.setup_err_formatter_colors ();
@@ -105,3 +112,4 @@ let () =
     let exn = Exn_with_backtrace.capture exn in
     Dune_util.Report_error.report exn;
     exit_and_flush Error
+;;

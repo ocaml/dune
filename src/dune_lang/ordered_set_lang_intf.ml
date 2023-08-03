@@ -7,15 +7,11 @@ module type Key = sig
 
   module Map : sig
     type key := t
-
     type 'a t
 
     val singleton : key -> 'a -> 'a t
-
     val empty : 'a t
-
-    val merge :
-      'a t -> 'b t -> f:(key -> 'a option -> 'b option -> 'c option) -> 'c t
+    val merge : 'a t -> 'b t -> f:(key -> 'a option -> 'b option -> 'c option) -> 'c t
   end
 end
 
@@ -27,16 +23,16 @@ module type Unordered_eval = sig
   module Key : Key
 
   (** Same as [eval] but the result is unordered *)
-  val eval :
-       t
+  val eval
+    :  t
     -> parse:(loc:Loc.t -> string -> 'a)
     -> key:('a -> Key.t)
     -> standard:'a Key.Map.t
     -> 'a Key.Map.t
 
   (** Same as [eval] but the result is unordered *)
-  val eval_loc :
-       t
+  val eval_loc
+    :  t
     -> parse:(loc:Loc.t -> string -> 'a)
     -> key:('a -> Key.t)
     -> standard:(Loc.t * 'a) Key.Map.t
@@ -47,21 +43,17 @@ module type Action_builder = sig
   type 'a t
 
   val return : 'a -> 'a t
-
   val all : 'a t list -> 'a list t
-
   val read_sexp : Path.t -> Dune_sexp.Ast.t t
 
   module O : sig
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-
     val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
-
     val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
   end
 
-  val expand :
-       String_with_vars.t
+  val expand
+    :  String_with_vars.t
     -> mode:'a String_with_vars.Mode.t
     -> dir:Path.t
     -> f:Value.t list t String_with_vars.expander

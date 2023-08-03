@@ -2,11 +2,11 @@
 
 module Make
     (S : sig
-      (* The state isn't a type variable as is done traditionally, because we want
-         to reuse our existing monad machinery. All that machinery requires the
-         monad to have only one type variable *)
-      type t
-    end)
+       (* The state isn't a type variable as is done traditionally, because we want
+          to reuse our existing monad machinery. All that machinery requires the
+          monad to have only one type variable *)
+       type t
+     end)
     (M : Monad.S) : sig
   include Monad.S
 

@@ -12,8 +12,11 @@ end
 
 type t
 
-val of_config :
-  ext:t option -> dune_lang:t option -> version:Dune_sexp.Syntax.Version.t -> t
+val of_config
+  :  ext:t option
+  -> dune_lang:t option
+  -> version:Dune_sexp.Syntax.Version.t
+  -> t
 
 (** The syntax corresponding to the dune 1.x [(using fmt)] extension. *)
 val syntax : Dune_sexp.Syntax.t
@@ -33,9 +36,7 @@ val dparse_args : (t * Stanza.Parser.t list) Dune_sexp.Decoder.t
 val to_dyn : t -> Dyn.t
 
 (** Parse the contents of the dune2 [(formatting)] option.*)
-val field :
-  since:Dune_sexp.Syntax.Version.t -> t option Dune_sexp.Decoder.fields_parser
+val field : since:Dune_sexp.Syntax.Version.t -> t option Dune_sexp.Decoder.fields_parser
 
 val encode_opt : t -> Dune_sexp.t option
-
 val equal : t -> t -> bool

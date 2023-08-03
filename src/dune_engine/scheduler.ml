@@ -31,9 +31,10 @@ module Shutdown = struct
         | Requested -> Dyn.Variant ("Requested", [])
         | Timeout -> Dyn.Variant ("Timeout", [])
         | Signal signal -> Dyn.Variant ("Signal", [ Signal.to_dyn signal ])
+      ;;
 
       let compare a b =
-        match (a, b) with
+        match a, b with
         | Requested, Requested -> Eq
         | Requested, _ -> Lt
         | _, Requested -> Gt
@@ -41,6 +42,7 @@ module Shutdown = struct
         | Timeout, _ -> Lt
         | _, Timeout -> Gt
         | Signal a, Signal b -> Signal.compare a b
+      ;;
     end
 
     include T
@@ -53,9 +55,9 @@ module Shutdown = struct
     Printexc.register_printer (function
       | E Requested -> Some "shutdown: requested"
       | E Timeout -> Some "shutdown: timeout"
-      | E (Signal s) ->
-        Some (sprintf "shutdown: signal %s received" (Signal.name s))
+      | E (Signal s) -> Some (sprintf "shutdown: signal %s received" (Signal.name s))
       | _ -> None)
+  ;;
 end
 
 (* These are the signals that will make the scheduler attempt to terminate dune *)
@@ -65,12 +67,11 @@ let interrupt_signals : Signal.t list = [ Int; Quit; Term ]
    designated threads can handle them by unblocking *)
 let blocked_signals : Signal.t list =
   Dune_util.Terminal_signals.signals @ interrupt_signals
+;;
 
 module Thread : sig
   val spawn : signal_watcher:[ `Yes | `No ] -> (unit -> unit) -> unit
-
   val delay : float -> unit
-
   val wait_signal : int list -> int
 end = struct
   include Thread
@@ -79,9 +80,11 @@ end = struct
     lazy
       (let signos = List.map blocked_signals ~f:Signal.to_int in
        ignore (Unix.sigprocmask SIG_BLOCK signos : int list))
+  ;;
 
   let create ~signal_watcher =
-    if Sys.win32 then Thread.create
+    if Sys.win32
+    then Thread.create
     else
       (* On unix, we make sure to block signals globally before starting a
          thread so that only the signal watcher thread can receive signals. *)
@@ -92,13 +95,16 @@ end = struct
         | `No -> ()
       in
       Thread.create f x
+  ;;
 
   let spawn ~signal_watcher f =
     let f () =
-      try f () with exn -> Dune_util.Report_error.report_exception exn
+      try f () with
+      | exn -> Dune_util.Report_error.report_exception exn
     in
     let (_ : Thread.t) = create ~signal_watcher f () in
     ()
+  ;;
 end
 
 let spawn_thread f = Thread.spawn ~signal_watcher:`Yes f
@@ -119,7 +125,6 @@ module Event : sig
 
   module Queue : sig
     type event := t
-
     type t
 
     val create : Dune_stats.t option -> t
@@ -138,15 +143,10 @@ module Event : sig
     val pending_jobs : t -> int
 
     val send_worker_task_completed : t -> Fiber.fill -> unit
-
     val send_worker_tasks_completed : t -> Fiber.fill list -> unit
-
     val register_worker_task_started : t -> unit
-
     val cancel_work_task_started : t -> unit
-
-    val send_file_watcher_task :
-      t -> (unit -> Dune_file_watcher.Event.t list) -> unit
+    val send_file_watcher_task : t -> (unit -> Dune_file_watcher.Event.t list) -> unit
 
     (** It's a bit weird to have both this and [send_file_watcher_task]. The
         reason is that [send_file_watcher_task] uses [send_file_watcher_events]
@@ -154,13 +154,9 @@ module Event : sig
     val send_file_watcher_events : t -> Dune_file_watcher.Event.t list -> unit
 
     val send_invalidation_event : t -> Memo.Invalidation.t -> unit
-
     val send_job_completed : t -> job -> Proc.Process_info.t -> unit
-
     val send_shutdown : t -> Shutdown.Reason.t -> unit
-
     val send_timers_completed : t -> Fiber.fill Nonempty_list.t -> unit
-
     val yield_if_there_are_pending_events : t -> unit Fiber.t
   end
 end = struct
@@ -226,73 +222,67 @@ end = struct
       ; got_event = false
       ; yield = None
       }
+    ;;
 
     let register_job_started q = q.pending_jobs <- q.pending_jobs + 1
 
     let register_worker_task_started q =
       q.pending_worker_tasks <- q.pending_worker_tasks + 1
+    ;;
 
-    let cancel_work_task_started q =
-      q.pending_worker_tasks <- q.pending_worker_tasks - 1
+    let cancel_work_task_started q = q.pending_worker_tasks <- q.pending_worker_tasks - 1
 
     let add_event q f =
       Mutex.lock q.mutex;
       f q;
-      if not q.got_event then (
+      if not q.got_event
+      then (
         q.got_event <- true;
         Condition.signal q.cond);
       Mutex.unlock q.mutex
+    ;;
 
     let yield_if_there_are_pending_events q =
-      if Execution_env.inside_dune || not q.got_event then Fiber.return ()
-      else
+      if Execution_env.inside_dune || not q.got_event
+      then Fiber.return ()
+      else (
         match q.yield with
         | Some ivar -> Fiber.Ivar.read ivar
         | None ->
           let ivar = Fiber.Ivar.create () in
           q.yield <- Some ivar;
-          Fiber.Ivar.read ivar
+          Fiber.Ivar.read ivar)
+    ;;
 
     module Event_source : sig
       type queue := t
-
       type t
 
       val shutdown : t
-
       val file_watcher_task : t
-
       val invalidation : t
-
       val jobs_completed : t
-
       val worker_tasks_completed : t
-
       val yield : t
-
       val timers : t
-
       val chain : t list -> t
-
       val run : t -> queue -> event option
     end = struct
       type queue = t
-
       type t = queue -> event option
 
       let run t q = t q
 
       let shutdown : t =
-       fun q ->
-        Option.map (Shutdown.Reason.Set.choose q.shutdown_reasons)
-          ~f:(fun reason ->
-            q.shutdown_reasons <-
-              Shutdown.Reason.Set.remove q.shutdown_reasons reason;
-            Shutdown reason)
+        fun q ->
+        Option.map (Shutdown.Reason.Set.choose q.shutdown_reasons) ~f:(fun reason ->
+          q.shutdown_reasons <- Shutdown.Reason.Set.remove q.shutdown_reasons reason;
+          Shutdown reason)
+      ;;
 
       let file_watcher_task q =
-        Option.map (Queue.pop q.file_watcher_tasks) ~f:(fun job ->
-            File_watcher_task job)
+        Option.map (Queue.pop q.file_watcher_tasks) ~f:(fun job -> File_watcher_task job)
+      ;;
 
       let invalidation q =
         match q.invalidation_events with
@@ -303,53 +293,56 @@ end = struct
               q.invalidation_events <- [];
               Option.map
                 (Nonempty_list.of_list (List.rev acc))
-                ~f:(fun build_input_changes ->
-                  Build_inputs_changed build_input_changes)
-            | event :: events -> (
-              match (event : Invalidation_event.t) with
-              | Filesystem_event Watcher_terminated ->
-                q.invalidation_events <- [];
-                Some File_system_watcher_terminated
-              | Filesystem_event (Sync id) -> (
-                match Nonempty_list.of_list (List.rev acc) with
-                | None ->
-                  q.invalidation_events <- events;
-                  Some (File_system_sync id)
-                | Some build_input_changes ->
-                  q.invalidation_events <- event :: events;
-                  Some (Build_inputs_changed build_input_changes))
-              | Filesystem_event (Fs_memo_event event) ->
-                process_events (Fs_event event :: acc) events
-              | Filesystem_event Queue_overflow ->
-                process_events
-                  (Invalidation
-                     (Memo.Invalidation.clear_caches
-                        ~reason:Event_queue_overflow)
-                  :: acc)
-                  events
-              | Invalidation invalidation ->
-                process_events (Invalidation invalidation :: acc) events)
+                ~f:(fun build_input_changes -> Build_inputs_changed build_input_changes)
+            | event :: events ->
+              (match (event : Invalidation_event.t) with
+               | Filesystem_event Watcher_terminated ->
+                 q.invalidation_events <- [];
+                 Some File_system_watcher_terminated
+               | Filesystem_event (Sync id) ->
+                 (match Nonempty_list.of_list (List.rev acc) with
+                  | None ->
+                    q.invalidation_events <- events;
+                    Some (File_system_sync id)
+                  | Some build_input_changes ->
+                    q.invalidation_events <- event :: events;
+                    Some (Build_inputs_changed build_input_changes))
+               | Filesystem_event (Fs_memo_event event) ->
+                 process_events (Fs_event event :: acc) events
+               | Filesystem_event Queue_overflow ->
+                 process_events
+                   (Invalidation
+                      (Memo.Invalidation.clear_caches ~reason:Event_queue_overflow)
+                    :: acc)
+                   events
+               | Invalidation invalidation ->
+                 process_events (Invalidation invalidation :: acc) events)
           in
           process_events [] events
+      ;;
 
       let jobs_completed q =
         Option.map (Queue.pop q.jobs_completed) ~f:(fun (job, proc_info) ->
-            q.pending_jobs <- q.pending_jobs - 1;
-            assert (q.pending_jobs >= 0);
-            Fiber_fill_ivar (Fill (job.ivar, proc_info)))
+          q.pending_jobs <- q.pending_jobs - 1;
+          assert (q.pending_jobs >= 0);
+          Fiber_fill_ivar (Fill (job.ivar, proc_info)))
+      ;;
 
       let worker_tasks_completed q =
         Option.map (Queue.pop q.worker_tasks_completed) ~f:(fun fill ->
-            q.pending_worker_tasks <- q.pending_worker_tasks - 1;
-            Fiber_fill_ivar fill)
+          q.pending_worker_tasks <- q.pending_worker_tasks - 1;
+          Fiber_fill_ivar fill)
+      ;;
 
       let yield q =
         Option.map q.yield ~f:(fun ivar ->
-            q.yield <- None;
-            Fiber_fill_ivar (Fill (ivar, ())))
+          q.yield <- None;
+          Fiber_fill_ivar (Fill (ivar, ())))
+      ;;
 
       let timers q =
         Option.map (Queue.pop q.timers) ~f:(fun timer -> Fiber_fill_ivar timer)
+      ;;
 
       let chain list q = List.find_map list ~f:(fun f -> f q)
     end
@@ -389,50 +382,56 @@ end = struct
       let ev = loop () in
       Mutex.unlock q.mutex;
       ev
+    ;;
 
     let send_worker_task_completed q event =
       add_event q (fun q -> Queue.push q.worker_tasks_completed event)
+    ;;
 
     let send_worker_tasks_completed q events =
-      add_event q (fun q ->
-          List.iter events ~f:(Queue.push q.worker_tasks_completed))
+      add_event q (fun q -> List.iter events ~f:(Queue.push q.worker_tasks_completed))
+    ;;
 
     let send_invalidation_events q events =
-      add_event q (fun q ->
-          q.invalidation_events <- q.invalidation_events @ events)
+      add_event q (fun q -> q.invalidation_events <- q.invalidation_events @ events)
+    ;;
 
     let send_file_watcher_events q files =
-      send_invalidation_events q
-        (List.map files ~f:(fun file : Invalidation_event.t ->
-             Filesystem_event file))
+      send_invalidation_events
+        q
+        (List.map files ~f:(fun file : Invalidation_event.t -> Filesystem_event file))
+    ;;
 
     let send_invalidation_event q invalidation =
       send_invalidation_events q [ Invalidation invalidation ]
+    ;;
 
     let send_job_completed q job proc_info =
       add_event q (fun q -> Queue.push q.jobs_completed (job, proc_info))
+    ;;
 
     let send_shutdown q signal =
       add_event q (fun q ->
-          q.shutdown_reasons <-
-            Shutdown.Reason.Set.add q.shutdown_reasons signal)
+        q.shutdown_reasons <- Shutdown.Reason.Set.add q.shutdown_reasons signal)
+    ;;
 
     let send_file_watcher_task q job =
       add_event q (fun q -> Queue.push q.file_watcher_tasks job)
+    ;;
 
     let send_timers_completed q timers =
       add_event q (fun q ->
-          Nonempty_list.to_list timers |> List.iter ~f:(Queue.push q.timers))
+        Nonempty_list.to_list timers |> List.iter ~f:(Queue.push q.timers))
+    ;;
 
     let pending_jobs q = q.pending_jobs
-
     let pending_worker_tasks q = q.pending_worker_tasks
   end
 end
 
 let kill_process_group pid signal =
   match Sys.win32 with
-  | false -> (
+  | false ->
     (* Send to the entire process group so that any child processes created by
        the job are also terminated.
 
@@ -448,12 +447,15 @@ let kill_process_group pid signal =
        The downside is that it's more complicated, but also that by sending the
        signal twice we're greatly increasing the existing race condition where
        we call [wait] in parallel with [kill]. *)
-    try Unix.kill (-Pid.to_int pid) signal with Unix.Unix_error _ -> ())
-  | true -> (
+    (try Unix.kill (-Pid.to_int pid) signal with
+     | Unix.Unix_error _ -> ())
+  | true ->
     (* Process groups are not supported on Windows (or even if they are, [spawn]
        does not know how to use them), so we're only sending the signal to the
        job itself. *)
-    try Unix.kill (Pid.to_int pid) signal with Unix.Unix_error _ -> ())
+    (try Unix.kill (Pid.to_int pid) signal with
+     | Unix.Unix_error _ -> ())
+;;
 
 module Process_watcher : sig
   (** Initialize the process watcher thread. *)
@@ -488,14 +490,12 @@ end = struct
     let res = Table.mem t.table pid in
     Mutex.unlock t.mutex;
     res
+  ;;
 
   module Process_table : sig
     val add : t -> job -> unit
-
     val remove : t -> Proc.Process_info.t -> unit
-
     val running_count : t -> int
-
     val iter : t -> f:(job -> unit) -> unit
   end = struct
     let add t job =
@@ -508,6 +508,7 @@ end = struct
         Table.remove t.table job.pid;
         Event.Queue.send_job_completed t.events job proc_info
       | Some (Running _) -> assert false
+    ;;
 
     let remove t (proc_info : Proc.Process_info.t) =
       match Table.find t.table proc_info.pid with
@@ -517,12 +518,14 @@ end = struct
         Table.remove t.table proc_info.pid;
         Event.Queue.send_job_completed t.events job proc_info
       | Some (Zombie _) -> assert false
+    ;;
 
     let iter t ~f =
       Table.iter t.table ~f:(fun data ->
-          match data with
-          | Running job -> f job
-          | Zombie _ -> ())
+        match data with
+        | Running job -> f job
+        | Zombie _ -> ())
+    ;;
 
     let running_count t = t.running_count
   end
@@ -532,34 +535,35 @@ end = struct
     Mutex.lock t.mutex;
     Process_table.add t job;
     Mutex.unlock t.mutex
+  ;;
 
   let killall t signal =
     Mutex.lock t.mutex;
     Process_table.iter t ~f:(fun job -> kill_process_group job.pid signal);
     Mutex.unlock t.mutex
+  ;;
 
   exception Finished of Proc.Process_info.t
 
   let wait_nonblocking_win32 t =
     try
       Process_table.iter t ~f:(fun job ->
-          let pid, status = Unix.waitpid [ WNOHANG ] (Pid.to_int job.pid) in
-          if pid <> 0 then
-            let now = Unix.gettimeofday () in
-            let info : Proc.Process_info.t =
-              { pid = Pid.of_int pid
-              ; status
-              ; end_time = now
-              ; resource_usage = None
-              }
-            in
-            raise_notrace (Finished info));
+        let pid, status = Unix.waitpid [ WNOHANG ] (Pid.to_int job.pid) in
+        if pid <> 0
+        then (
+          let now = Unix.gettimeofday () in
+          let info : Proc.Process_info.t =
+            { pid = Pid.of_int pid; status; end_time = now; resource_usage = None }
+          in
+          raise_notrace (Finished info)));
       false
-    with Finished proc_info ->
+    with
+    | Finished proc_info ->
       (* We need to do the [Unix.waitpid] and remove the process while holding
          the lock, otherwise the pid might be reused in between. *)
       Process_table.remove t proc_info;
       true
+  ;;
 
   let wait_win32 t =
     while not (wait_nonblocking_win32 t) do
@@ -567,12 +571,14 @@ end = struct
       Thread.delay 0.001;
       Mutex.lock t.mutex
     done
+  ;;
 
   let wait_unix t =
     Mutex.unlock t.mutex;
     let proc_info = Proc.wait [] in
     Mutex.lock t.mutex;
     Process_table.remove t proc_info
+  ;;
 
   let wait = if Sys.win32 then wait_win32 else wait_unix
 
@@ -584,6 +590,7 @@ end = struct
       done;
       wait t
     done
+  ;;
 
   let init ~signal_watcher events =
     let t =
@@ -596,6 +603,7 @@ end = struct
     in
     Thread.spawn ~signal_watcher (fun () -> run t);
     t
+  ;;
 end
 
 module Signal_watcher : sig
@@ -611,19 +619,23 @@ end = struct
 **************************************************************
 
 |}
+  ;;
 
   external sys_exit : int -> _ = "caml_sys_exit"
 
   let signal_waiter () =
-    if Sys.win32 then (
+    if Sys.win32
+    then (
       let r, w = Unix.pipe ~cloexec:true () in
       let buf = Bytes.create 1 in
-      Sys.set_signal Sys.sigint
+      Sys.set_signal
+        Sys.sigint
         (Signal_handle (fun _ -> assert (Unix.write w buf 0 1 = 1)));
       Staged.stage (fun () ->
-          assert (Unix.read r buf 0 1 = 1);
-          Signal.Int))
+        assert (Unix.read r buf 0 1 = 1);
+        Signal.Int))
     else Staged.stage (fun () -> Thread.wait_signal signos |> Signal.of_int)
+  ;;
 
   let run q =
     let last_exit_signals = Queue.create () in
@@ -647,6 +659,7 @@ end = struct
         if n = 3 then sys_exit 1
       | _ -> (* we only blocked the signals above *) assert false
     done
+  ;;
 
   let init q = Thread.spawn ~signal_watcher:`Yes (fun () -> run q)
 end
@@ -657,16 +670,16 @@ type status =
     Standing_by of
       { invalidation : Memo.Invalidation.t
       ; saw_insignificant_changes : bool
-            (* When [insignificant_changes = `Ignore], this field is always
-               false.
+          (* When [insignificant_changes = `Ignore], this field is always
+             false.
 
-               When [insignificant_changes = `React], we do the following:
+             When [insignificant_changes = `React], we do the following:
 
-               Whether we saw build input changes that are insignificant for
-               the build. We need to track this because we still want to start
-               a new build in this case, even if we know it's going to be a
-               no-op. We do that so that RPC clients can observe that Dune
-               reacted to the change. *)
+             Whether we saw build input changes that are insignificant for
+             the build. We need to track this because we still want to start
+             a new build in this case, even if we know it's going to be a
+             no-op. We do that so that RPC clients can observe that Dune
+             reacted to the change. *)
       }
   | (* Running a build *)
     Building of Fiber.Cancel.t
@@ -696,17 +709,13 @@ end
 module Alarm_clock : sig
   type t
 
-  val create :
-    signal_watcher:[ `Yes | `No ] -> Event.Queue.t -> frequency:float -> t
+  val create : signal_watcher:[ `Yes | `No ] -> Event.Queue.t -> frequency:float -> t
 
   type alarm
 
   val await : alarm -> [ `Finished | `Cancelled ] Fiber.t
-
   val cancel : t -> alarm -> unit
-
   val sleep : t -> float -> alarm
-
   val close : t -> unit
 end = struct
   type alarm = [ `Finished | `Cancelled ] Fiber.Ivar.t
@@ -724,15 +733,15 @@ end = struct
   let cancel t alarm =
     Mutex.lock t.mutex;
     let found = ref false in
-    t.alarms <-
-      List.filter t.alarms ~f:(fun (_, alarm') ->
-          let eq = alarm' == alarm in
-          if eq then found := true;
-          not eq);
+    t.alarms
+      <- List.filter t.alarms ~f:(fun (_, alarm') ->
+           let eq = alarm' == alarm in
+           if eq then found := true;
+           not eq);
     Mutex.unlock t.mutex;
-    if !found then
-      Event.Queue.send_timers_completed t.events
-        [ Fiber.Fill (alarm, `Cancelled) ]
+    if !found
+    then Event.Queue.send_timers_completed t.events [ Fiber.Fill (alarm, `Cancelled) ]
+  ;;
 
   let polling_loop t () =
     let rec loop () =
@@ -742,14 +751,15 @@ end = struct
         let now = Unix.gettimeofday () in
         let expired, active =
           List.partition_map t.alarms ~f:(fun (expiration, ivar) ->
-              if now > expiration then Left (Fiber.Fill (ivar, `Finished))
-              else Right (expiration, ivar))
+            if now > expiration
+            then Left (Fiber.Fill (ivar, `Finished))
+            else Right (expiration, ivar))
         in
         t.alarms <- active;
         Mutex.unlock t.mutex;
         (match Nonempty_list.of_list expired with
-        | None -> ()
-        | Some expired -> Event.Queue.send_timers_completed t.events expired);
+         | None -> ()
+         | Some expired -> Event.Queue.send_timers_completed t.events expired);
         Thread.delay t.frequency;
         Mutex.lock t.mutex;
         loop ()
@@ -758,28 +768,31 @@ end = struct
     loop ();
     t.alarms <- [];
     Mutex.unlock t.mutex
+  ;;
 
   let create ~signal_watcher events ~frequency =
-    let t =
-      { events; active = true; alarms = []; frequency; mutex = Mutex.create () }
-    in
+    let t = { events; active = true; alarms = []; frequency; mutex = Mutex.create () } in
     Thread.spawn ~signal_watcher (polling_loop t);
     t
+  ;;
 
   let sleep t duration =
     Mutex.lock t.mutex;
     let ivar = Fiber.Ivar.create () in
-    if not t.active then (
+    if not t.active
+    then (
       Mutex.unlock t.mutex;
       Code_error.raise "cannot schedule timers after close" []);
     t.alarms <- (duration +. Unix.gettimeofday (), ivar) :: t.alarms;
     Mutex.unlock t.mutex;
     ivar
+  ;;
 
   let close t =
     Mutex.lock t.mutex;
     t.active <- false;
     Mutex.unlock t.mutex
+  ;;
 end
 
 (** All fields of [t] must be immutable. This is because we re-create [t] every
@@ -821,27 +834,25 @@ type t =
   }
 
 let t : t Fiber.Var.t = Fiber.Var.create ()
-
 let set x f = Fiber.Var.set t x f
-
 let t_opt () = Fiber.Var.get t
-
 let t () = Fiber.Var.get_exn t
 
 let stats () =
   let+ t = t () in
   t.config.stats
+;;
 
 let running_jobs_count t = Event.Queue.pending_jobs t.events
 
 exception Build_cancelled
 
 let cancelled () = raise (Memo.Non_reproducible Build_cancelled)
-
 let check_cancelled t = if Fiber.Cancel.fired t.cancel then cancelled ()
 
 let check_point =
-  t_opt () >>= function
+  t_opt ()
+  >>= function
   | None -> Fiber.return ()
   | Some t ->
     (* CR-someday amokhov: we used to call [check_cancelled t] here but that led
@@ -850,20 +861,23 @@ let check_point =
        change Memo to store previous successes to make such early cancellations
        preserve the early cutoff behaviour. *)
     Event.Queue.yield_if_there_are_pending_events t.events
+;;
 
 let () = Memo.check_point := check_point
 
 let with_job_slot f =
   let* t = t () in
   Fiber.Throttle.run t.job_throttle ~f:(fun () ->
-      check_cancelled t;
-      f t.cancel t.config)
+    check_cancelled t;
+    f t.cancel t.config)
+;;
 
 (* We use this version privately in this module whenever we can pass the
    scheduler explicitly *)
 let wait_for_process t pid =
   let+ res, outcome =
-    Fiber.Cancel.with_handler t.cancel
+    Fiber.Cancel.with_handler
+      t.cancel
       ~on_cancel:(fun () ->
         Process_watcher.killall t.process_watcher Sys.sigkill;
         Fiber.return ())
@@ -875,6 +889,7 @@ let wait_for_process t pid =
   match outcome with
   | Cancelled () -> cancelled ()
   | Not_cancelled -> res
+;;
 
 type termination_reason =
   | Normal
@@ -884,7 +899,8 @@ type termination_reason =
    scheduler explicitly *)
 let wait_for_build_process t pid =
   let+ res, outcome =
-    Fiber.Cancel.with_handler t.cancel
+    Fiber.Cancel.with_handler
+      t.cancel
       ~on_cancel:(fun () ->
         Process_watcher.killall t.process_watcher Sys.sigkill;
         Fiber.return ())
@@ -894,17 +910,21 @@ let wait_for_build_process t pid =
   , match outcome with
     | Cancelled () -> Cancel
     | Not_cancelled -> Normal )
+;;
 
 let got_shutdown reason =
-  if !Log.verbose then
+  if !Log.verbose
+  then (
     match (reason : Shutdown.Reason.t) with
     | Timeout -> Log.info [ Pp.text "Timeout." ]
     | Requested -> Log.info [ Pp.text "Shutting down." ]
     | Signal signal ->
-      Log.info [ Pp.textf "Got signal %s, exiting." (Signal.name signal) ]
+      Log.info [ Pp.textf "Got signal %s, exiting." (Signal.name signal) ])
+;;
 
 let filesystem_watcher_terminated () =
   Log.info [ Pp.textf "Filesystem watcher terminated, exiting." ]
+;;
 
 type saw_shutdown =
   | Ok
@@ -921,6 +941,7 @@ let kill_and_wait_for_all_processes t =
     | _ -> ()
   done;
   !saw_signal
+;;
 
 let prepare (config : Config.t) ~(handler : Handler.t) =
   let events = Event.Queue.create config.stats in
@@ -933,8 +954,8 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
       (* The signal watcher must be initialized first so that signals are
          blocked in all threads. *)
       (match signal_watcher with
-      | `Yes -> Signal_watcher.init events
-      | `No -> ());
+       | `Yes -> Signal_watcher.init events
+       | `No -> ());
       let process_watcher = Process_watcher.init ~signal_watcher events in
       { status =
           (* Slightly weird initialization happening here: for polling mode we
@@ -952,16 +973,15 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
       ; file_watcher
       ; fs_syncs = Dune_file_watcher.Sync_id.Table.create 64
       ; wait_for_build_input_change = ref None
-      ; alarm_clock =
-          lazy (Alarm_clock.create ~signal_watcher events ~frequency:0.1)
+      ; alarm_clock = lazy (Alarm_clock.create ~signal_watcher events ~frequency:0.1)
       ; cancel =
           (* This cancellation will never be fired, so this field could instead
              be an [option]. We use a dummy cancellation rather than an option
              to keep the code simpler. *)
           Fiber.Cancel.create ()
-      ; thread_pool =
-          Thread_pool.create ~spawn_thread ~min_workers:4 ~max_workers:50
+      ; thread_pool = Thread_pool.create ~spawn_thread ~min_workers:4 ~max_workers:50
       } )
+;;
 
 module Run_once : sig
   type run_error =
@@ -988,7 +1008,8 @@ end = struct
     fun events ->
       let events = Nonempty_list.to_list events in
       List.fold_left events ~init:Memo.Invalidation.empty ~f:(fun acc event ->
-          Memo.Invalidation.combine acc (handle_event event))
+        Memo.Invalidation.combine acc (handle_event event))
+  ;;
 
   (** This function is the heart of the scheduler. It makes progress in
       executing fibers by doing the following:
@@ -1003,12 +1024,12 @@ end = struct
       let events = job () in
       Event.Queue.send_file_watcher_events t.events events;
       iter t
-    | File_system_sync id -> (
-      match Dune_file_watcher.Sync_id.Table.find t.fs_syncs id with
-      | None -> iter t
-      | Some ivar ->
-        Dune_file_watcher.Sync_id.Table.remove t.fs_syncs id;
-        [ Fill (ivar, ()) ])
+    | File_system_sync id ->
+      (match Dune_file_watcher.Sync_id.Table.find t.fs_syncs id with
+       | None -> iter t
+       | Some ivar ->
+         Dune_file_watcher.Sync_id.Table.remove t.fs_syncs id;
+         [ Fill (ivar, ()) ])
     | Build_inputs_changed events -> build_input_change t events
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();
@@ -1029,26 +1050,24 @@ end = struct
     let fills =
       match !(t.status) with
       | Restarting_build prev_invalidation ->
-        t.status :=
-          Restarting_build
-            (Memo.Invalidation.combine prev_invalidation invalidation);
+        t.status
+          := Restarting_build (Memo.Invalidation.combine prev_invalidation invalidation);
         []
       | Standing_by prev ->
-        t.status :=
-          Standing_by
-            { invalidation =
-                Memo.Invalidation.combine prev.invalidation invalidation
-            ; saw_insignificant_changes =
-                prev.saw_insignificant_changes || insignificant_changes
-            };
+        t.status
+          := Standing_by
+               { invalidation = Memo.Invalidation.combine prev.invalidation invalidation
+               ; saw_insignificant_changes =
+                   prev.saw_insignificant_changes || insignificant_changes
+               };
         []
-      | Building cancellation -> (
-        match significant_changes with
-        | false -> []
-        | true ->
-          t.handler t.config Build_interrupted;
-          t.status := Restarting_build invalidation;
-          Fiber.Cancel.fire' cancellation)
+      | Building cancellation ->
+        (match significant_changes with
+         | false -> []
+         | true ->
+           t.handler t.config Build_interrupted;
+           t.status := Restarting_build invalidation;
+           Fiber.Cancel.fire' cancellation)
     in
     match
       Nonempty_list.of_list
@@ -1061,30 +1080,26 @@ end = struct
     with
     | None -> iter t
     | Some fills -> fills
+  ;;
 
   let run t f : _ result =
     let fiber =
       set t (fun () ->
-          let module Scheduler = struct
-            let spawn_thread = spawn_thread
-
-            let register_job_started () =
-              Event.Queue.register_worker_task_started t.events
-
-            let fill_jobs jobs =
-              Event.Queue.send_worker_tasks_completed t.events jobs
-
-            let cancel_job_started () =
-              Event.Queue.cancel_work_task_started t.events
-          end in
-          Async_io.with_io (module (Scheduler : Async_io.Scheduler))
-          @@ fun () ->
-          Fiber.map_reduce_errors
-            (module Monoid.Unit)
-            f
-            ~on_error:(fun e ->
-              Dune_util.Report_error.report e;
-              Fiber.return ()))
+        let module Scheduler = struct
+          let spawn_thread = spawn_thread
+          let register_job_started () = Event.Queue.register_worker_task_started t.events
+          let fill_jobs jobs = Event.Queue.send_worker_tasks_completed t.events jobs
+          let cancel_job_started () = Event.Queue.cancel_work_task_started t.events
+        end
+        in
+        Async_io.with_io (module (Scheduler : Async_io.Scheduler))
+        @@ fun () ->
+        Fiber.map_reduce_errors
+          (module Monoid.Unit)
+          f
+          ~on_error:(fun e ->
+            Dune_util.Report_error.report e;
+            Fiber.return ()))
     in
     match Fiber.run fiber ~iter:(fun () -> iter t) with
     | Ok res ->
@@ -1094,6 +1109,7 @@ end = struct
     | Error () -> Error Already_reported
     | exception Abort err -> Error err
     | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))
+  ;;
 
   let run_and_cleanup t f =
     let res = run t f in
@@ -1101,6 +1117,7 @@ end = struct
     match kill_and_wait_for_all_processes t with
     | Got_shutdown -> Error Already_reported
     | Ok -> res
+  ;;
 end
 
 let async f =
@@ -1113,11 +1130,14 @@ let async f =
   Thread_pool.task t.thread_pool ~f;
   Event.Queue.register_worker_task_started t.events;
   Fiber.Ivar.read ivar
+;;
 
 let async_exn f =
-  async f >>| function
+  async f
+  >>| function
   | Error exn -> Exn_with_backtrace.reraise exn
   | Ok e -> e
+;;
 
 let flush_file_watcher t =
   match t.file_watcher with
@@ -1127,20 +1147,22 @@ let flush_file_watcher t =
     let id = Dune_file_watcher.emit_sync file_watcher in
     Dune_file_watcher.Sync_id.Table.set t.fs_syncs id ivar;
     Fiber.Ivar.read ivar
+;;
 
 let wait_for_build_input_change t =
   match !(t.wait_for_build_input_change) with
   | Some ivar -> Fiber.Ivar.read ivar
-  | None -> (
-    match !(t.status) with
-    | Standing_by { invalidation; saw_insignificant_changes }
-      when (not (Memo.Invalidation.is_empty invalidation))
-           || saw_insignificant_changes -> Fiber.return ()
-    | Restarting_build _ -> Fiber.return ()
-    | Standing_by _ | Building _ ->
-      let ivar = Fiber.Ivar.create () in
-      t.wait_for_build_input_change := Some ivar;
-      Fiber.Ivar.read ivar)
+  | None ->
+    (match !(t.status) with
+     | Standing_by { invalidation; saw_insignificant_changes }
+       when (not (Memo.Invalidation.is_empty invalidation)) || saw_insignificant_changes
+       -> Fiber.return ()
+     | Restarting_build _ -> Fiber.return ()
+     | Standing_by _ | Building _ ->
+       let ivar = Fiber.Ivar.create () in
+       t.wait_for_build_input_change := Some ivar;
+       Fiber.Ivar.read ivar)
+;;
 
 module Run = struct
   exception Build_cancelled = Build_cancelled
@@ -1158,11 +1180,12 @@ module Run = struct
   let rec poll_iter t step ~invalidation =
     let cancel = Fiber.Cancel.create () in
     t.status := Building cancel;
-    (if Memo.Invalidation.is_empty invalidation then Memo.Perf_counters.reset ()
-     else
-       let details_hum = Memo.Invalidation.details_hum invalidation in
-       t.handler t.config (Source_files_changed { details_hum });
-       Memo.reset invalidation);
+    if Memo.Invalidation.is_empty invalidation
+    then Memo.Perf_counters.reset ()
+    else (
+      let details_hum = Memo.Invalidation.details_hum invalidation in
+      t.handler t.config (Source_files_changed { details_hum });
+      Memo.reset invalidation);
     let* res = set { t with cancel } (fun () -> step) in
     match !(t.status) with
     | Standing_by _ ->
@@ -1175,18 +1198,18 @@ module Run = struct
         | Error `Already_reported -> Failure
         | Ok () -> Success
       in
-      t.status :=
-        Standing_by
-          { invalidation = Memo.Invalidation.empty
-          ; saw_insignificant_changes = false
-          };
+      t.status
+        := Standing_by
+             { invalidation = Memo.Invalidation.empty; saw_insignificant_changes = false };
       t.handler t.config (Build_finish res);
       Fiber.return res
+  ;;
 
   let poll_iter t step =
     match !(t.status) with
     | Building _ | Restarting_build _ -> assert false
     | Standing_by { invalidation; _ } -> poll_iter t step ~invalidation
+  ;;
 
   type step = (unit, [ `Already_reported ]) Result.t Fiber.t
 
@@ -1196,12 +1219,11 @@ module Run = struct
       match !(t.status) with
       | Building _ -> true
       | _ -> false);
-    t.status :=
-      Standing_by
-        { invalidation = Memo.Invalidation.empty
-        ; saw_insignificant_changes = false
-        };
+    t.status
+      := Standing_by
+           { invalidation = Memo.Invalidation.empty; saw_insignificant_changes = false };
     t
+  ;;
 
   (* Work we're allowed to do between successive polling iterations. this work
      should be fast and never fail (within reason) *)
@@ -1210,20 +1232,18 @@ module Run = struct
        But we don't care because the user enabled this manually with
        [--trace-file] *)
     Option.iter stats ~f:(fun stats ->
-        let event =
-          let fields =
-            let ts =
-              Chrome_trace.Event.Timestamp.of_float_seconds
-                (Unix.gettimeofday ())
-            in
-            Chrome_trace.Event.common_fields ~name:"watch mode iteration" ~ts ()
-          in
-          (* the instant event allows us to separate build commands from
-             different iterations of the watch mode in the event viewer *)
-          Chrome_trace.Event.instant ~scope:Global fields
+      let event =
+        let fields =
+          let ts = Chrome_trace.Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
+          Chrome_trace.Event.common_fields ~name:"watch mode iteration" ~ts ()
         in
-        Dune_stats.emit stats event;
-        Dune_stats.flush stats)
+        (* the instant event allows us to separate build commands from
+           different iterations of the watch mode in the event viewer *)
+        Chrome_trace.Event.instant ~scope:Global fields
+      in
+      Dune_stats.emit stats event;
+      Dune_stats.flush stats)
+  ;;
 
   let poll step =
     let* t = poll_init () in
@@ -1234,6 +1254,7 @@ module Run = struct
       loop ()
     in
     loop ()
+  ;;
 
   let poll_passive ~get_build_request =
     let* t = poll_init () in
@@ -1263,9 +1284,15 @@ module Run = struct
       loop ()
     in
     loop ()
+  ;;
 
-  let go config ?timeout ?(file_watcher = No_watcher)
-      ~(on_event : Config.t -> Handler.Event.t -> unit) run =
+  let go
+    config
+    ?timeout
+    ?(file_watcher = No_watcher)
+    ~(on_event : Config.t -> Handler.Event.t -> unit)
+    run
+    =
     let events, prepare = prepare config ~handler:on_event in
     let file_watcher =
       match file_watcher with
@@ -1274,12 +1301,12 @@ module Run = struct
         Some
           (Dune_file_watcher.create_default
              ~scheduler:
-               { spawn_thread =
-                   Thread.spawn ~signal_watcher:config.signal_watcher
+               { spawn_thread = Thread.spawn ~signal_watcher:config.signal_watcher
                ; thread_safe_send_emit_events_job =
                    (fun job -> Event_queue.send_file_watcher_task events job)
                }
-             ~watch_exclusions:config.watch_exclusions ())
+             ~watch_exclusions:config.watch_exclusions
+             ())
     in
     let t = prepare ~file_watcher in
     let initial_invalidation = Fs_memo.init ~dune_file_watcher:file_watcher in
@@ -1299,74 +1326,80 @@ module Run = struct
                 | `Cancelled -> ())
               (fun () ->
                 Fiber.finalize run ~finally:(fun () ->
-                    Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
-                    Fiber.return ()))
+                  Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
+                  Fiber.return ()))
       in
       match Run_once.run_and_cleanup t run with
       | Ok a -> Result.Ok a
       | Error (Shutdown_requested reason) -> Error (Shutdown.E reason, None)
-      | Error Already_reported ->
-        Error (Dune_util.Report_error.Already_reported, None)
-      | Error (Exn exn_with_bt) ->
-        Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
+      | Error Already_reported -> Error (Dune_util.Report_error.Already_reported, None)
+      | Error (Exn exn_with_bt) -> Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
     in
     Option.iter file_watcher ~f:(fun watcher ->
-        match Dune_file_watcher.shutdown watcher with
-        | `Kill pid ->
-          (* XXX this can't be right because if we ignore the fiber,
-             we will not wait for the process *)
-          ignore (wait_for_process t pid : _ Fiber.t)
-        | `Thunk f -> f ()
-        | `No_op -> ());
+      match Dune_file_watcher.shutdown watcher with
+      | `Kill pid ->
+        (* XXX this can't be right because if we ignore the fiber,
+           we will not wait for the process *)
+        ignore (wait_for_process t pid : _ Fiber.t)
+      | `Thunk f -> f ()
+      | `No_op -> ());
     ignore (kill_and_wait_for_all_processes t : saw_shutdown);
-    if Lazy.is_val t.alarm_clock then
-      Alarm_clock.close (Lazy.force t.alarm_clock);
+    if Lazy.is_val t.alarm_clock then Alarm_clock.close (Lazy.force t.alarm_clock);
     match result with
     | Ok a -> a
     | Error (exn, None) -> Exn.raise exn
     | Error (exn, Some bt) -> Exn.raise_with_backtrace exn bt
+  ;;
 end
 
 let shutdown () =
   let+ t = t () in
   Event.Queue.send_shutdown t.events Requested
+;;
 
 let inject_memo_invalidation invalidation =
   let* t = t () in
   Event.Queue.send_invalidation_event t.events invalidation;
   Fiber.return ()
+;;
 
-let wait_for_process_with_timeout t pid waiter ~timeout ~is_process_group_leader
-    =
+let wait_for_process_with_timeout t pid waiter ~timeout ~is_process_group_leader =
   Fiber.of_thunk (fun () ->
-      let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) timeout in
-      Fiber.fork_and_join_unit
-        (fun () ->
-          let+ res = Alarm_clock.await sleep in
-          if res = `Finished && Process_watcher.is_running t.process_watcher pid
-          then
-            if is_process_group_leader then kill_process_group pid Sys.sigkill
-            else Unix.kill (Pid.to_int pid) Sys.sigkill)
-        (fun () ->
-          let+ res = waiter t pid in
-          Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
-          res))
+    let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) timeout in
+    Fiber.fork_and_join_unit
+      (fun () ->
+        let+ res = Alarm_clock.await sleep in
+        if res = `Finished && Process_watcher.is_running t.process_watcher pid
+        then
+          if is_process_group_leader
+          then kill_process_group pid Sys.sigkill
+          else Unix.kill (Pid.to_int pid) Sys.sigkill)
+      (fun () ->
+        let+ res = waiter t pid in
+        Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
+        res))
+;;
 
 let wait_for_build_process ?timeout ?(is_process_group_leader = false) pid =
   let* t = t () in
   match timeout with
   | None -> wait_for_build_process t pid
   | Some timeout ->
-    wait_for_process_with_timeout t pid wait_for_build_process ~timeout
+    wait_for_process_with_timeout
+      t
+      pid
+      wait_for_build_process
+      ~timeout
       ~is_process_group_leader
+;;
 
 let wait_for_process ?timeout ?(is_process_group_leader = false) pid =
   let* t = t () in
   match timeout with
   | None -> wait_for_process t pid
   | Some timeout ->
-    wait_for_process_with_timeout t pid wait_for_process ~timeout
-      ~is_process_group_leader
+    wait_for_process_with_timeout t pid wait_for_process ~timeout ~is_process_group_leader
+;;
 
 let sleep duration =
   let* t = t () in
@@ -1377,7 +1410,9 @@ let sleep duration =
   | `Cancelled ->
     (* cancellation mechanism isn't exposed to the user *)
     assert false
+;;
 
 let wait_for_build_input_change () =
   let* t = t () in
   wait_for_build_input_change t
+;;

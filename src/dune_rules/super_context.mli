@@ -17,52 +17,49 @@ val all_init_deferred : unit -> unit Memo.t
 val find : Context_name.t -> t option Memo.t
 
 val to_dyn : t -> Dyn.t
-
 val context : t -> Context.t
 
 (** Context env with additional variables computed from packages *)
 val context_env : t -> Env.t
 
 val build_dir_is_vendored : Path.Build.t -> bool Memo.t
-
-val with_vendored_flags :
-  ocaml_version:Version.t -> Ocaml_flags.t -> Ocaml_flags.t
+val with_vendored_flags : ocaml_version:Version.t -> Ocaml_flags.t -> Ocaml_flags.t
 
 (** Compute the ocaml flags based on the directory environment and a buildable
     stanza *)
-val ocaml_flags :
-  t -> dir:Path.Build.t -> Ocaml_flags.Spec.t -> Ocaml_flags.t Memo.t
+val ocaml_flags : t -> dir:Path.Build.t -> Ocaml_flags.Spec.t -> Ocaml_flags.t Memo.t
 
 val js_of_ocaml_runtest_alias : t -> dir:Path.Build.t -> Alias.Name.t Memo.t
 
-val js_of_ocaml_compilation_mode :
-  t -> dir:Path.Build.t -> Js_of_ocaml.Compilation_mode.t Memo.t
+val js_of_ocaml_compilation_mode
+  :  t
+  -> dir:Path.Build.t
+  -> Js_of_ocaml.Compilation_mode.t Memo.t
 
-val js_of_ocaml_flags :
-     t
+val js_of_ocaml_flags
+  :  t
   -> dir:Path.Build.t
   -> Js_of_ocaml.Flags.Spec.t
   -> string list Action_builder.t Js_of_ocaml.Flags.t Memo.t
 
-val default_foreign_flags :
-     t
+val default_foreign_flags
+  :  t
   -> dir:Path.Build.t
   -> language:Foreign_language.t
   -> string list Action_builder.t
 
-val foreign_flags :
-     t
+val foreign_flags
+  :  t
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> flags:Ordered_set_lang.Unexpanded.t
   -> language:Foreign_language.t
   -> string list Action_builder.t
 
-val link_flags :
-  t -> dir:Path.Build.t -> Link_flags.Spec.t -> Link_flags.t Memo.t
+val link_flags : t -> dir:Path.Build.t -> Link_flags.Spec.t -> Link_flags.t Memo.t
 
-val menhir_flags :
-     t
+val menhir_flags
+  :  t
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> flags:Ordered_set_lang.Unexpanded.t
@@ -70,8 +67,7 @@ val menhir_flags :
 
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
     associated directory is [Path.relative dir ".bin"] *)
-val local_binaries :
-  t -> dir:Path.Build.t -> File_binding.Expanded.t list Memo.t
+val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list Memo.t
 
 val env_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
 
@@ -89,31 +85,31 @@ val bin_annot : t -> dir:Path.Build.t -> bool Memo.t
 (** Dump a directory environment in a readable form *)
 val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Action_builder.t
 
-val add_rule :
-     t
+val add_rule
+  :  t
   -> ?mode:Rule.Mode.t
   -> ?loc:Loc.t
   -> dir:Path.Build.t
   -> Action.Full.t Action_builder.With_targets.t
   -> unit Memo.t
 
-val add_rule_get_targets :
-     t
+val add_rule_get_targets
+  :  t
   -> ?mode:Rule.Mode.t
   -> ?loc:Loc.t
   -> dir:Path.Build.t
   -> Action.Full.t Action_builder.With_targets.t
   -> Targets.Validated.t Memo.t
 
-val add_rules :
-     t
+val add_rules
+  :  t
   -> ?loc:Loc.t
   -> dir:Path.Build.t
   -> Action.Full.t Action_builder.With_targets.t list
   -> unit Memo.t
 
-val add_alias_action :
-     t
+val add_alias_action
+  :  t
   -> Alias.t
   -> dir:Path.Build.t
   -> loc:Loc.t option
@@ -127,8 +123,8 @@ val add_alias_action :
     hint.
 
     [hint] should tell the user what to install when the program is not found. *)
-val resolve_program :
-     t
+val resolve_program
+  :  t
   -> dir:Path.Build.t
   -> ?hint:string
   -> loc:Loc.t option
@@ -139,6 +135,5 @@ val expander : t -> dir:Path.Build.t -> Expander.t Memo.t
 
 module As_memo_key : sig
   include Memo.Input with type t = t
-
   module And_package : Memo.Input with type t = t * Package.t
 end

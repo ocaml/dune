@@ -2,10 +2,10 @@ open Stdune
 module Persistent = Dune_util.Persistent
 module Digest = Dune_digest
 
-let test (type a) (module Persistent : Persistent.Desc with type t = a)
-    (example : a) =
+let test (type a) (module Persistent : Persistent.Desc with type t = a) (example : a) =
   let digest = Digest.generic example |> Digest.to_string in
   printfn "%s version %d\n%s\n---\n" Persistent.name Persistent.version digest
+;;
 
 let%expect_test "persistent digests" =
   Persistent.test_examples ()
@@ -14,12 +14,12 @@ let%expect_test "persistent digests" =
 
      The usual workflow goes something like this:
 
-       1. The format of [Persistent.t] changes
-       2. The new value is reflected by the value returned [test_example]
-       3. The digest in this test suite changes and the test therefore fails
+     1. The format of [Persistent.t] changes
+     2. The new value is reflected by the value returned [test_example]
+     3. The digest in this test suite changes and the test therefore fails
 
-       To fix the test, the correct thing to do is to bump the appropriate
-       version number where the persistent module is defined *)
+     To fix the test, the correct thing to do is to bump the appropriate
+     version number where the persistent module is defined *)
   |> Stdlib.Seq.iter (fun (Persistent.T (desc, example)) -> test desc example);
   [%expect
     {|
@@ -50,3 +50,4 @@ let%expect_test "persistent digests" =
     INCREMENTAL-DB version 5
     fa67cc9b60c9f3a1b9b1ad93a56df691
     --- |}]
+;;

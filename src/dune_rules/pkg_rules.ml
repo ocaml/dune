@@ -367,9 +367,7 @@ module Substitute = struct
 
     let encode (e, s, i, o) input output : Dune_lang.t =
       let e =
-        e
-        |> Substs.Map.to_list
-        |> List.map ~f:(fun ({ Substs.Var.package; variable }, v) ->
+        Substs.Map.to_list_map e ~f:(fun { Substs.Var.package; variable } v ->
           let package = Dune_sexp.Encoder.option Dune_lang.Package_name.encode package in
           let k = Dune_sexp.List [ package; Substs.Variable.encode variable ] in
           let v = Dune_lang.atom_or_quoted_string v in
@@ -386,14 +384,14 @@ module Substitute = struct
     ;;
   end
 
-  let action ~env ~self ~input ~output =
+  let action ~env ~name ~input ~output =
     let module M = struct
       type path = Path.t
       type target = Path.Build.t
 
       module Spec = Spec
 
-      let v = env, self, input, output
+      let v = env, name, input, output
     end
     in
     Action.Extension (module M)
@@ -568,6 +566,55 @@ module Action_expander = struct
     ;;
   end
 
+  let substitute_env (expander : Expander.t) =
+    let setenv package variable value env =
+      let var = { Substs.Var.package = Some package; variable } in
+      Substs.Map.add_exn env var value
+    in
+    let env =
+      (* values set with withenv *)
+      Env.Map.map expander.env ~f:Env_update.string_of_env_values
+      |> Env.Map.to_list_map ~f:(fun variable value ->
+        ( { Substs.Var.package = None; variable = Substs.Variable.of_string variable }
+        , value ))
+      |> Substs.Map.of_list_exn
+    in
+    Dune_lang.Package_name.Map.foldi
+      expander.deps
+      ~init:env
+      ~f:(fun name (var_conts, paths) env ->
+        let env =
+          String.Map.foldi var_conts ~init:env ~f:(fun key contents env ->
+            let key = Substs.Variable.of_string key in
+            match (contents : OpamVariable.variable_contents) with
+            | S value -> setenv name key value env
+            | B true -> setenv name key "true" env
+            | B false -> setenv name key "false" env
+            | L xs -> setenv name key (String.concat ~sep:" " xs) env)
+        in
+        let install_paths = Paths.install_paths paths in
+        List.fold_left
+          ~init:env
+          ~f:(fun env (var_name, section) ->
+            let key = Substs.Variable.of_string var_name in
+            let section = Path.to_string (Install.Paths.get install_paths section) in
+            setenv name key section env)
+          [ "lib", Section.Lib
+          ; "lib_root", Lib_root
+          ; "libexec", Libexec
+          ; "libexec_root", Libexec_root
+          ; "bin", Bin
+          ; "sbin", Sbin
+          ; "toplevel", Toplevel
+          ; "share", Share
+          ; "share_root", Share_root
+          ; "etc", Etc
+          ; "doc", Doc
+          ; "stublibs", Stublibs
+          ; "man", Man
+          ])
+  ;;
+
   let rec expand (action : Action_unexpanded.t) ~(expander : Expander.t) =
     let dir = Path.build expander.paths.source_dir in
     match action with
@@ -585,7 +632,7 @@ module Action_expander = struct
       Action.System arg
     | Patch p ->
       let* input = Expander.expand_pform_gen ~mode:Single expander p in
-      let input = input |> Value.to_string ~dir in
+      let input = Value.to_string ~dir input in
       let+ patch =
         let path = Global.env () |> Env_path.path in
         let program = "patch" in
@@ -599,72 +646,15 @@ module Action_expander = struct
       (* TODO opam has a preprocessing step that we should probably apply *)
       Action.Run (patch, Array.Immutable.of_array [| "-p1"; "-i"; input |])
     | Substitute (input, output) ->
-      let* input = Expander.expand_pform_gen ~mode:Single expander input in
-      let input = input |> Value.to_path ~dir in
-      let+ output = Expander.expand_pform_gen ~mode:Single expander output in
-      let output = output |> Value.to_path ~dir |> Path.as_in_build_dir_exn in
-      let self = expander.paths.name in
-      let setenv package variable value env =
-        let var = { Substs.Var.package; variable } in
-        Substs.Map.add_exn env var value
+      let+ input =
+        Expander.expand_pform_gen ~mode:Single expander input >>| Value.to_path ~dir
+      and+ output =
+        let+ output = Expander.expand_pform_gen ~mode:Single expander output in
+        Value.to_path ~dir output
+        |> (* TODO this needs proper error handling *) Path.as_in_build_dir_exn
       in
-      (* values set with withenv *)
-      let env =
-        expander.env
-        |> Env.Map.map ~f:Env_update.string_of_env_values
-        |> Env.Map.to_list
-        |> List.map ~f:(fun (variable, value) ->
-          ( { Substs.Var.package = None; variable = Substs.Variable.of_string variable }
-          , value ))
-        |> Substs.Map.of_list_exn
-      in
-      (* values from packages *)
-      let env =
-        Dune_lang.Package_name.Map.foldi
-          expander.deps
-          ~init:env
-          ~f:(fun name (var_conts, paths) env ->
-            let name = Some name in
-            let env =
-              String.Map.foldi
-                ~init:env
-                ~f:(fun key contents env ->
-                  let key = Substs.Variable.of_string key in
-                  match (contents : OpamVariable.variable_contents) with
-                  | S value -> setenv name key value env
-                  | B true -> setenv name key "true" env
-                  | B false -> setenv name key "false" env
-                  | L xs -> setenv name key (String.concat ~sep:" " xs) env)
-                var_conts
-            in
-            let install_paths = Paths.install_paths paths in
-            let setpath key section env =
-              setenv
-                name
-                key
-                (Path.to_string (Install.Paths.get install_paths section))
-                env
-            in
-            List.fold_left
-              ~init:env
-              ~f:(fun env (name, section) ->
-                setpath (Substs.Variable.of_string name) section env)
-              [ "lib", Section.Lib
-              ; "lib_root", Section.Lib_root
-              ; "libexec", Section.Libexec
-              ; "libexec_root", Section.Libexec_root
-              ; "bin", Section.Bin
-              ; "sbin", Section.Sbin
-              ; "toplevel", Section.Toplevel
-              ; "share", Section.Share
-              ; "share_root", Section.Share_root
-              ; "etc", Section.Etc
-              ; "doc", Section.Doc
-              ; "stublibs", Section.Stublibs
-              ; "man", Section.Man
-              ])
-      in
-      Substitute.action ~env ~self ~input ~output
+      let env = substitute_env expander in
+      Substitute.action ~env ~name:expander.paths.name ~input ~output
     | Withenv (updates, action) ->
       let* env, updates =
         Memo.List.fold_left

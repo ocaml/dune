@@ -36,8 +36,6 @@ end
 
 module Map = Var.Map
 
-let opam_variable = Option.map ~f:(fun v -> OpamVariable.S v)
-
 let subst env self ~path ~target =
   let self' = self |> Dune_lang.Package_name.to_string |> OpamPackage.Name.of_string in
   let env full_variable =
@@ -49,8 +47,8 @@ let subst env self ~path ~target =
     in
     let key = { Var.T.package; variable } in
     match Map.find env key with
-    | Some _ as v -> opam_variable v
-    | None -> Map.find env { Var.T.package = Some self; variable } |> opam_variable
+    | Some _ as v -> v
+    | None -> Map.find env { Var.T.package = Some self; variable }
   in
   (* The OPAM API always needs .in as a suffix for the basename *)
   let target_template = Path.extend_basename target ~suffix:".in" in

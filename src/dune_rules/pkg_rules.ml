@@ -358,7 +358,10 @@ end
 module Substitute = struct
   module Spec = struct
     type ('path, 'target) t =
-      string Substs.Map.t * Dune_lang.Package_name.t * 'path * 'target
+      OpamVariable.variable_contents Substs.Map.t
+      * Dune_lang.Package_name.t
+      * 'path
+      * 'target
 
     let name = "substitute"
     let version = 1
@@ -368,9 +371,15 @@ module Substitute = struct
     let encode (e, s, i, o) input output : Dune_lang.t =
       let e =
         Substs.Map.to_list_map e ~f:(fun { Substs.Var.package; variable } v ->
-          let package = Dune_sexp.Encoder.option Dune_lang.Package_name.encode package in
-          let k = Dune_sexp.List [ package; Substs.Variable.encode variable ] in
-          let v = Dune_lang.atom_or_quoted_string v in
+          let k =
+            let package =
+              Dune_sexp.Encoder.option Dune_lang.Package_name.encode package
+            in
+            Dune_sexp.List [ package; Substs.Variable.encode variable ]
+          in
+          let v =
+            Dune_lang.atom_or_quoted_string (OpamVariable.string_of_variable_contents v)
+          in
           Dune_sexp.List [ k; v ])
       in
       let s = Dune_lang.Package_name.encode s in
@@ -577,7 +586,7 @@ module Action_expander = struct
       |> Env.Map.to_list_map ~f:(fun variable value ->
         (* TODO why is [package = None]? *)
         ( { Substs.Var.package = None; variable = Substs.Variable.of_string variable }
-        , value ))
+        , OpamVariable.S value ))
       |> Substs.Map.of_list_exn
     in
     Dune_lang.Package_name.Map.foldi
@@ -585,20 +594,18 @@ module Action_expander = struct
       ~init:env
       ~f:(fun name (var_conts, paths) env ->
         let env =
-          String.Map.foldi var_conts ~init:env ~f:(fun key contents env ->
+          String.Map.foldi var_conts ~init:env ~f:(fun key value env ->
             let key = Substs.Variable.of_string key in
-            match (contents : OpamVariable.variable_contents) with
-            | S value -> setenv name key value env
-            | B true -> setenv name key "true" env
-            | B false -> setenv name key "false" env
-            | L xs -> setenv name key (String.concat ~sep:" " xs) env)
+            setenv name key value env)
         in
         let install_paths = Paths.install_paths paths in
         List.fold_left
           ~init:env
           ~f:(fun env (var_name, section) ->
             let key = Substs.Variable.of_string var_name in
-            let section = Path.to_string (Install.Paths.get install_paths section) in
+            let section =
+              OpamVariable.S (Path.to_string (Install.Paths.get install_paths section))
+            in
             setenv name key section env)
           [ "lib", Section.Lib
           ; "lib_root", Lib_root

@@ -25,7 +25,7 @@ end
 module Map = Var.Map
 
 val subst
-  :  string Map.t
+  :  OpamVariable.variable_contents Map.t
   -> Dune_lang.Package_name.t
   -> path:Path.t
   -> target:Path.t

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691152060510,
+  "lastUpdate": 1691152376483,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -81779,6 +81779,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.972445680433335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9f487f2401a0be3b10b6e2bd47459a1119f46ab7",
+          "message": "test(dirs): non-strict subdirs in dirs stanza (#7032)\n\nWe also improve the error message and add a test for the situation.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>\r\nCo-authored-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-08-04T05:19:07-07:00",
+          "tree_id": "1dc40f1b9083e07d77e3eac25c6c28212c287da8",
+          "url": "https://github.com/ocaml/dune/commit/9f487f2401a0be3b10b6e2bd47459a1119f46ab7"
+        },
+        "date": 1691152366402,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.64567300025333",
             "unit": "seconds"
           }
         ]

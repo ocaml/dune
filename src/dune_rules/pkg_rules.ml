@@ -575,6 +575,7 @@ module Action_expander = struct
       (* values set with withenv *)
       Env.Map.map expander.env ~f:Env_update.string_of_env_values
       |> Env.Map.to_list_map ~f:(fun variable value ->
+        (* TODO why is [package = None]? *)
         ( { Substs.Var.package = None; variable = Substs.Variable.of_string variable }
         , value ))
       |> Substs.Map.of_list_exn

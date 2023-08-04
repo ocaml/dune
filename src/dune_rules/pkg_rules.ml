@@ -358,6 +358,13 @@ end
 module Substitute = struct
   module Spec = struct
     type ('path, 'target) t =
+      (* XXX it's not good to serialize the substitution map like this. We're
+         essentially implementing the same substitution procedure but in two
+         different places: action geeneration, and action execution.
+
+         The two implementations are bound to drift. Better would be to
+         reconstruct everything that is needed to call our one and only
+         substitution function. *)
       OpamVariable.variable_contents Substs.Map.t
       * Dune_lang.Package_name.t
       * 'path

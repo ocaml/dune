@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691172055674,
+  "lastUpdate": 1691172613327,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -26475,6 +26475,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.39650575356",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "05fa7add571c361f47c6594e545663cc2d815d12",
+          "message": "feature: allow arch_sixtyfour in enabled_if (#8023)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-08-04T10:43:50-07:00",
+          "tree_id": "d39cb0b650cde299a3d83d8cb0d7bd4de93ea7f9",
+          "url": "https://github.com/ocaml/dune/commit/05fa7add571c361f47c6594e545663cc2d815d12"
+        },
+        "date": 1691172611799,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "51.744062273813334",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691169326483,
+  "lastUpdate": 1691169757900,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -26446,6 +26446,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "48.88675991568001",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "12f8a8bd168590d967e6235e64f611dc42900629",
+          "message": "test: more portable cache tests (#8339)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-04T10:03:06-07:00",
+          "tree_id": "5490c94c4b576fad023ec021a36872789bc8f35a",
+          "url": "https://github.com/ocaml/dune/commit/12f8a8bd168590d967e6235e64f611dc42900629"
+        },
+        "date": 1691169756308,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.39650575356",
             "unit": "seconds"
           }
         ]

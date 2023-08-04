@@ -12,13 +12,17 @@ variable, and via the [DUNE_CACHE_ROOT] variable. Here we test the former.
   > (cache-storage-mode copy)
   > EOF
   $ cat > dune-project <<EOF
-  > (lang dune 2.1)
+  > (lang dune 3.5)
   > EOF
   $ cat > dune <<EOF
   > (rule
-  >   (deps source)
-  >   (targets target1 target2)
-  >   (action (bash "touch beacon; cat source > target1; cat source source > target2")))
+  >  (deps source)
+  >  (targets target1 target2)
+  >  (action
+  >   (progn
+  >    (no-infer (with-stdout-to beacon (echo "")))
+  >    (with-stdout-to target1 (cat source))
+  >    (with-stdout-to target2 (cat source source)))))
   > EOF
 
 It's a duck. It quacks. (Yes, the author of this comment didn't get it.)
@@ -36,9 +40,9 @@ never built [target1] before.
   $ dune build --config-file=config target1 --debug-cache=shared,workspace-local \
   >   2>&1 | grep '_build/default/source\|_build/default/target'
   Workspace-local cache miss: _build/default/source: never seen this target before
-  Shared cache miss [1318c0c9d4f4610410204b11d0b5b413] (_build/default/source): not found in cache
+  Shared cache miss [76da2a7f12d012c3e319efce6c2af3ee] (_build/default/source): not found in cache
   Workspace-local cache miss: _build/default/target1: never seen this target before
-  Shared cache miss [313e07d4b9b0a131828ee51787757c97] (_build/default/target1): not found in cache
+  Shared cache miss [75d8e0989f4ceebed31869b8ac851f42] (_build/default/target1): not found in cache
 
   $ dune_cmd stat hardlinks _build/default/source
   1

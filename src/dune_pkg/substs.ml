@@ -36,7 +36,7 @@ end
 
 module Map = Var.Map
 
-let subst env self ~path ~target =
+let subst env self ~src ~dst =
   let self' = self |> Dune_lang.Package_name.to_string |> OpamPackage.Name.of_string in
   let env full_variable =
     let variable = OpamVariable.Full.variable full_variable in
@@ -50,16 +50,7 @@ let subst env self ~path ~target =
     | Some _ as v -> v
     | None -> Map.find env { Var.T.package = Some self; variable }
   in
-  (* TODO The OPAM API always needs .in as a suffix for the basename. We should
-     fix this. *)
-  let temp_dir = Temp.create Dir ~prefix:"dune" ~suffix:"substitute" in
-  Exn.protect
-    ~finally:(fun () -> Temp.destroy Dir temp_dir)
-    ~f:(fun () ->
-      let target_template = Path.relative temp_dir (Path.basename target ^ ".in") in
-      Io.copy_file ~src:path ~dst:target_template ();
-      let path = target |> Path.to_string |> OpamFilename.Base.of_string in
-      OpamFilter.expand_interpolations_in_file env path;
-      Path.rename target_template target;
-      Temp.destroy Dir temp_dir)
+  let src = OpamFilename.of_string (Path.to_string src) in
+  let dst = OpamFilename.of_string (Path.Build.to_string dst) in
+  OpamFilter.expand_interpolations_in_file_full env ~src ~dst
 ;;

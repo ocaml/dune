@@ -393,10 +393,10 @@ module Substitute = struct
       List [ Dune_lang.atom_or_quoted_string name; List e; s; input i; output o ]
     ;;
 
-    let action (env, self, path, target) ~ectx:_ ~eenv:_ =
+    let action (env, self, src, dst) ~ectx:_ ~eenv:_ =
       let open Fiber.O in
       let+ () = Fiber.return () in
-      Substs.subst env ~path self ~target:(Path.build target)
+      Substs.subst env ~src self ~dst
     ;;
   end
 

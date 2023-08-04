@@ -27,6 +27,6 @@ module Map = Var.Map
 val subst
   :  OpamVariable.variable_contents Map.t
   -> Dune_lang.Package_name.t
-  -> path:Path.t
-  -> target:Path.t
+  -> src:Path.t
+  -> dst:Path.Build.t
   -> unit

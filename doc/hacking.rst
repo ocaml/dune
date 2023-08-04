@@ -773,3 +773,18 @@ E.g., run
 From inside the container, run ``make bench`` to run the benchmark. The output of
 the benchmark is a JSON string in the format accepted by `current-bench
 <https://github.com/ocurrent/current-bench>`_.
+
+Formatting
+==========
+
+When changing the formatting configuration, it is possible to add the
+reformatting commit to the :file:`.git-blame-ignore-revs` file. The commit will
+disappear from blame views. It is also possible to configure ``git`` to have
+the same behavior locally.
+
+It is recommended to edit that file in a second PR, to make sure that the
+referenced commit has not changed.
+
+.. seealso::
+   `GitHub - Ignore commits in the blame view
+   <https://docs.github.com/en/repositories/working-with-files/using-files/viewing-a-file#ignore-commits-in-the-blame-view>`_

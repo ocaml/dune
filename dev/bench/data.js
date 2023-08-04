@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691152376483,
+  "lastUpdate": 1691152476713,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -81808,6 +81808,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.64567300025333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7b211abfe75b1532a0be49160a37051d337d5117",
+          "message": "test: glob_files_rec with a relative path (#8265)\n\nWe demonstrate that using relative paths in [glob_files_rec] has\r\nunintended consequences. In this test, we install some artifacts outside\r\nthe package directory just by globbing from a parent dir.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-04T05:15:36-07:00",
+          "tree_id": "88327498a35eb9a6b3ce39629cf3a772ee8e2ed5",
+          "url": "https://github.com/ocaml/dune/commit/7b211abfe75b1532a0be49160a37051d337d5117"
+        },
+        "date": 1691152467365,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.76672681608",
             "unit": "seconds"
           }
         ]

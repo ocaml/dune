@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691153236356,
+  "lastUpdate": 1691161475225,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -82185,6 +82185,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.76672681608",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3bbd07cdebc7ae4958f6d24fbcf8b778be5ea240",
+          "message": "feature(pkg): Creation of files from `.in` templates (#8225)\n\n* Implement substitutions using OPAM API\r\n\r\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-08-04T07:48:34-07:00",
+          "tree_id": "b6bedd03cab21caa827dd25cc5debd480bf18f7e",
+          "url": "https://github.com/ocaml/dune/commit/3bbd07cdebc7ae4958f6d24fbcf8b778be5ea240"
+        },
+        "date": 1691161463468,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "28.43597667714",
             "unit": "seconds"
           }
         ]

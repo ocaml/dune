@@ -21,12 +21,8 @@ type event =
 type t
 
 val current : t -> job Id.Map.t
-
-val start :
-  Id.t -> Pid.t -> description:unit Pp.t -> started_at:float -> unit Fiber.t
-
+val start : Id.t -> Pid.t -> description:unit Pp.t -> started_at:float -> unit Fiber.t
 val stop : Id.t -> unit Fiber.t
-
 val equal : t -> t -> bool
 
 (** If two jobs states differ by a single event, then return it. *)

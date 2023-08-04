@@ -14,6 +14,7 @@ module OS = struct
     | Darwin -> Dyn.variant "Darwin" []
     | Linux -> Dyn.variant "Linux" []
     | Other -> Dyn.variant "Other" []
+  ;;
 
   let linux () =
     try
@@ -24,15 +25,22 @@ module OS = struct
           | "Linux" -> true
           | _ -> false)
         ~finally:(fun () -> close_in_noerr chan)
-    with _ -> false
+    with
+    | _ -> false
+  ;;
 
   let value =
-    if Stdlib.Sys.win32 then Windows
-    else if is_darwin () then Darwin
-    else if linux () then Linux
+    if Stdlib.Sys.win32
+    then Windows
+    else if is_darwin ()
+    then Darwin
+    else if linux ()
+    then Linux
     else Other
+  ;;
 end
 
 let assert_os what =
-  if not (OS.equal OS.value what) then
-    Code_error.raise "unexpected os" [ ("os", OS.(to_dyn value)) ]
+  if not (OS.equal OS.value what)
+  then Code_error.raise "unexpected os" [ ("os", OS.(to_dyn value)) ]
+;;

@@ -16,5 +16,5 @@ let load filename =
   | false ->
     Format.pp_print_flush ppf ();
     failwith
-    @@ Format.asprintf "Failed to load file `%s': %s" filename
-         (Buffer.contents buf)
+    @@ Format.asprintf "Failed to load file `%s': %s" filename (Buffer.contents buf)
+;;

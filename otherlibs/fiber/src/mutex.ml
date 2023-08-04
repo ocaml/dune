@@ -8,10 +8,12 @@ type t =
   }
 
 let lock t k =
-  if t.locked then suspend (fun k -> Queue.push t.waiters k) k
+  if t.locked
+  then suspend (fun k -> Queue.push t.waiters k) k
   else (
     t.locked <- true;
     k ())
+;;
 
 let unlock t k =
   assert t.locked;
@@ -20,9 +22,11 @@ let unlock t k =
     t.locked <- false;
     k ()
   | Some next -> resume next () k
+;;
 
 let with_lock t ~f =
   let* () = lock t in
   finalize f ~finally:(fun () -> unlock t)
+;;
 
 let create () = { locked = false; waiters = Queue.create () }

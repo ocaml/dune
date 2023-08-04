@@ -15,7 +15,5 @@ include Dune_config
 
 (* To make bug reports usable *)
 let () = Printexc.record_backtrace true
-
 let protect = Exn.protect
-
 let protectx = Exn.protectx

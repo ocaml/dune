@@ -27,7 +27,6 @@ module type S = sig
   end
 
   val reduce : t list -> t
-
   val map_reduce : f:('a -> t) -> 'a list -> t
 end
 

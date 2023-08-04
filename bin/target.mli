@@ -9,11 +9,10 @@ type target_type =
 
     If argument is [None], load the root, otherwise only load targets from the
     nearest subdirectory. *)
-val all_direct_targets :
-  Path.Source.t option -> target_type Path.Build.Map.t Memo.t
+val all_direct_targets : Path.Source.t option -> target_type Path.Build.Map.t Memo.t
 
-val interpret_targets :
-     Workspace_root.t
+val interpret_targets
+  :  Workspace_root.t
   -> Dune_config.t
   -> Dune_rules.Main.build_system
   -> Arg.Dep.t list

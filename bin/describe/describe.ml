@@ -19,6 +19,7 @@ let subcommands =
   ; Aliases_targets.Aliases_cmd.command
   ; Package_entries.command
   ]
+;;
 
 let group =
   let doc = "Describe the workspace." in
@@ -41,9 +42,11 @@ let group =
   let info = Cmd.info "describe" ~doc ~man in
   let default = Describe_workspace.term in
   Cmd.group ~default info subcommands
+;;
 
 module Show = struct
   let group =
     let doc = "Command group for showing information about the workspace" in
     Cmd.group (Cmd.info ~doc "show") subcommands
+  ;;
 end

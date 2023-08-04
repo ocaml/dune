@@ -16,11 +16,8 @@ module type Desc = sig
   type t
 
   val name : string
-
   val version : int
-
   val to_dyn : t -> Dyn.t
-
   val test_example : unit -> t
 end
 
@@ -40,9 +37,7 @@ end
     persistent file to locate the appropriate pretty printer. *)
 module Make (D : Desc) : sig
   val to_string : D.t -> string
-
   val dump : Path.t -> D.t -> unit
-
   val load : Path.t -> D.t option
 
   type data += T of D.t
@@ -57,5 +52,4 @@ end
 type t = T : (module Desc with type t = 'a) * 'a -> t
 
 val load_exn : Path.t -> t
-
 val test_examples : unit -> t Seq.t

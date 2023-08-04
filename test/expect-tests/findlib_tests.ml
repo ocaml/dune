@@ -12,14 +12,14 @@ requires(ppx_driver) = "baz"
 |}
 
 let db_path : Path.Outside_build_dir.t =
-  External
-    (Path.External.of_filename_relative_to_initial_cwd
-       "../unit-tests/findlib-db")
+  External (Path.External.of_filename_relative_to_initial_cwd "../unit-tests/findlib-db")
+;;
 
 let print_pkg ppf pkg =
   let info = Dune_package.Lib.info pkg in
   let name = Lib_info.name info in
   Format.fprintf ppf "<package:%s>" (Lib_name.to_string name)
+;;
 
 let findlib =
   let lib_config : Lib_config.t =
@@ -40,7 +40,8 @@ let findlib =
     }
   in
   Memo.lazy_ (fun () ->
-      Findlib.create ~paths:[ Path.outside_build_dir db_path ] ~lib_config)
+    Findlib.create ~paths:[ Path.outside_build_dir db_path ] ~lib_config)
+;;
 
 let resolve_pkg s =
   (let lib_name = Lib_name.of_string s in
@@ -49,11 +50,13 @@ let resolve_pkg s =
    Findlib.find findlib lib_name)
   |> Memo.run
   |> Test_scheduler.(run (create ()))
+;;
 
 let elide_db_path path =
   let prefix = Path.Outside_build_dir.to_string db_path in
   let path = Path.to_string path in
   String.drop_prefix_if_exists path ~prefix
+;;
 
 let print_pkg_archives pkg =
   let pkg = resolve_pkg pkg in
@@ -74,14 +77,17 @@ let print_pkg_archives pkg =
   in
   let pp = Dyn.pp (to_dyn pkg) in
   Format.printf "%a@." Pp.to_fmt pp
+;;
 
 let%expect_test _ =
   print_pkg_archives "qux";
   [%expect {| Ok { byte = [ "/qux/qux.cma" ]; native = [] } |}]
+;;
 
 let%expect_test _ =
   print_pkg_archives "xyz";
   [%expect {| Ok { byte = [ "/xyz.cma" ]; native = [] } |}]
+;;
 
 let%expect_test _ =
   let pkg =
@@ -96,12 +102,14 @@ let%expect_test _ =
   let pp = Dyn.pp dyn in
   Format.printf "%a@." Pp.to_fmt pp;
   [%expect {|[ "baz" ]|}]
+;;
 
 (* Meta parsing/simplification *)
 
 let%expect_test _ =
   Meta.of_string foo_meta ~name:(Some (Package.Name.of_string "foo"))
-  |> Meta.Simplified.to_dyn |> print_dyn;
+  |> Meta.Simplified.to_dyn
+  |> print_dyn;
   [%expect
     {|
     { name = Some "foo"
@@ -125,6 +133,7 @@ let%expect_test _ =
           }
     ; subs = []
     } |}]
+;;
 
 let conf () =
   let memo =
@@ -134,14 +143,16 @@ let conf () =
       ~ocamlpath:[]
       ~env:
         (Env.initial
-        |> Env.add ~var:"OCAMLFIND_CONF"
-             ~value:
-               (Path.Outside_build_dir.relative db_path "../toolchain"
-               |> Path.Outside_build_dir.to_string))
+         |> Env.add
+              ~var:"OCAMLFIND_CONF"
+              ~value:
+                (Path.Outside_build_dir.relative db_path "../toolchain"
+                 |> Path.Outside_build_dir.to_string))
       ~findlib_toolchain:(Some "tlc")
     >>| Option.value_exn
   in
   Memo.run memo |> Test_scheduler.(run (create ()))
+;;
 
 let%expect_test _ =
   let conf = conf () in
@@ -168,3 +179,4 @@ let%expect_test _ =
     } |}];
   print_dyn (Env.to_dyn (Findlib.Config.env conf));
   [%expect {| map { "FOO_BAR" : "my variable" } |}]
+;;

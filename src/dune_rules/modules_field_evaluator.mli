@@ -19,8 +19,8 @@ type kind =
   | Implementation of Implementation.t
   | Exe_or_normal_lib
 
-val eval :
-     modules:Module.Source.t Module_trie.t
+val eval
+  :  modules:Module.Source.t Module_trie.t
   -> stanza_loc:Loc.t
   -> private_modules:Ordered_set_lang.t
   -> kind:kind

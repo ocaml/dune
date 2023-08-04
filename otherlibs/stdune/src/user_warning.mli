@@ -9,8 +9,8 @@
 
     If [is_error] is [true], then this function behaves exactly the same as
     [User_error.raise]. *)
-val emit :
-     ?loc:Loc0.t
+val emit
+  :  ?loc:Loc0.t
   -> ?hints:User_message.Style.t Pp.t list
   -> ?is_error:bool
   -> User_message.Style.t Pp.t list

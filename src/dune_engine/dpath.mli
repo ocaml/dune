@@ -32,7 +32,6 @@ type 'build path_kind =
 val analyse_target : Path.Build.t -> target_kind
 
 val analyse_path : Path.t -> target_kind path_kind
-
 val analyse_dir : Path.t -> Target_dir.t path_kind
 
 (** Nice description of a target *)
@@ -44,7 +43,6 @@ include Dune_sexp.Conv.S with type t = Path.t
 
 module Local : sig
   val encode : dir:Path.t -> Path.t Dune_sexp.Encoder.t
-
   val decode : dir:Path.t -> Path.t Dune_sexp.Decoder.t
 end
 
@@ -52,14 +50,11 @@ module Build : sig
   include Dune_sexp.Conv.S with type t = Path.Build.t
 
   val is_dev_null : t -> bool
-
   val install_dir : t
-
   val anonymous_actions_dir : t
 end
 
 module External : sig
   val encode : Path.External.t Dune_sexp.Encoder.t
-
   val decode : Path.External.t Dune_sexp.Decoder.t
 end

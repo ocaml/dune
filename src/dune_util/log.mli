@@ -27,8 +27,8 @@ val info_user_message : User_message.t -> unit
 val info : User_message.Style.t Pp.t list -> unit
 
 (** Print an executed command in the log *)
-val command :
-     command_line:string
+val command
+  :  command_line:string
   -> output:string
   -> exit_status:Unix.process_status
   -> unit

@@ -8,7 +8,6 @@ module Dir_rules : sig
   type t
 
   val empty : t
-
   val union : t -> t -> t
 
   module Alias_spec : sig
@@ -40,11 +39,8 @@ module Dir_rules : sig
     }
 
   val consume : t -> ready
-
   val is_subset : t -> of_:t -> bool
-
   val is_empty : t -> bool
-
   val to_dyn : t -> Dyn.t
 end
 
@@ -76,13 +72,12 @@ module Produce : sig
     (** [add_deps alias ?loc deps] arrange things so that all the dependencies
         registered by [deps] are considered as a part of alias expansion of
         [alias]. *)
-    val add_deps :
-      t -> ?loc:Stdune.Loc.t -> unit Action_builder.t -> unit Memo.t
+    val add_deps : t -> ?loc:Stdune.Loc.t -> unit Action_builder.t -> unit Memo.t
 
     (** [add_action alias ~context ~loc action] arrange things so that [action]
         is executed as part of the build of alias [alias]. *)
-    val add_action :
-         t
+    val add_action
+      :  t
       -> context:Build_context.t
       -> loc:Loc.t option
       -> Action.Full.t Action_builder.t
@@ -91,25 +86,15 @@ module Produce : sig
 end
 
 val implicit_output : t Memo.Implicit_output.t
-
 val empty : t
-
 val to_dyn : t -> Dyn.t
-
 val union : t -> t -> t
-
 val of_dir_rules : dir:Path.Build.t -> Dir_rules.t -> t
-
 val of_rules : Rule.t list -> t
-
 val produce : t -> unit Memo.t
-
 val is_subset : t -> of_:t -> bool
-
 val map_rules : t -> f:(Rule.t -> Rule.t) -> t
-
 val collect : (unit -> 'a Memo.t) -> ('a * t) Memo.t
-
 val collect_unit : (unit -> unit Memo.t) -> t Memo.t
 
 (** returns [Dir_rules.empty] for non-build paths *)

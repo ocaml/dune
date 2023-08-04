@@ -9,6 +9,7 @@ module Context_or_install = struct
   let to_dyn = function
     | Install ctx -> Dyn.List [ Dyn.String "install"; Context_name.to_dyn ctx ]
     | Context s -> Context_name.to_dyn s
+  ;;
 end
 
 module Rules = struct
@@ -16,14 +17,9 @@ module Rules = struct
     type t = Subdir_set.t Path.Build.Map.t
 
     let empty = Path.Build.Map.empty
-
     let singleton ~dir sub_dirs = Path.Build.Map.singleton dir sub_dirs
-
-    let find t dir =
-      Path.Build.Map.find t dir |> Option.value ~default:Subdir_set.empty
-
-    let union a b =
-      Path.Build.Map.union a b ~f:(fun _ a b -> Some (Subdir_set.union a b))
+    let find t dir = Path.Build.Map.find t dir |> Option.value ~default:Subdir_set.empty
+    let union a b = Path.Build.Map.union a b ~f:(fun _ a b -> Some (Subdir_set.union a b))
   end
 
   type t =
@@ -37,19 +33,19 @@ module Rules = struct
     ; directory_targets = Path.Build.Map.empty
     ; rules = Memo.return Rules.empty
     }
+  ;;
 
   let combine_exn r { build_dir_only_sub_dirs; directory_targets; rules } =
     { build_dir_only_sub_dirs =
-        Build_only_sub_dirs.union r.build_dir_only_sub_dirs
-          build_dir_only_sub_dirs
-    ; directory_targets =
-        Path.Build.Map.union_exn r.directory_targets directory_targets
+        Build_only_sub_dirs.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
+    ; directory_targets = Path.Build.Map.union_exn r.directory_targets directory_targets
     ; rules =
         (let open Memo.O in
          let+ r = r.rules
          and+ r' = rules in
          Rules.union r r')
     }
+  ;;
 end
 
 type gen_rules_result =
@@ -58,8 +54,8 @@ type gen_rules_result =
   | Redirect_to_parent of Rules.t
 
 module type Rule_generator = sig
-  val gen_rules :
-       Context_or_install.t
+  val gen_rules
+    :  Context_or_install.t
     -> dir:Path.Build.t
     -> string list
     -> gen_rules_result Memo.t
@@ -72,7 +68,6 @@ module type Source_tree = sig
     type t
 
     val sub_dir_names : t -> Filename.Set.t
-
     val file_paths : t -> Path.Source.Set.t
   end
 
@@ -84,7 +79,7 @@ type t =
   ; rule_generator : (module Rule_generator)
   ; sandboxing_preference : Sandbox_mode.t list
   ; promote_source :
-         chmod:(int -> int)
+      chmod:(int -> int)
       -> delete_dst_if_it_is_a_directory:bool
       -> src:Path.Build.t
       -> dst:Path.Source.t
@@ -102,22 +97,33 @@ type t =
 
 let t = Fdecl.create Dyn.opaque
 
-let set ~action_runner ~stats ~contexts ~promote_source ~cache_config
-    ~cache_debug_flags ~sandboxing_preference ~rule_generator
-    ~implicit_default_alias ~execution_parameters ~source_tree ~shared_cache =
+let set
+  ~action_runner
+  ~stats
+  ~contexts
+  ~promote_source
+  ~cache_config
+  ~cache_debug_flags
+  ~sandboxing_preference
+  ~rule_generator
+  ~implicit_default_alias
+  ~execution_parameters
+  ~source_tree
+  ~shared_cache
+  =
   let contexts =
     Memo.lazy_ ~name:"Build_config.set" (fun () ->
-        let open Memo.O in
-        let+ contexts = Memo.Lazy.force contexts in
-        Context_name.Map.of_list_map_exn contexts ~f:(fun c ->
-            (c.Build_context.name, c)))
+      let open Memo.O in
+      let+ contexts = Memo.Lazy.force contexts in
+      Context_name.Map.of_list_map_exn contexts ~f:(fun c -> c.Build_context.name, c))
   in
   let () =
     match (cache_config : Dune_cache.Config.t) with
     | Disabled -> ()
     | Enabled _ -> Dune_cache_storage.Layout.create_cache_directories ()
   in
-  Fdecl.set t
+  Fdecl.set
+    t
     { contexts
     ; rule_generator
     ; sandboxing_preference =
@@ -132,5 +138,6 @@ let set ~action_runner ~stats ~contexts ~promote_source ~cache_config
     ; action_runner
     ; shared_cache
     }
+;;
 
 let get () = Fdecl.get t

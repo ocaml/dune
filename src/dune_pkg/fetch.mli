@@ -12,8 +12,8 @@ type failure =
       pass the actually computed checksum.
     @raise Unavailable
       When the file can't be retrieved, e.g. not available at the location. *)
-val fetch :
-     unpack:bool
+val fetch
+  :  unpack:bool
   -> checksum:Checksum.t option
   -> target:Path.t
   -> OpamUrl.t

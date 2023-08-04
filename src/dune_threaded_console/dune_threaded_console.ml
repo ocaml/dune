@@ -8,7 +8,6 @@ open Stdune
 let make (module Base : S) : (module Dune_console.Backend) =
   let module T = struct
     let mutex = Mutex.create ()
-
     let finish_cv = Condition.create ()
 
     let state =
@@ -18,6 +17,7 @@ let make (module Base : S) : (module Dune_console.Backend) =
       ; finish_requested = false
       ; dirty = true
       }
+    ;;
 
     let finish () =
       Mutex.lock mutex;
@@ -27,18 +27,21 @@ let make (module Base : S) : (module Dune_console.Backend) =
         Condition.wait finish_cv mutex
       done;
       Mutex.unlock mutex
+    ;;
 
     let print_user_message m =
       Mutex.lock mutex;
       state.dirty <- true;
       Queue.push state.messages m;
       Mutex.unlock mutex
+    ;;
 
     let set_status_line sl =
       Mutex.lock mutex;
       state.dirty <- true;
       state.status_line <- sl;
       Mutex.unlock mutex
+    ;;
 
     let print_if_no_status_line _msg = ()
 
@@ -49,6 +52,7 @@ let make (module Base : S) : (module Dune_console.Backend) =
       state.status_line <- None;
       Base.reset ();
       Mutex.unlock mutex
+    ;;
 
     let reset_flush_history () =
       Mutex.lock mutex;
@@ -57,25 +61,26 @@ let make (module Base : S) : (module Dune_console.Backend) =
       state.status_line <- None;
       Base.reset_flush_history ();
       Mutex.unlock mutex
+    ;;
 
     let start () =
       Base.start ();
-      Dune_engine.Scheduler.spawn_thread @@ fun () ->
+      Dune_engine.Scheduler.spawn_thread
+      @@ fun () ->
       Dune_util.Terminal_signals.unblock ();
       let last = ref (Unix.gettimeofday ()) in
       let frame_rate = 1. /. 60. in
       let cleanup exn =
         state.finished <- true;
         Option.iter exn ~f:(fun exn ->
-            Dune_util.Log.info
-              [ Pp.text "Console failed"; Exn_with_backtrace.pp exn ]);
+          Dune_util.Log.info [ Pp.text "Console failed"; Exn_with_backtrace.pp exn ]);
         (match Exn_with_backtrace.try_with Base.finish with
-        | Ok () -> ()
-        | Error exn ->
-          (* we can't log to console because we are cleaning it up and we
-             borked it *)
-          Dune_util.Log.info
-            [ Pp.text "Error cleaning up console"; Exn_with_backtrace.pp exn ]);
+         | Ok () -> ()
+         | Error exn ->
+           (* we can't log to console because we are cleaning it up and we
+              borked it *)
+           Dune_util.Log.info
+             [ Pp.text "Error cleaning up console"; Exn_with_backtrace.pp exn ]);
         Condition.broadcast finish_cv;
         Mutex.unlock mutex
       in
@@ -101,21 +106,21 @@ let make (module Base : S) : (module Dune_console.Backend) =
         while true do
           Mutex.lock mutex;
           (match state.dirty with
-          | false -> ()
-          | true ->
-            Base.render state;
-            let finish_requested = state.finish_requested in
-            if finish_requested then raise_notrace Exit;
-            state.dirty <- false);
+           | false -> ()
+           | true ->
+             Base.render state;
+             let finish_requested = state.finish_requested in
+             if finish_requested then raise_notrace Exit;
+             state.dirty <- false);
           Mutex.unlock mutex;
           let now = Unix.gettimeofday () in
           let elapsed = now -. !last in
           let new_time =
-            if elapsed >= frame_rate then
-              Base.handle_user_events ~now ~time_budget:0.0 mutex state
-            else
+            if elapsed >= frame_rate
+            then Base.handle_user_events ~now ~time_budget:0.0 mutex state
+            else (
               let delta = frame_rate -. elapsed in
-              Base.handle_user_events ~now ~time_budget:delta mutex state
+              Base.handle_user_events ~now ~time_budget:delta mutex state)
           in
           last := new_time
         done
@@ -130,8 +135,11 @@ let make (module Base : S) : (module Dune_console.Backend) =
            mutex even if it fails. *)
         Mutex.lock mutex;
         cleanup (Some exn)
-  end in
+    ;;
+  end
+  in
   (module T)
+;;
 
 let progress () =
   make
@@ -144,11 +152,14 @@ let progress () =
         done;
         set_status_line state.status_line;
         flush stderr
+      ;;
 
       (* The current console doesn't react to user events so we just sleep until
-          the next loop iteration. Because it doesn't react to user input, it cannot
-          modify the UI state, and as a consequence doesn't need the mutex. *)
+         the next loop iteration. Because it doesn't react to user input, it cannot
+         modify the UI state, and as a consequence doesn't need the mutex. *)
       let handle_user_events ~now ~time_budget (_ : Mutex.t) (_ : state) =
         Unix.sleepf time_budget;
         now +. time_budget
+      ;;
     end)
+;;

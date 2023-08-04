@@ -1,12 +1,12 @@
 open Import
 
-val drop_source_extension :
-     string
+val drop_source_extension
+  :  string
   -> dune_version:Dune_lang.Syntax.Version.t
   -> (string * Foreign_language.t) option
 
-val possible_sources :
-     language:Foreign_language.t
+val possible_sources
+  :  language:Foreign_language.t
   -> string
   -> dune_version:Dune_lang.Syntax.Version.t
   -> string list
@@ -38,26 +38,21 @@ module Archive : sig
     module Map : Map.S with type key = t
 
     val to_dyn : t -> Dyn.t
-
     val to_string : t -> string
-
     val path : dir:Path.Build.t -> mode:Mode.Select.t -> t -> Path.Build.t
-
     val decode : t Dune_lang.Decoder.t
-
     val stubs : string -> t
-
     val lib_file_prefix : string
 
-    val lib_file :
-         t
+    val lib_file
+      :  t
       -> dir:Path.Build.t
       -> ext_lib:Filename.Extension.t
       -> mode:Mode.Select.t
       -> Path.Build.t
 
-    val dll_file :
-         t
+    val dll_file
+      :  t
       -> dir:Path.Build.t
       -> ext_dll:Filename.Extension.t
       -> mode:Mode.Select.t
@@ -67,22 +62,19 @@ module Archive : sig
   type t
 
   val dir_path : dir:Path.Build.t -> t -> Path.Build.t
-
   val name : mode:Mode.Select.t -> t -> Name.t
-
   val stubs : string -> t
-
   val decode : t Dune_lang.Decoder.t
 
-  val lib_file :
-       archive:t
+  val lib_file
+    :  archive:t
     -> dir:Path.Build.t
     -> ext_lib:Filename.Extension.t
     -> mode:Mode.Select.t
     -> Path.Build.t
 
-  val dll_file :
-       archive:t
+  val dll_file
+    :  archive:t
     -> dir:Path.Build.t
     -> ext_dll:Filename.Extension.t
     -> mode:Mode.Select.t
@@ -107,8 +99,8 @@ module Stubs : sig
 
     val decode : t Dune_lang.Decoder.t
 
-    val expand_include :
-         t
+    val expand_include
+      :  t
       -> expand_str:(String_with_vars.t -> string Memo.t)
       -> dir:Path.Build.t
       -> Without_include.t list Memo.t
@@ -125,8 +117,8 @@ module Stubs : sig
     }
 
   (** Construct foreign library stubs with some fields set to default values. *)
-  val make :
-       loc:Loc.t
+  val make
+    :  loc:Loc.t
     -> language:Foreign_language.t
     -> names:Ordered_set_lang.t
     -> mode:Mode.Select.t
@@ -134,7 +126,6 @@ module Stubs : sig
     -> t
 
   val decode : t Dune_lang.Decoder.t
-
   val is_mode_dependent : t -> bool
 end
 
@@ -184,9 +175,7 @@ module Source : sig
     }
 
   val language : t -> Foreign_language.t
-
   val mode : t -> Mode.Select.t
-
   val path : t -> Path.Build.t
 
   (** The name of the corresponding object file; for example, [name] for a
@@ -205,8 +194,11 @@ end
 module Sources : sig
   type t = (Loc.t * Source.t) String.Map.t
 
-  val object_files :
-    t -> dir:Path.Build.t -> ext_obj:Filename.Extension.t -> Path.Build.t list
+  val object_files
+    :  t
+    -> dir:Path.Build.t
+    -> ext_obj:Filename.Extension.t
+    -> Path.Build.t list
 
   val has_cxx_sources : t -> bool
 
@@ -218,8 +210,8 @@ module Sources : sig
 
     (** [load ~dir ~files] loads foreign sources in [dir] into a map keyed by
         the object name. *)
-    val load :
-         dune_version:Dune_lang.Syntax.Version.t
+    val load
+      :  dune_version:Dune_lang.Syntax.Version.t
       -> dir:Path.Build.t
       -> files:Filename.Set.t
       -> t
@@ -231,11 +223,7 @@ module Objects : sig
   type t
 
   val empty : t
-
   val is_empty : t -> bool
-
   val decode : t Dune_lang.Decoder.t
-
-  val build_paths :
-    t -> ext_obj:Filename.Extension.t -> dir:Path.Build.t -> Path.t list
+  val build_paths : t -> ext_obj:Filename.Extension.t -> dir:Path.Build.t -> Path.t list
 end

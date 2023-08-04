@@ -30,9 +30,7 @@
     any records, using any module types as functor arguments, or make non
     exhaustive matches an error to guarantee compatibility. *)
 
-[@@@alert
-unstable "The API of this library is not stable and may change without notice."]
-
+[@@@alert unstable "The API of this library is not stable and may change without notice."]
 [@@@alert "-unstable"]
 
 module V1 : sig
@@ -57,9 +55,7 @@ module V1 : sig
       type t
 
       val payload : t -> Csexp.t option
-
       val message : t -> string
-
       val kind : t -> kind
 
       exception E of t
@@ -78,7 +74,6 @@ module V1 : sig
     type t
 
     val start : t -> Lexing.position
-
     val stop : t -> Lexing.position
   end
 
@@ -86,11 +81,8 @@ module V1 : sig
     type t
 
     val dune_root : t
-
     val absolute : string -> t
-
     val relative : t -> string -> t
-
     val to_string_absolute : t -> string
   end
 
@@ -113,7 +105,6 @@ module V1 : sig
       type t
 
       val in_build : t -> string
-
       val in_source : t -> string
     end
 
@@ -121,9 +112,7 @@ module V1 : sig
       type t
 
       val compare : t -> t -> Ordering.t
-
       val hash : t -> int
-
       val create : int -> t
     end
 
@@ -131,22 +120,16 @@ module V1 : sig
       type t
 
       val loc : t -> Loc.t
-
       val message : t -> unit Pp.t
     end
 
     type t
 
     val related : t -> Related.t list
-
     val loc : t -> Loc.t option
-
     val id : t -> Id.t
-
     val message : t -> unit Pp.t
-
     val severity : t -> severity option
-
     val promotion : t -> Promotion.t list
 
     (* The list of targets is ordered such that the first element is the
@@ -186,16 +169,13 @@ module V1 : sig
       type t
 
       val compare : t -> t -> Ordering.t
-
       val hash : t -> int
     end
 
     type t
 
     val id : t -> Id.t
-
     val description : t -> unit Pp.t
-
     val started_at : t -> float
 
     module Event : sig
@@ -209,7 +189,6 @@ module V1 : sig
     type 'a t
 
     val progress : Progress.t t
-
     val diagnostic : Diagnostic.Event.t list t
   end
 
@@ -217,7 +196,6 @@ module V1 : sig
     type t
 
     val payload : t -> Csexp.t option
-
     val message : t -> string
   end
 
@@ -228,7 +206,6 @@ module V1 : sig
     type t
 
     val payload : t -> Csexp.t option
-
     val message : t -> string
 
     exception E of t
@@ -245,7 +222,6 @@ module V1 : sig
     type ('a, 'b) t
 
     val ping : (unit, unit) t
-
     val diagnostics : (unit, Diagnostic.t list) t
 
     (** format a [dune], [dune-project], or a [dune-workspace] file. The full
@@ -265,16 +241,14 @@ module V1 : sig
       (** Rpc client *)
 
       type t
-
       type 'a fiber
-
       type chan
 
       module Handler : sig
         type t
 
-        val create :
-             ?log:(Message.t -> unit fiber)
+        val create
+          :  ?log:(Message.t -> unit fiber)
           -> ?abort:(Message.t -> unit fiber)
                (** If [abort] is called, the server has terminated the
                    connection due to a protocol error. This should never be
@@ -297,7 +271,6 @@ module V1 : sig
           main dune repository. *)
       module Versioned : sig
         type 'a notification
-
         type ('a, 'b) request
 
         (** [prepare_request client r] checks the request [r] against the
@@ -306,22 +279,22 @@ module V1 : sig
             This function does not initiate any communication with the server.
             However, as this function must check the version menu, it cannot
             complete until after version negotiation, and so returns a [fiber]. *)
-        val prepare_request :
-             t
+        val prepare_request
+          :  t
           -> ('a, 'b) Request.t
           -> (('a, 'b) request, Version_error.t) result fiber
 
         (** See [prepare_request]. *)
-        val prepare_notification :
-             t
+        val prepare_notification
+          :  t
           -> 'a Notification.t
           -> ('a notification, Version_error.t) result fiber
       end
 
       (** [request ?id client decl req] send a request [req] specified by [decl]
           to [client]. If [id] is [None], it will be automatically generated. *)
-      val request :
-           ?id:Id.t
+      val request
+        :  ?id:Id.t
         -> t
         -> ('a, 'b) Versioned.request
         -> 'a
@@ -350,33 +323,30 @@ module V1 : sig
       end
 
       (** [poll client sub] Initialize a polling loop for [sub] *)
-      val poll :
-        ?id:Id.t -> t -> 'a Sub.t -> ('a Stream.t, Version_error.t) result fiber
+      val poll : ?id:Id.t -> t -> 'a Sub.t -> ('a Stream.t, Version_error.t) result fiber
 
       module Batch : sig
         type client := t
-
         type t
 
         val create : client -> t
 
-        val request :
-             ?id:Id.t
+        val request
+          :  ?id:Id.t
           -> t
           -> ('a, 'b) Versioned.request
           -> 'a
           -> ('b, Response.Error.t) result fiber
 
         val notification : t -> 'a Versioned.notification -> 'a -> unit
-
         val submit : t -> unit fiber
       end
 
       (** [connect ?on_handler session init ~f] connect to [session], initialize
           with [init] and call [f] once the client is initialized. [handler] is
           called for some notifications sent to [session] *)
-      val connect :
-           ?handler:Handler.t
+      val connect
+        :  ?handler:Handler.t
         -> chan
         -> Initialize.t
         -> f:(t -> 'a fiber)
@@ -384,46 +354,41 @@ module V1 : sig
     end
 
     (** Functor to create a client implementation *)
-    module Make (Fiber : sig
-      type 'a t
+    module Make
+        (Fiber : sig
+           type 'a t
 
-      val return : 'a -> 'a t
+           val return : 'a -> 'a t
+           val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
+           val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
+           val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
 
-      val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
+           module O : sig
+             val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+             val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+           end
 
-      val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
+           module Ivar : sig
+             type 'a fiber := 'a t
+             type 'a t
 
-      val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
+             val create : unit -> 'a t
+             val read : 'a t -> 'a fiber
+             val fill : 'a t -> 'a -> unit fiber
+           end
+         end)
+        (Chan : sig
+           type t
 
-      module O : sig
-        val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+           (* [write t x] writes the s-expression when [x] is [Some _], and closes
+              the session if [x = None] *)
+           val write : t -> Csexp.t list option -> unit Fiber.t
 
-        val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-      end
-
-      module Ivar : sig
-        type 'a fiber := 'a t
-
-        type 'a t
-
-        val create : unit -> 'a t
-
-        val read : 'a t -> 'a fiber
-
-        val fill : 'a t -> 'a -> unit fiber
-      end
-    end) (Chan : sig
-      type t
-
-      (* [write t x] writes the s-expression when [x] is [Some _], and closes
-         the session if [x = None] *)
-      val write : t -> Csexp.t list option -> unit Fiber.t
-
-      (* [read t] attempts to read from [t]. If an s-expression is read, it is
-         returned as [Some sexp], otherwise [None] is returned and the session
-         is closed. *)
-      val read : t -> Csexp.t option Fiber.t
-    end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
+           (* [read t] attempts to read from [t]. If an s-expression is read, it is
+              returned as [Some sexp], otherwise [None] is returned and the session
+              is closed. *)
+           val read : t -> Csexp.t option Fiber.t
+         end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
   end
 
   module Where : sig
@@ -441,8 +406,8 @@ module V1 : sig
     module type S = sig
       type 'a fiber
 
-      val get :
-           env:(string -> string option)
+      val get
+        :  env:(string -> string option)
         -> build_dir:string
         -> (t option, exn) result fiber
 
@@ -450,22 +415,24 @@ module V1 : sig
     end
 
     (** obtain the address from the build directory and environment *)
-    module Make (Fiber : sig
-      type 'a t
+    module Make
+        (Fiber : sig
+           type 'a t
 
-      val return : 'a -> 'a t
+           val return : 'a -> 'a t
 
-      module O : sig
-        val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+           module O : sig
+             val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+             val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+           end
+         end)
+        (_ : sig
+           val read_file : string -> (string, exn) result Fiber.t
 
-        val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-      end
-    end) (_ : sig
-      val read_file : string -> (string, exn) result Fiber.t
-
-      val analyze_path :
-        string -> ([ `Unix_socket | `Normal_file | `Other ], exn) result Fiber.t
-    end) : S with type 'a fiber := 'a Fiber.t
+           val analyze_path
+             :  string
+             -> ([ `Unix_socket | `Normal_file | `Other ], exn) result Fiber.t
+         end) : S with type 'a fiber := 'a Fiber.t
   end
 
   module Registry : sig
@@ -481,13 +448,9 @@ module V1 : sig
       type t
 
       val to_dyn : t -> Dyn.t
-
       val compare : t -> t -> Ordering.t
-
       val pid : t -> int
-
       val where : t -> Where.t
-
       val root : t -> string
     end
 
@@ -497,7 +460,6 @@ module V1 : sig
       type t
 
       val create : Xdg.t -> t
-
       val watch_dir : t -> string
     end
 
@@ -514,32 +476,28 @@ module V1 : sig
       type t
 
       val added : t -> Dune.t list
-
       val removed : t -> Dune.t list
-
       val errored : t -> (string * exn) list
     end
 
     (** we can poll the registry efficiently using the following functor *)
-    module Poll (Fiber : sig
-      type 'a t
+    module Poll
+        (Fiber : sig
+           type 'a t
 
-      val return : 'a -> 'a t
+           val return : 'a -> 'a t
+           val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
-      val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
-
-      module O : sig
-        val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
-        val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-      end
-    end) (_ : sig
-      val scandir : string -> (string list, exn) result Fiber.t
-
-      val stat : string -> ([ `Mtime of float ], exn) result Fiber.t
-
-      val read_file : string -> (string, exn) result Fiber.t
-    end) : sig
+           module O : sig
+             val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+             val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+           end
+         end)
+        (_ : sig
+           val scandir : string -> (string list, exn) result Fiber.t
+           val stat : string -> ([ `Mtime of float ], exn) result Fiber.t
+           val read_file : string -> (string, exn) result Fiber.t
+         end) : sig
       val poll : t -> (Refresh.t, exn) result Fiber.t
     end
   end

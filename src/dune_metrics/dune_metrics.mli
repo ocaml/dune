@@ -19,7 +19,6 @@ module Timer : sig
   type t
 
   val start : string -> t
-
   val stop : t -> unit
 
   (** If metrics are enabled, increment the timer by the amount of seconds

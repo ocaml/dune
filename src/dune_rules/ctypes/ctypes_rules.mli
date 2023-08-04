@@ -1,7 +1,7 @@
 open Import
 
-val gen_rules :
-     cctx:Compilation_context.t
+val gen_rules
+  :  cctx:Compilation_context.t
   -> buildable:Dune_file.Buildable.t
   -> loc:Loc.t
   -> scope:Scope.t
@@ -10,8 +10,8 @@ val gen_rules :
   -> version:Syntax.Version.t
   -> unit Memo.t
 
-val ctypes_cclib_flags :
-     Super_context.t
+val ctypes_cclib_flags
+  :  Super_context.t
   -> expander:Expander.t
   -> buildable:Dune_file.Buildable.t
   -> string list Action_builder.t

@@ -26,7 +26,8 @@ let make (times : Proc.Times.t) (gc : Gc.stat) =
   (* We default to 0 for the other processor times since they are rarely None in
      pracice. *)
   let { Proc.Resource_usage.user_cpu_time; system_cpu_time } =
-    Option.value times.resource_usage
+    Option.value
+      times.resource_usage
       ~default:{ user_cpu_time = 0.; system_cpu_time = 0. }
   in
   { elapsed_time = times.elapsed_time
@@ -49,6 +50,7 @@ let make (times : Proc.Times.t) (gc : Gc.stat) =
   ; top_heap_words = gc.top_heap_words
   ; stack_size = gc.stack_size
   }
+;;
 
 let map ~f ~g (metrics : ('float, 'int) t) : ('float_, 'int_) t =
   { elapsed_time = f metrics.elapsed_time
@@ -71,10 +73,12 @@ let map ~f ~g (metrics : ('float, 'int) t) : ('float_, 'int_) t =
   ; top_heap_words = g metrics.top_heap_words
   ; stack_size = g metrics.stack_size
   }
+;;
 
 (** Turns a list of records into a record of lists. *)
 let unzip (metrics : ('float, 'int) t list) : ('float list, 'int list) t =
-  List.fold_left metrics
+  List.fold_left
+    metrics
     ~init:
       { elapsed_time = []
       ; user_cpu_time = []
@@ -95,7 +99,8 @@ let unzip (metrics : ('float, 'int) t list) : ('float list, 'int list) t =
       ; compactions = []
       ; top_heap_words = []
       ; stack_size = []
-      } ~f:(fun acc x ->
+      }
+    ~f:(fun acc x ->
       { elapsed_time = x.elapsed_time :: acc.elapsed_time
       ; user_cpu_time = x.user_cpu_time :: acc.user_cpu_time
       ; system_cpu_time = x.system_cpu_time :: acc.system_cpu_time
@@ -117,3 +122,4 @@ let unzip (metrics : ('float, 'int) t list) : ('float list, 'int list) t =
       ; stack_size = x.stack_size :: acc.stack_size
       })
   |> map ~f:List.rev ~g:List.rev
+;;

@@ -18,13 +18,14 @@ type t =
   }
 
 let allowed_in_enabled_if =
-  [ ("architecture", (1, 0))
-  ; ("system", (1, 0))
-  ; ("model", (1, 0))
-  ; ("os_type", (1, 0))
-  ; ("ccomp_type", (2, 0))
-  ; ("ocaml_version", (2, 5))
+  [ "architecture", (1, 0)
+  ; "system", (1, 0)
+  ; "model", (1, 0)
+  ; "os_type", (1, 0)
+  ; "ccomp_type", (2, 0)
+  ; "ocaml_version", (2, 5)
   ]
+;;
 
 let get_for_enabled_if t (pform : Pform.t) =
   match pform with
@@ -35,21 +36,23 @@ let get_for_enabled_if t (pform : Pform.t) =
   | Var Ccomp_type -> Ocaml_config.Ccomp_type.to_string t.ccomp_type
   | Var Ocaml_version -> t.ocaml_version_string
   | _ ->
-    Code_error.raise "Lib_config.get_for_enabled_if: var not allowed"
-      [ ("var", Pform.to_dyn pform) ]
+    Code_error.raise
+      "Lib_config.get_for_enabled_if: var not allowed"
+      [ "var", Pform.to_dyn pform ]
+;;
 
 let linker_can_create_empty_archives t =
   match t.ccomp_type with
   | Msvc -> false
   | Other _ -> true
+;;
 
 let hash = Poly.hash
-
 let equal = Poly.equal
-
 let to_dyn = Dyn.opaque
 
 let cc_g t =
   match t.ccomp_type with
   | Msvc -> []
   | Other _ -> [ "-g" ]
+;;

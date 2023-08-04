@@ -6,9 +6,7 @@ open Import
 type t
 
 val meta_fn : string
-
 val create : paths:Path.t list -> lib_config:Lib_config.t -> t Memo.t
-
 val lib_config : t -> Lib_config.t
 
 (** The builtins packages *)
@@ -28,11 +26,12 @@ end
 
 (** Lookup a whole package, including sub-packages, in the given database.
     [root_name] must be a library name without dots. *)
-val find_root_package :
-  t -> Package.Name.t -> (Dune_package.t, Unavailable_reason.t) result Memo.t
+val find_root_package
+  :  t
+  -> Package.Name.t
+  -> (Dune_package.t, Unavailable_reason.t) result Memo.t
 
-val find :
-  t -> Lib_name.t -> (Dune_package.Entry.t, Unavailable_reason.t) result Memo.t
+val find : t -> Lib_name.t -> (Dune_package.Entry.t, Unavailable_reason.t) result Memo.t
 
 (** List all the packages available in this Database *)
 val all_packages : t -> Dune_package.Entry.t list Memo.t
@@ -61,8 +60,8 @@ module Config : sig
   val env : t -> Env.t
 
   (** Load the findlib configuration for this [findlib_toolchain], if any. *)
-  val discover_from_env :
-       env:Env.t
+  val discover_from_env
+    :  env:Env.t
     -> which:(Filename.t -> Path.t option Memo.t)
     -> ocamlpath:Path.t list
     -> findlib_toolchain:string option

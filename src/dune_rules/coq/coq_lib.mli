@@ -45,11 +45,8 @@ type t =
   | Legacy of Legacy.t
 
 val to_dyn : t -> Dyn.t
-
 val name : t -> Coq_lib_name.t
-
 val obj_root : t -> Path.t
-
 val implicit : t -> bool
 
 (** Return the list of dependencies needed for compiling this library *)
@@ -57,7 +54,6 @@ val theories_closure : t -> t list Resolve.t
 
 module DB : sig
   type lib := t
-
   type t
 
   module Entry : sig
@@ -70,8 +66,8 @@ module DB : sig
       used yet at the stage they are called from [Scope] and the scope build
       process, is not finised. Instead, resolution of dependencies will be done
       in [resolve_*] below and properly memoized. *)
-  val create_from_coqlib_stanzas :
-       parent:t option
+  val create_from_coqlib_stanzas
+    :  parent:t option
     -> find_db:(Path.Build.t -> Lib.DB.t)
     -> (Coq_stanza.Theory.t * Entry.t) list
     -> t
@@ -81,19 +77,19 @@ module DB : sig
       libraries are installed, we would infer the right amount of information. *)
   val create_from_coqpaths : Coq_path.t list -> t
 
-  val find_many :
-       t
+  val find_many
+    :  t
     -> (Loc.t * Coq_lib_name.t) list
     -> coq_lang_version:Dune_sexp.Syntax.Version.t
     -> lib list Resolve.Memo.t
 
-  val resolve_boot :
-       t
+  val resolve_boot
+    :  t
     -> coq_lang_version:Dune_sexp.Syntax.Version.t
     -> (Loc.t * lib) option Resolve.Memo.t
 
-  val resolve :
-       t
+  val resolve
+    :  t
     -> coq_lang_version:Dune_sexp.Syntax.Version.t
     -> Loc.t * Coq_lib_name.t
     -> lib Resolve.Memo.t

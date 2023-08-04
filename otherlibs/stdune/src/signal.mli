@@ -36,9 +36,6 @@ type t =
 val name : t -> string
 
 val to_int : t -> int
-
 val to_dyn : t -> Dyn.t
-
 val compare : t -> t -> Ordering.t
-
 val of_int : int -> t

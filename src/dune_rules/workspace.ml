@@ -7,6 +7,7 @@ let syntax = Stanza.syntax
 
 let all_binaries (e : Dune_env.Stanza.t) =
   List.concat_map e.rules ~f:(fun (_, config) -> config.binaries)
+;;
 
 let env_field, env_field_lazy =
   let make f g =
@@ -17,31 +18,36 @@ let env_field, env_field_lazy =
        and+ loc = loc
        and+ s = Dune_env.Stanza.decode in
        let binaries = all_binaries s in
-       if List.is_empty binaries then s
-       else
-         let minimum_version = (3, 2) in
-         if version < minimum_version then
+       if List.is_empty binaries
+       then s
+       else (
+         let minimum_version = 3, 2 in
+         if version < minimum_version
+         then (
            let message =
-             User_message.make ~loc
+             User_message.make
+               ~loc
                [ Pp.text
-                   (Dune_lang.Syntax.Error_msg.since syntax minimum_version
-                      ~what:
-                        "'binaries' in an 'env' stanza in a dune-workspace file")
+                   (Dune_lang.Syntax.Error_msg.since
+                      syntax
+                      minimum_version
+                      ~what:"'binaries' in an 'env' stanza in a dune-workspace file")
                ]
            in
-           Dune_env.Stanza.add_warning ~message s
-           |> Dune_env.Stanza.add_error ~message
-         else
+           Dune_env.Stanza.add_warning ~message s |> Dune_env.Stanza.add_error ~message)
+         else (
            match File_binding.Unexpanded.L.find_pform binaries with
            | None -> s
            | Some loc ->
-             User_error.raise ~loc
+             User_error.raise
+               ~loc
                [ Pp.text
-                   "Variables are not supported in 'binaries' in an 'env' \
-                    stanza in a dune-workspace file."
-               ]
+                   "Variables are not supported in 'binaries' in an 'env' stanza in a \
+                    dune-workspace file."
+               ]))
   in
-  (make Fun.id Fun.id, make Lazy.from_val lazy_)
+  make Fun.id Fun.id, make Lazy.from_val lazy_
+;;
 
 module Context = struct
   module Target = struct
@@ -50,27 +56,31 @@ module Context = struct
       | Named of Context_name.t
 
     let equal x y =
-      match (x, y) with
+      match x, y with
       | Native, Native -> true
       | Native, _ | _, Native -> false
       | Named x, Named y -> Context_name.equal x y
+    ;;
 
     let t =
       let+ context_name = Context_name.decode in
       match Context_name.to_string context_name with
       | "native" -> Native
       | _ -> Named context_name
+    ;;
 
     let to_dyn =
       let open Dyn in
       function
       | Native -> variant "Native" []
       | Named name -> variant "Named" [ Context_name.to_dyn name ]
+    ;;
 
     let add ts x =
       match x with
       | None -> ts
       | Some t -> if List.mem ts t ~equal then ts else ts @ [ t ]
+    ;;
   end
 
   module Common = struct
@@ -91,39 +101,42 @@ module Context = struct
 
     let to_dyn { name; targets; host_context; _ } =
       Dyn.record
-        [ ("name", Context_name.to_dyn name)
-        ; ("targets", Dyn.list Target.to_dyn targets)
-        ; ("host_context", Dyn.option Context_name.to_dyn host_context)
+        [ "name", Context_name.to_dyn name
+        ; "targets", Dyn.list Target.to_dyn targets
+        ; "host_context", Dyn.option Context_name.to_dyn host_context
         ]
+    ;;
 
     let equal
-        { loc = _
-        ; profile
-        ; targets
-        ; env
-        ; toolchain
-        ; name
-        ; host_context
-        ; paths
-        ; fdo_target_exe
-        ; dynamically_linked_foreign_archives
-        ; instrument_with
-        ; merlin
-        } t =
+      { loc = _
+      ; profile
+      ; targets
+      ; env
+      ; toolchain
+      ; name
+      ; host_context
+      ; paths
+      ; fdo_target_exe
+      ; dynamically_linked_foreign_archives
+      ; instrument_with
+      ; merlin
+      }
+      t
+      =
       Profile.equal profile t.profile
       && List.equal Target.equal targets t.targets
       && Dune_env.Stanza.equal env t.env
       && Option.equal Context_name.equal toolchain t.toolchain
       && Context_name.equal name t.name
       && Option.equal Context_name.equal host_context t.host_context
-      && List.equal
-           (Tuple.T2.equal String.equal Ordered_set_lang.equal)
-           paths t.paths
+      && List.equal (Tuple.T2.equal String.equal Ordered_set_lang.equal) paths t.paths
       && Option.equal Path.equal fdo_target_exe t.fdo_target_exe
-      && Bool.equal dynamically_linked_foreign_archives
+      && Bool.equal
+           dynamically_linked_foreign_archives
            t.dynamically_linked_foreign_archives
       && List.equal Lib_name.equal instrument_with t.instrument_with
       && Bool.equal merlin t.merlin
+    ;;
 
     let fdo_suffix t =
       match t.fdo_target_exe with
@@ -131,56 +144,58 @@ module Context = struct
       | Some file ->
         let name, _ = Path.split_extension file in
         "-fdo-" ^ Path.basename name
+    ;;
 
     let decode =
       let+ env = env_field
-      and+ targets =
-        field "targets" (repeat Target.t) ~default:[ Target.Native ]
+      and+ targets = field "targets" (repeat Target.t) ~default:[ Target.Native ]
       and+ profile = field_o "profile" Profile.decode
       and+ host_context =
-        field_o "host"
-          (Dune_lang.Syntax.since syntax (1, 10) >>> Context_name.decode)
+        field_o "host" (Dune_lang.Syntax.since syntax (1, 10) >>> Context_name.decode)
       and+ toolchain =
-        field_o "toolchain"
-          (Dune_lang.Syntax.since syntax (1, 5) >>> Context_name.decode)
+        field_o "toolchain" (Dune_lang.Syntax.since syntax (1, 5) >>> Context_name.decode)
       and+ dynamically_linked_foreign_archives =
         let+ disable =
-          field ~default:false "disable_dynamically_linked_foreign_archives"
+          field
+            ~default:false
+            "disable_dynamically_linked_foreign_archives"
             (Dune_lang.Syntax.since syntax (2, 0) >>> bool)
         in
         not disable
       and+ fdo_target_exe =
         let f file =
           let ext = Filename.extension file in
-          if ext = ".exe" then Path.(relative root file)
+          if ext = ".exe"
+          then Path.(relative root file)
           else
             User_error.raise
               [ Pp.textf
-                  "`fdo %s` expects executable filename ending with .exe \
-                   extension, not %s. \n\
-                   Please specify the name of the executable to optimize, \
-                   including path from <root>."
-                  file ext
+                  "`fdo %s` expects executable filename ending with .exe extension, not \
+                   %s. \n\
+                   Please specify the name of the executable to optimize, including path \
+                   from <root>."
+                  file
+                  ext
               ]
         in
         field_o "fdo" (Dune_lang.Syntax.since syntax (2, 0) >>> map string ~f)
       and+ paths =
         let f l =
-          match
-            Env.Map.of_list (List.map ~f:(fun ((loc, s), _) -> (s, loc)) l)
-          with
-          | Ok _ -> List.map ~f:(fun ((_, s), x) -> (s, x)) l
+          match Env.Map.of_list (List.map ~f:(fun ((loc, s), _) -> s, loc) l) with
+          | Ok _ -> List.map ~f:(fun ((_, s), x) -> s, x) l
           | Error (var, _, loc) ->
-            User_error.raise ~loc
-              [ Pp.textf
-                  "the variable %S can appear at most once in this stanza." var
-              ]
+            User_error.raise
+              ~loc
+              [ Pp.textf "the variable %S can appear at most once in this stanza." var ]
         in
-        field "paths" ~default:[]
+        field
+          "paths"
+          ~default:[]
           (Dune_lang.Syntax.since Stanza.syntax (1, 12)
-          >>> map ~f (repeat (pair (located string) Ordered_set_lang.decode)))
+           >>> map ~f (repeat (pair (located string) Ordered_set_lang.decode)))
       and+ instrument_with =
-        field_o "instrument_with"
+        field_o
+          "instrument_with"
           (Dune_lang.Syntax.since syntax (2, 7) >>> repeat Lib_name.decode)
       and+ loc = loc
       and+ merlin = field_b "merlin" in
@@ -190,14 +205,13 @@ module Context = struct
           Option.value instrument_with ~default:instrument_with_default
         in
         Option.iter host_context ~f:(fun _ ->
-            match targets with
-            | [ Target.Native ] -> ()
-            | _ ->
-              User_error.raise ~loc
-                [ Pp.text
-                    "`targets` and `host` options cannot be used in the same \
-                     context."
-                ]);
+          match targets with
+          | [ Target.Native ] -> ()
+          | _ ->
+            User_error.raise
+              ~loc
+              [ Pp.text "`targets` and `host` options cannot be used in the same context."
+              ]);
         { targets
         ; profile
         ; loc
@@ -211,6 +225,7 @@ module Context = struct
         ; instrument_with
         ; merlin
         }
+    ;;
   end
 
   module Opam = struct
@@ -223,15 +238,17 @@ module Context = struct
     let to_dyn { base; switch; root } =
       let open Dyn in
       record
-        [ ("base", Common.to_dyn base)
-        ; ("switch", string switch)
-        ; ("root", option string root)
+        [ "base", Common.to_dyn base
+        ; "switch", string switch
+        ; "root", option string root
         ]
+    ;;
 
     let equal { base; switch; root } t =
       Common.equal base t.base
       && String.equal switch t.switch
       && Option.equal String.equal root t.root
+    ;;
 
     let decode =
       let+ loc_switch, switch = field "switch" (located string)
@@ -243,20 +260,21 @@ module Context = struct
         let name =
           match name with
           | Some s -> s
-          | None -> (
+          | None ->
             let name = switch ^ Common.fdo_suffix base in
-            match Context_name.of_string_opt name with
-            | Some s -> s
-            | None ->
-              User_error.raise ~loc:loc_switch
-                [ Pp.textf "Generated context name %S is invalid" name
-                ; Pp.text
-                    "Please specify a context name manually with the (name ..) \
-                     field"
-                ])
+            (match Context_name.of_string_opt name with
+             | Some s -> s
+             | None ->
+               User_error.raise
+                 ~loc:loc_switch
+                 [ Pp.textf "Generated context name %S is invalid" name
+                 ; Pp.text
+                     "Please specify a context name manually with the (name ..) field"
+                 ])
         in
         let base = { base with targets = Target.add base.targets x; name } in
         { base; switch; root }
+    ;;
   end
 
   module Default = struct
@@ -269,19 +287,20 @@ module Context = struct
 
     let to_dyn { base; lock; version_preference; solver_env } =
       Dyn.record
-        [ ("base", Common.to_dyn base)
-        ; ("lock", Dyn.(option Path.Source.to_dyn) lock)
+        [ "base", Common.to_dyn base
+        ; "lock", Dyn.(option Path.Source.to_dyn) lock
         ; ( "version_preference"
           , Dyn.option Dune_pkg.Version_preference.to_dyn version_preference )
-        ; ("solver_env", Dyn.option Dune_pkg.Solver_env.to_dyn solver_env)
+        ; "solver_env", Dyn.option Dune_pkg.Solver_env.to_dyn solver_env
         ]
+    ;;
 
     let decode =
       let+ common = Common.decode
       and+ name =
-        field_o "name"
-          ( Dune_lang.Syntax.since syntax (1, 10) >>= fun () ->
-            Context_name.decode )
+        field_o
+          "name"
+          (Dune_lang.Syntax.since syntax (1, 10) >>= fun () -> Context_name.decode)
       and+ lock =
         (* TODO
            1. guard before version check before releasing
@@ -296,23 +315,23 @@ module Context = struct
         let common = common ~profile_default ~instrument_with_default in
         let default =
           (* TODO proper error handling with locs *)
-          let name =
-            Context_name.to_string common.name ^ Common.fdo_suffix common
-          in
+          let name = Context_name.to_string common.name ^ Common.fdo_suffix common in
           Context_name.parse_string_exn (Loc.none, name)
         in
         let name = Option.value ~default name in
-        let base =
-          { common with targets = Target.add common.targets x; name }
-        in
+        let base = { common with targets = Target.add common.targets x; name } in
         { base; lock; version_preference; solver_env }
+    ;;
 
     let equal { base; lock; version_preference; solver_env } t =
       Common.equal base t.base
       && Option.equal Path.Source.equal lock t.lock
-      && Option.equal Dune_pkg.Version_preference.equal version_preference
+      && Option.equal
+           Dune_pkg.Version_preference.equal
+           version_preference
            t.version_preference
       && Option.equal Dune_pkg.Solver_env.equal solver_env t.solver_env
+    ;;
   end
 
   type t =
@@ -326,22 +345,26 @@ module Context = struct
     function
     | Default d -> variant "Default" [ Default.to_dyn d ]
     | Opam o -> variant "Opam" [ Opam.to_dyn o ]
+  ;;
 
   let equal x y =
-    match (x, y) with
+    match x, y with
     | Default x, Default y -> Default.equal x y
     | Opam x, Opam y -> Opam.equal x y
     | _, _ -> false
+  ;;
 
   let base = function
     | Default x -> x.base
     | Opam x -> x.base
+  ;;
 
   let loc t = (base t).loc
 
   let host_context = function
-    | Default { base = { host_context; _ }; _ }
-    | Opam { base = { host_context; _ }; _ } -> host_context
+    | Default { base = { host_context; _ }; _ } | Opam { base = { host_context; _ }; _ }
+      -> host_context
+  ;;
 
   let decode =
     sum
@@ -354,19 +377,19 @@ module Context = struct
           fun ~profile_default ~instrument_with_default ~x ->
             Opam (f ~profile_default ~instrument_with_default ~x) )
       ]
+  ;;
 
   let env t = (base t).env
-
   let name t = (base t).name
-
   let targets t = (base t).targets
 
   let all_names t =
     let n = name t in
     n
     :: List.filter_map (targets t) ~f:(function
-         | Native -> None
-         | Named s -> Some (Context_name.target n ~toolchain:s))
+      | Native -> None
+      | Named s -> Some (Context_name.target n ~toolchain:s))
+  ;;
 
   let default ~x ~profile ~instrument_with =
     Default
@@ -388,16 +411,18 @@ module Context = struct
           ; merlin = false
           }
       }
+  ;;
 
   let build_contexts t =
     let name = name t in
     let native = Build_context.create ~name ~host:(host_context t) in
     native
     :: List.filter_map (targets t) ~f:(function
-         | Native -> None
-         | Named toolchain ->
-           let name = Context_name.target name ~toolchain in
-           Some (Build_context.create ~name ~host:(Some native.name)))
+      | Native -> None
+      | Named toolchain ->
+        let name = Context_name.target name ~toolchain in
+        Some (Build_context.create ~name ~host:(Some native.name)))
+  ;;
 end
 
 type t =
@@ -410,17 +435,19 @@ type t =
 let to_dyn { merlin_context; contexts; env; config } =
   let open Dyn in
   record
-    [ ("merlin_context", option Context_name.to_dyn merlin_context)
-    ; ("contexts", list Context.to_dyn contexts)
-    ; ("env", Dune_env.Stanza.to_dyn env)
-    ; ("config", Dune_config.to_dyn config)
+    [ "merlin_context", option Context_name.to_dyn merlin_context
+    ; "contexts", list Context.to_dyn contexts
+    ; "env", Dune_env.Stanza.to_dyn env
+    ; "config", Dune_config.to_dyn config
     ]
+;;
 
 let equal { merlin_context; contexts; env; config } w =
   Option.equal Context_name.equal merlin_context w.merlin_context
   && List.equal Context.equal contexts w.contexts
   && Dune_env.Stanza.equal env w.env
   && Dune_config.equal config w.config
+;;
 
 let hash { merlin_context; contexts; env; config } =
   Poly.hash
@@ -428,10 +455,11 @@ let hash { merlin_context; contexts; env; config } =
     , List.hash Context.hash contexts
     , Dune_env.Stanza.hash env
     , Dune_config.hash config )
+;;
 
 include Dune_lang.Versioned_file.Make (struct
-  type t = unit
-end)
+    type t = unit
+  end)
 
 let () = Lang.register syntax ()
 
@@ -446,29 +474,27 @@ module Clflags = struct
     }
 
   let to_dyn
-      { x
-      ; profile
-      ; instrument_with
-      ; workspace_file
-      ; config_from_command_line
-      ; config_from_config_file
-      } =
+    { x
+    ; profile
+    ; instrument_with
+    ; workspace_file
+    ; config_from_command_line
+    ; config_from_config_file
+    }
+    =
     let open Dyn in
     record
-      [ ("x", option Context_name.to_dyn x)
-      ; ("profile", option Profile.to_dyn profile)
-      ; ("instrument_with", option (list Lib_name.to_dyn) instrument_with)
-      ; ("workspace_file", option Path.Outside_build_dir.to_dyn workspace_file)
-      ; ( "config_from_command_line"
-        , Dune_config.Partial.to_dyn config_from_command_line )
-      ; ( "config_from_config_file"
-        , Dune_config.Partial.to_dyn config_from_config_file )
+      [ "x", option Context_name.to_dyn x
+      ; "profile", option Profile.to_dyn profile
+      ; "instrument_with", option (list Lib_name.to_dyn) instrument_with
+      ; "workspace_file", option Path.Outside_build_dir.to_dyn workspace_file
+      ; "config_from_command_line", Dune_config.Partial.to_dyn config_from_command_line
+      ; "config_from_config_file", Dune_config.Partial.to_dyn config_from_config_file
       ]
+  ;;
 
   let t = Fdecl.create to_dyn
-
   let set v = Fdecl.set t v
-
   let t () = Fdecl.get t
 end
 
@@ -477,8 +503,10 @@ let bad_configuration_check map =
     match Context_name.Map.find map host with
     | Some host_ctx -> host_ctx
     | None ->
-      User_error.raise ~loc
-        [ Pp.textf "Undefined host context '%s' for '%s'."
+      User_error.raise
+        ~loc
+        [ Pp.textf
+            "Undefined host context '%s' for '%s'."
             (Context_name.to_string host)
             (Context_name.to_string name)
         ]
@@ -486,27 +514,26 @@ let bad_configuration_check map =
   let check elt =
     Context.host_context elt
     |> Option.iter ~f:(fun host ->
-           let name = Context.name elt in
-           let loc = Context.loc elt in
-           let host_elt = find_exn loc name host in
-           Context.host_context host_elt
-           |> Option.iter ~f:(fun host_of_host ->
-                  User_error.raise ~loc:(Context.loc host_elt)
-                    [ Pp.textf
-                        "Context '%s' is both a host (for '%s') and a target \
-                         (for '%s')."
-                        (Context_name.to_string host)
-                        (Context_name.to_string name)
-                        (Context_name.to_string host_of_host)
-                    ]))
+      let name = Context.name elt in
+      let loc = Context.loc elt in
+      let host_elt = find_exn loc name host in
+      Context.host_context host_elt
+      |> Option.iter ~f:(fun host_of_host ->
+        User_error.raise
+          ~loc:(Context.loc host_elt)
+          [ Pp.textf
+              "Context '%s' is both a host (for '%s') and a target (for '%s')."
+              (Context_name.to_string host)
+              (Context_name.to_string name)
+              (Context_name.to_string host_of_host)
+          ]))
   in
   Context_name.Map.iter map ~f:check
+;;
 
 let top_sort contexts =
   let key = Context.name in
-  let map =
-    Context_name.Map.of_list_map_exn contexts ~f:(fun x -> (key x, x))
-  in
+  let map = Context_name.Map.of_list_map_exn contexts ~f:(fun x -> key x, x) in
   let deps def =
     match Context.host_context def with
     | None -> []
@@ -516,17 +543,24 @@ let top_sort contexts =
   match Context_name.Top_closure.top_closure ~key ~deps contexts with
   | Ok topo_contexts -> topo_contexts
   | Error _ -> assert false
+;;
 
-let create_final_config ~config_from_config_file ~config_from_command_line
-    ~config_from_workspace_file =
+let create_final_config
+  ~config_from_config_file
+  ~config_from_command_line
+  ~config_from_workspace_file
+  =
   let ( ++ ) = Dune_config.superpose in
-  Dune_config.default ++ config_from_config_file ++ config_from_workspace_file
+  Dune_config.default
+  ++ config_from_config_file
+  ++ config_from_workspace_file
   ++ config_from_command_line
+;;
 
 (* We load the configuration it two steps:
 
    - step1: we eagerly interpret all the bits that are common to the workspace
-   file and the user configuration file. The other fields are left under a lazy
+     file and the user configuration file. The other fields are left under a lazy
 
    - step2: we force the interpretation of the rest of the fields
 
@@ -547,7 +581,8 @@ let step1 clflags =
       ; workspace_file = _
       ; config_from_command_line
       ; config_from_config_file
-      } =
+      }
+    =
     clflags
   in
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
@@ -558,21 +593,22 @@ let step1 clflags =
   let* () = Dune_lang.Versioned_file.no_more_lang
   and+ env = env_field_lazy
   and+ profile =
-    superpose_with_command_line cl_profile
+    superpose_with_command_line
+      cl_profile
       (field "profile" (lazy_ Profile.decode) ~default:(lazy Profile.default))
   and+ instrument_with =
-    superpose_with_command_line cl_instrument_with
-      (field "instrument_with"
-         (lazy_
-            (Dune_lang.Syntax.since Stanza.syntax (2, 7)
-            >>> repeat Lib_name.decode))
+    superpose_with_command_line
+      cl_instrument_with
+      (field
+         "instrument_with"
+         (lazy_ (Dune_lang.Syntax.since Stanza.syntax (2, 7) >>> repeat Lib_name.decode))
          ~default:(lazy []))
-  and+ config_from_workspace_file =
-    Dune_config.decode_fields_of_workspace_file
-  in
+  and+ config_from_workspace_file = Dune_config.decode_fields_of_workspace_file in
   let+ contexts = multi_field "context" (lazy_ Context.decode) in
   let config =
-    create_final_config ~config_from_workspace_file ~config_from_config_file
+    create_final_config
+      ~config_from_workspace_file
+      ~config_from_config_file
       ~config_from_command_line
   in
   let t =
@@ -581,33 +617,43 @@ let step1 clflags =
        let instrument_with = Lazy.force instrument_with in
        let contexts =
          List.map contexts ~f:(fun f ->
-             Lazy.force f ~profile_default:profile
-               ~instrument_with_default:instrument_with ~x)
+           Lazy.force
+             f
+             ~profile_default:profile
+             ~instrument_with_default:instrument_with
+             ~x)
        in
        let env = Lazy.force env in
        let defined_names = ref Context_name.Set.empty in
        let merlin_context =
          List.fold_left contexts ~init:None ~f:(fun acc ctx ->
-             let name = Context.name ctx in
-             if Context_name.Set.mem !defined_names name then
-               User_error.raise ~loc:(Context.loc ctx)
-                 [ Pp.textf "second definition of build context %S"
-                     (Context_name.to_string name)
-                 ];
-             defined_names :=
-               Context_name.Set.union !defined_names
-                 (Context_name.Set.of_list (Context.all_names ctx));
-             match (Context.base ctx, acc) with
-             | { merlin = true; _ }, Some _ ->
-               User_error.raise ~loc:(Context.loc ctx)
-                 [ Pp.text "you can only have one context for merlin" ]
-             | { merlin = true; _ }, None -> Some name
-             | _ -> acc)
+           let name = Context.name ctx in
+           if Context_name.Set.mem !defined_names name
+           then
+             User_error.raise
+               ~loc:(Context.loc ctx)
+               [ Pp.textf
+                   "second definition of build context %S"
+                   (Context_name.to_string name)
+               ];
+           defined_names
+             := Context_name.Set.union
+                  !defined_names
+                  (Context_name.Set.of_list (Context.all_names ctx));
+           match Context.base ctx, acc with
+           | { merlin = true; _ }, Some _ ->
+             User_error.raise
+               ~loc:(Context.loc ctx)
+               [ Pp.text "you can only have one context for merlin" ]
+           | { merlin = true; _ }, None -> Some name
+           | _ -> acc)
        in
        let contexts =
          match contexts with
          | [] ->
-           [ Context.default ~x ~profile:(Some profile)
+           [ Context.default
+               ~x
+               ~profile:(Some profile)
                ~instrument_with:(Some instrument_with)
            ]
          | _ -> contexts
@@ -616,16 +662,16 @@ let step1 clflags =
          match merlin_context with
          | Some _ -> merlin_context
          | None ->
-           if
-             List.exists contexts ~f:(function
-               | Context.Default _ -> true
-               | _ -> false)
+           if List.exists contexts ~f:(function
+                | Context.Default _ -> true
+                | _ -> false)
            then Some Context_name.default
            else None
        in
        { merlin_context; contexts = top_sort (List.rev contexts); env; config })
   in
   { Step1.t; config }
+;;
 
 let step1 clflags = fields (step1 clflags)
 
@@ -636,12 +682,15 @@ let default clflags =
       ; workspace_file = _
       ; config_from_command_line
       ; config_from_config_file
-      } =
+      }
+    =
     clflags
   in
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
   let config =
-    create_final_config ~config_from_config_file ~config_from_command_line
+    create_final_config
+      ~config_from_config_file
+      ~config_from_command_line
       ~config_from_workspace_file:Dune_config.Partial.empty
   in
   { merlin_context = Some Context_name.default
@@ -649,19 +698,21 @@ let default clflags =
   ; env = Dune_env.Stanza.empty
   ; config
   }
+;;
 
 let default_step1 clflags =
   let t = default clflags in
   { Step1.t = lazy t; config = t.config }
+;;
 
 let load_step1 clflags p =
   Fs_memo.with_lexbuf_from_file p ~f:(fun lb ->
-      if Dune_lang.Dune_file_script.eof_reached lb then default_step1 clflags
-      else
-        parse_contents lb ~f:(fun lang ->
-            String_with_vars.set_decoding_env
-              (Pform.Env.initial lang.version)
-              (step1 clflags)))
+    if Dune_lang.Dune_file_script.eof_reached lb
+    then default_step1 clflags
+    else
+      parse_contents lb ~f:(fun lang ->
+        String_with_vars.set_decoding_env (Pform.Env.initial lang.version) (step1 clflags)))
+;;
 
 let filename = "dune-workspace"
 
@@ -675,12 +726,14 @@ let workspace_step1 =
         let p = Path.Outside_build_dir.of_string filename in
         let+ exists = Fs_memo.file_exists p in
         Option.some_if exists p
-      | Some p -> (
-        Fs_memo.file_exists p >>| function
+      | Some p ->
+        Fs_memo.file_exists p
+        >>| (function
         | true -> Some p
         | false ->
           User_error.raise
-            [ Pp.textf "Workspace file %s does not exist"
+            [ Pp.textf
+                "Workspace file %s does not exist"
                 (Path.Outside_build_dir.to_string_maybe_quoted p)
             ])
     in
@@ -691,11 +744,13 @@ let workspace_step1 =
   in
   let memo = Memo.lazy_ ~name:"workspaces-internal" f in
   fun () -> Memo.Lazy.force memo
+;;
 
 let workspace_config () =
   let open Memo.O in
   let+ step1 = workspace_step1 () in
   step1.config
+;;
 
 let workspace =
   let open Memo.O in
@@ -705,12 +760,12 @@ let workspace =
   in
   let memo = Memo.lazy_ ~cutoff:equal ~name:"workspace" f in
   fun () -> Memo.Lazy.force memo
+;;
 
 let update_execution_parameters t ep =
   ep
-  |> Execution_parameters.set_action_stdout_on_success
-       t.config.action_stdout_on_success
-  |> Execution_parameters.set_action_stderr_on_success
-       t.config.action_stderr_on_success
+  |> Execution_parameters.set_action_stdout_on_success t.config.action_stdout_on_success
+  |> Execution_parameters.set_action_stderr_on_success t.config.action_stderr_on_success
+;;
 
 let build_contexts t = List.concat_map t.contexts ~f:Context.build_contexts

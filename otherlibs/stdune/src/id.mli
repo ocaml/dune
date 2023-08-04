@@ -2,7 +2,6 @@ module type S = sig
   type t [@@immediate]
 
   include Comparable_intf.S with type key := t
-
   module Table : Hashtbl.S with type key = t
 
   (** Generate a new id. *)
@@ -18,9 +17,7 @@ module type S = sig
   val compare : t -> t -> Ordering.t
 
   val equal : t -> t -> bool
-
   val hash : t -> int
-
   val to_dyn : t -> Dyn.t
 end
 

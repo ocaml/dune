@@ -10,7 +10,6 @@ type t =
   }
 
 let dir t = t.dir
-
 let only_generated_files t = t.only_generated_files
 
 let compare { dir; predicate; only_generated_files } t =
@@ -18,34 +17,44 @@ let compare { dir; predicate; only_generated_files } t =
   let= () = Path.compare dir t.dir in
   let= () = Predicate_lang.Glob.compare predicate t.predicate in
   Bool.compare only_generated_files t.only_generated_files
+;;
 
 let of_predicate_lang ~dir ?(only_generated_files = false) predicate =
   { dir; predicate; only_generated_files }
+;;
 
-let of_glob ~dir glob =
-  of_predicate_lang ~dir (Predicate_lang.Glob.of_glob glob)
+let of_glob ~dir glob = of_predicate_lang ~dir (Predicate_lang.Glob.of_glob glob)
 
 let to_dyn { dir; predicate; only_generated_files } =
   Dyn.Record
-    [ ("dir", Path.to_dyn dir)
-    ; ("predicate", Predicate_lang.Glob.to_dyn predicate)
-    ; ("only_generated_files", Bool only_generated_files)
+    [ "dir", Path.to_dyn dir
+    ; "predicate", Predicate_lang.Glob.to_dyn predicate
+    ; "only_generated_files", Bool only_generated_files
     ]
+;;
 
 let encode { dir; predicate; only_generated_files } =
   let open Dune_sexp.Encoder in
   record
-    [ ("dir", Dpath.encode dir)
-    ; ("predicate", Predicate_lang.Glob.encode predicate)
-    ; ("only_generated_files", bool only_generated_files)
+    [ "dir", Dpath.encode dir
+    ; "predicate", Predicate_lang.Glob.encode predicate
+    ; "only_generated_files", bool only_generated_files
     ]
+;;
 
 let equal x y = compare x y = Eq
 
 let hash { dir; predicate; only_generated_files } =
-  Tuple.T3.hash Path.hash Predicate_lang.Glob.hash Bool.hash
+  Tuple.T3.hash
+    Path.hash
+    Predicate_lang.Glob.hash
+    Bool.hash
     (dir, predicate, only_generated_files)
+;;
 
 let test t path =
-  Predicate_lang.Glob.test t.predicate ~standard:Predicate_lang.false_
+  Predicate_lang.Glob.test
+    t.predicate
+    ~standard:Predicate_lang.false_
     (Path.basename path)
+;;

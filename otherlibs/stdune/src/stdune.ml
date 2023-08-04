@@ -1,6 +1,4 @@
-[@@@alert
-unstable "The API of this library is not stable and may change without notice."]
-
+[@@@alert unstable "The API of this library is not stable and may change without notice."]
 [@@@alert "-unstable"]
 
 module Appendable_list = Appendable_list
@@ -86,13 +84,13 @@ module Unix_error = struct
 
     let to_dyn (error, syscall, arg) =
       Dyn.Record
-        [ ("error", String (Unix.error_message error))
-        ; ("syscall", String syscall)
-        ; ("arg", String arg)
+        [ "error", String (Unix.error_message error)
+        ; "syscall", String syscall
+        ; "arg", String arg
         ]
+    ;;
 
-    let pp ?(prefix = "") unix_error =
-      Pp.verbatim (prefix ^ to_string_hum unix_error)
+    let pp ?(prefix = "") unix_error = Pp.verbatim (prefix ^ to_string_hum unix_error)
   end
 end
 
@@ -103,9 +101,7 @@ module File_kind = struct
 end
 
 module type Applicative = Applicative_intf.S
-
 module type Monad = Monad_intf.S
-
 module type Monoid = Monoid_intf.S
 
 external reraise : exn -> _ = "%reraise"
@@ -129,7 +125,5 @@ type ordering = Ordering.t =
   | Gt
 
 let sprintf = Printf.sprintf
-
 let ksprintf = Printf.ksprintf
-
 let printfn a = ksprintf print_endline a

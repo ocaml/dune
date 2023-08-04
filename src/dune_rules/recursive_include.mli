@@ -14,8 +14,8 @@ type 'a t
 
 val of_base : 'a -> 'a t
 
-val decode :
-     base_term:'a Dune_lang.Decoder.t
+val decode
+  :  base_term:'a Dune_lang.Decoder.t
        (** The type of a term in the configuration language without (include
            ...) terms *)
   -> include_keyword:string
@@ -37,8 +37,8 @@ val decode :
     statements). Paths referred to by (include <path>) are resolved relative to
     [dir]. Paths are given as [String_with_vars.t], and the [expand_str]
     function is used to resolve them to strings. *)
-val expand_include :
-     'a t
+val expand_include
+  :  'a t
   -> expand_str:(String_with_vars.t -> string Memo.t)
   -> dir:Path.Build.t
   -> 'a list Memo.t

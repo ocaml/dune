@@ -51,5 +51,4 @@ val background_sandboxes : Toggle.t t
 val background_file_system_operations_in_rule_execution : Toggle.t t
 
 val threaded_console : Toggle.t t
-
 val init : (Loc.t * string) String.Map.t -> unit

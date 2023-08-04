@@ -6,6 +6,7 @@ let pkg_config_binary sctx ~dir =
   match Env.get env "PKG_CONFIG" with
   | None -> "pkg-config"
   | Some s -> s
+;;
 
 module Query = struct
   type t =
@@ -19,6 +20,7 @@ module Query = struct
     match t with
     | Libs s -> sprintf "%s.libs" s
     | Cflags s -> sprintf "%s.cflags" s
+  ;;
 
   let to_args t ~env : _ Command.Args.t list =
     let env_args : _ Command.Args.t =
@@ -30,12 +32,14 @@ module Query = struct
     :: env_args
     ::
     (match t with
-    | Libs lib -> [ A "--libs"; A lib ]
-    | Cflags lib -> [ A "--cflags"; A lib ])
+     | Libs lib -> [ A "--libs"; A lib ]
+     | Cflags lib -> [ A "--cflags"; A lib ])
+  ;;
 
   let default = function
     | Libs lib -> [ sprintf "-l%s" lib ]
     | Cflags _ -> [ "-I/usr/include" ]
+  ;;
 
   let read t sctx ~dir =
     let open Action_builder.O in
@@ -50,8 +54,8 @@ module Query = struct
     | Ok _ ->
       let file = file t ~dir in
       let+ contents = Action_builder.contents (Path.build file) in
-      String.split_lines contents
-      |> List.hd |> String.extract_blank_separated_words
+      String.split_lines contents |> List.hd |> String.extract_blank_separated_words
+  ;;
 end
 
 let gen_rule sctx ~loc ~dir query =
@@ -59,7 +63,6 @@ let gen_rule sctx ~loc ~dir query =
   let* bin =
     let open Memo.O in
     let* pkg_config = pkg_config_binary sctx ~dir in
-
     Super_context.resolve_program sctx ~loc:(Some loc) ~dir pkg_config
   in
   match bin with
@@ -69,20 +72,25 @@ let gen_rule sctx ~loc ~dir query =
       let+ env =
         let* dune_version =
           let+ expander = Super_context.expander sctx ~dir in
-          expander |> Expander.scope |> Scope.project
-          |> Dune_project.dune_version
+          expander |> Expander.scope |> Scope.project |> Dune_project.dune_version
         in
         let* env_node = Super_context.env_node sctx ~dir in
-        if dune_version >= (3, 8) then Env_node.external_env env_node
+        if dune_version >= (3, 8)
+        then Env_node.external_env env_node
         else Memo.return Env.empty
       in
-      Command.run ~dir:(Path.build dir) ~stdout_to:(Query.file ~dir query) bin
+      Command.run
+        ~dir:(Path.build dir)
+        ~stdout_to:(Query.file ~dir query)
+        bin
         (Query.to_args ~env query)
     in
     let+ () = Super_context.add_rule sctx ~loc ~dir command in
     Ok ()
+;;
 
 let read_flags ~file =
   let open Action_builder.O in
   let+ contents = Action_builder.contents (Path.build file) in
   String.split_lines contents |> List.hd |> String.extract_blank_separated_words
+;;

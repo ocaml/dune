@@ -6,8 +6,8 @@ open Import
 module type S = sig
   (** Check if the shared cache contains results for a rule and decide whether
       to use these results or rerun the rule for a reproducibility check. *)
-  val lookup :
-       can_go_in_shared_cache:bool
+  val lookup
+    :  can_go_in_shared_cache:bool
     -> rule_digest:Digest.t
     -> targets:Targets.Validated.t
     -> target_dir:Path.Build.t
@@ -22,8 +22,8 @@ module type S = sig
       - Remove write permissions from the targets;
 
       - Store results to the shared cache if needed. *)
-  val examine_targets_and_store :
-       can_go_in_shared_cache:bool
+  val examine_targets_and_store
+    :  can_go_in_shared_cache:bool
     -> loc:Loc.t
     -> rule_digest:Digest.t
     -> execution_parameters:Execution_parameters.t

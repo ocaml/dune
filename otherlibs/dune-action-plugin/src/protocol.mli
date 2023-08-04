@@ -1,6 +1,5 @@
 open Import
 open Sexpable_intf
-
 module Error : module type of Error
 
 module Dependency : sig
@@ -57,10 +56,7 @@ module Context : sig
     | Error of string
 
   val create : unit -> create_result
-
   val prepared_dependencies : t -> Dependency.Set.t
-
   val targets : t -> String.Set.t
-
   val respond : t -> Response.t -> unit
 end

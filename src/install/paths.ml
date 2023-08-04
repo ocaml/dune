@@ -32,6 +32,7 @@ let make ~package ~(roots : Path.t Roots.t) =
   ; etc = Path.relative roots.etc_root package
   ; doc = Path.relative roots.doc_root package
   }
+;;
 
 let get t (section : Section.t) =
   match section with
@@ -49,6 +50,7 @@ let get t (section : Section.t) =
   | Stublibs -> t.stublibs
   | Man -> t.man
   | Misc -> Code_error.raise "Install.Paths.get" []
+;;
 
 let get_local_location context section package_name =
   (* check that we get the good path *)
@@ -57,3 +59,4 @@ let get_local_location context section package_name =
   let roots = Roots.opam_from_prefix install_dir in
   let paths = make ~package:package_name ~roots in
   get paths section
+;;

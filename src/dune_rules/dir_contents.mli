@@ -42,14 +42,14 @@ val dirs : t -> t list
 
 type standalone_or_root =
   { root : t
-  ; subdirs : t list  (** Sub-directories part of the group *)
+  ; subdirs : t list (** Sub-directories part of the group *)
   ; rules : Rules.t
   }
 
 type triage =
   | Standalone_or_root of
       { directory_targets : Loc.t Path.Build.Map.t
-            (** ALl directory targets that are part of the group. *)
+          (** ALl directory targets that are part of the group. *)
       ; contents : standalone_or_root Memo.Lazy.t
       }
   | Group_part of Path.Build.t

@@ -4,7 +4,6 @@ open Import
 
 module Dune_file : sig
   val fname : Filename.t
-
   val alternative_fname : Filename.t
 
   type kind = private
@@ -14,45 +13,36 @@ module Dune_file : sig
   type t
 
   val to_dyn : t -> Dyn.t
-
   val get_static_sexp : t -> Dune_lang.Ast.t list
-
   val kind : t -> kind
-
   val path : t -> Path.Source.t option
 end
 
 module Dir : sig
   type t
-
   type error = Missing_run_t of Cram_test.t
 
   val cram_tests : t -> (Cram_test.t, error) result list Memo.t
-
   val path : t -> Path.Source.t
-
   val files : t -> Filename.Set.t
-
   val file_paths : t -> Path.Source.Set.t
 
   type sub_dir
 
   val sub_dirs : t -> sub_dir Filename.Map.t
-
   val sub_dir_as_t : sub_dir -> t Memo.t
 
   module Make_map_reduce (M : Memo.S) (Outcome : Monoid) : sig
     (** Traverse sub-directories recursively, pass them to [f] and combine
         intermediate results into a single one via [M.combine]. *)
-    val map_reduce :
-         t
+    val map_reduce
+      :  t
       -> traverse:Sub_dirs.Status.Set.t
       -> f:(t -> Outcome.t M.t)
       -> Outcome.t M.t
   end
 
   val sub_dir_names : t -> Filename.Set.t
-
   val status : t -> Sub_dirs.Status.t
 
   (** Return the contents of the dune (or jbuild) file in this directory *)
@@ -68,8 +58,8 @@ val root : unit -> Dir.t Memo.t
 
 module Make_map_reduce_with_progress (M : Memo.S) (Outcome : Monoid) : sig
   (** Traverse starting from the root and report progress in the status line *)
-  val map_reduce :
-       traverse:Sub_dirs.Status.Set.t
+  val map_reduce
+    :  traverse:Sub_dirs.Status.Set.t
     -> f:(Dir.t -> Outcome.t M.t)
     -> Outcome.t M.t
 end

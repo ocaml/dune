@@ -8,8 +8,8 @@ open! Import
 
 (** Expand a glob to a memoized list of strings corresponding to paths that
     matched the glob. *)
-val memo :
-     Dep_conf.Glob_files.t
+val memo
+  :  Dep_conf.Glob_files.t
   -> f:(String_with_vars.t -> string Memo.t)
   -> base_dir:Path.Build.t
   -> string list Memo.t
@@ -18,8 +18,8 @@ val memo :
     [Glob_files.Action_builder.expand] is an action builder which will resolve
     to the list of strings containing paths matching the glob, and whose
     dependencies will include the file selector built from the glob. *)
-val action_builder :
-     Dep_conf.Glob_files.t
+val action_builder
+  :  Dep_conf.Glob_files.t
   -> f:(String_with_vars.t -> string Action_builder.t)
   -> base_dir:Path.Build.t
   -> string list Action_builder.t

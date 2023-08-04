@@ -8,14 +8,12 @@ type checked =
 
 let check_path contexts =
   let contexts =
-    Dune_engine.Context_name.Map.of_list_map_exn contexts ~f:(fun c ->
-        (c.Context.name, c))
+    Dune_engine.Context_name.Map.of_list_map_exn contexts ~f:(fun c -> c.Context.name, c)
   in
   fun path ->
     let internal_path () =
       User_error.raise
-        [ Pp.textf "This path is internal to dune: %s"
-            (Path.to_string_maybe_quoted path)
+        [ Pp.textf "This path is internal to dune: %s" (Path.to_string_maybe_quoted path)
         ]
     in
     let context_exn ctx =
@@ -23,7 +21,8 @@ let check_path contexts =
       | Some context -> context
       | None ->
         User_error.raise
-          [ Pp.textf "%s refers to unknown build context: %s"
+          [ Pp.textf
+              "%s refers to unknown build context: %s"
               (Path.to_string_maybe_quoted path)
               (Dune_engine.Context_name.to_string ctx)
           ]
@@ -32,15 +31,16 @@ let check_path contexts =
                (Dune_engine.Context_name.to_string ctx)
                ~candidates:
                  (Dune_engine.Context_name.Map.keys contexts
-                 |> List.map ~f:Dune_engine.Context_name.to_string))
+                  |> List.map ~f:Dune_engine.Context_name.to_string))
     in
     match path with
     | External e -> External e
     | In_source_tree s -> In_source_dir s
-    | In_build_dir path -> (
-      match Dune_engine.Dpath.analyse_target path with
-      | Other _ -> internal_path ()
-      | Alias (_, _) -> internal_path ()
-      | Anonymous_action _ -> internal_path ()
-      | Install (name, src) -> In_install_dir (context_exn name, src)
-      | Regular (name, src) -> In_build_dir (context_exn name, src))
+    | In_build_dir path ->
+      (match Dune_engine.Dpath.analyse_target path with
+       | Other _ -> internal_path ()
+       | Alias (_, _) -> internal_path ()
+       | Anonymous_action _ -> internal_path ()
+       | Install (name, src) -> In_install_dir (context_exn name, src)
+       | Regular (name, src) -> In_build_dir (context_exn name, src))
+;;

@@ -26,5 +26,4 @@ module Status : sig
 end
 
 val build : (string list, Build_outcome.t) Decl.Request.t
-
 val status : (unit, Status.t) Decl.Request.t

@@ -13,9 +13,7 @@ let default_context_flags (ctx : Context.t) ~project =
       let c =
         let+ cc = Cxx_flags.ccomp_type ctx.build_context in
         let fdiagnostics_color = Cxx_flags.fdiagnostics_color cc in
-        cflags
-        @ Ocaml_config.ocamlc_cppflags ctx.ocaml.ocaml_config
-        @ fdiagnostics_color
+        cflags @ Ocaml_config.ocamlc_cppflags ctx.ocaml.ocaml_config @ fdiagnostics_color
       in
       let cxx =
         let+ cc = Cxx_flags.ccomp_type ctx.build_context
@@ -23,23 +21,21 @@ let default_context_flags (ctx : Context.t) ~project =
         let fdiagnostics_color = Cxx_flags.fdiagnostics_color cc in
         db_flags @ cxxflags @ fdiagnostics_color
       in
-      (c, cxx)
+      c, cxx
   in
   Foreign_language.Dict.make ~c ~cxx
+;;
 
 module Env_tree : sig
   type t
 
   val force_bin_artifacts : t -> unit Memo.t
-
   val context : t -> Context.t
-
   val get_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
-
   val get_context_env : t -> Env.t
 
-  val create :
-       context:Context.t
+  val create
+    :  context:Context.t
     -> host_env_tree:t option
     -> default_env:Env_node.t Memo.Lazy.t
     -> root_expander:Expander.t
@@ -48,14 +44,13 @@ module Env_tree : sig
     -> t
 
   val bin_artifacts_host : t -> dir:Path.Build.t -> Artifacts.Bin.t Memo.t
-
   val expander : t -> dir:Path.Build.t -> Expander.t Memo.t
 end = struct
   open Memo.O
 
   type t =
     { context : Context.t
-    ; context_env : Env.t  (** context env with additional variables *)
+    ; context_env : Env.t (** context env with additional variables *)
     ; default_env : Env_node.t Memo.Lazy.t
     ; host : t option
     ; root_expander : Expander.t
@@ -63,13 +58,9 @@ end = struct
     ; get_node : Path.Build.t -> Env_node.t Memo.t
     }
 
-  let force_bin_artifacts { bin_artifacts; _ } =
-    Artifacts.Bin.force bin_artifacts
-
+  let force_bin_artifacts { bin_artifacts; _ } = Artifacts.Bin.force bin_artifacts
   let context t = t.context
-
   let get_node t ~dir = t.get_node dir
-
   let get_context_env t = t.context_env
 
   let bin_artifacts_host t ~dir =
@@ -82,6 +73,7 @@ end = struct
         |> Path.Build.append_source host.context.build_dir
       in
       bin_artifacts host ~dir
+  ;;
 
   let external_env t ~dir = get_node t ~dir >>= Env_node.external_env
 
@@ -95,12 +87,14 @@ end = struct
         Path.Build.append_source host.build_dir src
       in
       Scope.DB.find_by_dir dir
+  ;;
 
   let expander_for_artifacts ~scope ~external_env ~root_expander ~dir =
     let+ scope_host = scope_host ~scope (Expander.context root_expander) in
     Expander.extend_env root_expander ~env:external_env
     |> Expander.set_scope ~scope ~scope_host
     |> Expander.set_dir ~dir
+  ;;
 
   let extend_expander t ~dir ~expander_for_artifacts =
     let* bin_artifacts_host = bin_artifacts_host t ~dir in
@@ -112,18 +106,19 @@ end = struct
     expander_for_artifacts
     |> Expander.add_bindings ~bindings
     |> Expander.set_bin_artifacts ~bin_artifacts_host
+  ;;
 
   let expander t ~dir =
     let* node = get_node t ~dir in
     let* external_env = external_env t ~dir in
     let scope = Env_node.scope node in
     let* expander_for_artifacts =
-      expander_for_artifacts ~scope ~external_env ~root_expander:t.root_expander
-        ~dir
+      expander_for_artifacts ~scope ~external_env ~root_expander:t.root_expander ~dir
     in
     let+ expander = extend_expander t ~dir ~expander_for_artifacts in
     Expander.set_foreign_flags expander ~f:(fun ~dir ->
-        get_node t ~dir >>| Env_node.foreign_flags)
+      get_node t ~dir >>| Env_node.foreign_flags)
+  ;;
 
   let get_env_stanza ~dir =
     let open Memo.O in
@@ -135,43 +130,52 @@ end = struct
     List.find_map stanzas.stanzas ~f:(function
       | Dune_env.T config -> Some config
       | _ -> None)
+  ;;
 
   let get_impl t dir =
     let* scope = Scope.DB.find_by_dir dir in
     let inherit_from =
-      if Path.Build.equal dir (Scope.root scope) then
+      if Path.Build.equal dir (Scope.root scope)
+      then (
         let format_config = Dune_project.format_config (Scope.project scope) in
         Memo.lazy_ (fun () ->
-            let+ default_env = Memo.Lazy.force t.default_env in
-            Env_node.set_format_config default_env format_config)
-      else
+          let+ default_env = Memo.Lazy.force t.default_env in
+          Env_node.set_format_config default_env format_config))
+      else (
         match Path.Build.parent dir with
         | None ->
-          Code_error.raise "Super_context.Env.get called on invalid directory"
-            [ ("dir", Path.Build.to_dyn dir) ]
-        | Some parent -> Memo.lazy_ (fun () -> get_node t ~dir:parent)
+          Code_error.raise
+            "Super_context.Env.get called on invalid directory"
+            [ "dir", Path.Build.to_dyn dir ]
+        | Some parent -> Memo.lazy_ (fun () -> get_node t ~dir:parent))
     in
     let+ config_stanza = get_env_stanza ~dir in
     let project = Scope.project scope in
     let default_context_flags = default_context_flags t.context ~project in
     let expander_for_artifacts =
       Memo.lazy_ (fun () ->
-          let* external_env = external_env t ~dir in
-          expander_for_artifacts ~scope ~root_expander:t.root_expander
-            ~external_env ~dir)
+        let* external_env = external_env t ~dir in
+        expander_for_artifacts ~scope ~root_expander:t.root_expander ~external_env ~dir)
     in
     let expander =
       Memo.lazy_ (fun () ->
-          let* expander_for_artifacts =
-            Memo.Lazy.force expander_for_artifacts
-          in
-          extend_expander t ~dir ~expander_for_artifacts
-          >>| Expander.set_dir ~dir)
+        let* expander_for_artifacts = Memo.Lazy.force expander_for_artifacts in
+        extend_expander t ~dir ~expander_for_artifacts >>| Expander.set_dir ~dir)
     in
-    Env_node.make t.context.build_context ~dir ~scope ~config_stanza
-      ~inherit_from:(Some inherit_from) ~profile:t.context.profile ~expander
-      ~expander_for_artifacts ~default_context_flags ~default_env:t.context_env
-      ~default_bin_artifacts:t.bin_artifacts ~default_bin_annot:true
+    Env_node.make
+      t.context.build_context
+      ~dir
+      ~scope
+      ~config_stanza
+      ~inherit_from:(Some inherit_from)
+      ~profile:t.context.profile
+      ~expander
+      ~expander_for_artifacts
+      ~default_context_flags
+      ~default_env:t.context_env
+      ~default_bin_artifacts:t.bin_artifacts
+      ~default_bin_annot:true
+  ;;
 
   (* Here we jump through some hoops to construct [t] as well as create a
      memoization table that has access to [t] and is used in [t.get_node].
@@ -184,12 +188,17 @@ end = struct
      binding. To work around this limitation, we place the functions into a
      recursive module [Rec]. Since recursive let-modules are not allowed either,
      we need to also wrap [Rec] inside a non-recursive module [Non_rec]. *)
-  let create ~context ~host_env_tree ~default_env ~root_expander ~bin_artifacts
-      ~context_env =
+  let create
+    ~context
+    ~host_env_tree
+    ~default_env
+    ~root_expander
+    ~bin_artifacts
+    ~context_env
+    =
     let module Non_rec = struct
       module rec Rec : sig
         val env_tree : unit -> t
-
         val memo : Path.Build.t -> Env_node.t Memo.t
       end = struct
         let env_tree =
@@ -201,33 +210,32 @@ end = struct
           ; bin_artifacts
           ; get_node = Rec.memo
           }
+        ;;
 
         let memo =
           Memo.exec
-            (Memo.create "env-nodes-memo"
+            (Memo.create
+               "env-nodes-memo"
                ~input:(module Path.Build)
                (fun path -> get_impl env_tree path))
+        ;;
 
         let env_tree () = env_tree
       end
-    end in
+    end
+    in
     Non_rec.Rec.env_tree ()
+  ;;
 end
 
 type t = Env_tree.t
 
 let context t = Env_tree.context t
-
 let context_env t = Env_tree.get_context_env t
-
 let equal = (( == ) : t -> t -> bool)
-
 let hash t = Context.hash (Env_tree.context t)
-
 let to_dyn_concise t = Context.to_dyn_concise (Env_tree.context t)
-
 let to_dyn t = Context.to_dyn (Env_tree.context t)
-
 let expander t ~dir = Env_tree.expander t ~dir
 
 open Memo.O
@@ -240,84 +248,107 @@ let extend_action t ~dir build =
       (let open Memo.O in
        Env_tree.get_node t ~dir >>= Env_node.external_env)
   in
-  act |> Action.Full.add_env env
+  act
+  |> Action.Full.add_env env
   |> Action.Full.map ~f:(function
-       | Chdir _ as a -> a
-       | a -> Chdir (Path.build (Env_tree.context t).build_dir, a))
+    | Chdir _ as a -> a
+    | a -> Chdir (Path.build (Env_tree.context t).build_dir, a))
+;;
 
 let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =
   let build = extend_action t build ~dir in
-  Rule.make ?mode ~info:(Rule.Info.of_loc_opt loc)
+  Rule.make
+    ?mode
+    ~info:(Rule.Info.of_loc_opt loc)
     ~context:(Some (Context.build_context (Env_tree.context t)))
-    ~targets build
+    ~targets
+    build
+;;
 
 let add_rule t ?mode ?loc ~dir build =
   let rule = make_rule t ?mode ?loc ~dir build in
   Rules.Produce.rule rule
+;;
 
 let add_rule_get_targets t ?mode ?loc ~dir build =
   let rule = make_rule t ?mode ?loc ~dir build in
   let+ () = Rules.Produce.rule rule in
   rule.targets
+;;
 
-let add_rules t ?loc ~dir builds =
-  Memo.parallel_iter builds ~f:(add_rule ?loc t ~dir)
+let add_rules t ?loc ~dir builds = Memo.parallel_iter builds ~f:(add_rule ?loc t ~dir)
 
 let add_alias_action t alias ~dir ~loc action =
   let build = extend_action t action ~dir in
   Rules.Produce.Alias.add_action
     ~context:(Context.build_context (Env_tree.context t))
-    alias ~loc build
+    alias
+    ~loc
+    build
+;;
 
 let build_dir_is_vendored build_dir =
   match Path.Build.drop_build_context build_dir with
   | Some src_dir -> Source_tree.is_vendored src_dir
   | None -> Memo.return false
+;;
 
 let with_vendored_flags ~ocaml_version flags =
   let with_warnings = Ocaml_flags.with_vendored_warnings flags in
-  if Ocaml.Version.supports_alerts ocaml_version then
-    Ocaml_flags.with_vendored_alerts with_warnings
+  if Ocaml.Version.supports_alerts ocaml_version
+  then Ocaml_flags.with_vendored_alerts with_warnings
   else with_warnings
+;;
 
 let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
   let* expander = Env_tree.expander t ~dir in
   let* flags =
     let+ ocaml_flags = Env_tree.get_node t ~dir >>= Env_node.ocaml_flags in
-    Ocaml_flags.make ~spec ~default:ocaml_flags
+    Ocaml_flags.make
+      ~spec
+      ~default:ocaml_flags
       ~eval:(Expander.expand_and_eval_set expander)
   in
-  build_dir_is_vendored dir >>| function
+  build_dir_is_vendored dir
+  >>| function
   | true ->
     let ocaml_version = (Env_tree.context t).ocaml.version in
     with_vendored_flags ~ocaml_version flags
   | false -> flags
+;;
 
 let js_of_ocaml_runtest_alias t ~dir =
   let+ js_of_ocaml = Env_tree.get_node t ~dir >>= Env_node.js_of_ocaml in
   match js_of_ocaml.runtest_alias with
   | None -> Alias.Name.runtest
   | Some a -> a
+;;
 
 let js_of_ocaml_compilation_mode t ~dir =
   let+ js_of_ocaml = Env_tree.get_node t ~dir >>= Env_node.js_of_ocaml in
   match js_of_ocaml.compilation_mode with
   | None ->
-    if Profile.is_dev (Env_tree.context t).profile then
-      Js_of_ocaml.Compilation_mode.Separate_compilation
+    if Profile.is_dev (Env_tree.context t).profile
+    then Js_of_ocaml.Compilation_mode.Separate_compilation
     else Whole_program
   | Some m -> m
+;;
 
 let js_of_ocaml_flags t ~dir (spec : Js_of_ocaml.Flags.Spec.t) =
   let+ expander = Env_tree.expander t ~dir
   and+ js_of_ocaml = Env_tree.get_node t ~dir >>= Env_node.js_of_ocaml in
-  Js_of_ocaml.Flags.make ~spec ~default:js_of_ocaml.flags
+  Js_of_ocaml.Flags.make
+    ~spec
+    ~default:js_of_ocaml.flags
     ~eval:(Expander.expand_and_eval_set expander)
+;;
 
 let default_foreign_flags t ~dir ~language =
-  Env_tree.get_node t ~dir >>| Env_node.foreign_flags
+  Env_tree.get_node t ~dir
+  >>| Env_node.foreign_flags
   >>| (fun dict -> Foreign_language.Dict.get dict language)
   |> Action_builder.of_memo_join
+;;
 
 let foreign_flags t ~dir ~expander ~flags ~language =
   let ccg = Lib_config.cc_g (Env_tree.context t).lib_config in
@@ -328,33 +359,30 @@ let foreign_flags t ~dir ~expander ~flags ~language =
     let+ l = Expander.expand_and_eval_set expander flags ~standard:default in
     l @ ccg
   in
-  Action_builder.memoize ~cutoff:(List.equal String.equal)
-    (sprintf "%s flags" name) flags
+  Action_builder.memoize ~cutoff:(List.equal String.equal) (sprintf "%s flags" name) flags
+;;
 
 let link_flags t ~dir (spec : Link_flags.Spec.t) =
   let* expander = Env_tree.expander t ~dir in
   let+ link_flags = Env_tree.get_node t ~dir >>= Env_node.link_flags in
-  Link_flags.make ~spec ~default:link_flags
-    ~eval:(Expander.expand_and_eval_set expander)
+  Link_flags.make ~spec ~default:link_flags ~eval:(Expander.expand_and_eval_set expander)
+;;
 
 let menhir_flags t ~dir ~expander ~flags =
   let standard =
-    Env_tree.get_node t ~dir >>| Env_node.menhir_flags
-    |> Action_builder.of_memo_join
+    Env_tree.get_node t ~dir >>| Env_node.menhir_flags |> Action_builder.of_memo_join
   in
-  Action_builder.memoize ~cutoff:(List.equal String.equal) "menhir flags"
+  Action_builder.memoize
+    ~cutoff:(List.equal String.equal)
+    "menhir flags"
     (Expander.expand_and_eval_set expander flags ~standard)
+;;
 
 let local_binaries t ~dir = Env_tree.get_node t ~dir >>= Env_node.local_binaries
-
 let env_node = Env_tree.get_node
-
 let odoc t ~dir = Env_tree.get_node t ~dir >>= Env_node.odoc
-
 let coq t ~dir = Env_tree.get_node t ~dir >>= Env_node.coq
-
 let format_config t ~dir = Env_tree.get_node t ~dir >>= Env_node.format_config
-
 let bin_annot t ~dir = Env_tree.get_node t ~dir >>= Env_node.bin_annot
 
 let dump_env t ~dir =
@@ -374,28 +402,27 @@ let dump_env t ~dir =
     and+ cxx_flags = foreign_flags.cxx in
     List.map
       ~f:Dune_lang.Encoder.(pair string (list string))
-      [ ("c_flags", c_flags); ("cxx_flags", cxx_flags) ]
+      [ "c_flags", c_flags; "cxx_flags", cxx_flags ]
   and+ link_flags_dump =
     let* link_flags = Action_builder.of_memo link_flags in
     Link_flags.dump link_flags
   and+ menhir_dump =
     let+ flags = Action_builder.of_memo_join menhir_flags in
-    [ ("menhir_flags", flags) ]
-    |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
+    [ "menhir_flags", flags ] |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
   and+ coq_dump =
     let+ flags = Action_builder.of_memo_join coq_flags in
-    [ ("coq_flags", flags) ]
-    |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
+    [ "coq_flags", flags ] |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
   and+ jsoo_dump =
     let* jsoo = Action_builder.of_memo js_of_ocaml in
     Js_of_ocaml.Flags.dump jsoo.flags
   in
-  List.concat
-    [ o_dump; c_dump; link_flags_dump; menhir_dump; coq_dump; jsoo_dump ]
+  List.concat [ o_dump; c_dump; link_flags_dump; menhir_dump; coq_dump; jsoo_dump ]
+;;
 
 let resolve_program t ~dir ?hint ~loc bin =
   let* bin_artifacts = Env_tree.bin_artifacts_host t ~dir in
   Artifacts.Bin.binary ?hint ~loc bin_artifacts bin
+;;
 
 let create ~(context : Context.t) ~host ~packages ~stanzas =
   let* artifacts = Artifacts_db.get context in
@@ -405,11 +432,14 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
       | None -> Memo.return (artifacts, context)
       | Some host ->
         let+ artifacts = Artifacts_db.get host in
-        (artifacts, host)
+        artifacts, host
     in
     let* scope = Scope.DB.find_by_dir context.build_dir in
     let* scope_host = Scope.DB.find_by_dir context_host.build_dir in
-    Expander.make ~scope ~scope_host ~context
+    Expander.make
+      ~scope
+      ~scope_host
+      ~context
       ~lib_artifacts:artifacts.public_libs
       ~bin_artifacts_host:artifacts_host.bin
       ~lib_artifacts_host:artifacts_host.public_libs
@@ -425,7 +455,9 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
       in
       let+ package_sections =
         let* sites = Sites.create context in
-        Dune_file.Memo_fold.fold_stanzas stanzas ~init:Package.Name.Map.empty
+        Dune_file.Memo_fold.fold_stanzas
+          stanzas
+          ~init:Package.Name.Map.empty
           ~f:(fun _ stanza acc ->
             let add_in_package_sites acc pkg site loc =
               let+ section = Sites.section_of_site sites ~loc ~pkg ~site in
@@ -442,140 +474,149 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
          sure that at least one location is given to the site of local package
          because if the site is used it should already be in
          [packages_sections] *)
-      Package.Name.Map.foldi packages ~init:package_sections
+      Package.Name.Map.foldi
+        packages
+        ~init:package_sections
         ~f:(fun package_name (package : Package.t) acc ->
           Site.Map.fold package.sites ~init:acc ~f:(fun section acc ->
-              add_in_package_section acc package_name section))
+            add_in_package_section acc package_name section))
     in
     let env_dune_dir_locations =
       let roots =
         Install.Context.dir ~context:context.name
-        |> Path.build |> Install.Roots.opam_from_prefix
+        |> Path.build
+        |> Install.Roots.opam_from_prefix
       in
       let init =
-        match
-          Stdune.Env.get context.env
-            Dune_site_private.dune_dir_locations_env_var
-        with
+        match Stdune.Env.get context.env Dune_site_private.dune_dir_locations_env_var with
         | None -> []
-        | Some var -> (
-          match Dune_site_private.decode_dune_dir_locations var with
-          | Some s -> s
-          | None ->
-            User_error.raise
-              [ Pp.textf "Invalid env var %s=%S"
-                  Dune_site_private.dune_dir_locations_env_var var
-              ])
+        | Some var ->
+          (match Dune_site_private.decode_dune_dir_locations var with
+           | Some s -> s
+           | None ->
+             User_error.raise
+               [ Pp.textf
+                   "Invalid env var %s=%S"
+                   Dune_site_private.dune_dir_locations_env_var
+                   var
+               ])
       in
-      Package.Name.Map.foldi ~init package_sections
-        ~f:(fun package_name sections init ->
-          let paths = Install.Paths.make ~package:package_name ~roots in
-          Section.Set.fold sections ~init ~f:(fun section acc ->
-              let package = Package.Name.to_string package_name in
-              let dir =
-                Path.to_absolute_filename (Install.Paths.get paths section)
-              in
-              { Dune_site_private.package; dir; section } :: acc))
+      Package.Name.Map.foldi ~init package_sections ~f:(fun package_name sections init ->
+        let paths = Install.Paths.make ~package:package_name ~roots in
+        Section.Set.fold sections ~init ~f:(fun section acc ->
+          let package = Package.Name.to_string package_name in
+          let dir = Path.to_absolute_filename (Install.Paths.get paths section) in
+          { Dune_site_private.package; dir; section } :: acc))
     in
-    if List.is_empty env_dune_dir_locations then context.env
+    if List.is_empty env_dune_dir_locations
+    then context.env
     else
-      Stdune.Env.add context.env
+      Stdune.Env.add
+        context.env
         ~var:Dune_site_private.dune_dir_locations_env_var
-        ~value:
-          (Dune_site_private.encode_dune_dir_locations env_dune_dir_locations)
+        ~value:(Dune_site_private.encode_dune_dir_locations env_dune_dir_locations)
   in
   (* Env node that represents the environment configured for the workspace. It
      is used as default at the root of every project in the workspace. *)
   let default_env =
     Memo.lazy_ (fun () ->
-        let make ~inherit_from ~config_stanza =
-          let dir = context.build_dir in
-          let+ scope = Scope.DB.find_by_dir dir in
-          let project = Scope.project scope in
-          let default_context_flags = default_context_flags context ~project in
-          let expander_for_artifacts =
-            Memo.lazy_ (fun () ->
-                Code_error.raise
-                  "[expander_for_artifacts] in [default_env] is undefined" [])
-          in
-          let profile = context.profile in
-          Dune_env.Stanza.fire_hooks config_stanza ~profile;
-          let expander =
-            Memo.Lazy.of_val (Expander.set_dir ~dir root_expander)
-          in
-          Env_node.make context.build_context ~dir ~scope ~inherit_from
-            ~config_stanza ~profile ~expander ~expander_for_artifacts
-            ~default_context_flags ~default_env:context_env
-            ~default_bin_artifacts:artifacts.bin ~default_bin_annot:true
+      let make ~inherit_from ~config_stanza =
+        let dir = context.build_dir in
+        let+ scope = Scope.DB.find_by_dir dir in
+        let project = Scope.project scope in
+        let default_context_flags = default_context_flags context ~project in
+        let expander_for_artifacts =
+          Memo.lazy_ (fun () ->
+            Code_error.raise "[expander_for_artifacts] in [default_env] is undefined" [])
         in
-        make ~config_stanza:context.env_nodes.context
-          ~inherit_from:
-            (Some
-               (Memo.lazy_ (fun () ->
-                    make ~inherit_from:None
-                      ~config_stanza:context.env_nodes.workspace))))
+        let profile = context.profile in
+        Dune_env.Stanza.fire_hooks config_stanza ~profile;
+        let expander = Memo.Lazy.of_val (Expander.set_dir ~dir root_expander) in
+        Env_node.make
+          context.build_context
+          ~dir
+          ~scope
+          ~inherit_from
+          ~config_stanza
+          ~profile
+          ~expander
+          ~expander_for_artifacts
+          ~default_context_flags
+          ~default_env:context_env
+          ~default_bin_artifacts:artifacts.bin
+          ~default_bin_annot:true
+      in
+      make
+        ~config_stanza:context.env_nodes.context
+        ~inherit_from:
+          (Some
+             (Memo.lazy_ (fun () ->
+                make ~inherit_from:None ~config_stanza:context.env_nodes.workspace))))
   in
-  Env_tree.create ~context ~default_env ~host_env_tree:host ~root_expander
-    ~bin_artifacts:artifacts.bin ~context_env
+  Env_tree.create
+    ~context
+    ~default_env
+    ~host_env_tree:host
+    ~root_expander
+    ~bin_artifacts:artifacts.bin
+    ~context_env
+;;
 
 let all =
   Memo.lazy_ ~name:"Super_context.all" (fun () ->
-      let open Memo.O in
-      let* packages = Only_packages.get ()
-      and* contexts = Context.DB.all () in
-      let rec sctxs =
-        lazy
-          (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
-               (c.name, Memo.Lazy.create (fun () -> make_sctx c))))
-      and make_sctx (context : Context.t) =
-        let host () =
-          match context.for_host with
-          | None -> Memo.return None
-          | Some h ->
-            let+ sctx =
-              Memo.Lazy.force
-                (Context_name.Map.find_exn (Lazy.force sctxs) h.name)
-            in
-            Some sctx
-        in
-        let* host, stanzas =
-          Memo.fork_and_join host (fun () ->
-              Only_packages.filtered_stanzas context)
-        in
-        create ~host ~context ~packages ~stanzas
+    let open Memo.O in
+    let* packages = Only_packages.get ()
+    and* contexts = Context.DB.all () in
+    let rec sctxs =
+      lazy
+        (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
+           c.name, Memo.Lazy.create (fun () -> make_sctx c)))
+    and make_sctx (context : Context.t) =
+      let host () =
+        match context.for_host with
+        | None -> Memo.return None
+        | Some h ->
+          let+ sctx =
+            Memo.Lazy.force (Context_name.Map.find_exn (Lazy.force sctxs) h.name)
+          in
+          Some sctx
       in
-      Lazy.force sctxs |> Context_name.Map.to_list
-      |> Memo.parallel_map ~f:(fun (name, sctx) ->
-             let+ sctx = Memo.Lazy.force sctx in
-             (name, sctx))
-      >>| Context_name.Map.of_list_exn)
+      let* host, stanzas =
+        Memo.fork_and_join host (fun () -> Only_packages.filtered_stanzas context)
+      in
+      create ~host ~context ~packages ~stanzas
+    in
+    Lazy.force sctxs
+    |> Context_name.Map.to_list
+    |> Memo.parallel_map ~f:(fun (name, sctx) ->
+      let+ sctx = Memo.Lazy.force sctx in
+      name, sctx)
+    >>| Context_name.Map.of_list_exn)
+;;
 
 let find name =
   let open Memo.O in
   let+ all = Memo.Lazy.force all in
   Context_name.Map.find all name
+;;
 
 let all_init_deferred () =
   let* all = Memo.Lazy.force all in
-  Context_name.Map.values all
-  |> Memo.parallel_iter ~f:Env_tree.force_bin_artifacts
+  Context_name.Map.values all |> Memo.parallel_iter ~f:Env_tree.force_bin_artifacts
+;;
 
 module As_memo_key = struct
   type nonrec t = t
 
   let equal = equal
-
   let hash = hash
-
   let to_dyn = to_dyn_concise
 
   module And_package = struct
     type nonrec t = t * Package.t
 
     let hash = Tuple.T2.hash hash Package.hash
-
     let equal (x1, y1) (x2, y2) = equal x1 x2 && y1 == y2
-
     let to_dyn (s, p) = Dyn.Tuple [ to_dyn s; Package.to_dyn p ]
   end
 end

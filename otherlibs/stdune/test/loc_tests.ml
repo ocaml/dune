@@ -22,3 +22,4 @@ let f () () = function
   [%expect {|
     4 | let f () () = function
     5 |   | A -> () |}]
+;;

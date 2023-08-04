@@ -14,21 +14,24 @@ let dyn_of_t =
   function
   | File f -> variant "File" [ Path.Source.to_dyn f ]
   | Dir { file; dir } ->
-    variant "Dir"
-      [ record
-          [ ("file", Path.Source.to_dyn file); ("dir", Path.Source.to_dyn dir) ]
-      ]
+    variant
+      "Dir"
+      [ record [ "file", Path.Source.to_dyn file; "dir", Path.Source.to_dyn dir ] ]
+;;
 
 let name t =
-  String.drop_suffix ~suffix:".t"
+  String.drop_suffix
+    ~suffix:".t"
     (match t with
-    | File file -> Path.Source.basename file
-    | Dir { file = _; dir } -> Path.Source.basename dir)
+     | File file -> Path.Source.basename file
+     | Dir { file = _; dir } -> Path.Source.basename dir)
   |> Option.value_exn
+;;
 
 let script t =
   match t with
   | File f -> f
   | Dir d -> d.file
+;;
 
 let fname_in_dir_test = "run.t"

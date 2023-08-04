@@ -22,17 +22,17 @@ let stop ({ state; server; pool } as t) =
   | `Awaiting_start -> Fiber.Pool.close pool
   | `Running ->
     t.state <- `Stopped;
-    Fiber.fork_and_join_unit
-      (fun () -> Fiber.Pool.close pool)
-      (fun () -> server.stop)
+    Fiber.fork_and_join_unit (fun () -> Fiber.Pool.close pool) (fun () -> server.stop)
+;;
 
 let with_background_rpc server f =
   let pool = Fiber.Pool.create () in
   let v = { state = `Awaiting_start; server; pool } in
   Fiber.Var.set t v (fun () ->
-      Fiber.fork_and_join_unit
-        (fun () -> Fiber.Pool.run pool)
-        (fun () -> Fiber.finalize f ~finally:(fun () -> stop v)))
+    Fiber.fork_and_join_unit
+      (fun () -> Fiber.Pool.run pool)
+      (fun () -> Fiber.finalize f ~finally:(fun () -> stop v)))
+;;
 
 let ensure_ready () =
   let* ({ state; server; pool } as t) = Fiber.Var.get_exn t in
@@ -43,7 +43,9 @@ let ensure_ready () =
     t.state <- `Running;
     let* () = Fiber.Pool.task pool ~f:(fun () -> server.run) in
     server.ready
+;;
 
 let stop () =
   let* t = Fiber.Var.get_exn t in
   stop t
+;;

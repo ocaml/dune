@@ -1,12 +1,10 @@
 open Import
 
-let doc =
-  "Execute a command in a similar environment as if installation was performed."
+let doc = "Execute a command in a similar environment as if installation was performed."
 
 let man =
   [ `S "DESCRIPTION"
-  ; `P
-      {|$(b,dune exec -- COMMAND) should behave in the same way as if you
+  ; `P {|$(b,dune exec -- COMMAND) should behave in the same way as if you
           do:|}
   ; `Pre "  \\$ dune install\n  \\$ COMMAND"
   ; `P
@@ -23,11 +21,12 @@ let man =
           the project root)|}
   ; `Blocks Common.help_secs
   ; Common.examples
-      [ ("Run the executable named `my_exec'", "dune exec my_exec")
+      [ "Run the executable named `my_exec'", "dune exec my_exec"
       ; ( "Run the executable defined in `foo.ml' with the argument `arg'"
         , "dune exec -- ./foo.exe arg" )
       ]
   ]
+;;
 
 let info = Cmd.info "exec" ~doc ~man
 
@@ -50,13 +49,14 @@ module Command_to_exec = struct
     let argv = path :: args in
     let pid = Spawn.spawn ~prog:path ~env ~argv () in
     Pid.of_int pid
+  ;;
 
   (* Run the command, first (re)building the program which the command is
      invoking *)
-  let build_and_run_in_child_process
-      { get_path_and_build_if_necessary; args; env } =
+  let build_and_run_in_child_process { get_path_and_build_if_necessary; args; env } =
     get_path_and_build_if_necessary ()
     |> Fiber.map ~f:(Result.map ~f:(spawn_process ~args ~env))
+  ;;
 end
 
 module Watch = struct
@@ -90,6 +90,7 @@ module Watch = struct
     in
     Fiber.map_reduce_errors (module Monoid.Unit) ~on_error do_wait
     |> Fiber.map ~f:(function Ok () | Error () -> ())
+  ;;
 
   let kill_currently_running_process { currently_running_pid } =
     match !currently_running_pid with
@@ -97,6 +98,7 @@ module Watch = struct
     | Some pid ->
       currently_running_pid := None;
       kill_process pid
+  ;;
 
   (* Kills the currently running process, then runs the given command after
      (re)building the program which it will invoke *)
@@ -106,35 +108,40 @@ module Watch = struct
     let* () = kill_currently_running_process state in
     Command_to_exec.build_and_run_in_child_process command_to_exec
     >>| Result.map ~f:(fun pid -> state.currently_running_pid := Some pid)
+  ;;
 
   let loop ~command_to_exec =
     let state = init_state () in
     Scheduler.Run.poll (run state ~command_to_exec)
+  ;;
 end
 
 let build_prog ~no_rebuild ~prog p =
-  if no_rebuild then
-    if Path.exists p then Memo.return p
+  if no_rebuild
+  then
+    if Path.exists p
+    then Memo.return p
     else
       User_error.raise
         [ Pp.textf
-            "Program %S isn't built yet. You need to build it first or remove \
-             the --no-build option."
+            "Program %S isn't built yet. You need to build it first or remove the \
+             --no-build option."
             prog
         ]
   else
     let open Memo.O in
     let+ () = Build_system.build_file p in
     p
+;;
 
 let not_found ~dir ~prog =
   let open Memo.O in
   let+ hints =
     (* Good candidates for the "./x.exe" instead of "x.exe" error are
-        executables present in the current directory. Note: we do not
-        check directory targets here; even if they do indeed include a
-        matching executable, they would be located in a subdirectory of
-        [dir], so it's unclear if that's what the user wanted. *)
+       executables present in the current directory. Note: we do not
+       check directory targets here; even if they do indeed include a
+       matching executable, they would be located in a subdirectory of
+       [dir], so it's unclear if that's what the user wanted. *)
     let+ candidates =
       Build_system.files_of ~dir:(Path.build dir)
       >>| Path.Set.to_list
@@ -144,39 +151,47 @@ let not_found ~dir ~prog =
     User_message.did_you_mean prog ~candidates
   in
   User_error.raise ~hints [ Pp.textf "Program %S not found!" prog ]
+;;
 
 let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
   let open Memo.O in
   match Filename.analyze_program_name prog with
-  | In_path -> (
-    Super_context.resolve_program sctx ~dir ~loc:None prog >>= function
+  | In_path ->
+    Super_context.resolve_program sctx ~dir ~loc:None prog
+    >>= (function
     | Error (_ : Action.Prog.Not_found.t) -> not_found ~dir ~prog
     | Ok p -> build_prog ~no_rebuild ~prog p)
-  | Relative_to_current_dir -> (
+  | Relative_to_current_dir ->
     let path = Path.relative_to_source_in_build_or_external ~dir prog in
-    (Build_system.file_exists path >>= function
-     | true -> Memo.return (Some path)
-     | false -> (
-       if not (Filename.check_suffix prog ".exe") then Memo.return None
-       else
-         let path = Path.extend_basename path ~suffix:".exe" in
-         Build_system.file_exists path >>| function
-         | true -> Some path
-         | false -> None))
-    >>= function
+    Build_system.file_exists path
+    >>= (function
+          | true -> Memo.return (Some path)
+          | false ->
+            if not (Filename.check_suffix prog ".exe")
+            then Memo.return None
+            else (
+              let path = Path.extend_basename path ~suffix:".exe" in
+              Build_system.file_exists path
+              >>| function
+              | true -> Some path
+              | false -> None))
+    >>= (function
     | Some path -> build_prog ~no_rebuild ~prog path
     | None -> not_found ~dir ~prog)
-  | Absolute -> (
-    match
-      let prog = Path.of_string prog in
-      if Path.exists prog then Some prog
-      else if not Sys.win32 then None
-      else
-        let prog = Path.extend_basename prog ~suffix:Bin.exe in
-        Option.some_if (Path.exists prog) prog
-    with
-    | Some prog -> Memo.return prog
-    | None -> not_found ~dir ~prog)
+  | Absolute ->
+    (match
+       let prog = Path.of_string prog in
+       if Path.exists prog
+       then Some prog
+       else if not Sys.win32
+       then None
+       else (
+         let prog = Path.extend_basename prog ~suffix:Bin.exe in
+         Option.some_if (Path.exists prog) prog)
+     with
+     | Some prog -> Memo.return prog
+     | None -> not_found ~dir ~prog)
+;;
 
 module Exec_context = struct
   type t =
@@ -199,8 +214,8 @@ module Exec_context = struct
     in
     let dir =
       Fiber.map sctx ~f:(fun sctx ->
-          let context = Dune_rules.Super_context.context sctx in
-          Path.Build.relative context.build_dir (Common.prefix_target common ""))
+        let context = Dune_rules.Super_context.context sctx in
+        Path.Build.relative context.build_dir (Common.prefix_target common ""))
     in
     let env = Fiber.map sctx ~f:Super_context.context_env in
     let get_path_and_build_if_necessary =
@@ -210,10 +225,11 @@ module Exec_context = struct
       fun () -> get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog
     in
     { common; config; env; args; get_path_and_build_if_necessary }
+  ;;
 
-  let run_once { common; config; env; args; get_path_and_build_if_necessary; _ }
-      =
-    Scheduler.go ~common ~config @@ fun () ->
+  let run_once { common; config; env; args; get_path_and_build_if_necessary; _ } =
+    Scheduler.go ~common ~config
+    @@ fun () ->
     let open Fiber.O in
     let* get_path_and_build_if_necessary = get_path_and_build_if_necessary in
     let* env = env in
@@ -221,9 +237,9 @@ module Exec_context = struct
     let prog = Path.to_string path in
     let argv = prog :: args in
     restore_cwd_and_execve common prog argv env
+  ;;
 
-  let run_eager_watch
-      { common; config; env; args; get_path_and_build_if_necessary; _ } =
+  let run_eager_watch { common; config; env; args; get_path_and_build_if_necessary; _ } =
     Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config
     @@ fun () ->
     let open Fiber.O in
@@ -241,29 +257,25 @@ module Exec_context = struct
       }
     in
     Watch.loop ~command_to_exec
+  ;;
 end
 
 let term =
   let+ common = Common.term
-  and+ context =
-    Common.context_arg ~doc:{|Run the command in this build context.|}
-  and+ prog =
-    Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"PROG"))
+  and+ context = Common.context_arg ~doc:{|Run the command in this build context.|}
+  and+ prog = Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"PROG"))
   and+ no_rebuild =
-    Arg.(
-      value & flag
-      & info [ "no-build" ] ~doc:"don't rebuild target before executing")
+    Arg.(value & flag & info [ "no-build" ] ~doc:"don't rebuild target before executing")
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
   (* TODO we should make sure to finalize the current backend before exiting dune.
      For watch mode, we should finalize the backend and then restart it in between
      runs. *)
-  let exec_context =
-    Exec_context.init ~common ~context ~no_rebuild ~prog ~args
-  in
+  let exec_context = Exec_context.init ~common ~context ~no_rebuild ~prog ~args in
   match Common.watch common with
   | Yes Passive ->
     User_error.raise [ Pp.textf "passive watch mode is unsupported by exec" ]
   | Yes Eager -> Exec_context.run_eager_watch exec_context
   | No -> Exec_context.run_once exec_context
+;;
 
 let command = Cmd.v info term

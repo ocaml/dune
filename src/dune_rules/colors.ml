@@ -12,6 +12,7 @@ let setup_env_for_colors env =
   let env = set env "OPAMCOLOR" "always" in
   let env = set env "OCAML_COLOR" "always" in
   env
+;;
 
 module Style = struct
   include User_message.Style
@@ -29,22 +30,27 @@ module Style = struct
     | "ok" -> Some Ok
     | "debug" -> Some Debug
     | _ -> None
+  ;;
 end
 
 let mark_open_stag = function
-  | Format.String_tag s -> (
-    match Style.of_string s with
-    | Some style -> Ansi_color.Style.escape_sequence (Style.to_styles style)
-    | None -> if s <> "" && s.[0] = '\027' then s else "")
+  | Format.String_tag s ->
+    (match Style.of_string s with
+     | Some style -> Ansi_color.Style.escape_sequence (Style.to_styles style)
+     | None -> if s <> "" && s.[0] = '\027' then s else "")
   | _ -> ""
+;;
 
 let setup_err_formatter_colors () =
-  if Lazy.force Ansi_color.stderr_supports_color then (
+  if Lazy.force Ansi_color.stderr_supports_color
+  then (
     let open Format in
     let funcs = pp_get_formatter_stag_functions err_formatter () in
     pp_set_mark_tags err_formatter true;
-    pp_set_formatter_stag_functions err_formatter
+    pp_set_formatter_stag_functions
+      err_formatter
       { funcs with
         mark_close_stag = (fun _ -> Ansi_color.Style.escape_sequence [])
       ; mark_open_stag
       })
+;;

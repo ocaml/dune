@@ -15,8 +15,8 @@ type t =
   ; version : Ocaml.Version.t
   }
 
-val of_env_with_findlib :
-     Context_name.t
+val of_env_with_findlib
+  :  Context_name.t
   -> Env.t
   -> Findlib.Config.t option
   -> which:(Filename.t -> Path.t option Memo.t)

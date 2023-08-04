@@ -15,7 +15,6 @@ open Import
 type t
 
 val name : t -> Coq_lib_name.t
-
 val path : t -> Path.t
 
 (** List of .vo files in a path *)

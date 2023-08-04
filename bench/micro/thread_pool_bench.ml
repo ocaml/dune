@@ -13,6 +13,7 @@ let%bench "almost no-op" =
   while Atomic.get counter > 0 do
     Thread.yield ()
   done
+;;
 
 let%bench "syscall" =
   let tp = Thread_pool.create ~min_workers:10 ~max_workers:50 ~spawn_thread in
@@ -28,6 +29,7 @@ let%bench "syscall" =
   while Atomic.get counter > 0 do
     Thread.yield ()
   done
+;;
 
 let%bench "syscall - no background" =
   let tasks = 50_000 in
@@ -42,3 +44,4 @@ let%bench "syscall - no background" =
   while Atomic.get counter > 0 do
     Thread.yield ()
   done
+;;

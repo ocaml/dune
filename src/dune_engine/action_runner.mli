@@ -25,12 +25,11 @@ end
 type t
 
 val create : Rpc_server.t -> name:string -> t
-
 val name : t -> string
 
 (** [exec_action worker action] dispatches [action] to [worker] *)
-val exec_action :
-     t
+val exec_action
+  :  t
   -> Action_exec.input
   -> (Action_exec.Exec_result.t, Exn_with_backtrace.t list) result Fiber.t
 

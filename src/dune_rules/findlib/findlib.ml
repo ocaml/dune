@@ -17,17 +17,20 @@ module Rule = struct
   let to_dyn { preds_required; preds_forbidden; value } =
     let open Dyn in
     record
-      [ ("preds_required", Ps.to_dyn preds_required)
-      ; ("preds_forbidden", Ps.to_dyn preds_forbidden)
-      ; ("value", string value)
+      [ "preds_required", Ps.to_dyn preds_required
+      ; "preds_forbidden", Ps.to_dyn preds_forbidden
+      ; "value", string value
       ]
+  ;;
 
   let formal_predicates_count t =
     Ps.cardinal t.preds_required + Ps.cardinal t.preds_forbidden
+  ;;
 
   let matches t ~preds =
     Ps.is_subset t.preds_required ~of_:preds
     && Ps.is_empty (Ps.inter preds t.preds_forbidden)
+  ;;
 
   let make (rule : Meta.rule) =
     let preds_required, preds_forbidden =
@@ -39,6 +42,7 @@ module Rule = struct
     ; preds_forbidden = Ps.of_list_map preds_forbidden ~f:P.make
     ; value = rule.value
     }
+  ;;
 end
 
 (* Set of rules for a given variable of a package. Implements the algorithm
@@ -57,40 +61,40 @@ module Rules = struct
   let to_dyn { set_rules; add_rules } =
     let open Dyn in
     record
-      [ ("set_rules", list Rule.to_dyn set_rules)
-      ; ("add_rules", list Rule.to_dyn add_rules)
-      ]
+      [ "set_rules", list Rule.to_dyn set_rules; "add_rules", list Rule.to_dyn add_rules ]
+  ;;
 
   let interpret t ~preds =
     let rec find_set_rule = function
       | [] -> None
       | rule :: rules ->
-        if Rule.matches rule ~preds then Some rule.value
-        else find_set_rule rules
+        if Rule.matches rule ~preds then Some rule.value else find_set_rule rules
     in
     let v = find_set_rule t.set_rules in
     List.fold_left t.add_rules ~init:v ~f:(fun v rule ->
-        if Rule.matches rule ~preds then
-          Some (Option.value ~default:"" v ^ " " ^ rule.value)
-        else v)
+      if Rule.matches rule ~preds
+      then Some (Option.value ~default:"" v ^ " " ^ rule.value)
+      else v)
+  ;;
 
   let sort =
     let compare a b =
-      Int.compare
-        (Rule.formal_predicates_count b)
-        (Rule.formal_predicates_count a)
+      Int.compare (Rule.formal_predicates_count b) (Rule.formal_predicates_count a)
     in
     fun r -> List.stable_sort r ~compare
+  ;;
 
   let of_meta_rules (rules : Meta.Simplified.Rules.t) =
     let add_rules = List.map rules.add_rules ~f:Rule.make in
     let set_rules = List.map rules.set_rules ~f:Rule.make |> sort in
     { add_rules; set_rules }
+  ;;
 
   let union a b =
     { set_rules = a.set_rules @ b.set_rules |> sort
     ; add_rules = a.add_rules @ b.add_rules
     }
+  ;;
 end
 
 module Vars = struct
@@ -98,15 +102,16 @@ module Vars = struct
 
   let get (t : t) var preds =
     Option.map (String.Map.find t var) ~f:(fun r ->
-        Option.value ~default:"" (Rules.interpret r ~preds))
+      Option.value ~default:"" (Rules.interpret r ~preds))
+  ;;
 
   let get_words t var preds =
     match get t var preds with
     | None -> []
     | Some s -> String.extract_comma_space_separated_words s
+  ;;
 
   let empty = String.Map.empty
-
   let union = String.Map.union
 end
 
@@ -119,10 +124,8 @@ module Config = struct
 
     let to_dyn { vars; preds } =
       let open Dyn in
-      record
-        [ ("vars", String.Map.to_dyn Rules.to_dyn vars)
-        ; ("preds", Ps.to_dyn preds)
-        ]
+      record [ "vars", String.Map.to_dyn Rules.to_dyn vars; "preds", Ps.to_dyn preds ]
+    ;;
 
     let load config_file =
       let load p =
@@ -131,34 +134,37 @@ module Config = struct
       in
       let+ vars =
         let* vars =
-          Fs_memo.file_exists config_file >>= function
+          Fs_memo.file_exists config_file
+          >>= function
           | true -> load config_file
           | false -> Memo.return Vars.empty
         in
         let config_dir =
           Path.Outside_build_dir.extend_basename config_file ~suffix:".d"
         in
-        Fs_memo.is_directory config_dir >>= function
+        Fs_memo.is_directory config_dir
+        >>= function
         | Ok false | Error _ -> Memo.return vars
-        | Ok true -> (
-          Fs_memo.dir_contents config_dir >>= function
+        | Ok true ->
+          Fs_memo.dir_contents config_dir
+          >>= (function
           | Ok dir_contents ->
             let+ all_vars =
-              Memo.parallel_map (Fs_cache.Dir_contents.to_list dir_contents)
+              Memo.parallel_map
+                (Fs_cache.Dir_contents.to_list dir_contents)
                 ~f:(fun (p, _kind) ->
                   let p = Path.Outside_build_dir.relative config_dir p in
                   load p)
             in
             List.fold_left all_vars ~init:vars ~f:(fun acc vars ->
-                Vars.union acc vars ~f:(fun _ x y -> Some (Rules.union x y)))
+              Vars.union acc vars ~f:(fun _ x y -> Some (Rules.union x y)))
           | Error _ -> Memo.return vars)
       in
       { vars; preds = Ps.empty }
+    ;;
 
     let get { vars; preds } var = Vars.get vars var preds
-
-    let toolchain t ~toolchain =
-      { t with preds = Ps.singleton (P.make toolchain) }
+    let toolchain t ~toolchain = { t with preds = Ps.singleton (P.make toolchain) }
   end
 
   type t =
@@ -171,63 +177,61 @@ module Config = struct
   let to_dyn { config; ocamlpath; toolchain; which = _ } =
     let open Dyn in
     record
-      [ ("config", File.to_dyn config)
-      ; ("ocamlpath", Dyn.list Path.to_dyn ocamlpath)
-      ; ("toolchain", option string toolchain)
+      [ "config", File.to_dyn config
+      ; "ocamlpath", Dyn.list Path.to_dyn ocamlpath
+      ; "toolchain", option string toolchain
       ]
+  ;;
 
   let ocamlpath_sep =
     if Sys.cygwin then (* because that's what ocamlfind expects *)
-      ';'
-    else Bin.path_sep
+                    ';' else Bin.path_sep
+  ;;
 
   let path_var = Bin.parse_path ~sep:ocamlpath_sep
-
   let ocamlpath env = Env.get env "OCAMLPATH" |> Option.map ~f:path_var
 
   let set_toolchain t ~toolchain =
     match t.toolchain with
     | None ->
-      { t with
-        config = File.toolchain t.config ~toolchain
-      ; toolchain = Some toolchain
-      }
+      { t with config = File.toolchain t.config ~toolchain; toolchain = Some toolchain }
     | Some old_toolchain ->
       Code_error.raise
         "Findlib.Config.set_toolchain: cannot set toolchain twice"
-        [ ("old_toolchain", Dyn.string old_toolchain)
-        ; ("toolchain", Dyn.string toolchain)
-        ]
+        [ "old_toolchain", Dyn.string old_toolchain; "toolchain", Dyn.string toolchain ]
+  ;;
 
   let path t =
     match File.get t.config "path" with
     | None -> t.ocamlpath
     | Some p -> t.ocamlpath @ path_var p
+  ;;
 
   let tool t ~prog =
     match File.get t.config prog with
     | None -> Memo.return None
-    | Some s -> (
-      match Filename.analyze_program_name s with
-      | In_path -> t.which s
-      | Relative_to_current_dir ->
-        User_error.raise
-          [ Pp.textf
-              "The effective Findlib configuration specifies the relative path \
-               %S for the program %S. This is currently not supported."
-              s prog
-          ]
-      | Absolute ->
-        Memo.return (Some (Path.of_filename_relative_to_initial_cwd s)))
+    | Some s ->
+      (match Filename.analyze_program_name s with
+       | In_path -> t.which s
+       | Relative_to_current_dir ->
+         User_error.raise
+           [ Pp.textf
+               "The effective Findlib configuration specifies the relative path %S for \
+                the program %S. This is currently not supported."
+               s
+               prog
+           ]
+       | Absolute -> Memo.return (Some (Path.of_filename_relative_to_initial_cwd s)))
+  ;;
 
   let ocamlfind_config_path ~env ~which ~findlib_toolchain =
     let open Memo.O in
     let+ path =
       (* How dune finds the [findlib.conf] file:
 
-          - if [$OCAMLFIND_CONF] is set, prefer its value
-          - if the [ocamlfind] binary is in [$PATH], run
-            [ocamlfind printconf conf] to get its value
+         - if [$OCAMLFIND_CONF] is set, prefer its value
+         - if the [ocamlfind] binary is in [$PATH], run
+           [ocamlfind printconf conf] to get its value
 
          dune attempts to find [ocaml], [ocamlopt], etc. in the findlib
          configuration for the toolchain first to account for
@@ -235,38 +239,47 @@ module Config = struct
          [$PATH] *)
       match Env.get env "OCAMLFIND_CONF" with
       | Some s -> Memo.return (Some s)
-      | None -> (
-        match findlib_toolchain with
-        | None -> Memo.return None
-        | Some _ -> (
-          which "ocamlfind" >>= function
-          | None -> Memo.return None
-          | Some fn ->
-            Process.run_capture_line ~display:Quiet ~env Strict fn
-              [ "printconf"; "conf" ]
-            |> Memo.of_reproducible_fiber |> Memo.map ~f:Option.some))
+      | None ->
+        (match findlib_toolchain with
+         | None -> Memo.return None
+         | Some _ ->
+           which "ocamlfind"
+           >>= (function
+           | None -> Memo.return None
+           | Some fn ->
+             Process.run_capture_line
+               ~display:Quiet
+               ~env
+               Strict
+               fn
+               [ "printconf"; "conf" ]
+             |> Memo.of_reproducible_fiber
+             |> Memo.map ~f:Option.some))
     in
     (* From http://projects.camlcity.org/projects/dl/findlib-1.9.6/doc/ref-html/r865.html
        This variable overrides the location of the configuration file
        findlib.conf. It must contain the absolute path name of this file. *)
     Option.map path ~f:Path.External.of_string
+  ;;
 
   let discover_from_env ~env ~which ~ocamlpath ~findlib_toolchain =
     let open Memo.O in
-    ocamlfind_config_path ~env ~which ~findlib_toolchain >>= function
+    ocamlfind_config_path ~env ~which ~findlib_toolchain
+    >>= function
     | None -> Memo.return None
     | Some config ->
       let+ config = File.load (External config) in
       let base = { config; ocamlpath; which; toolchain = None } in
       Some
         (match findlib_toolchain with
-        | None -> base
-        | Some toolchain -> set_toolchain base ~toolchain)
+         | None -> base
+         | Some toolchain -> set_toolchain base ~toolchain)
+  ;;
 
   let env t =
     let preds = Ps.add t.config.preds (P.make "env") in
-    String.Map.filter_map ~f:(Rules.interpret ~preds) t.config.vars
-    |> Env.of_string_map
+    String.Map.filter_map ~f:(Rules.interpret ~preds) t.config.vars |> Env.of_string_map
+  ;;
 end
 
 module Unavailable_reason = struct
@@ -280,6 +293,7 @@ module Unavailable_reason = struct
     | Not_found -> variant "Not_found" []
     | Invalid_dune_package why ->
       variant "Invalid_dune_package" [ Dyn.string (User_message.to_string why) ]
+  ;;
 end
 
 let builtin_for_dune : Dune_package.t =
@@ -298,6 +312,7 @@ let builtin_for_dune : Dune_package.t =
   ; sites = Site.Map.empty
   ; files = []
   }
+;;
 
 module DB = struct
   type t =
@@ -312,6 +327,7 @@ module DB = struct
     && List.equal Path.equal t.paths paths
     && Package.Name.Map.equal ~equal:Meta.Simplified.equal t.builtins builtins
     && Lib_config.equal t.lib_config lib_config
+  ;;
 
   let hash { stdlib_dir; paths; builtins; lib_config } =
     Poly.hash
@@ -319,22 +335,21 @@ module DB = struct
       , List.hash Path.hash paths
       , Package.Name.Map.to_list builtins
         |> List.hash (fun (k, v) ->
-               Tuple.T2.hash Package.Name.hash Meta.Simplified.hash (k, v))
+          Tuple.T2.hash Package.Name.hash Meta.Simplified.hash (k, v))
       , Lib_config.hash lib_config )
+  ;;
 end
 
 type t = DB.t
 
 let builtins (db : DB.t) = db.builtins
-
-let findlib_predicates_set_by_dune =
-  Ps.of_list [ P.ppx_driver; P.mt; P.mt_posix ]
+let findlib_predicates_set_by_dune = Ps.of_list [ P.ppx_driver; P.mt; P.mt_posix ]
 
 module Loader : sig
   (* Search for a <package>/{META,dune-package} file in the findlib search
      path *)
-  val lookup_and_load :
-       DB.t
+  val lookup_and_load
+    :  DB.t
     -> Package.Name.t
     -> (Dune_package.t, Unavailable_reason.t) result Memo.t
 end = struct
@@ -346,9 +361,7 @@ end = struct
       ; vars : Vars.t
       }
 
-    val to_dune_library :
-      t -> lib_config:Lib_config.t -> Dune_package.Lib.t Memo.t
-
+    val to_dune_library : t -> lib_config:Lib_config.t -> Dune_package.Lib.t Memo.t
     val exists : t -> is_builtin:bool -> bool Memo.t
   end = struct
     type t =
@@ -362,24 +375,25 @@ end = struct
 
     let get_paths t var preds =
       List.map (Vars.get_words t.vars var preds) ~f:(Path.relative t.dir)
+    ;;
 
     let make_archives t var preds =
-      Mode.Dict.of_func (fun ~mode ->
-          get_paths t var (Ps.add preds (Mode.variant mode)))
+      Mode.Dict.of_func (fun ~mode -> get_paths t var (Ps.add preds (Mode.variant mode)))
+    ;;
 
     let version t = Vars.get t.vars "version" Ps.empty
-
     let description t = Vars.get t.vars "description" Ps.empty
-
     let jsoo_runtime t = get_paths t "jsoo_runtime" Ps.empty
 
     let requires t =
       Vars.get_words t.vars "requires" preds
       |> List.map ~f:(fun s -> Lib_name.parse_string_exn (Loc.none, s))
+    ;;
 
     let ppx_runtime_deps t =
       Vars.get_words t.vars "ppx_runtime_deps" preds
       |> List.map ~f:(fun s -> Lib_name.parse_string_exn (Loc.none, s))
+    ;;
 
     let kind t =
       match Vars.get t.vars "library_kind" Ps.empty with
@@ -387,29 +401,33 @@ end = struct
       | Some "ppx_rewriter" -> Ppx_rewriter Lib_kind.Ppx_args.empty
       | Some "ppx_deriver" -> Ppx_deriver Lib_kind.Ppx_args.empty
       | Some _other_string -> Lib_kind.Normal
+    ;;
 
     let archives t = make_archives t "archive" preds
 
     let plugins t =
-      Mode.Dict.map2 ~f:( @ )
+      Mode.Dict.map2
+        ~f:( @ )
         (make_archives t "archive" (Ps.add preds Variant.plugin))
         (make_archives t "plugin" preds)
+    ;;
 
     let mangled_module_re =
       lazy
         (let open Re in
          [ rep any; str "__"; rep any ] |> seq |> compile)
+    ;;
 
     let exists t ~is_builtin =
       let exists_if = Vars.get_words t.vars "exists_if" Ps.empty in
       match exists_if with
       | _ :: _ ->
         Memo.List.for_all exists_if ~f:(fun fn ->
-            Fs_memo.file_exists
-              (Path.as_outside_build_dir_exn (Path.relative t.dir fn)))
-      | [] -> (
-        if not is_builtin then Memo.return true
-        else
+          Fs_memo.file_exists (Path.as_outside_build_dir_exn (Path.relative t.dir fn)))
+      | [] ->
+        if not is_builtin
+        then Memo.return true
+        else (
           (* The META files for installed packages are sometimes broken, i.e.
              META files for libraries that were not installed by the compiler
              are still present:
@@ -422,24 +440,26 @@ end = struct
           | { byte = []; native = [] } -> Memo.return true
           | { byte; native } ->
             Memo.List.exists (byte @ native) ~f:(fun p ->
-                Path.as_outside_build_dir_exn p |> Fs_memo.file_exists))
+              Path.as_outside_build_dir_exn p |> Fs_memo.file_exists))
+    ;;
 
     let to_dune_library t ~(lib_config : Lib_config.t) =
       let loc = Loc.in_file t.meta_file in
-      let add_loc x = (loc, x) in
+      let add_loc x = loc, x in
       let dot_dune_file =
         Path.relative t.dir (sprintf "%s.dune" (Lib_name.to_string t.name))
       in
       let* dot_dune_exists =
         Fs_memo.file_exists (Path.as_outside_build_dir_exn dot_dune_file)
       in
-      if dot_dune_exists then
+      if dot_dune_exists
+      then
         User_warning.emit
           ~loc:(Loc.in_file dot_dune_file)
           [ Pp.text
-              ".dune files are ignored since 2.0. Reinstall the library with \
-               dune >= 2.0 to get rid of this warning and enable support for \
-               the subsystem this library provides."
+              ".dune files are ignored since 2.0. Reinstall the library with dune >= 2.0 \
+               to get rid of this warning and enable support for the subsystem this \
+               library provides."
           ];
       let archives = archives t in
       let obj_dir = Obj_dir.make_external_no_private ~dir:t.dir in
@@ -448,8 +468,7 @@ end = struct
            hack for compiler-libs which doesn't have any archives *)
         let discovered = Mode.Dict.map ~f:List.is_non_empty archives in
         let modes =
-          if Mode.Dict.Set.is_empty discovered then Mode.Dict.Set.all
-          else discovered
+          if Mode.Dict.Set.is_empty discovered then Mode.Dict.Set.all else discovered
         in
         { Lib_mode.Map.ocaml = modes; melange = false }
       in
@@ -474,8 +493,7 @@ end = struct
           requires t |> List.map ~f:(fun name -> Lib_dep.direct (add_loc name))
         in
         let ppx_runtime_deps = List.map ~f:add_loc (ppx_runtime_deps t) in
-        let special_builtin_support :
-            (Loc.t * Lib_info.Special_builtin_support.t) option =
+        let special_builtin_support : (Loc.t * Lib_info.Special_builtin_support.t) option =
           (* findlib has been around for much longer than dune, so it is
              acceptable to have a special case in dune for findlib. *)
           match Lib_name.to_string t.name with
@@ -491,9 +509,7 @@ end = struct
         let virtual_ = None in
         let default_implementation = None in
         let wrapped = None in
-        let+ dir_contents =
-          Fs_memo.dir_contents (Path.as_outside_build_dir_exn t.dir)
-        in
+        let+ dir_contents = Fs_memo.dir_contents (Path.as_outside_build_dir_exn t.dir) in
         let foreign_archives, native_archives =
           (* Here we scan [t.dir] and consider all files named [lib*.ext_lib] to
              be foreign archives, and all other files with the extension
@@ -512,76 +528,100 @@ end = struct
                read directory" ];
 
                But it seems to be too invasive *)
-            ([], [])
+            [], []
           | Ok dir_contents ->
             let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
             List.rev_filter_partition_map dir_contents ~f:(fun (f, _) ->
-                let ext = Filename.extension f in
-                if ext = lib_config.ext_lib then
-                  let file = Path.relative t.dir f in
-                  if
-                    String.is_prefix f
-                      ~prefix:Foreign.Archive.Name.lib_file_prefix
-                  then Left file
-                  else Right file
-                else Skip)
+              let ext = Filename.extension f in
+              if ext = lib_config.ext_lib
+              then (
+                let file = Path.relative t.dir f in
+                if String.is_prefix f ~prefix:Foreign.Archive.Name.lib_file_prefix
+                then Left file
+                else Right file)
+              else Skip)
         in
-        let foreign_archives =
-          Mode.Map.Multi.create_for_all_modes foreign_archives
-        in
+        let foreign_archives = Mode.Map.Multi.create_for_all_modes foreign_archives in
         let entry_modules =
           Lib_info.Source.External
             (match Vars.get_words t.vars "main_modules" Ps.empty with
-            | _ :: _ as modules ->
-              Ok (List.map ~f:Module_name.of_string modules)
-            | [] -> (
-              match dir_contents with
-              | Error (e, _, _) ->
-                Error
-                  (User_message.make
-                     [ Pp.textf "Unable to get entry modules of %s in %s. "
-                         (Lib_name.to_string t.name)
-                         (Path.to_string src_dir)
-                     ; Pp.textf "error: %s" (Unix.error_message e)
-                     ])
-              | Ok dir_contents ->
-                let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
-                let ext = Cm_kind.ext Cmi in
-                Result.List.filter_map dir_contents ~f:(fun (fname, _) ->
+             | _ :: _ as modules -> Ok (List.map ~f:Module_name.of_string modules)
+             | [] ->
+               (match dir_contents with
+                | Error (e, _, _) ->
+                  Error
+                    (User_message.make
+                       [ Pp.textf
+                           "Unable to get entry modules of %s in %s. "
+                           (Lib_name.to_string t.name)
+                           (Path.to_string src_dir)
+                       ; Pp.textf "error: %s" (Unix.error_message e)
+                       ])
+                | Ok dir_contents ->
+                  let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
+                  let ext = Cm_kind.ext Cmi in
+                  Result.List.filter_map dir_contents ~f:(fun (fname, _) ->
                     match Filename.check_suffix fname ext with
                     | false -> Ok None
-                    | true -> (
-                      if
-                        (* We add this hack to skip manually mangled
-                           libraries *)
-                        Re.execp (Lazy.force mangled_module_re) fname
+                    | true ->
+                      if (* We add this hack to skip manually mangled
+                            libraries *)
+                         Re.execp (Lazy.force mangled_module_re) fname
                       then Ok None
-                      else
+                      else (
                         match
                           let name = Filename.chop_extension fname in
-                          Module_name.of_string_user_error
-                            (Loc.in_dir src_dir, name)
+                          Module_name.of_string_user_error (Loc.in_dir src_dir, name)
                         with
                         | Ok s -> Ok (Some s)
                         | Error e -> Error e))))
         in
         let modules = Lib_info.Source.External None in
-        Lib_info.create ~path_kind:External ~loc ~name:t.name ~kind ~status
-          ~src_dir ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name
-          ~sub_systems ~requires ~foreign_objects ~public_headers ~plugins
-          ~archives ~ppx_runtime_deps ~foreign_archives
-          ~native_archives:(Files native_archives) ~foreign_dll_files:[]
-          ~jsoo_runtime ~preprocess ~enabled ~virtual_deps ~dune_version
-          ~virtual_ ~implements ~default_implementation ~modes ~modules ~wrapped
-          ~special_builtin_support ~exit_module:None
-          ~instrumentation_backend:None ~melange_runtime_deps ~entry_modules
+        Lib_info.create
+          ~path_kind:External
+          ~loc
+          ~name:t.name
+          ~kind
+          ~status
+          ~src_dir
+          ~orig_src_dir
+          ~obj_dir
+          ~version
+          ~synopsis
+          ~main_module_name
+          ~sub_systems
+          ~requires
+          ~foreign_objects
+          ~public_headers
+          ~plugins
+          ~archives
+          ~ppx_runtime_deps
+          ~foreign_archives
+          ~native_archives:(Files native_archives)
+          ~foreign_dll_files:[]
+          ~jsoo_runtime
+          ~preprocess
+          ~enabled
+          ~virtual_deps
+          ~dune_version
+          ~virtual_
+          ~implements
+          ~default_implementation
+          ~modes
+          ~modules
+          ~wrapped
+          ~special_builtin_support
+          ~exit_module:None
+          ~instrumentation_backend:None
+          ~melange_runtime_deps
+          ~entry_modules
       in
       Dune_package.Lib.of_findlib info
+    ;;
   end
 
   (* Parse all the packages defined in a META file *)
-  let dune_package_of_meta (db : DB.t) ~dir ~meta_file
-      ~(meta : Meta.Simplified.t) =
+  let dune_package_of_meta (db : DB.t) ~dir ~meta_file ~(meta : Meta.Simplified.t) =
     let rec loop ~dir ~full_name (meta : Meta.Simplified.t) acc =
       let vars = String.Map.map meta.vars ~f:Rules.of_meta_rules in
       let pkg_dir = Vars.get vars "directory" Ps.empty in
@@ -589,37 +629,31 @@ end = struct
         match pkg_dir with
         | None | Some "" -> dir
         | Some pkg_dir ->
-          if pkg_dir.[0] = '+' || pkg_dir.[0] = '^' then
-            Path.relative db.stdlib_dir (String.drop pkg_dir 1)
-          else if Filename.is_relative pkg_dir then Path.relative dir pkg_dir
+          if pkg_dir.[0] = '+' || pkg_dir.[0] = '^'
+          then Path.relative db.stdlib_dir (String.drop pkg_dir 1)
+          else if Filename.is_relative pkg_dir
+          then Path.relative dir pkg_dir
           else Path.of_filename_relative_to_initial_cwd pkg_dir
       in
-      let pkg : Findlib_package.t =
-        { meta_file; name = full_name; dir; vars }
-      in
-      let* lib =
-        Findlib_package.to_dune_library pkg ~lib_config:db.lib_config
-      in
+      let pkg : Findlib_package.t = { meta_file; name = full_name; dir; vars } in
+      let* lib = Findlib_package.to_dune_library pkg ~lib_config:db.lib_config in
       let* (entry : Dune_package.Entry.t) =
         let+ exists =
-          Findlib_package.exists pkg
+          Findlib_package.exists
+            pkg
             ~is_builtin:
-              (Package.Name.Map.mem db.builtins
-                 (Lib_name.package_name pkg.name))
+              (Package.Name.Map.mem db.builtins (Lib_name.package_name pkg.name))
         in
         if exists then Dune_package.Entry.Library lib else Hidden_library lib
       in
-      let acc =
-        Lib_name.Map.add_exn acc (Dune_package.Entry.name entry) entry
-      in
-      Memo.List.fold_left meta.subs ~init:acc
-        ~f:(fun acc (meta : Meta.Simplified.t) ->
-          let full_name =
-            match meta.name with
-            | None -> full_name
-            | Some name -> Lib_name.nest full_name name
-          in
-          loop ~dir ~full_name meta acc)
+      let acc = Lib_name.Map.add_exn acc (Dune_package.Entry.name entry) entry in
+      Memo.List.fold_left meta.subs ~init:acc ~f:(fun acc (meta : Meta.Simplified.t) ->
+        let full_name =
+          match meta.name with
+          | None -> full_name
+          | Some name -> Lib_name.nest full_name name
+        in
+        loop ~dir ~full_name meta acc)
     in
     let name = Option.value_exn meta.name in
     let+ entries =
@@ -636,69 +670,70 @@ end = struct
     ; sites = Site.Map.empty
     ; files = []
     }
+  ;;
 
   let load_and_convert db ~dir ~meta_file ~name =
-    let* meta =
-      Meta.load (Path.as_outside_build_dir_exn meta_file) ~name:(Some name)
-    in
+    let* meta = Meta.load (Path.as_outside_build_dir_exn meta_file) ~name:(Some name) in
     dune_package_of_meta db ~dir ~meta_file ~meta
+  ;;
 
   let load_builtin db meta =
-    dune_package_of_meta db ~dir:db.stdlib_dir
+    dune_package_of_meta
+      db
+      ~dir:db.stdlib_dir
       ~meta_file:(Path.of_string "<internal>")
       ~meta
+  ;;
 
   let lookup_and_load (db : DB.t) name =
     let rec loop dirs : (Dune_package.t, Unavailable_reason.t) Result.t Memo.t =
       match dirs with
-      | [] -> (
-        match Package.Name.to_string name with
-        | "dune" -> Memo.return (Ok builtin_for_dune)
-        | _ -> Memo.return (Error Unavailable_reason.Not_found))
-      | dir :: dirs -> (
-        let meta_file =
-          Path.relative dir (meta_fn ^ "." ^ Package.Name.to_string name)
-        in
+      | [] ->
+        (match Package.Name.to_string name with
+         | "dune" -> Memo.return (Ok builtin_for_dune)
+         | _ -> Memo.return (Error Unavailable_reason.Not_found))
+      | dir :: dirs ->
+        let meta_file = Path.relative dir (meta_fn ^ "." ^ Package.Name.to_string name) in
         let* file_exists =
           Fs_memo.file_exists (Path.as_outside_build_dir_exn meta_file)
         in
-        if file_exists then
+        if file_exists
+        then
           let+ p = load_and_convert db ~dir ~meta_file ~name in
           Ok p
-        else
+        else (
           let dir = Path.relative dir (Package.Name.to_string name) in
-          let* dir_exists =
-            Fs_memo.dir_exists (Path.as_outside_build_dir_exn dir)
-          in
-          if not dir_exists then loop dirs
-          else
+          let* dir_exists = Fs_memo.dir_exists (Path.as_outside_build_dir_exn dir) in
+          if not dir_exists
+          then loop dirs
+          else (
             let dune = Path.relative dir Dune_package.fn in
             let* exists =
-              let* exists =
-                Fs_memo.file_exists (Path.as_outside_build_dir_exn dune)
-              in
-              if exists then Dune_package.Or_meta.load dune
+              let* exists = Fs_memo.file_exists (Path.as_outside_build_dir_exn dune) in
+              if exists
+              then Dune_package.Or_meta.load dune
               else Memo.return (Ok Dune_package.Or_meta.Use_meta)
             in
             match exists with
-            | Error e ->
-              Memo.return (Error (Unavailable_reason.Invalid_dune_package e))
+            | Error e -> Memo.return (Error (Unavailable_reason.Invalid_dune_package e))
             | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.return (Ok p)
             | Ok Use_meta ->
               let meta_file = Path.relative dir meta_fn in
               let* meta_file_exists =
                 Fs_memo.file_exists (Path.as_outside_build_dir_exn meta_file)
               in
-              if meta_file_exists then
+              if meta_file_exists
+              then
                 let+ p = load_and_convert db ~dir ~meta_file ~name in
                 Ok p
-              else loop dirs)
+              else loop dirs))
     in
     match Package.Name.Map.find db.builtins name with
     | None -> loop db.paths
     | Some meta ->
       let+ builtin = load_builtin db meta in
       Ok builtin
+  ;;
 end
 
 let memo =
@@ -706,18 +741,19 @@ let memo =
     type t = DB.t * Package.Name.t
 
     let to_dyn = Dyn.opaque
-
     let hash = Tuple.T2.hash DB.hash Package.Name.hash
-
     let equal = Tuple.T2.equal DB.equal Package.Name.equal
-  end in
-  Memo.create "findlib"
+  end
+  in
+  Memo.create
+    "findlib"
     ~input:(module Input)
     (fun (db, name) -> Loader.lookup_and_load db name)
+;;
 
-let find_root_package db name :
-    (Dune_package.t, Unavailable_reason.t) result Memo.t =
+let find_root_package db name : (Dune_package.t, Unavailable_reason.t) result Memo.t =
   Memo.exec memo (db, name)
+;;
 
 let find t name =
   let open Memo.O in
@@ -727,65 +763,71 @@ let find t name =
   match Lib_name.Map.find p.entries name with
   | Some x -> Ok x
   | None -> Error Unavailable_reason.Not_found
+;;
 
 let root_packages (db : DB.t) =
   let+ pkgs =
     Memo.List.concat_map db.paths ~f:(fun dir ->
-        Fs_memo.dir_contents (Path.as_outside_build_dir_exn dir) >>= function
-        | Error (ENOENT, _, _) -> Memo.return []
-        | Error (unix_error, _, _) ->
-          User_error.raise
-            [ Pp.textf "Unable to read directory %s for findlib package"
-                (Path.to_string_maybe_quoted dir)
-            ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
-            ]
-        | Ok dir_contents ->
-          let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
-          Memo.List.filter_map dir_contents ~f:(fun (name, _) ->
-              let+ exists =
-                Fs_memo.file_exists
-                  (Path.as_outside_build_dir_exn
-                     (Path.relative dir (name ^ "/" ^ meta_fn)))
-              in
-              if exists then Some (Package.Name.of_string name) else None))
+      Fs_memo.dir_contents (Path.as_outside_build_dir_exn dir)
+      >>= function
+      | Error (ENOENT, _, _) -> Memo.return []
+      | Error (unix_error, _, _) ->
+        User_error.raise
+          [ Pp.textf
+              "Unable to read directory %s for findlib package"
+              (Path.to_string_maybe_quoted dir)
+          ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
+          ]
+      | Ok dir_contents ->
+        let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
+        Memo.List.filter_map dir_contents ~f:(fun (name, _) ->
+          let+ exists =
+            Fs_memo.file_exists
+              (Path.as_outside_build_dir_exn (Path.relative dir (name ^ "/" ^ meta_fn)))
+          in
+          if exists then Some (Package.Name.of_string name) else None))
     >>| Package.Name.Set.of_list
   in
   let builtins = Package.Name.Set.of_list (Package.Name.Map.keys db.builtins) in
   Package.Name.Set.union pkgs builtins
+;;
 
 let load_all_packages (t : t) =
-  root_packages t >>| Package.Name.Set.to_list
+  root_packages t
+  >>| Package.Name.Set.to_list
   >>= Memo.parallel_map ~f:(fun name ->
-          let+ pkg = find_root_package t name in
-          (name, pkg))
+    let+ pkg = find_root_package t name in
+    name, pkg)
+;;
 
 let all_packages t =
   let+ root_packages = load_all_packages t in
   List.fold_left root_packages ~init:[] ~f:(fun acc (_, x) ->
-      match x with
-      | Ok (p : Dune_package.t) ->
-        Lib_name.Map.fold p.entries ~init:acc ~f:(fun x acc -> x :: acc)
-      | Error _ -> acc)
+    match x with
+    | Ok (p : Dune_package.t) ->
+      Lib_name.Map.fold p.entries ~init:acc ~f:(fun x acc -> x :: acc)
+    | Error _ -> acc)
   |> List.sort ~compare:(fun a b ->
-         Lib_name.compare
-           (Dune_package.Entry.name a)
-           (Dune_package.Entry.name b))
+    Lib_name.compare (Dune_package.Entry.name a) (Dune_package.Entry.name b))
+;;
 
 let create ~paths ~(lib_config : Lib_config.t) =
   let stdlib_dir = lib_config.stdlib_dir in
   let version = lib_config.ocaml_version in
   let+ builtins = Meta.builtins ~stdlib_dir ~version in
   { DB.stdlib_dir; paths; builtins; lib_config }
+;;
 
 let lib_config (t : t) = t.lib_config
 
 let all_broken_packages t =
   let+ packages = load_all_packages t in
   List.fold_left packages ~init:[] ~f:(fun acc (name, x) ->
-      match x with
-      | Ok _ | Error Unavailable_reason.Not_found -> acc
-      | Error (Invalid_dune_package exn) -> (name, exn) :: acc)
+    match x with
+    | Ok _ | Error Unavailable_reason.Not_found -> acc
+    | Error (Invalid_dune_package exn) -> (name, exn) :: acc)
   |> List.sort ~compare:(fun (a, _) (b, _) -> Package.Name.compare a b)
+;;
 
 let create =
   let module Input = struct
@@ -793,14 +835,17 @@ let create =
 
     let equal (paths, libs) (paths', libs') =
       List.equal Path.equal paths paths' && Lib_config.equal libs libs'
+    ;;
 
     let hash = Tuple.T2.hash (List.hash Path.hash) Lib_config.hash
-
     let to_dyn = Dyn.pair (Dyn.list Path.to_dyn) Lib_config.to_dyn
-  end in
+  end
+  in
   let memo =
-    Memo.create "lib-installed"
+    Memo.create
+      "lib-installed"
       ~input:(module Input)
       (fun (paths, lib_config) -> create ~paths ~lib_config)
   in
   fun ~paths ~lib_config -> Memo.exec memo (paths, lib_config)
+;;

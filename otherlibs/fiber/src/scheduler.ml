@@ -10,15 +10,17 @@ module Jobs = struct
     | Concat : t * t -> t
 
   let concat a b =
-    match (a, b) with
+    match a, b with
     | Empty, x | x, Empty -> x
     | _ -> Concat (a, b)
+  ;;
 
   let rec enqueue_readers (readers : (_, [ `Empty ]) ivar_state) x jobs =
     match readers with
     | Empty -> jobs
     | Empty_with_readers (ctx, k, readers) ->
       enqueue_readers readers x (Job (ctx, k, x, jobs))
+  ;;
 
   let fill_ivar ivar x jobs =
     match ivar.state with
@@ -30,6 +32,7 @@ module Jobs = struct
       ivar.state <- Full x;
       let jobs = Job (ctx, k, x, jobs) in
       enqueue_readers readers x jobs
+  ;;
 
   let rec exec_fills fills acc =
     match fills with
@@ -37,6 +40,7 @@ module Jobs = struct
     | Fill (ivar, x) :: fills ->
       let acc = fill_ivar ivar x acc in
       exec_fills fills acc
+  ;;
 
   let exec_fills fills = exec_fills (List.rev fills) Empty
 end
@@ -47,7 +51,6 @@ type step' =
 
 module type Witness = sig
   type t
-
   type value += X of t
 end
 
@@ -69,7 +72,7 @@ and loop2 a b =
   | Concat (a1, a2) -> loop2 a1 (Jobs.concat a2 b)
 
 and exec : 'a. context -> ('a -> eff) -> 'a -> Jobs.t -> step' =
- fun ctx k x jobs ->
+  fun ctx k x jobs ->
   match k x with
   | exception exn ->
     let exn = Exn_with_backtrace.capture exn in
@@ -77,12 +80,12 @@ and exec : 'a. context -> ('a -> eff) -> 'a -> Jobs.t -> step' =
   | Done v -> Done v
   | Toplevel_exception exn -> Exn_with_backtrace.reraise exn
   | Unwind (k, x) -> exec ctx.parent k x jobs
-  | Read_ivar (ivar, k) -> (
-    match ivar.state with
-    | (Empty | Empty_with_readers _) as readers ->
-      ivar.state <- Empty_with_readers (ctx, k, readers);
-      loop jobs
-    | Full x -> exec ctx k x jobs)
+  | Read_ivar (ivar, k) ->
+    (match ivar.state with
+     | (Empty | Empty_with_readers _) as readers ->
+       ivar.state <- Empty_with_readers (ctx, k, readers);
+       loop jobs
+     | Full x -> exec ctx k x jobs)
   | Fill_ivar (ivar, x, k) ->
     let jobs = Jobs.concat jobs (Jobs.fill_ivar ivar x Empty) in
     exec ctx k () jobs
@@ -91,8 +94,7 @@ and exec : 'a. context -> ('a -> eff) -> 'a -> Jobs.t -> step' =
     f k;
     loop jobs
   | Resume (suspended, x, k) ->
-    exec ctx k ()
-      (Jobs.concat jobs (Job (suspended.ctx, suspended.run, x, Empty)))
+    exec ctx k () (Jobs.concat jobs (Job (suspended.ctx, suspended.run, x, Empty)))
   | Get_var (key, k) -> exec ctx k (Univ_map.find ctx.vars key) jobs
   | Set_var (key, x, k) ->
     let ctx = { ctx with parent = ctx; vars = Univ_map.set ctx.vars key x } in
@@ -101,13 +103,10 @@ and exec : 'a. context -> ('a -> eff) -> 'a -> Jobs.t -> step' =
     let ctx = { ctx with parent = ctx; vars = Univ_map.remove ctx.vars key } in
     exec ctx k () jobs
   | With_error_handler (on_error, k) ->
-    let on_error =
-      { ctx; run = (fun exn -> on_error exn Nothing.unreachable_code) }
-    in
+    let on_error = { ctx; run = (fun exn -> on_error exn Nothing.unreachable_code) } in
     let ctx = { ctx with parent = ctx; on_error } in
     exec ctx k () jobs
-  | Map_reduce_errors (m, on_error, f, k) ->
-    map_reduce_errors ctx m on_error f k jobs
+  | Map_reduce_errors (m, on_error, f, k) -> map_reduce_errors ctx m on_error f k jobs
   | End_of_fiber () ->
     let (Map_reduce_context r) = ctx.map_reduce_context in
     deref r jobs
@@ -117,8 +116,7 @@ and exec : 'a. context -> ('a -> eff) -> 'a -> Jobs.t -> step' =
     r.ref_count <- ref_count;
     assert (ref_count = 0);
     exec ctx.parent k x jobs
-  | End_of_map_reduce_error_handler map_reduce_context ->
-    deref map_reduce_context jobs
+  | End_of_map_reduce_error_handler map_reduce_context -> deref map_reduce_context jobs
   | Never () -> loop jobs
   | Fork (a, b) ->
     let (Map_reduce_context r) = ctx.map_reduce_context in
@@ -127,21 +125,21 @@ and exec : 'a. context -> ('a -> eff) -> 'a -> Jobs.t -> step' =
   | Reraise exn ->
     let { ctx; run } = ctx.on_error in
     exec ctx run exn jobs
-  | Reraise_all exns -> (
-    match length_and_rev exns with
-    | 0, _ -> loop jobs
-    | n, exns ->
-      let (Map_reduce_context r) = ctx.map_reduce_context in
-      r.ref_count <- r.ref_count + (n - 1);
-      let { ctx; run } = ctx.on_error in
-      let jobs =
-        List.fold_left exns ~init:jobs ~f:(fun jobs exn ->
-            Jobs.Job (ctx, run, exn, jobs))
-      in
-      loop jobs)
+  | Reraise_all exns ->
+    (match length_and_rev exns with
+     | 0, _ -> loop jobs
+     | n, exns ->
+       let (Map_reduce_context r) = ctx.map_reduce_context in
+       r.ref_count <- r.ref_count + (n - 1);
+       let { ctx; run } = ctx.on_error in
+       let jobs =
+         List.fold_left exns ~init:jobs ~f:(fun jobs exn ->
+           Jobs.Job (ctx, run, exn, jobs))
+       in
+       loop jobs)
 
 and deref : 'a 'b. ('a, 'b) map_reduce_context' -> Jobs.t -> step' =
- fun r jobs ->
+  fun r jobs ->
   let ref_count = r.ref_count - 1 in
   r.ref_count <- ref_count;
   match ref_count with
@@ -150,26 +148,25 @@ and deref : 'a 'b. ('a, 'b) map_reduce_context' -> Jobs.t -> step' =
     assert (ref_count > 0);
     loop jobs
 
-and map_reduce_errors :
-    type errors b.
-       context
+and map_reduce_errors
+  : type errors b.
+    context
     -> (module Monoid with type t = errors)
     -> (Exn_with_backtrace.t -> errors t)
     -> (unit -> eff)
     -> ((b, errors) result -> eff)
     -> Jobs.t
-    -> step' =
- fun ctx (module M : Monoid with type t = errors) on_error f k jobs ->
-  let map_reduce_context =
-    { k = { ctx; run = k }; ref_count = 1; errors = M.empty }
-  in
+    -> step'
+  =
+  fun ctx (module M : Monoid with type t = errors) on_error f k jobs ->
+  let map_reduce_context = { k = { ctx; run = k }; ref_count = 1; errors = M.empty } in
   let on_error =
     { ctx
     ; run =
         (fun exn ->
           on_error exn (fun m ->
-              map_reduce_context.errors <- M.combine map_reduce_context.errors m;
-              End_of_map_reduce_error_handler map_reduce_context))
+            map_reduce_context.errors <- M.combine map_reduce_context.errors m;
+            End_of_map_reduce_error_handler map_reduce_context))
     }
   in
   let ctx =
@@ -180,37 +177,37 @@ and map_reduce_errors :
     }
   in
   exec ctx f () jobs
+;;
 
 let repack_step (type a) (module W : Witness with type t = a) (step' : step') =
   match step' with
   | Done (W.X a) -> Done a
   | Done _ ->
     Code_error.raise
-      "advance: it's illegal to call advance with a fiber created in a \
-       different scheduler"
+      "advance: it's illegal to call advance with a fiber created in a different \
+       scheduler"
       []
   | Stalled -> Stalled (module W)
+;;
 
 let advance (type a) (module W : Witness with type t = a) fill : a step =
-  fill |> Nonempty_list.to_list |> Jobs.exec_fills |> loop
-  |> repack_step (module W)
+  fill |> Nonempty_list.to_list |> Jobs.exec_fills |> loop |> repack_step (module W)
+;;
 
 let start (type a) (t : a t) =
   let module W = struct
     type t = a
-
     type value += X of a
-  end in
+  end
+  in
   let rec ctx =
     { parent = ctx
     ; on_error = { ctx; run = (fun exn -> Toplevel_exception exn) }
     ; vars = Univ_map.empty
     ; map_reduce_context =
         Map_reduce_context
-          { k = { ctx; run = (fun _ -> assert false) }
-          ; ref_count = 1
-          ; errors = ()
-          }
+          { k = { ctx; run = (fun _ -> assert false) }; ref_count = 1; errors = () }
     }
   in
   exec ctx t (fun x -> Done (W.X x)) Empty |> repack_step (module W)
+;;

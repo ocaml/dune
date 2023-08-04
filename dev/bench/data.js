@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691163910960,
+  "lastUpdate": 1691164327816,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -64320,6 +64320,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.2247246377866663",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3f62d4049105e73386c313ede804051ed421924e",
+          "message": "feature(rpc): add failed jobs to progress (#8212)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-08-04T08:20:35-07:00",
+          "tree_id": "9be68ea24e635d64f91d6aac49fbe7e3a352ff06",
+          "url": "https://github.com/ocaml/dune/commit/3f62d4049105e73386c313ede804051ed421924e"
+        },
+        "date": 1691164326470,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "82.17920373442666",
             "unit": "seconds"
           }
         ]

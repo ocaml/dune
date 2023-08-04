@@ -3,7 +3,6 @@ open Memo.O
 open Dune_pkg
 
 (* TODO
-   - substitutions
    - post dependencies
    - build dependencies
    - cross compilation
@@ -358,28 +357,57 @@ end
 
 module Substitute = struct
   module Spec = struct
-    type ('path, 'target) t = 'path * 'target
+    type ('path, 'target) t =
+      (* XXX it's not good to serialize the substitution map like this. We're
+         essentially implementing the same substitution procedure but in two
+         different places: action geeneration, and action execution.
+
+         The two implementations are bound to drift. Better would be to
+         reconstruct everything that is needed to call our one and only
+         substitution function. *)
+      OpamVariable.variable_contents Substs.Map.t
+      * Dune_lang.Package_name.t
+      * 'path
+      * 'target
 
     let name = "substitute"
     let version = 1
-    let bimap (i, o) f g = f i, g o
+    let bimap (e, s, i, o) f g = e, s, f i, g o
     let is_useful_to ~distribute:_ ~memoize = memoize
 
-    let encode (i, o) input output : Dune_lang.t =
-      List [ Dune_lang.atom_or_quoted_string name; input i; output o ]
+    let encode (e, s, i, o) input output : Dune_lang.t =
+      let e =
+        Substs.Map.to_list_map e ~f:(fun { Substs.Var.package; variable } v ->
+          let k =
+            let package =
+              Dune_sexp.Encoder.option Dune_lang.Package_name.encode package
+            in
+            Dune_sexp.List [ package; Substs.Variable.encode variable ]
+          in
+          let v =
+            Dune_lang.atom_or_quoted_string (OpamVariable.string_of_variable_contents v)
+          in
+          Dune_sexp.List [ k; v ])
+      in
+      let s = Dune_lang.Package_name.encode s in
+      List [ Dune_lang.atom_or_quoted_string name; List e; s; input i; output o ]
     ;;
 
-    let action _ ~ectx:_ ~eenv:_ = assert false
+    let action (env, self, src, dst) ~ectx:_ ~eenv:_ =
+      let open Fiber.O in
+      let+ () = Fiber.return () in
+      Substs.subst env ~src self ~dst
+    ;;
   end
 
-  let action ~input ~output =
+  let action ~env ~name ~input ~output =
     let module M = struct
       type path = Path.t
       type target = Path.Build.t
 
       module Spec = Spec
 
-      let v = input, output
+      let v = env, name, input, output
     end
     in
     Action.Extension (module M)
@@ -554,6 +582,54 @@ module Action_expander = struct
     ;;
   end
 
+  let substitute_env (expander : Expander.t) =
+    let setenv package variable value env =
+      let var = { Substs.Var.package = Some package; variable } in
+      Substs.Map.add_exn env var value
+    in
+    let env =
+      (* values set with withenv *)
+      Env.Map.map expander.env ~f:Env_update.string_of_env_values
+      |> Env.Map.to_list_map ~f:(fun variable value ->
+        (* TODO why is [package = None]? *)
+        ( { Substs.Var.package = None; variable = Substs.Variable.of_string variable }
+        , OpamVariable.S value ))
+      |> Substs.Map.of_list_exn
+    in
+    Dune_lang.Package_name.Map.foldi
+      expander.deps
+      ~init:env
+      ~f:(fun name (var_conts, paths) env ->
+        let env =
+          String.Map.foldi var_conts ~init:env ~f:(fun key value env ->
+            let key = Substs.Variable.of_string key in
+            setenv name key value env)
+        in
+        let install_paths = Paths.install_paths paths in
+        List.fold_left
+          ~init:env
+          ~f:(fun env (var_name, section) ->
+            let key = Substs.Variable.of_string var_name in
+            let section =
+              OpamVariable.S (Path.to_string (Install.Paths.get install_paths section))
+            in
+            setenv name key section env)
+          [ "lib", Section.Lib
+          ; "lib_root", Lib_root
+          ; "libexec", Libexec
+          ; "libexec_root", Libexec_root
+          ; "bin", Bin
+          ; "sbin", Sbin
+          ; "toplevel", Toplevel
+          ; "share", Share
+          ; "share_root", Share_root
+          ; "etc", Etc
+          ; "doc", Doc
+          ; "stublibs", Stublibs
+          ; "man", Man
+          ])
+  ;;
+
   let rec expand (action : Action_unexpanded.t) ~(expander : Expander.t) =
     let dir = Path.build expander.paths.source_dir in
     match action with
@@ -571,7 +647,7 @@ module Action_expander = struct
       Action.System arg
     | Patch p ->
       let* input = Expander.expand_pform_gen ~mode:Single expander p in
-      let input = input |> Value.to_string ~dir in
+      let input = Value.to_string ~dir input in
       let+ patch =
         let path = Global.env () |> Env_path.path in
         let program = "patch" in
@@ -585,14 +661,17 @@ module Action_expander = struct
       (* TODO opam has a preprocessing step that we should probably apply *)
       Action.Run (patch, Array.Immutable.of_array [| "-p1"; "-i"; input |])
     | Substitute (input, output) ->
-      let* input = Expander.expand_pform_gen ~mode:Single expander input in
-      let input = input |> Value.to_path ~dir in
-      let+ output = Expander.expand_pform_gen ~mode:Single expander output in
-      let output = output |> Value.to_path ~dir |> Path.as_in_build_dir_exn in
-      Substitute.action ~input ~output
+      let+ input =
+        Expander.expand_pform_gen ~mode:Single expander input >>| Value.to_path ~dir
+      and+ output =
+        let+ output = Expander.expand_pform_gen ~mode:Single expander output in
+        Value.to_path ~dir output
+        |> (* TODO this needs proper error handling *) Path.as_in_build_dir_exn
+      in
+      let env = substitute_env expander in
+      Substitute.action ~env ~name:expander.paths.name ~input ~output
     | Withenv (updates, action) ->
-      let* action = expand action ~expander in
-      let+ _env, updates =
+      let* env, updates =
         Memo.List.fold_left
           ~init:(expander.env, [])
           updates
@@ -615,6 +694,8 @@ module Action_expander = struct
             in
             env, update :: updates)
       in
+      let expander = { expander with env } in
+      let+ action = expand action ~expander in
       List.fold_left updates ~init:action ~f:(fun action (k, v) ->
         Action.Setenv (k, v, action))
     | _ ->

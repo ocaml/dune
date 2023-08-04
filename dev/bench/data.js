@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691136774906,
+  "lastUpdate": 1691136787051,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -63740,6 +63740,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "69.23999954327333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cb8f84e01a2eb4a2a2cf8d5bcfe5b2fc23e93d96",
+          "message": "chore(ocamlformat): use the janestreet profile (#8319)\n\nWe often have to push changes between the public repository and the internal version that Jane Street is using.\r\nSwitching to the janestreet profile makes this much easier in terms of conflict resolution.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-08-04T09:46:36+02:00",
+          "tree_id": "624ec17423c847543c4fe0b766294378de5dc274",
+          "url": "https://github.com/ocaml/dune/commit/cb8f84e01a2eb4a2a2cf8d5bcfe5b2fc23e93d96"
+        },
+        "date": 1691136785978,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8860396154133336",
             "unit": "seconds"
           }
         ]

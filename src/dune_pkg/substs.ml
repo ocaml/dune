@@ -50,9 +50,16 @@ let subst env self ~path ~target =
     | Some _ as v -> v
     | None -> Map.find env { Var.T.package = Some self; variable }
   in
-  (* The OPAM API always needs .in as a suffix for the basename *)
-  let target_template = Path.extend_basename target ~suffix:".in" in
-  Path.rename path target_template;
-  let basename = target |> Path.to_string |> OpamFilename.Base.of_string in
-  OpamFilter.expand_interpolations_in_file env basename
+  (* TODO The OPAM API always needs .in as a suffix for the basename. We should
+     fix this. *)
+  let temp_dir = Temp.create Dir ~prefix:"dune" ~suffix:"substitute" in
+  Exn.protect
+    ~finally:(fun () -> Temp.destroy Dir temp_dir)
+    ~f:(fun () ->
+      let target_template = Path.relative temp_dir (Path.basename target ^ ".in") in
+      Io.copy_file ~src:path ~dst:target_template ();
+      let path = target |> Path.to_string |> OpamFilename.Base.of_string in
+      OpamFilter.expand_interpolations_in_file env path;
+      Path.rename target_template target;
+      Temp.destroy Dir temp_dir)
 ;;

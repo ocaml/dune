@@ -158,6 +158,7 @@ module V1 : sig
       | In_progress of
           { complete : int
           ; remaining : int
+          ; failed : int
           }
       | Failed
       | Interrupted

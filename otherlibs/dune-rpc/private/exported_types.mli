@@ -109,6 +109,7 @@ module Progress : sig
     | In_progress of
         { complete : int
         ; remaining : int
+        ; failed : int
         }
     | Failed
     | Interrupted

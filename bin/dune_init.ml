@@ -195,6 +195,37 @@ module Init_context = struct
   ;;
 end
 
+module Public_name = struct
+  include Lib_name
+  module Pkg = Dune_lang.Package_name.Opam_compatible
+
+  let is_opam_compatible l =
+    Lib_name.package_name l |> Dune_lang.Package_name.is_opam_compatible
+  ;;
+
+  let of_string_user_error (loc, s) =
+    let open Result.O in
+    let* l = of_string_user_error (loc, s) in
+    if is_opam_compatible l
+    then Ok l
+    else
+      let open Pp.O in
+      let descr =
+        Pp.text
+          "Public names are composed of an opam package name and optional dot-separated \
+           string suffixes."
+        ++ Pp.newline
+        ++ Pkg.description_of_valid_string
+      in
+      Error (User_error.make [ descr ])
+  ;;
+
+  let of_name_exn name =
+    let s = Dune_lang.Atom.to_string name in
+    of_string_user_error (Loc.none, s) |> User_error.ok_exn
+  ;;
+end
+
 module Component = struct
   module Options = struct
     module Common = struct
@@ -206,12 +237,12 @@ module Component = struct
     end
 
     module Executable = struct
-      type t = { public : Dune_lang.Atom.t option }
+      type t = { public : Public_name.t option }
     end
 
     module Library = struct
       type t =
-        { public : Dune_lang.Atom.t option
+        { public : Public_name.t option
         ; inline_tests : bool
         }
     end
@@ -308,8 +339,7 @@ module Component = struct
       if List.mem ~equal:Dune_lang.Atom.equal set elem then set else elem :: set
     ;;
 
-    let public_name_encoder atom = Atom atom
-    let public_name_field = Encoder.field_o "public_name" public_name_encoder
+    let public_name_field = Encoder.field_o "public_name" Public_name.encode
 
     let executable (common : Options.Common.t) (options : Options.Executable.t) =
       make "executable" common [ public_name_field options.public ]
@@ -438,7 +468,7 @@ module Component = struct
         let libraries = Stanza_cst.add_to_list_set common.name common.libraries in
         bin
           { context = { context with dir = Path.relative dir "bin" }
-          ; options = { public = Some common.name }
+          ; options = { public = Some (Public_name.of_name_exn common.name) }
           ; common = { common with libraries; name = Dune_lang.Atom.of_string "main" }
           }
       in
@@ -449,7 +479,10 @@ module Component = struct
       let lib_target =
         src
           { context = { context with dir = Path.relative dir "lib" }
-          ; options = { public = Some common.name; inline_tests = options.inline_tests }
+          ; options =
+              { public = Some (Public_name.of_name_exn common.name)
+              ; inline_tests = options.inline_tests
+              }
           ; common
           }
       in

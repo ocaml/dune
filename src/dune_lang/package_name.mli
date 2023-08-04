@@ -20,5 +20,9 @@ module Opam_compatible : sig
     type package_name
 
     val to_package_name : t -> package_name
+    val description_of_valid_string : _ Pp.t
+    val make_valid : string -> string
   end
   with type package_name := t
+
+val is_opam_compatible : t -> bool

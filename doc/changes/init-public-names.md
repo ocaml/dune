@@ -1,0 +1,1 @@
+- dune init: parse `--public` as a public name (#8603, fixes #7108, @emillon)

@@ -12,6 +12,14 @@ module Init_context : sig
   val make : string option -> t Memo.t
 end
 
+module Public_name : sig
+  type t
+
+  val to_string : t -> string
+  val of_string_user_error : Loc.t * string -> (t, User_message.t) result
+  val of_name_exn : Dune_lang.Atom.t -> t
+end
+
 (** A [Component.t] is a set of files that can be built or included as part of a
     build. *)
 module Component : sig
@@ -28,13 +36,13 @@ module Component : sig
 
     (** Options for executable components *)
     module Executable : sig
-      type t = { public : Dune_lang.Atom.t option }
+      type t = { public : Public_name.t option }
     end
 
     (** Options for library components *)
     module Library : sig
       type t =
-        { public : Dune_lang.Atom.t option
+        { public : Public_name.t option
         ; inline_tests : bool
         }
     end

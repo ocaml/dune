@@ -79,23 +79,27 @@ let context_cwd : Init_context.t Term.t =
 module Public_name = struct
   type t =
     | Use_name
-    | Public_name of Dune_lang.Atom.t
+    | Public_name of Public_name.t
 
   let public_name_to_string = function
     | Use_name -> "<default>"
-    | Public_name p -> Dune_lang.Atom.to_string p
+    | Public_name p -> Public_name.to_string p
   ;;
 
   let public_name (common : Component.Options.Common.t) = function
     | None -> None
-    | Some Use_name -> Some common.name
+    | Some Use_name -> Some (Public_name.of_name_exn common.name)
     | Some (Public_name n) -> Some n
   ;;
 
   let conv =
-    let parser = function
-      | "" -> Ok Use_name
-      | s -> component_name_parser s |> Result.map ~f:(fun a -> Public_name a)
+    let parser s =
+      if String.is_empty s
+      then Ok Use_name
+      else (
+        match Public_name.of_string_user_error (Loc.none, s) with
+        | Ok n -> Ok (Public_name n)
+        | Error e -> Error (`Msg (User_message.to_string e)))
     in
     let printer ppf public_name =
       Format.pp_print_string ppf (public_name_to_string public_name)

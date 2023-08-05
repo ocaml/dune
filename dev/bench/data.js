@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691242061532,
+  "lastUpdate": 1691253883446,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -82765,6 +82765,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.139302335366665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f1a28b599b77d764709d9f5708c4cc62970e714d",
+          "message": "refactor: remove pointless bindings (#8343)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-05T09:31:49-07:00",
+          "tree_id": "6f4bc2dc5f9fb5b8fdfc0fa20dfb1dc6e48ecfe5",
+          "url": "https://github.com/ocaml/dune/commit/f1a28b599b77d764709d9f5708c4cc62970e714d"
+        },
+        "date": 1691253873886,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.910992468299998",
             "unit": "seconds"
           }
         ]

@@ -83,29 +83,28 @@ end = struct
   let if_ cond l = if cond then l else []
 
   let lib_files ~dir_contents ~dir ~lib_config lib =
-    let virtual_library = Option.is_some (Lib_info.virtual_ lib) in
-    let { Lib_config.ext_obj; _ } = lib_config in
-    let archives = Lib_info.archives lib in
     let+ modules =
       let+ ml_sources = Dir_contents.ocaml dir_contents in
       Some (Ml_sources.modules ml_sources ~for_:(Library (Lib_info.name lib)))
     and+ foreign_archives =
-      if virtual_library
-      then
+      match Lib_info.virtual_ lib with
+      | None -> Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
+      | Some _ ->
         let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
         let name = Lib_info.name lib in
         let files = Foreign_sources.for_lib foreign_sources ~name in
+        let { Lib_config.ext_obj; _ } = lib_config in
         Foreign.Sources.object_files files ~dir ~ext_obj
-      else Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
     in
     List.concat_map
       ~f:(List.map ~f:(fun f -> Section.Lib, f))
-      [ archives.byte
-      ; archives.native
-      ; foreign_archives
-      ; Lib_info.eval_native_archives_exn lib ~modules
-      ; Lib_info.jsoo_runtime lib
-      ]
+      (let { Mode.Dict.byte; native } = Lib_info.archives lib in
+       [ byte
+       ; native
+       ; foreign_archives
+       ; Lib_info.eval_native_archives_exn lib ~modules
+       ; Lib_info.jsoo_runtime lib
+       ])
     @ List.map ~f:(fun f -> Section.Libexec, f) (Lib_info.plugins lib).native
   ;;
 

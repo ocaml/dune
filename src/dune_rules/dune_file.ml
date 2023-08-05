@@ -1005,8 +1005,9 @@ module Library = struct
               let context, _ = Path.Build.extract_build_context_exn dir in
               Memo.return context
             | Var Profile ->
-              let+ context = Context.DB.by_dir dir in
-              Profile.to_string context.profile
+              let context, _ = Path.Build.extract_build_context_exn dir in
+              let+ profile = Per_context.profile (Context_name.of_string context) in
+              Profile.to_string profile
             | _ -> Memo.return @@ Lib_config.get_for_enabled_if lib_config pform
           in
           [ Value.String value ])

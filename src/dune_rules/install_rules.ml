@@ -1015,7 +1015,7 @@ include (
               Path.compare x.src y.src)
           | (dir, comps) :: dirs ->
             (match Path.Untracked.readdir_unsorted_with_kinds dir with
-             | Error _ -> Code_error.raise "unable to read directory" []
+             | Error (e, x, y) -> raise (Unix.Unix_error (e, x, y))
              | Ok files ->
                let files, new_dirs =
                  List.partition_map files ~f:(fun (name, kind) ->

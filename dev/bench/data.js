@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691272473864,
+  "lastUpdate": 1691272485358,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -64871,6 +64871,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "66.12672104963333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "78e0a594059779938e9293482508c0377cc7a0c0",
+          "message": "refactor: reduce scopes in install rules (#8345)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-05T14:28:03-07:00",
+          "tree_id": "84e5696c6b8d9ab83401b620d7093a9b6941f7d1",
+          "url": "https://github.com/ocaml/dune/commit/78e0a594059779938e9293482508c0377cc7a0c0"
+        },
+        "date": 1691272484262,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.7259271968333334",
             "unit": "seconds"
           }
         ]

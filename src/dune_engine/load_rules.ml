@@ -313,14 +313,13 @@ let source_or_external_file_digest path =
   | Error exn -> report_user_error [ Pp.textf "%s" (Printexc.to_string exn) ]
 ;;
 
-let eval_source_file : type a. a Action_builder.eval_mode -> Path.t -> a Memo.t =
+let eval_source_file : type a. a Action_builder.eval_mode -> Path.Source.t -> a Memo.t =
   fun mode path ->
-  let path_outside_build_dir = Path.as_outside_build_dir_exn path in
   match mode with
   | Lazy -> Memo.return ()
   | Eager ->
-    let+ d = source_or_external_file_digest path_outside_build_dir in
-    Dep.Fact.file path d
+    let+ d = source_or_external_file_digest (In_source_dir path) in
+    Dep.Fact.file (Path.source path) d
 ;;
 
 module rec Load_rules : sig
@@ -340,8 +339,8 @@ end = struct
         Action_builder.of_thunk
           { f =
               (fun mode ->
-                let path = Path.source path in
                 let+ fact = eval_source_file mode path in
+                let path = Path.source path in
                 ( Action.Full.make
                     (Action.copy path ctx_path)
                     (* There's an [assert false] in [prepare_managed_paths]

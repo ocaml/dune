@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691262263181,
+  "lastUpdate": 1691262586005,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -64755,6 +64755,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8648477332333335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "791ff52bc5b0192acc183715c1deee0faf113f0e",
+          "message": "refactor: compute expander once (#8344)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-05T11:44:57-07:00",
+          "tree_id": "c5e9148070d33c015259d211a36fe97c65311b9b",
+          "url": "https://github.com/ocaml/dune/commit/791ff52bc5b0192acc183715c1deee0faf113f0e"
+        },
+        "date": 1691262585279,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "63.807124851433336",
             "unit": "seconds"
           }
         ]

@@ -202,27 +202,28 @@ end = struct
           in
           make_entry ?sub_dir Lib source ?dst))
     in
-    let additional_deps (loc, deps) =
-      let+ deps =
-        let* expander = Super_context.expander sctx ~dir:lib_src_dir in
-        Lib_file_deps.eval deps ~expander ~loc ~paths:(Disallow_external lib_name)
-      in
-      Path.Set.to_list_map deps ~f:(fun path ->
-        let path =
-          let path = path |> Path.as_in_build_dir_exn in
-          check_runtime_deps_relative_path ~lib_info:info ~loc (Path.Build.local path);
-          path
+    let* additional_deps =
+      let+ expander = Super_context.expander sctx ~dir:lib_src_dir in
+      fun (loc, deps) ->
+        let+ deps =
+          Lib_file_deps.eval deps ~expander ~loc ~paths:(Disallow_external lib_name)
         in
-        let sub_dir =
-          let src_dir = Path.Build.parent_exn path in
-          match Path.Build.equal lib_src_dir src_dir with
-          | true -> None
-          | false ->
-            Path.Build.local src_dir
-            |> Path.Local.descendant ~of_:(Path.Build.local lib_src_dir)
-            |> Option.map ~f:Path.Local.to_string
-        in
-        make_entry ?sub_dir Lib path)
+        Path.Set.to_list_map deps ~f:(fun path ->
+          let path =
+            let path = path |> Path.as_in_build_dir_exn in
+            check_runtime_deps_relative_path ~lib_info:info ~loc (Path.Build.local path);
+            path
+          in
+          let sub_dir =
+            let src_dir = Path.Build.parent_exn path in
+            match Path.Build.equal lib_src_dir src_dir with
+            | true -> None
+            | false ->
+              Path.Build.local src_dir
+              |> Path.Local.descendant ~of_:(Path.Build.local lib_src_dir)
+              |> Option.map ~f:Path.Local.to_string
+          in
+          make_entry ?sub_dir Lib path)
     in
     let { Lib_config.has_native; ext_obj; _ } = lib_config in
     let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =

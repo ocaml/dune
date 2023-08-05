@@ -173,32 +173,27 @@ end = struct
              as the alias module. *)
           let source = Path.as_in_build_dir_exn source in
           let sub_dir, dst =
-            let sub_dir, dst =
-              match Module.install_as m with
-              | Some p ->
-                let subdir =
-                  let parent = Path.Local.parent_exn p in
-                  if Path.Local.is_root parent
-                  then None
-                  else Some (Path.Local.explode parent |> String.concat ~sep:"/")
-                in
-                subdir, Some (Path.Local.basename p)
-              | None ->
-                let dst =
-                  Path.Build.basename source |> String.drop_suffix ~suffix:"-gen"
-                in
-                let sub_dir =
-                  let src_dir = Path.Build.parent_exn source in
-                  if Path.Build.equal src_dir lib_src_dir
-                  then None
-                  else
-                    Path.Build.local src_dir
-                    |> Path.Local.descendant ~of_:(Path.Build.local lib_src_dir)
-                    |> Option.map ~f:Path.Local.to_string
-                in
-                sub_dir, dst
-            in
-            sub_dir, dst
+            match Module.install_as m with
+            | Some p ->
+              let subdir =
+                let parent = Path.Local.parent_exn p in
+                if Path.Local.is_root parent
+                then None
+                else Some (Path.Local.explode parent |> String.concat ~sep:"/")
+              in
+              subdir, Some (Path.Local.basename p)
+            | None ->
+              let dst = Path.Build.basename source |> String.drop_suffix ~suffix:"-gen" in
+              let sub_dir =
+                let src_dir = Path.Build.parent_exn source in
+                if Path.Build.equal src_dir lib_src_dir
+                then None
+                else
+                  Path.Build.local src_dir
+                  |> Path.Local.descendant ~of_:(Path.Build.local lib_src_dir)
+                  |> Option.map ~f:Path.Local.to_string
+              in
+              sub_dir, dst
           in
           make_entry ?sub_dir Lib source ?dst))
     in

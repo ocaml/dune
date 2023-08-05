@@ -339,9 +339,7 @@ let context_env env name ocfg findlib env_nodes version ~profile ~host ~default_
         |> String.concat ~sep:(Char.escaped Findlib.Config.ocamlpath_sep) )
     ; ( Dune_site_private.dune_sourceroot_env_var
       , Path.to_absolute_filename (Path.source Path.Source.root) )
-    ; ( "INSIDE_DUNE"
-      , let build_dir = Context_name.build_dir name in
-        Path.to_absolute_filename (Path.build build_dir) )
+    ; Execution_env.Inside_dune.(var, value (In_context (Context_name.build_dir name)))
     ]
   in
   let roots =

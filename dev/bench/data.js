@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691173073535,
+  "lastUpdate": 1691241274887,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -82649,6 +82649,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "30.28923471579333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c8838c2c37c198044d893935bba392a192140905",
+          "message": "refactor: add [Per_context] (#8280)\n\nThis allows us to access the profile with cutoff and without\r\ninitializing the context.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-05T06:01:18-07:00",
+          "tree_id": "09afb49781fbf940d589f65b8a0d8428a10f0948",
+          "url": "https://github.com/ocaml/dune/commit/c8838c2c37c198044d893935bba392a192140905"
+        },
+        "date": 1691241265323,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.139302335366665",
             "unit": "seconds"
           }
         ]

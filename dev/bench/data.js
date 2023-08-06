@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691346419471,
+  "lastUpdate": 1691346848358,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -65103,6 +65103,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8049006792066666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9eb2c43e41490ac7b5a2ec594978563be8214afa",
+          "message": "refactor: remove one use of [as_outside_build_dir_exn] (#8348)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-06T11:01:43-07:00",
+          "tree_id": "2da66a76fe7d846664197a8980164c36469de084",
+          "url": "https://github.com/ocaml/dune/commit/9eb2c43e41490ac7b5a2ec594978563be8214afa"
+        },
+        "date": 1691346847437,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "83.52165005592666",
             "unit": "seconds"
           }
         ]

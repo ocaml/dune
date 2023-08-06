@@ -129,7 +129,7 @@ module Dep : sig
     These dependencies may be used using the [deps] function *)
   val setup_deps : Context.t -> target -> Path.Set.t -> unit Memo.t
 end = struct
-  let html_alias ctx m = Alias.doc ~dir:(Paths.html ctx m)
+  let html_alias ctx m = Alias.make Alias0.doc ~dir:(Paths.html ctx m)
   let alias = Alias.make (Alias.Name.of_string ".odoc-all")
 
   let deps ctx pkg requires =
@@ -699,7 +699,7 @@ let setup_package_aliases sctx (pkg : Package.t) =
   let alias =
     let pkg_dir = Package.dir pkg in
     let dir = Path.Build.append_source ctx.build_dir pkg_dir in
-    Alias.doc ~dir
+    Alias.make Alias0.doc ~dir
   in
   let* libs =
     libs_of_pkg ctx ~pkg:name >>| List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib))
@@ -805,7 +805,7 @@ let setup_private_library_doc_alias sctx ~scope ~dir (l : Dune_file.Library.t) =
     in
     let lib = Lib (Lib.Local.of_lib_exn lib) in
     Rules.Produce.Alias.add_deps
-      (Alias.private_doc ~dir)
+      (Alias.make ~dir Alias0.private_doc)
       (lib |> Dep.html_alias ctx |> Dune_engine.Dep.alias |> Action_builder.dep)
 ;;
 

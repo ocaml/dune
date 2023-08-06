@@ -307,7 +307,7 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
 let js_of_ocaml_runtest_alias t ~dir =
   let+ js_of_ocaml = Env_tree.get_node t ~dir >>= Env_node.js_of_ocaml in
   match js_of_ocaml.runtest_alias with
-  | None -> Alias.Name.runtest
+  | None -> Alias0.runtest
   | Some a -> a
 ;;
 

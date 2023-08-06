@@ -326,7 +326,7 @@ include Sub_system.Register_end_point (struct
           in
           let* runtest_alias =
             match mode with
-            | Native | Best | Byte -> Memo.return Alias.Name.runtest
+            | Native | Best | Byte -> Memo.return Alias0.runtest
             | Javascript -> Super_context.js_of_ocaml_runtest_alias sctx ~dir
           in
           Super_context.add_alias_action
@@ -367,7 +367,7 @@ include Sub_system.Register_end_point (struct
       if enabled_if
       then gen_rules c ~expander ~info ~backends
       else (
-        let alias = Alias.runtest ~dir in
+        let alias = Alias.make Alias0.runtest ~dir in
         Simple_rules.Alias_rules.add_empty sctx ~alias ~loc:info.loc)
     ;;
   end)

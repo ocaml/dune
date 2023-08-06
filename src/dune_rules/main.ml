@@ -19,7 +19,7 @@ let implicit_default_alias dir =
     | Some src_dir ->
       let default_alias =
         let dune_version = Source_tree.Dir.project src_dir |> Dune_project.dune_version in
-        if dune_version >= (2, 0) then Alias.Name.all else Alias.Name.install
+        if dune_version >= (2, 0) then Alias0.all else Alias0.install
       in
       Some (Action_builder.ignore (Alias_rec.dep_on_alias_rec default_alias dir)))
 ;;

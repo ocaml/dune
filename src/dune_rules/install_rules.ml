@@ -1306,7 +1306,7 @@ let gen_install_alias sctx (package : Package.t) =
       install_file ~package:name ~findlib_toolchain:ctx.findlib_toolchain
     in
     let path = Package_paths.build_dir ctx package in
-    let install_alias = Alias.install ~dir:path in
+    let install_alias = Alias.make Alias0.install ~dir:path in
     let install_file = Path.relative (Path.build path) install_fn in
     Rules.Produce.Alias.add_deps install_alias (Action_builder.path install_file))
 ;;

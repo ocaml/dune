@@ -64,6 +64,10 @@ let action =
     Action.Extension (module M)
 ;;
 
+module Alias = struct
+  let fmt ~dir = Alias.make Alias0.fmt ~dir
+end
+
 let gen_rules_output
   sctx
   (config : Format_config.t)

@@ -12,10 +12,6 @@ module Name = struct
   ;;
 
   let default = of_string "default"
-  let runtest = of_string "runtest"
-  let install = of_string "install"
-  let fmt = of_string "fmt"
-  let all = of_string "all"
 
   let parse_local_path (loc, p) =
     match Path.Local.parent p with
@@ -99,14 +95,6 @@ let register_as_standard name =
 ;;
 
 let default = make_standard Name.default
-let runtest = make_standard Name.runtest
-let install = make_standard Name.install
-let doc = make_standard (Name.of_string "doc")
-let private_doc = make_standard (Name.of_string "doc-private")
-let lint = make_standard (Name.of_string "lint")
-let all = make_standard (Name.of_string "all")
-let check = make_standard (Name.of_string "check")
-let fmt = make_standard Name.fmt
 
 let encode { dir; name } =
   let open Dune_sexp.Encoder in

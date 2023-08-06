@@ -12,7 +12,7 @@ type effective =
 
 let empty_effective =
   { loc = Loc.none
-  ; alias = Alias.Name.Set.singleton Alias.Name.runtest
+  ; alias = Alias.Name.Set.singleton Alias0.runtest
   ; enabled_if = [ Blang.true_ ]
   ; locks = Path.Set.empty
   ; deps = []

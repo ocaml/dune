@@ -216,10 +216,10 @@ let sys_bindings ~path =
       ]
   in
   List.fold_left
-    ~init:Solver_env.Sys_var.Bindings.empty
+    ~init:Solver_env.Variable.Sys.Bindings.empty
     ~f:(fun sys_bindings (var, data) ->
       match data with
-      | Some value -> Solver_env.Sys_var.Bindings.set sys_bindings var value
+      | Some value -> Solver_env.Variable.Sys.Bindings.set sys_bindings var value
       | None -> sys_bindings)
     mappings
 ;;

@@ -1,7 +1,17 @@
 Print the solver env when no dune-workspace is present
   $ dune pkg lock --just-print-solver-env
   Solver environment for context default:
-  ((flags (with-doc with-test)) (sys ((opam-version 2.2.0~alpha-vendored))))
+  - Flags
+    - with-doc = true
+    - with-test = true
+  - System Environment Variables
+    - arch (unset)
+    - os (unset)
+    - os-version (unset)
+    - os-distribution (unset)
+    - os-family (unset)
+  - Constants
+    - opam-version = 2.2.0~alpha-vendored
 
 Add some build contexts with different environments
   $ cat >dune-workspace <<EOF
@@ -23,22 +33,26 @@ Add some build contexts with different environments
 
   $ dune pkg lock --all-contexts --just-print-solver-env
   Solver environment for context no-doc:
-  ((flags (with-test)) (sys ((opam-version 2.2.0~alpha-vendored))))
+  - Flags
+    - with-doc = false
+    - with-test = true
+  - System Environment Variables
+    - arch (unset)
+    - os (unset)
+    - os-version (unset)
+    - os-distribution (unset)
+    - os-family (unset)
+  - Constants
+    - opam-version = 2.2.0~alpha-vendored
   Solver environment for context linux:
-  ((flags (with-doc with-test)) (sys ((opam-version 2.2.0~alpha-vendored) (os linux))))
-
-  $ cat >dune-workspace <<EOF
-  > (lang dune 3.8)
-  > (context
-  >  (default
-  >   (name attempt-to-override-opam-version)
-  >   (lock dune.linux.lock)
-  >   (solver_env
-  >    (sys
-  >     (opam-version foo)))))
-  > EOF
-
-  $ dune pkg lock --all-contexts --just-print-solver-env
-  Error: Context attempt-to-override-opam-version would override solver
-  variable opam-version. This variable may not be overriden.
-  [1]
+  - Flags
+    - with-doc = true
+    - with-test = true
+  - System Environment Variables
+    - arch (unset)
+    - os = linux
+    - os-version (unset)
+    - os-distribution (unset)
+    - os-family (unset)
+  - Constants
+    - opam-version = 2.2.0~alpha-vendored

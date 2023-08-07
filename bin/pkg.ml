@@ -239,9 +239,10 @@ module Lock = struct
     =
     let sys =
       match
-        Dune_pkg.Solver_env.Sys_var.Bindings.union
-          solver_env_from_context.Dune_pkg.Solver_env.sys
-          sys_bindings_from_current_system
+        Dune_pkg.Solver_env.(
+          Variable.Sys.Bindings.union
+            (sys solver_env_from_context)
+            sys_bindings_from_current_system)
       with
       | Ok solver_env -> solver_env
       | Error
@@ -257,7 +258,7 @@ module Lock = struct
                current system."
           ; Pp.textf
               "Conflicting values for system environment variable: %s"
-              (String.maybe_quoted @@ Dune_pkg.Solver_env.Sys_var.to_string var)
+              (String.maybe_quoted @@ Dune_pkg.Solver_env.Variable.Sys.to_string var)
           ; Pp.textf
               "The value inferred from the current system is: %s"
               (String.maybe_quoted value_from_system)
@@ -267,28 +268,7 @@ module Lock = struct
               (String.maybe_quoted value_from_context)
           ]
     in
-    { solver_env_from_context with Dune_pkg.Solver_env.sys }
-  ;;
-
-  (* Set the opam-version variable, raising a user error if it's already set. *)
-  let add_opam_version_to_solver_env context_name (solver_env : Dune_pkg.Solver_env.t) =
-    match Dune_pkg.Solver_env.Sys_var.Bindings.get solver_env.sys `Opam_version with
-    | Some _ ->
-      User_error.raise
-        [ Pp.textf
-            "Context %s would override solver variable %s. This variable may not be \
-             overriden."
-            (String.maybe_quoted @@ Dune_engine.Context_name.to_string context_name)
-            (Dune_pkg.Solver_env.Sys_var.to_string `Opam_version)
-        ]
-    | None ->
-      { solver_env with
-        sys =
-          Dune_pkg.Solver_env.Sys_var.Bindings.set
-            solver_env.sys
-            `Opam_version
-            (OpamVersion.to_string OpamVersion.current)
-      }
+    Dune_pkg.Solver_env.set_sys solver_env_from_context sys
   ;;
 
   let context_term =
@@ -356,7 +336,7 @@ module Lock = struct
     let* sys_bindings_from_current_system =
       if use_env_from_current_system
       then Dune_pkg.Sys_poll.sys_bindings ~path:(Env_path.path Stdune.Env.initial)
-      else Fiber.return Dune_pkg.Solver_env.Sys_var.Bindings.empty
+      else Fiber.return Dune_pkg.Solver_env.Variable.Sys.Bindings.empty
     in
     if just_print_solver_env
     then
@@ -375,13 +355,12 @@ module Lock = struct
               ~context_name
               ~solver_env_from_context
               ~sys_bindings_from_current_system
-            |> add_opam_version_to_solver_env context_name
           in
           Console.print
             [ Pp.textf
                 "Solver environment for context %s:"
                 (String.maybe_quoted @@ Dune_engine.Context_name.to_string context_name)
-            ; Pp.verbatim (Dune_sexp.to_string @@ Dune_pkg.Solver_env.encode solver_env)
+            ; Dune_pkg.Solver_env.pp solver_env
             ])
     else (
       Per_context.check_for_dup_lock_dir_paths per_context;
@@ -426,7 +405,6 @@ module Lock = struct
                ~context_name
                ~solver_env_from_context
                ~sys_bindings_from_current_system
-             |> add_opam_version_to_solver_env context_name
            in
            match
              Dune_pkg.Opam_solver.solve_lock_dir

@@ -209,8 +209,25 @@ let fmt =
     ]
   in
   let term =
-    let+ common = Common.term in
-    let common = Common.set_promote common Dune_engine.Clflags.Promote.Automatically in
+    let+ common = Common.term
+    and+ no_promote =
+      Arg.(
+        value
+        & flag
+        & info
+            [ "preview" ]
+            ~doc:
+              "Just print the changes that would be made without actually applying them. \
+               This takes precedence over auto-promote as that flag is assumed for this \
+               command.")
+    in
+    let common =
+      Common.set_promote
+        common
+        (if no_promote
+         then Dune_engine.Clflags.Promote.Never
+         else Dune_engine.Clflags.Promote.Automatically)
+    in
     let config = Common.init common in
     let request (setup : Import.Main.build_system) =
       let dir = Path.(relative root) (Common.prefix_target common ".") in

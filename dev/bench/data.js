@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691401525956,
+  "lastUpdate": 1691401559398,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -65219,6 +65219,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.1283176989666663",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d0858164c5626c0b8335479c578bb97f878adba4",
+          "message": "Tidy up solver env (#8314)\n\nRefactor of the `Solver_env` module:\r\n- separate constants from system environment variables\r\n- add human-readable pretty-printer\r\n- unify variables with `Variable.t` type which simplifies the solver\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-08-07T10:15:54+01:00",
+          "tree_id": "4070a60c4dab0ed7776bb30e91b22635891e1372",
+          "url": "https://github.com/ocaml/dune/commit/d0858164c5626c0b8335479c578bb97f878adba4"
+        },
+        "date": 1691401557856,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "78.55901748024",
             "unit": "seconds"
           }
         ]

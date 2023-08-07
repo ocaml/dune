@@ -455,6 +455,8 @@ module Env : sig
   val getopt_full: Name.t -> Name.t * string option
 
   val list: unit -> (Name.t * string) list
+  val raw_env: unit -> string Array.t
+  val cyg_env: string -> string Array.t
 end
 
 (** {2 System query and exit handling} *)
@@ -504,7 +506,7 @@ module Sys : sig
   (** The different families of shells we know about *)
   type powershell_host = Powershell_pwsh | Powershell
   type shell = SH_sh | SH_bash | SH_zsh | SH_csh | SH_fish
-    | SH_pwsh of powershell_host | SH_win_cmd
+    | SH_pwsh of powershell_host | SH_cmd
 
   (** List of all supported shells *)
   val all_shells : shell list
@@ -512,8 +514,9 @@ module Sys : sig
   (** Guess the shell compat-mode *)
   val guess_shell_compat: unit -> shell
 
-  (** Guess the location of .profile *)
-  val guess_dot_profile: shell -> string
+  (** Guess the location of .profile. Returns None if the shell doesn't
+      support the concept of a .profile file. *)
+  val guess_dot_profile: shell -> string option
 
   (** The separator character used in the PATH variable (varies depending on
       OS) *)
@@ -533,10 +536,15 @@ module Sys : sig
 
       Note that this returns [`Native] on a Cygwin-build of opam!
 
-      Both cygcheck and an unqualified command will be resolved using the
-      current PATH. *)
-  val get_windows_executable_variant:
+      Both cygcheck and an unqualified command will be resolved if necessary
+      using the current PATH. *)
+  val get_windows_executable_variant: cygbin:string option ->
     string -> [ `Native | `Cygwin | `Tainted of [ `Msys2 | `Cygwin] | `Msys2 ]
+
+  (** Determines if cygcheck in given cygwin binary directory comes from a
+      Cygwin or MSYS2 installation. Determined by analysing the cygpath command
+      found with it. *)
+  val is_cygwin_cygcheck : cygbin:string option -> bool
 
   (** For native Windows builds, returns [`Cygwin] if the command is a Cygwin-
       or Msys2- compiled executable, and [`CygLinked] if the command links to a
@@ -546,7 +554,10 @@ module Sys : sig
 
       Both cygcheck and an unqualified command will be resolved using the
       current PATH. *)
-  val is_cygwin_variant: string -> [ `Native | `Cygwin | `CygLinked ]
+  val get_cygwin_variant: cygbin:string option -> string -> [ `Native | `Cygwin | `CygLinked ]
+
+  (** Returns true if [get_cygwin_variant] is [`Cygwin] *)
+  val is_cygwin_variant: cygbin:string option -> string -> bool
 
   (** {3 Exit handling} *)
 

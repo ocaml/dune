@@ -78,3 +78,12 @@ type shGFP_type =
 type ('a, 'b, 'c) winmessage =
 | WM_SETTINGCHANGE : (int, string, int) winmessage
   (** See https://msdn.microsoft.com/en-us/library/windows/desktop/ms725497.aspx *)
+
+(** Windows CPU Architectures (SYSTEM_INFO.wProcessArchitecture / sysinfoapi.h) *)
+type windows_cpu_architecture =
+| AMD64   (* 0x9 *)
+| ARM     (* 0x5 *)
+| ARM64   (* 0xc *)
+| IA64    (* 0x6 *)
+| Intel   (* 0x0 *)
+| Unknown (* 0xffff *)

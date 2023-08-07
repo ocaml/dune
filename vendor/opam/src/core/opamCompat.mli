@@ -30,3 +30,11 @@ module Unix : sig
      implementation with double chdir otherwise *)
   val realpath: string -> string
 end
+
+module Filename: sig
+  (** NOTE: OCaml >= 4.10 *)
+
+  val quote_command :
+    string -> ?stdin:string -> ?stdout:string -> ?stderr:string
+    -> string list -> string
+end

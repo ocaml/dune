@@ -22,17 +22,37 @@ let slog = OpamConsole.slog
 
 (* - Environment and updates handling - *)
 
-let split_var v = OpamStd.Sys.split_path_variable ~clean:false v
+type _ env_classification =
+| Separator : char env_classification
+| Split : (string -> string list) env_classification
 
-let join_var l =
-  String.concat (String.make 1 OpamStd.Sys.path_sep) l
+let get_env_property : type s . string -> s env_classification -> s = fun var classification ->
+  let split_delim = Fun.flip OpamStd.String.split in
+  let separator, split =
+    match String.uppercase_ascii var with
+    | "CAML_LD_LIBRARY_PATH" ->
+      OpamStd.Sys.path_sep, split_delim OpamStd.Sys.path_sep
+    | "PKG_CONFIG_PATH" | "MANPATH" ->
+      ':', split_delim ':'
+    | _ ->
+      OpamStd.Sys.path_sep, OpamStd.Sys.split_path_variable ~clean:false
+  in
+  match classification with
+  | Separator -> separator
+  | Split -> split
+
+let split_var (var : OpamStd.Env.Name.t) =
+  get_env_property (var :> string) Split
+
+let join_var (var : OpamStd.Env.Name.t) l =
+  String.concat (String.make 1 (get_env_property (var :> string) Separator)) l
 
 (* To allow in-place updates, we store intermediate values of path-like as a
    pair of list [(rl1, l2)] such that the value is [List.rev_append rl1 l2] and
    the place where the new value should be inserted is in front of [l2] *)
 
 
-let unzip_to elt current =
+let unzip_to var elt current =
   (* If [r = l @ rs] then [remove_prefix l r] is [Some rs], otherwise [None] *)
   let rec remove_prefix l r =
     match l, r with
@@ -41,7 +61,7 @@ let unzip_to elt current =
     | ([], rs) -> Some rs
     | _ -> None
   in
-  match (if String.equal elt "" then [""] else split_var elt) with
+  match (if String.equal elt "" then [""] else split_var var elt) with
   | [] -> invalid_arg "OpamEnv.unzip_to"
   | hd::tl ->
     let rec aux acc = function
@@ -58,8 +78,8 @@ let unzip_to elt current =
 let rezip ?insert (l1, l2) =
   List.rev_append l1 (match insert with None -> l2 | Some i -> i::l2)
 
-let rezip_to_string ?insert z =
-  join_var (rezip ?insert z)
+let rezip_to_string var ?insert z =
+  join_var var (rezip ?insert z)
 
 let apply_op_zip op arg (rl1,l2 as zip) =
   let colon_eq ?(eqcol=false) = function (* prepend a, but keep ":"s *)
@@ -91,23 +111,23 @@ let apply_op_zip op arg (rl1,l2 as zip) =
     position of the matching element and allow [=+=] to be applied later. A pair
     or empty lists is returned if the variable should be unset or has an unknown
     previous value. *)
-let reverse_env_update op arg cur_value =
+let reverse_env_update var op arg cur_value =
   if String.equal arg  "" && op <> Eq then None else
   match op with
   | Eq ->
-    if arg = join_var cur_value
+    if arg = join_var var cur_value
     then Some ([],[]) else None
-  | PlusEq | EqPlusEq -> unzip_to arg cur_value
+  | PlusEq | EqPlusEq -> unzip_to var arg cur_value
   | EqPlus ->
-    (match unzip_to arg (List.rev cur_value) with
+    (match unzip_to var arg (List.rev cur_value) with
      | None -> None
      | Some (rl1, l2) -> Some (List.rev l2, List.rev rl1))
   | ColonEq ->
-    (match unzip_to arg cur_value with
+    (match unzip_to var arg cur_value with
      | Some ([], [""]) -> Some ([], [])
      | r -> r)
   | EqColon ->
-    (match unzip_to arg (List.rev cur_value) with
+    (match unzip_to var arg (List.rev cur_value) with
      | Some ([], [""]) -> Some ([], [])
      | Some (rl1, l2) -> Some (List.rev l2, List.rev rl1)
      | None -> None)
@@ -124,19 +144,33 @@ let map_update_names env_keys updates =
   in
   List.map convert updates
 
-let global_env_keys = lazy (OpamStd.Env.Name.Set.of_list (List.map fst (OpamStd.Env.list ())))
+let global_env_keys = lazy (
+  OpamStd.Env.list ()
+  |> List.map fst
+  |> OpamStd.Env.Name.Set.of_list)
 
 let updates_from_previous_instance = lazy (
-  match OpamStd.Env.getopt "OPAM_SWITCH_PREFIX" with
-  | None -> None
-  | Some pfx ->
-    let env_file =
-      OpamPath.Switch.env_relative_to_prefix (OpamFilename.Dir.of_string pfx)
-    in
-    try OpamStd.Option.map (map_update_names (Lazy.force global_env_keys))
-                           (OpamFile.Environment.read_opt env_file)
-    with e -> OpamStd.Exn.fatal e; None
-)
+  let get_env env_file =
+    OpamStd.Option.map
+      (map_update_names (Lazy.force global_env_keys))
+      (OpamFile.Environment.read_opt env_file)
+  in
+  let open OpamStd.Option.Op in
+  (OpamStd.Env.getopt "OPAM_LAST_ENV"
+   >>= fun env_file ->
+   try
+     OpamFilename.of_string env_file
+     |> OpamFile.make
+     |> get_env
+   with e -> OpamStd.Exn.fatal e; None)
+  >>+ (fun () ->
+      OpamStd.Env.getopt "OPAM_SWITCH_PREFIX"
+      >>= fun pfx ->
+      let env_file =
+        OpamPath.Switch.env_relative_to_prefix (OpamFilename.Dir.of_string pfx)
+      in
+      try get_env env_file
+      with e -> OpamStd.Exn.fatal e; None))
 
 let expand (updates: env_update list) : env =
   let updates =
@@ -160,13 +194,26 @@ let expand (updates: env_update list) : env =
             match Option.map rezip v_opt with
             | Some v -> v
             | None ->
-              OpamStd.Option.map_default split_var []
+              OpamStd.Option.map_default (split_var var) []
                 (OpamStd.Env.getopt (var :> string))
           in
-          match reverse_env_update op arg v with
+          match reverse_env_update var op arg v with
           | Some v -> (var, v)::defs
           | None -> defs0)
         updates []
+  in
+  (* OPAM_LAST_ENV and OPAM_SWITCH_PREFIX must be reverted if they were set *)
+  let reverts =
+    if OpamStd.Env.getopt "OPAM_LAST_ENV" <> None then
+      (OpamStd.Env.Name.of_string "OPAM_LAST_ENV", ([], []))::reverts
+    else
+      reverts
+  in
+  let reverts =
+    if OpamStd.Env.getopt "OPAM_SWITCH_PREFIX" <> None then
+      (OpamStd.Env.Name.of_string "OPAM_SWITCH_PREFIX", ([], []))::reverts
+    else
+      reverts
   in
   (* And apply the new ones *)
   let rec apply_updates reverts acc = function
@@ -181,7 +228,7 @@ let expand (updates: env_update list) : env =
           | Some z, reverts -> z, reverts
           | None, _ ->
             match OpamStd.Env.getopt (var :> string) with
-            | Some s -> ([], split_var s), reverts
+            | Some s -> ([], split_var var s), reverts
             | None -> ([], []), reverts
       in
       let acc =
@@ -195,9 +242,9 @@ let expand (updates: env_update list) : env =
     | [] ->
       List.rev @@
       List.rev_append
-        (List.rev_map (fun (var, z, doc) -> var, rezip_to_string z, doc) acc) @@
+        (List.rev_map (fun (var, z, doc) -> var, rezip_to_string var z, doc) acc) @@
       List.rev_map (fun (var, z) ->
-          var, rezip_to_string z, Some "Reverting previous opam update")
+          var, rezip_to_string var z, Some "Reverting previous opam update")
         reverts
   in
   apply_updates reverts [] updates
@@ -300,9 +347,7 @@ let get_pure ?(updates=[]) () =
 let get_opam ~set_opamroot ~set_opamswitch ~force_path st =
   add [] (updates ~set_opamroot ~set_opamswitch ~force_path st)
 
-let get_opam_raw ~set_opamroot ~set_opamswitch ?(base=[])
-    ~force_path
-    root switch =
+let get_opam_raw_updates ~set_opamroot ~set_opamswitch ~force_path root switch =
   let env_file = OpamPath.Switch.environment root switch in
   let upd = OpamFile.Environment.safe_read env_file in
   let upd =
@@ -317,9 +362,27 @@ let get_opam_raw ~set_opamroot ~set_opamswitch ?(base=[])
             var, to_op, v, doc
           | e -> e) upd
   in
-  add base
-    (updates_common ~set_opamroot ~set_opamswitch root switch @
-     upd)
+    updates_common ~set_opamroot ~set_opamswitch root switch @ upd
+
+let get_opam_raw ~set_opamroot ~set_opamswitch ?(base=[]) ~force_path
+  root switch =
+  let upd =
+    get_opam_raw_updates ~set_opamroot ~set_opamswitch ~force_path root switch
+  in
+  add base upd
+
+let hash_env_updates upd =
+  (* Should we use OpamFile.Environment.write_to_string ? cons: it contains
+     tabulations *)
+  let to_string (name, op, value, _) =
+    String.escaped name
+    ^ OpamPrinter.FullPos.env_update_op_kind op
+    ^ String.escaped value
+  in
+  List.rev_map to_string upd
+  |> String.concat "\n"
+  |> Digest.string
+  |> Digest.to_hex
 
 let get_full
     ~set_opamroot ~set_opamswitch ~force_path ?updates:(u=[]) ?(scrub=[])
@@ -346,7 +409,7 @@ let is_up_to_date_raw ?(skip=OpamStateConfig.(!r.no_env_notice)) updates =
         match OpamStd.Env.getopt_full var with
         | _, None -> upd::notutd
         | var, Some v ->
-          if reverse_env_update op arg (split_var v) = None then upd::notutd
+          if reverse_env_update var op arg (split_var var v) = None then upd::notutd
           else List.filter (fun (v, _, _, _) ->
               OpamStd.Env.Name.equal_string var v) notutd)
       []
@@ -404,7 +467,7 @@ let shell_eval_invocation shell cmd =
     Printf.sprintf "eval (%s)" cmd
   | SH_csh ->
     Printf.sprintf "eval `%s`" cmd
-  | SH_win_cmd ->
+  | SH_cmd ->
     Printf.sprintf {|for /f "tokens=*" %%i in ('%s') do @%%i|} cmd
   | _ ->
     Printf.sprintf "eval $(%s)" cmd
@@ -447,7 +510,7 @@ let filepath_needs_quote path =
 let opam_env_invocation ?root ?switch ?(set_opamswitch=false) shell =
   let shell_arg argname pathval =
     let quoted = match shell with
-    | SH_win_cmd | SH_pwsh _ ->
+    | SH_cmd | SH_pwsh _ ->
       Printf.sprintf " \"--%s=%s\"" argname
     | SH_sh | SH_bash | SH_zsh | SH_csh | SH_fish ->
       Printf.sprintf " '--%s=%s'" argname
@@ -500,35 +563,34 @@ let eval_string gt ?(set_opamswitch=false) switch =
 
 (** The shells for which we generate init scripts (bash and sh are the same
     entry) *)
-let shells_list = [ SH_sh; SH_zsh; SH_csh; SH_fish ]
+let shells_list = [ SH_sh; SH_zsh; SH_csh; SH_fish; SH_pwsh Powershell; SH_cmd ]
 
 let complete_file = function
   | SH_sh | SH_bash -> Some "complete.sh"
   | SH_zsh -> Some "complete.zsh"
-  | SH_csh | SH_fish | SH_pwsh _ | SH_win_cmd -> None
+  | SH_csh | SH_fish | SH_pwsh _ | SH_cmd -> None
 
 let env_hook_file = function
   | SH_sh | SH_bash -> Some "env_hook.sh"
   | SH_zsh -> Some "env_hook.zsh"
   | SH_csh -> Some "env_hook.csh"
   | SH_fish -> Some "env_hook.fish"
-  | SH_pwsh _ | SH_win_cmd ->
-    (* N/A because not present in `shells_list` yet *) None
+  | SH_pwsh _ | SH_cmd -> None
 
 let variables_file = function
   | SH_sh | SH_bash | SH_zsh -> "variables.sh"
   | SH_csh -> "variables.csh"
   | SH_fish -> "variables.fish"
-  | SH_pwsh _ | SH_win_cmd ->
-    (* N/A because not present in `shells_list` yet *) "variables.sh"
+  | SH_pwsh _ -> "variables.ps1"
+  | SH_cmd -> "variables.cmd"
 
 let init_file = function
   | SH_sh | SH_bash -> "init.sh"
   | SH_zsh -> "init.zsh"
   | SH_csh -> "init.csh"
   | SH_fish -> "init.fish"
-  | SH_pwsh _ | SH_win_cmd ->
-    (* N/A because not present in `shells_list` yet *) "init.sh"
+  | SH_pwsh _ -> "init.ps1"
+  | SH_cmd -> "init.cmd"
 
 let export_in_shell shell =
   let make_comment comment_opt =
@@ -565,20 +627,20 @@ let export_in_shell shell =
         (make_comment comment) k v
   in
   let pwsh (k,v,comment) =
-    Printf.sprintf "%s$env:%s=%s;\n"
+    Printf.sprintf "%s$env:%s=%s\n"
       (make_comment comment) k v in
-  let win_cmd (k,v,comment) =
+  let cmd (k,v,comment) =
     let make_cmd_comment comment_opt =
-      OpamStd.Option.to_string (Printf.sprintf "REM %s\n") comment_opt
+      OpamStd.Option.to_string (Printf.sprintf ":: %s\n") comment_opt
     in
-    Printf.sprintf "%sSET \"%s=%s\"\n"
+    Printf.sprintf "%sset \"%s=%s\"\n"
       (make_cmd_comment comment) k v in
   match shell with
   | SH_zsh | SH_bash | SH_sh -> sh
   | SH_fish -> fish
   | SH_csh -> csh
   | SH_pwsh _ -> pwsh
-  | SH_win_cmd -> win_cmd
+  | SH_cmd -> cmd
 
 let source root shell f =
   let fname = OpamFilename.to_string (OpamPath.init root // f) in
@@ -593,10 +655,10 @@ let source root shell f =
   | SH_zsh ->
     Printf.sprintf "[[ ! -r %s ]] || source %s  > /dev/null 2> /dev/null\n"
       fname fname
-  | SH_win_cmd ->
-    Printf.sprintf "if exist \"%s\" ( \"%s\" >NUL 2>NUL )\n" fname fname
+  | SH_cmd ->
+    Printf.sprintf "if exist \"%s\" call \"%s\" >NUL 2>NUL\n" fname fname
   | SH_pwsh _ ->
-    Printf.sprintf "& \"%s\" > $null 2> $null\n" fname
+    Printf.sprintf ". \"%s\" *> $null\n" fname
 
 let if_interactive_script shell t e =
   let ielse else_opt = match else_opt with
@@ -620,7 +682,7 @@ let if_interactive_script shell t e =
     Printf.sprintf "if ( $?prompt ) then\n  %s%sendif\n" t @@ ielse e
   | SH_fish ->
     Printf.sprintf "if isatty\n  %s%send\n" t @@ ielse e
-  | SH_win_cmd ->
+  | SH_cmd ->
     Printf.sprintf "echo %%cmdcmdline%% | find /i \"%%~0\" >nul\nif errorlevel 1 (\n%s%s)\n" t @@ ielse_cmd e
   | SH_pwsh _ ->
     Printf.sprintf "if ([Environment]::UserInteractive) {\n  %s%s}\n" t @@ ielse_pwsh e
@@ -645,11 +707,26 @@ let string_of_update st shell updates =
     in
     let key, value =
       ident, match symbol with
-      | Eq  -> Printf.sprintf "'%s'" string
+      | Eq ->
+        (match shell with
+         | SH_pwsh _ ->
+           Printf.sprintf "'%s'" (OpamStd.Env.escape_powershell string)
+         | SH_cmd -> string
+         | _ -> Printf.sprintf "'%s'" string)
       | PlusEq | ColonEq | EqPlusEq ->
-        Printf.sprintf "'%s':\"$%s\"" string ident
+        let sep = get_env_property ident Separator in
+        (match shell with
+         | SH_pwsh _ ->
+           Printf.sprintf "'%s%c' + \"$env:%s\""
+             (OpamStd.Env.escape_powershell string) sep ident
+         | SH_cmd -> Printf.sprintf "%s%c%%%s%%" string sep ident
+         | _ -> Printf.sprintf "'%s':\"$%s\"" string ident)
       | EqColon | EqPlus ->
-        Printf.sprintf "\"$%s\":'%s'" ident string
+        let sep = get_env_property ident Separator in
+        (match shell with
+         | SH_pwsh _ -> Printf.sprintf "\"$env:%s\" + '%c%s'" ident sep string
+         | SH_cmd -> Printf.sprintf "%%%s%%%c%s" ident sep string
+         | _ -> Printf.sprintf "\"$%s\":'%s'" ident string)
     in
     export_in_shell shell (key, value, comment) in
   OpamStd.List.concat_map "" aux updates
@@ -703,7 +780,7 @@ let write_dynamic_init_scripts st =
       (fun shell ->
          write_script (OpamPath.init st.switch_global.root)
            (variables_file shell, string_of_update st shell updates))
-      [SH_sh; SH_csh; SH_fish]
+      [SH_sh; SH_csh; SH_fish; SH_pwsh Powershell; SH_cmd]
   with OpamSystem.Locked ->
     OpamConsole.warning
       "Global shell init scripts not installed (could not acquire lock)"
@@ -711,7 +788,7 @@ let write_dynamic_init_scripts st =
 let clear_dynamic_init_scripts gt =
   List.iter (fun shell ->
       OpamFilename.remove (OpamPath.init gt.root // variables_file shell))
-    [SH_sh; SH_csh; SH_fish]
+    [SH_sh; SH_csh; SH_fish; SH_pwsh Powershell; SH_cmd]
 
 let dot_profile_needs_update root dot_profile =
   if not (OpamFilename.exists dot_profile) then `yes else
@@ -748,21 +825,28 @@ let update_dot_profile root dot_profile shell =
       pretty_dot_profile
   | `yes       ->
     let init_file = init_file shell in
-    let body =
+    let old_body =
       if OpamFilename.exists dot_profile then
         OpamFilename.read dot_profile
       else
         "" in
     OpamConsole.msg "  Updating %s.\n" pretty_dot_profile;
     bash_src();
-    let body =
+    let count_lines str = List.length (String.split_on_char '\n' str) in
+    let opam_section =
       Printf.sprintf
-        "%s\n\n\
-         # opam configuration\n\
-         %s"
-        (OpamStd.String.strip body) (source root shell init_file) in
-    OpamFilename.write dot_profile body
-
+        "\n\n\
+         # BEGIN opam configuration\n\
+         # This is useful if you're using opam as it adds:\n\
+         #   - the correct directories to the PATH\n\
+         #   - auto-completion for the opam binary\n\
+         # This section can be safely removed at any time if needed.\n\
+         %s\
+         # END opam configuration\n"
+        (source root shell init_file) in
+    OpamFilename.write dot_profile (old_body ^ opam_section);
+    OpamConsole.msg "  Added %d lines after line %d in %s.\n"
+      (count_lines opam_section - 1) (count_lines old_body) pretty_dot_profile
 
 let update_user_setup root ?dot_profile shell =
   if dot_profile <> None then (

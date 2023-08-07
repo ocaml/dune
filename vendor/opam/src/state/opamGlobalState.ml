@@ -44,6 +44,10 @@ let load_config lock_kind global_lock root =
   let config =
     OpamFormatUpgrade.as_necessary lock_kind global_lock root config
   in
+  OpamStd.Option.iter
+    (fun cygbin ->
+       OpamCoreConfig.update ~cygbin:(OpamFilename.Dir.to_string cygbin) ())
+    (OpamSysInteract.Cygwin.cygbin_opt (fst config));
   config
 
 let inferred_from_system = "Inferred from system"

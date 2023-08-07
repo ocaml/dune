@@ -71,6 +71,7 @@ type t = private {
   precise_tracking : bool;
   (** If set, will take full md5 of all files when checking diffs (to track
       installations), rather than rely on just file size and mtime *)
+  cygbin: string option;
   set : bool;
   (** Options have not yet been initialised (i.e. defaults are active) *)
 }
@@ -90,6 +91,7 @@ type 'a options_fun =
   ?errlog_length:int ->
   ?merged_output:bool ->
   ?precise_tracking:bool ->
+  ?cygbin:string ->
   'a
 
 val default : t

@@ -43,6 +43,16 @@ val get_opam_raw:
   force_path:bool ->
   dirname -> switch -> env
 
+(** Like [get_opam_raw], but returns the list of updates instead of the new
+    environment. *)
+val get_opam_raw_updates:
+  set_opamroot:bool -> set_opamswitch:bool -> force_path:bool ->
+  dirname -> switch -> env_update list
+
+(** Returns a hash of the given env_update list suitable for use with
+    OPAM_LAST_ENV *)
+val hash_env_updates: env_update list -> string
+
 (** Returns the running environment, with any opam modifications cleaned out,
     and optionally the given updates *)
 val get_pure: ?updates:env_update list -> unit -> env

@@ -175,12 +175,12 @@ val depexts: 'a switch_state -> package -> OpamSysPkg.Set.t
 *)
 val dependencies:
   'a switch_state -> build:bool -> post:bool -> depopts:bool ->
-  installed:bool -> ?unavailable:bool -> universe -> package_set -> package_set
+  installed:bool -> ?unavailable:bool -> package_set -> package_set
 
 (** Same as [dependencies] but for reverse dependencies. *)
 val reverse_dependencies:
   'a switch_state -> build:bool -> post:bool -> depopts:bool ->
-  installed:bool -> ?unavailable:bool -> universe -> package_set -> package_set
+  installed:bool -> ?unavailable:bool -> package_set -> package_set
 
 (** Returns required system packages of each of the given packages (elements are
     not added to the map  if they don't have system dependencies) *)

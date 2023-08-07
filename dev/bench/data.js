@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691400663113,
+  "lastUpdate": 1691400989241,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -83490,6 +83490,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "26.38799923767333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "23c62826059319b49c7b5e9b3f4be5069ee93c19",
+          "message": "feature: Add flag to `dune fmt` to disable promoting (#8289)\n\nSometimes you just want to see the diff without applying it.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-08-07T10:20:18+01:00",
+          "tree_id": "8720253f641a9268bf6c11671b3d981e1477de00",
+          "url": "https://github.com/ocaml/dune/commit/23c62826059319b49c7b5e9b3f4be5069ee93c19"
+        },
+        "date": 1691400976865,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "27.80043826968",
             "unit": "seconds"
           }
         ]

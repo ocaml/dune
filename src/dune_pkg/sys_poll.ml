@@ -50,9 +50,15 @@ let arch ~path =
     match Sys.os_type with
     | "Unix" | "Cygwin" -> uname ~path [ "-m" ]
     | "Win32" ->
-      if Sys.word_size = 32 && not (OpamStubs.isWoW64 ())
-      then Fiber.return @@ Some "i686"
-      else Fiber.return @@ Some "x86_64"
+      Fiber.return
+      @@
+        (match OpamStubs.getArchitecture () with
+        | OpamStubs.AMD64 -> Some "x86_64"
+        | ARM -> Some "arm32"
+        | ARM64 -> Some "arm64"
+        | IA64 -> Some "ia64"
+        | Intel -> Some "x86_32"
+        | Unknown -> None)
     | _ -> Fiber.return None
   in
   match raw with

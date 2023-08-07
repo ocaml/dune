@@ -297,6 +297,7 @@ let make_lib_modules
   ~(lib : Library.t)
   ~modules
   ~include_subdirs:(loc_include_subdirs, (include_subdirs : Dune_file.Include_subdirs.t))
+  ~version
   =
   let open Resolve.Memo.O in
   let* kind, main_module_name, wrapped =
@@ -354,6 +355,7 @@ let make_lib_modules
         (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
       ~src_dir:dir
       modules_settings
+      ~version
   in
   let () =
     match lib.stdlib, include_subdirs with
@@ -424,6 +426,7 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules ~include_subd
           ~modules
           ~lib
           ~include_subdirs
+          ~version:lib.dune_version
         >>= Resolve.read_memo
       in
       let obj_dir = Library.obj_dir lib ~dir in
@@ -440,6 +443,7 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules ~include_subd
           ~src_dir:dir
           ~kind:Modules_field_evaluator.Exe_or_normal_lib
           ~private_modules:Ordered_set_lang.standard
+          ~version:exes.dune_version
           modules_settings
       in
       let modules =
@@ -457,6 +461,7 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules ~include_subd
           ~modules
           ~stanza_loc:mel.loc
           ~kind:Modules_field_evaluator.Exe_or_normal_lib
+          ~version:mel.dune_version
           ~private_modules:Ordered_set_lang.standard
           ~src_dir:dir
           mel.modules

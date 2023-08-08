@@ -76,11 +76,14 @@ value in [build_system.ml].
 You will also need to make sure that the cache trimmer treats new and old cache
 entries uniformly.
 
-  $ (cd "$PWD/.xdg-cache/dune/db/meta/v5"; grep -rws . -e 'metadata' | sort)
+  $ (cd "$PWD/.xdg-cache/dune/db/meta/v5"; grep -rws . -e 'metadata' | sort ) > out
+  $ cat out
   ./43/43fa723fabb4757b65b428fcd40614c1:((8:metadata)(5:files(8:target_a32:5637dd9730e430c7477f52d46de3909c)))
   ./d2/d226867c9aaf5af87f571ce8a1dd8f43:((8:metadata)(5:files(8:target_b32:8a53bfae3829b48866079fa7f2d97781)))
 
-  $ dune_cmd stat size "$PWD/.xdg-cache/dune/db/meta/v5/d2/d226867c9aaf5af87f571ce8a1dd8f43"
+  $ digest="$(awk -F: '/target_b/ { digest=$1 } END { print digest }' < out)"
+
+  $ dune_cmd stat size "$PWD/.xdg-cache/dune/db/meta/v5/$digest"
   70
 
 Trimming the cache at this point should not remove any file entries because all

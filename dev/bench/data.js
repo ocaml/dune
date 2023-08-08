@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691454588445,
+  "lastUpdate": 1691497284779,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -83925,6 +83925,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.741122811046665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ea0eacad04f97a520ce315f90e7e91b72bae938f",
+          "message": "fix: [build_dir_only_sub_dirs] sanity check (#8285)\n\n[build_dir_only_sub_dirs] should not be allowed to escape the directory\r\nwe're producing in and we have a check in the code to verify this.\r\n\r\nThe current check was buggy and was checking the directory\r\ntargets map instead. The declared directory targets indeed have this\r\nlimitation, but it's already checked elsewhere.\r\n\r\nThe fix is to correctly check the right directory set. This requires\r\nadding an api to iterate over the sub directories.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-08T05:04:57-07:00",
+          "tree_id": "bc117a9b836e0b18b3060830ce136653b3afb23c",
+          "url": "https://github.com/ocaml/dune/commit/ea0eacad04f97a520ce315f90e7e91b72bae938f"
+        },
+        "date": 1691497272525,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "28.316116829206667",
             "unit": "seconds"
           }
         ]

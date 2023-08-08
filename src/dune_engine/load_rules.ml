@@ -551,13 +551,15 @@ end = struct
     ;;
 
     let check_all_sub_dirs_rule_dirs_are_descendant ~of_:dir build_dir_only_sub_dirs =
-      Path.Build.Map.iteri build_dir_only_sub_dirs ~f:(fun p _sub_dirs ->
-        if not (Path.Build.is_descendant p ~of_:dir)
-        then
-          Code_error.raise
-            "[gen_rules] returned sub-directories in a directory that is not a \
-             descendant of the directory it was called for"
-            [ "dir", Path.Build.to_dyn dir; "example", Path.Build.to_dyn p ])
+      Build_config.Rules.Build_only_sub_dirs.iter_dirs_containing_sub_dirs
+        build_dir_only_sub_dirs
+        ~f:(fun p ->
+          if not (Path.Build.is_descendant p ~of_:dir)
+          then
+            Code_error.raise
+              "[gen_rules] returned sub-directories in a directory that is not a \
+               descendant of the directory it was called for"
+              [ "dir", Path.Build.to_dyn dir; "example", Path.Build.to_dyn p ])
     ;;
 
     let check_all_rules_are_descendant ~of_:dir rules =
@@ -595,7 +597,7 @@ end = struct
       { Build_config.Rules.build_dir_only_sub_dirs; directory_targets; rules }
       =
       check_all_directory_targets_are_descendant ~of_ directory_targets;
-      check_all_sub_dirs_rule_dirs_are_descendant ~of_ directory_targets;
+      check_all_sub_dirs_rule_dirs_are_descendant ~of_ build_dir_only_sub_dirs;
       let rules =
         Memo.lazy_ (fun () ->
           let+ rules = rules in

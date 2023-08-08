@@ -16,3 +16,4 @@ val is_none : t -> bool
 val to_dyn : t -> Dyn.t
 val set_start_to_stop : t -> t
 val start_pos_cnum : t -> int
+val stop_pos_cnum : t -> int

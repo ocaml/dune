@@ -198,7 +198,10 @@ let remove_future_syntax (t : 'a t) ~(for_ : Pp_flag_consumer.t) v
       Action
         ( loc
         , Run
-            ( String_with_vars.make_pform loc (Macro (Bin, "ocaml-syntax-shims"))
+            ( String_with_vars.make_pform
+                loc
+                (Macro
+                   { macro = Bin; payload = Pform.Payload.of_string "ocaml-syntax-shims" })
             , (match for_ with
                | Compiler -> [ String_with_vars.make_text loc "-dump-ast" ]
                | Merlin ->

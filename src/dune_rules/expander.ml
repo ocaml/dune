@@ -297,13 +297,9 @@ let file_of_lib { Artifacts.Public_libs.context; public_libs } ~loc ~lib ~file =
   Path.relative dir file
 ;;
 
-let expand_lib_variable t source ~arg:s ~lib_exec ~lib_private =
+let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
   let loc = Dune_lang.Template.Pform.loc source in
-  let lib, file =
-    match String.lsplit2 s ~on:':' with
-    | None -> User_error.raise ~loc [ Pp.textf "invalid %%{lib:...} form: %s" s ]
-    | Some (lib, f) -> Lib_name.parse_string_exn (loc, lib), f
-  in
+  let lib = Lib_name.parse_string_exn (loc, lib) in
   let scope = if lib_exec then t.scope_host else t.scope in
   let p =
     let open Resolve.Memo.O in
@@ -370,7 +366,7 @@ let expand_lib_variable t source ~arg:s ~lib_exec ~lib_private =
                       (Lib_name.to_string lib))
                ]
        | _ ->
-         if (not lib_exec) || (not Sys.win32) || Filename.extension s = ".exe"
+         if (not lib_exec) || (not Sys.win32) || Filename.extension file = ".exe"
          then dep p
          else (
            let p_exe = Path.extend_basename p ~suffix:".exe" in
@@ -548,8 +544,9 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pfor
             | None ->
               let loc = Dune_lang.Template.Pform.loc source in
               User_error.raise ~loc [ Pp.text "No toolchain defined for this context" ]))
-     | Macro (macro, s) ->
-       (match macro with
+     | Macro macro_invocation ->
+       let s = Pform.Macro_invocation.Args.whole macro_invocation in
+       (match macro_invocation.macro with
         | Pkg -> Code_error.raise "pkg forms aren't possible here" []
         | Ocaml_config ->
           static
@@ -610,7 +607,13 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pfor
                  dep (Action.Prog.ok_exn prog)))
         | Lib { lib_exec; lib_private } ->
           Need_full_expander
-            (fun t -> With (expand_lib_variable t source ~arg:s ~lib_exec ~lib_private))
+            (fun t ->
+              let lib, file =
+                Pform.Macro_invocation.Args.lsplit2_exn
+                  ~loc:(Dune_lang.Template.Pform.payload_loc source)
+                  macro_invocation
+              in
+              With (expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private))
         | Lib_available ->
           Need_full_expander
             (fun t ->

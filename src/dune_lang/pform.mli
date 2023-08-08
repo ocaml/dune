@@ -1,5 +1,6 @@
 open Stdune
 open Dune_sexp
+module Payload = Template.Pform.Payload
 
 module Var : sig
   module Pkg : sig
@@ -131,9 +132,29 @@ module Macro : sig
   val to_dyn : t -> Dyn.t
 end
 
+module Macro_invocation : sig
+  type t =
+    { macro : Macro.t
+    ; payload : Payload.t
+    }
+
+  (** Similar to [Payload.Args] but incorporates the macro name into error messages *)
+  module Args : sig
+    (** Treat the entire payload as a single string argument. *)
+    val whole : t -> string
+
+    (** Split the payload on the first ':' character raising a [User_error] if the
+        payload contains no ':' characters. *)
+    val lsplit2_exn : ?loc:Loc.t -> t -> string * string
+
+    (** Split the payload on all ':' characters *)
+    val split : t -> string list
+  end
+end
+
 type t =
   | Var of Var.t
-  | Macro of Macro.t * string
+  | Macro of Macro_invocation.t
 
 val compare : t -> t -> Ordering.t
 val to_dyn : t -> Dyn.t
@@ -141,7 +162,7 @@ val to_dyn : t -> Dyn.t
 type encode_result =
   | Success of
       { name : string
-      ; payload : string option
+      ; payload : Payload.t option
       }
   | Pform_was_deleted
 

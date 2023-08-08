@@ -508,8 +508,8 @@ module Action_expander = struct
         let roots = Paths.install_roots paths in
         let dir = section_dir_of_root roots section in
         Memo.return [ Value.Dir dir ]
-      | Macro (Pkg, arg) ->
-        (match String.split arg ~on:':' with
+      | Macro macro_invocation ->
+        (match Pform.Macro_invocation.Args.split macro_invocation with
          | [ "var"; name; var ] ->
            let variables, paths =
              let name = if name = "_" then paths.name else Package.Name.of_string name in

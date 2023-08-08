@@ -14,6 +14,14 @@ module Re = Dune_re
 let log ?level fmt =
   OpamConsole.log "PROC" ?level fmt
 
+let default_env =
+  let f () = lazy (
+    match OpamCoreConfig.(!r.cygbin) with
+    | Some cygbin -> OpamStd.Env.cyg_env cygbin
+    | None -> OpamStd.Env.raw_env ()
+  ) in
+ fun () -> Lazy.force (f ())
+
 let cygwin_create_process_env prog args env fd1 fd2 fd3 =
   (*
    * Unix.create_process_env correctly converts arguments to a command line for
@@ -174,8 +182,7 @@ let cygwin_create_process_env prog args env fd1 fd2 fd3 =
                 List.rev_append prefix (dir::(List.rev_append suffix dirs))
               end else
                 f prefix (dir::suffix) dirs
-        | [] ->
-            assert false
+        | [] -> []
         in
         Some (key ^ "=" ^ String.concat ";" (f [] [] path_dirs))
     | _ ->
@@ -311,11 +318,13 @@ let resolve_command cmd = !resolve_command_fn cmd
 let create_process_env =
   if Sys.win32 then
     fun cmd ->
-      let resolved_cmd = resolve_command cmd in
-      if OpamStd.(Option.map_default Sys.is_cygwin_variant `Native resolved_cmd) = `Cygwin then
+      if OpamStd.Option.map_default
+          (OpamStd.Sys.is_cygwin_variant
+             ~cygbin:(OpamCoreConfig.(!r.cygbin)))
+             false
+             (resolve_command cmd) then
         cygwin_create_process_env cmd
-      else
-        Unix.create_process_env cmd
+      else Unix.create_process_env cmd
   else
     Unix.create_process_env
 
@@ -341,7 +350,7 @@ let create ?info_file ?env_file ?(allow_stdin=not Sys.win32) ?stdout_file ?stder
     | None -> (fun f -> f ())
     | Some dir ->
       Unix.chdir dir;
-      Fun.protect ~finally:(fun () -> Unix.chdir oldcwd)
+      OpamStd.Exn.finally (fun () -> Unix.chdir oldcwd)
   in
   with_chdir dir @@ fun () ->
   let stdin_fd,close_stdin =
@@ -360,7 +369,7 @@ let create ?info_file ?env_file ?(allow_stdin=not Sys.win32) ?stdout_file ?stder
       else tee f
   in
   let env = match env with
-    | None   -> Unix.environment ()
+    | None   -> default_env ()
     | Some e -> e in
   let time = Unix.gettimeofday () in
 
@@ -443,14 +452,8 @@ let create ?info_file ?env_file ?(allow_stdin=not Sys.win32) ?stdout_file ?stder
           cmd, args
       else
         cmd, args in
-    let create_process, cmd, args =
-      if Sys.win32 && OpamStd.Sys.is_cygwin_variant cmd = `Cygwin then
-        cygwin_create_process_env, cmd, args
-      else
-        Unix.create_process_env, cmd, args
-    in
     try
-      create_process
+      create_process_env
         cmd
         (Array.of_list (cmd :: args))
         env
@@ -529,7 +532,7 @@ let run_background command =
   in
   let verbose = is_verbose_command command in
   let allow_stdin = OpamStd.Option.default false allow_stdin in
-  let env = match env with Some e -> e | None -> Unix.environment () in
+  let env = match env with Some e -> e | None -> default_env () in
   let file ext = match name with
     | None -> None
     | Some n ->

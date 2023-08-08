@@ -544,7 +544,8 @@ module Pinned_legacy = struct
 end
 
 
-(** Cached environment updates (<switch>/.opam-switch/environment) *)
+(** Cached environment updates (<switch>/.opam-switch/environment
+    <switch>/.opam-switch/last-env/env-* last env files) *)
 
 module Environment = LineFile(struct
 

@@ -174,6 +174,8 @@ module Switch: sig
   (** Cached environment updates. *)
   val environment: t -> switch -> OpamFile.Environment.t OpamFile.t
 
+  val last_env: t -> switch -> dirname
+
   (** Like [environment], but from the switch prefix dir *)
   val env_relative_to_prefix: dirname -> OpamFile.Environment.t OpamFile.t
 

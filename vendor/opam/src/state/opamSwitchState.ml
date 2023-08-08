@@ -180,6 +180,7 @@ module Installed_cache = OpamCached.Make(struct
 
 let depexts_status_of_packages_raw
     ~depexts ?env global_config switch_config packages =
+  if OpamPackage.Set.is_empty packages then OpamPackage.Map.empty else
   let open OpamSysPkg.Set.Op in
   let syspkg_set, syspkg_map =
     OpamPackage.Set.fold (fun nv (set, map) ->
@@ -883,43 +884,33 @@ let avoid_version st nv =
            has_avoid_flag)
           +! false)
 
-let universe st
-    ?(test=OpamStateConfig.(!r.build_test))
-    ?(doc=OpamStateConfig.(!r.build_doc))
-    ?(dev_setup=OpamStateConfig.(!r.dev_setup))
-    ?(force_dev_deps=false)
-    ?reinstall
-    ~requested
-    user_action =
-  let chrono = OpamConsole.timer () in
-  let names = OpamPackage.names_of_packages requested in
-  let requested_allpkgs =
-    OpamPackage.packages_of_names st.packages names
-  in
-  let env nv v =
-    if List.mem v OpamPackageVar.predefined_depends_variables then
-      match OpamVariable.Full.to_string v with
-      | "dev" ->
-        Some (B (force_dev_deps || is_dev_package st nv))
-      | "with-test" ->
-        Some (B (test && OpamPackage.Set.mem nv requested_allpkgs))
-      | "with-doc" ->
-        Some (B (doc && OpamPackage.Set.mem nv requested_allpkgs))
-      | "with-dev-setup" ->
-        Some (B (dev_setup && OpamPackage.Set.mem nv requested_allpkgs))
-      | _ -> None (* Computation delayed to the solver *)
-    else
-    let r = OpamPackageVar.resolve_switch ~package:nv st v in
-    if r = None then
-      (if OpamFormatConfig.(!r.strict) then
-         OpamConsole.error_and_exit `File_error
-           "Undefined filter variable %s in dependencies of %s"
-       else
-         log
-           "ERR: Undefined filter variable %s in dependencies of %s")
-        (OpamVariable.Full.to_string v) (OpamPackage.to_string nv);
-    r
-  in
+let package_env_t st ~force_dev_deps ~test ~doc ~dev_setup
+    ~requested_allpkgs nv v =
+  if List.mem v OpamPackageVar.predefined_depends_variables then
+    match OpamVariable.Full.to_string v with
+    | "dev" ->
+      Some (B (force_dev_deps || is_dev_package st nv))
+    | "with-test" ->
+      Some (B (test && OpamPackage.Set.mem nv requested_allpkgs))
+    | "with-doc" ->
+      Some (B (doc && OpamPackage.Set.mem nv requested_allpkgs))
+    | "with-dev-setup" ->
+      Some (B (dev_setup && OpamPackage.Set.mem nv requested_allpkgs))
+    | _ -> None (* Computation delayed to the solver *)
+  else
+  let r = OpamPackageVar.resolve_switch ~package:nv st v in
+  if r = None then
+    (if OpamFormatConfig.(!r.strict) then
+       OpamConsole.error_and_exit `File_error
+         "Undefined filter variable %s in dependencies of %s"
+     else
+       log
+         "ERR: Undefined filter variable %s in dependencies of %s")
+      (OpamVariable.Full.to_string v) (OpamPackage.to_string nv);
+  r
+
+let get_dependencies_t st ~force_dev_deps ~test ~doc ~dev_setup
+    ~requested_allpkgs deps opams =
   let filter_undefined nv =
     OpamFormula.map (fun (name, fc) ->
         let fc =
@@ -937,10 +928,35 @@ let universe st
         in
         Atom (name, fc))
   in
-  let get_deps f opams =
-    OpamPackage.Map.mapi (fun nv opam ->
-        OpamFilter.partial_filter_formula (env nv) (f opam)
-        |> filter_undefined nv) opams
+  OpamPackage.Map.mapi (fun nv opam ->
+      OpamFilter.partial_filter_formula
+        (package_env_t st ~force_dev_deps ~test ~doc
+           ~dev_setup ~requested_allpkgs nv)
+        (deps opam)
+      |> filter_undefined nv) opams
+
+let universe st
+    ?(test=OpamStateConfig.(!r.build_test))
+    ?(doc=OpamStateConfig.(!r.build_doc))
+    ?(dev_setup=OpamStateConfig.(!r.dev_setup))
+    ?(force_dev_deps=false)
+    ?reinstall
+    ~requested
+    user_action =
+  let chrono = OpamConsole.timer () in
+  let names = OpamPackage.names_of_packages requested in
+  let requested_allpkgs =
+    OpamPackage.packages_of_names st.packages names
+  in
+  let env =
+    package_env_t st
+      ~force_dev_deps ~test ~doc ~dev_setup
+      ~requested_allpkgs
+  in
+  let get_deps =
+    get_dependencies_t st
+      ~force_dev_deps ~test ~doc ~dev_setup
+      ~requested_allpkgs
   in
   let u_depends =
     let depend =
@@ -1316,26 +1332,38 @@ let dependencies_filter_to_formula_t ~build ~post st nv =
   in
   OpamFilter.filter_formula ~default:true env
 
-let dependencies_t base_deps_compute deps_compute
-    ~depopts ~installed ?(unavailable=false) universe packages =
+let dependencies_t st base_deps_compute deps_compute
+    ~depopts ~installed ?(unavailable=false) packages =
   if OpamPackage.Set.is_empty packages then OpamPackage.Set.empty else
   let base =
     packages ++
-    if installed then  universe.u_installed
-    else if unavailable then universe.u_packages
-    else universe.u_available
+    if installed then st.installed
+    else if unavailable then st.packages
+    else Lazy.force st.available_packages
   in
   log ~level:3 "dependencies packages=%a"
     (slog OpamPackage.Set.to_string) packages;
   let timer = OpamConsole.timer () in
   let base_depends =
     let filter = base_deps_compute base in
+    let get_deps =
+      get_dependencies_t st
+        ~force_dev_deps:false ~test:false ~doc:false
+        ~dev_setup:false ~requested_allpkgs:packages
+    in
+    let opams =
+      OpamPackage.Set.fold (fun pkg opams ->
+          OpamPackage.Map.add pkg (OpamPackage.Map.find pkg st.opams) opams)
+        base OpamPackage.Map.empty
+    in
+    let u_depends = get_deps OpamFile.OPAM.depends opams in
     let depends =
-      OpamPackage.Map.filter_map filter universe.u_depends
+      OpamPackage.Map.filter_map filter u_depends
     in
     if depopts then
+      let u_depopts = get_deps OpamFile.OPAM.depopts opams in
       let depopts =
-        OpamPackage.Map.filter_map filter universe.u_depopts
+        OpamPackage.Map.filter_map filter u_depopts
       in
       OpamPackage.Map.union (fun d d' -> OpamFormula.And (d, d'))
         depopts depends
@@ -1348,7 +1376,7 @@ let dependencies_t base_deps_compute deps_compute
   result
 
 let dependencies st ~build ~post =
-  dependencies_t
+  dependencies_t st
     (fun base nv ff ->
        if OpamPackage.Set.mem nv base then Some ff else None)
     (fun base base_depends packages ->
@@ -1373,7 +1401,7 @@ let dependencies st ~build ~post =
        aux packages packages)
 
 let reverse_dependencies st ~build ~post =
-  dependencies_t
+  dependencies_t st
     (fun base nv ff ->
        if OpamPackage.Set.mem nv base then
          Some (dependencies_filter_to_formula_t ~build ~post st nv ff)
@@ -1442,7 +1470,7 @@ let invariant_root_packages st =
 let compute_invariant_packages st =
   let pkgs = invariant_root_packages st in
   dependencies ~build:false ~post:true ~depopts:false ~installed:true
-    ~unavailable:false st (universe st ~requested:pkgs Query) pkgs
+    ~unavailable:false st pkgs
 
 let compiler_packages st =
   let compiler_packages =
@@ -1452,5 +1480,4 @@ let compiler_packages st =
       st.installed
   in
   dependencies ~build:true ~post:false ~depopts:true ~installed:true
-    ~unavailable:false st (universe st ~requested:compiler_packages Query)
-    compiler_packages
+    ~unavailable:false st compiler_packages

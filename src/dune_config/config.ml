@@ -99,7 +99,7 @@ let copy_file =
 
 let background_default =
   match Platform.OS.value with
-  | Linux | Windows -> `Enabled
+  | Linux | Windows | Darwin -> `Enabled
   | _ -> `Disabled
 ;;
 

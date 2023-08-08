@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691412960302,
+  "lastUpdate": 1691453639827,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -83809,6 +83809,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.214419645393335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0d7efdf8521398f7efcb93ee75b6e685d41cb494",
+          "message": "chore: lock down melange in nix (#8208)\n\n* chore: lock down melange in nix\r\n\r\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>\r\n\r\n* chore: fmt\r\n\r\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-08-07T16:58:14-07:00",
+          "tree_id": "c3725bdf29ccec471b2074bfa8a6114f803c5cdf",
+          "url": "https://github.com/ocaml/dune/commit/0d7efdf8521398f7efcb93ee75b6e685d41cb494"
+        },
+        "date": 1691453627519,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "27.741122811046665",
             "unit": "seconds"
           }
         ]

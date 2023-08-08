@@ -1,48 +1,31 @@
+module Position = Lexbuf.Position
+
 type t =
   | No_loc
   | In_file of string
   | Lexbuf_loc of Lexbuf.Loc.t
   | Same_file of
       { pos_fname : string
-      ; start_lnum : int
-      ; start_bol : int
-      ; start_cnum : int
-      ; stop_lnum : int
-      ; stop_bol : int
-      ; stop_cnum : int
+      ; start : Compact_position.t
+      ; stop : Compact_position.t
       }
   | Same_line of
       { pos_fname : string
-      ; pos_lnum : int
-      ; pos_bol : int
-      ; start_cnum : int
-      ; stop_cnum : int
+      ; loc : Compact_position.Same_line_loc.t
       }
 
-module Position = Lexbuf.Position
 open Lexbuf.Loc
 
 let to_lexbuf_loc = function
   | No_loc -> Lexbuf.Loc.none
   | Lexbuf_loc loc -> loc
   | In_file fname -> Lexbuf.Loc.in_file ~fname
-  | Same_file
-      { pos_fname; start_lnum; start_bol; start_cnum; stop_lnum; stop_bol; stop_cnum } ->
-    let start =
-      { Lexing.pos_fname
-      ; pos_lnum = start_lnum
-      ; pos_bol = start_bol
-      ; pos_cnum = start_cnum
-      }
-    in
-    let stop =
-      { Lexing.pos_fname; pos_lnum = stop_lnum; pos_bol = stop_bol; pos_cnum = stop_cnum }
-    in
+  | Same_file { pos_fname; start; stop } ->
+    let start = Compact_position.to_position start ~fname:pos_fname in
+    let stop = Compact_position.to_position stop ~fname:pos_fname in
     { Lexbuf.Loc.start; stop }
-  | Same_line { pos_fname; pos_lnum; pos_bol; start_cnum; stop_cnum } ->
-    let start = { Lexing.pos_fname; pos_lnum; pos_bol; pos_cnum = start_cnum } in
-    let stop = { Lexing.pos_fname; pos_lnum; pos_bol; pos_cnum = stop_cnum } in
-    { Lexbuf.Loc.start; stop }
+  | Same_line { pos_fname; loc } ->
+    Compact_position.Same_line_loc.to_loc loc ~fname:pos_fname
 ;;
 
 let in_file ~fname = In_file fname
@@ -53,54 +36,31 @@ let of_lexbuf_loc loc =
   else if Lexbuf.Loc.is_file_only loc
   then In_file loc.start.pos_fname
   else (
-    let start = loc.start in
-    let stop = loc.stop in
-    if start.pos_fname = stop.pos_fname
-    then
-      if start.pos_bol = stop.pos_bol && start.pos_lnum = stop.pos_lnum
-      then
-        Same_line
-          { pos_fname = start.pos_fname
-          ; pos_bol = start.pos_bol
-          ; pos_lnum = start.pos_lnum
-          ; start_cnum = start.pos_cnum
-          ; stop_cnum = stop.pos_cnum
-          }
-      else
-        Same_file
-          { pos_fname = start.pos_fname
-          ; start_lnum = start.pos_lnum
-          ; start_bol = start.pos_bol
-          ; start_cnum = start.pos_cnum
-          ; stop_lnum = stop.pos_lnum
-          ; stop_bol = stop.pos_bol
-          ; stop_cnum = stop.pos_cnum
-          }
-    else Lexbuf_loc loc)
+    let pos_fname = loc.start.pos_fname in
+    match Compact_position.of_loc loc with
+    | Same_line loc -> Same_line { pos_fname; loc }
+    | Loc { start; stop } -> Same_file { pos_fname; start; stop }
+    | Loc_does_not_fit -> Lexbuf_loc loc)
 ;;
 
 let start = function
   | No_loc -> Lexbuf.Loc.none.start
   | Lexbuf_loc loc -> loc.start
   | In_file fname -> Position.in_file ~fname
-  | Same_file { pos_fname; start_lnum; start_bol; start_cnum; _ } ->
-    { Lexing.pos_fname
-    ; pos_lnum = start_lnum
-    ; pos_bol = start_bol
-    ; pos_cnum = start_cnum
-    }
-  | Same_line { pos_fname; pos_lnum; pos_bol; start_cnum; _ } ->
-    { Lexing.pos_fname; pos_lnum; pos_bol; pos_cnum = start_cnum }
+  | Same_file { pos_fname; start; stop = _ } ->
+    Compact_position.to_position start ~fname:pos_fname
+  | Same_line { pos_fname; loc } ->
+    Compact_position.Same_line_loc.start loc ~fname:pos_fname
 ;;
 
 let stop = function
   | No_loc -> Lexbuf.Loc.none.stop
   | Lexbuf_loc loc -> loc.stop
   | In_file fname -> Position.in_file ~fname
-  | Same_file { pos_fname; stop_lnum; stop_bol; stop_cnum; _ } ->
-    { Lexing.pos_fname; pos_lnum = stop_lnum; pos_bol = stop_bol; pos_cnum = stop_cnum }
-  | Same_line { pos_fname; pos_lnum; pos_bol; stop_cnum; _ } ->
-    { Lexing.pos_fname; pos_lnum; pos_bol; pos_cnum = stop_cnum }
+  | Same_file { pos_fname; stop; start = _ } ->
+    Compact_position.to_position stop ~fname:pos_fname
+  | Same_line { pos_fname; loc } ->
+    Compact_position.Same_line_loc.stop loc ~fname:pos_fname
 ;;
 
 let compare = Poly.compare
@@ -117,3 +77,19 @@ let set_stop t stop = of_lexbuf_loc { (to_lexbuf_loc t) with stop }
 let set_start t start = of_lexbuf_loc { (to_lexbuf_loc t) with start }
 let create ~start ~stop = of_lexbuf_loc { start; stop }
 let map_pos t ~f = to_lexbuf_loc t |> Lexbuf.Loc.map_pos ~f |> of_lexbuf_loc
+
+let set_start_to_stop = function
+  | (No_loc | In_file _) as t -> t
+  | Lexbuf_loc loc -> of_lexbuf_loc { loc with start = loc.stop }
+  | Same_file t -> Same_file { t with start = t.stop }
+  | Same_line t ->
+    let loc = Compact_position.Same_line_loc.set_start_to_stop t.loc in
+    Same_line { t with loc }
+;;
+
+let start_pos_cnum = function
+  | No_loc | In_file _ -> Lexbuf.Loc.none.start.pos_cnum
+  | Lexbuf_loc loc -> loc.start.pos_cnum
+  | Same_file t -> Compact_position.cnum t.start
+  | Same_line t -> Compact_position.Same_line_loc.start_cnum t.loc
+;;

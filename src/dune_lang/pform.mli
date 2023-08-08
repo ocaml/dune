@@ -32,9 +32,13 @@ module Var : sig
       | Jobs
       | Arch
       | Section_dir of Section.t
+      | Name
+      | Version
+      | Make
 
     val compare : t -> t -> Ordering.t
     val to_dyn : t -> Dyn.t
+    val of_opam_variable_name_opt : string -> t option
   end
 
   type t =

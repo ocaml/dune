@@ -54,6 +54,9 @@ module Var = struct
       | Jobs
       | Arch
       | Section_dir of Section.t
+      | Name
+      | Version
+      | Make
 
     let compare = Poly.compare
 
@@ -72,6 +75,47 @@ module Var = struct
       | Arch -> variant "Arch" []
       | Section_dir section ->
         variant "Section_dir" [ string (Section.to_string section) ]
+      | Name -> variant "Name" []
+      | Version -> variant "Version" []
+      | Make -> variant "Make" []
+    ;;
+
+    let of_opam_variable_name_opt name =
+      match Section.of_string name with
+      | Some section_dir -> Some (Section_dir section_dir)
+      | None ->
+        (match name with
+         | "switch" -> Some Switch
+         | "os-version" -> Some Os_version
+         | "os-distribution" -> Some Os_distribution
+         | "os-family" -> Some Os_family
+         | "build" -> Some Build
+         | "prefix" -> Some Prefix
+         | "user" -> Some User
+         | "group" -> Some Group
+         | "jobs" -> Some Jobs
+         | "arch" -> Some Arch
+         | "name" -> Some Name
+         | "version" -> Some Version
+         | "make" -> Some Make
+         | _ -> None)
+    ;;
+
+    let encode_to_latest_dune_lang_version = function
+      | Switch -> "switch"
+      | Os_version -> "os_version"
+      | Os_distribution -> "os_distribution"
+      | Os_family -> "os_family"
+      | Build -> "build"
+      | Prefix -> "prefix"
+      | User -> "user"
+      | Group -> "group"
+      | Jobs -> "jobs"
+      | Arch -> "arch"
+      | Section_dir section -> Section.to_string section
+      | Name -> "name"
+      | Version -> "version"
+      | Make -> "make"
     ;;
   end
 
@@ -393,7 +437,7 @@ let encode_to_latest_dune_lang_version t =
        | Corrected_suffix -> Some "corrected-suffix"
        | Inline_tests -> Some "inline_tests"
        | Toolchain -> Some "toolchain"
-       | Pkg _ -> assert false (* TODO *)
+       | Pkg pkg -> Some (Var.Pkg.encode_to_latest_dune_lang_version pkg)
      with
      | None -> Pform_was_deleted
      | Some name -> Success { name; payload = None })

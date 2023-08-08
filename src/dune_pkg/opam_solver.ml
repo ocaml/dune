@@ -1,5 +1,5 @@
 open Stdune
-module Package_name = Dune_lang.Package_name
+open Dune_lang
 
 module type CONTEXT = Opam_0install.S.CONTEXT
 
@@ -230,6 +230,78 @@ module Summary = struct
   ;;
 end
 
+let opam_command_to_string_debug (args, _filter_opt) =
+  List.map args ~f:(fun (simple_arg, _filter_opt) ->
+    match simple_arg with
+    | OpamTypes.CString s -> String.quoted s
+    | CIdent ident -> ident)
+  |> String.concat ~sep:" "
+;;
+
+let opam_commands_to_actions package (commands : OpamTypes.command list) =
+  let pform_of_ident_opt ident =
+    let `Self, variable =
+      match String.split ident ~on:':' with
+      | [ variable ] | [ "_"; variable ] -> `Self, variable
+      | _ ->
+        (* TODO *)
+        Code_error.raise
+          "Evaluating package variables for non-self packages not yet implemented"
+          [ "While processing package:", Dyn.string (OpamPackage.to_string package)
+          ; "Variable:", Dyn.string ident
+          ]
+    in
+    match Pform.Var.Pkg.of_opam_variable_name_opt variable with
+    | Some pkg_var -> Ok Pform.(Var (Var.Pkg pkg_var))
+    | None -> Error (`Unknown_variable variable)
+  in
+  List.filter_map commands ~f:(fun ((args, _filter_opt) as command) ->
+    let terms =
+      List.map args ~f:(fun (simple_arg, _filter_opt) ->
+        match simple_arg with
+        | OpamTypes.CString s ->
+          (* TODO: apply replace string interpolation variables with pforms *)
+          String_with_vars.make_text Loc.none s
+        | CIdent ident ->
+          (match pform_of_ident_opt ident with
+           | Ok pform -> String_with_vars.make_pform Loc.none pform
+           | Error (`Unknown_variable variable) ->
+             (* Note that the variable name is always quoted to clarify
+                the error message in cases where the grammar of the
+                sentence would otherwise be unclear, such as:
+
+                - Encountered unknown variable type while processing...
+                - Encountered unknown variable name while processing...
+
+                In these examples, the words "type" and "name" are variable
+                names but it would be easy for users to misunderstand those
+                error messages without quotes. *)
+             User_error.raise
+               [ Pp.textf
+                   "Encountered unknown variable %S while processing commands for \
+                    package %s."
+                   variable
+                   (OpamPackage.to_string package)
+               ; Pp.text "The full command:"
+               ; Pp.text (opam_command_to_string_debug command)
+               ]))
+    in
+    match terms with
+    | program :: args -> Some (Action.run program args)
+    | [] -> None)
+;;
+
+(* returns:
+   [None] if the command list is empty
+   [Some (Action.Run ...)] if there is a single command
+   [Some (Action.Progn [Action.Run ...; ...])] if there are multiple commands *)
+let opam_commands_to_action package (commands : OpamTypes.command list) =
+  match opam_commands_to_actions package commands with
+  | [] -> None
+  | [ action ] -> Some action
+  | actions -> Some (Action.Progn actions)
+;;
+
 let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
   let name = OpamPackage.name opam_package in
   let version = OpamPackage.version opam_package |> OpamPackage.Version.to_string in
@@ -256,12 +328,13 @@ let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
     |> List.map ~f:(fun name ->
       Loc.none, Package_name.of_string (OpamPackage.Name.to_string name))
   in
-  { Lock_dir.Pkg.build_command = None
-  ; install_command = None
-  ; deps
-  ; info
-  ; exported_env = []
-  }
+  let build_command =
+    opam_commands_to_action opam_package (OpamFile.OPAM.build opam_file)
+  in
+  let install_command =
+    opam_commands_to_action opam_package (OpamFile.OPAM.install opam_file)
+  in
+  { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env = [] }
 ;;
 
 let solve_package_list local_packages context =

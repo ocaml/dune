@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691498304215,
+  "lastUpdate": 1691501759627,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -84041,6 +84041,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "28.316116829206667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "667e49f27b9ef54740a7e0419d6aaed9cb7a1482",
+          "message": "Pkg: Merge PATHs from user and package envs (#8333)\n\nThe user PATH is needed so system executables (like `cat`) can be found\r\nand the package PATH is needed to execute binaries from packages.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-08-08T06:23:40-07:00",
+          "tree_id": "990dcc49f689c1fdd6e5a22ec2097d7b73fcaf1f",
+          "url": "https://github.com/ocaml/dune/commit/667e49f27b9ef54740a7e0419d6aaed9cb7a1482"
+        },
+        "date": 1691501748896,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.51164013864667",
             "unit": "seconds"
           }
         ]

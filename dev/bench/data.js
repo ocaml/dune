@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691503929861,
+  "lastUpdate": 1691504329330,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -65712,6 +65712,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6451342835",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6b73e4b628aacdab829c2a8fc3d32d8fe993cd5a",
+          "message": "feature(stdune): introduce compact positions (#8187)\n\nWe make use of the fact that position offsets are often small integers\r\nand store them all in a single OCaml int.\r\n\r\nWhen this optimization works, we save 3-4 words per location. When it\r\ndoesn't, there's no harm and we fall back to our old \"wide\" offsets.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-08T06:48:42-07:00",
+          "tree_id": "da9969c2a89a1a3cdebcd3f7c20cdde042e0c320",
+          "url": "https://github.com/ocaml/dune/commit/6b73e4b628aacdab829c2a8fc3d32d8fe993cd5a"
+        },
+        "date": 1691504327916,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "78.72718756441334",
             "unit": "seconds"
           }
         ]

@@ -1164,7 +1164,7 @@ end = struct
             (Memo.Stack_frame.as_instance_of
                frame
                ~of_:execute_action_generic_stage2_memo)
-            ~f:(fun x -> x.action.Rule.Anonymous_action.loc)))
+            ~f:(fun (x : Anonymous_action.t) -> x.action.loc)))
   ;;
 end
 

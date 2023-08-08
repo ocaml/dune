@@ -109,10 +109,15 @@ let promote_target_if_not_up_to_date
    file promotions. Another approach is to make restarts really cheap, so that
    we don't care any more, for example, by introducing reverse dependencies in
    Memo (and/or by having smarter cancellations). *)
-let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
+let promote
+  ~dir
+  ~(targets : _ Targets.Produced.t)
+  ~(promote : Rule.Promote.t)
+  ~promote_source
+  =
   (* Select targets taking into account the (promote (only <glob>)) field. *)
   let selected_for_promotion : Path.Build.t -> bool =
-    match promote.Rule.Promote.only with
+    match promote.only with
     | None -> fun (_ : Path.Build.t) -> true
     | Some pred ->
       fun target ->

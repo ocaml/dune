@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691513246092,
+  "lastUpdate": 1691513770969,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -26939,6 +26939,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.33202248342",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d997dbe4c26b21e93605eab6afab7887846dc1dc",
+          "message": "test: modify trim test to stop requiring manual updates (#8354)\n\nwe now extract the hash with awk directly\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-08T09:31:35-07:00",
+          "tree_id": "379e45c96722408c98f4183dc179318991a3c584",
+          "url": "https://github.com/ocaml/dune/commit/d997dbe4c26b21e93605eab6afab7887846dc1dc"
+        },
+        "date": 1691513769700,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "49.3614579",
             "unit": "seconds"
           }
         ]

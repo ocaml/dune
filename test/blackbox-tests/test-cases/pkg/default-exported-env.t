@@ -27,4 +27,4 @@ Some environment variables are automatically exported by packages:
   OCAMLPATH=$TESTCASE_ROOT/_build/default/.pkg/test/target/lib
   CAML_LD_LIBRARY_PATH=$TESTCASE_ROOT/_build/default/.pkg/test/target/lib/stublibs
   OCAMLTOP_INCLUDE_PATH=$TESTCASE_ROOT/_build/default/.pkg/test/target/lib/toplevel
-  PATH=$TESTCASE_ROOT/_build/default/.pkg/test/target/bin
+  PATH=$TESTCASE_ROOT/_build/default/.pkg/test/target/bin:$TESTCASE_ROOT/.bin

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691527842371,
+  "lastUpdate": 1691528367360,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -26968,6 +26968,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "49.3614579",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "be9aa28200516618743c38eeb52b9f8c71c00a24",
+          "message": "feature: use posix_spawn on macos (#8090)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-08T13:34:40-07:00",
+          "tree_id": "2c859dbae9aeb5decbb76e7a1c084d6d3399a954",
+          "url": "https://github.com/ocaml/dune/commit/be9aa28200516618743c38eeb52b9f8c71c00a24"
+        },
+        "date": 1691528366400,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "50.728038333540006",
             "unit": "seconds"
           }
         ]

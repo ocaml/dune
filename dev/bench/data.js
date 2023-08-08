@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691504343493,
+  "lastUpdate": 1691508788943,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -84273,6 +84273,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "26.383515851520002",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fee7ae2f8393d5d153bfff24e8ff21f4e7bf4242",
+          "message": "refactor(engine): simplify rule loading (#8287)\n\nThe function [load_build_directory_exn] is quite large. This PR splits\r\nit into a few logical parts:\r\n\r\n* Computing which source paths to ignore\r\n* Computing the copying rules for source files\r\n* Computing the descendants that artifact deletion should leave alone\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-08T08:20:30-07:00",
+          "tree_id": "b279559d961f45edbe058ad1c232878453abe7e9",
+          "url": "https://github.com/ocaml/dune/commit/fee7ae2f8393d5d153bfff24e8ff21f4e7bf4242"
+        },
+        "date": 1691508778938,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.498925060793336",
             "unit": "seconds"
           }
         ]

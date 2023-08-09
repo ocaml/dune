@@ -42,6 +42,7 @@ module Constraint : sig
   type t = Dune_lang.Package_constraint.t
 
   val to_dyn : t -> Dyn.t
+  val opam_constraint : t -> OpamParserTypes.FullPos.value
 end
 
 module Dependency : sig
@@ -120,6 +121,7 @@ type t =
   ; depends : Dependency.t list
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
+  ; available : Constraint.t option
   ; info : Info.t
   ; version : string option
   ; has_opam_file : opam_file

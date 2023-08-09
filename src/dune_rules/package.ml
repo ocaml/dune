@@ -500,6 +500,7 @@ type t =
   ; depends : Dependency.t list
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
+  ; available : Constraint.t option
   ; info : Info.t
   ; version : string option
   ; has_opam_file : opam_file
@@ -530,6 +531,7 @@ let encode
   ; depends
   ; conflicts
   ; depopts
+  ; available
   ; info
   ; version
   ; tags
@@ -549,6 +551,7 @@ let encode
         ; field_l "depends" Dependency.encode depends
         ; field_l "conflicts" Dependency.encode conflicts
         ; field_l "depopts" Dependency.encode depopts
+        ; field_o "available" Constraint.encode available
         ; field_o "version" string version
         ; field "tags" (list string) ~default:[] tags
         ; field_l
@@ -586,6 +589,10 @@ let decode ~dir =
      and+ depends = field ~default:[] "depends" (repeat Dependency.decode)
      and+ conflicts = field ~default:[] "conflicts" (repeat Dependency.decode)
      and+ depopts = field ~default:[] "depopts" (repeat Dependency.decode)
+     and+ available =
+       field_o
+         "available"
+         (Dune_lang.Syntax.since Stanza.syntax (3, 11) >>> Constraint.decode)
      and+ info = Info.decode ~since:(2, 0) ()
      and+ tags = field "tags" (enter (repeat string)) ~default:[]
      and+ deprecated_package_names =
@@ -619,6 +626,7 @@ let decode ~dir =
      ; depends
      ; conflicts
      ; depopts
+     ; available
      ; info
      ; version
      ; has_opam_file = Exists false
@@ -645,6 +653,7 @@ let to_dyn
   ; depends
   ; conflicts
   ; depopts
+  ; available
   ; info
   ; has_opam_file
   ; tags
@@ -663,6 +672,7 @@ let to_dyn
     ; "depends", list Dependency.to_dyn depends
     ; "conflicts", list Dependency.to_dyn conflicts
     ; "depopts", list Dependency.to_dyn depopts
+    ; "available", option Constraint.to_dyn available
     ; "info", Info.to_dyn info
     ; "has_opam_file", dyn_of_opam_file has_opam_file
     ; "tags", list string tags
@@ -694,6 +704,7 @@ let default name dir =
   ; conflicts = []
   ; info = Info.empty
   ; depopts = []
+  ; available = None
   ; has_opam_file = Exists false
   ; tags = [ "topics"; "to describe"; "your"; "project" ]
   ; deprecated_package_names = Name.Map.empty
@@ -758,6 +769,7 @@ let load_opam_file file name =
   ; conflicts = []
   ; depends = []
   ; depopts = []
+  ; available = None
   ; info =
       { maintainers = get_many "maintainer"
       ; authors = get_many "authors"

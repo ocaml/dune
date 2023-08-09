@@ -114,6 +114,7 @@ let package_fields
   ; depends
   ; conflicts
   ; depopts
+  ; available
   ; info = _
   ; id = _
   ; version = _
@@ -143,7 +144,14 @@ let package_fields
       | [] -> None
       | _ :: _ -> Some (k, list Package.Dependency.opam_depend v))
   in
-  let fields = [ optional; dep_fields ] in
+  let available_field =
+    match available with
+    | None -> []
+    | Some constraint_ ->
+      let opam_constraint = Package.Constraint.opam_constraint constraint_ in
+      [ "available", opam_constraint ]
+  in
+  let fields = [ optional; dep_fields; available_field ] in
   let fields =
     let dune_version = Dune_project.dune_version project in
     if dune_version >= (2, 0) && tags <> [] then tags :: fields else fields

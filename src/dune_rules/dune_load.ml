@@ -231,9 +231,8 @@ module Dune_files = struct
 
   let in_dir dir =
     let source_dir = Path.Build.drop_build_context_exn dir in
-    let* context = Context.DB.by_dir dir in
-    let* dir = Source_tree.find_dir source_dir in
-    match dir with
+    Source_tree.find_dir source_dir
+    >>= function
     | None -> Memo.return None
     | Some d ->
       let project = Source_tree.Dir.project d in
@@ -246,6 +245,7 @@ module Dune_files = struct
          (match dune_file with
           | Literal dune_file -> Memo.return (Some dune_file)
           | Script script ->
+            let* context = Context.DB.by_dir dir in
             let+ dune_file = Script.eval_one ~context script in
             Some dune_file))
   ;;

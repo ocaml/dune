@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691528812280,
+  "lastUpdate": 1691576616470,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -84621,6 +84621,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "28.877778329893335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b58ad10f64a8d959c2d94f82fffecc45d4c7b51f",
+          "message": "refactor: split findlib (#8355)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-09T11:10:03+01:00",
+          "tree_id": "a7fcc32ebb1bbff2a082d73d4ae896fe88e886ef",
+          "url": "https://github.com/ocaml/dune/commit/b58ad10f64a8d959c2d94f82fffecc45d4c7b51f"
+        },
+        "date": 1691576606341,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.73300860226667",
             "unit": "seconds"
           }
         ]

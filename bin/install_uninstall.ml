@@ -340,7 +340,8 @@ module File_ops_real (W : sig
             | Dune_package -> process_dune_package ~get_location:conf.get_location
           in
           copy_special_file ~src ~package ~ic ~oc ~f)
-    | None -> Dune_rules.Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
+    | None ->
+      Dune_rules.Artifact_substitution.copy_file ~conf ~executable ~src ~dst ~chmod ()
   ;;
 
   let remove_file_if_exists dst =

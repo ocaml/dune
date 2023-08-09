@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691606158595,
+  "lastUpdate": 1691606505540,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -66147,6 +66147,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.9716588885400002",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "788d41e2c785922f506ee0a9af4439f347efd325",
+          "message": "refactor: do not load context to get dune file sexp (#8357)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-09T11:15:57-07:00",
+          "tree_id": "126a06e4961fac9c4dcf8cc0ed6c3c68dbe2e7d2",
+          "url": "https://github.com/ocaml/dune/commit/788d41e2c785922f506ee0a9af4439f347efd325"
+        },
+        "date": 1691606504588,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "68.53256829197333",
             "unit": "seconds"
           }
         ]

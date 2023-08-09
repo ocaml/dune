@@ -19,7 +19,7 @@ let of_env_with_findlib name env findlib_config ~which =
     Action.Prog.Not_found.create ?hint ~context:name ~program:prog ~loc:None ()
   in
   let get_tool_using_findlib_config prog =
-    Memo.Option.bind findlib_config ~f:(Findlib.Config.tool ~prog)
+    Memo.Option.bind findlib_config ~f:(Findlib_config.tool ~prog)
   in
   let* ocamlc =
     let ocamlc = "ocamlc" in

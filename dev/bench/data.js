@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691615314205,
+  "lastUpdate": 1691615329237,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -66263,6 +66263,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "82.34153346717333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "758e3705fadec3a2f1e73bf5cb38312d2e6f259e",
+          "message": "Start copying commands from opam files (#8336)\n\nVery early implementation of copying build and install commands from\r\nopam files into lockfiles meant to invite feedback on the general design\r\nof this feature before going deeper.\r\n\r\nNot yet supported:\r\n\r\n- filters on commands or arguments\r\n- string interpolation in commands\r\n- package-scoped variables other than `_` (the current package)\r\n- executing the actions\r\n\r\nNot all opam variables are supported yet.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-08-09T13:36:36-07:00",
+          "tree_id": "107d8732b1726af91cf2aee329688034d4934593",
+          "url": "https://github.com/ocaml/dune/commit/758e3705fadec3a2f1e73bf5cb38312d2e6f259e"
+        },
+        "date": 1691615327927,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.3031415554800003",
             "unit": "seconds"
           }
         ]

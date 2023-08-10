@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691707334380,
+  "lastUpdate": 1691707769909,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -27084,6 +27084,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "50.72264655253334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "82d153233f233a98a99e5ffea82f6ce4edee42ec",
+          "message": "refactor: remove module prefix (#8366)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-08-10T15:29:46-07:00",
+          "tree_id": "ecdc671a74fcd0e1dd6eb1d5a6c58f3c3cf670cc",
+          "url": "https://github.com/ocaml/dune/commit/82d153233f233a98a99e5ffea82f6ce4edee42ec"
+        },
+        "date": 1691707768191,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.08133856600667",
             "unit": "seconds"
           }
         ]

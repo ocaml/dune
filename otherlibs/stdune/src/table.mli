@@ -39,10 +39,12 @@ val remove : ('k, _) t -> 'k -> unit
 val iter : (_, 'v) t -> f:('v -> unit) -> unit
 val filteri_inplace : ('a, 'b) t -> f:(key:'a -> data:'b -> bool) -> unit
 val length : (_, _) t -> int
+val values : (_, 'a) t -> 'a list
 
 module Multi : sig
-  type ('k, 'v) t := ('k, 'v list) t
+    type ('k, 'v) t
 
-  val cons : ('k, 'v) t -> 'k -> 'v -> unit
-  val find : ('k, 'v) t -> 'k -> 'v list
-end
+    val cons : ('k, 'v) t -> 'k -> 'v -> unit
+    val find : ('k, 'v) t -> 'k -> 'v list
+  end
+  with type ('k, 'v) t := ('k, 'v list) t

@@ -328,17 +328,7 @@ let handler (t : _ t Fdecl.t) action_runner_server handle : 'a Dune_rpc_server.H
       let server = Fdecl.get t in
       match server.watch_mode_config with
       | No -> assert false
-      | Yes Eager ->
-        let error =
-          Dune_rpc.Response.Error.create
-            ~kind:Invalid_request
-            ~message:
-              "the rpc server is running with eager watch mode using --watch. to run \
-               builds through an rpc client, start the server using --passive-watch-mode"
-            ()
-        in
-        raise (Dune_rpc.Response.Error.E error)
-      | Yes Passive ->
+      | Yes (Passive | Eager) ->
         let ivar = Fiber.Ivar.create () in
         let targets = List.map targets ~f:server.parse_build in
         let* () = Job_queue.write server.pending_build_jobs (targets, ivar) in

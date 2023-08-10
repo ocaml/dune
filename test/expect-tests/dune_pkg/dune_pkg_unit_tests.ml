@@ -183,11 +183,12 @@ let lock_dir_encode_decode_round_trip_test ~lock_dir_path ~lock_dir =
 let%expect_test "encode/decode round trip test for lockdir with no deps" =
   lock_dir_encode_decode_round_trip_test
     ~lock_dir_path:"empty_lock_dir"
-    ~lock_dir:(Lock_dir.create_latest_version Package_name.Map.empty ~ocaml:None);
+    ~lock_dir:
+      (Lock_dir.create_latest_version Package_name.Map.empty ~ocaml:None ~repo_id:None);
   [%expect
     {|
     lockdir matches after roundtrip:
-    { version = (0, 1); packages = map {}; ocaml = None } |}]
+    { version = (0, 1); packages = map {}; ocaml = None; repo_id = None } |}]
 ;;
 
 let%expect_test "encode/decode round trip test for lockdir with simple deps" =
@@ -212,6 +213,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
        in
        Lock_dir.create_latest_version
          ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
+         ~repo_id:None
          (Package_name.Map.of_list_exn
             [ mk_pkg_basic ~name:"foo" ~version:"0.1.0"
             ; mk_pkg_basic ~name:"bar" ~version:"0.2.0"
@@ -250,6 +252,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
               }
           }
     ; ocaml = Some ("simple_lock_dir/lock.dune:2", "ocaml")
+    ; repo_id = None
     } |}]
 ;;
 
@@ -341,6 +344,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
        in
        Lock_dir.create_latest_version
          ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
+         ~repo_id:(Some (Loc.none, Dune_pkg.Repository_id.Private.git_hash "95cf548dc"))
          (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ]));
   [%expect
     {|
@@ -399,5 +403,6 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               }
           }
     ; ocaml = Some ("complex_lock_dir/lock.dune:2", "ocaml")
+    ; repo_id = Some ("complex_lock_dir/lock.dune:3", Git_hash "95cf548dc")
     } |}]
 ;;

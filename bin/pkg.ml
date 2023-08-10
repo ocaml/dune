@@ -2,36 +2,6 @@ open Import
 module Lock_dir = Dune_pkg.Lock_dir
 module Fetch = Dune_pkg.Fetch
 
-module Opam_repository = struct
-  type t = { url : OpamUrl.t }
-
-  let of_url url = { url }
-  let default = of_url @@ OpamUrl.of_string "https://opam.ocaml.org/index.tar.gz"
-
-  let is_archive name =
-    List.exists
-      ~f:(fun suffix -> String.is_suffix ~suffix name)
-      [ ".tar.gz"; ".tgz"; ".tar.bz2"; ".tbz"; ".zip" ]
-  ;;
-
-  let path =
-    let open Fiber.O in
-    let ( / ) = Filename.concat in
-    fun { url } ->
-      Fiber.of_thunk
-      @@ fun () ->
-      let target_dir =
-        Xdg.cache_dir (Lazy.force Dune_util.xdg) / "dune/opam-repository"
-      in
-      let target = target_dir |> Path.External.of_string |> Path.external_ in
-      let unpack = url |> OpamUrl.to_string |> is_archive in
-      let+ res = Fetch.fetch ~unpack ~checksum:None ~target url in
-      match res with
-      | Ok () -> Ok target
-      | Error _ as failure -> failure
-  ;;
-end
-
 module Lock = struct
   module Opam_repository_path = struct
     let term =
@@ -374,22 +344,29 @@ module Lock = struct
            Dune_project.packages project
          in
          opam_file_map_of_dune_package_map dune_package_map
-       and+ repo =
-         let+ opam_repo_dir =
+       and+ repo, repo_id =
+         let+ opam_repo_dir, repo_id =
            match opam_repository_path with
-           | Some path -> Fiber.return path
+           | Some path ->
+             (* TODO determine repo_id here *)
+             let repo_id = Dune_pkg.Repository_id.of_path path in
+             Fiber.return (path, repo_id)
            | None ->
              let repo =
-               Option.map ~f:Opam_repository.of_url opam_repository_url
-               |> Option.value ~default:Opam_repository.default
+               Option.map ~f:Fetch.Opam_repository.of_url opam_repository_url
+               |> Option.value ~default:Fetch.Opam_repository.default
              in
-             let+ opam_repository = Opam_repository.path repo in
+             let+ opam_repository = Fetch.Opam_repository.path repo in
              (match opam_repository with
-              | Ok path -> path
-              | Error _ -> failwith "TODO")
+              | Ok { path; repo_id } -> path, repo_id
+              | Error _ ->
+                User_error.raise
+                  [ Pp.textf "Can't determine the location of the opam-repository" ])
          in
-         Dune_pkg.Opam_repo.of_opam_repo_dir_path opam_repo_dir
+         Dune_pkg.Opam_repo.of_opam_repo_dir_path opam_repo_dir, repo_id
        in
+       (* TODO figure out the loc situation *)
+       let repo_id = Option.map ~f:(fun repo_id -> Loc.none, repo_id) repo_id in
        List.map
          per_context
          ~f:
@@ -410,7 +387,7 @@ module Lock = struct
              Dune_pkg.Opam_solver.solve_lock_dir
                solver_env
                version_preference
-               repo
+               (repo, repo_id)
                ~local_packages:opam_file_map
            with
            | Error (`Diagnostic_message message) -> Error (context_name, message)

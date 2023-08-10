@@ -348,7 +348,10 @@ val readdir_unsorted_with_kinds
      Result.t
 
 val is_dir_sep : char -> bool
+
+(** [is_dir t] checks if [t] is a directory. It swallows permission errors so the preferred way is to use [stat] instead *)
 val is_directory : t -> bool
+
 val rmdir : t -> unit
 val unlink : t -> unit
 val unlink_no_err : t -> unit

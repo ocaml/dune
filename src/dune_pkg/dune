@@ -16,6 +16,7 @@
   opam_format
   opam_state
   opam_0install
-  fmt)
+  fmt
+  xdg)
  (instrumentation
   (backend bisect_ppx)))

@@ -74,6 +74,7 @@ serve our opam-repository as a mock.
   $ dune exec -- ./server.exe $PORT &
   $ # wait for server to come up, this takes a bit
   $ while [ ! -f server.pid ]; do sleep 0.01; done
+  $ rm server.pid
 
 Run Dune and tell it to cache into our custom cache folder.
 
@@ -99,3 +100,36 @@ containing the repository:
   fake-xdg-cache/dune/opam-repository/packages/foo/foo.0.0.1
   fake-xdg-cache/dune/opam-repository/packages/foo/foo.0.0.1/opam
   fake-xdg-cache/dune/opam-repository/repo
+
+Let's make sure this works with git repositories as well, by putting our repo in git.
+
+  $ cd mock-opam-repository
+  $ git init --quiet
+  $ git add -A
+  $ git commit -m "Initial commit" > /dev/null
+  $ REPO_HASH=$(git rev-parse HEAD)
+  $ cd ..
+
+Automatically download the repo and make sure lock.dune contains the repo hash
+(exit code 0 from grep, we don't care about the output as it is not
+reproducible)
+
+  $ rm -r dune.lock
+  $ mkdir fake-xdg-cache-with-git
+  $ XDG_CACHE_HOME=$(pwd)/fake-xdg-cache-with-git dune pkg lock --opam-repository-url=git+file://$(pwd)/mock-opam-repository
+  Solution for dune.lock:
+  bar.0.0.1
+  foo.0.0.1
+  
+  $ grep "(repo_id (git_hash $REPO_HASH))" dune.lock/lock.dune > /dev/null
+
+Now try it with an existing cached dir
+
+  $ rm -r dune.lock
+  $ dune pkg lock --opam-repository-path=$(pwd)/fake-xdg-cache-with-git/dune/opam-repository
+  Solution for dune.lock:
+  bar.0.0.1
+  foo.0.0.1
+  
+
+  $ grep "(repo_id (git_hash $REPO_HASH))" dune.lock/lock.dune > /dev/null

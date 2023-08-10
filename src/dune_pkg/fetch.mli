@@ -18,3 +18,16 @@ val fetch
   -> target:Path.t
   -> OpamUrl.t
   -> (unit, failure) result Fiber.t
+
+module Opam_repository : sig
+  type t
+
+  type success =
+    { path : Path.t
+    ; repo_id : Repository_id.t option
+    }
+
+  val of_url : OpamUrl.t -> t
+  val default : t
+  val path : t -> (success, failure) result Fiber.t
+end

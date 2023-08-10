@@ -132,3 +132,40 @@ let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
     let msg = User_message.make [ Pp.text normal; Pp.text verbose ] in
     Error (Unavailable (Some msg))
 ;;
+
+module Opam_repository = struct
+  type t = { url : OpamUrl.t }
+
+  let of_url url = { url }
+  let default = of_url @@ OpamUrl.of_string "https://opam.ocaml.org/index.tar.gz"
+
+  let is_archive name =
+    List.exists
+      ~f:(fun suffix -> String.is_suffix ~suffix name)
+      [ ".tar.gz"; ".tgz"; ".tar.bz2"; ".tbz"; ".zip" ]
+  ;;
+
+  type success =
+    { path : Path.t
+    ; repo_id : Repository_id.t option
+    }
+
+  let path =
+    let open Fiber.O in
+    let ( / ) = Filename.concat in
+    fun { url } ->
+      Fiber.of_thunk
+      @@ fun () ->
+      let target_dir =
+        Xdg.cache_dir (Lazy.force Dune_util.xdg) / "dune/opam-repository"
+      in
+      let target = target_dir |> Path.External.of_string |> Path.external_ in
+      let unpack = url |> OpamUrl.to_string |> is_archive in
+      let+ res = fetch ~unpack ~checksum:None ~target url in
+      match res with
+      | Ok () ->
+        let repo_id = Repository_id.of_path target in
+        Ok { path = target; repo_id }
+      | Error _ as failure -> failure
+  ;;
+end

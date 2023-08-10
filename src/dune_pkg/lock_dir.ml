@@ -266,32 +266,36 @@ type t =
   { version : Syntax.Version.t
   ; packages : Pkg.t Package_name.Map.t
   ; ocaml : (Loc.t * Package_name.t) option
+  ; repo_id : (Loc.t * Repository_id.t) option
   }
 
 let remove_locs t =
   { t with
     packages = Package_name.Map.map t.packages ~f:Pkg.remove_locs
   ; ocaml = Option.map t.ocaml ~f:(fun (_, ocaml) -> Loc.none, ocaml)
+  ; repo_id = Option.map t.repo_id ~f:(fun (_, repo_id) -> Loc.none, repo_id)
   }
 ;;
 
-let equal { version; packages; ocaml } t =
+let equal { version; packages; ocaml; repo_id } t =
   Syntax.Version.equal version t.version
   && Option.equal (Tuple.T2.equal Loc.equal Package_name.equal) ocaml t.ocaml
+  && Option.equal (Tuple.T2.equal Loc.equal Repository_id.equal) repo_id t.repo_id
   && Package_name.Map.equal packages t.packages ~equal:Pkg.equal
 ;;
 
-let to_dyn { version; packages; ocaml } =
+let to_dyn { version; packages; ocaml; repo_id } =
   Dyn.record
     [ "version", Syntax.Version.to_dyn version
     ; "packages", Package_name.Map.to_dyn Pkg.to_dyn packages
     ; "ocaml", Dyn.option (Tuple.T2.to_dyn Loc.to_dyn_hum Package_name.to_dyn) ocaml
+    ; "repo_id", Dyn.option (Tuple.T2.to_dyn Loc.to_dyn_hum Repository_id.to_dyn) repo_id
     ]
 ;;
 
-let create_latest_version packages ~ocaml =
+let create_latest_version packages ~ocaml ~repo_id =
   let version = Syntax.greatest_supported_version Dune_lang.Pkg.syntax in
-  { version; packages; ocaml }
+  { version; packages; ocaml; repo_id }
 ;;
 
 let default_path = Path.Source.(relative root "dune.lock")
@@ -301,7 +305,7 @@ module Metadata = Dune_sexp.Versioned_file.Make (Unit)
 
 let () = Metadata.Lang.register Dune_lang.Pkg.syntax ()
 
-let encode_metadata { version; ocaml; packages = _ } =
+let encode_metadata { version; ocaml; repo_id; packages = _ } =
   let open Encoder in
   let base =
     list
@@ -312,10 +316,13 @@ let encode_metadata { version; ocaml; packages = _ } =
       ]
   in
   [ base ]
+  @ (match ocaml with
+     | None -> []
+     | Some ocaml -> [ list sexp [ string "ocaml"; Package_name.encode (snd ocaml) ] ])
   @
-  match ocaml with
+  match repo_id with
   | None -> []
-  | Some ocaml -> [ list sexp [ string "ocaml"; Package_name.encode (snd ocaml) ] ]
+  | Some repo_id -> [ list sexp [ string "repo_id"; Repository_id.encode (snd repo_id) ] ]
 ;;
 
 module Package_filename = struct
@@ -413,17 +420,22 @@ module Make_load (Io : sig
 struct
   let load_metadata metadata_file_path =
     let open Io.O in
-    let+ syntax, version, ocaml =
+    let+ syntax, version, ocaml, repo_id =
       Io.with_lexbuf_from_file metadata_file_path ~f:(fun lexbuf ->
         Metadata.parse_contents
           lexbuf
           ~f:(fun { Metadata.Lang.Instance.syntax; data = (); version } ->
             let open Decoder in
-            let+ ocaml = fields @@ field_o "ocaml" (located Package_name.decode) in
-            syntax, version, ocaml))
+            let+ ocaml, repo_id =
+              fields
+                (let+ ocaml = field_o "ocaml" (located Package_name.decode)
+                 and+ repo_id = field_o "repo_id" (located Repository_id.decode) in
+                 ocaml, repo_id)
+            in
+            syntax, version, ocaml, repo_id))
     in
     if String.equal (Syntax.name syntax) (Syntax.name Dune_lang.Pkg.syntax)
-    then version, ocaml
+    then version, ocaml, repo_id
     else
       User_error.raise
         [ Pp.textf
@@ -471,7 +483,9 @@ struct
   let load lock_dir_path =
     let open Io.O in
     check_path lock_dir_path;
-    let* version, ocaml = load_metadata (Path.Source.relative lock_dir_path metadata) in
+    let* version, ocaml, repo_id =
+      load_metadata (Path.Source.relative lock_dir_path metadata)
+    in
     let+ packages =
       Io.readdir_with_kinds lock_dir_path
       >>| List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
@@ -485,7 +499,7 @@ struct
         package_name, pkg)
       >>| Package_name.Map.of_list_exn
     in
-    { version; packages; ocaml }
+    { version; packages; ocaml; repo_id }
   ;;
 end
 

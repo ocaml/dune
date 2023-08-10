@@ -42,6 +42,7 @@ type t =
   { version : Syntax.Version.t
   ; packages : Pkg.t Package_name.Map.t
   ; ocaml : (Loc.t * Package_name.t) option
+  ; repo_id : (Loc.t * Repository_id.t) option
   }
 
 val remove_locs : t -> t
@@ -51,6 +52,7 @@ val to_dyn : t -> Dyn.t
 val create_latest_version
   :  Pkg.t Package_name.Map.t
   -> ocaml:(Loc.t * Package_name.t) option
+  -> repo_id:(Loc.t * Repository_id.t) option
   -> t
 
 val default_path : Path.Source.t

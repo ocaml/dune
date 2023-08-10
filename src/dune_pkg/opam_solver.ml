@@ -349,7 +349,7 @@ let solve_package_list local_packages context =
   | Ok packages -> Ok (Solver.packages_of_result packages)
 ;;
 
-let solve_lock_dir solver_env version_preference repo ~local_packages =
+let solve_lock_dir solver_env version_preference (repo, repo_id) ~local_packages =
   let is_local_package package =
     OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
   in
@@ -373,7 +373,8 @@ let solve_lock_dir solver_env version_preference repo ~local_packages =
              "Solver selected multiple packages named \"%s\""
              (Package_name.to_string name))
           []
-      | Ok pkgs_by_name -> Lock_dir.create_latest_version pkgs_by_name ~ocaml:None
+      | Ok pkgs_by_name ->
+        Lock_dir.create_latest_version pkgs_by_name ~ocaml:None ~repo_id
     in
     summary, lock_dir)
 ;;

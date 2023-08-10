@@ -96,6 +96,7 @@ type t =
   ; execution_parameters : dir:Path.Source.t -> Execution_parameters.t Memo.t
   ; source_tree : (module Source_tree)
   ; action_runner : Action_exec.input -> Action_runner.t option
+  ; action_runners : unit -> Action_runner.t list
   ; shared_cache : (module Shared_cache_intf.S)
   }
 
@@ -103,6 +104,7 @@ let t = Fdecl.create Dyn.opaque
 
 let set
   ~action_runner
+  ~action_runners
   ~stats
   ~contexts
   ~promote_source
@@ -140,6 +142,7 @@ let set
     ; execution_parameters
     ; source_tree
     ; action_runner
+    ; action_runners
     ; shared_cache
     }
 ;;

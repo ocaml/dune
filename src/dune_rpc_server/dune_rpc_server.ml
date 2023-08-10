@@ -188,6 +188,8 @@ module Session = struct
         ; "name", Dyn.string name
         ]
     ;;
+
+    let name t = t.name
   end
 
   type 'a t =
@@ -259,6 +261,8 @@ module Session = struct
       t.pollers <- Dune_rpc_private.Id.Map.remove t.pollers id;
       Some poller
   ;;
+
+  let name t = t.base.name
 end
 
 type message_kind =

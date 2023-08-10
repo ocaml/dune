@@ -9,6 +9,9 @@ module Session : sig
 
   val id : _ t -> Id.t
 
+  (** Name of the endpoint the session is connected to. *)
+  val name : _ t -> string
+
   (** [get session] returns the current session state. It is an error to access
       the state after [on_terminate] finishes. *)
   val get : 'a t -> 'a
@@ -57,6 +60,7 @@ module Session : sig
     val initialize : _ t -> Initialize.Request.t
     val close : 'a t -> unit Fiber.t
     val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
+    val name : _ t -> string
   end
 end
 
@@ -151,6 +155,7 @@ module Make (S : sig
         closed. *)
     val read : t -> Sexp.t option Fiber.t
 
+    (* [name t] returns the name of the endpoint the session is connected to. *)
     val name : t -> string
   end) : sig
   (** [serve sessions handler] serve all [sessions] using [handler] *)

@@ -68,6 +68,10 @@ let clear (type input output) ((module T) : (input, output) t) = T.H.clear T.val
 let mem (type input output) ((module T) : (input, output) t) k = T.H.mem T.value k
 let keys (type input output) ((module T) : (input, output) t) = T.H.keys T.value
 
+let values (type input output) ((module T) : (input, output) t) =
+  T.H.to_seq_values T.value |> List.of_seq
+;;
+
 let foldi (type input output) ((module T) : (input, output) t) ~init ~f =
   T.H.foldi T.value ~init ~f
 ;;

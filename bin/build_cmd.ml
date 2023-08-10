@@ -222,11 +222,7 @@ let fmt =
                command.")
     in
     let common =
-      Common.set_promote
-        common
-        (if no_promote
-         then Dune_engine.Clflags.Promote.Never
-         else Dune_engine.Clflags.Promote.Automatically)
+      Common.set_promote common (if no_promote then Never else Automatically)
     in
     let config = Common.init common in
     let request (setup : Import.Main.build_system) =

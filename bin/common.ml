@@ -1335,7 +1335,7 @@ let envs =
     [ info
         ~doc:
           "If different than $(b,0), ANSI colors are supported and should be used when \
-           the program isn’t piped. If equal to $(b,0), don’t output ANSI color escape \
+           the program isn't piped. If equal to $(b,0), don't output ANSI color escape \
            codes"
         "CLICOLOR"
     ; info

@@ -16,4 +16,4 @@ val gen_rules
   :  Super_context.t
   -> dir:Path.Build.t
   -> string list
-  -> Build_config.gen_rules_result Memo.t
+  -> Build_config.Gen_rules.result Memo.t

@@ -1,18 +1,16 @@
 open Import
 module Action_builder = Action_builder0
 
-module Context_or_install = struct
-  type t =
-    | Install of Context_name.t
-    | Context of Context_name.t
+module Gen_rules = struct
+  module Context_or_install = struct
+    include Build_config_intf.Context_or_install
 
-  let to_dyn = function
-    | Install ctx -> Dyn.List [ Dyn.String "install"; Context_name.to_dyn ctx ]
-    | Context s -> Context_name.to_dyn s
-  ;;
-end
+    let to_dyn = function
+      | Install ctx -> Dyn.List [ Dyn.String "install"; Context_name.to_dyn ctx ]
+      | Context s -> Context_name.to_dyn s
+    ;;
+  end
 
-module Rules = struct
   module Build_only_sub_dirs = struct
     type t = Subdir_set.t Path.Build.Map.t
 
@@ -26,61 +24,54 @@ module Rules = struct
     let union a b = Path.Build.Map.union a b ~f:(fun _ a b -> Some (Subdir_set.union a b))
   end
 
-  type t =
-    { build_dir_only_sub_dirs : Build_only_sub_dirs.t
-    ; directory_targets : Loc.t Path.Build.Map.t
-    ; rules : Rules.t Memo.t
-    }
+  module Rules = struct
+    include Build_config_intf.Rules
 
-  let empty =
-    { build_dir_only_sub_dirs = Path.Build.Map.empty
-    ; directory_targets = Path.Build.Map.empty
-    ; rules = Memo.return Rules.empty
-    }
-  ;;
+    let empty =
+      { build_dir_only_sub_dirs = Path.Build.Map.empty
+      ; directory_targets = Path.Build.Map.empty
+      ; rules = Memo.return Rules.empty
+      }
+    ;;
 
-  let combine_exn r { build_dir_only_sub_dirs; directory_targets; rules } =
-    { build_dir_only_sub_dirs =
-        Build_only_sub_dirs.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
-    ; directory_targets = Path.Build.Map.union_exn r.directory_targets directory_targets
-    ; rules =
-        (let open Memo.O in
-         let+ r = r.rules
-         and+ r' = rules in
-         Rules.union r r')
-    }
-  ;;
-end
+    let create
+      ?(build_dir_only_sub_dirs = empty.build_dir_only_sub_dirs)
+      ?(directory_targets = empty.directory_targets)
+      rules
+      =
+      { build_dir_only_sub_dirs; directory_targets; rules }
+    ;;
 
-type gen_rules_result =
-  | Rules of Rules.t
-  | Unknown_context_or_install
-  | Redirect_to_parent of Rules.t
-
-module type Rule_generator = sig
-  val gen_rules
-    :  Context_or_install.t
-    -> dir:Path.Build.t
-    -> string list
-    -> gen_rules_result Memo.t
-end
-
-module type Source_tree = sig
-  val files_of : Path.Source.t -> Path.Source.Set.t Memo.t
-
-  module Dir : sig
-    type t
-
-    val sub_dir_names : t -> Filename.Set.t
-    val file_paths : t -> Path.Source.Set.t
+    let combine_exn r { build_dir_only_sub_dirs; directory_targets; rules } =
+      { build_dir_only_sub_dirs =
+          Build_only_sub_dirs.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
+      ; directory_targets = Path.Build.Map.union_exn r.directory_targets directory_targets
+      ; rules =
+          (let open Memo.O in
+           let+ r = r.rules
+           and+ r' = rules in
+           Rules.union r r')
+      }
+    ;;
   end
 
-  val find_dir : Path.Source.t -> Dir.t option Memo.t
+  module Gen_rules_result = struct
+    include Build_config_intf.Gen_rules_result
+
+    let redirect_to_parent rules = Redirect_to_parent rules
+    let rules_here rules = Rules rules
+    let unknown_context_or_install = Unknown_context_or_install
+    let no_rules = rules_here Rules.empty
+  end
+
+  module type Rule_generator = Build_config_intf.Rule_generator
 end
+
+module type Source_tree = Build_config_intf.Source_tree
 
 type t =
   { contexts : Build_context.t Context_name.Map.t Memo.Lazy.t
-  ; rule_generator : (module Rule_generator)
+  ; rule_generator : (module Gen_rules.Rule_generator)
   ; sandboxing_preference : Sandbox_mode.t list
   ; promote_source :
       chmod:(int -> int)
@@ -100,7 +91,8 @@ type t =
   ; shared_cache : (module Shared_cache_intf.S)
   }
 
-let t = Fdecl.create Dyn.opaque
+let t : t Fdecl.t = Fdecl.create Dyn.opaque
+let get () = Fdecl.get t
 
 let set
   ~action_runner
@@ -146,5 +138,3 @@ let set
     ; shared_cache
     }
 ;;
-
-let get () = Fdecl.get t

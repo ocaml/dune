@@ -94,42 +94,25 @@ include Dune_engine.No_io
 
 module Build_config = struct
   module Gen_rules = struct
-    module Build_only_sub_dirs = Build_config.Rules.Build_only_sub_dirs
-    module Context_or_install = Build_config.Context_or_install
-
-    module Rules = struct
-      include Build_config.Rules
-
-      let create
-        ?(build_dir_only_sub_dirs = empty.build_dir_only_sub_dirs)
-        ?(directory_targets = empty.directory_targets)
-        rules
-        =
-        { rules; build_dir_only_sub_dirs; directory_targets }
-      ;;
-    end
+    open Build_config.Gen_rules
+    module Build_only_sub_dirs = Build_only_sub_dirs
+    module Context_or_install = Context_or_install
+    module Rules = Rules
 
     let make
       ?(build_dir_only_sub_dirs = Rules.empty.build_dir_only_sub_dirs)
       ?(directory_targets = Rules.empty.directory_targets)
       rules
       =
-      let rules =
-        { Build_config.Rules.build_dir_only_sub_dirs; directory_targets; rules }
-      in
-      Build_config.Rules rules
+      let rules = { Rules.build_dir_only_sub_dirs; directory_targets; rules } in
+      Gen_rules_result.rules_here rules
     ;;
 
-    let redirect_to_parent rules = Build_config.Redirect_to_parent rules
-    let rules_here rules = Build_config.Rules rules
-    let unknown_context_or_install = Build_config.Unknown_context_or_install
-    let no_rules = make (Memo.return Dune_engine.Rules.empty)
+    include Gen_rules_result
 
-    type result = Build_config.gen_rules_result
+    type result = Gen_rules_result.t
 
-    module type Generator = Build_config.Rule_generator
-
-    let set = Build_config.set
+    module type Generator = Rule_generator
   end
 
   let set = Build_config.set

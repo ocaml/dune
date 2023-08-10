@@ -52,6 +52,12 @@ module Exec_result = struct
       | Unix.Unix_error (err, call, args) -> Unix (err, call, args)
       | Memo.Non_reproducible Scheduler.Run.Build_cancelled ->
         Nonreproducible_build_cancelled
+      | Memo.Cycle_error.E _ as e ->
+        (* [Memo.Cycle_error.t] is hard to serialize and can only be raised during action
+           execution with the dynamic dependencies plugin, which is not production-ready yet.
+           For now, we just re-reraise it.
+        *)
+        reraise e
       | e ->
         Code
           { message = "unable to serialize exception"

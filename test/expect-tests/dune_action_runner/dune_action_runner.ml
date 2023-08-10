@@ -102,9 +102,7 @@ let run () =
           ; action
           }
         in
-        let+ (_ : (Action_exec.Exec_result.t, Exn_with_backtrace.t list) result) =
-          Action_runner.exec_action worker action
-        in
+        let+ (_ : Action_exec.Exec_result.t) = Action_runner.exec_action worker action in
         print_endline "executed action";
         Unix.kill (Pid.to_int pid) Sys.sigterm)
   in

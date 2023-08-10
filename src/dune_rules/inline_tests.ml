@@ -332,7 +332,7 @@ include Sub_system.Register_end_point (struct
           Super_context.add_alias_action
             sctx
             ~dir
-            ~loc:(Some info.loc)
+            ~loc:info.loc
             (Alias.make ~dir runtest_alias)
             (let open Action_builder.O in
              let+ actions =
@@ -368,7 +368,7 @@ include Sub_system.Register_end_point (struct
       then gen_rules c ~expander ~info ~backends
       else (
         let alias = Alias.runtest ~dir in
-        Simple_rules.Alias_rules.add_empty sctx ~alias ~loc:(Some info.loc))
+        Simple_rules.Alias_rules.add_empty sctx ~alias ~loc:info.loc)
     ;;
   end)
 

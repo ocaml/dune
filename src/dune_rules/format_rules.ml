@@ -7,7 +7,7 @@ let add_diff sctx loc alias ~dir ~input ~output =
     sctx
     alias
     ~dir
-    ~loc:(Some loc)
+    ~loc
     (Action_builder.paths [ input; Path.build output ]
      >>> Action_builder.return (Action.Full.make action))
 ;;

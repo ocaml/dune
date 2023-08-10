@@ -351,7 +351,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 14
+  let rule_digest_version = 15
 
   let compute_rule_digest
     (rule : Rule.t)
@@ -761,8 +761,7 @@ end = struct
     let hash t = Digest.hash t.digest
 
     let to_dyn t : Dyn.t =
-      Record
-        [ "digest", Digest.to_dyn t.digest; "loc", Dyn.option Loc.to_dyn t.action.loc ]
+      Record [ "digest", Digest.to_dyn t.digest; "loc", Loc.to_dyn t.action.loc ]
     ;;
   end
 
@@ -787,10 +786,7 @@ end = struct
       let { Rule.Anonymous_action.context; action = _; loc; dir = _; alias = _ } = act in
       Rule.make
         ~context
-        ~info:
-          (match loc with
-           | Some loc -> From_dune_file loc
-           | None -> Internal)
+        ~info:(if Loc.is_none loc then Internal else From_dune_file loc)
         ~targets:(Targets.File.create target)
         ~mode:Standard
         (Action_builder.of_thunk
@@ -1164,7 +1160,8 @@ end = struct
             (Memo.Stack_frame.as_instance_of
                frame
                ~of_:execute_action_generic_stage2_memo)
-            ~f:(fun (x : Anonymous_action.t) -> x.action.loc)))
+            ~f:(fun (x : Anonymous_action.t) ->
+              Option.some_if (not @@ Loc.is_none x.action.loc) x.action.loc)))
   ;;
 end
 

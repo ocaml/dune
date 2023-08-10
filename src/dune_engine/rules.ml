@@ -161,9 +161,7 @@ module Produce = struct
       in
       alias
         t
-        { expansions =
-            Appendable_list.singleton
-              (Option.value loc ~default:Loc.none, Dir_rules.Alias_spec.Action action)
+        { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Action action)
         }
     ;;
   end

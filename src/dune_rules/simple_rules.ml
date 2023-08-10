@@ -80,7 +80,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     let aliases = List.map rule.aliases ~f:(Alias.make ~dir) in
     let+ () =
       Memo.parallel_iter aliases ~f:(fun alias ->
-        Alias_rules.add_empty sctx ~loc:(Some rule.loc) ~alias)
+        Alias_rules.add_empty sctx ~loc:rule.loc ~alias)
     in
     None
   | true ->
@@ -152,7 +152,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
        let* action = interpret_and_add_locks ~expander rule.locks action.build in
        let+ () =
          Memo.parallel_iter aliases ~f:(fun alias ->
-           Alias_rules.add sctx ~alias ~loc:(Some rule.loc) action)
+           Alias_rules.add sctx ~alias ~loc:rule.loc action)
        in
        None)
 ;;
@@ -266,7 +266,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
 
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let alias = Alias.make ~dir alias_conf.name in
-  let loc = Some alias_conf.loc in
+  let loc = alias_conf.loc in
   Expander.eval_blang expander alias_conf.enabled_if
   >>= function
   | false -> Alias_rules.add_empty sctx ~loc ~alias
@@ -274,7 +274,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
     (match alias_conf.action with
      | None ->
        let builder, _expander, _sandbox = Dep_conf_eval.named ~expander alias_conf.deps in
-       Rules.Produce.Alias.add_deps alias ?loc builder
+       Rules.Produce.Alias.add_deps alias ~loc builder
      | Some (action_loc, action) ->
        let action =
          let expander =

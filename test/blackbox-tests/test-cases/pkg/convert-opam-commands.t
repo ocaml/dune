@@ -36,11 +36,6 @@ Generate a mock opam repository
   > install: [ make "install" ]
   > EOF
 
-  $ mkpkg with-unknown-variable <<EOF
-  > opam-version: "2.0"
-  > build: [ fake "install" ]
-  > EOF
-
   $ solve_project <<EOF
   > (lang dune 3.8)
   > (package
@@ -54,16 +49,4 @@ Generate a mock opam repository
   $ cat dune.lock/standard-dune.pkg
   (version 0.0.1)
   (install (run %{make} install))
-  (build (progn (run dune subst) (run dune build -p %{name} -j %{jobs} @install @runtest @doc)))
-
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends with-unknown-variable))
-  > EOF
-  Error: Encountered unknown variable "fake" while processing commands for
-  package with-unknown-variable.0.0.1.
-  The full command:
-  fake "install"
-  [1]
+  (build (progn (run dune subst) (run dune build -p %{pkg:var:_:name} -j %{jobs} @install @runtest @doc)))

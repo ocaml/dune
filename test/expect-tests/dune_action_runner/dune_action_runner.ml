@@ -8,7 +8,7 @@ module Scheduler = Dune_engine.Scheduler
 module Server = Dune_rpc_server.Make (struct
     include Csexp_rpc.Session
 
-    let name _ = "unnamed"
+    let name _ = "foo"
   end)
 
 module Action_exec = Dune_engine.Action_exec

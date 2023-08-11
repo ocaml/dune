@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691744291628,
+  "lastUpdate": 1691744730775,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -27142,6 +27142,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "45.77826656145999",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "marek@xivilization.net",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "distinct": true,
+          "id": "c4cfdecda2d02766873a90f627e998766f640d61",
+          "message": "fix: use proper apostrophe in text\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-08-11T10:45:45+02:00",
+          "tree_id": "071efa2048cd25911cf3c6d7e5ba04ef3c289064",
+          "url": "https://github.com/ocaml/dune/commit/c4cfdecda2d02766873a90f627e998766f640d61"
+        },
+        "date": 1691744729808,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.63275154356666",
             "unit": "seconds"
           }
         ]

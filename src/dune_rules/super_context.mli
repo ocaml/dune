@@ -112,7 +112,7 @@ val add_alias_action
   :  t
   -> Alias.t
   -> dir:Path.Build.t
-  -> loc:Loc.t option
+  -> loc:Loc.t
   -> Action.Full.t Action_builder.t
   -> unit Memo.t
 

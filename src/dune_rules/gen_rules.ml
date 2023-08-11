@@ -1,5 +1,6 @@
 open Import
 open Memo.O
+module Gen_rules = Build_config.Gen_rules
 
 module For_stanza : sig
   type ('merlin, 'cctx, 'js, 'source_dirs) t =
@@ -463,12 +464,9 @@ let gen_rules_for_automatic_sub_dir ~sctx ~dir kind =
 let has_rules ~dir subdirs f =
   let rules = Rules.collect_unit f in
   Memo.return
-    (Build_config.Rules
-       { build_dir_only_sub_dirs =
-           Build_config.Rules.Build_only_sub_dirs.singleton ~dir subdirs
-       ; directory_targets = Path.Build.Map.empty
-       ; rules
-       })
+    (Gen_rules.make
+       ~build_dir_only_sub_dirs:(Gen_rules.Build_only_sub_dirs.singleton ~dir subdirs)
+       rules)
 ;;
 
 (* The emit stanza of melange outputs in a single output directory (and its
@@ -550,14 +548,12 @@ let gen_melange_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
             ]))
 ;;
 
-let rules_for ~dir ~allowed_subdirs rules =
-  { Build_config.Rules.build_dir_only_sub_dirs =
-      Build_config.Rules.Build_only_sub_dirs.singleton
-        ~dir
-        (Subdir_set.These allowed_subdirs)
-  ; directory_targets = Path.Build.Map.empty
-  ; rules
-  }
+let rules_for ?directory_targets ~dir ~allowed_subdirs rules =
+  Gen_rules.Rules.create
+    ?directory_targets
+    ~build_dir_only_sub_dirs:
+      (Gen_rules.Build_only_sub_dirs.singleton ~dir (Subdir_set.These allowed_subdirs))
+    rules
 ;;
 
 let gen_melange_emit_rules_or_empty_redirect
@@ -567,19 +563,21 @@ let gen_melange_emit_rules_or_empty_redirect
   ~allowed_subdirs
   under_melange_emit
   =
-  let rules_for = rules_for ~dir ~allowed_subdirs in
-  match under_melange_emit with
-  | None -> Memo.return (Build_config.Redirect_to_parent (rules_for opam_file_rules))
-  | Some for_melange ->
-    let+ melange_rules = gen_melange_emit_rules sctx ~dir for_melange in
-    (match melange_rules with
-     | Some r -> Build_config.Redirect_to_parent (rules_for r)
-     | None -> Build_config.Redirect_to_parent (rules_for opam_file_rules))
+  let+ rules =
+    match under_melange_emit with
+    | None -> Memo.return opam_file_rules
+    | Some for_melange ->
+      let+ melange_rules = gen_melange_emit_rules sctx ~dir for_melange in
+      (match melange_rules with
+       | Some r -> r
+       | None -> opam_file_rules)
+  in
+  Gen_rules.redirect_to_parent (rules_for ~dir ~allowed_subdirs rules)
 ;;
 
 (* Once [gen_rules] has decided what to do with the directory, it should end
    with [has_rules] or [redirect_to_parent] *)
-let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
+let gen_rules ~sctx ~dir components : Gen_rules.result Memo.t =
   let module S = Subdir_set in
   match components with
   | [ ".dune"; "ccomp" ] ->
@@ -710,9 +708,11 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
           in
           Rules.union rules rules'
         in
-        let* directory_targets = collect_directory_targets ~dir ~init:directory_targets in
-        let build_config subdirs =
-          { (rules_for ~dir ~allowed_subdirs:subdirs rules) with directory_targets }
+        let* build_config =
+          let+ directory_targets =
+            collect_directory_targets ~dir ~init:directory_targets
+          in
+          fun subdirs -> rules_for ~dir ~allowed_subdirs:subdirs rules ~directory_targets
         in
         (match under_melange_emit_target with
          | None ->
@@ -735,50 +735,47 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
                  (Filename.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ])
              | _ -> subdirs
            in
-           Build_config.Rules (build_config subdirs)
+           Gen_rules.rules_here (build_config subdirs)
          | Some for_melange ->
            let build_config = build_config allowed_subdirs in
            let+ melange_rules = gen_melange_emit_rules sctx ~dir for_melange in
-           (match melange_rules with
-            | None -> Build_config.Redirect_to_parent build_config
-            | Some emit ->
-              Build_config.Rules
-                (Build_config.Rules.combine_exn
-                   build_config
-                   (rules_for ~dir ~allowed_subdirs emit))))))
+           Gen_rules.redirect_to_parent
+           @@
+             (match melange_rules with
+             | None -> build_config
+             | Some emit ->
+               Gen_rules.Rules.combine_exn
+                 build_config
+                 (rules_for ~dir ~allowed_subdirs emit)))))
 ;;
 
 let with_context ctx ~f =
   Super_context.find ctx
   >>= function
-  | None -> Memo.return Build_config.Unknown_context_or_install
+  | None -> Memo.return Gen_rules.unknown_context_or_install
   | Some ctx -> f ctx
 ;;
 
 let gen_rules ctx_or_install ~dir components =
-  match (ctx_or_install : Build_config.Context_or_install.t) with
+  match (ctx_or_install : Gen_rules.Context_or_install.t) with
   | Install ctx ->
     with_context ctx ~f:(fun sctx ->
       let+ subdirs, rules = Install_rules.symlink_rules sctx ~dir in
       let directory_targets = Rules.directory_targets rules in
-      Build_config.Rules
-        { build_dir_only_sub_dirs =
-            Build_config.Rules.Build_only_sub_dirs.singleton ~dir subdirs
-        ; directory_targets
-        ; rules = Memo.return rules
-        })
+      Gen_rules.make
+        ~build_dir_only_sub_dirs:(Gen_rules.Build_only_sub_dirs.singleton ~dir subdirs)
+        ~directory_targets
+        (Memo.return rules))
   | Context ctx ->
     (match components with
      | [ ".pkg" ] ->
-       let rules =
-         { Build_config.Rules.empty with
-           build_dir_only_sub_dirs =
-             Build_config.Rules.Build_only_sub_dirs.singleton ~dir Subdir_set.All
-         }
-       in
-       Memo.return @@ Build_config.Rules rules
+       Gen_rules.make
+         ~build_dir_only_sub_dirs:
+           (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.All)
+         (Memo.return Rules.empty)
+       |> Memo.return
      | [ ".pkg"; pkg_name ] -> Pkg_rules.setup_package_rules ctx ~dir ~pkg_name
      | ".pkg" :: _ :: _ ->
-       Memo.return @@ Build_config.Redirect_to_parent Build_config.Rules.empty
+       Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
      | _ -> with_context ctx ~f:(fun sctx -> gen_rules ~sctx ~dir components))
 ;;

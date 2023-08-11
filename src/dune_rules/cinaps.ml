@@ -221,9 +221,7 @@ let gen_rules sctx t ~dir ~scope =
             ])
   in
   let cinaps_alias = Alias.make ~dir @@ Option.value t.alias ~default:cinaps_alias in
-  let* () =
-    Super_context.add_alias_action sctx ~dir ~loc:(Some loc) cinaps_alias action
-  in
+  let* () = Super_context.add_alias_action sctx ~dir ~loc cinaps_alias action in
   match t.alias with
   | Some _ -> Memo.return ()
   | None ->

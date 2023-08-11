@@ -2,6 +2,9 @@
 
 val report_errors_config : Report_errors_config.t ref
 
+(** Stop the build upon encountering an error. *)
+val stop_on_first_error : bool ref
+
 (** Capture the output of sub-commands *)
 val capture_outputs : bool ref
 

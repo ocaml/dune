@@ -412,7 +412,7 @@ end = struct
   module Exec_result = struct
     type t =
       { produced_targets : unit Targets.Produced.t
-      ; action_exec_result : Action_exec.Exec_result.t
+      ; action_exec_result : Action_exec.Exec_result.ok
       }
   end
 
@@ -497,6 +497,8 @@ end = struct
          | Some sandbox -> Sandbox.map_path sandbox root)
     in
     let* exec_result =
+      Fiber.collect_errors
+      @@ fun () ->
       with_locks locks ~f:(fun () ->
         let build_deps deps = Memo.run (build_deps deps) in
         let* action_exec_result =
@@ -512,12 +514,9 @@ end = struct
           in
           match (Build_config.get ()).action_runner input with
           | None -> Action_exec.exec input ~build_deps
-          | Some runner ->
-            Action_runner.exec_action runner input
-            >>= (function
-            | Ok res -> Fiber.return res
-            | Error exns -> Fiber.reraise_all exns)
+          | Some runner -> Action_runner.exec_action runner input
         in
+        let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
         let+ produced_targets =
           match sandbox with
           | None -> Targets.Produced.produced_after_rule_executed_exn ~loc targets
@@ -533,7 +532,7 @@ end = struct
         in
         { Exec_result.produced_targets; action_exec_result })
     in
-    let+ () =
+    let* () =
       match sandbox with
       | Some sandbox -> Sandbox.destroy sandbox
       | None ->
@@ -541,7 +540,9 @@ end = struct
         Pending_targets.remove targets;
         Fiber.return ()
     in
-    exec_result
+    match exec_result with
+    | Ok res -> Fiber.return res
+    | Error l -> Fiber.reraise_all l
   ;;
 
   let promote_targets ~rule_mode ~dir ~targets ~promote_source =
@@ -940,9 +941,8 @@ end = struct
        | Some digest -> digest, File_target
        | None ->
          (match Cached_digest.build_file ~allow_dirs:true path with
-          | Ok digest ->
-            digest, Dir_target { generated_file_digests = targets }
-            (* Must be a directory target *)
+          | Ok digest -> digest, Dir_target { generated_file_digests = targets }
+          (* Must be a directory target *)
           | No_such_file
           | Broken_symlink
           | Cyclic_symlink
@@ -1234,7 +1234,17 @@ let report_early_exn exn =
   | false ->
     let open Fiber.O in
     let errors = Error.of_exn exn in
-    let+ () = State.add_errors errors in
+    let+ () = State.add_errors errors
+    and+ () =
+      match !Clflags.stop_on_first_error with
+      | true ->
+        let* () =
+          (Build_config.get ()).action_runners ()
+          |> Fiber.parallel_iter ~f:Action_runner.cancel_build
+        in
+        Scheduler.stop_on_first_error ()
+      | false -> Fiber.return ()
+    in
     (match !Clflags.report_errors_config with
      | Early | Twice -> Dune_util.Report_error.report exn
      | Deterministic -> ())

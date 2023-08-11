@@ -121,6 +121,7 @@ module Event : sig
     | File_system_sync of Dune_file_watcher.Sync_id.t
     | File_system_watcher_terminated
     | Shutdown of Shutdown.Reason.t
+    | Stop_on_first_error
     | Fiber_fill_ivar of Fiber.fill
 
   module Queue : sig
@@ -156,6 +157,7 @@ module Event : sig
     val send_invalidation_event : t -> Memo.Invalidation.t -> unit
     val send_job_completed : t -> job -> Proc.Process_info.t -> unit
     val send_shutdown : t -> Shutdown.Reason.t -> unit
+    val send_stop_on_first_error : t -> unit
     val send_timers_completed : t -> Fiber.fill Nonempty_list.t -> unit
     val yield_if_there_are_pending_events : t -> unit Fiber.t
   end
@@ -170,6 +172,7 @@ end = struct
     | File_system_sync of Dune_file_watcher.Sync_id.t
     | File_system_watcher_terminated
     | Shutdown of Shutdown.Reason.t
+    | Stop_on_first_error
     | Fiber_fill_ivar of Fiber.fill
 
   module Invalidation_event = struct
@@ -186,6 +189,7 @@ end = struct
       ; file_watcher_tasks : (unit -> Dune_file_watcher.Event.t list) Queue.t
       ; mutable invalidation_events : Invalidation_event.t list
       ; mutable shutdown_reasons : Shutdown.Reason.Set.t
+      ; mutable got_stop_on_first_error : bool
       ; mutex : Mutex.t
       ; cond : Condition.t
       ; mutable pending_jobs : int
@@ -213,6 +217,7 @@ end = struct
       ; invalidation_events
       ; timers
       ; shutdown_reasons
+      ; got_stop_on_first_error = false
       ; mutex
       ; cond
       ; pending_jobs
@@ -259,6 +264,7 @@ end = struct
       type t
 
       val shutdown : t
+      val stop_on_first_error : t
       val file_watcher_task : t
       val invalidation : t
       val jobs_completed : t
@@ -278,6 +284,15 @@ end = struct
         Option.map (Shutdown.Reason.Set.choose q.shutdown_reasons) ~f:(fun reason ->
           q.shutdown_reasons <- Shutdown.Reason.Set.remove q.shutdown_reasons reason;
           Shutdown reason)
+      ;;
+
+      let stop_on_first_error : t =
+        fun q ->
+        match q.got_stop_on_first_error with
+        | true ->
+          q.got_stop_on_first_error <- false;
+          Some Stop_on_first_error
+        | false -> None
       ;;
 
       let file_watcher_task q =
@@ -369,6 +384,7 @@ end = struct
                  ; jobs_completed
                  ; yield
                  ; timers
+                 ; stop_on_first_error
                  ]))
             q
         with
@@ -413,6 +429,10 @@ end = struct
     let send_shutdown q signal =
       add_event q (fun q ->
         q.shutdown_reasons <- Shutdown.Reason.Set.add q.shutdown_reasons signal)
+    ;;
+
+    let send_stop_on_first_error q =
+      add_event q (fun q -> q.got_stop_on_first_error <- true)
     ;;
 
     let send_file_watcher_task q job =
@@ -956,6 +976,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
       (match signal_watcher with
        | `Yes -> Signal_watcher.init events
        | `No -> ());
+      let cancel = Fiber.Cancel.create () in
       let process_watcher = Process_watcher.init ~signal_watcher events in
       { status =
           (* Slightly weird initialization happening here: for polling mode we
@@ -964,7 +985,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
              "Stand_by" from the start. We can't "just" switch the initial value
              here because then the non-polling mode would run in "Standing_by"
              mode, which is even weirder. *)
-          ref (Building (Fiber.Cancel.create ()))
+          ref (Building cancel)
       ; job_throttle = Fiber.Throttle.create config.concurrency
       ; process_watcher
       ; events
@@ -974,11 +995,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
       ; fs_syncs = Dune_file_watcher.Sync_id.Table.create 64
       ; wait_for_build_input_change = ref None
       ; alarm_clock = lazy (Alarm_clock.create ~signal_watcher events ~frequency:0.1)
-      ; cancel =
-          (* This cancellation will never be fired, so this field could instead
-             be an [option]. We use a dummy cancellation rather than an option
-             to keep the code simpler. *)
-          Fiber.Cancel.create ()
+      ; cancel
       ; thread_pool = Thread_pool.create ~spawn_thread ~min_workers:4 ~max_workers:50
       } )
 ;;
@@ -1038,6 +1055,23 @@ end = struct
     | Shutdown reason ->
       got_shutdown reason;
       raise @@ Abort (Shutdown_requested reason)
+    | Stop_on_first_error ->
+      let fills =
+        match !(t.status) with
+        | Restarting_build _ -> []
+        | Standing_by _ -> []
+        | Building cancellation ->
+          t.handler t.config Build_interrupted;
+          t.status
+            := Standing_by
+                 { invalidation = Memo.Invalidation.empty
+                 ; saw_insignificant_changes = false
+                 };
+          Fiber.Cancel.fire' cancellation
+      in
+      (match Nonempty_list.of_list fills with
+       | None -> iter t
+       | Some fills -> fills)
 
   and build_input_change (t : t) events =
     let invalidation = handle_invalidation_events events in
@@ -1189,8 +1223,13 @@ module Run = struct
     let* res = set { t with cancel } (fun () -> step) in
     match !(t.status) with
     | Standing_by _ ->
-      (* We just finished a build, so there's no way this was set *)
-      assert false
+      let res : Build_outcome.t =
+        match res with
+        | Error `Already_reported -> Failure
+        | Ok () -> Success
+      in
+      t.handler t.config (Build_finish res);
+      Fiber.return res
     | Restarting_build invalidation -> poll_iter t step ~invalidation
     | Building _ ->
       let res : Build_outcome.t =
@@ -1340,7 +1379,7 @@ module Run = struct
       | `Kill pid ->
         (* XXX this can't be right because if we ignore the fiber,
            we will not wait for the process *)
-        ignore (wait_for_process t pid : _ Fiber.t)
+        ignore (wait_for_build_process t pid : _ Fiber.t)
       | `Thunk f -> f ()
       | `No_op -> ());
     ignore (kill_and_wait_for_all_processes t : saw_shutdown);
@@ -1355,6 +1394,11 @@ end
 let shutdown () =
   let+ t = t () in
   Event.Queue.send_shutdown t.events Requested
+;;
+
+let stop_on_first_error () =
+  let+ t = t () in
+  Event.Queue.send_stop_on_first_error t.events
 ;;
 
 let inject_memo_invalidation invalidation =

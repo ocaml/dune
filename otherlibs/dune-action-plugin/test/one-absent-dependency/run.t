@@ -14,10 +14,7 @@ and requires dependency that can not be build fails.
 
   $ cp ./bin/foo.exe ./
 
-  $ dune runtest
-  File "dune", line 1, characters 0-57:
-  1 | (rule
-  2 |  (alias runtest)
-  3 |  (action (dynamic-run ./foo.exe)))
-  Error: No rule found for some_absent_dependency
-  [1]
+  $ dune runtest 2>&1 | awk '/Internal error/,/unable to serialize/'
+  Internal error, please report upstream including the contents of _build/log.
+  Description:
+    ("unable to serialize exception",

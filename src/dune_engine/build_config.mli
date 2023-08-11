@@ -108,6 +108,7 @@ type t = private
   ; execution_parameters : dir:Path.Source.t -> Execution_parameters.t Memo.t
   ; source_tree : (module Source_tree)
   ; action_runner : Action_exec.input -> Action_runner.t option
+  ; action_runners : unit -> Action_runner.t list
   ; shared_cache : (module Shared_cache_intf.S)
   }
 
@@ -115,6 +116,7 @@ type t = private
     system and only once. *)
 val set
   :  action_runner:(Action_exec.input -> Action_runner.t option)
+  -> action_runners:(unit -> Action_runner.t list)
   -> stats:Dune_stats.t option
   -> contexts:Build_context.t list Memo.Lazy.t
   -> promote_source:

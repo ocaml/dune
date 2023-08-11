@@ -50,7 +50,7 @@ let test_rule
   let open Memo.O in
   let module Alias_rules = Simple_rules.Alias_rules in
   let* enabled = Expander.eval_blang expander (Blang.And spec.enabled_if) in
-  let loc = Some spec.loc in
+  let loc = spec.loc in
   let aliases = Alias.Name.Set.to_list_map spec.alias ~f:(Alias.make ~dir) in
   match test with
   | Error (Missing_run_t test) ->

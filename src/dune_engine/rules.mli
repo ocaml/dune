@@ -79,7 +79,7 @@ module Produce : sig
     val add_action
       :  t
       -> context:Build_context.t
-      -> loc:Loc.t option
+      -> loc:Loc.t
       -> Action.Full.t Action_builder.t
       -> unit Memo.t
   end

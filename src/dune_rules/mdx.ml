@@ -387,12 +387,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
   in
   (* Attach the diff action to the @runtest for the src and corrected files *)
   let diff_action = Files.diff_action files in
-  Super_context.add_alias_action
-    sctx
-    (Alias.runtest ~dir)
-    ~loc:(Some loc)
-    ~dir
-    diff_action
+  Super_context.add_alias_action sctx (Alias.runtest ~dir) ~loc ~dir diff_action
 ;;
 
 let name = "mdx_gen"

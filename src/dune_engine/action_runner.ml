@@ -292,6 +292,9 @@ module Rpc_server = struct
     then (
       let error =
         Dune_rpc.Response.Error.create
+          ~payload:
+            (Sexp.record
+               [ "name", Csexp.Atom name; "socket_name", Csexp.Atom socket_name ])
           ~kind:Invalid_request
           ~message:"action runner connected to the wrong socket"
           ()

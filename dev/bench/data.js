@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691749145335,
+  "lastUpdate": 1691749198214,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -27200,6 +27200,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.511695333333336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a14196c0f72cf343d707a9c18261192c46124f5d",
+          "message": "refactor(rules): add [Import.Build_config] (#8369)\n\nThis simplifies our interface to [Dune_engine.Build_config] while it's\r\ngoing some changes. Eventually, we'll get rid of this completely.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-11T10:55:47+01:00",
+          "tree_id": "23a53d7eed423d423e9c1fc30c984aa58cfc5311",
+          "url": "https://github.com/ocaml/dune/commit/a14196c0f72cf343d707a9c18261192c46124f5d"
+        },
+        "date": 1691749195448,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "46.5769149802",
             "unit": "seconds"
           }
         ]

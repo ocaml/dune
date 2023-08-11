@@ -45,7 +45,7 @@ module To_delete = struct
       get_db () |> P.dump fn)
   ;;
 
-  let () = Hooks.End_of_build.always dump
+  let () = Hooks.Post_build.always dump
 end
 
 let files_in_source_tree_to_delete () = To_delete.get_db ()

@@ -43,7 +43,7 @@ let term =
           let sctx = Import.Main.find_scontext_exn setup ~name:ctx_name in
           sctx, Path.to_string utop_target))
   in
-  Hooks.End_of_build.run ();
+  Hooks.Post_build.run ();
   restore_cwd_and_execve
     common
     utop_path

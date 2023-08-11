@@ -14,4 +14,4 @@ let add_to_env env =
 
 let destroy = Temp.destroy
 let clear () = if Lazy.is_val temp_dir then Temp.clear_dir (Lazy.force temp_dir)
-let () = Hooks.End_of_build.always clear
+let () = Hooks.Post_build.always clear

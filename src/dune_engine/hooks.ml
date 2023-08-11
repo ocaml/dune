@@ -1,28 +1,26 @@
 open Import
 
 module type S = sig
-  val always : (unit -> unit) -> unit
-  val once : (unit -> unit) -> unit
-  val run : unit -> unit
+  type 'a t
+
+  val always : (unit -> unit t) -> unit
+  val run : unit -> unit t
 end
 
-module Make () = struct
-  let persistent_hooks = ref []
-  let one_off_hooks = ref []
-  let always hook = persistent_hooks := hook :: !persistent_hooks
-  let once hook = one_off_hooks := hook :: !one_off_hooks
+module Make () : S with type 'a t = 'a = struct
+  type 'a t = 'a
+
+  let hooks = ref []
+  let always hook = hooks := hook :: !hooks
 
   let run () =
-    let l = !one_off_hooks in
-    one_off_hooks := [];
     let exns = ref [] in
     let run f =
       match Exn_with_backtrace.try_with f with
       | Ok () -> ()
       | Error exn -> exns := exn :: !exns
     in
-    List.iter l ~f:run;
-    List.iter !persistent_hooks ~f:run;
+    List.iter !hooks ~f:run;
     match !exns with
     | [] -> ()
     | exns ->
@@ -32,6 +30,21 @@ module Make () = struct
   ;;
 end
 
-module End_of_build = Make ()
+module Make_with_dependencies () : S with type 'a t = 'a Action_builder0.t = struct
+  type 'a t = 'a Action_builder0.t
 
-let () = at_exit End_of_build.run
+  let hooks = ref []
+
+  let always hook =
+    (* We put the [hook] under a bind, to delay its execution. *)
+    hooks := Action_builder0.bind (Action_builder0.return ()) ~f:hook :: !hooks
+  ;;
+
+  let run () = Action_builder0.all_unit !hooks
+end
+
+module Start_of_build = Make_with_dependencies ()
+module End_of_build = Make_with_dependencies ()
+module Post_build = Make ()
+
+let () = at_exit Post_build.run

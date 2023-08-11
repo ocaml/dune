@@ -44,7 +44,10 @@ let run_build_system ~common ~request =
       Cached_digest.invalidate_cached_timestamps ();
       let* setup = Import.Main.setup () in
       let request =
-        Action_builder.bind (Action_builder.of_memo setup) ~f:(fun setup -> request setup)
+        Hooks.Start_of_build.run ()
+        |> Action_builder.bind ~f:(fun () -> Action_builder.of_memo setup)
+        |> Action_builder.bind ~f:(fun setup -> request setup)
+        |> Action_builder.bind ~f:Hooks.End_of_build.run
       in
       (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
          time the build system is rerun? *)
@@ -73,7 +76,7 @@ let run_build_system ~common ~request =
       in
       res)
     ~finally:(fun () ->
-      Hooks.End_of_build.run ();
+      Hooks.Post_build.run ();
       Fiber.return ())
 ;;
 

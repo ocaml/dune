@@ -101,7 +101,7 @@ module File = struct
 end
 
 let clear_cache () = File.db := []
-let () = Hooks.End_of_build.always clear_cache
+let () = Hooks.Post_build.always clear_cache
 
 module P = Persistent.Make (struct
     type t = File.t list

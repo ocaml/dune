@@ -226,7 +226,7 @@ module Pending_targets = struct
   let add targets = t := Targets.combine !t (Targets.Validated.unvalidate targets)
 
   let () =
-    Hooks.End_of_build.always (fun () ->
+    Hooks.Post_build.always (fun () ->
       let targets = !t in
       t := Targets.empty;
       Targets.iter targets ~file:Path.Build.unlink_no_err ~dir:(fun p ->
@@ -234,7 +234,7 @@ module Pending_targets = struct
   ;;
 end
 
-let () = Hooks.End_of_build.always Metrics.reset
+let () = Hooks.Post_build.always Metrics.reset
 
 type rule_execution_result =
   { deps : Dep.Fact.t Dep.Map.t
@@ -1263,9 +1263,16 @@ let handle_final_exns exns =
     List.iter exns ~f:report
 ;;
 
+let () =
+  Hooks.Post_build.always (fun () ->
+    (* This might be called on process exit even if the build directory fdecl is not
+       set. Catch and ignore the error in this case. *)
+    try Diff_promotion.finalize () with
+    | Code_error.E { message = "Fdecl.get: not set"; _ } -> ())
+;;
+
 let run f =
   let open Fiber.O in
-  Hooks.End_of_build.once Diff_promotion.finalize;
   let* () = State.reset_progress () in
   let* () = State.reset_errors () in
   let f () =

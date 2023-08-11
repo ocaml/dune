@@ -21,3 +21,5 @@ module End_of_build : S with type 'a t := 'a Action_builder0.t
 
 (** Hooks run after each build (including incremental), whether it ends succesfully or not. *)
 module Post_build : S with type 'a t := 'a
+
+val run_post_build_hook_at_exit : unit lazy_t

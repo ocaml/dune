@@ -35,6 +35,7 @@ module Fiber_job = struct
         ?stdin_from
         ~stderr_to
         ~stdout_to
+        Strict
         prog
         args
     in

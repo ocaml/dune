@@ -1,6 +1,8 @@
 (** Running external programs *)
 
 open Import
+module Action_output_on_success := Execution_parameters.Action_output_on_success
+module Action_output_limit := Execution_parameters.Action_output_limit
 
 val with_directory_annot : Path.t User_message.Annots.Key.t
 
@@ -27,9 +29,19 @@ module Io : sig
   type 'a t
 
   val stdout : output t
-  val make_stdout : Execution_parameters.Action_output_on_success.t -> output t
+
+  val make_stdout
+    :  output_on_success:Action_output_on_success.t
+    -> output_limit:Action_output_limit.t
+    -> output t
+
   val stderr : output t
-  val make_stderr : Execution_parameters.Action_output_on_success.t -> output t
+
+  val make_stderr
+    :  output_on_success:Action_output_on_success.t
+    -> output_limit:Action_output_limit.t
+    -> output t
+
   val stdin : input t
   val null : 'a mode -> 'a t
 
@@ -101,9 +113,10 @@ val run_with_times
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
   -> ?metadata:metadata
+  -> (Proc.Times.t, 'a) Failure_mode.t
   -> Path.t
   -> string list
-  -> Proc.Times.t Fiber.t
+  -> 'a Fiber.t
 
 (** Run a command and capture its output *)
 val run_capture

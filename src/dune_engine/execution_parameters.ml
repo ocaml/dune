@@ -18,9 +18,20 @@ module Action_output_on_success = struct
   let hash = Poly.hash
 end
 
+module Action_output_limit = struct
+  type t = int
+
+  let default = 100_000
+  let to_string = Int.to_string
+  let to_dyn = Dyn.int
+  let equal = Int.equal
+end
+
 type t =
   { action_stdout_on_success : Action_output_on_success.t
   ; action_stderr_on_success : Action_output_on_success.t
+  ; action_stdout_limit : Action_output_limit.t
+  ; action_stderr_limit : Action_output_limit.t
   ; expand_aliases_in_sandbox : bool
   ; add_workspace_root_to_build_path_prefix_map : bool
   ; should_remove_write_permissions_on_generated_files : bool
@@ -29,6 +40,8 @@ type t =
 let equal
   { action_stdout_on_success
   ; action_stderr_on_success
+  ; action_stdout_limit
+  ; action_stderr_limit
   ; expand_aliases_in_sandbox
   ; add_workspace_root_to_build_path_prefix_map
   ; should_remove_write_permissions_on_generated_files
@@ -37,6 +50,8 @@ let equal
   =
   Action_output_on_success.equal action_stdout_on_success t.action_stdout_on_success
   && Action_output_on_success.equal action_stderr_on_success t.action_stderr_on_success
+  && Action_output_limit.equal action_stdout_limit t.action_stdout_limit
+  && Action_output_limit.equal action_stderr_limit t.action_stderr_limit
   && Bool.equal expand_aliases_in_sandbox t.expand_aliases_in_sandbox
   && Bool.equal
        add_workspace_root_to_build_path_prefix_map
@@ -49,6 +64,8 @@ let equal
 let hash
   { action_stdout_on_success
   ; action_stderr_on_success
+  ; action_stdout_limit
+  ; action_stderr_limit
   ; expand_aliases_in_sandbox
   ; add_workspace_root_to_build_path_prefix_map
   ; should_remove_write_permissions_on_generated_files
@@ -57,6 +74,8 @@ let hash
   Poly.hash
     ( Action_output_on_success.hash action_stdout_on_success
     , Action_output_on_success.hash action_stderr_on_success
+    , action_stdout_limit
+    , action_stderr_limit
     , expand_aliases_in_sandbox
     , add_workspace_root_to_build_path_prefix_map
     , should_remove_write_permissions_on_generated_files )
@@ -65,6 +84,8 @@ let hash
 let to_dyn
   { action_stdout_on_success
   ; action_stderr_on_success
+  ; action_stdout_limit
+  ; action_stderr_limit
   ; expand_aliases_in_sandbox
   ; add_workspace_root_to_build_path_prefix_map
   ; should_remove_write_permissions_on_generated_files
@@ -73,6 +94,8 @@ let to_dyn
   Dyn.Record
     [ "action_stdout_on_success", Action_output_on_success.to_dyn action_stdout_on_success
     ; "action_stderr_on_success", Action_output_on_success.to_dyn action_stderr_on_success
+    ; "action_stdout_limit", Action_output_limit.to_dyn action_stdout_limit
+    ; "action_stderr_limit", Action_output_limit.to_dyn action_stderr_limit
     ; "expand_aliases_in_sandbox", Bool expand_aliases_in_sandbox
     ; ( "add_workspace_root_to_build_path_prefix_map"
       , Bool add_workspace_root_to_build_path_prefix_map )
@@ -84,6 +107,8 @@ let to_dyn
 let builtin_default =
   { action_stdout_on_success = Print
   ; action_stderr_on_success = Print
+  ; action_stdout_limit = Action_output_limit.default
+  ; action_stderr_limit = Action_output_limit.default
   ; expand_aliases_in_sandbox = true
   ; add_workspace_root_to_build_path_prefix_map = true
   ; should_remove_write_permissions_on_generated_files = true
@@ -92,6 +117,8 @@ let builtin_default =
 
 let set_action_stdout_on_success x t = { t with action_stdout_on_success = x }
 let set_action_stderr_on_success x t = { t with action_stderr_on_success = x }
+let set_action_stdout_limit x t = { t with action_stdout_limit = x }
+let set_action_stderr_limit x t = { t with action_stderr_limit = x }
 let set_expand_aliases_in_sandbox x t = { t with expand_aliases_in_sandbox = x }
 
 let set_add_workspace_root_to_build_path_prefix_map x t =
@@ -110,6 +137,8 @@ let add_workspace_root_to_build_path_prefix_map t =
 
 let action_stdout_on_success t = t.action_stdout_on_success
 let action_stderr_on_success t = t.action_stderr_on_success
+let action_stdout_limit t = t.action_stdout_limit
+let action_stderr_limit t = t.action_stderr_limit
 
 let should_remove_write_permissions_on_generated_files t =
   t.should_remove_write_permissions_on_generated_files

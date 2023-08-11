@@ -42,6 +42,8 @@ let local_libraries =
   ; ("src/dune_cache", Some "Dune_cache", false, None)
   ; ("otherlibs/dune-action-plugin/src", Some "Dune_action_plugin", false,
     None)
+  ; ("src/dune_output_truncation", Some "Dune_output_truncation", false,
+    None)
   ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
   ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)
   ; ("src/dune_rpc_client", Some "Dune_rpc_client", false, None)

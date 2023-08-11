@@ -18,6 +18,7 @@ module Exec_result : sig
         (* The set can be derived from the facts by getting the keys of the
            facts map. We don't do it because conversion isn't free *)
         (Dep.Set.t * Dep.Facts.t) list
+    ; duration : float option
     }
 
   type t = (ok, Error.t list) Result.t
@@ -26,7 +27,7 @@ module Exec_result : sig
 end
 
 type input =
-  { targets : Targets.Validated.t option (* Some Jane Street actions use [None] *)
+  { targets : Targets.Validated.t option (** Some Jane Street actions use [None] *)
   ; root : Path.t
       (** [root] should be the root of the current build context, or the root
           of the sandbox if the action is sandboxed. *)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691757526209,
+  "lastUpdate": 1691757878909,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -66843,6 +66843,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6627220241733334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "de2ca64b8751661d57572d9889c03657e3b32120",
+          "message": "test: Add test for binaries with ':' in their name (#8375)\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>\r\nCo-authored-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-08-11T05:18:25-07:00",
+          "tree_id": "b9e5fe8bd0602f995652f3bb5de369318621aeba",
+          "url": "https://github.com/ocaml/dune/commit/de2ca64b8751661d57572d9889c03657e3b32120"
+        },
+        "date": 1691757878066,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "69.63098335187999",
             "unit": "seconds"
           }
         ]

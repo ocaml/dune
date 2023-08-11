@@ -1,6 +1,7 @@
 open Import
 open Dune_file
 open Memo.O
+module Gen_rules = Build_config.Gen_rules
 
 let ( ++ ) = Path.Build.relative
 
@@ -810,12 +811,7 @@ let setup_private_library_doc_alias sctx ~scope ~dir (l : Dune_file.Library.t) =
 
 let has_rules ?(directory_targets = Path.Build.Map.empty) m =
   let rules = Rules.collect_unit (fun () -> m) in
-  Memo.return
-    (Build_config.Rules
-       { rules
-       ; build_dir_only_sub_dirs = Build_config.Rules.Build_only_sub_dirs.empty
-       ; directory_targets
-       })
+  Memo.return (Gen_rules.make ~directory_targets rules)
 ;;
 
 let with_package pkg ~f =
@@ -823,25 +819,17 @@ let with_package pkg ~f =
   let* packages = Only_packages.get () in
   match Package.Name.Map.find packages pkg with
   | Some pkg -> has_rules (f pkg)
-  | None ->
-    Memo.return
-      (Build_config.Rules
-         { rules = Memo.return Rules.empty
-         ; build_dir_only_sub_dirs = Build_config.Rules.Build_only_sub_dirs.empty
-         ; directory_targets = Path.Build.Map.empty
-         })
+  | None -> Memo.return Gen_rules.no_rules
 ;;
 
 let gen_rules sctx ~dir rest =
   match rest with
   | [] ->
     Memo.return
-      (Build_config.Rules
-         { rules = Memo.return Rules.empty
-         ; build_dir_only_sub_dirs =
-             Build_config.Rules.Build_only_sub_dirs.singleton ~dir Subdir_set.All
-         ; directory_targets = Path.Build.Map.empty
-         })
+      (Build_config.Gen_rules.make
+         ~build_dir_only_sub_dirs:
+           (Build_config.Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.All)
+         (Memo.return Rules.empty))
   | [ "_html" ] ->
     let ctx = Super_context.context sctx in
     let directory_targets = Path.Build.Map.singleton (Paths.odoc_support ctx) Loc.none in
@@ -912,5 +900,5 @@ let gen_rules sctx ~dir rest =
            setup_pkg_html_rules sctx ~pkg:name
        in
        ())
-  | _ -> Memo.return (Build_config.Redirect_to_parent Build_config.Rules.empty)
+  | _ -> Memo.return (Gen_rules.redirect_to_parent Gen_rules.Rules.empty)
 ;;

@@ -80,3 +80,46 @@ include struct
 end
 
 include Dune_engine.No_io
+
+module Build_config = struct
+  module Gen_rules = struct
+    module Build_only_sub_dirs = Build_config.Rules.Build_only_sub_dirs
+    module Context_or_install = Build_config.Context_or_install
+
+    module Rules = struct
+      include Build_config.Rules
+
+      let create
+        ?(build_dir_only_sub_dirs = empty.build_dir_only_sub_dirs)
+        ?(directory_targets = empty.directory_targets)
+        rules
+        =
+        { rules; build_dir_only_sub_dirs; directory_targets }
+      ;;
+    end
+
+    let make
+      ?(build_dir_only_sub_dirs = Rules.empty.build_dir_only_sub_dirs)
+      ?(directory_targets = Rules.empty.directory_targets)
+      rules
+      =
+      let rules =
+        { Build_config.Rules.build_dir_only_sub_dirs; directory_targets; rules }
+      in
+      Build_config.Rules rules
+    ;;
+
+    let redirect_to_parent rules = Build_config.Redirect_to_parent rules
+    let rules_here rules = Build_config.Rules rules
+    let unknown_context_or_install = Build_config.Unknown_context_or_install
+    let no_rules = make (Memo.return Dune_engine.Rules.empty)
+
+    type result = Build_config.gen_rules_result
+
+    module type Generator = Build_config.Rule_generator
+
+    let set = Build_config.set
+  end
+
+  let set = Build_config.set
+end

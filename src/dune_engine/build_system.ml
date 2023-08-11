@@ -1260,14 +1260,6 @@ let handle_final_exns exns =
     List.iter exns ~f:report
 ;;
 
-let () =
-  Hooks.Post_build.always (fun () ->
-    (* This might be called on process exit even if the build directory fdecl is not
-       set. Catch and ignore the error in this case. *)
-    try Diff_promotion.finalize () with
-    | Code_error.E { message = "Fdecl.get: not set"; _ } -> ())
-;;
-
 let run f =
   let open Fiber.O in
   let* () = State.reset_progress () in

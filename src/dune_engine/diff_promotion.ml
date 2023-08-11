@@ -199,6 +199,8 @@ let finalize () =
   dump_db db
 ;;
 
+let () = Hooks.Post_build.always finalize
+
 let promote_files_registered_in_last_run files_to_promote =
   let db = load_db () in
   let db = do_promote db files_to_promote in

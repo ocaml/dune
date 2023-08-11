@@ -34,6 +34,7 @@ let run_build_system ~common ~request =
   let open Fiber.O in
   Fiber.finalize
     (fun () ->
+      Lazy.force Hooks.run_post_build_hook_at_exit;
       (* CR-someday amokhov: Currently we invalidate cached timestamps on every
          incremental rebuild. This conservative approach helps us to work around
          some [mtime] resolution problems (e.g. on Mac OS). It would be nice to

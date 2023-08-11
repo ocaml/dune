@@ -47,4 +47,4 @@ module Start_of_build = Make_with_dependencies ()
 module End_of_build = Make_with_dependencies ()
 module Post_build = Make ()
 
-let () = at_exit Post_build.run
+let run_post_build_hook_at_exit = lazy (at_exit Post_build.run)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691708119700,
+  "lastUpdate": 1691742874078,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -85085,6 +85085,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.38470253498667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "james@pyrosoftsolutions.co.uk",
+            "name": "James Hughes",
+            "username": "hughesjs"
+          },
+          "committer": {
+            "email": "marek@xivilization.net",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "distinct": true,
+          "id": "ad3b8882ad570eab8960d2ee4cc5090c5e813b36",
+          "message": "Updated error message to indicate that modules must start with a letter\n\nSigned-off-by: James Hughes <james@pyrosoftsolutions.co.uk>\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-08-11T10:19:57+02:00",
+          "tree_id": "98fbea683908d68cfcba2ccce467013169ad5edb",
+          "url": "https://github.com/ocaml/dune/commit/ad3b8882ad570eab8960d2ee4cc5090c5e813b36"
+        },
+        "date": 1691742861962,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "25.77332268378",
             "unit": "seconds"
           }
         ]

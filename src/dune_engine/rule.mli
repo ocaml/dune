@@ -89,7 +89,7 @@ module Anonymous_action : sig
   type t =
     { context : Build_context.t option
     ; action : Action.Full.t
-    ; loc : Loc.t option
+    ; loc : Loc.t
     ; dir : Path.Build.t
         (** Directory the action is attached to. This is the directory where
             the outcome of the action will be cached. *)

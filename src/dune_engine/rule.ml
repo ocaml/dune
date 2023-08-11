@@ -123,7 +123,7 @@ module Anonymous_action = struct
   type t =
     { context : Build_context.t option
     ; action : Action.Full.t
-    ; loc : Loc.t option
+    ; loc : Loc.t
     ; dir : Path.Build.t
     ; alias : Alias.Name.t option
     }

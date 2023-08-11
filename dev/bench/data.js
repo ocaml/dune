@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691756448898,
+  "lastUpdate": 1691756779136,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -66756,6 +66756,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.1399714056333337",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5ec33df34318b239a480eaf64fa790fd484c8c16",
+          "message": "refactor: change [Loc.t option] to [Loc.t] (#8374)\n\nWe change [Anonymous_action.t] to be consistent with [Rule.t]\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-11T05:01:18-07:00",
+          "tree_id": "a2653162208163fa791ce5da7a13531e9ee550ce",
+          "url": "https://github.com/ocaml/dune/commit/5ec33df34318b239a480eaf64fa790fd484c8c16"
+        },
+        "date": 1691756778494,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.22699344133333",
             "unit": "seconds"
           }
         ]

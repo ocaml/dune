@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691748767569,
+  "lastUpdate": 1691749133081,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -66582,6 +66582,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.7216761691266667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "philipwhite@cedarville.edu",
+            "name": "pmwhite",
+            "username": "pmwhite"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "71b926683f2503b3c39e35dc840164010b992c54",
+          "message": "docs: fix mood and punctuation of flag doc strings (#8370)\n\n* chore: stop using pre-formatted strings for flag docs\r\n\r\nAny newlines or paragraph breaks are re-formatted away in the final\r\nformatted manual anyway. We might as well be consistent and rely on\r\nocamlformat to automatically line-wrap the docs in code.\r\n\r\nSigned-off-by: Philip White <code@trailingwhite.space>\r\n\r\n* docs: fix mood and punctuation of flag doc strings\r\n\r\nFixes a few inconsistencies in flag documentation:\r\n- Most flag docs were using imperative mode, but some were not.\r\n- Most flag docs were punctuated as sentences (i.e. they end in a\r\n  period), but some were not.\r\n\r\nAs I was looking over all the docs, I made a few unrelated cleanups and\r\nre-wordings that I thought were improvements.\r\n\r\nSigned-off-by: Philip White <code@trailingwhite.space>\r\n\r\n---------\r\n\r\nSigned-off-by: Philip White <code@trailingwhite.space>\r\nCo-authored-by: Philip White <code@trailingwhite.space>",
+          "timestamp": "2023-08-11T10:51:59+01:00",
+          "tree_id": "ce2a1546c1709ca16a8f574578422f0a37cfea77",
+          "url": "https://github.com/ocaml/dune/commit/71b926683f2503b3c39e35dc840164010b992c54"
+        },
+        "date": 1691749132334,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "72.22189284619999",
             "unit": "seconds"
           }
         ]

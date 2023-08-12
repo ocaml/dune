@@ -13,13 +13,13 @@ module File = struct
 
   let to_dyn { vars; preds } =
     let open Dyn in
-    record [ "vars", String.Map.to_dyn Rules.to_dyn vars; "preds", Ps.to_dyn preds ]
+    record [ "vars", Vars.to_dyn vars; "preds", Ps.to_dyn preds ]
   ;;
 
   let load config_file =
     let load p =
       let+ meta = Meta.load ~name:None p in
-      meta.vars |> String.Map.map ~f:Rules.of_meta_rules
+      Findlib_vars.of_meta_rules meta.vars
     in
     let+ vars =
       let* vars =
@@ -160,5 +160,5 @@ let discover_from_env ~env ~which ~ocamlpath ~findlib_toolchain =
 
 let env t =
   let preds = Ps.add t.config.preds (P.make "env") in
-  String.Map.filter_map ~f:(Rules.interpret ~preds) t.config.vars |> Env.of_string_map
+  Vars.to_string_map ~f:(Rules.interpret ~preds) t.config.vars |> Env.of_string_map
 ;;

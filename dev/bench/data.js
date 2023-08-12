@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691838155859,
+  "lastUpdate": 1691838507400,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -67104,6 +67104,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6717638805533335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7fbb1958c25f421db108fd4adc66140e9d728efb",
+          "message": "refactor: cleanup install stanza installation (#8379)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-12T03:42:36-07:00",
+          "tree_id": "6b57c90b69e672431e466679e9985c4fceab298d",
+          "url": "https://github.com/ocaml/dune/commit/7fbb1958c25f421db108fd4adc66140e9d728efb"
+        },
+        "date": 1691838506485,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "69.65119173784",
             "unit": "seconds"
           }
         ]

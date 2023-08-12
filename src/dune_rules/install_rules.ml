@@ -372,6 +372,48 @@ end = struct
       String.is_prefix fn ~prefix)
   ;;
 
+  let entries_of_install_stanza ~dir ~expander ~sites (i : Dune_file.Install_conf.t) =
+    let expand_str = Expander.No_deps.expand_str expander in
+    let make_entry =
+      let section = Sites.section_of_site sites in
+      fun fb ~kind ->
+        let src = File_binding.Expanded.src fb in
+        let dst = File_binding.Expanded.dst fb in
+        Install_entry_with_site.make_with_site ?dst ~kind i.section section src
+    in
+    let+ files =
+      let* files_expanded =
+        Install_entry.File.to_file_bindings_expanded i.files ~expand_str ~dir
+      in
+      Memo.List.map files_expanded ~f:(fun fb ->
+        let+ entry = make_entry ~kind:`File fb in
+        let loc = File_binding.Expanded.src_loc fb in
+        Install.Entry.Sourced.create ~loc entry)
+    and+ files_from_dirs =
+      let* dirs_expanded =
+        Install_entry.Dir.to_file_bindings_expanded i.dirs ~expand_str ~dir
+      in
+      Memo.List.map dirs_expanded ~f:(fun fb ->
+        let loc = File_binding.Expanded.src_loc fb in
+        let+ entry = make_entry ~kind:`Directory fb in
+        Install.Entry.Sourced.create ~loc entry)
+    and+ source_trees =
+      Install_entry.Dir.to_file_bindings_expanded i.source_trees ~expand_str ~dir
+      >>= Memo.List.map ~f:(fun fb ->
+        let loc = File_binding.Expanded.src_loc fb in
+        let* entry = make_entry ~kind:`Source_tree fb in
+        let+ () =
+          Source_tree.find_dir (Path.Build.drop_build_context_exn entry.src)
+          >>| function
+          | Some _ -> ()
+          | None ->
+            User_error.raise ~loc [ Pp.text "This source directory does not exist" ]
+        in
+        Install.Entry.Sourced.create ~loc entry)
+    in
+    List.concat [ files; files_from_dirs; source_trees ]
+  ;;
+
   let stanza_to_entries ~sites ~sctx ~dir ~scope ~expander stanza =
     let* stanza_and_package =
       let+ stanza = keep_if expander stanza ~scope in
@@ -387,68 +429,7 @@ end = struct
         let open Dune_file in
         match (stanza : Stanza.t) with
         | Install i | Executables { install_conf = Some i; _ } ->
-          let section = i.section in
-          let expand_str = Expander.No_deps.expand_str expander in
-          let* files_expanded =
-            Install_entry.File.to_file_bindings_expanded i.files ~expand_str ~dir
-          in
-          let* files =
-            Memo.List.map files_expanded ~f:(fun fb ->
-              let loc = File_binding.Expanded.src_loc fb in
-              let src = File_binding.Expanded.src fb in
-              let dst = File_binding.Expanded.dst fb in
-              let+ entry =
-                Install_entry_with_site.make_with_site
-                  ~kind:`File
-                  section
-                  (Sites.section_of_site sites)
-                  src
-                  ?dst
-              in
-              Install.Entry.Sourced.create ~loc entry)
-          in
-          let* dirs_expanded =
-            Install_entry.Dir.to_file_bindings_expanded i.dirs ~expand_str ~dir
-          in
-          let* files_from_dirs =
-            Memo.List.map dirs_expanded ~f:(fun fb ->
-              let loc = File_binding.Expanded.src_loc fb in
-              let src = File_binding.Expanded.src fb in
-              let dst = File_binding.Expanded.dst fb in
-              let+ entry =
-                Install_entry_with_site.make_with_site
-                  section
-                  ~kind:`Directory
-                  (Sites.section_of_site sites)
-                  src
-                  ?dst
-              in
-              Install.Entry.Sourced.create ~loc entry)
-          in
-          let+ source_trees =
-            Install_entry.Dir.to_file_bindings_expanded i.source_trees ~expand_str ~dir
-            >>= Memo.List.map ~f:(fun fb ->
-              let loc = File_binding.Expanded.src_loc fb in
-              let src = File_binding.Expanded.src fb in
-              let* () =
-                Source_tree.find_dir (Path.Build.drop_build_context_exn src)
-                >>| function
-                | Some _ -> ()
-                | None ->
-                  User_error.raise ~loc [ Pp.text "This source directory does not exist" ]
-              in
-              let dst = File_binding.Expanded.dst fb in
-              let+ entry =
-                Install_entry_with_site.make_with_site
-                  section
-                  ~kind:`Source_tree
-                  (Sites.section_of_site sites)
-                  src
-                  ?dst
-              in
-              Install.Entry.Sourced.create ~loc entry)
-          in
-          List.concat [ files; files_from_dirs; source_trees ]
+          entries_of_install_stanza ~dir ~expander ~sites i
         | Library lib ->
           let sub_dir = Dune_file.Library.sub_dir lib in
           let* dir_contents = Dir_contents.get sctx ~dir in

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691805254820,
+  "lastUpdate": 1691832984545,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -85897,6 +85897,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "29.8382922725",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cf36c020731a0907d6e81430cc4a3922e6bbb64c",
+          "message": "feature: allow installing source trees (#8349)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-12T02:23:54-07:00",
+          "tree_id": "c4052252af305fd191cb9746e3ac51bb9d73c69d",
+          "url": "https://github.com/ocaml/dune/commit/cf36c020731a0907d6e81430cc4a3922e6bbb64c"
+        },
+        "date": 1691832973015,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.63997070867333",
             "unit": "seconds"
           }
         ]

@@ -5,6 +5,13 @@ module Digest = Dune_digest
 module Section = Install.Section
 
 include struct
+  open Dune_findlib.Findlib
+  module Dune_findlib = Dune_findlib.Findlib
+  module Findlib_config = Config
+  module Meta = Meta
+end
+
+include struct
   open Dune_util
   module Execution_env = Execution_env
   module Log = Log

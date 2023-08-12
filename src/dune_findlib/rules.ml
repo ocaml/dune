@@ -1,5 +1,4 @@
 open Import
-module Rule = Findlib_rule
 
 (* Set of rules for a given variable of a package. Implements the algorithm
    described here:

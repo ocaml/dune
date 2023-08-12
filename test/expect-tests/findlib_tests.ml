@@ -1,5 +1,7 @@
 open Stdune
 module Lib_name = Dune_lang.Lib_name
+module Meta = Dune_findlib.Findlib.Meta
+module Findlib_config = Dune_findlib.Findlib.Config
 open Dune_rules
 open Dune_rules.For_tests
 open Dune_tests_common

@@ -1,4 +1,3 @@
-module Meta = Meta
 module Findlib = Findlib
 module Main = Main
 module Context = Context
@@ -69,5 +68,4 @@ module For_tests = struct
   module Ocamlobjinfo = Ocamlobjinfo
   module Action_unexpanded = Action_unexpanded
   module Jsoo_rules = Jsoo_rules
-  module Findlib_config = Findlib_config
 end

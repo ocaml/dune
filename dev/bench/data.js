@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691805240116,
+  "lastUpdate": 1691805254820,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -66959,6 +66959,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "82.62868904039334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ade58ac71a5829a6df376a103078422d451e4e5c",
+          "message": "fix: only sign executables (#8361)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-08-11T18:20:56-07:00",
+          "tree_id": "be4471336f1cdc0ea9e408fcde7999d20574b041",
+          "url": "https://github.com/ocaml/dune/commit/ade58ac71a5829a6df376a103078422d451e4e5c"
+        },
+        "date": 1691805253581,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.27919079822",
             "unit": "seconds"
           }
         ]

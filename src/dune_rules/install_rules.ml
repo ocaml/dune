@@ -410,7 +410,7 @@ end = struct
           let* dirs_expanded =
             Install_entry.Dir.to_file_bindings_expanded i.dirs ~expand_str ~dir
           in
-          let+ files_from_dirs =
+          let* files_from_dirs =
             Memo.List.map dirs_expanded ~f:(fun fb ->
               let loc = File_binding.Expanded.src_loc fb in
               let src = File_binding.Expanded.src fb in
@@ -425,7 +425,30 @@ end = struct
               in
               Install.Entry.Sourced.create ~loc entry)
           in
-          files @ files_from_dirs
+          let+ source_trees =
+            Install_entry.Dir.to_file_bindings_expanded i.source_trees ~expand_str ~dir
+            >>= Memo.List.map ~f:(fun fb ->
+              let loc = File_binding.Expanded.src_loc fb in
+              let src = File_binding.Expanded.src fb in
+              let* () =
+                Source_tree.find_dir (Path.Build.drop_build_context_exn src)
+                >>| function
+                | Some _ -> ()
+                | None ->
+                  User_error.raise ~loc [ Pp.text "This source directory does not exist" ]
+              in
+              let dst = File_binding.Expanded.dst fb in
+              let+ entry =
+                Install_entry_with_site.make_with_site
+                  section
+                  ~kind:`Source_tree
+                  (Sites.section_of_site sites)
+                  src
+                  ?dst
+              in
+              Install.Entry.Sourced.create ~loc entry)
+          in
+          List.concat [ files; files_from_dirs; source_trees ]
         | Library lib ->
           let sub_dir = Dune_file.Library.sub_dir lib in
           let* dir_contents = Dir_contents.get sctx ~dir in
@@ -845,6 +868,14 @@ end
 
 include Meta_and_dune_package
 
+let symlink_source_dir ~dir ~dst =
+  let+ _, files = Source_deps.files dir in
+  Path.Set.to_list_map files ~f:(fun src ->
+    let suffix = Path.drop_prefix_exn ~prefix:dir src in
+    let dst = Path.Build.append_local dst suffix in
+    suffix, dst, Action_builder.symlink ~src ~dst)
+;;
+
 let symlink_installed_artifacts_to_build_install
   sctx
   (entries : Install.Entry.Sourced.t list)
@@ -852,7 +883,7 @@ let symlink_installed_artifacts_to_build_install
   =
   let ctx = Super_context.context sctx |> Context.build_context in
   let install_dir = Install.Context.dir ~context:ctx.name in
-  List.map entries ~f:(fun (s : Install.Entry.Sourced.t) ->
+  Memo.parallel_map entries ~f:(fun (s : Install.Entry.Sourced.t) ->
     let entry = s.entry in
     let dst =
       let relative =
@@ -866,17 +897,37 @@ let symlink_installed_artifacts_to_build_install
       | User l -> l
       | Dune -> Loc.in_file (Path.build entry.src)
     in
-    let rule =
-      let { Action_builder.With_targets.targets; build } =
-        (match entry.kind with
+    let src = Path.build entry.src in
+    let rule { Action_builder.With_targets.targets; build } =
+      Rule.make ~info:(From_dune_file loc) ~context:(Some ctx) ~targets build
+    in
+    match entry.kind with
+    | `Source_tree ->
+      symlink_source_dir ~dir:src ~dst
+      >>| List.map ~f:(fun (suffix, dst, build) ->
+        let rule = rule build in
+        let entry =
+          let entry =
+            Install.Entry.map_dst entry ~f:(fun dst ->
+              Install.Entry.Dst.add_suffix dst (Path.Local.to_string suffix))
+          in
+          let entry = Install.Entry.set_src entry dst in
+          Install.Entry.set_kind entry `File
+        in
+        { s with entry }, rule)
+    | (`File | `Directory) as kind ->
+      let entry =
+        let entry = Install.Entry.set_src entry dst in
+        { s with entry }
+      in
+      let action =
+        (match kind with
          | `File -> Action_builder.symlink
          | `Directory -> Action_builder.symlink_dir)
-          ~src:(Path.build entry.src)
+          ~src
           ~dst
       in
-      Rule.make ~info:(Rule.Info.of_loc_opt (Some loc)) ~context:(Some ctx) ~targets build
-    in
-    { s with entry = Install.Entry.set_src entry dst }, rule)
+      Memo.return [ entry, rule action ])
 ;;
 
 let promote_install_file (ctx : Context.t) =
@@ -935,8 +986,11 @@ let symlinked_entries sctx package =
   let package_name = Package.name package in
   let roots = Install.Roots.opam_from_prefix Path.root in
   let install_paths = Install.Paths.make ~package:package_name ~roots in
-  let+ entries = install_entries sctx package in
-  symlink_installed_artifacts_to_build_install sctx ~install_paths entries |> List.split
+  let* entries = install_entries sctx package in
+  let+ entries =
+    symlink_installed_artifacts_to_build_install sctx ~install_paths entries
+  in
+  List.concat entries |> List.split
 ;;
 
 let symlinked_entries =
@@ -1002,15 +1056,18 @@ include (
         List [ Dune_lang.atom_or_quoted_string name; target dst ]
       ;;
 
+      let make_entry entry path comps =
+        Install.Entry.set_src entry path
+        |> Install.Entry.map_dst ~f:(fun dst -> Install.Entry.Dst.concat_all dst comps)
+      ;;
+
       let read_dir_recursively (entry : _ Install.Entry.t) =
         let rec loop acc dirs =
           match dirs with
           | [] ->
             List.rev_map acc ~f:(fun (path, comps) ->
               let comps = List.rev comps in
-              Install.Entry.set_src entry path
-              |> Install.Entry.map_dst ~f:(fun dst ->
-                Install.Entry.Dst.concat_all dst comps))
+              make_entry entry path comps)
             |> List.sort ~compare:(fun (x : _ Install.Entry.t) (y : _ Install.Entry.t) ->
               Path.compare x.src y.src)
           | (dir, comps) :: dirs ->
@@ -1033,15 +1090,21 @@ include (
       ;;
 
       let action (entries, dst) ~ectx:_ ~eenv:_ =
-        let entries =
-          List.concat_map entries ~f:(fun (entry : _ Install.Entry.t) ->
-            match entry.kind with
-            | `File -> [ entry ]
-            | `Directory -> read_dir_recursively entry)
-          |> Install.Entry.gen_install_file
+        let open Fiber.O in
+        let+ entries =
+          let+ entries =
+            Fiber.parallel_map entries ~f:(fun (entry : _ Install.Entry.t) ->
+              match entry.kind with
+              | `File -> Fiber.return [ entry ]
+              | `Directory -> Fiber.return (read_dir_recursively entry)
+              | `Source_tree ->
+                Code_error.raise
+                  "This entry should have been expanded into `File"
+                  [ "entry", Install.Entry.to_dyn Path.to_dyn entry ])
+          in
+          List.concat entries |> Install.Entry.gen_install_file
         in
-        Io.write_file (Path.build dst) entries;
-        Fiber.return ()
+        Io.write_file (Path.build dst) entries
       ;;
     end
 

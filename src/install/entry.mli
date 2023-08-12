@@ -7,6 +7,7 @@ module Dst : sig
 
   val to_string : t -> string
   val add_prefix : string -> t -> t
+  val add_suffix : t -> string -> t
   val concat_all : t -> string list -> t
 
   include Dune_lang.Conv.S with type t := t
@@ -15,9 +16,15 @@ module Dst : sig
   val install_path : Paths.t -> Section.t -> t -> Path.t
 end
 
+type kind =
+  [ `File
+  | `Directory
+  | `Source_tree
+  ]
+
 type 'src t = private
   { src : 'src
-  ; kind : [ `File | `Directory ]
+  ; kind : kind
   ; dst : Dst.t
   ; section : Section.t
   ; optional : bool
@@ -45,22 +52,10 @@ val adjust_dst
   -> section:Section.t
   -> Dst.t
 
+val set_kind : 'src t -> kind -> 'src t
 val adjust_dst' : src:Path.Build.t -> dst:string option -> section:Section.t -> Dst.t
-
-val make
-  :  Section.t
-  -> ?dst:string
-  -> kind:[ `File | `Directory ]
-  -> Path.Build.t
-  -> Path.Build.t t
-
-val make_with_dst
-  :  Section.t
-  -> Dst.t
-  -> kind:[ `File | `Directory ]
-  -> src:Path.Build.t
-  -> Path.Build.t t
-
+val make : Section.t -> ?dst:string -> kind:kind -> Path.Build.t -> Path.Build.t t
+val make_with_dst : Section.t -> Dst.t -> kind:kind -> src:Path.Build.t -> Path.Build.t t
 val set_src : _ t -> 'src -> 'src t
 val map_dst : 'a t -> f:(Dst.t -> Dst.t) -> 'a t
 val relative_installed_path : _ t -> paths:Paths.t -> Path.t

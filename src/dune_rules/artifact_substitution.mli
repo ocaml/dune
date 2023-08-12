@@ -57,6 +57,7 @@ val decode : string -> t option
     and then atomically renamed to [dst]. *)
 val copy_file
   :  conf:conf
+  -> ?executable:bool
   -> ?chmod:(int -> int)
   -> ?delete_dst_if_it_is_a_directory:bool
   -> src:Path.t

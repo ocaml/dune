@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691838519541,
+  "lastUpdate": 1691838935150,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -27374,6 +27374,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.885077669813334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fe2a1f98729ab0eccbaf10edd537046af74712a3",
+          "message": "refactor: move fiber to vendor (#7865)\n\nbecause it's now being developed in ocaml-dune/fiber\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-12T03:55:51-07:00",
+          "tree_id": "a3958e2d55e61e1785c23eb6426611490df5cb0f",
+          "url": "https://github.com/ocaml/dune/commit/fe2a1f98729ab0eccbaf10edd537046af74712a3"
+        },
+        "date": 1691838933267,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.2538552686",
             "unit": "seconds"
           }
         ]

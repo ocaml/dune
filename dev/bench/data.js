@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691933670023,
+  "lastUpdate": 1691933997305,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -67452,6 +67452,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.83224594936",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0ca7a2173007f62d6243f19d55f1d7c87e70bcbd",
+          "message": "refactor: move findlib handling to own lib (#8382)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-13T06:14:46-07:00",
+          "tree_id": "e5b0c4a4153580946e2d37fd18bb2534b6973bae",
+          "url": "https://github.com/ocaml/dune/commit/0ca7a2173007f62d6243f19d55f1d7c87e70bcbd"
+        },
+        "date": 1691933996156,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "64.35945162006668",
             "unit": "seconds"
           }
         ]

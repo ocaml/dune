@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691955604751,
+  "lastUpdate": 1691955830305,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -67829,6 +67829,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.7808550819399998",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e23a5388b1a06bb2bdedeb2f44c4dac33b2968ee",
+          "message": "Merge pull request #8388 from pmwhite/conv-digest\n\ntests: Conv digest",
+          "timestamp": "2023-08-13T20:17:28+01:00",
+          "tree_id": "5c3ac63f437d754e25b3e800ca5f537847aab9a2",
+          "url": "https://github.com/ocaml/dune/commit/e23a5388b1a06bb2bdedeb2f44c4dac33b2968ee"
+        },
+        "date": 1691955829431,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "70.93177923968666",
             "unit": "seconds"
           }
         ]

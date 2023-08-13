@@ -477,11 +477,13 @@ end = struct
               let file local_file install_fn =
                 file Lib_root local_file (Package.Name.to_string name ^ "/" ^ install_fn)
               in
-              [ file meta_file Findlib.meta_fn; file dune_package_file Dune_package.fn ])
+              [ file meta_file Dune_findlib.Package.meta_fn
+              ; file dune_package_file Dune_package.fn
+              ])
           in
           let meta_file = Package_paths.meta_file ctx pkg in
           let dune_package_file = Package_paths.dune_package_file ctx pkg in
-          file Lib meta_file Findlib.meta_fn
+          file Lib meta_file Dune_findlib.Package.meta_fn
           :: file Lib dune_package_file Dune_package.fn
           ::
           (match opam_file with

@@ -118,7 +118,7 @@ module Special_file = struct
     match e.section with
     | Lib ->
       let dst = Install.Entry.Dst.to_string e.dst in
-      if dst = Findlib.meta_fn
+      if dst = Dune_findlib.Findlib.Package.meta_fn
       then Some META
       else if dst = Dune_package.fn
       then Some Dune_package

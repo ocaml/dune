@@ -809,6 +809,54 @@ let%test_module "finalization" =
   end)
 ;;
 
+let%expect_test "sexp_for_digest" =
+  let open Dune_rpc_private in
+  let print_sexp_for_digest conv =
+    Pp.to_fmt Format.std_formatter (Sexp.pp (Conv.sexp_for_digest conv))
+  in
+  print_sexp_for_digest
+    (Conv.five
+       (Conv.field "a" (Conv.required Conv.string))
+       (Conv.field "b" (Conv.optional Conv.int))
+       (Conv.field "c" (Conv.required Conv.float))
+       (Conv.field "d" (Conv.required Conv.unit))
+       (Conv.field "e" (Conv.optional Conv.char)));
+  [%expect
+    {|
+      (Iso
+       (Both
+        (Both (Field a (Required String)) (Field b (Optional Int)))
+        (Iso
+         (Both
+          (Field c (Required Float))
+          (Both (Field d (Required Unit)) (Field e (Optional Char))))))) |}];
+  print_sexp_for_digest (Conv.iso Conv.sexp (fun x -> x) (fun x -> x));
+  [%expect {| (Iso Sexp) |}];
+  let id_iso = Conv.iso Conv.sexp (fun x -> x) (fun x -> x) in
+  print_sexp_for_digest
+    (Conv.pair
+       (Conv.version ~until:(1, 2) ~since:(2, 3) id_iso)
+       (Conv.version ~since:(1, 2) id_iso));
+  [%expect
+    {|
+    (Pair
+     (Version (Iso Sexp) (since 2 3) (until 1 2))
+     (Version (Iso Sexp) (since 1 2))) |}];
+  let list_conv_fdecl = Fdecl.create Dyn.opaque in
+  let list_conv = Conv.fdecl list_conv_fdecl in
+  let nil = Conv.constr "nil" Conv.unit (fun () -> []) in
+  let cons = Conv.constr "cons" (Conv.pair Conv.int list_conv) (fun (x, xs) -> x :: xs) in
+  Fdecl.set
+    list_conv_fdecl
+    (Conv.sum
+       [ Conv.econstr nil; Conv.econstr cons ]
+       (function
+        | [] -> Conv.case () nil
+        | x :: xs -> Conv.case (x, xs) cons));
+  print_sexp_for_digest list_conv;
+  [%expect {| Fdecl |}]
+;;
+
 let%expect_test "print digests for all public RPCs" =
   let open Dune_rpc_private in
   Decl.Request.print_generations Procedures.Public.ping;

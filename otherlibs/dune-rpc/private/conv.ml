@@ -241,6 +241,48 @@ let char =
     , fun c -> Atom (String.make 1 c) )
 ;;
 
+let rec sexp_for_digest : type a b. (a, b) t -> Sexp.t = function
+  | Iso (t, _, _) -> List [ Atom "Iso"; sexp_for_digest t ]
+  | Iso_result (t, _, _) -> List [ Atom "Iso_result"; sexp_for_digest t ]
+  | Version (t, { since = a, b; until }) ->
+    let items : Sexp.t list =
+      [ Atom "Version"
+      ; sexp_for_digest t
+      ; List [ Atom "since"; Atom (Int.to_string a); Atom (Int.to_string b) ]
+      ]
+    in
+    let items =
+      match until with
+      | None -> items
+      | Some (a, b) ->
+        items @ [ List [ Atom "until"; Atom (Int.to_string a); Atom (Int.to_string b) ] ]
+    in
+    List items
+  | Both (a, b) -> List [ Atom "Both"; sexp_for_digest a; sexp_for_digest b ]
+  | Sexp -> Atom "Sexp"
+  | List t -> List [ Atom "List"; sexp_for_digest t ]
+  | Field (name, field) ->
+    let field : Sexp.t =
+      match field with
+      | Required t -> List [ Atom "Required"; sexp_for_digest t ]
+      | Optional t -> List [ Atom "Optional"; sexp_for_digest t ]
+    in
+    List [ Atom "Field"; Atom name; field ]
+  | Enum cases ->
+    List (Atom "Enum" :: List.map cases ~f:(fun (name, _) : Sexp.t -> Atom name))
+  | Sum (constrs, _) ->
+    List
+      (Atom "Sum"
+       :: List.map constrs ~f:(fun (Constr { name; arg; inj = _ }) : Sexp.t ->
+         List [ Atom name; sexp_for_digest arg ]))
+  | Pair (a, b) -> List [ Atom "Pair"; sexp_for_digest a; sexp_for_digest b ]
+  | Triple (a, b, c) ->
+    List [ Atom "Triple"; sexp_for_digest a; sexp_for_digest b; sexp_for_digest c ]
+  | Fdecl _ -> Atom "Fdecl"
+  | Either (a, b) -> List [ Atom "Either"; sexp_for_digest a; sexp_for_digest b ]
+  | Record t -> List [ Atom "Record"; sexp_for_digest t ]
+;;
+
 let to_sexp : 'a. ('a, values) t -> 'a -> Sexp.t =
   fun t a ->
   let rec loop : type a k. (a, k) t -> a -> k =

@@ -155,6 +155,8 @@ module Decl : sig
       -> generations:('req, 'resp) gen list
       -> ('req, 'resp) t
 
+    val print_generations : ('req, 'resp) t -> unit
+
     type ('a, 'b) witness
 
     val witness : ('a, 'b) t -> ('a, 'b) witness
@@ -175,6 +177,7 @@ module Decl : sig
     type 'a t
 
     val make : method_:Method.Name.t -> generations:'payload gen list -> 'payload t
+    val print_generations : 'payload t -> unit
 
     type 'a witness
 

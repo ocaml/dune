@@ -119,3 +119,4 @@ val dyn_of_error : error -> Dyn.t
 val to_sexp : ('a, values) t -> 'a -> Sexp.t
 val of_sexp : ('a, values) t -> version:int * int -> Sexp.t -> ('a, error) result
 val fdecl : ('a, 'k) t Fdecl.t -> ('a, 'k) t
+val sexp_for_digest : ('a, 'k) t -> Sexp.t

@@ -808,3 +808,60 @@ let%test_module "finalization" =
     ;;
   end)
 ;;
+
+let%expect_test _ =
+  let open Dune_rpc_private in
+  Decl.Request.print_generations Procedures.Public.ping;
+  [%expect
+    {|
+    Version 1:
+      Request: 3809995ca81082c9846344c2fc507a3d
+      Response: 3809995ca81082c9846344c2fc507a3d |}];
+  Decl.Request.print_generations Procedures.Public.diagnostics;
+  [%expect
+    {|
+    Version 1:
+      Request: 3809995ca81082c9846344c2fc507a3d
+      Response: edf854370d5dfa545fb938f0decc9b4a |}];
+  Decl.Notification.print_generations Procedures.Public.shutdown;
+  [%expect {| Version 1: 3809995ca81082c9846344c2fc507a3d |}];
+  Decl.Request.print_generations Procedures.Public.format_dune_file;
+  [%expect
+    {|
+    Version 1:
+      Request: 385d03c35294f29d1120b609433c81d9
+      Response: 3809995ca81082c9846344c2fc507a3d |}];
+  Decl.Request.print_generations Procedures.Public.promote;
+  [%expect
+    {|
+    Version 1:
+      Request: 3809995ca81082c9846344c2fc507a3d
+      Response: 3809995ca81082c9846344c2fc507a3d |}];
+  Decl.Request.print_generations Procedures.Public.build_dir;
+  [%expect
+    {|
+    Version 1:
+      Request: 3809995ca81082c9846344c2fc507a3d
+      Response: 3809995ca81082c9846344c2fc507a3d |}];
+  Decl.Request.print_generations (Procedures.Poll.poll Procedures.Poll.progress);
+  [%expect
+    {|
+    Version 1:
+      Request: bf530f6aef3b26e6f85213c11d6a2c6d
+      Response: 6cab728f4e6c77947bb4082f3d5b1984
+    Version 2:
+      Request: bf530f6aef3b26e6f85213c11d6a2c6d
+      Response: c10fb0e0a088186b904acb072906cd23 |}];
+  Decl.Request.print_generations (Procedures.Poll.poll Procedures.Poll.diagnostic);
+  [%expect
+    {|
+    Version 1:
+      Request: bf530f6aef3b26e6f85213c11d6a2c6d
+      Response: a2365e51e13e7807a04abc32c91b68e1 |}];
+  Decl.Request.print_generations (Procedures.Poll.poll Procedures.Poll.running_jobs);
+  [%expect
+    {|
+    Version 1:
+      Request: bf530f6aef3b26e6f85213c11d6a2c6d
+      Response: 21ffd99ccccf76f795e0139a1f7a4ae2 |}]
+;;

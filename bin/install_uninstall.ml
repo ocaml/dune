@@ -229,14 +229,13 @@ module File_ops_real (W : sig
   ;;
 
   let process_meta ic =
+    let module Meta = Dune_findlib.Findlib.Meta in
     let lb = Lexing.from_channel ic in
-    let meta : Dune_rules.Meta.t =
-      { name = None; entries = Dune_rules.Meta.parse_entries lb }
-    in
+    let meta : Meta.t = { name = None; entries = Meta.parse_entries lb } in
     let need_more_versions =
       try
-        let (_ : Dune_rules.Meta.t) =
-          Dune_rules.Meta.add_versions meta ~get_version:(fun _ -> raise_notrace Exit)
+        let (_ : Meta.t) =
+          Meta.add_versions meta ~get_version:(fun _ -> raise_notrace Exit)
         in
         false
       with
@@ -246,8 +245,8 @@ module File_ops_real (W : sig
     then None
     else (
       let callback ?version ppf =
-        let meta = Dune_rules.Meta.add_versions meta ~get_version:(fun _ -> version) in
-        Pp.to_fmt ppf (Dune_rules.Meta.pp meta.entries)
+        let meta = Meta.add_versions meta ~get_version:(fun _ -> version) in
+        Pp.to_fmt ppf (Meta.pp meta.entries)
       in
       Some { need_version = true; callback })
   ;;

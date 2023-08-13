@@ -66,10 +66,11 @@ let local_libraries =
   ; ("vendor/opam-0install/lib", Some "Opam_0install", false, None)
   ; ("src/dune_pkg", Some "Dune_pkg", false, None)
   ; ("src/install", Some "Install", false, None)
-  ; ("otherlibs/dune-site/src/private", Some "Dune_site_private", false,
-    None)
   ; ("otherlibs/dune-private-libs/meta_parser", Some "Dune_meta_parser",
     false, None)
+  ; ("src/dune_findlib", Some "Dune_findlib", false, None)
+  ; ("otherlibs/dune-site/src/private", Some "Dune_site_private", false,
+    None)
   ; ("src/dune_vcs", Some "Dune_vcs", false, None)
   ; ("src/dune_threaded_console", Some "Dune_threaded_console", false, None)
   ; ("vendor/notty/src", None, true, None)

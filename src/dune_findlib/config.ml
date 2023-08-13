@@ -2,8 +2,6 @@ open Import
 open Memo.O
 module P = Ocaml.Variant
 module Ps = Ocaml.Variant.Set
-module Vars = Findlib_vars
-module Rules = Findlib_rules
 
 module File = struct
   type t =
@@ -19,7 +17,7 @@ module File = struct
   let load config_file =
     let load p =
       let+ meta = Meta.load ~name:None p in
-      Findlib_vars.of_meta_rules meta.vars
+      Vars.of_meta_rules meta.vars
     in
     let+ vars =
       let* vars =

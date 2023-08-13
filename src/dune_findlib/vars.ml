@@ -1,5 +1,4 @@
 open Import
-module Rules = Findlib_rules
 
 type t = Rules.t String.Map.t
 

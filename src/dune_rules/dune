@@ -32,6 +32,7 @@
   dune_vcs
   dune_config_file
   dune_shared_cache
+  dune_findlib
   unix)
  (synopsis "Internal Dune library, do not use!")
  (instrumentation

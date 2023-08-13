@@ -16,6 +16,7 @@
   dune_console
   unix
   install
+  dune_findlib
   dune_metrics
   dune_digest
   dune_cache

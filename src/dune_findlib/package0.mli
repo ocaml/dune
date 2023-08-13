@@ -7,6 +7,7 @@ type t =
   ; vars : Vars.t
   }
 
+val meta_fn : Filename.t
 val version : t -> string option
 val description : t -> string option
 val jsoo_runtime : t -> Path.t list

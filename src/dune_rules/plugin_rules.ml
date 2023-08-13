@@ -9,7 +9,7 @@ let meta_file ~dir { name; libraries = _; site = _, (pkg, site); _ } =
     ; Package.Name.to_string pkg
     ; Site.to_string site
     ; Package.Name.to_string name
-    ; Findlib.meta_fn
+    ; Dune_findlib.Package.meta_fn
     ]
 ;;
 
@@ -50,7 +50,7 @@ let install_rules ~sctx ~sites ~dir ({ name; site = loc, (pkg, site); _ } as t) 
     let meta = meta_file ~dir t in
     let+ entry =
       Install_entry_with_site.make_with_site
-        ~dst:(sprintf "%s/%s" (Package.Name.to_string name) Findlib.meta_fn)
+        ~dst:(sprintf "%s/%s" (Package.Name.to_string name) Dune_findlib.Package.meta_fn)
         (Site { pkg; site; loc })
         (Sites.section_of_site sites)
         ~kind:`File

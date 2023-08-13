@@ -7,8 +7,6 @@ module Findlib = Dune_findlib
 module Vars = Dune_findlib.Vars
 module Rules = Dune_findlib.Rules
 
-let meta_fn = "META"
-
 module Unavailable_reason = struct
   type t =
     | Not_found
@@ -338,7 +336,9 @@ end = struct
          | "dune" -> Memo.return (Ok builtin_for_dune)
          | _ -> Memo.return (Error Unavailable_reason.Not_found))
       | dir :: dirs ->
-        let meta_file = Path.relative dir (meta_fn ^ "." ^ Package.Name.to_string name) in
+        let meta_file =
+          Path.relative dir (Findlib.Package.meta_fn ^ "." ^ Package.Name.to_string name)
+        in
         let* file_exists =
           Fs_memo.file_exists (Path.as_outside_build_dir_exn meta_file)
         in
@@ -363,7 +363,7 @@ end = struct
             | Error e -> Memo.return (Error (Unavailable_reason.Invalid_dune_package e))
             | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.return (Ok p)
             | Ok Use_meta ->
-              let meta_file = Path.relative dir meta_fn in
+              let meta_file = Path.relative dir Findlib.Package.meta_fn in
               let* meta_file_exists =
                 Fs_memo.file_exists (Path.as_outside_build_dir_exn meta_file)
               in
@@ -428,7 +428,8 @@ let root_packages (db : DB.t) =
         Memo.List.filter_map dir_contents ~f:(fun (name, _) ->
           let+ exists =
             Fs_memo.file_exists
-              (Path.as_outside_build_dir_exn (Path.relative dir (name ^ "/" ^ meta_fn)))
+              (Path.as_outside_build_dir_exn
+                 (Path.L.relative dir [ name; Findlib.Package.meta_fn ]))
           in
           if exists then Some (Package.Name.of_string name) else None))
     >>| Package.Name.Set.of_list

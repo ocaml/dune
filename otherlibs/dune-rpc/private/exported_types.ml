@@ -119,57 +119,55 @@ module Diagnostic = struct
     let verbatim = constr "Verbatim" string (fun s -> Verbatim s) in
     let char = constr "Char" char (fun c -> Char c) in
     let newline = constr "Newline" unit (fun () -> Newline) in
-    let t_fdecl = Fdecl.create Dyn.opaque in
-    let t = fdecl t_fdecl in
-    let text = constr "Text" string (fun s -> Text s) in
-    let seq = constr "Seq" (pair t t) (fun (x, y) -> Seq (x, y)) in
-    let concat = constr "Concat" (pair t (list t)) (fun (x, y) -> Concat (x, y)) in
-    let box = constr "Box" (pair int t) (fun (x, y) -> Box (x, y)) in
-    let vbox = constr "Vbox" (pair int t) (fun (x, y) -> Vbox (x, y)) in
-    let hbox = constr "Hbox" t (fun t -> Hbox t) in
-    let hvbox = constr "Hvbox" (pair int t) (fun (x, y) -> Hvbox (x, y)) in
-    let hovbox = constr "Hovbox" (pair int t) (fun (x, y) -> Hovbox (x, y)) in
-    let break =
-      constr
-        "Break"
-        (pair (triple string int string) (triple string int string))
-        (fun (x, y) -> Break (x, y))
+    let t =
+      fixpoint (fun t ->
+        let text = constr "Text" string (fun s -> Text s) in
+        let seq = constr "Seq" (pair t t) (fun (x, y) -> Seq (x, y)) in
+        let concat = constr "Concat" (pair t (list t)) (fun (x, y) -> Concat (x, y)) in
+        let box = constr "Box" (pair int t) (fun (x, y) -> Box (x, y)) in
+        let vbox = constr "Vbox" (pair int t) (fun (x, y) -> Vbox (x, y)) in
+        let hbox = constr "Hbox" t (fun t -> Hbox t) in
+        let hvbox = constr "Hvbox" (pair int t) (fun (x, y) -> Hvbox (x, y)) in
+        let hovbox = constr "Hovbox" (pair int t) (fun (x, y) -> Hovbox (x, y)) in
+        let break =
+          constr
+            "Break"
+            (pair (triple string int string) (triple string int string))
+            (fun (x, y) -> Break (x, y))
+        in
+        let tag = constr "Tag" t (fun t -> Tag ((), t)) in
+        sum
+          [ econstr nop
+          ; econstr verbatim
+          ; econstr char
+          ; econstr newline
+          ; econstr text
+          ; econstr seq
+          ; econstr concat
+          ; econstr box
+          ; econstr vbox
+          ; econstr hbox
+          ; econstr hvbox
+          ; econstr hovbox
+          ; econstr break
+          ; econstr tag
+          ]
+          (function
+           | Nop -> case () nop
+           | Seq (x, y) -> case (x, y) seq
+           | Concat (x, y) -> case (x, y) concat
+           | Box (i, t) -> case (i, t) box
+           | Vbox (i, t) -> case (i, t) vbox
+           | Hbox t -> case t hbox
+           | Hvbox (i, t) -> case (i, t) hvbox
+           | Hovbox (i, t) -> case (i, t) hovbox
+           | Verbatim s -> case s verbatim
+           | Char c -> case c char
+           | Break (x, y) -> case (x, y) break
+           | Newline -> case () newline
+           | Text s -> case s text
+           | Tag ((), t) -> case t tag))
     in
-    let tag = constr "Tag" t (fun t -> Tag ((), t)) in
-    let conv =
-      sum
-        [ econstr nop
-        ; econstr verbatim
-        ; econstr char
-        ; econstr newline
-        ; econstr text
-        ; econstr seq
-        ; econstr concat
-        ; econstr box
-        ; econstr vbox
-        ; econstr hbox
-        ; econstr hvbox
-        ; econstr hovbox
-        ; econstr break
-        ; econstr tag
-        ]
-        (function
-         | Nop -> case () nop
-         | Seq (x, y) -> case (x, y) seq
-         | Concat (x, y) -> case (x, y) concat
-         | Box (i, t) -> case (i, t) box
-         | Vbox (i, t) -> case (i, t) vbox
-         | Hbox t -> case t hbox
-         | Hvbox (i, t) -> case (i, t) hvbox
-         | Hovbox (i, t) -> case (i, t) hovbox
-         | Verbatim s -> case s verbatim
-         | Char c -> case c char
-         | Break (x, y) -> case (x, y) break
-         | Newline -> case () newline
-         | Text s -> case s text
-         | Tag ((), t) -> case t tag)
-    in
-    Fdecl.set t_fdecl conv;
     let to_ast x =
       match Pp.to_ast x with
       | Ok s -> s
@@ -177,7 +175,7 @@ module Diagnostic = struct
         (* We don't use the format constructor in dune. *)
         assert false
     in
-    iso (Fdecl.get t_fdecl) Pp.of_ast to_ast
+    iso t Pp.of_ast to_ast
   ;;
 
   module Id = struct

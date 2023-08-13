@@ -119,6 +119,11 @@ type version =
   }
 
 type ('a, 'kind) t =
+  | String : (string, values) t
+  | Int : (int, values) t
+  | Float : (float, values) t
+  | Unit : (unit, values) t
+  | Char : (char, values) t
   | Iso : ('a, 'kind) t * ('a -> 'b) * ('b -> 'a) -> ('b, 'kind) t
   | Iso_result : ('a, 'kind) t * ('a -> ('b, exn) result) * ('b -> 'a) -> ('b, 'kind) t
   | Version : ('a, 'kind) t * version -> ('a, 'kind) t
@@ -133,7 +138,7 @@ type ('a, 'kind) t =
   | Sum : 'a econstr list * ('a -> case) -> ('a, values) t
   | Pair : ('a, values) t * ('b, values) t -> ('a * 'b, values) t
   | Triple : ('a, values) t * ('b, values) t * ('c, values) t -> ('a * 'b * 'c, values) t
-  | Fdecl : ('a, 'k) t Fdecl.t -> ('a, 'k) t
+  | Fdecl : int * ('a, 'k) t Fdecl.t -> ('a, 'k) t
   | Either :
       (* Invariant: field names must be different *)
       ('a, fields) t * ('b, fields) t
@@ -174,50 +179,10 @@ let discard_values ((a, x) : _ * values ret) =
   | Values -> a
 ;;
 
-let string =
-  Iso
-    ( Sexp
-    , (function
-       | Atom s -> s
-       | List _ as list ->
-         raise_of_sexp ~payload:[ "list", list ] "string: expected atom. received list")
-    , fun s -> Atom s )
-;;
-
-let int =
-  Iso
-    ( Sexp
-    , (function
-       | List _ as list ->
-         raise_of_sexp ~payload:[ "list", list ] "int: expected atom. received list"
-       | Atom s ->
-         (match Int.of_string s with
-          | None -> raise_of_sexp "unable to read int"
-          | Some i -> i))
-    , fun s -> Atom (Int.to_string s) )
-;;
-
-let float =
-  Iso
-    ( Sexp
-    , (function
-       | List _ as list ->
-         raise_of_sexp ~payload:[ "list", list ] "float: expected atom. received list"
-       | Atom s ->
-         (match Float.of_string_opt s with
-          | None -> raise_of_sexp "unable to read float"
-          | Some i -> i))
-    , fun s -> Atom (Float.to_string s) )
-;;
-
-let unit =
-  Iso
-    ( Sexp
-    , (function
-       | List [] -> ()
-       | _ -> raise_of_sexp "expected empty list")
-    , fun () -> List [] )
-;;
+let string = String
+let int = Int
+let float = Float
+let unit = Unit
 
 let option x =
   let none = constr "None" unit (fun () -> None) in
@@ -229,16 +194,63 @@ let option x =
      | Some s -> case s some)
 ;;
 
-let char =
-  Iso
-    ( Sexp
-    , (function
-       | Atom s ->
-         if String.length s = 1
-         then s.[0]
-         else raise_of_sexp "expected only a single character"
-       | List _ -> raise_of_sexp "expected a string of length 1")
-    , fun c -> Atom (String.make 1 c) )
+let char = Char
+
+let sexp_for_digest t =
+  let rec iter : type a b. int list -> (a, b) t -> Sexp.t =
+    fun ids -> function
+    | String -> Atom "String"
+    | Int -> Atom "Int"
+    | Float -> Atom "Float"
+    | Unit -> Atom "Unit"
+    | Char -> Atom "Char"
+    | Iso (t, _, _) -> List [ Atom "Iso"; iter ids t ]
+    | Iso_result (t, _, _) -> List [ Atom "Iso_result"; iter ids t ]
+    | Version (t, { since = a, b; until }) ->
+      let items : Sexp.t list =
+        [ Atom "Version"
+        ; iter ids t
+        ; List [ Atom "since"; Atom (Int.to_string a); Atom (Int.to_string b) ]
+        ]
+      in
+      let items =
+        match until with
+        | None -> items
+        | Some (a, b) ->
+          items
+          @ [ List [ Atom "until"; Atom (Int.to_string a); Atom (Int.to_string b) ] ]
+      in
+      List items
+    | Both (a, b) -> List [ Atom "Both"; iter ids a; iter ids b ]
+    | Sexp -> Atom "Sexp"
+    | List t -> List [ Atom "List"; iter ids t ]
+    | Field (name, field) ->
+      let field : Sexp.t =
+        match field with
+        | Required t -> List [ Atom "Required"; iter ids t ]
+        | Optional t -> List [ Atom "Optional"; iter ids t ]
+      in
+      List [ Atom "Field"; Atom name; field ]
+    | Enum cases ->
+      List (Atom "Enum" :: List.map cases ~f:(fun (name, _) : Sexp.t -> Atom name))
+    | Sum (constrs, _) ->
+      List
+        (Atom "Sum"
+         :: List.map constrs ~f:(fun (Constr { name; arg; inj = _ }) : Sexp.t ->
+           List [ Atom name; iter ids arg ]))
+    | Pair (a, b) -> List [ Atom "Pair"; iter ids a; iter ids b ]
+    | Triple (a, b, c) -> List [ Atom "Triple"; iter ids a; iter ids b; iter ids c ]
+    | Fdecl (id, fdecl) ->
+      (* Although the id is represented as an auto-incrementing integer, we
+         find De Bruijn indices to put in the digest so that equivalent
+         structures produce the same digest. *)
+      (match List.findi ids ~f:(Int.equal id) with
+       | Some (_, index) -> List [ Atom "Recurse"; Atom (Int.to_string index) ]
+       | None -> List [ Atom "Fixpoint"; iter (id :: ids) (Fdecl.get fdecl) ])
+    | Either (a, b) -> List [ Atom "Either"; iter ids a; iter ids b ]
+    | Record t -> List [ Atom "Record"; iter ids t ]
+  in
+  iter [] t
 ;;
 
 let to_sexp : 'a. ('a, values) t -> 'a -> Sexp.t =
@@ -246,9 +258,14 @@ let to_sexp : 'a. ('a, values) t -> 'a -> Sexp.t =
   let rec loop : type a k. (a, k) t -> a -> k =
     fun t a ->
     match t with
+    | String -> Atom a
+    | Int -> Atom (Int.to_string a)
+    | Float -> Atom (Float.to_string a)
+    | Unit -> List []
+    | Char -> Atom (String.make 1 a)
     | Sexp -> a
     | Version (t, _) -> loop t a
-    | Fdecl t -> loop (Fdecl.get t) a
+    | Fdecl (_, t) -> loop (Fdecl.get t) a
     | List t -> List (List.map a ~f:(loop t))
     | Pair (x, y) ->
       let a, b = a in
@@ -309,11 +326,43 @@ let of_sexp : 'a. ('a, values) t -> version:int * int -> Sexp.t -> 'a =
   let rec loop : type a k. (a, k) t -> k -> a * k ret =
     fun (type a k) (t : (a, k) t) (ctx : k) : (a * k ret) ->
     match t with
+    | String ->
+      (match ctx with
+       | Atom s -> s, Values
+       | List _ as list ->
+         raise_of_sexp ~payload:[ "list", list ] "string: expected atom. received list")
+    | Int ->
+      (match ctx with
+       | List _ as list ->
+         raise_of_sexp ~payload:[ "list", list ] "int: expected atom. received list"
+       | Atom s ->
+         (match Int.of_string s with
+          | None -> raise_of_sexp "unable to read int"
+          | Some i -> i, Values))
+    | Float ->
+      (match ctx with
+       | List _ as list ->
+         raise_of_sexp ~payload:[ "list", list ] "float: expected atom. received list"
+       | Atom s ->
+         (match Float.of_string_opt s with
+          | None -> raise_of_sexp "unable to read float"
+          | Some i -> i, Values))
+    | Unit ->
+      (match ctx with
+       | List [] -> (), Values
+       | _ -> raise_of_sexp "expected empty list")
+    | Char ->
+      (match ctx with
+       | Atom s ->
+         if String.length s = 1
+         then s.[0], Values
+         else raise_of_sexp "expected only a single character"
+       | List _ -> raise_of_sexp "expected a string of length 1")
     | Sexp -> ctx, Values
     | Version (t, { since; until }) ->
       check_version ~version ~since ~until ctx;
       loop t ctx
-    | Fdecl t -> loop (Fdecl.get t) ctx
+    | Fdecl (_, t) -> loop (Fdecl.get t) ctx
     | List t ->
       (match ctx with
        | List xs -> List.map xs ~f:(fun x -> discard_values (loop t x)), Values
@@ -457,5 +506,15 @@ let eight a b c d e f g h =
 let sexp = Sexp
 let required x = Required x
 let optional x = Optional x
-let fdecl x = Fdecl x
+let fdecl_id = ref 0
+
+let fixpoint f =
+  let fdecl = Fdecl.create Dyn.opaque in
+  let id = !fdecl_id in
+  incr fdecl_id;
+  let result = Fdecl (id, fdecl) in
+  Fdecl.set fdecl (f result);
+  result
+;;
+
 let error e = raise (Of_sexp e)

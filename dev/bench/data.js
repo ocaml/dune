@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691955038379,
+  "lastUpdate": 1691955184062,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -86970,6 +86970,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "24.107426439293334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3ffa30d98a0014a7900d2da200e3e37c9b4b65fe",
+          "message": "refactor: do not force findlib for link time code gen (#8387)\n\nonly force findlib when we actually need it\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-13T12:20:48-07:00",
+          "tree_id": "2dede89138df92ec83eaa57ec541c89bca124b01",
+          "url": "https://github.com/ocaml/dune/commit/3ffa30d98a0014a7900d2da200e3e37c9b4b65fe"
+        },
+        "date": 1691955173577,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.78126963926",
             "unit": "seconds"
           }
         ]

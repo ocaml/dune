@@ -840,6 +840,10 @@ let%expect_test _ =
     Version 1:
       Request: Unit
       Response: String |}];
+  Decl.Notification.print_generations Procedures.Server_side.abort;
+  [%expect {| Version 1: 0e9dfd1099101769896cf0bb06f891c6 |}];
+  Decl.Notification.print_generations Procedures.Server_side.log;
+  [%expect {| Version 1: 0e9dfd1099101769896cf0bb06f891c6 |}];
   Decl.Request.print_generations (Procedures.Poll.poll Procedures.Poll.progress);
   [%expect
     {|

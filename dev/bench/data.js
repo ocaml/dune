@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691939386156,
+  "lastUpdate": 1691939908531,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -27519,6 +27519,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.91309300711333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "87a449caa4f9870e5208ca37d88e04fb40da2d79",
+          "message": "refactor: use immutable arrays in [Per_item] (#8385)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-13T07:53:38-07:00",
+          "tree_id": "f757dd7cbf927ecdfa66d8569365ca6c18f5bfc7",
+          "url": "https://github.com/ocaml/dune/commit/87a449caa4f9870e5208ca37d88e04fb40da2d79"
+        },
+        "date": 1691939907327,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "50.082015906520006",
             "unit": "seconds"
           }
         ]

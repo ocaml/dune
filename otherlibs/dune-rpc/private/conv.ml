@@ -119,6 +119,11 @@ type version =
   }
 
 type ('a, 'kind) t =
+  | String : (string, values) t
+  | Int : (int, values) t
+  | Float : (float, values) t
+  | Unit : (unit, values) t
+  | Char : (char, values) t
   | Iso : ('a, 'kind) t * ('a -> 'b) * ('b -> 'a) -> ('b, 'kind) t
   | Iso_result : ('a, 'kind) t * ('a -> ('b, exn) result) * ('b -> 'a) -> ('b, 'kind) t
   | Version : ('a, 'kind) t * version -> ('a, 'kind) t
@@ -174,50 +179,10 @@ let discard_values ((a, x) : _ * values ret) =
   | Values -> a
 ;;
 
-let string =
-  Iso
-    ( Sexp
-    , (function
-       | Atom s -> s
-       | List _ as list ->
-         raise_of_sexp ~payload:[ "list", list ] "string: expected atom. received list")
-    , fun s -> Atom s )
-;;
-
-let int =
-  Iso
-    ( Sexp
-    , (function
-       | List _ as list ->
-         raise_of_sexp ~payload:[ "list", list ] "int: expected atom. received list"
-       | Atom s ->
-         (match Int.of_string s with
-          | None -> raise_of_sexp "unable to read int"
-          | Some i -> i))
-    , fun s -> Atom (Int.to_string s) )
-;;
-
-let float =
-  Iso
-    ( Sexp
-    , (function
-       | List _ as list ->
-         raise_of_sexp ~payload:[ "list", list ] "float: expected atom. received list"
-       | Atom s ->
-         (match Float.of_string_opt s with
-          | None -> raise_of_sexp "unable to read float"
-          | Some i -> i))
-    , fun s -> Atom (Float.to_string s) )
-;;
-
-let unit =
-  Iso
-    ( Sexp
-    , (function
-       | List [] -> ()
-       | _ -> raise_of_sexp "expected empty list")
-    , fun () -> List [] )
-;;
+let string = String
+let int = Int
+let float = Float
+let unit = Unit
 
 let option x =
   let none = constr "None" unit (fun () -> None) in
@@ -229,19 +194,14 @@ let option x =
      | Some s -> case s some)
 ;;
 
-let char =
-  Iso
-    ( Sexp
-    , (function
-       | Atom s ->
-         if String.length s = 1
-         then s.[0]
-         else raise_of_sexp "expected only a single character"
-       | List _ -> raise_of_sexp "expected a string of length 1")
-    , fun c -> Atom (String.make 1 c) )
-;;
+let char = Char
 
 let rec sexp_for_digest : type a b. (a, b) t -> Sexp.t = function
+  | String -> Atom "String"
+  | Int -> Atom "Int"
+  | Float -> Atom "Float"
+  | Unit -> Atom "Unit"
+  | Char -> Atom "Char"
   | Iso (t, _, _) -> List [ Atom "Iso"; sexp_for_digest t ]
   | Iso_result (t, _, _) -> List [ Atom "Iso_result"; sexp_for_digest t ]
   | Version (t, { since = a, b; until }) ->
@@ -288,6 +248,11 @@ let to_sexp : 'a. ('a, values) t -> 'a -> Sexp.t =
   let rec loop : type a k. (a, k) t -> a -> k =
     fun t a ->
     match t with
+    | String -> Atom a
+    | Int -> Atom (Int.to_string a)
+    | Float -> Atom (Float.to_string a)
+    | Unit -> List []
+    | Char -> Atom (String.make 1 a)
     | Sexp -> a
     | Version (t, _) -> loop t a
     | Fdecl t -> loop (Fdecl.get t) a
@@ -351,6 +316,38 @@ let of_sexp : 'a. ('a, values) t -> version:int * int -> Sexp.t -> 'a =
   let rec loop : type a k. (a, k) t -> k -> a * k ret =
     fun (type a k) (t : (a, k) t) (ctx : k) : (a * k ret) ->
     match t with
+    | String ->
+      (match ctx with
+       | Atom s -> s, Values
+       | List _ as list ->
+         raise_of_sexp ~payload:[ "list", list ] "string: expected atom. received list")
+    | Int ->
+      (match ctx with
+       | List _ as list ->
+         raise_of_sexp ~payload:[ "list", list ] "int: expected atom. received list"
+       | Atom s ->
+         (match Int.of_string s with
+          | None -> raise_of_sexp "unable to read int"
+          | Some i -> i, Values))
+    | Float ->
+      (match ctx with
+       | List _ as list ->
+         raise_of_sexp ~payload:[ "list", list ] "float: expected atom. received list"
+       | Atom s ->
+         (match Float.of_string_opt s with
+          | None -> raise_of_sexp "unable to read float"
+          | Some i -> i, Values))
+    | Unit ->
+      (match ctx with
+       | List [] -> (), Values
+       | _ -> raise_of_sexp "expected empty list")
+    | Char ->
+      (match ctx with
+       | Atom s ->
+         if String.length s = 1
+         then s.[0], Values
+         else raise_of_sexp "expected only a single character"
+       | List _ -> raise_of_sexp "expected a string of length 1")
     | Sexp -> ctx, Values
     | Version (t, { since; until }) ->
       check_version ~version ~since ~until ctx;

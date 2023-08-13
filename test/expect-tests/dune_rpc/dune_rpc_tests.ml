@@ -814,51 +814,51 @@ let%expect_test _ =
   Decl.Request.print_generations Procedures.Public.ping;
   [%expect {|
     Version 1:
-      Request: (Iso Sexp)
-      Response: (Iso Sexp) |}];
+      Request: Unit
+      Response: Unit |}];
   Decl.Request.print_generations Procedures.Public.diagnostics;
   [%expect
     {|
     Version 1:
-      Request: (Iso Sexp)
-      Response: edf854370d5dfa545fb938f0decc9b4a |}];
+      Request: Unit
+      Response: bc16efad38b17b9f18ff457cd1e08610 |}];
   Decl.Notification.print_generations Procedures.Public.shutdown;
-  [%expect {| Version 1: (Iso Sexp) |}];
+  [%expect {| Version 1: Unit |}];
   Decl.Request.print_generations Procedures.Public.format_dune_file;
   [%expect
     {|
     Version 1:
-      Request: 385d03c35294f29d1120b609433c81d9
-      Response: (Iso Sexp) |}];
+      Request: 15eae4b546faf05a0fc3b6d03aed0c63
+      Response: String |}];
   Decl.Request.print_generations Procedures.Public.promote;
   [%expect {|
     Version 1:
-      Request: (Iso Sexp)
-      Response: (Iso Sexp) |}];
+      Request: String
+      Response: Unit |}];
   Decl.Request.print_generations Procedures.Public.build_dir;
   [%expect {|
     Version 1:
-      Request: (Iso Sexp)
-      Response: (Iso Sexp) |}];
+      Request: Unit
+      Response: String |}];
   Decl.Request.print_generations (Procedures.Poll.poll Procedures.Poll.progress);
   [%expect
     {|
     Version 1:
       Request: Sexp
-      Response: 6cab728f4e6c77947bb4082f3d5b1984
+      Response: 889aa68f4ad3fc68ef5dfffbb7282c18
     Version 2:
       Request: Sexp
-      Response: c10fb0e0a088186b904acb072906cd23 |}];
+      Response: 929074caab98360dc7116b6f27c2b9ad |}];
   Decl.Request.print_generations (Procedures.Poll.poll Procedures.Poll.diagnostic);
   [%expect
     {|
     Version 1:
       Request: Sexp
-      Response: a2365e51e13e7807a04abc32c91b68e1 |}];
+      Response: c91ffa13987876c4ed47304707f9db5a |}];
   Decl.Request.print_generations (Procedures.Poll.poll Procedures.Poll.running_jobs);
   [%expect
     {|
     Version 1:
       Request: Sexp
-      Response: 21ffd99ccccf76f795e0139a1f7a4ae2 |}]
+      Response: c6f1b15280c98f2ba94ba70001f6a63d |}]
 ;;

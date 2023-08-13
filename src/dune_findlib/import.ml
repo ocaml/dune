@@ -13,6 +13,7 @@ module Mode = Ocaml.Mode
 include struct
   open Dune_lang
   module Lib_name = Lib_name
+  module Lib_kind = Lib_kind
 
   module Package = struct
     module Name = Dune_lang.Package_name

@@ -1,4 +1,4 @@
-open Import
+open Stdune
 
 module Ppx_args = struct
   module Cookie = struct
@@ -13,8 +13,8 @@ module Ppx_args = struct
     ;;
 
     let decode =
-      let open Dune_lang.Decoder in
-      let* () = Dune_lang.Syntax.since Stanza.syntax (1, 10) in
+      let open Dune_sexp.Decoder in
+      let* () = Dune_sexp.Syntax.since Stanza.syntax (1, 10) in
       enter
         (let+ name =
            plain_string (fun ~loc str ->
@@ -29,7 +29,7 @@ module Ppx_args = struct
     ;;
 
     let encode { name; value } =
-      let open Dune_lang in
+      let open Dune_sexp in
       List [ Encoder.string name; String_with_vars.encode value ]
     ;;
   end
@@ -44,7 +44,7 @@ module Ppx_args = struct
   ;;
 
   let decode =
-    let open Dune_lang.Decoder in
+    let open Dune_sexp.Decoder in
     let args =
       let+ cookies = field "cookies" (repeat Cookie.decode) ~default:[] in
       { cookies }
@@ -53,7 +53,7 @@ module Ppx_args = struct
   ;;
 
   let encode { cookies } =
-    let open Dune_lang.Encoder in
+    let open Dune_sexp.Encoder in
     record_fields [ field_l "cookies" Cookie.encode cookies ]
   ;;
 end
@@ -74,7 +74,7 @@ let to_dyn x =
 ;;
 
 let decode =
-  let open Dune_lang.Decoder in
+  let open Dune_sexp.Decoder in
   sum
     [ "normal", return Normal
     ; ( "ppx_deriver"
@@ -89,9 +89,9 @@ let decode =
 let encode t =
   match
     match t with
-    | Normal -> Dune_lang.atom "normal"
-    | Ppx_deriver x -> List (Dune_lang.atom "ppx_deriver" :: Ppx_args.encode x)
-    | Ppx_rewriter x -> List (Dune_lang.atom "ppx_rewriter" :: Ppx_args.encode x)
+    | Normal -> Dune_sexp.atom "normal"
+    | Ppx_deriver x -> List (Dune_sexp.atom "ppx_deriver" :: Ppx_args.encode x)
+    | Ppx_rewriter x -> List (Dune_sexp.atom "ppx_rewriter" :: Ppx_args.encode x)
   with
   | List [ x ] -> x
   | x -> x

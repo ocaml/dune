@@ -37,12 +37,11 @@ let ppx_runtime_deps t =
   |> List.map ~f:(fun s -> Lib_name.parse_string_exn (Loc.none, s))
 ;;
 
-let kind t =
+let kind t : Lib_kind.t =
   match Vars.get t.vars "library_kind" Ps.empty with
-  | None -> `Normal
-  | Some "ppx_rewriter" -> `Ppx_rewriter
-  | Some "ppx_deriver" -> `Ppx_deriver
-  | Some _other_string -> `Normal
+  | Some "ppx_rewriter" -> Ppx_rewriter Lib_kind.Ppx_args.empty
+  | Some "ppx_deriver" -> Ppx_deriver Lib_kind.Ppx_args.empty
+  | None | Some _ -> Normal
 ;;
 
 let archives t = make_archives t "archive" preds

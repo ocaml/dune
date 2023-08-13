@@ -1,5 +1,4 @@
 open Import
-open Dune_lang
 
 module Source = struct
   type fetch =
@@ -55,7 +54,7 @@ module Source = struct
   end
 
   let decode_fetch =
-    let open Dune_sexp.Decoder in
+    let open Decoder in
     let+ url = field Fields.url (located string)
     and+ checksum = field_o Fields.checksum (located string) in
     let checksum =
@@ -70,7 +69,7 @@ module Source = struct
   ;;
 
   let decode =
-    let open Dune_lang.Decoder in
+    let open Decoder in
     sum
       [ ( Fields.copy
         , located string
@@ -87,7 +86,7 @@ module Source = struct
   ;;
 
   let encode_fetch_field { url = _loc, url; checksum } =
-    let open Dune_sexp.Encoder in
+    let open Encoder in
     [ field Fields.url string url
     ; field_o Fields.checksum Checksum.encode (Option.map checksum ~f:snd)
     ]
@@ -200,7 +199,7 @@ module Pkg = struct
   end
 
   let decode =
-    let open Dune_lang.Decoder in
+    let open Decoder in
     enter
     @@ fields
     @@ let+ version = field ~default:Pkg_info.default_version Fields.version string
@@ -234,7 +233,7 @@ module Pkg = struct
          { build_command; deps; install_command; info; exported_env }
   ;;
 
-  let encode_extra_source (local, source) =
+  let encode_extra_source (local, source) : Dune_sexp.t =
     List
       [ Dune_sexp.atom_or_quoted_string (Path.Local.to_string local)
       ; Source.encode source
@@ -303,13 +302,13 @@ module Metadata = Dune_sexp.Versioned_file.Make (Unit)
 let () = Metadata.Lang.register Dune_lang.Pkg.syntax ()
 
 let encode_metadata { version; ocaml; packages = _ } =
-  let open Dune_lang.Encoder in
+  let open Encoder in
   let base =
     list
       sexp
       [ string "lang"
       ; string (Syntax.name Dune_lang.Pkg.syntax)
-      ; Dune_lang.Syntax.Version.encode version
+      ; Syntax.Version.encode version
       ]
   in
   [ base ]
@@ -356,9 +355,7 @@ module Write_disk = struct
          (match Path.exists metadata_path && not (Path.is_directory metadata_path) with
           | false -> Error `No_metadata_file
           | true ->
-            (match
-               Metadata.load metadata_path ~f:(Fun.const (Dune_lang.Decoder.return ()))
-             with
+            (match Metadata.load metadata_path ~f:(Fun.const (Decoder.return ())) with
              | Ok () -> Ok `Is_existing_lock_dir
              | Error exn -> Error (`Failed_to_parse_metadata exn))))
   ;;
@@ -421,7 +418,7 @@ struct
         Metadata.parse_contents
           lexbuf
           ~f:(fun { Metadata.Lang.Instance.syntax; data = (); version } ->
-            let open Dune_sexp.Decoder in
+            let open Decoder in
             let+ ocaml = fields @@ field_o "ocaml" (located Package_name.decode) in
             syntax, version, ocaml))
     in
@@ -453,7 +450,7 @@ struct
       in
       String_with_vars.set_decoding_env env decode
     in
-    (Dune_lang.Decoder.parse parser Univ_map.empty (List (Loc.none, sexp)))
+    (Decoder.parse parser Univ_map.empty (List (Loc.none, sexp)))
       ~lock_dir:lock_dir_path
       package_name
   ;;

@@ -5,7 +5,7 @@ module Variable : sig
 
   val compare : t -> t -> Ordering.t
   val to_dyn : t -> Dyn.t
-  val encode : t -> Dune_lang.t
+  val encode : t -> Dune_sexp.t
   val of_string : string -> t
 end
 

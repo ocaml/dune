@@ -456,7 +456,10 @@ module Decl = struct
     let print_generation_list ~include_response generations =
       List.iter generations ~f:(fun (version, Generation.T conv) ->
         let conv_to_digest conv =
-          Digest.to_hex (Digest.string (Sexp.to_string (Conv.sexp_for_digest conv)))
+          let sexp_string = Sexp.to_string (Conv.sexp_for_digest conv) in
+          if String.length sexp_string < 32
+          then sexp_string
+          else Digest.to_hex (Digest.string sexp_string)
         in
         let req = conv_to_digest conv.req in
         let resp = conv_to_digest conv.resp in

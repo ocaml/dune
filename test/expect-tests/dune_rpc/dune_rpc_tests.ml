@@ -842,19 +842,30 @@ let%expect_test "sexp_for_digest" =
     (Pair
      (Version (Iso Sexp) (since 2 3) (until 1 2))
      (Version (Iso Sexp) (since 1 2))) |}];
-  let list_conv_fdecl = Fdecl.create Dyn.opaque in
-  let list_conv = Conv.fdecl list_conv_fdecl in
-  let nil = Conv.constr "nil" Conv.unit (fun () -> []) in
-  let cons = Conv.constr "cons" (Conv.pair Conv.int list_conv) (fun (x, xs) -> x :: xs) in
-  Fdecl.set
-    list_conv_fdecl
-    (Conv.sum
-       [ Conv.econstr nil; Conv.econstr cons ]
-       (function
-        | [] -> Conv.case () nil
-        | x :: xs -> Conv.case (x, xs) cons));
-  print_sexp_for_digest list_conv;
-  [%expect {| Fdecl |}]
+  let list_conv inner =
+    Conv.fixpoint (fun conv ->
+      let nil = Conv.constr "nil" Conv.unit (fun () -> []) in
+      let cons = Conv.constr "cons" (Conv.pair inner conv) (fun (x, xs) -> x :: xs) in
+      Conv.sum
+        [ Conv.econstr nil; Conv.econstr cons ]
+        (function
+         | [] -> Conv.case () nil
+         | x :: xs -> Conv.case (x, xs) cons))
+  in
+  print_sexp_for_digest (list_conv Conv.int);
+  [%expect {| (Fixpoint (Sum (nil Unit) (cons (Pair Int (Recurse 0))))) |}];
+  print_sexp_for_digest (list_conv (list_conv Conv.int));
+  (* Recursion uses De Bruijn indices because we want equal structures to
+     produce the same digest. *)
+  [%expect
+    {|
+    (Fixpoint
+     (Sum
+      (nil Unit)
+      (cons
+       (Pair
+        (Fixpoint (Sum (nil Unit) (cons (Pair Int (Recurse 0)))))
+        (Recurse 0))))) |}]
 ;;
 
 let%expect_test "print digests for all public RPCs" =
@@ -869,7 +880,7 @@ let%expect_test "print digests for all public RPCs" =
     {|
     Version 1:
       Request: Unit
-      Response: bc16efad38b17b9f18ff457cd1e08610 |}];
+      Response: ffd3de9652c685594aacfc51d28f2533 |}];
   Decl.Notification.print_generations Procedures.Public.shutdown;
   [%expect {| Version 1: Unit |}];
   Decl.Request.print_generations Procedures.Public.format_dune_file;
@@ -906,11 +917,11 @@ let%expect_test "print digests for all public RPCs" =
     {|
     Version 1:
       Request: Sexp
-      Response: c91ffa13987876c4ed47304707f9db5a |}];
+      Response: 443627a52ab5595206164d020ff01c56 |}];
   Decl.Request.print_generations (Procedures.Poll.poll Procedures.Poll.running_jobs);
   [%expect
     {|
     Version 1:
       Request: Sexp
-      Response: c6f1b15280c98f2ba94ba70001f6a63d |}]
+      Response: 33528f248084297d123a6ebd4c3ddee0 |}]
 ;;

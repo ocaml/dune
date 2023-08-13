@@ -349,7 +349,7 @@ end = struct
   (* Parse all the packages defined in a META file *)
   let dune_package_of_meta (db : DB.t) ~dir ~meta_file ~(meta : Meta.Simplified.t) =
     let rec loop ~dir ~full_name (meta : Meta.Simplified.t) acc =
-      let vars = String.Map.map meta.vars ~f:Rules.of_meta_rules in
+      let vars = Findlib_vars.of_meta_rules meta.vars in
       let pkg_dir = Vars.get vars "directory" Ps.empty in
       let dir =
         match pkg_dir with

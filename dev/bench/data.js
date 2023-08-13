@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691918834948,
+  "lastUpdate": 1691919256085,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -27403,6 +27403,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.2538552686",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "80afc0ab0b6a7ef894b268d9dc4a3fb7cdad53fc",
+          "message": "refactor: add mli to [Findlib_vars] (#8380)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-13T02:14:39-07:00",
+          "tree_id": "1247f9e8bbb9419d75391ccdd5f01a8a9b70f56f",
+          "url": "https://github.com/ocaml/dune/commit/80afc0ab0b6a7ef894b268d9dc4a3fb7cdad53fc"
+        },
+        "date": 1691919254461,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.26951556687333",
             "unit": "seconds"
           }
         ]

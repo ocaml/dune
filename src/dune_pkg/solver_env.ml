@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 
 module Variable = struct
   module Flag = struct
@@ -49,7 +49,7 @@ module Variable = struct
       ;;
 
       let decode =
-        let open Dune_lang.Decoder in
+        let open Decoder in
         let+ ordered_set = Dune_lang.Ordered_set_lang.decode in
         of_ordered_set ordered_set
       ;;
@@ -89,7 +89,7 @@ module Variable = struct
     let of_string_opt s = List.find all ~f:(fun t -> String.equal s (to_string t))
 
     let decode =
-      let open Dune_lang.Decoder in
+      let open Decoder in
       let+ loc, name = located string in
       match of_string_opt name with
       | Some t -> t
@@ -116,7 +116,7 @@ module Variable = struct
       let get = Map.find
 
       let decode =
-        let open Dune_lang.Decoder in
+        let open Decoder in
         let+ loc, bindings = located (repeat (pair decode string)) in
         match Map.of_list bindings with
         | Ok t -> t
@@ -226,7 +226,7 @@ let default =
 ;;
 
 let decode =
-  let open Dune_lang.Decoder in
+  let open Decoder in
   fields
   @@ let+ flags = field Fields.flags ~default:default.flags Variable.Flag.Set.decode
      and+ sys = field Fields.sys ~default:default.sys Variable.Sys.Bindings.decode in

@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 
 type t =
   | Newest
@@ -19,4 +19,4 @@ let to_dyn t = Dyn.variant (to_string t) []
 let default = Newest
 let all = [ Newest; Oldest ]
 let all_by_string = List.map all ~f:(fun t -> to_string t, t)
-let decode = Dune_sexp.Decoder.enum all_by_string
+let decode = Decoder.enum all_by_string

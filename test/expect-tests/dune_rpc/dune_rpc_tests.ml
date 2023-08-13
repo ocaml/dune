@@ -809,7 +809,7 @@ let%test_module "finalization" =
   end)
 ;;
 
-let%expect_test _ =
+let%expect_test "print digests for all public RPCs" =
   let open Dune_rpc_private in
   Decl.Request.print_generations Procedures.Public.ping;
   [%expect {|

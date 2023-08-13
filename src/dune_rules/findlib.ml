@@ -116,12 +116,7 @@ end = struct
       { Lib_mode.Map.ocaml = modes; melange = false }
     in
     let+ (info : Path.t Lib_info.t) =
-      let kind : Lib_kind.t =
-        match Findlib.Package.kind t with
-        | `Normal -> Normal
-        | `Ppx_deriver -> Ppx_deriver Lib_kind.Ppx_args.empty
-        | `Ppx_rewriter -> Ppx_rewriter Lib_kind.Ppx_args.empty
-      in
+      let kind = Findlib.Package.kind t in
       let sub_systems = Sub_system_name.Map.empty in
       let synopsis = Findlib.Package.description t in
       let status =

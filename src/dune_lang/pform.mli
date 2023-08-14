@@ -34,11 +34,9 @@ module Var : sig
       | Section_dir of Section.t
       | Name
       | Version
-      | Make
 
     val compare : t -> t -> Ordering.t
     val to_dyn : t -> Dyn.t
-    val of_opam_variable_name_opt : string -> t option
   end
 
   type t =
@@ -90,6 +88,10 @@ module Var : sig
 
   val compare : t -> t -> Ordering.t
   val to_dyn : t -> Dyn.t
+
+  (** Translate a global variable from an opam file into the equivalent dune
+      pform variable. *)
+  val of_opam_global_variable_name : string -> t option
 end
 
 module Artifact : sig

@@ -56,7 +56,6 @@ module Var = struct
       | Section_dir of Section.t
       | Name
       | Version
-      | Make
 
     let compare = Poly.compare
 
@@ -77,28 +76,6 @@ module Var = struct
         variant "Section_dir" [ string (Section.to_string section) ]
       | Name -> variant "Name" []
       | Version -> variant "Version" []
-      | Make -> variant "Make" []
-    ;;
-
-    let of_opam_variable_name_opt name =
-      match Section.of_string name with
-      | Some section_dir -> Some (Section_dir section_dir)
-      | None ->
-        (match name with
-         | "switch" -> Some Switch
-         | "os-version" -> Some Os_version
-         | "os-distribution" -> Some Os_distribution
-         | "os-family" -> Some Os_family
-         | "build" -> Some Build
-         | "prefix" -> Some Prefix
-         | "user" -> Some User
-         | "group" -> Some Group
-         | "jobs" -> Some Jobs
-         | "arch" -> Some Arch
-         | "name" -> Some Name
-         | "version" -> Some Version
-         | "make" -> Some Make
-         | _ -> None)
     ;;
 
     let encode_to_latest_dune_lang_version = function
@@ -115,7 +92,6 @@ module Var = struct
       | Section_dir section -> Section.to_string section
       | Name -> "name"
       | Version -> "version"
-      | Make -> "make"
     ;;
   end
 
@@ -218,6 +194,27 @@ module Var = struct
        | Inline_tests -> variant "Inline_tests" []
        | Toolchain -> variant "Toolchain" []
        | Pkg pkg -> Pkg.to_dyn pkg)
+  ;;
+
+  let of_opam_global_variable_name name =
+    match Pkg.Section.of_string name with
+    | Some section_dir -> Some (Pkg (Pkg.Section_dir section_dir))
+    | None ->
+      (match name with
+       | "make" -> Some Make
+       | "switch" -> Some (Pkg Switch)
+       | "os-version" -> Some (Pkg Os_version)
+       | "os-distribution" -> Some (Pkg Os_distribution)
+       | "os-family" -> Some (Pkg Os_family)
+       | "build" -> Some (Pkg Build)
+       | "prefix" -> Some (Pkg Prefix)
+       | "user" -> Some (Pkg User)
+       | "group" -> Some (Pkg Group)
+       | "jobs" -> Some (Pkg Jobs)
+       | "arch" -> Some (Pkg Arch)
+       | "name" -> Some (Pkg Name)
+       | "version" -> Some (Pkg Version)
+       | _ -> None)
   ;;
 end
 

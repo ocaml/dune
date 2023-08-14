@@ -251,8 +251,8 @@ let opam_commands_to_actions package (commands : OpamTypes.command list) =
           ; "Variable:", Dyn.string ident
           ]
     in
-    match Pform.Var.Pkg.of_opam_variable_name_opt variable with
-    | Some pkg_var -> Ok Pform.(Var (Var.Pkg pkg_var))
+    match Pform.Var.of_opam_global_variable_name variable with
+    | Some pkg_var -> Ok Pform.(Var pkg_var)
     | None -> Error (`Unknown_variable variable)
   in
   List.filter_map commands ~f:(fun ((args, _filter_opt) as command) ->

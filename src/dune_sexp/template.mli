@@ -16,7 +16,7 @@ module Pform : sig
       (** Split the payload on the first ':' character returning [None] if the
           payload contains no ':' characters. The [loc] argument is used for
           error reporting. *)
-      val lsplit2 : ?loc:Loc.t -> t -> (string * string, User_message.t) result
+      val lsplit2 : t -> Loc.t -> (string * string, User_message.t) result
 
       (** Split the payload on all ':' characters *)
       val split : t -> string list

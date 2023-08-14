@@ -394,7 +394,7 @@ module Macro_invocation = struct
     let whole { payload; _ } = Payload.Args.whole payload
 
     let lsplit2 { payload; macro } loc =
-      Payload.Args.lsplit2 ~loc payload
+      Payload.Args.lsplit2 payload loc
       |> Result.map_error ~f:(fun (user_message : User_message.t) ->
         let paragraphs =
           match Macro.encode macro with

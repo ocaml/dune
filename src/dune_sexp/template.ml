@@ -14,7 +14,7 @@ module Pform = struct
       let sep = ':'
       let whole t = t
 
-      let lsplit2 ?(loc = Loc.none) t =
+      let lsplit2 t loc =
         match String.lsplit2 t ~on:sep with
         | Some args -> Ok args
         | None ->

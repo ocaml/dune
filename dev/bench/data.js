@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692020039403,
+  "lastUpdate": 1692020052997,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -68003,6 +68003,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "81.13942598704",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "marek@xivilization.net",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "distinct": true,
+          "id": "2cb6b69a9fae802194bf105b0c1f6d753e5b9a4d",
+          "message": "Test that the 0install solver can resolve `|` dependencies correctly\n\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-08-14T15:03:17+02:00",
+          "tree_id": "a4c21ddcc21e1011441e0bb7d402804b2bb80f41",
+          "url": "https://github.com/ocaml/dune/commit/2cb6b69a9fae802194bf105b0c1f6d753e5b9a4d"
+        },
+        "date": 1692020052101,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.1695438699",
             "unit": "seconds"
           }
         ]

@@ -52,6 +52,7 @@ type t =
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; lib_config : Lib_config.t
   ; build_context : Build_context.t
+  ; instrument_with : Lib_name.t list
   }
 
 let equal x y = Context_name.equal x.name y.name
@@ -82,6 +83,7 @@ let to_dyn t : Dyn.t =
     ; ( "supports_shared_libraries"
       , Bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries) )
     ; "ocaml_config", Ocaml_config.to_dyn t.ocaml.ocaml_config
+    ; "instrument_with", (list Lib_name.to_dyn) t.instrument_with
     ]
 ;;
 
@@ -423,7 +425,6 @@ let create
       ; ccomp_type = Ocaml_config.ccomp_type ocaml.ocaml_config
       ; ocaml_version_string = Ocaml_config.version_string ocaml.ocaml_config
       ; ocaml_version = Ocaml.Version.of_ocaml_config ocaml.ocaml_config
-      ; instrument_with
       }
     in
     if Option.is_some fdo_target_exe
@@ -458,6 +459,7 @@ let create
           Dynlink_supported.By_the_os.of_bool supports_shared_libraries
       ; lib_config
       ; build_context
+      ; instrument_with
       }
     in
     if Ocaml.Version.supports_response_file ocaml.version

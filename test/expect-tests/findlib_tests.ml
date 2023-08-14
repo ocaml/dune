@@ -38,7 +38,6 @@ let findlib =
     ; ccomp_type = Other "gcc"
     ; ocaml_version_string = "4.02.3"
     ; ocaml_version = Ocaml.Version.make (4, 2, 3)
-    ; instrument_with = []
     }
   in
   Memo.lazy_ (fun () ->

@@ -397,6 +397,7 @@ type db =
   ; resolve : Lib_name.t -> resolve_result Memo.t
   ; all : Lib_name.t list Memo.Lazy.t
   ; lib_config : Lib_config.t
+  ; instrument_with : Lib_name.t list
   }
 
 and resolve_result =
@@ -879,7 +880,7 @@ end = struct
       let open Resolve.Memo.O in
       let* pps =
         let instrumentation_backend =
-          instrumentation_backend db.lib_config.instrument_with resolve
+          instrumentation_backend db.instrument_with resolve
         in
         Lib_info.preprocess info
         |> Preprocess.Per_module.with_instrumentation ~instrumentation_backend
@@ -1770,8 +1771,8 @@ module DB = struct
 
   type t = db
 
-  let create ~parent ~resolve ~all ~lib_config () =
-    { parent; resolve; all = Memo.lazy_ all; lib_config }
+  let create ~parent ~resolve ~all ~lib_config ~instrument_with () =
+    { parent; resolve; all = Memo.lazy_ all; lib_config; instrument_with }
   ;;
 
   let create_from_findlib findlib =
@@ -1801,7 +1802,7 @@ module DB = struct
     let+ findlib =
       Findlib.create ~paths:context.findlib_paths ~lib_config:context.lib_config
     in
-    create_from_findlib findlib
+    create_from_findlib findlib ~instrument_with:context.instrument_with
   ;;
 
   let find t name =
@@ -1956,7 +1957,7 @@ module DB = struct
   ;;
 
   let instrumentation_backend t libname =
-    instrumentation_backend t.lib_config.instrument_with (resolve t) libname
+    instrumentation_backend t.instrument_with (resolve t) libname
   ;;
 end
 

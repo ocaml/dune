@@ -14,7 +14,6 @@ type t =
   ; ccomp_type : Ocaml_config.Ccomp_type.t
   ; ocaml_version_string : string
   ; ocaml_version : Ocaml.Version.t
-  ; instrument_with : Lib_name.t list
   }
 
 val allowed_in_enabled_if : (string * Dune_lang.Syntax.Version.t) list

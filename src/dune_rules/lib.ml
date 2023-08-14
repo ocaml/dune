@@ -818,12 +818,14 @@ module rec Resolve_names : sig
     -> private_deps:private_deps
     -> t list Resolve.Memo.t
 
-  type resolved =
-    { requires : lib list Resolve.t
-    ; pps : lib list Resolve.t
-    ; selects : Resolved_select.t list
-    ; re_exports : lib list Resolve.t
-    }
+  module Resolved : sig
+    type t =
+      { requires : lib list Resolve.t
+      ; pps : lib list Resolve.t
+      ; selects : Resolved_select.t list
+      ; re_exports : lib list Resolve.t
+      }
+  end
 
   val resolve_deps_and_add_runtime_deps
     :  db
@@ -831,7 +833,7 @@ module rec Resolve_names : sig
     -> private_deps:private_deps
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t option
-    -> resolved Memo.t
+    -> Resolved.t Memo.t
 
   val compile_closure_with_overlap_checks
     :  db option
@@ -1150,76 +1152,78 @@ end = struct
       List.rev res
   ;;
 
-  type resolved_deps =
-    { resolved : t list Resolve.t
-    ; selects : Resolved_select.t list
-    ; re_exports : t list Resolve.t
-    }
+  module Resolved = struct
+    type deps =
+      { resolved : t list Resolve.t
+      ; selects : Resolved_select.t list
+      ; re_exports : t list Resolve.t
+      }
 
-  type resolved =
-    { requires : lib list Resolve.t
-    ; pps : lib list Resolve.t
-    ; selects : Resolved_select.t list
-    ; re_exports : lib list Resolve.t
-    }
+    type t =
+      { requires : lib list Resolve.t
+      ; pps : lib list Resolve.t
+      ; selects : Resolved_select.t list
+      ; re_exports : lib list Resolve.t
+      }
 
-  module Resolved_deps_builder : sig
-    type t
+    module Builder : sig
+      type t
 
-    val empty : t
-    val add_resolved : t -> lib Resolve.t -> t
-    val add_re_exports : t -> lib Resolve.t -> t
-    val add_select : t -> lib list Resolve.t -> Resolved_select.t -> t
-    val value : t -> resolved_deps
-  end = struct
-    open Resolve.O
+      val empty : t
+      val add_resolved : t -> lib Resolve.t -> t
+      val add_re_exports : t -> lib Resolve.t -> t
+      val add_select : t -> lib list Resolve.t -> Resolved_select.t -> t
+      val value : t -> deps
+    end = struct
+      open Resolve.O
 
-    type t = resolved_deps
+      type nonrec t = deps
 
-    let empty =
-      { resolved = Resolve.return []; selects = []; re_exports = Resolve.return [] }
-    ;;
+      let empty =
+        { resolved = Resolve.return []; selects = []; re_exports = Resolve.return [] }
+      ;;
 
-    let add_resolved_list t resolved =
-      let resolved =
-        let+ resolved = resolved
-        and+ tl = t.resolved in
-        List.rev_append resolved tl
-      in
-      { t with resolved }
-    ;;
+      let add_resolved_list t resolved =
+        let resolved =
+          let+ resolved = resolved
+          and+ tl = t.resolved in
+          List.rev_append resolved tl
+        in
+        { t with resolved }
+      ;;
 
-    let add_select (t : t) resolved select =
-      add_resolved_list { t with selects = select :: t.selects } resolved
-    ;;
+      let add_select (t : t) resolved select =
+        add_resolved_list { t with selects = select :: t.selects } resolved
+      ;;
 
-    let add_resolved t resolved =
-      add_resolved_list
-        t
-        (let+ resolved = resolved in
-         [ resolved ])
-    ;;
+      let add_resolved t resolved =
+        add_resolved_list
+          t
+          (let+ resolved = resolved in
+           [ resolved ])
+      ;;
 
-    let add_re_exports (t : t) lib =
-      let re_exports =
-        let+ hd = lib
-        and+ tl = t.re_exports in
-        hd :: tl
-      in
-      add_resolved { t with re_exports } lib
-    ;;
+      let add_re_exports (t : t) lib =
+        let re_exports =
+          let+ hd = lib
+          and+ tl = t.re_exports in
+          hd :: tl
+        in
+        add_resolved { t with re_exports } lib
+      ;;
 
-    let value { resolved; selects; re_exports } =
-      let resolved =
-        let+ resolved = resolved in
-        List.rev resolved
-      in
-      let re_exports =
-        let+ re_exports = re_exports in
-        List.rev re_exports
-      in
-      { resolved; selects; re_exports }
-    ;;
+      let value { resolved; selects; re_exports } =
+        let resolved =
+          let+ resolved = resolved in
+          List.rev resolved
+        in
+        let re_exports =
+          let+ re_exports = re_exports in
+          List.rev re_exports
+        in
+        { resolved; selects; re_exports }
+      ;;
+    end
   end
 
   let remove_library deps target =
@@ -1238,61 +1242,60 @@ end = struct
         Some (Select { select with choices }))
   ;;
 
-  let resolve_complex_deps db deps ~private_deps : resolved_deps Memo.t =
-    let resolve_select { Lib_dep.Select.result_fn; choices; loc } =
-      let open Memo.O in
-      let+ res, src_fn =
-        let+ select =
-          Memo.List.find_map choices ~f:(fun { required; forbidden; file } ->
-            let forbidden = Lib_name.Set.to_list forbidden in
-            let* exists = Memo.List.exists forbidden ~f:(available_internal db) in
-            if exists
-            then Memo.return None
-            else
-              Resolve.Memo.peek
-                (let deps =
-                   Lib_name.Set.fold required ~init:[] ~f:(fun x acc -> (loc, x) :: acc)
-                 in
-                 resolve_simple_deps ~private_deps db deps)
-              >>| function
-              | Ok ts -> Some (ts, file)
-              | Error () -> None)
-        in
-        let get which =
-          let res = select |> Option.map ~f:which in
-          match res with
-          | Some rs -> Resolve.return rs
-          | None -> Error.no_solution_found_for_select ~loc
-        in
-        get fst, get snd
-      in
-      res, { Resolved_select.src_fn; dst_fn = result_fn }
-    in
+  let resolve_select db ~private_deps { Lib_dep.Select.result_fn; choices; loc } =
     let open Memo.O in
-    let open Resolved_deps_builder in
-    let deps =
-      let ocaml_version = db.lib_config.ocaml_version in
-      let bigarray_in_std_libraries = Ocaml.Version.has_bigarray_library ocaml_version in
-      if bigarray_in_std_libraries
-      then deps
-      else (
-        let bigarray = Lib_name.of_string "bigarray" in
-        remove_library deps bigarray)
+    let+ res, src_fn =
+      let+ select =
+        Memo.List.find_map choices ~f:(fun { required; forbidden; file } ->
+          let forbidden = Lib_name.Set.to_list forbidden in
+          let* exists = Memo.List.exists forbidden ~f:(available_internal db) in
+          if exists
+          then Memo.return None
+          else
+            Resolve.Memo.peek
+              (let deps =
+                 Lib_name.Set.fold required ~init:[] ~f:(fun x acc -> (loc, x) :: acc)
+               in
+               resolve_simple_deps ~private_deps db deps)
+            >>| function
+            | Ok ts -> Some (ts, file)
+            | Error () -> None)
+      in
+      let get which =
+        let res = select |> Option.map ~f:which in
+        match res with
+        | Some rs -> Resolve.return rs
+        | None -> Error.no_solution_found_for_select ~loc
+      in
+      get fst, get snd
     in
-    let+ builder =
-      Memo.List.fold_left deps ~init:empty ~f:(fun acc dep ->
-        match (dep : Lib_dep.t) with
+    res, { Resolved_select.src_fn; dst_fn = result_fn }
+  ;;
+
+  let resolve_complex_deps db deps ~private_deps : Resolved.deps Memo.t =
+    Memo.List.fold_left
+      ~init:Resolved.Builder.empty
+      (let ocaml_version = db.lib_config.ocaml_version in
+       let bigarray_in_std_libraries = Ocaml.Version.has_bigarray_library ocaml_version in
+       if bigarray_in_std_libraries
+       then deps
+       else (
+         (* TODO this is wrong because it breaks shadowing *)
+         let bigarray = Lib_name.of_string "bigarray" in
+         remove_library deps bigarray))
+      ~f:(fun acc (dep : Lib_dep.t) ->
+        let open Memo.O in
+        match dep with
         | Re_export lib ->
           let+ lib = resolve_dep db lib ~private_deps in
-          add_re_exports acc lib
+          Resolved.Builder.add_re_exports acc lib
         | Direct lib ->
           let+ lib = resolve_dep db lib ~private_deps in
-          add_resolved acc lib
+          Resolved.Builder.add_resolved acc lib
         | Select select ->
-          let+ resolved, select = resolve_select select in
-          add_select acc resolved select)
-    in
-    value builder
+          let+ resolved, select = resolve_select db ~private_deps select in
+          Resolved.Builder.add_select acc resolved select)
+    |> Memo.map ~f:Resolved.Builder.value
   ;;
 
   type pp_deps =
@@ -1346,11 +1349,11 @@ end = struct
 
   let add_pp_runtime_deps
     db
-    { resolved; selects; re_exports }
+    { Resolved.resolved; selects; re_exports }
     ~private_deps
     ~pps
     ~dune_version
-    : resolved Memo.t
+    : Resolved.t Memo.t
     =
     let { runtime_deps; pps } = pp_deps db pps ~dune_version ~private_deps in
     let open Memo.O in
@@ -1360,7 +1363,7 @@ end = struct
       let* runtime_deps = runtime_deps in
       re_exports_closure (resolved @ runtime_deps)
     and+ pps = pps in
-    { requires; pps; selects; re_exports }
+    { Resolved.requires; pps; selects; re_exports }
   ;;
 
   let resolve_deps_and_add_runtime_deps db deps ~private_deps ~pps ~dune_version =

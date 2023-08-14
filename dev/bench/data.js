@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692049377520,
+  "lastUpdate": 1692049452523,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -88043,6 +88043,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.199873582880002",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0108426a69da9f3b5cff2ca7adc6abaf0b9b50e1",
+          "message": "refactor: move [Lib_config] to [Ocaml_toolchain] (#8396)\n\nThis value can be completely constructed from the toolchain so we move\r\nit there.\r\n\r\nEventually, we'll be able to access the toolchain directly without the\r\ncontext, so this value will also be available that way.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-14T14:31:44-07:00",
+          "tree_id": "77a78d5162dfce32b860ed2bc8173c55bfad8a81",
+          "url": "https://github.com/ocaml/dune/commit/0108426a69da9f3b5cff2ca7adc6abaf0b9b50e1"
+        },
+        "date": 1692049441285,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.143725791793333",
             "unit": "seconds"
           }
         ]

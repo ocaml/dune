@@ -1,20 +1,43 @@
 open! Stdune
 
 module Pform : sig
+  module Payload : sig
+    type t
+
+    val of_string : string -> t
+    val to_string : t -> string
+    val to_dyn : t -> Dyn.t
+    val compare : t -> t -> Ordering.t
+
+    module Args : sig
+      (** Treat the entire payload as a single string argument. *)
+      val whole : t -> string
+
+      (** Split the payload on the first ':' character returning [None] if the
+          payload contains no ':' characters. The [loc] argument is used for
+          error reporting. *)
+      val lsplit2 : ?loc:Loc.t -> t -> (string * string, User_message.t) result
+
+      (** Split the payload on all ':' characters *)
+      val split : t -> string list
+    end
+  end
+
   type t =
     { loc : Loc.t
     ; name : string
-    ; payload : string option
+    ; payload : Payload.t option
     }
 
   val to_string : t -> string
   val to_dyn : t -> Dyn.t
   val name : t -> string
   val loc : t -> Loc.t
+  val payload_loc : t -> Loc.t
   val full_name : t -> string
 
   (** Variables do not have a payload. While macros always do. *)
-  val payload : t -> string option
+  val payload : t -> Payload.t option
 
   val with_name : t -> name:string -> t
 

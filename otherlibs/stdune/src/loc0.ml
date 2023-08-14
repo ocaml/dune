@@ -93,3 +93,10 @@ let start_pos_cnum = function
   | Same_file t -> Compact_position.cnum t.start
   | Same_line t -> Compact_position.Same_line_loc.start_cnum t.loc
 ;;
+
+let stop_pos_cnum = function
+  | No_loc | In_file _ -> Lexbuf.Loc.none.stop.pos_cnum
+  | Lexbuf_loc loc -> loc.stop.pos_cnum
+  | Same_file t -> Compact_position.cnum t.stop
+  | Same_line t -> Compact_position.Same_line_loc.stop_cnum t.loc
+;;

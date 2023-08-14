@@ -1,5 +1,6 @@
 open Stdune
 open Dune_sexp
+module Payload = Template.Pform.Payload
 
 module Var = struct
   module Pkg = struct
@@ -349,18 +350,83 @@ module Macro = struct
     | Artifact ext -> variant "Artifact" [ Artifact.to_dyn ext ]
     | Pkg -> variant "Pkg" []
   ;;
+
+  let encode = function
+    | Exe -> Ok "exe"
+    | Dep -> Ok "dep"
+    | Bin -> Ok "bin"
+    | Lib { lib_exec = false; lib_private = false } -> Ok "lib"
+    | Lib { lib_exec = true; lib_private = false } -> Ok "libexec"
+    | Lib { lib_exec = false; lib_private = true } -> Ok "lib-private"
+    | Lib { lib_exec = true; lib_private = true } -> Ok "libexec-private"
+    | Lib_available -> Ok "lib-available"
+    | Bin_available -> Ok "bin-available"
+    | Version -> Ok "version"
+    | Read -> Ok "read"
+    | Read_strings -> Ok "read-strings"
+    | Read_lines -> Ok "read-lines"
+    | Path_no_dep -> Error `Pform_was_deleted
+    | Ocaml_config -> Ok "ocaml-config"
+    | Coq_config -> Ok "coq"
+    | Env -> Ok "env"
+    | Pkg -> Ok "pkg"
+    | Artifact a -> Ok (String.drop (Artifact.ext a) 1)
+  ;;
+end
+
+module Macro_invocation = struct
+  type t =
+    { macro : Macro.t
+    ; payload : Payload.t
+    }
+
+  let to_dyn { macro; payload } =
+    Dyn.record [ "macro", Macro.to_dyn macro; "payload", Payload.to_dyn payload ]
+  ;;
+
+  let compare { macro; payload } t =
+    let open Ordering.O in
+    let= () = Macro.compare macro t.macro in
+    Payload.compare payload t.payload
+  ;;
+
+  module Args = struct
+    let whole { payload; _ } = Payload.Args.whole payload
+
+    let lsplit2 { payload; macro } loc =
+      Payload.Args.lsplit2 ~loc payload
+      |> Result.map_error ~f:(fun (user_message : User_message.t) ->
+        let paragraphs =
+          match Macro.encode macro with
+          | Ok name ->
+            let header = Pp.textf "Incorrect arguments for macro %s." name in
+            header :: user_message.paragraphs
+          | Error `Pform_was_deleted -> user_message.paragraphs
+        in
+        { user_message with paragraphs })
+    ;;
+
+    let lsplit2_exn t loc =
+      match lsplit2 t loc with
+      | Ok args -> args
+      | Error user_message -> raise (User_error.E user_message)
+    ;;
+
+    let split { payload; _ } = Payload.Args.split payload
+  end
 end
 
 module T = struct
   type t =
     | Var of Var.t
-    | Macro of Macro.t * string
+    | Macro of Macro_invocation.t
 
   let to_dyn e =
     let open Dyn in
     match e with
-    | Var v -> pair string Var.to_dyn ("Var", v)
-    | Macro (m, s) -> triple string Macro.to_dyn string ("Macro", m, s)
+    | Var v -> variant "Var" [ Var.to_dyn v ]
+    | Macro macro_invocation ->
+      variant "Macro" [ Macro_invocation.to_dyn macro_invocation ]
   ;;
 
   let compare x y =
@@ -368,10 +434,7 @@ module T = struct
     | Var x, Var y -> Var.compare x y
     | Var _, _ -> Lt
     | _, Var _ -> Gt
-    | Macro (m1, s1), Macro (m2, s2) ->
-      let open Ordering.O in
-      let= () = Macro.compare m1 m2 in
-      String.compare s1 s2
+    | Macro a, Macro b -> Macro_invocation.compare a b
   ;;
 end
 
@@ -381,7 +444,7 @@ module Map = Map.Make (T)
 type encode_result =
   | Success of
       { name : string
-      ; payload : string option
+      ; payload : Payload.t option
       }
   | Pform_was_deleted
 
@@ -438,31 +501,10 @@ let encode_to_latest_dune_lang_version t =
      with
      | None -> Pform_was_deleted
      | Some name -> Success { name; payload = None })
-  | Macro (x, payload) ->
-    (match
-       match x with
-       | Exe -> Some "exe"
-       | Dep -> Some "dep"
-       | Bin -> Some "bin"
-       | Lib { lib_exec = false; lib_private = false } -> Some "lib"
-       | Lib { lib_exec = true; lib_private = false } -> Some "libexec"
-       | Lib { lib_exec = false; lib_private = true } -> Some "lib-private"
-       | Lib { lib_exec = true; lib_private = true } -> Some "libexec-private"
-       | Lib_available -> Some "lib-available"
-       | Bin_available -> Some "bin-available"
-       | Version -> Some "version"
-       | Read -> Some "read"
-       | Read_strings -> Some "read-strings"
-       | Read_lines -> Some "read-lines"
-       | Path_no_dep -> None
-       | Ocaml_config -> Some "ocaml-config"
-       | Coq_config -> Some "coq"
-       | Env -> Some "env"
-       | Pkg -> Some "pkg"
-       | Artifact a -> Some (String.drop (Artifact.ext a) 1)
-     with
-     | None -> Pform_was_deleted
-     | Some name -> Success { name; payload = Some payload })
+  | Macro { macro; payload } ->
+    (match Macro.encode macro with
+     | Error `Pform_was_deleted -> Pform_was_deleted
+     | Ok name -> Success { name; payload = Some payload })
 ;;
 
 let describe_kind = function
@@ -711,7 +753,7 @@ module Env = struct
   let parse t (pform : Template.Pform.t) =
     match pform.payload with
     | None -> Var (parse t.vars t.syntax_version pform)
-    | Some payload -> Macro (parse t.macros t.syntax_version pform, payload)
+    | Some payload -> Macro { macro = parse t.macros t.syntax_version pform; payload }
   ;;
 
   let unsafe_parse_without_checking_version map (pform : Template.Pform.t) =
@@ -727,7 +769,8 @@ module Env = struct
   let unsafe_parse_without_checking_version t (pform : Template.Pform.t) =
     match pform.payload with
     | None -> Var (unsafe_parse_without_checking_version t.vars pform)
-    | Some payload -> Macro (unsafe_parse_without_checking_version t.macros pform, payload)
+    | Some payload ->
+      Macro { macro = unsafe_parse_without_checking_version t.macros pform; payload }
   ;;
 
   let to_dyn { syntax_version; vars; macros } =
@@ -759,7 +802,8 @@ module Env = struct
   let all_known { syntax_version = _; vars; macros } =
     String.Map.union
       (String.Map.map vars ~f:(fun x -> Var (With_versioning_info.get_data x)))
-      (String.Map.map macros ~f:(fun x -> Macro (With_versioning_info.get_data x, "")))
+      (String.Map.map macros ~f:(fun x ->
+         Macro { macro = With_versioning_info.get_data x; payload = Payload.of_string "" }))
       ~f:(fun _ _ _ -> assert false)
   ;;
 end

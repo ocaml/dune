@@ -156,8 +156,10 @@ let rec dep expander = function
        let+ () =
          let pkg = Package.Name.of_string pkg in
          let context = Expander.context expander in
-         let sites = Expander.sites expander in
-         Action_builder.of_memo (Sites.find_package sites pkg)
+         Action_builder.of_memo
+           (let open Memo.O in
+            let* sites = Sites.create context in
+            Sites.find_package sites pkg)
          >>= function
          | Some (Local pkg) ->
            Action_builder.alias

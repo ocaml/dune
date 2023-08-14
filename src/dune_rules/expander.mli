@@ -15,7 +15,7 @@ val make
   -> lib_artifacts:Artifacts.Public_libs.t
   -> lib_artifacts_host:Artifacts.Public_libs.t
   -> bin_artifacts_host:Artifacts.Bin.t
-  -> t Memo.t
+  -> t
 
 val set_foreign_flags
   :  t
@@ -129,5 +129,3 @@ val expand_locks
   -> t
   -> Locks.t
   -> Path.t list Memo.t
-
-val sites : t -> Sites.t

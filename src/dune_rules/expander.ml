@@ -59,7 +59,6 @@ type t =
   ; lookup_artifacts : (dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.t) option
   ; foreign_flags :
       dir:Path.Build.t -> string list Action_builder.t Foreign_language.Dict.t Memo.t
-  ; sites : Sites.t
   ; expanding_what : Expanding_what.t
   }
 
@@ -750,8 +749,6 @@ let make
   ~lib_artifacts_host
   ~bin_artifacts_host
   =
-  let open Memo.O in
-  let+ sites = Sites.create context in
   { dir = context.build_dir
   ; env = context.env
   ; local_env = Env.Var.Map.empty
@@ -769,7 +766,6 @@ let make
         Code_error.raise
           "foreign flags expander is not set"
           [ "dir", Path.Build.to_dyn dir ])
-  ; sites
   ; expanding_what = Nothing_special
   }
 ;;
@@ -924,5 +920,3 @@ let expand_lock ~base expander (Locks.Lock sw) =
 let expand_locks ~base expander locks =
   Memo.List.map locks ~f:(expand_lock ~base expander)
 ;;
-
-let sites t = t.sites

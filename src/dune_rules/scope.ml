@@ -77,7 +77,7 @@ module DB = struct
       | Deprecated_library_name of Dune_file.Deprecated_library_name.t
   end
 
-  let create_db_from_stanzas ~parent ~lib_config stanzas =
+  let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
     let open Memo.O in
     let+ (map : Found_or_redirect.t Lib_name.Map.t) =
       Memo.List.map stanzas ~f:(fun stanza ->
@@ -135,6 +135,7 @@ module DB = struct
            | Some (Found lib) -> Lib.DB.Resolve_result.found lib))
       ~all:(fun () -> Lib_name.Map.keys map |> Memo.return)
       ~lib_config
+      ~instrument_with
   ;;
 
   type redirect_to =
@@ -248,6 +249,7 @@ module DB = struct
     ~projects
     ~public_libs
     ~public_theories
+    ~instrument_with
     stanzas
     coq_stanzas
     =
@@ -276,7 +278,9 @@ module DB = struct
           let stanzas = Option.value stanzas ~default:[] in
           Some (project, stanzas))
       |> Path_source_map_traversals.parallel_map ~f:(fun _dir (project, stanzas) ->
-        let+ db = create_db_from_stanzas stanzas ~parent:public_libs ~lib_config in
+        let+ db =
+          create_db_from_stanzas stanzas ~instrument_with ~parent:public_libs ~lib_config
+        in
         project, db)
     in
     let coq_scopes_by_dir =
@@ -297,9 +301,10 @@ module DB = struct
     let t = Fdecl.create Dyn.opaque in
     let build_dir = context.build_dir in
     let lib_config = Context.lib_config context in
+    let instrument_with = context.instrument_with in
     let* public_libs =
       let+ installed_libs = Lib.DB.installed context in
-      public_libs t ~lib_config ~installed_libs stanzas
+      public_libs t ~instrument_with ~lib_config ~installed_libs stanzas
     in
     let public_theories =
       let installed_theories =
@@ -314,6 +319,7 @@ module DB = struct
     in
     let+ by_dir =
       scopes_by_dir
+        ~instrument_with
         ~build_dir
         ~lib_config
         ~projects

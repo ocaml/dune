@@ -74,6 +74,7 @@ type t = private
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; lib_config : Lib_config.t
   ; build_context : Build_context.t
+  ; instrument_with : Lib_name.t list
   }
 
 val which : t -> string -> Path.t option Memo.t

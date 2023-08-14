@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692047936656,
+  "lastUpdate": 1692047949683,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -68525,6 +68525,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "77.61631126382667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "85638bbaa4f3b5cc75777a6e3f8d69b338bb8197",
+          "message": "Macros can take multiple arguments (#8353)\n\n* Centralize logic for splitting macro args\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-08-14T13:49:22-07:00",
+          "tree_id": "647ba03a97a6d487c29f747f0eb2840b1249c27a",
+          "url": "https://github.com/ocaml/dune/commit/85638bbaa4f3b5cc75777a6e3f8d69b338bb8197"
+        },
+        "date": 1692047948868,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.1203612096533333",
             "unit": "seconds"
           }
         ]

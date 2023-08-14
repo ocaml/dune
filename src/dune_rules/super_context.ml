@@ -435,7 +435,7 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
         artifacts, host
     in
     let* scope = Scope.DB.find_by_dir context.build_dir in
-    let* scope_host = Scope.DB.find_by_dir context_host.build_dir in
+    let+ scope_host = Scope.DB.find_by_dir context_host.build_dir in
     Expander.make
       ~scope
       ~scope_host

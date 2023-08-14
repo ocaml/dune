@@ -13,6 +13,7 @@ type t =
   ; ocaml_config : Ocaml_config.t
   ; ocaml_config_vars : Ocaml_config.Vars.t
   ; version : Ocaml.Version.t
+  ; builtins : Meta.Simplified.t Package.Name.Map.t Memo.t
   }
 
 val of_env_with_findlib

@@ -235,10 +235,9 @@ let handle_special_libs cctx =
   in
   let open Memo.O in
   let dune_site_plugin_code =
-    Memo.lazy_ (fun () ->
-      let+ findlib = Findlib.create ~paths:ctx.findlib_paths ~lib_config:ctx.lib_config in
-      let builtins = Findlib.builtins findlib in
-      dune_site_plugins_code ~libs:all_libs ~builtins)
+    let* () = Memo.return () in
+    let+ builtins = ctx.ocaml.builtins in
+    dune_site_plugins_code ~libs:all_libs ~builtins
   in
   let rec process_libs ~to_link_rev ~force_linkall libs =
     match libs with
@@ -309,9 +308,7 @@ let handle_special_libs cctx =
               Action_builder.of_memo
               @@ Memo.of_thunk
               @@ fun () ->
-              if plugins
-              then Memo.Lazy.force dune_site_plugin_code
-              else Memo.return (dune_site_code ())
+              if plugins then dune_site_plugin_code else Memo.return (dune_site_code ())
             in
             let& module_ =
               generate_and_compile_module

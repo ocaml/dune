@@ -50,7 +50,6 @@ type t =
   ; findlib_toolchain : Context_name.t option
   ; default_ocamlpath : Path.t list
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
-  ; lib_config : Lib_config.t
   ; build_context : Build_context.t
   ; instrument_with : Lib_name.t list
   }
@@ -79,7 +78,7 @@ let to_dyn t : Dyn.t =
     ; "env", Env.to_dyn (Env.diff t.env Env.initial)
     ; "findlib_paths", list path t.findlib_paths
     ; ( "natdynlink_supported"
-      , Bool (Dynlink_supported.By_the_os.get t.lib_config.natdynlink_supported) )
+      , Bool (Dynlink_supported.By_the_os.get t.ocaml.lib_config.natdynlink_supported) )
     ; ( "supports_shared_libraries"
       , Bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries) )
     ; "ocaml_config", Ocaml_config.to_dyn t.ocaml.ocaml_config
@@ -382,7 +381,6 @@ let create
       Findlib_config.discover_from_env ~env ~which ~ocamlpath ~findlib_toolchain
     in
     let* ocaml = Ocaml_toolchain.of_env_with_findlib name env findlib ~which in
-    let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocaml.ocaml_config) in
     let default_ocamlpath =
       let default_ocamlpath =
         let build_env_kind = Build_environment_kind.query ~kind ~findlib_toolchain ~env in
@@ -392,7 +390,7 @@ let create
           ~ocaml_bin:ocaml.bin_dir
       in
       if Ocaml.Version.has_META_files ocaml.version
-      then stdlib_dir :: default_ocamlpath
+      then ocaml.lib_config.stdlib_dir :: default_ocamlpath
       else default_ocamlpath
     in
     let env =
@@ -407,28 +405,9 @@ let create
         ~host
         ~default_ocamlpath
     in
-    let lib_config =
-      { Lib_config.has_native = Result.is_ok ocaml.ocamlopt
-      ; ext_obj = Ocaml_config.ext_obj ocaml.ocaml_config
-      ; ext_lib = Ocaml_config.ext_lib ocaml.ocaml_config
-      ; os_type = Ocaml_config.os_type ocaml.ocaml_config
-      ; architecture = Ocaml_config.architecture ocaml.ocaml_config
-      ; system = Ocaml_config.system ocaml.ocaml_config
-      ; model = Ocaml_config.model ocaml.ocaml_config
-      ; ext_dll = Ocaml_config.ext_dll ocaml.ocaml_config
-      ; natdynlink_supported =
-          (let natdynlink_supported =
-             Ocaml_config.natdynlink_supported ocaml.ocaml_config
-           in
-           Dynlink_supported.By_the_os.of_bool natdynlink_supported)
-      ; stdlib_dir
-      ; ccomp_type = Ocaml_config.ccomp_type ocaml.ocaml_config
-      ; ocaml_version_string = Ocaml_config.version_string ocaml.ocaml_config
-      ; ocaml_version = Ocaml.Version.of_ocaml_config ocaml.ocaml_config
-      }
-    in
     if Option.is_some fdo_target_exe
-    then check_fdo_support lib_config.has_native ocaml.ocaml_config ocaml.version ~name;
+    then
+      check_fdo_support ocaml.lib_config.has_native ocaml.ocaml_config ocaml.version ~name;
     let supports_shared_libraries =
       Ocaml_config.supports_shared_libraries ocaml.ocaml_config
     in
@@ -457,7 +436,6 @@ let create
       ; default_ocamlpath
       ; supports_shared_libraries =
           Dynlink_supported.By_the_os.of_bool supports_shared_libraries
-      ; lib_config
       ; build_context
       ; instrument_with
       }
@@ -750,7 +728,6 @@ module DB = struct
 end
 
 let name t = t.name
-let lib_config t = t.lib_config
 
 let map_exe (context : t) =
   match context.for_host with

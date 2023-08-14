@@ -300,7 +300,7 @@ module DB = struct
     let open Memo.O in
     let t = Fdecl.create Dyn.opaque in
     let build_dir = context.build_dir in
-    let lib_config = Context.lib_config context in
+    let lib_config = context.ocaml.lib_config in
     let instrument_with = context.instrument_with in
     let* public_libs =
       let+ installed_libs = Lib.DB.installed context in

@@ -430,6 +430,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pfor
   | None ->
     (match pform with
      | Var var ->
+       let lib_config = context.ocaml.lib_config in
        (match var with
         | Pkg _ -> assert false
         | Nothing -> static []
@@ -485,13 +486,12 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pfor
         | Ocaml_bin_dir -> static [ Dir context.ocaml.bin_dir ]
         | Ocaml_version ->
           static (string (Ocaml_config.version_string context.ocaml.ocaml_config))
-        | Ocaml_stdlib_dir ->
-          static (string (Path.to_string context.lib_config.stdlib_dir))
+        | Ocaml_stdlib_dir -> static (string (Path.to_string lib_config.stdlib_dir))
         | Dev_null -> static (string (Path.to_string Dev_null.path))
-        | Ext_obj -> static (string context.lib_config.ext_obj)
+        | Ext_obj -> static (string lib_config.ext_obj)
         | Ext_asm -> static (string (Ocaml_config.ext_asm context.ocaml.ocaml_config))
-        | Ext_lib -> static (string context.lib_config.ext_lib)
-        | Ext_dll -> static (string context.lib_config.ext_dll)
+        | Ext_lib -> static (string lib_config.ext_lib)
+        | Ext_dll -> static (string lib_config.ext_dll)
         | Ext_exe -> static (string (Ocaml_config.ext_exe context.ocaml.ocaml_config))
         | Ext_plugin ->
           (if Ocaml_config.natdynlink_supported context.ocaml.ocaml_config
@@ -531,9 +531,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pfor
                 (let* cc = Action_builder.of_memo (cc t) in
                  cc.cxx))
         | Ccomp_type ->
-          static
-          @@ string
-          @@ Ocaml_config.Ccomp_type.to_string context.lib_config.ccomp_type
+          static @@ string @@ Ocaml_config.Ccomp_type.to_string lib_config.ccomp_type
         | Toolchain ->
           static
           @@ string

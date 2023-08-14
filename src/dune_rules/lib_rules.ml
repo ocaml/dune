@@ -57,7 +57,7 @@ let build_lib
     in
     let map_cclibs =
       (* https://github.com/ocaml/dune/issues/119 *)
-      match ctx.lib_config.ccomp_type with
+      match ctx.ocaml.lib_config.ccomp_type with
       | Msvc -> msvc_hack_cclibs
       | Other _ -> Fun.id
     in
@@ -115,7 +115,7 @@ let build_lib
              ; Deps
                  (Foreign.Objects.build_paths
                     lib.buildable.extra_objects
-                    ~ext_obj:ctx.lib_config.ext_obj
+                    ~ext_obj:ctx.ocaml.lib_config.ext_obj
                     ~dir)
              ]))
 ;;
@@ -164,7 +164,7 @@ let ocamlmklib
   ~build_targets_together
   =
   let ctx = Super_context.context sctx in
-  let { Lib_config.ext_lib; ext_dll; _ } = ctx.lib_config in
+  let { Lib_config.ext_lib; ext_dll; _ } = ctx.ocaml.lib_config in
   let static_target =
     Foreign.Archive.Name.lib_file archive_name ~dir ~ext_lib ~mode:stubs_mode
   in
@@ -172,7 +172,7 @@ let ocamlmklib
     Action_builder.map c_library_flags ~f:(fun cclibs ->
       (* https://github.com/ocaml/dune/issues/119 *)
       let cclibs =
-        match ctx.lib_config.ccomp_type with
+        match ctx.ocaml.lib_config.ccomp_type with
         | Msvc -> msvc_hack_cclibs cclibs
         | Other _ -> cclibs
       in
@@ -292,7 +292,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
   in
   let* o_files =
     let lib_foreign_o_files =
-      let { Lib_config.ext_obj; _ } = (Super_context.context sctx).lib_config in
+      let { Lib_config.ext_obj; _ } = (Super_context.context sctx).ocaml.lib_config in
       Foreign.Objects.build_paths lib.buildable.extra_objects ~ext_obj ~dir
     in
     let+ tbl =
@@ -369,7 +369,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
 let build_shared lib ~native_archives ~sctx ~dir ~flags =
   let ctx = Super_context.context sctx in
   Memo.Result.iter ctx.ocaml.ocamlopt ~f:(fun ocamlopt ->
-    let ext_lib = ctx.lib_config.ext_lib in
+    let ext_lib = ctx.ocaml.lib_config.ext_lib in
     let src =
       let ext = Mode.compiled_lib_ext Native in
       Path.build (Library.archive lib ~dir ~ext)
@@ -434,7 +434,7 @@ let setup_build_archives
   let js_of_ocaml = Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml in
   let sctx = Compilation_context.super_context cctx in
   let ctx = Compilation_context.context cctx in
-  let { Lib_config.ext_obj; natdynlink_supported; _ } = ctx.lib_config in
+  let { Lib_config.ext_obj; natdynlink_supported; _ } = ctx.ocaml.lib_config in
   let open Memo.O in
   let* () =
     Modules.exit_module modules
@@ -518,7 +518,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let requires_link = Lib.Compile.requires_link compile_info in
   let modes =
-    let { Lib_config.has_native; _ } = ctx.lib_config in
+    let { Lib_config.has_native; _ } = ctx.ocaml.lib_config in
     Dune_file.Mode_conf.Lib.Set.eval_detailed lib.modes ~has_native
   in
   let package = Dune_file.Library.package lib in
@@ -571,7 +571,7 @@ let library_rules
   let dir = Compilation_context.dir cctx in
   let scope = Compilation_context.scope cctx in
   let* requires_compile = Compilation_context.requires_compile cctx in
-  let stdlib_dir = (Compilation_context.context cctx).lib_config.stdlib_dir in
+  let stdlib_dir = (Compilation_context.context cctx).ocaml.lib_config.stdlib_dir in
   let top_sorted_modules =
     let impl_only = Modules.impl_only modules in
     Dep_graph.top_closed_implementations
@@ -586,7 +586,7 @@ let library_rules
   and* () = Module_compilation.build_all cctx
   and* expander = Super_context.expander sctx ~dir
   and* lib_info =
-    let lib_config = (Super_context.context sctx).lib_config in
+    let lib_config = (Super_context.context sctx).ocaml.lib_config in
     let* info = Library.to_lib_info lib ~dir ~lib_config in
     let mode = Lib_mode.Map.Set.for_merlin (Lib_info.modes info) in
     let+ () = Check_rules.add_obj_dir sctx ~obj_dir mode in

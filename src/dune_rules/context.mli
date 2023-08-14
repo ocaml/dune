@@ -72,7 +72,6 @@ type t = private
   ; findlib_toolchain : Context_name.t option (** Misc *)
   ; default_ocamlpath : Path.t list
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
-  ; lib_config : Lib_config.t
   ; build_context : Build_context.t
   ; instrument_with : Lib_name.t list
   }
@@ -87,7 +86,6 @@ val to_dyn_concise : t -> Dyn.t
 val compare : t -> t -> Ordering.t
 
 val name : t -> Context_name.t
-val lib_config : t -> Lib_config.t
 
 (** [map_exe t exe] returns a version of [exe] that is suitable for being
     executed on the current machine. For instance, if [t] is a cross-compilation

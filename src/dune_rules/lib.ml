@@ -1800,7 +1800,7 @@ module DB = struct
   let installed (context : Context.t) =
     let open Memo.O in
     let+ findlib =
-      Findlib.create ~paths:context.findlib_paths ~lib_config:context.lib_config
+      Findlib.create ~paths:context.findlib_paths ~lib_config:context.ocaml.lib_config
     in
     create_from_findlib findlib ~instrument_with:context.instrument_with
   ;;

@@ -96,7 +96,7 @@ let conf_of_context (context : Context.t option) =
     let get_location = Install.Paths.get_local_location context.name in
     let get_config_path = function
       | Sourceroot -> Some (Path.source Path.Source.root)
-      | Stdlib -> Some context.lib_config.stdlib_dir
+      | Stdlib -> Some context.ocaml.lib_config.stdlib_dir
     in
     let hardcoded_ocaml_path =
       let install_dir = Install.Context.dir ~context:context.name in
@@ -120,7 +120,7 @@ let conf_for_install ~relocatable ~roots ~(context : Context.t) =
   in
   let get_config_path = function
     | Sourceroot -> None
-    | Stdlib -> Some context.lib_config.stdlib_dir
+    | Stdlib -> Some context.ocaml.lib_config.stdlib_dir
   in
   let sign_hook = lazy (sign_hook_of_context context) in
   { get_location; get_vcs; get_config_path; hardcoded_ocaml_path; sign_hook }

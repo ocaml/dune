@@ -36,17 +36,69 @@ Generate a mock opam repository
   > install: [ make "install" ]
   > EOF
 
+  $ mkpkg with-interpolation <<EOF
+  > opam-version: "2.0"
+  > build: [
+  >   [
+  >     "./configure"
+  >     "--prefix=%{prefix}%"
+  >     "--docdir=%{doc}%/ocaml"
+  >   ]
+  >   [make "-j%{jobs}%"]
+  > ]
+  > install: [make "install"]
+  > EOF
+
+Make sure we don't mess up percent signs that aren't part of variable interpolation syntax:
+  $ mkpkg with-percent-sign <<EOF
+  > opam-version: "2.0"
+  > build: [ "printf" "%d" "42" ]
+  > EOF
+
+  $ mkpkg with-malformed-interpolation <<EOF
+  > opam-version: "2.0"
+  > build: [ "./configure" "--prefix=%{prefix" ]
+  > EOF
+
   $ solve_project <<EOF
   > (lang dune 3.8)
   > (package
   >  (name x)
-  >  (depends standard-dune))
+  >  (depends
+  >   standard-dune
+  >   with-interpolation
+  >   with-percent-sign))
   > EOF
   Solution for dune.lock:
   standard-dune.0.0.1
+  with-interpolation.0.0.1
+  with-percent-sign.0.0.1
   
 
   $ cat dune.lock/standard-dune.pkg
   (version 0.0.1)
   (install (run %{make} install))
   (build (progn (run dune subst) (run dune build -p %{pkg:var:_:name} -j %{jobs} @install @runtest @doc)))
+
+  $ cat dune.lock/with-interpolation.pkg
+  (version 0.0.1)
+  (install (run %{make} install))
+  (build (progn (run ./configure --prefix=%{prefix} --docdir=%{doc}/ocaml) (run %{make} -j%{jobs})))
+
+  $ cat dune.lock/with-percent-sign.pkg
+  (version 0.0.1)
+  (build (run printf %d 42))
+
+  $ solve_project <<EOF
+  > (lang dune 3.8)
+  > (package
+  >  (name x)
+  >  (depends with-malformed-interpolation))
+  > EOF
+  Error: Encountered malformed variable interpolation while processing commands
+  for package with-malformed-interpolation.0.0.1.
+  The variable interpolation:
+  %{prefix
+  The full command:
+  "./configure" "--prefix=%{prefix"
+  [1]

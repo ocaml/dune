@@ -10,6 +10,7 @@
   dune_stats
   dune_lang
   dune_console
+  dune_re
   opam_core
   opam_repository
   opam_format

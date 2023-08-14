@@ -39,6 +39,10 @@ val virt_pform : ?quoted:bool -> string * int * int * int -> Pform.t -> t
 val virt_text : string * int * int * int -> string -> t
 val make_pform : ?quoted:bool -> Loc.t -> Pform.t -> t
 val make_text : ?quoted:bool -> Loc.t -> string -> t
+
+(** Concatenate a list of parts. *)
+val make : ?quoted:bool -> Loc.t -> [ `Text of string | `Pform of Pform.t ] list -> t
+
 val is_pform : t -> Pform.t -> bool
 val has_pforms : t -> bool
 

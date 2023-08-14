@@ -230,7 +230,15 @@ module Summary = struct
   ;;
 end
 
-let opam_commands_to_actions (commands : OpamTypes.command list) =
+let opam_command_to_string_debug (args, _filter_opt) =
+  List.map args ~f:(fun (simple_arg, _filter_opt) ->
+    match simple_arg with
+    | OpamTypes.CString s -> String.quoted s
+    | CIdent ident -> ident)
+  |> String.concat ~sep:" "
+;;
+
+let opam_commands_to_actions package (commands : OpamTypes.command list) =
   let pform_of_ident ident =
     let scope, variable =
       match String.lsplit2 ident ~on:':' with
@@ -251,13 +259,37 @@ let opam_commands_to_actions (commands : OpamTypes.command list) =
        | None ->
          Pform.(Macro { macro = Pkg; payload = Payload.of_args [ "var"; "_"; variable ] }))
   in
-  List.filter_map commands ~f:(fun (args, _filter_opt) ->
+  List.filter_map commands ~f:(fun ((args, _filter_opt) as command) ->
+    let interpolate_opam_variables s =
+      Dune_re.Seq.split_full OpamFilter.string_interp_regex s
+      |> Seq.map ~f:(function
+        | `Text text -> `Text text
+        | `Delim group ->
+          (match Dune_re.Group.get group 0 with
+           | "%%" -> `Text "%"
+           | interp
+             when String.is_prefix ~prefix:"%{" interp
+                  && String.is_suffix ~suffix:"}%" interp ->
+             let ident = String.sub ~pos:2 ~len:(String.length interp - 4) interp in
+             `Pform (pform_of_ident ident)
+           | other ->
+             User_error.raise
+               [ Pp.textf
+                   "Encountered malformed variable interpolation while processing \
+                    commands for package %s."
+                   (OpamPackage.to_string package)
+               ; Pp.text "The variable interpolation:"
+               ; Pp.text other
+               ; Pp.text "The full command:"
+               ; Pp.text (opam_command_to_string_debug command)
+               ]))
+      |> List.of_seq
+      |> String_with_vars.make Loc.none
+    in
     let terms =
       List.map args ~f:(fun (simple_arg, _filter_opt) ->
         match simple_arg with
-        | OpamTypes.CString s ->
-          (* TODO: apply replace string interpolation variables with pforms *)
-          String_with_vars.make_text Loc.none s
+        | OpamTypes.CString s -> interpolate_opam_variables s
         | CIdent ident -> String_with_vars.make_pform Loc.none (pform_of_ident ident))
     in
     match terms with
@@ -269,8 +301,8 @@ let opam_commands_to_actions (commands : OpamTypes.command list) =
    [None] if the command list is empty
    [Some (Action.Run ...)] if there is a single command
    [Some (Action.Progn [Action.Run ...; ...])] if there are multiple commands *)
-let opam_commands_to_action (commands : OpamTypes.command list) =
-  match opam_commands_to_actions commands with
+let opam_commands_to_action package (commands : OpamTypes.command list) =
+  match opam_commands_to_actions package commands with
   | [] -> None
   | [ action ] -> Some action
   | actions -> Some (Action.Progn actions)
@@ -302,8 +334,12 @@ let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
     |> List.map ~f:(fun name ->
       Loc.none, Package_name.of_string (OpamPackage.Name.to_string name))
   in
-  let build_command = opam_commands_to_action (OpamFile.OPAM.build opam_file) in
-  let install_command = opam_commands_to_action (OpamFile.OPAM.install opam_file) in
+  let build_command =
+    opam_commands_to_action opam_package (OpamFile.OPAM.build opam_file)
+  in
+  let install_command =
+    opam_commands_to_action opam_package (OpamFile.OPAM.install opam_file)
+  in
   { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env = [] }
 ;;
 

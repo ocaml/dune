@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692042721072,
+  "lastUpdate": 1692042732527,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -68264,6 +68264,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "67.30083438289331",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a872684e705a055ca689fcb79ab9f9f5721e8029",
+          "message": "refactor: remove findlib from link time code gen (#8393)\n\nGetting the builtins doesn't require initializing findlib\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-14T12:26:49-07:00",
+          "tree_id": "d81403dee863e370b8d568a8efa6a5862f8e47aa",
+          "url": "https://github.com/ocaml/dune/commit/a872684e705a055ca689fcb79ab9f9f5721e8029"
+        },
+        "date": 1692042731796,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8126256093866668",
             "unit": "seconds"
           }
         ]

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-version=7d5c4217c11c18f1405d58702409ed7290668135
+version=d3c96a02c4747b2ae4c8648a1f15d13c0efde832
 
 set -e -o pipefail
 
@@ -173,6 +173,19 @@ index 2857654a9..53f11d870 100644
  let log fmt = OpamConsole.log "XSYS" fmt
  
  (* Run commands *)
+
+diff --git a/vendor/opam/src/format/opamFilter.mli b/vendor/opam/src/format/opamFilter.mli
+index a2f01d179..1787b24b1 100644
+--- a/vendor/opam/src/format/opamFilter.mli
++++ b/vendor/opam/src/format/opamFilter.mli
+@@ -8,6 +8,7 @@
+ (*  exception on linking described in the file LICENSE.                   *)
+ (*                                                                        *)
+ (**************************************************************************)
++module Re = Dune_re
+
+ (** Formulas on variables, as used in opam files build scripts
+
 EOF
 
 for subpackage in core repository format state

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692025184878,
+  "lastUpdate": 1692025623052,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -27664,6 +27664,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "47.05650905772",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7d20365deb92af3da15f26e38b6f93daeef50435",
+          "message": "fix: position in error for invalid char in pform (#8389)\n\nPreviously the error message would refer to the incorrect part of the\r\nsource when reporting errors about invalid characters in pform\r\ntemplates, such as this error which refers to the invalid space\r\ncharacter:\r\n```\r\n4 |  (action (echo %{read:foo bar.txt})))\r\n                     ^\r\nError: This character is not allowed inside %{...} forms\r\n```\r\n\r\nThis change corrects the position of the arrow indicating the invalid\r\ncharacter and also adds the character to the error message itself:\r\n```\r\n4 |  (action (echo %{read:foo bar.txt})))\r\n                             ^\r\nError: The character ' ' is not allowed inside %{...} forms\r\n```\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-08-14T07:47:06-07:00",
+          "tree_id": "7124cf2d3c952f51d704820f53a28e6186823f14",
+          "url": "https://github.com/ocaml/dune/commit/7d20365deb92af3da15f26e38b6f93daeef50435"
+        },
+        "date": 1692025621660,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.53964792953333",
             "unit": "seconds"
           }
         ]

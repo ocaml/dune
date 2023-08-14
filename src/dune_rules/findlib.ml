@@ -39,33 +39,29 @@ let builtin_for_dune : Dune_package.t =
   }
 ;;
 
-module DB = struct
-  type t =
-    { stdlib_dir : Path.t
-    ; paths : Path.t list
-    ; builtins : Meta.Simplified.t Package.Name.Map.t
-    ; ext_lib : Filename.Extension.t
-    }
+type t =
+  { stdlib_dir : Path.t
+  ; paths : Path.t list
+  ; builtins : Meta.Simplified.t Package.Name.Map.t
+  ; ext_lib : Filename.Extension.t
+  }
 
-  let equal t { stdlib_dir; paths; builtins; ext_lib } =
-    Path.equal t.stdlib_dir stdlib_dir
-    && List.equal Path.equal t.paths paths
-    && Package.Name.Map.equal ~equal:Meta.Simplified.equal t.builtins builtins
-    && String.equal t.ext_lib ext_lib
-  ;;
+let equal t { stdlib_dir; paths; builtins; ext_lib } =
+  Path.equal t.stdlib_dir stdlib_dir
+  && List.equal Path.equal t.paths paths
+  && Package.Name.Map.equal ~equal:Meta.Simplified.equal t.builtins builtins
+  && String.equal t.ext_lib ext_lib
+;;
 
-  let hash { stdlib_dir; paths; builtins; ext_lib } =
-    Poly.hash
-      ( Path.hash stdlib_dir
-      , List.hash Path.hash paths
-      , Package.Name.Map.to_list builtins
-        |> List.hash (fun (k, v) ->
-          Tuple.T2.hash Package.Name.hash Meta.Simplified.hash (k, v))
-      , String.hash ext_lib )
-  ;;
-end
-
-type t = DB.t
+let hash { stdlib_dir; paths; builtins; ext_lib } =
+  Poly.hash
+    ( Path.hash stdlib_dir
+    , List.hash Path.hash paths
+    , Package.Name.Map.to_list builtins
+      |> List.hash (fun (k, v) ->
+        Tuple.T2.hash Package.Name.hash Meta.Simplified.hash (k, v))
+    , String.hash ext_lib )
+;;
 
 let findlib_predicates_set_by_dune = Ps.of_list [ P.ppx_driver; P.mt; P.mt_posix ]
 
@@ -73,7 +69,7 @@ module Loader : sig
   (* Search for a <package>/{META,dune-package} file in the findlib search
      path *)
   val lookup_and_load
-    :  DB.t
+    :  t
     -> Package.Name.t
     -> (Dune_package.t, Unavailable_reason.t) result Memo.t
 end = struct
@@ -261,7 +257,7 @@ end = struct
   ;;
 
   (* Parse all the packages defined in a META file *)
-  let dune_package_of_meta (db : DB.t) ~dir ~meta_file ~(meta : Meta.Simplified.t) =
+  let dune_package_of_meta (db : t) ~dir ~meta_file ~(meta : Meta.Simplified.t) =
     let rec loop ~dir ~full_name (meta : Meta.Simplified.t) acc =
       let vars = Vars.of_meta_rules meta.vars in
       let pkg_dir = Vars.get vars "directory" Ps.empty in
@@ -327,7 +323,7 @@ end = struct
       ~meta
   ;;
 
-  let lookup_and_load (db : DB.t) name =
+  let lookup_and_load (db : t) name =
     let rec loop dirs : (Dune_package.t, Unavailable_reason.t) Result.t Memo.t =
       match dirs with
       | [] ->
@@ -382,11 +378,11 @@ end
 
 let memo =
   let module Input = struct
-    type t = DB.t * Package.Name.t
+    type nonrec t = t * Package.Name.t
 
     let to_dyn = Dyn.opaque
-    let hash = Tuple.T2.hash DB.hash Package.Name.hash
-    let equal = Tuple.T2.equal DB.equal Package.Name.equal
+    let hash = Tuple.T2.hash hash Package.Name.hash
+    let equal = Tuple.T2.equal equal Package.Name.equal
   end
   in
   Memo.create
@@ -409,7 +405,7 @@ let find t name =
   | None -> Error Unavailable_reason.Not_found
 ;;
 
-let root_packages (db : DB.t) =
+let root_packages (db : t) =
   let+ pkgs =
     Memo.List.concat_map db.paths ~f:(fun dir ->
       Fs_memo.dir_contents (Path.as_outside_build_dir_exn dir)
@@ -470,7 +466,7 @@ let create ~paths ~(lib_config : Lib_config.t) =
   let version = lib_config.ocaml_version in
   let ext_lib = lib_config.ext_lib in
   let+ builtins = Meta.builtins ~stdlib_dir ~version in
-  { DB.stdlib_dir; paths; builtins; ext_lib }
+  { stdlib_dir; paths; builtins; ext_lib }
 ;;
 
 module For_tests = struct

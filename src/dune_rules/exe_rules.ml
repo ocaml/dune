@@ -89,7 +89,7 @@ let o_files
       Foreign_sources.for_exes foreign_sources ~first_exe
     in
     let foreign_o_files =
-      let { Lib_config.ext_obj; _ } = (Super_context.context sctx).lib_config in
+      let { Lib_config.ext_obj; _ } = (Super_context.context sctx).ocaml.lib_config in
       Foreign.Objects.build_paths exes.buildable.extra_objects ~ext_obj ~dir
     in
     let+ o_files =
@@ -163,7 +163,8 @@ let executables_rules
       ~opaque:Inherit_from_settings
       ~package:exes.package
   in
-  let stdlib_dir = ctx.lib_config.stdlib_dir in
+  let lib_config = ctx.ocaml.lib_config in
+  let stdlib_dir = lib_config.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let* dep_graphs =
     (* Building an archive for foreign stubs, we link the corresponding object
@@ -190,7 +191,7 @@ let executables_rules
       Command.Args.S
         [ As flags
         ; S
-            (let ext_lib = ctx.lib_config.ext_lib in
+            (let ext_lib = lib_config.ext_lib in
              let foreign_archives = exes.buildable.foreign_archives |> List.map ~f:snd in
              (* XXX: don't these need the msvc hack being done in lib_rules? *)
              (* XXX: also the Command.quote_args being done in lib_rules? *)

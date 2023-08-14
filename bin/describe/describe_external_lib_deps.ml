@@ -134,8 +134,8 @@ let exes_extensions (ctx : Context.t) modes =
     Dune_rules.Dune_file.Executables.Link_mode.extension
       m
       ~loc
-      ~ext_obj:ctx.lib_config.ext_obj
-      ~ext_dll:ctx.lib_config.ext_dll)
+      ~ext_obj:ctx.ocaml.lib_config.ext_obj
+      ~ext_dll:ctx.ocaml.lib_config.ext_dll)
 ;;
 
 let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) =

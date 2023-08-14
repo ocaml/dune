@@ -26,7 +26,7 @@ let find_package t pkg =
 let create (context : Context.t) =
   let* packages = Only_packages.get () in
   let+ findlib =
-    Findlib.create ~paths:context.findlib_paths ~lib_config:context.lib_config
+    Findlib.create ~paths:context.findlib_paths ~lib_config:context.ocaml.lib_config
   in
   { packages; findlib }
 ;;

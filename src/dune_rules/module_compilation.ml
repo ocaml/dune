@@ -131,7 +131,7 @@ let build_cm
    let+ src = Module.file m ~ml_kind in
    let dst = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
    let obj =
-     Obj_dir.Module.obj_file obj_dir m ~kind:(Ocaml Cmx) ~ext:ctx.lib_config.ext_obj
+     Obj_dir.Module.obj_file obj_dir m ~kind:(Ocaml Cmx) ~ext:ctx.ocaml.lib_config.ext_obj
    in
    let open Memo.O in
    let* extra_args, extra_deps, other_targets =

@@ -256,7 +256,7 @@ let setup_emit_cmj_rules
     in
     let* () = Module_compilation.build_all cctx in
     let* requires_compile = Compilation_context.requires_compile cctx in
-    let stdlib_dir = ctx.lib_config.stdlib_dir in
+    let stdlib_dir = ctx.ocaml.lib_config.stdlib_dir in
     let+ () =
       let emit_and_libs_deps =
         let target_dir = Path.Build.relative dir mel.target in

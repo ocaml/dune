@@ -126,7 +126,7 @@ end = struct
     =
     let loc = lib.buildable.loc in
     let ctx = Super_context.context sctx in
-    let lib_config = ctx.lib_config in
+    let lib_config = ctx.ocaml.lib_config in
     let* info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
     let make_entry =
       let in_sub_dir = function
@@ -616,7 +616,7 @@ end = struct
             let dir = Obj_dir.obj_dir obj_dir in
             let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
             Foreign_sources.for_lib ~name foreign_sources
-            |> Foreign.Sources.object_files ~dir ~ext_obj:ctx.lib_config.ext_obj
+            |> Foreign.Sources.object_files ~dir ~ext_obj:ctx.ocaml.lib_config.ext_obj
             |> List.map ~f:Path.build
           and* modules =
             Dir_contents.ocaml dir_contents >>| Ml_sources.modules ~for_:(Library name)

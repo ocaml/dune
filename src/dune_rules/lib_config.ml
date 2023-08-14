@@ -55,3 +55,22 @@ let cc_g t =
   | Msvc -> []
   | Other _ -> [ "-g" ]
 ;;
+
+let create ocaml_config ~ocamlopt =
+  { has_native = Result.is_ok ocamlopt
+  ; ext_obj = Ocaml_config.ext_obj ocaml_config
+  ; ext_lib = Ocaml_config.ext_lib ocaml_config
+  ; os_type = Ocaml_config.os_type ocaml_config
+  ; architecture = Ocaml_config.architecture ocaml_config
+  ; system = Ocaml_config.system ocaml_config
+  ; model = Ocaml_config.model ocaml_config
+  ; ext_dll = Ocaml_config.ext_dll ocaml_config
+  ; natdynlink_supported =
+      (let natdynlink_supported = Ocaml_config.natdynlink_supported ocaml_config in
+       Dynlink_supported.By_the_os.of_bool natdynlink_supported)
+  ; stdlib_dir = Path.of_string (Ocaml_config.standard_library ocaml_config)
+  ; ccomp_type = Ocaml_config.ccomp_type ocaml_config
+  ; ocaml_version_string = Ocaml_config.version_string ocaml_config
+  ; ocaml_version = Ocaml.Version.of_ocaml_config ocaml_config
+  }
+;;

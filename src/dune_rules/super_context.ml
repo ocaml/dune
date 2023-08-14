@@ -351,7 +351,7 @@ let default_foreign_flags t ~dir ~language =
 ;;
 
 let foreign_flags t ~dir ~expander ~flags ~language =
-  let ccg = Lib_config.cc_g (Env_tree.context t).lib_config in
+  let ccg = Lib_config.cc_g (Env_tree.context t).ocaml.lib_config in
   let default = default_foreign_flags t ~dir ~language in
   let open Action_builder.O in
   let name = Foreign_language.proper_name language in

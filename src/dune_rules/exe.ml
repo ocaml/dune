@@ -82,11 +82,12 @@ module Linkage = struct
              else Byte_with_stubs_statically_linked_in)
       in
       let ext =
+        let lib_config = ctx.ocaml.lib_config in
         Dune_file.Executables.Link_mode.extension
           m
           ~loc
-          ~ext_obj:ctx.lib_config.ext_obj
-          ~ext_dll:ctx.lib_config.ext_dll
+          ~ext_obj:lib_config.ext_obj
+          ~ext_dll:lib_config.ext_dll
       in
       let flags =
         match m with
@@ -193,7 +194,7 @@ let link_exe
                  ; Lib_flags.Lib_and_module.L.link_flags
                      sctx
                      to_link
-                     ~lib_config:ctx.lib_config
+                     ~lib_config:ctx.ocaml.lib_config
                      ~mode:linkage.mode
                  ])
           ; Deps o_files
@@ -289,7 +290,7 @@ let link_many
           ~obj_dir
           ~modules
           ~top_sorted_modules
-          ~ext_obj:ctx.lib_config.ext_obj
+          ~ext_obj:ctx.ocaml.lib_config.ext_obj
           ()
       in
       let+ () =

@@ -13,6 +13,7 @@ type t =
   ; ocaml_config_vars : Ocaml_config.Vars.t
   ; version : Ocaml.Version.t
   ; builtins : Meta.Simplified.t Package.Name.Map.t Memo.t
+  ; lib_config : Lib_config.t
   }
 
 let make_builtins ~ocaml_config ~version =
@@ -99,6 +100,7 @@ let of_env_with_findlib name env findlib_config ~which =
     ; ocaml_config
     ; ocaml_config_vars
     ; version
+    ; lib_config = Lib_config.create ocaml_config ~ocamlopt
     ; builtins = Memo.Lazy.force builtins
     }
 ;;
@@ -195,5 +197,6 @@ let of_binaries name env binaries =
   ; ocaml_config_vars
   ; version
   ; builtins = Memo.Lazy.force builtins
+  ; lib_config = Lib_config.create ocaml_config ~ocamlopt
   }
 ;;

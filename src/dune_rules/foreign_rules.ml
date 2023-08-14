@@ -198,7 +198,7 @@ let build_c
       (Ocaml_config.c_compiler ctx.ocaml.ocaml_config)
   in
   let output_param =
-    match ctx.lib_config.ccomp_type with
+    match ctx.ocaml.lib_config.ccomp_type with
     | Msvc -> [ Command.Args.Concat ("", [ A "/Fo"; Target dst ]) ]
     | Other _ -> [ A "-o"; Target dst ]
   in
@@ -214,7 +214,7 @@ let build_c
        ~dir:(Path.build dir)
        c_compiler
        ([ Command.Args.dyn with_user_and_std_flags
-        ; S [ A "-I"; Path ctx.lib_config.stdlib_dir ]
+        ; S [ A "-I"; Path ctx.ocaml.lib_config.stdlib_dir ]
         ; include_flags
         ]
         @ output_param
@@ -283,7 +283,7 @@ let build_o_files
       in
       let dst =
         let ctx = Super_context.context sctx in
-        Path.Build.relative dir (obj ^ ctx.lib_config.ext_obj)
+        Path.Build.relative dir (obj ^ ctx.ocaml.lib_config.ext_obj)
       in
       let+ () =
         build_c

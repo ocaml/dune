@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692049299815,
+  "lastUpdate": 1692049377520,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -88014,6 +88014,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.893638159446667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1b66fce6b8ebbf0fc49c89b7e75d2ebae875dfc3",
+          "message": "refactor: remove [sites] from [Expander] (#8397)\n\nThis requires [Findlib], so we get to avoid initializing it in the\r\ncommon case.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-14T14:30:08-07:00",
+          "tree_id": "6d216985eef8f151c6b0b2f0e6f4a282103ac561",
+          "url": "https://github.com/ocaml/dune/commit/1b66fce6b8ebbf0fc49c89b7e75d2ebae875dfc3"
+        },
+        "date": 1692049366884,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.199873582880002",
             "unit": "seconds"
           }
         ]

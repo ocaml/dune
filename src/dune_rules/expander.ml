@@ -610,8 +610,8 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pfor
             (fun t ->
               let lib, file =
                 Pform.Macro_invocation.Args.lsplit2_exn
-                  ~loc:(Dune_lang.Template.Pform.payload_loc source)
                   macro_invocation
+                  (Dune_lang.Template.Pform.payload_loc source)
               in
               With (expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private))
         | Lib_available ->

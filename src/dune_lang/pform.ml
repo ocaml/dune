@@ -396,7 +396,7 @@ module Macro_invocation = struct
   module Args = struct
     let whole { payload; _ } = Payload.Args.whole payload
 
-    let lsplit2 ?(loc = Loc.none) { payload; macro } =
+    let lsplit2 { payload; macro } loc =
       Payload.Args.lsplit2 ~loc payload
       |> Result.map_error ~f:(fun (user_message : User_message.t) ->
         let paragraphs =
@@ -409,8 +409,8 @@ module Macro_invocation = struct
         { user_message with paragraphs })
     ;;
 
-    let lsplit2_exn ?(loc = Loc.none) t =
-      match lsplit2 ~loc t with
+    let lsplit2_exn t loc =
+      match lsplit2 t loc with
       | Ok args -> args
       | Error user_message -> raise (User_error.E user_message)
     ;;

@@ -145,7 +145,7 @@ module Macro_invocation : sig
 
     (** Split the payload on the first ':' character raising a [User_error] if the
         payload contains no ':' characters. *)
-    val lsplit2_exn : ?loc:Loc.t -> t -> string * string
+    val lsplit2_exn : t -> Loc.t -> string * string
 
     (** Split the payload on all ':' characters *)
     val split : t -> string list

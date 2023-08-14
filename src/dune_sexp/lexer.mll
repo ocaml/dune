@@ -352,7 +352,14 @@ and template_variable = parse
   }
   | '}' | eof
     { error lexbuf "%{...} forms cannot be empty" }
-  | _ { error lexbuf "This character is not allowed inside %{...} forms" }
+  | (varname_char* as skip) (_ as other)
+  | (varname_char+ ':' ((':' | varname_char)*) as skip) (_ as other)
+  {
+    error
+      ~delta:(String.length skip)
+      lexbuf
+      (Printf.sprintf "The character %C is not allowed inside %%{...} forms" other)
+  }
 
 {
   let token ~with_comments lexbuf = token with_comments lexbuf

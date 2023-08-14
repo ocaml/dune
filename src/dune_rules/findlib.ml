@@ -44,24 +44,24 @@ module DB = struct
     { stdlib_dir : Path.t
     ; paths : Path.t list
     ; builtins : Meta.Simplified.t Package.Name.Map.t
-    ; lib_config : Lib_config.t
+    ; ext_lib : Filename.Extension.t
     }
 
-  let equal t { stdlib_dir; paths; builtins; lib_config } =
+  let equal t { stdlib_dir; paths; builtins; ext_lib } =
     Path.equal t.stdlib_dir stdlib_dir
     && List.equal Path.equal t.paths paths
     && Package.Name.Map.equal ~equal:Meta.Simplified.equal t.builtins builtins
-    && Lib_config.equal t.lib_config lib_config
+    && String.equal t.ext_lib ext_lib
   ;;
 
-  let hash { stdlib_dir; paths; builtins; lib_config } =
+  let hash { stdlib_dir; paths; builtins; ext_lib } =
     Poly.hash
       ( Path.hash stdlib_dir
       , List.hash Path.hash paths
       , Package.Name.Map.to_list builtins
         |> List.hash (fun (k, v) ->
           Tuple.T2.hash Package.Name.hash Meta.Simplified.hash (k, v))
-      , Lib_config.hash lib_config )
+      , String.hash ext_lib )
   ;;
 end
 
@@ -83,7 +83,7 @@ end = struct
        [ rep any; str "__"; rep any ] |> seq |> compile)
   ;;
 
-  let to_dune_library (t : Findlib.Package.t) ~(lib_config : Lib_config.t) =
+  let to_dune_library (t : Findlib.Package.t) ~ext_lib =
     let loc = Loc.in_file t.meta_file in
     let add_loc x = loc, x in
     let dot_dune_file =
@@ -174,7 +174,7 @@ end = struct
           let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
           List.rev_filter_partition_map dir_contents ~f:(fun (f, _) ->
             let ext = Filename.extension f in
-            if ext = lib_config.ext_lib
+            if ext = ext_lib
             then (
               let file = Path.relative t.dir f in
               if String.is_prefix f ~prefix:Foreign.Archive.Name.lib_file_prefix
@@ -278,7 +278,7 @@ end = struct
       let pkg : Findlib.Package.t =
         { Findlib.Package.meta_file; name = full_name; dir; vars }
       in
-      let* lib = to_dune_library pkg ~lib_config:db.lib_config in
+      let* lib = to_dune_library pkg ~ext_lib:db.ext_lib in
       let* (entry : Dune_package.Entry.t) =
         let+ exists =
           Findlib.Package.exists
@@ -456,8 +456,6 @@ let all_packages t =
     Lib_name.compare (Dune_package.Entry.name a) (Dune_package.Entry.name b))
 ;;
 
-let lib_config (t : t) = t.lib_config
-
 let all_broken_packages t =
   let+ packages = load_all_packages t in
   List.fold_left packages ~init:[] ~f:(fun acc (name, x) ->
@@ -470,8 +468,9 @@ let all_broken_packages t =
 let create ~paths ~(lib_config : Lib_config.t) =
   let stdlib_dir = lib_config.stdlib_dir in
   let version = lib_config.ocaml_version in
+  let ext_lib = lib_config.ext_lib in
   let+ builtins = Meta.builtins ~stdlib_dir ~version in
-  { DB.stdlib_dir; paths; builtins; lib_config }
+  { DB.stdlib_dir; paths; builtins; ext_lib }
 ;;
 
 module For_tests = struct

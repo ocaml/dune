@@ -5,7 +5,6 @@ open Import
 (** Findlib database *)
 type t
 
-val create : paths:Path.t list -> lib_config:Lib_config.t -> t Memo.t
 val lib_config : t -> Lib_config.t
 val findlib_predicates_set_by_dune : Variant.Set.t
 
@@ -33,3 +32,9 @@ val all_packages : t -> Dune_package.Entry.t list Memo.t
 
 (** List all the packages that have broken [dune-package] files *)
 val all_broken_packages : t -> (Package.Name.t * User_message.t) list Memo.t
+
+val create : Context_name.t -> t Memo.t
+
+module For_tests : sig
+  val create : paths:Path.t list -> lib_config:Lib_config.t -> t Memo.t
+end

@@ -454,7 +454,7 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
           | Some s -> Some (Section.Set.add s section))
       in
       let+ package_sections =
-        let* sites = Sites.create context in
+        let* sites = Sites.create context.name in
         Dune_file.Memo_fold.fold_stanzas
           stanzas
           ~init:Package.Name.Map.empty

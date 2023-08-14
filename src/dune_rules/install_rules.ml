@@ -505,7 +505,7 @@ end = struct
               Install.Entry.Sourced.create entry :: acc)
             else acc))
     and+ l =
-      let* sites = Sites.create ctx in
+      let* sites = Sites.create ctx.name in
       Dune_file.fold_stanzas stanzas ~init:[] ~f:(fun dune_file stanza acc ->
         let dir = Path.Build.append_source ctx.build_dir dune_file.dir in
         let named_entries =

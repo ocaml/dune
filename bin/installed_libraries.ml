@@ -21,9 +21,7 @@ let term =
        let open Memo.O in
        let* ctxs = Context.DB.all () in
        let ctx = List.hd ctxs in
-       let* findlib =
-         Findlib.create ~paths:ctx.findlib_paths ~lib_config:ctx.ocaml.lib_config
-       in
+       let* findlib = Findlib.create ctx.name in
        let* all_packages = Findlib.all_packages findlib in
        if na
        then (

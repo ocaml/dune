@@ -41,7 +41,7 @@ let findlib =
     }
   in
   Memo.lazy_ (fun () ->
-    Findlib.create ~paths:[ Path.outside_build_dir db_path ] ~lib_config)
+    Findlib.For_tests.create ~paths:[ Path.outside_build_dir db_path ] ~lib_config)
 ;;
 
 let resolve_pkg s =

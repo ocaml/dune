@@ -12,7 +12,14 @@ type t =
   ; ocaml_config : Ocaml_config.t
   ; ocaml_config_vars : Ocaml_config.Vars.t
   ; version : Ocaml.Version.t
+  ; builtins : Meta.Simplified.t Package.Name.Map.t Memo.t
   }
+
+let make_builtins ~ocaml_config ~version =
+  Memo.Lazy.create (fun () ->
+    let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocaml_config) in
+    Meta.builtins ~stdlib_dir ~version)
+;;
 
 let of_env_with_findlib name env findlib_config ~which =
   let not_found ?hint prog =
@@ -52,7 +59,7 @@ let of_env_with_findlib name env findlib_config ~which =
         in
         Error (not_found ~hint prog))
   in
-  let* ocaml_config_vars, ocfg =
+  let* ocaml_config_vars, ocaml_config =
     let+ vars =
       Process.run_capture_lines ~display:Quiet ~env Strict ocamlc [ "-config" ]
       |> Memo.of_reproducible_fiber
@@ -79,7 +86,8 @@ let of_env_with_findlib name env findlib_config ~which =
   and* ocamldep = get_ocaml_tool "ocamldep"
   and* ocamlmklib = get_ocaml_tool "ocamlmklib"
   and* ocamlobjinfo = get_ocaml_tool "ocamlobjinfo" in
-  let version = Ocaml.Version.of_ocaml_config ocfg in
+  let version = Ocaml.Version.of_ocaml_config ocaml_config in
+  let builtins = make_builtins ~version ~ocaml_config in
   Memo.return
     { bin_dir = ocaml_bin
     ; ocaml
@@ -88,9 +96,10 @@ let of_env_with_findlib name env findlib_config ~which =
     ; ocamldep
     ; ocamlmklib
     ; ocamlobjinfo
-    ; ocaml_config = ocfg
+    ; ocaml_config
     ; ocaml_config_vars
     ; version
+    ; builtins = Memo.Lazy.force builtins
     }
 ;;
 
@@ -145,7 +154,7 @@ let of_binaries name env binaries =
       in
       Error (not_found ~hint prog)
   in
-  let+ ocaml_config_vars, ocfg =
+  let+ ocaml_config_vars, ocaml_config =
     let+ vars =
       Process.run_capture_lines ~display:Quiet ~env Strict ocamlc [ "-config" ]
       |> Memo.of_reproducible_fiber
@@ -173,7 +182,8 @@ let of_binaries name env binaries =
   and ocamldep = get_ocaml_tool "ocamldep"
   and ocamlmklib = get_ocaml_tool "ocamlmklib"
   and ocamlobjinfo = get_ocaml_tool "ocamlobjinfo" in
-  let version = Ocaml.Version.of_ocaml_config ocfg in
+  let version = Ocaml.Version.of_ocaml_config ocaml_config in
+  let builtins = make_builtins ~version ~ocaml_config in
   { bin_dir = ocaml_bin
   ; ocaml
   ; ocamlc
@@ -181,8 +191,9 @@ let of_binaries name env binaries =
   ; ocamldep
   ; ocamlmklib
   ; ocamlobjinfo
-  ; ocaml_config = ocfg
+  ; ocaml_config
   ; ocaml_config_vars
   ; version
+  ; builtins = Memo.Lazy.force builtins
   }
 ;;

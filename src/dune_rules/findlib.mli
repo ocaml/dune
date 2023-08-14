@@ -7,10 +7,6 @@ type t
 
 val create : paths:Path.t list -> lib_config:Lib_config.t -> t Memo.t
 val lib_config : t -> Lib_config.t
-
-(** The builtins packages *)
-val builtins : t -> Meta.Simplified.t Package.Name.Map.t
-
 val findlib_predicates_set_by_dune : Variant.Set.t
 
 module Unavailable_reason : sig

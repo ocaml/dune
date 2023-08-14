@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692044157049,
+  "lastUpdate": 1692044168514,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -68351,6 +68351,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "71.45192303234666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "48894d5b1819dbaa8988be59fb99f1b618692c33",
+          "message": "refactor: cleanups in library resolution (#8394)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-14T12:49:49-07:00",
+          "tree_id": "82343450123beec36d66bec130857983ea03868c",
+          "url": "https://github.com/ocaml/dune/commit/48894d5b1819dbaa8988be59fb99f1b618692c33"
+        },
+        "date": 1692044167713,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8140126852",
             "unit": "seconds"
           }
         ]

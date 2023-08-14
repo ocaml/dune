@@ -310,9 +310,12 @@ end = struct
     }
   ;;
 
-  let load_and_convert db ~dir ~meta_file ~name =
-    let* meta = Meta.load (Path.as_outside_build_dir_exn meta_file) ~name:(Some name) in
-    dune_package_of_meta db ~dir ~meta_file ~meta
+  let load_meta name file =
+    let file = Path.as_outside_build_dir_exn file in
+    Fs_memo.file_exists file
+    >>= function
+    | false -> Memo.return None
+    | true -> Meta.load file ~name >>| Option.some
   ;;
 
   let load_builtin db meta =
@@ -323,56 +326,53 @@ end = struct
       ~meta
   ;;
 
-  let lookup_and_load (db : t) name =
-    let rec loop dirs : (Dune_package.t, Unavailable_reason.t) Result.t Memo.t =
-      match dirs with
-      | [] ->
-        (match Package.Name.to_string name with
-         | "dune" -> Memo.return (Ok builtin_for_dune)
-         | _ -> Memo.return (Error Unavailable_reason.Not_found))
-      | dir :: dirs ->
-        let meta_file =
-          Path.relative dir (Findlib.Package.meta_fn ^ "." ^ Package.Name.to_string name)
-        in
-        let* file_exists =
-          Fs_memo.file_exists (Path.as_outside_build_dir_exn meta_file)
-        in
-        if file_exists
-        then
-          let+ p = load_and_convert db ~dir ~meta_file ~name in
-          Ok p
-        else (
-          let dir = Path.relative dir (Package.Name.to_string name) in
-          let* dir_exists = Fs_memo.dir_exists (Path.as_outside_build_dir_exn dir) in
-          if not dir_exists
-          then loop dirs
-          else (
-            let dune = Path.relative dir Dune_package.fn in
-            let* exists =
-              let* exists = Fs_memo.file_exists (Path.as_outside_build_dir_exn dune) in
-              if exists
-              then Dune_package.Or_meta.load dune
-              else Memo.return (Ok Dune_package.Or_meta.Use_meta)
-            in
-            match exists with
-            | Error e -> Memo.return (Error (Unavailable_reason.Invalid_dune_package e))
-            | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.return (Ok p)
-            | Ok Use_meta ->
-              let meta_file = Path.relative dir Findlib.Package.meta_fn in
-              let* meta_file_exists =
-                Fs_memo.file_exists (Path.as_outside_build_dir_exn meta_file)
-              in
-              if meta_file_exists
-              then
-                let+ p = load_and_convert db ~dir ~meta_file ~name in
-                Ok p
-              else loop dirs))
+  let lookup db name dir : (Dune_package.t, Unavailable_reason.t) result option Memo.t =
+    let load_meta ~dir meta_file =
+      load_meta (Some name) meta_file
+      >>= function
+      | None -> Memo.return None
+      | Some meta -> dune_package_of_meta db ~dir ~meta_file ~meta >>| Option.some
     in
+    (* XXX DUNE4 why do we allow [META.foo] override [dune-package] file? *)
+    Path.relative dir (Findlib.Package.meta_fn ^ "." ^ Package.Name.to_string name)
+    |> load_meta ~dir
+    >>= function
+    | Some pkg -> Memo.return (Some (Ok pkg))
+    | None ->
+      let dir = Path.relative dir (Package.Name.to_string name) in
+      Fs_memo.dir_exists (Path.as_outside_build_dir_exn dir)
+      >>= (function
+      | false -> Memo.return None
+      | true ->
+        (let dune = Path.relative dir Dune_package.fn in
+         Fs_memo.file_exists (Path.as_outside_build_dir_exn dune)
+         >>= function
+         | true -> Dune_package.Or_meta.load dune
+         | false -> Memo.return (Ok Dune_package.Or_meta.Use_meta))
+        >>= (function
+        | Error e ->
+          Memo.return (Some (Error (Unavailable_reason.Invalid_dune_package e)))
+        | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.return (Some (Ok p))
+        | Ok Use_meta ->
+          Path.relative dir Findlib.Package.meta_fn
+          |> load_meta ~dir
+          >>| Option.map ~f:(fun pkg -> Ok pkg)))
+  ;;
+
+  let lookup_and_load (db : t) name =
     match Package.Name.Map.find db.builtins name with
-    | None -> loop db.paths
     | Some meta ->
-      let+ builtin = load_builtin db meta in
-      Ok builtin
+      (* XXX DUNE4 weird to favor these hardcoded packages over user possibly
+         user defined libraries *)
+      load_builtin db meta >>| Result.ok
+    | None ->
+      Memo.List.find_map db.paths ~f:(lookup db name)
+      >>| (function
+      | Some m -> m
+      | None ->
+        (match Package.Name.to_string name with
+         | "dune" -> Ok builtin_for_dune
+         | _ -> Error Unavailable_reason.Not_found))
   ;;
 end
 

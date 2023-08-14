@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692027848882,
+  "lastUpdate": 1692028302155,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -68148,6 +68148,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6416405684266666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ed12e4392c8f8892e369dff3bfb95df5de8189bd",
+          "message": "refactor: Unify `make` variable in pkg and non-pkg contexts (#8390)\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-08-14T08:18:05-07:00",
+          "tree_id": "bc6c95f68ab1e5177f878669959250b284d59008",
+          "url": "https://github.com/ocaml/dune/commit/ed12e4392c8f8892e369dff3bfb95df5de8189bd"
+        },
+        "date": 1692028301056,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "89.38513805164666",
             "unit": "seconds"
           }
         ]

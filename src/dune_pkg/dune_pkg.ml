@@ -4,6 +4,7 @@ module Lock_dir = Lock_dir
 module Opam_file = Opam_file
 module Opam_repo = Opam_repo
 module Opam_solver = Opam_solver
+module Package_variable = Package_variable
 module Solver_env = Solver_env
 module Substs = Substs
 module Sys_poll = Sys_poll

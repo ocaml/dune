@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692114488276,
+  "lastUpdate": 1692115326590,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -88797,6 +88797,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.036354352626663",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "13b7702c44289bef6ed0be7891f17ca8de9707bc",
+          "message": "refactor: remove [Findlib.DB] (#8404)\n\nJust an unnecessary module without a purpose\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-15T08:44:27-07:00",
+          "tree_id": "74ce676bbfb34645691b686afbbdef8e54d22a30",
+          "url": "https://github.com/ocaml/dune/commit/13b7702c44289bef6ed0be7891f17ca8de9707bc"
+        },
+        "date": 1692115311987,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "31.76376006226",
             "unit": "seconds"
           }
         ]

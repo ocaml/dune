@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692080825291,
+  "lastUpdate": 1692081356823,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -27925,6 +27925,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.34667938398",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bf1d9d3dcb4e40baff290c2c18f8d644911f0f9d",
+          "message": "Use `%{pkg:...}` macro for package vars (#8372)\n\nThis removes the `Name` and `Version` pkg pform variables as these\r\nvariables are always package scoped (possibly implicitly). This plus the\r\nfact that opam allows custom package variables means we can get rid of\r\nhandling unknown variables when converting commands. It also makes it\r\ntrivial to support explicitly package-scoped variables when converting\r\ncommands so that's included in this change too.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-08-14T23:10:37-07:00",
+          "tree_id": "adcdb597e9d9f2d0cc4d450bbe13ce89fe500519",
+          "url": "https://github.com/ocaml/dune/commit/bf1d9d3dcb4e40baff290c2c18f8d644911f0f9d"
+        },
+        "date": 1692081355687,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "49.91259819914666",
             "unit": "seconds"
           }
         ]

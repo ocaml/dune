@@ -1,0 +1,9 @@
+(rule
+ (target foo)
+ (action
+  (system "exit 1")))
+
+(rule
+ (target bar)
+ (action
+  (system "exit 1")))

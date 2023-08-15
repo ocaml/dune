@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692111531654,
+  "lastUpdate": 1692111960817,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -27954,6 +27954,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "49.91259819914666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e11fd639fecdbbabb097f81493adb04f506aa356",
+          "message": "refactor: Improve [Findlib] handling (#8401)\n\nSwitch to memoizing the current [Findlib] instance per context.\r\n\r\nThis allows us to do even less work for [Sites.create] which is a\r\nsparsely used feature.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-15T07:46:31-07:00",
+          "tree_id": "103a87a2073d2d970716c8df088227d35f243829",
+          "url": "https://github.com/ocaml/dune/commit/e11fd639fecdbbabb097f81493adb04f506aa356"
+        },
+        "date": 1692111959277,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.98519402064667",
             "unit": "seconds"
           }
         ]

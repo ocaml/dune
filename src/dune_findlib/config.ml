@@ -73,8 +73,10 @@ let ocamlpath_sep =
                   ';' else Bin.path_sep
 ;;
 
+let ocamlpath_var = "OCAMLPATH"
+let ocamlfind_ignore_dups_in = "OCAMLFIND_IGNORE_DUPS_IN"
 let path_var = Bin.parse_path ~sep:ocamlpath_sep
-let ocamlpath env = Env.get env "OCAMLPATH" |> Option.map ~f:path_var
+let ocamlpath env = Env.get env ocamlpath_var |> Option.map ~f:path_var
 
 let set_toolchain t ~toolchain =
   match t.toolchain with

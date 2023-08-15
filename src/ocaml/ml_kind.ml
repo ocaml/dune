@@ -12,7 +12,6 @@ let choose t ~impl ~intf =
   | Intf -> intf
 ;;
 
-let suffix = choose ~impl:"" ~intf:"i"
 let to_string = choose ~impl:"impl" ~intf:"intf"
 let to_dyn t = Dyn.String (to_string t)
 

@@ -1,21 +1,20 @@
 open Import
 open Memo.O
 
-type t =
-  { packages : Package.t Package.Name.Map.t
-  ; findlib : Findlib.t
-  }
+type t = Context_name.t
 
 type any_package =
   | Local of Package.t
   | Installed of Dune_package.t
 
-let find_package t pkg =
-  match Package.Name.Map.find t.packages pkg with
+let find_package ctx pkg =
+  let* packages = Only_packages.get () in
+  match Package.Name.Map.find packages pkg with
   | Some p -> Memo.return (Some (Local p))
   | None ->
     let open Memo.O in
-    Findlib.find_root_package t.findlib pkg
+    let* findlib = Findlib.create ctx in
+    Findlib.find_root_package findlib pkg
     >>| (function
     | Ok p -> Some (Installed p)
     | Error Not_found -> None
@@ -23,13 +22,7 @@ let find_package t pkg =
       User_error.raise [ User_message.pp user_message ])
 ;;
 
-let create (context : Context.t) =
-  let* packages = Only_packages.get () in
-  let+ findlib =
-    Findlib.create ~paths:context.findlib_paths ~lib_config:context.ocaml.lib_config
-  in
-  { packages; findlib }
-;;
+let create ctx = Memo.return ctx
 
 let section_of_site t ~loc ~pkg ~site =
   let+ sites =

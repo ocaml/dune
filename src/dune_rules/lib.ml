@@ -1775,8 +1775,7 @@ module DB = struct
     { parent; resolve; all = Memo.lazy_ all; lib_config; instrument_with }
   ;;
 
-  let create_from_findlib findlib =
-    let lib_config = Findlib.lib_config findlib in
+  let create_from_findlib findlib ~lib_config =
     create
       ()
       ~parent:None
@@ -1800,7 +1799,10 @@ module DB = struct
   let installed (context : Context.t) =
     let open Memo.O in
     let+ findlib = Findlib.create context.name in
-    create_from_findlib findlib ~instrument_with:context.instrument_with
+    create_from_findlib
+      findlib
+      ~instrument_with:context.instrument_with
+      ~lib_config:context.ocaml.lib_config
   ;;
 
   let find t name =

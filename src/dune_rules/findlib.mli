@@ -5,7 +5,6 @@ open Import
 (** Findlib database *)
 type t
 
-val lib_config : t -> Lib_config.t
 val findlib_predicates_set_by_dune : Variant.Set.t
 
 module Unavailable_reason : sig

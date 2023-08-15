@@ -1,5 +1,4 @@
 open Import
-open Memo.O
 module Opam_package = Package
 module P = Ocaml.Variant
 module Ps = Ocaml.Variant.Set
@@ -65,14 +64,43 @@ let hash { stdlib_dir; paths; builtins; ext_lib } =
 
 let findlib_predicates_set_by_dune = Ps.of_list [ P.ppx_driver; P.mt; P.mt_posix ]
 
-module Loader : sig
-  (* Search for a <package>/{META,dune-package} file in the findlib search
-     path *)
+module Make_loader
+    (Monad : sig
+       type 'a t
+
+       val return : 'a -> 'a t
+
+       module List : sig
+         val for_all : 'a list -> f:('a -> bool t) -> bool t
+         val exists : 'a list -> f:('a -> bool t) -> bool t
+         val fold_left : 'a list -> f:('acc -> 'a -> 'acc t) -> init:'acc -> 'acc t
+         val find_map : 'a list -> f:('a -> 'b option t) -> 'b option t
+       end
+
+       module O : sig
+         val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+         val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+         val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
+         val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
+       end
+     end)
+    (Fs : sig
+       val dir_contents
+         :  Path.t
+         -> (Filename.t list, Unix_error.Detailed.t) result Monad.t
+
+       val file_exists : Path.t -> bool Monad.t
+       val dir_exists : Path.t -> bool Monad.t
+       val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a Monad.t
+     end) : sig
+  (* Search for a <package>/{META,dune-package} file in the findlib search path *)
   val lookup_and_load
     :  t
     -> Package.Name.t
-    -> (Dune_package.t, Unavailable_reason.t) result Memo.t
+    -> (Dune_package.t, Unavailable_reason.t) result Monad.t
 end = struct
+  open Monad.O
+
   let mangled_module_re =
     lazy
       (let open Re in
@@ -85,9 +113,7 @@ end = struct
     let dot_dune_file =
       Path.relative t.dir (sprintf "%s.dune" (Lib_name.to_string t.name))
     in
-    let* dot_dune_exists =
-      Fs_memo.file_exists (Path.as_outside_build_dir_exn dot_dune_file)
-    in
+    let* dot_dune_exists = Fs.file_exists dot_dune_file in
     if dot_dune_exists
     then
       User_warning.emit
@@ -146,7 +172,7 @@ end = struct
       let virtual_ = None in
       let default_implementation = None in
       let wrapped = None in
-      let+ dir_contents = Fs_memo.dir_contents (Path.as_outside_build_dir_exn t.dir) in
+      let+ dir_contents = Fs.dir_contents t.dir in
       let foreign_archives, native_archives =
         (* Here we scan [t.dir] and consider all files named [lib*.ext_lib] to
            be foreign archives, and all other files with the extension
@@ -167,8 +193,7 @@ end = struct
              But it seems to be too invasive *)
           [], []
         | Ok dir_contents ->
-          let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
-          List.rev_filter_partition_map dir_contents ~f:(fun (f, _) ->
+          List.rev_filter_partition_map dir_contents ~f:(fun f ->
             let ext = Filename.extension f in
             if ext = ext_lib
             then (
@@ -195,9 +220,8 @@ end = struct
                      ; Pp.textf "error: %s" (Unix.error_message e)
                      ])
               | Ok dir_contents ->
-                let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
                 let ext = Cm_kind.ext Cmi in
-                Result.List.filter_map dir_contents ~f:(fun (fname, _) ->
+                Result.List.filter_map dir_contents ~f:(fun fname ->
                   match Filename.check_suffix fname ext with
                   | false -> Ok None
                   | true ->
@@ -256,6 +280,8 @@ end = struct
     Dune_package.Lib.of_findlib info
   ;;
 
+  module Exists = Findlib.Package.Exists (Monad) (Fs)
+
   (* Parse all the packages defined in a META file *)
   let dune_package_of_meta (db : t) ~dir ~meta_file ~(meta : Meta.Simplified.t) =
     let rec loop ~dir ~full_name (meta : Meta.Simplified.t) acc =
@@ -277,7 +303,7 @@ end = struct
       let* lib = to_dune_library pkg ~ext_lib:db.ext_lib in
       let* (entry : Dune_package.Entry.t) =
         let+ exists =
-          Findlib.Package.exists
+          Exists.exists
             pkg
             ~is_builtin:
               (Package.Name.Map.mem db.builtins (Lib_name.package_name pkg.name))
@@ -285,7 +311,7 @@ end = struct
         if exists then Dune_package.Entry.Library lib else Hidden_library lib
       in
       let acc = Lib_name.Map.add_exn acc (Dune_package.Entry.name entry) entry in
-      Memo.List.fold_left meta.subs ~init:acc ~f:(fun acc (meta : Meta.Simplified.t) ->
+      Monad.List.fold_left meta.subs ~init:acc ~f:(fun acc (meta : Meta.Simplified.t) ->
         let full_name =
           match meta.name with
           | None -> full_name
@@ -311,11 +337,10 @@ end = struct
   ;;
 
   let load_meta name file =
-    let file = Path.as_outside_build_dir_exn file in
-    Fs_memo.file_exists file
+    Fs.file_exists file
     >>= function
-    | false -> Memo.return None
-    | true -> Meta.load file ~name >>| Option.some
+    | false -> Monad.return None
+    | true -> Fs.with_lexbuf_from_file file ~f:(Meta.of_lex ~name) >>| Option.some
   ;;
 
   let load_builtin db meta =
@@ -326,33 +351,35 @@ end = struct
       ~meta
   ;;
 
-  let lookup db name dir : (Dune_package.t, Unavailable_reason.t) result option Memo.t =
+  module Load_dune_package = Dune_package.Or_meta.Load (Monad) (Fs)
+
+  let lookup db name dir : (Dune_package.t, Unavailable_reason.t) result option Monad.t =
     let load_meta ~dir meta_file =
       load_meta (Some name) meta_file
       >>= function
-      | None -> Memo.return None
+      | None -> Monad.return None
       | Some meta -> dune_package_of_meta db ~dir ~meta_file ~meta >>| Option.some
     in
     (* XXX DUNE4 why do we allow [META.foo] override [dune-package] file? *)
     Path.relative dir (Findlib.Package.meta_fn ^ "." ^ Package.Name.to_string name)
     |> load_meta ~dir
     >>= function
-    | Some pkg -> Memo.return (Some (Ok pkg))
+    | Some pkg -> Monad.return (Some (Ok pkg))
     | None ->
       let dir = Path.relative dir (Package.Name.to_string name) in
-      Fs_memo.dir_exists (Path.as_outside_build_dir_exn dir)
+      Fs.dir_exists dir
       >>= (function
-      | false -> Memo.return None
+      | false -> Monad.return None
       | true ->
         (let dune = Path.relative dir Dune_package.fn in
-         Fs_memo.file_exists (Path.as_outside_build_dir_exn dune)
+         Fs.file_exists dune
          >>= function
-         | true -> Dune_package.Or_meta.load dune
-         | false -> Memo.return (Ok Dune_package.Or_meta.Use_meta))
+         | true -> Load_dune_package.load dune
+         | false -> Monad.return (Ok Dune_package.Or_meta.Use_meta))
         >>= (function
         | Error e ->
-          Memo.return (Some (Error (Unavailable_reason.Invalid_dune_package e)))
-        | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.return (Some (Ok p))
+          Monad.return (Some (Error (Unavailable_reason.Invalid_dune_package e)))
+        | Ok (Dune_package.Or_meta.Dune_package p) -> Monad.return (Some (Ok p))
         | Ok Use_meta ->
           Path.relative dir Findlib.Package.meta_fn
           |> load_meta ~dir
@@ -366,7 +393,7 @@ end = struct
          user defined libraries *)
       load_builtin db meta >>| Result.ok
     | None ->
-      Memo.List.find_map db.paths ~f:(lookup db name)
+      Monad.List.find_map db.paths ~f:(lookup db name)
       >>| (function
       | Some m -> m
       | None ->
@@ -375,6 +402,27 @@ end = struct
          | _ -> Error Unavailable_reason.Not_found))
   ;;
 end
+
+module Loader =
+  Make_loader
+    (Memo)
+    (struct
+      open Memo.O
+
+      let dir_contents f =
+        Path.as_outside_build_dir_exn f
+        |> Fs_memo.dir_contents
+        >>| Result.map ~f:(fun contents ->
+          Fs_cache.Dir_contents.to_list contents |> List.map ~f:fst)
+      ;;
+
+      let file_exists f = Fs_memo.file_exists (Path.as_outside_build_dir_exn f)
+      let dir_exists f = Fs_memo.dir_exists (Path.as_outside_build_dir_exn f)
+
+      let with_lexbuf_from_file file ~f =
+        Fs_memo.with_lexbuf_from_file (Path.as_outside_build_dir_exn file) ~f
+      ;;
+    end)
 
 let memo =
   let module Input = struct
@@ -395,8 +443,9 @@ let find_root_package db name : (Dune_package.t, Unavailable_reason.t) result Me
   Memo.exec memo (db, name)
 ;;
 
+open Memo.O
+
 let find t name =
-  let open Memo.O in
   let+ p = find_root_package t (Lib_name.package_name name) in
   let open Result.O in
   let* p = p in

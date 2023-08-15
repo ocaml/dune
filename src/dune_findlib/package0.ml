@@ -52,30 +52,43 @@ let plugins t =
     (make_archives t "plugin" preds)
 ;;
 
-let exists t ~is_builtin =
-  let exists_if = Vars.get_words t.vars "exists_if" Ps.empty in
-  match exists_if with
-  | _ :: _ ->
-    Memo.List.for_all exists_if ~f:(fun fn ->
-      Fs_memo.file_exists (Path.as_outside_build_dir_exn (Path.relative t.dir fn)))
-  | [] ->
-    if not is_builtin
-    then Memo.return true
-    else (
-      (* The META files for installed packages are sometimes broken, i.e.
-         META files for libraries that were not installed by the compiler
-         are still present:
+module Exists
+    (Monad : sig
+       type 'a t
 
-         https://github.com/ocaml/dune/issues/563
+       val return : 'a -> 'a t
 
-         To workaround this problem, for builtin packages we check that at
-         least one of the archive is present. *)
-      match archives t with
-      | { byte = []; native = [] } -> Memo.return true
-      | { byte; native } ->
-        Memo.List.exists (byte @ native) ~f:(fun p ->
-          Path.as_outside_build_dir_exn p |> Fs_memo.file_exists))
-;;
+       module List : sig
+         val for_all : 'a list -> f:('a -> bool t) -> bool t
+         val exists : 'a list -> f:('a -> bool t) -> bool t
+       end
+     end)
+    (Fs : sig
+       val file_exists : Path.t -> bool Monad.t
+     end) =
+struct
+  let exists t ~is_builtin =
+    let exists_if = Vars.get_words t.vars "exists_if" Ps.empty in
+    match exists_if with
+    | _ :: _ ->
+      Monad.List.for_all exists_if ~f:(fun fn -> Fs.file_exists (Path.relative t.dir fn))
+    | [] ->
+      if not is_builtin
+      then Monad.return true
+      else (
+        (* The META files for installed packages are sometimes broken, i.e.
+           META files for libraries that were not installed by the compiler
+           are still present:
+
+           https://github.com/ocaml/dune/issues/563
+
+           To workaround this problem, for builtin packages we check that at
+           least one of the archive is present. *)
+        match archives t with
+        | { byte = []; native = [] } -> Monad.return true
+        | { byte; native } -> Monad.List.exists (byte @ native) ~f:Fs.file_exists)
+  ;;
+end
 
 let candidates ~dir name =
   [ meta_fn ^ "." ^ Package.Name.to_string name; meta_fn ]

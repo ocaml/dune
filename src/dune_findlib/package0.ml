@@ -1,5 +1,4 @@
 open Import
-open Memo.O
 module P = Ocaml.Variant
 module Ps = Ocaml.Variant.Set
 
@@ -81,13 +80,4 @@ let exists t ~is_builtin =
 let candidates ~dir name =
   [ meta_fn ^ "." ^ Package.Name.to_string name; meta_fn ]
   |> List.map ~f:(Path.Outside_build_dir.relative dir)
-;;
-
-let load_meta ~file name =
-  Fs_memo.file_exists file
-  >>= function
-  | false -> Memo.return (Error `Does_not_exist)
-  | true ->
-    let+ meta = Meta.load file ~name in
-    Ok meta
 ;;

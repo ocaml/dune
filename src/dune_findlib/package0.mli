@@ -22,8 +22,3 @@ val candidates
   :  dir:Path.Outside_build_dir.t
   -> Package.Name.t
   -> Path.Outside_build_dir.t list
-
-val load_meta
-  :  file:Path.Outside_build_dir.t
-  -> Package.Name.t option
-  -> (Meta.Simplified.t, [> `Does_not_exist ]) result Memo.t

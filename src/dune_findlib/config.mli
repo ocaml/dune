@@ -3,6 +3,9 @@ open Import
 type t
 
 val to_dyn : t -> Dyn.t
+val ocamlpath_var : Env.Var.t
+val ocamlpath_sep : char
+val ocamlfind_ignore_dups_in : Env.Var.t
 
 (** Finds the library search paths for this configuration, prepending
     [OCAMLPATH] if set *)
@@ -10,8 +13,6 @@ val path : t -> Path.t list
 
 (** Finds program [prog] for this configuration, if it exists *)
 val tool : t -> prog:string -> Path.t option Memo.t
-
-val ocamlpath_sep : char
 
 (** Read and parse the [OCAMLPATH] environment variable *)
 val ocamlpath : Env.t -> Path.t list option

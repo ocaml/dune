@@ -63,20 +63,24 @@ let first_has_priority x y =
     | None -> y)
 ;;
 
-let ocamlpath_sep = if Sys.cygwin then ';' else Bin.path_sep
+open Dune_findlib
+
+let ocamlpath = Findlib.Config.ocamlpath_var
+let ocamlfind_ignore_dups_in = Findlib.Config.ocamlfind_ignore_dups_in
 
 let to_env_without_path t =
   [ "CAML_LD_LIBRARY_PATH", Path.Build.relative t.lib_root "stublibs"
-  ; "OCAMLPATH", t.lib_root
+  ; ocamlpath, t.lib_root
   ; "OCAMLTOP_INCLUDE_PATH", Path.Build.relative t.lib_root "toplevel"
-  ; "OCAMLFIND_IGNORE_DUPS_IN", t.lib_root
+  ; ocamlfind_ignore_dups_in, t.lib_root
   ; "MANPATH", t.man
   ]
 ;;
 
-let sep = function
-  | "OCAMLFIND_IGNORE_DUPS_IN" | "OCAMLPATH" -> Some ocamlpath_sep
-  | _ -> None
+let sep var =
+  if var = ocamlpath || var = ocamlfind_ignore_dups_in
+  then Some Findlib.Config.ocamlpath_sep
+  else None
 ;;
 
 let add_to_env t env =

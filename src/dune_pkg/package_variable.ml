@@ -22,16 +22,6 @@ module Scope = struct
   type t =
     | Self
     | Package of Package_name.t
-
-  let of_string = function
-    | "_" -> Self
-    | package -> Package (Package_name.of_string package)
-  ;;
-
-  let to_string = function
-    | Self -> "_"
-    | Package package_name -> Package_name.to_string package_name
-  ;;
 end
 
 type t =
@@ -41,23 +31,36 @@ type t =
 
 let self_scoped name = { name; scope = Self }
 let package_scoped name package_name = { name; scope = Package package_name }
-let var_tag = "var"
 
-let to_payload { name; scope } =
-  Pform.Payload.of_args [ var_tag; Scope.to_string scope; Name.to_string name ]
-;;
-
-let of_macro_invocation ({ Pform.Macro_invocation.macro; _ } as macro_invocation) =
+let of_macro_invocation ~loc ({ Pform.Macro_invocation.macro; _ } as macro_invocation) =
   match macro with
+  | Pkg_self ->
+    let variable_name = Pform.Macro_invocation.Args.whole macro_invocation in
+    Ok (self_scoped (Name.of_string variable_name))
   | Pkg ->
-    (match Pform.Macro_invocation.Args.split macro_invocation with
-     | [ tag; scope_arg; variable_name ] when String.equal tag var_tag ->
-       Some { name = Name.of_string variable_name; scope = Scope.of_string scope_arg }
-     | _ -> None)
-  | _ -> None
+    let package_name, variable_name =
+      Pform.Macro_invocation.Args.lsplit2_exn macro_invocation loc
+    in
+    Ok
+      (package_scoped
+         (Name.of_string variable_name)
+         (Package_name.of_string package_name))
+  | _ -> Error `Unexpected_macro
 ;;
 
-let to_macro_invocation t = { Pform.Macro_invocation.macro = Pkg; payload = to_payload t }
+let to_macro_invocation { name; scope } =
+  match scope with
+  | Self ->
+    { Pform.Macro_invocation.macro = Pkg_self
+    ; payload = Pform.Payload.of_args [ Name.to_string name ]
+    }
+  | Package package_name ->
+    { Pform.Macro_invocation.macro = Pkg
+    ; payload =
+        Pform.Payload.of_args [ Name.to_string name; Package_name.to_string package_name ]
+    }
+;;
+
 let to_pform t = Pform.Macro (to_macro_invocation t)
 
 let of_opam_ident ident =

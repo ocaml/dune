@@ -19,9 +19,16 @@ type t =
   ; scope : Scope.t
   }
 
-val of_macro_invocation : Pform.Macro_invocation.t -> t option
+(** [of_macro_invocation ~loc macro_invocation] interprets a macro invocation
+    as a package variable. It's assumed that the macro invocation was created
+    using the [pform_of_opam_ident] function. This function expects the macro
+    to be [Pkg] or [Pkg_self] or an error is returned. *)
+val of_macro_invocation
+  :  loc:Loc.t
+  -> Pform.Macro_invocation.t
+  -> (t, [ `Unexpected_macro ]) result
 
-(** Parse an opam variable name. Identifiers begining with "<package>:" are
+(** Parse an opam variable name. Identifiers beginning with "<package>:" are
     treated as package-scoped variables unless <package> is "_" in which case
     they are treated as self-scoped. Identifiers without the "<package>:"
     prefix are treated as self-scoped unless they are the name of an opam

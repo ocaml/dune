@@ -508,11 +508,15 @@ module Action_expander = struct
         let roots = Paths.install_roots paths in
         let dir = section_dir_of_root roots section in
         Memo.return [ Value.Dir dir ]
-      | Macro ({ macro = Pkg; _ } as macro_invocation) ->
+      | Macro ({ macro = Pkg | Pkg_self; _ } as macro_invocation) ->
         let { Package_variable.name = variable_name; scope } =
-          match Package_variable.of_macro_invocation macro_invocation with
-          | Some package_variable -> package_variable
-          | None -> assert false
+          match Package_variable.of_macro_invocation ~loc macro_invocation with
+          | Ok package_variable -> package_variable
+          | Error `Unexpected_macro ->
+            Code_error.raise
+              "Attempted to treat an unexpected macro invocation as a package variable \
+               encoding"
+              []
         in
         let package_name =
           match scope with
@@ -524,11 +528,11 @@ module Action_expander = struct
           | None -> String.Map.empty, None
           | Some (var, paths) -> var, Some paths
         in
-        let present = Option.is_some paths in
         let variable_name = Package_variable.Name.to_string variable_name in
         (match String.Map.find variables variable_name with
          | Some v -> Memo.return @@ Variable.dune_value v
          | None ->
+           let present = Option.is_some paths in
            (match variable_name with
             | "pinned" -> Memo.return [ Value.String "false" ]
             | "enable" ->
@@ -536,7 +540,9 @@ module Action_expander = struct
             | "installed" -> Memo.return [ Value.String (Bool.to_string present) ]
             | _ ->
               (match paths with
-               | None -> assert false
+               | None ->
+                 (* TODO *)
+                 assert false
                | Some paths ->
                  (match Pform.Var.Pkg.Section.of_string variable_name with
                   | None ->

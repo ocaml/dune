@@ -30,6 +30,8 @@ module Pform = struct
 
       let split t = String.split t ~on:sep
     end
+
+    let of_args = String.concat ~sep:(String.make 1 Args.sep)
   end
 
   type t =

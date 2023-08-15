@@ -8,6 +8,7 @@ module Pform : sig
     val to_string : t -> string
     val to_dyn : t -> Dyn.t
     val compare : t -> t -> Ordering.t
+    val of_args : string list -> t
 
     module Args : sig
       (** Treat the entire payload as a single string argument. *)

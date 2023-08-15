@@ -55,8 +55,6 @@ module Var = struct
       | Jobs
       | Arch
       | Section_dir of Section.t
-      | Name
-      | Version
 
     let compare = Poly.compare
 
@@ -75,8 +73,6 @@ module Var = struct
       | Arch -> variant "Arch" []
       | Section_dir section ->
         variant "Section_dir" [ string (Section.to_string section) ]
-      | Name -> variant "Name" []
-      | Version -> variant "Version" []
     ;;
 
     let encode_to_latest_dune_lang_version = function
@@ -91,8 +87,6 @@ module Var = struct
       | Jobs -> "jobs"
       | Arch -> "arch"
       | Section_dir section -> Section.to_string section
-      | Name -> "name"
-      | Version -> "version"
     ;;
   end
 
@@ -213,8 +207,6 @@ module Var = struct
        | "group" -> Some (Pkg Group)
        | "jobs" -> Some (Pkg Jobs)
        | "arch" -> Some (Pkg Arch)
-       | "name" -> Some (Pkg Name)
-       | "version" -> Some (Pkg Version)
        | _ -> None)
   ;;
 end

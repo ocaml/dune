@@ -106,6 +106,6 @@ let%expect_test "turn on dune watch and wait until the connection is listed" =
   run case;
   [%expect
     {|
-    $PATH/dune build --passive-watch-mode --root . returned 130
+    $PATH/dune build --root . --passive-watch-mode returned 130
     [PASS] found . at unix:path=%24CWD/_build/.rpc/dune |}]
 ;;

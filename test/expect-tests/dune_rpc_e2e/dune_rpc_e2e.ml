@@ -123,11 +123,11 @@ let run ?env ~prog ~argv () =
   , read_lines stderr_i )
 ;;
 
-let run_server ?env ~root_dir () =
+let run_server ?(watch_mode_args = [ "--passive-watch-mode" ]) ?env ~root_dir () =
   run
     ?env
     ~prog:(Lazy.force dune_prog)
-    ~argv:[ "build"; "--passive-watch-mode"; "--root"; root_dir ]
+    ~argv:([ "build"; "--root"; root_dir ] @ watch_mode_args)
     ()
 ;;
 
@@ -151,11 +151,13 @@ let dune_build client what =
        | Failure -> "failed")
 ;;
 
-let with_dune_watch ?env f =
+let with_dune_watch ?watch_mode_args ?env f =
   let root_dir = "." in
   let xdg_runtime_dir = Filename.get_temp_dir_name () in
   Unix.putenv "XDG_RUNTIME_DIR" xdg_runtime_dir;
-  let pid, run_server, server_stdout, server_stderr = run_server ?env ~root_dir () in
+  let pid, run_server, server_stdout, server_stderr =
+    run_server ?watch_mode_args ?env ~root_dir ()
+  in
   let+ res, (stdout, stderr) =
     Fiber.fork_and_join
       (fun () -> Fiber.fork_and_join_unit (fun () -> run_server) (fun () -> f pid))

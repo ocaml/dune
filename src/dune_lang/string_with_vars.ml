@@ -47,13 +47,27 @@ let compare_no_loc { quoted; parts; loc = _ } t =
 let equal_no_loc t1 t2 = Ordering.is_eq (compare_no_loc t1 t2)
 let make_text ?(quoted = false) loc s = { quoted; loc; parts = [ Text s ] }
 
-let make_pform ?(quoted = false) loc pform =
+let part_of_pform loc pform =
   let source =
     match Pform.encode_to_latest_dune_lang_version pform with
     | Success { name; payload } -> { Template.Pform.loc; name; payload }
     | Pform_was_deleted -> assert false
   in
-  { quoted; loc; parts = [ Pform (source, pform) ] }
+  Pform (source, pform)
+;;
+
+let make_pform ?(quoted = false) loc pform =
+  let part = part_of_pform loc pform in
+  { quoted; loc; parts = [ part ] }
+;;
+
+let make ?(quoted = false) loc parts =
+  let parts =
+    List.map parts ~f:(function
+      | `Text s -> Text s
+      | `Pform p -> part_of_pform loc p)
+  in
+  { quoted; loc; parts }
 ;;
 
 let literal ~quoted ~loc s = { parts = [ Text s ]; quoted; loc }

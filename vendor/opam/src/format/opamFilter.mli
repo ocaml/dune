@@ -8,6 +8,7 @@
 (*  exception on linking described in the file LICENSE.                   *)
 (*                                                                        *)
 (**************************************************************************)
+module Re = Dune_re
 
 (** Formulas on variables, as used in opam files build scripts
 
@@ -49,6 +50,10 @@ val fold_down_left: ('a -> filter -> 'a) -> 'a -> filter -> 'a
 
 (** Maps on all nodes of a filter, bottom-up *)
 val map_up: (filter -> filter) -> filter -> filter
+
+(** Regex matching string interpolation syntax (["%%"], ["%{xxx}%"], or
+    ["%{xxx"] if unclosed) *)
+val string_interp_regex : Re.re
 
 (** Returns all the variables appearing in a filter (including the ones within
     string interpolations *)

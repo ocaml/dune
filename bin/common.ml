@@ -577,6 +577,7 @@ module Builder = struct
     ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
     ; report_errors_config : Dune_engine.Report_errors_config.t
     ; separate_error_messages : bool
+    ; stop_on_first_error : bool
     ; require_dune_project_file : bool
     ; insignificant_changes : [ `React | `Ignore ]
     ; watch_exclusions : string list
@@ -952,6 +953,13 @@ module Builder = struct
         & info
             [ "display-separate-messages" ]
             ~doc:"Separate error messages with a blank line.")
+    and+ stop_on_first_error =
+      Arg.(
+        value
+        & flag
+        & info
+            [ "stop-on-first-error" ]
+            ~doc:"Stop the build as soon as an error is encountered.")
     in
     if Option.is_none stats_trace_file && stats_trace_extended
     then User_error.raise [ Pp.text "--trace-extended can only be used with --trace" ];
@@ -996,6 +1004,7 @@ module Builder = struct
     ; cache_debug_flags
     ; report_errors_config
     ; separate_error_messages
+    ; stop_on_first_error
     ; require_dune_project_file
     ; insignificant_changes = (if react_to_insignificant_changes then `React else `Ignore)
     ; watch_exclusions
@@ -1191,6 +1200,7 @@ let init ?action_runner ?log_file c =
   Dune_engine.Clflags.diff_command := c.builder.diff_command;
   Dune_engine.Clflags.promote := c.builder.promote;
   Dune_engine.Clflags.force := c.builder.force;
+  Dune_engine.Clflags.stop_on_first_error := c.builder.stop_on_first_error;
   Dune_rules.Clflags.store_orig_src_dir := c.builder.store_orig_src_dir;
   Dune_rules.Clflags.promote_install_files := c.builder.promote_install_files;
   Dune_engine.Clflags.always_show_command_line := c.builder.always_show_command_line;

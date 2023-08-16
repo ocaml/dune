@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692191092839,
+  "lastUpdate": 1692214760867,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -89145,6 +89145,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "24.08042904558667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "265ab8e268dd7dd7efe17d0b6cdabc7086cb18aa",
+          "message": "Merge pull request #8391 from gridbugs/variable-interpolations-in-opam-commands\n\nVariable interpolations in opam commands",
+          "timestamp": "2023-08-16T20:27:01+01:00",
+          "tree_id": "d3aa13776e4a6f570b8de05b087490cc0675ff72",
+          "url": "https://github.com/ocaml/dune/commit/265ab8e268dd7dd7efe17d0b6cdabc7086cb18aa"
+        },
+        "date": 1692214749146,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.500141921640004",
             "unit": "seconds"
           }
         ]

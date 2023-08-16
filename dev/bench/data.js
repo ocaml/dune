@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692190728844,
+  "lastUpdate": 1692191081783,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -69366,6 +69366,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.89556850928",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5f57c3da0c5be27b4733c87698e739bf69b7f589",
+          "message": "feature: add --stop-on-first-error CLI option (#8400)\n\nWe expose a CLI option called --stop-on-first-error that exposes to the\r\nuser the internal behaviour of stopping the build on the first\r\nencountered error.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-08-16T05:38:36-07:00",
+          "tree_id": "5cad95f85976543bea61f3e083a8289fc2c5ace7",
+          "url": "https://github.com/ocaml/dune/commit/5f57c3da0c5be27b4733c87698e739bf69b7f589"
+        },
+        "date": 1692191081141,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "69.96793294458001",
             "unit": "seconds"
           }
         ]

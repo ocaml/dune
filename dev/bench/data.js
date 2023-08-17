@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692261333071,
+  "lastUpdate": 1692261852045,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -28157,6 +28157,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.73930428628667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5ea31c768d5694df10371c9978995949a9ecc49d",
+          "message": "Merge pull request #8399 from gridbugs/concise-pkg-macro\n\nfeature(pkg): Concise pkg macro",
+          "timestamp": "2023-08-17T09:20:03+01:00",
+          "tree_id": "2ecf8d0eed36fb11968957ed844f85a4697b77be",
+          "url": "https://github.com/ocaml/dune/commit/5ea31c768d5694df10371c9978995949a9ecc49d"
+        },
+        "date": 1692261849613,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "47.9363301199",
             "unit": "seconds"
           }
         ]

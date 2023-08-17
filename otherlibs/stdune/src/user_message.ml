@@ -13,6 +13,23 @@ module Style = struct
     | Success
     | Ansi_styles of Ansi_color.Style.t list
 
+  let to_dyn =
+    let open Dyn in
+    function
+    | Loc -> variant "Loc" []
+    | Error -> variant "Error" []
+    | Warning -> variant "Warning" []
+    | Kwd -> variant "Kwd" []
+    | Id -> variant "Id" []
+    | Prompt -> variant "Prompt" []
+    | Hint -> variant "Hint" []
+    | Details -> variant "Details" []
+    | Ok -> variant "Ok" []
+    | Debug -> variant "Debug" []
+    | Success -> variant "Success" []
+    | Ansi_styles l -> variant "Ansi_styles" [ list Ansi_color.Style.to_dyn l ]
+  ;;
+
   let compare t1 t2 : Ordering.t =
     match t1, t2 with
     | Loc, Loc -> Eq

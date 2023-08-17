@@ -22,6 +22,7 @@ module Style : sig
     | Success
     | Ansi_styles of Ansi_color.Style.t list
 
+  val to_dyn : t -> Dyn.t
   val compare : t -> t -> Ordering.t
 end
 

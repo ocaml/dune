@@ -126,6 +126,19 @@ module Error : sig
     val current : t -> error Id.Map.t
     val empty : t
   end
+
+  module For_tests : sig
+    (** Internal helpers for testing purposes. Do not use. *)
+
+    (** Construct an [Error.t] *)
+    val make
+      :  description:
+           [ `Exn of Exn_with_backtrace.t | `Diagnostic of Compound_user_error.t ]
+      -> dir:Path.t option
+      -> promotion:Diff_promotion.Annot.t option
+      -> unit
+      -> t
+  end
 end
 
 (** The current set of active errors. *)

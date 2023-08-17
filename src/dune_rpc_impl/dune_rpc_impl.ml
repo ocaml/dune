@@ -6,6 +6,12 @@ module Private = Dune_rpc_client.Private
 module Watch_mode_config = Watch_mode_config
 module Where = Dune_rpc_client.Where
 
+module Diagnostics = struct
+  module For_tests = struct
+    let diagnostic_of_error = Diagnostics.diagnostic_of_error
+  end
+end
+
 module Poll_active =
   Dune_rpc_private.Registry.Poll
     (Fiber)

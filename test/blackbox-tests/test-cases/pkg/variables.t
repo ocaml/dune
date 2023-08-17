@@ -21,9 +21,9 @@ Test that we can set variables
   > (deps test)
   > (build
   >  (progn
-  >   (system "\| echo %{pkg:var:test:abool}
-  >           "\| echo %{pkg:var:test:astring}
-  >           "\| echo %{pkg:var:test:somestrings}
+  >   (system "\| echo %{pkg:test:abool}
+  >           "\| echo %{pkg:test:astring}
+  >           "\| echo %{pkg:test:somestrings}
   >   )
   >   (run mkdir -p %{prefix})))
   > EOF

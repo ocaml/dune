@@ -508,35 +508,49 @@ module Action_expander = struct
         let roots = Paths.install_roots paths in
         let dir = section_dir_of_root roots section in
         Memo.return [ Value.Dir dir ]
-      | Macro macro_invocation ->
-        (match Pform.Macro_invocation.Args.split macro_invocation with
-         | [ "var"; name; var ] ->
-           let variables, paths =
-             let name = if name = "_" then paths.name else Package.Name.of_string name in
-             match Package.Name.Map.find deps name with
-             | None -> String.Map.empty, None
-             | Some (var, paths) -> var, Some paths
-           in
+      | Macro ({ macro = Pkg | Pkg_self; _ } as macro_invocation) ->
+        let { Package_variable.name = variable_name; scope } =
+          match Package_variable.of_macro_invocation ~loc macro_invocation with
+          | Ok package_variable -> package_variable
+          | Error `Unexpected_macro ->
+            Code_error.raise
+              "Attempted to treat an unexpected macro invocation as a package variable \
+               encoding"
+              []
+        in
+        let package_name =
+          match scope with
+          | Self -> paths.name
+          | Package package_name -> package_name
+        in
+        let variables, paths =
+          match Package.Name.Map.find deps package_name with
+          | None -> String.Map.empty, None
+          | Some (var, paths) -> var, Some paths
+        in
+        let variable_name = Package_variable.Name.to_string variable_name in
+        (match String.Map.find variables variable_name with
+         | Some v -> Memo.return @@ Variable.dune_value v
+         | None ->
            let present = Option.is_some paths in
-           (match String.Map.find variables var with
-            | Some v -> Memo.return @@ Variable.dune_value v
-            | None ->
-              (match var with
-               | "pinned" -> Memo.return [ Value.String "false" ]
-               | "enable" ->
-                 Memo.return [ Value.String (if present then "enable" else "disable") ]
-               | "installed" -> Memo.return [ Value.String (Bool.to_string present) ]
-               | _ ->
-                 (match paths with
-                  | None -> assert false
-                  | Some paths ->
-                    (match Pform.Var.Pkg.Section.of_string var with
-                     | None -> User_error.raise ~loc [ Pp.textf "invalid section %S" var ]
-                     | Some section ->
-                       let section = dune_section_of_pform section in
-                       let install_paths = Paths.install_paths paths in
-                       Memo.return [ Value.Dir (Install.Paths.get install_paths section) ]))))
-         | _ -> assert false)
+           (match variable_name with
+            | "pinned" -> Memo.return [ Value.String "false" ]
+            | "enable" ->
+              Memo.return [ Value.String (if present then "enable" else "disable") ]
+            | "installed" -> Memo.return [ Value.String (Bool.to_string present) ]
+            | _ ->
+              (match paths with
+               | None ->
+                 (* TODO *)
+                 assert false
+               | Some paths ->
+                 (match Pform.Var.Pkg.Section.of_string variable_name with
+                  | None ->
+                    User_error.raise ~loc [ Pp.textf "invalid section %S" variable_name ]
+                  | Some section ->
+                    let section = dune_section_of_pform section in
+                    let install_paths = Paths.install_paths paths in
+                    Memo.return [ Value.Dir (Install.Paths.get install_paths section) ]))))
       | Var Context_name -> Memo.return [ Value.String (Context_name.to_string context) ]
       | _ -> Expander0.isn't_allowed_in_this_position ~source
     ;;

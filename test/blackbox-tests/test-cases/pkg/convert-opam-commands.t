@@ -60,6 +60,16 @@ Make sure we don't mess up percent signs that aren't part of variable interpolat
   > build: [ "./configure" "--prefix=%{prefix" ]
   > EOF
 
+  $ mkpkg variable-types <<EOF
+  > opam-version: "2.0"
+  > build: [
+  >   ["echo" local_var]
+  >   ["echo" _:explicit_local_var]
+  >   ["echo" foo:package_var]
+  >   ["echo" os-family]
+  > ]
+  > EOF
+
   $ solve_project <<EOF
   > (lang dune 3.8)
   > (package
@@ -67,10 +77,12 @@ Make sure we don't mess up percent signs that aren't part of variable interpolat
   >  (depends
   >   standard-dune
   >   with-interpolation
-  >   with-percent-sign))
+  >   with-percent-sign
+  >   variable-types))
   > EOF
   Solution for dune.lock:
   standard-dune.0.0.1
+  variable-types.0.0.1
   with-interpolation.0.0.1
   with-percent-sign.0.0.1
   
@@ -78,7 +90,7 @@ Make sure we don't mess up percent signs that aren't part of variable interpolat
   $ cat dune.lock/standard-dune.pkg
   (version 0.0.1)
   (install (run %{make} install))
-  (build (progn (run dune subst) (run dune build -p %{pkg:var:_:name} -j %{jobs} @install @runtest @doc)))
+  (build (progn (run dune subst) (run dune build -p %{pkg-self:name} -j %{jobs} @install @runtest @doc)))
 
   $ cat dune.lock/with-interpolation.pkg
   (version 0.0.1)
@@ -88,6 +100,10 @@ Make sure we don't mess up percent signs that aren't part of variable interpolat
   $ cat dune.lock/with-percent-sign.pkg
   (version 0.0.1)
   (build (run printf %d 42))
+
+  $ cat dune.lock/variable-types.pkg
+  (version 0.0.1)
+  (build (progn (run echo %{pkg-self:local_var}) (run echo %{pkg-self:explicit_local_var}) (run echo %{pkg:package_var:foo}) (run echo %{os_family})))
 
   $ solve_project <<EOF
   > (lang dune 3.8)

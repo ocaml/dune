@@ -239,26 +239,6 @@ let opam_command_to_string_debug (args, _filter_opt) =
 ;;
 
 let opam_commands_to_actions package (commands : OpamTypes.command list) =
-  let pform_of_ident ident =
-    let scope, variable =
-      match String.lsplit2 ident ~on:':' with
-      | None -> `Self_or_global, ident
-      | Some ("_", variable) -> `Self, variable
-      | Some (package, variable) -> `Package package, variable
-    in
-    match scope with
-    | `Package package ->
-      (* TODO: abstract how the var package variables are encoded into multi-argument macros *)
-      Pform.(
-        Macro { macro = Pkg; payload = Payload.of_args [ "var"; package; variable ] })
-    | `Self ->
-      Pform.(Macro { macro = Pkg; payload = Payload.of_args [ "var"; "_"; variable ] })
-    | `Self_or_global ->
-      (match Pform.Var.of_opam_global_variable_name variable with
-       | Some var -> Pform.Var var
-       | None ->
-         Pform.(Macro { macro = Pkg; payload = Payload.of_args [ "var"; "_"; variable ] }))
-  in
   List.filter_map commands ~f:(fun ((args, _filter_opt) as command) ->
     let interpolate_opam_variables s =
       Dune_re.Seq.split_full OpamFilter.string_interp_regex s
@@ -271,7 +251,7 @@ let opam_commands_to_actions package (commands : OpamTypes.command list) =
              when String.is_prefix ~prefix:"%{" interp
                   && String.is_suffix ~suffix:"}%" interp ->
              let ident = String.sub ~pos:2 ~len:(String.length interp - 4) interp in
-             `Pform (pform_of_ident ident)
+             `Pform (Package_variable.pform_of_opam_ident ident)
            | other ->
              User_error.raise
                [ Pp.textf
@@ -290,7 +270,10 @@ let opam_commands_to_actions package (commands : OpamTypes.command list) =
       List.map args ~f:(fun (simple_arg, _filter_opt) ->
         match simple_arg with
         | OpamTypes.CString s -> interpolate_opam_variables s
-        | CIdent ident -> String_with_vars.make_pform Loc.none (pform_of_ident ident))
+        | CIdent ident ->
+          String_with_vars.make_pform
+            Loc.none
+            (Package_variable.pform_of_opam_ident ident))
     in
     match terms with
     | program :: args -> Some (Action.run program args)

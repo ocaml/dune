@@ -265,6 +265,7 @@ module Macro = struct
     | Env
     | Artifact of Artifact.t
     | Pkg
+    | Pkg_self
 
   let compare x y =
     match x, y with
@@ -316,6 +317,9 @@ module Macro = struct
     | Pkg, Pkg -> Eq
     | Pkg, _ -> Lt
     | _, Pkg -> Gt
+    | Pkg_self, Pkg_self -> Eq
+    | Pkg_self, _ -> Lt
+    | _, Pkg_self -> Gt
     | Artifact x, Artifact y -> Artifact.compare x y
   ;;
 
@@ -341,6 +345,7 @@ module Macro = struct
     | Env -> string "Env"
     | Artifact ext -> variant "Artifact" [ Artifact.to_dyn ext ]
     | Pkg -> variant "Pkg" []
+    | Pkg_self -> variant "Pkg_self" []
   ;;
 
   let encode = function
@@ -362,6 +367,7 @@ module Macro = struct
     | Coq_config -> Ok "coq"
     | Env -> Ok "env"
     | Pkg -> Ok "pkg"
+    | Pkg_self -> Ok "pkg-self"
     | Artifact a -> Ok (String.drop (Artifact.ext a) 1)
   ;;
 end

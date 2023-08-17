@@ -545,6 +545,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pfor
        let s = Pform.Macro_invocation.Args.whole macro_invocation in
        (match macro_invocation.macro with
         | Pkg -> Code_error.raise "pkg forms aren't possible here" []
+        | Pkg_self -> Code_error.raise "pkg-self forms aren't possible here" []
         | Ocaml_config ->
           static
           @@

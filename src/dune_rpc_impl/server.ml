@@ -248,7 +248,8 @@ let handler (t : _ t Fdecl.t) action_runner_server handle : 'a Dune_rpc_server.H
                match prev, now with
                | None, None -> assert false
                | Some prev, None ->
-                 Some (Diagnostics.diagnostic_event_of_error_event (Remove prev))
+                 Some
+                   (Diagnostics.diagnostic_event_of_error_event (Remove (Error.id prev)))
                | _, Some next ->
                  Some (Diagnostics.diagnostic_event_of_error_event (Add next)))
            |> Error.Id.Map.values)

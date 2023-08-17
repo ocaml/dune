@@ -14,6 +14,10 @@ let absolutize_paths ~dir (loc : Loc.t) =
   |> Loc.to_lexbuf_loc
 ;;
 
+let diagnostic_id_of_error_id : Build_system.Error.Id.t -> Diagnostic.Id.t =
+  fun id -> Diagnostic.Id.create (Build_system.Error.Id.to_int id)
+;;
+
 let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t =
   fun m ->
   let dir =
@@ -33,9 +37,7 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t 
   in
   let loc = Option.map message.loc ~f:make_loc in
   let make_message pars = Pp.map_tags (Pp.concat pars) ~f:(fun _ -> ()) in
-  let id =
-    Build_system.Error.id m |> Build_system.Error.Id.to_int |> Diagnostic.Id.create
-  in
+  let id = Build_system.Error.id m |> diagnostic_id_of_error_id in
   let promotion =
     match Build_system.Error.promotion m with
     | None -> []
@@ -65,6 +67,6 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t 
 
 let diagnostic_event_of_error_event (e : Build_system.Error.Event.t) : Diagnostic.Event.t =
   match e with
-  | Remove e -> Remove (diagnostic_of_error e)
+  | Remove e -> Remove (diagnostic_id_of_error_id e)
   | Add e -> Add (diagnostic_of_error e)
 ;;

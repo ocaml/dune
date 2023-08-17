@@ -44,7 +44,7 @@ module Error = struct
   module Event = struct
     type nonrec t =
       | Add of t
-      | Remove of t
+      | Remove of Id.t
   end
 
   let of_exn (exn : Exn_with_backtrace.t) =
@@ -129,7 +129,7 @@ module Error = struct
         (match x, y with
          | Add x, Add y -> Id.equal (id x) (id y)
          | Add _, _ -> false
-         | Remove x, Remove y -> Id.equal (id x) (id y)
+         | Remove id_x, Remove id_y -> Id.equal id_x id_y
          | Remove _, _ -> false)
       | Some _, None | None, Some _ -> false
     ;;

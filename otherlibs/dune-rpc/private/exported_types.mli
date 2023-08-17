@@ -94,7 +94,7 @@ module Diagnostic : sig
   module Event : sig
     type nonrec t =
       | Add of t
-      | Remove of t
+      | Remove of Id.t
 
     val to_dyn : t -> Dyn.t
     val sexp : (t, Conv.values) Conv.t

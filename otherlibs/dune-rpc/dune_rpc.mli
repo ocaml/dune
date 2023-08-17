@@ -148,7 +148,7 @@ module V1 : sig
     module Event : sig
       type nonrec t =
         | Add of t
-        | Remove of t
+        | Remove of Id.t
     end
   end
 

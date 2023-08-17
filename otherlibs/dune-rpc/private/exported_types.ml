@@ -290,13 +290,13 @@ module Diagnostic = struct
   module Event = struct
     type nonrec t =
       | Add of t
-      | Remove of t
+      | Remove of Id.t
 
     let sexp =
       let diagnostic = sexp in
       let open Conv in
       let add = constr "Add" diagnostic (fun a -> Add a) in
-      let remove = constr "Remove" diagnostic (fun a -> Remove a) in
+      let remove = constr "Remove" Id.sexp (fun a -> Remove a) in
       sum
         [ econstr add; econstr remove ]
         (function

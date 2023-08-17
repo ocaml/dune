@@ -42,7 +42,7 @@ let on_diagnostic_event diagnostics =
   (* function to remove remove pp tags and hide junk from paths *)
   let map_event (d : Diagnostic.Event.t) f : Diagnostic.Event.t =
     match d with
-    | Remove e -> Remove (f e)
+    | Remove e -> Remove e
     | Add e -> Add (f e)
   in
   let sanitize (d : Diagnostic.t) =
@@ -536,41 +536,8 @@ let%expect_test "create and fix error" =
         Building ./foo.exe
         Build ./foo.exe succeeded |}];
     let+ () = print_diagnostics poll in
-    [%expect
-      {|
-        [ "Remove"
-        ; [ [ "directory"; "$CWD" ]
-          ; [ "id"; "0" ]
-          ; [ "loc"
-            ; [ [ "start"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "23" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
-                  ]
-                ]
-              ; [ "stop"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "26" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
-                  ]
-                ]
-              ]
-            ]
-          ; [ "message"
-            ; [ "Verbatim"
-              ; "This expression has type int but an expression was expected of type\n\
-                \  string\n\
-                 "
-              ]
-            ]
-          ; [ "promotion"; [] ]
-          ; [ "related"; [] ]
-          ; [ "severity"; "error" ]
-          ; [ "targets"; [] ]
-          ]
-        ] |}]);
+    [%expect {|
+        [ "Remove"; "0" ] |}]);
   [%expect {| |}]
 ;;
 

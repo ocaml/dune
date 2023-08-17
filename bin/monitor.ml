@@ -142,7 +142,7 @@ end = struct
           ~init:(`Add_only [], state.diagnostics)
           ~f:(fun (mode, acc) diag_event ->
             match (diag_event : Diagnostic.Event.t) with
-            | Remove diag -> `Remove, Diagnostic_id_map.remove acc diag.id
+            | Remove id -> `Remove, Diagnostic_id_map.remove acc id
             | Add diag ->
               ( (match mode with
                  | `Add_only diags -> `Add_only (diag :: diags)

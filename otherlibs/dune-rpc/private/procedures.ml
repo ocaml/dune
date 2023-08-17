@@ -181,13 +181,57 @@ module Poll = struct
   end
 
   module Diagnostic = struct
+    module V1 = struct
+      module Event = struct
+        type t =
+          | Add of Diagnostic.t
+          | Remove of Diagnostic.t
+
+        let sexp =
+          let diagnostic = Diagnostic.sexp in
+          let open Conv in
+          let add = constr "Add" diagnostic (fun a -> Add a) in
+          let remove = constr "Remove" diagnostic (fun a -> Remove a) in
+          sum
+            [ econstr add; econstr remove ]
+            (function
+             | Add t -> case t add
+             | Remove t -> case t remove)
+        ;;
+
+        let to_event : t -> Diagnostic.Event.t = function
+          | Add diag -> Add diag
+          | Remove diag -> Remove diag.id
+        ;;
+
+        let of_event : Diagnostic.Event.t -> t option = function
+          | Add diag -> Some (Add diag)
+          | Remove _ -> None
+        ;;
+      end
+    end
+
     let name = "diagnostic"
 
     let v1 =
+      Decl.Request.make_gen
+        ~version:1
+        ~req:Id.sexp
+        ~resp:(Conv.option (Conv.list V1.Event.sexp))
+        ~upgrade_req:Fun.id
+        ~downgrade_req:Fun.id
+        ~upgrade_resp:(Option.map ~f:(List.map ~f:V1.Event.to_event))
+        ~downgrade_resp:(fun x ->
+          let open Option.O in
+          let* x = x in
+          Option.List.all (List.map ~f:V1.Event.of_event x))
+    ;;
+
+    let v2 =
       Decl.Request.make_current_gen
+        ~version:2
         ~req:Id.sexp
         ~resp:(Conv.option (Conv.list Diagnostic.Event.sexp))
-        ~version:1
     ;;
   end
 
@@ -209,7 +253,7 @@ module Poll = struct
 
   let diagnostic =
     let open Diagnostic in
-    make name [ v1 ]
+    make name [ v1; v2 ]
   ;;
 
   let running_jobs =

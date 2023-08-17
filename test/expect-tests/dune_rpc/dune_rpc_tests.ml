@@ -917,7 +917,10 @@ let%expect_test "print digests for all public RPCs" =
     {|
     Version 1:
       Request: Sexp
-      Response: 443627a52ab5595206164d020ff01c56 |}];
+      Response: 443627a52ab5595206164d020ff01c56
+    Version 2:
+      Request: Sexp
+      Response: 942b884c59dc2c0c5e8fb9768e3b9633 |}];
   Decl.Request.print_generations (Procedures.Poll.poll Procedures.Poll.running_jobs);
   [%expect
     {|

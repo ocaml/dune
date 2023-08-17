@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692292879681,
+  "lastUpdate": 1692292966171,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -69714,6 +69714,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.659296075433333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "39b9f3e2341189cf114e90e5c4e3d4695155f888",
+          "message": "refactor(findlib): functorize lookup (#8407)\n\nThe file system operations will need to be done without [Fs_memo] to\r\navoid adding watches.\r\n\r\nThe monad will be [Identity.t] because we'll already be inside\r\n[Action_builder]\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-17T16:57:43Z",
+          "tree_id": "bba3a3460f52e31bd8cb9fae3f3808a1b73d1246",
+          "url": "https://github.com/ocaml/dune/commit/39b9f3e2341189cf114e90e5c4e3d4695155f888"
+        },
+        "date": 1692292965048,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "64.71965851623999",
             "unit": "seconds"
           }
         ]

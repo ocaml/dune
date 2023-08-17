@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692301048053,
+  "lastUpdate": 1692301403238,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -69801,6 +69801,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.63934684936",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b6d9e4456626b7139b5f93aefdbd3715f464f5f9",
+          "message": "test: repro rpc jobs bug (#8410)\n\nThis demonstrates that RPC jobs events are not stopped when dune is\r\ninterrupted and restarted.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-08-17T12:17:13-07:00",
+          "tree_id": "06e8f00e2c2a32711e72f3cf653af4a6ecaee909",
+          "url": "https://github.com/ocaml/dune/commit/b6d9e4456626b7139b5f93aefdbd3715f464f5f9"
+        },
+        "date": 1692301402440,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "70.04399933418",
             "unit": "seconds"
           }
         ]

@@ -1,6 +1,7 @@
 (** A collection of rules for one or multiple directories. *)
 
-open Import
+open Stdune
+module Dir_set := Dune_engine.Dir_set
 
 type 'rules t =
   | Empty (** [Empty] is a scheme that has no rules *)

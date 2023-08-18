@@ -3,6 +3,8 @@ open! Dune_tests_common
 open Dune_engine
 open Fiber.O
 
+let () = init ()
+
 let default =
   Clflags.display := Short;
   { Scheduler.Config.concurrency = 1

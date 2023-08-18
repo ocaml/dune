@@ -209,10 +209,7 @@ let remove_old_artifacts
       then (
         match kind with
         | Unix.S_DIR ->
-          (match subdirs_to_keep with
-           | All -> ()
-           | These set ->
-             if not (Filename.Set.mem set fn) then Path.rm_rf (Path.build path))
+          if not (Subdir_set.mem subdirs_to_keep fn) then Path.rm_rf (Path.build path)
         | _ -> Path.unlink (Path.build path)))
 ;;
 
@@ -226,9 +223,7 @@ let remove_old_sub_dirs_in_anonymous_actions_dir ~dir ~(subdirs_to_keep : Subdir
       let path = Path.Build.relative dir fn in
       match kind with
       | Unix.S_DIR ->
-        (match subdirs_to_keep with
-         | All -> ()
-         | These set -> if not (Filename.Set.mem set fn) then Path.rm_rf (Path.build path))
+        if not (Subdir_set.mem subdirs_to_keep fn) then Path.rm_rf (Path.build path)
       | _ -> ())
 ;;
 

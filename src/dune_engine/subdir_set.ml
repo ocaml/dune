@@ -4,6 +4,9 @@ type t =
   | All
   | These of Filename.Set.t
 
+let all = All
+let of_set set = These set
+
 let to_dir_set = function
   | All -> Dir_set.universal
   | These s ->

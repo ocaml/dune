@@ -1290,7 +1290,7 @@ let symlink_rules sctx ~dir =
     let* scheme = Memo.exec scheme_per_ctx_memo sctx in
     Scheme.Evaluated.get_rules scheme ~dir
   in
-  ( Subdir_set.These subdirs
+  ( Subdir_set.of_set subdirs
   , match rules with
     | None -> Rules.empty
     | Some rules -> Rules.of_dir_rules ~dir rules )

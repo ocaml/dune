@@ -488,12 +488,12 @@ end = struct
 
     let source_subdirs_of_build_dir ~dir =
       let module Source_tree = (val (Build_config.get ()).source_tree) in
-      let corresponding_source_dir ~dir =
+      let corresponding_source_dir =
         match Dpath.analyse_target dir with
         | Install _ | Alias _ | Anonymous_action _ | Other _ -> Memo.return None
         | Regular (_ctx, sub_dir) -> Source_tree.find_dir sub_dir
       in
-      corresponding_source_dir ~dir
+      corresponding_source_dir
       >>| function
       | None -> Filename.Set.empty
       | Some dir -> Source_tree.Dir.sub_dir_names dir

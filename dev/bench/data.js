@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692374515500,
+  "lastUpdate": 1692394166051,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -89957,6 +89957,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.646794151646663",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d0dc10b86fc3350cd309c8117c1648f79c3009df",
+          "message": "fix: executing processes (#8409)\n\n* in dune exec, the running process is already being killed by the\r\n  polling loop. There's no need to do it twice.\r\n\r\n* the action runner process shouldn't be restarted when the input\r\n  changes\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-18T14:13:57-07:00",
+          "tree_id": "2ff9968990c9a7c1a95c12ef637d1265aea7973f",
+          "url": "https://github.com/ocaml/dune/commit/d0dc10b86fc3350cd309c8117c1648f79c3009df"
+        },
+        "date": 1692394151237,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "29.85037736359334",
             "unit": "seconds"
           }
         ]

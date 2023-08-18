@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692373752693,
+  "lastUpdate": 1692374180623,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -28302,6 +28302,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "44.73471779672",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "marek@xivilization.net",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "distinct": true,
+          "id": "faaa8c35e6c5c3368dc2f4d46e04822730b966b0",
+          "message": "refactor(engine): remove pointless intermediate function\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\n\n<!-- ps-id: 29e20187-d1ac-4c1b-8955-fb7b3f37b1e5 -->",
+          "timestamp": "2023-08-18T17:36:58+02:00",
+          "tree_id": "7b4c0b9a92667274c8db227d4b432cfc971a0d8a",
+          "url": "https://github.com/ocaml/dune/commit/faaa8c35e6c5c3368dc2f4d46e04822730b966b0"
+        },
+        "date": 1692374179173,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.78653024328",
             "unit": "seconds"
           }
         ]

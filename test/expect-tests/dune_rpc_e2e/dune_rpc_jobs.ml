@@ -80,5 +80,6 @@ let%expect_test "rpc jobs after rebuild" =
     Background process is running, let's interrupt it...
     Start 1 _build/default/foo
     Background process is running, let's interrupt it...
+    Stop 1
     Start 2 _build/default/foo |}]
 ;;

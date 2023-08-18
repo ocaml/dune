@@ -892,23 +892,10 @@ let with_job_slot f =
     f t.cancel t.config)
 ;;
 
-(* We use this version privately in this module whenever we can pass the
-   scheduler explicitly *)
 let wait_for_process t pid =
-  let+ res, outcome =
-    Fiber.Cancel.with_handler
-      t.cancel
-      ~on_cancel:(fun () ->
-        Process_watcher.killall t.process_watcher Sys.sigkill;
-        Fiber.return ())
-      (fun () ->
-        let ivar = Fiber.Ivar.create () in
-        Process_watcher.register_job t.process_watcher { pid; ivar };
-        Fiber.Ivar.read ivar)
-  in
-  match outcome with
-  | Cancelled () -> cancelled ()
-  | Not_cancelled -> res
+  let ivar = Fiber.Ivar.create () in
+  Process_watcher.register_job t.process_watcher { pid; ivar };
+  Fiber.Ivar.read ivar
 ;;
 
 type termination_reason =

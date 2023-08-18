@@ -63,13 +63,36 @@ Create the source directory and fill it up with some dummy stuff for the test:
     "_build/install/default/doc/mypkg/your/docs/foo/bar.md" {"your/docs/foo/bar.md"}
   ]
 
-  $ test "(mydocs as ../)"
+Install docs directly into docs/<pkg>/:
+  $ test "(mydocs as .)"
   lib: [
     "_build/install/default/lib/mypkg/META"
     "_build/install/default/lib/mypkg/dune-package"
   ]
   doc: [
-    "_build/install/default/doc/baz.md" {"../baz.md"}
-    "_build/install/default/doc/foo.md" {"../foo.md"}
-    "_build/install/default/doc/foo/bar.md" {"../foo/bar.md"}
+    "_build/install/default/doc/mypkg/baz.md" {"./baz.md"}
+    "_build/install/default/doc/mypkg/foo.md" {"./foo.md"}
+    "_build/install/default/doc/mypkg/foo/bar.md" {"./foo/bar.md"}
+  ]
+
+Install multiple source trees at once:
+  $ mkdir otherdocs
+  $ touch otherdocs/help.txt
+  $ test "mydocs otherdocs"
+  lib: [
+    "_build/install/default/lib/mypkg/META"
+    "_build/install/default/lib/mypkg/dune-package"
+  ]
+  doc: [
+    "_build/install/default/doc/mypkg/mydocs/baz.md" {"mydocs/baz.md"}
+    "_build/install/default/doc/mypkg/mydocs/foo.md" {"mydocs/foo.md"}
+    "_build/install/default/doc/mypkg/mydocs/foo/bar.md" {"mydocs/foo/bar.md"}
+    "_build/install/default/doc/mypkg/otherdocs/help.txt" {"otherdocs/help.txt"}
+  ]
+
+Install zero source trees:
+  $ test ""
+  lib: [
+    "_build/install/default/lib/mypkg/META"
+    "_build/install/default/lib/mypkg/dune-package"
   ]

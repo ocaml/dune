@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692397906071,
+  "lastUpdate": 1692398297413,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -70149,6 +70149,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.0917450862599996",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d7fc65551e3a659e16467bf657607c32ae4dca58",
+          "message": "test: disable flake test on macos (#8423)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-18T15:07:52-07:00",
+          "tree_id": "8be27e18677286bce11ab562b77487913a383fa0",
+          "url": "https://github.com/ocaml/dune/commit/d7fc65551e3a659e16467bf657607c32ae4dca58"
+        },
+        "date": 1692398296165,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "77.10825746622",
             "unit": "seconds"
           }
         ]

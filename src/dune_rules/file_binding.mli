@@ -8,6 +8,12 @@ module Expanded : sig
   val dst : t -> string option
   val src_loc : t -> Loc.t
   val dst_path : t -> dir:Path.Build.t -> Path.Build.t
+
+  val validate_for_install_stanza
+    :  relative_dst_path_starts_with_parent_error_when:
+         [ `Deprecation_warning_from_3_11 | `Always_error ]
+    -> t
+    -> unit
 end
 
 module Unexpanded : sig
@@ -15,8 +21,9 @@ module Unexpanded : sig
 
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
-  val make : src:Loc.t * string -> dst:Loc.t * string -> t
+  val make : src:Loc.t * string -> dst:Loc.t * string -> dune_syntax:Syntax.Version.t -> t
   val decode : t Dune_lang.Decoder.t
+  val dune_syntax : t -> Syntax.Version.t
 
   val expand
     :  t

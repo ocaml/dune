@@ -1179,6 +1179,7 @@ module Executables = struct
     type t =
       { names : (Loc.t * string) list
       ; public : public option
+      ; dune_syntax : Syntax.Version.t
       }
 
     let names t = t.names
@@ -1319,7 +1320,7 @@ module Executables = struct
                 (pluralize "public_name" ~multi)
             ]
       in
-      { names; public }
+      { names; public; dune_syntax }
     ;;
 
     let install_conf t ~ext ~enabled_if =
@@ -1328,7 +1329,10 @@ module Executables = struct
           List.map2 t.names public_names ~f:(fun (locn, name) (locp, pub) ->
             Option.map pub ~f:(fun pub ->
               Install_entry.File.of_file_binding
-                (File_binding.Unexpanded.make ~src:(locn, name ^ ext) ~dst:(locp, pub))))
+                (File_binding.Unexpanded.make
+                   ~src:(locn, name ^ ext)
+                   ~dst:(locp, pub)
+                   ~dune_syntax:t.dune_syntax)))
           |> List.filter_opt
         in
         { Install_conf.section = Section Bin

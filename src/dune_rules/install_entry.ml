@@ -42,7 +42,7 @@ module File = struct
       file_binding_decode <|> glob_files_decode
     ;;
 
-    let to_file_bindings_unexpanded t ~expand_str ~dir =
+    let to_file_bindings_unexpanded t ~expand_str ~dir ~dune_syntax =
       match t with
       | File_binding file_binding -> Memo.return [ file_binding ]
       | Glob_files glob_files ->
@@ -51,11 +51,11 @@ module File = struct
         let glob_loc = String_with_vars.loc glob_files.glob in
         List.map paths ~f:(fun path ->
           let src = glob_loc, path in
-          File_binding.Unexpanded.make ~src ~dst:src)
+          File_binding.Unexpanded.make ~src ~dst:src ~dune_syntax)
     ;;
 
-    let to_file_bindings_expanded t ~expand_str ~dir =
-      to_file_bindings_unexpanded t ~expand_str ~dir
+    let to_file_bindings_expanded t ~expand_str ~dir ~dune_syntax =
+      to_file_bindings_unexpanded t ~expand_str ~dir ~dune_syntax
       |> Memo.bind
            ~f:
              (Memo.List.map
@@ -66,40 +66,72 @@ module File = struct
     ;;
   end
 
-  type t = Without_include.t Recursive_include.t
+  type t =
+    { entry : Without_include.t Recursive_include.t
+    ; dune_syntax : Syntax.Version.t
+    }
 
   let decode =
-    Recursive_include.decode
-      ~base_term:Without_include.decode
-      ~include_keyword:"include"
-      ~non_sexp_behaviour:`User_error
-      ~include_allowed_in_versions:(`Since (3, 5))
-  ;;
-
-  let expand_include = Recursive_include.expand_include
-
-  let expand_include_multi ts ~expand_str ~dir =
-    Memo.List.concat_map ts ~f:(expand_include ~expand_str ~dir)
+    let open Dune_lang.Decoder in
+    let+ entry =
+      Recursive_include.decode
+        ~base_term:Without_include.decode
+        ~include_keyword:"include"
+        ~non_sexp_behaviour:`User_error
+        ~include_allowed_in_versions:(`Since (3, 5))
+    and+ dune_syntax = Dune_lang.Syntax.get_exn Stanza.syntax in
+    { entry; dune_syntax }
   ;;
 
   let of_file_binding file_binding =
-    Recursive_include.of_base (Without_include.File_binding file_binding)
+    let entry = Recursive_include.of_base (Without_include.File_binding file_binding) in
+    let dune_syntax = File_binding.Unexpanded.dune_syntax file_binding in
+    { entry; dune_syntax }
   ;;
 
   let to_file_bindings_unexpanded ts ~expand_str ~dir =
-    expand_include_multi ts ~expand_str ~dir
+    let open Memo.O in
+    Memo.List.concat_map ts ~f:(fun { entry; dune_syntax } ->
+      let+ with_include_expanded =
+        Recursive_include.expand_include entry ~expand_str ~dir
+      in
+      List.map with_include_expanded ~f:(fun entry -> entry, dune_syntax))
     |> Memo.bind
          ~f:
-           (Memo.List.concat_map
-              ~f:(Without_include.to_file_bindings_unexpanded ~expand_str ~dir))
+           (Memo.List.concat_map ~f:(fun (entry, dune_syntax) ->
+              Without_include.to_file_bindings_unexpanded
+                ~expand_str
+                ~dir
+                ~dune_syntax
+                entry))
   ;;
 
   let to_file_bindings_expanded ts ~expand_str ~dir =
-    expand_include_multi ts ~expand_str ~dir
-    |> Memo.bind
-         ~f:
-           (Memo.List.concat_map
-              ~f:(Without_include.to_file_bindings_expanded ~expand_str ~dir))
+    let open Memo.O in
+    let+ file_bindings_expanded =
+      Memo.List.concat_map ts ~f:(fun { entry; dune_syntax } ->
+        let+ with_include_expanded =
+          Recursive_include.expand_include entry ~expand_str ~dir
+        in
+        List.map with_include_expanded ~f:(fun entry -> entry, dune_syntax))
+      |> Memo.bind
+           ~f:
+             (Memo.List.concat_map ~f:(fun (entry, dune_syntax) ->
+                Without_include.to_file_bindings_expanded
+                  ~expand_str
+                  ~dir
+                  ~dune_syntax
+                  entry))
+    in
+    (* Note that validation is deferred until after file bindings have been
+       expanded as a path may be invalid due to the contents of a variable
+       whose value is unknown until prior to this point. *)
+    List.iter
+      file_bindings_expanded
+      ~f:
+        (File_binding.Expanded.validate_for_install_stanza
+           ~relative_dst_path_starts_with_parent_error_when:`Deprecation_warning_from_3_11);
+    file_bindings_expanded
   ;;
 end
 
@@ -114,14 +146,29 @@ module Dir = struct
 
   type t = File_binding.Unexpanded.t Recursive_include.t
 
-  let to_file_bindings_expanded ts ~expand_str ~dir =
-    Memo.List.concat_map ts ~f:(Recursive_include.expand_include ~expand_str ~dir)
-    |> Memo.bind
-         ~f:
-           (Memo.List.map
-              ~f:
-                (File_binding.Unexpanded.expand
-                   ~dir
-                   ~f:(expand_str_with_check_for_local_path ~expand_str)))
+  let to_file_bindings_expanded
+    ts
+    ~expand_str
+    ~dir
+    ~relative_dst_path_starts_with_parent_error_when
+    =
+    let open Memo.O in
+    let+ file_bindings_expanded =
+      Memo.List.concat_map ts ~f:(Recursive_include.expand_include ~expand_str ~dir)
+      >>= Memo.List.map
+            ~f:
+              (File_binding.Unexpanded.expand
+                 ~dir
+                 ~f:(expand_str_with_check_for_local_path ~expand_str))
+    in
+    (* Note that validation is deferred until after file bindings have been
+       expanded as a path may be invalid due to the contents of a variable
+       whose value is unknown until prior to this point. *)
+    List.iter
+      file_bindings_expanded
+      ~f:
+        (File_binding.Expanded.validate_for_install_stanza
+           ~relative_dst_path_starts_with_parent_error_when);
+    file_bindings_expanded
   ;;
 end

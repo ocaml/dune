@@ -187,4 +187,34 @@ To install entire source directories, the ``source_tree`` field can be used:
 
    (install
     (section doc)
-    (source_trees doc))
+    (source_trees manual))
+
+This example results in the contents of the ``manual`` directory being installed
+under ``<prefix>/doc/<package>/manual/``.
+
+As with ``(files ...)`` the destination can be changed with the ``as`` keyword.
+For example if you want to install all the files in the ``manual`` directory
+directly into ``<prefix>/doc/<package>/`` you can write:
+
+.. code:: dune
+
+   (install
+    (section doc)
+    (source_trees (manual as .)))
+
+It's also possible to specify multiple directories:
+
+.. code:: dune
+
+   (install
+    (section doc)
+    (source_trees manual examples))
+
+This would result in the local directories ``manual`` and ``examples`` being
+installed to ``<prefix>/doc/<package>/manual/`` and
+``<prefix>/doc/<package>/examples/`` respectively.
+
+Unlike with ``(files ...)`` it is an error to begin the destination (the
+right-hand side of ``as``) with ``..``. (This is because support for installing
+source directories was added to Dune after destinations beginning with ``..``
+were deprecated.)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692301415030,
+  "lastUpdate": 1692349511901,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -89725,6 +89725,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "24.017119273746662",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d31d97a30389cda879a5a935b0d637e59c258f30",
+          "message": "dooc: More docs and tests for installing source_trees (#8415)\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-08-18T01:50:29-07:00",
+          "tree_id": "b1518bbcfabba758c6e1fc581ab3c20e5225653a",
+          "url": "https://github.com/ocaml/dune/commit/d31d97a30389cda879a5a935b0d637e59c258f30"
+        },
+        "date": 1692349498930,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "25.551471609953335",
             "unit": "seconds"
           }
         ]

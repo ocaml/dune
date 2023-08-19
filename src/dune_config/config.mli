@@ -15,6 +15,11 @@ module Toggle : sig
     [ `Enabled
     | `Disabled
     ]
+
+  val all : (string * t) list
+  val of_string : string -> (t, string) result
+  val to_string : t -> string
+  val to_dyn : t -> Dyn.t
 end
 
 (** [get t] return the value of the configuration for [t] *)

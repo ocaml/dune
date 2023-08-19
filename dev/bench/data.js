@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692438691940,
+  "lastUpdate": 1692439048844,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -28418,6 +28418,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "43.257472804273334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fccb20c970a0112ab2c6949fee1afd4941eafd7a",
+          "message": "feature: dune monitor (#8152)\n\nIntroduces the subcommand $ dune monitor to inspect running builds.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>\r\nCo-authored-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-19T02:37:19-07:00",
+          "tree_id": "5cd2a31834f7f585f234bed6e6c0cbbf09cd9443",
+          "url": "https://github.com/ocaml/dune/commit/fccb20c970a0112ab2c6949fee1afd4941eafd7a"
+        },
+        "date": 1692439047822,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.4374445029",
             "unit": "seconds"
           }
         ]

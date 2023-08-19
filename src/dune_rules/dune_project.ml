@@ -548,36 +548,33 @@ let infer ~dir ?(info = Package.Info.empty) packages =
 ;;
 
 module Toggle = struct
-  type t =
-    | Enable
-    | Disable
+  include Config.Toggle
 
-  let enabled = function
-    | Enable -> true
-    | Disable -> false
+  let enabled : t -> bool = function
+    | `Enabled -> true
+    | `Disabled -> false
   ;;
 
   let of_bool = function
-    | true -> Enable
-    | false -> Disable
+    | true -> `Enabled
+    | false -> `Disabled
   ;;
+
+  let all = [ "enable", `Enabled; "disable", `Disabled ]
 
   let encode t =
     let open Dune_lang.Encoder in
     let v =
-      match t with
-      | Enable -> "enable"
-      | Disable -> "disable"
+      List.find_map all ~f:(fun (k, v) -> Option.some_if (v = t) k) |> Option.value_exn
     in
     string v
   ;;
 
   let decode =
-    let open Dune_lang.Decoder in
-    map_validate string ~f:(function
-      | "enable" -> Ok Enable
-      | "disable" -> Ok Disable
-      | _ -> Error (User_error.make [ Pp.text "must be 'disable' or 'enable'" ]))
+    Dune_lang.Decoder.(map_validate string) ~f:(fun s ->
+      match List.assoc all s with
+      | Some v -> Ok v
+      | None -> Error (User_error.make [ Pp.text "must be 'disable' or 'enable'" ]))
   ;;
 
   let field ?check name =

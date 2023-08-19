@@ -35,6 +35,7 @@ let local_libraries =
   ; ("src/predicate_lang", Some "Predicate_lang", false, None)
   ; ("otherlibs/dune-private-libs/section", Some "Dune_section", false, None)
   ; ("src/dune_lang", Some "Dune_lang", false, None)
+  ; ("src/fiber_event_bus", Some "Fiber_event_bus", false, None)
   ; ("vendor/opam-file-format", None, false, None)
   ; ("src/dune_async_io", Some "Dune_async_io", false, None)
   ; ("src/fiber_util", Some "Fiber_util", false, None)

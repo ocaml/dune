@@ -25,6 +25,7 @@ let all : _ Cmdliner.Cmd.t list =
     ; Ocaml_merlin.command
     ; Shutdown.command
     ; Diagnostics.command
+    ; Monitor.command
     ]
   in
   let groups =

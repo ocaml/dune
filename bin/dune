@@ -12,6 +12,7 @@
   dune_lang
   predicate_lang
   fiber
+  fiber_event_bus
   stdune
   dune_console
   unix

@@ -162,6 +162,15 @@
  (files   dune-internal.1))
 
 (rule
+ (with-stdout-to dune-monitor.1
+  (run dune monitor --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-monitor.1))
+
+(rule
  (with-stdout-to dune-ocaml.1
   (run dune ocaml --help=groff)))
 

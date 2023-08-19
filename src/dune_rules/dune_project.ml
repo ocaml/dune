@@ -143,6 +143,7 @@ type t =
   ; executables_implicit_empty_intf : bool
   ; accept_alternative_dune_file_name : bool
   ; generate_opam_files : bool
+  ; warnings : Warning.Settings.t
   ; use_standard_c_and_cxx_flags : bool option
   ; file_key : File_key.t
   ; dialects : Dialect.DB.t
@@ -166,6 +167,7 @@ let file t = t.project_file
 let file_key t = t.file_key
 let implicit_transitive_deps t = t.implicit_transitive_deps
 let generate_opam_files t = t.generate_opam_files
+let warnings t = t.warnings
 let set_generate_opam_files generate_opam_files t = { t with generate_opam_files }
 let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
 let dialects t = t.dialects
@@ -189,6 +191,7 @@ let to_dyn
   ; executables_implicit_empty_intf
   ; accept_alternative_dune_file_name
   ; generate_opam_files
+  ; warnings
   ; use_standard_c_and_cxx_flags
   ; file_key
   ; dialects
@@ -219,6 +222,7 @@ let to_dyn
     ; "executables_implicit_empty_intf", bool executables_implicit_empty_intf
     ; "accept_alternative_dune_file_name", bool accept_alternative_dune_file_name
     ; "generate_opam_files", bool generate_opam_files
+    ; "warnings", Warning.Settings.to_dyn warnings
     ; "use_standard_c_and_cxx_flags", option bool use_standard_c_and_cxx_flags
     ; "file_key", string file_key
     ; "dialects", Dialect.DB.to_dyn dialects
@@ -438,10 +442,10 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
 
 let key = Univ_map.Key.create ~name:"dune-project" to_dyn
 let set t = Dune_lang.Decoder.set key t
+let get () = Dune_lang.Decoder.get key
 
 let get_exn () =
-  let open Dune_lang.Decoder in
-  get key
+  get ()
   >>| function
   | Some t -> t
   | None -> Code_error.raise "Current project is unset" []
@@ -535,6 +539,7 @@ let infer ~dir ?(info = Package.Info.empty) packages =
   ; extension_args
   ; parsing_context
   ; generate_opam_files = false
+  ; warnings = Warning.Settings.empty
   ; use_standard_c_and_cxx_flags = use_standard_c_and_cxx_flags_default ~lang
   ; file_key
   ; dialects = Dialect.DB.builtin
@@ -606,6 +611,7 @@ let encode : t -> Dune_lang.t list =
       ; executables_implicit_empty_intf
       ; accept_alternative_dune_file_name
       ; generate_opam_files
+      ; warnings = _
       ; use_standard_c_and_cxx_flags
       ; dialects
       ; explicit_js_mode
@@ -921,6 +927,11 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
                 [ "relative_to_project", `Relative_to_project
                 ; "inside_opam_directory", `Inside_opam_directory
                 ])
+     and+ warnings =
+       field
+         "warnings"
+         ~default:Warning.Settings.empty
+         (Dune_lang.Syntax.since Stanza.syntax (3, 11) >>> Warning.Settings.decode)
      in
      fun (opam_packages : (Loc.t * Package.t Memo.t) Package.Name.Map.t) ->
        let opam_file_location =
@@ -1016,6 +1027,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        ; executables_implicit_empty_intf
        ; accept_alternative_dune_file_name
        ; generate_opam_files
+       ; warnings
        ; use_standard_c_and_cxx_flags
        ; dialects
        ; explicit_js_mode

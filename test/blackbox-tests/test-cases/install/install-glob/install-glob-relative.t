@@ -35,6 +35,8 @@ Incorrect install stanza that would place files outside the package's install di
   become an error in a future version of Dune. Destinations of files in install
   stanzas beginning with .. will be disallowed to prevent a package's installed
   files from escaping that package's install directories.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (escaping_paths_in_install_stanza disabled)
   File "stanza/dune", line 2, characters 24-38:
   2 |  (files (glob_files_rec ../stuff/*.txt))
                               ^^^^^^^^^^^^^^
@@ -42,7 +44,17 @@ Incorrect install stanza that would place files outside the package's install di
   become an error in a future version of Dune. Destinations of files in install
   stanzas beginning with .. will be disallowed to prevent a package's installed
   files from escaping that package's install directories.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (escaping_paths_in_install_stanza disabled)
 
+Test that we can disable the warning:
+  $ cat >>dune-project <<EOF
+  > (warnings (escaping_paths_in_install_stanza disabled))
+  > EOF
+  $ dune build foo.install
+
+Now we remove disabling the warning
+  $ sed -i.bak '$d' dune-project
 
 Correction to the above which uses `with_prefix` to change the install destination:
   $ cat >stanza/dune <<EOF

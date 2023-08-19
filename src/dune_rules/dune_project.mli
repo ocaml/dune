@@ -142,6 +142,7 @@ val default_dune_language_version : Dune_lang.Syntax.Version.t ref
 val set : t -> ('a, 'k) Dune_lang.Decoder.parser -> ('a, 'k) Dune_lang.Decoder.parser
 
 val get_exn : unit -> (t, 'k) Dune_lang.Decoder.parser
+val get : unit -> (t option, 'k) Dune_lang.Decoder.parser
 
 (** Find arguments passed to (using). [None] means that the extension was not
     written in dune-project. *)
@@ -158,6 +159,7 @@ val accept_alternative_dune_file_name : t -> bool
 val strict_package_deps : t -> bool
 val cram : t -> bool
 val info : t -> Package.Info.t
+val warnings : t -> Warning.Settings.t
 
 (** Update the execution parameters according to what is written in the
     [dune-project] file. *)

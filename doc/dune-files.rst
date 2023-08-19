@@ -689,6 +689,22 @@ map_workspace_root
    .. versionchanged:: 3.7
         Add a way to disable the mapping.
 
+.. _warnings:
+
+warnings
+--------
+
+.. dune:stanza:: warnings
+
+   .. versionadded:: 3.11
+
+   Configure Dune warnings for the project.
+
+   .. dune:field:: <name>
+      :param: <enabled | disabled>
+
+      Enable or disable the warning <name> for the current project.
+
 .. _dune-files:
 
 dune

@@ -1,8 +1,6 @@
 open Stdune
-open Dune_tests_common
 open Memo.O
 
-let () = init ()
 let print = Printf.printf "%s\n"
 
 module Directory_rules = struct
@@ -26,7 +24,7 @@ module Directory_rules = struct
 end
 
 module Scheme = struct
-  include Dune_rules.For_tests.Scheme
+  include Scheme
 
   (* Calls [print] every time any code embedded in the scheme runs, be it a
      [Thunk] constructor or an [Approximation] function.
@@ -35,8 +33,8 @@ module Scheme = struct
      thunk within the [Scheme.t] value). *)
   let instrument ~print =
     let print path suffix = print (String.concat (List.rev path @ [ suffix ]) ~sep:":") in
-    let rec go ~path t =
-      match t with
+    let rec go ~path t : _ Scheme.t =
+      match (t : _ Scheme.t) with
       | Empty -> Empty
       | Union (t1, t2) -> Union (go ~path:("l" :: path) t1, go ~path:("r" :: path) t2)
       | Approximation (dirs, rules) ->
@@ -60,7 +58,7 @@ module Scheme = struct
      approximations act like views that prevent the rules from being seen rather
      than from being declared in the first place. *)
   let collect_rules_simple =
-    let rec go (t : _ t) ~dir =
+    let rec go t ~dir =
       match t with
       | Empty -> Memo.return Directory_rules.empty
       | Union (a, b) ->
@@ -150,7 +148,7 @@ let print_rules scheme ~dir =
 let run m = Fiber.run (Memo.run m) ~iter:(fun () -> assert false)
 let print_rules scheme ~dir = run @@ print_rules scheme ~dir
 
-open Dune_rules.For_tests.Scheme
+open Scheme
 
 let%expect_test _ =
   let scheme = Scheme.Thunk (fun () -> Memo.return Scheme.Empty) in

@@ -62,7 +62,6 @@ module Install_rules = struct
 end
 
 module For_tests = struct
-  module Scheme = Scheme
   module Lib_config = Lib_config
   module Dynlink_supported = Dynlink_supported
   module Ocamlobjinfo = Ocamlobjinfo

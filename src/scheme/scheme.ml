@@ -1,5 +1,6 @@
-open Import
+open Stdune
 open Memo.O
+module Dir_set = Dune_engine.Dir_set
 
 module T = struct
   type 'rules t =

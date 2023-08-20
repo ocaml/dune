@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692439427966,
+  "lastUpdate": 1692530104837,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -90537,6 +90537,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.961317419953332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a98a99bb161593156b3c303e3c539d8bf076acf9",
+          "message": "test: dune_console (#8428)\n\nWe add tests for `dune_console` together with observing that status line\r\nclearing doesn't work properly when lines are being wrapped.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-08-20T04:01:44-07:00",
+          "tree_id": "1f6248adc36c56e4428d65e26e5a4f253b38bbbe",
+          "url": "https://github.com/ocaml/dune/commit/a98a99bb161593156b3c303e3c539d8bf076acf9"
+        },
+        "date": 1692530093419,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "24.6454422243",
             "unit": "seconds"
           }
         ]

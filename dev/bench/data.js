@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692565534928,
+  "lastUpdate": 1692566519551,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -91581,6 +91581,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.04956988632",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9b136a203caab94982307f21ca61cbe8e2d29ab6",
+          "message": "refactor: remove [Super_context.coq] (#8441)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-20T14:06:39-07:00",
+          "tree_id": "76d8a46ebea470ac64784bb61a893ae68021c03b",
+          "url": "https://github.com/ocaml/dune/commit/9b136a203caab94982307f21ca61cbe8e2d29ab6"
+        },
+        "date": 1692566505589,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.814326300380003",
             "unit": "seconds"
           }
         ]

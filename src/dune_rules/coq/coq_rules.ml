@@ -120,7 +120,10 @@ let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =
 
 let coq_flags ~dir ~stanza_flags ~expander ~sctx =
   let open Action_builder.O in
-  let* standard = Action_builder.of_memo @@ Super_context.coq ~dir sctx in
+  let* standard =
+    Action_builder.of_memo
+    @@ (Super_context.env_node ~dir sctx |> Memo.bind ~f:Env_node.coq)
+  in
   Expander.expand_and_eval_set expander stanza_flags ~standard
 ;;
 

@@ -15,7 +15,7 @@ let ocaml_flags sctx ~dir melange =
   | false -> flags
   | true ->
     let ocaml_version = (Super_context.context sctx).ocaml.version in
-    Super_context.with_vendored_flags ~ocaml_version flags
+    Ocaml_flags.with_vendored_flags ~ocaml_version flags
 ;;
 
 let output_of_lib ~target_dir lib =

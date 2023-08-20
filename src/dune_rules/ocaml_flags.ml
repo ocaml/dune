@@ -165,3 +165,10 @@ let dump t =
     ; "melange.compile_flags", melange
     ]
 ;;
+
+let with_vendored_flags flags ~ocaml_version =
+  let with_warnings = with_vendored_warnings flags in
+  if Ocaml.Version.supports_alerts ocaml_version
+  then with_vendored_alerts with_warnings
+  else with_warnings
+;;

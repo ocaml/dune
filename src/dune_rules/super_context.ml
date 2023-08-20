@@ -287,12 +287,6 @@ let add_alias_action t alias ~dir ~loc action =
     build
 ;;
 
-let build_dir_is_vendored build_dir =
-  match Path.Build.drop_build_context build_dir with
-  | Some src_dir -> Source_tree.is_vendored src_dir
-  | None -> Memo.return false
-;;
-
 let with_vendored_flags ~ocaml_version flags =
   let with_warnings = Ocaml_flags.with_vendored_warnings flags in
   if Ocaml.Version.supports_alerts ocaml_version
@@ -309,7 +303,7 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
       ~default:ocaml_flags
       ~eval:(Expander.expand_and_eval_set expander)
   in
-  build_dir_is_vendored dir
+  Source_tree.is_vendored (Path.Build.drop_build_context_exn dir)
   >>| function
   | true ->
     let ocaml_version = (Env_tree.context t).ocaml.version in

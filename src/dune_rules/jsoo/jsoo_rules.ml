@@ -170,6 +170,16 @@ type sub_command =
   | Link
   | Build_runtime
 
+let js_of_ocaml_flags t ~dir (spec : Js_of_ocaml.Flags.Spec.t) =
+  let open Memo.O in
+  let+ expander = Super_context.expander t ~dir
+  and+ js_of_ocaml = Super_context.env_node t ~dir >>= Env_node.js_of_ocaml in
+  Js_of_ocaml.Flags.make
+    ~spec
+    ~default:js_of_ocaml.flags
+    ~eval:(Expander.expand_and_eval_set expander)
+;;
+
 let js_of_ocaml_rule
   sctx
   ~sub_command
@@ -181,7 +191,7 @@ let js_of_ocaml_rule
   =
   let open Memo.O in
   let+ jsoo = jsoo ~dir sctx
-  and+ flags = Super_context.js_of_ocaml_flags sctx ~dir flags in
+  and+ flags = js_of_ocaml_flags sctx ~dir flags in
   Command.run
     ~dir:(Path.build dir)
     jsoo
@@ -214,7 +224,7 @@ let standalone_runtime_rule cc ~javascript_files ~target ~flags =
   let sctx = Compilation_context.super_context cc in
   let config =
     Action_builder.of_memo_join
-      (Memo.map ~f:(fun x -> x.compile) (Super_context.js_of_ocaml_flags sctx ~dir flags))
+      (Memo.map ~f:(fun x -> x.compile) (js_of_ocaml_flags sctx ~dir flags))
     |> Action_builder.map ~f:Config.of_flags
   in
   let libs = Compilation_context.requires_link cc in
@@ -289,9 +299,7 @@ let link_rule cc ~runtime ~target ~obj_dir cm ~flags ~linkall ~link_time_code_ge
     let open Action_builder.O in
     let+ config =
       Action_builder.of_memo_join
-        (Memo.map
-           ~f:(fun x -> x.compile)
-           (Super_context.js_of_ocaml_flags sctx ~dir flags))
+        (Memo.map ~f:(fun x -> x.compile) (js_of_ocaml_flags sctx ~dir flags))
       |> Action_builder.map ~f:Config.of_flags
     and+ cm = cm
     and+ linkall = linkall

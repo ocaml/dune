@@ -50,10 +50,6 @@ val link_flags : t -> dir:Path.Build.t -> Link_flags.Spec.t -> Link_flags.t Memo
 val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list Memo.t
 
 val env_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
-
-(** Formatting settings in the corresponding [(env)] stanza. *)
-val format_config : t -> dir:Path.Build.t -> Format_config.t Memo.t
-
 val bin_annot : t -> dir:Path.Build.t -> bool Memo.t
 
 (** Dump a directory environment in a readable form *)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692556001012,
+  "lastUpdate": 1692556012460,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -70874,6 +70874,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "67.15696713444667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "083c87513c7148ca2bdc105a066ec2516ebdd5fe",
+          "message": "refactor: move [with_vendored_flags] (#8436)\n\nMake it live in [Ocaml_flags] instead. With two benefits:\r\n\r\n* We get to hide [with_vendored_warnings]\r\n* We remove yet another thing from [Super_context]\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-20T11:01:29-07:00",
+          "tree_id": "6a039fb815315ba91f2fc4dbbb6ab1b34d55882d",
+          "url": "https://github.com/ocaml/dune/commit/083c87513c7148ca2bdc105a066ec2516ebdd5fe"
+        },
+        "date": 1692556011742,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8446896241933335",
             "unit": "seconds"
           }
         ]

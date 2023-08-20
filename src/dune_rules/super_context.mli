@@ -1,7 +1,8 @@
-(** An augmented context *)
+(** A context augmented with the ability to add rules that respect the env
+    stanza.
 
-(** A context augmented with: a lib-db, ... Super context are used for
-    generating rules. *)
+    Avoid adding new code here. This module doesn't have a specific purpose and
+    is essentially a grab of random stuff. It will eventually be eliminated. *)
 
 open Import
 

@@ -347,7 +347,6 @@ let link_flags t ~dir (spec : Link_flags.Spec.t) =
 
 let local_binaries t ~dir = Env_tree.get_node t ~dir >>= Env_node.local_binaries
 let env_node = Env_tree.get_node
-let odoc t ~dir = Env_tree.get_node t ~dir >>= Env_node.odoc
 let coq t ~dir = Env_tree.get_node t ~dir >>= Env_node.coq
 let format_config t ~dir = Env_tree.get_node t ~dir >>= Env_node.format_config
 let bin_annot t ~dir = Env_tree.get_node t ~dir >>= Env_node.bin_annot

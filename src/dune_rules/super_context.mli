@@ -51,9 +51,6 @@ val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list Memo.
 
 val env_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
 
-(** coq config in the corresponding [(env)] stanza. *)
-val coq : t -> dir:Path.Build.t -> Env_node.Coq.t Action_builder.t Memo.t
-
 (** Formatting settings in the corresponding [(env)] stanza. *)
 val format_config : t -> dir:Path.Build.t -> Format_config.t Memo.t
 

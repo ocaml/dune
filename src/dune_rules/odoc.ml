@@ -180,8 +180,8 @@ end
 
 let odoc_base_flags sctx build_dir =
   let open Memo.O in
-  let+ conf = Super_context.odoc sctx ~dir:build_dir in
-  match conf.Env_node.Odoc.warnings with
+  let+ conf = Super_context.env_node sctx ~dir:build_dir >>= Env_node.odoc in
+  match conf.warnings with
   | Fatal -> Command.Args.A "--warn-error"
   | Nonfatal -> S []
 ;;

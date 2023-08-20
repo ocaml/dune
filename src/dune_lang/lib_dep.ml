@@ -1,4 +1,4 @@
-open Import
+open Stdune
 
 module Select = struct
   module Choice = struct
@@ -9,9 +9,9 @@ module Select = struct
       }
 
     let decode ~result_fn =
-      let open Dune_lang.Decoder in
+      let open Dune_sexp.Decoder in
       enter
-        (let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+        (let* dune_version = Dune_sexp.Syntax.get_exn Stanza.syntax in
          let+ loc = loc
          and+ preds, file =
            until_keyword
@@ -85,7 +85,7 @@ module Select = struct
   ;;
 
   let decode =
-    let open Dune_lang.Decoder in
+    let open Dune_sexp.Decoder in
     let* result_fn = filename in
     let+ loc = loc
     and+ () = keyword "from"
@@ -113,13 +113,13 @@ let direct x = Direct x
 let re_export x = Re_export x
 
 let decode ~allow_re_export =
-  let open Dune_lang.Decoder in
+  let open Dune_sexp.Decoder in
   let+ loc, t =
     located
       (sum
          ~force_parens:true
          [ ( "re_export"
-           , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
+           , let+ () = Dune_sexp.Syntax.since Stanza.syntax (2, 0)
              and+ loc, name = located Lib_name.decode in
              Re_export (loc, name) )
          ; ( "select"
@@ -136,7 +136,7 @@ let decode ~allow_re_export =
 ;;
 
 let encode =
-  let open Dune_lang.Encoder in
+  let open Dune_sexp.Encoder in
   function
   | Direct (_, name) -> Lib_name.encode name
   | Re_export (_, name) -> constr "re_export" Lib_name.encode name
@@ -155,12 +155,12 @@ module L = struct
   type nonrec t = t list
 
   let field_encode t ~name =
-    let open Dune_lang.Encoder in
+    let open Dune_sexp.Encoder in
     field_l name encode t
   ;;
 
   let decode ~allow_re_export =
-    let open Dune_lang.Decoder in
+    let open Dune_sexp.Decoder in
     let+ loc = loc
     and+ t = repeat (decode ~allow_re_export) in
     let add kind name acc =

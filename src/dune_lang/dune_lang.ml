@@ -14,6 +14,7 @@ module Binary_kind = Binary_kind
 module Package_constraint = Package_constraint
 module Package_name = Package_name
 module Lib_kind = Lib_kind
+module Lib_dep = Lib_dep
 module Pkg = Pkg
 module Ordered_set_lang = Ordered_set_lang
 module Format_config = Format_config

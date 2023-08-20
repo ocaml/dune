@@ -2,6 +2,7 @@ open Stdune
 module Lib_name = Dune_lang.Lib_name
 module Meta = Dune_findlib.Findlib.Meta
 module Findlib_config = Dune_findlib.Findlib.Config
+module Lib_dep = Dune_lang.Lib_dep
 open Dune_rules
 open Dune_rules.For_tests
 open Dune_tests_common

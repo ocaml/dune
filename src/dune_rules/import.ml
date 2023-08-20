@@ -75,6 +75,7 @@ include struct
   module Bindings = Bindings
   module Format_config = Format_config
   module Lib_kind = Lib_kind
+  module Lib_dep = Lib_dep
   module Ordered_set_lang = Ordered_set_lang
   module Stanza = Stanza
   module String_with_vars = String_with_vars

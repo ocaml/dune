@@ -287,13 +287,6 @@ let add_alias_action t alias ~dir ~loc action =
     build
 ;;
 
-let with_vendored_flags ~ocaml_version flags =
-  let with_warnings = Ocaml_flags.with_vendored_warnings flags in
-  if Ocaml.Version.supports_alerts ocaml_version
-  then Ocaml_flags.with_vendored_alerts with_warnings
-  else with_warnings
-;;
-
 let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
   let* expander = Env_tree.expander t ~dir in
   let* flags =
@@ -305,10 +298,10 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
   in
   Source_tree.is_vendored (Path.Build.drop_build_context_exn dir)
   >>| function
+  | false -> flags
   | true ->
     let ocaml_version = (Env_tree.context t).ocaml.version in
-    with_vendored_flags ~ocaml_version flags
-  | false -> flags
+    Ocaml_flags.with_vendored_flags ~ocaml_version flags
 ;;
 
 let js_of_ocaml_runtest_alias t ~dir =

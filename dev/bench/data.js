@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692536114896,
+  "lastUpdate": 1692536533422,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -28563,6 +28563,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.378054997726665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5177d4ffb26ca52543c8e4140c10feb2c75fc295",
+          "message": "refactor: inline [Super_context.build_dir_is_vendored] (#8434)\n\nPolluting [Super_context] and isn't very useful\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-20T05:41:10-07:00",
+          "tree_id": "8922ac9cdd12fc082e17f6b29ee1ecffe8847877",
+          "url": "https://github.com/ocaml/dune/commit/5177d4ffb26ca52543c8e4140c10feb2c75fc295"
+        },
+        "date": 1692536532089,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.27346359897333",
             "unit": "seconds"
           }
         ]

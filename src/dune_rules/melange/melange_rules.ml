@@ -10,7 +10,7 @@ let ocaml_flags sctx ~dir melange =
       ~default:ocaml_flags
       ~eval:(Expander.expand_and_eval_set expander)
   in
-  Super_context.build_dir_is_vendored dir
+  Source_tree.is_vendored (Path.Build.drop_build_context_exn dir)
   >>| function
   | false -> flags
   | true ->

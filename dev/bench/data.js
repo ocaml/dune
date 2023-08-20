@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692533352526,
+  "lastUpdate": 1692533361686,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -70642,6 +70642,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "65.55254430043334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c8c4076e21e74895621cd534e8b9071ce56b6a57",
+          "message": "refactor: share [Toggle] in project file (#8431)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-20T04:44:13-07:00",
+          "tree_id": "2c928bbd0af1dc20de68b5a247ee6adae0440a9c",
+          "url": "https://github.com/ocaml/dune/commit/c8c4076e21e74895621cd534e8b9071ce56b6a57"
+        },
+        "date": 1692533360365,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "64.75245835599999",
             "unit": "seconds"
           }
         ]

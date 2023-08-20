@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692560020496,
+  "lastUpdate": 1692560042241,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -28650,6 +28650,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.208080193300006",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "21819ecef59ec7197948d685fd0e1074736c7e6f",
+          "message": "refactor: remove [Super_context.menhir_flags] (#8437)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-08-20T12:14:03-07:00",
+          "tree_id": "af6a2cc4e5b2d20a3ca388e46df48fbbf413ceaa",
+          "url": "https://github.com/ocaml/dune/commit/21819ecef59ec7197948d685fd0e1074736c7e6f"
+        },
+        "date": 1692560040919,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.671568641646665",
             "unit": "seconds"
           }
         ]

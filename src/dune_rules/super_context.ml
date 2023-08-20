@@ -311,16 +311,6 @@ let js_of_ocaml_runtest_alias t ~dir =
   | Some a -> a
 ;;
 
-let js_of_ocaml_compilation_mode t ~dir =
-  let+ js_of_ocaml = Env_tree.get_node t ~dir >>= Env_node.js_of_ocaml in
-  match js_of_ocaml.compilation_mode with
-  | None ->
-    if Profile.is_dev (Env_tree.context t).profile
-    then Js_of_ocaml.Compilation_mode.Separate_compilation
-    else Whole_program
-  | Some m -> m
-;;
-
 let js_of_ocaml_flags t ~dir (spec : Js_of_ocaml.Flags.Spec.t) =
   let+ expander = Env_tree.expander t ~dir
   and+ js_of_ocaml = Env_tree.get_node t ~dir >>= Env_node.js_of_ocaml in

@@ -4,13 +4,6 @@ type t =
   | Byte
   | Native
 
-let equal x y =
-  match x, y with
-  | Byte, Byte -> true
-  | Byte, _ | _, Byte -> false
-  | Native, Native -> true
-;;
-
 let compare x y =
   match x, y with
   | Byte, Byte -> Eq
@@ -19,6 +12,7 @@ let compare x y =
   | Native, Native -> Eq
 ;;
 
+let equal x y = Ordering.is_eq (compare x y)
 let all = [ Byte; Native ]
 
 let decode =

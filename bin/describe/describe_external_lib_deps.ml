@@ -1,4 +1,5 @@
 open Import
+module Lib_dep = Dune_lang.Lib_dep
 
 module Kind = struct
   type t =
@@ -96,14 +97,14 @@ let resolve_lib_pps db preprocess =
 
 let resolve_lib_deps db lib_deps =
   let open Memo.O in
-  Memo.parallel_map lib_deps ~f:(fun (lib : Dune_rules.Lib_dep.t) ->
+  Memo.parallel_map lib_deps ~f:(fun (lib : Lib_dep.t) ->
     match lib with
     | Direct (_, name) | Re_export (_, name) ->
       let+ v = resolve_lib db name Kind.Required in
       [ v ]
     | Select select ->
       select.choices
-      |> Memo.parallel_map ~f:(fun (choice : Dune_rules.Lib_dep.Select.Choice.t) ->
+      |> Memo.parallel_map ~f:(fun (choice : Lib_dep.Select.Choice.t) ->
         Lib_name.Set.to_string_list choice.required
         @ Lib_name.Set.to_string_list choice.forbidden
         |> Memo.parallel_map ~f:(fun name ->

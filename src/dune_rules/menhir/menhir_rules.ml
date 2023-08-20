@@ -121,7 +121,15 @@ module Run (P : PARAMS) = struct
     Super_context.add_rule sctx ~dir ~mode ~loc:stanza.loc
   ;;
 
-  let expand_flags flags = Super_context.menhir_flags sctx ~dir ~expander ~flags
+  let expand_flags flags =
+    let standard =
+      Action_builder.of_memo @@ Super_context.env_node sctx ~dir >>= Env_node.menhir_flags
+    in
+    Action_builder.memoize
+      ~cutoff:(List.equal String.equal)
+      "menhir flags"
+      (Expander.expand_and_eval_set expander flags ~standard)
+  ;;
 
   (* ------------------------------------------------------------------------ *)
 

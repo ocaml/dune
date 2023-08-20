@@ -29,12 +29,6 @@ val ocaml_flags : t -> dir:Path.Build.t -> Ocaml_flags.Spec.t -> Ocaml_flags.t M
 
 val js_of_ocaml_runtest_alias : t -> dir:Path.Build.t -> Alias.Name.t Memo.t
 
-val js_of_ocaml_flags
-  :  t
-  -> dir:Path.Build.t
-  -> Js_of_ocaml.Flags.Spec.t
-  -> string list Action_builder.t Js_of_ocaml.Flags.t Memo.t
-
 val default_foreign_flags
   :  t
   -> dir:Path.Build.t

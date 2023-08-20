@@ -311,15 +311,6 @@ let js_of_ocaml_runtest_alias t ~dir =
   | Some a -> a
 ;;
 
-let js_of_ocaml_flags t ~dir (spec : Js_of_ocaml.Flags.Spec.t) =
-  let+ expander = Env_tree.expander t ~dir
-  and+ js_of_ocaml = Env_tree.get_node t ~dir >>= Env_node.js_of_ocaml in
-  Js_of_ocaml.Flags.make
-    ~spec
-    ~default:js_of_ocaml.flags
-    ~eval:(Expander.expand_and_eval_set expander)
-;;
-
 let default_foreign_flags t ~dir ~language =
   Env_tree.get_node t ~dir
   >>| Env_node.foreign_flags

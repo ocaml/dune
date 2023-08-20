@@ -405,6 +405,17 @@ let setup_separate_compilation_rules sctx components =
         >>= Super_context.add_rule sctx ~dir))
 ;;
 
+let js_of_ocaml_compilation_mode t ~dir =
+  let open Memo.O in
+  let+ js_of_ocaml = Super_context.env_node t ~dir >>= Env_node.js_of_ocaml in
+  match js_of_ocaml.compilation_mode with
+  | Some m -> m
+  | None ->
+    if Profile.is_dev (Super_context.context t).profile
+    then Js_of_ocaml.Compilation_mode.Separate_compilation
+    else Whole_program
+;;
+
 let build_exe
   cc
   ~loc
@@ -432,7 +443,7 @@ let build_exe
     | Some p -> Promote p
   in
   let open Memo.O in
-  let* cmode = Super_context.js_of_ocaml_compilation_mode sctx ~dir in
+  let* cmode = js_of_ocaml_compilation_mode sctx ~dir in
   match (cmode : Js_of_ocaml.Compilation_mode.t) with
   | Separate_compilation ->
     standalone_runtime_rule cc ~javascript_files ~target:standalone_runtime ~flags

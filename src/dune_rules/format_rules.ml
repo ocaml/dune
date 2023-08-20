@@ -157,7 +157,7 @@ let gen_rules_output
 let gen_rules sctx ~output_dir =
   let open Memo.O in
   let dir = Path.Build.parent_exn output_dir in
-  let* config = Super_context.format_config sctx ~dir in
+  let* config = Super_context.env_node sctx ~dir >>= Env_node.format_config in
   Memo.when_
     (not (Format_config.is_empty config))
     (fun () ->
@@ -171,7 +171,7 @@ let gen_rules sctx ~output_dir =
 
 let setup_alias sctx ~dir =
   let open Memo.O in
-  let* config = Super_context.format_config sctx ~dir in
+  let* config = Super_context.env_node sctx ~dir >>= Env_node.format_config in
   Memo.when_
     (not (Format_config.is_empty config))
     (fun () ->

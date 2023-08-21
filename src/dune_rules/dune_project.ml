@@ -370,9 +370,9 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
   let extensions = Extension.automatic ~explicitly_selected:explicit_extensions in
   let parsing_context =
     let init =
-      Univ_map.singleton (Dune_lang.Syntax.key lang.syntax) (Active lang.version)
-    in
-    let init =
+      let init =
+        Univ_map.singleton (Dune_lang.Syntax.key lang.syntax) (Active lang.version)
+      in
       Univ_map.set init String_with_vars.decoding_env_key (Pform.Env.initial lang.version)
     in
     List.fold_left extensions ~init ~f:(fun acc (ext : Extension.automatic) ->
@@ -423,11 +423,13 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
           args_acc, stanzas :: stanzas_acc
         | Selected instance ->
           let (Packed e) = instance.extension in
-          let args =
-            let+ arg, stanzas = Dune_lang.Decoder.set_many parsing_context e.stanzas in
-            Univ_map.set args_acc e.key arg, stanzas
+          let args_acc, stanzas =
+            let args =
+              let+ arg, stanzas = Dune_lang.Decoder.set_many parsing_context e.stanzas in
+              Univ_map.set args_acc e.key arg, stanzas
+            in
+            instance.parse_args args
           in
-          let args_acc, stanzas = instance.parse_args args in
           args_acc, stanzas :: stanzas_acc)
   in
   let stanzas = List.concat (lang.data :: extension_stanzas) in
@@ -1041,7 +1043,7 @@ let load_dune_project ~dir opam_packages : t Memo.t =
 let load ~dir ~files ~infer_from_opam_files : t option Memo.t =
   let open Memo.O in
   let opam_packages =
-    String.Set.fold files ~init:[] ~f:(fun fn acc ->
+    Filename.Set.fold files ~init:[] ~f:(fun fn acc ->
       match Package.Name.of_opam_file_basename fn with
       | None -> acc
       | Some name ->
@@ -1051,17 +1053,13 @@ let load ~dir ~files ~infer_from_opam_files : t option Memo.t =
         (name, (loc, pkg)) :: acc)
     |> Package.Name.Map.of_list_exn
   in
-  if String.Set.mem files filename
-  then
-    let+ project = load_dune_project ~dir opam_packages in
-    Some project
+  if Filename.Set.mem files filename
+  then load_dune_project ~dir opam_packages >>| Option.some
   else if Path.Source.is_root dir
           || (infer_from_opam_files && not (Package.Name.Map.is_empty opam_packages))
   then
     let+ opam_packages =
-      Memo_package_name.parallel_map opam_packages ~f:(fun _ (_loc, pkg) ->
-        let+ pkg = pkg in
-        pkg)
+      Memo_package_name.parallel_map opam_packages ~f:(fun _ (_loc, pkg) -> pkg)
     in
     Some (infer ~dir opam_packages)
   else Memo.return None

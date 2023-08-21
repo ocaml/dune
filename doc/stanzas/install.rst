@@ -106,6 +106,16 @@ installed with mode ``0o644`` (``rw-r--r--``).
 Note that all files in the install stanza must be specified by relative paths
 only. It is an error to specify files by absolute paths.
 
+Also note that as of dune-lang 3.11 (ie. ``(lang dune 3.11)`` in
+``dune-project``) it is deprecated to use the ``as`` keyword to specify a
+destination beginning with ``..``. Dune intends for files associated with a
+package to only be installed under specific directories in the file system
+implied by the installation section (e.g. ``share``, ``bin``, ``doc``, etc.)
+and the package name. Starting destination paths with ``..`` allows packages to
+install files to arbitrary locations on the file system. In 3.11 this behaviour
+is still supported (as some projects may depend on it) but will generate a
+warning and will be removed in a future version of Dune.
+
 Including Files in the Install Stanza
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -236,6 +236,7 @@ let gen_rules
           install_conf.dirs
           ~expand_str
           ~dir:ctx_dir
+          ~relative_dst_path_starts_with_parent_error_when:`Deprecation_warning_from_3_11
       in
       List.map (files_expanded @ dirs_expanded) ~f:(fun fb ->
         File_binding.Expanded.src fb |> Path.build)

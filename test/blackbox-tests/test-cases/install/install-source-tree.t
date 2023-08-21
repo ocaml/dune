@@ -96,3 +96,13 @@ Install zero source trees:
     "_build/install/default/lib/mypkg/META"
     "_build/install/default/lib/mypkg/dune-package"
   ]
+
+It is an error for the destination path to start with "..".
+  $ test "(mydocs as ../)"
+  File "dune", line 3, characters 26-29:
+  3 |  (source_trees (mydocs as ../)))
+                                ^^^
+  Error: The destination path ../ begins with .. which is not allowed.
+  Destinations in install stanzas may not begin with .. to prevent a package's
+  installed files from escaping that package's install directories.
+  [1]

@@ -391,14 +391,26 @@ end = struct
         Install.Entry.Sourced.create ~loc entry)
     and+ files_from_dirs =
       let* dirs_expanded =
-        Install_entry.Dir.to_file_bindings_expanded i.dirs ~expand_str ~dir
+        Install_entry.Dir.to_file_bindings_expanded
+          i.dirs
+          ~expand_str
+          ~dir
+          ~relative_dst_path_starts_with_parent_error_when:`Deprecation_warning_from_3_11
       in
       Memo.List.map dirs_expanded ~f:(fun fb ->
         let loc = File_binding.Expanded.src_loc fb in
         let+ entry = make_entry ~kind:`Directory fb in
         Install.Entry.Sourced.create ~loc entry)
     and+ source_trees =
-      Install_entry.Dir.to_file_bindings_expanded i.source_trees ~expand_str ~dir
+      (* There's no deprecation warning when a relative destination path
+         starts with a parent in this feature. It's safe to raise an error in
+         this case as installing source trees was added in the same dune version
+         that we deprecated starting a destination install path with "..". *)
+      Install_entry.Dir.to_file_bindings_expanded
+        i.source_trees
+        ~expand_str
+        ~dir
+        ~relative_dst_path_starts_with_parent_error_when:`Always_error
       >>= Memo.List.map ~f:(fun fb ->
         let loc = File_binding.Expanded.src_loc fb in
         let* entry = make_entry ~kind:`Source_tree fb in

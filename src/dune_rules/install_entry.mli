@@ -36,5 +36,7 @@ module Dir : sig
     :  t list
     -> expand_str:(String_with_vars.t -> string Memo.t)
     -> dir:Path.Build.t
+    -> relative_dst_path_starts_with_parent_error_when:
+         [ `Deprecation_warning_from_3_11 | `Always_error ]
     -> File_binding.Expanded.t list Memo.t
 end

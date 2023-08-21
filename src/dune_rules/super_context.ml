@@ -2,10 +2,10 @@ open Import
 
 let default_context_flags (ctx : Context.t) ~project =
   let cflags = Ocaml_config.ocamlc_cflags ctx.ocaml.ocaml_config in
-  let cxxflags =
-    List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
-  in
   let c, cxx =
+    let cxxflags =
+      List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+    in
     match Dune_project.use_standard_c_and_cxx_flags project with
     | None | Some false -> Action_builder.(return cflags, return cxxflags)
     | Some true ->
@@ -97,22 +97,21 @@ end = struct
   ;;
 
   let extend_expander t ~dir ~expander_for_artifacts =
-    let* bin_artifacts_host = bin_artifacts_host t ~dir in
-    let+ bindings =
+    let+ bin_artifacts_host = bin_artifacts_host t ~dir
+    and+ bindings =
       let+ inline_tests = get_node t ~dir >>= Env_node.inline_tests in
       let str = Dune_env.Stanza.Inline_tests.to_string inline_tests in
       Pform.Map.singleton (Var Inline_tests) [ Value.String str ]
     in
-    expander_for_artifacts
-    |> Expander.add_bindings ~bindings
+    Expander.add_bindings ~bindings expander_for_artifacts
     |> Expander.set_bin_artifacts ~bin_artifacts_host
   ;;
 
   let expander t ~dir =
-    let* node = get_node t ~dir in
-    let* external_env = external_env t ~dir in
-    let scope = Env_node.scope node in
+    let* node = get_node t ~dir
+    and+ external_env = external_env t ~dir in
     let* expander_for_artifacts =
+      let scope = Env_node.scope node in
       expander_for_artifacts ~scope ~external_env ~root_expander:t.root_expander ~dir
     in
     let+ expander = extend_expander t ~dir ~expander_for_artifacts in
@@ -389,8 +388,8 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
         let+ artifacts = Artifacts_db.get host in
         artifacts, host
     in
-    let* scope = Scope.DB.find_by_dir context.build_dir in
-    let+ scope_host = Scope.DB.find_by_dir context_host.build_dir in
+    let+ scope = Scope.DB.find_by_dir context.build_dir
+    and+ scope_host = Scope.DB.find_by_dir context_host.build_dir in
     Expander.make
       ~scope
       ~scope_host

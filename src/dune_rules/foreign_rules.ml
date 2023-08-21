@@ -287,10 +287,7 @@ let build_o_files
       in
       let+ () =
         build_c
-          ~kind:
-            (match Foreign.Source.language src with
-             | C -> C
-             | Cxx -> Cxx)
+          ~kind:(Foreign.Source.language src)
           ~sctx
           ~dir
           ~expander

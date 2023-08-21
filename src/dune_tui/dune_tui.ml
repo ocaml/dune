@@ -144,7 +144,7 @@ module Tui = struct
     fun () -> !(Lazy.force setup)
   ;;
 
-  let start () = Unix.set_nonblock Unix.stdin
+  let start () = ()
 
   let image ~status_line ~messages =
     let status =
@@ -216,11 +216,7 @@ module Tui = struct
 
   let reset () = ()
   let reset_flush_history () = ()
-
-  let finish () =
-    Term.release (term ());
-    Unix.clear_nonblock Unix.stdin
-  ;;
+  let finish () = Term.release (term ())
 end
 
 let backend =

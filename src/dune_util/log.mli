@@ -16,6 +16,9 @@ val init : ?file:File.t -> unit -> unit
     messages. *)
 val init_disabled : unit -> unit
 
+(** Print the message only the log file (despite verbose mode) if it's set *)
+val log : (unit -> User_message.Style.t Pp.t list) -> unit
+
 (** Print an informative message in the log *)
 val info_user_message : User_message.t -> unit
 

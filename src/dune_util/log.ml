@@ -40,16 +40,26 @@ let init ?(file = File.Default) () =
 let init_disabled () = Fdecl.set t None
 let t () = Fdecl.get t
 
+let log_oc oc msg =
+  let s = Format.asprintf "%a@?" Pp.to_fmt (User_message.pp msg) in
+  List.iter (String.split_lines s) ~f:(function
+    | "" -> output_string oc "#\n"
+    | s -> Printf.fprintf oc "# %s\n" s);
+  flush oc
+;;
+
+let log msg =
+  match t () with
+  | None -> ()
+  | Some { oc; _ } ->
+    Option.iter oc ~f:(fun oc -> User_message.make (msg ()) |> log_oc oc)
+;;
+
 let info_user_message msg =
   match t () with
   | None -> ()
   | Some { oc; _ } ->
-    Option.iter oc ~f:(fun oc ->
-      let s = Format.asprintf "%a@?" Pp.to_fmt (User_message.pp msg) in
-      List.iter (String.split_lines s) ~f:(function
-        | "" -> output_string oc "#\n"
-        | s -> Printf.fprintf oc "# %s\n" s);
-      flush oc);
+    Option.iter oc ~f:(fun oc -> log_oc oc msg);
     if !verbose then Console.print_user_message msg
 ;;
 

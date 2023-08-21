@@ -15,10 +15,13 @@ module Stanza = struct
   ;;
 
   let menhir_flags ~since =
-    let check =
-      Option.map since ~f:(fun since -> Dune_lang.Syntax.since Menhir_stanza.syntax since)
+    let decode =
+      let decode = Ordered_set_lang.Unexpanded.decode in
+      match since with
+      | None -> decode
+      | Some since -> Dune_lang.Syntax.since Menhir_stanza.syntax since >>> decode
     in
-    Ordered_set_lang.Unexpanded.field "menhir_flags" ?check
+    field_o "menhir_flags" decode
   ;;
 
   module Inline_tests = struct
@@ -76,7 +79,7 @@ module Stanza = struct
     ; env_vars : Env.t
     ; binaries : File_binding.Unexpanded.t list
     ; inline_tests : Inline_tests.t option
-    ; menhir_flags : Ordered_set_lang.Unexpanded.t
+    ; menhir_flags : Ordered_set_lang.Unexpanded.t option
     ; odoc : Odoc.t
     ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
     ; coq : Ordered_set_lang.Unexpanded.t
@@ -113,7 +116,7 @@ module Stanza = struct
     && Env.equal env_vars t.env_vars
     && List.equal File_binding.Unexpanded.equal binaries t.binaries
     && Option.equal Inline_tests.equal inline_tests t.inline_tests
-    && Ordered_set_lang.Unexpanded.equal menhir_flags t.menhir_flags
+    && Option.equal Ordered_set_lang.Unexpanded.equal menhir_flags t.menhir_flags
     && Odoc.equal odoc t.odoc
     && Ordered_set_lang.Unexpanded.equal coq t.coq
     && Option.equal Format_config.equal format_config t.format_config
@@ -132,7 +135,7 @@ module Stanza = struct
     ; env_vars = Env.empty
     ; binaries = []
     ; inline_tests = None
-    ; menhir_flags = Ordered_set_lang.Unexpanded.standard
+    ; menhir_flags = None
     ; odoc = Odoc.empty
     ; js_of_ocaml = Js_of_ocaml.Env.empty
     ; coq = Ordered_set_lang.Unexpanded.standard

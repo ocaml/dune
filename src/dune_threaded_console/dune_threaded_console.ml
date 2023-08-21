@@ -109,18 +109,16 @@ let make (module Base : S) : (module Dune_console.Backend) =
            | false -> ()
            | true ->
              Base.render state;
-             let finish_requested = state.finish_requested in
-             if finish_requested then raise_notrace Exit;
+             if state.finish_requested then raise_notrace Exit;
              state.dirty <- false);
           Mutex.unlock mutex;
-          let now = Unix.gettimeofday () in
-          let elapsed = now -. !last in
           let new_time =
-            if elapsed >= frame_rate
-            then Base.handle_user_events ~now ~time_budget:0.0 mutex state
-            else (
-              let delta = frame_rate -. elapsed in
-              Base.handle_user_events ~now ~time_budget:delta mutex state)
+            let now = Unix.gettimeofday () in
+            let time_budget =
+              let elapsed = now -. !last in
+              if elapsed >= frame_rate then 0. else frame_rate -. elapsed
+            in
+            Base.handle_user_events ~now ~time_budget mutex state
           in
           last := new_time
         done

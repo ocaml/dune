@@ -475,6 +475,7 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
   let default_env =
     Memo.lazy_ (fun () ->
       let make ~inherit_from ~config_stanza =
+        let config_stanza = Option.value config_stanza ~default:Dune_env.Stanza.empty in
         let dir = context.build_dir in
         let+ scope = Scope.DB.find_by_dir dir in
         let project = Scope.project scope in

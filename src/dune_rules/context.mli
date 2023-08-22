@@ -36,8 +36,8 @@ end
 
 module Env_nodes : sig
   type t =
-    { context : Dune_env.Stanza.t
-    ; workspace : Dune_env.Stanza.t
+    { context : Dune_env.Stanza.t option
+    ; workspace : Dune_env.Stanza.t option
     }
 end
 

@@ -11,12 +11,14 @@ let all_binaries (e : Dune_env.Stanza.t) =
 
 let env_field, env_field_lazy =
   let make f g =
-    field "env" ~default:(f Dune_env.Stanza.empty)
+    field "env" ~default:(f None)
     @@ g
     @@ let+ () = Dune_lang.Syntax.since syntax (1, 1)
        and+ version = Dune_lang.Syntax.get_exn syntax
        and+ loc = loc
        and+ s = Dune_env.Stanza.decode in
+       Option.some
+       @@
        let binaries = all_binaries s in
        if List.is_empty binaries
        then s
@@ -88,7 +90,7 @@ module Context = struct
       { loc : Loc.t
       ; profile : Profile.t
       ; targets : Target.t list
-      ; env : Dune_env.Stanza.t
+      ; env : Dune_env.Stanza.t option
       ; toolchain : Context_name.t option
       ; name : Context_name.t
       ; host_context : Context_name.t option
@@ -125,7 +127,7 @@ module Context = struct
       =
       Profile.equal profile t.profile
       && List.equal Target.equal targets t.targets
-      && Dune_env.Stanza.equal env t.env
+      && Option.equal Dune_env.Stanza.equal env t.env
       && Option.equal Context_name.equal toolchain t.toolchain
       && Context_name.equal name t.name
       && Option.equal Context_name.equal host_context t.host_context
@@ -402,7 +404,7 @@ module Context = struct
           ; profile = Option.value profile ~default:Profile.default
           ; name = Context_name.default
           ; host_context = None
-          ; env = Dune_env.Stanza.empty
+          ; env = None
           ; toolchain = None
           ; paths = []
           ; fdo_target_exe = None
@@ -428,7 +430,7 @@ end
 type t =
   { merlin_context : Context_name.t option
   ; contexts : Context.t list
-  ; env : Dune_env.Stanza.t
+  ; env : Dune_env.Stanza.t option
   ; config : Dune_config.t
   }
 
@@ -437,7 +439,7 @@ let to_dyn { merlin_context; contexts; env; config } =
   record
     [ "merlin_context", option Context_name.to_dyn merlin_context
     ; "contexts", list Context.to_dyn contexts
-    ; "env", Dune_env.Stanza.to_dyn env
+    ; "env", option Dune_env.Stanza.to_dyn env
     ; "config", Dune_config.to_dyn config
     ]
 ;;
@@ -445,7 +447,7 @@ let to_dyn { merlin_context; contexts; env; config } =
 let equal { merlin_context; contexts; env; config } w =
   Option.equal Context_name.equal merlin_context w.merlin_context
   && List.equal Context.equal contexts w.contexts
-  && Dune_env.Stanza.equal env w.env
+  && Option.equal Dune_env.Stanza.equal env w.env
   && Dune_config.equal config w.config
 ;;
 
@@ -453,7 +455,7 @@ let hash { merlin_context; contexts; env; config } =
   Poly.hash
     ( Option.hash Context_name.hash merlin_context
     , List.hash Context.hash contexts
-    , Dune_env.Stanza.hash env
+    , Option.hash Dune_env.Stanza.hash env
     , Dune_config.hash config )
 ;;
 
@@ -623,8 +625,8 @@ let step1 clflags =
              ~instrument_with_default:instrument_with
              ~x)
        in
-       let env = Lazy.force env in
        let defined_names = ref Context_name.Set.empty in
+       let env = Lazy.force env in
        let merlin_context =
          List.fold_left contexts ~init:None ~f:(fun acc ctx ->
            let name = Context.name ctx in
@@ -695,7 +697,7 @@ let default clflags =
   in
   { merlin_context = Some Context_name.default
   ; contexts = [ Context.default ~x ~profile ~instrument_with ]
-  ; env = Dune_env.Stanza.empty
+  ; env = None
   ; config
   }
 ;;

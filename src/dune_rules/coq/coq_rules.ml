@@ -748,7 +748,7 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps (s : Coq_stanza.Theory.t) coq_m
       in
       let alias =
         match mode with
-        | `Html -> Alias.doc ~dir
+        | `Html -> Alias.make Alias0.doc ~dir
         | `Latex -> Alias.make (Alias.Name.of_string "doc-latex") ~dir
       in
       coqdoc_directory ~mode ~obj_dir:dir ~name

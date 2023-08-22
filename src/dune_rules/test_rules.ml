@@ -68,7 +68,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
         let* runtest_alias =
           match runtest_mode with
           | `js -> Super_context.js_of_ocaml_runtest_alias sctx ~dir
-          | `exe | `bc -> Memo.return Alias.Name.runtest
+          | `exe | `bc -> Memo.return Alias0.runtest
         in
         let add_alias ~loc ~action ~locks =
           let alias =

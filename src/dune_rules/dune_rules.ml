@@ -1,3 +1,4 @@
+module Alias = Alias0
 module Findlib = Findlib
 module Main = Main
 module Context = Context

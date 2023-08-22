@@ -567,8 +567,9 @@ let driver_flags expander ~corrected_suffix ~driver_flags ~standard =
 
 let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
   let open Action_builder.O in
-  let alias = Alias.lint ~dir in
-  let add_alias build = Super_context.add_alias_action sctx alias build ~dir in
+  let add_alias build =
+    Super_context.add_alias_action sctx (Alias.make Alias0.lint ~dir) build ~dir
+  in
   let lint =
     Module_name.Per_item.map lint ~f:(function
       | Preprocess.No_preprocessing -> fun ~source:_ ~ast:_ -> Memo.return ()

@@ -225,5 +225,7 @@ let gen_rules sctx t ~dir ~scope =
   match t.alias with
   | Some _ -> Memo.return ()
   | None ->
-    Rules.Produce.Alias.add_deps (Alias.runtest ~dir) (Action_builder.alias cinaps_alias)
+    Rules.Produce.Alias.add_deps
+      (Alias.make Alias0.runtest ~dir)
+      (Action_builder.alias cinaps_alias)
 ;;

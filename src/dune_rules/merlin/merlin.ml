@@ -620,7 +620,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   let merlin_file = Merlin_ident.merlin_file_path dir t.ident in
   let* () =
     Rules.Produce.Alias.add_deps
-      (Alias.check ~dir)
+      (Alias.make Alias0.check ~dir)
       (Action_builder.path (Path.build merlin_file))
   in
   let action =

@@ -301,9 +301,9 @@ let add_alias_rule sctx ~project ~pkg =
   let dir = Path.Build.append_source build_dir (Dune_project.root project) in
   let opam_path = Path.Build.append_source build_dir (Package.opam_file pkg) in
   let aliases =
-    [ Alias.install ~dir
-    ; Alias.runtest ~dir
-    ; Alias.check ~dir (* check doesn't pick up the promote target? *)
+    [ Alias.make Alias0.install ~dir
+    ; Alias.make Alias0.runtest ~dir
+    ; Alias.make Alias0.check ~dir (* check doesn't pick up the promote target? *)
     ]
   in
   let deps = Path.Set.singleton (Path.build opam_path) in

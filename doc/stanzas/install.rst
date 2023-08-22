@@ -162,7 +162,9 @@ For example:
 .. code:: dune
 
     (install
-     (files (glob_files style/*.css) (glob_files_rec content/*.html))
+     (files
+      (glob_files style/*.css)
+      (glob_files_rec content/*.html))
      (section share))
 
 This example will install:
@@ -176,7 +178,61 @@ Note that the paths to files are preserved after installation. Suppose the
 source directory contained the files ``style/foo.css`` and
 ``content/bar/baz.html``. The example above will place these files in
 ``share/<package>/style/foo.css`` and ``share/<package>/content/bar/baz.html``
-respectively.
+respectively where ``<package>`` is the name of the package (ie.
+``dune-project`` would contain ``(package (name <package>))``).
+
+The ``with_prefix`` keyword can be used to change the destination path of files
+matched by a glob, similar to the ``as`` keyword in the ``(files ...)`` field.
+``with_prefix`` changes the prefix of a path before the component matched by the
+``*`` to some new value. For example:
+
+.. code:: dune
+
+    (install
+     (files
+      (glob_files (style/*.css with_prefix web/stylesheets))
+      (glob_files_rec (content/*.html with_prefix web/documents)))
+     (section share))
+
+Continuing the example above, this would result in the source file at
+``style/foo.css`` being installed to ``share/<package>/web/stylesheets/foo.css``
+and ``content/bar/baz.html`` being installed to
+``share/<package>/web/documents/bar/baz.html``. Note in the latter case
+``with_prefix`` only replaced the ``content`` component of the path and not the
+``bar`` component since since it replaces the prefix of the glob - not the
+prefix of paths matching the glob.
+
+Installing Globs from Parent Directories
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The default treatment of paths in globs creates a complication where referring
+to globs in a parent directory such as ``(glob_files ../*.txt)`` would attempt
+to install the matched files outside the designated install directory. For
+example writing:
+
+.. code:: dune
+
+    (install
+     (files (glob_files ../*.txt))
+     (section share))
+
+...would cause Dune to attempt to install the matching files to
+``share/<package>/../``, ie. ``share`` where ``<package>`` is the name of the
+package (ie. ``dune-project`` would contain ``(package (name <package>))``).
+This is probably not what the user intends, and installing files to relative
+paths beginning with ``..`` is deprecated from version 3.11 of Dune and will
+become an error in a future version.
+
+The solution is to use ``with_prefix`` to replace the ``..`` with some other
+path. For example:
+
+.. code:: dune
+
+    (install
+     (files (glob_files (../*.txt with_prefix .)))
+     (section share))
+
+...would install the matched files to ``share/<package>/`` instead.
 
 Handling of the .exe Extension on Windows
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

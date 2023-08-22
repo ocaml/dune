@@ -142,6 +142,28 @@ Test that we get an error if `(source_tree ...)` has a dst that is exactly "..":
   installed files from escaping that package's install directories.
   [1]
 
+Test that we get a warning if the ".." comes from the prefix of a glob:
+  $ cat >dune <<EOF
+  > (install
+  >  (section etc)
+  >  (files (glob_files_rec (a/*.txt with_prefix ../baz))))
+  > EOF
+  $ dune build foo.install && cat _build/default/foo.install
+  File "dune", line 3, characters 45-51:
+  3 |  (files (glob_files_rec (a/*.txt with_prefix ../baz))))
+                                                   ^^^^^^
+  Warning: The destination path ../baz/b.txt begins with .. which will become
+  an error in a future version of Dune. Destinations of files in install
+  stanzas beginning with .. will be disallowed to prevent a package's installed
+  files from escaping that package's install directories.
+  lib: [
+    "_build/install/default/lib/foo/META"
+    "_build/install/default/lib/foo/dune-package"
+  ]
+  etc: [
+    "_build/install/default/etc/baz/b.txt" {"../baz/b.txt"}
+  ]
+
 Test that on older versions of dune we don't get warnings in this case:
   $ cat >dune-project <<EOF
   > (lang dune 3.10)

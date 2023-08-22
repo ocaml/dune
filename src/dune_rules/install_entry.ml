@@ -13,11 +13,45 @@ let expand_str_with_check_for_local_path ~expand_str sw =
     str)
 ;;
 
+module Glob_files_with_optional_prefix = struct
+  type t =
+    { glob_files : Dep_conf.Glob_files.t
+    ; prefix : String_with_vars.t option
+    }
+
+  let decode =
+    let open Dune_lang.Decoder in
+    let install_glob_version_check = Dune_lang.Syntax.since Stanza.syntax (3, 6) in
+    let install_glob_with_prefix_version_check =
+      Dune_lang.Syntax.since Stanza.syntax (3, 11)
+    in
+    let decode_args ~recursive =
+      let decode_without_prefix =
+        let+ glob = String_with_vars.decode in
+        { glob_files = { Dep_conf.Glob_files.glob; recursive }; prefix = None }
+      in
+      let decode_with_prefix =
+        enter
+          (let* () = install_glob_with_prefix_version_check in
+           let* glob = String_with_vars.decode in
+           let* () = keyword "with_prefix" in
+           let+ prefix = String_with_vars.decode in
+           { glob_files = { Dep_conf.Glob_files.glob; recursive }; prefix = Some prefix })
+      in
+      decode_with_prefix <|> decode_without_prefix
+    in
+    sum
+      [ "glob_files", install_glob_version_check >>> decode_args ~recursive:false
+      ; "glob_files_rec", install_glob_version_check >>> decode_args ~recursive:true
+      ]
+  ;;
+end
+
 module File = struct
   module Without_include = struct
     type t =
       | File_binding of File_binding.Unexpanded.t
-      | Glob_files of Dep_conf.Glob_files.t
+      | Glob_files of Glob_files_with_optional_prefix.t
 
     let decode =
       let open Dune_lang.Decoder in
@@ -26,17 +60,7 @@ module File = struct
         File_binding file_binding
       in
       let glob_files_decode =
-        let version_check = Dune_lang.Syntax.since Stanza.syntax (3, 6) in
-        let+ glob_files =
-          sum
-            [ ( "glob_files"
-              , let+ glob = version_check >>> String_with_vars.decode in
-                { Dep_conf.Glob_files.glob; recursive = false } )
-            ; ( "glob_files_rec"
-              , let+ glob = version_check >>> String_with_vars.decode in
-                { Dep_conf.Glob_files.glob; recursive = true } )
-            ]
-        in
+        let+ glob_files = Glob_files_with_optional_prefix.decode in
         Glob_files glob_files
       in
       file_binding_decode <|> glob_files_decode
@@ -45,13 +69,37 @@ module File = struct
     let to_file_bindings_unexpanded t ~expand_str ~dir ~dune_syntax =
       match t with
       | File_binding file_binding -> Memo.return [ file_binding ]
-      | Glob_files glob_files ->
+      | Glob_files { glob_files; prefix } ->
         let open Memo.O in
-        let+ paths = Glob_files_expand.memo glob_files ~f:expand_str ~base_dir:dir in
+        let* glob_expanded =
+          Glob_files_expand.memo glob_files ~f:expand_str ~base_dir:dir
+        in
         let glob_loc = String_with_vars.loc glob_files.glob in
-        List.map paths ~f:(fun path ->
+        let glob_prefix = Glob_files_expand.Expanded.prefix glob_expanded in
+        let+ prefix_loc_opt =
+          Memo.Option.map prefix ~f:(fun prefix_sw ->
+            let+ prefix = expand_str prefix_sw in
+            prefix, String_with_vars.loc prefix_sw)
+        in
+        List.map (Glob_files_expand.Expanded.matches glob_expanded) ~f:(fun path ->
           let src = glob_loc, path in
-          File_binding.Unexpanded.make ~src ~dst:src ~dune_syntax)
+          let dst =
+            match prefix_loc_opt with
+            | None -> src
+            | Some (prefix, prefix_loc) ->
+              let path_without_prefix =
+                match String.drop_prefix path ~prefix:glob_prefix with
+                | Some s -> s
+                | None ->
+                  Code_error.raise
+                    ~loc:glob_loc
+                    "Glob has a prefix which is not the same as the prefix of the match"
+                    [ "glob_prefix", Dyn.string prefix; "match", Dyn.string path ]
+              in
+              let dst = Filename.concat prefix path_without_prefix in
+              prefix_loc, dst
+          in
+          File_binding.Unexpanded.make ~src ~dst ~dune_syntax)
     ;;
 
     let to_file_bindings_expanded t ~expand_str ~dir ~dune_syntax =

@@ -12,6 +12,8 @@ module Glob_files : sig
     { glob : String_with_vars.t
     ; recursive : bool
     }
+
+  val to_dyn : t -> Dyn.t
 end
 
 type t =

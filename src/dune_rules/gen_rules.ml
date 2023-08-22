@@ -685,10 +685,9 @@ let gen_rules_build_dir
 (* Once [gen_rules] has decided what to do with the directory, it should end
    with [has_rules] or [redirect_to_parent] *)
 let gen_rules ~sctx ~dir components : Gen_rules.result Memo.t =
-  let module S = Subdir_set in
   match components with
   | [ ".dune"; "ccomp" ] ->
-    has_rules ~dir S.empty (fun () ->
+    has_rules ~dir Subdir_set.empty (fun () ->
       (* Add rules for C compiler detection *)
       Cxx_rules.rules ~sctx ~dir)
   | [ ".dune" ] ->

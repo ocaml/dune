@@ -1,5 +1,6 @@
 include Stdune
 module Stringlike = Dune_util.Stringlike
+module Re = Dune_re
 
 module type Stringlike = Dune_util.Stringlike
 

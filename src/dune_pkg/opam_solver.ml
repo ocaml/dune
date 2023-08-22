@@ -1,5 +1,4 @@
-open Stdune
-open Dune_lang
+open Import
 
 module type CONTEXT = Opam_0install.S.CONTEXT
 
@@ -241,11 +240,11 @@ let opam_command_to_string_debug (args, _filter_opt) =
 let opam_commands_to_actions package (commands : OpamTypes.command list) =
   List.filter_map commands ~f:(fun ((args, _filter_opt) as command) ->
     let interpolate_opam_variables s =
-      Dune_re.Seq.split_full OpamFilter.string_interp_regex s
+      Re.Seq.split_full OpamFilter.string_interp_regex s
       |> Seq.map ~f:(function
         | `Text text -> `Text text
         | `Delim group ->
-          (match Dune_re.Group.get group 0 with
+          (match Re.Group.get group 0 with
            | "%%" -> `Text "%"
            | interp
              when String.is_prefix ~prefix:"%{" interp

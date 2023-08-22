@@ -134,6 +134,12 @@ let include_dir_flags ~expander ~dir ~include_dirs =
      Command.Args.S (List.map include_dirs_expanded ~f:args_of_include_dir))
 ;;
 
+let get_env_flags ctx name =
+  match Env.get (Context.installed_env ctx) name with
+  | None -> []
+  | Some x -> String.extract_blank_separated_words x
+;;
+
 let build_c
   ~(kind : Foreign_language.t)
   ~sctx
@@ -147,16 +153,22 @@ let build_c
   let use_standard_flags = Dune_project.use_standard_c_and_cxx_flags project in
   let base_flags =
     match kind with
-    | Cxx -> Fdo.cxx_flags ctx
+    | Cxx ->
+      List.concat
+        [ get_env_flags ctx "CPPFLAGS"; get_env_flags ctx "CXXFLAGS"; Fdo.cxx_flags ctx ]
     | C ->
       (match use_standard_flags with
-       | Some true -> Fdo.c_flags ctx
+       | Some true ->
+         List.concat
+           [ get_env_flags ctx "CPPFLAGS"; get_env_flags ctx "CFLAGS"; Fdo.c_flags ctx ]
        | None | Some false ->
          (* In dune < 2.8 flags from ocamlc_config are always added *)
          let cfg = (Context.ocaml ctx).ocaml_config in
          List.concat
            [ Ocaml_config.ocamlc_cflags cfg
            ; Ocaml_config.ocamlc_cppflags cfg
+           ; get_env_flags ctx "CPPFLAGS"
+           ; get_env_flags ctx "CFLAGS"
            ; Fdo.c_flags ctx
            ])
   in

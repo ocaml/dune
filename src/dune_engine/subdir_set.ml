@@ -38,9 +38,4 @@ let union a b =
   | These a, These b -> These (Filename.Set.union a b)
 ;;
 
-let inter_set = function
-  | All -> Fun.id
-  | These t -> Filename.Set.inter t
-;;
-
 let union_all = List.fold_left ~init:empty ~f:union

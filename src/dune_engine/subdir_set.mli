@@ -13,5 +13,4 @@ val empty : t
 val is_empty : t -> bool
 val mem : t -> Filename.t -> bool
 val union : t -> t -> t
-val inter_set : t -> Filename.Set.t -> Filename.Set.t
 val union_all : t list -> t

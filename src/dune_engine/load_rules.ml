@@ -697,17 +697,12 @@ end = struct
            don't check directory targets as these are already checked
            earlier. *)
         (match
-           let target_filenames =
-             Path.Build.Set.to_list_map ~f:Path.Build.basename targets.files
-             |> Filename.Set.of_list
-           in
-           Filename.Set.choose
-             (* TODO it's unnecessary to compute the entire intersection to
-                just check if there's an overlap between the two sets *)
-             (Subdir_set.inter_set build_dir_only_sub_dirs target_filenames)
+           Path.Build.Set.find targets.files ~f:(fun file ->
+             Subdir_set.mem build_dir_only_sub_dirs (Path.Build.basename file))
          with
          | None -> ()
-         | Some target_name -> report_rule_internal_dir_conflict target_name loc);
+         | Some target_name ->
+           report_rule_internal_dir_conflict (Path.Build.basename target_name) loc);
         match mode with
         | Standard | Fallback -> acc
         | Ignore_source_files ->

@@ -692,13 +692,6 @@ let gen_rules ~sctx ~dir components : Gen_rules.result Memo.t =
     has_rules ~dir Subdir_set.empty (fun () ->
       (* Add rules for C compiler detection *)
       Cxx_rules.rules ~sctx ~dir)
-  | [ ".dune" ] ->
-    has_rules
-      ~dir
-      (Subdir_set.of_set (Filename.Set.of_list [ "ccomp" ]))
-      (fun () ->
-        (* TODO generate these rules without forcing the super context *)
-        Configurator_rules.gen_rules (Super_context.context sctx))
   | ".js" :: rest ->
     has_rules
       ~dir
@@ -807,5 +800,10 @@ let gen_rules ctx_or_install ~dir components =
      | [ ".pkg"; pkg_name ] -> Pkg_rules.setup_package_rules ctx ~dir ~pkg_name
      | ".pkg" :: _ :: _ ->
        Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
+     | [ ".dune" ] ->
+       has_rules
+         ~dir
+         (Subdir_set.of_set (Filename.Set.of_list [ "ccomp" ]))
+         (fun () -> Context.DB.get ctx >>= Configurator_rules.gen_rules)
      | _ -> with_context ctx ~f:(fun sctx -> gen_rules ~sctx ~dir components))
 ;;

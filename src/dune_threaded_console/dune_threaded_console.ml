@@ -79,8 +79,8 @@ let make (module Base : S) : (module Dune_console.Backend) =
          | Error exn ->
            (* we can't log to console because we are cleaning it up and we
               borked it *)
-           Dune_util.Log.info
-             [ Pp.text "Error cleaning up console"; Exn_with_backtrace.pp exn ]);
+           Dune_util.Log.log (fun () ->
+             [ Pp.text "Error cleaning up console"; Exn_with_backtrace.pp exn ]));
         Condition.broadcast finish_cv;
         Mutex.unlock mutex
       in

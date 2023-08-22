@@ -737,7 +737,7 @@ let gen_rules ~sctx ~dir components : Gen_rules.result Memo.t =
           automatic
           (* XXX sync this list with the pattern matches above. It's quite ugly
              we need this, we should rewrite this code to avoid this. *)
-          (Filename.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ])
+          (Filename.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod"; ".pkg" ])
     in
     Source_tree.find_dir src_dir
     >>= (function

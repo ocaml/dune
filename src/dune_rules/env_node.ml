@@ -192,8 +192,11 @@ let make
       ~field:(fun t -> Memo.return (menhir_flags t))
       ~root:(Action_builder.return [])
       (fun flags ->
-        let+ expander = Memo.Lazy.force expander in
-        Expander.expand_and_eval_set expander config.menhir_flags ~standard:flags)
+        match config.menhir_flags with
+        | None -> Memo.return flags
+        | Some menhir_flags ->
+          let+ expander = Memo.Lazy.force expander in
+          Expander.expand_and_eval_set expander menhir_flags ~standard:flags)
   in
   let odoc =
     let open Odoc in

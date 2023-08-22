@@ -30,7 +30,7 @@ module Stanza : sig
     ; env_vars : Env.t
     ; binaries : File_binding.Unexpanded.t list
     ; inline_tests : Inline_tests.t option
-    ; menhir_flags : Ordered_set_lang.Unexpanded.t
+    ; menhir_flags : Ordered_set_lang.Unexpanded.t option
     ; odoc : Odoc.t
     ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
     ; coq : Ordered_set_lang.Unexpanded.t

@@ -24,6 +24,8 @@ let all =
   Context_name.Map.of_list_exn contexts
 ;;
 
+let list () = Memo.Lazy.force all >>| Context_name.Map.keys
+
 let create_db ?cutoff ~name f =
   let cutoff = Option.map cutoff ~f:(fun equal -> Context_name.Map.equal ~equal) in
   let map =
@@ -33,14 +35,28 @@ let create_db ?cutoff ~name f =
   in
   Staged.stage (fun context ->
     let+ map = Memo.Lazy.force map in
-    match Context_name.Map.find map context with
-    | Some v -> v
-    | None ->
-      Code_error.raise "invalid context" [ "context", Context_name.to_dyn context ])
+    Context_name.Map.find map context)
+;;
+
+let or_invalid ctx = function
+  | Some s -> s
+  | None -> Code_error.raise "invalid context" [ "context", Context_name.to_dyn ctx ]
 ;;
 
 let profile =
-  create_db ~cutoff:Profile.equal ~name:"profile" (function
-    | `Native ctx | `Target (ctx, _) -> (Workspace.Context.base ctx).profile)
-  |> Staged.unstage
+  let profile =
+    create_db ~cutoff:Profile.equal ~name:"profile" (function
+      | `Native ctx | `Target (ctx, _) -> (Workspace.Context.base ctx).profile)
+    |> Staged.unstage
+  in
+  fun ctx -> profile ctx >>| or_invalid ctx
+;;
+
+let valid =
+  let find =
+    create_db ~cutoff:Unit.equal ~name:"context-validation" (function
+      | `Native _ | `Target (_, _) -> ())
+    |> Staged.unstage
+  in
+  fun ctx -> find ctx >>| Option.is_some
 ;;

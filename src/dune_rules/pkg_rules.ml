@@ -130,7 +130,9 @@ module Paths = struct
   let extra_source t extra_source = Path.Build.append_local t.extra_sources extra_source
 
   let make name (ctx : Context_name.t) =
-    let build_dir = Context_name.build_dir ctx in
+    let build_dir =
+      Path.Build.relative Private_context.t.build_dir (Context_name.to_string ctx)
+    in
     let root = Path.Build.L.relative build_dir [ ".pkg"; Package.Name.to_string name ] in
     of_root name ~root
   ;;

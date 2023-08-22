@@ -826,11 +826,7 @@ end = struct
         | None -> acc
         | Some p -> Dir_set.union acc (Dir_set.singleton p))
     in
-    let subdirs_to_keep =
-      match build_dir_only_sub_dirs with
-      | All -> Subdir_set.All
-      | These set -> These (Filename.Set.union source_dirs set)
-    in
+    let subdirs_to_keep = Subdir_set.union build_dir_only_sub_dirs (These source_dirs) in
     let+ allowed_grand_descendants_of_parent =
       match allowed_by_parent with
       | Unrestricted ->

@@ -546,12 +546,12 @@ let gen_melange_emit_rules_or_empty_redirect
   ~allowed_subdirs
   under_melange_emit
   =
-  let+ rules =
+  let rules =
     match under_melange_emit with
-    | None -> Memo.return opam_file_rules
+    | None -> opam_file_rules
     | Some for_melange ->
       For_melange.gen_emit_rules sctx ~dir for_melange
-      >>| (function
+      >>= (function
       | Some r -> r
       | None -> opam_file_rules)
   in
@@ -649,12 +649,13 @@ let gen_rules_build_dir
   Source_tree.find_dir parent
   >>= function
   | None ->
-    gen_melange_emit_rules_or_empty_redirect
-      sctx
-      ~opam_file_rules:(Memo.return Rules.empty)
-      ~dir
-      ~allowed_subdirs
-      under_melange_emit_target
+    Memo.return
+    @@ gen_melange_emit_rules_or_empty_redirect
+         sctx
+         ~opam_file_rules:(Memo.return Rules.empty)
+         ~dir
+         ~allowed_subdirs
+         under_melange_emit_target
   | Some nearest_src_dir ->
     (match Automatic_subdir.of_src_dir src_dir with
      | Some kind ->
@@ -674,12 +675,13 @@ let gen_rules_build_dir
                sctx
                (Source_tree.Dir.project nearest_src_dir) )
        in
-       gen_melange_emit_rules_or_empty_redirect
-         sctx
-         ~dir
-         ~opam_file_rules
-         ~allowed_subdirs
-         under_melange_emit_target)
+       Memo.return
+       @@ gen_melange_emit_rules_or_empty_redirect
+            sctx
+            ~dir
+            ~opam_file_rules
+            ~allowed_subdirs
+            under_melange_emit_target)
 ;;
 
 (* Once [gen_rules] has decided what to do with the directory, it should end
@@ -758,12 +760,13 @@ let gen_rules ~sctx ~dir components : Gen_rules.result Memo.t =
       Dir_contents.triage sctx ~dir
       >>= (function
       | Group_part _ ->
-        gen_melange_emit_rules_or_empty_redirect
-          sctx
-          ~opam_file_rules:(Memo.return Rules.empty)
-          ~dir
-          ~allowed_subdirs
-          under_melange_emit_target
+        Memo.return
+        @@ gen_melange_emit_rules_or_empty_redirect
+             sctx
+             ~opam_file_rules:(Memo.return Rules.empty)
+             ~dir
+             ~allowed_subdirs
+             under_melange_emit_target
       | Standalone_or_root { directory_targets; contents } ->
         gen_rules_standalone_or_root
           sctx

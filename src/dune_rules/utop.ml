@@ -183,7 +183,6 @@ let setup sctx ~dir =
     Compilation_context.create
       ()
       ~super_context:sctx
-      ~expander
       ~scope
       ~obj_dir
       ~modules
@@ -195,6 +194,6 @@ let setup sctx ~dir =
       ~package:None
       ~preprocessing
   in
-  let toplevel = Toplevel.make ~cctx ~source ~preprocess:pps in
+  let toplevel = Toplevel.make ~cctx ~source ~preprocess:pps expander in
   Toplevel.setup_rules toplevel
 ;;

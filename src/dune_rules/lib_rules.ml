@@ -535,7 +535,6 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
   Compilation_context.create
     ()
     ~super_context:sctx
-    ~expander
     ~scope
     ~obj_dir
     ~modules

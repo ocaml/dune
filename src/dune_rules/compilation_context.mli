@@ -22,7 +22,6 @@ type opaque =
 val create
   :  super_context:Super_context.t
   -> scope:Scope.t
-  -> expander:Expander.t
   -> obj_dir:Path.Build.t Obj_dir.t
   -> modules:Modules.t
   -> flags:Ocaml_flags.t
@@ -45,7 +44,6 @@ val create
 val for_alias_module : t -> Module.t -> t
 
 val super_context : t -> Super_context.t
-val expander : t -> Expander.t
 val context : t -> Context.t
 val scope : t -> Scope.t
 

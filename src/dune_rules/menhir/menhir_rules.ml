@@ -55,7 +55,7 @@ module Run (P : PARAMS) = struct
   (* [build_dir] is the base directory of the context; we run menhir from this
      directory to we get correct error paths. *)
   let build_dir = (Super_context.context sctx).build_dir
-  let expander = Compilation_context.expander cctx
+  let expander = Super_context.expander ~dir sctx
 
   let sandbox =
     let scope = Compilation_context.scope cctx in
@@ -128,7 +128,8 @@ module Run (P : PARAMS) = struct
     Action_builder.memoize
       ~cutoff:(List.equal String.equal)
       "menhir flags"
-      (Expander.expand_and_eval_set expander flags ~standard)
+      (let* expander = Action_builder.of_memo expander in
+       Expander.expand_and_eval_set expander flags ~standard)
   ;;
 
   (* ------------------------------------------------------------------------ *)

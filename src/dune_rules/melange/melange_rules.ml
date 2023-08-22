@@ -240,7 +240,6 @@ let setup_emit_cmj_rules
         ()
         ~loc:mel.loc
         ~super_context:sctx
-        ~expander
         ~scope
         ~obj_dir
         ~modules

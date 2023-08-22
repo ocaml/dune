@@ -64,21 +64,28 @@ end
 type t =
   { cctx : Compilation_context.t
   ; source : Source.t
+  ; expander : Expander.t
   ; preprocess : Preprocess.Without_instrumentation.t Preprocess.t
   }
 
-let make ~cctx ~source ~preprocess = { cctx; source; preprocess }
+let make ~cctx ~source ~preprocess expander = { cctx; source; preprocess; expander }
 
 let pp_flags t =
   let open Action_builder.O in
   let open Pp.O in
   let sctx = Compilation_context.super_context t.cctx in
   let scope = Compilation_context.scope t.cctx in
-  let expander = Compilation_context.expander t.cctx in
   match t.preprocess with
   | Pps { loc; pps; flags; staged = _ } ->
     let+ exe, flags =
-      Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:None ~flags ~scope pps
+      Preprocessing.get_ppx_driver
+        sctx
+        ~loc
+        ~expander:t.expander
+        ~lib_name:None
+        ~flags
+        ~scope
+        pps
     in
     let ppx =
       Dyn.list
@@ -224,7 +231,6 @@ module Stanza = struct
         ~super_context:sctx
         ~scope
         ~obj_dir
-        ~expander
         ~modules
         ~opaque:(Explicit false)
         ~requires_compile
@@ -234,7 +240,7 @@ module Stanza = struct
         ~package:None
         ~preprocessing
     in
-    let resolved = make ~cctx ~source ~preprocess:toplevel.pps in
+    let resolved = make ~cctx ~source ~preprocess:toplevel.pps expander in
     let* exe = setup_rules_and_return_exe_path resolved in
     let symlink = Path.Build.relative dir (Path.Build.basename exe) in
     Super_context.add_rule

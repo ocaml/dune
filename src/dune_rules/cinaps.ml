@@ -163,7 +163,6 @@ let gen_rules sctx t ~dir ~scope =
     Compilation_context.create
       ()
       ~super_context:sctx
-      ~expander
       ~scope
       ~obj_dir
       ~modules

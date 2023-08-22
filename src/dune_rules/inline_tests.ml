@@ -161,7 +161,6 @@ include Sub_system.Register_end_point (struct
         Compilation_context.create
           ()
           ~super_context:sctx
-          ~expander
           ~scope
           ~obj_dir
           ~modules

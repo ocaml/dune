@@ -397,7 +397,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
 
 let name = "mdx_gen"
 
-let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
+let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
   let loc = t.loc in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let file = Path.Build.relative dir "mdx_gen.ml-gen" in
@@ -463,7 +463,6 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
     Compilation_context.create
       ~super_context:sctx
       ~scope
-      ~expander
       ~obj_dir
       ~modules
       ~flags
@@ -500,8 +499,7 @@ let gen_rules t ~sctx ~dir ~scope ~expander =
     in
     let* mdx_prog_gen =
       if Dune_lang.Syntax.Version.Infix.(t.version >= (0, 2))
-      then
-        Memo.Option.map (Some t) ~f:(mdx_prog_gen ~sctx ~dir ~scope ~expander ~mdx_prog)
+      then Memo.Option.map (Some t) ~f:(mdx_prog_gen ~sctx ~dir ~scope ~mdx_prog)
       else Memo.return None
     in
     Memo.parallel_iter

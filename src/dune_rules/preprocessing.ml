@@ -332,7 +332,6 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
   in
   let obj_dir = Obj_dir.for_pp ~dir in
   let* cctx =
-    let* expander = Super_context.expander sctx ~dir in
     let requires_compile = Resolve.map driver_and_libs ~f:snd in
     let requires_link = Memo.lazy_ (fun () -> Memo.return requires_compile) in
     let flags = Ocaml_flags.of_list [ "-g"; "-w"; "-24" ] in
@@ -341,7 +340,6 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
     Compilation_context.create
       ~super_context:sctx
       ~scope
-      ~expander
       ~obj_dir
       ~modules
       ~flags

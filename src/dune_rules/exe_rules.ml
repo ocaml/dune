@@ -151,7 +151,6 @@ let executables_rules
       ()
       ~loc:exes.buildable.loc
       ~super_context:sctx
-      ~expander
       ~scope
       ~obj_dir
       ~modules

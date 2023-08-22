@@ -71,7 +71,6 @@ let singleton_modules m =
 type t =
   { super_context : Super_context.t
   ; scope : Scope.t
-  ; expander : Expander.t
   ; obj_dir : Path.Build.t Obj_dir.t
   ; modules : modules
   ; flags : Ocaml_flags.t
@@ -95,7 +94,6 @@ type t =
 let loc t = t.loc
 let super_context t = t.super_context
 let scope t = t.scope
-let expander t = t.expander
 let dir t = Obj_dir.dir t.obj_dir
 let obj_dir t = t.obj_dir
 let modules t = t.modules.modules
@@ -121,7 +119,6 @@ let dep_graphs t = t.modules.dep_graphs
 let create
   ~super_context
   ~scope
-  ~expander
   ~obj_dir
   ~modules
   ~flags
@@ -181,7 +178,6 @@ let create
   in
   { super_context
   ; scope
-  ; expander
   ; obj_dir
   ; modules = { modules; dep_graphs }
   ; flags

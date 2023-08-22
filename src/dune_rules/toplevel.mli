@@ -17,6 +17,7 @@ val make
   :  cctx:Compilation_context.t
   -> source:Source.t
   -> preprocess:Preprocess.Without_instrumentation.t Preprocess.t
+  -> Expander.t
   -> t
 
 type directives =

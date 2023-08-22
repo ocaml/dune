@@ -73,6 +73,7 @@ Print the contents of each file in the lockdir:
   dune.lock/foo.pkg:
   
   (version 0.0.1)
+  
   (deps baz bar)
   
   
@@ -112,6 +113,7 @@ Run the solver again preferring oldest versions of dependencies:
   dune.lock/foo.pkg:
   
   (version 0.0.1)
+  
   (deps baz bar)
   
   

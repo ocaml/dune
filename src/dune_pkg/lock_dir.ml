@@ -404,7 +404,12 @@ module Write_disk = struct
       |> List.iter ~f:(fun (path_within_lock_dir, contents) ->
         let path = Path.relative lock_dir_path path_within_lock_dir in
         Option.iter (Path.parent path) ~f:Path.mkdir_p;
-        List.map contents ~f:Dune_lang.to_string |> Io.write_lines path)
+        let cst =
+          List.map contents ~f:(fun sexp ->
+            Dune_lang.Ast.add_loc ~loc:Loc.none sexp |> Dune_sexp.Cst.concrete)
+        in
+        let pp = Dune_lang.Format.pp_top_sexps ~version:(3, 11) cst in
+        Format.asprintf "%a" Pp.to_fmt pp |> Io.write_file path)
   ;;
 
   let commit t = t ()

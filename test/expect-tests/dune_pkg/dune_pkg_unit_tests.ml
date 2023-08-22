@@ -251,7 +251,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
               ; exported_env = []
               }
           }
-    ; ocaml = Some ("simple_lock_dir/lock.dune:2", "ocaml")
+    ; ocaml = Some ("simple_lock_dir/lock.dune:3", "ocaml")
     ; repo_id = None
     } |}]
 ;;
@@ -371,7 +371,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
           ; "b" :
               { build_command = None
               ; install_command = None
-              ; deps = [ ("complex_lock_dir/b.pkg:2", "a") ]
+              ; deps = [ ("complex_lock_dir/b.pkg:3", "a") ]
               ; info =
                   { name = "b"
                   ; version = "dev"
@@ -389,8 +389,8 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               { build_command = None
               ; install_command = None
               ; deps =
-                  [ ("complex_lock_dir/c.pkg:2", "a")
-                  ; ("complex_lock_dir/c.pkg:2", "b")
+                  [ ("complex_lock_dir/c.pkg:3", "a")
+                  ; ("complex_lock_dir/c.pkg:3", "b")
                   ]
               ; info =
                   { name = "c"
@@ -402,7 +402,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               ; exported_env = []
               }
           }
-    ; ocaml = Some ("complex_lock_dir/lock.dune:2", "ocaml")
-    ; repo_id = Some ("complex_lock_dir/lock.dune:3", Git_hash "95cf548dc")
+    ; ocaml = Some ("complex_lock_dir/lock.dune:3", "ocaml")
+    ; repo_id = Some ("complex_lock_dir/lock.dune:6", Git_hash "95cf548dc")
     } |}]
 ;;

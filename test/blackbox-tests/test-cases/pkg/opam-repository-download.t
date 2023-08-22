@@ -121,7 +121,7 @@ reproducible)
   bar.0.0.1
   foo.0.0.1
   
-  $ grep "(repo_id (git_hash $REPO_HASH))" dune.lock/lock.dune > /dev/null
+  $ grep "git_hash $REPO_HASH" dune.lock/lock.dune > /dev/null
 
 Now try it with an existing cached dir
 
@@ -132,4 +132,4 @@ Now try it with an existing cached dir
   foo.0.0.1
   
 
-  $ grep "(repo_id (git_hash $REPO_HASH))" dune.lock/lock.dune > /dev/null
+  $ grep "git_hash $REPO_HASH" dune.lock/lock.dune > /dev/null

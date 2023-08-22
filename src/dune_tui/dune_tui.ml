@@ -184,7 +184,9 @@ module Tui = struct
         (match List.exists fds ~f:(Poly.equal sigcont_r) with
          | false -> `Event
          | true ->
-           ignore (Unix.read sigcont_r bytes 0 1);
+           (match Unix.read sigcont_r bytes 0 1 with
+            | exception Unix.Unix_error (EBADF, _, _) -> assert false
+            | (exception Unix.Unix_error _) | _ -> ());
            (* backgrounding could have changed the cursor settings for example.
               we need to restore all this stuff *)
            `Restore)

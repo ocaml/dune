@@ -535,7 +535,7 @@ let rules_for ?directory_targets ~dir ~allowed_subdirs rules =
   Gen_rules.Rules.create
     ?directory_targets
     ~build_dir_only_sub_dirs:
-      (Gen_rules.Build_only_sub_dirs.singleton ~dir (Subdir_set.These allowed_subdirs))
+      (Gen_rules.Build_only_sub_dirs.singleton ~dir (Subdir_set.of_set allowed_subdirs))
     rules
 ;;
 
@@ -694,7 +694,7 @@ let gen_rules ~sctx ~dir components : Gen_rules.result Memo.t =
   | [ ".dune" ] ->
     has_rules
       ~dir
-      (S.These (Filename.Set.of_list [ "ccomp" ]))
+      (Subdir_set.of_set (Filename.Set.of_list [ "ccomp" ]))
       (fun () ->
         (* TODO generate these rules without forcing the super context *)
         Configurator_rules.gen_rules (Super_context.context sctx))
@@ -702,8 +702,8 @@ let gen_rules ~sctx ~dir components : Gen_rules.result Memo.t =
     has_rules
       ~dir
       (match rest with
-       | [] -> S.All
-       | _ -> S.empty)
+       | [] -> Subdir_set.all
+       | _ -> Subdir_set.empty)
       (fun () ->
         (* XXX the use of the super context is dubious here. We're using it to
            take into account the env stanza. But really, these are internal
@@ -715,15 +715,15 @@ let gen_rules ~sctx ~dir components : Gen_rules.result Memo.t =
     has_rules
       ~dir
       (match comps with
-       | [] -> S.All
-       | _ -> S.empty)
+       | [] -> Subdir_set.all
+       | _ -> Subdir_set.empty)
       (fun () -> Top_module.gen_rules sctx ~dir ~comps)
   | ".ppx" :: rest ->
     has_rules
       ~dir
       (match rest with
-       | [] -> S.All
-       | _ -> S.empty)
+       | [] -> Subdir_set.all
+       | _ -> Subdir_set.empty)
       (fun () -> Preprocessing.gen_rules sctx rest)
   | _ ->
     let* under_melange_emit_target = For_melange.under_melange_emit_target ~dir in
@@ -799,7 +799,7 @@ let gen_rules ctx_or_install ~dir components =
      | [ ".pkg" ] ->
        Gen_rules.make
          ~build_dir_only_sub_dirs:
-           (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.All)
+           (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
          (Memo.return Rules.empty)
        |> Memo.return
      | [ ".pkg"; pkg_name ] -> Pkg_rules.setup_package_rules ctx ~dir ~pkg_name

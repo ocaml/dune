@@ -2,10 +2,10 @@
 
 open Import
 
-type t =
-  | All
-  | These of Filename.Set.t
+type t
 
+val all : t
+val of_set : Filename.Set.t -> t
 val to_dir_set : t -> Path.Unspecified.w Dir_set.t
 val of_dir_set : 'a Dir_set.t -> t
 val of_list : Filename.t list -> t

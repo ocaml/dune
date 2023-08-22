@@ -828,7 +828,7 @@ let gen_rules sctx ~dir rest =
     Memo.return
       (Build_config.Gen_rules.make
          ~build_dir_only_sub_dirs:
-           (Build_config.Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.All)
+           (Build_config.Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
          (Memo.return Rules.empty))
   | [ "_html" ] ->
     let ctx = Super_context.context sctx in

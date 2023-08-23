@@ -415,7 +415,7 @@ end = struct
       Appendable_list.to_list expansions)
   ;;
 
-  let filter_out_fallback_rules ~to_copy rules =
+  let filter_out_fallback_rules ~source_files rules =
     List.filter rules ~f:(fun (rule : Rule.t) ->
       match rule.mode with
       | Standard | Promote _ | Ignore_source_files -> true
@@ -433,15 +433,17 @@ end = struct
             ~f:Path.Build.drop_build_context_exn
           |> Path.Source.Set.of_list
         in
-        if Path.Source.Set.is_subset source_files_for_targets ~of_:to_copy
+        if Path.Source.Set.is_subset source_files_for_targets ~of_:source_files
         then (* All targets are present *)
           false
         else if Path.Source.Set.is_empty
-                  (Path.Source.Set.inter source_files_for_targets to_copy)
+                  (Path.Source.Set.inter source_files_for_targets source_files)
         then (* No target is present *)
           true
         else (
-          let absent_targets = Path.Source.Set.diff source_files_for_targets to_copy in
+          let absent_targets =
+            Path.Source.Set.diff source_files_for_targets source_files
+          in
           let present_targets =
             Path.Source.Set.diff source_files_for_targets absent_targets
           in
@@ -727,7 +729,7 @@ end = struct
   ;;
 
   type source_rules =
-    { to_copy : (Path.Build.t * Path.Source.Set.t) option
+    { source_files : Path.Source.Set.t
     ; source_dirs : Filename.Set.t
     ; copy_rules : Rule.t list
     }
@@ -740,10 +742,14 @@ end = struct
     =
     match context_or_install with
     | Install _ ->
-      Memo.return { to_copy = None; source_dirs = Filename.Set.empty; copy_rules = [] }
+      Memo.return
+        { source_files = Path.Source.Set.empty
+        ; source_dirs = Filename.Set.empty
+        ; copy_rules = []
+        }
     | Context context_name ->
       (* Take into account the source files *)
-      let+ to_copy, source_dirs =
+      let+ source_files, source_dirs =
         let+ files, subdirs =
           let module Source_tree = (val (Build_config.get ()).source_tree) in
           Source_tree.find_dir sub_dir
@@ -761,20 +767,14 @@ end = struct
           Path.Source.Set.diff files source_files_to_ignore
         in
         let subdirs = Filename.Set.diff subdirs source_paths_to_ignore.dirnames in
-        if Path.Source.Set.is_empty files
-        then None, subdirs
-        else (
-          let ctx_path = Context_name.build_dir context_name in
-          Some (ctx_path, files), subdirs)
+        files, subdirs
       in
       (* Compile the rules and cleanup stale artifacts *)
       let copy_rules =
-        match to_copy with
-        | None -> []
-        | Some (ctx_dir, source_files) ->
-          create_copy_rules ~ctx_dir ~non_target_source_files:source_files
+        let ctx_dir = Context_name.build_dir context_name in
+        create_copy_rules ~ctx_dir ~non_target_source_files:source_files
       in
-      { to_copy; source_dirs; copy_rules }
+      { source_files; source_dirs; copy_rules }
   ;;
 
   let descendants_to_keep
@@ -863,7 +863,7 @@ end = struct
       (* Compute the set of sources and targets promoted to the source tree that
          must not be copied to the build directory. *)
       (* Take into account the source files *)
-      let* { to_copy; source_dirs; copy_rules } =
+      let* { source_files; source_dirs; copy_rules } =
         let source_paths_to_ignore =
           source_paths_to_ignore ~dir build_dir_only_sub_dirs rules
         in
@@ -871,14 +871,14 @@ end = struct
       in
       (* Compile the rules and cleanup stale artifacts *)
       let rules =
-        (* Filter out fallback rules *)
         let rules =
-          match to_copy with
-          | None ->
+          (* Filter out fallback rules *)
+          if Path.Source.Set.is_empty source_files
+          then
             (* If there are no source files to copy, fallback rules are
                automatically kept *)
             rules
-          | Some (_, to_copy) -> filter_out_fallback_rules ~to_copy rules
+          else filter_out_fallback_rules ~source_files rules
         in
         copy_rules @ rules
       in

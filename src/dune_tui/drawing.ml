@@ -29,7 +29,7 @@ let attr_of_ansi_color_rgb8 (c : Ansi_color.RGB8.t) =
 ;;
 
 let attr_of_ansi_color_rgb24 (c : Ansi_color.RGB24.t) =
-  A.rgb
+  A.rgb_888
     ~r:(Ansi_color.RGB24.red c)
     ~g:(Ansi_color.RGB24.green c)
     ~b:(Ansi_color.RGB24.blue c)

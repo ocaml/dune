@@ -76,7 +76,7 @@ end
 module Without_vars = struct
   (* A glob whose [String_with_vars.t] has been expanded. A [Glob.t] is a
      wildcard for matching filenames only, not entire paths. The [dir] field
-     holds the directory component of the original glob. E.g. for the glob
+     holds the directory component of the original glob. E.g., for the glob
      "foo/bar/*.txt", [dir] would be "foo/bar". *)
   type t =
     { glob : Glob.t

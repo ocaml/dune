@@ -7,10 +7,10 @@ Dune supports installing packages on the system, i.e., copying freshly built
 artifacts from the workspace to the system. The ``install`` stanza takes three
 pieces of information:
 
-- The list of files or directories to install.
+- The list of files or directories to install
 - The package to attach these files. This field is optional if your project
   contains a single package.
-- The section in which the files will be installed.
+- The section in which the files will be installed
 
 For instance:
 
@@ -106,13 +106,13 @@ installed with mode ``0o644`` (``rw-r--r--``).
 Note that all files in the install stanza must be specified by relative paths
 only. It is an error to specify files by absolute paths.
 
-Also note that as of dune-lang 3.11 (ie. ``(lang dune 3.11)`` in
+Also note that as of dune-lang 3.11 (i.e., ``(lang dune 3.11)`` in
 ``dune-project``) it is deprecated to use the ``as`` keyword to specify a
 destination beginning with ``..``. Dune intends for files associated with a
 package to only be installed under specific directories in the file system
-implied by the installation section (e.g. ``share``, ``bin``, ``doc``, etc.)
+implied by the installation section (e.g., ``share``, ``bin``, ``doc``, etc.)
 and the package name. Starting destination paths with ``..`` allows packages to
-install files to arbitrary locations on the file system. In 3.11 this behaviour
+install files to arbitrary locations on the file system. In 3.11, this behaviour
 is still supported (as some projects may depend on it) but will generate a
 warning and will be removed in a future version of Dune.
 
@@ -218,7 +218,7 @@ example writing:
 
 ...would cause Dune to attempt to install the matching files to
 ``share/<package>/../``, ie. ``share`` where ``<package>`` is the name of the
-package (ie. ``dune-project`` would contain ``(package (name <package>))``).
+package (i.e., ``dune-project`` would contain ``(package (name <package>))``).
 This is probably not what the user intends, and installing files to relative
 paths beginning with ``..`` is deprecated from version 3.11 of Dune and will
 become an error in a future version.

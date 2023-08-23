@@ -12,6 +12,44 @@ module Style = struct
     | Debug
     | Success
     | Ansi_styles of Ansi_color.Style.t list
+
+  let compare t1 t2 : Ordering.t =
+    match t1, t2 with
+    | Loc, Loc -> Eq
+    | Loc, _ -> Lt
+    | _, Loc -> Gt
+    | Error, Error -> Eq
+    | Error, _ -> Lt
+    | _, Error -> Gt
+    | Warning, Warning -> Eq
+    | Warning, _ -> Lt
+    | _, Warning -> Gt
+    | Kwd, Kwd -> Eq
+    | Kwd, _ -> Lt
+    | _, Kwd -> Gt
+    | Id, Id -> Eq
+    | Id, _ -> Lt
+    | _, Id -> Gt
+    | Prompt, Prompt -> Eq
+    | Prompt, _ -> Lt
+    | _, Prompt -> Gt
+    | Hint, Hint -> Eq
+    | Hint, _ -> Lt
+    | _, Hint -> Gt
+    | Details, Details -> Eq
+    | Details, _ -> Lt
+    | _, Details -> Gt
+    | Ok, Ok -> Eq
+    | Ok, _ -> Lt
+    | _, Ok -> Gt
+    | Debug, Debug -> Eq
+    | Debug, _ -> Lt
+    | _, Debug -> Gt
+    | Success, Success -> Eq
+    | Success, _ -> Lt
+    | _, Success -> Gt
+    | Ansi_styles _, Ansi_styles _ -> Eq
+  ;;
 end
 
 module Annots = struct

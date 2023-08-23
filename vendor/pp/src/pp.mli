@@ -91,7 +91,9 @@ val newline : _ t
     And the top left corner of this shape is anchored where the box was
     declared. So for instance, the following document:
 
-    {[ Pp.verbatim "....." ++ Pp.box ~indent:2 (Pp.text "some long ... text") ]}
+    {[
+      Pp.verbatim "....." ++ Pp.box ~indent:2 (Pp.text "some long ... text")
+    ]}
 
     would produce:
 
@@ -209,3 +211,10 @@ val of_ast : 'a Ast.t -> 'a t
 (** [to_ast t] will try to convert [t] to [Ast.t]. When [t] contains values
     constructed with [of_fmt], this function will fail and return [Error ()] *)
 val to_ast : 'a t -> ('a Ast.t, unit) result
+
+(** {1 Comparison} *)
+
+(** [compare cmp x y] compares [x] and [y] using [cmp] to compare tags.
+
+    @raise Invalid_argument if two [of_fmt] values are compared. *)
+val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int

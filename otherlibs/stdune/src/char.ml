@@ -11,3 +11,4 @@ let is_lowercase_hex = function
 ;;
 
 let[@inline always] hash c = Int.hash (code c)
+let compare x y = Ordering.of_int (compare x y)

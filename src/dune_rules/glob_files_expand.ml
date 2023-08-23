@@ -64,13 +64,20 @@ module Glob_dir = struct
         { relative_dir : string
         ; base_dir : Path.Build.t
         }
+
+  let to_dyn = function
+    | Absolute external_path ->
+      Dyn.variant "Absolute" [ Path.External.to_dyn external_path ]
+    | Relative { relative_dir; base_dir } ->
+      Dyn.variant "Relative" [ Dyn.string relative_dir; Path.Build.to_dyn base_dir ]
+  ;;
 end
 
 module Without_vars = struct
   (* A glob whose [String_with_vars.t] has been expanded. A [Glob.t] is a
-     wildcard for matching filenames only, not entire paths. The [relative_dir]
-     field holds the directory component of the original glob. E.g. for the glob
-     "foo/bar/*.txt", [relative_dir] would be "foo/bar". *)
+     wildcard for matching filenames only, not entire paths. The [dir] field
+     holds the directory component of the original glob. E.g., for the glob
+     "foo/bar/*.txt", [dir] would be "foo/bar". *)
   type t =
     { glob : Glob.t
     ; dir : Glob_dir.t
@@ -113,6 +120,25 @@ module Without_vars = struct
   ;;
 end
 
+module Expanded = struct
+  type t =
+    { matches : string list
+    ; dir : Glob_dir.t
+    }
+
+  let to_dyn { matches; dir } =
+    Dyn.record [ "matches", Dyn.list Dyn.string matches; "dir", Glob_dir.to_dyn dir ]
+  ;;
+
+  let matches { matches; _ } = matches
+
+  let prefix { dir; _ } =
+    match dir with
+    | Glob_dir.Absolute path -> Path.External.to_string path
+    | Relative { relative_dir; _ } -> relative_dir
+  ;;
+end
+
 module Expand
     (M : Memo.S)
     (C : sig
@@ -137,12 +163,15 @@ struct
     let open M.O in
     let loc = String_with_vars.loc t.glob in
     let* without_vars = expand_vars t ~f ~base_dir in
-    Without_vars.file_selectors_with_relative_dirs without_vars ~loc
-    |> M.of_memo
-    >>= M.List.concat_map ~f:(fun (file_selector, relative_dir) ->
-      C.collect_files ~loc file_selector
-      >>| Path.Set.to_list_map ~f:(replace_path_dir relative_dir))
-    >>| List.sort ~compare:String.compare
+    let+ matches =
+      Without_vars.file_selectors_with_relative_dirs without_vars ~loc
+      |> M.of_memo
+      >>= M.List.concat_map ~f:(fun (file_selector, relative_dir) ->
+        C.collect_files ~loc file_selector
+        >>| Path.Set.to_list_map ~f:(replace_path_dir relative_dir))
+      >>| List.sort ~compare:String.compare
+    in
+    { Expanded.matches; dir = without_vars.dir }
   ;;
 end
 

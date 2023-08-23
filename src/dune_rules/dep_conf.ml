@@ -6,6 +6,10 @@ module Glob_files = struct
     { glob : String_with_vars.t
     ; recursive : bool
     }
+
+  let to_dyn { glob; recursive } =
+    Dyn.record [ "glob", String_with_vars.to_dyn glob; "recursive", Dyn.bool recursive ]
+  ;;
 end
 
 type t =

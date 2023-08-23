@@ -141,6 +141,7 @@ let rec dep expander = function
          glob_files
          ~f:(Expander.expand_str expander)
          ~base_dir:(Expander.dir expander)
+       >>| Glob_files_expand.Expanded.matches
        >>| List.map ~f:(fun path ->
          if Filename.is_relative path
          then Path.Build.relative (Expander.dir expander) path |> Path.build

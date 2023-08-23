@@ -43,3 +43,24 @@ Incorrect install stanza that would place files outside the package's install di
   stanzas beginning with .. will be disallowed to prevent a package's installed
   files from escaping that package's install directories.
 
+
+Correction to the above which uses `with_prefix` to change the install destination:
+  $ cat >stanza/dune <<EOF
+  > (install
+  >  (files (glob_files_rec (../stuff/*.txt with_prefix stuff)))
+  >  (section share))
+  > EOF
+
+  $ dune build foo.install
+
+
+  $ grep txt _build/default/foo.install
+    "_build/install/default/share/foo/foo.txt"
+    "_build/install/default/share/foo/stuff/foo.txt" {"stuff/foo.txt"}
+    "_build/install/default/share/foo/stuff/xy/bar.txt" {"stuff/xy/bar.txt"}
+
+  $ dune install foo --prefix _foo
+  $ find _foo | sort | grep txt
+  _foo/share/foo/foo.txt
+  _foo/share/foo/stuff/foo.txt
+  _foo/share/foo/stuff/xy/bar.txt

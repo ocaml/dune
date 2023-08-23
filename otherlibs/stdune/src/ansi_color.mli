@@ -10,14 +10,14 @@ module RGB24 : sig
   (** 24 bit RGB color *)
   type t
 
-  (** [RGB24.red t] returns the red component of [t] *)
-  val red : t -> int
+  (** [RGB24.r t] returns the red component of [t] *)
+  val r : t -> int
 
-  (** [RGB24.green t] returns the green component of [t] *)
-  val green : t -> int
+  (** [RGB24.g t] returns the green component of [t] *)
+  val g : t -> int
 
-  (** [RGB24.blue t] returns the blue component of [t] *)
-  val blue : t -> int
+  (** [RGB24.b t] returns the blue component of [t] *)
+  val b : t -> int
 end
 
 module Style : sig

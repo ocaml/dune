@@ -27,9 +27,9 @@ module RGB24 : sig
 
   val to_dyn : t -> Dyn.t
   val compare : t -> t -> Ordering.t
-  val red : t -> int
-  val green : t -> int
-  val blue : t -> int
+  val r : t -> int
+  val g : t -> int
+  val b : t -> int
   val create : r:int -> g:int -> b:int -> t
 
   (** This is only used internally. *)
@@ -38,19 +38,19 @@ end = struct
   type t = int
 
   let compare = Int.compare
-  let red t = Int.shift_right t 16 land 0xFF
-  let green t = Int.shift_right t 8 land 0xFF
-  let blue t = t land 0xFF
-  let to_dyn t = Dyn.list Dyn.int [ red t; green t; blue t ]
+  let r t = Int.shift_right t 16 land 0xFF
+  let g t = Int.shift_right t 8 land 0xFF
+  let b t = t land 0xFF
+  let to_dyn t = Dyn.record [ "r", Dyn.int (r t); "g", Dyn.int (g t); "b", Dyn.int (b t) ]
   let create ~r ~g ~b = ((r land 0xFF) lsl 16) lor ((g land 0xFF) lsl 8) lor (b land 0xFF)
 
   let write_to_buffer buf t =
     Buffer.add_string buf "38;2;";
-    red t |> Int.to_string |> Buffer.add_string buf;
+    r t |> Int.to_string |> Buffer.add_string buf;
     Buffer.add_char buf ';';
-    green t |> Int.to_string |> Buffer.add_string buf;
+    g t |> Int.to_string |> Buffer.add_string buf;
     Buffer.add_char buf ';';
-    blue t |> Int.to_string |> Buffer.add_string buf
+    b t |> Int.to_string |> Buffer.add_string buf
   ;;
 end
 

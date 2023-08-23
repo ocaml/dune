@@ -191,33 +191,35 @@ let rec select_loop t =
       Unix.close t.pipe_read
       (* On Win32, both ends of the "pipe" are the same UDP socket *)
   | true ->
-    let readers, writers, ex =
-      let read = t.pipe_read :: Table.keys t.readers in
-      let write = Table.keys t.writers in
-      Mutex.unlock t.mutex;
-      (* At this point, if any [ready] acquires the lock, they need to check if
-         [read] or [write] contain their fd. If it doesn't, the write
-         [t.pipe_write] will interrupt this select *)
-      Unix.select read write [] (-1.0)
-    in
-    assert (ex = []);
-    (* Before we acquire the lock, it's possible that new tasks were added.
-       This is fine. *)
-    Mutex.lock t.mutex;
-    let seen_pipe, fills = make_fills readers t.pipe_read t.readers [] in
-    (* we will never see [t.pipe_read] in the next list, but there's no harm in
-       this *)
-    let _, fills = make_fills writers t.pipe_read t.writers fills in
-    if seen_pipe
-    then (
-      drain_pipe t.pipe_read t.pipe_buf;
-      t.interrupting <- false);
-    (match fills with
-     | [] -> ()
-     | _ :: _ ->
-       let module Scheduler = (val t.scheduler) in
-       Scheduler.fill_jobs fills);
-    select_loop t
+    let read = t.pipe_read :: Table.keys t.readers in
+    let write = Table.keys t.writers in
+    Mutex.unlock t.mutex;
+    (* At this point, if any [ready] acquires the lock, they need to check if
+       [read] or [write] contain their fd. If it doesn't, the write
+       [t.pipe_write] will interrupt this select *)
+    (match Unix.select read write [] (-1.0) with
+     | exception Unix.Unix_error (Unix.(EINTR | EAGAIN), _, _) ->
+       Mutex.lock t.mutex;
+       select_loop t
+     | readers, writers, ex ->
+       assert (ex = []);
+       (* Before we acquire the lock, it's possible that new tasks were added.
+          This is fine. *)
+       Mutex.lock t.mutex;
+       let seen_pipe, fills = make_fills readers t.pipe_read t.readers [] in
+       (* we will never see [t.pipe_read] in the next list, but there's no harm in
+          this *)
+       let _, fills = make_fills writers t.pipe_read t.writers fills in
+       if seen_pipe
+       then (
+         drain_pipe t.pipe_read t.pipe_buf;
+         t.interrupting <- false);
+       (match fills with
+        | [] -> ()
+        | _ :: _ ->
+          let module Scheduler = (val t.scheduler) in
+          Scheduler.fill_jobs fills);
+       select_loop t)
 ;;
 
 let start t =

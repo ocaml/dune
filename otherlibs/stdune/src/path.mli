@@ -140,6 +140,7 @@ module Outside_build_dir : sig
   val to_string : t -> string
   val to_string_maybe_quoted : t -> string
   val parent : t -> t option
+  val compare : t -> t -> Ordering.t
 
   module Table : Hashtbl.S with type key = t
 end

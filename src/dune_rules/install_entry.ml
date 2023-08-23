@@ -75,13 +75,19 @@ module File = struct
           Glob_files_expand.memo glob_files ~f:expand_str ~base_dir:dir
         in
         let glob_loc = String_with_vars.loc glob_files.glob in
-        let glob_prefix = Glob_files_expand.Expanded.prefix glob_expanded in
+        let glob_prefix =
+          match Glob_files_expand.Expanded.prefix glob_expanded with
+          | `External e -> Path.External.to_string e
+          | `Relative s -> s
+        in
         let+ prefix_loc_opt =
           Memo.Option.map prefix ~f:(fun prefix_sw ->
             let+ prefix = expand_str prefix_sw in
             prefix, String_with_vars.loc prefix_sw)
         in
-        List.map (Glob_files_expand.Expanded.matches glob_expanded) ~f:(fun path ->
+        Glob_files_expand.Expanded.matches glob_expanded
+        |> List.map ~f:(fun path ->
+          let path = Path.Outside_build_dir.to_string path in
           let src = glob_loc, path in
           let dst =
             match prefix_loc_opt with

@@ -29,7 +29,14 @@ let get_descendants_of_relative_dir_relative_to_base_dir_local ~base_dir ~relati
 (* Takes a path to a directory [new_dir] and a path to a file [old_path] and
    returns the path to a file of the same name as that of [old_path],
    contained in the directory [new_dir]. *)
-let replace_path_dir new_dir old_path = Filename.concat new_dir (Path.basename old_path)
+let replace_path_dir new_dir old_path =
+  let basename = Path.basename old_path in
+  match new_dir with
+  | `External e -> Path.Outside_build_dir.External (Path.External.relative e basename)
+  | `Relative r ->
+    Path.Outside_build_dir.In_source_dir
+      (Path.Source.of_string (Filename.concat r basename))
+;;
 
 let split_glob_string_into_parent_and_pattern glob_string =
   (* Extract the component of the string after the last path separator. This
@@ -104,8 +111,8 @@ module Without_vars = struct
         |> Memo.map
              ~f:
                (List.map ~f:(fun relative_dir ->
-                  make_file_selector relative_dir, relative_dir))
-      else Memo.return [ make_file_selector relative_dir, relative_dir ]
+                  make_file_selector relative_dir, `Relative relative_dir))
+      else Memo.return [ make_file_selector relative_dir, `Relative relative_dir ]
     | Absolute dir ->
       if recursive
       then
@@ -114,28 +121,29 @@ module Without_vars = struct
           [ Pp.textf "Absolute paths in recursive globs are not supported." ]
       else
         Memo.return
-          [ ( File_selector.of_glob ~dir:(Path.external_ dir) glob
-            , Path.External.to_string dir )
-          ]
+          [ File_selector.of_glob ~dir:(Path.external_ dir) glob, `External dir ]
   ;;
 end
 
 module Expanded = struct
   type t =
-    { matches : string list
+    { matches : Path.Outside_build_dir.t list
     ; dir : Glob_dir.t
     }
 
   let to_dyn { matches; dir } =
-    Dyn.record [ "matches", Dyn.list Dyn.string matches; "dir", Glob_dir.to_dyn dir ]
+    Dyn.record
+      [ "matches", Dyn.list Path.Outside_build_dir.to_dyn matches
+      ; "dir", Glob_dir.to_dyn dir
+      ]
   ;;
 
   let matches { matches; _ } = matches
 
   let prefix { dir; _ } =
     match dir with
-    | Glob_dir.Absolute path -> Path.External.to_string path
-    | Relative { relative_dir; _ } -> relative_dir
+    | Glob_dir.Absolute path -> `External path
+    | Relative { relative_dir; _ } -> `Relative relative_dir
   ;;
 end
 
@@ -166,10 +174,10 @@ struct
     let+ matches =
       Without_vars.file_selectors_with_relative_dirs without_vars ~loc
       |> M.of_memo
-      >>= M.List.concat_map ~f:(fun (file_selector, relative_dir) ->
+      >>= M.List.concat_map ~f:(fun (file_selector, dir) ->
         C.collect_files ~loc file_selector
-        >>| Path.Set.to_list_map ~f:(replace_path_dir relative_dir))
-      >>| List.sort ~compare:String.compare
+        >>| Path.Set.to_list_map ~f:(replace_path_dir dir))
+      >>| List.sort ~compare:Path.Outside_build_dir.compare
     in
     { Expanded.matches; dir = without_vars.dir }
   ;;

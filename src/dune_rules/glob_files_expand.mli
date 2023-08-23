@@ -4,11 +4,11 @@ module Expanded : sig
   type t
 
   val to_dyn : t -> Dyn.t
-  val matches : t -> string list
+  val matches : t -> Path.Outside_build_dir.t list
 
   (** The component of the glob before the final "/". This is guaranteed to be
       a common prefix of all matches patchs. *)
-  val prefix : t -> string
+  val prefix : t -> [ `External of Path.External.t | `Relative of string ]
 end
 
 (** There are different contexts within which globs can be expanded, and this

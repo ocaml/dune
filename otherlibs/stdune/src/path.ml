@@ -597,6 +597,8 @@ module Outside_build_dir = struct
        | Some s -> Some (External s))
   ;;
 
+  let compare x y = Poly.compare x y
+
   module Table = Hashtbl.Make (struct
       type nonrec t = t
 

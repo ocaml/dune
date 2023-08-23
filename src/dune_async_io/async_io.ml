@@ -167,6 +167,11 @@ let maybe_cancel table fd acc =
     drain_cancel q acc
 ;;
 
+(* This exception is raised in [select_loop] whenever it fails and the mutex is
+   unlocked. This makes sure that we don't unlock it again after [select_loop]
+   finishes *)
+exception Unlocked of Exn_with_backtrace.t
+
 let rec select_loop t =
   (match t.to_close with
    | [] -> ()
@@ -201,6 +206,9 @@ let rec select_loop t =
      | exception Unix.Unix_error (Unix.(EINTR | EAGAIN), _, _) ->
        Mutex.lock t.mutex;
        select_loop t
+     | exception exn ->
+       let exn = Exn_with_backtrace.capture exn in
+       raise_notrace (Unlocked exn)
      | readers, writers, ex ->
        assert (ex = []);
        (* Before we acquire the lock, it's possible that new tasks were added.
@@ -226,7 +234,12 @@ let start t =
   let module Scheduler = (val t.scheduler : Scheduler) in
   Scheduler.spawn_thread (fun () ->
     Mutex.lock t.mutex;
-    Exn.protect ~f:(fun () -> select_loop t) ~finally:(fun () -> Mutex.unlock t.mutex))
+    match select_loop t with
+    | () -> Mutex.unlock t.mutex
+    | exception Unlocked exn -> Exn_with_backtrace.reraise exn
+    | exception exn ->
+      Mutex.unlock t.mutex;
+      reraise exn)
 ;;
 
 module T_var : sig

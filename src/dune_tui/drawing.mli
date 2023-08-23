@@ -4,18 +4,17 @@ open Import
 
 (** [Drawing.pp_to_image pp] converts a [pp] to a [I.t] converting the
     [User_message.Style.t] tags into appropriate Notty [A.t]s. *)
-val pp_to_image : User_message.Style.t Pp.t -> Notty.image
+val pp_to_image : User_message.Style.t Pp.t -> I.t
 
-module Box : sig
-  (** [I.t] utilities for drawing boxes. *)
+(** [horizontal_rule ~attr ~w] draws a horizontal line with [attr] of length [w]. *)
+val horizontal_rule : attr:A.t -> w:int -> I.t
 
-  (** [Box.with_title ~attr ~title ~title_attr img] draws a bordered box around the [img]
-      which has [attr] as a style. It also has a [title] at the top with [title_attr].
+(** [box_with_title ~attr ~title ~title_attr img] draws a bordered box around the [img]
+    which has [attr] as a style. It also has a [title] at the top with [title_attr].
 
-      The box is drawn straight over the top of the image, so make sure to [I.pad] the
-      outside. *)
-  val with_title : attr:A.t -> title:string -> title_attr:A.t -> I.t -> I.t
-end
+    The box is drawn straight over the top of the image, so make sure to [I.pad] the
+    outside. *)
+val box_with_title : attr:A.t -> title:string -> title_attr:A.t -> I.t -> I.t
 
 module Unicode : sig
   (** Unicode constants useful for drawing. *)

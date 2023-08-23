@@ -10,7 +10,7 @@ let vsnap_or_leave ~height img =
 ;;
 
 let dialogue_box ~attr ~title ~title_attr ~width ~height image =
-  Drawing.Box.with_title ~attr ~title ~title_attr image
+  Drawing.box_with_title ~attr ~title ~title_attr image
   |> vsnap_or_leave ~height
   |> hsnap_or_leave ~width
 ;;

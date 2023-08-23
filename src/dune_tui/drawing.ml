@@ -120,38 +120,38 @@ module Unicode = struct
   let box_drawings_vertical_single_and_left_double = Uchar.of_int 0x2561
 end
 
-module Box = struct
-  let border_box ~attr image =
-    let w, h = I.(width image, height image) in
-    let border_element ?(width = 1) ?(height = 1) uchar valign halign =
-      I.uchar attr uchar width height
-      |> I.vsnap ~align:valign (h + 2)
-      |> I.hsnap ~align:halign (w + 2)
-    in
-    I.zcat
-      [ border_element Unicode.box_drawings_double_down_and_right `Top `Left
-      ; border_element Unicode.box_drawings_double_down_and_left `Top `Right
-      ; border_element Unicode.box_drawings_double_up_and_right `Bottom `Left
-      ; border_element Unicode.box_drawings_double_up_and_left `Bottom `Right
-      ; border_element Unicode.box_drawings_double_horizontal ~width:w `Top `Middle
-      ; border_element Unicode.box_drawings_double_horizontal ~width:w `Bottom `Middle
-      ; border_element Unicode.box_drawings_double_vertical ~height:h `Middle `Left
-      ; border_element Unicode.box_drawings_double_vertical ~height:h `Middle `Right
-      ; I.pad ~l:1 ~t:1 ~r:1 ~b:1 image
-      ; I.char A.empty ' ' (w + 2) (h + 2)
-      ]
-  ;;
+let horizontal_rule ~attr ~w = I.uchar attr Unicode.horizontal_bar w 1
 
-  let with_title ~attr ~title ~title_attr image =
-    let title =
-      [ I.uchar attr Unicode.box_drawings_vertical_single_and_left_double 1 1
-      ; I.string title_attr (" " ^ title ^ " ")
-      ; I.uchar attr Unicode.box_drawings_vertical_single_and_right_double 1 1
-      ]
-      |> I.hcat
-      |> I.hsnap ~align:`Middle (I.width image + 2)
-      |> I.vsnap ~align:`Top (I.height image + 2)
-    in
-    I.(title </> border_box ~attr image)
-  ;;
-end
+let border_box ~attr image =
+  let w, h = I.(width image, height image) in
+  let border_element ?(width = 1) ?(height = 1) uchar valign halign =
+    I.uchar attr uchar width height
+    |> I.vsnap ~align:valign (h + 2)
+    |> I.hsnap ~align:halign (w + 2)
+  in
+  I.zcat
+    [ border_element Unicode.box_drawings_double_down_and_right `Top `Left
+    ; border_element Unicode.box_drawings_double_down_and_left `Top `Right
+    ; border_element Unicode.box_drawings_double_up_and_right `Bottom `Left
+    ; border_element Unicode.box_drawings_double_up_and_left `Bottom `Right
+    ; border_element Unicode.box_drawings_double_horizontal ~width:w `Top `Middle
+    ; border_element Unicode.box_drawings_double_horizontal ~width:w `Bottom `Middle
+    ; border_element Unicode.box_drawings_double_vertical ~height:h `Middle `Left
+    ; border_element Unicode.box_drawings_double_vertical ~height:h `Middle `Right
+    ; I.pad ~l:1 ~t:1 ~r:1 ~b:1 image
+    ; I.char A.empty ' ' (w + 2) (h + 2)
+    ]
+;;
+
+let box_with_title ~attr ~title ~title_attr image =
+  let title =
+    [ I.uchar attr Unicode.box_drawings_vertical_single_and_left_double 1 1
+    ; I.string title_attr (" " ^ title ^ " ")
+    ; I.uchar attr Unicode.box_drawings_vertical_single_and_right_double 1 1
+    ]
+    |> I.hcat
+    |> I.hsnap ~align:`Middle (I.width image + 2)
+    |> I.vsnap ~align:`Top (I.height image + 2)
+  in
+  I.(title </> border_box ~attr image)
+;;

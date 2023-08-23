@@ -43,9 +43,6 @@ module Tui = struct
   (* style for user feedback like message count, or scrollbar position *)
   let user_feedback_attr = A.(fg cyan)
 
-  (* [horizontal_rule ~attr ~w] draws a horizontal line with [attr] of length [w]. *)
-  let horiztonal_rule ~attr ~w = I.uchar attr Drawing.Unicode.horizontal_bar w 1
-
   (* Here we keep some persistent state about the program that we udpate each time we
      render. This allows other components to "react" to changes using [Lwd]. *)
 
@@ -140,7 +137,7 @@ module Tui = struct
       @@ I.zcat
            I.
              [ I.hsnap ~align:`Left w (toggle_indicator <|> status <|> synopsis)
-             ; horiztonal_rule ~w ~attr:divider_attr
+             ; Drawing.horizontal_rule ~w ~attr:divider_attr
              ]
       |> Ui.mouse_area mouse_handler
     ;;
@@ -173,7 +170,8 @@ module Tui = struct
           match messages with
           | [] -> Ui.empty
           | messages ->
-            Ui.vcat (messages @ [ Ui.atom @@ horiztonal_rule ~w ~attr:helper_attr ])
+            Ui.vcat
+              (messages @ [ Ui.atom @@ Drawing.horizontal_rule ~w ~attr:helper_attr ])
         in
         Scrollbox.make scrollbox_state @@ image
       in
@@ -255,7 +253,10 @@ module Tui = struct
     in
     Ui.zcat
       [ Ui.atom
-        @@ I.zcat [ hsnap_or_leave ~width:w status; horiztonal_rule ~attr:helper_attr ~w ]
+        @@ I.zcat
+             [ hsnap_or_leave ~width:w status
+             ; Drawing.horizontal_rule ~attr:helper_attr ~w
+             ]
       ; help_button
       ]
   ;;

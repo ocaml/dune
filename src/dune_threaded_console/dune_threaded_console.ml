@@ -61,6 +61,12 @@ let make (module Base : S) : (module Dune_console.Backend) =
       Exn.protect ~f:Base.reset_flush_history ~finally:(fun () -> Mutex.unlock mutex)
     ;;
 
+    type source =
+      | Render
+      | Handle_user_events
+
+    exception Exn of source * Exn_with_backtrace.t
+
     let start () =
       Base.start ();
       Dune_engine.Scheduler.spawn_thread
@@ -106,7 +112,11 @@ let make (module Base : S) : (module Dune_console.Backend) =
           (match state.dirty with
            | false -> ()
            | true ->
-             Base.render state;
+             (match Base.render state with
+              | () -> ()
+              | exception exn ->
+                let exn = Exn_with_backtrace.capture exn in
+                raise_notrace (Exn (Render, exn)));
              if state.finish_requested then raise_notrace Exit;
              state.dirty <- false);
           Mutex.unlock mutex;
@@ -116,19 +126,30 @@ let make (module Base : S) : (module Dune_console.Backend) =
               let elapsed = now -. !last in
               if elapsed >= frame_rate then 0. else frame_rate -. elapsed
             in
-            Base.handle_user_events ~now ~time_budget mutex state
+            match Base.handle_user_events ~now ~time_budget mutex state with
+            | time -> time
+            | exception exn ->
+              let exn = Exn_with_backtrace.capture exn in
+              raise_notrace (Exn (Handle_user_events, exn))
           in
           last := new_time
         done
       with
       | Exit -> cleanup None
+      | Exn (Render, exn) -> cleanup (Some exn)
+      | Exn (Handle_user_events, exn) ->
+        (* we try to re-acquire the mutex because we can only reach this by
+           failing in [Base.handle_user_events]. and we don't know if
+           [Base.handle_user_events] released the mutex. This should be
+           impossible if the code is bug free. *)
+        (match Mutex.lock mutex with
+         | exception Sys_error _ -> ()
+         | () -> ());
+        cleanup (Some exn)
       | exn ->
         (* If any unexpected exceptions are encountered, we catch them, make
            sure we [cleanup] and then re-raise them. *)
         let exn = Exn_with_backtrace.capture exn in
-        (* we re-acquire the mutex because we can only reach this by failing in
-           [Base.handle_user_events]. and [Base.handle_user_events] must release the
-           mutex even if it fails. *)
         Mutex.lock mutex;
         cleanup (Some exn)
     ;;

@@ -89,6 +89,11 @@ module Stanza = struct
     ; bin_annot : bool option
     }
 
+  let dyn_of_config { bin_annot; _ } =
+    let open Dyn in
+    record [ "bin_annot", option bool bin_annot ]
+  ;;
+
   let equal_config
     { flags
     ; foreign_flags
@@ -150,6 +155,13 @@ module Stanza = struct
     | Profile of Profile.t
     | Any
 
+  let dyn_of_pattern =
+    let open Dyn in
+    function
+    | Any -> variant "Any" []
+    | Profile p -> variant "Profile" [ Profile.to_dyn p ]
+  ;;
+
   let equal_pattern x y =
     match x, y with
     | Profile x, Profile y -> Profile.equal x y
@@ -165,7 +177,11 @@ module Stanza = struct
     }
 
   let hash { loc = _; rules } = List.hash (Tuple.T2.hash hash_pattern hash_config) rules
-  let to_dyn = Dyn.opaque
+
+  let to_dyn { rules; loc = _ } =
+    let open Dyn in
+    Dyn.list (pair dyn_of_pattern dyn_of_config) rules
+  ;;
 
   let equal { loc = _; rules } t =
     List.equal (Tuple.T2.equal equal_pattern equal_config) rules t.rules
@@ -292,14 +308,14 @@ module Stanza = struct
 
   let empty = { loc = Loc.none; rules = [] }
 
-  let find t ~profile =
-    Option.value ~default:empty_config
-    @@ List.find_map t.rules ~f:(fun (pat, cfg) ->
+  let find_opt t ~profile =
+    List.find_map t.rules ~f:(fun (pat, cfg) ->
       match pat with
       | Any -> Some cfg
       | Profile a -> Option.some_if (a = profile) cfg)
   ;;
 
+  let find t ~profile = Option.value ~default:empty_config (find_opt t ~profile)
   let map_configs t ~f = { t with rules = List.map t.rules ~f:(fun (p, c) -> p, f c) }
 
   let add_error t ~message =

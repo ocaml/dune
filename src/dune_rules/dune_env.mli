@@ -60,6 +60,7 @@ module Stanza : sig
 
   val decode : t Dune_lang.Decoder.t
   val empty : t
+  val find_opt : t -> profile:Profile.t -> config option
   val find : t -> profile:Profile.t -> config
   val add_error : t -> message:User_message.t -> t
   val add_warning : t -> message:User_message.t -> t

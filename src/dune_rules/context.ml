@@ -21,14 +21,21 @@ end
 
 module Env_nodes = struct
   type t =
-    { context : Dune_env.Stanza.t
-    ; workspace : Dune_env.Stanza.t
+    { context : Dune_env.Stanza.t option
+    ; workspace : Dune_env.Stanza.t option
     }
 
-  let extra_env ~profile env_nodes =
-    Env.extend_env
-      (Dune_env.Stanza.find env_nodes.context ~profile).env_vars
-      (Dune_env.Stanza.find env_nodes.workspace ~profile).env_vars
+  let extra_env ~profile { context; workspace } =
+    let make env =
+      Option.value
+        ~default:Env.empty
+        (let open Option.O in
+         let+ (env : Dune_env.Stanza.config) =
+           env >>= Dune_env.Stanza.find_opt ~profile
+         in
+         env.env_vars)
+    in
+    Env.extend_env (make context) (make workspace)
   ;;
 end
 

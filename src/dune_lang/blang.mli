@@ -22,6 +22,7 @@ type t =
   | Compare of Op.t * String_with_vars.t * String_with_vars.t
 
 val true_ : t
+val false_ : t
 val to_dyn : t -> Dyn.t
 val decode : t Decoder.t
 val encode : t Encoder.t

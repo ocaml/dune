@@ -206,7 +206,7 @@ let render_loop ~(event : Event.t Fiber_event_bus.t) =
     >>= function
     | `Closed ->
       Console.print_user_message
-        (User_error.make [ Pp.textf "Lost connection to server, exiting..." ]);
+        (User_error.make [ Pp.textf "Lost connection to server." ]);
       Fiber.return ()
     | `Next event ->
       let update = State.update state event in
@@ -219,28 +219,43 @@ let render_loop ~(event : Event.t Fiber_event_bus.t) =
   loop ()
 ;;
 
-let monitor () =
-  let where = Rpc_common.active_server () in
-  let* connect = Client.Connection.connect_exn where in
-  Dune_rpc_impl.Client.client
-    connect
-    (Dune_rpc.Initialize.Request.create ~id:(Dune_rpc.Id.make (Sexp.Atom "monitor_cmd")))
-    ~f:(fun client ->
-      let event = Fiber_event_bus.create () in
-      let module Sub = Dune_rpc_private.Public.Sub in
-      Fiber.all_concurrently_unit
-        [ render_loop ~event
-        ; fetch_loop ~event ~client ~f:(fun x -> Event.Jobs x) Sub.running_jobs
-        ; fetch_loop ~event ~client ~f:(fun x -> Event.Progress x) Sub.progress
-        ; fetch_loop ~event ~client ~f:(fun x -> Event.Diagnostics x) Sub.diagnostic
-        ])
+let monitor ~quit_on_disconnect () =
+  Fiber.repeat_while ~init:1 ~f:(fun i ->
+    match Dune_rpc_impl.Where.get () with
+    | Some where ->
+      let* connect = Client.Connection.connect_exn where in
+      let+ () =
+        Dune_rpc_impl.Client.client
+          connect
+          (Dune_rpc.Initialize.Request.create
+             ~id:(Dune_rpc.Id.make (Sexp.Atom "monitor_cmd")))
+          ~f:(fun client ->
+            let event = Fiber_event_bus.create () in
+            let module Sub = Dune_rpc_private.Public.Sub in
+            Fiber.all_concurrently_unit
+              [ render_loop ~event
+              ; fetch_loop ~event ~client ~f:(fun x -> Event.Jobs x) Sub.running_jobs
+              ; fetch_loop ~event ~client ~f:(fun x -> Event.Progress x) Sub.progress
+              ; fetch_loop ~event ~client ~f:(fun x -> Event.Diagnostics x) Sub.diagnostic
+              ])
+      in
+      Some i
+    | None when quit_on_disconnect ->
+      User_error.raise [ Pp.text "RPC server not running." ]
+    | None ->
+      Console.Status_line.set
+        (Console.Status_line.Live
+           (fun () -> Pp.verbatim ("Waiting for RPC server" ^ String.make (i mod 4) '.')));
+      let+ () = Scheduler.sleep 0.3 in
+      Some (i + 1))
 ;;
 
 let man =
   [ `S "DESCRIPTION"
   ; `P
-      {|$(b,dune monitor) connects to an RPC server running in the current
-      workspace and displays the build progress and diagnostics.|}
+      "$(b,dune monitor) connects to an RPC server running in the current workspace and \
+       displays the build progress and diagnostics. If no server is running or it was \
+       disconnected, it will continuously try to reconnect."
   ]
 ;;
 
@@ -250,7 +265,15 @@ let command =
     Cmd.info "monitor" ~doc ~man
   and term =
     let open Import in
-    let+ (common : Common.t) = Common.term in
+    let+ (common : Common.t) = Common.term
+    and+ quit_on_disconnect =
+      Arg.(
+        value
+        & flag
+        & info
+            [ "quit-on-disconnect" ]
+            ~doc:"Quit if the connection to the server is lost.")
+    in
     let common = Common.forbid_builds common in
     let config = Common.init ~log_file:No_log_file common in
     let stats = Common.stats common in
@@ -262,7 +285,11 @@ let command =
         ~signal_watcher:`Yes
         ~watch_exclusions:[]
     in
-    Scheduler.Run.go config ~on_event:(fun _ _ -> ()) ~file_watcher:No_watcher monitor
+    Scheduler.Run.go
+      config
+      ~on_event:(fun _ _ -> ())
+      ~file_watcher:No_watcher
+      (monitor ~quit_on_disconnect)
   in
   Cmd.v info term
 ;;

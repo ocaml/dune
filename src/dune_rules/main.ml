@@ -83,7 +83,10 @@ let init
     ~contexts:
       (Memo.lazy_ (fun () ->
          let open Memo.O in
-         Workspace.workspace () >>| Workspace.build_contexts))
+         let+ contexts = Workspace.workspace () >>| Workspace.build_contexts in
+         let open Dune_engine.Build_config.Gen_rules.Context_type in
+         (Install.Context.install_context, Empty)
+         :: List.map contexts ~f:(fun ctx -> ctx, With_sources)))
     ~cache_config
     ~cache_debug_flags
     ~rule_generator:(module Gen_rules)

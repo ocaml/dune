@@ -8,7 +8,6 @@ module Target_dir : sig
   val build_dir : context_related -> Path.Build.t
 
   type t =
-    | Install of context_related
     | Anonymous_action of context_related
     | Regular of context_related
     | Invalid of Path.Build.t
@@ -20,7 +19,6 @@ type target_kind =
   | Regular of Context_name.t * Path.Source.t
   | Alias of Context_name.t * Path.Source.t
   | Anonymous_action of Context_name.t
-  | Install of Context_name.t * Path.Source.t
   | Other of Path.Build.t
 
 type 'build path_kind =
@@ -46,6 +44,6 @@ val encode : Path.t Dune_sexp.Encoder.t
 module Build : sig
   type t = Path.Build.t
 
-  val install_dir : t
   val anonymous_actions_dir : t
+  val anonymous_actions_dir_basename : Filename.t
 end

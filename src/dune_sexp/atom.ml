@@ -1,5 +1,4 @@
 open Stdune
-open Import
 
 type t = A of string [@@unboxed]
 
@@ -42,5 +41,4 @@ let parse s = if is_valid s then Some (A s) else None
 let of_int i = A (string_of_int i)
 let of_float x = of_string (string_of_float x)
 let of_bool x = A (string_of_bool x)
-let of_digest d = A (Digest.to_string d)
 let of_int64 i = A (Int64.to_string i)

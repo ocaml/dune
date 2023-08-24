@@ -175,6 +175,7 @@ type t =
   | Patch of String_with_vars.t
   | Substitute of String_with_vars.t * String_with_vars.t
   | Withenv of String_with_vars.t Env_update.t list * t
+  | Run_with_conditional_terms of (Blang.t option * String_with_vars.t) list
 
 let is_dev_null t = String_with_vars.is_pform t (Var Dev_null)
 
@@ -375,6 +376,23 @@ let decode_pkg =
         >>> let+ ops = enter (repeat Env_update.decode)
             and+ t = t in
             Withenv (ops, t) )
+    ; ( "run-with-conditional-terms"
+      , Syntax.since Pkg.syntax (0, 1)
+        >>>
+        let decode_term_with_condition =
+          enter
+            (let+ condition = Blang.decode
+             and+ term = String_with_vars.decode in
+             Some condition, term)
+        in
+        let decode_term_without_condition =
+          let+ term = String_with_vars.decode in
+          None, term
+        in
+        let+ terms =
+          repeat (decode_term_with_condition <|> decode_term_without_condition)
+        in
+        Run_with_conditional_terms terms )
     ]
   in
   Decoder.fix @@ fun t -> Decoder.sum (cstrs_dune_file t @ cstrs_pkg t)
@@ -430,6 +448,13 @@ let rec encode =
   | Substitute (i, o) -> List [ atom "substitute"; sw i; sw o ]
   | Withenv (ops, t) ->
     List [ atom "withenv"; List (List.map ~f:Env_update.encode ops); encode t ]
+  | Run_with_conditional_terms terms ->
+    List
+      (atom "run-with-conditional-terms"
+       :: List.map terms ~f:(fun (condition, term) ->
+         match condition with
+         | None -> sw term
+         | Some condition -> List [ Blang.encode condition; sw term ]))
 ;;
 
 (* In [Action_exec] we rely on one-to-one mapping between the cwd-relative paths
@@ -466,7 +491,8 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Diff _
     | Substitute _
     | Patch _
-    | Cram _ -> false
+    | Cram _
+    | Run_with_conditional_terms _ -> false
     | Pipe (_, ts) | Progn ts | Concurrent ts ->
       List.fold_left ts ~init:false ~f:(fun acc t ->
         let have_dyn = loop t in
@@ -483,6 +509,15 @@ let ensure_at_most_one_dynamic_run ~loc action =
 ;;
 
 let validate ~loc t = ensure_at_most_one_dynamic_run ~loc t
+
+let rec blang_map_string_with_vars ~f = function
+  | Blang.Const _ as c -> c
+  | Not blang -> Not (blang_map_string_with_vars ~f blang)
+  | Expr sw -> Expr (f sw)
+  | And blangs -> And (List.map blangs ~f:(blang_map_string_with_vars ~f))
+  | Or blangs -> Or (List.map blangs ~f:(blang_map_string_with_vars ~f))
+  | Compare (op, a, b) -> Compare (op, f a, f b)
+;;
 
 let rec map_string_with_vars t ~f =
   match t with
@@ -516,6 +551,10 @@ let rec map_string_with_vars t ~f =
     Withenv
       ( List.map ops ~f:(fun (op : _ Env_update.t) -> { op with value = f op.value })
       , map_string_with_vars t ~f )
+  | Run_with_conditional_terms terms ->
+    Run_with_conditional_terms
+      (List.map terms ~f:(fun (condition, term) ->
+         Option.map condition ~f:(blang_map_string_with_vars ~f), f term))
 ;;
 
 let remove_locs = map_string_with_vars ~f:String_with_vars.remove_locs

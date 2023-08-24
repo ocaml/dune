@@ -24,6 +24,7 @@ type t =
 val true_ : t
 val to_dyn : t -> Dyn.t
 val decode : t Decoder.t
+val encode : t Encoder.t
 
 (** Resolve variables manually. For complex cases such as [enabled_if] *)
 val decode_manually : (Pform.Env.t -> Template.Pform.t -> Pform.t) -> t Decoder.t

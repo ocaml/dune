@@ -559,7 +559,7 @@ module Action_expander = struct
       String_expander.Memo.expand ~f:(expand_pform t) ~dir:(Path.build t.paths.source_dir)
     ;;
 
-    let expand_pform = expand_pform_gen ~mode:Many
+    let expand_sw = expand_pform_gen ~mode:Many
 
     let expand_exe t sw : ((Path.t, Action.Prog.Not_found.t) result * Value.t list) Memo.t
       =
@@ -600,6 +600,10 @@ module Action_expander = struct
       in
       let prog = Result.map prog ~f:(map_exe t) in
       prog, args
+    ;;
+
+    let eval_blang t blang : bool Memo.t =
+      Blang_expand.eval blang ~dir:(Path.build t.paths.source_dir) ~f:(expand_pform t)
     ;;
   end
 
@@ -656,7 +660,7 @@ module Action_expander = struct
     match action with
     | Run (exe, args) ->
       let* exe, more_args = Expander.expand_exe expander exe in
-      let+ args = Memo.parallel_map args ~f:(Expander.expand_pform expander) in
+      let+ args = Memo.parallel_map args ~f:(Expander.expand_sw expander) in
       let args = more_args @ List.concat args |> Value.L.to_strings ~dir in
       Action.Run (exe, Array.Immutable.of_list args)
     | Progn t ->
@@ -719,6 +723,61 @@ module Action_expander = struct
       let+ action = expand action ~expander in
       List.fold_left updates ~init:action ~f:(fun action (k, v) ->
         Action.Setenv (k, v, action))
+    | Run_with_conditional_terms terms ->
+      (* The first term with either no filter or whose filter resolves to
+         true will be treated as the program (and extra args) and all
+         subsequent terms with either no filter or whose filter resolves to
+         true will be treated as the program's arguments. This is intended to
+         imitate the behaviour of opam commands. *)
+      let rec loop = function
+        | [] ->
+          (* If all the terms are filtered out then the result is a no-op. *)
+          Memo.return (Action.progn [])
+        | (condition, term) :: rest ->
+          let* condition_value =
+            Memo.Option.map condition ~f:(Expander.eval_blang expander)
+          in
+          (match condition_value with
+           | Some false -> loop rest
+           | None | Some true ->
+             (* The first term which either has no condition or whose condition
+                is true will be treated as the program. *)
+             let* exe, more_args = Expander.expand_exe expander term in
+             let () =
+               match exe with
+               | Error { program; _ } ->
+                 User_error.raise
+                   ~loc:(String_with_vars.loc term)
+                   [ Pp.text
+                       "When using the run-with-conditional-terms action the first term \
+                        which is either non-conditional or whose condition is true must \
+                        be a program."
+                   ; (* In this error message the first term is quoted in case the
+                        grammar of the sentence doesn't make it clear. It's repeated
+                        here rather than relying on the underlined code snippet because
+                        it's a [String_with_vars.t] which may contain variables and the
+                        user may benefit from seeing its expanded form here. *)
+                     Pp.textf
+                       "In this case the first term was %S which is not a valid program."
+                       program
+                   ]
+               | Ok _ -> ()
+             in
+             let+ args =
+               Memo.List.filter_map rest ~f:(fun (condition, term) ->
+                 let* condition_value =
+                   Memo.Option.map condition ~f:(Expander.eval_blang expander)
+                 in
+                 match condition_value with
+                 | Some false -> Memo.return None
+                 | None | Some true ->
+                   let+ arg = Expander.expand_sw expander term in
+                   Some arg)
+             in
+             let args = more_args @ List.concat args |> Value.L.to_strings ~dir in
+             Action.Run (exe, Array.Immutable.of_list args))
+      in
+      loop terms
     | _ ->
       (* TODO *)
       assert false

@@ -118,6 +118,7 @@ type t =
   | Patch of String_with_vars.t
   | Substitute of String_with_vars.t * String_with_vars.t
   | Withenv of String_with_vars.t Env_update.t list * t
+  | Run_with_conditional_terms of (Blang.t option * String_with_vars.t) list
 
 val encode : t Encoder.t
 val decode_dune_file : t Decoder.t

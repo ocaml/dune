@@ -1,5 +1,7 @@
 Test that installed binaries are visible in dependent packages
 
+  $ . ./helpers.sh
+
   $ mkdir dune.lock
   $ cat >dune.lock/lock.dune <<EOF
   > (lang package 0.1)
@@ -26,21 +28,21 @@ Test that installed binaries are visible in dependent packages
   >   (run mkdir -p %{prefix})))
   > EOF
 
-  $ dune build .pkg/usetest/target/
+  $ build_pkg usetest
   from test package
 
-  $ find _build/default/.pkg/test/target | sort
-  _build/default/.pkg/test/target
-  _build/default/.pkg/test/target/bin
-  _build/default/.pkg/test/target/bin/foo
-  _build/default/.pkg/test/target/cookie
-  _build/default/.pkg/test/target/lib
-  _build/default/.pkg/test/target/lib/lib_rootxxx
-  _build/default/.pkg/test/target/lib/test
-  _build/default/.pkg/test/target/lib/test/libxxx
-  _build/default/.pkg/test/target/share
-  _build/default/.pkg/test/target/share/lib_rootxxx
-  $ dune internal dump _build/default/.pkg/test/target/cookie
+  $ show_pkg_targets test
+  
+  /bin
+  /bin/foo
+  /cookie
+  /lib
+  /lib/lib_rootxxx
+  /lib/test
+  /lib/test/libxxx
+  /share
+  /share/lib_rootxxx
+  $ show_pkg_cookie test
   { files =
       map
         { LIB : [ In_build_dir "default/.pkg/test/target/lib/test/libxxx" ]

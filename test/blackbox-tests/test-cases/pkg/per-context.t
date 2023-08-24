@@ -2,6 +2,8 @@ Set lock file per context.
 
 TODO: versioning will be added once this feature is stable
 
+  $ . ./helpers.sh
+
   $ cat >dune-workspace <<EOF
   > (lang dune 3.8)
   > (context
@@ -23,6 +25,6 @@ TODO: versioning will be added once this feature is stable
   > EOF
   $ ln -s foo.lock bar.lock
 
-  $ dune build .pkg/test/target
+  $ build_pkg test
   building from foo
   building from default

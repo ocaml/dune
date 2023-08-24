@@ -1,5 +1,7 @@
 Test that we can set variables
 
+  $ . ./helpers.sh
+
   $ mkdir dune.lock
   $ cat >dune.lock/lock.dune <<EOF
   > (lang package 0.1)
@@ -28,12 +30,12 @@ Test that we can set variables
   >   (run mkdir -p %{prefix})))
   > EOF
 
-  $ dune build .pkg/usetest/target/
+  $ build_pkg usetest
   true
   foobar
   foo bar
 
-  $ dune internal dump _build/default/.pkg/test/target/cookie
+  $ show_pkg_cookie test
   { files = map {}
   ; variables =
       [ ("abool", Bool true)

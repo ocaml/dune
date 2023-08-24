@@ -1,5 +1,7 @@
 Make sure we can run exes from the user's PATH variable.
 
+  $ . ./helpers.sh
+
 Create a directory containing a shell script and add the directory to PATH.
   $ mkdir bin
   $ cat > bin/hello <<EOF
@@ -19,5 +21,5 @@ Create a lockdir with a lockfile that runs the shell script in a build command.
   > EOF
 
 The build command is run from an environment including the custom PATH variable.
-  $ dune build .pkg/test/target/
+  $ build_pkg test
   Hello, World!

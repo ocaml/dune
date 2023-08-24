@@ -1,6 +1,8 @@
 Additional files overlaid on top of the source can be found in the
 %pkg.files/ directory:
 
+  $ . ./helpers.sh
+
   $ mkdir test-source
   $ touch test-source/foo
 
@@ -23,7 +25,7 @@ Additional files overlaid on top of the source can be found in the
   > bar from test.files
   > EOF
 
-  $ dune build .pkg/test/target/
+  $ build_pkg test
   foo:
   foo from test.files
   bar:

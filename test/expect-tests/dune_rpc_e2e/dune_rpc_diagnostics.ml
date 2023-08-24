@@ -240,8 +240,7 @@ let%expect_test "related error" =
           ]
         ]
       ; [ "message"
-        ; [ "Verbatim"; "Module \"Foo\" is used in several\n\
-                         stanzas:\n\
+        ; [ "Verbatim"; "Module \"Foo\" is used in several stanzas:\n\
                          " ]
         ]
       ; [ "promotion"; [] ]
@@ -311,8 +310,7 @@ let%expect_test "promotion" =
         ]
       ; [ "message"
         ; [ "Verbatim"
-          ; "Error: Files _build/default/x and _build/default/x.gen\n\
-             differ.\n\
+          ; "Error: Files _build/default/x and _build/default/x.gen differ.\n\
              "
           ]
         ]
@@ -430,8 +428,8 @@ let%expect_test "error from user rule" =
         ]
       ; [ "message"
         ; [ "Verbatim"
-          ; "Error: Rule failed to generate the following\n\
-             targets:- foo\n\
+          ; "Error: Rule failed to generate the following targets:\n\
+             - foo\n\
              "
           ]
         ]
@@ -471,8 +469,7 @@ let%expect_test "library error location" =
           ]
         ]
       ; [ "message"
-        ; [ "Verbatim"; "Error: Library \"fake-library\" not\n\
-                         found.\n\
+        ; [ "Verbatim"; "Error: Library \"fake-library\" not found.\n\
                          " ]
         ]
       ; [ "promotion"; [] ]

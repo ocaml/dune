@@ -10,13 +10,24 @@ module Public = struct
 
   module Diagnostics = struct
     let v1 =
-      Decl.Request.make_current_gen
-        ~req:Conv.unit
-        ~resp:(Conv.list Diagnostic.sexp)
+      Decl.Request.make_gen
         ~version:1
+        ~req:Conv.unit
+        ~resp:(Conv.list Diagnostics_v1.sexp)
+        ~upgrade_req:Fun.id
+        ~downgrade_req:Fun.id
+        ~upgrade_resp:(List.map ~f:Diagnostics_v1.to_diagnostic)
+        ~downgrade_resp:(List.map ~f:Diagnostics_v1.of_diagnostic)
     ;;
 
-    let decl = Decl.Request.make ~method_:"diagnostics" ~generations:[ v1 ]
+    let v2 =
+      Decl.Request.make_current_gen
+        ~version:2
+        ~req:Conv.unit
+        ~resp:(Conv.list Diagnostic.sexp)
+    ;;
+
+    let decl = Decl.Request.make ~method_:"diagnostics" ~generations:[ v1; v2 ]
   end
 
   module Shutdown = struct
@@ -184,10 +195,21 @@ module Poll = struct
     let name = "diagnostic"
 
     let v1 =
+      Decl.Request.make_gen
+        ~version:1
+        ~req:Id.sexp
+        ~resp:(Conv.option (Conv.list Diagnostics_v1.Event.sexp))
+        ~upgrade_req:Fun.id
+        ~downgrade_req:Fun.id
+        ~upgrade_resp:(Option.map ~f:(List.map ~f:Diagnostics_v1.Event.to_event))
+        ~downgrade_resp:(Option.map ~f:(List.map ~f:Diagnostics_v1.Event.of_event))
+    ;;
+
+    let v2 =
       Decl.Request.make_current_gen
+        ~version:2
         ~req:Id.sexp
         ~resp:(Conv.option (Conv.list Diagnostic.Event.sexp))
-        ~version:1
     ;;
   end
 
@@ -209,7 +231,7 @@ module Poll = struct
 
   let diagnostic =
     let open Diagnostic in
-    make name [ v1 ]
+    make name [ v1; v2 ]
   ;;
 
   let running_jobs =

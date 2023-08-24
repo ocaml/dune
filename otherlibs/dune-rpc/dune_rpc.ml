@@ -14,6 +14,8 @@ module V1 = struct
   module Message = Message
   module Where = Where
   module Registry = Registry
+  module Ansi_color = Ansi_color
+  module User_message = User_message
   include Public
 
   module Client = struct

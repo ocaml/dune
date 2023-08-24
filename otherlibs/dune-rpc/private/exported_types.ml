@@ -34,6 +34,240 @@ module Loc = struct
   ;;
 end
 
+module Ansi_color = struct
+  module RGB8 = struct
+    include Stdune.Ansi_color.RGB8
+
+    let sexp =
+      Conv.iso Conv.char Stdune.Ansi_color.RGB8.of_char Stdune.Ansi_color.RGB8.to_char
+    ;;
+  end
+
+  module RGB24 = struct
+    include Stdune.Ansi_color.RGB24
+
+    let sexp =
+      Conv.iso Conv.int Stdune.Ansi_color.RGB24.of_int Stdune.Ansi_color.RGB24.to_int
+    ;;
+  end
+
+  module Style = struct
+    type t = Stdune.Ansi_color.Style.t
+
+    let sexp =
+      let open Conv in
+      let fg_default = constr "Fg_default" unit (fun () -> `Fg_default) in
+      let fg_black = constr "Fg_black" unit (fun () -> `Fg_black) in
+      let fg_red = constr "Fg_red" unit (fun () -> `Fg_red) in
+      let fg_green = constr "Fg_green" unit (fun () -> `Fg_green) in
+      let fg_yellow = constr "Fg_yellow" unit (fun () -> `Fg_yellow) in
+      let fg_blue = constr "Fg_blue" unit (fun () -> `Fg_blue) in
+      let fg_magenta = constr "Fg_magenta" unit (fun () -> `Fg_magenta) in
+      let fg_cyan = constr "Fg_cyan" unit (fun () -> `Fg_cyan) in
+      let fg_white = constr "Fg_white" unit (fun () -> `Fg_white) in
+      let fg_bright_black = constr "Fg_bright_black" unit (fun () -> `Fg_bright_black) in
+      let fg_bright_red = constr "Fg_bright_red" unit (fun () -> `Fg_bright_red) in
+      let fg_bright_green = constr "Fg_bright_green" unit (fun () -> `Fg_bright_green) in
+      let fg_bright_yellow =
+        constr "Fg_bright_yellow" unit (fun () -> `Fg_bright_yellow)
+      in
+      let fg_bright_blue = constr "Fg_bright_blue" unit (fun () -> `Fg_bright_blue) in
+      let fg_bright_magenta =
+        constr "Fg_bright_magenta" unit (fun () -> `Fg_bright_magenta)
+      in
+      let fg_bright_cyan = constr "Fg_bright_cyan" unit (fun () -> `Fg_bright_cyan) in
+      let fg_bright_white = constr "Fg_bright_white" unit (fun () -> `Fg_bright_white) in
+      let fg_8_bit_color =
+        constr "Fg_8_bit_color" RGB8.sexp (fun c -> `Fg_8_bit_color c)
+      in
+      let fg_24_bit_color =
+        constr "Fg_24_bit_color" RGB24.sexp (fun c -> `Fg_24_bit_color c)
+      in
+      let bg_default = constr "Bg_default" unit (fun () -> `Bg_default) in
+      let bg_black = constr "Bg_black" unit (fun () -> `Bg_black) in
+      let bg_red = constr "Bg_red" unit (fun () -> `Bg_red) in
+      let bg_green = constr "Bg_green" unit (fun () -> `Bg_green) in
+      let bg_yellow = constr "Bg_yellow" unit (fun () -> `Bg_yellow) in
+      let bg_blue = constr "Bg_blue" unit (fun () -> `Bg_blue) in
+      let bg_magenta = constr "Bg_magenta" unit (fun () -> `Bg_magenta) in
+      let bg_cyan = constr "Bg_cyan" unit (fun () -> `Bg_cyan) in
+      let bg_white = constr "Bg_white" unit (fun () -> `Bg_white) in
+      let bg_bright_black = constr "Bg_bright_black" unit (fun () -> `Bg_bright_black) in
+      let bg_bright_red = constr "Bg_bright_red" unit (fun () -> `Bg_bright_red) in
+      let bg_bright_green = constr "Bg_bright_green" unit (fun () -> `Bg_bright_green) in
+      let bg_bright_yellow =
+        constr "Bg_bright_yellow" unit (fun () -> `Bg_bright_yellow)
+      in
+      let bg_bright_blue = constr "Bg_bright_blue" unit (fun () -> `Bg_bright_blue) in
+      let bg_bright_magenta =
+        constr "Bg_bright_magenta" unit (fun () -> `Bg_bright_magenta)
+      in
+      let bg_bright_cyan = constr "Bg_bright_cyan" unit (fun () -> `Bg_bright_cyan) in
+      let bg_bright_white = constr "Bg_bright_white" unit (fun () -> `Bg_bright_white) in
+      let bg_8_bit_color =
+        constr "Bg_8_bit_color" RGB8.sexp (fun c -> `Bg_8_bit_color c)
+      in
+      let bg_24_bit_color =
+        constr "Bg_24_bit_color" RGB24.sexp (fun c -> `Bg_24_bit_color c)
+      in
+      let bold = constr "Bold" unit (fun () -> `Bold) in
+      let dim = constr "Dim" unit (fun () -> `Dim) in
+      let italic = constr "Italic" unit (fun () -> `Italic) in
+      let underline = constr "Underline" unit (fun () -> `Underline) in
+      sum
+        [ econstr fg_default
+        ; econstr fg_black
+        ; econstr fg_red
+        ; econstr fg_green
+        ; econstr fg_yellow
+        ; econstr fg_blue
+        ; econstr fg_magenta
+        ; econstr fg_cyan
+        ; econstr fg_white
+        ; econstr fg_bright_black
+        ; econstr fg_bright_red
+        ; econstr fg_bright_green
+        ; econstr fg_bright_yellow
+        ; econstr fg_bright_blue
+        ; econstr fg_bright_magenta
+        ; econstr fg_bright_cyan
+        ; econstr fg_bright_white
+        ; econstr fg_8_bit_color
+        ; econstr fg_24_bit_color
+        ; econstr bg_default
+        ; econstr bg_black
+        ; econstr bg_red
+        ; econstr bg_green
+        ; econstr bg_yellow
+        ; econstr bg_blue
+        ; econstr bg_magenta
+        ; econstr bg_cyan
+        ; econstr bg_white
+        ; econstr bg_bright_black
+        ; econstr bg_bright_red
+        ; econstr bg_bright_green
+        ; econstr bg_bright_yellow
+        ; econstr bg_bright_blue
+        ; econstr bg_bright_magenta
+        ; econstr bg_bright_cyan
+        ; econstr bg_bright_white
+        ; econstr bg_8_bit_color
+        ; econstr bg_24_bit_color
+        ; econstr bold
+        ; econstr dim
+        ; econstr italic
+        ; econstr underline
+        ]
+        (function
+         | `Fg_default -> case () fg_default
+         | `Fg_black -> case () fg_black
+         | `Fg_red -> case () fg_red
+         | `Fg_green -> case () fg_green
+         | `Fg_yellow -> case () fg_yellow
+         | `Fg_blue -> case () fg_blue
+         | `Fg_magenta -> case () fg_magenta
+         | `Fg_cyan -> case () fg_cyan
+         | `Fg_white -> case () fg_white
+         | `Fg_bright_black -> case () fg_bright_black
+         | `Fg_bright_red -> case () fg_bright_red
+         | `Fg_bright_green -> case () fg_bright_green
+         | `Fg_bright_yellow -> case () fg_bright_yellow
+         | `Fg_bright_blue -> case () fg_bright_blue
+         | `Fg_bright_magenta -> case () fg_bright_magenta
+         | `Fg_bright_cyan -> case () fg_bright_cyan
+         | `Fg_bright_white -> case () fg_bright_white
+         | `Fg_8_bit_color c -> case c fg_8_bit_color
+         | `Fg_24_bit_color c -> case c fg_24_bit_color
+         | `Bg_default -> case () bg_default
+         | `Bg_black -> case () bg_black
+         | `Bg_red -> case () bg_red
+         | `Bg_green -> case () bg_green
+         | `Bg_yellow -> case () bg_yellow
+         | `Bg_blue -> case () bg_blue
+         | `Bg_magenta -> case () bg_magenta
+         | `Bg_cyan -> case () bg_cyan
+         | `Bg_white -> case () bg_white
+         | `Bg_bright_black -> case () bg_bright_black
+         | `Bg_bright_red -> case () bg_bright_red
+         | `Bg_bright_green -> case () bg_bright_green
+         | `Bg_bright_yellow -> case () bg_bright_yellow
+         | `Bg_bright_blue -> case () bg_bright_blue
+         | `Bg_bright_magenta -> case () bg_bright_magenta
+         | `Bg_bright_cyan -> case () bg_bright_cyan
+         | `Bg_bright_white -> case () bg_bright_white
+         | `Bg_8_bit_color c -> case c bg_8_bit_color
+         | `Bg_24_bit_color c -> case c bg_24_bit_color
+         | `Bold -> case () bold
+         | `Dim -> case () dim
+         | `Italic -> case () italic
+         | `Underline -> case () underline)
+    ;;
+  end
+end
+
+module User_message = struct
+  module Style = struct
+    type t = Stdune.User_message.Style.t =
+      | Loc
+      | Error
+      | Warning
+      | Kwd
+      | Id
+      | Prompt
+      | Hint
+      | Details
+      | Ok
+      | Debug
+      | Success
+      | Ansi_styles of Ansi_color.Style.t list
+
+    let sexp =
+      let open Conv in
+      let loc = constr "Loc" unit (fun () -> Loc) in
+      let error = constr "Error" unit (fun () -> Error) in
+      let warning = constr "Warning" unit (fun () -> Warning) in
+      let kwd = constr "Kwd" unit (fun () -> Kwd) in
+      let id = constr "Id" unit (fun () -> Id) in
+      let prompt = constr "Prompt" unit (fun () -> Prompt) in
+      let hint = constr "Hint" unit (fun () -> Hint) in
+      let details = constr "Details" unit (fun () -> Details) in
+      let ok = constr "Ok" unit (fun () -> Ok) in
+      let debug = constr "Debug" unit (fun () -> Debug) in
+      let success = constr "Success" unit (fun () -> Success) in
+      let ansi_styles =
+        constr "Ansi_styles" (list Ansi_color.Style.sexp) (fun l -> Ansi_styles l)
+      in
+      sum
+        [ econstr loc
+        ; econstr error
+        ; econstr warning
+        ; econstr kwd
+        ; econstr id
+        ; econstr prompt
+        ; econstr hint
+        ; econstr details
+        ; econstr ok
+        ; econstr debug
+        ; econstr success
+        ; econstr ansi_styles
+        ]
+        (function
+         | Loc -> case () loc
+         | Error -> case () error
+         | Warning -> case () warning
+         | Kwd -> case () kwd
+         | Id -> case () id
+         | Prompt -> case () prompt
+         | Hint -> case () hint
+         | Details -> case () details
+         | Ok -> case () ok
+         | Debug -> case () debug
+         | Success -> case () success
+         | Ansi_styles l -> case l ansi_styles)
+    ;;
+  end
+end
+
 module Target = struct
   type t =
     | Path of string
@@ -88,6 +322,73 @@ module Path = struct
   let relative = Filename.concat
 end
 
+(* This has a subtle difference with [sexp_pp] in how we serialise tags. *)
+let sexp_pp_unit : unit Pp.t Conv.value =
+  let open Conv in
+  let open Pp.Ast in
+  let nop = constr "Nop" unit (fun () -> Nop) in
+  let verbatim = constr "Verbatim" string (fun s -> Verbatim s) in
+  let char = constr "Char" char (fun c -> Char c) in
+  let newline = constr "Newline" unit (fun () -> Newline) in
+  let t =
+    fixpoint (fun t ->
+      let text = constr "Text" string (fun s -> Text s) in
+      let seq = constr "Seq" (pair t t) (fun (x, y) -> Seq (x, y)) in
+      let concat = constr "Concat" (pair t (list t)) (fun (x, y) -> Concat (x, y)) in
+      let box = constr "Box" (pair int t) (fun (x, y) -> Box (x, y)) in
+      let vbox = constr "Vbox" (pair int t) (fun (x, y) -> Vbox (x, y)) in
+      let hbox = constr "Hbox" t (fun t -> Hbox t) in
+      let hvbox = constr "Hvbox" (pair int t) (fun (x, y) -> Hvbox (x, y)) in
+      let hovbox = constr "Hovbox" (pair int t) (fun (x, y) -> Hovbox (x, y)) in
+      let break =
+        constr
+          "Break"
+          (pair (triple string int string) (triple string int string))
+          (fun (x, y) -> Break (x, y))
+      in
+      let tag = constr "Tag" t (fun t -> Tag ((), t)) in
+      sum
+        [ econstr nop
+        ; econstr verbatim
+        ; econstr char
+        ; econstr newline
+        ; econstr text
+        ; econstr seq
+        ; econstr concat
+        ; econstr box
+        ; econstr vbox
+        ; econstr hbox
+        ; econstr hvbox
+        ; econstr hovbox
+        ; econstr break
+        ; econstr tag
+        ]
+        (function
+         | Nop -> case () nop
+         | Seq (x, y) -> case (x, y) seq
+         | Concat (x, y) -> case (x, y) concat
+         | Box (i, t) -> case (i, t) box
+         | Vbox (i, t) -> case (i, t) vbox
+         | Hbox t -> case t hbox
+         | Hvbox (i, t) -> case (i, t) hvbox
+         | Hovbox (i, t) -> case (i, t) hovbox
+         | Verbatim s -> case s verbatim
+         | Char c -> case c char
+         | Break (x, y) -> case (x, y) break
+         | Newline -> case () newline
+         | Text s -> case s text
+         | Tag ((), t) -> case t tag))
+  in
+  let to_ast x =
+    match Pp.to_ast x with
+    | Ok s -> s
+    | Error () ->
+      (* We don't use the format constructor in dune. *)
+      assert false
+  in
+  iso t Pp.of_ast to_ast
+;;
+
 module Diagnostic = struct
   type severity =
     | Error
@@ -112,7 +413,7 @@ module Diagnostic = struct
     ;;
   end
 
-  let sexp_pp : (unit Pp.t, Conv.values) Conv.t =
+  let sexp_pp (conv_tag : 'a Conv.value) : 'a Pp.t Conv.value =
     let open Conv in
     let open Pp.Ast in
     let nop = constr "Nop" unit (fun () -> Nop) in
@@ -135,7 +436,7 @@ module Diagnostic = struct
             (pair (triple string int string) (triple string int string))
             (fun (x, y) -> Break (x, y))
         in
-        let tag = constr "Tag" t (fun t -> Tag ((), t)) in
+        let tag = constr "Tag" (pair conv_tag t) (fun (s, t) -> Tag (s, t)) in
         sum
           [ econstr nop
           ; econstr verbatim
@@ -166,7 +467,7 @@ module Diagnostic = struct
            | Break (x, y) -> case (x, y) break
            | Newline -> case () newline
            | Text s -> case s text
-           | Tag ((), t) -> case t tag))
+           | Tag (s, t) -> case (s, t) tag))
     in
     let to_ast x =
       match Pp.to_ast x with
@@ -189,17 +490,18 @@ module Diagnostic = struct
 
   module Related = struct
     type t =
-      { message : unit Pp.t
+      { message : User_message.Style.t Pp.t
       ; loc : Loc.t
       }
 
-    let message t = t.message
+    let message t = t.message |> Pp.map_tags ~f:(fun _ -> ())
+    let message_with_style t = t.message
     let loc t = t.loc
 
     let sexp =
       let open Conv in
       let loc = field "loc" (required Loc.sexp) in
-      let message = field "message" (required sexp_pp) in
+      let message = field "message" (required (sexp_pp User_message.Style.sexp)) in
       let to_ (loc, message) = { loc; message } in
       let from { loc; message } = loc, message in
       iso (record (both loc message)) to_ from
@@ -209,7 +511,7 @@ module Diagnostic = struct
   type t =
     { targets : Target.t list
     ; id : Id.t
-    ; message : unit Pp.t
+    ; message : User_message.Style.t Pp.t
     ; loc : Loc.t option
     ; severity : severity option
     ; promotion : Promotion.t list
@@ -218,7 +520,8 @@ module Diagnostic = struct
     }
 
   let loc t = t.loc
-  let message t = t.message
+  let message t = t.message |> Pp.map_tags ~f:(fun _ -> ())
+  let message_with_style t = t.message
   let severity t = t.severity
   let promotion t = t.promotion
   let targets t = t.targets
@@ -240,7 +543,7 @@ module Diagnostic = struct
       { targets; message; loc; severity; promotion; directory; id; related }
     in
     let loc = field "loc" (optional Loc.sexp) in
-    let message = field "message" (required sexp_pp) in
+    let message = field "message" (required (sexp_pp User_message.Style.sexp)) in
     let targets = field "targets" (required (list Target.sexp)) in
     let severity = field "severity" (optional sexp_severity) in
     let directory = field "directory" (optional string) in
@@ -256,35 +559,8 @@ module Diagnostic = struct
   let to_dyn t = Sexp.to_dyn (Conv.to_sexp sexp t)
 
   let to_user_message t =
-    let prefix =
-      Option.map t.severity ~f:(fun sev ->
-        let severity, prefix =
-          match sev with
-          | Error -> Stdune.User_message.Style.Error, "Error:"
-          | Warning -> Warning, "Warning:"
-        in
-        Pp.tag severity (Pp.text prefix))
-    in
-    let directory =
-      match t.directory with
-      | None -> []
-      | Some d ->
-        [ Pp.tag Stdune.User_message.Style.Loc (Pp.textf "(In directory %s)" d) ]
-    in
-    let formatted_loc =
-      match t.loc with
-      | None -> []
-      | Some l ->
-        [ Pp.map_tags
-            ~f:(fun _ -> Stdune.User_message.Style.Loc)
-            (Stdune.Loc.of_lexbuf_loc l |> Stdune.Loc.pp)
-        ]
-    in
-    Stdune.User_message.make
-      ?prefix
-      (directory
-       @ formatted_loc
-       @ [ Pp.map_tags ~f:(fun _ -> Stdune.User_message.Style.Details) t.message ])
+    let loc = Option.map t.loc ~f:Stdune.Loc.of_lexbuf_loc in
+    Stdune.User_message.make ?loc [ t.message ]
   ;;
 
   module Event = struct
@@ -394,7 +670,7 @@ module Job = struct
     let id = field "id" (required Id.sexp) in
     let started_at = field "started_at" (required float) in
     let pid = field "pid" (required int) in
-    let description = field "description" (required Diagnostic.sexp_pp) in
+    let description = field "description" (required sexp_pp_unit) in
     iso (record (four id pid description started_at)) to_ from
   ;;
 

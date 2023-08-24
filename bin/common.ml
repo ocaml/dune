@@ -1,4 +1,5 @@
 open Stdune
+open Dune_config
 open Dune_config_file
 module Console = Dune_console
 module Graph = Dune_graph.Graph
@@ -406,12 +407,12 @@ let shared_with_config_file =
     let doc =
       Printf.sprintf
         "Enable or disable Dune cache (%s). Default is `%s'."
-        (Arg.doc_alts_enum Dune_config.Cache.Enabled.all)
-        (Dune_config.Cache.Enabled.to_string Dune_config.default.cache_enabled)
+        (Arg.doc_alts_enum Config.Toggle.all)
+        (Config.Toggle.to_string Dune_config.default.cache_enabled)
     in
     Arg.(
       value
-      & opt (some (enum Dune_config.Cache.Enabled.all)) None
+      & opt (some (enum Config.Toggle.all)) None
       & info [ "cache" ] ~docs ~env:(Cmd.Env.info ~doc "DUNE_CACHE") ~doc)
   and+ cache_storage_mode =
     let doc =
@@ -1160,18 +1161,14 @@ let init ?action_runner ?log_file c =
   Dune_rules.Global.init ~capture_outputs:c.builder.capture_outputs;
   let cache_config =
     match config.cache_enabled with
-    | Disabled -> Dune_cache.Config.Disabled
-    | Enabled ->
+    | `Disabled -> Dune_cache.Config.Disabled
+    | `Enabled ->
       Enabled
         { storage_mode = Option.value config.cache_storage_mode ~default:Hardlink
         ; reproducibility_check = config.cache_reproducibility_check
         }
   in
-  Log.info
-    [ Pp.textf
-        "Shared cache: %s"
-        (Dune_config.Cache.Enabled.to_string config.cache_enabled)
-    ];
+  Log.info [ Pp.textf "Shared cache: %s" (Config.Toggle.to_string config.cache_enabled) ];
   let action_runner =
     match action_runner with
     | None -> None

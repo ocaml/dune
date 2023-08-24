@@ -27,10 +27,24 @@ module Toggle = struct
     | `Disabled
     ]
 
-  let of_string = function
-    | "enabled" -> Ok `Enabled
-    | "disabled" -> Ok `Disabled
-    | _ -> Error (sprintf "only %S and %S are allowed" "enabled" "disabled")
+  let all : (string * t) list = [ "enabled", `Enabled; "disabled", `Disabled ]
+
+  let to_string t =
+    List.find_map all ~f:(fun (k, v) -> if Poly.equal v t then Some k else None)
+    |> Option.value_exn
+  ;;
+
+  let of_string s =
+    match List.assoc all s with
+    | Some s -> Ok s
+    | None -> Error (sprintf "only %S and %S are allowed" "enabled" "disabled")
+  ;;
+
+  let to_dyn =
+    let open Dyn in
+    function
+    | `Enabled -> variant "Enabled" []
+    | `Disabled -> variant "Disabled" []
   ;;
 end
 

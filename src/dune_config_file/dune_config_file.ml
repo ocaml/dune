@@ -79,26 +79,6 @@ module Dune_config = struct
   end
 
   module Cache = struct
-    module Enabled = struct
-      type t =
-        | Enabled
-        | Disabled
-
-      let all = [ "enabled", Enabled; "disabled", Disabled ]
-
-      let to_string = function
-        | Enabled -> "enabled"
-        | Disabled -> "disabled"
-      ;;
-
-      let to_dyn = function
-        | Enabled -> Dyn.Variant ("Enabled", [])
-        | Disabled -> Dyn.Variant ("Disabled", [])
-      ;;
-
-      let decode = enum all
-    end
-
     module Transport_deprecated = struct
       type t =
         | Daemon
@@ -141,7 +121,7 @@ module Dune_config = struct
       ; concurrency : Concurrency.t field
       ; terminal_persistence : Terminal_persistence.t field
       ; sandboxing_preference : Sandboxing_preference.t field
-      ; cache_enabled : Cache.Enabled.t field
+      ; cache_enabled : Config.Toggle.t field
       ; cache_reproducibility_check : Dune_cache.Config.Reproducibility_check.t field
       ; cache_storage_mode : Cache.Storage_mode.t field
       ; action_stdout_on_success : Action_output_on_success.t field
@@ -205,7 +185,7 @@ module Dune_config = struct
         ; "terminal_persistence", field Terminal_persistence.to_dyn terminal_persistence
         ; ( "sandboxing_preference"
           , field (Dyn.list Sandbox_mode.to_dyn) sandboxing_preference )
-        ; "cache_enabled", field Cache.Enabled.to_dyn cache_enabled
+        ; "cache_enabled", field Config.Toggle.to_dyn cache_enabled
         ; ( "cache_reproducibility_check"
           , field
               Dune_cache.Config.Reproducibility_check.to_dyn
@@ -299,7 +279,7 @@ module Dune_config = struct
     ; concurrency = (if Execution_env.inside_dune then Fixed 1 else Auto)
     ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
-    ; cache_enabled = Disabled
+    ; cache_enabled = `Disabled
     ; cache_reproducibility_check = Skip
     ; cache_storage_mode = None
     ; action_stdout_on_success = Print
@@ -320,7 +300,7 @@ module Dune_config = struct
       field_o "terminal-persistence" (1, 0) Terminal_persistence.decode
     and+ sandboxing_preference =
       field_o "sandboxing_preference" (1, 0) Sandboxing_preference.decode
-    and+ cache_enabled = field_o "cache" (2, 0) Cache.Enabled.decode
+    and+ cache_enabled = field_o "cache" (2, 0) (enum Config.Toggle.all)
     and+ _cache_transport_unused_since_3_0 =
       field_o
         "cache-transport"

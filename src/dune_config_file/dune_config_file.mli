@@ -2,6 +2,7 @@ module Dune_config : sig
   (** Dune configuration (visible to the user) *)
 
   open Stdune
+  open Dune_config
   module Display : module type of Display
 
   module Concurrency : sig
@@ -18,16 +19,6 @@ module Dune_config : sig
   end
 
   module Cache : sig
-    module Enabled : sig
-      type t =
-        | Enabled
-        | Disabled
-
-      val all : (string * t) list
-      val decode : t Dune_lang.Decoder.t
-      val to_string : t -> string
-    end
-
     module Storage_mode : sig
       type t = Dune_cache_storage.Mode.t option
 
@@ -60,7 +51,7 @@ module Dune_config : sig
       ; concurrency : Concurrency.t field
       ; terminal_persistence : Terminal_persistence.t field
       ; sandboxing_preference : Sandboxing_preference.t field
-      ; cache_enabled : Cache.Enabled.t field
+      ; cache_enabled : Config.Toggle.t field
       ; cache_reproducibility_check : Dune_cache.Config.Reproducibility_check.t field
       ; cache_storage_mode : Cache.Storage_mode.t field
       ; action_stdout_on_success : Action_output_on_success.t field

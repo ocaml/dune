@@ -54,6 +54,10 @@ val threaded_console : Toggle.t t
 (** The number of frames per second for the threaded console. *)
 val threaded_console_frames_per_second : [ `Default | `Custom of int ] t
 
+(** The console width that dune will fall back on if it cannot determine the
+    console width. *)
+val console_width_fallback : int t
+
 (** Before any configuration value is accessed, this function must be called
     with all the configuration values from the relevant config file
     ([dune-workspace], or [dune-config]).

@@ -10,13 +10,16 @@ module No_flush : Backend_intf.S = struct
     User_message.prerr { msg with loc = None }
   ;;
 
-  let set_status_line _ = ()
+  let set_status _ = ()
 
-  let print_if_no_status_line msg =
+  let print_if_no_status msg =
     (* [Pp.cut] seems to be enough to force the terminating newline to
        appear. *)
     Ansi_color.prerr
-      (Pp.seq (Pp.map_tags msg ~f:User_message.Print_config.default) Pp.cut)
+      (Pp.seq
+         (Pp.concat ~sep:Pp.newline msg
+          |> Pp.map_tags ~f:User_message.Print_config.default)
+         Pp.cut)
   ;;
 
   let reset () = prerr_string "\x1b[H\x1b[2J"

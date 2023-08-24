@@ -8,7 +8,7 @@ let make ~frames_per_second (module Base : S) : (module Dune_console.Backend) =
 
     let state =
       { messages = Queue.create ()
-      ; status_line = None
+      ; status = []
       ; finished = false
       ; finish_requested = false
       ; dirty = true
@@ -32,20 +32,20 @@ let make ~frames_per_second (module Base : S) : (module Dune_console.Backend) =
       Mutex.unlock mutex
     ;;
 
-    let set_status_line sl =
+    let set_status sl =
       Mutex.lock mutex;
       state.dirty <- true;
-      state.status_line <- sl;
+      state.status <- sl;
       Mutex.unlock mutex
     ;;
 
-    let print_if_no_status_line _msg = ()
+    let print_if_no_status _msg = ()
 
     let reset () =
       Mutex.lock mutex;
       state.dirty <- true;
       Queue.clear state.messages;
-      state.status_line <- None;
+      state.status <- [];
       Exn.protect ~f:Base.reset ~finally:(fun () -> Mutex.unlock mutex)
     ;;
 
@@ -53,7 +53,7 @@ let make ~frames_per_second (module Base : S) : (module Dune_console.Backend) =
       Mutex.lock mutex;
       state.dirty <- true;
       Queue.clear state.messages;
-      state.status_line <- None;
+      state.status <- [];
       Exn.protect ~f:Base.reset_flush_history ~finally:(fun () -> Mutex.unlock mutex)
     ;;
 
@@ -164,7 +164,7 @@ let progress ~frames_per_second =
         while not (Queue.is_empty state.messages) do
           print_user_message (Queue.pop_exn state.messages)
         done;
-        set_status_line state.status_line;
+        set_status state.status;
         flush stderr
       ;;
 

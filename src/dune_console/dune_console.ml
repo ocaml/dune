@@ -74,14 +74,14 @@ let print_user_message msg =
 let print paragraphs = print_user_message (User_message.make paragraphs)
 let printf fmt = Printf.ksprintf (fun msg -> print [ Pp.verbatim msg ]) fmt
 
-let set_status_line line =
+let set_status line =
   let (module M : Backend_intf.S) = !Backend.main in
-  M.set_status_line line
+  M.set_status line
 ;;
 
-let print_if_no_status_line line =
+let print_if_no_status line =
   let (module M : Backend_intf.S) = !Backend.main in
-  M.print_if_no_status_line line
+  M.print_if_no_status line
 ;;
 
 let reset () =
@@ -105,10 +105,10 @@ let finish () =
 
 let () = at_exit finish
 
-module Status_line = struct
+module Status = struct
   type t =
-    | Live of (unit -> User_message.Style.t Pp.t)
-    | Constant of User_message.Style.t Pp.t
+    | Live of (unit -> User_message.Style.t Pp.t list)
+    | Constant of User_message.Style.t Pp.t list
 
   module Id = Id.Make ()
 
@@ -117,7 +117,7 @@ module Status_line = struct
 
   let refresh () =
     match !stack with
-    | [] -> set_status_line None
+    | [] -> set_status []
     | (_id, t) :: _ ->
       let pp =
         match t with
@@ -131,14 +131,14 @@ module Status_line = struct
          the whole thing into a [hbox] works around this bug.
 
          See https://github.com/ocaml/dune/issues/2779 *)
-      set_status_line (Some (Pp.hbox pp))
+      set_status (List.map ~f:Pp.hbox pp)
   ;;
 
   let set t =
     stack := [ toplevel, t ];
     (match t with
      | Live _ -> ()
-     | Constant pp -> print_if_no_status_line pp);
+     | Constant pp -> print_if_no_status pp);
     refresh ()
   ;;
 

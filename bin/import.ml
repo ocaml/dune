@@ -83,28 +83,29 @@ end = struct
   let setup () =
     let open Fiber.O in
     let* scheduler = Dune_engine.Scheduler.t () in
-    Console.Status_line.set
+    Console.Status.set
       (Live
          (fun () ->
            match Fiber.Svar.read Build_system.state with
            | Initializing
            | Restarting_current_build
            | Build_succeeded__now_waiting_for_changes
-           | Build_failed__now_waiting_for_changes -> Pp.nop
+           | Build_failed__now_waiting_for_changes -> [ Pp.nop ]
            | Building
                { Build_system.Progress.number_of_rules_executed = done_
                ; number_of_rules_discovered = total
                ; number_of_rules_failed = failed
                } ->
-             Pp.verbatim
-               (sprintf
-                  "Done: %u%% (%u/%u, %u left%s) (jobs: %u)"
-                  (if total = 0 then 0 else done_ * 100 / total)
-                  done_
-                  total
-                  (total - done_)
-                  (if failed = 0 then "" else sprintf ", %u failed" failed)
-                  (Dune_engine.Scheduler.running_jobs_count scheduler))));
+             [ Pp.verbatim
+                 (sprintf
+                    "Done: %u%% (%u/%u, %u left%s) (jobs: %u)"
+                    (if total = 0 then 0 else done_ * 100 / total)
+                    done_
+                    total
+                    (total - done_)
+                    (if failed = 0 then "" else sprintf ", %u failed" failed)
+                    (Dune_engine.Scheduler.running_jobs_count scheduler))
+             ]));
     Fiber.return (Memo.of_thunk get)
   ;;
 end
@@ -131,10 +132,10 @@ module Scheduler = struct
   ;;
 
   let on_event dune_config _config = function
-    | Run.Event.Tick -> Console.Status_line.refresh ()
+    | Run.Event.Tick -> Console.Status.refresh ()
     | Source_files_changed { details_hum } -> maybe_clear_screen ~details_hum dune_config
     | Build_interrupted ->
-      Console.Status_line.set
+      Console.Status.set
         (Live
            (fun () ->
              let progression =
@@ -145,13 +146,14 @@ module Scheduler = struct
                | Build_failed__now_waiting_for_changes -> Build_system.Progress.init
                | Building progress -> progress
              in
-             Pp.seq
-               (Pp.tag User_message.Style.Error (Pp.verbatim "Source files changed"))
-               (Pp.verbatim
-                  (sprintf
-                     ", restarting current build... (%u/%u)"
-                     progression.number_of_rules_executed
-                     progression.number_of_rules_discovered))))
+             [ Pp.seq
+                 (Pp.tag User_message.Style.Error (Pp.verbatim "Source files changed"))
+                 (Pp.verbatim
+                    (sprintf
+                       ", restarting current build... (%u/%u)"
+                       progression.number_of_rules_executed
+                       progression.number_of_rules_discovered))
+             ]))
     | Build_finish build_result ->
       let message =
         match build_result with
@@ -167,8 +169,8 @@ module Scheduler = struct
           in
           Pp.tag User_message.Style.Error failure_message
       in
-      Console.Status_line.set
-        (Constant (Pp.seq message (Pp.verbatim ", waiting for filesystem changes...")))
+      Console.Status.set
+        (Constant [ Pp.seq message (Pp.verbatim ", waiting for filesystem changes...") ])
   ;;
 
   let rpc server =

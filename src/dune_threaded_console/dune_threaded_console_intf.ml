@@ -6,7 +6,7 @@ type state =
   { messages : User_message.t Queue.t
   ; mutable finish_requested : bool
   ; mutable finished : bool
-  ; mutable status_line : User_message.Style.t Pp.t option
+  ; mutable status : User_message.Style.t Pp.t list
   ; mutable dirty : bool
   }
 

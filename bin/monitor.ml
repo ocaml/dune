@@ -68,24 +68,25 @@ end = struct
   ;;
 
   let done_status ~complete ~remaining ~failed state =
-    Pp.textf
-      "Done: %d%% (%d/%d, %d left%s) (jobs: %d)"
-      (if complete + remaining = 0 then 0 else complete * 100 / (complete + remaining))
-      complete
-      (complete + remaining)
-      remaining
-      (match failed with
-       | 0 -> ""
-       | failed -> sprintf ", %d failed" failed)
-      (Job_id_map.cardinal state.jobs)
+    [ Pp.textf
+        "Done: %d%% (%d/%d, %d left%s) (jobs: %d)"
+        (if complete + remaining = 0 then 0 else complete * 100 / (complete + remaining))
+        complete
+        (complete + remaining)
+        remaining
+        (match failed with
+         | 0 -> ""
+         | failed -> sprintf ", %d failed" failed)
+        (Job_id_map.cardinal state.jobs)
+    ]
   ;;
 
   let waiting_for_file_system_changes message =
-    Pp.seq message (Pp.verbatim ", waiting for filesystem changes...")
+    [ Pp.seq message (Pp.verbatim ", waiting for filesystem changes...") ]
   ;;
 
   let restarting_current_build message =
-    Pp.seq message (Pp.verbatim ", restarting current build...")
+    [ Pp.seq message (Pp.verbatim ", restarting current build...") ]
   ;;
 
   let had_errors state =
@@ -95,11 +96,11 @@ end = struct
   ;;
 
   let status (state : t) =
-    Console.Status_line.set
+    Console.Status.set
       (Live
          (fun () ->
            match (state.progress : Progress.t) with
-           | Waiting -> Pp.verbatim "Initializing..."
+           | Waiting -> [ Pp.verbatim "Initializing..." ]
            | In_progress { complete; remaining; failed } ->
              done_status ~complete ~remaining ~failed state
            | Interrupted ->
@@ -243,9 +244,10 @@ let monitor ~quit_on_disconnect () =
     | None when quit_on_disconnect ->
       User_error.raise [ Pp.text "RPC server not running." ]
     | None ->
-      Console.Status_line.set
-        (Console.Status_line.Live
-           (fun () -> Pp.verbatim ("Waiting for RPC server" ^ String.make (i mod 4) '.')));
+      Console.Status.set
+        (Console.Status.Live
+           (fun () ->
+             [ Pp.verbatim ("Waiting for RPC server" ^ String.make (i mod 4) '.') ]));
       let+ () = Scheduler.sleep 0.3 in
       Some (i + 1))
 ;;

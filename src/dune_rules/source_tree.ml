@@ -818,16 +818,16 @@ module Make_map_reduce_with_progress (M : Memo.S) (Outcome : Monoid) = struct
     let* root = M.of_memo (root ()) in
     let nb_path_visited = ref 0 in
     let overlay =
-      Console.Status_line.add_overlay
-        (Live (fun () -> Pp.textf "Scanned %i directories" !nb_path_visited))
+      Console.Status.add_overlay
+        (Live (fun () -> [ Pp.textf "Scanned %i directories" !nb_path_visited ]))
     in
     let+ res =
       map_reduce root ~traverse ~f:(fun dir ->
         incr nb_path_visited;
-        if !nb_path_visited mod 100 = 0 then Console.Status_line.refresh ();
+        if !nb_path_visited mod 100 = 0 then Console.Status.refresh ();
         f dir)
     in
-    Console.Status_line.remove_overlay overlay;
+    Console.Status.remove_overlay overlay;
     res
   ;;
 end

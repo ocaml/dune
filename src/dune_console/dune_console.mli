@@ -17,11 +17,11 @@ module type Backend = sig
   (** Output a basic user message to the screen. *)
   val print_user_message : User_message.t -> unit
 
-  (** Set the status line. *)
-  val set_status_line : User_message.Style.t Pp.t option -> unit
+  (** Set the status. *)
+  val set_status : User_message.Style.t Pp.t list -> unit
 
-  (** Print a message if the backend doesn't support a persistent status line. *)
-  val print_if_no_status_line : User_message.Style.t Pp.t -> unit
+  (** Print a message if the backend doesn't support a persistent status. *)
+  val print_if_no_status : User_message.Style.t Pp.t list -> unit
 
   (** Reset the display. *)
   val reset : unit -> unit
@@ -91,16 +91,16 @@ val print : User_message.Style.t Pp.t list -> unit
     For properly formatted output you should use [print]. *)
 val printf : ('a, unit, string, unit) format4 -> 'a
 
-module Status_line : sig
-  (** Status line management *)
+module Status : sig
+  (** Status management *)
 
-  (** The current status line. *)
+  (** The current status. *)
   type t =
-    | Live of (unit -> User_message.Style.t Pp.t)
+    | Live of (unit -> User_message.Style.t Pp.t list)
         (** A "live" value that's updated continuously, such as a progress
             indicator. This message is not shown when a "dumb" terminal backend
             is in use. *)
-    | Constant of User_message.Style.t Pp.t
+    | Constant of User_message.Style.t Pp.t list
         (** A fixed value. Unlike with [Live], this text is printed even if a
             dumb console backend is in use. *)
 

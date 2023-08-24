@@ -184,3 +184,18 @@ let threaded_console_frames_per_second =
   register t;
   t
 ;;
+
+let console_width_fallback =
+  let t =
+    { name = "console_width_fallback"
+    ; of_string =
+        (fun x ->
+          match Int.of_string x with
+          | Some x when 0 < x && x < 10000 -> Ok x
+          | _ -> Error "invalid console width")
+    ; value = 80
+    }
+  in
+  register t;
+  t
+;;

@@ -70,8 +70,8 @@ module Workspace_local = struct
       if !needs_dumping && Path.build_dir_exists ()
       then (
         needs_dumping := false;
-        Console.Status_line.with_overlay
-          (Live (fun () -> Pp.hbox (Pp.text "Saving build trace db...")))
+        Console.Status.with_overlay
+          (Live (fun () -> [ Pp.hbox (Pp.text "Saving build trace db...") ]))
           ~f:(fun () -> P.dump file (Lazy.force t)))
     ;;
 

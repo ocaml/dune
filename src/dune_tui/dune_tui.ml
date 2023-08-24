@@ -47,7 +47,7 @@ let user_feedback_attr = A.(fg cyan)
 
 let term_size = Lwd.var (0, 0)
 let messages = Lwd.var []
-let status_line = Lwd.var None
+let status = Lwd.var []
 
 module Message_viewer = struct
   (* Specialized widget for viewing messages in a list. *)
@@ -230,10 +230,10 @@ let status_bar =
     in
     Button.of_ (Ui.atom image) toggle
   and+ status =
-    Lwd.get status_line
+    Lwd.get status
     >>| function
-    | None -> I.empty
-    | Some message -> Drawing.pp_to_image message
+    | [] -> I.empty
+    | messages -> I.hcat (List.map ~f:Drawing.pp_to_image messages)
   in
   let status =
     I.hcat
@@ -291,10 +291,10 @@ module Console_backend = struct
       let size = Term.size (term ()) in
       update (Tuple.T2.equal Int.equal Int.equal) term_size size;
       update
-        (Option.equal (fun x y ->
+        (List.equal (fun x y ->
            Ordering.is_eq (Pp.compare ~compare:User_message.Style.compare x y)))
-        status_line
-        state.status_line;
+        status
+        state.status;
       if let l = Lwd.peek messages in
          not
            (List.length l = Queue.length state.messages

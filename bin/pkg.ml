@@ -405,8 +405,8 @@ module Lock = struct
              get_repos repos solver_env ~opam_repository_path ~opam_repository_url
            in
            match
-             Console.Status_line.with_overlay
-               (Constant (Pp.text "Solving for Build Plan"))
+             Console.Status.with_overlay
+               (Constant [ Pp.text "Solving for Build Plan" ])
                ~f:(fun () ->
                  Dune_pkg.Opam_solver.solve_lock_dir
                    solver_env

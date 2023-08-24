@@ -153,12 +153,7 @@ COPY --chown=user:users otherlibs otherlibs
 COPY --chown=user:users vendor vendor
 COPY --chown=user:users dune-project dune-project
 COPY --chown=user:users dune-file dune-file
-COPY --chown=user:users stdune.opam stdune.opam
-COPY --chown=user:users dune-rpc.opam dune-rpc.opam
-COPY --chown=user:users dune-rpc-lwt.opam dune-rpc-lwt.opam
-COPY --chown=user:users dune-private-libs.opam.template dune-private-libs.opam.template
 RUN . ~/.profile && dune build bin/main.exe --release
-RUN . ~/.profile && opam pin add /home/user/dune -y
 
 # Switch to the benchmark project
 WORKDIR $HOME/monorepo-benchmark/benchmark

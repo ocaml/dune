@@ -49,7 +49,6 @@ end
 module Build : sig
   include Dune_sexp.Conv.S with type t = Path.Build.t
 
-  val is_dev_null : t -> bool
   val install_dir : t
   val anonymous_actions_dir : t
 end

@@ -50,8 +50,7 @@ let make (module Base : S) : (module Dune_console.Backend) =
       state.dirty <- true;
       Queue.clear state.messages;
       state.status_line <- None;
-      Base.reset ();
-      Mutex.unlock mutex
+      Exn.protect ~f:Base.reset ~finally:(fun () -> Mutex.unlock mutex)
     ;;
 
     let reset_flush_history () =
@@ -59,8 +58,7 @@ let make (module Base : S) : (module Dune_console.Backend) =
       state.dirty <- true;
       Queue.clear state.messages;
       state.status_line <- None;
-      Base.reset_flush_history ();
-      Mutex.unlock mutex
+      Exn.protect ~f:Base.reset_flush_history ~finally:(fun () -> Mutex.unlock mutex)
     ;;
 
     let start () =

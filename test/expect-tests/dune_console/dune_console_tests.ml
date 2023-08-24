@@ -103,12 +103,10 @@ let%expect_test "Status line clearing." =
   escape [%expect.output];
   [%expect
     {| 
-Here is a status line\r                     \rHere is another\r               \r
+Here is a status line\r\027[2K\027M\r\027[2KHere is another\r\027[2K\027M\r\027[2K
  |}]
 ;;
 
-(* CR-someday alizter: this should insert the appropriate number of "\r"s in order to
-   fully clear the previous lines when wrapped. *)
 let%expect_test "Status line clearing with wrapping." =
   let module Console = New () in
   Console.Backend.set Console.Backend.progress;
@@ -117,6 +115,6 @@ let%expect_test "Status line clearing with wrapping." =
   [%expect
     {| 
 This status line is a problem because of the fact that it is especially long
-and therefore will not be cleared properly.\r                                                                                                                        \rHere is another\r               \r
+and therefore will not be cleared properly.\r\027[2K\027M\r\027[2K\027M\r\027[2KHere is another\r\027[2K\027M\r\027[2K
  |}]
 ;;

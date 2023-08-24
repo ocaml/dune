@@ -8,7 +8,7 @@ module Loc : sig
 
   val start : t -> Lexing.position
   val stop : t -> Lexing.position
-  val sexp : (t, Conv.values) Conv.t
+  val sexp : t Conv.value
 end
 
 module Target : sig
@@ -20,7 +20,7 @@ module Target : sig
     | Preprocess of string list
     | Loc of Loc.t
 
-  val sexp : (t, Conv.values) Conv.t
+  val sexp : t Conv.value
 end
 
 module Path : sig
@@ -46,7 +46,7 @@ module Diagnostic : sig
 
     val in_build : t -> string
     val in_source : t -> string
-    val sexp : (t, Conv.values) Conv.t
+    val sexp : t Conv.value
   end
 
   module Id : sig
@@ -55,7 +55,7 @@ module Diagnostic : sig
     val compare : t -> t -> Ordering.t
     val hash : t -> int
     val create : int -> t
-    val sexp : (t, Conv.values) Conv.t
+    val sexp : t Conv.value
   end
 
   module Related : sig
@@ -66,7 +66,7 @@ module Diagnostic : sig
 
     val message : t -> unit Pp.t
     val loc : t -> Loc.t
-    val sexp : (t, Conv.values) Conv.t
+    val sexp : t Conv.value
   end
 
   type t =
@@ -97,10 +97,10 @@ module Diagnostic : sig
       | Remove of t
 
     val to_dyn : t -> Dyn.t
-    val sexp : (t, Conv.values) Conv.t
+    val sexp : t Conv.value
   end
 
-  val sexp : (t, Conv.values) Conv.t
+  val sexp : t Conv.value
 end
 
 module Progress : sig
@@ -115,7 +115,7 @@ module Progress : sig
     | Interrupted
     | Success
 
-  val sexp : (t, Conv.values) Conv.t
+  val sexp : t Conv.value
 end
 
 module Message : sig
@@ -126,7 +126,7 @@ module Message : sig
 
   val payload : t -> Csexp.t option
   val message : t -> string
-  val sexp : (t, Conv.values) Conv.t
+  val sexp : t Conv.value
   val to_sexp_unversioned : t -> Csexp.t
 end
 
@@ -137,7 +137,7 @@ module Job : sig
     val compare : t -> t -> Ordering.t
     val hash : t -> int
     val create : int -> t
-    val sexp : (t, Conv.values) Conv.t
+    val sexp : t Conv.value
   end
 
   type t =
@@ -157,6 +157,6 @@ module Job : sig
       | Start of t
       | Stop of Id.t
 
-    val sexp : (t, Conv.values) Conv.t
+    val sexp : t Conv.value
   end
 end

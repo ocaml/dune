@@ -524,7 +524,11 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
          [ Pp.text "(mkdir ...) is not supported for paths outside of the workspace:"
          ; Pp.seq
              (Pp.verbatim "  ")
-             (Dune_lang.pp (List [ Dune_lang.atom "mkdir"; Dpath.encode path ]))
+             (Dune_lang.pp
+                (List
+                   [ Dune_sexp.atom "mkdir"
+                   ; Dune_sexp.atom_or_quoted_string (Path.to_string path)
+                   ]))
          ])
   | Diff { optional; file1; file2; mode } ->
     let+ file1 = E.dep_if_exists file1

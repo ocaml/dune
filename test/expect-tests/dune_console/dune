@@ -5,6 +5,8 @@
   (pps ppx_expect))
  (libraries
   stdune
+  dune_re
+  dune_sexp
   dune_console
   dune_tests_common
   ;; This is because of the (implicit_transitive_deps false)

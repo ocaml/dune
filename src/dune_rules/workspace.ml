@@ -306,7 +306,7 @@ module Context = struct
            1. guard before version check before releasing
            2. allow external paths
         *)
-        field_o "lock" (Dpath.Local.decode ~dir:(Path.source Path.Source.root))
+        field_o "lock" (Dune_lang.Path.Local.decode ~dir:(Path.source Path.Source.root))
       and+ version_preference =
         field_o "version_preference" Dune_pkg.Version_preference.decode
       and+ solver_env = field_o "solver_env" Dune_pkg.Solver_env.decode in

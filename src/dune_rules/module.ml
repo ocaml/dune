@@ -9,14 +9,14 @@ module File = struct
   let decode ~dir =
     let open Dune_lang.Decoder in
     fields
-    @@ let+ path = field "path" (Dpath.Local.decode ~dir) in
+    @@ let+ path = field "path" (Dune_lang.Path.Local.decode ~dir) in
        (* TODO do not just assume the dialect is OCaml *)
        { path; dialect = Dialect.ocaml }
   ;;
 
   let encode { path; dialect = _ } ~dir =
     let open Dune_lang.Encoder in
-    record_fields [ field "path" (Dpath.Local.encode ~dir) path ]
+    record_fields [ field "path" (Dune_lang.Path.Local.encode ~dir) path ]
   ;;
 
   let dialect t = t.dialect

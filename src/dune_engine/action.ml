@@ -104,7 +104,10 @@ module Prog = struct
 end
 
 module Encode_ext = struct
-  type t = (module Ext.Instance with type target = Dpath.Build.t and type path = Dpath.t)
+  type t =
+    (module Ext.Instance
+       with type target = Stdune.Path.Build.t
+        and type path = Stdune.Path.t)
 end
 
 module type Ast =
@@ -116,7 +119,7 @@ module type Ast =
      and type ext = Encode_ext.t
 
 module rec Ast : Ast = Ast
-include Make (Prog) (Dpath) (Dpath.Build) (String) (Encode_ext) (Ast)
+include Make (Prog) (Stdune.Path) (Stdune.Path.Build) (String) (Encode_ext) (Ast)
 
 include Monoid.Make (struct
     type nonrec t = t

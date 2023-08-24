@@ -39,21 +39,13 @@ val describe_target : Path.Build.t -> string
 
 val describe_path : Path.t -> string
 
-include Dune_sexp.Conv.S with type t = Path.t
+type t = Path.t
 
-module Local : sig
-  val encode : dir:Path.t -> Path.t Dune_sexp.Encoder.t
-  val decode : dir:Path.t -> Path.t Dune_sexp.Decoder.t
-end
+val encode : Path.t Dune_sexp.Encoder.t
 
 module Build : sig
-  include Dune_sexp.Conv.S with type t = Path.Build.t
+  type t = Path.Build.t
 
   val install_dir : t
   val anonymous_actions_dir : t
-end
-
-module External : sig
-  val encode : Path.External.t Dune_sexp.Encoder.t
-  val decode : Path.External.t Dune_sexp.Decoder.t
 end

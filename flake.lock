@@ -21,11 +21,11 @@
         "systems": "systems"
       },
       "locked": {
-        "lastModified": 1689068808,
-        "narHash": "sha256-6ixXo3wt24N/melDWjq70UuHQLxGV8jZvooRanIHXw0=",
+        "lastModified": 1692799911,
+        "narHash": "sha256-3eihraek4qL744EvQXsK1Ha6C3CR7nnT8X2qWap4RNk=",
         "owner": "numtide",
         "repo": "flake-utils",
-        "rev": "919d646de7be200f3bf08cb76ae1f09402b6f9b4",
+        "rev": "f9e7cf818399d17d347f847525c5a5a8032e4e44",
         "type": "github"
       },
       "original": {
@@ -107,11 +107,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1691403902,
-        "narHash": "sha256-J74y4xWtKPDPyVtF4arzrwuSOGznlFlJ+uB9RwNNnbo=",
+        "lastModified": 1692808169,
+        "narHash": "sha256-x9Opq06rIiwdwGeK2Ykj69dNc2IvUH1fY55Wm7atwrE=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "c91024273f020df2dcb209cc133461ca17848026",
+        "rev": "9201b5ff357e781bf014d0330d18555695df7ba8",
         "type": "github"
       },
       "original": {
@@ -149,11 +149,11 @@
         "opam-repository": "opam-repository"
       },
       "locked": {
-        "lastModified": 1690582498,
-        "narHash": "sha256-A57CuCM6oi+zw2wyQfBkmkfxtukyKzepDxal+mVbQQM=",
+        "lastModified": 1692785055,
+        "narHash": "sha256-Bilj0xK7BYPvE+e/wq3QEUjjAvxYtDxOvBh1ycSsXhg=",
         "ref": "refs/heads/master",
-        "rev": "0e86a7980b4867afeab2700d8e7ace63541e223d",
-        "revCount": 2035,
+        "rev": "2fc7f0a0d165519ef6e5b1b2d4b89c408818e08d",
+        "revCount": 2037,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/ocaml/ocaml-lsp"

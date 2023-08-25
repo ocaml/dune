@@ -56,6 +56,7 @@ type t =
   | Compare of Op.t * String_with_vars.t * String_with_vars.t
 
 let true_ = Const true
+let false_ = Const false
 
 let rec to_dyn =
   let open Dyn in

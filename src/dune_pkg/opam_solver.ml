@@ -237,8 +237,108 @@ let opam_command_to_string_debug (args, _filter_opt) =
   |> String.concat ~sep:" "
 ;;
 
+let filter_to_blang package filter =
+  let fident_to_blang packages variable string_converter =
+    if Option.is_some string_converter
+    then
+      Code_error.raise
+        "String converters in identifiers is not yet implemented"
+        [ "package", Dyn.string (OpamPackage.to_string package)
+        ; "filter", Dyn.string (OpamFilter.to_string filter)
+        ];
+    let variable_string = OpamVariable.to_string variable in
+    match packages with
+    | [] ->
+      let pform = Package_variable.pform_of_opam_ident variable_string in
+      Blang.Expr (String_with_vars.make_pform Loc.none pform)
+    | packages ->
+      let blangs =
+        List.map packages ~f:(fun package ->
+          let scope =
+            match package with
+            | None -> Package_variable.Scope.Self
+            | Some package ->
+              Package (Package_name.of_string (OpamPackage.Name.to_string package))
+          in
+          let package_variable =
+            { Package_variable.name = Package_variable.Name.of_string variable_string
+            ; scope
+            }
+          in
+          let pform = Package_variable.to_pform package_variable in
+          Blang.Expr (String_with_vars.make_pform Loc.none pform))
+      in
+      (match blangs with
+       | [ single_blang ] -> single_blang
+       | _ -> Blang.And blangs)
+  in
+  let filter_to_sw = function
+    | OpamTypes.FString string -> String_with_vars.make_text Loc.none string
+    | FIdent (packages, variable, string_converter) as filter ->
+      (match fident_to_blang packages variable string_converter with
+       | Blang.Expr sw -> sw
+       | _ ->
+         User_error.raise
+           [ Pp.textf
+               "Expected string or identifier but found conjunction of identifiers: %s"
+               (OpamFilter.to_string filter)
+           ; Pp.textf
+               "...while processing commands for package: %s"
+               (OpamPackage.to_string package)
+           ; Pp.textf "Full filter: %s" (OpamFilter.to_string filter)
+           ; Pp.text
+               "Note that name1+name2+name3:var is the conjunction of var for each of \
+                name1, name2 and name3, i.e it is equivalent to name1:var & name2:var & \
+                name3:var."
+           ])
+    | other ->
+      Code_error.raise
+        "The opam file parser shouldn't only allow identifiers and strings in places \
+         where strings are expected"
+        [ "package", Dyn.string (OpamPackage.to_string package)
+        ; "full filter", Dyn.string (OpamFilter.to_string filter)
+        ; "non-string filter", Dyn.string (OpamFilter.to_string other)
+        ]
+  in
+  let rec filter_to_blang = function
+    | OpamTypes.FBool true -> Blang.true_
+    | FBool false -> Blang.false_
+    | FString _ as sw_filter -> Blang.Expr (filter_to_sw sw_filter)
+    | FIdent (packages, variable, string_converter) ->
+      fident_to_blang packages variable string_converter
+    | FOp (lhs, op, rhs) ->
+      let op =
+        match op with
+        | `Eq -> Blang.Op.Eq
+        | `Neq -> Neq
+        | `Geq -> Gte
+        | `Gt -> Gt
+        | `Leq -> Lte
+        | `Lt -> Lt
+      in
+      Blang.Compare (op, filter_to_sw lhs, filter_to_sw rhs)
+    | FAnd (a, b) -> Blang.And [ filter_to_blang a; filter_to_blang b ]
+    | FOr (a, b) -> Blang.Or [ filter_to_blang a; filter_to_blang b ]
+    | FNot f -> Blang.Not (filter_to_blang f)
+    | FDefined _ ->
+      Code_error.raise
+        "The `?` unary operator operator is not yet implemented."
+        [ "package", Dyn.string (OpamPackage.to_string package)
+        ; "filter", Dyn.string (OpamFilter.to_string filter)
+        ]
+    | FUndef _ ->
+      Code_error.raise
+        "Encountered undefined filter which should not be possible since no filter \
+         reduction has taken place."
+        [ "package", Dyn.string (OpamPackage.to_string package)
+        ; "filter", Dyn.string (OpamFilter.to_string filter)
+        ]
+  in
+  filter_to_blang filter
+;;
+
 let opam_commands_to_actions package (commands : OpamTypes.command list) =
-  List.filter_map commands ~f:(fun ((args, _filter_opt) as command) ->
+  List.filter_map commands ~f:(fun ((args, filter) as command) ->
     let interpolate_opam_variables s =
       Re.Seq.split_full OpamFilter.string_interp_regex s
       |> Seq.map ~f:(function
@@ -275,7 +375,14 @@ let opam_commands_to_actions package (commands : OpamTypes.command list) =
             (Package_variable.pform_of_opam_ident ident))
     in
     match terms with
-    | program :: args -> Some (Action.run program args)
+    | program :: args ->
+      let action = Action.run program args in
+      let action =
+        match filter with
+        | Some filter -> Action.When (filter_to_blang package filter, action)
+        | None -> action
+      in
+      Some action
     | [] -> None)
 ;;
 

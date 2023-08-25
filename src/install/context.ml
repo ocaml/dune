@@ -12,3 +12,12 @@ let man_dir ~context = Path.Build.relative (dir ~context) "man"
 let lib_dir ~context ~package =
   Path.Build.relative (lib_root ~context) (Package_name.to_string package)
 ;;
+
+let of_path path =
+  match Dune_engine.Dpath.analyse_dir (Path.build path) with
+  | Build
+      ( Install (With_context (name, _))
+      | Regular (With_context (name, _))
+      | Anonymous_action (With_context (name, _)) ) -> Some name
+  | _ -> None
+;;

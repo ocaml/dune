@@ -1,3 +1,11 @@
 (cram
+ (deps helpers.sh)
+ (applies_to :whole_subtree))
+
+(cram
  (deps %{bin:patch})
  (applies_to patch))
+
+(cram
+ (deps %{bin:git})
+ (applies_to git-source opam-repository-download))

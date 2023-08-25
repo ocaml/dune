@@ -559,7 +559,7 @@ module Action_expander = struct
       String_expander.Memo.expand ~f:(expand_pform t) ~dir:(Path.build t.paths.source_dir)
     ;;
 
-    let expand_pform = expand_pform_gen ~mode:Many
+    let expand_sw = expand_pform_gen ~mode:Many
 
     let expand_exe t sw : ((Path.t, Action.Prog.Not_found.t) result * Value.t list) Memo.t
       =
@@ -600,6 +600,10 @@ module Action_expander = struct
       in
       let prog = Result.map prog ~f:(map_exe t) in
       prog, args
+    ;;
+
+    let eval_blang t blang : bool Memo.t =
+      Blang_expand.eval blang ~dir:(Path.build t.paths.source_dir) ~f:(expand_pform t)
     ;;
   end
 
@@ -656,7 +660,7 @@ module Action_expander = struct
     match action with
     | Run (exe, args) ->
       let* exe, more_args = Expander.expand_exe expander exe in
-      let+ args = Memo.parallel_map args ~f:(Expander.expand_pform expander) in
+      let+ args = Memo.parallel_map args ~f:(Expander.expand_sw expander) in
       let args = more_args @ List.concat args |> Value.L.to_strings ~dir in
       Action.Run (exe, Array.Immutable.of_list args)
     | Progn t ->
@@ -719,6 +723,9 @@ module Action_expander = struct
       let+ action = expand action ~expander in
       List.fold_left updates ~init:action ~f:(fun action (k, v) ->
         Action.Setenv (k, v, action))
+    | When (condition, action) ->
+      let* condition_value = Expander.eval_blang expander condition in
+      if condition_value then expand action ~expander else Memo.return (Action.progn [])
     | _ ->
       (* TODO *)
       assert false

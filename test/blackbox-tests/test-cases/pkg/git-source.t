@@ -1,5 +1,7 @@
 Test fetching from git
 
+  $ . ./helpers.sh
+
   $ mkdir somerepo
   $ cd somerepo
   $ git init --quiet
@@ -20,5 +22,5 @@ Test fetching from git
   > (build (run cat foo))
   > EOF
 
-  $ dune build _build/default/.pkg/test/target
+  $ build_pkg test
   hello world

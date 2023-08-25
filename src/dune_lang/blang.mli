@@ -22,8 +22,10 @@ type t =
   | Compare of Op.t * String_with_vars.t * String_with_vars.t
 
 val true_ : t
+val false_ : t
 val to_dyn : t -> Dyn.t
 val decode : t Decoder.t
+val encode : t Encoder.t
 
 (** Resolve variables manually. For complex cases such as [enabled_if] *)
 val decode_manually : (Pform.Env.t -> Template.Pform.t -> Pform.t) -> t Decoder.t

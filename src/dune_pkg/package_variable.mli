@@ -28,6 +28,8 @@ val of_macro_invocation
   -> Pform.Macro_invocation.t
   -> (t, [ `Unexpected_macro ]) result
 
+val to_pform : t -> Pform.t
+
 (** Parse an opam variable name. Identifiers beginning with "<package>:" are
     treated as package-scoped variables unless <package> is "_" in which case
     they are treated as self-scoped. Identifiers without the "<package>:"

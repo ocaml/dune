@@ -26,6 +26,25 @@ module Op = struct
     | Lt -> string "Lt"
     | Neq -> string "Neq"
   ;;
+
+  let equal a b =
+    match a, b with
+    | Eq, Eq -> true
+    | Gt, Gt -> true
+    | Gte, Gte -> true
+    | Lte, Lte -> true
+    | Lt, Lt -> true
+    | Neq, Neq -> true
+    | _ -> false
+  ;;
+
+  let by_string = [ "=", Eq; ">=", Gte; "<=", Lte; ">", Gt; "<", Lt; "<>", Neq ]
+  let to_string t = fst (List.find_exn by_string ~f:(fun (_, op) -> equal op t))
+
+  let encode t =
+    let open Encoder in
+    string (to_string t)
+  ;;
 end
 
 type t =
@@ -37,6 +56,7 @@ type t =
   | Compare of Op.t * String_with_vars.t * String_with_vars.t
 
 let true_ = Const true
+let false_ = Const false
 
 let rec to_dyn =
   let open Dyn in
@@ -52,12 +72,10 @@ let rec to_dyn =
       [ Op.to_dyn o; String_with_vars.to_dyn s1; String_with_vars.to_dyn s2 ]
 ;;
 
-let ops = [ "=", Op.Eq; ">=", Gte; "<=", Lte; ">", Gt; "<", Lt; "<>", Neq ]
-
 let decode_gen decode_string =
   let open Decoder in
   let ops =
-    List.map ops ~f:(fun (name, op) ->
+    List.map Op.by_string ~f:(fun (name, op) ->
       ( name
       , let+ x = decode_string
         and+ y = decode_string in
@@ -81,3 +99,16 @@ let decode_gen decode_string =
 
 let decode = decode_gen String_with_vars.decode
 let decode_manually f = decode_gen (String_with_vars.decode_manually f)
+
+let rec encode t =
+  let open Encoder in
+  match t with
+  | Const true -> string "true"
+  | Const false -> string "false"
+  | Not t -> List [ string "not"; encode t ]
+  | Expr e -> String_with_vars.encode e
+  | And ts -> List (string "and" :: List.map ts ~f:encode)
+  | Or ts -> List (string "or" :: List.map ts ~f:encode)
+  | Compare (o, s1, s2) ->
+    List [ Op.encode o; String_with_vars.encode s1; String_with_vars.encode s2 ]
+;;

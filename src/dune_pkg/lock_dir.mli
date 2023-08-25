@@ -1,7 +1,6 @@
 (** Frontend the lock directory format *)
 
 open Import
-open Dune_lang
 
 module Source : sig
   type fetch =

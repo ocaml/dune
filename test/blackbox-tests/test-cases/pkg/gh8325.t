@@ -1,5 +1,7 @@
 Things should be the same whether dependencies are specified or not.
 
+  $ . ./helpers.sh
+
   $ mkdir dune.lock
   $ cat >dune.lock/lock.dune <<EOF
   > (lang package 0.1)
@@ -20,7 +22,7 @@ And we have a package we want to build
   > (build
   >  (system "command -v cat > /dev/null 2>&1 || echo no cat"))
   > EOF
-  $ dune build .pkg/test/target/
+  $ build_pkg test
 
 Now it fails since adding the dependency modified PATH.
 
@@ -31,4 +33,4 @@ Now it fails since adding the dependency modified PATH.
   > (build
   >  (system "command -v cat > /dev/null 2>&1 || echo no cat"))
   > EOF
-  $ dune build .pkg/test/target/
+  $ build_pkg test

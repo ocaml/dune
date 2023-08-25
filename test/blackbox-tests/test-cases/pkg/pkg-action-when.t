@@ -1,5 +1,7 @@
 Testing the when action in lockfiles
 
+  $ . ./helpers.sh
+
   $ mkdir dune.lock
   $ cat >dune.lock/lock.dune <<EOF
   > (lang package 0.1)
@@ -21,7 +23,7 @@ Case with a mix of uncoditional and conditional actions in a progn action
   >    (run echo e))))
   > EOF
 
-  $ dune build .pkg/test/target/
+  $ build_pkg test
   a
   c
   d

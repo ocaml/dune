@@ -768,11 +768,34 @@ E.g., run
 .. code:: sh
 
    $ docker build . -f bench/monorepo/bench.Dockerfile --tag=dune-monorepo-benchmark
-   $ docker run -it dune-monorepo-benchmark bash --login
 
-From inside the container, run ``make bench`` to run the benchmark. The output of
-the benchmark is a JSON string in the format accepted by `current-bench
-<https://github.com/ocurrent/current-bench>`_.
+The monorepo benchmark Docker image requires ``duniverse`` directory to be mounted
+as a volume. Generate this directory with a script from the
+`ocaml-monorepo-benchmark <https://github.com/ocaml-dune/ocaml-monorepo-benchmark>`_
+repository:
+
+.. code:: sh
+
+   $ git clone https://github.com/ocaml-dune/ocaml-monorepo-benchmark.git
+   $ cd ocaml-monorepo-benchmark
+   $ ./generate-duniverse.sh /tmp
+
+This will create a directory ``/tmp/duniverse``. Then to run the benchmark, run
+the Docker image in a container mounting ``/tmp/duniverse`` as a volume at
+``/home/opam/bench-dir/current-bench-data/duniverse`` (that specific path is a
+requirement of `current-bench <https://github.com/ocurrent/current-bench>`_).
+From within the container the benchmarks can be started by running `make bench`.
+Do all this in a single command with:
+
+.. code:: sh
+
+   $ docker run -it --volume=/tmp/duniverse:/home/opam/bench-dir/current-bench-data/duniverse dune-monorepo-benchmark bash --login -c 'make bench'
+
+The benchmark will print out a JSON string in the format accepted by
+`current-bench <https://github.com/ocurrent/current-bench>`_.
+
+Read more at
+https://github.com/ocaml/dune/blob/main/bench/monorepo/README.md.
 
 Formatting
 ==========

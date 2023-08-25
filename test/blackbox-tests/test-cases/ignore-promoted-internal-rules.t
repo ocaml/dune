@@ -19,4 +19,4 @@ This should not modify the file now
 
   $ dune build --ignore-promoted-rules foo.opam
   $ grep extra foo.opam
-  [1]
+  foobar_extra

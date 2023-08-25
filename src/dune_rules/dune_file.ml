@@ -2464,19 +2464,16 @@ type t =
   }
 
 let is_promoted_rule =
-  let is_promoted_mode version = function
+  let is_promoted_mode = function
     | Rule.Mode.Promote { only = None; lifetime; _ } ->
-      if version >= (3, 5)
-      then (
-        match lifetime with
-        | Unlimited -> true
-        | Until_clean -> false)
-      else true
+      (match lifetime with
+       | Unlimited -> true
+       | Until_clean -> false)
     | _ -> false
   in
-  fun version rule ->
+  fun rule ->
     match rule with
-    | Rule { mode; _ } | Menhir_stanza.T { mode; _ } -> is_promoted_mode version mode
+    | Rule { mode; _ } | Menhir_stanza.T { mode; _ } -> is_promoted_mode mode
     | _ -> false
 ;;
 
@@ -2485,9 +2482,7 @@ let parse sexps ~dir ~file ~project =
   let+ stanzas = Stanzas.parse ~file ~dir project sexps in
   let stanzas =
     if !Clflags.ignore_promoted_rules
-    then (
-      let version = Dune_project.dune_version project in
-      List.filter stanzas ~f:(fun s -> not (is_promoted_rule version s)))
+    then List.filter stanzas ~f:(fun s -> not (is_promoted_rule s))
     else stanzas
   in
   { dir; project; stanzas }

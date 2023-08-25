@@ -18,9 +18,6 @@ are ignored. See #4401.
   > EOF
 
   $ dune runtest --ignore-promoted-rules
-  Error: No rule found for test
-  -> required by alias runtest in dune:5
-  [1]
 
 This is correctly ignored if `dune-lang` is bumped to 3.5.
 

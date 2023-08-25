@@ -175,6 +175,7 @@ type t =
   | Patch of String_with_vars.t
   | Substitute of String_with_vars.t * String_with_vars.t
   | Withenv of String_with_vars.t Env_update.t list * t
+  | When of Blang.t * t
 
 let is_dev_null t = String_with_vars.is_pform t (Var Dev_null)
 
@@ -375,6 +376,11 @@ let decode_pkg =
         >>> let+ ops = enter (repeat Env_update.decode)
             and+ t = t in
             Withenv (ops, t) )
+    ; ( "when"
+      , Syntax.since Stanza.syntax (0, 1)
+        >>> let+ condition = Blang.decode
+            and+ action = t in
+            When (condition, action) )
     ]
   in
   Decoder.fix @@ fun t -> Decoder.sum (cstrs_dune_file t @ cstrs_pkg t)
@@ -430,6 +436,8 @@ let rec encode =
   | Substitute (i, o) -> List [ atom "substitute"; sw i; sw o ]
   | Withenv (ops, t) ->
     List [ atom "withenv"; List (List.map ~f:Env_update.encode ops); encode t ]
+  | When (condition, action) ->
+    List [ atom "when"; Blang.encode condition; encode action ]
 ;;
 
 (* In [Action_exec] we rely on one-to-one mapping between the cwd-relative paths
@@ -452,6 +460,7 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Ignore (_, t)
     | With_accepted_exit_codes (_, t)
     | Withenv (_, t)
+    | When (_, t)
     | No_infer t -> loop t
     | Run _
     | Echo _
@@ -483,6 +492,15 @@ let ensure_at_most_one_dynamic_run ~loc action =
 ;;
 
 let validate ~loc t = ensure_at_most_one_dynamic_run ~loc t
+
+let rec blang_map_string_with_vars ~f = function
+  | Blang.Const _ as c -> c
+  | Not blang -> Not (blang_map_string_with_vars ~f blang)
+  | Expr sw -> Expr (f sw)
+  | And blangs -> And (List.map blangs ~f:(blang_map_string_with_vars ~f))
+  | Or blangs -> Or (List.map blangs ~f:(blang_map_string_with_vars ~f))
+  | Compare (op, a, b) -> Compare (op, f a, f b)
+;;
 
 let rec map_string_with_vars t ~f =
   match t with
@@ -516,6 +534,8 @@ let rec map_string_with_vars t ~f =
     Withenv
       ( List.map ops ~f:(fun (op : _ Env_update.t) -> { op with value = f op.value })
       , map_string_with_vars t ~f )
+  | When (condition, t) ->
+    When (blang_map_string_with_vars condition ~f, map_string_with_vars t ~f)
 ;;
 
 let remove_locs = map_string_with_vars ~f:String_with_vars.remove_locs

@@ -1,7 +1,4 @@
 open! Stdune
-
-(* XXX explicit export because we want to get rid of the dependency on the
-   engine *)
 module Dune_project = Dune_rules.Dune_project
 module Source_tree = Dune_rules.Source_tree
 module Console = Dune_console

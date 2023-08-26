@@ -874,13 +874,15 @@ let%expect_test "print digests for all public RPCs" =
   [%expect {|
     Version 1:
       Request: Unit
-      Response: Unit |}];
+      Response: Unit
+    |}];
   Decl.Request.print_generations Procedures.Public.diagnostics;
   [%expect
     {|
     Version 1:
       Request: Unit
-      Response: ffd3de9652c685594aacfc51d28f2533 |}];
+      Response: ffd3de9652c685594aacfc51d28f2533
+    |}];
   Decl.Notification.print_generations Procedures.Public.shutdown;
   [%expect {| Version 1: Unit |}];
   Decl.Request.print_generations Procedures.Public.format_dune_file;
@@ -888,17 +890,20 @@ let%expect_test "print digests for all public RPCs" =
     {|
     Version 1:
       Request: 15eae4b546faf05a0fc3b6d03aed0c63
-      Response: String |}];
+      Response: String
+    |}];
   Decl.Request.print_generations Procedures.Public.promote;
   [%expect {|
     Version 1:
       Request: String
-      Response: Unit |}];
+      Response: Unit
+    |}];
   Decl.Request.print_generations Procedures.Public.build_dir;
   [%expect {|
     Version 1:
       Request: Unit
-      Response: String |}];
+      Response: String
+    |}];
   Decl.Notification.print_generations Procedures.Server_side.abort;
   [%expect {| Version 1: 0e9dfd1099101769896cf0bb06f891c6 |}];
   Decl.Notification.print_generations Procedures.Server_side.log;
@@ -911,17 +916,20 @@ let%expect_test "print digests for all public RPCs" =
       Response: 889aa68f4ad3fc68ef5dfffbb7282c18
     Version 2:
       Request: Sexp
-      Response: 929074caab98360dc7116b6f27c2b9ad |}];
+      Response: 929074caab98360dc7116b6f27c2b9ad
+    |}];
   Decl.Request.print_generations (Procedures.Poll.poll Procedures.Poll.diagnostic);
   [%expect
     {|
     Version 1:
       Request: Sexp
-      Response: 443627a52ab5595206164d020ff01c56 |}];
+      Response: 443627a52ab5595206164d020ff01c56
+    |}];
   Decl.Request.print_generations (Procedures.Poll.poll Procedures.Poll.running_jobs);
   [%expect
     {|
     Version 1:
       Request: Sexp
-      Response: 33528f248084297d123a6ebd4c3ddee0 |}]
+      Response: 33528f248084297d123a6ebd4c3ddee0
+    |}]
 ;;

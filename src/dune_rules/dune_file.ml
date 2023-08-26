@@ -2463,8 +2463,8 @@ type t =
   ; stanzas : Stanzas.t
   }
 
-let is_promoted_rule version rule =
-  let is_promoted_mode = function
+let is_promoted_rule =
+  let is_promoted_mode version = function
     | Rule.Mode.Promote { only = None; lifetime; _ } ->
       if version >= (3, 5)
       then (
@@ -2474,9 +2474,10 @@ let is_promoted_rule version rule =
       else true
     | _ -> false
   in
-  match rule with
-  | Rule { mode; _ } | Menhir_stanza.T { mode; _ } -> is_promoted_mode mode
-  | _ -> false
+  fun version rule ->
+    match rule with
+    | Rule { mode; _ } | Menhir_stanza.T { mode; _ } -> is_promoted_mode version mode
+    | _ -> false
 ;;
 
 let parse sexps ~dir ~file ~project =

@@ -41,7 +41,6 @@ end
 val to_dyn : t -> Dyn.t
 val file_key : t -> File_key.t
 val packages : t -> Package.t Package.Name.Map.t
-val version : t -> string option
 val name : t -> Name.t
 val root : t -> Path.Source.t
 val stanza_parser : t -> Dune_lang.Stanza.t list Dune_lang.Decoder.t

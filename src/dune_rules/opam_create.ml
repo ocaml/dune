@@ -232,7 +232,7 @@ let opam_fields project (package : Package.t) =
       , match Package.Info.license info with
         | Some [ x ] -> Some x
         | _ -> None )
-    ; "version", package.Package.version
+    ; "version", package.version
     ; "dev-repo", Option.map ~f:Package.Source_kind.to_string (Package.Info.source info)
     ]
     |> List.filter_map ~f:(fun (k, v) -> Option.map v ~f:(fun v -> k, string v))
@@ -252,9 +252,7 @@ let opam_fields project (package : Package.t) =
   in
   let fields = [ "opam-version", string "2.0"; "build", default_build_command project ] in
   let fields = List.concat [ fields; list_fields; optional_fields; package_fields ] in
-  if Dune_project.dune_version project < (1, 11)
-  then fields
-  else Opam_file.Create.normalise_field_order fields
+  if dune_version < (1, 11) then fields else Opam_file.Create.normalise_field_order fields
 ;;
 
 let template_file = Path.extend_basename ~suffix:".template"
@@ -296,8 +294,8 @@ let generate project pkg ~template =
      | Some (_, s) -> s)
 ;;
 
-let add_alias_rule sctx ~project ~pkg =
-  let build_dir = (Super_context.context sctx).build_dir in
+let add_alias_rule (ctx : Build_context.t) ~project ~pkg =
+  let build_dir = ctx.build_dir in
   let dir = Path.Build.append_source build_dir (Dune_project.root project) in
   let opam_path = Path.Build.append_source build_dir (Package.opam_file pkg) in
   let aliases =
@@ -338,7 +336,7 @@ let add_rules sctx project =
   Memo.when_ (Dune_project.generate_opam_files project) (fun () ->
     let packages = Dune_project.packages project in
     Package.Name.Map_traversals.parallel_iter packages ~f:(fun _name (pkg : Package.t) ->
-      let* () = add_alias_rule sctx ~project ~pkg in
+      let* () = add_alias_rule (Super_context.context sctx).build_context ~project ~pkg in
       match Dune_project.opam_file_location project with
       | `Inside_opam_directory -> Memo.return ()
       | `Relative_to_project -> add_opam_file_rule sctx ~project ~pkg))

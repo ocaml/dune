@@ -159,7 +159,6 @@ type t =
 let equal = ( == )
 let hash = Poly.hash
 let packages t = t.packages
-let version t = t.version
 let name t = t.name
 let root t = t.root
 let stanza_parser t = t.stanza_parser

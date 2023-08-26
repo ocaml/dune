@@ -276,7 +276,7 @@ module Lock = struct
                be installed on the current system. Note that this will mean that the \
                generated lockdir may not be compatible with other systems. If the build \
                context(s) specify system environment variables then the solver will use \
-               the union of the environment variables infered from the current system \
+               the union of the environment variables inferred from the current system \
                and the environment variables set in the build context(s). If the current \
                system and the build context(s) disagree on the value of an environment \
                variable then an error is raised.")

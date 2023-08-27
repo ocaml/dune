@@ -2,7 +2,6 @@ open Stdune
 open Fiber.O
 open Dune_vcs
 open! Dune_tests_common
-module Execution_env = Dune_util.Execution_env
 module Process = Dune_engine.Process
 module Scheduler = Dune_engine.Scheduler
 
@@ -62,7 +61,13 @@ type action =
 
 let run_action (vcs : Vcs.t) action =
   match action with
-  | Init -> run vcs [ "init"; "-q" ]
+  | Init ->
+    let* () = run vcs [ "init"; "-q" ] in
+    (match vcs.kind with
+     | Hg -> Fiber.return ()
+     | Git ->
+       let* () = run vcs [ "config"; "user.email"; "dune@dune.com" ] in
+       run vcs [ "config"; "user.name"; "Dune Dune" ])
   | Add fn -> run vcs [ "add"; fn ]
   | Commit ->
     (match vcs.kind with
@@ -163,6 +168,8 @@ let%expect_test _ =
   [%expect
     {|
 $ git init -q
+$ git config user.email dune@dune.com
+$ git config user.name 'Dune Dune'
 $ echo "-" > a
 $ git add a
 $ git commit -m 'commit message'

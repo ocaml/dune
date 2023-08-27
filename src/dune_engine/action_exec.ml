@@ -192,33 +192,9 @@ type exec_environment =
   ; exit_codes : int Predicate.t
   }
 
-let validate_context_and_prog ectx prog =
-  match ectx.context with
-  | None | Some { Build_context.host = None; _ } -> ()
-  | Some ({ Build_context.host = Some host; _ } as target) ->
-    let target_name = Context_name.to_string target.name in
-    let invalid_prefix prefix =
-      match Path.descendant prog ~of_:prefix with
-      | None -> ()
-      | Some _ ->
-        User_error.raise
-          ~loc:ectx.rule_loc
-          [ Pp.textf "Context %s has a host %s." target_name (Context_name.to_string host)
-          ; Pp.textf
-              "It's not possible to execute binary %s in it."
-              (Path.to_string_maybe_quoted prog)
-          ; Pp.nop
-          ; Pp.text "This is a bug and should be reported upstream."
-          ]
-    in
-    invalid_prefix (Path.relative Path.build_dir target_name);
-    invalid_prefix (Path.relative Path.build_dir ("install/" ^ target_name))
-;;
-
 open Produce.O
 
 let exec_run ~display ~ectx ~eenv prog args : _ Produce.t =
-  validate_context_and_prog ectx prog;
   let* (res : (Proc.Times.t, int) result) =
     Produce.of_fiber
     @@ Process.run_with_times
@@ -239,7 +215,6 @@ let exec_run ~display ~ectx ~eenv prog args : _ Produce.t =
 ;;
 
 let exec_run_dynamic_client ~display ~ectx ~eenv prog args =
-  validate_context_and_prog ectx prog;
   let run_arguments_fn = Temp.create File ~prefix:"dune" ~suffix:"run" in
   let response_fn = Temp.create File ~prefix:"dune" ~suffix:"response" in
   let run_arguments =

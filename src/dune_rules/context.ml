@@ -422,9 +422,7 @@ let create
       supports_shared_libraries && dynamically_linked_foreign_archives
     in
     let t =
-      let build_context =
-        Build_context.create ~name ~host:(Option.map host ~f:(fun c -> c.name))
-      in
+      let build_context = Build_context.create ~name in
       { name
       ; implicit
       ; kind

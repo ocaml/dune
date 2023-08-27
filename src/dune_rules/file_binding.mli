@@ -10,9 +10,9 @@ module Expanded : sig
   val dst_path : t -> dir:Path.Build.t -> Path.Build.t
 
   val validate_for_install_stanza
-    :  relative_dst_path_starts_with_parent_error_when:
+    :  t
+    -> relative_dst_path_starts_with_parent_error_when:
          [ `Deprecation_warning_from_3_11 | `Always_error ]
-    -> t
     -> unit
 end
 

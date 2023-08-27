@@ -84,7 +84,7 @@ module Expanded = struct
 
   let dst_path t ~dir = Path.Build.relative dir (dst_basename t)
 
-  let validate_for_install_stanza ~relative_dst_path_starts_with_parent_error_when t =
+  let validate_for_install_stanza t ~relative_dst_path_starts_with_parent_error_when =
     Option.iter t.dst ~f:(fun (loc, dst) ->
       validate_dst_for_install_stanza
         ~relative_dst_path_starts_with_parent_error_when

@@ -9,6 +9,15 @@ type ('src, 'dst) t =
   ; dune_syntax : Syntax.Version.t
   }
 
+let to_dyn f g { src; dst; dune_syntax } =
+  let open Dyn in
+  record
+    [ "src", f src
+    ; "dst", option g dst
+    ; "dune_syntax", Syntax.Version.to_dyn dune_syntax
+    ]
+;;
+
 let equal f g { src; dst; dune_syntax } t =
   f src t.src
   && Option.equal g dst t.dst
@@ -61,13 +70,9 @@ let validate_dst_for_install_stanza
 module Expanded = struct
   type nonrec t = (Loc.t * Path.Build.t, Loc.t * string) t
 
-  let to_dyn { src; dst; dune_syntax } =
+  let to_dyn =
     let open Dyn in
-    record
-      [ "src", pair Loc.to_dyn Path.Build.to_dyn src
-      ; "dst", option (pair Loc.to_dyn string) dst
-      ; "dune_syntax", Syntax.Version.to_dyn dune_syntax
-      ]
+    to_dyn (pair Loc.to_dyn Path.Build.to_dyn) (pair Loc.to_dyn string)
   ;;
 
   let src t = snd t.src
@@ -97,15 +102,7 @@ end
 module Unexpanded = struct
   type nonrec t = (String_with_vars.t, String_with_vars.t) t
 
-  let to_dyn { src; dst; dune_syntax } =
-    let open Dyn in
-    record
-      [ "src", String_with_vars.to_dyn src
-      ; "dst", option String_with_vars.to_dyn dst
-      ; "dune_syntax", Syntax.Version.to_dyn dune_syntax
-      ]
-  ;;
-
+  let to_dyn = to_dyn String_with_vars.to_dyn String_with_vars.to_dyn
   let equal = equal String_with_vars.equal_no_loc String_with_vars.equal_no_loc
 
   let make ~src:(locs, src) ~dst:(locd, dst) ~dune_syntax =

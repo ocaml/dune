@@ -110,6 +110,7 @@ module Unicode = struct
   let ogham_feather_mark = Uchar.of_int 0x169B
   let ogham_reversed_feather_mark = Uchar.of_int 0x169C
   let horizontal_bar = Uchar.of_int 0x2015
+  let box_drawings_light_vertical = Uchar.of_int 0x2502
   let box_drawings_double_horizontal = Uchar.of_int 0x2550
   let box_drawings_double_vertical = Uchar.of_int 0x2551
   let box_drawings_double_down_and_right = Uchar.of_int 0x2554
@@ -121,6 +122,7 @@ module Unicode = struct
 end
 
 let horizontal_rule ~attr ~w = I.uchar attr Unicode.horizontal_bar w 1
+let vertical_rule ~attr ~h = I.uchar attr Unicode.box_drawings_light_vertical 1 h
 
 let border_box ~attr image =
   let w, h = I.(width image, height image) in

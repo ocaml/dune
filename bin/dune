@@ -31,6 +31,10 @@
   dune_pkg
   cmdliner
   threads
+  ; TUI deps
+  dune_notty
+  dune_nottui
+  dune_tui
   ; Kept to keep implicit_transitive_deps false working in 4.x
   threads.posix
   build_info

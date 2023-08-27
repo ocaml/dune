@@ -6,8 +6,14 @@ open Import
     [User_message.Style.t] tags into appropriate Notty [A.t]s. *)
 val pp_to_image : User_message.Style.t Pp.t -> I.t
 
+(** [attr_of_ansi_color_style c] converts an [Ansi_color.Style.t] to a [A.t]. *)
+val attr_of_ansi_color_style : Ansi_color.Style.t -> A.t
+
 (** [horizontal_rule ~attr ~w] draws a horizontal line with [attr] of length [w]. *)
 val horizontal_rule : attr:A.t -> w:int -> I.t
+
+(** [vertical_rule ~attr ~h] draws a vertical line with [attr] of height [h]. *)
+val vertical_rule : attr:A.t -> h:int -> I.t
 
 (** [box_with_title ~attr ~title ~title_attr img] draws a bordered box around the [img]
     which has [attr] as a style. It also has a [title] at the top with [title_attr].
@@ -27,6 +33,9 @@ module Unicode : sig
 
   (** ― U+2015 *)
   val horizontal_bar : Uchar.t
+
+  (** │ U+2502 *)
+  val box_drawings_light_vertical : Uchar.t
 
   (** ═ U+2550 *)
   val box_drawings_double_horizontal : Uchar.t

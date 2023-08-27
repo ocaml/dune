@@ -40,6 +40,11 @@ module RGB24 : sig
 
   (* This is only used internally. *)
   val write_to_buffer : Buffer.t -> t -> unit
+
+  module Colors : sig
+    val dark_charcoal : t
+    val davys_grey : t
+  end
 end = struct
   type t = int
 
@@ -63,6 +68,11 @@ end = struct
     Buffer.add_char buf ';';
     blue t |> Int.to_string |> Buffer.add_string buf
   ;;
+
+  module Colors = struct
+    let dark_charcoal = 0x333333
+    let davys_grey = 0x555555
+  end
 end
 
 module Style = struct

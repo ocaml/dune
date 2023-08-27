@@ -12,4 +12,4 @@ type t =
   ; hscroll : dir:[ `Left | `Right ] -> unit
   }
 
-val make : State.t Lwd.var -> Ui.t Lwd.t -> t Lwd.t
+val make : State.t Lwd.var -> Ui.t -> t Lwd.t

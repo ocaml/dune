@@ -102,7 +102,7 @@ type t =
   ; hscroll : dir:[ `Right | `Left ] -> unit
   }
 
-let make (state_var : State.t Lwd.var) t =
+let make (state_var : State.t Lwd.var) (t : Ui.t) =
   (* Keep track of size available for display *)
   let update_size ~w:width ~h:height =
     let state = Lwd.peek state_var in
@@ -149,10 +149,9 @@ let make (state_var : State.t Lwd.var) t =
     , scroll state_w state_x ~set:set_hscroll )
   in
   let open Lwd.O in
-  let+ ui = t
-  and+ size = Lwd.get state_var in
+  let+ size = Lwd.get state_var in
   (* Render final box *)
-  let box, vscroll, hscroll = compose_bars ui size in
+  let box, vscroll, hscroll = compose_bars t size in
   let hscroll ~dir =
     hscroll
       ~dir:

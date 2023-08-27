@@ -38,6 +38,16 @@ module RGB24 : sig
   (** [RGB24.of_int i] creates an [RGB24.t] from an [int] considered as a 24 bit integer.
       The first 8 bits are discarded. *)
   val of_int : int -> t
+
+  module Colors : sig
+    (** Predefined 24-bit colors *)
+
+    (** 0x333333 Dark Charcoal *)
+    val dark_charcoal : t
+
+    (** 0x555555 Davy's Grey *)
+    val davys_grey : t
+  end
 end
 
 module Style : sig

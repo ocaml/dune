@@ -7,35 +7,18 @@ include struct
   open Dune_rpc
   module Diagnostic = Diagnostic
   module Progress = Progress
-  module Job = Job
-  module Sub = Sub
-  module Conv = Conv
 end
 
-(** Utility module for generating [Map] modules for [Diagnostic]s and [Job]s which use
-    their [Id] as keys. *)
-module Id_map (Id : sig
-    type t
+module Diagnostic_map = Map.Make (struct
+    include Diagnostic.Id
 
-    val compare : t -> t -> Ordering.t
-    val sexp : (t, Conv.values) Conv.t
-  end) =
-struct
-  include Map.Make (struct
-      include Id
-
-      let to_dyn t = Sexp.to_dyn (Conv.to_sexp Id.sexp t)
-    end)
-end
-
-module Diagnostic_id_map = Id_map (Diagnostic.Id)
-module Job_id_map = Id_map (Job.Id)
+    let to_dyn = Dyn.opaque
+  end)
 
 module Event = struct
   (** Events that the render loop will process. *)
   type t =
     | Diagnostics of Diagnostic.Event.t list
-    | Jobs of Job.Event.t list
     | Progress of Progress.t
 end
 
@@ -44,7 +27,11 @@ module State : sig
   type t
 
   (** Initial empty state. *)
-  val init : unit -> t
+  val init
+    :  done_status_line:
+         (complete:int -> remaining:int -> failed:int -> User_message.Style.t Pp.t)
+    -> unit
+    -> t
 
   module Update : sig
     (** Incremental updates to the state. Computes increments of the state that
@@ -58,26 +45,14 @@ module State : sig
   val render : t -> Update.t -> unit
 end = struct
   type t =
-    { mutable diagnostics : Diagnostic.t Diagnostic_id_map.t
-    ; mutable jobs : Job.t Job_id_map.t
+    { mutable diagnostics : Diagnostic.t Diagnostic_map.t
     ; mutable progress : Progress.t
+    ; done_status_line :
+        complete:int -> remaining:int -> failed:int -> User_message.Style.t Pp.t
     }
 
-  let init () =
-    { diagnostics = Diagnostic_id_map.empty; jobs = Job_id_map.empty; progress = Waiting }
-  ;;
-
-  let done_status ~complete ~remaining ~failed state =
-    Pp.textf
-      "Done: %d%% (%d/%d, %d left%s) (jobs: %d)"
-      (if complete + remaining = 0 then 0 else complete * 100 / (complete + remaining))
-      complete
-      (complete + remaining)
-      remaining
-      (match failed with
-       | 0 -> ""
-       | failed -> sprintf ", %d failed" failed)
-      (Job_id_map.cardinal state.jobs)
+  let init ~done_status_line () =
+    { diagnostics = Diagnostic_map.empty; progress = Waiting; done_status_line }
   ;;
 
   let waiting_for_file_system_changes message =
@@ -89,7 +64,7 @@ end = struct
   ;;
 
   let had_errors state =
-    match Diagnostic_id_map.cardinal state.diagnostics with
+    match Diagnostic_map.cardinal state.diagnostics with
     | 1 -> Pp.verbatim "Had 1 error"
     | n -> Pp.textf "Had %d errors" n
   ;;
@@ -101,7 +76,7 @@ end = struct
            match (state.progress : Progress.t) with
            | Waiting -> Pp.verbatim "Initializing..."
            | In_progress { complete; remaining; failed } ->
-             done_status ~complete ~remaining ~failed state
+             state.done_status_line ~complete ~remaining ~failed
            | Interrupted ->
              Pp.tag User_message.Style.Error (Pp.verbatim "Source files changed")
              |> restarting_current_build
@@ -119,17 +94,6 @@ end = struct
       | Add_diagnostics of Diagnostic.t list
       | Refresh
 
-    let jobs state jobs =
-      let jobs =
-        List.fold_left jobs ~init:state.jobs ~f:(fun acc job_event ->
-          match (job_event : Job.Event.t) with
-          | Start job -> Job_id_map.add_exn acc job.id job
-          | Stop id -> Job_id_map.remove acc id)
-      in
-      state.jobs <- jobs;
-      Update_status
-    ;;
-
     let progress state progress =
       state.progress <- progress;
       Update_status
@@ -142,12 +106,14 @@ end = struct
           ~init:(`Add_only [], state.diagnostics)
           ~f:(fun (mode, acc) diag_event ->
             match (diag_event : Diagnostic.Event.t) with
-            | Remove diag -> `Remove, Diagnostic_id_map.remove acc diag.id
+            | Remove diag -> `Remove, Diagnostic_map.remove acc diag.id
             | Add diag ->
               ( (match mode with
                  | `Add_only diags -> `Add_only (diag :: diags)
                  | `Remove -> `Remove)
-              , Diagnostic_id_map.add_exn acc diag.id diag ))
+              , (match Diagnostic_map.add acc diag.id diag with
+                 | Ok map -> map
+                 | Error _ -> acc) ))
       in
       state.diagnostics <- diagnostics;
       match mode with
@@ -158,7 +124,6 @@ end = struct
 
   let update state (event : Event.t) =
     match event with
-    | Jobs jobs -> Update.jobs state jobs
     | Progress progress -> Update.progress state progress
     | Diagnostics diagnostics -> Update.diagnostics state diagnostics
   ;;
@@ -171,13 +136,13 @@ end = struct
        | Update_status -> ()
        | Refresh ->
          Console.reset ();
-         Diagnostic_id_map.iter state.diagnostics ~f);
+         Diagnostic_map.iter state.diagnostics ~f);
       status state
   ;;
 end
 
-(* A generic loop that continuously fetches events from a [sub] that it opens a
-   poll to and writes them to the [event] bus. *)
+(* A generic loop that continuously fetches events from a [sub] that it opens a poll to
+   and writes them to the [event] bus. *)
 let fetch_loop ~(event : Event.t Fiber_event_bus.t) ~client ~f sub =
   Client.poll client sub
   >>= function
@@ -198,9 +163,8 @@ let fetch_loop ~(event : Event.t Fiber_event_bus.t) ~client ~f sub =
 ;;
 
 (* Main render loop *)
-let render_loop ~(event : Event.t Fiber_event_bus.t) =
+let render_loop state ~(event : Event.t Fiber_event_bus.t) =
   Console.reset ();
-  let state = State.init () in
   let rec loop () =
     Fiber_event_bus.pop event
     >>= function
@@ -219,27 +183,69 @@ let render_loop ~(event : Event.t Fiber_event_bus.t) =
   loop ()
 ;;
 
-let monitor ~quit_on_disconnect () =
+type monitor_options =
+  { quit_on_disconnect : bool
+  ; jobs_options : jobs_options
+  }
+
+and jobs_options =
+  { jobs_display : (module Jobs_display_intf.S with type state = Rpc_running_jobs.State.t)
+  ; max_rows : int
+  ; min_duration_sec : float
+  ; min_display_duration_sec : float
+  }
+
+let monitor
+  { quit_on_disconnect
+  ; jobs_options = { jobs_display; max_rows; min_duration_sec; min_display_duration_sec }
+  }
+  ()
+  =
+  Fiber.with_error_handler ~on_error:(fun exn ->
+    Dune_util.Log.log (fun () -> [ Exn_with_backtrace.pp exn ]);
+    Fiber.never)
+  @@ fun () ->
   Fiber.repeat_while ~init:1 ~f:(fun i ->
     match Dune_rpc_impl.Where.get () with
     | Some where ->
-      let* connect = Client.Connection.connect_exn where in
-      let+ () =
-        Dune_rpc_impl.Client.client
-          connect
-          (Dune_rpc.Initialize.Request.create
-             ~id:(Dune_rpc.Id.make (Sexp.Atom "monitor_cmd")))
-          ~f:(fun client ->
-            let event = Fiber_event_bus.create () in
-            let module Sub = Dune_rpc_private.Public.Sub in
-            Fiber.all_concurrently_unit
-              [ render_loop ~event
-              ; fetch_loop ~event ~client ~f:(fun x -> Event.Jobs x) Sub.running_jobs
-              ; fetch_loop ~event ~client ~f:(fun x -> Event.Progress x) Sub.progress
-              ; fetch_loop ~event ~client ~f:(fun x -> Event.Diagnostics x) Sub.diagnostic
-              ])
-      in
-      Some i
+      let* connect = Client.Connection.connect where in
+      (match connect with
+       | Error msg ->
+         User_message.print msg;
+         Fiber.return (Some i)
+       | Ok connect ->
+         let+ () =
+           Dune_rpc_impl.Client.client
+             connect
+             (Dune_rpc.Initialize.Request.create
+                ~id:(Dune_rpc.Id.make (Sexp.Atom "monitor_cmd")))
+             ~f:(fun client ->
+               let event = Fiber_event_bus.create () in
+               let module Jobs_display = (val jobs_display) in
+               let state =
+                 State.init ~done_status_line:Jobs_display.done_status_line ()
+               in
+               let module Jobs_display = Rpc_running_jobs.Display (Jobs_display) in
+               Fiber.all_concurrently_unit
+                 [ render_loop ~event state
+                 ; fetch_loop
+                     ~event
+                     ~client
+                     ~f:(fun x -> Event.Progress x)
+                     Dune_rpc.Public.Sub.progress
+                 ; fetch_loop
+                     ~event
+                     ~client
+                     ~f:(fun x -> Event.Diagnostics x)
+                     Dune_rpc.Public.Sub.diagnostic
+                 ; Jobs_display.display_jobs
+                     client
+                     ~max_rows
+                     ~min_duration_sec
+                     ~min_display_duration_sec
+                 ])
+         in
+         Some i)
     | None when quit_on_disconnect ->
       User_error.raise [ Pp.text "RPC server not running." ]
     | None ->
@@ -256,6 +262,9 @@ let man =
       "$(b,dune monitor) connects to an RPC server running in the current workspace and \
        displays the build progress and diagnostics. If no server is running or it was \
        disconnected, it will continuously try to reconnect."
+  ; `P
+      "When $(b,--display tui) is passed, it also displays the running jobs together \
+       with their status and timing information."
   ]
 ;;
 
@@ -275,8 +284,13 @@ let command =
             ~doc:"Quit if the connection to the server is lost.")
     in
     let common = Common.forbid_builds common in
-    let config = Common.init ~log_file:No_log_file common in
+    let log_file =
+      Log.File.This
+        (Path.append_local Path.build_dir (Path.Local.of_string ".monitor.log"))
+    in
+    let config = Common.init ~log_file common in
     let stats = Common.stats common in
+    let display = config.display in
     let config =
       Dune_config.for_scheduler
         config
@@ -289,7 +303,21 @@ let command =
       config
       ~on_event:(fun _ _ -> ())
       ~file_watcher:No_watcher
-      (monitor ~quit_on_disconnect)
+      (monitor
+         { quit_on_disconnect
+         ; jobs_options =
+             (* CR-someday alizter: make these configurable. *)
+             { jobs_display =
+                 (match display with
+                  | Tui -> (module Tui_jobs_display)
+                  | Simple _ -> (module Simple_jobs_display))
+             ; max_rows =
+                 10
+                 (* CR-someday alizter: give max_rows a better default, specific to display. *)
+             ; min_duration_sec = 0.5
+             ; min_display_duration_sec = 3.0
+             }
+         })
   in
   Cmd.v info term
 ;;

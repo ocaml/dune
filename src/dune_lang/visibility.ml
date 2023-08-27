@@ -1,4 +1,4 @@
-open Import
+open Stdune
 
 type t =
   | Public
@@ -12,14 +12,14 @@ let to_string = function
 let to_dyn t = Dyn.string (to_string t)
 
 let encode =
-  let open Dune_lang.Encoder in
+  let open Dune_sexp.Encoder in
   function
   | Public -> string "public"
   | Private -> string "private"
 ;;
 
 let decode =
-  let open Dune_lang.Decoder in
+  let open Dune_sexp.Decoder in
   plain_string (fun ~loc -> function
     | "public" -> Public
     | "private" -> Private
@@ -28,13 +28,6 @@ let decode =
         ~loc
         [ Pp.text "Not a valid visibility. Valid visibility is public or private" ])
 ;;
-
-let is_public = function
-  | Public -> true
-  | Private -> false
-;;
-
-let is_private t = not (is_public t)
 
 module Map = struct
   type 'a t =

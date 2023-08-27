@@ -87,6 +87,7 @@ include struct
   module Value = Value
   module Blang = Blang
   module Binary_kind = Binary_kind
+  module Visibility = Visibility
 end
 
 include Dune_engine.No_io

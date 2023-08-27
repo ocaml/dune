@@ -735,12 +735,9 @@ module DB = struct
 
   let by_dir dir =
     let context =
-      match Dune_engine.Dpath.analyse_dir (Path.build dir) with
-      | Build
-          ( Install (With_context (name, _))
-          | Regular (With_context (name, _))
-          | Anonymous_action (With_context (name, _)) ) -> name
-      | _ ->
+      match Install.Context.of_path dir with
+      | Some name -> name
+      | None ->
         Code_error.raise
           "directory does not have an associated context"
           [ "dir", Path.Build.to_dyn dir ]

@@ -4,10 +4,13 @@ module Json = Chrome_trace.Json
 module Event = Chrome_trace.Event
 module Timestamp = Event.Timestamp
 module Action_output_on_success = Execution_parameters.Action_output_on_success
+module Action_output_limit = Execution_parameters.Action_output_limit
 
 let with_directory_annot =
   User_message.Annots.Key.create ~name:"with-directory" Path.to_dyn
 ;;
+
+let limit_output = Dune_output_truncation.limit_output ~message:"TRUNCATED BY DUNE"
 
 module Failure_mode = struct
   type ('a, 'b) t =
@@ -44,10 +47,12 @@ module Io = struct
   type kind =
     | File of Path.t
     | Null
+      (* This argument make no sense for inputs, but it seems annoying to
+         change, especially as this code is meant to change again in #4435. *)
     | Terminal of
-        (* This argument make no sense for inputs, but it seems annoying to
-           change, especially as this code is meant to change again in #4435. *)
-        Action_output_on_success.t
+        { output_on_success : Action_output_on_success.t
+        ; output_limit : Action_output_limit.t
+        }
 
   type status =
     | Keep_open
@@ -82,20 +87,33 @@ module Io = struct
     ; mutable status : status
     }
 
-  let terminal ch output_on_success =
+  let terminal ch ~output_on_success ~output_limit =
     let fd = descr_of_channel ch in
-    { kind = Terminal output_on_success
+    { kind = Terminal { output_on_success; output_limit }
     ; fd = lazy fd
     ; channel = lazy ch
     ; status = Keep_open
     }
   ;;
 
-  let make_stdout output_on_success = terminal (Out_chan stdout) output_on_success
-  let stdout = make_stdout Print
-  let make_stderr output_on_success = terminal (Out_chan stderr) output_on_success
-  let stderr = make_stderr Print
-  let stdin = terminal (In_chan stdin) Print
+  let make_stdout = terminal (Out_chan stdout)
+
+  let stdout =
+    make_stdout ~output_on_success:Print ~output_limit:Action_output_limit.default
+  ;;
+
+  let make_stderr = terminal (Out_chan stderr)
+
+  let stderr =
+    make_stderr ~output_on_success:Print ~output_limit:Action_output_limit.default
+  ;;
+
+  let stdin =
+    terminal
+      (In_chan stdin)
+      ~output_on_success:Print
+      ~output_limit:Action_output_limit.default
+  ;;
 
   let null (type a) (mode : a mode) : a t =
     let fd =
@@ -152,8 +170,14 @@ module Io = struct
 
   let output_on_success (out : output t) =
     match out.kind with
-    | Terminal x -> x
+    | Terminal { output_on_success; _ } -> output_on_success
     | _ -> Print
+  ;;
+
+  let output_limit (out : output t) =
+    match out.kind with
+    | Terminal { output_limit; _ } -> output_limit
+    | _ -> Action_output_limit.default
   ;;
 end
 
@@ -232,9 +256,8 @@ let command_line_enclosers
 ;;
 
 let command_line ~prog ~args ~dir ~stdout_to ~stderr_to ~stdin_from =
-  let s = String.quote_list_for_shell (prog :: args) in
   let prefix, suffix = command_line_enclosers ~dir ~stdout_to ~stderr_to ~stdin_from in
-  prefix ^ s ^ suffix
+  prefix ^ String.quote_list_for_shell (prog :: args) ^ suffix
 ;;
 
 module Exit_status = struct
@@ -647,6 +670,8 @@ type t =
   ; stderr : Path.t option
   ; stdout_on_success : Action_output_on_success.t
   ; stderr_on_success : Action_output_on_success.t
+  ; stdout_limit : Action_output_limit.t
+  ; stderr_limit : Action_output_limit.t
   }
 
 module Result = struct
@@ -661,6 +686,7 @@ module Result = struct
 
     type t =
       { on_success : Action_output_on_success.t
+      ; limit : Action_output_limit.t
       ; mutable unexpected_output : bool
       ; mutable state : state
       }
@@ -672,7 +698,7 @@ module Result = struct
       | No_capture -> ""
       | Read s -> s
       | File p ->
-        let contents = Stdune.Io.read_file p in
+        let contents = Stdune.Io.read_file p |> limit_output ~n:t.limit in
         Temp.destroy File p;
         t.state <- Read contents;
         contents
@@ -689,13 +715,13 @@ module Result = struct
       t.state <- Closed
     ;;
 
-    let make f on_success =
+    let make f ~on_success ~limit =
       let state =
         match f with
         | None -> No_capture
         | Some p -> File p
       in
-      { state; on_success; unexpected_output = false }
+      { state; on_success; limit; unexpected_output = false }
     ;;
 
     let check_unexpected_output_and_swallow_on_success t =
@@ -723,12 +749,20 @@ module Result = struct
   ;;
 
   let make
-    ({ stdout_on_success; stderr_on_success; stdout; stderr; _ } : process)
+    ({ stdout_on_success
+     ; stderr_on_success
+     ; stdout_limit
+     ; stderr_limit
+     ; stdout
+     ; stderr
+     ; _
+     } :
+      process)
     (process_info : Proc.Process_info.t)
     fail_mode
     =
-    let stdout = Out.make stdout stdout_on_success in
-    let stderr = Out.make stderr stderr_on_success in
+    let stdout = Out.make stdout ~on_success:stdout_on_success ~limit:stdout_limit in
+    let stderr = Out.make stderr ~on_success:stderr_on_success ~limit:stderr_limit in
     let exit_status : Exit_status.t =
       match process_info.status with
       | WEXITED n when Failure_mode.accepted_codes fail_mode n ->
@@ -843,6 +877,8 @@ let spawn
   =
   let stdout_on_success = Io.output_on_success stdout
   and stderr_on_success = Io.output_on_success stderr in
+  let stdout_limit = Io.output_limit stdout
+  and stderr_limit = Io.output_limit stderr in
   let (stdout_capture, stdout), (stderr_capture, stderr) =
     match stdout.kind, stderr.kind with
     | (Terminal _, _ | _, Terminal _) when !Clflags.capture_outputs ->
@@ -859,7 +895,10 @@ let spawn
       in
       let stderr =
         match stdout.kind, stderr.kind with
-        | Terminal Print, Terminal Print | Terminal Swallow, Terminal Swallow ->
+        | ( Terminal { output_on_success = Print; _ }
+          , Terminal { output_on_success = Print; _ } )
+        | ( Terminal { output_on_success = Swallow; _ }
+          , Terminal { output_on_success = Swallow; _ } ) ->
           (* We don't merge when both are [Must_be_empty]. If we did and an
              action had unexpected output on both stdout and stderr the
              error message would be "has unexpected output on stdout". With
@@ -932,6 +971,8 @@ let spawn
   ; stderr = stderr_capture
   ; stdout_on_success
   ; stderr_on_success
+  ; stdout_limit
+  ; stderr_limit
   }
 ;;
 

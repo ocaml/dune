@@ -62,6 +62,9 @@ let git =
 ;;
 
 let dune = Path.of_string (Filename.concat Fpath.initial_cwd Sys.argv.(1))
+let output_limit = Dune_engine.Execution_parameters.Action_output_limit.default
+let make_stdout () = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit
+let make_stderr () = Process.Io.make_stderr ~output_on_success:Swallow ~output_limit
 
 module Package = struct
   type t =
@@ -73,8 +76,8 @@ module Package = struct
   let make org name = { org; name }
 
   let clone t =
-    let stdout_to = Process.Io.make_stdout Swallow in
-    let stderr_to = Process.Io.make_stderr Swallow in
+    let stdout_to = make_stdout () in
+    let stderr_to = make_stderr () in
     let stdin_from = Process.Io.(null In) in
     Process.run
       Strict
@@ -104,8 +107,8 @@ let prepare_workspace () =
 
 let dune_build ~name ~sandbox =
   let stdin_from = Process.(Io.null In) in
-  let stdout_to = Process.Io.make_stdout Swallow in
-  let stderr_to = Process.Io.make_stderr Swallow in
+  let stdout_to = make_stdout () in
+  let stderr_to = make_stderr () in
   let gc_dump = Temp.create File ~prefix:"gc_stat" ~suffix:name in
   let open Fiber.O in
   (* Build with timings and gc stats *)
@@ -140,8 +143,8 @@ let dune_build ~name ~sandbox =
 
 let dune_clean () =
   let stdin_from = Process.(Io.null In) in
-  let stdout_to = Process.Io.make_stdout Swallow in
-  let stderr_to = Process.Io.make_stderr Swallow in
+  let stdout_to = make_stdout () in
+  let stderr_to = make_stderr () in
   Process.run Strict ~display:Quiet ~stdout_to ~stderr_to ~stdin_from dune [ "clean" ]
 ;;
 

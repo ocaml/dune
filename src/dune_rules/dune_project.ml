@@ -583,7 +583,7 @@ module Toggle = struct
     let decode =
       match check with
       | None -> decode
-      | Some check -> check >>= fun () -> decode
+      | Some check -> check >>> decode
     in
     field_o name decode
   ;;

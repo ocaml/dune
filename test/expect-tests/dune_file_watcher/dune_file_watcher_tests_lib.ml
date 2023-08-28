@@ -46,8 +46,7 @@ let get_events ~try_to_get_events ~expected =
       assert (n > 0);
       retry_loop ~period:0.01 ~timeout:3.0 ~f:(fun () ->
         let open Option.O in
-        try_to_get_events ()
-        >>= fun events ->
+        let* events = try_to_get_events () in
         collected := !collected @ events;
         if List.length !collected >= expected then Some `Enough else None)
   in

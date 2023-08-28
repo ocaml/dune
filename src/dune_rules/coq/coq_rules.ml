@@ -478,8 +478,7 @@ let deps_of ~dir ~boot_type ~wrapper_name ~mode coq_module =
     in
     Path.set_extension ~ext (Coq_module.source coq_module)
   in
-  get_dep_map ~dir ~wrapper_name
-  >>= fun dep_map ->
+  let* dep_map = get_dep_map ~dir ~wrapper_name in
   match Dep_map.find dep_map vo_target with
   | None ->
     Code_error.raise

@@ -300,9 +300,7 @@ module Context = struct
     let decode =
       let+ common = Common.decode
       and+ name =
-        field_o
-          "name"
-          (Dune_lang.Syntax.since syntax (1, 10) >>= fun () -> Context_name.decode)
+        field_o "name" (Dune_lang.Syntax.since syntax (1, 10) >>> Context_name.decode)
       and+ lock =
         (* TODO
            1. guard before version check before releasing

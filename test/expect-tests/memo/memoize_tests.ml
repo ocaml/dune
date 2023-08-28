@@ -408,7 +408,12 @@ let%expect_test "fib linked list" =
   let seventh = run (Memo.exec memo 7) in
   printf "7th: %d\n" seventh.value;
   printf "prev: %d\n" (run (force seventh.prev_cell)).value;
-  printf "prev: %d\n" (run (force seventh.prev_cell >>= fun x -> force x.prev_cell)).value;
+  printf
+    "prev: %d\n"
+    (run
+       (let* x = force seventh.prev_cell in
+        force x.prev_cell))
+      .value;
   [%expect
     {|
     computing 4

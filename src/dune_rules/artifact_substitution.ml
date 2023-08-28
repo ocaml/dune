@@ -53,10 +53,14 @@ type conf =
 
 let mac_codesign_hook ~codesign path =
   let stdout_to =
-    Process.Io.make_stdout Execution_parameters.Action_output_on_success.Swallow
+    Process.Io.make_stdout
+      ~output_on_success:Swallow
+      ~output_limit:Execution_parameters.Action_output_limit.default
   in
   let stderr_to =
-    Process.Io.make_stderr Execution_parameters.Action_output_on_success.Swallow
+    Process.Io.make_stderr
+      ~output_on_success:Swallow
+      ~output_limit:Execution_parameters.Action_output_limit.default
   in
   Process.run
     ~stdout_to

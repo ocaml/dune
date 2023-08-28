@@ -626,10 +626,14 @@ let exec
     ; env
     ; stdout_to =
         Process.Io.make_stdout
-          (Execution_parameters.action_stdout_on_success execution_parameters)
+          ~output_on_success:
+            (Execution_parameters.action_stdout_on_success execution_parameters)
+          ~output_limit:(Execution_parameters.action_stdout_limit execution_parameters)
     ; stderr_to =
         Process.Io.make_stderr
-          (Execution_parameters.action_stderr_on_success execution_parameters)
+          ~output_on_success:
+            (Execution_parameters.action_stderr_on_success execution_parameters)
+          ~output_limit:(Execution_parameters.action_stderr_limit execution_parameters)
     ; stdin_from = Process.Io.null In
     ; prepared_dependencies = DAP.Dependency.Set.empty
     ; exit_codes = Predicate.create (Int.equal 0)

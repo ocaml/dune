@@ -114,6 +114,7 @@ let dune_build ~name ~sandbox =
   (* Build with timings and gc stats *)
   let+ times =
     Process.run_with_times
+      Strict
       dune
       ~display:Quiet
       ~stdin_from

@@ -284,10 +284,7 @@ module Session = struct
         ; Pp.text ">>"
         ];
     match t.state with
-    | Closed ->
-      Code_error.raise
-        "attempting to write to a closed channel"
-        [ "sexp", Dyn.(list Sexp.to_dyn) sexps ]
+    | Closed -> Fiber.return (Error `Closed)
     | Open { fd; out_buf; write_mutex; _ } ->
       let* res =
         Fiber.Mutex.with_lock write_mutex ~f:(fun () ->

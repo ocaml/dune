@@ -18,6 +18,7 @@ module Target_promotion = Target_promotion
 module Build_context = Build_context
 module Build_config = Build_config
 module Build_system = Build_system
+module Build_system_error = Build_system_error
 module Load_rules = Load_rules
 module Clflags = Clflags
 module Response_file = Response_file

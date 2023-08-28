@@ -14,10 +14,10 @@ let absolutize_paths ~dir (loc : Loc.t) =
   |> Loc.to_lexbuf_loc
 ;;
 
-let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t =
+let diagnostic_of_error : Build_system_error.t -> Dune_rpc_private.Diagnostic.t =
   fun m ->
   let dir =
-    let dir = Build_system.Error.dir m in
+    let dir = Build_system_error.dir m in
     Option.map dir ~f:Path.drop_optional_build_context_maybe_sandboxed
   in
   let make_loc loc =
@@ -25,7 +25,7 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t 
     absolutize_paths ~dir loc
   in
   let message, related =
-    match Build_system.Error.description m with
+    match Build_system_error.description m with
     | `Exn e ->
       (* CR-someday jeremiedimino: Use [Report_error.get_user_message] here. *)
       User_message.make [ Pp.text (Printexc.to_string e.exn) ], []
@@ -34,10 +34,10 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t 
   let loc = Option.map message.loc ~f:make_loc in
   let make_message pars = Pp.map_tags (Pp.concat pars) ~f:(fun _ -> ()) in
   let id =
-    Build_system.Error.id m |> Build_system.Error.Id.to_int |> Diagnostic.Id.create
+    Build_system_error.id m |> Build_system_error.Id.to_int |> Diagnostic.Id.create
   in
   let promotion =
-    match Build_system.Error.promotion m with
+    match Build_system_error.promotion m with
     | None -> []
     | Some { in_source; in_build } ->
       [ { Diagnostic.Promotion.in_source =
@@ -63,7 +63,7 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t 
   }
 ;;
 
-let diagnostic_event_of_error_event (e : Build_system.Error.Event.t) : Diagnostic.Event.t =
+let diagnostic_event_of_error_event (e : Build_system_error.Event.t) : Diagnostic.Event.t =
   match e with
   | Remove e -> Remove (diagnostic_of_error e)
   | Add e -> Add (diagnostic_of_error e)

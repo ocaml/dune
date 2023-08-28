@@ -1121,21 +1121,24 @@ let run_with_times
   ?stdin_from
   ?env
   ?metadata
+  fail_mode
   prog
   args
   =
-  run_internal
-    ?dir
-    ~display
-    ?stdout_to
-    ?stderr_to
-    ?stdin_from
-    ?env
-    ?metadata
-    Strict
-    prog
-    args
-  >>| snd
+  let+ code, times =
+    run_internal
+      ?dir
+      ~display
+      ?stdout_to
+      ?stderr_to
+      ?stdin_from
+      ?env
+      ?metadata
+      fail_mode
+      prog
+      args
+  in
+  Failure_mode.map_result fail_mode code ~f:(fun () -> times)
 ;;
 
 let run_capture_gen

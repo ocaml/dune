@@ -255,24 +255,31 @@ let extend_action t ~dir build =
 ;;
 
 let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =
-  let build = extend_action t build ~dir in
-  Rule.make
-    ?mode
-    ~info:(Rule.Info.of_loc_opt loc)
-    ~context:(Some (Context.build_context (Env_tree.context t)))
-    ~targets
-    build
+  match mode with
+  | Some mode when Rule_mode_decoder.is_ignored mode ~until_clean:`Keep -> None
+  | _ ->
+    let build = extend_action t build ~dir in
+    Some
+      (Rule.make
+         ?mode
+         ~info:(Rule.Info.of_loc_opt loc)
+         ~context:(Some (Context.build_context (Env_tree.context t)))
+         ~targets
+         build)
 ;;
 
 let add_rule t ?mode ?loc ~dir build =
-  let rule = make_rule t ?mode ?loc ~dir build in
-  Rules.Produce.rule rule
+  match make_rule t ?mode ?loc ~dir build with
+  | None -> Memo.return ()
+  | Some rule -> Rules.Produce.rule rule
 ;;
 
 let add_rule_get_targets t ?mode ?loc ~dir build =
-  let rule = make_rule t ?mode ?loc ~dir build in
-  let+ () = Rules.Produce.rule rule in
-  rule.targets
+  match make_rule t ?mode ?loc ~dir build with
+  | None -> Memo.return None
+  | Some rule ->
+    let+ () = Rules.Produce.rule rule in
+    Some rule.targets
 ;;
 
 let add_rules t ?loc ~dir builds = Memo.parallel_iter builds ~f:(add_rule ?loc t ~dir)

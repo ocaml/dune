@@ -229,7 +229,7 @@ let handler (t : _ t Fdecl.t) action_runner_server handle : 'a Dune_rpc_server.H
     Handler.create ~on_terminate ~on_init ~version:Dune_rpc_private.Version.latest ()
   in
   let () =
-    let module Error = Build_system.Error in
+    let module Error = Build_system_error in
     let diff ~last ~(now : Error.Set.t) =
       match last with
       | None ->
@@ -386,8 +386,8 @@ let handler (t : _ t Fdecl.t) action_runner_server handle : 'a Dune_rpc_server.H
   let () =
     let f _ () =
       let errors = Fiber.Svar.read Build_system.errors in
-      Build_system.Error.Set.current errors
-      |> Build_system.Error.Id.Map.values
+      Build_system_error.Set.current errors
+      |> Build_system_error.Id.Map.values
       |> List.map ~f:Diagnostics.diagnostic_of_error
       |> Fiber.return
     in

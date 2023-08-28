@@ -14,7 +14,7 @@ let test ~dir ~f main =
   Dune_console.printf "---- Original ----";
   f main;
   Dune_console.printf "------- RPC ------";
-  Dune_engine.Build_system.Error.For_tests.make ~description ~dir ~promotion:None ()
+  Dune_engine.Build_system_error.For_tests.make ~description ~dir ~promotion:None ()
   |> Dune_rpc_impl.Diagnostics.For_tests.diagnostic_of_error
   |> Dune_rpc_private.Diagnostic.to_user_message
   |> f

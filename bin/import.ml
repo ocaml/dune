@@ -6,6 +6,7 @@ include struct
   open Dune_engine
   module Build_config = Build_config
   module Build_system = Build_system
+  module Build_system_error = Build_system_error
   module Load_rules = Load_rules
   module Hooks = Hooks
   module Action_builder = Action_builder
@@ -157,7 +158,7 @@ module Scheduler = struct
         | Failure ->
           let failure_message =
             match
-              Build_system.Error.(
+              Build_system_error.(
                 Id.Map.cardinal (Set.current (Fiber.Svar.read Build_system.errors)))
             with
             | 1 -> Pp.textf "Had 1 error"

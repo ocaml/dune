@@ -29,8 +29,12 @@ module Fs_memo_event = struct
   ;;
 
   let create ~kind ~path =
-    if Path.is_in_build_dir path
-    then Code_error.raise "Fs_memo.Event.create called on a build path" [];
+    (match Path.as_in_build_dir path with
+     | None -> ()
+     | Some dir ->
+       Code_error.raise
+         "Fs_memo.Event.create called on a build path"
+         [ "path", Path.Build.to_dyn dir ]);
     { path; kind }
   ;;
 end

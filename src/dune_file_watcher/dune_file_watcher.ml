@@ -362,7 +362,7 @@ let select_watcher_backend () =
   else (
     match Platform.OS.value with
     | Windows -> `Fswatch_win
-    | Linux | Darwin | Other -> fswatch_backend ())
+    | Linux | Darwin | FreeBSD | OpenBSD | NetBSD | Other -> fswatch_backend ())
 ;;
 
 let prepare_sync () =

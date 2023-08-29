@@ -121,6 +121,9 @@ let analyse_dir (fn : Path.t) =
 type t = Path.t
 
 let encode p =
+  (* CR rgrinberg: only reason this lives here is to implement
+     [$ dune rules]. Seems like it should just live there along with all the
+     other encoders in the engine. *)
   let make constr arg =
     Dune_sexp.List [ Dune_sexp.atom constr; Dune_sexp.atom_or_quoted_string arg ]
   in
@@ -131,58 +134,9 @@ let encode p =
   | External p -> make "External" (Path.External.to_string p)
 ;;
 
-let decode =
-  let open Dune_sexp.Decoder in
-  let external_ =
-    plain_string (fun ~loc t ->
-      if Filename.is_relative t
-      then User_error.raise ~loc [ Pp.text "Absolute path expected" ]
-      else Path.parse_string_exn ~loc t)
-  in
-  sum
-    [ ("In_build_dir", string >>| Path.(relative build_dir))
-    ; ("In_source_tree", string >>| Path.(relative root))
-    ; "External", external_
-    ]
-;;
-
-module Local = struct
-  let encode ~dir:from p =
-    let open Dune_sexp.Encoder in
-    string (Path.reach ~from p)
-  ;;
-
-  let decode ~dir =
-    let open Dune_sexp.Decoder in
-    let+ error_loc, path = located string in
-    Path.relative ~error_loc dir path
-  ;;
-end
-
 module Build = struct
   type t = Path.Build.t
 
-  let encode p =
-    let str = Path.reach ~from:Path.build_dir (Path.build p) in
-    Dune_sexp.atom_or_quoted_string str
-  ;;
-
-  let decode =
-    let open Dune_sexp.Decoder in
-    let+ base = string in
-    Path.Build.(relative root) base
-  ;;
-
   let install_dir = install_dir
   let anonymous_actions_dir = anonymous_actions_dir
-end
-
-module External = struct
-  let encode p = Dune_sexp.Encoder.string (Path.External.to_string p)
-
-  let decode =
-    let open Dune_sexp.Decoder in
-    let+ path = string in
-    Path.External.of_string path
-  ;;
 end

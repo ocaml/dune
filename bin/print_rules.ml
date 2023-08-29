@@ -113,7 +113,11 @@ let rec encode : Action.For_shell.t -> Dune_lang.t =
 
 let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
   let sexp_of_action action = Action.for_shell action |> encode in
-  let paths ps = Dune_lang.Encoder.list Dpath.Build.encode (Path.Build.Set.to_list ps) in
+  let paths ps =
+    Dune_lang.Encoder.list
+      (fun p -> Dune_sexp.atom_or_quoted_string (Path.Build.to_string p))
+      (Path.Build.Set.to_list ps)
+  in
   let sexp =
     Dune_lang.Encoder.record
       (List.concat

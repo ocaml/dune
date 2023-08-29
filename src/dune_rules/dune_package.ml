@@ -33,7 +33,7 @@ module Lib = struct
   let encode ~package_root ~stublibs { info; main_module_name } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
-    let path = Dpath.Local.encode ~dir:package_root in
+    let path = Dune_lang.Path.Local.encode ~dir:package_root in
     let paths name f = field_l name path f in
     let mode_paths name (xs : Path.t Mode.Dict.List.t) =
       field_l name sexp (Mode.Dict.List.encode path xs)
@@ -135,7 +135,7 @@ module Lib = struct
 
   let decode ~(lang : Vfile.Lang.Instance.t) ~base =
     let open Dune_lang.Decoder in
-    let path = Dpath.Local.decode ~dir:base in
+    let path = Dune_lang.Path.Local.decode ~dir:base in
     let field_l s x = field ~default:[] s (repeat x) in
     let libs s = field_l s (located Lib_name.decode) in
     let paths s = field_l s path in
@@ -375,7 +375,7 @@ let decode ~lang ~dir =
     field
       ~default:[]
       "sections"
-      (repeat (pair (located Section.decode) (Dpath.Local.decode ~dir)))
+      (repeat (pair (located Section.decode) (Dune_lang.Path.Local.decode ~dir)))
   and+ sites =
     field ~default:[] "sites" (repeat (pair (located Site.decode) Section.decode))
   and+ files =
@@ -439,7 +439,7 @@ let encode ~dune_version { entries; name; version; dir; sections; sites; files }
       ; field_o "version" string version
       ; field_l
           "sections"
-          (pair Section.encode (Dpath.Local.encode ~dir))
+          (pair Section.encode (Dune_lang.Path.Local.encode ~dir))
           (Section.Map.to_list sections)
       ; field_l "sites" (pair Site.encode Section.encode) sites
       ; field_l "files" (pair Section.encode (list Install.Entry.Dst.encode)) files

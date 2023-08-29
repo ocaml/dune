@@ -45,7 +45,7 @@ Now we try loading the rules in output/a and make sure that nothing is deleted:
   Loading build directory _build/default/.dune
   Loading build directory _build
   ((deps ())
-   (targets ((files ()) (directories (default/output))))
+   (targets ((files ()) (directories (_build/default/output))))
    (context default)
    (action
     (chdir

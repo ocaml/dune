@@ -2,36 +2,92 @@ open Import
 open Lwd.O
 module Unicode = Drawing.Unicode
 
-let create () = Term.create ~nosig:false ~output:Unix.stderr ()
-let bytes = Bytes.make 64 '0'
-let sigcont_pipe = lazy (Unix.pipe ~cloexec:true ())
+module type Term = sig
+  (* API for terminals. This is more general than Notty_unix.Term. *)
+  type t
 
-let term =
-  let setup =
-    lazy
-      (Unix.set_nonblock (Lazy.force sigcont_pipe |> fst);
-       let term = ref (create ()) in
-       Sys.set_signal Sys.sigcont
-       @@ Sys.Signal_handle
-            (fun _ ->
-              Term.release !term;
-              term := create ();
-              assert (1 = Unix.single_write (Lazy.force sigcont_pipe |> snd) bytes 0 1));
-       let rec old =
-         lazy
-           (Sys.signal Sys.sigtstp
-            @@ Sys.Signal_handle
-                 (fun i ->
-                   Term.release !term;
-                   match Lazy.force old with
-                   | Sys.Signal_handle f -> f i
-                   | _ -> Unix.kill (Unix.getpid ()) Sys.sigstop))
-       in
-       ignore (Lazy.force old);
-       term)
-  in
-  fun () -> !(Lazy.force setup)
-;;
+  (* Get the size of the terminal *)
+  val size : t -> int * int
+
+  (* Get the current terminal. *)
+  val term : unit -> t
+
+  (* Render a Notty image to the terminal. *)
+  val image : t -> Notty.image -> unit
+
+  (* Release the terminal. *)
+  val release : t -> unit
+
+  (* [next ()] waits for the next event or timeout. If the event is a resize event, the
+     terminal is resized and [next ()] returns [`Restore]. *)
+  val next : float -> [ `Event | `Timeout | `Restore ]
+
+  (* Terminal events including mouse actions and keypresses. *)
+  val event
+    :  t
+    -> [ `End
+       | `Key of Notty.Unescape.key
+       | `Mouse of Ui.mouse
+       | `Paste of Notty.Unescape.paste
+       | `Resize of int * int
+       ]
+end
+
+(* The current implementation of Term is based on Notty_unix.Term. In the future this
+   should be swapable for a windows one. *)
+module Term : Term = struct
+  include Notty_unix.Term
+
+  let create () = Notty_unix.Term.create ~nosig:false ~output:Unix.stderr ()
+  let bytes = Bytes.make 64 '0'
+  let sigcont_pipe = lazy (Unix.pipe ~cloexec:true ())
+
+  let term =
+    let setup =
+      lazy
+        (Unix.set_nonblock (Lazy.force sigcont_pipe |> fst);
+         let term = ref (create ()) in
+         Sys.set_signal Sys.sigcont
+         @@ Sys.Signal_handle
+              (fun _ ->
+                Notty_unix.Term.release !term;
+                term := create ();
+                assert (1 = Unix.single_write (Lazy.force sigcont_pipe |> snd) bytes 0 1));
+         let rec old =
+           lazy
+             (Sys.signal Sys.sigtstp
+              @@ Sys.Signal_handle
+                   (fun i ->
+                     Notty_unix.Term.release !term;
+                     match Lazy.force old with
+                     | Sys.Signal_handle f -> f i
+                     | _ -> Unix.kill (Unix.getpid ()) Sys.sigstop))
+         in
+         ignore (Lazy.force old);
+         term)
+    in
+    fun () -> !(Lazy.force setup)
+  ;;
+
+  let next time_budget =
+    (* We check for any user input and handle it. If we go over the [time_budget] we give
+       up and continue. *)
+    let sigcont_r, _ = Lazy.force sigcont_pipe in
+    match Unix.select [ Unix.stdin; sigcont_r ] [] [] time_budget with
+    | exception Unix.Unix_error (EINTR, _, _) -> `Restore
+    | [], _, _ -> `Timeout
+    | fds, _, _ ->
+      (match List.exists fds ~f:(Poly.equal sigcont_r) with
+       | false -> `Event
+       | true ->
+         (match Unix.read sigcont_r bytes 0 1 with
+          | exception Unix.Unix_error (EBADF, _, _) -> assert false
+          | (exception Unix.Unix_error _) | _ -> ());
+         (* backgrounding could have changed the cursor settings for example. we need to
+            restore all this stuff *)
+         `Restore)
+  ;;
+end
 
 (* style for diving visual elements like borders or rules *)
 let divider_attr = A.(fg red)
@@ -288,7 +344,7 @@ module Console_backend = struct
   let set_state =
     let update equal v x = if not (equal (Lwd.peek v) x) then Lwd.set v x in
     fun (state : Dune_threaded_console.state) ->
-      let size = Term.size (term ()) in
+      let size = Term.size (Term.term ()) in
       update (Tuple.T2.equal Int.equal Int.equal) term_size size;
       update
         (Option.equal (fun x y ->
@@ -303,7 +359,7 @@ module Console_backend = struct
   ;;
 
   let render (state : Dune_threaded_console.state) =
-    let size = Term.size (term ()) in
+    let size = Term.size (Term.term ()) in
     (* Update the persistant values tracked by other components. *)
     set_state state;
     (* This is a standard [Lwd] routine for creating a document. *)
@@ -318,7 +374,7 @@ module Console_backend = struct
       stabilize ()
     in
     (* Finally we use Notty to show the image. *)
-    Term.image (term ()) image
+    Term.image (Term.term ()) image
   ;;
 
   (* Update any global state and finish *)
@@ -331,31 +387,13 @@ module Console_backend = struct
 
   let rec handle_user_events ~now ~time_budget mutex (state : Dune_threaded_console.state)
     =
-    (* We check for any user input and handle it. If we go over the [time_budget] we give
-       up and continue. *)
-    let input_fds =
-      let sigcont_r, _ = Lazy.force sigcont_pipe in
-      match Unix.select [ Unix.stdin; sigcont_r ] [] [] time_budget with
-      | exception Unix.Unix_error (EINTR, _, _) -> `Restore
-      | [], _, _ -> `Timeout
-      | fds, _, _ ->
-        (match List.exists fds ~f:(Poly.equal sigcont_r) with
-         | false -> `Event
-         | true ->
-           (match Unix.read sigcont_r bytes 0 1 with
-            | exception Unix.Unix_error (EBADF, _, _) -> assert false
-            | (exception Unix.Unix_error _) | _ -> ());
-           (* backgrounding could have changed the cursor settings for example. we need to
-              restore all this stuff *)
-           `Restore)
-    in
-    match input_fds with
+    match Term.next time_budget with
     | `Restore -> set_dirty ~mutex state
     | `Timeout ->
       now +. time_budget
       (* Nothing to do, we return the time at the end of the time budget. *)
     | `Event ->
-      (match Term.event (term ()) with
+      (match Term.event (Term.term ()) with
        | `End -> set_dirty ~mutex state
        (* on resize we wish to redraw so the state is set to dirty *)
        | `Resize (_width, _height) -> set_dirty ~mutex state
@@ -374,7 +412,7 @@ module Console_backend = struct
   ;;
 
   let reset_flush_history () = ()
-  let finish () = Term.release (term ())
+  let finish () = Term.release (Term.term ())
 end
 
 let backend =

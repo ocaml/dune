@@ -1,6 +1,5 @@
 include Stdune
 module Ui = Nottui.Ui
-module Term = Notty_unix.Term
 module A = Notty.A
 module I = Notty.I
 module Renderer = Nottui.Renderer

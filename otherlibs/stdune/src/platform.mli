@@ -7,6 +7,9 @@ module OS : sig
     | Darwin
     | Linux
     | Windows
+    | FreeBSD
+    | NetBSD
+    | OpenBSD
     | Other
 
   (** [value] is the current os we're running on. *)

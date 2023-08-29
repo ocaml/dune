@@ -109,7 +109,7 @@ module Copyfile = struct
     match Platform.OS.value with
     | Darwin -> `Copyfile
     | Linux -> `Sendfile
-    | Windows | Other -> `Nothing
+    | _ -> `Nothing
   ;;
 
   let sendfile_with_fallback =

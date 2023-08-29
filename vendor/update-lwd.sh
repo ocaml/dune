@@ -24,6 +24,11 @@ cp -v -R $SRC/lib/lwd/lwd.{ml,mli} lwd/lwd
 cp -v -R $SRC/lib/lwd/lwd_utils.{ml,mli} lwd/lwd
 cp -v -R $SRC/lib/nottui/nottui.{ml,mli} lwd/nottui
 
+# nottui.ml ends with a Ui_loop module that requires Notty_unix
+# we truncate the file to remove this
+# when updating the source this will need to be updated or eventually forked
+sed -i '795,$ d' lwd/nottui/nottui.ml
+sed -i '335,$ d' lwd/nottui/nottui.mli
 
 git checkout lwd/{lwd,nottui}/dune
 git add -A .

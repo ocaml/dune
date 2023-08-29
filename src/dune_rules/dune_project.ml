@@ -1079,8 +1079,8 @@ let info t = t.info
 let update_execution_parameters t ep =
   ep
   |> Execution_parameters.set_expand_aliases_in_sandbox t.expand_aliases_in_sandbox
-  |> Execution_parameters.set_add_workspace_root_to_build_path_prefix_map
-       t.map_workspace_root
+  |> Execution_parameters.set_workspace_root_to_build_path_prefix_map
+       (if t.map_workspace_root then Set "/workspace_root" else Unset)
   |> Execution_parameters.set_should_remove_write_permissions_on_generated_files
        (t.dune_version >= (2, 4))
 ;;

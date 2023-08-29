@@ -217,29 +217,29 @@ end = struct
   let odoc_input t = t
 end
 
-let odoc_base_flags sctx build_dir =
+let odoc_base_flags sctx quiet build_dir =
   let open Memo.O in
   let+ conf = Super_context.env_node sctx ~dir:build_dir >>= Env_node.odoc in
-  match conf.warnings with
-  | Fatal -> Command.Args.A "--warn-error"
+  match conf.Env_node.Odoc.warnings with
+  | Fatal ->
+    (* if quiet has been passed, we're running odoc on an external
+       artifact (e.g. stdlib.cmti) - so no point in warn-error *)
+    if quiet then Command.Args.S [] else A "--warn-error"
   | Nonfatal -> S []
 ;;
 
-let run_odoc sctx ~dir command ~flags_for args =
+let odoc_program sctx dir =
+  Super_context.resolve_program sctx ~dir "odoc" ~loc:None ~hint:"opam install odoc"
+;;
+
+let run_odoc sctx ~dir command ~quiet ~flags_for args =
   let build_dir = Super_context.context sctx |> Context.build_dir in
   let open Memo.O in
-  let* program =
-    Super_context.resolve_program
-      sctx
-      ~dir:build_dir
-      "odoc"
-      ~loc:None
-      ~hint:"opam install odoc"
-  in
+  let* program = odoc_program sctx build_dir in
   let+ base_flags =
     match flags_for with
     | None -> Memo.return Command.Args.empty
-    | Some path -> odoc_base_flags sctx path
+    | Some path -> odoc_base_flags sctx quiet path
   in
   let deps = Action_builder.env_var "ODOC_SYNTAX" in
   let open Action_builder.With_targets.O in
@@ -279,6 +279,7 @@ let compile_module
           sctx
           ~dir:doc_dir
           "compile"
+          ~quiet:false
           ~flags_for:(Some odoc_file)
           [ A "-I"
           ; Path doc_dir
@@ -316,6 +317,7 @@ let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
       sctx
       ~dir:(Path.build doc_dir)
       "compile"
+      ~quiet:false
       ~flags_for:(Some odoc_input)
       [ Command.Args.dyn includes
       ; As [ "--pkg"; Package.Name.to_string pkg ]
@@ -357,6 +359,7 @@ let link_odoc_rules sctx (odoc_file : odoc_artefact) ~pkg ~requires =
       sctx
       ~dir:(Path.build (Paths.html_root ctx))
       "link"
+      ~quiet:false
       ~flags_for:(Some odoc_file.odoc_file)
       [ odoc_include_flags ctx pkg requires
       ; A "-o"
@@ -416,6 +419,7 @@ let setup_generate sctx (odoc_file : odoc_artefact) out =
       sctx
       ~dir:(Path.build (Paths.html_root ctx))
       "html-generate"
+      ~quiet:false
       ~flags_for:None
       [ A "-o"
       ; Path (Path.build (Paths.html_root ctx))
@@ -445,6 +449,7 @@ let setup_css_rule sctx =
         sctx
         ~dir:(Path.build (Context.build_dir ctx))
         "support-files"
+        ~quiet:false
         ~flags_for:None
         [ A "-o"; Path (Path.build dir) ]
     in
@@ -561,13 +566,7 @@ let libs_of_pkg ctx ~pkg =
 ;;
 
 let entry_modules_by_lib sctx lib =
-  let info = Lib.Local.info lib in
-  let dir = Lib_info.src_dir info in
-  let name = Lib.name (Lib.Local.to_lib lib) in
-  Dir_contents.get sctx ~dir
-  >>= Dir_contents.ocaml
-  >>| Ml_sources.modules ~for_:(Library name)
-  >>| Modules.entry_modules
+  Dir_contents.modules_of_local_lib sctx lib >>| Modules.entry_modules
 ;;
 
 let entry_modules sctx ~pkg =

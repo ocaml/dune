@@ -2,15 +2,29 @@
 
 module OS : sig
   (** Detect the operating system. *)
-
   type t =
-    | Darwin
-    | Linux
-    | Windows
-    | FreeBSD
-    | NetBSD
-    | OpenBSD
-    | Other
+    [ `Darwin
+    | `Linux
+    | `Windows
+    | `FreeBSD
+    | `NetBSD
+    | `OpenBSD
+    | `DragonFly
+    | `Haiku
+    | `Serenity
+    | `Solaris
+    | `Other
+    ]
+
+  type fswatch_support =
+    [ `Darwin
+    | `Linux
+    | `FreeBSD
+    | `NetBSD
+    | `OpenBSD
+    | `DragonFly
+    | `Solaris
+    ]
 
   (** [value] is the current os we're running on. *)
   val value : t

@@ -238,7 +238,7 @@ module Session = struct
 
   let write =
     match Platform.OS.value with
-    | Linux -> send
+    | `Linux -> send
     | _ -> Unix.single_write
   ;;
 

@@ -363,7 +363,7 @@ let handle_fs_event ({ kind; path } : Dune_file_watcher.Fs_memo_event.t)
   match Path.destruct_build_dir path with
   | `Inside _ ->
     (* This can occur on MacOS when [PATH=.:$PATH] for example *)
-    Platform.assert_os Darwin;
+    Platform.assert_os `Darwin;
     Memo.Invalidation.empty
   | `Outside path ->
     (match kind with

@@ -1,13 +1,44 @@
 module OS = struct
   (* CR-someday alizter: Include mingw32, mongw64, cygwin *)
   type t =
-    | Darwin
-    | Linux
-    | Windows
-    | FreeBSD
-    | NetBSD
-    | OpenBSD
-    | Other
+    [ `Darwin
+    | `Linux
+    | `Windows
+    | `FreeBSD
+    | `NetBSD
+    | `OpenBSD
+    | `DragonFly
+    | `Haiku
+    | `Serenity
+    | `Solaris
+    | `Other
+    ]
+
+  (* Include all constructors here. *)
+  let all =
+    [ `Darwin
+    ; `Linux
+    ; `Windows
+    ; `FreeBSD
+    ; `NetBSD
+    ; `OpenBSD
+    ; `DragonFly
+    ; `Haiku
+    ; `Serenity
+    ; `Solaris
+    ; `Other
+    ]
+  ;;
+
+  type fswatch_support =
+    [ `Darwin
+    | `Linux
+    | `FreeBSD
+    | `NetBSD
+    | `OpenBSD
+    | `DragonFly
+    | `Solaris
+    ]
 
   let equal = Poly.equal
 
@@ -15,15 +46,23 @@ module OS = struct
   external is_freebsd : unit -> bool = "stdune_is_freebsd"
   external is_netbsd : unit -> bool = "stdune_is_netbsd"
   external is_openbsd : unit -> bool = "stdune_is_openbsd"
+  external is_dragonfly : unit -> bool = "stdune_is_dragonfly"
+  external is_haiku : unit -> bool = "stdune_is_haiku"
+  external is_serenity : unit -> bool = "stdune_is_serenity"
+  external is_solaris : unit -> bool = "stdune_is_solaris"
 
   let to_dyn : t -> Dyn.t = function
-    | Windows -> Dyn.variant "Windows" []
-    | Darwin -> Dyn.variant "Darwin" []
-    | Linux -> Dyn.variant "Linux" []
-    | FreeBSD -> Dyn.variant "FreeBSD" []
-    | NetBSD -> Dyn.variant "NetBSD" []
-    | OpenBSD -> Dyn.variant "OpenBSD" []
-    | Other -> Dyn.variant "Other" []
+    | `Windows -> Dyn.variant "Windows" []
+    | `Darwin -> Dyn.variant "Darwin" []
+    | `Linux -> Dyn.variant "Linux" []
+    | `FreeBSD -> Dyn.variant "FreeBSD" []
+    | `NetBSD -> Dyn.variant "NetBSD" []
+    | `OpenBSD -> Dyn.variant "OpenBSD" []
+    | `DragonFly -> Dyn.variant "DragonFly" []
+    | `Haiku -> Dyn.variant "Haiku" []
+    | `Serenity -> Dyn.variant "Serenity" []
+    | `Solaris -> Dyn.variant "Solaris" []
+    | `Other -> Dyn.variant "Other" []
   ;;
 
   let is_linux () =
@@ -39,20 +78,24 @@ module OS = struct
     | _ -> false
   ;;
 
+  let detect = function
+    | `Windows -> Stdlib.Sys.win32
+    | `Darwin -> is_darwin ()
+    | `Linux -> is_linux ()
+    | `FreeBSD -> is_freebsd ()
+    | `NetBSD -> is_netbsd ()
+    | `OpenBSD -> is_openbsd ()
+    | `DragonFly -> is_dragonfly ()
+    | `Haiku -> is_haiku ()
+    | `Serenity -> is_serenity ()
+    | `Solaris -> is_solaris ()
+    | `Other -> false
+  ;;
+
   let value =
-    if Stdlib.Sys.win32
-    then Windows
-    else if is_darwin ()
-    then Darwin
-    else if is_linux ()
-    then Linux
-    else if is_freebsd ()
-    then FreeBSD
-    else if is_netbsd ()
-    then NetBSD
-    else if is_openbsd ()
-    then OpenBSD
-    else Other
+    match List.find all ~f:detect with
+    | Some os -> os
+    | None -> `Other
   ;;
 end
 

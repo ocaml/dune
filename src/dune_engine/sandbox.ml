@@ -148,7 +148,7 @@ let create ~mode ~dune_stats ~rule_loc ~deps ~rule_dir ~rule_digest ~expand_alia
        when a file changes. This doesn't work on OSX for instance as the file
        system granularity is 1s, which is too coarse. *)
     (match Platform.OS.value with
-     | Linux -> ()
+     | `Linux -> ()
      | _ ->
        User_error.raise
          ~loc:rule_loc

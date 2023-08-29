@@ -107,8 +107,8 @@ module Copyfile = struct
 
   let available =
     match Platform.OS.value with
-    | Darwin -> `Copyfile
-    | Linux -> `Sendfile
+    | `Darwin -> `Copyfile
+    | `Linux -> `Sendfile
     | _ -> `Nothing
   ;;
 

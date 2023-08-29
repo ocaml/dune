@@ -365,8 +365,12 @@ let select_watcher_backend () =
   then `Inotify_lib
   else (
     match Platform.OS.value with
-    | Windows -> `Fswatch_win
-    | Linux | Darwin | FreeBSD | OpenBSD | NetBSD | Other -> fswatch_backend ())
+    | `Windows -> `Fswatch_win
+    | #Platform.OS.fswatch_support -> fswatch_backend ()
+    | _ ->
+      (* CR-someday alizter: For platforms which we know there isn't fswatch support we
+         should give a better error message. *)
+      fswatch_backend ())
 ;;
 
 let prepare_sync () =

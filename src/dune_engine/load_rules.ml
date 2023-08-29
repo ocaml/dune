@@ -1,7 +1,11 @@
 open Import
 open Memo.O
 module Action_builder = Action_builder0
-module Context_or_install = Build_config.Context_or_install
+module Gen_rules = Build_config.Gen_rules
+module Context_or_install = Gen_rules.Context_or_install
+module Build_only_sub_dirs = Gen_rules.Build_only_sub_dirs
+
+module type Rule_generator = Gen_rules.Rule_generator
 
 module Current_rule_loc = struct
   let t = ref (fun () -> Memo.return None)
@@ -517,16 +521,14 @@ end = struct
 
   module Normal = struct
     type t =
-      { build_dir_only_sub_dirs : Build_config.Rules.Build_only_sub_dirs.t
+      { build_dir_only_sub_dirs : Build_only_sub_dirs.t
       ; directory_targets : Loc.t Path.Build.Map.t
       ; rules : Rules.t Memo.Lazy.t
       }
 
     let combine_exn r { build_dir_only_sub_dirs; directory_targets; rules } =
       { build_dir_only_sub_dirs =
-          Build_config.Rules.Build_only_sub_dirs.union
-            r.build_dir_only_sub_dirs
-            build_dir_only_sub_dirs
+          Build_only_sub_dirs.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
       ; directory_targets = Path.Build.Map.union_exn r.directory_targets directory_targets
       ; rules =
           Memo.lazy_ (fun () ->
@@ -548,7 +550,7 @@ end = struct
     ;;
 
     let check_all_sub_dirs_rule_dirs_are_descendant ~of_:dir build_dir_only_sub_dirs =
-      Build_config.Rules.Build_only_sub_dirs.iter_dirs_containing_sub_dirs
+      Build_only_sub_dirs.iter_dirs_containing_sub_dirs
         build_dir_only_sub_dirs
         ~f:(fun p ->
           if not (Path.Build.is_descendant p ~of_:dir)
@@ -591,7 +593,7 @@ end = struct
 
     let make_rules_gen_result
       ~of_
-      { Build_config.Rules.build_dir_only_sub_dirs; directory_targets; rules }
+      { Gen_rules.Rules.build_dir_only_sub_dirs; directory_targets; rules }
       =
       check_all_directory_targets_are_descendant ~of_ directory_targets;
       check_all_sub_dirs_rule_dirs_are_descendant ~of_ build_dir_only_sub_dirs;
@@ -624,9 +626,7 @@ end = struct
     let call_rules_generator
       ({ Dir_triage.Build_directory.dir; context_or_install; sub_dir } as d)
       =
-      let (module RG : Build_config.Rule_generator) =
-        (Build_config.get ()).rule_generator
-      in
+      let (module RG : Rule_generator) = (Build_config.get ()).rule_generator in
       let sub_dir_components = Path.Source.explode sub_dir in
       RG.gen_rules context_or_install ~dir sub_dir_components
       >>= function
@@ -875,7 +875,7 @@ end = struct
       Memo.return (Loaded.Build_under_directory_target { directory_target_ancestor })
     | Normal { rules; build_dir_only_sub_dirs; directory_targets } ->
       let build_dir_only_sub_dirs =
-        Build_config.Rules.Build_only_sub_dirs.find build_dir_only_sub_dirs dir
+        Build_only_sub_dirs.find build_dir_only_sub_dirs dir
       in
       Path.Build.Map.iteri directory_targets ~f:(fun dir_target loc ->
         let name = Path.Build.basename dir_target in

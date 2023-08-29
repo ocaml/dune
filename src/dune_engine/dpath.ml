@@ -173,7 +173,6 @@ module Build = struct
     Path.Build.(relative root) base
   ;;
 
-  let is_dev_null = Fun.const false
   let install_dir = install_dir
   let anonymous_actions_dir = anonymous_actions_dir
 end

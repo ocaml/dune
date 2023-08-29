@@ -327,7 +327,17 @@ let ocamlpath (kind : Kind.t) ~env ~findlib_toolchain =
         | _ -> env_ocamlpath))
 ;;
 
-let context_env env name ocfg findlib env_nodes version ~profile ~host ~default_ocamlpath =
+let context_env
+  env
+  name
+  ~stdlib
+  findlib
+  env_nodes
+  version
+  ~profile
+  ~host
+  ~default_ocamlpath
+  =
   let env =
     (* See comment in ansi_color.ml for setup_env_for_colors. For versions
        where OCAML_COLOR is not supported, but 'color' is in OCAMLPARAM, use
@@ -341,9 +351,9 @@ let context_env env name ocfg findlib env_nodes version ~profile ~host ~default_
     else env
   in
   let vars =
-    [ Dune_site_private.dune_ocaml_stdlib_env_var, Ocaml_config.standard_library ocfg
+    [ Dune_site_private.dune_ocaml_stdlib_env_var, Path.to_absolute_filename stdlib
     ; ( Dune_site_private.dune_ocaml_hardcoded_env_var
-      , List.map ~f:Path.to_string default_ocamlpath
+      , List.map ~f:Path.to_absolute_filename default_ocamlpath
         |> String.concat ~sep:(Char.escaped Findlib_config.ocamlpath_sep) )
     ; ( Dune_site_private.dune_sourceroot_env_var
       , Path.to_absolute_filename (Path.source Path.Source.root) )
@@ -404,7 +414,7 @@ let create
       context_env
         env
         name
-        ocaml.ocaml_config
+        ~stdlib:ocaml.lib_config.stdlib_dir
         findlib
         env_nodes
         ocaml.version

@@ -415,13 +415,13 @@ module Context = struct
 
   let build_contexts t =
     let name = name t in
-    let native = Build_context.create ~name ~host:(host_context t) in
+    let native = Build_context.create ~name in
     native
     :: List.filter_map (targets t) ~f:(function
       | Native -> None
       | Named toolchain ->
         let name = Context_name.target name ~toolchain in
-        Some (Build_context.create ~name ~host:(Some native.name)))
+        Some (Build_context.create ~name))
   ;;
 end
 

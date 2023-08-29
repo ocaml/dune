@@ -379,5 +379,8 @@ end
 
 let backend =
   let t = lazy (Dune_threaded_console.make (module Console_backend)) in
-  fun () -> Lazy.force t
+  fun () ->
+    match (Platform.OS.value : Platform.OS.t) with
+    | Windows -> User_error.raise [ Pp.text "TUI is currently not supported on Windows." ]
+    | Linux | Darwin | FreeBSD | OpenBSD | NetBSD | Other -> Lazy.force t
 ;;

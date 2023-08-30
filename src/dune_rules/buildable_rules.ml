@@ -1,6 +1,23 @@
 open Import
 open Memo.O
 
+let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
+  let* expander = Super_context.expander t ~dir in
+  let* flags =
+    let+ ocaml_flags = Super_context.env_node t ~dir >>= Env_node.ocaml_flags in
+    Ocaml_flags.make
+      ~spec
+      ~default:ocaml_flags
+      ~eval:(Expander.expand_and_eval_set expander)
+  in
+  Source_tree.is_vendored (Path.Build.drop_build_context_exn dir)
+  >>| function
+  | false -> flags
+  | true ->
+    let ocaml_version = (Super_context.context t).ocaml.version in
+    Ocaml_flags.with_vendored_flags ~ocaml_version flags
+;;
+
 let gen_select_rules sctx ~dir compile_info =
   let open Memo.O in
   Lib.Compile.resolved_selects compile_info

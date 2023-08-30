@@ -177,7 +177,7 @@ let gen_rules sctx t ~dir ~scope =
     let link_args =
       let open Action_builder.O in
       let* link_flags =
-        Action_builder.of_memo (Super_context.link_flags sctx ~dir t.link_flags)
+        Action_builder.of_memo (Ocaml_flags_db.link_flags sctx ~dir t.link_flags)
       in
       let+ link_args = Link_flags.get ~use_standard_cxx_flags:false link_flags in
       Command.Args.As link_args

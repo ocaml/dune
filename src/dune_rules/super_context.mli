@@ -23,12 +23,6 @@ val context : t -> Context.t
 (** Context env with additional variables computed from packages *)
 val context_env : t -> Env.t
 
-(** Compute the ocaml flags based on the directory environment and a buildable
-    stanza *)
-val ocaml_flags : t -> dir:Path.Build.t -> Ocaml_flags.Spec.t -> Ocaml_flags.t Memo.t
-
-val link_flags : t -> dir:Path.Build.t -> Link_flags.Spec.t -> Link_flags.t Memo.t
-
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
     associated directory is [Path.relative dir ".bin"] *)
 val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list Memo.t

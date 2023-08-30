@@ -501,7 +501,7 @@ let setup_build_archives
 ;;
 
 let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_info =
-  let* flags = Super_context.ocaml_flags sctx ~dir lib.buildable.flags
+  let* flags = Buildable_rules.ocaml_flags sctx ~dir lib.buildable.flags
   and* vimpl = Virtual_rules.impl sctx ~lib ~scope in
   let obj_dir = Library.obj_dir ~dir lib in
   let ctx = Super_context.context sctx in

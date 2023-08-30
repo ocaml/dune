@@ -38,3 +38,11 @@ val modules_rules
   -> Scope.t
   -> Modules.t
   -> (Modules.t * Pp_spec.t) Memo.t
+
+(** Compute the ocaml flags based on the directory environment and a buildable
+    stanza *)
+val ocaml_flags
+  :  Super_context.t
+  -> dir:Path.Build.t
+  -> Ocaml_flags.Spec.t
+  -> Ocaml_flags.t Memo.t

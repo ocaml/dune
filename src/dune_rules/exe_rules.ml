@@ -128,7 +128,7 @@ let executables_rules
   let programs = programs ~modules ~exes in
   let explicit_js_mode = Dune_project.explicit_js_mode project in
   let linkages = linkages ctx ~exes ~explicit_js_mode in
-  let* flags = Super_context.ocaml_flags sctx ~dir exes.buildable.flags in
+  let* flags = Buildable_rules.ocaml_flags sctx ~dir exes.buildable.flags in
   let* modules, pp =
     Buildable_rules.modules_rules
       sctx
@@ -179,7 +179,7 @@ let executables_rules
       let link_flags =
         let* () = link_deps in
         let* link_flags =
-          Action_builder.of_memo (Super_context.link_flags sctx ~dir exes.link_flags)
+          Action_builder.of_memo (Ocaml_flags_db.link_flags sctx ~dir exes.link_flags)
         in
         Link_flags.get ~use_standard_cxx_flags link_flags
       in

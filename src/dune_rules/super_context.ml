@@ -133,10 +133,11 @@ end = struct
 
   let get_impl t dir =
     let* scope = Scope.DB.find_by_dir dir in
+    let project = Scope.project scope in
     let inherit_from =
       if Path.Build.equal dir (Scope.root scope)
       then (
-        let format_config = Dune_project.format_config (Scope.project scope) in
+        let format_config = Dune_project.format_config project in
         Memo.lazy_ (fun () ->
           let+ default_env = Memo.Lazy.force t.default_env in
           Env_node.set_format_config default_env format_config))
@@ -149,7 +150,6 @@ end = struct
         | Some parent -> Memo.lazy_ (fun () -> get_node t ~dir:parent))
     in
     let+ config_stanza = get_env_stanza ~dir in
-    let project = Scope.project scope in
     let default_context_flags =
       default_context_flags t.context.build_context t.context.ocaml.ocaml_config ~project
     in
@@ -241,16 +241,15 @@ let expander t ~dir = Env_tree.expander t ~dir
 
 open Memo.O
 
-let extend_action t ~dir build =
+let extend_action t ~dir action =
   let open Action_builder.O in
-  let+ (act : Action.Full.t) = build
+  let+ (action : Action.Full.t) = action
   and+ env =
     Action_builder.of_memo
       (let open Memo.O in
        Env_tree.get_node t ~dir >>= Env_node.external_env)
   in
-  act
-  |> Action.Full.add_env env
+  Action.Full.add_env env action
   |> Action.Full.map ~f:(function
     | Chdir _ as a -> a
     | a -> Chdir (Path.build (Env_tree.context t).build_dir, a))

@@ -204,7 +204,7 @@ let build_c_program
     let open Action_builder.O in
     let* expander = Action_builder.of_memo (Super_context.expander sctx ~dir) in
     let+ foreign_flags =
-      Super_context.foreign_flags
+      Foreign_rules.foreign_flags
         sctx
         ~dir
         ~expander
@@ -351,7 +351,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx ~version =
   let* cflags =
     match ctypes.build_flags_resolver with
     | Vendored { c_flags; c_library_flags = _ } ->
-      Super_context.foreign_flags sctx ~dir ~expander ~flags:c_flags ~language:C
+      Foreign_rules.foreign_flags sctx ~dir ~expander ~flags:c_flags ~language:C
       |> Memo.return
     | Pkg_config ->
       let+ () =

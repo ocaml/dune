@@ -318,25 +318,6 @@ let js_of_ocaml_runtest_alias t ~dir =
   | Some a -> a
 ;;
 
-let default_foreign_flags t ~dir ~language =
-  Env_tree.get_node t ~dir
-  >>| Env_node.foreign_flags
-  >>| (fun dict -> Foreign_language.Dict.get dict language)
-  |> Action_builder.of_memo_join
-;;
-
-let foreign_flags t ~dir ~expander ~flags ~language =
-  let ccg = Lib_config.cc_g (Env_tree.context t).ocaml.lib_config in
-  let default = default_foreign_flags t ~dir ~language in
-  let open Action_builder.O in
-  let name = Foreign_language.proper_name language in
-  let flags =
-    let+ l = Expander.expand_and_eval_set expander flags ~standard:default in
-    l @ ccg
-  in
-  Action_builder.memoize ~cutoff:(List.equal String.equal) (sprintf "%s flags" name) flags
-;;
-
 let link_flags t ~dir (spec : Link_flags.Spec.t) =
   let* expander = Env_tree.expander t ~dir in
   let+ link_flags = Env_tree.get_node t ~dir >>= Env_node.link_flags in

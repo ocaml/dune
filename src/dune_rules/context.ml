@@ -25,7 +25,7 @@ module Env_nodes = struct
     ; workspace : Dune_env.Stanza.t option
     }
 
-  let extra_env ~profile { context; workspace } =
+  let extra_env { context; workspace } profile =
     let make env =
       Option.value
         ~default:Env.empty
@@ -327,7 +327,7 @@ let ocamlpath (kind : Kind.t) ~env ~findlib_toolchain =
         | _ -> env_ocamlpath))
 ;;
 
-let installed_env env name findlib env_nodes version ~profile =
+let installed_env env name findlib env_nodes version profile =
   let env =
     (* See comment in ansi_color.ml for setup_env_for_colors. For versions
        where OCAML_COLOR is not supported, but 'color' is in OCAMLPARAM, use
@@ -348,7 +348,7 @@ let installed_env env name findlib env_nodes version ~profile =
   Env.extend env ~vars
   |> Env.extend_env
        (Option.value ~default:Env.empty (Option.map findlib ~f:Findlib_config.env))
-  |> Env.extend_env (Env_nodes.extra_env ~profile env_nodes)
+  |> Env.extend_env (Env_nodes.extra_env env_nodes profile)
 ;;
 
 let create
@@ -386,7 +386,7 @@ let create
       then ocaml.lib_config.stdlib_dir :: default_ocamlpath
       else default_ocamlpath
     in
-    let installed_env = installed_env env name findlib env_nodes ocaml.version ~profile in
+    let installed_env = installed_env env name findlib env_nodes ocaml.version profile in
     if Option.is_some fdo_target_exe
     then
       check_fdo_support ocaml.lib_config.has_native ocaml.ocaml_config ocaml.version ~name;

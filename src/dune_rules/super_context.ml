@@ -1,7 +1,7 @@
 open Import
 
-let default_context_flags (ctx : Context.t) ~project =
-  let cflags = Ocaml_config.ocamlc_cflags ctx.ocaml.ocaml_config in
+let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
+  let cflags = Ocaml_config.ocamlc_cflags ocaml_config in
   let c, cxx =
     let cxxflags =
       List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
@@ -11,13 +11,13 @@ let default_context_flags (ctx : Context.t) ~project =
     | Some true ->
       let open Action_builder.O in
       let c =
-        let+ cc = Cxx_flags.ccomp_type ctx.build_context in
+        let+ cc = Cxx_flags.ccomp_type ctx in
         let fdiagnostics_color = Cxx_flags.fdiagnostics_color cc in
-        cflags @ Ocaml_config.ocamlc_cppflags ctx.ocaml.ocaml_config @ fdiagnostics_color
+        cflags @ Ocaml_config.ocamlc_cppflags ocaml_config @ fdiagnostics_color
       in
       let cxx =
-        let+ cc = Cxx_flags.ccomp_type ctx.build_context
-        and+ db_flags = Cxx_flags.get_flags ~for_:Compile ctx.build_context in
+        let+ cc = Cxx_flags.ccomp_type ctx
+        and+ db_flags = Cxx_flags.get_flags ~for_:Compile ctx in
         let fdiagnostics_color = Cxx_flags.fdiagnostics_color cc in
         db_flags @ cxxflags @ fdiagnostics_color
       in
@@ -150,7 +150,9 @@ end = struct
     in
     let+ config_stanza = get_env_stanza ~dir in
     let project = Scope.project scope in
-    let default_context_flags = default_context_flags t.context ~project in
+    let default_context_flags =
+      default_context_flags t.context.build_context t.context.ocaml.ocaml_config ~project
+    in
     let expander_for_artifacts =
       Memo.lazy_ (fun () ->
         let* external_env = external_env t ~dir in
@@ -486,7 +488,9 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
         let dir = context.build_dir in
         let+ scope = Scope.DB.find_by_dir dir in
         let project = Scope.project scope in
-        let default_context_flags = default_context_flags context ~project in
+        let default_context_flags =
+          default_context_flags context.build_context context.ocaml.ocaml_config ~project
+        in
         let expander_for_artifacts =
           Memo.lazy_ (fun () ->
             Code_error.raise "[expander_for_artifacts] in [default_env] is undefined" [])

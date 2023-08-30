@@ -8,6 +8,26 @@ module Source_tree_map_reduce =
          type t = Command.Args.without_targets Command.Args.t
        end))
 
+let default_foreign_flags t ~dir ~language =
+  Super_context.env_node t ~dir
+  >>| Env_node.foreign_flags
+  >>| (fun dict -> Foreign_language.Dict.get dict language)
+  |> Action_builder.of_memo_join
+;;
+
+let foreign_flags t ~dir ~expander ~flags ~language =
+  let context = Super_context.context t in
+  let ccg = Lib_config.cc_g context.ocaml.lib_config in
+  let default = default_foreign_flags t ~dir ~language in
+  let open Action_builder.O in
+  let name = Foreign_language.proper_name language in
+  let flags =
+    let+ l = Expander.expand_and_eval_set expander flags ~standard:default in
+    l @ ccg
+  in
+  Action_builder.memoize ~cutoff:(List.equal String.equal) (sprintf "%s flags" name) flags
+;;
+
 (* Compute command line flags for the [include_dirs] field of [Foreign.Stubs.t]
    and track all files in specified directories as [Hidden_deps]
    dependencies. *)
@@ -149,12 +169,12 @@ let build_c
       @@
         (match field.build_flags_resolver with
         | Vendored { c_flags; c_library_flags = _ } ->
-          Super_context.foreign_flags sctx ~dir ~expander ~flags:c_flags ~language:C
+          foreign_flags sctx ~dir ~expander ~flags:c_flags ~language:C
         | Pkg_config ->
           let open Action_builder.O in
           let+ default_flags =
             let dir = Path.Build.parent_exn dst in
-            Super_context.default_foreign_flags sctx ~dir ~language:C
+            default_foreign_flags sctx ~dir ~language:C
           and+ pkg_config_flags =
             let lib = External_lib_name.to_string field.external_library_name in
             Pkg_config.Query.read ~dir (Cflags lib) sctx
@@ -189,7 +209,7 @@ let build_c
                adding c-flags to the compiler arguments which is the new recommended \
                behaviour."
           ];
-      Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:kind
+      foreign_flags sctx ~dir ~expander ~flags ~language:kind
   and* c_compiler =
     Super_context.resolve_program
       ~loc:None

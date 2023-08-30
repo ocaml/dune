@@ -326,7 +326,7 @@ include Sub_system.Register_end_point (struct
           let* runtest_alias =
             match mode with
             | Native | Best | Byte -> Memo.return Alias0.runtest
-            | Javascript -> Super_context.js_of_ocaml_runtest_alias sctx ~dir
+            | Javascript -> Jsoo_rules.js_of_ocaml_runtest_alias sctx ~dir
           in
           Super_context.add_alias_action
             sctx

@@ -473,3 +473,11 @@ let build_exe
 ;;
 
 let runner = "node"
+
+let js_of_ocaml_runtest_alias sctx ~dir =
+  let open Memo.O in
+  let+ js_of_ocaml = Super_context.env_node sctx ~dir >>= Env_node.js_of_ocaml in
+  match js_of_ocaml.runtest_alias with
+  | Some a -> a
+  | None -> Alias0.runtest
+;;

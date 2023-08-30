@@ -349,12 +349,13 @@ let env_node = Env_tree.get_node
 let bin_annot t ~dir = Env_tree.get_node t ~dir >>= Env_node.bin_annot
 
 let dump_env t ~dir =
-  let ocaml_flags = Env_tree.get_node t ~dir >>= Env_node.ocaml_flags in
-  let foreign_flags = Env_tree.get_node t ~dir >>| Env_node.foreign_flags in
-  let link_flags = Env_tree.get_node t ~dir >>= Env_node.link_flags in
-  let menhir_flags = Env_tree.get_node t ~dir >>| Env_node.menhir_flags in
-  let coq_flags = Env_tree.get_node t ~dir >>= Env_node.coq in
-  let js_of_ocaml = Env_tree.get_node t ~dir >>= Env_node.js_of_ocaml in
+  let node = Env_tree.get_node t ~dir in
+  let ocaml_flags = node >>= Env_node.ocaml_flags in
+  let foreign_flags = node >>| Env_node.foreign_flags in
+  let link_flags = node >>= Env_node.link_flags in
+  let menhir_flags = node >>| Env_node.menhir_flags in
+  let coq_flags = node >>= Env_node.coq in
+  let js_of_ocaml = node >>= Env_node.js_of_ocaml in
   let open Action_builder.O in
   let+ o_dump =
     let* ocaml_flags = Action_builder.of_memo ocaml_flags in

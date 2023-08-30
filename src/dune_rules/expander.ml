@@ -771,7 +771,16 @@ let make
 
 let expand_path t sw =
   let+ v = expand t ~mode:Single sw in
-  Value.to_path v ~error_loc:(String_with_vars.loc sw) ~dir:(Path.build t.dir)
+  let loc = String_with_vars.loc sw in
+  let path = Value.to_path v ~error_loc:loc ~dir:(Path.build t.dir) in
+  let context_root = t.context.build_context.build_dir in
+  (match Path.as_in_build_dir path with
+   | Some p when not (Path.Build.is_descendant p ~of_:context_root) ->
+     (* TODO consider turning these into external paths, since we already allow
+        them to be specified as absolute paths. *)
+     User_error.raise ~loc [ Pp.text "path cannot escape the context root" ]
+   | _ -> ());
+  path
 ;;
 
 let expand_str t sw =

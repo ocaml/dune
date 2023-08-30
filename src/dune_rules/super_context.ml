@@ -294,29 +294,6 @@ let add_alias_action t alias ~dir ~loc action =
     build
 ;;
 
-let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
-  let* expander = Env_tree.expander t ~dir in
-  let* flags =
-    let+ ocaml_flags = Env_tree.get_node t ~dir >>= Env_node.ocaml_flags in
-    Ocaml_flags.make
-      ~spec
-      ~default:ocaml_flags
-      ~eval:(Expander.expand_and_eval_set expander)
-  in
-  Source_tree.is_vendored (Path.Build.drop_build_context_exn dir)
-  >>| function
-  | false -> flags
-  | true ->
-    let ocaml_version = (Env_tree.context t).ocaml.version in
-    Ocaml_flags.with_vendored_flags ~ocaml_version flags
-;;
-
-let link_flags t ~dir (spec : Link_flags.Spec.t) =
-  let* expander = Env_tree.expander t ~dir in
-  let+ link_flags = Env_tree.get_node t ~dir >>= Env_node.link_flags in
-  Link_flags.make ~spec ~default:link_flags ~eval:(Expander.expand_and_eval_set expander)
-;;
-
 let local_binaries t ~dir = Env_tree.get_node t ~dir >>= Env_node.local_binaries
 let env_node = Env_tree.get_node
 let bin_annot t ~dir = Env_tree.get_node t ~dir >>= Env_node.bin_annot

@@ -311,13 +311,6 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
     Ocaml_flags.with_vendored_flags ~ocaml_version flags
 ;;
 
-let js_of_ocaml_runtest_alias t ~dir =
-  let+ js_of_ocaml = Env_tree.get_node t ~dir >>= Env_node.js_of_ocaml in
-  match js_of_ocaml.runtest_alias with
-  | None -> Alias0.runtest
-  | Some a -> a
-;;
-
 let link_flags t ~dir (spec : Link_flags.Spec.t) =
   let* expander = Env_tree.expander t ~dir in
   let+ link_flags = Env_tree.get_node t ~dir >>= Env_node.link_flags in

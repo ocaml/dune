@@ -8,10 +8,11 @@ val scope : t -> Scope.t
 val dir : t -> Path.Build.t
 val context : t -> Context.t
 
-val make
+val make_root
   :  scope:Scope.t
   -> scope_host:Scope.t
   -> context:Context.t
+  -> env:Env.t
   -> lib_artifacts:Artifacts.Public_libs.t
   -> lib_artifacts_host:Artifacts.Public_libs.t
   -> bin_artifacts_host:Artifacts.Bin.t

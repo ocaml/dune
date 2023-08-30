@@ -399,10 +399,11 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
     in
     let+ scope = Scope.DB.find_by_dir context.build_dir
     and+ scope_host = Scope.DB.find_by_dir context_host.build_dir in
-    Expander.make
+    Expander.make_root
       ~scope
       ~scope_host
       ~context
+      ~env:context.env
       ~lib_artifacts:artifacts.public_libs
       ~bin_artifacts_host:artifacts_host.bin
       ~lib_artifacts_host:artifacts_host.public_libs

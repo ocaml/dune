@@ -740,16 +740,17 @@ let expand t ~mode template =
     ~f:(expand_pform t)
 ;;
 
-let make
+let make_root
   ~scope
   ~scope_host
   ~(context : Context.t)
+  ~env
   ~lib_artifacts
   ~lib_artifacts_host
   ~bin_artifacts_host
   =
   { dir = context.build_dir
-  ; env = context.env
+  ; env
   ; local_env = Env.Var.Map.empty
   ; bindings = Pform.Map.empty
   ; scope

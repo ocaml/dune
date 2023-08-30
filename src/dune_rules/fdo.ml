@@ -44,7 +44,7 @@ let ocamlfdo_binary sctx dir =
 (* FDO flags are context dependent. *)
 let get_flags var =
   let f (ctx : Context.t) =
-    Env.get ctx.env var
+    Env.get ctx.installed_env var
     |> Option.value ~default:""
     |> String.extract_blank_separated_words
     |> Memo.return
@@ -100,7 +100,7 @@ let get_profile (ctx : Context.t) =
     Some path
   in
   let none () = Action_builder.return None in
-  match Mode.of_env ctx.env with
+  match Mode.of_env ctx.installed_env with
   | Never -> none ()
   | Always -> some ()
   | If_exists -> Action_builder.if_file_exists path ~then_:(some ()) ~else_:(none ())

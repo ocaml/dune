@@ -67,7 +67,7 @@ type t = private
   ; env_nodes : Env_nodes.t
   ; path : Path.t list (** [PATH] *)
   ; ocaml : Ocaml_toolchain.t
-  ; env : Env.t
+  ; installed_env : Env.t
   ; findlib_paths : Path.t list
   ; findlib_toolchain : Context_name.t option (** Misc *)
   ; default_ocamlpath : Path.t list

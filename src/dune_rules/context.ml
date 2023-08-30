@@ -52,7 +52,7 @@ type t =
   ; env_nodes : Env_nodes.t
   ; path : Path.t list
   ; ocaml : Ocaml_toolchain.t
-  ; env : Env.t
+  ; installed_env : Env.t
   ; findlib_paths : Path.t list
   ; findlib_toolchain : Context_name.t option
   ; default_ocamlpath : Path.t list
@@ -82,7 +82,7 @@ let to_dyn t : Dyn.t =
     ; "ocamlopt", Action.Prog.to_dyn t.ocaml.ocamlopt
     ; "ocamldep", Action.Prog.to_dyn t.ocaml.ocamldep
     ; "ocamlmklib", Action.Prog.to_dyn t.ocaml.ocamlmklib
-    ; "env", Env.to_dyn (Env.diff t.env Env.initial)
+    ; "installed_env", Env.to_dyn (Env.diff t.installed_env Env.initial)
     ; "findlib_paths", list path t.findlib_paths
     ; ( "natdynlink_supported"
       , Bool (Dynlink_supported.By_the_os.get t.ocaml.lib_config.natdynlink_supported) )
@@ -327,17 +327,7 @@ let ocamlpath (kind : Kind.t) ~env ~findlib_toolchain =
         | _ -> env_ocamlpath))
 ;;
 
-let context_env
-  env
-  name
-  ~stdlib
-  findlib
-  env_nodes
-  version
-  ~profile
-  ~host
-  ~default_ocamlpath
-  =
+let installed_env env name findlib env_nodes version ~profile =
   let env =
     (* See comment in ansi_color.ml for setup_env_for_colors. For versions
        where OCAML_COLOR is not supported, but 'color' is in OCAMLPARAM, use
@@ -351,25 +341,11 @@ let context_env
     else env
   in
   let vars =
-    [ Dune_site_private.dune_ocaml_stdlib_env_var, Path.to_absolute_filename stdlib
-    ; ( Dune_site_private.dune_ocaml_hardcoded_env_var
-      , List.map ~f:Path.to_absolute_filename default_ocamlpath
-        |> String.concat ~sep:(Char.escaped Findlib_config.ocamlpath_sep) )
-    ; ( Dune_site_private.dune_sourceroot_env_var
-      , Path.to_absolute_filename (Path.source Path.Source.root) )
-    ; Execution_env.Inside_dune.(var, value (In_context (Context_name.build_dir name)))
-    ]
+    Env.Map.singleton
+      Execution_env.Inside_dune.var
+      (Execution_env.Inside_dune.value (In_context (Context_name.build_dir name)))
   in
-  let roots =
-    Install.Roots.make ~relative:Path.Build.relative (Install.Context.dir ~context:name)
-  in
-  Env.extend env ~vars:(Env.Map.of_list_exn vars)
-  |> Install.Roots.add_to_env roots
-  |> Env.update ~var:Env_path.var ~f:(fun _PATH ->
-    match host with
-    | Some host -> Env.get host.env Env_path.var
-    | None ->
-      Some (Bin.cons_path (Path.build (Install.Context.bin_dir ~context:name)) ~_PATH))
+  Env.extend env ~vars
   |> Env.extend_env
        (Option.value ~default:Env.empty (Option.map findlib ~f:Findlib_config.env))
   |> Env.extend_env (Env_nodes.extra_env ~profile env_nodes)
@@ -410,18 +386,7 @@ let create
       then ocaml.lib_config.stdlib_dir :: default_ocamlpath
       else default_ocamlpath
     in
-    let env =
-      context_env
-        env
-        name
-        ~stdlib:ocaml.lib_config.stdlib_dir
-        findlib
-        env_nodes
-        ocaml.version
-        ~profile
-        ~host
-        ~default_ocamlpath
-    in
+    let installed_env = installed_env env name findlib env_nodes ocaml.version ~profile in
     if Option.is_some fdo_target_exe
     then
       check_fdo_support ocaml.lib_config.has_native ocaml.ocaml_config ocaml.version ~name;
@@ -445,7 +410,7 @@ let create
       ; build_dir = Context_name.build_dir name
       ; path
       ; ocaml
-      ; env
+      ; installed_env
       ; findlib_paths = ocamlpath @ default_ocamlpath
       ; findlib_toolchain
       ; default_ocamlpath
@@ -772,7 +737,7 @@ let host t = Option.value ~default:t t.for_host
 let roots t =
   let module Roots = Install.Roots in
   let prefix_roots =
-    match Env.get t.env Build_environment_kind.opam_switch_prefix_var_name with
+    match Env.get t.installed_env Build_environment_kind.opam_switch_prefix_var_name with
     | None ->
       { Roots.lib_root = None
       ; libexec_root = None

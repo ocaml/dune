@@ -452,8 +452,46 @@ let make_default_env_node
             make ~inherit_from:None ~config_stanza:env_nodes.workspace)))
 ;;
 
-let create ~(context : Context.t) ~host ~packages ~stanzas =
-  let expander_env = context.env in
+let make_root_env (context : Context.t) ~(host : t option) =
+  let roots =
+    Install.Roots.make
+      ~relative:Path.Build.relative
+      (Install.Context.dir ~context:context.name)
+  in
+  Install.Roots.add_to_env roots context.installed_env
+  |> Env.update ~var:Env_path.var ~f:(fun _PATH ->
+    let context, _PATH =
+      match host with
+      | None -> context, _PATH
+      | Some host ->
+        let context = Env_tree.context host in
+        let _PATH = Env.get context.installed_env Env_path.var in
+        context, _PATH
+    in
+    Some
+      (Bin.cons_path (Path.build (Install.Context.bin_dir ~context:context.name)) ~_PATH))
+;;
+
+let dune_sites_env ~default_ocamlpath ~stdlib =
+  [ Dune_site_private.dune_ocaml_stdlib_env_var, Path.to_absolute_filename stdlib
+  ; ( Dune_site_private.dune_ocaml_hardcoded_env_var
+    , List.map ~f:Path.to_absolute_filename default_ocamlpath
+      |> String.concat ~sep:(Char.escaped Findlib_config.ocamlpath_sep) )
+  ; ( Dune_site_private.dune_sourceroot_env_var
+    , Path.to_absolute_filename (Path.source Path.Source.root) )
+  ]
+  |> String.Map.of_list_exn
+  |> Env.of_string_map
+;;
+
+let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
+  let expander_env =
+    Env.extend_env
+      (make_root_env context ~host)
+      (dune_sites_env
+         ~default_ocamlpath:context.default_ocamlpath
+         ~stdlib:context.ocaml.lib_config.stdlib_dir)
+  in
   let* artifacts = Artifacts_db.get context in
   let+ root_expander =
     let* artifacts_host, context_host =

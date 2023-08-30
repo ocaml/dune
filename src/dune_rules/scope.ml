@@ -311,7 +311,7 @@ module DB = struct
         Memo.lazy_
         @@ fun () ->
         let+ coqpaths_of_coq = Coq_path.of_coq_install context
-        and+ coqpaths_of_env = Coq_path.of_env context.env in
+        and+ coqpaths_of_env = Coq_path.of_env context.installed_env in
         Coq_lib.DB.create_from_coqpaths (coqpaths_of_env @ coqpaths_of_coq)
       in
       Memo.Lazy.map installed_theories ~f:(fun installed_theories ->

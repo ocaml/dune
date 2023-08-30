@@ -155,7 +155,7 @@ module Script = struct
            Strict
            ~display:Quiet
            ~dir:(Path.source dir)
-           ~env:context.env
+           ~env:context.installed_env
            ocaml
            args)
     in

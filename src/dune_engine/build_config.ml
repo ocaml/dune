@@ -89,6 +89,7 @@ type t =
   ; action_runner : Action_exec.input -> Action_runner.t option
   ; action_runners : unit -> Action_runner.t list
   ; shared_cache : (module Shared_cache_intf.S)
+  ; write_error_summary : Build_system_error.Set.t -> unit Fiber.t
   }
 
 let t : t Fdecl.t = Fdecl.create Dyn.opaque
@@ -108,6 +109,7 @@ let set
   ~execution_parameters
   ~source_tree
   ~shared_cache
+  ~write_error_summary
   =
   let contexts =
     Memo.lazy_ ~name:"Build_config.set" (fun () ->
@@ -136,5 +138,6 @@ let set
     ; action_runner
     ; action_runners
     ; shared_cache
+    ; write_error_summary
     }
 ;;

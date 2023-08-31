@@ -1,4 +1,5 @@
 open Import
+module Artifact_substitution = Dune_rules.Artifact_substitution
 
 let synopsis =
   [ `P "The installation directories used are defined by priority:"
@@ -139,7 +140,7 @@ module type File_operations = sig
     -> executable:bool
     -> special_file:Special_file.t option
     -> package:Package.Name.t
-    -> conf:Dune_rules.Artifact_substitution.conf
+    -> conf:Artifact_substitution.Conf.t
     -> unit Fiber.t
 
   val mkdir_p : Path.t -> unit
@@ -322,10 +323,11 @@ module File_ops_real (W : sig
     ~executable
     ~special_file
     ~package
-    ~(conf : Dune_rules.Artifact_substitution.conf)
+    ~(conf : Artifact_substitution.Conf.t)
     =
     let chmod = if executable then fun _ -> 0o755 else fun _ -> 0o644 in
     match (special_file : Special_file.t option) with
+    | None -> Artifact_substitution.copy_file ~conf ~executable ~src ~dst ~chmod ()
     | Some sf ->
       let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
       Fiber.finalize
@@ -336,11 +338,11 @@ module File_ops_real (W : sig
           let f =
             match sf with
             | META -> process_meta
-            | Dune_package -> process_dune_package ~get_location:conf.get_location
+            | Dune_package ->
+              process_dune_package
+                ~get_location:(Artifact_substitution.Conf.get_location conf)
           in
           copy_special_file ~src ~package ~ic ~oc ~f)
-    | None ->
-      Dune_rules.Artifact_substitution.copy_file ~conf ~executable ~src ~dst ~chmod ()
   ;;
 
   let remove_file_if_exists dst =
@@ -718,10 +720,7 @@ let install_uninstall ~what =
           ~f:(fun (context, entries_per_package) ->
             let roots = get_dirs context ~prefix_from_command_line ~from_command_line in
             let conf =
-              Dune_rules.Artifact_substitution.conf_for_install
-                ~relocatable
-                ~roots
-                ~context
+              Artifact_substitution.Conf.of_install ~relocatable ~roots ~context
             in
             Fiber.sequential_iter entries_per_package ~f:(fun (package, entries) ->
               let paths = Install.Paths.make ~package ~roots in
@@ -739,7 +738,7 @@ let install_uninstall ~what =
                       match special_file with
                       | _ when not create_install_files -> Fiber.return true
                       | None ->
-                        let open Dune_rules.Artifact_substitution in
+                        let open Artifact_substitution in
                         let+ status = test_file ~src:entry.src () in
                         (match status with
                          | Some_substitution -> true

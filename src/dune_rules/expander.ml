@@ -422,6 +422,238 @@ let make =
   fun (context : Context.t) -> Memo.exec memo context.name
 ;;
 
+let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
+  let lib_config = context.ocaml.lib_config in
+  match var with
+  | Pkg _ -> assert false
+  | Nothing -> static []
+  | User_var _
+  | Deps
+  | Input_file
+  | Library_name
+  | Partition
+  | Impl_files
+  | Intf_files
+  | Inline_tests
+  | Test
+  | Corrected_suffix ->
+    (* These would be part of [bindings] *)
+    isn't_allowed_in_this_position ~source
+  | First_dep ->
+    (* This case is for %{<} which was only allowed inside jbuild files *)
+    assert false
+  | Target ->
+    Need_full_expander
+      (fun t -> invalid_use_of_target_variable t ~source ~var_multiplicity:One)
+  | Targets ->
+    Need_full_expander
+      (fun t -> invalid_use_of_target_variable t ~source ~var_multiplicity:Multiple)
+  | Ocaml -> static (get_prog context.ocaml.ocaml)
+  | Ocamlc -> static (path context.ocaml.ocamlc)
+  | Ocamlopt -> static (get_prog context.ocaml.ocamlopt)
+  | Make ->
+    let open Memo.O in
+    Direct
+      (Without
+         (make context
+          >>| function
+          | Some p -> path p
+          | None ->
+            Utils.program_not_found
+              ~context:context.name
+              ~loc:(Some (Dune_lang.Template.Pform.loc source))
+              "make"))
+  | Cpp -> c_compiler_and_flags context.ocaml.ocaml_config @ [ "-E" ] |> strings |> static
+  | Pa_cpp ->
+    c_compiler_and_flags context.ocaml.ocaml_config
+    @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ]
+    |> strings
+    |> static
+  | Arch_sixtyfour ->
+    64
+    = Ocaml_config.word_size context.ocaml.ocaml_config
+    |> string_of_bool
+    |> string
+    |> static
+  | Ocaml_bin_dir -> static [ Dir context.ocaml.bin_dir ]
+  | Ocaml_version ->
+    static (string (Ocaml_config.version_string context.ocaml.ocaml_config))
+  | Ocaml_stdlib_dir -> static (string (Path.to_string lib_config.stdlib_dir))
+  | Dev_null -> static (string (Path.to_string Dev_null.path))
+  | Ext_obj -> static (string lib_config.ext_obj)
+  | Ext_asm -> static (string (Ocaml_config.ext_asm context.ocaml.ocaml_config))
+  | Ext_lib -> static (string lib_config.ext_lib)
+  | Ext_dll -> static (string lib_config.ext_dll)
+  | Ext_exe -> static (string (Ocaml_config.ext_exe context.ocaml.ocaml_config))
+  | Ext_plugin ->
+    (if Ocaml_config.natdynlink_supported context.ocaml.ocaml_config
+     then Mode.Native
+     else Byte)
+    |> Mode.plugin_ext
+    |> string
+    |> static
+  | Profile -> static (string (Profile.to_string context.profile))
+  | Workspace_root -> static [ Value.Dir (Path.build context.build_dir) ]
+  | Context_name -> static (string (Context_name.to_string context.name))
+  | Os_type ->
+    static
+    @@ string
+    @@ Ocaml_config.Os_type.to_string (Ocaml_config.os_type context.ocaml.ocaml_config)
+  | Architecture -> static (string (Ocaml_config.architecture context.ocaml.ocaml_config))
+  | System -> static (string (Ocaml_config.system context.ocaml.ocaml_config))
+  | Model -> static (string (Ocaml_config.model context.ocaml.ocaml_config))
+  | Ignoring_promoted_rules ->
+    static (string (string_of_bool !Clflags.ignore_promoted_rules))
+  | Project_root ->
+    Need_full_expander
+      (fun t -> Without (Memo.return [ Value.Dir (Path.build (Scope.root t.scope)) ]))
+  | Cc ->
+    Need_full_expander
+      (fun t ->
+        With
+          (let* cc = Action_builder.of_memo (cc t) in
+           cc.c))
+  | Cxx ->
+    Need_full_expander
+      (fun t ->
+        With
+          (let* cc = Action_builder.of_memo (cc t) in
+           cc.cxx))
+  | Ccomp_type ->
+    static @@ string @@ Ocaml_config.Ccomp_type.to_string lib_config.ccomp_type
+  | Toolchain ->
+    static
+    @@ string
+    @@
+      (match context.findlib_toolchain with
+      | Some toolchain -> Context_name.to_string toolchain
+      | None ->
+        let loc = Dune_lang.Template.Pform.loc source in
+        User_error.raise ~loc [ Pp.text "No toolchain defined for this context" ])
+;;
+
+let expand_pform_macro
+  (context : Context.t)
+  ~dir
+  ~source
+  (macro_invocation : Pform.Macro_invocation.t)
+  =
+  let s = Pform.Macro_invocation.Args.whole macro_invocation in
+  match macro_invocation.macro with
+  | Pkg -> Code_error.raise "pkg forms aren't possible here" []
+  | Pkg_self -> Code_error.raise "pkg-self forms aren't possible here" []
+  | Ocaml_config ->
+    static
+    @@
+      (match Ocaml_config.by_name context.ocaml.ocaml_config s with
+      | None ->
+        User_error.raise
+          ~loc:(Dune_lang.Template.Pform.loc source)
+          [ Pp.textf "Unknown ocaml configuration variable %S" s ]
+      | Some v ->
+        (match v with
+         | Bool x -> string (string_of_bool x)
+         | Int x -> string (string_of_int x)
+         | String x -> string x
+         | Words x -> strings x
+         | Prog_and_args x -> strings (x.prog :: x.args)))
+  | Env ->
+    Need_full_expander
+      (fun t ->
+        match String.rsplit2 s ~on:'=' with
+        | None ->
+          User_error.raise
+            ~loc:source.Dune_lang.Template.Pform.loc
+            [ Pp.textf
+                "%s must always come with a default value."
+                (Dune_lang.Template.Pform.describe source)
+            ]
+            ~hints:[ Pp.text "the syntax is %{env:VAR=DEFAULT-VALUE}" ]
+        | Some (var, default) ->
+          (match Env.Var.Map.find t.local_env var with
+           | Some v ->
+             With
+               (let+ v = v in
+                string v)
+           | None ->
+             Without (Memo.return (string (Option.value ~default (Env.get t.env var))))))
+  | Version -> Need_full_expander (fun t -> Without (expand_version t ~source s))
+  | Artifact a -> Need_full_expander (fun t -> With (expand_artifact ~source t a s))
+  | Path_no_dep ->
+    (* This case is for %{path-no-dep:...} which was only allowed inside
+           jbuild files *)
+    assert false
+  | Exe -> Need_full_expander (fun t -> With (dep (map_exe t (relative ~source t.dir s))))
+  | Dep -> Need_full_expander (fun t -> With (dep (relative ~source t.dir s)))
+  | Bin ->
+    Need_full_expander
+      (fun t ->
+        With
+          (let* prog =
+             Action_builder.of_memo
+               (Artifacts.Bin.binary
+                  ~loc:(Some (Dune_lang.Template.Pform.loc source))
+                  t.bin_artifacts_host
+                  s)
+           in
+           dep (Action.Prog.ok_exn prog)))
+  | Lib { lib_exec; lib_private } ->
+    Need_full_expander
+      (fun t ->
+        let lib, file =
+          Pform.Macro_invocation.Args.lsplit2_exn
+            macro_invocation
+            (Dune_lang.Template.Pform.payload_loc source)
+        in
+        With (expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private))
+  | Lib_available ->
+    Need_full_expander
+      (fun t ->
+        Without
+          (let lib = Lib_name.parse_string_exn (Dune_lang.Template.Pform.loc source, s) in
+           let open Memo.O in
+           let+ available = Lib.DB.available (Scope.libs t.scope) lib in
+           available |> string_of_bool |> string))
+  | Bin_available ->
+    Need_full_expander
+      (fun t ->
+        Without
+          (let open Memo.O in
+           let+ b = Artifacts.Bin.binary_available t.bin_artifacts_host s in
+           b |> string_of_bool |> string))
+  | Read -> expand_read_macro ~dir ~source s ~read:Io.read_file ~pack:string
+  | Read_lines -> expand_read_macro ~dir ~source s ~read:Io.lines_of_file ~pack:strings
+  | Read_strings ->
+    expand_read_macro ~dir ~source s ~read:Io.lines_of_file ~pack:(fun lines ->
+      List.map lines ~f:(fun line ->
+        match Scanf.unescaped line with
+        | Error () ->
+          User_error.raise
+            ~loc:(Loc.in_file (relative ~source dir s))
+            [ Pp.textf
+                "This file must be a list of lines escaped using OCaml's conventions"
+            ]
+        | Ok s -> s)
+      |> strings)
+  | Coq_config ->
+    Need_full_expander
+      (fun t ->
+        Without
+          (let open Memo.O in
+           let* coqc = Artifacts.Bin.binary t.bin_artifacts_host ~loc:None "coqc" in
+           let+ t = Coq_config.make ~coqc in
+           match Coq_config.by_name t s with
+           | None ->
+             User_error.raise
+               ~loc:(Dune_lang.Template.Pform.loc source)
+               [ Pp.textf "Unknown Coq configuration variable %S" s ]
+           | Some v ->
+             (match v with
+              | Int x -> string (string_of_int x)
+              | String x -> string x
+              | Path x -> Value.L.paths [ x ])))
+;;
+
 let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pform.t)
   : expansion_result
   =
@@ -429,239 +661,8 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pfor
   | Some x -> Direct x
   | None ->
     (match pform with
-     | Var var ->
-       let lib_config = context.ocaml.lib_config in
-       (match var with
-        | Pkg _ -> assert false
-        | Nothing -> static []
-        | User_var _
-        | Deps
-        | Input_file
-        | Library_name
-        | Partition
-        | Impl_files
-        | Intf_files
-        | Inline_tests
-        | Test
-        | Corrected_suffix ->
-          (* These would be part of [bindings] *)
-          isn't_allowed_in_this_position ~source
-        | First_dep ->
-          (* This case is for %{<} which was only allowed inside jbuild files *)
-          assert false
-        | Target ->
-          Need_full_expander
-            (fun t -> invalid_use_of_target_variable t ~source ~var_multiplicity:One)
-        | Targets ->
-          Need_full_expander
-            (fun t -> invalid_use_of_target_variable t ~source ~var_multiplicity:Multiple)
-        | Ocaml -> static (get_prog context.ocaml.ocaml)
-        | Ocamlc -> static (path context.ocaml.ocamlc)
-        | Ocamlopt -> static (get_prog context.ocaml.ocamlopt)
-        | Make ->
-          let open Memo.O in
-          Direct
-            (Without
-               (make context
-                >>| function
-                | Some p -> path p
-                | None ->
-                  Utils.program_not_found
-                    ~context:context.name
-                    ~loc:(Some (Dune_lang.Template.Pform.loc source))
-                    "make"))
-        | Cpp ->
-          c_compiler_and_flags context.ocaml.ocaml_config @ [ "-E" ] |> strings |> static
-        | Pa_cpp ->
-          c_compiler_and_flags context.ocaml.ocaml_config
-          @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ]
-          |> strings
-          |> static
-        | Arch_sixtyfour ->
-          64
-          = Ocaml_config.word_size context.ocaml.ocaml_config
-          |> string_of_bool
-          |> string
-          |> static
-        | Ocaml_bin_dir -> static [ Dir context.ocaml.bin_dir ]
-        | Ocaml_version ->
-          static (string (Ocaml_config.version_string context.ocaml.ocaml_config))
-        | Ocaml_stdlib_dir -> static (string (Path.to_string lib_config.stdlib_dir))
-        | Dev_null -> static (string (Path.to_string Dev_null.path))
-        | Ext_obj -> static (string lib_config.ext_obj)
-        | Ext_asm -> static (string (Ocaml_config.ext_asm context.ocaml.ocaml_config))
-        | Ext_lib -> static (string lib_config.ext_lib)
-        | Ext_dll -> static (string lib_config.ext_dll)
-        | Ext_exe -> static (string (Ocaml_config.ext_exe context.ocaml.ocaml_config))
-        | Ext_plugin ->
-          (if Ocaml_config.natdynlink_supported context.ocaml.ocaml_config
-           then Mode.Native
-           else Byte)
-          |> Mode.plugin_ext
-          |> string
-          |> static
-        | Profile -> static (string (Profile.to_string context.profile))
-        | Workspace_root -> static [ Value.Dir (Path.build context.build_dir) ]
-        | Context_name -> static (string (Context_name.to_string context.name))
-        | Os_type ->
-          static
-          @@ string
-          @@ Ocaml_config.Os_type.to_string
-               (Ocaml_config.os_type context.ocaml.ocaml_config)
-        | Architecture ->
-          static (string (Ocaml_config.architecture context.ocaml.ocaml_config))
-        | System -> static (string (Ocaml_config.system context.ocaml.ocaml_config))
-        | Model -> static (string (Ocaml_config.model context.ocaml.ocaml_config))
-        | Ignoring_promoted_rules ->
-          static (string (string_of_bool !Clflags.ignore_promoted_rules))
-        | Project_root ->
-          Need_full_expander
-            (fun t ->
-              Without (Memo.return [ Value.Dir (Path.build (Scope.root t.scope)) ]))
-        | Cc ->
-          Need_full_expander
-            (fun t ->
-              With
-                (let* cc = Action_builder.of_memo (cc t) in
-                 cc.c))
-        | Cxx ->
-          Need_full_expander
-            (fun t ->
-              With
-                (let* cc = Action_builder.of_memo (cc t) in
-                 cc.cxx))
-        | Ccomp_type ->
-          static @@ string @@ Ocaml_config.Ccomp_type.to_string lib_config.ccomp_type
-        | Toolchain ->
-          static
-          @@ string
-          @@
-            (match context.findlib_toolchain with
-            | Some toolchain -> Context_name.to_string toolchain
-            | None ->
-              let loc = Dune_lang.Template.Pform.loc source in
-              User_error.raise ~loc [ Pp.text "No toolchain defined for this context" ]))
-     | Macro macro_invocation ->
-       let s = Pform.Macro_invocation.Args.whole macro_invocation in
-       (match macro_invocation.macro with
-        | Pkg -> Code_error.raise "pkg forms aren't possible here" []
-        | Pkg_self -> Code_error.raise "pkg-self forms aren't possible here" []
-        | Ocaml_config ->
-          static
-          @@
-            (match Ocaml_config.by_name context.ocaml.ocaml_config s with
-            | None ->
-              User_error.raise
-                ~loc:(Dune_lang.Template.Pform.loc source)
-                [ Pp.textf "Unknown ocaml configuration variable %S" s ]
-            | Some v ->
-              (match v with
-               | Bool x -> string (string_of_bool x)
-               | Int x -> string (string_of_int x)
-               | String x -> string x
-               | Words x -> strings x
-               | Prog_and_args x -> strings (x.prog :: x.args)))
-        | Env ->
-          Need_full_expander
-            (fun t ->
-              match String.rsplit2 s ~on:'=' with
-              | None ->
-                User_error.raise
-                  ~loc:source.Dune_lang.Template.Pform.loc
-                  [ Pp.textf
-                      "%s must always come with a default value."
-                      (Dune_lang.Template.Pform.describe source)
-                  ]
-                  ~hints:[ Pp.text "the syntax is %{env:VAR=DEFAULT-VALUE}" ]
-              | Some (var, default) ->
-                (match Env.Var.Map.find t.local_env var with
-                 | Some v ->
-                   With
-                     (let+ v = v in
-                      string v)
-                 | None ->
-                   Without
-                     (Memo.return (string (Option.value ~default (Env.get t.env var))))))
-        | Version -> Need_full_expander (fun t -> Without (expand_version t ~source s))
-        | Artifact a -> Need_full_expander (fun t -> With (expand_artifact ~source t a s))
-        | Path_no_dep ->
-          (* This case is for %{path-no-dep:...} which was only allowed inside
-           jbuild files *)
-          assert false
-        | Exe ->
-          Need_full_expander (fun t -> With (dep (map_exe t (relative ~source t.dir s))))
-        | Dep -> Need_full_expander (fun t -> With (dep (relative ~source t.dir s)))
-        | Bin ->
-          Need_full_expander
-            (fun t ->
-              With
-                (let* prog =
-                   Action_builder.of_memo
-                     (Artifacts.Bin.binary
-                        ~loc:(Some (Dune_lang.Template.Pform.loc source))
-                        t.bin_artifacts_host
-                        s)
-                 in
-                 dep (Action.Prog.ok_exn prog)))
-        | Lib { lib_exec; lib_private } ->
-          Need_full_expander
-            (fun t ->
-              let lib, file =
-                Pform.Macro_invocation.Args.lsplit2_exn
-                  macro_invocation
-                  (Dune_lang.Template.Pform.payload_loc source)
-              in
-              With (expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private))
-        | Lib_available ->
-          Need_full_expander
-            (fun t ->
-              Without
-                (let lib =
-                   Lib_name.parse_string_exn (Dune_lang.Template.Pform.loc source, s)
-                 in
-                 let open Memo.O in
-                 let+ available = Lib.DB.available (Scope.libs t.scope) lib in
-                 available |> string_of_bool |> string))
-        | Bin_available ->
-          Need_full_expander
-            (fun t ->
-              Without
-                (let open Memo.O in
-                 let+ b = Artifacts.Bin.binary_available t.bin_artifacts_host s in
-                 b |> string_of_bool |> string))
-        | Read -> expand_read_macro ~dir ~source s ~read:Io.read_file ~pack:string
-        | Read_lines ->
-          expand_read_macro ~dir ~source s ~read:Io.lines_of_file ~pack:strings
-        | Read_strings ->
-          expand_read_macro ~dir ~source s ~read:Io.lines_of_file ~pack:(fun lines ->
-            List.map lines ~f:(fun line ->
-              match Scanf.unescaped line with
-              | Error () ->
-                User_error.raise
-                  ~loc:(Loc.in_file (relative ~source dir s))
-                  [ Pp.textf
-                      "This file must be a list of lines escaped using OCaml's \
-                       conventions"
-                  ]
-              | Ok s -> s)
-            |> strings)
-        | Coq_config ->
-          Need_full_expander
-            (fun t ->
-              Without
-                (let open Memo.O in
-                 let* coqc = Artifacts.Bin.binary t.bin_artifacts_host ~loc:None "coqc" in
-                 let+ t = Coq_config.make ~coqc in
-                 match Coq_config.by_name t s with
-                 | None ->
-                   User_error.raise
-                     ~loc:(Dune_lang.Template.Pform.loc source)
-                     [ Pp.textf "Unknown Coq configuration variable %S" s ]
-                 | Some v ->
-                   (match v with
-                    | Int x -> string (string_of_int x)
-                    | String x -> string x
-                    | Path x -> Value.L.paths [ x ])))))
+     | Var var -> expand_pform_var context ~source var
+     | Macro macro_invocation -> expand_pform_macro context ~dir ~source macro_invocation)
 ;;
 
 (* Make sure to delay exceptions *)

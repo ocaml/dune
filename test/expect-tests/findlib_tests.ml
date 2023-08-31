@@ -107,9 +107,8 @@ let%expect_test "configurator" =
 
 let%expect_test "builtins" =
   print_pkg_archives "str";
-  [%expect
-    {|
-    Hidden { byte = [ "stdlib/str.cma" ]; native = [ "stdlib/str.cmxa" ] } |}];
+  [%expect {|
+    Available { byte = []; native = [] } |}];
   print_pkg_archives "dynlink";
   [%expect
     {|

@@ -388,19 +388,16 @@ end = struct
   ;;
 
   let lookup_and_load (db : t) name =
-    match Package.Name.Map.find db.builtins name with
-    | Some meta ->
-      (* XXX DUNE4 weird to favor these hardcoded packages over user possibly
-         user defined libraries *)
-      load_builtin db meta >>| Result.ok
+    Monad.List.find_map db.paths ~f:(lookup db name)
+    >>= function
+    | Some m -> Monad.return m
     | None ->
-      Monad.List.find_map db.paths ~f:(lookup db name)
-      >>| (function
-      | Some m -> m
-      | None ->
-        (match Package.Name.to_string name with
-         | "dune" -> Ok builtin_for_dune
-         | _ -> Error Unavailable_reason.Not_found))
+      (match Package.Name.to_string name with
+       | "dune" -> Monad.return (Ok builtin_for_dune)
+       | _ ->
+         (match Package.Name.Map.find db.builtins name with
+          | None -> Monad.return (Error Unavailable_reason.Not_found)
+          | Some meta -> load_builtin db meta >>| Result.ok))
   ;;
 
   let root_packages (db : t) =

@@ -43,101 +43,9 @@ type hardcoded_ocaml_path =
   | Hardcoded of Path.t list
   | Relocatable of Path.t
 
-type conf =
-  { get_vcs : Path.Source.t -> Vcs.t option Memo.t
-  ; get_location : Section.t -> Package.Name.t -> Path.t
-  ; get_config_path : configpath -> Path.t option
-  ; hardcoded_ocaml_path : hardcoded_ocaml_path
-  ; sign_hook : (Path.t -> unit Fiber.t) option Lazy.t
-  }
-
-let mac_codesign_hook ~codesign path =
-  let stdout_to =
-    Process.Io.make_stdout
-      ~output_on_success:Swallow
-      ~output_limit:Execution_parameters.Action_output_limit.default
-  in
-  let stderr_to =
-    Process.Io.make_stderr
-      ~output_on_success:Swallow
-      ~output_limit:Execution_parameters.Action_output_limit.default
-  in
-  Process.run
-    ~stdout_to
-    ~stderr_to
-    ~display:Quiet
-    Strict
-    codesign
-    [ "-f"; "-s"; "-"; Path.to_string path ]
-;;
-
-let sign_hook_of_context (context : Context.t) =
-  let config = context.ocaml.ocaml_config in
-  match Ocaml_config.system config, Ocaml_config.architecture config with
-  | "macosx", "arm64" ->
-    let codesign_name = "codesign" in
-    (match Bin.which ~path:context.path codesign_name with
-     | None ->
-       Utils.program_not_found
-         ~loc:None
-         ~hint:"codesign should be part of the macOS installation"
-         codesign_name
-     | Some codesign -> Some (mac_codesign_hook ~codesign))
-  | _ -> None
-;;
-
-let conf_of_context (context : Context.t option) =
-  let get_vcs = Source_tree.nearest_vcs in
-  match context with
-  | None ->
-    { get_vcs
-    ; get_location = (fun _ _ -> Code_error.raise "no context available" [])
-    ; get_config_path = (fun _ -> Code_error.raise "no context available" [])
-    ; hardcoded_ocaml_path = Hardcoded []
-    ; sign_hook = lazy None
-    }
-  | Some context ->
-    let get_location = Install.Paths.get_local_location context.name in
-    let get_config_path = function
-      | Sourceroot -> Some (Path.source Path.Source.root)
-      | Stdlib -> Some context.ocaml.lib_config.stdlib_dir
-    in
-    let hardcoded_ocaml_path =
-      let install_dir = Install.Context.dir ~context:context.name in
-      let install_dir = Path.build (Path.Build.relative install_dir "lib") in
-      Hardcoded (install_dir :: context.default_ocamlpath)
-    in
-    let sign_hook = lazy (sign_hook_of_context context) in
-    { get_vcs; get_location; get_config_path; hardcoded_ocaml_path; sign_hook }
-;;
-
-let conf_for_install ~relocatable ~roots ~(context : Context.t) =
-  let get_vcs = Source_tree.nearest_vcs in
-  let hardcoded_ocaml_path =
-    match relocatable with
-    | Some prefix -> Relocatable prefix
-    | None -> Hardcoded context.default_ocamlpath
-  in
-  let get_location section package =
-    let paths = Install.Paths.make ~package ~roots in
-    Install.Paths.get paths section
-  in
-  let get_config_path = function
-    | Sourceroot -> None
-    | Stdlib -> Some context.ocaml.lib_config.stdlib_dir
-  in
-  let sign_hook = lazy (sign_hook_of_context context) in
-  { get_location; get_vcs; get_config_path; hardcoded_ocaml_path; sign_hook }
-;;
-
-let conf_dummy =
-  { get_vcs = (fun _ -> Memo.return None)
-  ; get_location = (fun _ _ -> Path.root)
-  ; get_config_path = (fun _ -> None)
-  ; hardcoded_ocaml_path = Hardcoded []
-  ; sign_hook = lazy None
-  }
-;;
+type status =
+  | Some_substitution
+  | No_substitution
 
 let to_dyn = function
   | Vcs_describe p -> Dyn.Variant ("Vcs_describe", [ Path.Source.to_dyn p ])
@@ -154,7 +62,116 @@ let to_dyn = function
   | Repeat (n, s) -> Dyn.Variant ("Repeat", [ Int n; String s ])
 ;;
 
-let eval t ~conf =
+module Conf = struct
+  type t =
+    { get_vcs : Path.Source.t -> Vcs.t option Memo.t
+    ; get_location : Section.t -> Package.Name.t -> Path.t
+    ; get_config_path : configpath -> Path.t option
+    ; hardcoded_ocaml_path : hardcoded_ocaml_path
+    ; sign_hook : (Path.t -> unit Fiber.t) option Lazy.t
+    }
+
+  let get_location t = t.get_location
+
+  let mac_codesign_hook ~codesign path =
+    let stdout_to =
+      Process.Io.make_stdout
+        ~output_on_success:Swallow
+        ~output_limit:Execution_parameters.Action_output_limit.default
+    in
+    let stderr_to =
+      Process.Io.make_stderr
+        ~output_on_success:Swallow
+        ~output_limit:Execution_parameters.Action_output_limit.default
+    in
+    Process.run
+      ~stdout_to
+      ~stderr_to
+      ~display:Quiet
+      Strict
+      codesign
+      [ "-f"; "-s"; "-"; Path.to_string path ]
+  ;;
+
+  let sign_hook_of_context (context : Context.t) =
+    let config = context.ocaml.ocaml_config in
+    match Ocaml_config.system config, Ocaml_config.architecture config with
+    | "macosx", "arm64" ->
+      let codesign_name = "codesign" in
+      (match Bin.which ~path:context.path codesign_name with
+       | None ->
+         Utils.program_not_found
+           ~loc:None
+           ~hint:"codesign should be part of the macOS installation"
+           codesign_name
+       | Some codesign -> Some (mac_codesign_hook ~codesign))
+    | _ -> None
+  ;;
+
+  let of_context (context : Context.t option) =
+    let get_vcs = Source_tree.nearest_vcs in
+    match context with
+    | None ->
+      { get_vcs
+      ; get_location = (fun _ _ -> Code_error.raise "no context available" [])
+      ; get_config_path = (fun _ -> Code_error.raise "no context available" [])
+      ; hardcoded_ocaml_path = Hardcoded []
+      ; sign_hook = lazy None
+      }
+    | Some context ->
+      let get_location = Install.Paths.get_local_location context.name in
+      let get_config_path = function
+        | Sourceroot -> Some (Path.source Path.Source.root)
+        | Stdlib -> Some context.ocaml.lib_config.stdlib_dir
+      in
+      let hardcoded_ocaml_path =
+        let install_dir = Install.Context.dir ~context:context.name in
+        let install_dir = Path.build (Path.Build.relative install_dir "lib") in
+        Hardcoded (install_dir :: context.default_ocamlpath)
+      in
+      let sign_hook = lazy (sign_hook_of_context context) in
+      { get_vcs; get_location; get_config_path; hardcoded_ocaml_path; sign_hook }
+  ;;
+
+  let of_install ~relocatable ~roots ~(context : Context.t) =
+    let get_vcs = Source_tree.nearest_vcs in
+    let hardcoded_ocaml_path =
+      match relocatable with
+      | Some prefix -> Relocatable prefix
+      | None -> Hardcoded context.default_ocamlpath
+    in
+    let get_location section package =
+      let paths = Install.Paths.make ~package ~roots in
+      Install.Paths.get paths section
+    in
+    let get_config_path = function
+      | Sourceroot -> None
+      | Stdlib -> Some context.ocaml.lib_config.stdlib_dir
+    in
+    let sign_hook = lazy (sign_hook_of_context context) in
+    { get_location; get_vcs; get_config_path; hardcoded_ocaml_path; sign_hook }
+  ;;
+
+  let dummy =
+    { get_vcs = (fun _ -> Memo.return None)
+    ; get_location = (fun _ _ -> Path.root)
+    ; get_config_path = (fun _ -> None)
+    ; hardcoded_ocaml_path = Hardcoded []
+    ; sign_hook = lazy None
+    }
+  ;;
+
+  let run_sign_hook t ~has_subst file =
+    match has_subst with
+    | No_substitution -> Fiber.return ()
+    | Some_substitution ->
+      (match Lazy.force t.sign_hook with
+       | Some hook -> hook file
+       | None -> Fiber.return ())
+  ;;
+end
+
+let eval t ~(conf : Conf.t) =
   let relocatable path =
     (* return a relative path to the install directory in case of relocatable
        instead of absolute path *)
@@ -458,12 +475,8 @@ type mode =
   | Copy of
       { input_file : Path.t
       ; output : bytes -> int -> int -> unit
-      ; conf : conf
+      ; conf : Conf.t
       }
-
-type status =
-  | Some_substitution
-  | No_substitution
 
 (** The copy algorithm works as follow:
 
@@ -618,15 +631,6 @@ let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
     (fun () -> copy ~conf ~input_file:src ~input:(input ic) ~output:(output oc))
 ;;
 
-let run_sign_hook conf ~has_subst file =
-  match has_subst with
-  | No_substitution -> Fiber.return ()
-  | Some_substitution ->
-    (match Lazy.force conf.sign_hook with
-     | Some hook -> hook file
-     | None -> Fiber.return ())
-;;
-
 (** This is just an optimisation: skip the renaming if the destination exists
     and has the right digest. The optimisation is useful to avoid unnecessary
     retriggering of Dune and other file-watching systems. *)
@@ -677,7 +681,9 @@ let copy_file
       Path.parent dst |> Option.iter ~f:Path.mkdir_p;
       let* has_subst = copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file () in
       let+ () =
-        if executable then run_sign_hook conf ~has_subst temp_file else Fiber.return ()
+        if executable
+        then Conf.run_sign_hook conf ~has_subst temp_file
+        else Fiber.return ()
       in
       replace_if_different ~delete_dst_if_it_is_a_directory ~src:temp_file ~dst)
     ~finally:(fun () ->

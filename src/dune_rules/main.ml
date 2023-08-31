@@ -57,7 +57,7 @@ let init
       Memo.run
         (Memo.Option.map ctx ~f:(fun (ctx : Build_context.t) -> Context.DB.get ctx.name))
     in
-    let conf = Artifact_substitution.conf_of_context ctx in
+    let conf = Artifact_substitution.Conf.of_context ctx in
     let src = Path.build src in
     let dst = Path.source dst in
     Artifact_substitution.copy_file

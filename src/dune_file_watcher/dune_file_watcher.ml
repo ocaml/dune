@@ -355,7 +355,13 @@ let fswatch_backend () =
   in
   match try_fswatch () with
   | Some res -> res
-  | None -> User_error.raise [ Pp.text "Please install fswatch to enable watch mode." ]
+  | None ->
+    let hints =
+      match Platform.OS.value with
+      | FreeBSD -> [ Pp.text "pkg install fswatch-mon" ]
+      | _ -> []
+    in
+    User_error.raise ~hints [ Pp.text "Please install fswatch to enable watch mode." ]
 ;;
 
 let select_watcher_backend () =

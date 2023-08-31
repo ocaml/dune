@@ -40,6 +40,7 @@ module Resolve = Resolve
 module Ocamldep = Ocamldep
 module Dep_rules = Dep_rules
 module Dep_graph = Dep_graph
+module Lib_config = Lib_config
 module Preprocess = Preprocess
 module Preprocessing = Preprocessing
 module Coq_mode = Coq_mode
@@ -62,7 +63,6 @@ module Install_rules = struct
 end
 
 module For_tests = struct
-  module Lib_config = Lib_config
   module Dynlink_supported = Dynlink_supported
   module Ocamlobjinfo = Ocamlobjinfo
   module Action_unexpanded = Action_unexpanded

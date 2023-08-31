@@ -211,10 +211,10 @@ module Build_environment_kind = struct
   let opam_switch_prefix_var_name = "OPAM_SWITCH_PREFIX"
 
   let query ~(kind : Kind.t) ~findlib_toolchain ~env =
-    let opam_prefix = Env.get env opam_switch_prefix_var_name in
     match findlib_toolchain with
     | Some s -> Cross_compilation_using_findlib_toolchain s
     | None ->
+      let opam_prefix = Env.get env opam_switch_prefix_var_name in
       (match kind with
        | Opam _ ->
          (match opam_prefix with

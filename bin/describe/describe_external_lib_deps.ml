@@ -129,14 +129,14 @@ let resolve_libs db dir libraries preprocess names package kind extensions =
   { external_deps; internal_deps; kind; names; package; dir; extensions }
 ;;
 
-let exes_extensions (ctx : Context.t) modes =
+let exes_extensions (lib_config : Dune_rules.Lib_config.t) modes =
   Dune_rules.Dune_file.Executables.Link_mode.Map.to_list modes
   |> List.map ~f:(fun (m, loc) ->
     Dune_rules.Dune_file.Executables.Link_mode.extension
       m
       ~loc
-      ~ext_obj:ctx.ocaml.lib_config.ext_obj
-      ~ext_dll:ctx.ocaml.lib_config.ext_dll)
+      ~ext_obj:lib_config.ext_obj
+      ~ext_dll:lib_config.ext_dll)
 ;;
 
 let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) =
@@ -156,7 +156,7 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
           (List.map exes.names ~f:snd)
           exes.package
           Item.Kind.Executables
-          (exes_extensions context exes.modes)
+          (exes_extensions context.ocaml.lib_config exes.modes)
         >>| List.singleton
       | Dune_rules.Dune_file.Library lib ->
         resolve_libs
@@ -178,16 +178,15 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
           (List.map tests.exes.names ~f:snd)
           (if Option.is_none tests.package then tests.exes.package else tests.package)
           Item.Kind.Tests
-          (exes_extensions context tests.exes.modes)
+          (exes_extensions context.ocaml.lib_config tests.exes.modes)
         >>| List.singleton
       | _ -> Memo.return [])
     >>| List.concat)
   >>| List.concat
 ;;
 
-let external_resolved_libs setup super_context =
+let external_resolved_libs setup (context : Context.t) =
   let open Memo.O in
-  let context = Super_context.context super_context in
   let* scope = Dune_rules.Scope.DB.find_by_dir context.build_dir in
   let db = Dune_rules.Scope.libs scope in
   libs db context setup
@@ -220,7 +219,7 @@ let term =
     |> Context.name
     |> Dune_engine.Context_name.to_string
   in
-  external_resolved_libs setup super_context
+  external_resolved_libs setup (Super_context.context super_context)
   >>| to_dyn context_name
   >>| Describe_format.print_dyn format
 ;;

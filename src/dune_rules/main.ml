@@ -93,6 +93,7 @@ let init
     ~shared_cache:(module Shared_cache)
     ~action_runner
     ~action_runners
+    ~write_error_summary:(fun _ -> Fiber.return ())
 ;;
 
 let get () =

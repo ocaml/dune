@@ -143,6 +143,7 @@ module type Build_config = sig
     -> execution_parameters:(dir:Path.Source.t -> Execution_parameters.t Memo.t)
     -> source_tree:(module Source_tree)
     -> shared_cache:(module Shared_cache_intf.S)
+    -> write_error_summary:(Build_system_error.Set.t -> unit Fiber.t)
     -> unit
 
   type t = private
@@ -165,6 +166,7 @@ module type Build_config = sig
     ; action_runner : Action_exec.input -> Action_runner.t option
     ; action_runners : unit -> Action_runner.t list
     ; shared_cache : (module Shared_cache_intf.S)
+    ; write_error_summary : Build_system_error.Set.t -> unit Fiber.t
     }
 
   val get : unit -> t

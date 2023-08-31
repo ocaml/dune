@@ -236,7 +236,7 @@ module Build_environment_kind = struct
     match findlib, t with
     | ( Some findlib
       , (Cross_compilation_using_findlib_toolchain _ | Opam2_environment _ | Unknown) ) ->
-      Findlib_config.path findlib
+      Findlib_config.ocamlpath findlib
     | None, Cross_compilation_using_findlib_toolchain toolchain ->
       User_error.raise
         [ Pp.textf
@@ -300,10 +300,10 @@ type instance =
 
 let ocamlpath (kind : Kind.t) ~env ~findlib_toolchain =
   match kind, findlib_toolchain with
-  | Default, None -> Option.value ~default:[] (Findlib_config.ocamlpath env)
+  | Default, None -> Option.value ~default:[] (Findlib_config.ocamlpath_of_env env)
   | _, _ ->
-    let initial_ocamlpath = Findlib_config.ocamlpath Env.initial in
-    let env_ocamlpath = Findlib_config.ocamlpath env in
+    let initial_ocamlpath = Findlib_config.ocamlpath_of_env Env.initial in
+    let env_ocamlpath = Findlib_config.ocamlpath_of_env env in
     (* If we are not in the default context, we can only use the OCAMLPATH
        variable if it is specific to this build context *)
     (* CR-someday diml: maybe we should actually clear OCAMLPATH in other

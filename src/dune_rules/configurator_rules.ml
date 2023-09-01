@@ -1,7 +1,7 @@
 open Import
 open Memo.O
 
-let dot_dune_dir (t : Context.t) = Path.Build.relative t.build_dir ".dune"
+let dot_dune_dir (t : Build_context.t) = Path.Build.relative t.build_dir ".dune"
 let configurator_v1 t = Path.Build.relative (dot_dune_dir t) "configurator"
 let configurator_v2 t = Path.Build.relative (dot_dune_dir t) "configurator.v2"
 
@@ -9,11 +9,11 @@ let configurator_v2 t = Path.Build.relative (dot_dune_dir t) "configurator.v2"
    runtime. Ideally, this should be created on-demand if we run a program linked
    against configurator, however we currently don't support this kind of
    "runtime dependencies" so we just do it eagerly. *)
-let gen_rules (t : Context.t) =
-  let ocamlc = Path.to_absolute_filename t.ocaml.ocamlc in
-  let ocaml_config_vars = Ocaml_config.Vars.to_list t.ocaml.ocaml_config_vars in
+let gen_rules (ctx : Build_context.t) (ocaml : Ocaml_toolchain.t) =
+  let ocamlc = Path.to_absolute_filename ocaml.ocamlc in
+  let ocaml_config_vars = Ocaml_config.Vars.to_list ocaml.ocaml_config_vars in
   let* () =
-    let fn = configurator_v1 t in
+    let fn = configurator_v1 ctx in
     (let open Action_builder.O in
      let+ () = Action_builder.return () in
      (let open Dune_lang.Encoder in
@@ -28,7 +28,7 @@ let gen_rules (t : Context.t) =
     |> Rule.make ~targets:(Targets.File.create fn) ~context:None
     |> Rules.Produce.rule
   in
-  let fn = configurator_v2 t in
+  let fn = configurator_v2 ctx in
   (let open Action_builder.O in
    let+ () = Action_builder.return () in
    (let open Sexp in
@@ -51,7 +51,11 @@ let force_files =
     let* ctxs = Context.DB.all () in
     let files =
       List.concat_map ctxs ~f:(fun t ->
-        [ Path.build (configurator_v1 t); Path.build (configurator_v2 t) ])
+        [ Path.build (configurator_v1 t.build_context)
+        ; Path.build (configurator_v2 t.build_context)
+        ])
     in
     Memo.parallel_iter files ~f:Build_system.build_file)
 ;;
+
+let gen_rules (context : Context.t) = gen_rules context.build_context context.ocaml

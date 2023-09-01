@@ -348,13 +348,13 @@ let add_packages_env context ~base stanzas packages =
         | Some s -> Some (Section.Set.add s section))
     in
     let+ package_sections =
-      let* sites = Sites.create context in
+      let* package_db = Package_db.create context in
       Dune_file.Memo_fold.fold_stanzas
         stanzas
         ~init:Package.Name.Map.empty
         ~f:(fun _ stanza acc ->
           let add_in_package_sites acc pkg site loc =
-            let+ section = Sites.section_of_site sites ~loc ~pkg ~site in
+            let+ section = Package_db.section_of_site package_db ~loc ~pkg ~site in
             add_in_package_section acc pkg section
           in
           match stanza with

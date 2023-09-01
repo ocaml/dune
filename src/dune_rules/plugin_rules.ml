@@ -37,7 +37,7 @@ let setup_rules ~sctx ~dir t =
            Format.asprintf "%a" Pp.to_fmt (Pp.vbox (Pp.seq (Meta.pp meta.entries) Pp.cut)))))
 ;;
 
-let install_rules ~sctx ~sites ~dir ({ name; site = loc, (pkg, site); _ } as t) =
+let install_rules ~sctx ~package_db ~dir ({ name; site = loc, (pkg, site); _ } as t) =
   let* skip_files =
     let* public_libs = Scope.DB.public_libs (Super_context.context sctx) in
     if t.optional
@@ -52,7 +52,7 @@ let install_rules ~sctx ~sites ~dir ({ name; site = loc, (pkg, site); _ } as t) 
       Install_entry_with_site.make_with_site
         ~dst:(sprintf "%s/%s" (Package.Name.to_string name) Dune_findlib.Package.meta_fn)
         (Site { pkg; site; loc })
-        (Sites.section_of_site sites)
+        (Package_db.section_of_site package_db)
         ~kind:`File
         meta
     in

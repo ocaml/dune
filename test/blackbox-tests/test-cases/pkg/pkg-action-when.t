@@ -2,10 +2,7 @@ Testing the when action in lockfiles
 
   $ . ./helpers.sh
 
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ make_lockdir
 
 Case with a mix of uncoditional and conditional actions in a progn action
   $ cat >dune.lock/test.pkg <<'EOF'

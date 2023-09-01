@@ -2,10 +2,7 @@ Packages can export environment variables
 
   $ . ./helpers.sh
 
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ make_lockdir
   $ cat >dune.lock/test.pkg <<EOF
   > (exported_env
   >  (= FOO bar)

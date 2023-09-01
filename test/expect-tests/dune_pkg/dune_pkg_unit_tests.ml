@@ -185,11 +185,15 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
   lock_dir_encode_decode_round_trip_test
     ~lock_dir_path:"empty_lock_dir"
     ~lock_dir:
-      (Lock_dir.create_latest_version Package_name.Map.empty ~ocaml:None ~repo_id:None);
+      (Lock_dir.create_latest_version Package_name.Map.empty ~ocaml:None ~repos:None);
   [%expect
     {|
     lockdir matches after roundtrip:
-    { version = (0, 1); packages = map {}; ocaml = None; repo_id = None } |}]
+    { version = (0, 1)
+    ; packages = map {}
+    ; ocaml = None
+    ; repos = { complete = true; used = None }
+    } |}]
 ;;
 
 let%expect_test "encode/decode round trip test for lockdir with simple deps" =
@@ -214,7 +218,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
        in
        Lock_dir.create_latest_version
          ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
-         ~repo_id:None
+         ~repos:None
          (Package_name.Map.of_list_exn
             [ mk_pkg_basic ~name:"foo" ~version:"0.1.0"
             ; mk_pkg_basic ~name:"bar" ~version:"0.2.0"
@@ -253,7 +257,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
               }
           }
     ; ocaml = Some ("simple_lock_dir/lock.dune:3", "ocaml")
-    ; repo_id = None
+    ; repos = { complete = true; used = None }
     } |}]
 ;;
 
@@ -343,9 +347,13 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
            ; exported_env = []
            } )
        in
+       let repo_id = Dune_pkg.Repository_id.Private.git_hash "95cf548dc" in
+       let opam_repo =
+         Dune_pkg.Opam_repo.Private.create ~source:"well-known-repo" ~repo_id ()
+       in
        Lock_dir.create_latest_version
          ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
-         ~repo_id:(Some (Loc.none, Dune_pkg.Repository_id.Private.git_hash "95cf548dc"))
+         ~repos:(Some [ opam_repo ])
          (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ]));
   [%expect
     {|
@@ -404,6 +412,13 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               }
           }
     ; ocaml = Some ("complex_lock_dir/lock.dune:3", "ocaml")
-    ; repo_id = Some ("complex_lock_dir/lock.dune:6", Git_hash "95cf548dc")
+    ; repos =
+        { complete = true
+        ; used =
+            Some
+              [ opam_repo_serializable
+                  Some Git_hash "95cf548dc","well-known-repo"
+              ]
+        }
     } |}]
 ;;

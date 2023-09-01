@@ -210,18 +210,21 @@ type t =
   { flags : Variable.Flag.Set.t
   ; sys : Variable.Sys.Bindings.t
   ; const : Variable.Const.Bindings.t
+  ; repos : Workspace.Repository.Name.t list
   }
 
 module Fields = struct
   let flags = "flags"
   let sys = "sys"
   let const = "const"
+  let repos = "repositories"
 end
 
 let default =
   { flags = Variable.Flag.Set.all
   ; sys = Variable.Sys.Bindings.empty
   ; const = Variable.Const.bindings
+  ; repos = [ Workspace.Repository.Name.of_string ":standard" ] (* TODO *)
   }
 ;;
 
@@ -229,30 +232,36 @@ let decode =
   let open Decoder in
   fields
   @@ let+ flags = field Fields.flags ~default:default.flags Variable.Flag.Set.decode
-     and+ sys = field Fields.sys ~default:default.sys Variable.Sys.Bindings.decode in
+     and+ sys = field Fields.sys ~default:default.sys Variable.Sys.Bindings.decode
+     and+ repos =
+       field Fields.repos ~default:default.repos (repeat Workspace.Repository.Name.decode)
+     in
      let const = default.const in
-     { flags; sys; const }
+     { flags; sys; const; repos }
 ;;
 
-let to_dyn { flags; sys; const } =
+let to_dyn { flags; sys; const; repos } =
   Dyn.record
     [ Fields.flags, Variable.Flag.Set.to_dyn flags
     ; Fields.sys, Variable.Sys.Bindings.to_dyn sys
     ; Fields.const, Variable.Const.Bindings.to_dyn const
+    ; Fields.repos, Dyn.list Workspace.Repository.Name.to_dyn repos
     ]
 ;;
 
-let equal { flags; sys; const } t =
+let equal { flags; sys; const; repos } t =
   Variable.Flag.Set.equal flags t.flags
   && Variable.Sys.Bindings.equal sys t.sys
   && Variable.Const.Bindings.equal const t.const
+  && List.equal Workspace.Repository.Name.equal repos t.repos
 ;;
 
 let sys { sys; _ } = sys
 let set_sys t sys = { t with sys }
 let clear_flags t = { t with flags = Variable.Flag.Set.empty }
+let repos { repos; _ } = repos
 
-let pp { flags; sys; const } =
+let pp { flags; sys; const; repos } =
   let pp_section heading pp_section =
     (* The hbox is to prevent long values in [pp_section] from causing the heading to wrap. *)
     let pp_heading = Pp.hbox (Pp.text heading) in
@@ -263,6 +272,9 @@ let pp { flags; sys; const } =
     [ pp_section "Flags" (Variable.Flag.Set.pp flags)
     ; pp_section "System Environment Variables" (Variable.Sys.Bindings.pp sys)
     ; pp_section "Constants" (Variable.Const.Bindings.pp const)
+    ; pp_section
+        "Repositories"
+        (Pp.chain repos ~f:(fun r -> Workspace.Repository.Name.pp r))
     ]
 ;;
 

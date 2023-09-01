@@ -261,40 +261,91 @@ module Pkg = struct
   ;;
 end
 
+module Repositories = struct
+  type t =
+    { complete : bool
+    ; used : Opam_repo.Serializable.t list option
+    }
+
+  let equal { complete; used } t =
+    Bool.equal complete t.complete
+    && Option.equal (List.equal Opam_repo.Serializable.equal) used t.used
+  ;;
+
+  let to_dyn { complete; used } =
+    Dyn.record
+      [ "complete", Dyn.bool complete
+      ; "used", Dyn.option (Dyn.list Opam_repo.Serializable.to_dyn) used
+      ]
+  ;;
+
+  let encode_used used =
+    let open Encoder in
+    List.map ~f:(fun repo -> list sexp @@ Opam_repo.Serializable.encode repo) used
+  ;;
+
+  let encode { complete; used } =
+    let open Encoder in
+    let base = list sexp [ string "complete"; bool complete ] in
+    [ base ]
+    @
+    match used with
+    | None -> []
+    | Some [] -> [ list sexp [ string "used" ] ]
+    | Some used -> [ list sexp (string "used" :: encode_used used) ]
+  ;;
+
+  let decode =
+    let open Decoder in
+    fields
+      (let+ complete = field "complete" bool
+       and+ used = field_o "used" (repeat (enter Opam_repo.Serializable.decode)) in
+       { complete; used })
+  ;;
+end
+
 type t =
   { version : Syntax.Version.t
   ; packages : Pkg.t Package_name.Map.t
   ; ocaml : (Loc.t * Package_name.t) option
-  ; repo_id : (Loc.t * Repository_id.t) option
+  ; repos : Repositories.t
   }
 
 let remove_locs t =
   { t with
     packages = Package_name.Map.map t.packages ~f:Pkg.remove_locs
   ; ocaml = Option.map t.ocaml ~f:(fun (_, ocaml) -> Loc.none, ocaml)
-  ; repo_id = Option.map t.repo_id ~f:(fun (_, repo_id) -> Loc.none, repo_id)
   }
 ;;
 
-let equal { version; packages; ocaml; repo_id } t =
+let equal { version; packages; ocaml; repos } t =
   Syntax.Version.equal version t.version
   && Option.equal (Tuple.T2.equal Loc.equal Package_name.equal) ocaml t.ocaml
-  && Option.equal (Tuple.T2.equal Loc.equal Repository_id.equal) repo_id t.repo_id
+  && Repositories.equal repos t.repos
   && Package_name.Map.equal packages t.packages ~equal:Pkg.equal
 ;;
 
-let to_dyn { version; packages; ocaml; repo_id } =
+let to_dyn { version; packages; ocaml; repos } =
   Dyn.record
     [ "version", Syntax.Version.to_dyn version
     ; "packages", Package_name.Map.to_dyn Pkg.to_dyn packages
     ; "ocaml", Dyn.option (Tuple.T2.to_dyn Loc.to_dyn_hum Package_name.to_dyn) ocaml
-    ; "repo_id", Dyn.option (Tuple.T2.to_dyn Loc.to_dyn_hum Repository_id.to_dyn) repo_id
+    ; "repos", Repositories.to_dyn repos
     ]
 ;;
 
-let create_latest_version packages ~ocaml ~repo_id =
+let create_latest_version packages ~ocaml ~repos =
   let version = Syntax.greatest_supported_version Dune_lang.Pkg.syntax in
-  { version; packages; ocaml; repo_id }
+  let complete, used =
+    match repos with
+    | None -> true, None
+    | Some repos ->
+      let used = List.filter_map repos ~f:Opam_repo.serializable in
+      let complete = Int.equal (List.length repos) (List.length used) in
+      complete, Some used
+  in
+  let repos : Repositories.t = { complete; used } in
+  { version; packages; ocaml; repos }
 ;;
 
 let default_path = Path.Source.(relative root "dune.lock")
@@ -304,7 +355,7 @@ module Metadata = Dune_sexp.Versioned_file.Make (Unit)
 
 let () = Metadata.Lang.register Dune_lang.Pkg.syntax ()
 
-let encode_metadata { version; ocaml; repo_id; packages = _ } =
+let encode_metadata { version; ocaml; repos; packages = _ } =
   let open Encoder in
   let base =
     list
@@ -318,10 +369,15 @@ let encode_metadata { version; ocaml; repo_id; packages = _ } =
   @ (match ocaml with
      | None -> []
      | Some ocaml -> [ list sexp [ string "ocaml"; Package_name.encode (snd ocaml) ] ])
-  @
-  match repo_id with
-  | None -> []
-  | Some repo_id -> [ list sexp [ string "repo_id"; Repository_id.encode (snd repo_id) ] ]
+  @ [ list sexp (string "repositories" :: Repositories.encode repos) ]
+;;
+
+let decode_metadata =
+  let open Decoder in
+  fields
+    (let+ ocaml = field_o "ocaml" (located Package_name.decode)
+     and+ repos = field "repositories" Repositories.decode in
+     ocaml, repos)
 ;;
 
 module Package_filename = struct
@@ -361,8 +417,8 @@ module Write_disk = struct
          (match Path.exists metadata_path && not (Path.is_directory metadata_path) with
           | false -> Error `No_metadata_file
           | true ->
-            (match Metadata.load metadata_path ~f:(Fun.const (Decoder.return ())) with
-             | Ok () -> Ok `Is_existing_lock_dir
+            (match Metadata.load metadata_path ~f:(Fun.const decode_metadata) with
+             | Ok _unused -> Ok `Is_existing_lock_dir
              | Error exn -> Error (`Failed_to_parse_metadata exn))))
   ;;
 
@@ -443,22 +499,17 @@ module Make_load (Io : sig
 struct
   let load_metadata metadata_file_path =
     let open Io.O in
-    let+ syntax, version, ocaml, repo_id =
+    let+ syntax, version, ocaml, repos =
       Io.with_lexbuf_from_file metadata_file_path ~f:(fun lexbuf ->
         Metadata.parse_contents
           lexbuf
           ~f:(fun { Metadata.Lang.Instance.syntax; data = (); version } ->
             let open Decoder in
-            let+ ocaml, repo_id =
-              fields
-                (let+ ocaml = field_o "ocaml" (located Package_name.decode)
-                 and+ repo_id = field_o "repo_id" (located Repository_id.decode) in
-                 ocaml, repo_id)
-            in
-            syntax, version, ocaml, repo_id))
+            let+ ocaml, repos = decode_metadata in
+            syntax, version, ocaml, repos))
     in
     if String.equal (Syntax.name syntax) (Syntax.name Dune_lang.Pkg.syntax)
-    then version, ocaml, repo_id
+    then version, ocaml, repos
     else
       User_error.raise
         [ Pp.textf
@@ -506,7 +557,7 @@ struct
   let load lock_dir_path =
     let open Io.O in
     check_path lock_dir_path;
-    let* version, ocaml, repo_id =
+    let* version, ocaml, repos =
       load_metadata (Path.Source.relative lock_dir_path metadata)
     in
     let+ packages =
@@ -522,7 +573,7 @@ struct
         package_name, pkg)
       >>| Package_name.Map.of_list_exn
     in
-    { version; packages; ocaml; repo_id }
+    { version; packages; ocaml; repos }
   ;;
 end
 

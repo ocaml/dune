@@ -73,6 +73,9 @@ val equal : t -> t -> bool
 val sys : t -> Variable.Sys.Bindings.t
 val set_sys : t -> Variable.Sys.Bindings.t -> t
 
+(** [repos t] returns the selected repository names in priority order *)
+val repos : t -> Workspace.Repository.Name.t list
+
 (** Set all the flags to false *)
 val clear_flags : t -> t
 

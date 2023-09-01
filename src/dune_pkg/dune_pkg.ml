@@ -10,3 +10,4 @@ module Solver_env = Solver_env
 module Substs = Substs
 module Sys_poll = Sys_poll
 module Version_preference = Version_preference
+module Pkg_workspace = Workspace

@@ -71,11 +71,16 @@ module Processed = struct
   type module_config =
     { opens : Module_name.t list
     ; module_ : Module.t
+    ; reader : string list option
     }
 
-  let dyn_of_module_config { opens; module_ } =
+  let dyn_of_module_config { opens; module_; reader } =
     let open Dyn in
-    record [ "opens", list Module_name.to_dyn opens; "module_", Module.to_dyn module_ ]
+    record
+      [ "opens", list Module_name.to_dyn opens
+      ; "module_", Module.to_dyn module_
+      ; "reader", option (list string) reader
+      ]
   ;;
 
   (* ...but modules can have different preprocessing specifications*)
@@ -147,7 +152,7 @@ module Processed = struct
     | None, None -> None
   ;;
 
-  let to_sexp ~opens ~pp { stdlib_dir; obj_dirs; src_dirs; flags; extensions } =
+  let to_sexp ~opens ~pp ~reader { stdlib_dir; obj_dirs; src_dirs; flags; extensions } =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
     let make_directive_of_path tag path =
       make_directive tag (Sexp.Atom (serialize_path path))
@@ -190,8 +195,16 @@ module Processed = struct
         let+ impl, intf = get_ext x in
         make_directive "SUFFIX" (Sexp.Atom (Printf.sprintf "%s %s" impl intf)))
     in
+    let reader =
+      match reader with
+      | Some reader ->
+        [ make_directive "READER" (Sexp.List (List.map ~f:(fun r -> Sexp.Atom r) reader))
+        ]
+      | None -> []
+    in
     Sexp.List
-      (List.concat [ stdlib_dir; exclude_query_dir; obj_dirs; src_dirs; flags; suffixes ])
+      (List.concat
+         [ stdlib_dir; exclude_query_dir; obj_dirs; src_dirs; flags; suffixes; reader ])
   ;;
 
   let quote_for_dot_merlin s =
@@ -240,7 +253,7 @@ module Processed = struct
     (* We only match the first part of the filename : foo.ml -> foo foo.cppo.ml
        -> foo *)
     let open Option.O in
-    let+ { module_; opens } =
+    let+ { module_; opens; reader } =
       let find file =
         match Path.Build.Map.find per_module_config file with
         | Some _ as s -> s
@@ -251,25 +264,32 @@ module Processed = struct
       | None -> Copy_line_directive.DB.follow_while file ~f:find
     in
     let pp = Module_name.Per_item.get pp_config (Module.name module_) in
-    to_sexp ~opens ~pp config
+    to_sexp ~opens ~pp ~reader config
   ;;
 
   let print_file path =
     match load_file path with
     | Error msg -> Printf.eprintf "%s\n" msg
     | Ok { per_module_config; pp_config; config } ->
-      let pp_one { module_; opens } =
+      let pp_one name sexp =
         let open Pp.O in
+        Pp.vbox (Pp.text name) ++ Pp.newline ++ Pp.vbox (Sexp.pp sexp)
+      in
+      let pp_module { module_; opens; reader } =
         let name = Module.name module_ in
         let pp = Module_name.Per_item.get pp_config name in
-        let sexp = to_sexp ~opens ~pp config in
-        Pp.vbox (Pp.text (Module_name.to_string name))
-        ++ Pp.newline
-        ++ Pp.vbox (Sexp.pp sexp)
+        let sexps =
+          List.map (Module.sources module_) ~f:(fun path ->
+            Path.basename path, to_sexp ~opens ~pp ~reader config)
+          |> List.sort ~compare:(fun (a, _) (b, _) -> String.compare a b)
+        in
+        match sexps with
+        | [ (_, sexp) ] -> pp_one (Module_name.to_string name) sexp
+        | many -> Pp.concat_map ~sep:Pp.cut ~f:(fun (name, sexp) -> pp_one name sexp) many
       in
       let pp =
         Path.Build.Map.values per_module_config
-        |> Pp.concat_map ~sep:Pp.cut ~f:pp_one
+        |> Pp.concat_map ~sep:Pp.cut ~f:pp_module
         |> Pp.vbox
       in
       Format.printf "%a@." Pp.to_fmt pp
@@ -340,6 +360,7 @@ module Unprocessed = struct
     ; source_dirs : Path.Source.Set.t
     ; objs_dirs : Path.Set.t
     ; extensions : string option Ml_kind.Dict.t list
+    ; readers : string list String.Map.t
     ; mode : Lib_mode.t
     }
 
@@ -378,7 +399,7 @@ module Unprocessed = struct
       Path.Set.singleton @@ obj_dir_of_lib `Private mode (Obj_dir.of_local obj_dir)
     in
     let flags = Ocaml_flags.get flags mode in
-    let extensions = Dialect.DB.extensions_for_merlin dialects in
+    let { Dialect.DB.extensions; readers } = Dialect.DB.for_merlin dialects in
     let config =
       { stdlib_dir
       ; mode
@@ -389,6 +410,7 @@ module Unprocessed = struct
       ; source_dirs
       ; objs_dirs
       ; extensions
+      ; readers
       }
     in
     { ident; config; modules = source_modules }
@@ -496,6 +518,7 @@ module Unprocessed = struct
      ; config =
          { stdlib_dir
          ; extensions
+         ; readers
          ; flags
          ; objs_dirs
          ; source_dirs
@@ -579,6 +602,7 @@ module Unprocessed = struct
           let config =
             { Processed.module_ = Module.set_pp m None
             ; opens = Modules.alias_for modules m |> List.map ~f:Module.name
+            ; reader = String.Map.find readers (Path.Build.extension src)
             }
           in
           (src, config) :: acc))

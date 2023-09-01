@@ -1022,7 +1022,7 @@ type t =
   { builder : Builder.t
   ; root : Workspace_root.t
   ; rpc :
-      [ `Allow of Dune_rules.Dep_conf.t Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
+      [ `Allow of Dune_lang.Dep_conf.t Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
   ; stats : Dune_stats.t option
   }
 

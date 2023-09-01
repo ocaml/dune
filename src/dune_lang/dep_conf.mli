@@ -1,6 +1,5 @@
-(* TODO move to Dune_lang *)
-
-open Import
+open Stdune
+open Dune_sexp
 
 module Glob_files : sig
   (** A glob stored in a [String_with_vars.t] and functions for expanding the
@@ -14,6 +13,18 @@ module Glob_files : sig
     }
 
   val to_dyn : t -> Dyn.t
+end
+
+module Sandbox_config : sig
+  type t
+
+  val loc : t -> Loc.t
+
+  val fold
+    :  t
+    -> f:([ `None | `Always | `Preserve_file_kind ] -> 'acc -> 'acc)
+    -> init:'acc
+    -> 'acc
 end
 
 type t =
@@ -34,7 +45,7 @@ type t =
 
 val remove_locs : t -> t
 
-include Dune_lang.Conv.S with type t := t
+include Conv.S with type t := t
 
-val decode_no_files : t Dune_lang.Decoder.t
+val decode_no_files : t Decoder.t
 val to_dyn : t Dyn.builder

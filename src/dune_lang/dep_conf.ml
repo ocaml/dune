@@ -1,5 +1,6 @@
-open Import
-open Dune_lang.Decoder
+open Stdune
+open Dune_sexp
+open Decoder
 
 module Glob_files = struct
   type t =
@@ -10,6 +11,32 @@ module Glob_files = struct
   let to_dyn { glob; recursive } =
     Dyn.record [ "glob", String_with_vars.to_dyn glob; "recursive", Dyn.bool recursive ]
   ;;
+end
+
+module Sandbox_config = struct
+  type t = Loc.t * [ `None | `Always | `Preserve_file_kind ] list
+
+  let all =
+    [ "none", `None; "always", `Always; "preserve_file_kind", `Preserve_file_kind ]
+  ;;
+
+  let loc (loc, _) = loc
+
+  let string_of_mode mode =
+    List.find_map all ~f:(fun (s, mode') ->
+      if Poly.equal mode mode' then Some s else None)
+    |> Option.value_exn
+  ;;
+
+  let encode (_, list) =
+    Dune_sexp.List (List.map list ~f:(fun x -> Dune_sexp.atom @@ string_of_mode x))
+  ;;
+
+  let decode : t Decoder.t =
+    Syntax.since Stanza.syntax (1, 12) >>> located (repeat (enum all))
+  ;;
+
+  let fold (_, xs) ~f ~init = List.fold_left xs ~init ~f:(fun acc a -> f a acc)
 end
 
 type t =
@@ -37,21 +64,6 @@ let remove_locs = function
   | Include s -> Include s
 ;;
 
-let decode_sandbox_config =
-  let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 12)
-  and+ loc, x =
-    located
-      (repeat
-         (sum
-            [ "none", return Sandbox_config.Partial.no_sandboxing
-            ; "always", return Sandbox_config.Partial.needs_sandboxing
-            ; ( "preserve_file_kind"
-              , return (Sandbox_config.Partial.disallow Sandbox_mode.symlink) )
-            ]))
-  in
-  Sandbox_config.Partial.merge ~loc x
-;;
-
 let decode files =
   let files_only =
     match files with
@@ -70,23 +82,25 @@ let decode files =
       ; ( "glob_files"
         , sw >>| fun glob -> Glob_files { Glob_files.glob; recursive = false } )
       ; ( "glob_files_rec"
-        , let+ () = Dune_lang.Syntax.since Stanza.syntax (3, 0)
+        , let+ () = Syntax.since Stanza.syntax (3, 0)
           and+ glob = sw in
           Glob_files { Glob_files.glob; recursive = true } )
       ; ("package", files_only >>> sw >>| fun x -> Package x)
       ; "universe", files_only >>> return Universe
       ; ( "files_recursively_in"
-        , let+ () = Dune_lang.Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"source_tree"
+        , let+ () = Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"source_tree"
           and+ x = sw in
           Source_tree x )
       ; ( "source_tree"
-        , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 0)
+        , let+ () = Syntax.since Stanza.syntax (1, 0)
           and+ x = sw in
           Source_tree x )
       ; ("env_var", files_only >>> sw >>| fun x -> Env_var x)
-      ; ("sandbox", files_only >>> decode_sandbox_config >>| fun x -> Sandbox_config x)
+      ; ( "sandbox"
+        , let+ config = files_only >>> Sandbox_config.decode in
+          Sandbox_config config )
       ; ( "include"
-        , let+ () = Dune_lang.Syntax.since Stanza.syntax (3, 1)
+        , let+ () = Syntax.since Stanza.syntax (3, 1)
           and+ filename = filename in
           Include filename )
       ]
@@ -99,26 +113,23 @@ let decode files =
 let decode_no_files = decode `Forbid
 let decode = decode `Allow
 
-open Dune_lang
+open Dune_sexp
 
 let encode = function
-  | File t -> List [ Dune_lang.atom "file"; String_with_vars.encode t ]
-  | Alias t -> List [ Dune_lang.atom "alias"; String_with_vars.encode t ]
-  | Alias_rec t -> List [ Dune_lang.atom "alias_rec"; String_with_vars.encode t ]
+  | File t -> List [ Dune_sexp.atom "file"; String_with_vars.encode t ]
+  | Alias t -> List [ Dune_sexp.atom "alias"; String_with_vars.encode t ]
+  | Alias_rec t -> List [ Dune_sexp.atom "alias_rec"; String_with_vars.encode t ]
   | Glob_files { glob = t; recursive } ->
     List
-      [ Dune_lang.atom (if recursive then "glob_files_rec" else "glob_files")
+      [ Dune_sexp.atom (if recursive then "glob_files_rec" else "glob_files")
       ; String_with_vars.encode t
       ]
-  | Source_tree t -> List [ Dune_lang.atom "source_tree"; String_with_vars.encode t ]
-  | Package t -> List [ Dune_lang.atom "package"; String_with_vars.encode t ]
-  | Universe -> Dune_lang.atom "universe"
-  | Env_var t -> List [ Dune_lang.atom "env_var"; String_with_vars.encode t ]
-  | Sandbox_config config ->
-    if Sandbox_config.equal config Sandbox_config.no_special_requirements
-    then List []
-    else Code_error.raise "There's no syntax for [Sandbox_config] yet" []
-  | Include t -> List [ Dune_lang.atom "include"; Dune_lang.atom t ]
+  | Source_tree t -> List [ Dune_sexp.atom "source_tree"; String_with_vars.encode t ]
+  | Package t -> List [ Dune_sexp.atom "package"; String_with_vars.encode t ]
+  | Universe -> Dune_sexp.atom "universe"
+  | Env_var t -> List [ Dune_sexp.atom "env_var"; String_with_vars.encode t ]
+  | Sandbox_config t -> Sandbox_config.encode t
+  | Include t -> List [ Dune_sexp.atom "include"; Dune_sexp.atom t ]
 ;;
 
-let to_dyn t = Dune_lang.to_dyn (encode t)
+let to_dyn t = Dune_sexp.to_dyn (encode t)

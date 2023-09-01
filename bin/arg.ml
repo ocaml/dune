@@ -8,9 +8,9 @@ include struct
   module Profile = Profile
   module Pform = Pform
   module Lib_name = Lib_name
+  module Dep_conf = Dep_conf
 end
 
-module Dep_conf = Dune_rules.Dep_conf
 module Package = Dune_rules.Package
 module Context_name = Dune_engine.Context_name
 

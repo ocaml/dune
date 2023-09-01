@@ -1,8 +1,8 @@
 open Stdune
+module Dep_conf = Dune_lang.Dep_conf
 
 include struct
   open Dune_rules
-  module Dep_conf = Dep_conf
   module Source_tree = Source_tree
   module Dune_project = Dune_project
 end

@@ -19,7 +19,7 @@ module Path : sig
 end
 
 module Dep : sig
-  type t = Dune_rules.Dep_conf.t
+  type t = Dune_lang.Dep_conf.t
 
   val file : string -> t
   val alias : dir:Stdune.Path.Local.t -> Dune_engine.Alias.Name.t -> t

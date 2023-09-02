@@ -1,6 +1,18 @@
 open Import
 open Action_builder.O
-open Dep_conf
+
+let make_sandboxing_config config =
+  let loc = Dep_conf.Sandbox_config.loc config in
+  Dep_conf.Sandbox_config.fold config ~init:[] ~f:(fun kind acc ->
+    let partial =
+      match kind with
+      | `None -> Sandbox_config.Partial.no_sandboxing
+      | `Always -> Sandbox_config.Partial.needs_sandboxing
+      | `Preserve_file_kind -> Sandbox_config.Partial.disallow Sandbox_mode.symlink
+    in
+    partial :: acc)
+  |> Dune_engine.Sandbox_config.Partial.merge ~loc
+;;
 
 let make_alias expander s =
   let loc = String_with_vars.loc s in
@@ -90,11 +102,11 @@ let prepare_expander expander = Expander.set_expanding_what expander Deps_like_f
 
 let add_sandbox_config acc (dep : Dep_conf.t) =
   match dep with
-  | Sandbox_config cfg -> Sandbox_config.inter acc cfg
+  | Sandbox_config cfg -> Sandbox_config.inter acc (make_sandboxing_config cfg)
   | _ -> acc
 ;;
 
-let rec dep expander = function
+let rec dep expander : Dep_conf.t -> _ = function
   | Include s ->
     (* TODO this is wrong. we shouldn't allow bindings here if we are in an
        unnamed expansion *)
@@ -306,7 +318,7 @@ let unnamed_get_paths ~expander l =
          paths :: acc)
      in
      Path.Set.of_list (List.concat paths))
-  , List.fold_left l ~init:None ~f:(fun acc config ->
+  , List.fold_left l ~init:None ~f:(fun acc (config : Dep_conf.t) ->
       match acc, config with
       | None, Sandbox_config _ ->
         Some

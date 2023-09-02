@@ -26,3 +26,4 @@ module Profile = Profile
 module Targets_spec = Targets_spec
 module Wrapped = Wrapped
 module Visibility = Visibility
+module Dep_conf = Dep_conf

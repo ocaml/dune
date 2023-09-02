@@ -191,8 +191,8 @@ let resolve_alias root ~recursive sv ~(setup : Dune_rules.Main.build_system) =
 ;;
 
 let resolve_target root ~setup target =
-  match target with
-  | Dune_rules.Dep_conf.Alias sv as dep ->
+  match (target : Dune_lang.Dep_conf.t) with
+  | Alias sv as dep ->
     Action_builder.return
       (Result.map_error
          ~f:(fun hints -> dep, hints)

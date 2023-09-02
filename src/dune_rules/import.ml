@@ -88,6 +88,7 @@ include struct
   module Blang = Blang
   module Binary_kind = Binary_kind
   module Visibility = Visibility
+  module Dep_conf = Dep_conf
 end
 
 include Dune_engine.No_io

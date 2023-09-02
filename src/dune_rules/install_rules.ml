@@ -372,10 +372,10 @@ end = struct
       String.is_prefix fn ~prefix)
   ;;
 
-  let entries_of_install_stanza ~dir ~expander ~sites (i : Dune_file.Install_conf.t) =
+  let entries_of_install_stanza ~dir ~expander ~package_db (i : Dune_file.Install_conf.t) =
     let expand_str = Expander.No_deps.expand_str expander in
     let make_entry =
-      let section = Sites.section_of_site sites in
+      let section = Package_db.section_of_site package_db in
       fun fb ~kind ->
         let src = File_binding.Expanded.src fb in
         let dst = File_binding.Expanded.dst fb in
@@ -426,7 +426,7 @@ end = struct
     List.concat [ files; files_from_dirs; source_trees ]
   ;;
 
-  let stanza_to_entries ~sites ~sctx ~dir ~scope ~expander stanza =
+  let stanza_to_entries ~package_db ~sctx ~dir ~scope ~expander stanza =
     let* stanza_and_package =
       let+ stanza = keep_if expander stanza ~scope in
       let open Option.O in
@@ -441,7 +441,7 @@ end = struct
         let open Dune_file in
         match (stanza : Stanza.t) with
         | Install i | Executables { install_conf = Some i; _ } ->
-          entries_of_install_stanza ~dir ~expander ~sites i
+          entries_of_install_stanza ~dir ~expander ~package_db i
         | Library lib ->
           let sub_dir = Dune_file.Library.sub_dir lib in
           let* dir_contents = Dir_contents.get sctx ~dir in
@@ -459,7 +459,7 @@ end = struct
                 mld
             in
             Install.Entry.Sourced.create ~loc:d.loc entry)
-        | Plugin t -> Plugin_rules.install_rules ~sctx ~sites ~dir t
+        | Plugin t -> Plugin_rules.install_rules ~sctx ~package_db ~dir t
         | _ -> Memo.return []
       in
       let name = Package.name package in
@@ -517,13 +517,13 @@ end = struct
               Install.Entry.Sourced.create entry :: acc)
             else acc))
     and+ l =
-      let* sites = Sites.create ctx.name in
+      let* package_db = Package_db.create ctx.name in
       Dune_file.fold_stanzas stanzas ~init:[] ~f:(fun dune_file stanza acc ->
         let dir = Path.Build.append_source ctx.build_dir dune_file.dir in
         let named_entries =
           let* expander = Super_context.expander sctx ~dir in
           let scope = Expander.scope expander in
-          stanza_to_entries ~sites ~sctx ~dir ~scope ~expander stanza
+          stanza_to_entries ~package_db ~sctx ~dir ~scope ~expander stanza
         in
         named_entries :: acc)
       |> Memo.all

@@ -844,7 +844,7 @@ end = struct
     let module Input = struct
       type t = db * Context_name.t * Package.Name.t
 
-      let equal = ( == )
+      let equal = Tuple.T3.equal ( == ) Context_name.equal Package.Name.equal
       let hash = Tuple.T3.hash Poly.hash Context_name.hash Package.Name.hash
       let to_dyn = Dyn.opaque
     end

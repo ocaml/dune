@@ -24,6 +24,18 @@ let make prefix ~relative =
   }
 ;;
 
+let make_all a =
+  { lib_root = a
+  ; libexec_root = a
+  ; bin = a
+  ; sbin = a
+  ; share_root = a
+  ; man = a
+  ; doc_root = a
+  ; etc_root = a
+  }
+;;
+
 let opam_from_prefix prefix = make prefix ~relative:Path.relative
 
 let complete x =

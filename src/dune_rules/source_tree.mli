@@ -12,6 +12,7 @@ module Dune_file : sig
 
   type t
 
+  val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t
   val get_static_sexp : t -> Dune_lang.Ast.t list
   val kind : t -> kind

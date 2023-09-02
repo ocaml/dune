@@ -504,10 +504,10 @@ module DB = struct
       type nonrec t = t * Lib.DB.t * Path.Build.t * Coq_stanza.Theory.t
 
       let equal (coq_db, ml_db, path, stanza) (coq_db', ml_db', path', stanza') =
-        coq_db == coq_db'
-        && ml_db == ml_db'
+        phys_equal coq_db coq_db'
+        && phys_equal ml_db ml_db'
         && Path.Build.equal path path'
-        && stanza == stanza'
+        && phys_equal stanza stanza'
       ;;
 
       let hash = Poly.hash

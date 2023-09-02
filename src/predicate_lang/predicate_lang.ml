@@ -204,6 +204,7 @@ module Glob = struct
   ;;
 
   let compare x y = compare Element.compare x y
+  let equal x y = Ordering.is_eq (compare x y)
   let hash t = Poly.hash t
   let decode = decode Element.decode
   let encode t = encode Element.encode t

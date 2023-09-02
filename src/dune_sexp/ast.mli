@@ -12,3 +12,4 @@ val atom_or_quoted_string : Loc.t -> string -> t
 val loc : t -> Loc.t
 val remove_locs : t -> T.t
 val add_loc : T.t -> loc:Loc.t -> t
+val equal : t -> t -> bool

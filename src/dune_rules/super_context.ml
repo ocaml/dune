@@ -233,7 +233,7 @@ type t = Env_tree.t
 
 let context t = Env_tree.context t
 let context_env t = Env_tree.get_context_env t
-let equal = (( == ) : t -> t -> bool)
+let equal : t -> t -> bool = phys_equal
 let hash t = Context.hash (Env_tree.context t)
 let to_dyn_concise t = Context.to_dyn_concise (Env_tree.context t)
 let to_dyn t = Context.to_dyn (Env_tree.context t)
@@ -588,7 +588,7 @@ module As_memo_key = struct
     type nonrec t = t * Package.t
 
     let hash = Tuple.T2.hash hash Package.hash
-    let equal (x1, y1) (x2, y2) = equal x1 x2 && y1 == y2
+    let equal (x1, y1) (x2, y2) = equal x1 x2 && Package.equal y1 y2
     let to_dyn (s, p) = Dyn.Tuple [ to_dyn s; Package.to_dyn p ]
   end
 end

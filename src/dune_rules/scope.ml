@@ -451,7 +451,7 @@ module DB = struct
     let module Input = struct
       type t = Path.Build.t * Lib.DB.t * Dune_file.t list
 
-      let equal = Tuple.T3.equal Path.Build.equal ( == ) (List.equal Dune_file.equal)
+      let equal = Tuple.T3.equal Path.Build.equal phys_equal (List.equal Dune_file.equal)
       let hash = Tuple.T3.hash Path.Build.hash Poly.hash (List.hash Dune_file.hash)
       let to_dyn = Dyn.opaque
     end

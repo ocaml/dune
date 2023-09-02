@@ -234,8 +234,8 @@ module Pkg = struct
 
   type t =
     { id : Id.t
-    ; build_command : Action_unexpanded.t option
-    ; install_command : Action_unexpanded.t option
+    ; build_command : Dune_lang.Action.t option
+    ; install_command : Dune_lang.Action.t option
     ; deps : t list
     ; info : Pkg_info.t
     ; paths : Paths.t
@@ -655,7 +655,7 @@ module Action_expander = struct
           ])
   ;;
 
-  let rec expand (action : Action_unexpanded.t) ~(expander : Expander.t) =
+  let rec expand (action : Dune_lang.Action.t) ~(expander : Expander.t) =
     let dir = Path.build expander.paths.source_dir in
     match action with
     | Run (exe, args) ->

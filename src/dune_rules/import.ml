@@ -118,3 +118,6 @@ module Build_config = struct
 
   let set = Build_config.set
 end
+
+let phys_equal x y = x == y
+let ( == ) = `Use_phys_equal

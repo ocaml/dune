@@ -33,14 +33,19 @@ end
 module Dune_file = struct
   module Plain = struct
     type t =
-      { contents : Sub_dirs.Dir_map.per_dir
+      { contents : Sub_dirs.Dir_map.Per_dir.t
       ; for_subdirs : Sub_dirs.Dir_map.t
       }
+
+    let equal { contents; for_subdirs } t =
+      Sub_dirs.Dir_map.Per_dir.equal contents t.contents
+      && Sub_dirs.Dir_map.equal for_subdirs t.for_subdirs
+    ;;
 
     let to_dyn { contents; for_subdirs } =
       let open Dyn in
       record
-        [ "contents", Sub_dirs.Dir_map.dyn_of_per_dir contents
+        [ "contents", Sub_dirs.Dir_map.Per_dir.to_dyn contents
         ; "for_subdirs", Sub_dirs.Dir_map.to_dyn for_subdirs
         ]
     ;;
@@ -58,6 +63,12 @@ module Dune_file = struct
     | Ocaml_script -> Dyn.variant "Ocaml_script" []
   ;;
 
+  let equal_kind x y =
+    match x, y with
+    | Plain, Plain | Ocaml_script, Ocaml_script -> true
+    | _, _ -> false
+  ;;
+
   type t =
     { path : Path.Source.t option
     ; kind : kind
@@ -72,6 +83,12 @@ module Dune_file = struct
       ; "kind", dyn_of_kind kind
       ; "plain", Plain.to_dyn plain
       ]
+  ;;
+
+  let equal { path; kind; plain } t =
+    Option.equal Path.Source.equal path t.path
+    && equal_kind kind t.kind
+    && Plain.equal plain t.plain
   ;;
 
   let get_static_sexp t = t.plain.contents.sexps

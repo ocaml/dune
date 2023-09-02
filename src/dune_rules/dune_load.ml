@@ -177,7 +177,7 @@ module Script = struct
     let module Input = struct
       type nonrec t = Context.t * t
 
-      let equal = Tuple.T2.equal Context.equal ( == )
+      let equal = Tuple.T2.equal Context.equal phys_equal
       let hash = Tuple.T2.hash Context.hash Poly.hash
       let to_dyn = Dyn.opaque
     end
@@ -219,7 +219,10 @@ module Dune_files = struct
     let module Input = struct
       type t = Path.Source.t * Dune_project.t * Source_tree.Dune_file.t
 
-      let equal = Tuple.T3.equal Path.Source.equal Dune_project.equal ( == )
+      let equal =
+        Tuple.T3.equal Path.Source.equal Dune_project.equal Source_tree.Dune_file.equal
+      ;;
+
       let hash = Tuple.T3.hash Path.Source.hash Dune_project.hash Poly.hash
       let to_dyn = Dyn.opaque
     end

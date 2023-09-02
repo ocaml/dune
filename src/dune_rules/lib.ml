@@ -450,7 +450,7 @@ let wrapped t =
 ;;
 
 (* We can't write a structural equality because of all the lazy fields *)
-let equal = ( == )
+let equal : t -> t -> bool = phys_equal
 let hash = Poly.hash
 
 include Comparable.Make (T)
@@ -1062,7 +1062,7 @@ end = struct
       let hash x = Poly.hash x
 
       let equal (db, lib_name, info, hidden) (db', lib_name', info', hidden') =
-        db == db'
+        phys_equal db db'
         && Lib_name.equal lib_name lib_name'
         && Lib_info.equal info info'
         && Option.equal String.equal hidden hidden'

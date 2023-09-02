@@ -800,14 +800,18 @@ module Action_expander = struct
   ;;
 end
 
-type db = Lock_dir.Pkg.t Package.Name.Map.t
+module DB = struct
+  type t = Lock_dir.Pkg.t Package.Name.Map.t
+
+  let equal = Package.Name.Map.equal ~equal:Lock_dir.Pkg.equal
+end
 
 module rec Resolve : sig
-  val resolve : db -> Context_name.t -> Loc.t * Package.Name.t -> Pkg.t Memo.t
+  val resolve : DB.t -> Context_name.t -> Loc.t * Package.Name.t -> Pkg.t Memo.t
 end = struct
   open Resolve
 
-  let resolve_impl ((db : db), ctx, (name : Package.Name.t)) =
+  let resolve_impl ((db : DB.t), ctx, (name : Package.Name.t)) =
     match Package.Name.Map.find db name with
     | None -> Memo.return None
     | Some { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env } ->
@@ -842,9 +846,9 @@ end = struct
 
   let resolve =
     let module Input = struct
-      type t = db * Context_name.t * Package.Name.t
+      type t = DB.t * Context_name.t * Package.Name.t
 
-      let equal = Tuple.T3.equal ( == ) Context_name.equal Package.Name.equal
+      let equal = Tuple.T3.equal DB.equal Context_name.equal Package.Name.equal
       let hash = Tuple.T3.hash Poly.hash Context_name.hash Package.Name.hash
       let to_dyn = Dyn.opaque
     end

@@ -71,6 +71,13 @@ module Pform = struct
     Option.compare Payload.compare payload t.payload
   ;;
 
+  let compare { name; payload; loc } t =
+    let open Ordering.O in
+    let= () = String.compare name t.name in
+    let= () = Option.compare Payload.compare payload t.payload in
+    Loc.compare loc t.loc
+  ;;
+
   let full_name t =
     match t.payload with
     | None -> t.name
@@ -117,7 +124,7 @@ type t =
   ; loc : Loc.t
   }
 
-let compare_part p1 p2 =
+let compare_part_no_loc p1 p2 =
   match p1, p2 with
   | Text s1, Text s2 -> String.compare s1 s2
   | Pform v1, Pform v2 -> Pform.compare_no_loc v1 v2
@@ -125,10 +132,25 @@ let compare_part p1 p2 =
   | Pform _, Text _ -> Ordering.Gt
 ;;
 
+let compare_part p1 p2 =
+  match p1, p2 with
+  | Text s1, Text s2 -> String.compare s1 s2
+  | Pform v1, Pform v2 -> Pform.compare v1 v2
+  | Text _, Pform _ -> Ordering.Lt
+  | Pform _, Text _ -> Ordering.Gt
+;;
+
 let compare_no_loc { quoted; parts; loc = _ } t =
   let open Ordering.O in
-  let= () = List.compare ~compare:compare_part parts t.parts in
+  let= () = List.compare ~compare:compare_part_no_loc parts t.parts in
   Bool.compare quoted t.quoted
+;;
+
+let compare { quoted; parts; loc } t =
+  let open Ordering.O in
+  let= () = List.compare ~compare:compare_part parts t.parts in
+  let= () = Bool.compare quoted t.quoted in
+  Loc.compare loc t.loc
 ;;
 
 module Pp : sig

@@ -43,6 +43,7 @@ module Glob : sig
   val of_string_set : String.Set.t -> t
 
   val compare : t -> t -> Ordering.t
+  val equal : t -> t -> bool
   val hash : t -> int
   val decode : t Dune_sexp.Decoder.t
   val encode : t -> Dune_sexp.t

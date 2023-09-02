@@ -3,7 +3,7 @@ open Dune_lang.Decoder
 
 type t = ..
 
-let equal (x : t) (y : t) = x == y
+let equal (x : t) (y : t) = phys_equal x y
 
 type sub_system = t = ..
 

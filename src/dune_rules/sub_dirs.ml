@@ -14,6 +14,10 @@ module Status = struct
       ; normal : 'a
       }
 
+    let equal f { data_only; vendored; normal } t =
+      f data_only t.data_only && f vendored t.vendored && f normal t.normal
+    ;;
+
     let merge x y ~f =
       { data_only = f x.data_only y.data_only
       ; vendored = f x.vendored y.vendored
@@ -150,29 +154,66 @@ let eval (t : _ Status.Map.t) ~dirs =
 type subdir_stanzas = (Loc.t * Predicate_lang.Glob.t) option Status.Map.t
 
 module Dir_map = struct
-  type per_dir =
-    { sexps : Dune_lang.Ast.t list
-    ; subdir_status : subdir_stanzas
-    }
+  module Per_dir = struct
+    type t =
+      { sexps : Dune_lang.Ast.t list
+      ; subdir_status : subdir_stanzas
+      }
 
-  let dyn_of_per_dir { sexps; subdir_status = _ } =
-    let open Dyn in
-    record
-      [ "sexps", list Dune_lang.to_dyn (List.map ~f:Dune_lang.Ast.remove_locs sexps) ]
-  ;;
+    let to_dyn { sexps; subdir_status = _ } =
+      let open Dyn in
+      record
+        [ "sexps", list Dune_lang.to_dyn (List.map ~f:Dune_lang.Ast.remove_locs sexps) ]
+    ;;
+
+    let equal { sexps; subdir_status } t =
+      List.equal Dune_sexp.Ast.equal sexps t.sexps
+      && Status.Map.equal
+           (Option.equal (Tuple.T2.equal Loc.equal Predicate_lang.Glob.equal))
+           subdir_status
+           t.subdir_status
+    ;;
+
+    let empty = { sexps = []; subdir_status = Status.Map.init ~f:(fun _ -> None) }
+
+    let merge d1 d2 =
+      { sexps = d1.sexps @ d2.sexps
+      ; subdir_status =
+          Status.Map.merge d1.subdir_status d2.subdir_status ~f:(fun l r ->
+            Option.merge l r ~f:(fun (loc, _) (loc2, _) ->
+              let main_message = Pp.text "This stanza stanza was already specified at:" in
+              let annots =
+                let main = User_message.make ~loc [ main_message ] in
+                let related =
+                  [ User_message.make ~loc:loc2 [ Pp.text "Already defined here" ] ]
+                in
+                User_message.Annots.singleton
+                  Compound_user_error.annot
+                  [ Compound_user_error.make ~main ~related ]
+              in
+              User_error.raise
+                ~loc
+                ~annots
+                [ main_message; Pp.verbatim (Loc.to_file_colon_line loc2) ]))
+      }
+    ;;
+  end
 
   type t =
-    { data : per_dir
+    { data : Per_dir.t
     ; nodes : t Filename.Map.t
     }
 
-  let rec to_dyn { data; nodes } =
-    let open Dyn in
-    record [ "data", dyn_of_per_dir data; "nodes", Filename.Map.to_dyn to_dyn nodes ]
+  let rec equal { data; nodes } t =
+    Per_dir.equal data t.data && Filename.Map.equal ~equal nodes t.nodes
   ;;
 
-  let empty_per_dir = { sexps = []; subdir_status = Status.Map.init ~f:(fun _ -> None) }
-  let empty = { data = empty_per_dir; nodes = Filename.Map.empty }
+  let rec to_dyn { data; nodes } =
+    let open Dyn in
+    record [ "data", Per_dir.to_dyn data; "nodes", Filename.Map.to_dyn to_dyn nodes ]
+  ;;
+
+  let empty = { data = Per_dir.empty; nodes = Filename.Map.empty }
   let root t = t.data
   let descend t (p : Filename.t) = Filename.Map.find t.nodes p
   let sub_dirs t = Filename.Map.keys t.nodes
@@ -187,30 +228,8 @@ module Dir_map = struct
 
   let singleton data = { empty with data }
 
-  let merge_data d1 d2 =
-    { sexps = d1.sexps @ d2.sexps
-    ; subdir_status =
-        Status.Map.merge d1.subdir_status d2.subdir_status ~f:(fun l r ->
-          Option.merge l r ~f:(fun (loc, _) (loc2, _) ->
-            let main_message = Pp.text "This stanza stanza was already specified at:" in
-            let annots =
-              let main = User_message.make ~loc [ main_message ] in
-              let related =
-                [ User_message.make ~loc:loc2 [ Pp.text "Already defined here" ] ]
-              in
-              User_message.Annots.singleton
-                Compound_user_error.annot
-                [ Compound_user_error.make ~main ~related ]
-            in
-            User_error.raise
-              ~loc
-              ~annots
-              [ main_message; Pp.verbatim (Loc.to_file_colon_line loc2) ]))
-    }
-  ;;
-
   let rec merge t1 t2 : t =
-    let data = merge_data t1.data t2.data in
+    let data = Per_dir.merge t1.data t2.data in
     let nodes = Filename.Map.union t1.nodes t2.nodes ~f:(fun _ l r -> Some (merge l r)) in
     { data; nodes }
   ;;
@@ -332,7 +351,7 @@ let decode =
     | _ ->
       Dir_map.merge_all
         (let subdir_status = make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs in
-         Dir_map.singleton { Dir_map.sexps = rest; subdir_status } :: subdirs)
+         Dir_map.singleton { Dir_map.Per_dir.sexps = rest; subdir_status } :: subdirs)
   in
   enter (fields (decode ~allow_ignored_subdirs:true))
 ;;

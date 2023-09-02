@@ -49,18 +49,23 @@ val status : status_map -> dir:string -> Status.Or_ignored.t
 module Dir_map : sig
   type t
 
-  type per_dir =
-    { sexps : Dune_lang.Ast.t list
-    ; subdir_status : subdir_stanzas
-    }
+  module Per_dir : sig
+    type t =
+      { sexps : Dune_lang.Ast.t list
+      ; subdir_status : subdir_stanzas
+      }
 
-  val dyn_of_per_dir : per_dir -> Dyn.t
+    val to_dyn : t -> Dyn.t
+    val equal : t -> t -> bool
+  end
+
+  val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t
   val empty : t
   val descend : t -> string -> t option
   val sub_dirs : t -> string list
   val merge : t -> t -> t
-  val root : t -> per_dir
+  val root : t -> Per_dir.t
 end
 
 type decoder = { decode : 'a. Dune_lang.Ast.t list -> 'a Dune_lang.Decoder.t -> 'a }

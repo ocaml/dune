@@ -6,6 +6,16 @@ type t =
   | Template of Template.t
   | List of Loc.t * t list
 
+let rec equal x y =
+  match x, y with
+  | Atom (loc, atom), Atom (loc', atom') -> Loc.equal loc loc' && Atom.equal atom atom'
+  | Quoted_string (loc, s), Quoted_string (loc', s') ->
+    Loc.equal loc loc' && String.equal s s'
+  | Template t, Template t' -> Ordering.is_eq @@ Template.compare t t'
+  | List (loc, xs), List (loc', xs') -> Loc.equal loc loc' && List.equal equal xs xs'
+  | _, _ -> false
+;;
+
 let atom_or_quoted_string loc s =
   match T.atom_or_quoted_string s with
   | Atom a -> Atom (loc, a)

@@ -156,7 +156,7 @@ type t =
   ; opam_file_location : [ `Relative_to_project | `Inside_opam_directory ]
   }
 
-let equal = ( == )
+let equal : t -> t -> bool = phys_equal
 let hash = Poly.hash
 let packages t = t.packages
 let name t = t.name

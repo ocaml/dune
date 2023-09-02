@@ -2509,7 +2509,7 @@ let fold_stanzas t ~init ~f = Id_fold.fold_stanzas t ~init ~f
 let equal t { dir; project; stanzas } =
   Path.Source.equal t.dir dir
   && Dune_project.equal t.project project
-  && List.equal ( == ) t.stanzas stanzas
+  && List.equal phys_equal t.stanzas stanzas
 ;;
 
 let hash = Poly.hash

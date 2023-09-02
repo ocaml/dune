@@ -1,11 +1,6 @@
 Test variable filters on dependencies
 
-Helper shell function that generates an opam file for a package:
-  $ mkpkg() {
-  >   name=$1
-  >   mkdir -p mock-opam-repository/packages/$name/$name.0.0.1
-  >   cat >mock-opam-repository/packages/$name/$name.0.0.1/opam
-  > }
+  $ . ./helpers.sh
 
 Generate a mock opam repository including some test dependencies:
   $ mkdir -p mock-opam-repository
@@ -44,12 +39,6 @@ Generate a mock opam repository including some test dependencies:
   >   "foo"
   > ]
   > EOF
-
-Helper shell function to generate a dune-project file and generate lockdir:
-  $ solve_project() {
-  >   cat >dune-project
-  >   dune pkg lock --opam-repository-path=mock-opam-repository
-  > }
 
 Regular dependencies are resolved transitively:
   $ solve_project <<EOF

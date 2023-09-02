@@ -1,12 +1,7 @@
-
-Helper shell function that generates an opam file for a package:
-  $ mkpkg() {
-  >   name=$1
-  >   mkdir -p mock-opam-repository/packages/$name/$name.0.0.1
-  >   cat >mock-opam-repository/packages/$name/$name.0.0.1/opam
-  > }
+  $ . ./helpers.sh
 
 Helper shell function to generate a dune-project file and generate lockdir:
+
   $ solve_project() {
   >   cat >dune-project
   >   dune pkg lock --opam-repository-path=mock-opam-repository --all-contexts

@@ -1,25 +1,16 @@
 Simple example of generating a lock file with Dune
 
+  $ . ../helpers.sh
+
 Helper shell function that generates an opam file for a package:
 
-  $ mkpkg() {
-  >   name=$1
-  >   mkdir -p mock-opam-repository/packages/$name/$name.0.0.1
-  >   cat >mock-opam-repository/packages/$name/$name.0.0.1/opam
-  > }
   $ emptypkg() {
   >   mkpkg $1 <<EOF
   > opam-version: "2.0"
   > EOF
   > }
-  $ versionpkg() {
-  >   name=$1
-  >   ver=$2
-  >   mkdir -p mock-opam-repository/packages/$name/$name.$ver
-  >   cat >mock-opam-repository/packages/$name/$name.$ver/opam
-  > }
   $ emptyverpkg() {
-  >   versionpkg $1 $2 <<EOF
+  >   mkpkg $1 $2 <<EOF
   > opam-version: "2.0"
   > EOF
   > }

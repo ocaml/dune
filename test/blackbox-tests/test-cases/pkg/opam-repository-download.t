@@ -1,10 +1,6 @@
 Helper shell function that generates an opam file for a package:
 
-  $ mkpkg() {
-  >   name=$1
-  >   mkdir -p mock-opam-repository/packages/$name/$name.0.0.1
-  >   cat >mock-opam-repository/packages/$name/$name.0.0.1/opam
-  > } 
+  $ . ./helpers.sh
 
 Make a mock repo tarball that will get used by dune to download the package
 

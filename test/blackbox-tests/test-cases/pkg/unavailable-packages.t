@@ -1,10 +1,4 @@
-Helper shell function that generates an opam file for a package:
-  $ mkpkg() {
-  >   name=$1
-  >   version=$2
-  >   mkdir -p mock-opam-repository/packages/$name/$name.$version
-  >   cat >mock-opam-repository/packages/$name/$name.$version/opam
-  > }
+  $ . ./helpers.sh
 
 Set up two build contexts: a default one for all systems and another just for macos.
   $ cat >dune-workspace <<EOF

@@ -17,3 +17,22 @@ show_pkg_targets() {
 show_pkg_cookie() {
   $dune internal dump $pkg_root/$1/target/cookie
 }
+
+mock_packages="mock-opam-repository/packages"
+
+mkpkg() {
+  name=$1
+  if [ "$#" -eq "1" ]
+  then
+    version="0.0.1"
+  else
+    version="$2"
+  fi
+  mkdir -p $mock_packages/$name/$name.$version
+  cat >$mock_packages/$name/$name.$version/opam
+}
+
+solve_project() {
+  cat >dune-project
+  dune pkg lock --opam-repository-path=mock-opam-repository
+}

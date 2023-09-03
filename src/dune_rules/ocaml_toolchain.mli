@@ -31,3 +31,6 @@ val compiler : t -> Ocaml.Mode.t -> Action.Prog.t
 
 (** The best compilation mode for this context *)
 val best_mode : t -> Mode.t
+
+val check_fdo_support : t -> Context_name.t -> unit
+val register_response_file_support : t -> unit

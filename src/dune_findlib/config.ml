@@ -121,14 +121,17 @@ let ocamlfind_config_path ~env ~which ~findlib_toolchain =
          [ocamlfind printconf conf] to get its value
 
        dune attempts to find [ocaml], [ocamlopt], etc. in the findlib
-       configuration for the toolchain first to account for
-       cross-compilation use cases. It then falls back to searching in
-       [$PATH] *)
+       configuration for the toolchain first to account for cross-compilation
+       use cases. It then falls back to searching in [$PATH] *)
     match Env.get env "OCAMLFIND_CONF" with
     | Some s -> Memo.return (Some s)
     | None ->
       (match findlib_toolchain with
-       | None -> Memo.return None
+       | None ->
+         (* If this variable isn't set, we don't bother with the binary. We'd
+            like dune not to use the ocamlfind binary outside of cross
+            compilation *)
+         Memo.return None
        | Some _ ->
          which "ocamlfind"
          >>= (function

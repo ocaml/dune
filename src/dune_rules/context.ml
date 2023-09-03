@@ -7,6 +7,18 @@ module Kind = struct
       { root : string option
       ; switch : string
       }
+
+    let to_dyn { root; switch } =
+      Dyn.(record [ "root", option string root; "switch", string switch ])
+    ;;
+
+    let equal { root; switch } t =
+      Option.equal String.equal root t.root && String.equal switch t.switch
+    ;;
+
+    let hash { root; switch } =
+      Tuple.T2.hash (Option.hash String.hash) String.hash (root, switch)
+    ;;
   end
 
   type t =
@@ -15,7 +27,36 @@ module Kind = struct
 
   let to_dyn : t -> Dyn.t = function
     | Default -> Dyn.string "default"
-    | Opam o -> Dyn.(record [ "root", option string o.root; "switch", string o.switch ])
+    | Opam o -> Opam.to_dyn o
+  ;;
+
+  let ocamlpath t ~env ~findlib_toolchain =
+    let env_ocamlpath = Findlib_config.ocamlpath_of_env env in
+    match t, findlib_toolchain with
+    | Default, None -> Option.value ~default:[] env_ocamlpath
+    | _, _ ->
+      let initial_ocamlpath = Findlib_config.ocamlpath_of_env Env.initial in
+      (* If we are not in the default context, we can only use the OCAMLPATH
+         variable if it is specific to this build context *)
+      (* CR-someday diml: maybe we should actually clear OCAMLPATH in other
+         build contexts *)
+      (match env_ocamlpath, initial_ocamlpath with
+       | None, None -> []
+       | Some s, None ->
+         (* [OCAMLPATH] set for the target context, unset in the
+            [initial_env]. This means it's the [OCAMLPATH] specific to this
+            build context. *)
+         s
+       | None, Some _ ->
+         (* Clear [OCAMLPATH] for this build context if it's defined
+            initially but not for this build context. *)
+         []
+       | Some env_ocamlpath, Some initial_ocamlpath ->
+         (* Clear [OCAMLPATH] for this build context Unless it's different
+            from the initial [OCAMLPATH] variable. *)
+         (match List.compare ~compare:Path.compare env_ocamlpath initial_ocamlpath with
+          | Eq -> []
+          | _ -> env_ocamlpath))
   ;;
 end
 
@@ -64,6 +105,11 @@ type t =
 let equal x y = Context_name.equal x.name y.name
 let hash t = Context_name.hash t.name
 let build_context t = t.build_context
+let which t fname = Which.which ~path:t.path fname
+let host t = Option.value ~default:t t.for_host
+let name t = t.name
+let to_dyn_concise t : Dyn.t = Context_name.to_dyn t.name
+let compare a b = Context_name.compare a.name b.name
 
 let to_dyn t : Dyn.t =
   let open Dyn in
@@ -93,13 +139,10 @@ let to_dyn t : Dyn.t =
     ]
 ;;
 
-let to_dyn_concise t : Dyn.t = Context_name.to_dyn t.name
-let compare a b = Context_name.compare a.name b.name
-
-(** Wrap calls to the opam binary *)
+(* Wrap calls to the opam binary *)
 module Opam : sig
-  (** Environment for this opam switch *)
-  val env : env:Env.t -> root:string option -> switch:string -> string Env.Map.t Memo.t
+  (* Environment for this opam switch *)
+  val env : env:Env.t -> Kind.Opam.t -> string Env.Map.t Memo.t
 end = struct
   let opam =
     Memo.Lazy.create ~name:"context-opam" (fun () ->
@@ -141,7 +184,7 @@ end = struct
   let opam_binary_exn () = Memo.Lazy.force opam
 
   let env =
-    let impl (env, root, switch) =
+    let impl (env, { Kind.Opam.root; switch }) =
       let* opam = opam_binary_exn () in
       let args =
         List.concat
@@ -153,11 +196,11 @@ end = struct
           ]
       in
       let+ s =
-        Memo.of_reproducible_fiber
-          (Process.run_capture ~display:Quiet ~env Strict opam args)
+        Process.run_capture ~display:Quiet ~env Strict opam args
+        |> Memo.of_reproducible_fiber
       in
-      Dune_lang.Parser.parse_string ~fname:"<opam output>" ~mode:Single s
-      |> Dune_lang.Decoder.(parse (enter (repeat (pair string string))) Univ_map.empty)
+      Dune_sexp.Parser.parse_string ~fname:"<opam output>" ~mode:Single s
+      |> Dune_sexp.Decoder.(parse (enter (repeat (pair string string))) Univ_map.empty)
       |> Env.Map.of_list_multi
       |> Env.Map.mapi ~f:(fun var values ->
         match List.rev values with
@@ -173,19 +216,14 @@ end = struct
           x)
     in
     let module Input = struct
-      type t = Env.t * string option * string
+      type t = Env.t * Kind.Opam.t
 
-      let equal (env_a, root_a, switch_a) (env_b, root_b, switch_b) =
-        Env.equal env_a env_b
-        && Option.equal String.equal root_a root_b
-        && String.equal switch_a switch_b
+      let equal (env_a, opam_a) (env_b, opam_b) =
+        Env.equal env_a env_b && Kind.Opam.equal opam_a opam_b
       ;;
 
-      let hash = Tuple.T3.hash Env.hash Poly.hash Poly.hash
-
-      let to_dyn (env, root, switch) =
-        Dyn.Tuple [ Env.to_dyn env; Dyn.(option string root); String switch ]
-      ;;
+      let hash = Tuple.T2.hash Env.hash Kind.Opam.hash
+      let to_dyn (env, kind) = Dyn.Tuple [ Env.to_dyn env; Kind.Opam.to_dyn kind ]
     end
     in
     let memo =
@@ -195,7 +233,7 @@ end = struct
         ~cutoff:(Env.Map.equal ~equal:String.equal)
         ~input:(module Input)
     in
-    fun ~env ~root ~switch -> Memo.exec memo (env, root, switch)
+    fun ~env opam -> Memo.exec memo (env, opam)
   ;;
 end
 
@@ -255,45 +293,10 @@ module Build_environment_kind = struct
     | _, Hardcoded_path l -> List.map l ~f:Path.of_filename_relative_to_initial_cwd
     | None, Opam2_environment opam_prefix ->
       let p = Path.of_filename_relative_to_initial_cwd opam_prefix in
-      let p = Path.relative p "lib" in
-      [ p ]
+      [ Path.relative p "lib" ]
     | None, Unknown -> [ Path.relative (Path.parent_exn ocaml_bin) "lib" ]
   ;;
 end
-
-type instance =
-  { native : t
-  ; targets : t list
-  }
-
-let ocamlpath (kind : Kind.t) ~env ~findlib_toolchain =
-  let env_ocamlpath = Findlib_config.ocamlpath_of_env env in
-  match kind, findlib_toolchain with
-  | Default, None -> Option.value ~default:[] env_ocamlpath
-  | _, _ ->
-    let initial_ocamlpath = Findlib_config.ocamlpath_of_env Env.initial in
-    (* If we are not in the default context, we can only use the OCAMLPATH
-       variable if it is specific to this build context *)
-    (* CR-someday diml: maybe we should actually clear OCAMLPATH in other
-       build contexts *)
-    (match env_ocamlpath, initial_ocamlpath with
-     | None, None -> []
-     | Some s, None ->
-       (* [OCAMLPATH] set for the target context, unset in the
-          [initial_env]. This means it's the [OCAMLPATH] specific to this
-          build context. *)
-       s
-     | None, Some _ ->
-       (* Clear [OCAMLPATH] for this build context if it's defined
-          initially but not for this build context. *)
-       []
-     | Some env_ocamlpath, Some initial_ocamlpath ->
-       (* Clear [OCAMLPATH] for this build context Unless it's different
-          from the initial [OCAMLPATH] variable. *)
-       (match List.compare ~compare:Path.compare env_ocamlpath initial_ocamlpath with
-        | Eq -> []
-        | _ -> env_ocamlpath))
-;;
 
 let installed_env env name findlib env_nodes version profile =
   let env =
@@ -302,6 +305,10 @@ let installed_env env name findlib env_nodes version profile =
        the latter. If 'color' is not supported, we just don't force colors
        with 4.02. *)
     if !Clflags.capture_outputs
+       (* CR rgrinberg: what if we just set [OCAML_COLOR] and [OCAMLPARAM]
+          unconditionally? These ancient versions of OCaml aren't important
+          anymore and thsi would allow us to initialize the environment without
+          building and running the compiler *)
        && Lazy.force Ansi_color.stderr_supports_color
        && Ocaml.Version.supports_color_in_ocamlparam version
        && not (Ocaml.Version.supports_ocaml_color version)
@@ -320,104 +327,196 @@ let installed_env env name findlib env_nodes version profile =
 ;;
 
 let create
-  ~(kind : Kind.t)
+  kind
+  profile
+  env_nodes
+  ~fdo_target_exe
+  ~instrument_with
+  ~dynamically_linked_foreign_archives
   ~path
   ~env
-  ~env_nodes
-  ~name
+  ~implicit
+  ~(name : Context_name.t)
+  ~host
   ~merlin
-  ~targets
-  ~host_context
-  ~host_toolchain
-  ~profile
-  ~fdo_target_exe
-  ~dynamically_linked_foreign_archives
-  ~instrument_with
+  ~findlib_toolchain
   =
   let which = Which.which ~path in
-  let create_one ~(name : Context_name.t) ~implicit ~findlib_toolchain ~host ~merlin =
-    let ocamlpath = ocamlpath kind ~env ~findlib_toolchain in
-    let* findlib =
-      let findlib_toolchain = Option.map findlib_toolchain ~f:Context_name.to_string in
-      Findlib_config.discover_from_env ~env ~which ~ocamlpath ~findlib_toolchain
-    in
-    let* ocaml = Ocaml_toolchain.of_env_with_findlib name env findlib ~which in
+  let ocamlpath = Kind.ocamlpath kind ~env ~findlib_toolchain in
+  let* findlib =
+    let findlib_toolchain = Option.map findlib_toolchain ~f:Context_name.to_string in
+    Findlib_config.discover_from_env ~env ~which ~ocamlpath ~findlib_toolchain
+  in
+  let* ocaml = Ocaml_toolchain.of_env_with_findlib name env findlib ~which in
+  let default_ocamlpath =
     let default_ocamlpath =
-      let default_ocamlpath =
-        let build_env_kind = Build_environment_kind.query ~kind ~findlib_toolchain ~env in
-        Build_environment_kind.findlib_paths
-          build_env_kind
-          ~findlib
-          ~ocaml_bin:ocaml.bin_dir
-      in
-      if Ocaml.Version.has_META_files ocaml.version
-      then ocaml.lib_config.stdlib_dir :: default_ocamlpath
-      else default_ocamlpath
+      Build_environment_kind.query ~kind ~findlib_toolchain ~env
+      |> Build_environment_kind.findlib_paths ~findlib ~ocaml_bin:ocaml.bin_dir
     in
-    let installed_env = installed_env env name findlib env_nodes ocaml.version profile in
-    if Option.is_some fdo_target_exe then Ocaml_toolchain.check_fdo_support ocaml name;
-    let supports_shared_libraries =
-      Ocaml_config.supports_shared_libraries ocaml.ocaml_config
-    in
-    let dynamically_linked_foreign_archives =
-      supports_shared_libraries && dynamically_linked_foreign_archives
-    in
-    Ocaml_toolchain.register_response_file_support ocaml;
-    Memo.return
-      { name
-      ; implicit
-      ; kind
-      ; profile
-      ; merlin
-      ; fdo_target_exe
-      ; dynamically_linked_foreign_archives
-      ; env_nodes
-      ; for_host = host
-      ; build_dir = Context_name.build_dir name
-      ; path
-      ; ocaml
-      ; installed_env
-      ; findlib_paths = ocamlpath @ default_ocamlpath
-      ; findlib_toolchain
-      ; default_ocamlpath
-      ; supports_shared_libraries =
-          Dynlink_supported.By_the_os.of_bool supports_shared_libraries
-      ; build_context = Build_context.create ~name
-      ; instrument_with
-      }
+    if Ocaml.Version.has_META_files ocaml.version
+    then ocaml.lib_config.stdlib_dir :: default_ocamlpath
+    else default_ocamlpath
   in
-  let implicit =
-    not
-      (List.mem
-         targets
-         ~equal:Workspace.Context.Target.equal
-         Workspace.Context.Target.Native)
+  let installed_env = installed_env env name findlib env_nodes ocaml.version profile in
+  if Option.is_some fdo_target_exe then Ocaml_toolchain.check_fdo_support ocaml name;
+  let supports_shared_libraries =
+    Ocaml_config.supports_shared_libraries ocaml.ocaml_config
   in
-  let* native =
-    create_one
-      ~host:host_context
-      ~findlib_toolchain:host_toolchain
-      ~implicit
-      ~name
-      ~merlin
+  let dynamically_linked_foreign_archives =
+    supports_shared_libraries && dynamically_linked_foreign_archives
   in
-  let+ others =
-    Memo.parallel_map targets ~f:(function
-      | Native -> Memo.return None
-      | Named findlib_toolchain ->
-        let name = Context_name.target name ~toolchain:findlib_toolchain in
-        create_one
-          ~implicit:false
-          ~name
-          ~host:(Some native)
-          ~merlin:false
-          ~findlib_toolchain:(Some findlib_toolchain)
-        >>| Option.some)
-  in
-  { native; targets = List.filter_opt others }
+  Ocaml_toolchain.register_response_file_support ocaml;
+  Memo.return
+    { name
+    ; implicit
+    ; kind
+    ; profile
+    ; merlin
+    ; fdo_target_exe
+    ; dynamically_linked_foreign_archives
+    ; env_nodes
+    ; for_host = host
+    ; build_dir = Context_name.build_dir name
+    ; path
+    ; ocaml
+    ; installed_env
+    ; findlib_paths = ocamlpath @ default_ocamlpath
+    ; findlib_toolchain
+    ; default_ocamlpath
+    ; supports_shared_libraries =
+        Dynlink_supported.By_the_os.of_bool supports_shared_libraries
+    ; build_context = Build_context.create ~name
+    ; instrument_with
+    }
 ;;
 
-let which t fname = Which.which ~path:t.path fname
+module Instance = struct
+  type nonrec t =
+    { native : t
+    ; targets : t list
+    }
+
+  let create
+    ~(kind : Kind.t)
+    ~path
+    ~env
+    ~env_nodes
+    ~name
+    ~merlin
+    ~targets
+    ~host_context
+    ~host_toolchain
+    ~profile
+    ~fdo_target_exe
+    ~dynamically_linked_foreign_archives
+    ~instrument_with
+    =
+    let create =
+      create
+        kind
+        profile
+        env_nodes
+        ~fdo_target_exe
+        ~instrument_with
+        ~dynamically_linked_foreign_archives
+        ~path
+        ~env
+    in
+    let* native =
+      let implicit =
+        not
+          (List.mem
+             targets
+             ~equal:Workspace.Context.Target.equal
+             Workspace.Context.Target.Native)
+      in
+      create ~implicit ~name ~host:host_context ~merlin ~findlib_toolchain:host_toolchain
+    in
+    let+ others =
+      Memo.parallel_map targets ~f:(function
+        | Native -> Memo.return None
+        | Named findlib_toolchain ->
+          let name = Context_name.target name ~toolchain:findlib_toolchain in
+          create
+            ~implicit:false
+            ~name
+            ~host:(Some native)
+            ~merlin:false
+            ~findlib_toolchain:(Some findlib_toolchain)
+          >>| Option.some)
+    in
+    { native; targets = List.filter_opt others }
+  ;;
+
+  let default
+    ~merlin
+    ~env_nodes
+    ~env
+    ~targets
+    ~fdo_target_exe
+    ~dynamically_linked_foreign_archives
+    ~instrument_with
+    =
+    let path = Env_path.path env in
+    create
+      ~kind:Default
+      ~path
+      ~env
+      ~env_nodes
+      ~merlin
+      ~targets
+      ~fdo_target_exe
+      ~dynamically_linked_foreign_archives
+      ~instrument_with
+  ;;
+
+  let create_for_opam
+    ~kind
+    ~loc
+    ~env
+    ~env_nodes
+    ~targets
+    ~profile
+    ~name
+    ~merlin
+    ~host_context
+    ~host_toolchain
+    ~fdo_target_exe
+    ~dynamically_linked_foreign_archives
+    ~instrument_with
+    =
+    let* vars = Opam.env ~env kind in
+    if not (Env.Map.mem vars Build_environment_kind.opam_switch_prefix_var_name)
+    then
+      User_error.raise
+        ~loc
+        [ Pp.textf
+            "opam doesn't set the environment variable %s. I cannot create an opam build \
+             context without opam setting this variable."
+            Build_environment_kind.opam_switch_prefix_var_name
+        ];
+    let path =
+      match Env.Map.find vars Env_path.var with
+      | None -> Env_path.path env
+      | Some s -> Bin.parse_path s
+    in
+    let env = Env.extend env ~vars in
+    create
+      ~kind:(Opam kind)
+      ~profile
+      ~targets
+      ~path
+      ~env
+      ~env_nodes
+      ~name
+      ~merlin
+      ~host_context
+      ~host_toolchain
+      ~fdo_target_exe
+      ~dynamically_linked_foreign_archives
+      ~instrument_with
+  ;;
+end
 
 let extend_paths t ~env =
   let t =
@@ -438,80 +537,10 @@ let extend_paths t ~env =
   Env.extend ~vars env
 ;;
 
-let default
-  ~merlin
-  ~env_nodes
-  ~env
-  ~targets
-  ~fdo_target_exe
-  ~dynamically_linked_foreign_archives
-  ~instrument_with
-  =
-  let path = Env_path.path env in
-  create
-    ~kind:Default
-    ~path
-    ~env
-    ~env_nodes
-    ~merlin
-    ~targets
-    ~fdo_target_exe
-    ~dynamically_linked_foreign_archives
-    ~instrument_with
-;;
-
-let create_for_opam
-  ~loc
-  ~root
-  ~env
-  ~env_nodes
-  ~targets
-  ~profile
-  ~switch
-  ~name
-  ~merlin
-  ~host_context
-  ~host_toolchain
-  ~fdo_target_exe
-  ~dynamically_linked_foreign_archives
-  ~instrument_with
-  =
-  let* vars = Opam.env ~env ~root ~switch in
-  if not (Env.Map.mem vars Build_environment_kind.opam_switch_prefix_var_name)
-  then
-    User_error.raise
-      ~loc
-      [ Pp.textf
-          "opam doesn't set the environment variable %s. I cannot create an opam build \
-           context without opam setting this variable."
-          Build_environment_kind.opam_switch_prefix_var_name
-      ];
-  let path =
-    match Env.Map.find vars Env_path.var with
-    | None -> Env_path.path env
-    | Some s -> Bin.parse_path s
-  in
-  let env = Env.extend env ~vars in
-  create
-    ~kind:(Opam { root; switch })
-    ~profile
-    ~targets
-    ~path
-    ~env
-    ~env_nodes
-    ~name
-    ~merlin
-    ~host_context
-    ~host_toolchain
-    ~fdo_target_exe
-    ~dynamically_linked_foreign_archives
-    ~instrument_with
-;;
-
 module rec Instantiate : sig
-  val instantiate : Context_name.t -> instance Memo.t
+  val instantiate : Context_name.t -> Instance.t Memo.t
 end = struct
-  let instantiate_impl name : instance Memo.t =
+  let instantiate_impl name : Instance.t Memo.t =
     let env = Global.env () in
     let* workspace = Workspace.workspace () in
     let context =
@@ -559,7 +588,7 @@ end = struct
           Context_name.parse_string_exn (Loc.none, name)
       in
       let env = extend_paths ~env paths in
-      default
+      Instance.default
         ~env
         ~env_nodes
         ~profile
@@ -590,13 +619,12 @@ end = struct
         ; root
         } ->
       let env = extend_paths ~env paths in
-      create_for_opam
+      Instance.create_for_opam
+        ~kind:{ Kind.Opam.root; switch }
         ~loc
-        ~root
         ~env_nodes
         ~env
         ~profile
-        ~switch
         ~name
         ~merlin
         ~targets
@@ -674,8 +702,6 @@ module DB = struct
   ;;
 end
 
-let name t = t.name
-
 let map_exe (context : t) =
   match context.for_host with
   | None -> fun exe -> exe
@@ -686,8 +712,6 @@ let map_exe (context : t) =
          Path.append_source (Path.build host.build_dir) exe
        | _ -> exe)
 ;;
-
-let host t = Option.value ~default:t t.for_host
 
 let roots t =
   let module Roots = Install.Roots in

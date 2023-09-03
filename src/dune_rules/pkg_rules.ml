@@ -13,22 +13,24 @@ open Dune_pkg
    - sandboxing
 *)
 
-type sys_poll_vars =
-  { os_version : string option
-  ; os_distribution : string option
-  ; os_family : string option
-  }
+module Sys_vars = struct
+  type t =
+    { os_version : string option
+    ; os_distribution : string option
+    ; os_family : string option
+    }
 
-let sys_poll =
-  let path = Env_path.path Stdune.Env.initial in
-  let sys_poll_memo key = Memo.of_reproducible_fiber @@ key ~path in
-  Memo.lazy_ (fun () ->
-    let open Memo.O in
-    let* os_version = sys_poll_memo Sys_poll.os_version in
-    let* os_distribution = sys_poll_memo Sys_poll.os_distribution in
-    let+ os_family = sys_poll_memo Sys_poll.os_family in
-    { os_version; os_distribution; os_family })
-;;
+  let poll =
+    let path = Env_path.path Stdune.Env.initial in
+    let sys_poll_memo key = Memo.of_reproducible_fiber @@ key ~path in
+    Memo.lazy_ (fun () ->
+      let open Memo.O in
+      let* os_version = sys_poll_memo Sys_poll.os_version in
+      let* os_distribution = sys_poll_memo Sys_poll.os_distribution in
+      let+ os_family = sys_poll_memo Sys_poll.os_family in
+      { os_version; os_distribution; os_family })
+  ;;
+end
 
 module Variable = struct
   type value = OpamVariable.variable_contents =
@@ -470,7 +472,7 @@ module Action_expander = struct
     ;;
 
     let sys_poll_var accessor =
-      let+ map = Memo.Lazy.force sys_poll in
+      let+ map = Memo.Lazy.force Sys_vars.poll in
       match accessor map with
       | Some v -> [ Value.String v ]
       | None ->

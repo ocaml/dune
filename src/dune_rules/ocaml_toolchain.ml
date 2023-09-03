@@ -140,3 +140,49 @@ let of_binaries name env binaries =
   let get_ocaml_tool ~dir:_ prog = which prog in
   make name ~env ~get_ocaml_tool ~which
 ;;
+
+(* Seems wrong to support this at the level of the engine. This is easily
+   implemented at the level of the rules and is noly needed for windows *)
+let register_response_file_support t =
+  if Ocaml.Version.supports_response_file t.version
+  then (
+    let set prog = Response_file.set ~prog (Zero_terminated_strings "-args0") in
+    Result.iter t.ocaml ~f:set;
+    set t.ocamlc;
+    Result.iter t.ocamlopt ~f:set;
+    Result.iter t.ocamldep ~f:set;
+    if Ocaml.Version.ocamlmklib_supports_response_file t.version
+    then Result.iter ~f:set t.ocamlmklib)
+;;
+
+let check_fdo_support { version; lib_config = { has_native; _ }; ocaml_config; _ } name =
+  let version_string = Ocaml_config.version_string ocaml_config in
+  let err () =
+    User_error.raise
+      [ Pp.textf
+          "fdo requires ocamlopt version >= 4.10, current version is %s (context: %s)"
+          (Context_name.to_string name)
+          version_string
+      ]
+  in
+  if not has_native then err ();
+  if Ocaml_config.is_dev_version ocaml_config
+  then
+    ( (* Allows fdo to be invoked with any dev version of the compiler. This is
+         experimental and will be removed when ocamlfdo is fully integrated into
+         the toolchain. When using a dev version of ocamlopt that does not
+         support the required options, fdo builds will fail because the compiler
+         won't recognize the options. Normals builds won't be affected. *) )
+  else if not (Ocaml.Version.supports_split_at_emit version)
+  then
+    if not (Ocaml.Version.supports_function_sections version)
+    then err ()
+    else
+      User_warning.emit
+        [ Pp.textf
+            "fdo requires ocamlopt version >= 4.10, current version %s has partial \
+             support. Some optimizations are disabled! (context: %s)"
+            (Context_name.to_string name)
+            version_string
+        ]
+;;

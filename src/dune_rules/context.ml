@@ -261,38 +261,6 @@ module Build_environment_kind = struct
   ;;
 end
 
-let check_fdo_support has_native ocfg version ~name =
-  let version_string = Ocaml_config.version_string ocfg in
-  let err () =
-    User_error.raise
-      [ Pp.textf
-          "fdo requires ocamlopt version >= 4.10, current version is %s (context: %s)"
-          (Context_name.to_string name)
-          version_string
-      ]
-  in
-  if not has_native then err ();
-  if Ocaml_config.is_dev_version ocfg
-  then
-    ( (* Allows fdo to be invoked with any dev version of the compiler. This is
-         experimental and will be removed when ocamlfdo is fully integrated into
-         the toolchain. When using a dev version of ocamlopt that does not
-         support the required options, fdo builds will fail because the compiler
-         won't recognize the options. Normals builds won't be affected. *) )
-  else if not (Ocaml.Version.supports_split_at_emit version)
-  then
-    if not (Ocaml.Version.supports_function_sections version)
-    then err ()
-    else
-      User_warning.emit
-        [ Pp.textf
-            "fdo requires ocamlopt version >= 4.10, current version %s has partial \
-             support. Some optimizations are disabled! (context: %s)"
-            (Context_name.to_string name)
-            version_string
-        ]
-;;
-
 type instance =
   { native : t
   ; targets : t list
@@ -387,17 +355,15 @@ let create
       else default_ocamlpath
     in
     let installed_env = installed_env env name findlib env_nodes ocaml.version profile in
-    if Option.is_some fdo_target_exe
-    then
-      check_fdo_support ocaml.lib_config.has_native ocaml.ocaml_config ocaml.version ~name;
+    if Option.is_some fdo_target_exe then Ocaml_toolchain.check_fdo_support ocaml name;
     let supports_shared_libraries =
       Ocaml_config.supports_shared_libraries ocaml.ocaml_config
     in
     let dynamically_linked_foreign_archives =
       supports_shared_libraries && dynamically_linked_foreign_archives
     in
-    let t =
-      let build_context = Build_context.create ~name in
+    Ocaml_toolchain.register_response_file_support ocaml;
+    Memo.return
       { name
       ; implicit
       ; kind
@@ -416,20 +382,9 @@ let create
       ; default_ocamlpath
       ; supports_shared_libraries =
           Dynlink_supported.By_the_os.of_bool supports_shared_libraries
-      ; build_context
+      ; build_context = Build_context.create ~name
       ; instrument_with
       }
-    in
-    if Ocaml.Version.supports_response_file ocaml.version
-    then (
-      let set prog = Response_file.set ~prog (Zero_terminated_strings "-args0") in
-      Result.iter t.ocaml.ocaml ~f:set;
-      set t.ocaml.ocamlc;
-      Result.iter t.ocaml.ocamlopt ~f:set;
-      Result.iter t.ocaml.ocamldep ~f:set;
-      if Ocaml.Version.ocamlmklib_supports_response_file ocaml.version
-      then Result.iter ~f:set t.ocaml.ocamlmklib);
-    Memo.return t
   in
   let implicit =
     not

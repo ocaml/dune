@@ -1,16 +1,16 @@
 open Import
 
 module Options = struct
-  (** Option flags for what to do while crawling the workspace *)
+  (* Option flags for what to do while crawling the workspace *)
   type t =
-    { with_deps : bool (** whether to compute direct dependencies between modules *)
+    { with_deps : bool (* whether to compute direct dependencies between modules *)
     ; with_pps : bool
-        (** whether to include the dependencies to ppx-rewriters (that are
-            used at compile time) *)
+        (* whether to include the dependencies to ppx-rewriters (that are
+           used at compile time) *)
     }
 
-  (** whether to sanitize absolute paths of workspace items, and their UIDs, to
-      ensure reproducible tests *)
+  (* whether to sanitize absolute paths of workspace items, and their UIDs, to
+     ensure reproducible tests *)
   let sanitize_for_tests = ref false
 
   let arg_with_deps =
@@ -53,31 +53,31 @@ module Options = struct
   ;;
 end
 
-(** The module [Descr] is a typed representation of the description of a
-    workspace, that is provided by the ``dune describe workspace`` command.
+(* The module [Descr] is a typed representation of the description of a
+   workspace, that is provided by the ``dune describe workspace`` command.
 
-    Each sub-module contains a [to_dyn] function, that translates the
-    descriptors to a value of type [Dyn.t].
+   Each sub-module contains a [to_dyn] function, that translates the
+   descriptors to a value of type [Dyn.t].
 
-    The typed representation aims at precisely describing the structure of the
-    information computed by ``dune describe``, and hopefully make users' life
-    easier in decoding the S-expressions into meaningful contents. *)
+   The typed representation aims at precisely describing the structure of the
+   information computed by ``dune describe``, and hopefully make users' life
+   easier in decoding the S-expressions into meaningful contents. *)
 module Descr = struct
-  (** [dyn_path p] converts a path to a value of type [Dyn.t]. Remark: this is
-      different from Path.to_dyn, that produces extra tags from a variant
-      datatype. *)
+  (* [dyn_path p] converts a path to a value of type [Dyn.t]. Remark: this is
+     different from Path.to_dyn, that produces extra tags from a variant
+     datatype. *)
   let dyn_path (p : Path.t) : Dyn.t = String (Path.to_string p)
 
-  (** Description of the dependencies of a module *)
+  (* Description of the dependencies of a module *)
   module Mod_deps = struct
     type t =
       { for_intf : Dune_rules.Module_name.t list
-          (** direct module dependencies for the interface *)
+          (* direct module dependencies for the interface *)
       ; for_impl : Dune_rules.Module_name.t list
-          (** direct module dependencies for the implementation *)
+          (* direct module dependencies for the implementation *)
       }
 
-    (** Conversion to the [Dyn.t] type *)
+    (* Conversion to the [Dyn.t] type *)
     let to_dyn { for_intf; for_impl } =
       let open Dyn in
       record
@@ -87,18 +87,18 @@ module Descr = struct
     ;;
   end
 
-  (** Description of modules *)
+  (* Description of modules *)
   module Mod = struct
     type t =
-      { name : Dune_rules.Module_name.t (** name of the module *)
-      ; impl : Path.t option (** path to the .ml file, if any *)
-      ; intf : Path.t option (** path to the .mli file, if any *)
-      ; cmt : Path.t option (** path to the .cmt file, if any *)
-      ; cmti : Path.t option (** path to the .cmti file, if any *)
-      ; module_deps : Mod_deps.t (** direct module dependencies *)
+      { name : Dune_rules.Module_name.t (* name of the module *)
+      ; impl : Path.t option (* path to the .ml file, if any *)
+      ; intf : Path.t option (* path to the .mli file, if any *)
+      ; cmt : Path.t option (* path to the .cmt file, if any *)
+      ; cmti : Path.t option (* path to the .cmti file, if any *)
+      ; module_deps : Mod_deps.t (* direct module dependencies *)
       }
 
-    (** Conversion to the [Dyn.t] type *)
+    (* Conversion to the [Dyn.t] type *)
     let to_dyn { Options.with_deps; _ } { name; impl; intf; cmt; cmti; module_deps }
       : Dyn.t
       =
@@ -124,20 +124,20 @@ module Descr = struct
     ;;
   end
 
-  (** Description of executables *)
+  (* Description of executables *)
   module Exe = struct
     type t =
-      { names : string list (** names of the executable *)
+      { names : string list (* names of the executable *)
       ; requires : Digest.t list
-          (** list of direct dependencies to libraries, identified by their
-              digests *)
-      ; modules : Mod.t list (** list of the modules the executable is composed of *)
-      ; include_dirs : Path.t list (** list of include directories *)
+          (* list of direct dependencies to libraries, identified by their
+             digests *)
+      ; modules : Mod.t list (* list of the modules the executable is composed of *)
+      ; include_dirs : Path.t list (* list of include directories *)
       }
 
     let map_path t ~f = { t with include_dirs = List.map ~f t.include_dirs }
 
-    (** Conversion to the [Dyn.t] type *)
+    (* Conversion to the [Dyn.t] type *)
     let to_dyn options { names; requires; modules; include_dirs } : Dyn.t =
       let open Dyn in
       record
@@ -149,27 +149,27 @@ module Descr = struct
     ;;
   end
 
-  (** Description of libraries *)
+  (* Description of libraries *)
 
   module Lib = struct
     type t =
-      { name : Lib_name.t (** name of the library *)
-      ; uid : Digest.t (** digest of the library *)
-      ; local : bool (** whether this library is local *)
+      { name : Lib_name.t (* name of the library *)
+      ; uid : Digest.t (* digest of the library *)
+      ; local : bool (* whether this library is local *)
       ; requires : Digest.t list
-          (** list of direct dependendies to libraries, identified by their
-              digests *)
+          (* list of direct dependendies to libraries, identified by their
+             digests *)
       ; source_dir : Path.t
-          (** path to the directory that contains the sources of this library *)
-      ; modules : Mod.t list (** list of the modules the executable is composed of *)
-      ; include_dirs : Path.t list (** list of include directories *)
+          (* path to the directory that contains the sources of this library *)
+      ; modules : Mod.t list (* list of the modules the executable is composed of *)
+      ; include_dirs : Path.t list (* list of include directories *)
       }
 
     let map_path t ~f =
       { t with source_dir = f t.source_dir; include_dirs = List.map ~f t.include_dirs }
     ;;
 
-    (** Conversion to the [Dyn.t] type *)
+    (* Conversion to the [Dyn.t] type *)
     let to_dyn options { name; uid; local; requires; source_dir; modules; include_dirs }
       : Dyn.t
       =
@@ -186,7 +186,7 @@ module Descr = struct
     ;;
   end
 
-  (** Description of items: executables, or libraries *)
+  (* Description of items: executables, or libraries *)
   module Item = struct
     type t =
       | Executables of Exe.t
@@ -202,7 +202,7 @@ module Descr = struct
       | Build_context c -> Build_context (f c)
     ;;
 
-    (** Conversion to the [Dyn.t] type *)
+    (* Conversion to the [Dyn.t] type *)
     let to_dyn options : t -> Dyn.t = function
       | Executables exe_descr -> Variant ("executables", [ Exe.to_dyn options exe_descr ])
       | Library lib_descr -> Variant ("library", [ Lib.to_dyn options lib_descr ])
@@ -212,11 +212,11 @@ module Descr = struct
     ;;
   end
 
-  (** Description of a workspace: a list of items *)
+  (* Description of a workspace: a list of items *)
   module Workspace = struct
     type t = Item.t list
 
-    (** Conversion to the [Dyn.t] type *)
+    (* Conversion to the [Dyn.t] type *)
     let to_dyn options (items : t) : Dyn.t = Dyn.list (Item.to_dyn options) items
   end
 end
@@ -264,46 +264,41 @@ module Lang = struct
   ;;
 end
 
-(** The following module is responsible sanitizing the output of
-    [dune describe workspace], so that the absolute paths and the UIDs that
-    depend on them are stable for tests. These paths may differ, depending on
-    the machine they are run on. *)
+(* The following module is responsible sanitizing the output of
+   [dune describe workspace], so that the absolute paths and the UIDs that
+   depend on them are stable for tests. These paths may differ, depending on
+   the machine they are run on. *)
 module Sanitize_for_tests = struct
   module Workspace = struct
-    (** Sanitizes a workspace description, by renaming non-reproducible UIDs and
-        paths *)
-    let really_sanitize (context : Context.t) items =
-      let rename_path =
-        let findlib_paths = context.findlib_paths in
-        function
+    let fake_findlib = lazy (Path.External.of_string "/FINDLIB")
+    let fake_workspace = lazy (Path.External.of_string "/WORKSPACE_ROOT")
+
+    let sanitize_with_findlib ~findlib_paths path =
+      List.find_map findlib_paths ~f:(fun candidate ->
+        let open Option.O in
+        let* candidate = Path.as_external candidate in
+        (* if the path to rename is an external path, try to find the
+           OCaml root inside, and replace it with a fixed string *)
+        let+ without_prefix = Path.External.drop_prefix ~prefix:candidate path in
+        (* we have found the OCaml root path: let's replace it with a
+           constant string *)
+        Path.External.append_local (Lazy.force fake_findlib) without_prefix)
+    ;;
+
+    (* Sanitizes a workspace description, by renaming non-reproducible UIDs and
+       paths *)
+    let really_sanitize ~findlib_paths items =
+      let rename_path = function
         (* we have found a path for OCaml's root: let's define the renaming
            function *)
-        | Path.External ext_path as path ->
-          (match
-             List.find_map findlib_paths ~f:(fun prefix ->
-               (* if the path to rename is an external path, try to find the
-                  OCaml root inside, and replace it with a fixed string *)
-               match Path.drop_prefix ~prefix (Path.external_ ext_path) with
-               | None -> None
-               | Some s' ->
-                 (* we have found the OCaml root path: let's replace it with a
-                    constant string *)
-                 Some
-                   (Path.external_
-                    @@ Path.External.append_local (Path.External.of_string "/FINDLIB") s'
-                   ))
-           with
-           | None -> path
-           | Some p -> p)
-        | Path.In_source_tree p ->
+        | Path.External path ->
+          sanitize_with_findlib ~findlib_paths path
+          |> Option.value ~default:path
+          |> Path.external_
+        | In_source_tree p ->
           (* Replace the workspace root with a fixed string *)
-          let p =
-            let new_root = Path.External.of_string "/WORKSPACE_ROOT" in
-            if Path.Source.is_root p
-            then new_root
-            else Path.External.append_local new_root (Path.Source.to_local p)
-          in
-          Path.external_ p
+          Path.External.append_local (Lazy.force fake_workspace) (Path.Source.to_local p)
+          |> Path.external_
         | path ->
           (* Otherwise, it should not be changed *)
           path
@@ -313,21 +308,21 @@ module Sanitize_for_tests = struct
       List.map ~f:(Descr.Item.map_path ~f:rename_path) items
     ;;
 
-    (** Sanitizes a workspace description when options ask to do so, or performs
-        no change at all otherwise *)
-    let sanitize context items =
-      if !Options.sanitize_for_tests then really_sanitize context items else items
+    (* Sanitizes a workspace description when options ask to do so, or performs
+       no change at all otherwise *)
+    let sanitize ~findlib_paths items =
+      if !Options.sanitize_for_tests then really_sanitize ~findlib_paths items else items
     ;;
   end
 end
 
-(** Crawl the workspace to get all the data *)
+(* Crawl the workspace to get all the data *)
 module Crawl = struct
   open Dune_rules
   open Dune_engine
   open Memo.O
 
-  (** Computes the digest of a library *)
+  (* Computes the digest of a library *)
   let uid_of_library (lib : Lib.t) : Digest.t =
     let name = Lib.name lib in
     if Lib.is_local lib
@@ -348,7 +343,7 @@ module Crawl = struct
       { Ocaml.Ml_kind.Dict.intf; impl }
   ;;
 
-  (** Builds the description of a module from a module and its object directory *)
+  (* Builds the description of a module from a module and its object directory *)
   let module_
     ~obj_dir
     ~(deps_for_intf : Module.t list)
@@ -372,7 +367,7 @@ module Crawl = struct
     }
   ;;
 
-  (** Builds the list of modules *)
+  (* Builds the list of modules *)
   let modules ~obj_dir ~deps_of modules_ : Descr.Mod.t list Memo.t =
     Modules.fold_no_vlib ~init:(Memo.return []) modules_ ~f:(fun m macc ->
       let* acc = macc in
@@ -383,7 +378,7 @@ module Crawl = struct
       module_ ~obj_dir ~deps_for_intf ~deps_for_impl m :: acc)
   ;;
 
-  (** Builds a workspace item for the provided executables object *)
+  (* Builds a workspace item for the provided executables object *)
   let executables sctx ~options ~project ~dir (exes : Dune_file.Executables.t)
     : (Descr.Item.t * Lib.Set.t) option Memo.t
     =
@@ -432,7 +427,7 @@ module Crawl = struct
       Some (Descr.Item.Executables exe_descr, Lib.Set.of_list libs)
   ;;
 
-  (** Builds a workspace item for the provided library object *)
+  (* Builds a workspace item for the provided library object *)
   let library sctx ~options (lib : Lib.t) : Descr.Item.t option Memo.t =
     let* requires = Lib.requires lib in
     match Resolve.peek requires with
@@ -483,39 +478,39 @@ module Crawl = struct
       Some (Descr.Item.Library lib_descr)
   ;;
 
-  (** [source_path_is_in_dirs dirs p] tests whether the source path [p] is a
-      descendant of some of the provided directory [dirs]. If [dirs = None],
-      then it always succeeds. If [dirs = Some l], then a matching directory is
-      search in the list [l]. *)
+  (* [source_path_is_in_dirs dirs p] tests whether the source path [p] is a
+     descendant of some of the provided directory [dirs]. If [dirs = None],
+     then it always succeeds. If [dirs = Some l], then a matching directory is
+     search in the list [l]. *)
   let source_path_is_in_dirs dirs (p : Path.Source.t) =
     match dirs with
     | None -> true
     | Some dirs -> List.exists ~f:(fun dir -> Path.Source.is_descendant p ~of_:dir) dirs
   ;;
 
-  (** Tests whether a dune file is located in a path that is a descendant of
-      some directory *)
+  (* Tests whether a dune file is located in a path that is a descendant of
+     some directory *)
   let dune_file_is_in_dirs dirs (dune_file : Dune_file.t) =
     source_path_is_in_dirs dirs dune_file.dir
   ;;
 
-  (** Tests whether a library is located in a path that is a descendant of some
-      directory *)
+  (* Tests whether a library is located in a path that is a descendant of some
+     directory *)
   let lib_is_in_dirs dirs (lib : Lib.t) =
     source_path_is_in_dirs
       dirs
       (Path.drop_build_context_exn @@ Lib_info.best_src_dir @@ Lib.info lib)
   ;;
 
-  (** Builds a workspace item for the root path *)
+  (* Builds a workspace item for the root path *)
   let root () = Descr.Item.Root Path.root
 
-  (** Builds a workspace item for the build directory path *)
+  (* Builds a workspace item for the build directory path *)
   let build_ctxt (context : Context.t) : Descr.Item.t =
     Descr.Item.Build_context (Path.build context.build_dir)
   ;;
 
-  (** Builds a workspace description for the provided dune setup and context *)
+  (* Builds a workspace description for the provided dune setup and context *)
   let workspace
     options
     ({ Dune_rules.Main.conf; contexts = _; scontexts } : Dune_rules.Main.build_system)
@@ -548,10 +543,9 @@ module Crawl = struct
       Lib.Set.union_all exe_libs
     in
     let* project_libs =
-      let ctx = Super_context.context sctx in
       (* the list of libraries declared in the project *)
       Memo.parallel_map conf.projects ~f:(fun project ->
-        let* scope = Scope.DB.find_by_project ctx project in
+        let* scope = Scope.DB.find_by_project context project in
         Scope.libs scope |> Lib.DB.all)
       >>| Lib.Set.union_all
       >>| Lib.Set.filter ~f:(lib_is_in_dirs dirs)
@@ -569,6 +563,18 @@ module Crawl = struct
     root :: build_ctxt :: (exes @ libs)
   ;;
 end
+
+let find_dir common dir =
+  let p = Path.Source.(relative root) (Common.prefix_target common dir) in
+  let s = Path.source p in
+  if not @@ Path.exists s
+  then User_error.raise [ Pp.textf "No such file or directory: %s" (Path.to_string s) ];
+  if not @@ Path.is_directory s
+  then
+    User_error.raise
+      [ Pp.textf "File exists, but is not a directory: %s" (Path.to_string s) ];
+  Memo.return p
+;;
 
 let term : unit Term.t =
   let+ common = Common.term
@@ -615,32 +621,18 @@ let term : unit Term.t =
   @@ fun () ->
   let open Fiber.O in
   let* setup = Import.Main.setup () in
-  let* setup = Memo.run setup in
-  let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
   Build_system.run_exn
   @@ fun () ->
-  let context = Super_context.context super_context in
   let open Memo.O in
+  let* setup = setup in
+  let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
+  let context = Super_context.context super_context in
   (* prefix directories with the workspace root, so that the
      command also works correctly when it is run from a
      subdirectory *)
-  Memo.Option.map
-    dirs
-    ~f:
-      (Memo.List.map ~f:(fun dir ->
-         let p = Path.Source.(relative root) (Common.prefix_target common dir) in
-         let s = Path.source p in
-         if not @@ Path.exists s
-         then
-           User_error.raise
-             [ Pp.textf "No such file or directory: %s" (Path.to_string s) ];
-         if not @@ Path.is_directory s
-         then
-           User_error.raise
-             [ Pp.textf "File exists, but is not a directory: %s" (Path.to_string s) ];
-         Memo.return p))
+  Memo.Option.map dirs ~f:(Memo.List.map ~f:(find_dir common))
   >>= Crawl.workspace options setup context
-  >>| Sanitize_for_tests.Workspace.sanitize context
+  >>| Sanitize_for_tests.Workspace.sanitize ~findlib_paths:context.findlib_paths
   >>| Descr.Workspace.to_dyn options
   >>| Describe_format.print_dyn format
 ;;

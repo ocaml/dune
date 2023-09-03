@@ -480,6 +480,26 @@ module Action_expander = struct
         [ Value.String "" ]
     ;;
 
+    let expand_pkg (paths : Paths.t) (pform : Pform.Var.Pkg.t) =
+      match pform with
+      | Switch -> Memo.return [ Value.String "dune" ]
+      | Os_version -> sys_poll_var (fun { os_version; _ } -> os_version)
+      | Os_distribution -> sys_poll_var (fun { os_distribution; _ } -> os_distribution)
+      | Os_family -> sys_poll_var (fun { os_family; _ } -> os_family)
+      | Build -> Memo.return [ Value.Dir (Path.build paths.source_dir) ]
+      | Prefix -> Memo.return [ Value.Dir (Path.build paths.target_dir) ]
+      | User -> Memo.return [ Value.String (Unix.getlogin ()) ]
+      | Jobs -> Memo.return [ Value.String "1" ]
+      | Arch -> Memo.return [ Value.String (assert false) ]
+      | Group ->
+        let group = Unix.getgid () |> Unix.getgrgid in
+        Memo.return [ Value.String group.gr_name ]
+      | Section_dir section ->
+        let roots = Paths.install_roots paths in
+        let dir = section_dir_of_root roots section in
+        Memo.return [ Value.Dir dir ]
+    ;;
+
     let expand_pform
       { env = _; paths; artifacts = _; context; deps; version = _ }
       ~source
@@ -488,26 +508,11 @@ module Action_expander = struct
       =
       let loc = Dune_sexp.Template.Pform.loc source in
       match pform with
-      | Var (Pkg Switch) -> Memo.return [ Value.String "dune" ]
-      | Var (Pkg Os_version) -> sys_poll_var (fun { os_version; _ } -> os_version)
-      | Var (Pkg Os_distribution) ->
-        sys_poll_var (fun { os_distribution; _ } -> os_distribution)
-      | Var (Pkg Os_family) -> sys_poll_var (fun { os_family; _ } -> os_family)
-      | Var (Pkg Build) -> Memo.return [ Value.Dir (Path.build paths.source_dir) ]
-      | Var (Pkg Prefix) -> Memo.return [ Value.Dir (Path.build paths.target_dir) ]
-      | Var (Pkg User) -> Memo.return [ Value.String (Unix.getlogin ()) ]
-      | Var (Pkg Jobs) -> Memo.return [ Value.String "1" ]
-      | Var (Pkg Arch) -> Memo.return [ Value.String (assert false) ]
+      | Var (Pkg var) -> expand_pkg paths var
+      | Var Context_name -> Memo.return [ Value.String (Context_name.to_string context) ]
       | Var Make ->
         (* TODO *)
         assert false
-      | Var (Pkg Group) ->
-        let group = Unix.getgid () |> Unix.getgrgid in
-        Memo.return [ Value.String group.gr_name ]
-      | Var (Pkg (Section_dir section)) ->
-        let roots = Paths.install_roots paths in
-        let dir = section_dir_of_root roots section in
-        Memo.return [ Value.Dir dir ]
       | Macro ({ macro = Pkg | Pkg_self; _ } as macro_invocation) ->
         let { Package_variable.name = variable_name; scope } =
           match Package_variable.of_macro_invocation ~loc macro_invocation with
@@ -551,7 +556,6 @@ module Action_expander = struct
                     let section = dune_section_of_pform section in
                     let install_paths = Paths.install_paths paths in
                     Memo.return [ Value.Dir (Install.Paths.get install_paths section) ]))))
-      | Var Context_name -> Memo.return [ Value.String (Context_name.to_string context) ]
       | _ -> Expander0.isn't_allowed_in_this_position ~source
     ;;
 

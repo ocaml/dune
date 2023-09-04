@@ -28,7 +28,7 @@ let ooi_deps
     let sandbox =
       if dune_version >= (3, 3) then Some Sandbox_config.needs_sandboxing else None
     in
-    let ocaml = ctx.ocaml in
+    let ocaml = Context.ocaml ctx in
     Ocamlobjinfo.rules ocaml ~sandbox ~dir ~unit
   in
   let add_rule = Super_context.add_rule sctx ~dir in

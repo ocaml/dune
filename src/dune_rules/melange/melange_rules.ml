@@ -14,7 +14,7 @@ let ocaml_flags sctx ~dir melange =
   >>| function
   | false -> flags
   | true ->
-    let ocaml_version = (Super_context.context sctx).ocaml.version in
+    let ocaml_version = (Super_context.context sctx |> Context.ocaml).version in
     Ocaml_flags.with_vendored_flags ~ocaml_version flags
 ;;
 
@@ -175,7 +175,7 @@ let build_js ~loc ~dir ~pkg_name ~mode ~module_systems ~output ~obj_dir ~sctx ~i
       ~loc
       ~mode
       (Command.run
-         ~dir:(Path.build (Super_context.context sctx).build_dir)
+         ~dir:(Super_context.context sctx |> Context.build_dir |> Path.build)
          compiler
          [ Command.Args.S obj_dir
          ; Command.Args.as_any includes
@@ -255,7 +255,7 @@ let setup_emit_cmj_rules
     in
     let* () = Module_compilation.build_all cctx in
     let* requires_compile = Compilation_context.requires_compile cctx in
-    let stdlib_dir = ctx.ocaml.lib_config.stdlib_dir in
+    let stdlib_dir = (Context.ocaml ctx).lib_config.stdlib_dir in
     let+ () =
       let emit_and_libs_deps =
         let target_dir = Path.Build.relative dir mel.target in
@@ -376,7 +376,7 @@ let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas
     >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
   in
   let+ modules =
-    let version = (Super_context.context sctx).ocaml.version in
+    let version = (Super_context.context sctx |> Context.ocaml).version in
     let* preprocess =
       Resolve.Memo.read_memo
         (Preprocess.Per_module.with_instrumentation

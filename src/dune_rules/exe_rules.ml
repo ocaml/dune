@@ -8,7 +8,7 @@ let first_exe (exes : Executables.t) = snd (List.hd exes.names)
 let linkages (ctx : Context.t) ~(exes : Executables.t) ~explicit_js_mode =
   let module L = Dune_file.Executables.Link_mode in
   let l =
-    let has_native = Result.is_ok ctx.ocaml.ocamlopt in
+    let has_native = Result.is_ok (Context.ocaml ctx).ocamlopt in
     let modes =
       L.Map.to_list exes.modes
       |> List.map ~f:(fun (mode, loc) -> Exe.Linkage.of_user_config ctx ~loc mode)
@@ -89,7 +89,9 @@ let o_files
       Foreign_sources.for_exes foreign_sources ~first_exe
     in
     let foreign_o_files =
-      let { Lib_config.ext_obj; _ } = (Super_context.context sctx).ocaml.lib_config in
+      let { Lib_config.ext_obj; _ } =
+        (Super_context.context sctx |> Context.ocaml).lib_config
+      in
       Foreign.Objects.build_paths exes.buildable.extra_objects ~ext_obj ~dir
     in
     let+ o_files =
@@ -162,7 +164,7 @@ let executables_rules
       ~opaque:Inherit_from_settings
       ~package:exes.package
   in
-  let lib_config = ctx.ocaml.lib_config in
+  let lib_config = (Context.ocaml ctx).lib_config in
   let stdlib_dir = lib_config.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let* dep_graphs =

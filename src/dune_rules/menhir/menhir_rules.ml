@@ -54,7 +54,7 @@ module Run (P : PARAMS) = struct
 
   (* [build_dir] is the base directory of the context; we run menhir from this
      directory to we get correct error paths. *)
-  let build_dir = (Super_context.context sctx).build_dir
+  let build_dir = Super_context.context sctx |> Context.build_dir
   let expander = Super_context.expander ~dir sctx
 
   let sandbox =

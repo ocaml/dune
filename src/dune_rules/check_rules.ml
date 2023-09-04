@@ -7,7 +7,7 @@ let dev_files =
 ;;
 
 let add_obj_dir sctx ~obj_dir mode =
-  if (Super_context.context sctx).merlin
+  if Super_context.context sctx |> Context.merlin
   then (
     let dir_glob =
       let dir =
@@ -25,7 +25,7 @@ let add_obj_dir sctx ~obj_dir mode =
 ;;
 
 let add_files sctx ~dir files =
-  if (Super_context.context sctx).merlin
+  if Super_context.context sctx |> Context.merlin
   then (
     let alias = Alias.make Alias0.check ~dir in
     let files = Path.Set.of_list files in
@@ -34,7 +34,7 @@ let add_files sctx ~dir files =
 ;;
 
 let add_cycle_check sctx ~dir modules =
-  if (Super_context.context sctx).merlin
+  if Super_context.context sctx |> Context.merlin
   then (
     let alias = Alias.make Alias0.check ~dir in
     Rules.Produce.Alias.add_deps alias (Action_builder.ignore modules))

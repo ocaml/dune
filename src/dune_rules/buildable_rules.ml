@@ -14,7 +14,7 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
   >>| function
   | false -> flags
   | true ->
-    let ocaml_version = (Super_context.context t).ocaml.version in
+    let ocaml_version = (Super_context.context t |> Context.ocaml).version in
     Ocaml_flags.with_vendored_flags ~ocaml_version flags
 ;;
 
@@ -39,7 +39,7 @@ let gen_select_rules sctx ~dir compile_info =
 
 let with_lib_deps (t : Context.t) compile_info ~dir ~f =
   let prefix =
-    if t.merlin
+    if Context.merlin t
     then
       Lib.Compile.merlin_ident compile_info
       |> Merlin_ident.merlin_file_path dir

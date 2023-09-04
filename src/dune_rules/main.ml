@@ -106,7 +106,7 @@ let get () =
 ;;
 
 let find_context_exn t ~name =
-  match List.find t.contexts ~f:(fun c -> Context_name.equal c.name name) with
+  match List.find t.contexts ~f:(fun c -> Context_name.equal (Context.name c) name) with
   | Some ctx -> ctx
   | None ->
     User_error.raise [ Pp.textf "Context %S not found!" (Context_name.to_string name) ]

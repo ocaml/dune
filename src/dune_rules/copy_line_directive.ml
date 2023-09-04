@@ -104,7 +104,7 @@ let action (context : Context.t) ~src ~dst =
 
     module Spec = Spec
 
-    let v = src, dst, if context.merlin then Spec.Yes else No
+    let v = src, dst, if Context.merlin context then Spec.Yes else No
   end
   in
   Action.Extension (module M)

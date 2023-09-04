@@ -51,11 +51,14 @@ let force_files =
     let* ctxs = Context.DB.all () in
     let files =
       List.concat_map ctxs ~f:(fun t ->
-        [ Path.build (configurator_v1 t.build_context)
-        ; Path.build (configurator_v2 t.build_context)
+        let build_context = Context.build_context t in
+        [ Path.build (configurator_v1 build_context)
+        ; Path.build (configurator_v2 build_context)
         ])
     in
     Memo.parallel_iter files ~f:Build_system.build_file)
 ;;
 
-let gen_rules (context : Context.t) = gen_rules context.build_context context.ocaml
+let gen_rules (context : Context.t) =
+  gen_rules (Context.build_context context) (Context.ocaml context)
+;;

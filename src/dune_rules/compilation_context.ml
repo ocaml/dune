@@ -55,8 +55,8 @@ type opaque =
 let eval_opaque (context : Context.t) = function
   | Explicit b -> b
   | Inherit_from_settings ->
-    Profile.is_dev context.profile
-    && Ocaml.Version.supports_opaque_for_mli context.ocaml.version
+    Profile.is_dev (Context.profile context)
+    && Ocaml.Version.supports_opaque_for_mli (Context.ocaml context).version
 ;;
 
 type modules =
@@ -208,7 +208,7 @@ let for_alias_module t alias_module =
     else (
       let project = Scope.project t.scope in
       let dune_version = Dune_project.dune_version project in
-      let profile = (Super_context.context t.super_context).profile in
+      let profile = Super_context.context t.super_context |> Context.profile in
       Ocaml_flags.default ~dune_version ~profile)
   in
   let sandbox =
@@ -216,7 +216,7 @@ let for_alias_module t alias_module =
     (* If the compiler reads the cmi for module alias even with [-w -49
        -no-alias-deps], we must sandbox the build of the alias module since the
        modules it references are built after. *)
-    if Ocaml.Version.always_reads_alias_cmi ctx.ocaml.version
+    if Ocaml.Version.always_reads_alias_cmi (Context.ocaml ctx).version
     then Sandbox_config.needs_sandboxing
     else Sandbox_config.no_special_requirements
   in
@@ -243,7 +243,7 @@ let for_root_module t root_module =
   let flags =
     let project = Scope.project t.scope in
     let dune_version = Dune_project.dune_version project in
-    let profile = (Super_context.context t.super_context).profile in
+    let profile = Super_context.context t.super_context |> Context.profile in
     Ocaml_flags.default ~profile ~dune_version
   in
   { t with
@@ -258,7 +258,7 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
     (* Cmi's of link time generated modules are compiled with -opaque, hence
        their implementation must also be compiled with -opaque *)
     let ctx = Super_context.context cctx.super_context in
-    Ocaml.Version.supports_opaque_for_mli ctx.ocaml.version
+    Ocaml.Version.supports_opaque_for_mli (Context.ocaml ctx).version
   in
   let modules = singleton_modules module_ in
   let includes = Includes.make ~project:(Scope.project cctx.scope) ~opaque ~requires in

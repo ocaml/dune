@@ -2,7 +2,9 @@ open Import
 open Memo.O
 
 let private_obj_dir (ctx : Context.t) src =
-  let src = Path.Build.append_source (Path.Build.relative ctx.build_dir ".topmod") src in
+  let src =
+    Path.Build.append_source (Path.Build.relative (Context.build_dir ctx) ".topmod") src
+  in
   Obj_dir.for_pp ~dir:src
 ;;
 
@@ -12,7 +14,9 @@ let drop_rules f =
 ;;
 
 let find_module sctx src =
-  let src = Path.Build.append_source (Super_context.context sctx).build_dir src in
+  let src =
+    Path.Build.append_source (Context.build_dir (Super_context.context sctx)) src
+  in
   let dir = Path.Build.parent_exn src in
   let module_name =
     let open Option.O in

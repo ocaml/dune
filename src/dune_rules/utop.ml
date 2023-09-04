@@ -45,7 +45,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
         ~f:(fun dir ->
           let dir =
             Path.Build.append_source
-              (Super_context.context sctx).build_dir
+              (Context.build_dir (Super_context.context sctx))
               (Source_tree.Dir.path dir)
           in
           Only_packages.stanzas_in_dir dir
@@ -175,7 +175,7 @@ let setup sctx ~dir =
   let flags =
     let project = Scope.project scope in
     let dune_version = Dune_project.dune_version project in
-    let profile = (Super_context.context sctx).profile in
+    let profile = Super_context.context sctx |> Context.profile in
     Ocaml_flags.append_common (Ocaml_flags.default ~dune_version ~profile) [ "-w"; "-24" ]
   in
   let* cctx =

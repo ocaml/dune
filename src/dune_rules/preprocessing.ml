@@ -286,7 +286,7 @@ module Driver = struct
 end
 
 let ppx_exe (ctx : Context.t) ~key =
-  let build_dir = ctx.build_dir in
+  let build_dir = Context.build_dir ctx in
   Path.Build.relative build_dir (".ppx/" ^ key ^ "/ppx.exe")
 ;;
 
@@ -368,8 +368,8 @@ let get_rules sctx key =
       let+ scope =
         let dir =
           match project_root with
-          | None -> ctx.build_dir
-          | Some dir -> Path.Build.append_source ctx.build_dir dir
+          | None -> Context.build_dir ctx
+          | Some dir -> Path.Build.append_source (Context.build_dir ctx) dir
         in
         Scope.DB.find_by_dir dir
       in
@@ -512,7 +512,7 @@ let sandbox_of_setting = function
 ;;
 
 let action_for_pp ~sandbox ~loc ~expander ~action ~src =
-  let chdir = (Expander.context expander).build_dir in
+  let chdir = Expander.context expander |> Context.build_dir in
   let bindings = Pform.Map.singleton (Var Input_file) [ Value.Path (Path.build src) ] in
   let expander = Expander.add_bindings expander ~bindings in
   let open Action_builder.O in
@@ -615,7 +615,9 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
                  (Path.as_in_build_dir_exn
                     (Option.value_exn (Module.file source ~ml_kind)))
                  (let* exe, flags, args = driver_and_flags in
-                  let dir = Path.build (Super_context.context sctx).build_dir in
+                  let dir =
+                    Super_context.context sctx |> Context.build_dir |> Path.build
+                  in
                   Command.run'
                     ~dir
                     (Ok (Path.build exe))
@@ -693,7 +695,7 @@ let pp_one_module
                  ~standard:(Action_builder.return [ "--as-ppx" ])
              and* () = preprocessor_deps in
              Command.expand_no_targets
-               ~dir:(Path.build (Super_context.context sctx).build_dir)
+               ~dir:(Super_context.context sctx |> Context.build_dir |> Path.build)
                (S [ Dep (Path.build exe); As driver_flags; As flags ]))
         in
         [ "-ppx"; String.quote_list_for_shell args ]
@@ -753,7 +755,9 @@ let pp_one_module
                   (let open Action_builder.O in
                    preprocessor_deps
                    >>> let* exe, flags, args = driver_and_flags in
-                       let dir = Path.build (Super_context.context sctx).build_dir in
+                       let dir =
+                         Super_context.context sctx |> Context.build_dir |> Path.build
+                       in
                        Command.run'
                          ~dir
                          (Ok (Path.build exe))
@@ -790,7 +794,7 @@ let make
       Preprocess.remove_future_syntax
         ~for_:Compiler
         pp
-        (Super_context.context sctx).ocaml.version)
+        (Super_context.context sctx |> Context.ocaml).version)
   in
   let preprocessor_deps, sandbox = Dep_conf_eval.unnamed preprocessor_deps ~expander in
   let sandbox =

@@ -49,7 +49,7 @@ end = struct
   let write oc ~(context : Context.t) ~target ~exec_dir ~plugin ~plugin_contents =
     let ocamlc_config =
       let vars =
-        Ocaml_config.to_list context.ocaml.ocaml_config
+        Ocaml_config.to_list (Context.ocaml context).ocaml_config
         |> List.map ~f:(fun (k, v) -> k, Ocaml_config.Value.to_string v)
       in
       let longest = String.longest_map vars ~f:fst in
@@ -63,8 +63,8 @@ end = struct
         let send_target = %S
         let ocamlc_config = [ %s ]
         |}
-        (Context_name.to_string context.name)
-        (Ocaml_config.version_string context.ocaml.ocaml_config)
+        (Context_name.to_string (Context.name context))
+        (Ocaml_config.version_string (Context.ocaml context).ocaml_config)
         (Path.reach ~from:exec_dir (Path.build target))
         ocamlc_config
     in
@@ -130,7 +130,7 @@ module Script = struct
       Path.Build.append_source
         (Path.Build.relative
            generated_dune_files_dir
-           (Context_name.to_string context.name))
+           (Context_name.to_string (Context.name context)))
         file
     in
     let wrapper = Path.Build.extend_basename generated_dune_file ~suffix:".ml" in
@@ -143,19 +143,19 @@ module Script = struct
         ~wrapper
         ~target:generated_dune_file
     in
-    let context = Option.value context.for_host ~default:context in
+    let context = Context.host context in
     let args =
       List.concat
         [ [ "-I"; "+compiler-libs" ]; [ Path.to_absolute_filename (Path.build wrapper) ] ]
     in
-    let ocaml = Action.Prog.ok_exn context.ocaml.ocaml in
+    let ocaml = Action.Prog.ok_exn (Context.ocaml context).ocaml in
     let* () =
       Memo.of_reproducible_fiber
         (Process.run
            Strict
            ~display:Quiet
            ~dir:(Path.source dir)
-           ~env:context.installed_env
+           ~env:(Context.installed_env context)
            ocaml
            args)
     in

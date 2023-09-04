@@ -3,13 +3,13 @@ open Memo.O
 
 let get_installed_binaries ~(context : Context.t) stanzas =
   let open Memo.O in
-  let install_dir = Install.Context.bin_dir ~context:context.name in
+  let install_dir = Install.Context.bin_dir ~context:(Context.name context) in
   let expand_str ~dir sw = Expander.With_reduced_var_set.expand_str ~context ~dir sw in
   let expand_str_partial ~dir sw =
     Expander.With_reduced_var_set.expand_str_partial ~context ~dir sw
   in
   Memo.List.map stanzas ~f:(fun (d : Dune_file.t) ->
-    let dir = Path.Build.append_source context.build_dir d.dir in
+    let dir = Path.Build.append_source (Context.build_dir context) d.dir in
     let binaries_from_install files =
       let* unexpanded_file_bindings =
         Install_entry.File.to_file_bindings_unexpanded
@@ -105,10 +105,10 @@ let all =
       in
       Artifacts.create context ~public_libs ~local_bins
     in
-    context.name, artifacts)
+    Context.name context, artifacts)
 ;;
 
 let get (context : Context.t) =
   let* all = Memo.Lazy.force all in
-  Context_name.Map.find_exn all context.name |> Memo.Lazy.force
+  Context_name.Map.find_exn all (Context.name context) |> Memo.Lazy.force
 ;;

@@ -20,7 +20,7 @@ let pp_with_ocamlc sctx project pp_file =
       ~display:!Clflags.display
       ~env:(Super_context.context_env sctx)
       Strict
-      (Super_context.context sctx).ocaml.ocamlc
+      (Super_context.context sctx |> Context.ocaml).ocamlc
       [ "-stop-after"; "parsing"; "-dsource"; Path.to_string pp_file; "-dump-into-file" ]
   in
   match Path.stat dump_file with
@@ -35,7 +35,7 @@ let get_pped_file super_context file =
   let open Memo.O in
   let context = Super_context.context super_context in
   let in_build_dir file =
-    file |> Path.to_string |> Path.Build.relative context.build_dir
+    file |> Path.to_string |> Path.Build.relative (Context.build_dir context)
   in
   let file_in_build_dir =
     if String.is_empty file

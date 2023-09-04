@@ -56,7 +56,7 @@ module Cmd_arg = struct
       in
       let context = Dune_rules.Super_context.context sctx in
       (* TODO Why are we stringifying this path? *)
-      Path.to_string (Path.build (Path.Build.relative context.build_dir path))
+      Path.to_string (Path.build (Path.Build.relative (Context.build_dir context) path))
   ;;
 
   let conv = Arg.conv ((fun s -> Ok (parse s)), pp)
@@ -251,7 +251,7 @@ module Exec_context = struct
     let dir =
       let+ sctx = sctx in
       let context = Dune_rules.Super_context.context sctx in
-      Path.Build.relative context.build_dir (Common.prefix_target common "")
+      Path.Build.relative (Context.build_dir context) (Common.prefix_target common "")
     in
     let env = Memo.map sctx ~f:Super_context.context_env in
     let get_path_and_build_if_necessary ~prog =

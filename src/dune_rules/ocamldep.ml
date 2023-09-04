@@ -86,8 +86,8 @@ let deps_of
          Option.value (Module.pp_flags unit) ~default:(Action_builder.return [], sandbox)
        in
        Command.run
-         context.ocaml.ocamldep
-         ~dir:(Path.build context.build_dir)
+         (Context.ocaml context).ocamldep
+         ~dir:(Path.build (Context.build_dir context))
          ~stdout_to:ocamldep_output
          [ A "-modules"
          ; Command.Args.dyn flags

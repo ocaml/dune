@@ -33,7 +33,7 @@ module Bin = struct
         | Some p -> Ok p
         | None ->
           Error
-            (let context = t.context.name in
+            (let context = Context.name t.context in
              Action.Prog.Not_found.create ~program:name ?hint ~context ~loc ()))
   ;;
 

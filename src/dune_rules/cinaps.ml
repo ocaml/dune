@@ -78,7 +78,9 @@ let gen_rules sctx t ~dir ~scope =
            t.files
            (Path.Source.basename p)
            ~standard:Predicate_lang.true_
-      then Some (Path.Build.append_source (Super_context.context sctx).build_dir p)
+      then
+        Some
+          (Path.Build.append_source (Super_context.context sctx |> Context.build_dir) p)
       else None)
   and* prog =
     Super_context.resolve_program

@@ -49,7 +49,7 @@ let term =
       in
       let* libs =
         let dir =
-          let build_dir = (Super_context.context sctx).build_dir in
+          let build_dir = Super_context.context sctx |> Context.build_dir in
           Path.Build.relative build_dir (Common.prefix_target common dir)
         in
         let* db =
@@ -90,7 +90,7 @@ module Module = struct
 
   let module_directives sctx mod_ =
     let ctx = Super_context.context sctx in
-    let src = Path.Build.append_source ctx.build_dir mod_ in
+    let src = Path.Build.append_source (Context.build_dir ctx) mod_ in
     let dir = Path.Build.parent_exn src in
     let filename = Path.Build.basename src in
     if Filename.extension filename = ""

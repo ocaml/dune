@@ -156,7 +156,7 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
           (List.map exes.names ~f:snd)
           exes.package
           Item.Kind.Executables
-          (exes_extensions context.ocaml.lib_config exes.modes)
+          (exes_extensions (Context.ocaml context).lib_config exes.modes)
         >>| List.singleton
       | Dune_rules.Dune_file.Library lib ->
         resolve_libs
@@ -178,7 +178,7 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
           (List.map tests.exes.names ~f:snd)
           (if Option.is_none tests.package then tests.exes.package else tests.package)
           Item.Kind.Tests
-          (exes_extensions context.ocaml.lib_config tests.exes.modes)
+          (exes_extensions (Context.ocaml context).lib_config tests.exes.modes)
         >>| List.singleton
       | _ -> Memo.return [])
     >>| List.concat)
@@ -187,7 +187,7 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
 
 let external_resolved_libs setup (context : Context.t) =
   let open Memo.O in
-  let* scope = Dune_rules.Scope.DB.find_by_dir context.build_dir in
+  let* scope = Dune_rules.Scope.DB.find_by_dir (Context.build_dir context) in
   let db = Dune_rules.Scope.libs scope in
   libs db context setup
   >>| List.filter ~f:(fun (x : Item.t) ->

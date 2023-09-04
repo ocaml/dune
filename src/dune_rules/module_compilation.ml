@@ -69,7 +69,9 @@ let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) m
           let lib_root_dir = Path.build (Compilation_context.dir cctx) in
           let src_dir = Path.build package_output in
           let build_dir =
-            (Compilation_context.super_context cctx |> Super_context.context).build_dir
+            Compilation_context.super_context cctx
+            |> Super_context.context
+            |> Context.build_dir
           in
           Path.drop_prefix_exn src_dir ~prefix:lib_root_dir
           |> Path.Local.to_string
@@ -119,7 +121,7 @@ let build_cm
       Some melc
     | Ocaml mode ->
       Memo.return
-        (let compiler = Ocaml_toolchain.compiler ctx.ocaml mode in
+        (let compiler = Ocaml_toolchain.compiler (Context.ocaml ctx) mode in
          (* TODO one day remove this silly optimization *)
          match compiler with
          | Ok _ as s -> Some s
@@ -131,7 +133,11 @@ let build_cm
    let+ src = Module.file m ~ml_kind in
    let dst = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
    let obj =
-     Obj_dir.Module.obj_file obj_dir m ~kind:(Ocaml Cmx) ~ext:ctx.ocaml.lib_config.ext_obj
+     Obj_dir.Module.obj_file
+       obj_dir
+       m
+       ~kind:(Ocaml Cmx)
+       ~ext:(Context.ocaml ctx).lib_config.ext_obj
    in
    let open Memo.O in
    let* extra_args, extra_deps, other_targets =
@@ -199,7 +205,8 @@ let build_cm
    in
    let opaque_arg : _ Command.Args.t =
      let intf_only = cm_kind = Ocaml Cmi && not (Module.has m ~ml_kind:Impl) in
-     if opaque || (intf_only && Ocaml.Version.supports_opaque_for_mli ctx.ocaml.version)
+     if opaque
+        || (intf_only && Ocaml.Version.supports_opaque_for_mli (Context.ocaml ctx).version)
      then A "-opaque"
      else Command.Args.empty
    in
@@ -240,13 +247,13 @@ let build_cm
           Compilation_context.scope cctx |> Scope.project |> Dune_project.dune_version
         in
         (* TODO DUNE4 get rid of the old behavior *)
-        if dune_version >= (3, 7) then dir else ctx.build_dir)
+        if dune_version >= (3, 7) then dir else Context.build_dir ctx)
      ?loc:(CC.loc cctx)
      (let open Action_builder.With_targets.O in
       Action_builder.with_no_targets (Action_builder.paths extra_deps)
       >>> Action_builder.with_no_targets other_cm_files
       >>> Command.run
-            ~dir:(Path.build ctx.build_dir)
+            ~dir:(Path.build (Context.build_dir ctx))
             compiler
             [ flags
             ; cmt_args
@@ -285,10 +292,10 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
       and* () =
         let ctx = CC.context cctx in
         let can_split =
-          Ocaml.Version.supports_split_at_emit ctx.ocaml.version
-          || Ocaml_config.is_dev_version ctx.ocaml.ocaml_config
+          Ocaml.Version.supports_split_at_emit (Context.ocaml ctx).version
+          || Ocaml_config.is_dev_version (Context.ocaml ctx).ocaml_config
         in
-        match ctx.fdo_target_exe, can_split with
+        match Context.fdo_target_exe ctx, can_split with
         | None, _ -> build_cm ~cm_kind:(Ocaml Cmx) ~phase:None
         | Some _, false -> build_cm ~cm_kind:(Ocaml Cmx) ~phase:(Some All)
         | Some _, true ->
@@ -349,8 +356,8 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
        (let open Action_builder.With_targets.O in
         Action_builder.with_no_targets cm_deps
         >>> Command.run
-              (Ok ctx.ocaml.ocamlc)
-              ~dir:(Path.build ctx.build_dir)
+              (Ok (Context.ocaml ctx).ocamlc)
+              ~dir:(Path.build (Context.build_dir ctx))
               ~stdout_to:output
               [ Command.Args.dyn ocaml_flags
               ; A "-I"

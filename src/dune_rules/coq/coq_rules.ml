@@ -98,10 +98,12 @@ let coqc ~loc ~dir ~sctx =
 let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =
   match buildable.mode with
   | Some x ->
+    Memo.return
+    @@
     if buildable.coq_lang_version < (0, 7)
-       && Profile.is_dev (Super_context.context sctx).profile
-    then Memo.return Coq_mode.VoOnly
-    else Memo.return x
+       && Super_context.context sctx |> Context.profile |> Profile.is_dev
+    then Coq_mode.VoOnly
+    else x
   | None ->
     if buildable.coq_lang_version < (0, 3)
     then Memo.return Coq_mode.Legacy
@@ -841,7 +843,7 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
     let* theories = Resolve.Memo.read theories in
     source_rule ~sctx theories
   in
-  let coqc_dir = (Super_context.context sctx).build_dir in
+  let coqc_dir = Super_context.context sctx |> Context.build_dir in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
   (* First we setup the rule calling coqdep *)
   setup_coqdep_for_theory_rule
@@ -1022,7 +1024,7 @@ let setup_coqpp_rules ~sctx ~dir ({ loc; modules } : Coq_stanza.Coqpp.t) =
     let source = Path.build m in
     let target = Path.Build.set_extension m ~ext:".ml" in
     let args = [ Command.Args.Dep source; Hidden_targets [ target ] ] in
-    let build_dir = (Super_context.context sctx).build_dir in
+    let build_dir = Super_context.context sctx |> Context.build_dir in
     Command.run ~dir:(Path.build build_dir) coqpp args
   in
   List.rev_map ~f:mlg_rule mlg_files |> Super_context.add_rules ~loc ~dir sctx

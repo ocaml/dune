@@ -431,7 +431,7 @@ module Unprocessed = struct
        | Some args ->
          let action =
            let action = Action_unexpanded.Run (exe, args) in
-           let chdir = (Expander.context expander).build_dir in
+           let chdir = Expander.context expander |> Context.build_dir in
            Action_unexpanded.expand_no_targets
              ~loc
              ~expander
@@ -466,7 +466,7 @@ module Unprocessed = struct
       Preprocess.remove_future_syntax
         preprocess
         ~for_:Merlin
-        (Super_context.context sctx).ocaml.version
+        (Super_context.context sctx |> Context.ocaml).version
     with
     | Action (loc, (action : Dune_lang.Action.t)) ->
       pp_flag_of_action ~expander ~loc ~action
@@ -633,8 +633,9 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
 ;;
 
 let add_rules sctx ~dir ~more_src_dirs ~expander merlin =
-  Memo.when_ (Super_context.context sctx).merlin (fun () ->
-    dot_merlin sctx ~more_src_dirs ~expander ~dir merlin)
+  Memo.when_
+    (Context.merlin (Super_context.context sctx))
+    (fun () -> dot_merlin sctx ~more_src_dirs ~expander ~dir merlin)
 ;;
 
 let more_src_dirs dir_contents ~source_dirs =

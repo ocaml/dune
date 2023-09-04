@@ -524,6 +524,7 @@ end
 
 let create =
   Context.DB.create_db ~name:"findlib" (fun context ->
-    create ~paths:context.findlib_paths ~lib_config:context.ocaml.lib_config)
+    let paths = Context.findlib_paths context in
+    create ~paths ~lib_config:(Context.ocaml context).lib_config)
   |> Staged.unstage
 ;;

@@ -191,7 +191,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
     | None -> src_in_src
     | Some src_in_src ->
       let context = Super_context.context sctx in
-      Path.Build.append_source context.build_dir src_in_src |> Path.build
+      Path.Build.append_source (Context.build_dir context) src_in_src |> Path.build
   in
   let* exists_or_generated =
     match src_in_src with

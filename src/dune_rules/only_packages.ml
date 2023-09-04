@@ -106,7 +106,7 @@ let filtered_stanzas_by_contexts =
   let* contexts = Context.DB.all () in
   let+ { Dune_load.dune_files; packages = _; projects = _ } = Dune_load.load () in
   Context_name.Map.of_list_map_exn contexts ~f:(fun context ->
-    ( context.name
+    ( Context.name context
     , Memo.lazy_
       @@ fun () ->
       let* stanzas = Dune_load.Dune_files.eval ~context dune_files in
@@ -123,7 +123,7 @@ let filtered_stanzas_by_contexts =
 
 let filtered_stanzas (context : Context.t) =
   let* map = Memo.Lazy.force filtered_stanzas_by_contexts in
-  Context_name.Map.find_exn map context.name |> Memo.Lazy.force
+  Context_name.Map.find_exn map (Context.name context) |> Memo.Lazy.force
 ;;
 
 let get () =

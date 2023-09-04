@@ -31,7 +31,7 @@ let term =
         let utop_target =
           let context = Import.Main.find_context_exn setup ~name:ctx_name in
           let utop_target = Filename.concat dir Utop.utop_exe in
-          Path.build (Path.Build.relative context.build_dir utop_target)
+          Path.build (Path.Build.relative (Context.build_dir context) utop_target)
         in
         Build_system.file_exists utop_target
         >>= function

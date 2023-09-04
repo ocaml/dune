@@ -109,7 +109,11 @@ let mlg_files ~sctx ~dir ~modules =
     (* All .mlg files in the current directory *)
     let filter_mlg file =
       if Path.Source.extension file = ".mlg"
-      then Some (Path.Build.append_source (Super_context.context sctx).build_dir file)
+      then
+        Some
+          (Path.Build.append_source
+             (Super_context.context sctx |> Context.build_dir)
+             file)
       else None
     in
     Source_tree.files_of (Path.Build.drop_build_context_exn dir)

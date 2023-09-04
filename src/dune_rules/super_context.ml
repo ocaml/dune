@@ -70,7 +70,7 @@ end = struct
     | Some host ->
       let dir =
         Path.Build.drop_build_context_exn dir
-        |> Path.Build.append_source host.context.build_dir
+        |> Path.Build.append_source (Context.build_dir host.context)
       in
       bin_artifacts host ~dir
   ;;
@@ -78,13 +78,13 @@ end = struct
   let external_env t ~dir = get_node t ~dir >>= Env_node.external_env
 
   let scope_host ~scope (context : Context.t) =
-    match context.for_host with
+    match Context.for_host context with
     | None -> Memo.return scope
     | Some host ->
       let dir =
         let root = Scope.root scope in
         let src = Path.Build.drop_build_context_exn root in
-        Path.Build.append_source host.build_dir src
+        Path.Build.append_source (Context.build_dir host) src
       in
       Scope.DB.find_by_dir dir
   ;;
@@ -150,8 +150,10 @@ end = struct
         | Some parent -> Memo.lazy_ (fun () -> get_node t ~dir:parent))
     in
     let+ config_stanza = get_env_stanza ~dir in
+    let build_context = Context.build_context t.context in
     let default_context_flags =
-      default_context_flags t.context.build_context t.context.ocaml.ocaml_config ~project
+      let ocaml = Context.ocaml t.context in
+      default_context_flags build_context ocaml.ocaml_config ~project
     in
     let expander_for_artifacts =
       Memo.lazy_ (fun () ->
@@ -163,13 +165,14 @@ end = struct
         let* expander_for_artifacts = Memo.Lazy.force expander_for_artifacts in
         extend_expander t ~dir ~expander_for_artifacts >>| Expander.set_dir ~dir)
     in
+    let profile = Context.profile t.context in
     Env_node.make
-      t.context.build_context
+      build_context
       ~dir
       ~scope
       ~config_stanza
       ~inherit_from:(Some inherit_from)
-      ~profile:t.context.profile
+      ~profile
       ~expander
       ~expander_for_artifacts
       ~default_context_flags
@@ -252,7 +255,7 @@ let extend_action t ~dir action =
   Action.Full.add_env env action
   |> Action.Full.map ~f:(function
     | Chdir _ as a -> a
-    | a -> Chdir (Path.build (Env_tree.context t).build_dir, a))
+    | a -> Chdir (Path.build (Context.build_dir (Env_tree.context t)), a))
 ;;
 
 let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =
@@ -453,23 +456,23 @@ let make_default_env_node
 ;;
 
 let make_root_env (context : Context.t) ~(host : t option) =
+  let name = Context.name context in
   let roots =
-    Install.Roots.make
-      ~relative:Path.Build.relative
-      (Install.Context.dir ~context:context.name)
+    Install.Roots.make ~relative:Path.Build.relative (Install.Context.dir ~context:name)
   in
-  Install.Roots.add_to_env roots context.installed_env
+  Context.installed_env context
+  |> Install.Roots.add_to_env roots
   |> Env.update ~var:Env_path.var ~f:(fun _PATH ->
     let context, _PATH =
       match host with
       | None -> context, _PATH
       | Some host ->
         let context = Env_tree.context host in
-        let _PATH = Env.get context.installed_env Env_path.var in
+        let _PATH = Env.get (Context.installed_env context) Env_path.var in
         context, _PATH
     in
-    Some
-      (Bin.cons_path (Path.build (Install.Context.bin_dir ~context:context.name)) ~_PATH))
+    let name = Context.name context in
+    Some (Bin.cons_path (Path.build (Install.Context.bin_dir ~context:name)) ~_PATH))
 ;;
 
 let dune_sites_env ~default_ocamlpath ~stdlib =
@@ -489,20 +492,20 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
     Env.extend_env
       (make_root_env context ~host)
       (dune_sites_env
-         ~default_ocamlpath:context.default_ocamlpath
-         ~stdlib:context.ocaml.lib_config.stdlib_dir)
+         ~default_ocamlpath:(Context.default_ocamlpath context)
+         ~stdlib:(Context.ocaml context).lib_config.stdlib_dir)
   in
   let* artifacts = Artifacts_db.get context in
   let+ root_expander =
     let* artifacts_host, context_host =
-      match context.for_host with
+      match Context.for_host context with
       | None -> Memo.return (artifacts, context)
       | Some host ->
         let+ artifacts = Artifacts_db.get host in
         artifacts, host
     in
-    let+ scope = Scope.DB.find_by_dir context.build_dir
-    and+ scope_host = Scope.DB.find_by_dir context_host.build_dir in
+    let+ scope = Scope.DB.find_by_dir (Context.build_dir context)
+    and+ scope_host = Scope.DB.find_by_dir (Context.build_dir context_host) in
     Expander.make_root
       ~scope
       ~scope_host
@@ -511,17 +514,20 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
       ~lib_artifacts:artifacts.public_libs
       ~bin_artifacts_host:artifacts_host.bin
       ~lib_artifacts_host:artifacts_host.public_libs
-  and+ root_env = add_packages_env context.name ~base:expander_env stanzas packages in
+  and+ root_env =
+    add_packages_env (Context.name context) ~base:expander_env stanzas packages
+  in
   (* Env node that represents the environment configured for the workspace. It
      is used as default at the root of every project in the workspace. *)
   let default_env =
+    let profile = Context.profile context in
     Memo.lazy_ (fun () ->
       make_default_env_node
-        context.ocaml.ocaml_config
-        context.build_context
-        context.profile
+        (Context.ocaml context).ocaml_config
+        (Context.build_context context)
+        profile
         root_expander
-        context.env_nodes
+        (Context.env_nodes context)
         ~root_env
         ~artifacts)
   in
@@ -542,14 +548,15 @@ let all =
     let rec sctxs =
       lazy
         (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
-           c.name, Memo.Lazy.create (fun () -> make_sctx c)))
+           Context.name c, Memo.Lazy.create (fun () -> make_sctx c)))
     and make_sctx (context : Context.t) =
       let host () =
-        match context.for_host with
+        match Context.for_host context with
         | None -> Memo.return None
         | Some h ->
           let+ sctx =
-            Memo.Lazy.force (Context_name.Map.find_exn (Lazy.force sctxs) h.name)
+            Memo.Lazy.force
+              (Context_name.Map.find_exn (Lazy.force sctxs) (Context.name h))
           in
           Some sctx
       in

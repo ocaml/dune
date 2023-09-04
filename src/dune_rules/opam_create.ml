@@ -313,7 +313,7 @@ let add_alias_rule (ctx : Build_context.t) ~project ~pkg =
 
 let add_opam_file_rule sctx ~project ~pkg =
   let open Action_builder.O in
-  let build_dir = (Super_context.context sctx).build_dir in
+  let build_dir = Super_context.context sctx |> Context.build_dir in
   let opam_path = Path.Build.append_source build_dir (Package.opam_file pkg) in
   let opam_rule =
     (let+ template = opam_template ~opam_path:(Path.build opam_path) in
@@ -336,7 +336,9 @@ let add_rules sctx project =
   Memo.when_ (Dune_project.generate_opam_files project) (fun () ->
     let packages = Dune_project.packages project in
     Package.Name.Map_traversals.parallel_iter packages ~f:(fun _name (pkg : Package.t) ->
-      let* () = add_alias_rule (Super_context.context sctx).build_context ~project ~pkg in
+      let* () =
+        add_alias_rule (Context.build_context (Super_context.context sctx)) ~project ~pkg
+      in
       match Dune_project.opam_file_location project with
       | `Inside_opam_directory -> Memo.return ()
       | `Relative_to_project -> add_opam_file_rule sctx ~project ~pkg))

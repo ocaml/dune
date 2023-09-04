@@ -23,7 +23,7 @@ let phase_flags = function
    generated externally from perf data for example using google's autofdo
    toolset: create_gcov for gcc or create_llvm_prof for llvm. *)
 let c_flags (ctx : Context.t) =
-  match ctx.fdo_target_exe with
+  match Context.fdo_target_exe ctx with
   | None -> []
   | Some _ -> [ "-ffunction-sections" ]
 ;;
@@ -44,7 +44,7 @@ let ocamlfdo_binary sctx dir =
 (* FDO flags are context dependent. *)
 let get_flags var =
   let f (ctx : Context.t) =
-    Env.get ctx.installed_env var
+    Env.get (Context.installed_env ctx) var
     |> Option.value ~default:""
     |> String.extract_blank_separated_words
     |> Memo.return
@@ -94,13 +94,13 @@ end
 
 let get_profile (ctx : Context.t) =
   let open Action_builder.O in
-  let path = ctx.fdo_target_exe |> Option.value_exn |> fdo_profile in
+  let path = Context.fdo_target_exe ctx |> Option.value_exn |> fdo_profile in
   let some () =
     let+ () = Action_builder.dep (Dep.file path) in
     Some path
   in
   let none () = Action_builder.return None in
-  match Mode.of_env ctx.installed_env with
+  match Mode.of_env (Context.installed_env ctx) with
   | Never -> none ()
   | Always -> some ()
   | If_exists -> Action_builder.if_file_exists path ~then_:(some ()) ~else_:(none ())
@@ -155,7 +155,7 @@ module Linker_script = struct
     let dir = CC.dir cctx in
     let linker_script = linker_script fdo_target_exe in
     let linker_script_path =
-      Path.Build.(relative ctx.build_dir (Path.to_string linker_script))
+      Path.Build.(relative (Context.build_dir ctx) (Path.to_string linker_script))
     in
     let flags =
       let open Action_builder.O in
@@ -172,7 +172,7 @@ module Linker_script = struct
         sctx
         ~dir
         (Command.run
-           ~dir:(Path.build ctx.build_dir)
+           ~dir:(Path.build (Context.build_dir ctx))
            ocamlfdo_binary
            [ A "linker-script"
            ; A "-o"
@@ -187,12 +187,12 @@ module Linker_script = struct
 
   let create cctx name =
     let ctx = CC.context cctx in
-    match ctx.fdo_target_exe with
+    match Context.fdo_target_exe ctx with
     | None -> None
     | Some fdo_target_exe ->
       if Path.equal name fdo_target_exe
-         && (Ocaml.Version.supports_function_sections ctx.ocaml.version
-             || Ocaml_config.is_dev_version ctx.ocaml.ocaml_config)
+         && (Ocaml.Version.supports_function_sections (Context.ocaml ctx).version
+             || Ocaml_config.is_dev_version (Context.ocaml ctx).ocaml_config)
       then Some (linker_script_rule cctx fdo_target_exe)
       else None
   ;;

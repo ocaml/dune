@@ -171,7 +171,7 @@ let rec dep expander : Dep_conf.t -> _ = function
          let context = Expander.context expander in
          Action_builder.of_memo
            (let open Memo.O in
-            let* package_db = Package_db.create context.name in
+            let* package_db = Package_db.create (Context.name context) in
             Package_db.find_package package_db pkg)
          >>= function
          | Some (Local pkg) ->

@@ -271,11 +271,10 @@ module Build_environment_kind = struct
   ;;
 
   let findlib_paths t ~findlib ~ocaml_bin =
-    match findlib, t with
-    | ( Some findlib
-      , (Cross_compilation_using_findlib_toolchain _ | Opam2_environment _ | Unknown) ) ->
-      Findlib_config.ocamlpath findlib
-    | None, Cross_compilation_using_findlib_toolchain toolchain ->
+    match t, findlib with
+    | ( (Cross_compilation_using_findlib_toolchain _ | Opam2_environment _ | Unknown)
+      , Some findlib ) -> Findlib_config.ocamlpath findlib
+    | Cross_compilation_using_findlib_toolchain toolchain, None ->
       User_error.raise
         [ Pp.textf
             "Could not find `ocamlfind' in PATH or an environment variable \
@@ -290,11 +289,11 @@ module Build_environment_kind = struct
               ]
               ~f:Pp.text
           ]
-    | _, Hardcoded_path l -> List.map l ~f:Path.of_filename_relative_to_initial_cwd
-    | None, Opam2_environment opam_prefix ->
+    | Hardcoded_path l, _ -> List.map l ~f:Path.of_filename_relative_to_initial_cwd
+    | Opam2_environment opam_prefix, None ->
       let p = Path.of_filename_relative_to_initial_cwd opam_prefix in
       [ Path.relative p "lib" ]
-    | None, Unknown -> [ Path.relative (Path.parent_exn ocaml_bin) "lib" ]
+    | Unknown, None -> [ Path.relative (Path.parent_exn ocaml_bin) "lib" ]
   ;;
 end
 

@@ -1,9 +1,13 @@
 open Import
 
-let remove_extension file =
+let strip_pp_extensions file =
   let dir = Path.Build.parent_exn file in
-  let basename, _ext = String.lsplit2_exn (Path.Build.basename file) ~on:'.' in
-  Path.Build.relative dir basename
+  let basename = Path.Build.basename file in
+  match String.split basename ~on:'.' with
+  | [] | [ _ ] | [ _; _ ] -> file
+  | name :: exts ->
+    let ext = Option.value_exn (List.last exts) in
+    Path.Build.relative dir (sprintf "%s.%s" name ext)
 ;;
 
 module Processed = struct
@@ -238,8 +242,9 @@ module Processed = struct
     let open Option.O in
     let+ { module_; opens } =
       let find file =
-        let file_without_ext = remove_extension file in
-        Path.Build.Map.find per_module_config file_without_ext
+        match Path.Build.Map.find per_module_config file with
+        | Some _ as s -> s
+        | None -> Path.Build.Map.find per_module_config (strip_pp_extensions file)
       in
       match find file with
       | Some _ as s -> s
@@ -351,7 +356,7 @@ module Unprocessed = struct
     ~preprocess
     ~libname
     ~source_dirs
-    ~modules
+    ~source_modules
     ~obj_dir
     ~dialects
     ~ident
@@ -386,7 +391,7 @@ module Unprocessed = struct
       ; extensions
       }
     in
-    { ident; config; modules }
+    { ident; config; modules = source_modules }
   ;;
 
   let encode_command =
@@ -569,8 +574,7 @@ module Unprocessed = struct
       (* And copy for each module the resulting pp flags *)
       Modules.fold_no_vlib modules ~init:[] ~f:(fun m init ->
         Module.sources m
-        |> Path.Build.Set.of_list_map ~f:(fun src ->
-          Path.as_in_build_dir_exn src |> remove_extension)
+        |> Path.Build.Set.of_list_map ~f:(fun src -> Path.as_in_build_dir_exn src)
         |> Path.Build.Set.fold ~init ~f:(fun src acc ->
           let config =
             { Processed.module_ = Module.set_pp m None

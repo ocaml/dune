@@ -570,9 +570,6 @@ let library_rules
   ~dir_contents
   ~compile_info
   =
-  let source_modules =
-    Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)
-  in
   let modules = Compilation_context.modules cctx in
   let obj_dir = Compilation_context.obj_dir cctx in
   let vimpl = Compilation_context.vimpl cctx in
@@ -623,14 +620,21 @@ let library_rules
   and+ () = Odoc.setup_library_odoc_rules cctx local_lib
   and+ () =
     Sub_system.gen_rules
-      { super_context = sctx; dir; stanza = lib; scope; source_modules; compile_info }
+      { super_context = sctx
+      ; dir
+      ; stanza = lib
+      ; scope
+      ; source_modules =
+          Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)
+      ; compile_info
+      }
   in
   ( cctx
   , Merlin.make
       ~requires:requires_compile
       ~stdlib_dir
       ~flags
-      ~modules
+      ~source_modules
       ~source_dirs:Path.Source.Set.empty
       ~preprocess:(Preprocess.Per_module.without_instrumentation lib.buildable.preprocess)
       ~libname:(Some (snd lib.name))

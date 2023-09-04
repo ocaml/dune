@@ -716,16 +716,7 @@ let roots t =
   let module Roots = Install.Roots in
   let prefix_roots =
     match Env.get t.installed_env Build_environment_kind.opam_switch_prefix_var_name with
-    | None ->
-      { Roots.lib_root = None
-      ; libexec_root = None
-      ; bin = None
-      ; sbin = None
-      ; etc_root = None
-      ; doc_root = None
-      ; share_root = None
-      ; man = None
-      }
+    | None -> Roots.make_all None
     | Some prefix ->
       let prefix = Path.of_filename_relative_to_initial_cwd prefix in
       Roots.opam_from_prefix prefix |> Roots.map ~f:(fun s -> Some s)

@@ -97,7 +97,6 @@ type t =
   ; findlib_paths : Path.t list
   ; findlib_toolchain : Context_name.t option
   ; default_ocamlpath : Path.t list
-  ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; build_context : Build_context.t
   ; instrument_with : Lib_name.t list
   }
@@ -130,10 +129,6 @@ let to_dyn t : Dyn.t =
     ; "ocamlmklib", Action.Prog.to_dyn t.ocaml.ocamlmklib
     ; "installed_env", Env.to_dyn (Env.diff t.installed_env Env.initial)
     ; "findlib_paths", list path t.findlib_paths
-    ; ( "natdynlink_supported"
-      , Bool (Dynlink_supported.By_the_os.get t.ocaml.lib_config.natdynlink_supported) )
-    ; ( "supports_shared_libraries"
-      , Bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries) )
     ; "ocaml_config", Ocaml_config.to_dyn t.ocaml.ocaml_config
     ; "instrument_with", (list Lib_name.to_dyn) t.instrument_with
     ]
@@ -358,11 +353,9 @@ let create
   in
   let installed_env = installed_env env name findlib env_nodes ocaml.version profile in
   if Option.is_some fdo_target_exe then Ocaml_toolchain.check_fdo_support ocaml name;
-  let supports_shared_libraries =
-    Ocaml_config.supports_shared_libraries ocaml.ocaml_config
-  in
   let dynamically_linked_foreign_archives =
-    supports_shared_libraries && dynamically_linked_foreign_archives
+    Ocaml_config.supports_shared_libraries ocaml.ocaml_config
+    && dynamically_linked_foreign_archives
   in
   Ocaml_toolchain.register_response_file_support ocaml;
   Memo.return
@@ -382,8 +375,6 @@ let create
     ; findlib_paths = ocamlpath @ default_ocamlpath
     ; findlib_toolchain
     ; default_ocamlpath
-    ; supports_shared_libraries =
-        Dynlink_supported.By_the_os.of_bool supports_shared_libraries
     ; build_context = Build_context.create ~name
     ; instrument_with
     }

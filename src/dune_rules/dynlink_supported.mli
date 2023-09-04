@@ -11,3 +11,4 @@ type t
 
 val of_bool : bool -> t
 val get : t -> By_the_os.t -> bool
+val get_ocaml_config : t -> Ocaml_config.t -> bool

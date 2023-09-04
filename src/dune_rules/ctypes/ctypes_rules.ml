@@ -177,7 +177,6 @@ let build_c_program
   ~cflags
   ~output
   ~deps
-  ~version
   =
   let ctx = Super_context.context sctx in
   let open Memo.O in
@@ -249,43 +248,15 @@ let build_c_program
       ]
   in
   let action =
-    if version >= (0, 3)
-    then (
-      let args =
-        [ Command.Args.as_any all_flags
-        ; Deps (List.map ~f:(fun s -> Path.relative (Path.build dir) s) source_files)
-        ; A "-o"
-        ; Target (Path.Build.relative dir output)
-        ]
-      in
-      let open Action_builder.With_targets.O in
-      Action_builder.with_no_targets deps >>> Command.run ~dir:(Path.build dir) exe args)
-    else (
-      let build =
-        let absolute_path_hack p =
-          (* These normal path builder things construct relative paths like
-             _build/default/your/project/file.c but before dune runs gcc it actually
-             cds into _build/default, which fails, so we turn them into absolutes to
-             hack around it. *)
-          Path.relative (Path.build dir) p |> Path.to_absolute_filename
-        in
-        let action =
-          let open Action_builder.O in
-          let* flag_args = Command.expand_no_targets ~dir:(Path.build dir) all_flags in
-          let+ () = deps in
-          let source_files = List.map source_files ~f:absolute_path_hack in
-          let output = absolute_path_hack output in
-          let args = flag_args @ source_files @ [ "-o"; output ] in
-          (* TODO: it might be possible to convert this to Command.run and
-             consolidate both branches but it is also possible that we drop
-             support for < 0.3 instead *)
-          Action.run exe args
-        in
-        Action_builder.with_file_targets
-          action
-          ~file_targets:[ Path.Build.relative dir output ]
-      in
-      Action_builder.With_targets.map ~f:Action.Full.make build)
+    let args =
+      [ Command.Args.as_any all_flags
+      ; Deps (List.map ~f:(fun s -> Path.relative (Path.build dir) s) source_files)
+      ; A "-o"
+      ; Target (Path.Build.relative dir output)
+      ]
+    in
+    let open Action_builder.With_targets.O in
+    Action_builder.with_no_targets deps >>> Command.run ~dir:(Path.build dir) exe args
   in
   Super_context.add_rule sctx ~dir action
 ;;
@@ -314,7 +285,7 @@ let exe_link_only ~dir ~shared_cctx ~sandbox program ~deps =
     ~sandbox
 ;;
 
-let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx ~version =
+let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
   let ctypes = Option.value_exn buildable.ctypes in
   let external_library_name = ctypes.external_library_name in
   let type_description_functor = ctypes.type_description.functor_ in
@@ -422,7 +393,6 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx ~version =
         ~output:c_generated_types_cout_exe
         ~deps
         ~cflags
-        ~version
     in
     Super_context.add_rule
       sctx

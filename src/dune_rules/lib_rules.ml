@@ -646,15 +646,8 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
     let* () =
       match buildable.ctypes with
       | None -> Memo.return ()
-      | Some { version; _ } ->
-        Ctypes_rules.gen_rules
-          ~loc:(fst lib.name)
-          ~cctx
-          ~buildable
-          ~sctx
-          ~scope
-          ~dir
-          ~version
+      | Some _ ->
+        Ctypes_rules.gen_rules ~loc:(fst lib.name) ~cctx ~buildable ~sctx ~scope ~dir
     in
     library_rules lib ~local_lib ~cctx ~source_modules ~dir_contents ~compile_info
   in

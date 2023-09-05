@@ -668,15 +668,15 @@ let exec
   and eenv =
     let env =
       match
-        Execution_parameters.add_workspace_root_to_build_path_prefix_map
-          execution_parameters
+        Execution_parameters.workspace_root_to_build_path_prefix_map execution_parameters
       with
-      | false -> env
-      | true ->
+      | Unset -> env
+      | Set target ->
         Dune_util.Build_path_prefix_map.extend_build_path_prefix_map
           env
           `New_rules_have_precedence
-          [ Some { source = Path.to_absolute_filename root; target = "/workspace_root" } ]
+          (* TODO generify *)
+          [ Some { source = Path.to_absolute_filename root; target } ]
     in
     { working_dir = Path.root
     ; env

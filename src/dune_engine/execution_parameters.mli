@@ -49,14 +49,25 @@ end
 
 (** {1 Constructors} *)
 
+(** Set the workspace root directory for the build prefix map, if desired. *)
+module Workspace_root_for_build_prefix_map : sig
+  type t =
+    | Unset (** Do not set the workspace root; only used by external Dune rules *)
+    | Set of string (** [Set root] substitute the root with [root] *)
+end
+
 val builtin_default : t
 val set_action_stdout_on_success : Action_output_on_success.t -> t -> t
 val set_action_stderr_on_success : Action_output_on_success.t -> t -> t
 val set_action_stdout_limit : Action_output_limit.t -> t -> t
 val set_action_stderr_limit : Action_output_limit.t -> t -> t
 val set_expand_aliases_in_sandbox : bool -> t -> t
-val set_add_workspace_root_to_build_path_prefix_map : bool -> t -> t
-val add_workspace_root_to_build_path_prefix_map : t -> bool
+
+val set_workspace_root_to_build_path_prefix_map
+  :  Workspace_root_for_build_prefix_map.t
+  -> t
+  -> t
+
 val set_should_remove_write_permissions_on_generated_files : bool -> t -> t
 
 (** As configured by [init] *)
@@ -70,6 +81,7 @@ val action_stdout_on_success : t -> Action_output_on_success.t
 val action_stderr_on_success : t -> Action_output_on_success.t
 val action_stdout_limit : t -> Action_output_limit.t
 val action_stderr_limit : t -> Action_output_limit.t
+val workspace_root_to_build_path_prefix_map : t -> Workspace_root_for_build_prefix_map.t
 
 (** {1 Initialisation} *)
 

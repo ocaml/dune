@@ -71,7 +71,6 @@ type t = private
   ; findlib_paths : Path.t list
   ; findlib_toolchain : Context_name.t option (** Misc *)
   ; default_ocamlpath : Path.t list
-  ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; build_context : Build_context.t
   ; instrument_with : Lib_name.t list
   }

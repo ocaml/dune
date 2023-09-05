@@ -111,7 +111,7 @@ end = struct
   let dll_files ~(modes : Mode.Dict.Set.t) ~dynlink ~(ctx : Context.t) lib =
     if_
       (modes.byte
-       && Dynlink_supported.get dynlink ctx.supports_shared_libraries
+       && Dynlink_supported.get_ocaml_config dynlink ctx.ocaml.ocaml_config
        && ctx.dynamically_linked_foreign_archives)
       (Lib_info.foreign_dll_files lib)
   ;;

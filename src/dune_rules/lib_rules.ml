@@ -318,7 +318,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
     let build_targets_together =
       modes.ocaml.native
       && modes.ocaml.byte
-      && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
+      && Dynlink_supported.get_ocaml_config lib.dynlink ctx.ocaml.ocaml_config
     in
     let* standard =
       let+ project = Scope.DB.find_by_dir dir >>| Scope.project in

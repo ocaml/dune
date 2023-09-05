@@ -8,6 +8,11 @@ let make ?loc ?hints ?annots paragraphs =
 
 let raise ?loc ?hints ?annots paragraphs = raise (E (make ?loc ?hints ?annots paragraphs))
 
+let ok_exn = function
+  | Ok x -> x
+  | Error msg -> Stdlib.raise (E msg)
+;;
+
 let () =
   Printexc.register_printer (function
     | E t ->

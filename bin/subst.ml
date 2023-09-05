@@ -335,10 +335,6 @@ let subst vcs =
              [ Pp.textf "Package %s doesn't exist." (Package.Name.to_string name) ])
     in
     let version = Dune_project.dune_version dune_project.project in
-    let ok_exn = function
-      | Ok s -> s
-      | Error e -> raise (User_error.E e)
-    in
     if version >= (3, 0)
     then metadata_from_dune_project ()
     else if version >= (2, 8)
@@ -346,7 +342,7 @@ let subst vcs =
       match metadata_from_matching_package () with
       | Ok p -> p
       | Error _ -> metadata_from_dune_project ())
-    else ok_exn (metadata_from_matching_package ())
+    else User_error.ok_exn (metadata_from_matching_package ())
   in
   let watermarks = make_watermark_map ~commit ~version ~dune_project ~info in
   Dune_project.subst ~map:watermarks ~version dune_project;

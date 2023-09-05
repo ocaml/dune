@@ -98,9 +98,7 @@ module Module = struct
     let open Memo.O in
     let module_name =
       let name = Filename.chop_extension filename in
-      match Dune_rules.Module_name.of_string_user_error (Loc.none, name) with
-      | Ok s -> s
-      | Error e -> raise (User_error.E e)
+      Dune_rules.Module_name.of_string_user_error (Loc.none, name) |> User_error.ok_exn
     in
     let* expander = Super_context.expander sctx ~dir in
     let* top_module_info = Dune_rules.Top_module.find_module sctx mod_ in

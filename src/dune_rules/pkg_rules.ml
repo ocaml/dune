@@ -1407,24 +1407,22 @@ let gen_rules context_name (pkg : Pkg.t) =
 module Gen_rules = Build_config.Gen_rules
 
 let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
-  match Package.Name.of_string_user_error (Loc.none, pkg_name) with
-  | Error m -> raise (User_error.E m)
-  | Ok name ->
-    let* db = Lock_dir.get context in
-    let+ pkg = resolve db.packages context (Loc.none, name) in
-    let paths = Paths.make name context in
-    let directory_targets =
-      let target_dir = paths.target_dir in
-      let map = Path.Build.Map.singleton target_dir Loc.none in
-      match pkg.info.source with
-      | Some (Fetch f) -> Path.Build.Map.add_exn map paths.source_dir (fst f.url)
-      | _ -> map
-    in
-    let build_dir_only_sub_dirs =
-      Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty
-    in
-    let rules = Rules.collect_unit (fun () -> gen_rules context pkg) in
-    Gen_rules.make ~directory_targets ~build_dir_only_sub_dirs rules
+  let name = User_error.ok_exn (Package.Name.of_string_user_error (Loc.none, pkg_name)) in
+  let* db = Lock_dir.get context in
+  let+ pkg = resolve db.packages context (Loc.none, name) in
+  let paths = Paths.make name context in
+  let directory_targets =
+    let target_dir = paths.target_dir in
+    let map = Path.Build.Map.singleton target_dir Loc.none in
+    match pkg.info.source with
+    | Some (Fetch f) -> Path.Build.Map.add_exn map paths.source_dir (fst f.url)
+    | _ -> map
+  in
+  let build_dir_only_sub_dirs =
+    Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty
+  in
+  let rules = Rules.collect_unit (fun () -> gen_rules context pkg) in
+  Gen_rules.make ~directory_targets ~build_dir_only_sub_dirs rules
 ;;
 
 let ocaml_toolchain context =

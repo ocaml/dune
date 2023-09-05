@@ -71,14 +71,20 @@ module Dir_triage = struct
   type t =
     | Known of Loaded.t
     | Build_directory of Build_directory.t
+
+  let empty_source = Known (Source { files = Path.Source.Set.empty })
 end
 
 let get_dir_triage ~dir =
   match Dpath.analyse_dir dir with
   | Source dir ->
     let module Source_tree = (val (Build_config.get ()).source_tree) in
-    let+ files = Source_tree.files_of dir in
-    Dir_triage.Known (Source { files })
+    Source_tree.find_dir dir
+    >>| (function
+    | None -> Dir_triage.empty_source
+    | Some dir ->
+      let files = Source_tree.Dir.file_paths dir in
+      Dir_triage.Known (Source { files }))
   | External dir_ext ->
     let+ files =
       Fs_memo.dir_contents (External dir_ext)

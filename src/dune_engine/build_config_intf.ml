@@ -57,8 +57,6 @@ module type Rule_generator = sig
 end
 
 module type Source_tree = sig
-  val files_of : Path.Source.t -> Path.Source.Set.t Memo.t
-
   module Dir : sig
     type t
 

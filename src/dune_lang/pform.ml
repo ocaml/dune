@@ -404,12 +404,7 @@ module Macro_invocation = struct
         { user_message with paragraphs })
     ;;
 
-    let lsplit2_exn t loc =
-      match lsplit2 t loc with
-      | Ok args -> args
-      | Error user_message -> raise (User_error.E user_message)
-    ;;
-
+    let lsplit2_exn t loc = lsplit2 t loc |> User_error.ok_exn
     let split { payload; _ } = Payload.Args.split payload
   end
 end

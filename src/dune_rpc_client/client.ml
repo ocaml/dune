@@ -38,9 +38,7 @@ module Connection = struct
 
   let connect_exn where =
     let+ conn = connect where in
-    match conn with
-    | Ok s -> s
-    | Error msg -> raise (User_error.E msg)
+    User_error.ok_exn conn
   ;;
 end
 

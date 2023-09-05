@@ -61,9 +61,8 @@ module Source = struct
       match checksum with
       | None -> None
       | Some ((loc, _) as checksum) ->
-        (match Checksum.of_string_user_error checksum with
-         | Ok checksum -> Some (loc, checksum)
-         | Error e -> raise (User_error.E e))
+        let checksum = Checksum.of_string_user_error checksum |> User_error.ok_exn in
+        Some (loc, checksum)
     in
     { url; checksum }
   ;;

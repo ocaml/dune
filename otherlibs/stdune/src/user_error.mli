@@ -24,3 +24,8 @@ val make
 
 (** The "Error:" prefix *)
 val prefix : User_message.Style.t Pp.t
+
+(** Helper to raise a user error from a result type.
+    - [ok_exn (Ok x)] is [x]
+    - [ok_exn (Error msg)] is [Stdlib.raise (E msg)] *)
+val ok_exn : ('a, User_message.t) result -> 'a

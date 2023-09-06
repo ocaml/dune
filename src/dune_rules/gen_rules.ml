@@ -178,6 +178,14 @@ end = struct
       Expander.eval_blang expander mel.enabled_if
       >>= if_available_buildable ~loc:mel.loc (fun () ->
         Melange_rules.setup_emit_cmj_rules ~dir_contents ~dir ~scope ~sctx ~expander mel)
+    | Include_preprocessed_sources.T { dirs_to_include } ->
+      let+ () =
+        let* dirs_to_include =
+          Memo.all (List.map ~f:(Expander.No_deps.expand_path expander) dirs_to_include)
+        in
+        Include_preprocessed_sources.gen_stanza_rules sctx ~dir ~dirs_to_include
+      in
+      empty_none
     | _ -> Memo.return empty_none
   ;;
 
@@ -561,8 +569,9 @@ let gen_rules_regular_directory sctx ~src_dir ~components ~dir =
       | None -> rules
       | Some opam_rules ->
         Gen_rules.map_rules rules ~f:(Gen_rules.Rules.combine_exn opam_rules)
-    and+ melange_rules = Melange_rules.setup_emit_js_rules sctx ~dir in
-    Gen_rules.combine melange_rules rules
+    and+ melange_rules = Melange_rules.setup_emit_js_rules sctx ~dir
+    and+ include_pp_src_rules = Include_preprocessed_sources.gen_sub_dir_rules ~dir in
+    Gen_rules.(combine include_pp_src_rules (combine melange_rules rules))
 ;;
 
 (* Once [gen_rules] has decided what to do with the directory, it should end

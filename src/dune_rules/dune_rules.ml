@@ -73,6 +73,7 @@ module Melange_stanzas = Melange_stanzas
 module Executables = Executables
 module Tests = Tests
 module Stanzas = Stanzas
+module Include_preprocessed_sources = Include_preprocessed_sources
 
 module Install_rules = struct
   let install_file = Install_rules.install_file

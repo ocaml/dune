@@ -1,0 +1,2 @@
+(include_preprocessed_sources
+ (dirs ../src))

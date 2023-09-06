@@ -12,6 +12,7 @@
 
 ; Reserved for Dune itself. This is to help with the bootstrap
 (using dune-bootstrap-info 0.1)
+(using include_preprocessed_sources 0.1)
 
 (license MIT)
 (maintainers "Jane Street Group, LLC <opensource@janestreet.com>")

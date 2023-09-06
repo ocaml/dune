@@ -64,16 +64,6 @@ module Or_meta : sig
     | Dune_package of t
 
   val pp : dune_version:Dune_lang.Syntax.Version.t -> Format.formatter -> t -> unit
-
-  module Load
-      (Monad : sig
-         type 'a t
-       end)
-      (_ : sig
-         val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a Monad.t
-       end) : sig
-    val load : Path.t -> (t, User_message.t) result Monad.t
-  end
-
+  val load : Path.t -> (t, User_message.t) result Memo.t
   val to_dyn : t Dyn.builder
 end

@@ -944,7 +944,7 @@ let promote_install_file (ctx : Context.t) =
   && (not (Context.implicit ctx))
   &&
   match Context.kind ctx with
-  | Default -> true
+  | Lock _ | Default -> true
   | Opam _ -> false
 ;;
 

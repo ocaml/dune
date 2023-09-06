@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - bench/fix-melange-bench
+      - bench/fix-melange-bench-grep
 
 permissions:
   # deployments permission to deploy GitHub pages website

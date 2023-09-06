@@ -1,14 +1,4 @@
-module RGB8 : sig
-  type t
-
-  val to_dyn : t -> Dyn.t
-  val of_int : int -> t
-  val to_int : t -> int
-  val compare : t -> t -> Ordering.t
-
-  (** This is only used internally. *)
-  val write_to_buffer : Buffer.t -> t -> unit
-end = struct
+module RGB8 = struct
   type t = char
 
   let to_dyn t = Dyn.Int (int_of_char t)
@@ -22,19 +12,7 @@ end = struct
   ;;
 end
 
-module RGB24 : sig
-  type t
-
-  val to_dyn : t -> Dyn.t
-  val compare : t -> t -> Ordering.t
-  val red : t -> int
-  val green : t -> int
-  val blue : t -> int
-  val create : r:int -> g:int -> b:int -> t
-
-  (** This is only used internally. *)
-  val write_to_buffer : Buffer.t -> t -> unit
-end = struct
+module RGB24 = struct
   type t = int
 
   let compare = Int.compare

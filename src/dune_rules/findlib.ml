@@ -107,22 +107,27 @@ end = struct
        [ rep any; str "__"; rep any ] |> seq |> compile)
   ;;
 
+  let check_dot_dune_exists ~dir ~dir_contents name =
+    match dir_contents with
+    | Error _ -> ()
+    | Ok fnames ->
+      let fname = sprintf "%s.dune" (Lib_name.to_string name) in
+      if List.mem fnames fname ~equal:String.equal
+      then
+        User_warning.emit
+          ~loc:(Loc.in_file (Path.relative dir fname))
+          [ Pp.text
+              ".dune files are ignored since 2.0. Reinstall the library with dune >= 2.0 \
+               to get rid of this warning and enable support for the subsystem this \
+               library provides."
+          ]
+  ;;
+
   let to_dune_library (t : Findlib.Package.t) ~ext_lib =
     let loc = Loc.in_file t.meta_file in
     let add_loc x = loc, x in
-    let dot_dune_file =
-      Path.relative t.dir (sprintf "%s.dune" (Lib_name.to_string t.name))
-    in
-    let* dot_dune_exists = Fs.file_exists dot_dune_file in
-    if dot_dune_exists
-    then
-      User_warning.emit
-        ~loc:(Loc.in_file dot_dune_file)
-        [ Pp.text
-            ".dune files are ignored since 2.0. Reinstall the library with dune >= 2.0 \
-             to get rid of this warning and enable support for the subsystem this \
-             library provides."
-        ];
+    let+ dir_contents = Fs.dir_contents t.dir in
+    check_dot_dune_exists ~dir:t.dir ~dir_contents t.name;
     let archives = Findlib.Package.archives t in
     let obj_dir = Obj_dir.make_external_no_private ~dir:t.dir in
     let modes : Lib_mode.Map.Set.t =
@@ -134,7 +139,7 @@ end = struct
       in
       { Lib_mode.Map.ocaml = modes; melange = false }
     in
-    let+ (info : Path.t Lib_info.t) =
+    let (info : Path.t Lib_info.t) =
       let kind = Findlib.Package.kind t in
       let sub_systems = Sub_system_name.Map.empty in
       let synopsis = Findlib.Package.description t in
@@ -172,7 +177,6 @@ end = struct
       let virtual_ = None in
       let default_implementation = None in
       let wrapped = None in
-      let+ dir_contents = Fs.dir_contents t.dir in
       let foreign_archives, native_archives =
         (* Here we scan [t.dir] and consider all files named [lib*.ext_lib] to
            be foreign archives, and all other files with the extension

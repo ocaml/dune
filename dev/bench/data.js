@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694081396834,
+  "lastUpdate": 1694103059513,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -92393,6 +92393,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "28.068773529586664",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b7ef734afbc00f6defff1b96d46f0f6629f4278d",
+          "message": "refactor: split functions in [dune_load] (#8605)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-07T16:56:38+01:00",
+          "tree_id": "01d5888a226dc79e592a537330e23e6e9d176a9d",
+          "url": "https://github.com/ocaml/dune/commit/b7ef734afbc00f6defff1b96d46f0f6629f4278d"
+        },
+        "date": 1694103046822,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "24.613125577773335",
             "unit": "seconds"
           }
         ]

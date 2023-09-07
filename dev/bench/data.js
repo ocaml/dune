@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694071830661,
+  "lastUpdate": 1694071971166,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -91842,6 +91842,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.76659766814667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "314cd2f15006e445cfa8ee07d7b187c5485bb660",
+          "message": "refactor: simplify context handling further (#8600)\n\nMake the context abstract\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-07T08:20:00+01:00",
+          "tree_id": "7749bbd623311e8c1bad0ea16fa0a7eb8010d088",
+          "url": "https://github.com/ocaml/dune/commit/314cd2f15006e445cfa8ee07d7b187c5485bb660"
+        },
+        "date": 1694071959626,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.90840725742",
             "unit": "seconds"
           }
         ]

@@ -38,7 +38,7 @@ let in_dir ~name ~recursive ~contexts dir =
     ; name
     ; contexts =
         [ List.find_exn contexts ~f:(fun c ->
-            Context_name.equal (Context.name c) ctx.name)
+            Context_name.equal (Context.name c) (Context.name ctx))
         ]
     }
 ;;

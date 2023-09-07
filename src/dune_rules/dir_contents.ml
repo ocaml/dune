@@ -290,7 +290,7 @@ end = struct
 
   let get0_impl (sctx, dir) : result0 Memo.t =
     let ctx = Super_context.context sctx in
-    let lib_config = (Super_context.context sctx).ocaml.lib_config in
+    let lib_config = (Super_context.context sctx |> Context.ocaml).lib_config in
     let* status = Dir_status.DB.get ~dir in
     let human_readable_description () =
       Pp.textf
@@ -352,7 +352,7 @@ end = struct
                            Foreign_sources.make
                              d.stanzas
                              ~dune_version
-                             ~lib_config:ctx.ocaml.lib_config
+                             ~lib_config:(Context.ocaml ctx).lib_config
                              ~dirs
                            |> Memo.return)
                      ; coq =
@@ -419,7 +419,7 @@ end = struct
               Foreign_sources.make
                 d.stanzas
                 ~dune_version
-                ~lib_config:ctx.ocaml.lib_config
+                ~lib_config:(Context.ocaml ctx).lib_config
                 ~dirs
               |> Memo.return)
           in

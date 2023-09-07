@@ -391,7 +391,7 @@ module Crawl = struct
     let pp_map =
       Staged.unstage
       @@
-      let version = (Super_context.context sctx).ocaml.version in
+      let version = (Super_context.context sctx |> Context.ocaml).version in
       Preprocessing.pped_modules_map
         (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
         version
@@ -450,7 +450,7 @@ module Crawl = struct
           let pp_map =
             Staged.unstage
             @@
-            let version = (Super_context.context sctx).ocaml.version in
+            let version = (Super_context.context sctx |> Context.ocaml).version in
             Preprocessing.pped_modules_map
               (Preprocess.Per_module.without_instrumentation (Lib_info.preprocess info))
               version
@@ -507,7 +507,7 @@ module Crawl = struct
 
   (* Builds a workspace item for the build directory path *)
   let build_ctxt (context : Context.t) : Descr.Item.t =
-    Descr.Item.Build_context (Path.build context.build_dir)
+    Descr.Item.Build_context (Path.build (Context.build_dir context))
   ;;
 
   (* Builds a workspace description for the provided dune setup and context *)
@@ -518,7 +518,7 @@ module Crawl = struct
     dirs
     : Descr.Workspace.t Memo.t
     =
-    let sctx = Context_name.Map.find_exn scontexts context.name in
+    let sctx = Context_name.Map.find_exn scontexts (Context.name context) in
     let open Memo.O in
     let* dune_files =
       Dune_load.Dune_files.eval conf.dune_files ~context
@@ -529,7 +529,7 @@ module Crawl = struct
          their direct library dependencies *)
       Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
         Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
-          let dir = Path.Build.append_source context.build_dir dune_file.dir in
+          let dir = Path.Build.append_source (Context.build_dir context) dune_file.dir in
           match stanza with
           | Dune_file.Executables exes ->
             executables sctx ~options ~project:dune_file.project ~dir exes
@@ -627,12 +627,13 @@ let term : unit Term.t =
   let* setup = setup in
   let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
   let context = Super_context.context super_context in
+  let findlib_paths = Context.findlib_paths context in
   (* prefix directories with the workspace root, so that the
      command also works correctly when it is run from a
      subdirectory *)
   Memo.Option.map dirs ~f:(Memo.List.map ~f:(find_dir common))
   >>= Crawl.workspace options setup context
-  >>| Sanitize_for_tests.Workspace.sanitize ~findlib_paths:context.findlib_paths
+  >>| Sanitize_for_tests.Workspace.sanitize ~findlib_paths
   >>| Descr.Workspace.to_dyn options
   >>| Describe_format.print_dyn format
 ;;

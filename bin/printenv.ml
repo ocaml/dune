@@ -3,7 +3,7 @@ open Import
 let dump sctx ~dir =
   let open Action_builder.O in
   let+ env = Super_context.dump_env sctx ~dir in
-  (Super_context.context sctx).name, env
+  Super_context.context sctx |> Context.name, env
 ;;
 
 let pp ppf ~fields sexps =
@@ -51,13 +51,17 @@ let term =
       Action_builder.all
         (match checked with
          | In_build_dir (ctx, _) ->
-           let sctx = Dune_engine.Context_name.Map.find_exn setup.scontexts ctx.name in
+           let sctx =
+             Dune_engine.Context_name.Map.find_exn setup.scontexts (Context.name ctx)
+           in
            [ dump sctx ~dir:(Path.as_in_build_dir_exn dir) ]
          | In_source_dir dir ->
            Dune_engine.Context_name.Map.values setup.scontexts
            |> List.map ~f:(fun sctx ->
              let dir =
-               Path.Build.append_source (Super_context.context sctx).build_dir dir
+               Path.Build.append_source
+                 (Context.build_dir (Super_context.context sctx))
+                 dir
              in
              dump sctx ~dir)
          | External _ ->

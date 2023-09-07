@@ -299,9 +299,9 @@ module DB = struct
   let create ~(context : Context.t) ~projects stanzas coq_stanzas =
     let open Memo.O in
     let t = Fdecl.create Dyn.opaque in
-    let build_dir = context.build_dir in
-    let lib_config = context.ocaml.lib_config in
-    let instrument_with = context.instrument_with in
+    let build_dir = Context.build_dir context in
+    let lib_config = (Context.ocaml context).lib_config in
+    let instrument_with = Context.instrument_with context in
     let* public_libs =
       let+ installed_libs = Lib.DB.installed context in
       public_libs t ~instrument_with ~lib_config ~installed_libs stanzas
@@ -311,7 +311,7 @@ module DB = struct
         Memo.lazy_
         @@ fun () ->
         let+ coqpaths_of_coq = Coq_path.of_coq_install context
-        and+ coqpaths_of_env = Coq_path.of_env context.installed_env in
+        and+ coqpaths_of_env = Coq_path.of_env (Context.installed_env context) in
         Coq_lib.DB.create_from_coqpaths (coqpaths_of_env @ coqpaths_of_coq)
       in
       Memo.Lazy.map installed_theories ~f:(fun installed_theories ->
@@ -339,15 +339,16 @@ module DB = struct
         stanzas
         ~init:([], [])
         ~f:(fun dune_file stanza (acc, coq_acc) ->
+          let build_dir = Context.build_dir context in
           match stanza with
           | Dune_file.Library lib ->
-            let ctx_dir = Path.Build.append_source context.build_dir dune_file.dir in
+            let ctx_dir = Path.Build.append_source build_dir dune_file.dir in
             Library_related_stanza.Library (ctx_dir, lib) :: acc, coq_acc
           | Dune_file.Deprecated_library_name d ->
             Deprecated_library_name d :: acc, coq_acc
           | Dune_file.Library_redirect d -> Library_redirect d :: acc, coq_acc
           | Coq_stanza.Theory.T coq_lib ->
-            let ctx_dir = Path.Build.append_source context.build_dir dune_file.dir in
+            let ctx_dir = Path.Build.append_source build_dir dune_file.dir in
             acc, (ctx_dir, coq_lib) :: coq_acc
           | _ -> acc, coq_acc)
     in
@@ -366,12 +367,12 @@ module DB = struct
         let* stanzas = Only_packages.filtered_stanzas context in
         create_from_stanzas ~projects ~context stanzas
       in
-      context.name, scopes)
+      Context.name context, scopes)
   ;;
 
   let create_from_stanzas (context : Context.t) =
     let* all = Memo.Lazy.force all in
-    Context_name.Map.find_exn all context.name |> Memo.Lazy.force
+    Context_name.Map.find_exn all (Context.name context) |> Memo.Lazy.force
   ;;
 
   let with_all context ~f =
@@ -460,7 +461,7 @@ module DB = struct
     fun (ctx : Context.t) pkg_name ->
       let* public_libs = public_libs ctx in
       let* stanzas = Only_packages.filtered_stanzas ctx in
-      let+ map = Memo.exec memo (ctx.build_dir, public_libs, stanzas) in
+      let+ map = Memo.exec memo (Context.build_dir ctx, public_libs, stanzas) in
       Package.Name.Map.Multi.find map pkg_name
   ;;
 end

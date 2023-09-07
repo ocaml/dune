@@ -125,7 +125,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system)
   in
   let matching_targets src =
     Memo.parallel_map setup.contexts ~f:(fun ctx ->
-      let path = Path.append_source (Path.build ctx.Context.build_dir) src in
+      let path = Path.append_source (Path.build (Context.build_dir ctx)) src in
       Load_rules.is_target path
       >>| function
       | Yes _ | Under_directory_target_so_cannot_say -> Some (Request.File path)
@@ -169,7 +169,7 @@ let expand_path_from_root (root : Workspace_root.t) sctx sv =
   let ctx = Super_context.context sctx in
   let dir =
     Path.Build.relative
-      ctx.Context.build_dir
+      (Context.build_dir ctx)
       (String.concat ~sep:Filename.dir_sep root.to_cwd)
   in
   let* expander = Action_builder.of_memo (Dune_rules.Super_context.expander sctx ~dir) in

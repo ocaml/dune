@@ -14,7 +14,7 @@ let ocaml_flags sctx ~dir (spec : Ocaml_flags.Spec.t) =
   >>| function
   | false -> flags
   | true ->
-    let ocaml_version = (Super_context.context sctx).ocaml.version in
+    let ocaml_version = (Super_context.context sctx |> Context.ocaml).version in
     Ocaml_flags.with_vendored_flags ~ocaml_version flags
 ;;
 

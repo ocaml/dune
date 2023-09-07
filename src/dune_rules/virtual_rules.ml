@@ -10,7 +10,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let copy_to_obj_dir ~src ~dst =
     add_rule ~loc:(Loc.of_pos __POS__) (Action_builder.symlink ~src ~dst)
   in
-  let { Lib_config.has_native; ext_obj; _ } = ctx.ocaml.lib_config in
+  let { Lib_config.has_native; ext_obj; _ } = (Context.ocaml ctx).lib_config in
   let { Lib_mode.Map.ocaml = { byte; native }; melange } =
     Dune_file.Mode_conf.Lib.Set.eval impl.modes ~has_native
   in
@@ -102,14 +102,16 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
               Staged.unstage
                 (Preprocessing.pped_modules_map
                    preprocess
-                   (Super_context.context sctx).ocaml.version)
+                   (Super_context.context sctx |> Context.ocaml).version)
             in
             Dir_contents.ocaml dir_contents
             >>| Ml_sources.modules ~for_:(Library name)
             >>= Modules.map_user_written ~f:(fun m -> Memo.return (pp_spec m))
           in
           let+ foreign_objects =
-            let ext_obj = (Super_context.context sctx).ocaml.lib_config.ext_obj in
+            let ext_obj =
+              (Super_context.context sctx |> Context.ocaml).lib_config.ext_obj
+            in
             let dir = Obj_dir.obj_dir (Lib.Local.obj_dir vlib) in
             let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
             foreign_sources

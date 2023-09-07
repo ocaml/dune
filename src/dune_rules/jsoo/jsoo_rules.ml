@@ -294,7 +294,7 @@ let link_rule cc ~runtime ~target ~obj_dir cm ~flags ~linkall ~link_time_code_ge
   let mod_name m =
     Module_name.Unique.artifact_filename (Module.obj_name m) ~ext:Js_of_ocaml.Ext.cmo
   in
-  let ctx = (Super_context.context sctx).build_context in
+  let ctx = Super_context.context sctx |> Context.build_context in
   let get_all =
     let open Action_builder.O in
     let+ config =
@@ -390,8 +390,9 @@ let setup_separate_compilation_rules sctx components =
         | _ -> archives
       in
       Memo.parallel_iter archives ~f:(fun fn ->
+        let build_context = Context.build_context ctx in
         let name = Path.basename fn in
-        let dir = in_build_dir ctx.build_context ~config [ lib_name ] in
+        let dir = in_build_dir build_context ~config [ lib_name ] in
         let in_context =
           { Js_of_ocaml.In_context.flags = Js_of_ocaml.Flags.standard
           ; javascript_files = []
@@ -401,9 +402,7 @@ let setup_separate_compilation_rules sctx components =
           let src_dir = Lib_info.src_dir info in
           Path.relative src_dir name
         in
-        let target =
-          in_build_dir ctx.build_context ~config [ lib_name; with_js_ext name ]
-        in
+        let target = in_build_dir build_context ~config [ lib_name; with_js_ext name ] in
         build_cm'
           sctx
           ~dir
@@ -420,7 +419,7 @@ let js_of_ocaml_compilation_mode t ~dir =
   match js_of_ocaml.compilation_mode with
   | Some m -> m
   | None ->
-    if Profile.is_dev (Super_context.context t).profile
+    if Super_context.context t |> Context.profile |> Profile.is_dev
     then Js_of_ocaml.Compilation_mode.Separate_compilation
     else Whole_program
 ;;

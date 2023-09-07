@@ -78,13 +78,13 @@ type odoc_artefact =
   }
 
 let add_rule sctx =
-  let dir = (Super_context.context sctx).build_dir in
+  let dir = Super_context.context sctx |> Context.build_dir in
   Super_context.add_rule sctx ~dir
 ;;
 
 module Paths = struct
   let odoc_support_dirname = "odoc.support"
-  let root (context : Context.t) = Path.Build.relative context.Context.build_dir "_doc"
+  let root (context : Context.t) = Path.Build.relative (Context.build_dir context) "_doc"
 
   let odocs ctx = function
     | Lib lib ->
@@ -187,7 +187,7 @@ let odoc_base_flags sctx build_dir =
 ;;
 
 let run_odoc sctx ~dir command ~flags_for args =
-  let build_dir = (Super_context.context sctx).build_dir in
+  let build_dir = Super_context.context sctx |> Context.build_dir in
   let open Memo.O in
   let* program =
     Super_context.resolve_program
@@ -399,7 +399,7 @@ let setup_css_rule sctx =
     let+ cmd =
       run_odoc
         sctx
-        ~dir:(Path.build ctx.build_dir)
+        ~dir:(Path.build (Context.build_dir ctx))
         "support-files"
         ~flags_for:None
         [ A "-o"; Path (Path.build dir) ]
@@ -698,7 +698,7 @@ let setup_package_aliases sctx (pkg : Package.t) =
   let name = Package.name pkg in
   let alias =
     let pkg_dir = Package.dir pkg in
-    let dir = Path.Build.append_source ctx.build_dir pkg_dir in
+    let dir = Path.Build.append_source (Context.build_dir ctx) pkg_dir in
     Alias.make Alias0.doc ~dir
   in
   let* libs =

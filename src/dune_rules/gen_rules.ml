@@ -588,7 +588,7 @@ let gen_rules_standalone_or_root
           let project = Source_tree.Dir.project source_dir in
           if Path.Build.equal
                (Path.Build.append_source
-                  (Super_context.context sctx).build_dir
+                  (Super_context.context sctx |> Context.build_dir)
                   (Dune_project.root project))
                dir
           then gen_project_rules sctx project

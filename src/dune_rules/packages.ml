@@ -15,7 +15,7 @@ let mlds_by_package_def =
       Memo.parallel_map dune_files ~f:(fun dune_file ->
         Memo.parallel_map dune_file.stanzas ~f:(function
           | Documentation d ->
-            let dir = Path.Build.append_source ctx.build_dir dune_file.dir in
+            let dir = Path.Build.append_source (Context.build_dir ctx) dune_file.dir in
             let* dc = Dir_contents.get sctx ~dir in
             let+ mlds = Dir_contents.mlds dc d in
             let name = Package.name d.package in

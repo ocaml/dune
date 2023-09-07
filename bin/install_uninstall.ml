@@ -586,7 +586,7 @@ let install_uninstall ~what =
            | Some findlib_toolchain ->
              let contexts =
                List.filter workspace.contexts ~f:(fun (ctx : Context.t) ->
-                 match ctx.findlib_toolchain with
+                 match Context.findlib_toolchain ctx with
                  | None -> false
                  | Some ctx_findlib_toolchain ->
                    Dune_engine.Context_name.equal ctx_findlib_toolchain findlib_toolchain)
@@ -596,7 +596,7 @@ let install_uninstall ~what =
         | Some name ->
           (match
              List.find workspace.contexts ~f:(fun c ->
-               Dune_engine.Context_name.equal c.name name)
+               Dune_engine.Context_name.equal (Context.name c) name)
            with
            | Some ctx -> [ ctx ]
            | None ->
@@ -625,10 +625,10 @@ let install_uninstall ~what =
               let fn =
                 resolve_package_install
                   workspace
-                  ~findlib_toolchain:ctx.findlib_toolchain
+                  ~findlib_toolchain:(Context.findlib_toolchain ctx)
                   pkg
               in
-              Path.append_source (Path.build ctx.build_dir) fn
+              Path.append_source (Path.build (Context.build_dir ctx)) fn
             in
             if Path.exists fn then Left (ctx, (pkg, fn)) else Right fn))
         |> List.partition_map ~f:Fun.id
@@ -784,7 +784,7 @@ let install_uninstall ~what =
                 let fn =
                   resolve_package_install
                     workspace
-                    ~findlib_toolchain:context.findlib_toolchain
+                    ~findlib_toolchain:(Context.findlib_toolchain context)
                     package
                 in
                 Io.write_file (Path.source fn) (Install.Entry.gen_install_file entries))))

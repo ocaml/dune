@@ -94,11 +94,14 @@ module Conf = struct
   ;;
 
   let sign_hook_of_context (context : Context.t) =
-    let config = context.ocaml.ocaml_config in
+    let config = (Context.ocaml context).ocaml_config in
     match Ocaml_config.system config, Ocaml_config.architecture config with
     | "macosx", "arm64" ->
       let codesign_name = "codesign" in
-      (match Bin.which ~path:context.path codesign_name with
+      (match
+         let path = Context.path context in
+         Bin.which ~path codesign_name
+       with
        | None ->
          Utils.program_not_found
            ~loc:None
@@ -119,15 +122,19 @@ module Conf = struct
       ; sign_hook = lazy None
       }
     | Some context ->
-      let get_location = Install.Paths.get_local_location context.name in
+      let name = Context.name context in
+      let get_location = Install.Paths.get_local_location name in
       let get_config_path = function
         | Sourceroot -> Some (Path.source Path.Source.root)
-        | Stdlib -> Some context.ocaml.lib_config.stdlib_dir
+        | Stdlib -> Some (Context.ocaml context).lib_config.stdlib_dir
       in
       let hardcoded_ocaml_path =
-        let install_dir = Install.Context.dir ~context:context.name in
-        let install_dir = Path.build (Path.Build.relative install_dir "lib") in
-        Hardcoded (install_dir :: context.default_ocamlpath)
+        let install_dir =
+          let install_dir = Install.Context.dir ~context:name in
+          Path.build (Path.Build.relative install_dir "lib")
+        in
+        let default_ocamlpath = Context.default_ocamlpath context in
+        Hardcoded (install_dir :: default_ocamlpath)
       in
       let sign_hook = lazy (sign_hook_of_context context) in
       { get_vcs; get_location; get_config_path; hardcoded_ocaml_path; sign_hook }
@@ -138,7 +145,7 @@ module Conf = struct
     let hardcoded_ocaml_path =
       match relocatable with
       | Some prefix -> Relocatable prefix
-      | None -> Hardcoded context.default_ocamlpath
+      | None -> Hardcoded (Context.default_ocamlpath context)
     in
     let get_location section package =
       let paths = Install.Paths.make ~package ~roots in
@@ -146,7 +153,7 @@ module Conf = struct
     in
     let get_config_path = function
       | Sourceroot -> None
-      | Stdlib -> Some context.ocaml.lib_config.stdlib_dir
+      | Stdlib -> Some (Context.ocaml context).lib_config.stdlib_dir
     in
     let sign_hook = lazy (sign_hook_of_context context) in
     { get_location; get_vcs; get_config_path; hardcoded_ocaml_path; sign_hook }

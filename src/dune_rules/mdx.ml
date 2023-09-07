@@ -281,7 +281,7 @@ let files_to_mdx t ~sctx ~dir =
     Predicate_lang.Glob.test t.files ~standard file
   in
   let build_path src_path =
-    Path.Build.append_source (Super_context.context sctx).build_dir src_path
+    Path.Build.append_source (Context.build_dir (Super_context.context sctx)) src_path
   in
   List.filter_map src_dir_files ~f:(fun src_path ->
     if must_mdx src_path then Some (build_path src_path) else None)
@@ -412,7 +412,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
           Some lib
         | _ -> Resolve.Memo.return None)
     in
-    let mode = Ocaml_toolchain.best_mode (Super_context.context sctx).ocaml in
+    let mode = Ocaml_toolchain.best_mode (Super_context.context sctx |> Context.ocaml) in
     let libs_include_paths = Lib_flags.L.include_paths libs_to_include (Ocaml mode) in
     let open Command.Args in
     let args =

@@ -44,12 +44,14 @@ let term =
     let* setup = Memo.run setup in
     let sctx = Import.Main.find_scontext_exn setup ~name:context in
     let context = Dune_rules.Super_context.context sctx in
-    let coq_file_build = Path.Build.append_local context.build_dir coq_file_arg in
+    let coq_file_build =
+      Path.Build.append_local (Context.build_dir context) coq_file_arg
+    in
     let dir =
       (match Path.Local.parent coq_file_arg with
        | None -> Path.Local.root
        | Some dir -> dir)
-      |> Path.Build.append_local context.build_dir
+      |> Path.Build.append_local (Context.build_dir context)
     in
     let* coqtop, args =
       Build_system.run_exn

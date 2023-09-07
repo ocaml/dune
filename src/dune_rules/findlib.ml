@@ -80,10 +80,19 @@ let check_dot_dune_exists ~dir ~dir_contents name =
         ]
 ;;
 
-let mangled_module_re =
-  lazy
-    (let open Re in
-     [ rep any; str "__"; rep any ] |> seq |> compile)
+let has_double_underscore s =
+  let len = String.length s in
+  len >= 2
+  &&
+  let last = ref s.[0] in
+  try
+    for i = 1 to len - 1 do
+      let c = s.[i] in
+      if c = '_' && !last = '_' then raise_notrace Exit else last := c
+    done;
+    false
+  with
+  | Exit -> true
 ;;
 
 let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib =
@@ -193,7 +202,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib =
                 | true ->
                   if (* We add this hack to skip manually mangled
                         libraries *)
-                     Re.execp (Lazy.force mangled_module_re) fname
+                     has_double_underscore fname
                   then Ok None
                   else (
                     match

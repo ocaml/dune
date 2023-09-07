@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694079845430,
+  "lastUpdate": 1694080010730,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -28853,6 +28853,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.50661024904",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0845d7aabef9acb2340c6afbc456aa2dfe38284f",
+          "message": "test(init): sublibraries should be accepted (#8604)\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-09-07T11:25:25+02:00",
+          "tree_id": "7c2568af28a67674e376abf8ed142912ddd16402",
+          "url": "https://github.com/ocaml/dune/commit/0845d7aabef9acb2340c6afbc456aa2dfe38284f"
+        },
+        "date": 1694080009510,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "44.28587003662",
             "unit": "seconds"
           }
         ]

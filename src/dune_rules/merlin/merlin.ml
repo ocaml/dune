@@ -1,5 +1,9 @@
 open Import
 
+(* We store a merlin config per source file but we want to support the case
+   where custom rules preprocess sources and add extra extensions. Thus we
+   normalise extensions module_name.xxx.xx.ext to module_name.ext when doing a
+   lookup. *)
 let strip_pp_extensions file =
   let dir = Path.Build.parent_exn file in
   let basename = Path.Build.basename file in

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694079555429,
+  "lastUpdate": 1694079845430,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -92074,6 +92074,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.25275955933333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6357f0e62ed9cced79fd8afedc57cdf3e35eb5e1",
+          "message": "test(pkg): installing OCaml via the lock dir (#8602)\n\n* test(pkg): installing OCaml via the lock dir\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-07T10:31:19+01:00",
+          "tree_id": "52bc362e3e364be8a43c12fa10ea93130837de63",
+          "url": "https://github.com/ocaml/dune/commit/6357f0e62ed9cced79fd8afedc57cdf3e35eb5e1"
+        },
+        "date": 1694079833788,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.687491939173338",
             "unit": "seconds"
           }
         ]

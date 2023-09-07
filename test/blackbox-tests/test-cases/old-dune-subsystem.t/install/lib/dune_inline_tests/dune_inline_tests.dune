@@ -1,7 +1,0 @@
-(dune
- 2
- ((inline_tests.backend
-   1.0
-   ((flags :standard)
-    (generate_runner
-     (run sed "s/(\\*TEST:\\(.*\\)\\*)/let () = \\1;;/" %{impl-files}))))))

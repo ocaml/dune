@@ -233,3 +233,17 @@ jobs:
         env:
           # We disable the Dune cache when running the tests
           DUNE_CACHE: disabled
+
+  monorepo_benchmark_test:
+    name: Build monorepo benchmark docker image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - uses: whoan/docker-build-with-cache-action@v6
+        with:
+          image_name: monorepo-benchmark
+          build_extra_args: '{"--file": "bench/monorepo/bench.Dockerfile"}'
+          push_image_and_stages: true
+          username: ocaml
+          password: "${{ secrets.DOCKER_HUB_PASSWORD }}"

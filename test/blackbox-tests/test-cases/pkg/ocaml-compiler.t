@@ -59,7 +59,7 @@ We need some data for ocamlc -config
   > linear_magic_number: Caml1999L031
   > EOF
 
-This is the directory for our take OCaml the test shouldn't observe. We can't
+This is the directory for our fake OCaml the test shouldn't observe. We can't
 use the system OCaml for this.
 
   $ mkdir shadowsystemocaml

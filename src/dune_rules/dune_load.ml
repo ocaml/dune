@@ -46,10 +46,18 @@ end = struct
       sprintf "%s%s%s" prefix t suffix
   ;;
 
-  let write oc ~(context : Context.t) ~target ~exec_dir ~plugin ~plugin_contents =
+  let write
+    oc
+    ~(context : Context_name.t)
+    ~ocaml_config
+    ~target
+    ~exec_dir
+    ~plugin
+    ~plugin_contents
+    =
     let ocamlc_config =
       let vars =
-        Ocaml_config.to_list (Context.ocaml context).ocaml_config
+        Ocaml_config.to_list ocaml_config
         |> List.map ~f:(fun (k, v) -> k, Ocaml_config.Value.to_string v)
       in
       let longest = String.longest_map vars ~f:fst in
@@ -63,8 +71,8 @@ end = struct
         let send_target = %S
         let ocamlc_config = [ %s ]
         |}
-        (Context_name.to_string (Context.name context))
-        (Ocaml_config.version_string (Context.ocaml context).ocaml_config)
+        (Context_name.to_string context)
+        (Ocaml_config.version_string ocaml_config)
         (Path.reach ~from:exec_dir (Path.build target))
         ocamlc_config
     in
@@ -101,8 +109,16 @@ end = struct
   let create_plugin_wrapper (context : Context.t) ~exec_dir ~plugin ~wrapper ~target =
     let open Memo.O in
     let+ plugin_contents = Fs_memo.file_contents plugin in
+    let ocaml_config = (Context.ocaml context).ocaml_config in
     Io.with_file_out (Path.build wrapper) ~f:(fun oc ->
-      write oc ~context ~target ~exec_dir ~plugin ~plugin_contents);
+      write
+        oc
+        ~context:(Context.name context)
+        ~ocaml_config
+        ~target
+        ~exec_dir
+        ~plugin
+        ~plugin_contents);
     check_no_requires (Path.outside_build_dir plugin) plugin_contents
   ;;
 end

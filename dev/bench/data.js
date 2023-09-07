@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692572586403,
+  "lastUpdate": 1694071830661,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -91813,6 +91813,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.171070034926668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "javier.chavarri@gmail.com",
+            "name": "Javier Chávarri",
+            "username": "jchavarri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "15a2f36233bd8d4c4bacc70fb55baf7eccb5a0d5",
+          "message": "ci: fix bench tests (#8598)\n\nSigned-off-by: Javier Chávarri <javier.chavarri@gmail.com>",
+          "timestamp": "2023-09-07T08:17:31+01:00",
+          "tree_id": "de19b742a3dba70c72253b5f1db16b6b7ed69f51",
+          "url": "https://github.com/ocaml/dune/commit/15a2f36233bd8d4c4bacc70fb55baf7eccb5a0d5"
+        },
+        "date": 1694071818527,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.76659766814667",
             "unit": "seconds"
           }
         ]

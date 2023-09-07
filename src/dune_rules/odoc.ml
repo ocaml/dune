@@ -75,6 +75,7 @@ type odoc_artefact =
   { odoc_file : Path.Build.t
   ; odocl_file : Path.Build.t
   ; html_file : Path.Build.t
+  ; json_file : Path.Build.t
   }
 
 let add_rule sctx =
@@ -111,9 +112,43 @@ module Paths = struct
   let toplevel_index ctx = html_root ctx ++ "index.html"
 end
 
+module Output_format = struct
+  type t =
+    | Html
+    | Json
+
+  let all = [ Html; Json ]
+  let iter ~f = Memo.parallel_iter all ~f
+
+  let extension = function
+    | Html -> ".html"
+    | Json -> ".html.json"
+  ;;
+
+  let args = function
+    | Html -> Command.Args.empty
+    | Json -> A "--as-json"
+  ;;
+
+  let target t odoc_file =
+    match t with
+    | Html -> odoc_file.html_file
+    | Json -> odoc_file.json_file
+  ;;
+
+  let alias t ~dir =
+    match t with
+    | Html -> Alias.make Alias0.doc ~dir
+    | Json -> Alias.make Alias0.doc_json ~dir
+  ;;
+end
+
 module Dep : sig
-  (** [html_alias ctx target] returns the alias that depends on all html targets
-      produced by odoc for [target] *)
+  (** [format_alias output ctx target] returns the alias that depends on all
+      targets produced by odoc for [target] in output format [output]. *)
+  val format_alias : Output_format.t -> Context.t -> target -> Alias.t
+
+  (** [html_alias] is [format_alias Html] *)
   val html_alias : Context.t -> target -> Alias.t
 
   (** [deps ctx pkg libraries] returns all odoc dependencies of [libraries]. If
@@ -129,7 +164,8 @@ module Dep : sig
     These dependencies may be used using the [deps] function *)
   val setup_deps : Context.t -> target -> Path.Set.t -> unit Memo.t
 end = struct
-  let html_alias ctx m = Alias.make Alias0.doc ~dir:(Paths.html ctx m)
+  let format_alias f ctx m = Output_format.alias f ~dir:(Paths.html ctx m)
+  let html_alias = format_alias Html
   let alias = Alias.make (Alias.Name.of_string ".odoc-all")
 
   let deps ctx pkg requires =
@@ -368,7 +404,7 @@ let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
     (Path.Set.of_list_map modules_and_odoc_files ~f:(fun (_, p) -> Path.build p))
 ;;
 
-let setup_html sctx (odoc_file : odoc_artefact) =
+let setup_generate sctx (odoc_file : odoc_artefact) out =
   let ctx = Super_context.context sctx in
   let open Memo.O in
   let odoc_support_path = Paths.odoc_support ctx in
@@ -385,10 +421,15 @@ let setup_html sctx (odoc_file : odoc_artefact) =
       ; A "--theme-uri"
       ; Path (Path.build odoc_support_path)
       ; Dep (Path.build odoc_file.odocl_file)
-      ; Hidden_targets [ odoc_file.html_file ]
+      ; Output_format.args out
+      ; Hidden_targets [ Output_format.target out odoc_file ]
       ]
   in
   add_rule sctx run_odoc
+;;
+
+let setup_generate_all sctx odoc_file =
+  Output_format.iter ~f:(setup_generate sctx odoc_file)
 ;;
 
 let setup_css_rule sctx =
@@ -498,16 +539,17 @@ let create_odoc ctx ~target odoc_file =
   match target with
   | Lib _ ->
     let html_dir = html_base ++ Stdune.String.capitalize basename in
-    { odoc_file; odocl_file; html_file = html_dir ++ "index.html" }
+    let file output =
+      html_dir ++ "index"
+      |> Path.Build.extend_basename ~suffix:(Output_format.extension output)
+    in
+    { odoc_file; odocl_file; html_file = file Html; json_file = file Json }
   | Pkg _ ->
-    { odoc_file
-    ; odocl_file
-    ; html_file =
-        html_base
-        ++ sprintf
-             "%s.html"
-             (basename |> String.drop_prefix ~prefix:"page-" |> Option.value_exn)
-    }
+    let file output =
+      html_base ++ (basename |> String.drop_prefix ~prefix:"page-" |> Option.value_exn)
+      |> Path.Build.extend_basename ~suffix:(Output_format.extension output)
+    in
+    { odoc_file; odocl_file; html_file = file Html; json_file = file Json }
 ;;
 
 let static_html ctx =
@@ -635,6 +677,23 @@ let setup_pkg_odocl_rules sctx ~pkg : unit Memo.t =
   Memo.With_implicit_output.exec setup_pkg_odocl_rules_def (sctx, pkg)
 ;;
 
+let out_file (output : Output_format.t) odoc =
+  match output with
+  | Html -> odoc.html_file
+  | Json -> odoc.json_file
+;;
+
+let out_files ctx (output : Output_format.t) odocs =
+  let extra_files =
+    match output with
+    | Html -> List.map ~f:Path.build (static_html ctx)
+    | Json -> []
+  in
+  List.rev_append
+    extra_files
+    (List.map odocs ~f:(fun odoc -> Path.build (out_file output odoc)))
+;;
+
 let setup_lib_html_rules_def =
   let module Input = struct
     module Super_context = Super_context.As_memo_key
@@ -649,12 +708,12 @@ let setup_lib_html_rules_def =
   let f (sctx, lib) =
     let ctx = Super_context.context sctx in
     let* odocs = odoc_artefacts sctx (Lib lib) in
-    let* () = Memo.parallel_iter odocs ~f:(fun odoc -> setup_html sctx odoc) in
-    let html_files = List.map ~f:(fun o -> Path.build o.html_file) odocs in
-    let static_html = List.map ~f:Path.build (static_html ctx) in
-    Rules.Produce.Alias.add_deps
-      (Dep.html_alias ctx (Lib lib))
-      (Action_builder.paths (List.rev_append static_html html_files))
+    let* () = Memo.parallel_iter odocs ~f:(fun odoc -> setup_generate_all sctx odoc) in
+    Output_format.iter ~f:(fun output ->
+      let paths = out_files ctx output odocs in
+      Rules.Produce.Alias.add_deps
+        (Dep.format_alias output ctx (Lib lib))
+        (Action_builder.paths paths))
   in
   Memo.With_implicit_output.create
     "setup-library-html-rules"
@@ -674,17 +733,17 @@ let setup_pkg_html_rules_def =
     let* () = Memo.parallel_iter libs ~f:(setup_lib_html_rules sctx)
     and* pkg_odocs =
       let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
-      let+ () = Memo.parallel_iter pkg_odocs ~f:(fun o -> setup_html sctx o) in
+      let+ () = Memo.parallel_iter pkg_odocs ~f:(setup_generate_all sctx) in
       pkg_odocs
     and* lib_odocs =
       Memo.parallel_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
     in
     let odocs = List.concat (pkg_odocs :: lib_odocs) in
-    let html_files = List.map ~f:(fun o -> Path.build o.html_file) odocs in
-    let static_html = List.map ~f:Path.build (static_html ctx) in
-    Rules.Produce.Alias.add_deps
-      (Dep.html_alias ctx (Pkg pkg))
-      (Action_builder.paths (List.rev_append static_html html_files))
+    Output_format.iter ~f:(fun output ->
+      let paths = out_files ctx output odocs in
+      Rules.Produce.Alias.add_deps
+        (Dep.format_alias output ctx (Pkg pkg))
+        (Action_builder.paths paths))
   in
   setup_pkg_rules_def "setup-package-html-rules" f
 ;;
@@ -693,21 +752,24 @@ let setup_pkg_html_rules sctx ~pkg : unit Memo.t =
   Memo.With_implicit_output.exec setup_pkg_html_rules_def (sctx, pkg)
 ;;
 
-let setup_package_aliases sctx (pkg : Package.t) =
+let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.t) =
   let ctx = Super_context.context sctx in
   let name = Package.name pkg in
   let alias =
     let pkg_dir = Package.dir pkg in
     let dir = Path.Build.append_source (Context.build_dir ctx) pkg_dir in
-    Alias.make Alias0.doc ~dir
+    Output_format.alias output ~dir
   in
-  let* libs =
-    libs_of_pkg ctx ~pkg:name >>| List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib))
-  in
-  Dep.html_alias ctx (Pkg name) :: libs
+  let* libs = libs_of_pkg ctx ~pkg:name >>| List.map ~f:(fun lib -> Lib lib) in
+  Pkg name :: libs
+  |> List.map ~f:(Dep.format_alias output ctx)
   |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
   |> Action_builder.deps
   |> Rules.Produce.Alias.add_deps alias
+;;
+
+let setup_package_aliases sctx (pkg : Package.t) =
+  Output_format.iter ~f:(setup_package_aliases_format sctx pkg)
 ;;
 
 let default_index ~pkg entry_modules =

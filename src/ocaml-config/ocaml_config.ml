@@ -632,6 +632,7 @@ let make vars =
       Sys.file_exists (Filename.concat standard_library lib)
     in
     let file =
+      (* TODO This can give a code error if not an external path *)
       let stdlib = Path.external_ (Path.External.of_string standard_library) in
       Path.relative stdlib "Makefile.config"
     in

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694080963852,
+  "lastUpdate": 1694081382241,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -71802,6 +71802,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8354269128000003",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0566d5c525fabd737149e98a6848c11e66ca4acc",
+          "message": "Github action to build monorepo bunch docker image (#8500)\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-09-07T10:38:46+01:00",
+          "tree_id": "9d33d8ae2dc9ef57f70d8c932e9bef56982c5197",
+          "url": "https://github.com/ocaml/dune/commit/0566d5c525fabd737149e98a6848c11e66ca4acc"
+        },
+        "date": 1694081380903,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "82.26221036803334",
             "unit": "seconds"
           }
         ]

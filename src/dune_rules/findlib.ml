@@ -64,6 +64,188 @@ let hash { stdlib_dir; paths; builtins; ext_lib } =
 
 let findlib_predicates_set_by_dune = Ps.of_list [ P.ppx_driver; P.mt; P.mt_posix ]
 
+let check_dot_dune_exists ~dir ~dir_contents name =
+  match dir_contents with
+  | Error _ -> ()
+  | Ok fnames ->
+    let fname = sprintf "%s.dune" (Lib_name.to_string name) in
+    if List.mem fnames fname ~equal:String.equal
+    then
+      User_warning.emit
+        ~loc:(Loc.in_file (Path.relative dir fname))
+        [ Pp.text
+            ".dune files are ignored since 2.0. Reinstall the library with dune >= 2.0 \
+             to get rid of this warning and enable support for the subsystem this \
+             library provides."
+        ]
+;;
+
+let mangled_module_re =
+  lazy
+    (let open Re in
+     [ rep any; str "__"; rep any ] |> seq |> compile)
+;;
+
+let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib =
+  let loc = Loc.in_file t.meta_file in
+  let add_loc x = loc, x in
+  check_dot_dune_exists ~dir:t.dir ~dir_contents t.name;
+  let archives = Findlib.Package.archives t in
+  let obj_dir = Obj_dir.make_external_no_private ~dir:t.dir in
+  let modes : Lib_mode.Map.Set.t =
+    (* libraries without archives are compatible with all modes. mainly a
+       hack for compiler-libs which doesn't have any archives *)
+    let discovered = Mode.Dict.map ~f:List.is_non_empty archives in
+    let modes =
+      if Mode.Dict.Set.is_empty discovered then Mode.Dict.Set.all else discovered
+    in
+    { Lib_mode.Map.ocaml = modes; melange = false }
+  in
+  let (info : Path.t Lib_info.t) =
+    let kind = Findlib.Package.kind t in
+    let sub_systems = Sub_system_name.Map.empty in
+    let synopsis = Findlib.Package.description t in
+    let status =
+      match Lib_name.analyze t.name with
+      | Private (_, _) -> Lib_info.Status.Installed_private
+      | Public (_, _) -> Lib_info.Status.Installed
+    in
+    let src_dir = Obj_dir.dir obj_dir in
+    let version = Findlib.Package.version t in
+    let dune_version = None in
+    let virtual_deps = [] in
+    let implements = None in
+    let orig_src_dir = None in
+    let main_module_name : Lib_info.Main_module_name.t = This None in
+    let enabled = Lib_info.Enabled_status.Normal in
+    let requires =
+      Findlib.Package.requires t
+      |> List.map ~f:(fun name -> Lib_dep.direct (add_loc name))
+    in
+    let ppx_runtime_deps = List.map ~f:add_loc (Findlib.Package.ppx_runtime_deps t) in
+    let special_builtin_support : (Loc.t * Lib_info.Special_builtin_support.t) option =
+      (* findlib has been around for much longer than dune, so it is
+         acceptable to have a special case in dune for findlib. *)
+      match Lib_name.to_string t.name with
+      | "findlib.dynload" -> Some (loc, Findlib_dynload)
+      | _ -> None
+    in
+    let foreign_objects = Lib_info.Source.External [] in
+    let public_headers = Lib_info.File_deps.External [] in
+    let plugins = Findlib.Package.plugins t in
+    let jsoo_runtime = Findlib.Package.jsoo_runtime t in
+    let melange_runtime_deps = Lib_info.File_deps.External [] in
+    let preprocess = Preprocess.Per_module.no_preprocessing () in
+    let virtual_ = None in
+    let default_implementation = None in
+    let wrapped = None in
+    let foreign_archives, native_archives =
+      (* Here we scan [t.dir] and consider all files named [lib*.ext_lib] to
+         be foreign archives, and all other files with the extension
+         [ext_lib] to be native archives. The resulting lists of archives
+         will be used to compute appropriate flags for linking dependent
+         executables. *)
+      match dir_contents with
+      | Error _ ->
+        (* Raising an error is not an option here as we systematically delay
+           all library loading errors until the libraries are actually used
+           in rules.
+
+           We could add a warning like this:
+
+           User_warning.emit ~loc:(Loc.in_dir t.dir) [ Pp.text "Unable to
+               read directory" ];
+
+           But it seems to be too invasive *)
+        [], []
+      | Ok dir_contents ->
+        List.rev_filter_partition_map dir_contents ~f:(fun f ->
+          let ext = Filename.extension f in
+          if ext = ext_lib
+          then (
+            let file = Path.relative t.dir f in
+            if String.is_prefix f ~prefix:Foreign.Archive.Name.lib_file_prefix
+            then Left file
+            else Right file)
+          else Skip)
+    in
+    let foreign_archives = Mode.Map.Multi.create_for_all_modes foreign_archives in
+    let entry_modules =
+      Lib_info.Source.External
+        (match Vars.get_words t.vars "main_modules" Ps.empty with
+         | _ :: _ as modules -> Ok (List.map ~f:Module_name.of_string modules)
+         | [] ->
+           (match dir_contents with
+            | Error (e, _, _) ->
+              Error
+                (User_message.make
+                   [ Pp.textf
+                       "Unable to get entry modules of %s in %s. "
+                       (Lib_name.to_string t.name)
+                       (Path.to_string src_dir)
+                   ; Pp.textf "error: %s" (Unix.error_message e)
+                   ])
+            | Ok dir_contents ->
+              let ext = Cm_kind.ext Cmi in
+              Result.List.filter_map dir_contents ~f:(fun fname ->
+                match Filename.check_suffix fname ext with
+                | false -> Ok None
+                | true ->
+                  if (* We add this hack to skip manually mangled
+                        libraries *)
+                     Re.execp (Lazy.force mangled_module_re) fname
+                  then Ok None
+                  else (
+                    match
+                      let name = Filename.chop_extension fname in
+                      Module_name.of_string_user_error (Loc.in_dir src_dir, name)
+                    with
+                    | Ok s -> Ok (Some s)
+                    | Error e -> Error e))))
+    in
+    let modules = Lib_info.Source.External None in
+    Lib_info.create
+      ~loc
+      ~path_kind:External
+      ~name:t.name
+      ~kind
+      ~status
+      ~src_dir
+      ~orig_src_dir
+      ~obj_dir
+      ~version
+      ~synopsis
+      ~main_module_name
+      ~sub_systems
+      ~requires
+      ~foreign_objects
+      ~public_headers
+      ~plugins
+      ~archives
+      ~ppx_runtime_deps
+      ~foreign_archives
+      ~native_archives:(Files native_archives)
+      ~foreign_dll_files:[]
+      ~jsoo_runtime
+      ~preprocess
+      ~enabled
+      ~virtual_deps
+      ~dune_version
+      ~virtual_
+      ~entry_modules
+      ~implements
+      ~default_implementation
+      ~modes
+      ~modules
+      ~wrapped
+      ~special_builtin_support
+      ~exit_module:None
+      ~instrumentation_backend:None
+      ~melange_runtime_deps
+  in
+  Dune_package.Lib.of_findlib info
+;;
+
 module Make_loader
     (Monad : sig
        type 'a t
@@ -100,190 +282,6 @@ module Make_loader
     -> (Dune_package.t, Unavailable_reason.t) result Monad.t
 end = struct
   open Monad.O
-
-  let mangled_module_re =
-    lazy
-      (let open Re in
-       [ rep any; str "__"; rep any ] |> seq |> compile)
-  ;;
-
-  let check_dot_dune_exists ~dir ~dir_contents name =
-    match dir_contents with
-    | Error _ -> ()
-    | Ok fnames ->
-      let fname = sprintf "%s.dune" (Lib_name.to_string name) in
-      if List.mem fnames fname ~equal:String.equal
-      then
-        User_warning.emit
-          ~loc:(Loc.in_file (Path.relative dir fname))
-          [ Pp.text
-              ".dune files are ignored since 2.0. Reinstall the library with dune >= 2.0 \
-               to get rid of this warning and enable support for the subsystem this \
-               library provides."
-          ]
-  ;;
-
-  let to_dune_library (t : Findlib.Package.t) ~ext_lib =
-    let loc = Loc.in_file t.meta_file in
-    let add_loc x = loc, x in
-    let+ dir_contents = Fs.dir_contents t.dir in
-    check_dot_dune_exists ~dir:t.dir ~dir_contents t.name;
-    let archives = Findlib.Package.archives t in
-    let obj_dir = Obj_dir.make_external_no_private ~dir:t.dir in
-    let modes : Lib_mode.Map.Set.t =
-      (* libraries without archives are compatible with all modes. mainly a
-         hack for compiler-libs which doesn't have any archives *)
-      let discovered = Mode.Dict.map ~f:List.is_non_empty archives in
-      let modes =
-        if Mode.Dict.Set.is_empty discovered then Mode.Dict.Set.all else discovered
-      in
-      { Lib_mode.Map.ocaml = modes; melange = false }
-    in
-    let (info : Path.t Lib_info.t) =
-      let kind = Findlib.Package.kind t in
-      let sub_systems = Sub_system_name.Map.empty in
-      let synopsis = Findlib.Package.description t in
-      let status =
-        match Lib_name.analyze t.name with
-        | Private (_, _) -> Lib_info.Status.Installed_private
-        | Public (_, _) -> Lib_info.Status.Installed
-      in
-      let src_dir = Obj_dir.dir obj_dir in
-      let version = Findlib.Package.version t in
-      let dune_version = None in
-      let virtual_deps = [] in
-      let implements = None in
-      let orig_src_dir = None in
-      let main_module_name : Lib_info.Main_module_name.t = This None in
-      let enabled = Lib_info.Enabled_status.Normal in
-      let requires =
-        Findlib.Package.requires t
-        |> List.map ~f:(fun name -> Lib_dep.direct (add_loc name))
-      in
-      let ppx_runtime_deps = List.map ~f:add_loc (Findlib.Package.ppx_runtime_deps t) in
-      let special_builtin_support : (Loc.t * Lib_info.Special_builtin_support.t) option =
-        (* findlib has been around for much longer than dune, so it is
-           acceptable to have a special case in dune for findlib. *)
-        match Lib_name.to_string t.name with
-        | "findlib.dynload" -> Some (loc, Findlib_dynload)
-        | _ -> None
-      in
-      let foreign_objects = Lib_info.Source.External [] in
-      let public_headers = Lib_info.File_deps.External [] in
-      let plugins = Findlib.Package.plugins t in
-      let jsoo_runtime = Findlib.Package.jsoo_runtime t in
-      let melange_runtime_deps = Lib_info.File_deps.External [] in
-      let preprocess = Preprocess.Per_module.no_preprocessing () in
-      let virtual_ = None in
-      let default_implementation = None in
-      let wrapped = None in
-      let foreign_archives, native_archives =
-        (* Here we scan [t.dir] and consider all files named [lib*.ext_lib] to
-           be foreign archives, and all other files with the extension
-           [ext_lib] to be native archives. The resulting lists of archives
-           will be used to compute appropriate flags for linking dependent
-           executables. *)
-        match dir_contents with
-        | Error _ ->
-          (* Raising an error is not an option here as we systematically delay
-             all library loading errors until the libraries are actually used
-             in rules.
-
-             We could add a warning like this:
-
-             User_warning.emit ~loc:(Loc.in_dir t.dir) [ Pp.text "Unable to
-               read directory" ];
-
-             But it seems to be too invasive *)
-          [], []
-        | Ok dir_contents ->
-          List.rev_filter_partition_map dir_contents ~f:(fun f ->
-            let ext = Filename.extension f in
-            if ext = ext_lib
-            then (
-              let file = Path.relative t.dir f in
-              if String.is_prefix f ~prefix:Foreign.Archive.Name.lib_file_prefix
-              then Left file
-              else Right file)
-            else Skip)
-      in
-      let foreign_archives = Mode.Map.Multi.create_for_all_modes foreign_archives in
-      let entry_modules =
-        Lib_info.Source.External
-          (match Vars.get_words t.vars "main_modules" Ps.empty with
-           | _ :: _ as modules -> Ok (List.map ~f:Module_name.of_string modules)
-           | [] ->
-             (match dir_contents with
-              | Error (e, _, _) ->
-                Error
-                  (User_message.make
-                     [ Pp.textf
-                         "Unable to get entry modules of %s in %s. "
-                         (Lib_name.to_string t.name)
-                         (Path.to_string src_dir)
-                     ; Pp.textf "error: %s" (Unix.error_message e)
-                     ])
-              | Ok dir_contents ->
-                let ext = Cm_kind.ext Cmi in
-                Result.List.filter_map dir_contents ~f:(fun fname ->
-                  match Filename.check_suffix fname ext with
-                  | false -> Ok None
-                  | true ->
-                    if (* We add this hack to skip manually mangled
-                          libraries *)
-                       Re.execp (Lazy.force mangled_module_re) fname
-                    then Ok None
-                    else (
-                      match
-                        let name = Filename.chop_extension fname in
-                        Module_name.of_string_user_error (Loc.in_dir src_dir, name)
-                      with
-                      | Ok s -> Ok (Some s)
-                      | Error e -> Error e))))
-      in
-      let modules = Lib_info.Source.External None in
-      Lib_info.create
-        ~loc
-        ~path_kind:External
-        ~name:t.name
-        ~kind
-        ~status
-        ~src_dir
-        ~orig_src_dir
-        ~obj_dir
-        ~version
-        ~synopsis
-        ~main_module_name
-        ~sub_systems
-        ~requires
-        ~foreign_objects
-        ~public_headers
-        ~plugins
-        ~archives
-        ~ppx_runtime_deps
-        ~foreign_archives
-        ~native_archives:(Files native_archives)
-        ~foreign_dll_files:[]
-        ~jsoo_runtime
-        ~preprocess
-        ~enabled
-        ~virtual_deps
-        ~dune_version
-        ~virtual_
-        ~entry_modules
-        ~implements
-        ~default_implementation
-        ~modes
-        ~modules
-        ~wrapped
-        ~special_builtin_support
-        ~exit_module:None
-        ~instrumentation_backend:None
-        ~melange_runtime_deps
-    in
-    Dune_package.Lib.of_findlib info
-  ;;
-
   module Exists = Findlib.Package.Exists (Monad) (Fs)
 
   (* Parse all the packages defined in a META file *)
@@ -304,7 +302,10 @@ end = struct
       let pkg : Findlib.Package.t =
         { Findlib.Package.meta_file; name = full_name; dir; vars }
       in
-      let* lib = to_dune_library pkg ~ext_lib:db.ext_lib in
+      let* lib =
+        let+ dir_contents = Fs.dir_contents pkg.dir in
+        to_dune_library pkg ~dir_contents ~ext_lib:db.ext_lib
+      in
       let* (entry : Dune_package.Entry.t) =
         let+ exists =
           Exists.exists

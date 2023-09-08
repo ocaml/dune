@@ -36,18 +36,16 @@ module Public = struct
   end
 
   module Format_dune_file = struct
-    module V1 = struct
-      let req =
-        let open Conv in
-        let path = field "path" (required string) in
-        let contents = field "contents" (required string) in
-        let to_ (path, contents) = path, `Contents contents in
-        let from (path, `Contents contents) = path, contents in
-        iso (record (both path contents)) to_ from
-      ;;
-    end
+    let sexp =
+      let open Conv in
+      let path = field "path" (required string) in
+      let contents = field "contents" (required string) in
+      let to_ (path, contents) = path, `Contents contents in
+      let from (path, `Contents contents) = path, contents in
+      iso (record (both path contents)) to_ from
+    ;;
 
-    let v1 = Decl.Request.make_current_gen ~req:V1.req ~resp:Conv.string ~version:1
+    let v1 = Decl.Request.make_current_gen ~req:sexp ~resp:Conv.string ~version:1
     let decl = Decl.Request.make ~method_:"format-dune-file" ~generations:[ v1 ]
   end
 

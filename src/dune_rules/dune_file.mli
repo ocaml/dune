@@ -151,6 +151,7 @@ module Library : sig
            language, to make it easier to understand the purpose of various
            flags. Also we could add [c_library_flags] to [Foreign.Stubs.t]. *)
     ; library_flags : Ordered_set_lang.Unexpanded.t
+    ; auto_open : Module_name.t list
     ; c_library_flags : Ordered_set_lang.Unexpanded.t
     ; virtual_deps : (Loc.t * Lib_name.t) list
     ; wrapped : Wrapped.t Lib_info.Inherited.t

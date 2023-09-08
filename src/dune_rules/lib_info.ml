@@ -365,6 +365,7 @@ type 'path t =
   ; foreign_archives : 'path Mode.Map.Multi.t
   ; native_archives : 'path native_archives
   ; foreign_dll_files : 'path list
+  ; auto_open : Module_name.t list
   ; jsoo_runtime : 'path list
   ; requires : Lib_dep.t list
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
@@ -403,6 +404,7 @@ let equal
   ; archives
   ; plugins
   ; foreign_objects
+  ; auto_open
   ; public_headers
   ; foreign_archives
   ; native_archives
@@ -489,6 +491,7 @@ let equal
        instrumentation_backend
        t.instrumentation_backend
   && File_deps.equal path_equal melange_runtime_deps t.melange_runtime_deps
+  && List.equal Module_name.equal auto_open t.auto_open
   && Poly.equal path_kind t.path_kind
 ;;
 
@@ -506,6 +509,7 @@ let archives t = t.archives
 let foreign_archives t = t.foreign_archives
 let native_archives t = t.native_archives
 let foreign_dll_files t = t.foreign_dll_files
+let auto_open t = t.auto_open
 let foreign_objects t = t.foreign_objects
 let public_headers t = t.public_headers
 let exit_module t = t.exit_module
@@ -612,6 +616,7 @@ let create
   ~foreign_archives
   ~native_archives
   ~foreign_dll_files
+  ~auto_open
   ~jsoo_runtime
   ~preprocess
   ~enabled
@@ -647,6 +652,7 @@ let create
   ; ppx_runtime_deps
   ; foreign_archives
   ; native_archives
+  ; auto_open
   ; foreign_dll_files
   ; jsoo_runtime
   ; preprocess
@@ -732,6 +738,7 @@ let to_dyn
   ; synopsis
   ; requires
   ; main_module_name
+  ; auto_open
   ; foreign_objects
   ; public_headers
   ; plugins
@@ -778,6 +785,7 @@ let to_dyn
     ; "foreign_archives", Mode.Map.Multi.to_dyn path foreign_archives
     ; "native_archives", dyn_of_native_archives path native_archives
     ; "foreign_dll_files", list path foreign_dll_files
+    ; "auto_open", list Module_name.to_dyn auto_open
     ; "jsoo_runtime", list path jsoo_runtime
     ; "requires", list Lib_dep.to_dyn requires
     ; "ppx_runtime_deps", list (snd Lib_name.to_dyn) ppx_runtime_deps

@@ -89,6 +89,7 @@ module Lib = struct
           ~f:(fun file -> Path.relative stublibs (Path.basename file))
           (Lib_info.foreign_dll_files info)
     in
+    let auto_open = Lib_info.auto_open info in
     record_fields
     @@ [ field "name" Lib_name.encode name
        ; field "kind" Lib_kind.encode kind
@@ -123,6 +124,7 @@ module Lib = struct
            "instrumentation.backend"
            (no_loc Lib_name.encode)
            instrumentation_backend
+       ; field_l "auto_open" Module_name.encode auto_open
        ]
     @ Sub_system_name.Map.to_list_map sub_systems ~f:(fun name info ->
       let (module S) = Sub_system_info.get name in
@@ -188,6 +190,7 @@ module Lib = struct
        and+ sub_systems = Sub_system_info.record_parser ()
        and+ orig_src_dir = field_o "orig_src_dir" path
        and+ modules = field "modules" (Modules.decode ~src_dir:base)
+       and+ auto_open = field_l "auto_open" Module_name.decode
        and+ special_builtin_support =
          field_o
            "special_builtin_support"
@@ -240,6 +243,7 @@ module Lib = struct
            ~archives
            ~ppx_runtime_deps
            ~foreign_archives
+           ~auto_open
            ~native_archives:(Files native_archives)
            ~foreign_dll_files
            ~jsoo_runtime

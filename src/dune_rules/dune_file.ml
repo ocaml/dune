@@ -588,6 +588,7 @@ module Library = struct
     ; modes : Mode_conf.Lib.Set.t
     ; kind : Lib_kind.t
     ; library_flags : Ordered_set_lang.Unexpanded.t
+    ; auto_open : Module_name.t list
     ; c_library_flags : Ordered_set_lang.Unexpanded.t
     ; virtual_deps : (Loc.t * Lib_name.t) list
     ; wrapped : Wrapped.t Lib_info.Inherited.t
@@ -704,6 +705,11 @@ module Library = struct
            "package"
            (Dune_lang.Syntax.since Stanza.syntax (2, 8)
             >>> located Stanza_common.Pkg.decode)
+       and+ auto_open =
+         field
+           ~default:[]
+           "auto_open"
+           (Dune_lang.Syntax.since Stanza.syntax (3, 11) >>> repeat Module_name.decode)
        and+ melange_runtime_deps =
          field
            "melange.runtime_deps"
@@ -781,6 +787,7 @@ module Library = struct
        ; ppx_runtime_libraries
        ; modes
        ; kind
+       ; auto_open
        ; library_flags
        ; c_library_flags
        ; virtual_deps
@@ -1042,6 +1049,7 @@ module Library = struct
     let wrapped = Some conf.wrapped in
     let special_builtin_support = conf.special_builtin_support in
     let instrumentation_backend = conf.instrumentation_backend in
+    let auto_open = conf.auto_open in
     let entry_modules = Lib_info.Source.Local in
     let melange_runtime_deps =
       let loc, runtime_deps = conf.melange_runtime_deps in
@@ -1073,6 +1081,7 @@ module Library = struct
       ~foreign_archives
       ~native_archives
       ~foreign_dll_files
+      ~auto_open
       ~jsoo_runtime
       ~preprocess
       ~enabled

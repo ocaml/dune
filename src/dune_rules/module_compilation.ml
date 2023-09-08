@@ -16,10 +16,7 @@ let force_read_cmi source_file = [ "-intf-suffix"; Path.extension source_file ]
 let opens modules m =
   match Modules.local_open modules m with
   | [] -> Command.Args.empty
-  | modules ->
-    Command.Args.S
-      (List.map modules ~f:(fun name ->
-         Command.Args.As [ "-open"; Module_name.to_string name ]))
+  | modules -> Command.Args.S (List.map modules ~f:Ocaml_flags.open_)
 ;;
 
 let other_cm_files ~opaque ~cm_kind ~obj_dir =

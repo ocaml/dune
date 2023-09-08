@@ -240,6 +240,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib =
       ~ppx_runtime_deps
       ~foreign_archives
       ~native_archives:(Files native_archives)
+      ~auto_open:[]
       ~foreign_dll_files:[]
       ~jsoo_runtime
       ~preprocess

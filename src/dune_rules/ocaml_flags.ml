@@ -175,3 +175,5 @@ let allow_only_melange t =
   in
   { t with specific = { t.specific with ocaml } }
 ;;
+
+let open_ name = Command.Args.As [ "-open"; Module_name.to_string name ]

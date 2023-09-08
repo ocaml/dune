@@ -143,6 +143,15 @@ module L = struct
       remove_stdlib dirs ts
   ;;
 
+  let open_flags libs =
+    Command.Args.S
+      (List.map libs ~f:(fun lib ->
+         let flags =
+           Lib.info lib |> Lib_info.auto_open |> List.map ~f:Ocaml_flags.open_
+         in
+         Command.Args.S flags))
+  ;;
+
   let include_flags ?project ts mode = to_iflags (include_paths ?project ts mode)
 
   let c_include_paths ts =

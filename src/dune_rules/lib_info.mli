@@ -153,6 +153,7 @@ val enabled : _ t -> Enabled_status.t
 val orig_src_dir : 'path t -> 'path option
 val version : _ t -> Dune_pkg.Package_version.t option
 val dune_version : _ t -> Dune_lang.Syntax.Version.t option
+val auto_open : _ t -> Module_name.t list
 
 (** Directory where the source files for the library are located. Returns the
     original src dir when it exists *)
@@ -209,6 +210,7 @@ val create
   -> foreign_archives:'a Mode.Map.Multi.t
   -> native_archives:'a native_archives
   -> foreign_dll_files:'a list
+  -> auto_open:Module_name.t list
   -> jsoo_runtime:'a list
   -> preprocess:Preprocess.With_instrumentation.t Preprocess.Per_module.t
   -> enabled:Enabled_status.t

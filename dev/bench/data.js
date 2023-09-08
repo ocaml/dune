@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694191364374,
+  "lastUpdate": 1694197496745,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -92857,6 +92857,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.24182977486667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b12496047762ab974ef7a2bef4fc834dffd47fec",
+          "message": "refactor(findlib): move dune package creation outside of monad (#8610)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-08T19:09:09+01:00",
+          "tree_id": "00f526b3102a02083234689d7709ebb727cdc660",
+          "url": "https://github.com/ocaml/dune/commit/b12496047762ab974ef7a2bef4fc834dffd47fec"
+        },
+        "date": 1694197481947,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "28.69114936094",
             "unit": "seconds"
           }
         ]

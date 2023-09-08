@@ -29,7 +29,7 @@ module File = struct
       let config_dir = Path.Outside_build_dir.extend_basename config_file ~suffix:".d" in
       Fs_memo.is_directory config_dir
       >>= function
-      | Ok false | Error _ -> Memo.return vars
+      | Ok false | Error (_ : Unix.error * _ * _) -> Memo.return vars
       | Ok true ->
         Fs_memo.dir_contents config_dir
         >>= (function
@@ -43,7 +43,7 @@ module File = struct
           in
           List.fold_left all_vars ~init:vars ~f:(fun acc vars ->
             Vars.union acc vars ~f:(fun _ x y -> Some (Rules.union x y)))
-        | Error _ -> Memo.return vars)
+        | Error (_ : Unix.error * _ * _) -> Memo.return vars)
     in
     { vars; preds = Ps.empty }
   ;;

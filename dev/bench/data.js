@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694179478250,
+  "lastUpdate": 1694179836866,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -71976,6 +71976,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.9720331008933334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "10e9d4cdcaa321c95c6ef8f4d570ad0becd4832e",
+          "message": "doc: update changelog entry with fixed issue (#8606)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-08T14:04:15+01:00",
+          "tree_id": "c8114cc881e9419a3c159ca72b3de617d37ac1a9",
+          "url": "https://github.com/ocaml/dune/commit/10e9d4cdcaa321c95c6ef8f4d570ad0becd4832e"
+        },
+        "date": 1694179836032,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "71.33193472049334",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694190574936,
+  "lastUpdate": 1694191004721,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -29027,6 +29027,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "49.887953213619994",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3eb6d5d18559811c902bdf9f77770d0d1eb20495",
+          "message": "chore: add missing unix dependencies (#8607)\n\nThis suppresses warnings with ocaml >= 5.\r\n\r\nIn `dune_findlib` this is a bit less obvious because it does not contain\r\na direct reference to the `Unix` module but it appears in the signature\r\nof some functions.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-09-08T18:16:24+02:00",
+          "tree_id": "1f2d89459a3d7bf97f7d478f41e690a9d0fc1599",
+          "url": "https://github.com/ocaml/dune/commit/3eb6d5d18559811c902bdf9f77770d0d1eb20495"
+        },
+        "date": 1694191003938,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.511402924580004",
             "unit": "seconds"
           }
         ]

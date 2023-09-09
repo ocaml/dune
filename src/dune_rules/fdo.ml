@@ -1,5 +1,4 @@
 open Import
-module CC = Compilation_context
 
 type phase =
   | All
@@ -107,10 +106,10 @@ let get_profile (ctx : Context.t) =
 ;;
 
 let opt_rule cctx m =
-  let sctx = CC.super_context cctx in
-  let ctx = CC.context cctx in
-  let dir = CC.dir cctx in
-  let obj_dir = CC.obj_dir cctx in
+  let sctx = Compilation_context.super_context cctx in
+  let ctx = Compilation_context.context cctx in
+  let dir = Compilation_context.dir cctx in
+  let obj_dir = Compilation_context.obj_dir cctx in
   let linear = Obj_dir.Module.obj_file obj_dir m ~kind:(Ocaml Cmx) ~ext:linear_ext in
   let linear_fdo =
     Obj_dir.Module.obj_file obj_dir m ~kind:(Ocaml Cmx) ~ext:linear_fdo_ext
@@ -150,9 +149,9 @@ module Linker_script = struct
   let ocamlfdo_linker_script_flags = get_flags "OCAMLFDO_LINKER_SCRIPT_FLAGS"
 
   let linker_script_rule cctx fdo_target_exe =
-    let sctx = CC.super_context cctx in
-    let ctx = CC.context cctx in
-    let dir = CC.dir cctx in
+    let sctx = Compilation_context.super_context cctx in
+    let ctx = Compilation_context.context cctx in
+    let dir = Compilation_context.dir cctx in
     let linker_script = linker_script fdo_target_exe in
     let linker_script_path =
       Path.Build.(relative (Context.build_dir ctx) (Path.to_string linker_script))
@@ -186,7 +185,7 @@ module Linker_script = struct
   ;;
 
   let create cctx name =
-    let ctx = CC.context cctx in
+    let ctx = Compilation_context.context cctx in
     match Context.fdo_target_exe ctx with
     | None -> None
     | Some fdo_target_exe ->

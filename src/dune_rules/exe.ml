@@ -1,5 +1,4 @@
 open Import
-module CC = Compilation_context
 
 module Program = struct
   type t =
@@ -130,7 +129,7 @@ module Linkage = struct
 end
 
 let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
-  Path.Build.relative (CC.dir cctx) (name ^ linkage.ext)
+  Path.Build.relative (Compilation_context.dir cctx) (name ^ linkage.ext)
 ;;
 
 let link_exe
@@ -145,16 +144,16 @@ let link_exe
   ?(sandbox = Sandbox_config.default)
   cctx
   =
-  let sctx = CC.super_context cctx in
+  let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
-  let dir = CC.dir cctx in
+  let dir = Compilation_context.dir cctx in
   let mode = Link_mode.mode linkage.mode in
   let exe = exe_path_from_name cctx ~name ~linkage in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
   let fdo_linker_script = Fdo.Linker_script.create cctx (Path.build exe) in
   let open Memo.O in
   let* action_with_targets =
-    let ocaml_flags = Ocaml_flags.get (CC.flags cctx) (Ocaml mode) in
+    let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml mode) in
     let prefix =
       Cm_files.top_sorted_objects_and_cms cm_files ~mode |> Action_builder.dyn_paths_unit
     in
@@ -228,13 +227,16 @@ let link_js
   cctx
   =
   let in_context =
-    CC.js_of_ocaml cctx |> Option.value ~default:Js_of_ocaml.In_context.default
+    Compilation_context.js_of_ocaml cctx
+    |> Option.value ~default:Js_of_ocaml.In_context.default
   in
   let src = exe_path_from_name cctx ~name ~linkage:Linkage.byte_for_jsoo in
   let linkall =
     Action_builder.bind link_args ~f:(fun cmd ->
       let open Action_builder.O in
-      let+ l = Command.expand_no_targets ~dir:(Path.build (CC.dir cctx)) cmd in
+      let+ l =
+        Command.expand_no_targets ~dir:(Path.build (Compilation_context.dir cctx)) cmd
+      in
       List.exists l ~f:(String.equal "-linkall"))
   in
   Jsoo_rules.build_exe
@@ -282,12 +284,14 @@ let link_many
               ; "modules", Modules.to_dyn modules
               ]
         in
-        Dep_graph.top_closed_implementations (CC.dep_graphs cctx).impl [ main ]
+        Dep_graph.top_closed_implementations
+          (Compilation_context.dep_graphs cctx).impl
+          [ main ]
       in
       let cm_files =
-        let sctx = CC.super_context cctx in
+        let sctx = Compilation_context.super_context cctx in
         let ctx = Super_context.context sctx in
-        let obj_dir = CC.obj_dir cctx in
+        let obj_dir = Compilation_context.obj_dir cctx in
         Cm_files.make
           ~obj_dir
           ~modules
@@ -299,7 +303,7 @@ let link_many
         Memo.parallel_iter linkages ~f:(fun linkage ->
           if Linkage.is_js linkage
           then (
-            let obj_dir = CC.obj_dir cctx in
+            let obj_dir = Compilation_context.obj_dir cctx in
             link_js
               ~loc
               ~name
@@ -314,7 +318,11 @@ let link_many
               match Linkage.is_plugin linkage with
               | false -> Memo.return link_time_code_gen
               | true ->
-                let cc = CC.for_plugin_executable cctx ~embed_in_plugin_libraries in
+                let cc =
+                  Compilation_context.for_plugin_executable
+                    cctx
+                    ~embed_in_plugin_libraries
+                in
                 Link_time_code_gen.handle_special_libs cc
             in
             let link_args, o_files =

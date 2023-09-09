@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694260550042,
+  "lastUpdate": 1694260644598,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -72498,6 +72498,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6038360898133333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "439a12fa3edfaecaa456b5f654d738214cff88bd",
+          "message": "refactor: group alias and root module flags (#8616)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-09T12:31:17+01:00",
+          "tree_id": "ef8164a3fa52b1ac7b77cb3f8b9041bad0d4ad9a",
+          "url": "https://github.com/ocaml/dune/commit/439a12fa3edfaecaa456b5f654d738214cff88bd"
+        },
+        "date": 1694260643316,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "67.88366359257333",
             "unit": "seconds"
           }
         ]

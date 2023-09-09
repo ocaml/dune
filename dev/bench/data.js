@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694260539053,
+  "lastUpdate": 1694260550042,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -72469,6 +72469,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "63.318858106233336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fe9804815e59b72717e69d28eb86472c84cf38c9",
+          "message": "refactor: remove alias for [Compilation_context] (#8615)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-09T12:30:52+01:00",
+          "tree_id": "884afc88d12c71b8596fbedf7278cdabb47bce03",
+          "url": "https://github.com/ocaml/dune/commit/fe9804815e59b72717e69d28eb86472c84cf38c9"
+        },
+        "date": 1694260548955,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6038360898133333",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694263196437,
+  "lastUpdate": 1694274445722,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -93437,6 +93437,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.66597348898667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4f434e8f6bb1dd34288cecf30cc91f5ee18efb51",
+          "message": "test(dune_console): add escaping for clearer tests (#8608)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-09T16:34:30+01:00",
+          "tree_id": "a0834425665da7e7b270df6f6b3d8e8bf1bdb0db",
+          "url": "https://github.com/ocaml/dune/commit/4f434e8f6bb1dd34288cecf30cc91f5ee18efb51"
+        },
+        "date": 1694274433858,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.012487297440003",
             "unit": "seconds"
           }
         ]

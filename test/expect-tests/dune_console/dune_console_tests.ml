@@ -1,14 +1,17 @@
-(** Creation of Dune_console is stateful so we introduce a new module for each test. *)
+open Stdune
+
+let escape str =
+  str |> String.split_lines |> List.map ~f:String.escaped |> List.iter ~f:print_endline
+;;
+
+(* Creation of Dune_console is stateful so we introduce a new module for each test. *)
 module New () = Dune_console
 
 module type New_console = module type of Dune_console
 
-(** Throughout this file we use regular [" "] strings rather than [{| |}] because we want
-    to observe the escape sequences.
-
-    In order to keep tests accross different backends consistent, we create some generic
-    test scripts here that take the created [Console]. We then test these for each
-    backend. *)
+(* In order to keep tests accross different backends consistent, we create some generic
+   test scripts here that take the created [Console]. We then test these for each
+   backend. *)
 
 let test_basic_usage (module Console : New_console) =
   Console.printf "Hello World!";
@@ -22,7 +25,6 @@ let test_basic_usage (module Console : New_console) =
 let test_status_line_clearing (module Console : New_console) =
   let open Console in
   Status_line.set (Status_line.Constant (Pp.text "Here is a status line"));
-  Status_line.set (Status_line.Constant (Pp.text "Here is another"));
   Status_line.clear ()
 ;;
 
@@ -30,63 +32,118 @@ let test_status_line_clearing_with_wrapping (module Console : New_console) =
   let open Console in
   Status_line.set
     (Status_line.Constant
-       (Pp.text
-          "This status line is a problem because of the fact that it is especially long \
-           and therefore will not be cleared properly."));
-  Status_line.set (Status_line.Constant (Pp.text "Here is another"));
+       (Pp.hovbox
+        @@ Pp.text
+             "This status line is a problem because of the fact that it is especially \
+              long and therefore will not be cleared properly."));
   Status_line.clear ()
 ;;
 
-(** Dumb backend *)
+let test_status_line_clearing_multiline (module Console : New_console) =
+  let open Console in
+  Status_line.set
+    (Status_line.Constant
+       (Pp.hovbox
+        @@ Pp.concat
+             ~sep:Pp.newline
+             [ Pp.verbatim "Some"
+             ; Pp.verbatim "multiline"
+             ; Pp.verbatim "status"
+             ; Pp.verbatim "line"
+             ]));
+  Status_line.clear ()
+;;
+
+let test_status_line_overwrite (module Console : New_console) =
+  let open Console in
+  Status_line.set (Status_line.Constant (Pp.text "Here is a status line"));
+  Status_line.set (Status_line.Constant (Pp.text "Here is another status line"))
+;;
+
+(* Dumb backend *)
 
 let%expect_test "basic usage" =
   let module Console = New () in
   Console.Backend.set Console.Backend.dumb;
   test_basic_usage (module Console);
+  escape [%expect.output];
   [%expect
     {|
-    Hello World!
-    Hello this is a very long sentence that will probably wrap the console by the
-    time that this is over. |}]
+Hello World!
+Hello this is a very long sentence that will probably wrap the console by the
+time that this is over.
+  |}]
 ;;
 
 let%expect_test "Status line clearing." =
   let module Console = New () in
   Console.Backend.set Console.Backend.dumb;
   test_status_line_clearing (module Console);
-  [%expect "\nHere is a status line\nHere is another"]
+  escape [%expect.output];
+  [%expect {|
+Here is a status line
+  |}]
 ;;
 
 let%expect_test "Status line clearing with wrapping." =
   let module Console = New () in
   Console.Backend.set Console.Backend.dumb;
   test_status_line_clearing_with_wrapping (module Console);
+  escape [%expect.output];
   [%expect
-    "\n\
-     This status line is a problem because of the fact that it is especially long\n\
-     and therefore will not be cleared properly.\n\
-     Here is another "]
+    {|
+This status line is a problem because of the fact that it is especially long
+and therefore will not be cleared properly.
+  |}]
 ;;
 
-(** Progress backend *)
+let%expect_test "Multi-line status line clearing." =
+  let module Console = New () in
+  Console.Backend.set Console.Backend.dumb;
+  test_status_line_clearing_multiline (module Console);
+  escape [%expect.output];
+  [%expect {|
+Some
+multiline
+status
+line
+  |}]
+;;
+
+let%expect_test "Status line overwriting." =
+  let module Console = New () in
+  Console.Backend.set Console.Backend.dumb;
+  test_status_line_overwrite (module Console);
+  escape [%expect.output];
+  [%expect {|
+Here is a status line
+Here is another status line
+  |}]
+;;
+
+(* Progress backend *)
 
 let%expect_test "basic usage" =
   let module Console = New () in
   Console.Backend.set Console.Backend.progress;
   test_basic_usage (module Console);
+  escape [%expect.output];
   [%expect
     {|
-    Hello World!
-    Hello this is a very long sentence that will probably wrap the console by the
-    time that this is over. |}]
+Hello World!
+Hello this is a very long sentence that will probably wrap the console by the
+time that this is over.
+  |}]
 ;;
 
 let%expect_test "Status line clearing." =
   let module Console = New () in
   Console.Backend.set Console.Backend.progress;
   test_status_line_clearing (module Console);
-  [%expect
-    "Here is a status line\r                     \rHere is another\r               \r"]
+  escape [%expect.output];
+  [%expect {| 
+Here is a status line\r                     \r
+ |}]
 ;;
 
 (* CR-someday alizter: this should insert the appropriate number of "\r"s in order to
@@ -95,10 +152,34 @@ let%expect_test "Status line clearing with wrapping." =
   let module Console = New () in
   Console.Backend.set Console.Backend.progress;
   test_status_line_clearing_with_wrapping (module Console);
+  escape [%expect.output];
   [%expect
-    "\n\
-     This status line is a problem because of the fact that it is especially long and \
-     therefore will not be cleared \
-     properly.\r                                                                                                                        \
-     \rHere is another\r               \r "]
+    {| 
+This status line is a problem because of the fact that it is especially long
+and therefore will not be cleared properly.\r                                                                                                                        \r
+ |}]
+;;
+
+let%expect_test "Multi-line status line clearing." =
+  let module Console = New () in
+  Console.Backend.set Console.Backend.progress;
+  test_status_line_clearing_multiline (module Console);
+  escape [%expect.output];
+  [%expect {|
+Some
+multiline
+status
+line\r                          \r
+  |}]
+;;
+
+let%expect_test "Status line overwriting." =
+  let module Console = New () in
+  Console.Backend.set Console.Backend.progress;
+  test_status_line_overwrite (module Console);
+  escape [%expect.output];
+  [%expect
+    {|
+Here is a status line\r                     \rHere is another status line
+  |}]
 ;;

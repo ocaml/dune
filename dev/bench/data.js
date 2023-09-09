@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694262430795,
+  "lastUpdate": 1694262861126,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -29172,6 +29172,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.09339140130667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "01cbd6bb222e599984c4c6ad78d155f8857b97f4",
+          "message": "refactor: move findlib linktime code gen to function (#8617)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-09T13:14:49+01:00",
+          "tree_id": "4231d365b17ddfc7f577386d306e30567ab522b4",
+          "url": "https://github.com/ocaml/dune/commit/01cbd6bb222e599984c4c6ad78d155f8857b97f4"
+        },
+        "date": 1694262859589,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.04579696318",
             "unit": "seconds"
           }
         ]

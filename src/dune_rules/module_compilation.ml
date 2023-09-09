@@ -1,5 +1,4 @@
 open Import
-module CC = Compilation_context
 
 (* Arguments for the compiler to prevent it from being too clever.
 
@@ -98,13 +97,13 @@ let build_cm
   =
   if force_write_cmi && precompiled_cmi
   then Code_error.raise "force_read_cmi and precompiled_cmi are mutually exclusive" [];
-  let sctx = CC.super_context cctx in
-  let dir = CC.dir cctx in
-  let obj_dir = CC.obj_dir cctx in
+  let sctx = Compilation_context.super_context cctx in
+  let dir = Compilation_context.dir cctx in
+  let obj_dir = Compilation_context.obj_dir cctx in
   let ctx = Super_context.context sctx in
   let mode = Lib_mode.of_cm_kind cm_kind in
   let sandbox =
-    let default = CC.sandbox cctx in
+    let default = Compilation_context.sandbox cctx in
     match Module.kind m with
     | Root ->
       (* This is need to guarantee that no local modules shadow the modules
@@ -116,7 +115,7 @@ let build_cm
   let* compiler =
     match mode with
     | Melange ->
-      let loc = CC.loc cctx in
+      let loc = Compilation_context.loc cctx in
       let+ melc = Melange_binary.melc sctx ~loc ~dir in
       Some melc
     | Ocaml mode ->
@@ -184,7 +183,7 @@ let build_cm
         | Some Emit -> other_targets
         | Some All | None -> obj :: other_targets)
    in
-   let opaque = CC.opaque cctx in
+   let opaque = Compilation_context.opaque cctx in
    let other_cm_files =
      let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
      let module_deps = Dep_graph.deps_of dep_graph m in
@@ -211,7 +210,9 @@ let build_cm
      else Command.Args.empty
    in
    let flags, sandbox =
-     let flags = Command.Args.dyn (Ocaml_flags.get (CC.flags cctx) mode) in
+     let flags =
+       Command.Args.dyn (Ocaml_flags.get (Compilation_context.flags cctx) mode)
+     in
      match Module.pp_flags m with
      | None -> flags, sandbox
      | Some (pp, sandbox') ->
@@ -248,7 +249,7 @@ let build_cm
         in
         (* TODO DUNE4 get rid of the old behavior *)
         if dune_version >= (3, 7) then dir else Context.build_dir ctx)
-     ?loc:(CC.loc cctx)
+     ?loc:(Compilation_context.loc cctx)
      (let open Action_builder.With_targets.O in
       Action_builder.with_no_targets (Action_builder.paths extra_deps)
       >>> Action_builder.with_no_targets other_cm_files
@@ -258,7 +259,8 @@ let build_cm
             [ flags
             ; cmt_args
             ; Command.Args.S obj_dirs
-            ; Command.Args.as_any (Lib_mode.Cm_kind.Map.get (CC.includes cctx) cm_kind)
+            ; Command.Args.as_any
+                (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind)
             ; As extra_args
             ; S (melange_args cctx cm_kind m)
             ; A "-no-alias-deps"
@@ -290,7 +292,7 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
     Memo.when_ (ocaml.byte || ocaml.native) (fun () ->
       let* () = build_cm ~cm_kind:(Ocaml Cmo) ~phase:None
       and* () =
-        let ctx = CC.context cctx in
+        let ctx = Compilation_context.context cctx in
         let can_split =
           Ocaml.Version.supports_split_at_emit (Context.ocaml ctx).version
           || Ocaml_config.is_dev_version (Context.ocaml ctx).ocaml_config
@@ -306,15 +308,15 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
         Memo.when_ (not precompiled_cmi) (fun () ->
           build_cm ~cm_kind:(Ocaml Cmi) ~phase:None)
       in
-      let obj_dir = CC.obj_dir cctx in
+      let obj_dir = Compilation_context.obj_dir cctx in
       match Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml Cmo) with
       | None -> Memo.return ()
       | Some src ->
         Compilation_context.js_of_ocaml cctx
         |> Memo.Option.iter ~f:(fun in_context ->
           (* Build *.cmo.js *)
-          let sctx = CC.super_context cctx in
-          let dir = CC.dir cctx in
+          let sctx = Compilation_context.super_context cctx in
+          let dir = Compilation_context.dir cctx in
           let action_with_targets =
             Jsoo_rules.build_cm
               sctx
@@ -333,9 +335,9 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
 ;;
 
 let ocamlc_i ~deps cctx (m : Module.t) ~output =
-  let sctx = CC.super_context cctx in
-  let obj_dir = CC.obj_dir cctx in
-  let dir = CC.dir cctx in
+  let sctx = Compilation_context.super_context cctx in
+  let obj_dir = Compilation_context.obj_dir cctx in
+  let dir = Compilation_context.dir cctx in
   let ctx = Super_context.context sctx in
   let src = Option.value_exn (Module.file m ~ml_kind:Impl) in
   let sandbox = Compilation_context.sandbox cctx in
@@ -346,7 +348,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
        List.concat_map deps ~f:(fun m ->
          [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml Cmi)) ]))
   in
-  let ocaml_flags = Ocaml_flags.get (CC.flags cctx) (Ocaml Byte) in
+  let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml Byte) in
   let modules = Compilation_context.modules cctx in
   Super_context.add_rule
     sctx
@@ -363,7 +365,9 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
               ; A "-I"
               ; Path (Path.build (Obj_dir.byte_dir obj_dir))
               ; Command.Args.as_any
-                  (Lib_mode.Cm_kind.Map.get (CC.includes cctx) (Ocaml Cmo))
+                  (Lib_mode.Cm_kind.Map.get
+                     (Compilation_context.includes cctx)
+                     (Ocaml Cmo))
               ; opens modules m
               ; A "-short-paths"
               ; A "-i"

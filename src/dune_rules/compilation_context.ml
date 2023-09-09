@@ -199,6 +199,11 @@ let create
   }
 ;;
 
+let alias_and_root_module_flags =
+  let extra = [ "-w"; "-49"; "-nopervasives"; "-nostdlib" ] in
+  fun base -> Ocaml_flags.append_common base extra
+;;
+
 let for_alias_module t alias_module =
   let keep_flags = Modules.is_stdlib_alias (modules t) alias_module in
   let flags =
@@ -231,7 +236,7 @@ let for_alias_module t alias_module =
       t.modules, t.includes
   in
   { t with
-    flags = Ocaml_flags.append_common flags [ "-w"; "-49"; "-nopervasives"; "-nostdlib" ]
+    flags = alias_and_root_module_flags flags
   ; includes
   ; stdlib = None
   ; sandbox
@@ -247,7 +252,7 @@ let for_root_module t root_module =
     Ocaml_flags.default ~profile ~dune_version
   in
   { t with
-    flags = Ocaml_flags.append_common flags [ "-w"; "-49"; "-nopervasives"; "-nostdlib" ]
+    flags = alias_and_root_module_flags flags
   ; stdlib = None
   ; modules = singleton_modules root_module
   }

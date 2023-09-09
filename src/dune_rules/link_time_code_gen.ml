@@ -225,6 +225,39 @@ let findlib_predicates_set_by_dune pred =
   Buffer.contents buf
 ;;
 
+let findlib_dynload cctx lib loc =
+  let open Resolve.Memo.O in
+  let* all_libs = Compilation_context.requires_link cctx in
+  (* If findlib.dynload is linked, we stores in the binary the packages
+     linked by linking just after findlib.dynload a module containing
+     the info *)
+  let requires =
+    let open Memo.O in
+    (* This shouldn't fail since findlib.dynload depends on dynlink and
+       findlib. That's why it's ok to use a dummy location. *)
+    let* db =
+      let ctx = Compilation_context.context cctx in
+      Scope.DB.public_libs ctx
+    in
+    let open Resolve.Memo.O in
+    let+ dynlink = Lib.DB.resolve db (loc, Lib_name.of_string "dynlink")
+    and+ findlib = Lib.DB.resolve db (loc, Lib_name.of_string "findlib") in
+    [ dynlink; findlib ]
+  in
+  let name = Module_name.of_string "findlib_initl" in
+  let obj_name = Some (Module_name.Unique.of_name_assuming_needs_no_mangling name) in
+  generate_and_compile_module
+    ~obj_name
+    cctx
+    ~lib
+    ~name
+    ~code:
+      (Action_builder.delayed (fun () ->
+         findlib_init_code ~preds:Findlib.findlib_predicates_set_by_dune ~libs:all_libs))
+    ~requires
+    ~precompiled_cmi:false
+;;
+
 let handle_special_libs cctx =
   let ( let& ) m f = Resolve.Memo.bind m ~f in
   let& all_libs = Compilation_context.requires_link cctx in
@@ -266,36 +299,7 @@ let handle_special_libs cctx =
               ~to_link_rev:(Lib lib :: Module (obj_dir, module_) :: to_link_rev)
               ~force_linkall
           | Findlib_dynload ->
-            (* If findlib.dynload is linked, we stores in the binary the packages
-               linked by linking just after findlib.dynload a module containing
-               the info *)
-            let requires =
-              (* This shouldn't fail since findlib.dynload depends on dynlink and
-                 findlib. That's why it's ok to use a dummy location. *)
-              let* db = Scope.DB.public_libs ctx in
-              let open Resolve.Memo.O in
-              let+ dynlink = Lib.DB.resolve db (loc, Lib_name.of_string "dynlink")
-              and+ findlib = Lib.DB.resolve db (loc, Lib_name.of_string "findlib") in
-              [ dynlink; findlib ]
-            in
-            let& module_ =
-              let name = Module_name.of_string "findlib_initl" in
-              let obj_name =
-                Some (Module_name.Unique.of_name_assuming_needs_no_mangling name)
-              in
-              generate_and_compile_module
-                ~obj_name
-                cctx
-                ~lib
-                ~name
-                ~code:
-                  (Action_builder.delayed (fun () ->
-                     findlib_init_code
-                       ~preds:Findlib.findlib_predicates_set_by_dune
-                       ~libs:all_libs))
-                ~requires
-                ~precompiled_cmi:false
-            in
+            let& module_ = findlib_dynload cctx lib loc in
             process_libs
               libs
               ~to_link_rev:(Module (obj_dir, module_) :: Lib lib :: to_link_rev)

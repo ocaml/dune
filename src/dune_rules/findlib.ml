@@ -492,8 +492,7 @@ let root_packages (db : t) =
           if exists then Some (Package.Name.of_string name) else None))
     >>| Package.Name.Set.of_list
   in
-  let builtins = Package.Name.Set.of_list (Package.Name.Map.keys db.builtins) in
-  Package.Name.Set.union pkgs builtins
+  Package.Name.Set.of_keys db.builtins |> Package.Name.Set.union pkgs
 ;;
 
 let load_all_packages (t : t) =

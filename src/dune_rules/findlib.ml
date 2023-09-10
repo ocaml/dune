@@ -266,6 +266,8 @@ module Make_loader
          val exists : 'a list -> f:('a -> bool t) -> bool t
          val fold_left : 'a list -> f:('acc -> 'a -> 'acc t) -> init:'acc -> 'acc t
          val find_map : 'a list -> f:('a -> 'b option t) -> 'b option t
+         val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
+         val filter_map : 'a list -> f:('a -> 'b option t) -> 'b list t
        end
 
        module O : sig
@@ -289,6 +291,8 @@ module Make_loader
     :  t
     -> Package.Name.t
     -> (Dune_package.t, Unavailable_reason.t) result Monad.t
+
+  val root_packages : t -> Package.Name.Set.t Monad.t
 end = struct
   open Monad.O
   module Exists = Findlib.Package.Exists (Monad) (Fs)
@@ -415,6 +419,30 @@ end = struct
          | "dune" -> Ok builtin_for_dune
          | _ -> Error Unavailable_reason.Not_found))
   ;;
+
+  let root_packages (db : t) =
+    let+ pkgs =
+      Monad.List.concat_map db.paths ~f:(fun dir ->
+        Fs.dir_contents dir
+        >>= function
+        | Error (ENOENT, _, _) -> Monad.return []
+        | Error (unix_error, _, _) ->
+          User_error.raise
+            [ Pp.textf
+                "Unable to read directory %s for findlib package"
+                (Path.to_string_maybe_quoted dir)
+            ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
+            ]
+        | Ok dir_contents ->
+          Monad.List.filter_map dir_contents ~f:(fun name ->
+            let+ exists =
+              Fs.file_exists (Path.L.relative dir [ name; Findlib.Package.meta_fn ])
+            in
+            if exists then Some (Package.Name.of_string name) else None))
+      >>| Package.Name.Set.of_list
+    in
+    Package.Name.Set.of_keys db.builtins |> Package.Name.Set.union pkgs
+  ;;
 end
 
 module Loader =
@@ -468,35 +496,8 @@ let find t name =
   | None -> Error Unavailable_reason.Not_found
 ;;
 
-let root_packages (db : t) =
-  let+ pkgs =
-    Memo.List.concat_map db.paths ~f:(fun dir ->
-      Fs_memo.dir_contents (Path.as_outside_build_dir_exn dir)
-      >>= function
-      | Error (ENOENT, _, _) -> Memo.return []
-      | Error (unix_error, _, _) ->
-        User_error.raise
-          [ Pp.textf
-              "Unable to read directory %s for findlib package"
-              (Path.to_string_maybe_quoted dir)
-          ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
-          ]
-      | Ok dir_contents ->
-        let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
-        Memo.List.filter_map dir_contents ~f:(fun (name, _) ->
-          let+ exists =
-            Fs_memo.file_exists
-              (Path.as_outside_build_dir_exn
-                 (Path.L.relative dir [ name; Findlib.Package.meta_fn ]))
-          in
-          if exists then Some (Package.Name.of_string name) else None))
-    >>| Package.Name.Set.of_list
-  in
-  Package.Name.Set.of_keys db.builtins |> Package.Name.Set.union pkgs
-;;
-
 let load_all_packages (t : t) =
-  root_packages t
+  Loader.root_packages t
   >>| Package.Name.Set.to_list
   >>= Memo.parallel_map ~f:(fun name ->
     let+ pkg = find_root_package t name in

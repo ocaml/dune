@@ -16,6 +16,7 @@ val ppx_runtime_deps : t -> Lib_name.t list
 val kind : t -> Lib_kind.t
 val archives : t -> Path.t list Mode.Dict.t
 val plugins : t -> Path.t list Mode.Dict.t
+val findlib_predicates_set_by_dune : Ocaml.Variant.Set.t
 
 module Exists
     (Monad : sig

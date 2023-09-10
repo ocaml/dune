@@ -208,7 +208,7 @@ let findlib_predicates_set_by_dune pred =
    match Sys.backend_type, pred with
    | Sys.Native, "native" -> true
    | Sys.Bytecode, "byte" -> true|ocaml};
-  Variant.Set.iter Findlib.findlib_predicates_set_by_dune ~f:(fun variant ->
+  Variant.Set.iter Dune_findlib.Package.findlib_predicates_set_by_dune ~f:(fun variant ->
     pr buf "   | _, %S -> true" (Variant.to_string variant));
   pr buf "   | _, _ -> false";
   prlist buf "already_linked_libraries" (sorted_public_lib_names libs) ~f:(fun lib ->
@@ -253,7 +253,9 @@ let findlib_dynload cctx lib loc =
     ~name
     ~code:
       (Action_builder.delayed (fun () ->
-         findlib_init_code ~preds:Findlib.findlib_predicates_set_by_dune ~libs:all_libs))
+         findlib_init_code
+           ~preds:Dune_findlib.Package.findlib_predicates_set_by_dune
+           ~libs:all_libs))
     ~requires
     ~precompiled_cmi:false
 ;;

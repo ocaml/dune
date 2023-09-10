@@ -62,8 +62,6 @@ let hash { stdlib_dir; paths; builtins; ext_lib } =
     , String.hash ext_lib )
 ;;
 
-let findlib_predicates_set_by_dune = Ps.of_list [ P.ppx_driver; P.mt; P.mt_posix ]
-
 let has_double_underscore s =
   let len = String.length s in
   len >= 2

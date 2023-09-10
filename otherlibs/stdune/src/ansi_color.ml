@@ -4,13 +4,17 @@ module RGB8 : sig
   val to_dyn : t -> Dyn.t
   val of_int : int -> t
   val to_int : t -> int
+  val of_char : char -> t
+  val to_char : t -> char
   val compare : t -> t -> Ordering.t
 
-  (** This is only used internally. *)
+  (* This is only used internally. *)
   val write_to_buffer : Buffer.t -> t -> unit
 end = struct
   type t = char
 
+  let of_char t = t
+  let to_char t = t
   let to_dyn t = Dyn.Int (int_of_char t)
   let of_int t = char_of_int (t land 0xFF)
   let to_int t = int_of_char t
@@ -30,9 +34,11 @@ module RGB24 : sig
   val red : t -> int
   val green : t -> int
   val blue : t -> int
-  val create : r:int -> g:int -> b:int -> t
+  val make : red:int -> green:int -> blue:int -> t
+  val to_int : t -> int
+  val of_int : int -> t
 
-  (** This is only used internally. *)
+  (* This is only used internally. *)
   val write_to_buffer : Buffer.t -> t -> unit
 end = struct
   type t = int
@@ -42,7 +48,12 @@ end = struct
   let green t = Int.shift_right t 8 land 0xFF
   let blue t = t land 0xFF
   let to_dyn t = Dyn.list Dyn.int [ red t; green t; blue t ]
-  let create ~r ~g ~b = ((r land 0xFF) lsl 16) lor ((g land 0xFF) lsl 8) lor (b land 0xFF)
+  let to_int t = t
+  let of_int t = t
+
+  let make ~red ~green ~blue =
+    ((red land 0xFF) lsl 16) lor ((green land 0xFF) lsl 8) lor (blue land 0xFF)
+  ;;
 
   let write_to_buffer buf t =
     Buffer.add_string buf "38;2;";
@@ -564,14 +575,16 @@ let rec parse_styles l (accu : Style.t list) =
     parse_styles
       l
       (match Int.of_string r, Int.of_string g, Int.of_string b with
-       | Some r, Some g, Some b -> `Fg_24_bit_color (RGB24.create ~r ~g ~b) :: accu
+       | Some red, Some green, Some blue ->
+         `Fg_24_bit_color (RGB24.make ~red ~green ~blue) :: accu
        | _ -> accu)
   (* Parsing 24-bit background colors *)
   | "48" :: "2" :: r :: g :: b :: l ->
     parse_styles
       l
       (match Int.of_string r, Int.of_string g, Int.of_string b with
-       | Some r, Some g, Some b -> `Bg_24_bit_color (RGB24.create ~r ~g ~b) :: accu
+       | Some red, Some green, Some blue ->
+         `Bg_24_bit_color (RGB24.make ~red ~green ~blue) :: accu
        | _ -> accu)
   | s :: l ->
     parse_styles

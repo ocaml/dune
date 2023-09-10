@@ -4,6 +4,16 @@ module RGB8 : sig
 
   (** [RGB8.to_int t] returns the [int] value of [t] as an 8 bit integer. *)
   val to_int : t -> int
+
+  (** [RGB8.of_int i] creates an [RGB8.t] from an [int] considered as an 8 bit integer.
+      The first 24 bits are discarded. *)
+  val of_int : int -> t
+
+  (** [RGB8.of_char c] creates an [RGB8.t] from a [char] considered as an 8 bit integer. *)
+  val of_char : char -> t
+
+  (** [RGB8.to_char t] returns the [char] value of [t] considered as an 8 bit integer. *)
+  val to_char : t -> char
 end
 
 module RGB24 : sig
@@ -18,6 +28,16 @@ module RGB24 : sig
 
   (** [RGB24.blue t] returns the blue component of [t] *)
   val blue : t -> int
+
+  (** [RGB24.make ~red ~green ~blue] creates an [RGB24.t] from the given components *)
+  val make : red:int -> green:int -> blue:int -> t
+
+  (** [RGB24.to_int t] returns the [int] value of [t] as a 24 bit integer. *)
+  val to_int : t -> int
+
+  (** [RGB24.of_int i] creates an [RGB24.t] from an [int] considered as a 24 bit integer.
+      The first 8 bits are discarded. *)
+  val of_int : int -> t
 end
 
 module Style : sig

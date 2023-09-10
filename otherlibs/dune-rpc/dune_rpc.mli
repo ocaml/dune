@@ -86,6 +86,101 @@ module V1 : sig
     val to_string_absolute : t -> string
   end
 
+  module Ansi_color : sig
+    module RGB8 : sig
+      (** 8-bit RGB color *)
+      type t
+
+      (** [to_int t] returns the 8-bit color as an integer in the range [0, 255]. *)
+      val to_int : t -> int
+    end
+
+    module RGB24 : sig
+      (** 24-bit RGB color (true color) *)
+      type t
+
+      (** [red t] returns the red component of the 24-bit color [t]. *)
+      val red : t -> int
+
+      (** [green t] returns the green component of the 24-bit color [t]. *)
+      val green : t -> int
+
+      (** [blue t] returns the blue component of the 24-bit color [t]. *)
+      val blue : t -> int
+
+      (** [to_int t] returns the 24-bit color as an integer in the range [0, 0xFFFFFF].
+          Each color components consists of 8 bits. *)
+      val to_int : t -> int
+    end
+
+    module Style : sig
+      (** Ansi Terminal Styles *)
+      type t =
+        [ `Fg_default
+        | `Fg_black
+        | `Fg_red
+        | `Fg_green
+        | `Fg_yellow
+        | `Fg_blue
+        | `Fg_magenta
+        | `Fg_cyan
+        | `Fg_white
+        | `Fg_bright_black
+        | `Fg_bright_red
+        | `Fg_bright_green
+        | `Fg_bright_yellow
+        | `Fg_bright_blue
+        | `Fg_bright_magenta
+        | `Fg_bright_cyan
+        | `Fg_bright_white
+        | `Fg_8_bit_color of RGB8.t
+        | `Fg_24_bit_color of RGB24.t
+        | `Bg_default
+        | `Bg_black
+        | `Bg_red
+        | `Bg_green
+        | `Bg_yellow
+        | `Bg_blue
+        | `Bg_magenta
+        | `Bg_cyan
+        | `Bg_white
+        | `Bg_bright_black
+        | `Bg_bright_red
+        | `Bg_bright_green
+        | `Bg_bright_yellow
+        | `Bg_bright_blue
+        | `Bg_bright_magenta
+        | `Bg_bright_cyan
+        | `Bg_bright_white
+        | `Bg_8_bit_color of RGB8.t
+        | `Bg_24_bit_color of RGB24.t
+        | `Bold
+        | `Dim
+        | `Italic
+        | `Underline
+        ]
+    end
+  end
+
+  module User_message : sig
+    (** User Message Styles *)
+    module Style : sig
+      type t =
+        | Loc
+        | Error
+        | Warning
+        | Kwd
+        | Id
+        | Prompt
+        | Hint
+        | Details
+        | Ok
+        | Debug
+        | Success
+        | Ansi_styles of Ansi_color.Style.t list
+    end
+  end
+
   module Target : sig
     type t =
       | Path of string
@@ -121,6 +216,7 @@ module V1 : sig
 
       val loc : t -> Loc.t
       val message : t -> unit Pp.t
+      val message_with_style : t -> User_message.Style.t Pp.t
     end
 
     type t
@@ -129,6 +225,7 @@ module V1 : sig
     val loc : t -> Loc.t option
     val id : t -> Id.t
     val message : t -> unit Pp.t
+    val message_with_style : t -> User_message.Style.t Pp.t
     val severity : t -> severity option
     val promotion : t -> Promotion.t list
 

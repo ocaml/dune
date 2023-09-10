@@ -32,7 +32,6 @@ let diagnostic_of_error : Build_system_error.t -> Dune_rpc_private.Diagnostic.t 
     | `Diagnostic { Compound_user_error.main = message; related } -> message, related
   in
   let loc = Option.map message.loc ~f:make_loc in
-  let make_message pars = Pp.map_tags (Pp.concat pars) ~f:(fun _ -> ()) in
   let id =
     Build_system_error.id m |> Build_system_error.Id.to_int |> Diagnostic.Id.create
   in
@@ -48,14 +47,28 @@ let diagnostic_of_error : Build_system_error.t -> Dune_rpc_private.Diagnostic.t 
   in
   let related =
     List.map related ~f:(fun (related : User_message.t) ->
-      { Dune_rpc_private.Diagnostic.Related.message = make_message related.paragraphs
+      { Dune_rpc_private.Diagnostic.Related.message = Pp.concat related.paragraphs
       ; loc = make_loc (Option.value_exn related.loc)
       })
+  in
+  let message =
+    let paragraphs =
+      let paragraphs = message.paragraphs in
+      match message.hints with
+      | [] -> paragraphs
+      | _ ->
+        let open Pp.O in
+        List.append
+          paragraphs
+          (List.map message.hints ~f:(fun hint ->
+             Pp.tag User_message.Style.Hint (Pp.verbatim "Hint:") ++ Pp.space ++ hint))
+    in
+    List.map paragraphs ~f:Pp.box |> Pp.concat ~sep:Pp.cut |> Pp.vbox
   in
   { Dune_rpc_private.Diagnostic.severity = Some Dune_rpc_private.Diagnostic.Error
   ; id
   ; targets = []
-  ; message = make_message message.paragraphs
+  ; message
   ; loc
   ; promotion
   ; related

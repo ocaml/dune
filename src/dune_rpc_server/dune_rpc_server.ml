@@ -2,6 +2,7 @@ open Stdune
 open Dune_rpc_private
 open Fiber.O
 module Session_id = Stdune.Id.Make ()
+module User_message = Stdune.User_message
 
 type error =
   { message : User_message.t

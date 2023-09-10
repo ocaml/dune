@@ -35,10 +35,10 @@ let findlib =
     ; model = ""
     ; natdynlink_supported = Dynlink_supported.By_the_os.of_bool true
     ; ext_dll = ".so"
-    ; stdlib_dir = Path.root
+    ; stdlib_dir = Path.source @@ Path.Source.(relative root) "stdlib"
     ; ccomp_type = Other "gcc"
     ; ocaml_version_string = "4.02.3"
-    ; ocaml_version = Ocaml.Version.make (4, 2, 3)
+    ; ocaml_version = Ocaml.Version.make (4, 14, 1)
     }
   in
   Memo.lazy_ (fun () ->
@@ -62,33 +62,59 @@ let elide_db_path path =
 
 let print_pkg_archives pkg =
   let pkg = resolve_pkg pkg in
-  let pkg =
-    match pkg with
-    | Ok (Library x) ->
-      Ok
-        (Ocaml.Mode.Dict.map
-           (Lib_info.archives (Dune_package.Lib.info x))
-           ~f:(List.map ~f:elide_db_path))
-    | Ok _ -> assert false
-    | Error _ as err -> err
+  let print_lib kind entry =
+    let entry =
+      Dune_package.Lib.info entry
+      |> Lib_info.archives
+      |> Ocaml.Mode.Dict.map ~f:(List.map ~f:elide_db_path)
+      |> Ocaml.Mode.Dict.to_dyn (Dyn.list Dyn.string)
+    in
+    Dyn.variant
+      (match kind with
+       | `Available -> "Available"
+       | `Hidden -> "Hidden")
+      [ entry ]
+    |> print_dyn
   in
-  let to_dyn =
-    Result.to_dyn
-      (Ocaml.Mode.Dict.to_dyn (Dyn.list Dyn.string))
-      Findlib.Unavailable_reason.to_dyn
-  in
-  let pp = Dyn.pp (to_dyn pkg) in
-  Format.printf "%a@." Pp.to_fmt pp
+  match pkg with
+  | Ok (Library x) -> print_lib `Available x
+  | Ok (Hidden_library x) -> print_lib `Hidden x
+  | Ok e -> Dune_package.Entry.to_dyn e |> print_dyn
+  | Error err -> Findlib.Unavailable_reason.to_dyn err |> print_dyn
 ;;
 
 let%expect_test _ =
   print_pkg_archives "qux";
-  [%expect {| Ok { byte = [ "/qux/qux.cma" ]; native = [] } |}]
+  [%expect {| Available { byte = [ "/qux/qux.cma" ]; native = [] } |}]
 ;;
 
 let%expect_test _ =
   print_pkg_archives "xyz";
-  [%expect {| Ok { byte = [ "/xyz.cma" ]; native = [] } |}]
+  [%expect {| Available { byte = [ "/xyz.cma" ]; native = [] } |}]
+;;
+
+let () = Printexc.record_backtrace true
+
+let%expect_test "configurator" =
+  print_pkg_archives "dune.configurator";
+  [%expect
+    {|
+    Deprecated_library_name
+      { old_public_name = "dune.configurator"
+      ; new_public_name = "dune-configurator"
+      } |}]
+;;
+
+let%expect_test "builtins" =
+  print_pkg_archives "str";
+  [%expect
+    {|
+    Hidden { byte = [ "stdlib/str.cma" ]; native = [ "stdlib/str.cmxa" ] } |}];
+  print_pkg_archives "dynlink";
+  [%expect
+    {|
+    Hidden
+      { byte = [ "stdlib/dynlink.cma" ]; native = [ "stdlib/dynlink.cmxa" ] } |}]
 ;;
 
 let%expect_test _ =

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694381422729,
+  "lastUpdate": 1694381921749,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -29259,6 +29259,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.40103406054667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9f95872f6125ed90abda53c8e9790ad8d70bad75",
+          "message": "refactor: simplify findlib (#8621)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-10T22:15:21+01:00",
+          "tree_id": "925ea8462242bfed34422a3a32ae8504787d4757",
+          "url": "https://github.com/ocaml/dune/commit/9f95872f6125ed90abda53c8e9790ad8d70bad75"
+        },
+        "date": 1694381919004,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "47.129507199993334",
             "unit": "seconds"
           }
         ]

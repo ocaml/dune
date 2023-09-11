@@ -48,7 +48,7 @@ jobs:
           - ocaml-compiler: 4.13.x
             os: ubuntu-latest
             skip_test: true
-          - ocaml-compiler: 4.08.x
+          - ocaml-compiler: 4.10.x
             os: ubuntu-latest
             skip_test: true
           - ocaml-compiler: 4.04.x

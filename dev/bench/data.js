@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694422180181,
+  "lastUpdate": 1694422350130,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -93901,6 +93901,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "24.917590140506665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "34f727cb98361a8d4a7d99448c28f55bffc66914",
+          "message": "refactor: move [root_packages] to [Loader] (#8624)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-11T09:35:27+01:00",
+          "tree_id": "f3311f31c2fe971b1b0ac65cd5221acd72d1b63c",
+          "url": "https://github.com/ocaml/dune/commit/34f727cb98361a8d4a7d99448c28f55bffc66914"
+        },
+        "date": 1694422334409,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "32.48925504156",
             "unit": "seconds"
           }
         ]

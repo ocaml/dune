@@ -64,22 +64,6 @@ let hash { stdlib_dir; paths; builtins; ext_lib } =
 
 let findlib_predicates_set_by_dune = Ps.of_list [ P.ppx_driver; P.mt; P.mt_posix ]
 
-let check_dot_dune_exists ~dir ~dir_contents name =
-  match dir_contents with
-  | Error _ -> ()
-  | Ok fnames ->
-    let fname = sprintf "%s.dune" (Lib_name.to_string name) in
-    if List.mem fnames fname ~equal:String.equal
-    then
-      User_warning.emit
-        ~loc:(Loc.in_file (Path.relative dir fname))
-        [ Pp.text
-            ".dune files are ignored since 2.0. Reinstall the library with dune >= 2.0 \
-             to get rid of this warning and enable support for the subsystem this \
-             library provides."
-        ]
-;;
-
 let has_double_underscore s =
   let len = String.length s in
   len >= 2
@@ -98,7 +82,6 @@ let has_double_underscore s =
 let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib =
   let loc = Loc.in_file t.meta_file in
   let add_loc x = loc, x in
-  check_dot_dune_exists ~dir:t.dir ~dir_contents t.name;
   let archives = Findlib.Package.archives t in
   let obj_dir = Obj_dir.make_external_no_private ~dir:t.dir in
   let modes : Lib_mode.Map.Set.t =

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694467254784,
+  "lastUpdate": 1694467693440,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -29404,6 +29404,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "47.93492818954667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "eb079ecbbaf1003608405f27107d35a3dfa89330",
+          "message": "refactor(engine): remove install paths (#8537)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-11T22:07:36+01:00",
+          "tree_id": "e512f3da56934dca921ec11dacb93fcba106b857",
+          "url": "https://github.com/ocaml/dune/commit/eb079ecbbaf1003608405f27107d35a3dfa89330"
+        },
+        "date": 1694467691833,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.25098634826666",
             "unit": "seconds"
           }
         ]

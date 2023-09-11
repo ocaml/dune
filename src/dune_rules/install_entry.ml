@@ -99,7 +99,11 @@ module File = struct
               let dst = Filename.concat prefix path_without_prefix in
               prefix_loc, dst
           in
-          File_binding.Unexpanded.make ~src ~dst ~dune_syntax)
+          File_binding.Unexpanded.make
+            ~src
+            ~dst
+            ~dune_syntax
+            ~dir:(Some (Path.Build.drop_build_context_exn dir)))
     ;;
 
     let to_file_bindings_expanded t ~expand_str ~dir ~dune_syntax =
@@ -156,7 +160,7 @@ module File = struct
 
   let to_file_bindings_expanded ts ~expand_str ~dir =
     let open Memo.O in
-    let+ file_bindings_expanded =
+    let* file_bindings_expanded =
       Memo.List.concat_map ts ~f:(fun { entry; dune_syntax } ->
         let+ with_include_expanded =
           Recursive_include.expand_include entry ~expand_str ~dir
@@ -174,11 +178,14 @@ module File = struct
     (* Note that validation is deferred until after file bindings have been
        expanded as a path may be invalid due to the contents of a variable
        whose value is unknown until prior to this point. *)
-    List.iter
-      file_bindings_expanded
-      ~f:
-        (File_binding.Expanded.validate_for_install_stanza
-           ~relative_dst_path_starts_with_parent_error_when:`Deprecation_warning_from_3_11);
+    let+ () =
+      Memo.parallel_iter
+        file_bindings_expanded
+        ~f:
+          (File_binding.Expanded.validate_for_install_stanza
+             ~relative_dst_path_starts_with_parent_error_when:
+               `Deprecation_warning_from_3_11)
+    in
     file_bindings_expanded
   ;;
 end
@@ -201,7 +208,7 @@ module Dir = struct
     ~relative_dst_path_starts_with_parent_error_when
     =
     let open Memo.O in
-    let+ file_bindings_expanded =
+    let* file_bindings_expanded =
       Memo.List.concat_map ts ~f:(Recursive_include.expand_include ~expand_str ~dir)
       >>= Memo.List.map
             ~f:
@@ -212,11 +219,13 @@ module Dir = struct
     (* Note that validation is deferred until after file bindings have been
        expanded as a path may be invalid due to the contents of a variable
        whose value is unknown until prior to this point. *)
-    List.iter
-      file_bindings_expanded
-      ~f:
-        (File_binding.Expanded.validate_for_install_stanza
-           ~relative_dst_path_starts_with_parent_error_when);
+    let+ () =
+      Memo.parallel_iter
+        file_bindings_expanded
+        ~f:
+          (File_binding.Expanded.validate_for_install_stanza
+             ~relative_dst_path_starts_with_parent_error_when)
+    in
     file_bindings_expanded
   ;;
 end

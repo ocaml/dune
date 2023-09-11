@@ -13,7 +13,7 @@ module Expanded : sig
     :  t
     -> relative_dst_path_starts_with_parent_error_when:
          [ `Deprecation_warning_from_3_11 | `Always_error ]
-    -> unit
+    -> unit Memo.t
 end
 
 module Unexpanded : sig
@@ -21,7 +21,14 @@ module Unexpanded : sig
 
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
-  val make : src:Loc.t * string -> dst:Loc.t * string -> dune_syntax:Syntax.Version.t -> t
+
+  val make
+    :  src:Loc.t * string
+    -> dst:Loc.t * string
+    -> dune_syntax:Syntax.Version.t
+    -> dir:Path.Source.t option
+    -> t
+
   val decode : t Dune_lang.Decoder.t
   val dune_syntax : t -> Syntax.Version.t
 

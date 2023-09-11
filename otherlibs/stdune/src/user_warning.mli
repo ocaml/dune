@@ -16,5 +16,9 @@ val emit
   -> User_message.Style.t Pp.t list
   -> unit
 
+(** [emit_message m] is like [emit], but allow you to provide the message as
+    [m] instead of the arguments to construct the messagee. *)
+val emit_message : User_message.t -> unit
+
 (** Set the warning reporter. The default one is [User_message.prerr]. *)
 val set_reporter : (User_message.t -> unit) -> unit

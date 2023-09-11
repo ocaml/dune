@@ -368,17 +368,19 @@ let gen_project_rules sctx project : unit Memo.t =
        with
        | false -> Memo.return ()
        | true ->
-         let+ vendored = Source_tree.is_vendored (Dune_project.root project) in
-         if not vendored
-         then (
-           let loc = Loc.in_file (Path.source (Dune_project.file project)) in
-           User_warning.emit
-             ~loc
-             [ Pp.text
-                 "Project name is not specified. Add a (name <project-name>) field to \
-                  your dune-project file to make sure that $ dune subst works in release \
-                  or pinned builds"
-             ]))
+         Warning_emit.emit
+           Warning.missing_project_name
+           (Warning_emit.Context.project project)
+           (fun () ->
+             let+ () = Memo.return () in
+             let loc = Loc.in_file (Path.source (Dune_project.file project)) in
+             User_message.make
+               ~loc
+               [ Pp.text
+                   "Project name is not specified. Add a (name <project-name>) field to \
+                    your dune-project file to make sure that $ dune subst works in \
+                    release or pinned builds"
+               ]))
   in
   ()
 ;;

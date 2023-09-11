@@ -525,9 +525,11 @@ let all_broken_packages t =
 
 let create ~paths ~(lib_config : Lib_config.t) =
   let stdlib_dir = lib_config.stdlib_dir in
-  let version = lib_config.ocaml_version in
   let ext_lib = lib_config.ext_lib in
-  let+ builtins = Meta.builtins ~stdlib_dir ~version in
+  let+ builtins =
+    let version = lib_config.ocaml_version in
+    Meta.builtins ~stdlib_dir ~version
+  in
   { stdlib_dir; paths; builtins; ext_lib }
 ;;
 

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694426331625,
+  "lastUpdate": 1694426345472,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -73136,6 +73136,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "78.84648127114667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8eb5af41c8a14cc2d9e809d891f35f84a3926b83",
+          "message": "feature: check package names are valid opam names (#8331)\n\nThis adds a `Package_name.Opam_compatible` variant that uses opam\r\nconventions.\r\nThe corresponding parser is used if lang dune >= 3.11.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-09-11T11:29:02+02:00",
+          "tree_id": "05023322f1c5b133a27fed2cd02af33fdf427c45",
+          "url": "https://github.com/ocaml/dune/commit/8eb5af41c8a14cc2d9e809d891f35f84a3926b83"
+        },
+        "date": 1694426344210,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.0763861076",
             "unit": "seconds"
           }
         ]

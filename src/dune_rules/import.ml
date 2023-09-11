@@ -97,7 +97,6 @@ module Build_config = struct
   module Gen_rules = struct
     open Build_config.Gen_rules
     module Build_only_sub_dirs = Build_only_sub_dirs
-    module Context_or_install = Context_or_install
     module Rules = Rules
 
     let make

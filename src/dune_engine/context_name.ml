@@ -19,7 +19,6 @@ include (
       if name = ""
          || String.is_prefix name ~prefix:"."
          || name = "log"
-         || name = "install"
          || String.contains name '/'
          || String.contains name '\\'
       then None

@@ -41,6 +41,9 @@ let check_path contexts =
        | Other _ -> internal_path ()
        | Alias (_, _) -> internal_path ()
        | Anonymous_action _ -> internal_path ()
-       | Install (name, src) -> In_install_dir (context_exn name, src)
-       | Regular (name, src) -> In_build_dir (context_exn name, src))
+       | Regular (name, src) ->
+         (match Install.Context.analyze_path name src with
+          | Invalid -> internal_path ()
+          | Install (ctx, path) -> In_install_dir (context_exn ctx, path)
+          | Normal (ctx, path) -> In_build_dir (context_exn ctx, path)))
 ;;

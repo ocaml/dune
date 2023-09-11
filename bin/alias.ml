@@ -29,7 +29,8 @@ let in_dir ~name ~recursive ~contexts dir =
     User_error.raise
       [ Pp.textf
           "Invalid alias: %s."
-          (Path.to_string_maybe_quoted (Path.build Dune_engine.Dpath.Build.install_dir))
+          (Path.to_string_maybe_quoted
+             (Path.build Install.Context.install_context.build_dir))
       ; Pp.textf "There are no aliases in %s." (Path.to_string_maybe_quoted dir)
       ]
   | In_build_dir (ctx, dir) ->

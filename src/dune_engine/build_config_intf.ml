@@ -1,10 +1,10 @@
 open Import
 module Action_builder = Action_builder0
 
-module Context_or_install = struct
+module Context_type = struct
   type t =
-    | Install of Context_name.t
-    | Context of Context_name.t
+    | Empty
+    | With_sources
 end
 
 module Build_only_sub_dirs = struct
@@ -34,7 +34,7 @@ end
 module Gen_rules_result = struct
   type t =
     | Rules of Rules.t
-    | Unknown_context_or_install
+    | Unknown_context
     | Redirect_to_parent of Rules.t
 end
 
@@ -50,7 +50,7 @@ module type Rule_generator = sig
 
       [gen_rules] may only generate rules whose targets are descendant of [dir]. *)
   val gen_rules
-    :  Context_or_install.t
+    :  Context_name.t
     -> dir:Path.Build.t
     -> string list
     -> Gen_rules_result.t Memo.t
@@ -76,10 +76,8 @@ module type Build_config = sig
   module Gen_rules : sig
     module type Rule_generator = Rule_generator
 
-    module Context_or_install : sig
-      include module type of Context_or_install with type t = Context_or_install.t
-
-      val to_dyn : t -> Dyn.t
+    module Context_type : sig
+      include module type of Context_type with type t = Context_type.t
     end
 
     module Build_only_sub_dirs : sig
@@ -114,7 +112,7 @@ module type Build_config = sig
 
       val redirect_to_parent : Rules.t -> t
       val rules_here : Rules.t -> t
-      val unknown_context_or_install : t
+      val unknown_context : t
       val no_rules : t
     end
   end
@@ -125,7 +123,7 @@ module type Build_config = sig
     :  action_runner:(Action_exec.input -> Action_runner.t option)
     -> action_runners:(unit -> Action_runner.t list)
     -> stats:Dune_stats.t option
-    -> contexts:Build_context.t list Memo.Lazy.t
+    -> contexts:(Build_context.t * Context_type.t) list Memo.Lazy.t
     -> promote_source:
          (chmod:(int -> int)
           -> delete_dst_if_it_is_a_directory:bool
@@ -145,7 +143,7 @@ module type Build_config = sig
     -> unit
 
   type t = private
-    { contexts : Build_context.t Context_name.Map.t Memo.Lazy.t
+    { contexts : (Build_context.t * Context_type.t) Context_name.Map.t Memo.Lazy.t
     ; rule_generator : (module Rule_generator)
     ; sandboxing_preference : Sandbox_mode.t list
     ; promote_source :

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694450068713,
+  "lastUpdate": 1694450083471,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -73223,6 +73223,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "83.29743929044666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4233793b28da99b03ed9f0954d3b7ddd8e18b241",
+          "message": "refactor: warning system (#8448)\n\nAdd a [Warning] module to handle warnings in a principled way in dune\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-11T17:03:27+01:00",
+          "tree_id": "7eed176bed0a396cb37fcee0d87b93f2596e7b4d",
+          "url": "https://github.com/ocaml/dune/commit/4233793b28da99b03ed9f0954d3b7ddd8e18b241"
+        },
+        "date": 1694450082163,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.2353482514133334",
             "unit": "seconds"
           }
         ]

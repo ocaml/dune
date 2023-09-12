@@ -69,8 +69,20 @@ corresponding Dune version.
     (run echo 6 %{pkg:foo:version})
     (run echo 9 %{pkg-self:installed})
     (run echo 10 %{pkg:foo:installed})
-    (run echo 11 %{pkg-self:enable})
-    (run echo 12 %{pkg:foo:enable})
+    (run
+     echo
+     11
+     (if
+      (catch_undefined_var %{pkg-self:installed} false)
+      enable
+      disable))
+    (run
+     echo
+     12
+     (if
+      (catch_undefined_var %{pkg:foo:installed} false)
+      enable
+      disable))
     (run echo 13 %{pkg-self:pinned})
     (run echo 14 %{pkg:foo:pinned})
     (run echo 15 %{pkg-self:bin})
@@ -103,36 +115,36 @@ corresponding Dune version.
 The values here are not important, but Dune should be able to interpret the variables.
 
   $ build_pkg testpkg
-  File "dune.lock/testpkg.pkg", line 33, characters 15-36:
-  33 |   (run echo 35 %{pkg-self:with-test})
+  File "dune.lock/testpkg.pkg", line 45, characters 15-36:
+  45 |   (run echo 35 %{pkg-self:with-test})
                       ^^^^^^^^^^^^^^^^^^^^^
-  Error: invalid section "with-test"
-  File "dune.lock/testpkg.pkg", line 34, characters 15-36:
-  34 |   (run echo 36 %{pkg-self:with-test})
+  Error: Undefined package variable "with-test"
+  File "dune.lock/testpkg.pkg", line 46, characters 15-36:
+  46 |   (run echo 36 %{pkg-self:with-test})
                       ^^^^^^^^^^^^^^^^^^^^^
-  Error: invalid section "with-test"
-  File "dune.lock/testpkg.pkg", line 35, characters 15-35:
-  35 |   (run echo 37 %{pkg:foo:with-test})
+  Error: Undefined package variable "with-test"
+  File "dune.lock/testpkg.pkg", line 47, characters 15-35:
+  47 |   (run echo 37 %{pkg:foo:with-test})
                       ^^^^^^^^^^^^^^^^^^^^
-  Error: invalid section "with-test"
-  File "dune.lock/testpkg.pkg", line 36, characters 15-35:
-  36 |   (run echo 38 %{pkg-self:with-doc})
+  Error: Undefined package variable "with-test"
+  File "dune.lock/testpkg.pkg", line 48, characters 15-35:
+  48 |   (run echo 38 %{pkg-self:with-doc})
                       ^^^^^^^^^^^^^^^^^^^^
-  Error: invalid section "with-doc"
-  File "dune.lock/testpkg.pkg", line 37, characters 15-35:
-  37 |   (run echo 39 %{pkg-self:with-doc})
+  Error: Undefined package variable "with-doc"
+  File "dune.lock/testpkg.pkg", line 49, characters 15-35:
+  49 |   (run echo 39 %{pkg-self:with-doc})
                       ^^^^^^^^^^^^^^^^^^^^
-  Error: invalid section "with-doc"
-  File "dune.lock/testpkg.pkg", line 38, characters 15-34:
-  38 |   (run echo 40 %{pkg:foo:with-doc})
+  Error: Undefined package variable "with-doc"
+  File "dune.lock/testpkg.pkg", line 50, characters 15-34:
+  50 |   (run echo 40 %{pkg:foo:with-doc})
                       ^^^^^^^^^^^^^^^^^^^
-  Error: invalid section "with-doc"
-  File "dune.lock/testpkg.pkg", line 39, characters 15-41:
-  39 |   (run echo 41 %{pkg-self:with-dev-setup})
+  Error: Undefined package variable "with-doc"
+  File "dune.lock/testpkg.pkg", line 51, characters 15-41:
+  51 |   (run echo 41 %{pkg-self:with-dev-setup})
                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: invalid section "with-dev-setup"
-  File "dune.lock/testpkg.pkg", line 40, characters 15-40:
-  40 |   (run echo 42 %{pkg:foo:with-dev-setup})))
+  Error: Undefined package variable "with-dev-setup"
+  File "dune.lock/testpkg.pkg", line 52, characters 15-40:
+  52 |   (run echo 42 %{pkg:foo:with-dev-setup})))
                       ^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: invalid section "with-dev-setup"
+  Error: Undefined package variable "with-dev-setup"
   [1]

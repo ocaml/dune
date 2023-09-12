@@ -175,86 +175,145 @@ module Summary = struct
   ;;
 end
 
-let opam_command_to_string_debug (args, _filter_opt) =
-  List.map args ~f:(fun (simple_arg, _filter_opt) ->
-    match simple_arg with
-    | OpamTypes.CString s -> String.quoted s
-    | CIdent ident -> ident)
-  |> String.concat ~sep:" "
+let is_valid_global_variable_name = function
+  | "root" -> false
+  | _ -> true
 ;;
 
-let filter_to_blang loc package filter =
-  let fident_to_blang packages variable string_converter =
-    if Option.is_some string_converter
-    then
-      Code_error.raise
-        "String converters in identifiers is not yet implemented"
-        [ "package", Dyn.string (OpamPackage.to_string package)
-        ; "filter", Dyn.string (OpamFilter.to_string filter)
-        ];
-    match packages with
-    | [] ->
-      let pform = Package_variable.pform_of_opam_ident (loc, variable) in
-      Blang.Expr (String_with_vars.make_pform Loc.none pform)
-    | packages ->
-      let blangs =
-        List.map packages ~f:(fun package ->
-          let pform =
-            let package_variable =
-              let scope =
-                match package with
-                | None -> Package_variable.Scope.Self
-                | Some package ->
-                  Package (Package_name.of_string (OpamPackage.Name.to_string package))
-              in
-              let variable_string = OpamVariable.to_string variable in
-              { Package_variable.name = Package_variable.Name.of_string variable_string
-              ; scope
-              }
-            in
-            Package_variable.to_pform package_variable
-          in
-          Blang.Expr (String_with_vars.make_pform Loc.none pform))
-      in
-      (match blangs with
-       | [ single_blang ] -> single_blang
-       | _ -> Blang.And blangs)
+let is_valid_package_variable_name = function
+  | "hash" | "build-id" | "misc" | "opam-version" | "depends" | "build" | "opamfile" ->
+    false
+  | _ -> true
+;;
+
+let invalid_variable_error ~loc variable =
+  User_error.raise
+    ~loc
+    [ Pp.textf "Variable %S is not supported." (OpamVariable.to_string variable) ]
+;;
+
+let opam_variable_to_slang ~loc packages variable =
+  let variable_string = OpamVariable.to_string variable in
+  let convert_with_package_name package_name =
+    if not (is_valid_package_variable_name variable_string)
+    then invalid_variable_error ~loc variable;
+    let pform =
+      match package_name with
+      | None ->
+        Package_variable.(
+          to_pform
+            { name = Package_variable.Name.of_string variable_string; scope = Self })
+      | Some package_name ->
+        Package_variable.(
+          to_pform
+            { name = Package_variable.Name.of_string variable_string
+            ; scope =
+                Package (Package_name.of_string (OpamPackage.Name.to_string package_name))
+            })
+    in
+    Slang.pform pform
   in
-  let filter_to_sw = function
-    | OpamTypes.FString string -> String_with_vars.make_text Loc.none string
-    | FIdent (packages, variable, string_converter) as filter ->
-      (match fident_to_blang packages variable string_converter with
-       | Blang.Expr sw -> sw
-       | _ ->
+  match packages with
+  | [] ->
+    if not (is_valid_global_variable_name variable_string)
+    then
+      (* Note that there's no syntactic distinction between global variables
+         and package variables in the current package. This check will prevent
+         invalid global variable names from being used for package variables in the
+         current package where the optional qualifier "_:" is omitted. *)
+      invalid_variable_error ~loc variable;
+    (match Pform.Var.of_opam_global_variable_name variable_string with
+     | Some global_var -> Slang.pform (Pform.Var global_var)
+     | None -> convert_with_package_name None)
+  | [ package_name ] -> convert_with_package_name package_name
+  | many ->
+    Slang.blang
+      (Blang.And
+         (List.map many ~f:(fun package_name ->
+            Blang.Expr (convert_with_package_name package_name))))
+;;
+
+let opam_fident_to_slang ~loc fident =
+  let packages, variable, string_converter = OpamFilter.desugar_fident fident in
+  let slang = opam_variable_to_slang ~loc packages variable in
+  match string_converter with
+  | None -> slang
+  | Some (then_, else_) ->
+    (* The "else" case is also used when evaluating the condition would expand
+       an undefined variable. The catch_undefined_var operator is used to
+       convert expressions that throw undefined variable exceptions into false.
+    *)
+    let condition =
+      Blang.Expr (Slang.catch_undefined_var slang ~fallback:(Slang.bool false))
+    in
+    Slang.if_ condition ~then_:(Slang.text then_) ~else_:(Slang.text else_)
+;;
+
+let opam_raw_fident_to_slang ~loc raw_ident =
+  OpamTypesBase.filter_ident_of_string raw_ident |> opam_fident_to_slang ~loc
+;;
+
+let opam_string_to_slang ~package ~loc opam_string =
+  Re.Seq.split_full OpamFilter.string_interp_regex opam_string
+  |> Seq.map ~f:(function
+    | `Text text -> Slang.text text
+    | `Delim group ->
+      (match Re.Group.get group 0 with
+       | "%%" -> Slang.text "%"
+       | interp
+         when String.is_prefix ~prefix:"%{" interp && String.is_suffix ~suffix:"}%" interp
+         ->
+         let ident = String.sub ~pos:2 ~len:(String.length interp - 4) interp in
+         opam_raw_fident_to_slang ~loc ident
+       | other ->
          User_error.raise
            ~loc
            [ Pp.textf
-               "Expected string or identifier but found conjunction of identifiers: %s"
-               (OpamFilter.to_string filter)
-           ; Pp.textf
-               "...while processing commands for package: %s"
+               "Encountered malformed variable interpolation while processing commands \
+                for package %s."
                (OpamPackage.to_string package)
-           ; Pp.textf "Full filter: %s" (OpamFilter.to_string filter)
-           ; Pp.text
-               "Note that name1+name2+name3:var is the conjunction of var for each of \
-                name1, name2 and name3, i.e it is equivalent to name1:var & name2:var & \
-                name3:var."
-           ])
+           ; Pp.text "The variable interpolation:"
+           ; Pp.text other
+           ]))
+  |> List.of_seq
+  |> Slang.concat
+;;
+
+(* Translate an Opam filter into Dune's "Slang" DSL. The main difference between
+   the two languages is in their treatment of undefined package variables. In
+   Opam filters, undefined variables take on the value <undefined> which
+   is "falsey" in some contexts and propagates through boolean operators if
+   their result could be affected by the <undefined> term. Slang doesn't have an
+   <undefined> value but raises an exception when an undefined variable is
+   expanded. There are two operators in Slang for handling exceptions:
+
+   - "(has_undefined_var <arg>)" evaluates <arg>, discarding the result, and
+     returns a boolean which is true iff evaluating <arg> failed due to an
+     undefined variable
+   - "(catch_undefined_var <value> <fallback>)" evaluates <value> and returns
+     the result unless evaluation failed due to an undefined variable, in which
+     case the result of <fallback> is returned
+
+   These two Slang operators are used to emulate Opam's undefined value
+   semantics.
+*)
+let filter_to_blang ~package ~loc filter =
+  let filter_to_slang = function
+    | OpamTypes.FString s -> opam_string_to_slang ~package ~loc s
+    | FIdent fident -> opam_fident_to_slang ~loc fident
     | other ->
       Code_error.raise
-        "The opam file parser shouldn't only allow identifiers and strings in places \
-         where strings are expected"
+        "The opam file parser should only allow identifiers and strings in places where \
+         strings are expected"
         [ "package", Dyn.string (OpamPackage.to_string package)
         ; "full filter", Dyn.string (OpamFilter.to_string filter)
         ; "non-string filter", Dyn.string (OpamFilter.to_string other)
         ]
   in
   let rec filter_to_blang = function
-    | OpamTypes.FBool true -> Blang.true_
-    | FBool false -> Blang.false_
-    | FString _ as sw_filter -> Blang.Expr (filter_to_sw sw_filter)
-    | FIdent (packages, variable, string_converter) ->
-      fident_to_blang packages variable string_converter
+    | OpamTypes.FBool true -> Blang.Ast.true_
+    | FBool false -> Blang.Ast.false_
+    | (FString _ | FIdent _) as slangable -> Blang.Expr (filter_to_slang slangable)
     | FOp (lhs, op, rhs) ->
       let op =
         match op with
@@ -265,16 +324,17 @@ let filter_to_blang loc package filter =
         | `Leq -> Lte
         | `Lt -> Lt
       in
-      Blang.Compare (op, filter_to_sw lhs, filter_to_sw rhs)
-    | FAnd (a, b) -> Blang.And [ filter_to_blang a; filter_to_blang b ]
-    | FOr (a, b) -> Blang.Or [ filter_to_blang a; filter_to_blang b ]
+      Blang.Compare (op, filter_to_slang lhs, filter_to_slang rhs)
+    | FAnd (lhs, rhs) ->
+      Blang.Expr
+        (Slang.and_absorb_undefined_var [ filter_to_blang lhs; filter_to_blang rhs ])
+    | FOr (lhs, rhs) ->
+      Blang.Expr
+        (Slang.or_absorb_undefined_var [ filter_to_blang lhs; filter_to_blang rhs ])
     | FNot f -> Blang.Not (filter_to_blang f)
-    | FDefined _ ->
-      Code_error.raise
-        "The `?` unary operator operator is not yet implemented."
-        [ "package", Dyn.string (OpamPackage.to_string package)
-        ; "filter", Dyn.string (OpamFilter.to_string filter)
-        ]
+    | FDefined f ->
+      let blang = filter_to_blang f in
+      Blang.Not (Blang.Expr (Slang.has_undefined_var (Slang.blang blang)))
     | FUndef _ ->
       Code_error.raise
         "Encountered undefined filter which should not be possible since no filter \
@@ -287,53 +347,35 @@ let filter_to_blang loc package filter =
 ;;
 
 let opam_commands_to_actions loc package (commands : OpamTypes.command list) =
-  List.filter_map commands ~f:(fun ((args, filter) as command) ->
+  List.filter_map commands ~f:(fun (args, filter) ->
     let terms =
-      let interpolate_opam_variables s =
-        Re.Seq.split_full OpamFilter.string_interp_regex s
-        |> Seq.map ~f:(function
-          | `Text text -> `Text text
-          | `Delim group ->
-            (match Re.Group.get group 0 with
-             | "%%" -> `Text "%"
-             | var ->
-               (match String.drop_prefix_and_suffix var ~prefix:"%{" ~suffix:"}%" with
-                | Some var ->
-                  let ident = OpamVariable.of_string var in
-                  `Pform (Package_variable.pform_of_opam_ident (loc, ident))
-                | None ->
-                  User_error.raise
-                    ~loc
-                    [ Pp.textf
-                        "Encountered malformed variable interpolation while processing \
-                         commands for package %s."
-                        (OpamPackage.to_string package)
-                    ; Pp.text "The variable interpolation:"
-                    ; Pp.verbatim var
-                    ; Pp.text "The full command:"
-                    ; Pp.verbatim (opam_command_to_string_debug command)
-                    ])))
-        |> List.of_seq
-        |> String_with_vars.make Loc.none
-      in
-      List.map args ~f:(fun (simple_arg, _filter_opt) ->
-        match simple_arg with
-        | OpamTypes.CString s -> interpolate_opam_variables s
-        | CIdent ident ->
-          String_with_vars.make_pform
-            Loc.none
-            (Package_variable.pform_of_opam_ident (loc, OpamVariable.of_string ident)))
+      List.map args ~f:(fun (simple_arg, filter_opt) ->
+        let slang =
+          match simple_arg with
+          | OpamTypes.CString s -> opam_string_to_slang ~package ~loc s
+          | CIdent ident -> opam_raw_fident_to_slang ~loc ident
+        in
+        let slang = Slang.simplify slang in
+        match filter_opt with
+        | None -> slang
+        | Some filter ->
+          let filter_blang =
+            filter_to_blang ~package ~loc filter |> Slang.simplify_blang
+          in
+          Slang.when_ filter_blang slang)
     in
-    match terms with
-    | [] -> None
-    | program :: args ->
+    if List.is_empty terms
+    then None
+    else (
       let action =
-        let action = Action.run program args in
+        let action = Action.Run terms in
         match filter with
         | None -> action
-        | Some filter -> Action.When (filter_to_blang loc package filter, action)
+        | Some filter ->
+          let condition = filter_to_blang ~package ~loc filter |> Slang.simplify_blang in
+          Action.When (condition, action)
       in
-      Some action)
+      Some action))
 ;;
 
 let opam_env_update_to_env_update ((var, env_op, value_string, _) : OpamTypes.env_update)
@@ -367,18 +409,34 @@ let opam_file_map_of_dune_package_map dune_package_map =
   |> OpamPackage.Name.Map.of_list
 ;;
 
+let remove_filters_from_command ((command, _filter) : OpamTypes.command)
+  : OpamTypes.command
+  =
+  let command = List.map command ~f:(fun (term, _filter) -> term, None) in
+  command, None
+;;
+
+let remove_filters_from_opam_file opam_file =
+  opam_file
+  |> OpamFile.OPAM.with_build
+       (List.map ~f:remove_filters_from_command (OpamFile.OPAM.build opam_file))
+  |> OpamFile.OPAM.with_install
+       (List.map ~f:remove_filters_from_command (OpamFile.OPAM.install opam_file))
+;;
+
 let opam_package_to_lock_file_pkg
   context_for_dune
   ~all_package_names
   ~repos
   ~local_packages
+  ~experimental_translate_opam_filters
   opam_package
   =
   let name = OpamPackage.name opam_package in
   let version = OpamPackage.version opam_package |> OpamPackage.Version.to_string in
   let dev = OpamPackage.Name.Map.mem name local_packages in
   let opam_file, loc =
-    let { Opam_repo.With_file.opam_file; file } =
+    let { Opam_repo.With_file.opam_file = opam_file_with_filters; file } =
       match OpamPackage.Name.Map.find_opt name local_packages with
       | Some local_package -> local_package
       | None ->
@@ -389,6 +447,11 @@ let opam_package_to_lock_file_pkg
         (match opam_files with
          | [ opam_file ] -> opam_file
          | _ -> Code_error.raise "Couldn't map opam package to a repository" [])
+    in
+    let opam_file =
+      if experimental_translate_opam_filters
+      then opam_file_with_filters
+      else remove_filters_from_opam_file opam_file_with_filters
     in
     let loc = Loc.in_file file in
     opam_file, loc
@@ -464,7 +527,11 @@ let opam_package_to_lock_file_pkg
         in
         match filter with
         | None -> action
-        | Some filter -> Action.When (filter_to_blang loc opam_package filter, action))
+        | Some filter ->
+          Action.When
+            ( filter_to_blang ~package:opam_package ~loc:Loc.none filter
+              |> Slang.simplify_blang
+            , action ))
     in
     let build_step =
       opam_commands_to_actions loc opam_package (OpamFile.OPAM.build opam_file)
@@ -545,7 +612,13 @@ module Solver_result = struct
     }
 end
 
-let solve_lock_dir solver_env version_preference repos ~local_packages =
+let solve_lock_dir
+  solver_env
+  version_preference
+  repos
+  ~local_packages
+  ~experimental_translate_opam_filters
+  =
   let local_packages = opam_file_map_of_dune_package_map local_packages in
   let is_local_package package =
     OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
@@ -575,6 +648,7 @@ let solve_lock_dir solver_env version_preference repos ~local_packages =
               ~all_package_names
               ~repos
               ~local_packages
+              ~experimental_translate_opam_filters
               opam_package
           in
           pkg.info.name, pkg)

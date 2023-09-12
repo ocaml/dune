@@ -52,6 +52,9 @@ val has_pforms : t -> bool
 (** If [t] contains no variable, returns the contents of [t]. *)
 val text_only : t -> string option
 
+(** If [t] contains a single pform, return the pform. *)
+val pform_only : t -> Pform.t option
+
 module Mode : sig
   (** How many values expansion of a template must produce.
 
@@ -101,6 +104,15 @@ module type Expander = sig
       returns [None] for any variable (no substitution was found), then this
       function will raise. *)
   val expand : t -> mode:'a Mode.t -> dir:Path.t -> f:Value.t list app expander -> 'a app
+
+  (** Behaves the same as [expand] except the pform expander [f] returns a
+      result and errors are propagated *)
+  val expand_result
+    :  t
+    -> mode:'a Mode.t
+    -> dir:Path.t
+    -> f:(Value.t list, 'error) result app expander
+    -> ('a, 'error) result app
 
   (** [expand_as_much_as_possible] expands all variables for which [f] returns
       [None] and left other unexpanded. *)

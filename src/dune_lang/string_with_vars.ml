@@ -249,6 +249,13 @@ module type Expander = sig
 
   val expand : t -> mode:'a Mode.t -> dir:Path.t -> f:Value.t list app expander -> 'a app
 
+  val expand_result
+    :  t
+    -> mode:'a Mode.t
+    -> dir:Path.t
+    -> f:(Value.t list, 'error) result app expander
+    -> ('a, 'error) result app
+
   val expand_as_much_as_possible
     :  t
     -> dir:Path.t
@@ -259,22 +266,27 @@ end
 module Make_expander (A : Applicative) : Expander with type 'a app := 'a A.t = struct
   open A.O
 
-  let expand
-    : type a. t -> mode:a Mode.t -> dir:Path.t -> f:Value.t list A.t expander -> a A.t
+  let expand_result
+    : type a.
+      t
+      -> mode:a Mode.t
+      -> dir:Path.t
+      -> f:(Value.t list, 'error) result A.t expander
+      -> (a, 'error) result A.t
     =
     fun t ~mode ~dir ~f ->
     match t.parts with
     (* Optimizations for some common cases *)
-    | [] -> A.return (Mode.string mode "")
-    | [ Text s ] -> A.return (Mode.string mode s)
+    | [] -> A.return (Ok (Mode.string mode ""))
+    | [ Text s ] -> A.return (Ok (Mode.string mode s))
     | [ Pform (source, p) ] when not t.quoted ->
       let+ v = f ~source p in
-      Mode.value mode v ~source
+      Result.map v ~f:(Mode.value mode ~source)
     | _ ->
       let+ chunks =
         A.all
           (List.map t.parts ~f:(function
-            | Text s -> A.return [ s ]
+            | Text s -> A.return (Ok [ s ])
             | Error (_, msg) ->
               (* The [let+ () = A.return () in ...] is to delay the error until
                  the evaluation of the applicative *)
@@ -282,13 +294,29 @@ module Make_expander (A : Applicative) : Expander with type 'a app := 'a A.t = s
               raise (User_error.E msg)
             | Pform (source, p) ->
               let+ v = f ~source p in
-              if t.quoted
-              then [ Value.L.concat ~dir v ]
-              else (
-                let vs = Mode.value Many v ~source in
-                List.map ~f:(Value.to_string ~dir) vs)))
+              Result.map v ~f:(fun v ->
+                if t.quoted
+                then [ Value.L.concat ~dir v ]
+                else (
+                  let vs = Mode.value Many v ~source in
+                  List.map ~f:(Value.to_string ~dir) vs))))
       in
-      Mode.string mode (String.concat (List.concat chunks) ~sep:"")
+      Result.map (Result.List.all chunks) ~f:(fun chunks ->
+        Mode.string mode (String.concat (List.concat chunks) ~sep:""))
+  ;;
+
+  type empty = |
+
+  let expand
+    : type a. t -> mode:a Mode.t -> dir:Path.t -> f:Value.t list A.t expander -> a A.t
+    =
+    fun t ~mode ~dir ~f ->
+    let f : (Value.t list, empty) result A.t expander =
+      fun ~source pform -> f ~source pform |> A.map ~f:Result.ok
+    in
+    let+ result = expand_result t ~mode ~dir ~f in
+    match result with
+    | Ok x -> x
   ;;
 
   let expand_as_much_as_possible t ~dir ~f =
@@ -332,6 +360,12 @@ let is_pform t pform =
 let text_only t =
   match t.parts with
   | [ Text s ] -> Some s
+  | _ -> None
+;;
+
+let pform_only t =
+  match t.parts with
+  | [ Pform (_, p) ] -> Some p
   | _ -> None
 ;;
 

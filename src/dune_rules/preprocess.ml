@@ -197,26 +197,28 @@ let remove_future_syntax (t : 'a t) ~(for_ : Pp_flag_consumer.t) v
     else
       Action
         ( loc
-        , Run
-            ( String_with_vars.make_pform
-                loc
-                (Macro
-                   { macro = Bin; payload = Pform.Payload.of_string "ocaml-syntax-shims" })
-            , (match for_ with
-               | Compiler -> [ String_with_vars.make_text loc "-dump-ast" ]
-               | Merlin ->
-                 (* We generate a text file instead of AST. That gives you less
-                    precise locations, but at least Merlin doesn't fail outright.
+        , Dune_lang.Action.run
+            (String_with_vars.make_pform
+               loc
+               (Macro
+                  { Pform.Macro_invocation.macro = Bin
+                  ; payload = Pform.Payload.of_args [ "ocaml-syntax-shims" ]
+                  }))
+            ((match for_ with
+              | Compiler -> [ String_with_vars.make_text loc "-dump-ast" ]
+              | Merlin ->
+                (* We generate a text file instead of AST. That gives you less
+                   precise locations, but at least Merlin doesn't fail outright.
 
-                    In general this hack should be applied to all -pp commands
-                    that might produce an AST, not just to Future_syntax. But
-                    doing so means we need to change dune language so the user
-                    can provide two versions of the command.
+                   In general this hack should be applied to all -pp commands
+                   that might produce an AST, not just to Future_syntax. But
+                   doing so means we need to change dune language so the user
+                   can provide two versions of the command.
 
-                    Hopefully this will be fixed in merlin before that becomes a
-                    necessity. *)
-                 [])
-              @ [ String_with_vars.make_pform loc (Var Input_file) ] ) )
+                   Hopefully this will be fixed in merlin before that becomes a
+                   necessity. *)
+                [])
+             @ [ String_with_vars.make_pform loc (Var Input_file) ]) )
 ;;
 
 module Per_module = struct

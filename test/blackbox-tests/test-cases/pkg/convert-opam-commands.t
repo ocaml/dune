@@ -66,13 +66,15 @@ Package for exercising opam filters on commands:
   >   [ "echo" "k" ] { foo:installed }
   >   [ "echo" "l" ] { foo:version < "0.4" }
   >   [ "echo" "m" ] { foo+bar+baz:installed }
+  >   [ "echo" "n" ] { ? madeup }
+  >   [ "echo" "o" ] { ? installed }
   > ]
   > EOF
 
-Package with incorrect package variable conjunction where string was expected:
-  $ mkpkg filter-error-invalid-conjunction <<EOF
+Package for exercising opam filters on terms:
+  $ mkpkg exercise-term-filters <<EOF
   > build: [
-  >   [ "echo" "a" ] { foo+bar+baz:version < "0.4" }
+  >   [ "echo" "a" "b" { foo } "c" { bar & baz } ]
   > ]
   > EOF
 
@@ -83,7 +85,7 @@ Package which has boolean where string was expected. This should be caught while
   > ]
   > EOF
 
-  $ solve standard-dune with-interpolation with-percent-sign variable-types
+  $ solve_translate_opam_filters standard-dune with-interpolation with-percent-sign variable-types
   Solution for dune.lock:
   standard-dune.0.0.1
   variable-types.0.0.1
@@ -102,7 +104,16 @@ Package which has boolean where string was expected. This should be caught while
     (when
      %{pkg-self:dev}
      (run dune subst))
-    (run dune build -p %{pkg-self:name} -j %{jobs} @install @runtest @doc)))
+    (run
+     dune
+     build
+     -p
+     %{pkg-self:name}
+     -j
+     %{jobs}
+     @install
+     (when %{pkg-self:with-test} @runtest)
+     (when %{pkg-self:with-doc} @doc))))
 
   $ cat dune.lock/with-interpolation.pkg
   (version 0.0.1)
@@ -131,17 +142,15 @@ Package which has boolean where string was expected. This should be caught while
     (run echo %{pkg:foo:package_var})
     (run echo %{os_family})))
 
-  $ solve with-malformed-interpolation
+  $ solve_translate_opam_filters with-malformed-interpolation
   File "$TESTCASE_ROOT/mock-opam-repository/packages/with-malformed-interpolation/with-malformed-interpolation.0.0.1/opam", line 1, characters 0-0:
   Error: Encountered malformed variable interpolation while processing commands
   for package with-malformed-interpolation.0.0.1.
   The variable interpolation:
   %{prefix
-  The full command:
-  "./configure" "--prefix=%{prefix"
   [1]
 
-  $ solve exercise-filters
+  $ solve_translate_opam_filters exercise-filters
   Solution for dune.lock:
   exercise-filters.0.0.1
   
@@ -155,24 +164,24 @@ Package which has boolean where string was expected. This should be caught while
      %{pkg-self:foo}
      (run echo a))
     (when
-     (and %{pkg-self:foo} %{pkg-self:bar})
+     (and_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
      (run echo b))
     (when
-     (and
-      (and %{pkg-self:foo} %{pkg-self:bar})
+     (and_absorb_undefined_var
+      (and_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
       %{pkg-self:baz})
      (run echo c))
     (when
-     (or %{pkg-self:foo} %{pkg-self:bar})
+     (or_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
      (run echo d))
     (when
-     (or
+     (or_absorb_undefined_var
       %{pkg-self:foo}
-      (and %{pkg-self:bar} %{pkg-self:baz}))
+      (and_absorb_undefined_var %{pkg-self:bar} %{pkg-self:baz}))
      (run echo e))
     (when
-     (and
-      (or %{pkg-self:foo} %{pkg-self:bar})
+     (and_absorb_undefined_var
+      (or_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
       %{pkg-self:baz})
      (run echo f))
     (when
@@ -182,7 +191,7 @@ Package which has boolean where string was expected. This should be caught while
      (< %{pkg-self:version} 1.0)
      (run echo g))
     (when
-     (and
+     (and_absorb_undefined_var
       %{pkg-self:with-test}
       (< %{pkg:ocaml:version} 5.0.0))
      (run echo h))
@@ -200,22 +209,166 @@ Package which has boolean where string was expected. This should be caught while
      (run echo l))
     (when
      (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg:baz:installed})
-     (run echo m))))
+     (run echo m))
+    (when
+     (not
+      (has_undefined_var %{pkg-self:madeup}))
+     (run echo n))
+    (when
+     (not
+      (has_undefined_var %{pkg-self:installed}))
+     (run echo o))))
 
-  $ solve filter-error-invalid-conjunction
-  File "$TESTCASE_ROOT/mock-opam-repository/packages/filter-error-invalid-conjunction/filter-error-invalid-conjunction.0.0.1/opam", line 1, characters 0-0:
-  Error: Expected string or identifier but found conjunction of identifiers:
-  foo+bar+baz:version
-  ...while processing commands for package:
-  filter-error-invalid-conjunction.0.0.1
-  Full filter: foo+bar+baz:version
-  Note that name1+name2+name3:var is the conjunction of var for each of name1,
-  name2 and name3, i.e it is equivalent to name1:var & name2:var & name3:var.
-  [1]
+Test that if opam filter translation is disabled the output doesn't contain any translated filters:
+  $ solve exercise-filters
+  Solution for dune.lock:
+  exercise-filters.0.0.1
+  
+  $ cat dune.lock/exercise-filters.pkg
+  (version 0.0.1)
+  
+  (build
+   (progn
+    (run echo a)
+    (run echo b)
+    (run echo c)
+    (run echo d)
+    (run echo e)
+    (run echo f)
+    (run echo b)
+    (run echo g)
+    (run echo h)
+    (run echo i)
+    (run echo j)
+    (run echo k)
+    (run echo l)
+    (run echo m)
+    (run echo n)
+    (run echo o)))
 
-  $ solve filter-error-bool-where-string-expected
+  $ solve_translate_opam_filters exercise-term-filters
+  Solution for dune.lock:
+  exercise-term-filters.0.0.1
+  
+  $ cat dune.lock/exercise-term-filters.pkg
+  (version 0.0.1)
+  
+  (build
+   (run
+    echo
+    a
+    (when %{pkg-self:foo} b)
+    (when
+     (and_absorb_undefined_var %{pkg-self:bar} %{pkg-self:baz})
+     c)))
+
+  $ solve_translate_opam_filters filter-error-bool-where-string-expected
   Error: At
   $TESTCASE_ROOT/mock-opam-repository/packages/filter-error-bool-where-string-expected/filter-error-bool-where-string-expected.0.0.1/opam:3:33-3:34::
   Parse error
   [1]
 
+Package with package conjunction and string selections inside variable interpolations:
+  $ mkpkg package-conjunction-and-string-selection <<EOF
+  > build: [
+  >   [ "echo" "a %{installed}% b" ]
+  >   [ "echo" "c %{installed?x:y}% d" ]
+  >   [ "echo" "e %{foo:installed?x:y}% f" ]
+  >   [ "echo" "g %{foo+bar+_:installed?x:y}% h" ]
+  >   # The "enable" variable is syntactic sugar around "installed" in some (but not all) cases.
+  >   # Its intention appears to be for use with ./configure scripts that take --enable-<feature> or
+  >   # --disable-<feature> as arguments.
+  >   [ "echo" "--%{enable}%-feature" ]
+  >   [ "echo" "--%{_:enable}%-feature" ]
+  >   [ "echo" "--%{foo+bar:enable}%-feature" ]
+  >   [ "echo" "--%{foo+bar:enable?x:y}%-feature" ]
+  > ]
+  > EOF
+
+  $ solve_project_translate_opam_filters <<EOF
+  > (lang dune 3.8)
+  > (package (name x) (depends package-conjunction-and-string-selection))
+  > EOF
+  Solution for dune.lock:
+  package-conjunction-and-string-selection.0.0.1
+  
+Note that "enable" is not a true opam variable. Opam desugars occurances of
+"pkg:enable" into "pkg:enable?enable:disable" but if the explicit package scope
+is omitted then it's treated like a regular variable. That explains why the
+opam syntax `"--%{enable}%-feature"` is converted to
+`--%{pkg-self:enable}-feature`. Also if the "enable" pseudo-variable is used
+with an explicit string conversion it is treated as a regular variable which
+explains why the opam syntax `"--%{foo+bar:enable?x:y}%-feature"` is converted
+to a dune if-statement that checks the "enable" variable (rather than the
+"installed" variable as in other cases).
+
+It's probably an error for opam packages to use the "enable" in ways that opam
+doesn't desugar but these tests are included so we can check that behaviour is
+preserved between opam and dune.
+  $ cat dune.lock/package-conjunction-and-string-selection.pkg
+  (version 0.0.1)
+  
+  (build
+   (progn
+    (run echo "a %{pkg-self:installed} b")
+    (run
+     echo
+     (concat
+      "c "
+      (if
+       (catch_undefined_var %{pkg-self:installed} false)
+       x
+       y)
+      " d"))
+    (run
+     echo
+     (concat
+      "e "
+      (if
+       (catch_undefined_var %{pkg:foo:installed} false)
+       x
+       y)
+      " f"))
+    (run
+     echo
+     (concat
+      "g "
+      (if
+       (catch_undefined_var
+        (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg-self:installed})
+        false)
+       x
+       y)
+      " h"))
+    (run echo --%{pkg-self:enable}-feature)
+    (run
+     echo
+     (concat
+      --
+      (if
+       (catch_undefined_var %{pkg-self:installed} false)
+       enable
+       disable)
+      -feature))
+    (run
+     echo
+     (concat
+      --
+      (if
+       (catch_undefined_var
+        (and %{pkg:foo:installed} %{pkg:bar:installed})
+        false)
+       enable
+       disable)
+      -feature))
+    (run
+     echo
+     (concat
+      --
+      (if
+       (catch_undefined_var
+        (and %{pkg:foo:enable} %{pkg:bar:enable})
+        false)
+       x
+       y)
+      -feature))))

@@ -429,9 +429,19 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     prog, more_args @ args
   in
   match t with
-  | Run (prog, args) ->
-    let+ prog, args = expand_run prog args in
-    O.Run (prog, Array.Immutable.of_list args)
+  | Run args ->
+    let string_args =
+      List.filter_map args ~f:(function
+        | Slang.Literal sw -> Some sw
+        | _ -> None)
+    in
+    if List.length string_args < List.length args
+    then User_error.raise [ Pp.text "All arguments to \"run\" action must be strings" ];
+    (match string_args with
+     | prog :: args ->
+       let+ prog, args = expand_run prog args in
+       O.Run (prog, Array.Immutable.of_list args)
+     | [] -> User_error.raise [ Pp.text "\"run\" action must have at least one argument" ])
   | With_accepted_exit_codes (pred, t) ->
     let+ t = expand t in
     O.With_accepted_exit_codes (pred, t)

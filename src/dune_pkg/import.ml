@@ -18,4 +18,5 @@ include struct
   module String_with_vars = String_with_vars
   module Pform = Pform
   module Blang = Dune_lang.Blang
+  module Slang = Dune_lang.Slang
 end

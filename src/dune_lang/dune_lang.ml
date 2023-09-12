@@ -23,6 +23,7 @@ module Bindings = Bindings
 module Subst_config = Subst_config
 module Locks = Locks
 module Profile = Profile
+module Slang = Slang
 module Targets_spec = Targets_spec
 module Wrapped = Wrapped
 module Visibility = Visibility

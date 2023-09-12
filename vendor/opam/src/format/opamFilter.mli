@@ -67,6 +67,9 @@ type env = full_variable -> variable_contents option
     self-reference [_] *)
 type fident = name option list * variable * (string * string) option
 
+(* Replaces pseudo-variables (e.g. "enable") with their desugared forms *)
+val desugar_fident : fident -> fident
+
 (** Maps on all variables appearing in a filter. The case where package
     variables are renamed differently and appear in a filter ident of the form
     [%{pkg1+pkg2:var}%] is not supported and raises [Invalid_argument]. *)

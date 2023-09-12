@@ -511,18 +511,19 @@ module Action_expander = struct
       { env = _; paths; artifacts = _; context; deps; version = _ }
       ~source
       (pform : Pform.t)
-      : Value.t list Memo.t
+      : (Value.t list, [ `Undefined_pkg_var of string ]) result Memo.t
       =
       let loc = Dune_sexp.Template.Pform.loc source in
       match pform with
-      | Var (Pkg var) -> expand_pkg paths var
-      | Var Context_name -> Memo.return [ Value.String (Context_name.to_string context) ]
+      | Var (Pkg var) -> expand_pkg paths var >>| Result.ok
+      | Var Context_name ->
+        Memo.return (Ok [ Value.String (Context_name.to_string context) ])
       | Var Make ->
         let+ make =
           let path = Env_path.path Env.initial in
           Make_prog.which loc context ~path
         in
-        [ Value.Path make ]
+        Ok [ Value.Path make ]
       | Macro ({ macro = Pkg | Pkg_self; _ } as macro_invocation) ->
         let { Package_variable.name = variable_name; scope } =
           match Package_variable.of_macro_invocation ~loc macro_invocation with
@@ -545,46 +546,48 @@ module Action_expander = struct
         in
         let variable_name = Package_variable.Name.to_string variable_name in
         (match String.Map.find variables variable_name with
-         | Some v -> Memo.return @@ Variable.dune_value v
+         | Some v -> Memo.return @@ Ok (Variable.dune_value v)
          | None ->
            let present = Option.is_some paths in
            (match variable_name with
-            | "pinned" -> Memo.return [ Value.String "false" ]
+            | "pinned" -> Memo.return @@ Ok [ Value.String "false" ]
             | "enable" ->
-              Memo.return [ Value.String (if present then "enable" else "disable") ]
-            | "installed" -> Memo.return [ Value.String (Bool.to_string present) ]
+              Memo.return @@ Ok [ Value.String (if present then "enable" else "disable") ]
+            | "installed" -> Memo.return @@ Ok [ Value.String (Bool.to_string present) ]
             | _ ->
               (match paths with
-               | None ->
-                 (* TODO *)
-                 assert false
+               | None -> Memo.return (Error (`Undefined_pkg_var variable_name))
                | Some paths ->
                  (match Pform.Var.Pkg.Section.of_string variable_name with
-                  | None ->
-                    User_error.raise ~loc [ Pp.textf "invalid section %S" variable_name ]
+                  | None -> Memo.return (Error (`Undefined_pkg_var variable_name))
                   | Some section ->
                     let section = dune_section_of_pform section in
                     let install_paths = Paths.install_paths paths in
-                    Memo.return [ Value.Dir (Install.Paths.get install_paths section) ]))))
+                    Memo.return
+                    @@ Ok [ Value.Dir (Install.Paths.get install_paths section) ]))))
       | _ -> Expander0.isn't_allowed_in_this_position ~source
     ;;
 
-    let expand_pform_gen t =
-      String_expander.Memo.expand ~f:(expand_pform t) ~dir:(Path.build t.paths.source_dir)
+    let expand_pform_exn t ~source pform =
+      let+ result = expand_pform t ~source pform in
+      match result with
+      | Ok x -> x
+      | Error (`Undefined_pkg_var variable_name) ->
+        User_error.raise [ Pp.textf "Undefined package variable: %s" variable_name ]
     ;;
 
-    let expand_sw = expand_pform_gen ~mode:Many
+    let expand_pform_gen t =
+      String_expander.Memo.expand
+        ~f:(expand_pform_exn t)
+        ~dir:(Path.build t.paths.source_dir)
+    ;;
 
-    let expand_exe t sw : ((Path.t, Action.Prog.Not_found.t) result * Value.t list) Memo.t
-      =
+    let expand_exe_value t value ~loc =
       let dir = Path.build t.paths.source_dir in
-      let* prog, args = expand_pform_gen t sw ~mode:At_least_one in
       let+ prog =
-        let loc = String_with_vars.loc sw in
-        match prog with
+        match value with
         | Value.Dir p ->
           User_error.raise
-            ~loc
             [ Pp.textf
                 "%s is a directory and cannot be used as an executable"
                 (Path.to_string_maybe_quoted p)
@@ -612,12 +615,23 @@ module Action_expander = struct
                         ~loc:(Some loc)
                         ()))))
       in
-      let prog = Result.map prog ~f:(map_exe t) in
-      prog, args
+      Result.map prog ~f:(map_exe t)
     ;;
 
-    let eval_blang t blang : bool Memo.t =
-      Blang_expand.eval blang ~dir:(Path.build t.paths.source_dir) ~f:(expand_pform t)
+    let eval_blang t blang =
+      Slang_expand.eval_blang
+        blang
+        ~dir:(Path.build t.paths.source_dir)
+        ~f:(fun sw ~dir ->
+          String_expander.Memo.expand_result sw ~mode:Many ~f:(expand_pform t) ~dir)
+    ;;
+
+    let eval_slangs_located t slangs =
+      Slang_expand.eval_multi_located
+        slangs
+        ~dir:(Path.build t.paths.source_dir)
+        ~f:(fun sw ~dir ->
+          String_expander.Memo.expand_result sw ~mode:Many ~f:(expand_pform t) ~dir)
     ;;
   end
 
@@ -672,11 +686,15 @@ module Action_expander = struct
   let rec expand (action : Dune_lang.Action.t) ~(expander : Expander.t) =
     let dir = Path.build expander.paths.source_dir in
     match action with
-    | Run (exe, args) ->
-      let+ exe, more_args = Expander.expand_exe expander exe
-      and+ args = Memo.parallel_map args ~f:(Expander.expand_sw expander) in
-      let args = more_args @ List.concat args |> Value.L.to_strings ~dir in
-      Action.Run (exe, Array.Immutable.of_list args)
+    | Run args ->
+      let* args = Expander.eval_slangs_located expander args in
+      (match args with
+       | [] ->
+         User_error.raise [ Pp.text "\"run\" action must have at least one argument" ]
+       | (prog_loc, prog) :: args ->
+         let+ exe = Expander.expand_exe_value expander prog ~loc:prog_loc in
+         let args = Value.L.to_strings (List.map ~f:snd args) ~dir in
+         Action.Run (exe, Array.Immutable.of_list args))
     | Progn t ->
       let+ args = Memo.parallel_map t ~f:(expand ~expander) in
       Action.Progn args

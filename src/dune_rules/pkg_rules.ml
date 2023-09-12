@@ -425,6 +425,70 @@ module Substitute = struct
   ;;
 end
 
+module Patch = struct
+  module Spec = struct
+    type ('path, 'target) t = 'path
+
+    let name = "patch"
+    let version = 1
+    let bimap p f _ = f p
+    let is_useful_to ~distribute:_ ~memoize = memoize
+
+    let encode (p : (_, _) t) input _ : Dune_lang.t =
+      List [ Dune_lang.atom_or_quoted_string name; input p ]
+    ;;
+
+    let action p ~(ectx : Action.Ext.context) ~(eenv : Action.Ext.env) =
+      let open Fiber.O in
+      let* () = Fiber.return () in
+      let input = Value.to_string ~dir:eenv.working_dir (Value.Path p) in
+      let* patch =
+        let path = Global.env () |> Env_path.path in
+        let program = "patch" in
+        Memo.run @@ Which.which ~path program
+        >>| function
+        | Some p -> p
+        | None ->
+          Utils.program_not_found
+            ~loc:None
+            ?context:(Option.map ~f:(fun ctx -> ctx.name) ectx.context)
+            program
+      in
+      (* 1. Work out which files are being patched. *)
+      let files = Dune_patch_parser.files_of_patch_file ~dir:eenv.working_dir p in
+      (* 2. Materialize those files. *)
+      List.iter files ~f:(fun file ->
+        Io.copy_file ~src:file ~dst:(Path.extend_basename file ~suffix:".for_patch") ());
+      List.iter files ~f:(fun file ->
+        Unix.rename (Path.to_string file ^ ".for_patch") (Path.to_string file));
+      (* 3. Apply the patch. *)
+      (* TODO opam has a preprocessing step that we should probably apply *)
+      Process.run
+        ~dir:eenv.working_dir
+        ~display:Dune_engine.Display.Quiet
+        ~stdout_to:Process.(Io.null Out)
+        ~stderr_to:eenv.stderr_to
+        ~stdin_from:eenv.stdin_from
+        Process.Failure_mode.Strict
+        patch
+        [ "-p1"; "-i"; input ]
+    ;;
+  end
+
+  let action ~input =
+    let module M = struct
+      type path = Path.t
+      type target = Path.Build.t
+
+      module Spec = Spec
+
+      let v = input
+    end
+    in
+    Action.Extension (module M)
+  ;;
+end
+
 module Action_expander = struct
   module Expander = struct
     type t =
@@ -679,20 +743,9 @@ module Action_expander = struct
       let arg = arg |> Value.to_string ~dir in
       Action.System arg
     | Patch p ->
-      let* input = Expander.expand_pform_gen ~mode:Single expander p in
-      let input = Value.to_string ~dir input in
-      let+ patch =
-        let path = Global.env () |> Env_path.path in
-        let program = "patch" in
-        Which.which ~path program
-        >>| function
-        | Some p -> Ok p
-        | None ->
-          let loc = Some (String_with_vars.loc p) in
-          Error (Action.Prog.Not_found.create ~context:expander.context ~program ~loc ())
-      in
-      (* TODO opam has a preprocessing step that we should probably apply *)
-      Action.Run (patch, Array.Immutable.of_array [| "-p1"; "-i"; input |])
+      let+ input = Expander.expand_pform_gen ~mode:Single expander p in
+      let input = Value.to_path ~dir input in
+      Patch.action ~input
     | Substitute (input, output) ->
       let+ input =
         Expander.expand_pform_gen ~mode:Single expander input >>| Value.to_path ~dir

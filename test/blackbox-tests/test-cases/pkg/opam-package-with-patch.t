@@ -54,7 +54,9 @@ this in.
   (version 0.0.1)
   
   (build
-   (run cat foo.ml))
+   (progn
+    (patch foo.patch)
+    (run cat foo.ml)))
   (source (copy $TESTCASE_ROOT/source))
 
   $ mkdir source
@@ -63,8 +65,4 @@ this in.
   > EOF
 
   $ build_pkg with-patch 
-  This is wrong
-
-  $ (cd source && patch -p1  < ../mock-opam-repository/packages/with-patch/with-patch.0.0.1/files/foo.patch)
-  patching file foo.ml
-  Hunk #1 succeeded at 1 with fuzz 1.
+  This is right

@@ -34,6 +34,7 @@
   dune_config_file
   dune_shared_cache
   dune_findlib
+  dune_patch_parser
   scheme
   unix)
  (synopsis "Internal Dune library, do not use!")

@@ -1,0 +1,5 @@
+(library
+ (name dune_patch_parser)
+ (libraries stdune dune_re)
+ (instrumentation
+  (backend bisect_ppx)))

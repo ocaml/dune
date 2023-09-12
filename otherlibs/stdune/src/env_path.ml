@@ -1,5 +1,8 @@
 let var = "PATH"
-let cons env ~dir = Env.update env ~var ~f:(fun _PATH -> Some (Bin.cons_path dir ~_PATH))
+
+let cons ?(var = var) env ~dir =
+  Env.update env ~var ~f:(fun _PATH -> Some (Bin.cons_path dir ~_PATH))
+;;
 
 (* [cons_multi env ~dirs] adds each path in [dirs] to the start of the PATH
    variable in [env], preserving their order *)

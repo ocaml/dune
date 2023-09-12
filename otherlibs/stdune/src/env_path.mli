@@ -5,7 +5,7 @@
 val var : Env.Var.t
 
 (** [cons env ~dir] adds [dir] to the start of the PATH variable in [env] *)
-val cons : Env.t -> dir:Path.t -> Env.t
+val cons : ?var:Env.Var.t -> Env.t -> dir:Path.t -> Env.t
 
 val path : Env.t -> Path.t list
 

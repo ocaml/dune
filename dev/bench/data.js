@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694553058362,
+  "lastUpdate": 1694553491821,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -29462,6 +29462,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.53073565995333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6a828e843bc0d58641f95b9917f7a526d8397727",
+          "message": "refactor: move findlib predicates (#8634)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-12T21:58:29+01:00",
+          "tree_id": "6c7ef3f5616ba1c5799001621d690b70f626d95c",
+          "url": "https://github.com/ocaml/dune/commit/6a828e843bc0d58641f95b9917f7a526d8397727"
+        },
+        "date": 1694553490356,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.90340185735334",
             "unit": "seconds"
           }
         ]

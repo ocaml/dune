@@ -243,7 +243,7 @@ jobs:
       - uses: whoan/docker-build-with-cache-action@v6
         with:
           image_name: monorepobenchmark
-          build_extra_args: '{"--file": "bench/monorepo/bench.Dockerfile"}'
+          dockerfile: bench/monorepo/bench.Dockerfile
           push_image_and_stages: true
           username: ocamldune
           password: "${{ secrets.DOCKER_HUB_PASSWORD }}"

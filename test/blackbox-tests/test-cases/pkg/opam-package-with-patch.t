@@ -26,13 +26,6 @@ Make a package with a patch
   > +This is right
   > EOF
 
-  $ cat>mock-opam-repository/packages/with-patch/with-patch.0.0.1/foo.ml
-
-  $ ls mock-opam-repository/packages/with-patch/with-patch.0.0.1
-  files
-  foo.ml
-  opam
-
   $ solve_project <<EOF
   > (lang dune 3.8)
   > (package
@@ -47,14 +40,15 @@ Make a package with a patch
   > (source (copy $PWD/source))
   > EOF
 
-The lockfile should contain the patch action. The generation step currently doesn't add
-this in.
+The lockfile should contain the patch action. 
 
   $ cat dune.lock/with-patch.pkg 
   (version 0.0.1)
   
   (build
-   (run cat foo.ml))
+   (progn
+    (patch foo.patch)
+    (run cat foo.ml)))
   (source (copy $TESTCASE_ROOT/source))
 
   $ mkdir source
@@ -63,8 +57,4 @@ this in.
   > EOF
 
   $ build_pkg with-patch 
-  This is wrong
-
-  $ (cd source && patch -p1  < ../mock-opam-repository/packages/with-patch/with-patch.0.0.1/files/foo.patch)
-  patching file foo.ml
-  Hunk #1 succeeded at 1 with fuzz 1.
+  This is right

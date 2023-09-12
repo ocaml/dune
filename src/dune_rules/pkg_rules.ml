@@ -679,20 +679,13 @@ module Action_expander = struct
       let arg = arg |> Value.to_string ~dir in
       Action.System arg
     | Patch p ->
-      let* input = Expander.expand_pform_gen ~mode:Single expander p in
-      let input = Value.to_string ~dir input in
-      let+ patch =
-        let path = Global.env () |> Env_path.path in
-        let program = "patch" in
-        Which.which ~path program
-        >>| function
-        | Some p -> Ok p
-        | None ->
-          let loc = Some (String_with_vars.loc p) in
-          Error (Action.Prog.Not_found.create ~context:expander.context ~program ~loc ())
+      let+ input = Expander.expand_pform_gen ~mode:Single expander p
+      and+ patch_prog, _ =
+        Expander.expand_exe expander (String_with_vars.make_text Loc.none "patch")
       in
-      (* TODO opam has a preprocessing step that we should probably apply *)
-      Action.Run (patch, Array.Immutable.of_array [| "-p1"; "-i"; input |])
+      let input = Value.to_path ~dir input in
+      let patch_prog = Action.Prog.ok_exn patch_prog in
+      Dune_patch.action ~display:!Clflags.display ~patch_prog ~input
     | Substitute (input, output) ->
       let+ input =
         Expander.expand_pform_gen ~mode:Single expander input >>| Value.to_path ~dir

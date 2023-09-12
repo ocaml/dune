@@ -35,6 +35,9 @@ Testing install actions
 
   $ show_pkg_cookie test
   { files =
-      map { LIB_ROOT : [ In_build_dir "default/.pkg/test/target/lib/xxx" ] }
+      map
+        { LIB_ROOT :
+            [ In_build_dir "_private/default/.pkg/test/target/lib/xxx" ]
+        }
   ; variables = []
   }

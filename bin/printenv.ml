@@ -64,7 +64,7 @@ let term =
                  dir
              in
              dump sctx ~dir)
-         | External _ ->
+         | In_private_context _ | External _ ->
            User_error.raise [ Pp.text "Environment is not defined for external paths" ]
          | In_install_dir _ ->
            User_error.raise [ Pp.text "Environment is not defined in install dirs" ])

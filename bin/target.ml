@@ -163,7 +163,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system)
       >>= (function
       | Some res -> Memo.return (Ok res)
       | None -> can't_build path))
-  | In_install_dir _ ->
+  | In_private_context _ | In_install_dir _ ->
     matching_target ()
     >>= (function
     | Some res -> Memo.return (Ok res)

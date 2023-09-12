@@ -4,7 +4,7 @@
 
 (cram
  (deps %{bin:patch})
- (applies_to patch))
+ (applies_to patch opam-package-with-patch))
 
 (cram
  (deps %{bin:git})

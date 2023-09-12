@@ -5,8 +5,6 @@ open Import
 (** Findlib database *)
 type t
 
-val findlib_predicates_set_by_dune : Variant.Set.t
-
 module Unavailable_reason : sig
   type t =
     | Not_found

@@ -208,16 +208,15 @@ struct
       Cached_digest.refresh ~allow_dirs:true ~remove_write_permissions
     in
     match
-      Targets.Produced.Option.mapi produced_targets ~f:(fun target () ->
-        compute_digest target |> Cached_digest.Digest_result.to_option)
+      Targets.Produced.collect_digests produced_targets ~f:(fun target () ->
+        compute_digest target)
     with
-    | Some result -> result
-    | None ->
+    | Ok result -> result
+    | Error errors ->
       let missing, errors =
-        let process_target target (missing, errors) =
-          match compute_digest target with
-          | Ok (_ : Digest.t) -> missing, errors
-          | No_such_file -> target :: missing, errors
+        let process_target (missing, errors) (target, error) =
+          match error with
+          | Cached_digest.Digest_result.Error.No_such_file -> target :: missing, errors
           | Broken_symlink ->
             let error = Pp.verbatim "Broken symbolic link" in
             missing, (target, error) :: errors
@@ -236,7 +235,7 @@ struct
           | Unix_error (error, syscall, arg) ->
             let unix_error = Unix_error.Detailed.create error ~syscall ~arg in
             missing, (target, Unix_error.Detailed.pp unix_error) :: errors
-          | Error exn ->
+          | Unrecognized exn ->
             let error =
               Pp.verbatim
                 (match exn with
@@ -250,15 +249,16 @@ struct
             in
             missing, (target, error) :: errors
         in
-        Path.Build.Map.foldi
-          (Targets.Produced.all_files produced_targets)
-          ~init:([], [])
-          ~f:(fun target () -> process_target target)
+        let missing, errors =
+          Nonempty_list.to_list errors |> List.fold_left ~init:([], []) ~f:process_target
+        in
+        List.rev missing, List.rev errors
       in
       (match missing, errors with
        | [], [] ->
          Code_error.raise
-           "compute_target_digests_or_raise_error: spurious target digest failure"
+           "compute_target_digests_or_raise_error: this is impossible because we should \
+            at least be showing the original error"
            [ "targets", Targets.Produced.to_dyn produced_targets ]
        | missing, errors ->
          User_error.raise

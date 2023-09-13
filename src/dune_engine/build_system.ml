@@ -827,11 +827,6 @@ end = struct
          (match Cached_digest.build_file ~allow_dirs:true path with
           | Ok digest -> digest, Dir_target { generated_file_digests = targets }
           (* Must be a directory target *)
-          | No_such_file
-          | Broken_symlink
-          | Cyclic_symlink
-          | Unexpected_kind _
-          | Unix_error _
           | Error _ ->
             (* CR-someday amokhov: The most important reason we end up here is
                [No_such_file]. I think some of the outcomes above are impossible

@@ -5,3 +5,5 @@ let with_color env =
     | None -> Some "color=always,_"
     | Some s -> Some ("color=always," ^ s))
 ;;
+
+let caml_ld_library_path = "CAML_LD_LIBRARY_PATH"

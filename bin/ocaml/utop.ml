@@ -50,9 +50,8 @@ let term =
   in
   Hooks.End_of_build.run ();
   let env =
-    let var = "CAML_LD_LIBRARY_PATH" in
     Path.Set.fold
-      ~f:(fun dir env -> Env_path.cons ~var env ~dir)
+      ~f:(fun dir env -> Env_path.cons ~var:Ocaml.Env.caml_ld_library_path env ~dir)
       ~init:(Super_context.context_env sctx)
       (Dune_rules.Lib_flags.L.toplevel_ld_paths requires)
   in

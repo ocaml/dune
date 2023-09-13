@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694645294373,
+  "lastUpdate": 1694645732606,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -29520,6 +29520,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "54.88815900904666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4a8dcfa714f1a76a06751e4862b11ac996a07f24",
+          "message": "test(pkg): copying opam repository files (#8647)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-13T23:34:58+01:00",
+          "tree_id": "c98a9c48c9d7d0abb28758e99fcf27596afc281b",
+          "url": "https://github.com/ocaml/dune/commit/4a8dcfa714f1a76a06751e4862b11ac996a07f24"
+        },
+        "date": 1694645730964,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.72221219990667",
             "unit": "seconds"
           }
         ]

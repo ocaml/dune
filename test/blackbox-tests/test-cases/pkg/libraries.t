@@ -29,7 +29,7 @@ Now we set up a lock file with this package and then attempt to use it:
   > EOF
 
   $ cat >dune.lock/mypkg.pkg <<EOF
-  > (source (copy $PWD/extra_sources))
+  > (source (copy $PWD/external_sources))
   > (build (run dune build @install))
   > EOF
 

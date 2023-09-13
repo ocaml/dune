@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694591960673,
+  "lastUpdate": 1694592540355,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -29491,6 +29491,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.90340185735334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ba72a62baaba5e2f79a2969590eff6372543d305",
+          "message": "test(pkg): fix typo in source directory name (#8637)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-13T08:42:11+01:00",
+          "tree_id": "31c97aeeb1ae56a5d7ead7e15d65ae411e35e6ca",
+          "url": "https://github.com/ocaml/dune/commit/ba72a62baaba5e2f79a2969590eff6372543d305"
+        },
+        "date": 1694592537961,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "54.88815900904666",
             "unit": "seconds"
           }
         ]

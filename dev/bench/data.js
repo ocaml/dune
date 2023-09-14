@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694680339806,
+  "lastUpdate": 1694680351150,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -73832,6 +73832,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "65.20064256866665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cebb6b5c693a26b7914e5341d76a89be10170780",
+          "message": "dune utop: do not link in \"custom\" mode (#8631)\n\nSigned-off-by: Nicolás Ojeda Bär <n.oje.bar@gmail.com>\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\nCo-authored-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-14T10:06:17+02:00",
+          "tree_id": "b48924c1f11226ebb7e48bcd5ee6396dea2d592e",
+          "url": "https://github.com/ocaml/dune/commit/cebb6b5c693a26b7914e5341d76a89be10170780"
+        },
+        "date": 1694680350029,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.66780393484",
             "unit": "seconds"
           }
         ]

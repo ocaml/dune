@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694698643003,
+  "lastUpdate": 1694698655889,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -74006,6 +74006,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "71.35915675534",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a5449fb765688f30e8a8fd44734aa9ed77882153",
+          "message": "test(pkg): make tests reproducible (#8649)\n\ndo not rely on the output of ls\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-14T14:09:28+01:00",
+          "tree_id": "f3d15b8f4774f8648d23e68ad5abda91dbc4a5f3",
+          "url": "https://github.com/ocaml/dune/commit/a5449fb765688f30e8a8fd44734aa9ed77882153"
+        },
+        "date": 1694698654655,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.9520417280733333",
             "unit": "seconds"
           }
         ]

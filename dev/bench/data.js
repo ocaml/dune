@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694646075286,
+  "lastUpdate": 1694676536936,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -94829,6 +94829,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.429058048346665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0cfe6c8c4bc5c2269f40f99700bb1e02b4feae0f",
+          "message": "test(pkg): lock file generation from opam file with patch (#8635)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-14T08:15:50+01:00",
+          "tree_id": "263a43e469d50e7940f50e6615e38aef3ef56a20",
+          "url": "https://github.com/ocaml/dune/commit/0cfe6c8c4bc5c2269f40f99700bb1e02b4feae0f"
+        },
+        "date": 1694676522586,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.437884042713335",
             "unit": "seconds"
           }
         ]

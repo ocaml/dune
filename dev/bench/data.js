@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694680351150,
+  "lastUpdate": 1694686998144,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -95061,6 +95061,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.05238170690667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b982acf9a7fb52474720bc5257b812f824b87616",
+          "message": "fix: allow shadowing builtins (#8558)\n\nPreviously, builtins would always shadow librares in findlib\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\nCo-authored-by: Nicolás Ojeda Bär <n.oje.bar@gmail.com>",
+          "timestamp": "2023-09-14T11:06:44+01:00",
+          "tree_id": "1f47e1af13e4e9e8a8f8254e4980c2173a3cdef5",
+          "url": "https://github.com/ocaml/dune/commit/b982acf9a7fb52474720bc5257b812f824b87616"
+        },
+        "date": 1694686982740,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.96971784984",
             "unit": "seconds"
           }
         ]

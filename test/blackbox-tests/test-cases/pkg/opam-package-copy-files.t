@@ -42,9 +42,7 @@ We expect that the files in the files directory of the opam repository get copie
 lock file. 
 
   $ lock_dir="dune.lock/with-patch.files"
-  $ ls $lock_dir && cat $lock_dir/$fname1
-  ls: cannot access 'dune.lock/with-patch.files': No such file or directory
-  [2]
-  $ ls $lock_dir && cat $lock_dir/$fname2
-  ls: cannot access 'dune.lock/with-patch.files': No such file or directory
-  [2]
+  $ [ -d $lock_dir ] && cat $lock_dir/$fname1
+  [1]
+  $ [ -d $lock_dir ] && cat $lock_dir/$fname2
+  [1]

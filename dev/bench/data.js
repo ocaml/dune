@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694706508626,
+  "lastUpdate": 1694706842262,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -74064,6 +74064,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.9520417280733333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7d720b00ec7cf909a3abfb0ab010b2231e1238c9",
+          "message": "pkg: copy files from opam repository to lock dir (#8648)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-14T16:28:30+01:00",
+          "tree_id": "b5b235b3b8d60b345137486c44d2350b4c1f7d1e",
+          "url": "https://github.com/ocaml/dune/commit/7d720b00ec7cf909a3abfb0ab010b2231e1238c9"
+        },
+        "date": 1694706840460,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.68485955553332",
             "unit": "seconds"
           }
         ]

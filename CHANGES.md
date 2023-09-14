@@ -6,8 +6,10 @@
   will raise an error. (#7674, @Alizter)
 
 - `enabled_if` now supports `arch_sixtyfour` variable (#8023, fixes #7997,
-  @Alizter)- Use `posix_spawn` instead of `fork` on MacOS. This gives us a
-  performance boost and allows us to re-enable thread. (#8090, @rgrinberg)
+  @Alizter)
+
+- Use `posix_spawn` instead of `fork` on MacOS. This gives us a performance
+  boost and allows us to re-enable thread. (#8090, @rgrinberg)
 
 - Experimental: Added a `$ dune monitor` command that can connect to a running
   `dune build` in watch mode and display the errors and progress. (#8152,
@@ -31,8 +33,9 @@
   (#8361, fixes #8360, @anmonteiro)
 
 - Add `--stop-on-first-error` option to `dune build` which will terminate the
-  build when the first error is encountered. (#8400, @pmwhite and @Alizter)-
-  Dune now displays the number of errors when waiting for changes in watch
+  build when the first error is encountered. (#8400, @pmwhite and @Alizter)
+
+- Dune now displays the number of errors when waiting for changes in watch
   mode. (#8408, fixes #6889, @Alizter)
 
 - Add `with_prefix` keyword for changing the prefix of the destination of
@@ -51,8 +54,10 @@
   (#6035, #8474, fixes #2691, @emillon, @Leonidas-from-XIV)
 
 - RPC message styles are now serialised meaning that RPC diagnostics keep their
-  Ansi styling. (#8516, fixes #6921, @Alizter)- Ignore internal promote rules
-  when `--ignore-promoted-rules` is set (#8518, fix #8417, @rgrinberg)
+  Ansi styling. (#8516, fixes #6921, @Alizter)
+
+- Ignore internal promote rules when `--ignore-promoted-rules` is set (#8518,
+  fix #8417, @rgrinberg)
 
 - Truncate output from actions that produce too much output (@tov, #8351)
 

@@ -40,12 +40,14 @@ up a project with instrumentation and testing checking the merlin config.
   Foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
+   (B lib/bytes)
    (B lib/findlib)
    (B /OCAMLC_WHERE)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
    (B
     $TESTCASE_ROOT/_build/default/ppx/.hello.objs/byte)
+   (S lib/bytes)
    (S lib/findlib)
    (S /OCAMLC_WHERE)
    (S
@@ -58,12 +60,14 @@ up a project with instrumentation and testing checking the merlin config.
   Privmod
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
+   (B lib/bytes)
    (B lib/findlib)
    (B /OCAMLC_WHERE)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
    (B
     $TESTCASE_ROOT/_build/default/ppx/.hello.objs/byte)
+   (S lib/bytes)
    (S lib/findlib)
    (S /OCAMLC_WHERE)
    (S

@@ -458,28 +458,29 @@ let solve_package_list local_packages context =
 (* Scan a path recursively down retrieving a list of all files together with their
    relative path. *)
 let scan_files_entries ~repo_id path =
-  let rec read acc path =
+  (* TODO Add some cycle detection *)
+  let rec read acc dir =
+    let path = Path.append_local path dir in
     match Path.readdir_unsorted_with_kinds path with
-    | Ok files ->
-      List.concat_map files ~f:(fun (filename, kind) ->
+    | Ok entries ->
+      List.fold_left entries ~init:acc ~f:(fun acc (filename, kind) ->
+        let local_path = Path.Local.relative dir filename in
         match (kind : Unix.file_kind) with
-        | S_REG -> [ acc @ [ filename ] ]
-        | S_DIR -> read (acc @ [ filename ]) (Path.relative path filename)
-        | _ -> [])
-    | Error (Unix.ENOENT, _, _) -> []
+        | S_REG -> local_path :: acc
+        | S_DIR -> read acc local_path
+        | _ ->
+          (* TODO should be an error *)
+          acc)
+    | Error (Unix.ENOENT, _, _) -> acc
     | Error err ->
       User_error.raise
         ?loc:(Option.map ~f:fst repo_id)
         [ Pp.text "Unable to read file in opam repository:"; Unix_error.Detailed.pp err ]
   in
-  List.map (read [] path) ~f:(fun exploded_local_path ->
-    { Lock_dir.Write_disk.Files_entry.original_file =
-        Path.L.relative path exploded_local_path
-    ; local_file =
-        (match exploded_local_path with
-         | [] -> Code_error.raise "scan_files_entries: empty path" []
-         | [ filename ] -> Path.Local.of_string filename
-         | dir :: filename -> Path.Local.L.relative (Path.Local.of_string dir) filename)
+  read [] Path.Local.root
+  |> List.map ~f:(fun local_file ->
+    { Lock_dir.Write_disk.Files_entry.original_file = Path.append_local path local_file
+    ; local_file
     })
 ;;
 

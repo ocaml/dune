@@ -1,5 +1,5 @@
-This test checks that the files in the files/ directory inside a package in an opam
-repository are copied correctly to the dune.lock file.
+This test demonstrates the behaviour when a Unix error is encountered when copying the
+files/ directory from a package directory inside an opam repostory.
 
   $ . ./helpers.sh
 
@@ -25,6 +25,13 @@ Make a package with a patch
   $ cat >$opam_repo/files/$fname2 <<EOF
   > bar
   > EOF
+We remove the read permissions for dir/
+
+  $ chmod -r $opam_repo/files/dir
+
+The error message should have a location for the opam repository.
+
+This does not currently seem to be the case.
 
   $ solve_project <<EOF
   > (lang dune 3.8)
@@ -33,15 +40,10 @@ Make a package with a patch
   >  (allow_empty)
   >  (depends with-patch))
   > EOF
-  Solution for dune.lock:
-  with-patch.0.0.1
-  
+  Error: Unable to read file in opam repository:
+  opendir($TESTCASE_ROOT/mock-opam-repository/packages/with-patch/with-patch.0.0.1/files/dir): Permission denied
+  [1]
+ 
+Make sure to set permissions back so the sandbox can be cleaned up.
 
-We expect that the files in the files directory of the opam repository get copied to the
-lock file. 
-
-  $ lock_dir="dune.lock/with-patch.files"
-  $ [ -d $lock_dir ] && cat $lock_dir/$fname1
-  foo
-  $ [ -d $lock_dir ] && cat $lock_dir/$fname2
-  bar
+  $ chmod +r $opam_repo/files/dir

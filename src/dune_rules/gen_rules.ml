@@ -733,7 +733,7 @@ let gen_rules ~sctx ~dir components : Gen_rules.result Memo.t =
           automatic
           (* XXX sync this list with the pattern matches above. It's quite ugly
              we need this, we should rewrite this code to avoid this. *)
-          (Filename.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod"; ".pkg" ])
+          (Filename.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ])
     in
     Source_tree.find_dir src_dir
     >>= (function
@@ -777,35 +777,88 @@ let gen_rules ~sctx ~dir components : Gen_rules.result Memo.t =
 let with_context ctx ~f =
   Super_context.find ctx
   >>= function
-  | None -> Memo.return Gen_rules.unknown_context_or_install
+  | None -> Memo.return Gen_rules.unknown_context
   | Some ctx -> f ctx
 ;;
 
-let gen_rules ctx_or_install ~dir components =
-  match (ctx_or_install : Gen_rules.Context_or_install.t) with
-  | Install ctx ->
-    with_context ctx ~f:(fun sctx ->
-      let+ subdirs, rules = Install_rules.symlink_rules sctx ~dir in
-      let directory_targets = Rules.directory_targets rules in
-      Gen_rules.make
-        ~build_dir_only_sub_dirs:(Gen_rules.Build_only_sub_dirs.singleton ~dir subdirs)
-        ~directory_targets
-        (Memo.return rules))
-  | Context ctx ->
-    (match components with
-     | [ ".pkg" ] ->
-       Gen_rules.make
-         ~build_dir_only_sub_dirs:
-           (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
-         (Memo.return Rules.empty)
-       |> Memo.return
-     | [ ".pkg"; pkg_name ] -> Pkg_rules.setup_package_rules ctx ~dir ~pkg_name
-     | ".pkg" :: _ :: _ ->
-       Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
-     | [ ".dune" ] ->
-       has_rules
-         ~dir
-         (Subdir_set.of_set (Filename.Set.of_list [ "ccomp" ]))
-         (fun () -> Context.DB.get ctx >>= Configurator_rules.gen_rules)
-     | _ -> with_context ctx ~f:(fun sctx -> gen_rules ~sctx ~dir components))
+let analyze_private_context_path components =
+  match components with
+  | [] -> Memo.return `Root
+  | ctx :: components ->
+    (match Context_name.of_string_opt ctx with
+     | None -> Memo.return `Invalid_context
+     | Some ctx ->
+       Per_context.valid ctx
+       >>| (function
+       | true -> `Valid (ctx, components)
+       | false -> `Invalid_context))
+;;
+
+let gen_rules_private_context ~dir components ctx =
+  match components with
+  | [ ".pkg" ] ->
+    Gen_rules.make
+      ~build_dir_only_sub_dirs:
+        (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
+      (Memo.return Rules.empty)
+    |> Memo.return
+  | [ ".pkg"; pkg_name ] -> Pkg_rules.setup_package_rules ctx ~dir ~pkg_name
+  | ".pkg" :: _ :: _ -> Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
+  | [] ->
+    let build_dir_only_sub_dirs =
+      Gen_rules.Build_only_sub_dirs.singleton ~dir @@ Subdir_set.of_list [ ".pkg" ]
+    in
+    Memo.return @@ Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
+  | _ -> Memo.return @@ Gen_rules.rules_here Gen_rules.Rules.empty
+;;
+
+let private_context ~dir components _ctx =
+  analyze_private_context_path components
+  >>= function
+  | `Invalid_context -> Memo.return Gen_rules.unknown_context
+  | `Valid (ctx, components) -> gen_rules_private_context ~dir components ctx
+  | `Root ->
+    let+ contexts = Per_context.list () in
+    let build_dir_only_sub_dirs =
+      Gen_rules.Build_only_sub_dirs.singleton
+        ~dir
+        (Subdir_set.of_list (List.rev_map contexts ~f:Context_name.to_string))
+    in
+    Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
+;;
+
+let gen_rules ctx ~dir components =
+  if Context_name.equal ctx Install.Context.install_context.name
+  then (
+    match components with
+    | [] ->
+      let+ build_dir_only_sub_dirs =
+        let+ context_dirs =
+          let+ workspace = Workspace.workspace () in
+          Workspace.build_contexts workspace
+          |> List.map ~f:(fun (ctx : Build_context.t) -> Context_name.to_string ctx.name)
+          |> Subdir_set.of_list
+        in
+        Gen_rules.Build_only_sub_dirs.singleton ~dir context_dirs
+      in
+      Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
+    | ctx :: _ ->
+      let ctx = Context_name.of_string ctx in
+      with_context ctx ~f:(fun sctx ->
+        let+ subdirs, rules = Install_rules.symlink_rules sctx ~dir in
+        let directory_targets = Rules.directory_targets rules in
+        Gen_rules.make
+          ~build_dir_only_sub_dirs:(Gen_rules.Build_only_sub_dirs.singleton ~dir subdirs)
+          ~directory_targets
+          (Memo.return rules)))
+  else if Context_name.equal ctx Private_context.t.name
+  then private_context ~dir components ctx
+  else (
+    match components with
+    | [ ".dune" ] ->
+      has_rules
+        ~dir
+        (Subdir_set.of_set (Filename.Set.of_list [ "ccomp" ]))
+        (fun () -> Context.DB.get ctx >>= Configurator_rules.gen_rules)
+    | _ -> with_context ctx ~f:(fun sctx -> gen_rules ~sctx ~dir components))
 ;;

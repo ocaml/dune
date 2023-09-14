@@ -2,6 +2,7 @@ open Import
 
 type checked =
   | In_build_dir of (Context.t * Path.Source.t)
+  | In_private_context of Path.Build.t
   | In_install_dir of (Context.t * Path.Source.t)
   | In_source_dir of Path.Source.t
   | External of Path.External.t
@@ -41,6 +42,14 @@ let check_path contexts =
        | Other _ -> internal_path ()
        | Alias (_, _) -> internal_path ()
        | Anonymous_action _ -> internal_path ()
-       | Install (name, src) -> In_install_dir (context_exn name, src)
-       | Regular (name, src) -> In_build_dir (context_exn name, src))
+       | Regular (name, src) ->
+         (match Install.Context.analyze_path name src with
+          | Invalid -> internal_path ()
+          | Install (ctx, path) -> In_install_dir (context_exn ctx, path)
+          | Normal (ctx, path) ->
+            if Context_name.equal ctx Dune_rules.Private_context.t.name
+            then
+              In_private_context
+                (Path.Build.append_source Dune_rules.Private_context.t.build_dir path)
+            else In_build_dir (context_exn ctx, path)))
 ;;

@@ -47,7 +47,12 @@ let all_direct_targets dir =
     | None -> Source_tree.root ()
     | Some dir -> Source_tree.nearest_dir dir
   and* contexts = Memo.Lazy.force (Build_config.get ()).contexts in
-  Memo.parallel_map (Context_name.Map.values contexts) ~f:(fun ctx ->
+  Context_name.Map.values contexts
+  |> List.filter_map ~f:(fun (ctx, (ctx_type : Build_config.Gen_rules.Context_type.t)) ->
+    match ctx_type with
+    | Empty -> None
+    | With_sources -> Some ctx)
+  |> Memo.parallel_map ~f:(fun (ctx : Dune_engine.Build_context.t) ->
     Source_tree_map_reduce.map_reduce
       root
       ~traverse:Sub_dirs.Status.Set.all
@@ -158,7 +163,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system)
       >>= (function
       | Some res -> Memo.return (Ok res)
       | None -> can't_build path))
-  | In_install_dir _ ->
+  | In_private_context _ | In_install_dir _ ->
     matching_target ()
     >>= (function
     | Some res -> Memo.return (Ok res)

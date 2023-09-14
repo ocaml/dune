@@ -2,14 +2,7 @@ open Import
 module Action_builder = Action_builder0
 
 module Gen_rules = struct
-  module Context_or_install = struct
-    include Build_config_intf.Context_or_install
-
-    let to_dyn = function
-      | Install ctx -> Dyn.List [ Dyn.String "install"; Context_name.to_dyn ctx ]
-      | Context s -> Context_name.to_dyn s
-    ;;
-  end
+  module Context_type = Build_config_intf.Context_type
 
   module Build_only_sub_dirs = struct
     type t = Subdir_set.t Path.Build.Map.t
@@ -60,7 +53,7 @@ module Gen_rules = struct
 
     let redirect_to_parent rules = Redirect_to_parent rules
     let rules_here rules = Rules rules
-    let unknown_context_or_install = Unknown_context_or_install
+    let unknown_context = Unknown_context
     let no_rules = rules_here Rules.empty
   end
 
@@ -70,7 +63,7 @@ end
 module type Source_tree = Build_config_intf.Source_tree
 
 type t =
-  { contexts : Build_context.t Context_name.Map.t Memo.Lazy.t
+  { contexts : (Build_context.t * Gen_rules.Context_type.t) Context_name.Map.t Memo.Lazy.t
   ; rule_generator : (module Gen_rules.Rule_generator)
   ; sandboxing_preference : Sandbox_mode.t list
   ; promote_source :
@@ -115,7 +108,9 @@ let set
     Memo.lazy_ ~name:"Build_config.set" (fun () ->
       let open Memo.O in
       let+ contexts = Memo.Lazy.force contexts in
-      Context_name.Map.of_list_map_exn contexts ~f:(fun c -> c.Build_context.name, c))
+      Context_name.Map.of_list_map_exn
+        contexts
+        ~f:(fun ((ctx : Build_context.t), ctx_type) -> ctx.name, (ctx, ctx_type)))
   in
   let () =
     match (cache_config : Dune_cache.Config.t) with

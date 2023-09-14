@@ -18,7 +18,7 @@ This should give us a proper error that myfile wasn't generated
   $ lockfile "myfile"
   $ build_pkg test
   Error: No such file or directory
-  -> required by _build/default/.pkg/test/target
+  -> required by _build/_private/default/.pkg/test/target
   [1]
 
 This on the other hand shouldn't error because myfile is optional

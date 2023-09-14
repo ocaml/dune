@@ -1,15 +1,16 @@
 open Import
 
-let install_dir_basename = "install"
-let anonymous_actions_dir_basename = ".actions"
-let install_dir = Path.Build.(relative root) install_dir_basename
-let anonymous_actions_dir = Path.Build.(relative root) anonymous_actions_dir_basename
+module Build = struct
+  type t = Path.Build.t
+
+  let anonymous_actions_dir_basename = ".actions"
+  let anonymous_actions_dir = Path.Build.(relative root) anonymous_actions_dir_basename
+end
 
 type target_kind =
   | Regular of Context_name.t * Path.Source.t
   | Alias of Context_name.t * Path.Source.t
   | Anonymous_action of Context_name.t
-  | Install of Context_name.t * Path.Source.t
   | Other of Path.Build.t
 
 module Target_dir = struct
@@ -23,32 +24,23 @@ module Target_dir = struct
   ;;
 
   type t =
-    | Install of context_related
     | Anonymous_action of context_related
     | Regular of context_related
     | Invalid of Path.Build.t
 
   (* _build/foo or _build/install/foo where foo is invalid *)
 
-  let of_target (fn as original_fn) =
+  let of_target fn =
     match Path.Build.extract_first_component fn with
     | None -> Regular Root
     | Some (name, sub) ->
-      if name = anonymous_actions_dir_basename
+      if name = Build.anonymous_actions_dir_basename
       then (
         match Path.Local.split_first_component sub with
         | None -> Anonymous_action Root
         | Some (ctx, fn) ->
           let ctx = Context_name.of_string ctx in
           Anonymous_action (With_context (ctx, Path.Source.of_local fn)))
-      else if name = install_dir_basename
-      then (
-        match Path.Local.split_first_component sub with
-        | None -> Install Root
-        | Some (ctx, fn) ->
-          (match Context_name.of_string_opt ctx with
-           | None -> Invalid original_fn
-           | Some ctx -> Install (With_context (ctx, Path.Source.of_local fn))))
       else (
         match Context_name.of_string_opt name with
         | None -> Invalid fn
@@ -65,8 +57,7 @@ let is_digest s = String.length s = 32
 
 let analyse_target (fn as original_fn) : target_kind =
   match Target_dir.of_target fn with
-  | Invalid _ | Install Root | Regular Root | Anonymous_action Root -> Other fn
-  | Install (With_context (ctx, src_dir)) -> Install (ctx, src_dir)
+  | Invalid _ | Regular Root | Anonymous_action Root -> Other fn
   | Regular (With_context (ctx, src_dir)) -> Regular (ctx, src_dir)
   | Anonymous_action (With_context (ctx, fn)) ->
     if Path.Source.is_root fn
@@ -91,8 +82,6 @@ let describe_target fn =
   | Alias (ctx, p) ->
     sprintf "alias %s%s" (Path.Source.to_string_maybe_quoted p) (ctx_suffix ctx)
   | Anonymous_action ctx -> sprintf "<internal-action>%s" (ctx_suffix ctx)
-  | Install (ctx, p) ->
-    sprintf "install %s%s" (Path.Source.to_string_maybe_quoted p) (ctx_suffix ctx)
   | Regular (ctx, fn) ->
     sprintf "%s%s" (Path.Source.to_string_maybe_quoted fn) (ctx_suffix ctx)
   | Other fn -> Path.Build.to_string_maybe_quoted fn
@@ -133,10 +122,3 @@ let encode p =
   | In_source_tree p -> make "In_source_tree" (Path.Source.to_string p)
   | External p -> make "External" (Path.External.to_string p)
 ;;
-
-module Build = struct
-  type t = Path.Build.t
-
-  let install_dir = install_dir
-  let anonymous_actions_dir = anonymous_actions_dir
-end

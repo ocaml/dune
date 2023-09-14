@@ -5,6 +5,7 @@
   stdune
   dyn
   opam_file_format
+  ocaml
   dune_util
   dune_findlib
   dune_pkg

@@ -21,15 +21,15 @@ let term =
   let dir = Common.prefix_target common dir in
   if not (Path.is_directory (Path.of_string dir))
   then User_error.raise [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
-  let sctx, utop_path =
+  let sctx, utop_path, requires =
     Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
       Build_system.run_exn (fun () ->
         let open Memo.O in
         let* setup = setup in
+        let context = Import.Main.find_context_exn setup ~name:ctx_name in
         let utop_target =
-          let context = Import.Main.find_context_exn setup ~name:ctx_name in
           let utop_target = Filename.concat dir Utop.utop_exe in
           Path.build (Path.Build.relative (Context.build_dir context) utop_target)
         in
@@ -39,16 +39,23 @@ let term =
           User_error.raise
             [ Pp.textf "no library is defined in %s" (String.maybe_quoted dir) ]
         | true ->
-          let+ () = Build_system.build_file utop_target in
+          let* () = Build_system.build_file utop_target in
           let sctx = Import.Main.find_scontext_exn setup ~name:ctx_name in
-          sctx, Path.to_string utop_target))
+          let* requires =
+            let dir = Path.Build.relative (Context.build_dir context) dir in
+            Utop.requires_under_dir sctx ~dir
+          in
+          let+ requires = Resolve.read_memo requires in
+          sctx, Path.to_string utop_target, requires))
   in
   Hooks.End_of_build.run ();
-  restore_cwd_and_execve
-    common
-    utop_path
-    (utop_path :: args)
-    (Super_context.context_env sctx)
+  let env =
+    Path.Set.fold
+      ~f:(fun dir env -> Env_path.cons ~var:Ocaml.Env.caml_ld_library_path env ~dir)
+      ~init:(Super_context.context_env sctx)
+      (Dune_rules.Lib_flags.L.toplevel_ld_paths requires)
+  in
+  restore_cwd_and_execve common utop_path (utop_path :: args) env
 ;;
 
 let command = Cmd.v info term

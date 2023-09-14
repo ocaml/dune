@@ -11,7 +11,7 @@ end
 
 type t
 
-val setup_rules : t -> unit Memo.t
+val setup_rules : t -> linkage:Exe.Linkage.t -> unit Memo.t
 
 val make
   :  cctx:Compilation_context.t

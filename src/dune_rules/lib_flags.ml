@@ -180,14 +180,18 @@ module L = struct
     Command.Args.S [ Dyn local; Hidden_deps external_; to_iflags (c_include_paths ts) ]
   ;;
 
-  let toplevel_include_paths ts =
+  let toplevel_ld_paths ts =
     let with_dlls =
       List.filter ts ~f:(fun t ->
         match Lib_info.foreign_dll_files (Lib.info t) with
         | [] -> false
         | _ -> true)
     in
-    Path.Set.union (include_paths ts (Lib_mode.Ocaml Byte)) (c_include_paths with_dlls)
+    c_include_paths with_dlls
+  ;;
+
+  let toplevel_include_paths ts =
+    Path.Set.union (include_paths ts (Lib_mode.Ocaml Byte)) (toplevel_ld_paths ts)
   ;;
 end
 

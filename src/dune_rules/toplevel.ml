@@ -129,9 +129,8 @@ let setup_module_rules t =
   Super_context.add_rule sctx ~dir main_ml
 ;;
 
-let setup_rules_and_return_exe_path t =
+let setup_rules_and_return_exe_path t ~linkage =
   let open Memo.O in
-  let linkage = Exe.Linkage.custom (Compilation_context.context t.cctx) in
   let program = Source.program t.source in
   let* (_ : Exe.dep_graphs) =
     Exe.build_and_link
@@ -146,7 +145,9 @@ let setup_rules_and_return_exe_path t =
   Exe.exe_path t.cctx ~program ~linkage
 ;;
 
-let setup_rules t = Memo.map (setup_rules_and_return_exe_path t) ~f:ignore
+let setup_rules t ~linkage =
+  Memo.map (setup_rules_and_return_exe_path t ~linkage) ~f:ignore
+;;
 
 type directives =
   { include_paths : Path.Set.t
@@ -241,7 +242,11 @@ module Stanza = struct
         ~preprocessing
     in
     let resolved = make ~cctx ~source ~preprocess:toplevel.pps expander in
-    let* exe = setup_rules_and_return_exe_path resolved in
+    let* exe =
+      setup_rules_and_return_exe_path
+        resolved
+        ~linkage:(Exe.Linkage.custom (Compilation_context.context cctx))
+    in
     let symlink = Path.Build.relative dir (Path.Build.basename exe) in
     Super_context.add_rule
       sctx

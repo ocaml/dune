@@ -455,6 +455,34 @@ let solve_package_list local_packages context =
   | Ok packages -> Ok (Solver.packages_of_result packages)
 ;;
 
+(* Scan a path recursively down retrieving a list of all files together with their
+   relative path. *)
+let scan_files_entries ~repo_id path =
+  let rec read acc path =
+    match Path.readdir_unsorted_with_kinds path with
+    | Ok files ->
+      List.concat_map files ~f:(fun (filename, kind) ->
+        match (kind : Unix.file_kind) with
+        | S_REG -> [ acc @ [ filename ] ]
+        | S_DIR -> read (acc @ [ filename ]) (Path.relative path filename)
+        | _ -> [])
+    | Error (Unix.ENOENT, _, _) -> []
+    | Error err ->
+      User_error.raise
+        ?loc:(Option.map ~f:fst repo_id)
+        [ Pp.text "Unable to read file in opam repository:"; Unix_error.Detailed.pp err ]
+  in
+  List.map (read [] path) ~f:(fun exploded_local_path ->
+    { Lock_dir.Write_disk.Files_entry.original_file =
+        Path.L.relative path exploded_local_path
+    ; local_file =
+        (match exploded_local_path with
+         | [] -> Code_error.raise "scan_files_entries: empty path" []
+         | [ filename ] -> Path.Local.of_string filename
+         | dir :: filename -> Path.Local.L.relative (Path.Local.of_string dir) filename)
+    })
+;;
+
 let solve_lock_dir solver_env version_preference (repo, repo_id) ~local_packages =
   let is_local_package package =
     OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
@@ -482,5 +510,14 @@ let solve_lock_dir solver_env version_preference (repo, repo_id) ~local_packages
       | Ok pkgs_by_name ->
         Lock_dir.create_latest_version pkgs_by_name ~ocaml:None ~repo_id
     in
-    summary, lock_dir)
+    let files =
+      Package_name.Map.of_list_map_exn opam_packages_to_lock ~f:(fun opam_package ->
+        let files_path = Opam_repo.get_opam_package_files_path repo opam_package in
+        ( Package_name.of_string
+            (OpamPackage.Name.to_string (OpamPackage.name opam_package))
+        , scan_files_entries ~repo_id files_path ))
+      |> Package_name.Map.filter_map ~f:(fun files ->
+        if List.is_empty files then None else Some files)
+    in
+    summary, lock_dir, files)
 ;;

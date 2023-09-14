@@ -1,7 +1,6 @@
 This test checks that the files in the files/ directory inside a package in an opam
 repository are copied correctly to the dune.lock file.
 
-
   $ . ./helpers.sh
 
 Generate a mock opam repository
@@ -43,6 +42,6 @@ lock file.
 
   $ lock_dir="dune.lock/with-patch.files"
   $ [ -d $lock_dir ] && cat $lock_dir/$fname1
-  [1]
+  foo
   $ [ -d $lock_dir ] && cat $lock_dir/$fname2
-  [1]
+  bar

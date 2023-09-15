@@ -117,41 +117,41 @@ Package which has boolean where string was expected. This should be caught while
   (version 0.0.1)
   
   (install
-   (run %{make} install))
+   (system "%{make} install"))
   
   (build
    (progn
     (when
      %{pkg-self:dev}
-     (run dune subst))
-    (run dune build -p %{pkg-self:name} -j %{jobs} @install @runtest @doc)))
+     (system "dune subst"))
+    (system "dune build -p %{pkg-self:name} -j %{jobs} @install @runtest @doc")))
 
   $ cat dune.lock/with-interpolation.pkg
   (version 0.0.1)
   
   (install
-   (run %{make} install))
+   (system "%{make} install"))
   
   (build
    (progn
-    (run ./configure --prefix=%{prefix} --docdir=%{doc}/ocaml)
-    (run %{make} -j%{jobs})))
+    (system "./configure --prefix=%{prefix} --docdir=%{doc}/ocaml")
+    (system "%{make} -j%{jobs}")))
 
   $ cat dune.lock/with-percent-sign.pkg
   (version 0.0.1)
   
   (build
-   (run printf %d 42))
+   (system "printf %d 42"))
 
   $ cat dune.lock/variable-types.pkg
   (version 0.0.1)
   
   (build
    (progn
-    (run echo %{pkg-self:local_var})
-    (run echo %{pkg-self:explicit_local_var})
-    (run echo %{pkg:package_var:foo})
-    (run echo %{os_family})))
+    (system "echo %{pkg-self:local_var}")
+    (system "echo %{pkg-self:explicit_local_var}")
+    (system "echo %{pkg:package_var:foo}")
+    (system "echo %{os_family}")))
 
   $ solve_project <<EOF
   > (lang dune 3.8)
@@ -184,54 +184,54 @@ Package which has boolean where string was expected. This should be caught while
    (progn
     (when
      %{pkg-self:foo}
-     (run echo a))
+     (system "echo a"))
     (when
      (and %{pkg-self:foo} %{pkg-self:bar})
-     (run echo b))
+     (system "echo b"))
     (when
      (and
       (and %{pkg-self:foo} %{pkg-self:bar})
       %{pkg-self:baz})
-     (run echo c))
+     (system "echo c"))
     (when
      (or %{pkg-self:foo} %{pkg-self:bar})
-     (run echo d))
+     (system "echo d"))
     (when
      (or
       %{pkg-self:foo}
       (and %{pkg-self:bar} %{pkg-self:baz}))
-     (run echo e))
+     (system "echo e"))
     (when
      (and
       (or %{pkg-self:foo} %{pkg-self:bar})
       %{pkg-self:baz})
-     (run echo f))
+     (system "echo f"))
     (when
      (= %{pkg-self:foo} %{pkg-self:bar})
-     (run echo b))
+     (system "echo b"))
     (when
      (< %{pkg-self:version} 1.0)
-     (run echo g))
+     (system "echo g"))
     (when
      (and
       %{pkg-self:with-test}
       (< %{pkg:version:ocaml} 5.0.0))
-     (run echo h))
+     (system "echo h"))
     (when
      true
-     (run echo i))
+     (system "echo i"))
     (when
      (not false)
-     (run echo j))
+     (system "echo j"))
     (when
      %{pkg:installed:foo}
-     (run echo k))
+     (system "echo k"))
     (when
      (< %{pkg:version:foo} 0.4)
-     (run echo l))
+     (system "echo l"))
     (when
      (and %{pkg:installed:foo} %{pkg:installed:bar} %{pkg:installed:baz})
-     (run echo m))))
+     (system "echo m"))))
 
   $ solve_project <<EOF
   > (lang dune 3.8)

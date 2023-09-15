@@ -375,15 +375,13 @@ let opam_commands_to_actions package (commands : OpamTypes.command list) =
             (Package_variable.pform_of_opam_ident ident))
     in
     match terms with
-    | program :: args ->
-      let action = Action.run program args in
-      let action =
-        match filter with
-        | Some filter -> Action.When (filter_to_blang package filter, action)
-        | None -> action
-      in
-      Some action
-    | [] -> None)
+    | [] -> None
+    | terms ->
+      let action = Action.System (String_with_vars.concat terms) in
+      Some
+        (match filter with
+         | Some filter -> Action.When (filter_to_blang package filter, action)
+         | None -> action))
 ;;
 
 (* returns:

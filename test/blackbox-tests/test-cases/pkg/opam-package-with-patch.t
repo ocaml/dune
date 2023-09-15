@@ -54,7 +54,7 @@ this in.
   (version 0.0.1)
   
   (build
-   (run cat foo.ml))
+   (system "cat foo.ml"))
   (source (copy $TESTCASE_ROOT/source))
 
   $ mkdir source

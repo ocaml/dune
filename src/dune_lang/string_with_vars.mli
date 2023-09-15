@@ -43,6 +43,13 @@ val make_text : ?quoted:bool -> Loc.t -> string -> t
 (** Concatenate a list of parts. *)
 val make : ?quoted:bool -> Loc.t -> [ `Text of string | `Pform of Pform.t ] list -> t
 
+(** [concat l] concatenates the list of [String_with_vars.t] named [l] with the following
+    caveats:
+    - The [Loc.t]s are discarded.
+    - The [String_with_vars.t] is always quoted.
+    - They are all separated by a space [" "]. *)
+val concat : t list -> t
+
 (** [is_pform v p] holds when [v] is just the Pform [p] *)
 val is_pform : t -> Pform.t -> bool
 

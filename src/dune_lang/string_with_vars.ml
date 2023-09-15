@@ -375,3 +375,16 @@ let remove_locs { quoted; loc = _; parts } =
         | Pform (source, p) -> Pform ({ source with loc = Loc.none }, p))
   }
 ;;
+
+(* CR-someday alizter: Somehow preserve the location information, perhaps as a union of
+   all the locations. *)
+let concat ts =
+  List.fold_left
+    ts
+    ~init:{ quoted = false; parts = []; loc = Loc.none }
+    ~f:(fun { quoted = _; parts; loc = _ } t ->
+      { quoted = true
+      ; parts = parts @ (if parts = [] then [] else [ Text " " ]) @ t.parts
+      ; loc = Loc.none
+      })
+;;

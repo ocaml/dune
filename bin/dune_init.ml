@@ -195,6 +195,14 @@ module Init_context = struct
   ;;
 end
 
+let check_module_name name =
+  let s = Dune_lang.Atom.to_string name in
+  let (_ : Dune_rules.Module_name.t) =
+    Dune_rules.Module_name.of_string_user_error (Loc.none, s) |> User_error.ok_exn
+  in
+  ()
+;;
+
 module Public_name = struct
   include Lib_name
   module Pkg = Dune_lang.Package_name.Opam_compatible
@@ -346,6 +354,7 @@ module Component = struct
     ;;
 
     let library (common : Options.Common.t) { Options.Library.inline_tests; public } =
+      check_module_name common.name;
       let common =
         if inline_tests
         then (

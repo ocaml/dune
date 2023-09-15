@@ -2,6 +2,7 @@
 
 ```mermaid
 gitGraph TB:
+  branch main
   commit id: "feat(1)"
   commit id: "feat(2)"
   commit id: "feat(3)"

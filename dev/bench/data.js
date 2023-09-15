@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694768530949,
+  "lastUpdate": 1694773821706,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -95641,6 +95641,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.20005227418",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c8f9d34c62a77d9f4e069d191090d27d0374db12",
+          "message": "refactor: move switch to a separate module (#8659)\n\nSo that it can be used both in [Workspace] and [Context]\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-15T11:16:48+01:00",
+          "tree_id": "8745901d78cf81af95af0f05e77bb87294c9edd4",
+          "url": "https://github.com/ocaml/dune/commit/c8f9d34c62a77d9f4e069d191090d27d0374db12"
+        },
+        "date": 1694773808685,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.86411930171333",
             "unit": "seconds"
           }
         ]

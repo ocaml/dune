@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694767738838,
+  "lastUpdate": 1694768165776,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -29723,6 +29723,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.82835476901333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "77cd8fc7f4891b55ac1efedca875af363e912743",
+          "message": "fix(init): check that module names are valid (#8644)\n\nFixes #8252\r\n\r\nWhen creating a library (directly or indirectly, through a project), the\r\ncomponent name should be a valid module name.\r\n\r\nThis restriction does not apply to executable names.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-09-15T10:35:43+02:00",
+          "tree_id": "1dd46723a5e8dc58a000539e11c7281a8a3af44a",
+          "url": "https://github.com/ocaml/dune/commit/77cd8fc7f4891b55ac1efedca875af363e912743"
+        },
+        "date": 1694768164794,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.051865756779996",
             "unit": "seconds"
           }
         ]

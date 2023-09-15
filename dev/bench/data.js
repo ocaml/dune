@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694782054319,
+  "lastUpdate": 1694782496532,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -29810,6 +29810,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.15594574278666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "66558d3096c9f9c41927478328bd6c2f5e277f4f",
+          "message": "refactor: compute initial ocamlpath only once (#8661)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-15T13:33:43+01:00",
+          "tree_id": "7f794f5d65fb2bbfdd84a6f2d6e1a129711b8ffb",
+          "url": "https://github.com/ocaml/dune/commit/66558d3096c9f9c41927478328bd6c2f5e277f4f"
+        },
+        "date": 1694782495463,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.175416251339996",
             "unit": "seconds"
           }
         ]

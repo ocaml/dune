@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694787896349,
+  "lastUpdate": 1694787908375,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -74615,6 +74615,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "71.30383832288",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e051c8ab2b74f1463fe5911f2d3f636fd8d8309a",
+          "message": "test(pkg): test substs field in opam file (#8656)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-15T14:58:13+01:00",
+          "tree_id": "1f33e19e282fd966454b758a8b97a861deb657f1",
+          "url": "https://github.com/ocaml/dune/commit/e051c8ab2b74f1463fe5911f2d3f636fd8d8309a"
+        },
+        "date": 1694787907602,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.9136945404266668",
             "unit": "seconds"
           }
         ]

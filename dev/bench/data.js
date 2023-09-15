@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694774615296,
+  "lastUpdate": 1694776714457,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -95757,6 +95757,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.86411930171333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4d95fe8bbfdb153347a4c8035d63078489f4a5c8",
+          "message": "refactor: move OPAM_SWITCH_PREFIX to [Opam_switch] (#8660)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-15T12:05:34+01:00",
+          "tree_id": "f798849bb258edb564c94e3eedb91e35e01576ba",
+          "url": "https://github.com/ocaml/dune/commit/4d95fe8bbfdb153347a4c8035d63078489f4a5c8"
+        },
+        "date": 1694776700871,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.84610648816667",
             "unit": "seconds"
           }
         ]

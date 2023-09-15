@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694787908375,
+  "lastUpdate": 1694805762371,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -96105,6 +96105,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "24.145750478660002",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1d4205f9b7c1878ed005746da1e52f06afc41cad",
+          "message": "chore(ci): switch to OCaml 5.2 trunk and intro 5.1 jobs (#8666)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-15T20:09:41+01:00",
+          "tree_id": "7a4e3de60374631b9780f2ab1b863608568973bd",
+          "url": "https://github.com/ocaml/dune/commit/1d4205f9b7c1878ed005746da1e52f06afc41cad"
+        },
+        "date": 1694805748448,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.85032263046",
             "unit": "seconds"
           }
         ]

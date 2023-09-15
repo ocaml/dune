@@ -233,23 +233,16 @@ module Context = struct
   module Opam = struct
     type t =
       { base : Common.t
-      ; switch : string
-      ; root : string option
+      ; switch : Opam_switch.t
       }
 
-    let to_dyn { base; switch; root } =
+    let to_dyn { base; switch } =
       let open Dyn in
-      record
-        [ "base", Common.to_dyn base
-        ; "switch", string switch
-        ; "root", option string root
-        ]
+      record [ "base", Common.to_dyn base; "switch", Opam_switch.to_dyn switch ]
     ;;
 
-    let equal { base; switch; root } t =
-      Common.equal base t.base
-      && String.equal switch t.switch
-      && Option.equal String.equal root t.root
+    let equal { base; switch } t =
+      Common.equal base t.base && Opam_switch.equal switch t.switch
     ;;
 
     let decode =
@@ -275,7 +268,8 @@ module Context = struct
                  ])
         in
         let base = { base with targets = Target.add base.targets x; name } in
-        { base; switch; root }
+        let switch = { Opam_switch.switch; root } in
+        { base; switch }
     ;;
   end
 

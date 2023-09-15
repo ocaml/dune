@@ -11,12 +11,14 @@ module Kind = struct
     | Opam o -> Opam_switch.to_dyn o
   ;;
 
+  let initial_ocamlpath = lazy (Findlib_config.ocamlpath_of_env Env.initial)
+
   let ocamlpath t ~env ~findlib_toolchain =
     let env_ocamlpath = Findlib_config.ocamlpath_of_env env in
     match t, findlib_toolchain with
     | Default, None -> Option.value ~default:[] env_ocamlpath
     | _, _ ->
-      let initial_ocamlpath = Findlib_config.ocamlpath_of_env Env.initial in
+      let initial_ocamlpath = Lazy.force initial_ocamlpath in
       (* If we are not in the default context, we can only use the OCAMLPATH
          variable if it is specific to this build context *)
       (* CR-someday diml: maybe we should actually clear OCAMLPATH in other

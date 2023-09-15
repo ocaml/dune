@@ -90,6 +90,12 @@ let get_opam_file_path t opam_package =
   / "opam"
 ;;
 
+let get_opam_package_files_path t opam_package =
+  get_opam_package_version_dir_path t (OpamPackage.name opam_package)
+  / OpamPackage.to_string opam_package
+  / "files"
+;;
+
 (* Returns a list containing all versions of a package with a given name *)
 let all_package_versions t opam_package_name =
   let version_dir_path = get_opam_package_version_dir_path t opam_package_name in

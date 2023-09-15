@@ -14,3 +14,5 @@ val load_all_versions
   :  t
   -> OpamPackage.Name.t
   -> (OpamFile.OPAM.t list, [ `Package_not_found ]) result
+
+val get_opam_package_files_path : t -> OpamPackage.t -> Path.t

@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 
 module Summary : sig
   (** Some intermediate state from the solve exposed for logging purposes *)
@@ -8,9 +8,17 @@ module Summary : sig
   val selected_packages_message : t -> lock_dir_path:Path.Source.t -> User_message.t
 end
 
+module Solver_result : sig
+  type t =
+    { summary : Summary.t
+    ; lock_dir : Lock_dir.t
+    ; files : Lock_dir.Write_disk.Files_entry.t Package_name.Map.Multi.t
+    }
+end
+
 val solve_lock_dir
   :  Solver_env.t
   -> Version_preference.t
   -> Opam_repo.t * (Loc.t * Repository_id.t) option
   -> local_packages:OpamFile.OPAM.t OpamTypes.name_map
-  -> (Summary.t * Lock_dir.t, [ `Diagnostic_message of _ Pp.t ]) result
+  -> (Solver_result.t, [ `Diagnostic_message of _ Pp.t ]) result

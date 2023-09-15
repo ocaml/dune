@@ -391,14 +391,16 @@ module Lock = struct
                ~local_packages:opam_file_map
            with
            | Error (`Diagnostic_message message) -> Error (context_name, message)
-           | Ok (summary, lock_dir) ->
+           | Ok { Dune_pkg.Opam_solver.Solver_result.summary; lock_dir; files } ->
              let summary_message =
                Dune_pkg.Opam_solver.Summary.selected_packages_message
                  summary
                  ~lock_dir_path
                |> User_message.pp
              in
-             Ok (Lock_dir.Write_disk.prepare ~lock_dir_path lock_dir, summary_message))
+             Ok
+               ( Lock_dir.Write_disk.prepare ~lock_dir_path ~files lock_dir
+               , summary_message ))
        |> Result.List.all)
       >>| function
       | Error (context_name, message) ->

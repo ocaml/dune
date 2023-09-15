@@ -325,7 +325,7 @@ module Pkg = struct
   let exported_env t =
     let base =
       Env.Map.of_list_exn
-        [ "OPAM_SWITCH_PREFIX", Path.Build.to_string t.paths.target_dir
+        [ Opam_switch.opam_switch_prefix_var_name, Path.Build.to_string t.paths.target_dir
         ; "CDPATH", ""
         ; "MAKELEVEL", ""
         ; "OPAM_PACKAGE_NAME", Package.Name.to_string t.info.name

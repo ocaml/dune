@@ -267,13 +267,11 @@ module Build_environment_kind = struct
     | Opam2_environment of string (* opam switch prefix *)
     | Unknown
 
-  let opam_switch_prefix_var_name = "OPAM_SWITCH_PREFIX"
-
   let query ~(kind : Kind.t) ~findlib_toolchain ~env =
     match findlib_toolchain with
     | Some s -> Cross_compilation_using_findlib_toolchain s
     | None ->
-      let opam_prefix = Env.get env opam_switch_prefix_var_name in
+      let opam_prefix = Env.get env Opam_switch.opam_switch_prefix_var_name in
       (match kind with
        | Opam _ ->
          (match opam_prefix with
@@ -444,14 +442,14 @@ module Group = struct
 
   let create_for_opam (builder : Builder.t) ~switch ~loc ~targets =
     let* vars = Opam.env ~env:builder.env switch in
-    if not (Env.Map.mem vars Build_environment_kind.opam_switch_prefix_var_name)
+    if not (Env.Map.mem vars Opam_switch.opam_switch_prefix_var_name)
     then
       User_error.raise
         ~loc
         [ Pp.textf
             "opam doesn't set the environment variable %s. I cannot create an opam build \
              context without opam setting this variable."
-            Build_environment_kind.opam_switch_prefix_var_name
+            Opam_switch.opam_switch_prefix_var_name
         ];
     let path =
       match Env.Map.find vars Env_path.var with
@@ -704,7 +702,7 @@ let map_exe (context : t) =
 let roots t =
   let module Roots = Install.Roots in
   let prefix_roots =
-    match Env.get t.builder.env Build_environment_kind.opam_switch_prefix_var_name with
+    match Env.get t.builder.env Opam_switch.opam_switch_prefix_var_name with
     | None -> Roots.make_all None
     | Some prefix ->
       let prefix = Path.of_filename_relative_to_initial_cwd prefix in

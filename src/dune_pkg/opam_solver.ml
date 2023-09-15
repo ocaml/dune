@@ -484,6 +484,14 @@ let scan_files_entries ~repo_id path =
     })
 ;;
 
+module Solver_result = struct
+  type t =
+    { summary : Summary.t
+    ; lock_dir : Lock_dir.t
+    ; files : Lock_dir.Write_disk.Files_entry.t Package_name.Map.Multi.t
+    }
+end
+
 let solve_lock_dir solver_env version_preference (repo, repo_id) ~local_packages =
   let is_local_package package =
     OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
@@ -520,5 +528,5 @@ let solve_lock_dir solver_env version_preference (repo, repo_id) ~local_packages
       |> Package_name.Map.filter_map ~f:(fun files ->
         if List.is_empty files then None else Some files)
     in
-    summary, lock_dir, files)
+    { Solver_result.summary; lock_dir; files })
 ;;

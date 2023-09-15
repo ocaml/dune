@@ -391,7 +391,7 @@ module Lock = struct
                ~local_packages:opam_file_map
            with
            | Error (`Diagnostic_message message) -> Error (context_name, message)
-           | Ok (summary, lock_dir, files) ->
+           | Ok { Dune_pkg.Opam_solver.Solver_result.summary; lock_dir; files } ->
              let summary_message =
                Dune_pkg.Opam_solver.Summary.selected_packages_message
                  summary

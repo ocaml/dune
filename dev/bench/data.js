@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694809608245,
+  "lastUpdate": 1694809620194,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -74789,6 +74789,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "70.64493827686",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f418dae6c37cded2ed17c307edbfe351da588c16",
+          "message": "fix: add original error to spurious error message (#8646)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-15T21:00:18+01:00",
+          "tree_id": "4e73a1548db6f7584e28e5e55b184ae8aacf23a2",
+          "url": "https://github.com/ocaml/dune/commit/f418dae6c37cded2ed17c307edbfe351da588c16"
+        },
+        "date": 1694809619463,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.88432726808",
             "unit": "seconds"
           }
         ]

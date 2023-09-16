@@ -861,8 +861,11 @@ end = struct
     fun db ctx (loc, name) ->
       Memo.exec memo (db, ctx, name)
       >>| function
-      | None -> User_error.raise ~loc [ Pp.text "Unknown package" ]
       | Some s -> s
+      | None ->
+        User_error.raise
+          ~loc
+          [ Pp.textf "Unknown package %S" (Package.Name.to_string name) ]
   ;;
 end
 

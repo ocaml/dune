@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694895773833,
+  "lastUpdate": 1694896240229,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30013,6 +30013,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.94616680377333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "df5c496a4c2870225830a61780c50e2651126dbb",
+          "message": "fix(pkg): add support for %{make} (#8668)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-16T21:08:07+01:00",
+          "tree_id": "e7b1973594bb1081b7f68cc0a398c1e97f34d871",
+          "url": "https://github.com/ocaml/dune/commit/df5c496a4c2870225830a61780c50e2651126dbb"
+        },
+        "date": 1694896238934,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.90301544658",
             "unit": "seconds"
           }
         ]

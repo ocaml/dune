@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694863895903,
+  "lastUpdate": 1694886599073,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -96453,6 +96453,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.73498887241333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b21e2694307bfbf091545153b92c7822b0888d07",
+          "message": "test(pkg): unknown package error (#8667)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-16T18:36:56+01:00",
+          "tree_id": "245b6c8a145432b6437d8be7796b65e5b802e0e9",
+          "url": "https://github.com/ocaml/dune/commit/b21e2694307bfbf091545153b92c7822b0888d07"
+        },
+        "date": 1694886584679,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.099952970693334",
             "unit": "seconds"
           }
         ]

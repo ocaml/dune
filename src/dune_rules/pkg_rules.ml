@@ -679,13 +679,9 @@ module Action_expander = struct
       let arg = arg |> Value.to_string ~dir in
       Action.System arg
     | Patch p ->
-      let+ input = Expander.expand_pform_gen ~mode:Single expander p
-      and+ patch_prog, _ =
-        Expander.expand_exe expander (String_with_vars.make_text Loc.none "patch")
-      in
+      let+ input = Expander.expand_pform_gen ~mode:Single expander p in
       let input = Value.to_path ~dir input in
-      let patch_prog = Action.Prog.ok_exn patch_prog in
-      Dune_patch.action ~display:!Clflags.display ~patch_prog ~input
+      Dune_patch.action ~patch:input
     | Substitute (input, output) ->
       let+ input =
         Expander.expand_pform_gen ~mode:Single expander input >>| Value.to_path ~dir

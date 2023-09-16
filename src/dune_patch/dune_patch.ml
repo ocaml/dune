@@ -74,66 +74,72 @@ let patches_of_string patch_string =
       Patch.Replace (Path.Local.of_string new_file))
 ;;
 
+let prog =
+  lazy
+    (match Bin.which ~path:(Env_path.path Env.initial) "patch" with
+     | Some p -> p
+     | None -> User_error.raise [ Pp.text "patch not found" ])
+;;
+
+let exec display ~patch ~dir ~stderr =
+  let open Fiber.O in
+  let* () = Fiber.return () in
+  (* Read the patch file. *)
+  Io.read_file patch
+  (* Collect all the patches. *)
+  |> patches_of_string
+  (* Depending on whether it is creating a new file or modifying an existing file
+     prepare the files that will be modified accordingly. For modifying existing files
+     this means materializing any symlinks or hardlinks. *)
+  |> List.iter ~f:(function
+    | Patch.New _ | Delete _ -> ()
+    | Replace file ->
+      let file = Path.append_local dir file in
+      let temp = Path.extend_basename file ~suffix:".for_patch" in
+      Io.copy_file ~src:file ~dst:temp ();
+      Path.rename temp file);
+  Process.run
+    ~dir
+    ~display
+    ~stdout_to:Process.(Io.null Out)
+    ~stderr_to:stderr
+    ~stdin_from:Process.(Io.null In)
+    Process.Failure_mode.Strict
+    (Lazy.force prog)
+    [ "-p1"; "-i"; Path.reach_for_running ~from:dir patch ]
+;;
+
 module Spec = struct
-  type ('path, 'target) t =
-    { patch_file : 'path
-    ; display : Dune_engine.Display.t
-    ; patch_prog : Path.t
-    }
+  type ('path, 'target) t = 'path
 
   let name = "patch"
   let version = 1
-
-  let bimap { patch_file; display; patch_prog } f _ =
-    { patch_file = f patch_file; display; patch_prog }
-  ;;
-
+  let bimap patch f _ = f patch
   let is_useful_to ~distribute:_ ~memoize = memoize
 
-  let encode (p : (_, _) t) input _ : Dune_lang.t =
-    List [ Dune_lang.atom_or_quoted_string name; input p.patch_file ]
+  let encode patch input _ : Dune_lang.t =
+    List [ Dune_lang.atom_or_quoted_string name; input patch ]
   ;;
 
-  let action (p : (_, _) t) ~ectx:_ ~(eenv : Action.Ext.env) =
-    let open Fiber.O in
-    let* () = Fiber.return () in
-    let input = Value.to_string ~dir:eenv.working_dir (Value.Path p.patch_file) in
-    (* Read the patch file. *)
-    Io.read_file p.patch_file
-    (* Collect all the patches. *)
-    |> patches_of_string
-    (* Depending on whether it is creating a new file or modifying an existing file
-       prepare the files that will be modified accordingly. For modifying existing files
-       this means materializing any symlinks or hardlinks. *)
-    |> List.iter ~f:(function
-      | Patch.New _ -> ()
-      | Patch.Delete _ -> ()
-      | Patch.Replace file ->
-        let file = Path.append_local eenv.working_dir file in
-        Io.copy_file ~src:file ~dst:(Path.extend_basename file ~suffix:".for_patch") ();
-        Unix.rename (Path.to_string file ^ ".for_patch") (Path.to_string file));
-    Process.run
-      ~dir:eenv.working_dir
-      ~display:p.display
-      ~stdout_to:Process.(Io.null Out)
-      ~stderr_to:eenv.stderr_to
-      ~stdin_from:eenv.stdin_from
-      Process.Failure_mode.Strict
-      p.patch_prog
-      [ "-p1"; "-i"; input ]
+  let action patch ~ectx:_ ~(eenv : Action.Ext.env) =
+    exec !Dune_engine.Clflags.display ~patch ~dir:eenv.working_dir ~stderr:eenv.stderr_to
   ;;
 end
 
 (* CR-someday alizter: This should be an action builder. *)
-let action ~display ~patch_prog ~input =
+let action ~patch =
   let module M = struct
     type path = Path.t
     type target = Path.Build.t
 
     module Spec = Spec
 
-    let v = { Spec.patch_file = input; display; patch_prog }
+    let v = patch
   end
   in
   Action.Extension (module M)
 ;;
+
+module For_tests = struct
+  let exec = exec
+end

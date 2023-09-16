@@ -84,18 +84,6 @@ let test files (patch, patch_contents) =
   let display = Display.Quiet in
   Sys.chdir (Path.to_string dir);
   let patch_file = Path.append_local dir (Path.Local.of_string patch) in
-  let ectx : Action.Ext.context =
-    { targets = None; context = None; purpose = Internal_job; rule_loc = Loc.none }
-  in
-  let eenv : Action.Ext.env =
-    { working_dir = dir
-    ; env = Env.initial
-    ; stdout_to = Process.Io.stderr
-    ; stderr_to = Process.Io.stderr
-    ; stdin_from = Process.Io.stdin
-    ; exit_codes = Predicate.true_
-    }
-  in
   let config =
     { Scheduler.Config.concurrency = 1
     ; stats = None
@@ -108,14 +96,7 @@ let test files (patch, patch_contents) =
   @@ fun () ->
   let open Fiber.O in
   let* () = Fiber.return @@ create_files ((patch, patch_contents) :: files) in
-  let patch_prog =
-    let path = Env.initial |> Env_path.path in
-    let program = "patch" in
-    match Bin.which ~path program with
-    | Some p -> p
-    | None -> Dune_engine.Utils.program_not_found ~loc:None program
-  in
-  Dune_patch.Spec.action { Dune_patch.Spec.display; patch_file; patch_prog } ~ectx ~eenv
+  Dune_patch.For_tests.exec display ~patch:patch_file ~dir ~stderr:Process.Io.stderr
 ;;
 
 let check path =

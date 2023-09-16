@@ -401,18 +401,31 @@ let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
   let name = OpamPackage.name opam_package in
   let version = OpamPackage.version opam_package |> OpamPackage.Version.to_string in
   let dev = OpamPackage.Name.Map.mem name local_packages in
+  let opam_file =
+    match OpamPackage.Name.Map.find_opt name local_packages with
+    | None -> Opam_repo.load_opam_package repo opam_package
+    | Some local_package -> local_package
+  in
+  let extra_sources =
+    OpamFile.OPAM.extra_sources opam_file
+    |> List.map ~f:(fun (opam_basename, opam_url) ->
+      ( Path.Local.of_string (OpamFilename.Base.to_string opam_basename)
+      , let url = Loc.none, OpamUrl.to_string (OpamFile.URL.url opam_url) in
+        let checksum =
+          match OpamFile.URL.checksum opam_url with
+          | [] -> None
+          (* opam discards the later checksums, so we only take the first one *)
+          | checksum :: _ -> Some (Loc.none, Checksum.of_opam_hash checksum)
+        in
+        Lock_dir.Source.Fetch { Lock_dir.Source.url; checksum } ))
+  in
   let info =
     { Lock_dir.Pkg_info.name = Package_name.of_string (OpamPackage.Name.to_string name)
     ; version
     ; dev
     ; source = None
-    ; extra_sources = []
+    ; extra_sources
     }
-  in
-  let opam_file =
-    match OpamPackage.Name.Map.find_opt name local_packages with
-    | None -> Opam_repo.load_opam_package repo opam_package
-    | Some local_package -> local_package
   in
   (* This will collect all the atoms from the package's dependency formula regardless of conditions *)
   let deps =

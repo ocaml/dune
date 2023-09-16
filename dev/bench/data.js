@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694862933860,
+  "lastUpdate": 1694863459075,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -29926,6 +29926,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.487355355953326",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7eea0c19aa58b7c28817b9b20aaf0ddaee05c1aa",
+          "message": "feature(pkg): add patching support to dune pkg (#8654)\n\nWe add support for the patches field in an opam file. We create a custom\r\npatch action that makes sure we can patch the files in quesiton by\r\nmaterializing any symlinks.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>>",
+          "timestamp": "2023-09-16T11:59:12+01:00",
+          "tree_id": "dac121a1c85ee7bae54c7c311d90c9c820ed205d",
+          "url": "https://github.com/ocaml/dune/commit/7eea0c19aa58b7c28817b9b20aaf0ddaee05c1aa"
+        },
+        "date": 1694863456665,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "47.180682887639996",
             "unit": "seconds"
           }
         ]

@@ -9,3 +9,7 @@
 (cram
  (deps %{bin:git})
  (applies_to git-source opam-repository-download))
+
+(cram
+ (deps %{bin:make})
+ (applies_to make))

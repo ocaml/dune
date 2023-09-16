@@ -515,8 +515,11 @@ module Action_expander = struct
       | Var (Pkg var) -> expand_pkg paths var
       | Var Context_name -> Memo.return [ Value.String (Context_name.to_string context) ]
       | Var Make ->
-        (* TODO *)
-        assert false
+        let+ make =
+          let path = Env_path.path Env.initial in
+          Make_prog.which loc context ~path
+        in
+        [ Value.Path make ]
       | Macro ({ macro = Pkg | Pkg_self; _ } as macro_invocation) ->
         let { Package_variable.name = variable_name; scope } =
           match Package_variable.of_macro_invocation ~loc macro_invocation with

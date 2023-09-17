@@ -15,6 +15,7 @@ Test simple interactions between melange.emit and copy_files
   >  (alias mel)
   >  (target output)
   >  (emit_stdlib false)
+  >  (preprocess (pps melange.ppx))
   >  (runtime_deps ./some_dir))
   > EOF
 
@@ -25,11 +26,7 @@ Test simple interactions between melange.emit and copy_files
   > let () = Js.log file_content
   > EOF
 
-  $ dune build @mel --display=short
-          melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc output/main.js
-            sh some_dir
-            sh some_dir
+  $ dune build @mel
   Error: Is a directory
   -> required by _build/default/output/some_dir
   -> required by alias output/mel

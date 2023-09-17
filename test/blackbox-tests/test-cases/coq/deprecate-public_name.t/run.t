@@ -11,6 +11,8 @@ public_name field is deprecated
        ^^^^^^^^^^^^^^^^^
   Warning: 'public_name' was deprecated in version 0.5 of the Coq language.
   Please use 'package' instead.
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
 
 both package and public_name field is an error
   $ cat > dune << EOF
@@ -26,6 +28,8 @@ both package and public_name field is an error
        ^^^^^^^^^^^^^^^^^
   Warning: 'public_name' was deprecated in version 0.5 of the Coq language.
   Please use 'package' instead.
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   File "dune", line 3, characters 14-17:
   3 |  (public_name Foo)
                     ^^^

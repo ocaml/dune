@@ -1,0 +1,29 @@
+{1 xdg - the XDG base directories specification}
+
+{2 Introduction}
+
+Where should your application put its files? Somewhere in [$HOME]? Do non-Unix
+systems have something like that? What about cache files?
+
+Fortunately, there is a standard for this -
+{{:https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html}
+the XDG base directories specification}.
+
+This library implements this standard and extends it in a way that works on
+Windows too.
+
+{2 Example}
+
+This computes the name of a config file for a program named [acme].
+
+{[
+  let config_file_path =
+    let xdg = Xdg.create ~env:Sys.getenv_opt () in
+    let config_dir = Xdg.config_dir xdg in
+    Filename.concat config_dir "acme"
+]}
+
+{2 API documentation}
+
+The entry point for this library is {!Xdg}.
+

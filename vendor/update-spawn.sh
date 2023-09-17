@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=e159092e9941ec3972c836927232f5680b6cb487
+version=posix_spawn
 
 set -e -o pipefail
 
@@ -12,7 +12,7 @@ mkdir -p spawn/src
 
 (
     cd $TMP
-    git clone https://github.com/janestreet/spawn.git
+    git clone https://github.com/rgrinberg/spawn.git
     cd spawn
     git checkout $version
 )

@@ -1,4 +1,0 @@
-(executable
- (public_name bench)
- (modules bench)
- (libraries unix))

@@ -24,7 +24,7 @@ CAMLprim value dune_pthread_chdir_is_osx(value unit) {
 #define SYS___pthread_chdir 348
 #endif
 
-int __pthread_chdir(const char *path) {
+static int __pthread_chdir(const char *path) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated"
   return syscall(SYS___pthread_chdir, path);
@@ -96,6 +96,10 @@ CAMLprim value dune_send(value v_fd, value v_bytes, value v_pos, value v_len) {
 }
 #else
 CAMLprim value dune_send(value v_fd, value v_bytes, value v_pos, value v_len) {
+  (void)v_fd;
+  (void)v_bytes;
+  (void)v_pos;
+  (void)v_len;
   caml_invalid_argument("sendmsg without sigpipe only available on linux");
 }
 #endif

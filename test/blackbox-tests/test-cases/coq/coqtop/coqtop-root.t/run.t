@@ -1,6 +1,8 @@
 All dune commands work when you run them in sub-directories, so this should be no exception.
 
   $ dune coq top --toplevel=echo -- theories/foo.v | ../../scrub_coq_args.sh
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   -topfile $TESTCASE_ROOT/_build/default/theories/foo.v
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
@@ -21,7 +23,10 @@ All dune commands work when you run them in sub-directories, so this should be n
   -I lib/coq/../coq-core/plugins/ssreflect
   -I lib/coq/../coq-core/plugins/ssrmatching
   -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial
+  -I lib/coq/../coq-core/plugins/tutorial/p0
+  -I lib/coq/../coq-core/plugins/tutorial/p1
+  -I lib/coq/../coq-core/plugins/tutorial/p2
+  -I lib/coq/../coq-core/plugins/tutorial/p3
   -I lib/coq/../coq-core/plugins/zify
   -R coq/theories Coq
   -R $TESTCASE_ROOT/_build/default/theories foo

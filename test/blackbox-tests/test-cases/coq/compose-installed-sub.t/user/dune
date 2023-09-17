@@ -1,3 +1,0 @@
-(coq.theory
- (name user)
- (theories global.field global.algebra))

@@ -5,23 +5,44 @@
     the user in [Action_dune_lang.t] *)
 
 open! Import
-
-module Outputs : sig
-  include
-    module type of Dune_lang.Action.Outputs
-      with type t = Dune_lang.Action.Outputs.t
-end
+open Dune_util.Action
 
 module Inputs : sig
-  include
-    module type of Dune_lang.Action.Inputs
-      with type t = Dune_lang.Action.Inputs.t
+  type t = Inputs.t = Stdin
 end
 
 module File_perm : sig
-  include
-    module type of Dune_lang.Action.File_perm
-      with type t = Dune_lang.Action.File_perm.t
+  type t = File_perm.t =
+    | Normal
+    | Executable
+
+  val to_unix_perm : t -> int
+end
+
+module Outputs : sig
+  type t = Outputs.t =
+    | Stdout
+    | Stderr
+    | Outputs
+
+  val to_string : t -> string
+end
+
+module Diff : sig
+  open Diff
+
+  module Mode : sig
+    type t = Mode.t =
+      | Binary
+      | Text
+  end
+
+  type nonrec ('path, 'target) t = ('path, 'target) t =
+    { optional : bool
+    ; mode : Mode.t
+    ; file1 : 'path
+    ; file2 : 'target
+    }
 end
 
 module Ext : module type of Action_intf.Ext
@@ -37,8 +58,8 @@ module Prog : sig
       ; loc : Loc.t option
       }
 
-    val create :
-         ?hint:string
+    val create
+      :  ?hint:string
       -> context:Context_name.t
       -> program:string
       -> loc:Loc.t option
@@ -51,7 +72,6 @@ module Prog : sig
   type t = (Path.t, Not_found.t) result
 
   val to_dyn : t -> Dyn.t
-
   val ok_exn : t -> Path.t
 end
 
@@ -62,9 +82,7 @@ include
     with type target := Path.Build.t
     with type string := string
     with type ext :=
-      (module Ext.Instance
-         with type target = Path.Build.t
-          and type path = Path.t)
+      (module Ext.Instance with type target = Path.Build.t and type path = Path.t)
 
 include
   Action_intf.Helpers
@@ -83,7 +101,7 @@ module For_shell : sig
       with type path := string
       with type target := string
       with type string := string
-      with type ext := Dune_lang.t
+      with type ext := Dune_sexp.t
 end
 
 (** Convert the action to a format suitable for printing *)
@@ -138,9 +156,9 @@ module Full : sig
     ; sandbox : Sandbox_config.t
     }
 
-  val make :
-       ?env:Env.t (** default [Env.empty] *)
-    -> ?locks:Path.t list (** default [\[\]] *)
+  val make
+    :  ?env:Env.t (** default [Env.empty] *)
+    -> ?locks:Path.t list (** default [[]] *)
     -> ?can_go_in_shared_cache:bool (** default [true] *)
     -> ?sandbox:Sandbox_config.t (** default [Sandbox_config.default] *)
     -> action
@@ -156,11 +174,8 @@ module Full : sig
       ]} *)
 
   val add_env : Env.t -> t -> t
-
   val add_locks : Path.t list -> t -> t
-
   val add_sandbox : Sandbox_config.t -> t -> t
-
   val add_can_go_in_shared_cache : bool -> t -> t
 
   include Monoid with type t := t

@@ -1,6 +1,189 @@
 Unreleased
 ----------
 
+If you're a contributor, please include your CHANGES entry in a file
+`doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
+changelog properly.
+
+3.10.0 (2023-07-31)
+-------------------
+
+- Add `dune show rules` as alias of the `dune rules` command. (#8000, @Alizter)
+
+- Fix `%{deps}` to expand properly in `(cat ...)` when containing 2 or more
+  items. (#8196, @Alizter)
+
+- Add `dune show installed-libraries` as an alias of the `dune
+  installed-libraries` command. (#8135, @Alizter)
+
+- Fix the `severity` of error messages sent over RPC which was missing. (#8193,
+  @Alizter)
+
+- Add `dune build --dump-gc-stats FILE` argument to dump garbage collection
+  stats to a named file. (#8072, @Alizter)
+
+- Fix bug with ppx and Reason syntax due to missing dependency in sandboxed
+  action (#7932, fixes #7930, @Alizter)
+
+- Add `dune describe package-entries` to print all package entries (#7480,
+  @moyodiallo)
+
+- Improve `dune describe external-lib-deps` by adding the internal dependencies
+  for more information. (#7478, @moyodiallo)
+
+- Re-enable background file digests on Windows. The files are now open in a way
+  that prevents race condition around deletion. (#8262, fixes #8268, @emillon)
+
+3.9.3 (2023-07-31)
+------------------
+
+- Fix flushing when using `sendfile` fallback (#8288, fixes #8284, @alan-j-hu)
+
+3.9.2 (2023-07-25)
+------------------
+
+- Disable background digests on Windows. This prevents an issue where
+  unremovable files would make dune crash when the shared cache is enabled.
+  (#8243, fixes #8228, @emillon)
+
+- Fix permission errors when `sendfile` is not available (#8234, fixes #8210,
+  @emillon)
+
+3.9.1 (2023-07-06)
+------------------
+
+- Disable background operations and threaded console on MacOS and other Unixes
+  where we rely on fork. (#8100, #8121, fixes #8083, @rgrinberg, @emillon)
+
+- Initialize async IO thread lazily. (#8122, @emillon)
+
+3.9.0 (2023-06-28)
+------------------
+
+- Validate file extension for `$ dune ocaml top-module`. (#8005, fixes #8004, @3Rafal)
+
+- Include the time it takes to read/write state files when `--trace-file` is
+  enabled (#7960, @rgrinberg)
+
+- Add `dune show` command group which is an alias of `dune describe`. (#7946,
+  @Alizter)
+
+- Include source tree scans in the traces produced by `--trace-file` (#7937,
+  @rgrinberg)
+
+- Cinaps: The promotion rules for cinaps would only offer one file at a time no
+  matter how many promotions were available. Now we offer all the promotions at
+  once (#7901, @rgrinberg)
+
+- Do not re-run OCaml syntax files on every iteration of the watch mode. This
+  is too memory consuming. (#7894, fix #6900, @rgrinberg)
+
+- Add `--all` option to `dune rpc status` to show all Dune RPC servers running.
+  (#8011, fix #7902, @Alizter)
+
+- Remove some compatibility code for old version of dune that generated
+  `.merlin` files. Now dune will never remove `.merlin` files automatically
+  (#7562)
+
+- Add `dune show env` command and make `dune printenv` an alias of it. (#7985,
+  @Alizter)
+
+- Add additional metadata to the traces provided by `--trace-file` whenever
+  `--trace-extended` is passed (#7778, @rleshchinskiy)
+
+- Extensions used in `(dialect)` can contain periods (e.g., `cppo.ml`). (#7782,
+  fixes #7777, @nojb)
+
+- Allow `(include_subdirs qualified)` to be used when libraries define a
+  `(modules ...)` field (#7797, fixes #7597, @anmonteiro)
+
+- `$ dune describe` is now a command group, so arguments to subcommands must be
+  passed after subcommand itself. (#7919, @Alizter)
+
+- The `interface` and `implementation` fields of a `(dialect)` are now optional
+  (#7757, @gpetiot)
+
+- Add commands `dune show targets` and `dune show aliases` that display all the
+  available targets and aliases in a given directory respectively. (#7770,
+  grants #265, @Alizter)
+
+- Allow multiple globs in library's `(stdlib (internal_modules ..))`
+  (@anmonteiro, #7878)
+
+- Attach melange rules to the default alias (#7926, @haochenx)
+
+- In opam constraints, reject `(and)` and `(or)` with no arguments at parse
+  time (#7730, @emillon)
+
+- Compute digests and manage sandboxes in background threads (#7947,
+  @rgrinberg)
+
+- Add `(build_if)` to the `(test)` stanza. When it evaluates to false, the
+  executable is not built. (#7899, fixes #6938, @emillon)
+
+- Add necessary parentheses in generated opam constraints (#7682, fixes #3431,
+  @Lucccyo)
+
+3.8.3 (2023-06-27)
+------------------
+
+- Fix deadlock on Windows (#8044, @nojb)
+
+- When using `sendfile` to copy files on Linux, fall back to the portable
+  version if it fails at runtime for some reason (NFS, etc).
+  (#8049, fixes #8041, @emillon)
+
+3.8.2 (2023-06-16)
+------------------
+
+- Switch back to threaded console for all systems; fix unresponsive console on
+  Windows (#7906, @nojb)
+
+- Respect `-p` / `--only-packages` for `melange.emit` artifacts (#7849,
+  @anmonteiro)
+
+- Fix scanning of Coq installed files (@ejgallego, reported by
+  @palmskog, #7895 , fixes #7893)
+
+- Fix RPC buffer corruption issues due to multi threading. This issue was only
+  reproducible with large RPC payloads (#7418)
+
+- Fix printing errors from excerpts whenever character offsets span multiple
+  lines (#7950, fixes #7905, @rgrinberg)
+
+3.8.1 (2023-06-05)
+------------------
+
+- Fix a crash when using a version of Coq < 8.13 due to the native compiler
+  config variable being missing. We now explicitly default to `(mode vo)` for
+  these older versions of Coq. (#7847, fixes #7846, @Alizter)
+
+- Duplicate installed Coq theories are now allowed with the first appearing in
+  COQPATH being preferred. This is inline with Coq's loadpath semantics. This
+  fixes an issue with install layouts based on COQPATH such as those found in
+  nixpkgs. (#7790, @Alizter)
+
+- Revert #7415 and #7450 (Resolve `ppx_runtime_libraries` in the target context
+  when cross compiling) (#7887, fixes #7875, @emillon)
+
+3.8.0 (2023-05-23)
+------------------
+
+- Fix string quoting in the json file written by `--trace-file` (#7773,
+  @rleshchinskiy)
+
+- Read `pkg-config` arguments from the `PKG_CONFIG_ARGN` environment variable
+  (#1492, #7734, @anmonteiro)
+
+- Correctly set `MANPATH` in `dune exec`. Previously, we would use the `bin/`
+  directory of the context. (#7655, @rgrinberg)
+
+- Allow overriding the `ocaml` binary with findlib configuration (#7648,
+  @rgrinberg)
+
+- merlin: ignore instrumentation settings for preprocessing. (#7606, fixes
+  #7465, @Alizter)
+
 - When a rule's action is interrupted, delete any leftover directory targets.
   This is consistent with how we treat file targets. (#7564, @rgrinberg)
 
@@ -14,11 +197,19 @@ Unreleased
 - Load the host context `findlib.conf` when cross-compiling (#7428, fixes
   #1701, @rgrinberg, @anmonteiro)
 
+- Add a `coqdoc_flags` field to the `coq.theory` stanza allowing the user to
+  pass extra arguments to `coqdoc`. (#7676, fixes #7954 @Alizter)
+
 - Resolve `ppx_runtime_libraries` in the target context when cross compiling
   (#7450, fixes #2794, @anmonteiro)
 
 - Use `$PKG_CONFIG`, when set, to find the `pkg-config` binary  (#7469, fixes
   #2572, @anmonteiro)
+
+- Modules that were declared in `(modules_without_implementation)`,
+  `(private_modules)` or `(virtual_modules)` but not declared in `(modules)`
+  will cause Dune to emit a warning which will become an error in 3.11. (#7608,
+  fixes #7026, @Alizter)
 
 - Preliminary support for Coq compiled intefaces (`.vos` files) enabled via
   `(mode vos)` in `coq.theory` stanzas. This can be used in combination with
@@ -31,7 +222,7 @@ Unreleased
 - Fix `dune install` when cross compiling (#7410, fixes #6191, @anmonteiro,
   @rizo)
 
-- Find `pps` dependencies in the host context when cross-compiling,  (#7410,
+- Find `pps` dependencies in the host context when cross-compiling,  (#7415,
   fixes #4156, @anmonteiro)
 
 - Dune in watch mode no longer builds concurrent rules in serial (#7395
@@ -128,6 +319,20 @@ Unreleased
 - Fix bug where RPC clients built with dune-rpc-lwt would crash when closing
   their connection to the server (#7581, @gridbugs)
 
+- Introduce mdx stanza 0.4 requiring mdx >= 2.3.0 which updates the default
+  list of files to include `*.mld` files (#7582, @Leonidas-from-XIV)
+
+- Fix RPC server on Windows (used for OCaml-LSP). (#7666, @nojb)
+
+- Coq language versions less 0.8 are deprecated, and will be removed
+  in an upcoming Dune version. All users are required to migrate to
+  `(coq lang 0.8)` which provides the right semantics for theories
+  that have been globally installed, such as those coming from opam
+  (@ejgallego, @Alizter)
+
+- Bump minimum version of the dune language for the melange syntax extension
+  from 3.7 to 3.8 (#7665, @jchavarri)
+
 3.7.1 (2023-04-04)
 ------------------
 
@@ -141,6 +346,14 @@ Unreleased
 
 - Handle "Too many links" errors when using Dune cache on Windows.  The fix in
   3.7.0 for this same issue was not effective due to a typo. (#7472, @nojb)
+
+- In `(executable)`, `(public_name -)` is now equivalent to no `(public_name)`.
+  This is consistent with how `(executables)` handles this field.
+  (#7576 , fixes #5852, @emillon)
+
+- Change directory of odoc assets to `odoc.support` (was `_odoc_support`) so
+  that it works with Github Pages out of the box. (#7588, fixes #7364,
+  @emillon)
 
 3.7.0 (2023-02-17)
 ------------------

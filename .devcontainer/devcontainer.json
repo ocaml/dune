@@ -1,0 +1,8 @@
+{
+	"name": "OCaml",
+	"image": "mcr.microsoft.com/devcontainers/base:bullseye",
+	"features": { "ghcr.io/avsm/ocaml-devcontainers-feature/ocaml:latest": {} },
+	"postCreateCommand": "opam init -ay --disable-sandboxing && sudo chown vscode _build && sudo apt-get update && make dev-switch && sudo apt install -y file npm",
+	"mounts": ["source=${localWorkspaceFolderBasename}-ocaml-build,target=${containerWorkspaceFolder}/_build,type=volume"],
+	"remoteUser": "vscode"
+}

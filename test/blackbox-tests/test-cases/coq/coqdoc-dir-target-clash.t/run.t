@@ -1,6 +1,8 @@
 We try to build the documentation but there will be a clash between the
 directory targets. Notice how the tex one fails before html one.
   $ dune build @check
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   File "dune", line 9, characters 0-116:
    9 | (rule
   10 |  (targets

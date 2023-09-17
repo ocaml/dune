@@ -3,7 +3,7 @@ Reproduce github #7020
   $ dir=_to-install
   $ mkdir $dir
   $ cat >$dir/dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > (package
   >  (name dummyfoo))
@@ -35,7 +35,7 @@ Reproduce github #7020
   $ export OCAMLPATH=$PWD/$dir/_install/lib
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 

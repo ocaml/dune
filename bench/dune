@@ -1,7 +1,15 @@
 (executable
  (name bench)
- (modules bench)
- (libraries dune_stats chrome_trace stdune fiber dune_engine dune_util))
+ (modules bench metrics)
+ (libraries
+  dune_stats
+  dune_console
+  chrome_trace
+  stdune
+  fiber
+  dune_lang
+  dune_engine
+  dune_util))
 
 (rule
  (alias bench)

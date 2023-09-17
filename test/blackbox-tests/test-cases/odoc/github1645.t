@@ -28,7 +28,7 @@ built. See #1645.
   $ dune build @install
   $ dune build @doc
   Error: Multiple rules generated for
-  _build/default/_doc/_html/l/Module/.dummy:
+  _build/default/_doc/_html/l/Module/index.html:
   - <internal location>
   - <internal location>
   -> required by alias _doc/_html/l/doc

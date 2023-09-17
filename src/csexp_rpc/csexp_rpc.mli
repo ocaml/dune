@@ -15,23 +15,15 @@
 
 open Stdune
 
-module type Scheduler = sig
-  (** [async f] enqueue task [f] *)
-
-  val async : (unit -> 'a) -> ('a, Exn_with_backtrace.t) result Fiber.t
-end
-
-(** Hack until we move [Dune_engine.Scheduler] into own library *)
-val scheduler : (module Scheduler) Fdecl.t
-
 module Session : sig
   (** Rpc session backed by two threads. One thread for reading, and another for
       writing *)
   type t
 
-  (* [write t x] writes the s-expression when [x] is [Some sexp], and closes the
-     session if [x = None ] *)
-  val write : t -> Sexp.t list option -> unit Fiber.t
+  val close : t -> unit Fiber.t
+
+  (** [write t xs] writes the s-expressions [xs]. *)
+  val write : t -> Sexp.t list -> (unit, [ `Closed ]) result Fiber.t
 
   (** If [read] returns [None], the session is closed and all subsequent reads
       will return [None] *)
@@ -43,11 +35,8 @@ module Client : sig
   type t
 
   val create : Unix.sockaddr -> t
-
   val stop : t -> unit
-
   val connect_exn : t -> Session.t Fiber.t
-
   val connect : t -> (Session.t, Exn_with_backtrace.t) result Fiber.t
 end
 
@@ -55,17 +44,15 @@ module Server : sig
   (** RPC Server *)
   type t
 
-  val create : Unix.sockaddr -> backlog:int -> (t, [ `Already_in_use ]) result
+  val create : Unix.sockaddr list -> backlog:int -> (t, [ `Already_in_use ]) result
 
   (** [ready t] returns a fiber that completes when clients can start connecting
       to the server *)
   val ready : t -> unit Fiber.t
 
-  val stop : t -> unit
-
+  val stop : t -> unit Fiber.t
   val serve : t -> Session.t Fiber.Stream.In.t Fiber.t
-
-  val listening_address : t -> Unix.sockaddr
+  val listening_address : t -> Unix.sockaddr list
 end
 
 module Private : sig

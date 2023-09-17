@@ -8,7 +8,7 @@
   $ export BUILD_PATH_PREFIX_MAP="/MELC_STDLIB=$(ocamlfind query melange):$BUILD_PATH_PREFIX_MAP"
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 
@@ -30,6 +30,18 @@
    (FLG (-open Foo__))
   Foo__
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+
+Paths to Melange stdlib appear in B and S entries without melange.emit stanza
+
+  $ dune ocaml dump-dot-merlin $PWD | grep -e "^B " -e "^S "
+  B /MELC_STDLIB/melange
+  B /MELC_STDLIB/melange
+  B /MELC_STDLIB/melange
+  B $TESTCASE_ROOT/_build/default/.foo.objs/melange
+  S /MELC_STDLIB
+  S /MELC_STDLIB
+  S /MELC_STDLIB
+  S $TESTCASE_ROOT
 
 All 3 modules (Foo, Foo__ and Bar) contain a ppx directive
 
@@ -59,14 +71,14 @@ Dump-dot-merlin includes the melange flags
 
   $ dune ocaml dump-dot-merlin $PWD
   EXCLUDE_QUERY_DIR
-  STDLIB /MELC_STDLIB/runtime/melange
-  B /MELC_STDLIB/belt/melange
+  STDLIB /MELC_STDLIB/melange
   B /MELC_STDLIB/melange
-  B /MELC_STDLIB/runtime/melange
+  B /MELC_STDLIB/melange
+  B /MELC_STDLIB/melange
   B $TESTCASE_ROOT/_build/default/.output.mobjs/melange
   S /MELC_STDLIB
-  S /MELC_STDLIB/belt
-  S /MELC_STDLIB/runtime
+  S /MELC_STDLIB
+  S /MELC_STDLIB
   S $TESTCASE_ROOT
   # FLG -ppx '/MELC_COMPILER -as-ppx'
   # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g
@@ -111,7 +123,7 @@ Melange ppx should appear after user ppx, so that Merlin applies the former firs
 
   $ dune ocaml merlin dump-config $PWD | grep -v "(B "  | grep -v "(S "
   Bar
-  ((STDLIB /MELC_STDLIB/runtime/melange)
+  ((STDLIB /MELC_STDLIB/melange)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
@@ -134,7 +146,7 @@ Melange ppx should appear after user ppx, so that Merlin applies the former firs
      -keep-locs
      -g)))
   Foo
-  ((STDLIB /MELC_STDLIB/runtime/melange)
+  ((STDLIB /MELC_STDLIB/melange)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)

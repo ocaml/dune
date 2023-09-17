@@ -55,9 +55,8 @@ val getWindowsVersion : unit -> int * int * int * int
       [(major, minor, build, revision)]. This function only works if opam is
       compiled OCaml 4.06.0 or later, it returns [(0, 0, 0, 0)] otherwise. *)
 
-val isWoW64 : unit -> bool
-  (** Returns [false] unless this process is a 32-bit Windows process running
-      in the WoW64 sub-system (i.e. is being run on 64-bit Windows). *)
+val getArchitecture : unit -> windows_cpu_architecture
+  (** Windows only. Equivalent of [uname -m]. *)
 
 val waitpids : int list -> int -> int * Unix.process_status
   (** Windows only. Given a list [pids] with [length] elements,
@@ -95,9 +94,9 @@ val has_glyph : handle * handle -> Uchar.t -> bool
 
     @raise Failure If the call to [GetGlyphIndicesW] fails. *)
 
-val isWoW64Process : int32 -> bool
-(** Windows only. General version of {!isWoW64} for any given process ID. See
-    https://msdn.microsoft.com/en-us/library/windows/desktop/ms684139.aspx *)
+val getProcessArchitecture : int32 option -> windows_cpu_architecture
+(** Windows only. Returns the CPU architecture of the given process ID (or the
+    current process). *)
 
 val process_putenv : int32 -> string -> string -> bool
 (** Windows only. [process_putenv pid name value] sets the environment variable
@@ -118,16 +117,11 @@ val sendMessageTimeout :
     return value from SendMessageTimeout, [snd] depends on both the message and
     [fst]. See https://msdn.microsoft.com/en-us/library/windows/desktop/ms644952.aspx *)
 
-val getParentProcessID : int32 -> int32
-(** Windows only. [getParentProcessID pid] returns the process ID of the parent
-    of [pid].
-
-    @raise Failure If walking the process tree fails to find the process. *)
-
-val getProcessName : int32 -> string
-(** Windows only. [getProcessName pid] returns the executable name of [pid].
-
-    @raise Failure If the process does not exist. *)
+val getProcessAncestry : unit -> (int32 * string) list
+(** Windows only. Returns the pid and full path to the image for each entry in
+    the ancestry list for this process, starting with the process itself. If an
+    image name can't be determined, then [""] is returned; on failure, returns
+    [[]]. *)
 
 val getConsoleAlias : string -> string -> string
 (** Windows only. [getConsoleAlias alias exeName] retrieves the value for a
@@ -137,3 +131,7 @@ val getConsoleAlias : string -> string -> string
 val win_create_process : string -> string -> string option -> Unix.file_descr ->
                          Unix.file_descr -> Unix.file_descr -> int
 (** Windows only. Provided by OCaml's win32unix library. *)
+
+val getConsoleWindowClass : unit -> string option
+(** Windows only. Returns the name of the class for the Console window or [None]
+    if there is no console. *)

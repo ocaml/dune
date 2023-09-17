@@ -12,6 +12,8 @@ bug-reports: "https://github.com/ocaml/dune/issues"
 depends: [
   "dune" {>= "3.5"}
   "stdune" {= version}
+  "dyn"
+  "ordering"
   "dune-private-libs" {= version}
   "odoc" {with-doc}
 ]

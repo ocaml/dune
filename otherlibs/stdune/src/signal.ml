@@ -27,39 +27,44 @@ type t =
   | Urg
   | Xcpu
   | Xfsz
+  | Winch
   | Unknown of int
+
+external sigwinch : unit -> int = "stdune_winch_number" [@@noalloc]
 
 let all =
   let open Sys in
-  [ (Abrt, sigabrt)
-  ; (Alrm, sigalrm)
-  ; (Fpe, sigfpe)
-  ; (Hup, sighup)
-  ; (Ill, sigill)
-  ; (Int, sigint)
-  ; (Kill, sigkill)
-  ; (Pipe, sigpipe)
-  ; (Quit, sigquit)
-  ; (Segv, sigsegv)
-  ; (Term, sigterm)
-  ; (Usr1, sigusr1)
-  ; (Usr2, sigusr2)
-  ; (Chld, sigchld)
-  ; (Cont, sigcont)
-  ; (Stop, sigstop)
-  ; (Tstp, sigtstp)
-  ; (Ttin, sigttin)
-  ; (Ttou, sigttou)
-  ; (Vtalrm, sigvtalrm)
-  ; (Prof, sigprof)
-  ; (Bus, sigbus)
-  ; (Poll, sigpoll)
-  ; (Sys, sigsys)
-  ; (Trap, sigtrap)
-  ; (Urg, sigurg)
-  ; (Xcpu, sigxcpu)
-  ; (Xfsz, sigxfsz)
+  [ Abrt, sigabrt
+  ; Alrm, sigalrm
+  ; Fpe, sigfpe
+  ; Hup, sighup
+  ; Ill, sigill
+  ; Int, sigint
+  ; Kill, sigkill
+  ; Pipe, sigpipe
+  ; Quit, sigquit
+  ; Segv, sigsegv
+  ; Term, sigterm
+  ; Usr1, sigusr1
+  ; Usr2, sigusr2
+  ; Chld, sigchld
+  ; Cont, sigcont
+  ; Stop, sigstop
+  ; Tstp, sigtstp
+  ; Ttin, sigttin
+  ; Ttou, sigttou
+  ; Vtalrm, sigvtalrm
+  ; Prof, sigprof
+  ; Bus, sigbus
+  ; Poll, sigpoll
+  ; Sys, sigsys
+  ; Trap, sigtrap
+  ; Urg, sigurg
+  ; Xcpu, sigxcpu
+  ; Xfsz, sigxfsz
+  ; Winch, sigwinch ()
   ]
+;;
 
 let name = function
   | Abrt -> "ABRT"
@@ -90,7 +95,9 @@ let name = function
   | Urg -> "URG"
   | Xcpu -> "XCPU"
   | Xfsz -> "XFSZ"
+  | Winch -> "WINCH"
   | Unknown n -> Int.to_string n
+;;
 
 let compare (x : t) (y : t) = Poly.compare x y
 
@@ -99,23 +106,25 @@ let to_dyn =
   function
   | Unknown n -> variant "Unknown" [ int n ]
   | t -> variant (name t) []
+;;
 
 include Comparable.Make (struct
-  type nonrec t = t
+    type nonrec t = t
 
-  let compare = compare
-
-  let to_dyn = to_dyn
-end)
+    let compare = compare
+    let to_dyn = to_dyn
+  end)
 
 let to_int =
   let table = Map.of_list_exn all in
   function
   | Unknown n -> n
   | t -> Map.find_exn table t
+;;
 
 let of_int i =
-  let table = Int.Map.of_list_exn (List.map all ~f:(fun (t, i) -> (i, t))) in
+  let table = Int.Map.of_list_exn (List.map all ~f:(fun (t, i) -> i, t)) in
   match Int.Map.find table i with
   | None -> Unknown i
   | Some s -> s
+;;

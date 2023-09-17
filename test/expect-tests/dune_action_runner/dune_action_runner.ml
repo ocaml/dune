@@ -4,17 +4,23 @@ module Action_runner = Dune_engine.Action_runner
 module Rpc_server = Action_runner.Rpc_server
 module Where = Dune_rpc_client.Where
 module Scheduler = Dune_engine.Scheduler
-module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
+
+module Server = Dune_rpc_server.Make (struct
+    include Csexp_rpc.Session
+
+    let name _ = "foo"
+  end)
+
 module Action_exec = Dune_engine.Action_exec
 
-let () = Dune_util.Log.init ~file:(Out_channel stderr) ()
+let () = Dune_util.Log.init_disabled ()
 
 let run () =
   let fname = "action-runner-test" in
   let where = `Unix fname in
   let action_runner_server = Action_runner.Rpc_server.create () in
   let csexp_server =
-    match Csexp_rpc.Server.create (Where.to_socket where) ~backlog:10 with
+    match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:10 with
     | Ok s ->
       at_exit (fun () -> Fpath.unlink_no_err fname);
       s
@@ -22,10 +28,11 @@ let run () =
   in
   let handler =
     let handler =
-      Dune_rpc_server.Handler.create ~version:(3, 7)
+      Dune_rpc_server.Handler.create
+        ~version:(3, 7)
         ~on_init:(fun _ _ ->
           print_endline "server: client connected";
-          Csexp_rpc.Server.stop csexp_server |> Fiber.return)
+          Csexp_rpc.Server.stop csexp_server)
         ()
     in
     Action_runner.Rpc_server.implement_handler action_runner_server handler;
@@ -45,11 +52,13 @@ let run () =
       in
       let prog =
         Bin.which ~path:(Env_path.path Env.initial) "dune"
-        |> Option.value_exn |> Path.to_absolute_filename
+        |> Option.value_exn
+        |> Path.to_absolute_filename
       in
-      Spawn.spawn ~prog ~env
-        ~argv:
-          [ "dune"; "internal"; "action-runner"; "start"; "--root"; "."; name ]
+      Spawn.spawn
+        ~prog
+        ~env
+        ~argv:[ "dune"; "internal"; "action-runner"; "start"; "--root"; "."; name ]
         ()
       |> Pid.of_int
     in
@@ -68,19 +77,19 @@ let run () =
             match status.status with
             | WEXITED 0 -> ()
             | WEXITED n ->
-              User_error.raise
-                [ Pp.textf "%s exited with code %d" action_runner n ]
-            | Unix.WSIGNALED s -> (
-              match Signal.of_int s with
-              | Term -> ()
-              | signal ->
-                User_error.raise
-                  [ Pp.textf "%s exited with signal %s" action_runner
-                      (Signal.name signal)
-                  ])
+              User_error.raise [ Pp.textf "%s exited with code %d" action_runner n ]
+            | Unix.WSIGNALED s ->
+              (match Signal.of_int s with
+               | Term -> ()
+               | signal ->
+                 User_error.raise
+                   [ Pp.textf
+                       "%s exited with signal %s"
+                       action_runner
+                       (Signal.name signal)
+                   ])
             | Unix.WSTOPPED n ->
-              User_error.raise
-                [ Pp.textf "%s stopped with code %n" action_runner n ]))
+              User_error.raise [ Pp.textf "%s stopped with code %n" action_runner n ]))
       (fun () ->
         let action =
           let action = Dune_engine.Action.echo [ "foo" ] in
@@ -89,18 +98,16 @@ let run () =
           ; context = None
           ; env = Env.empty
           ; rule_loc = Loc.none
-          ; execution_parameters =
-              Dune_engine.Execution_parameters.builtin_default
+          ; execution_parameters = Dune_engine.Execution_parameters.builtin_default
           ; action
           }
         in
-        let+ (_ : Action_exec.Exec_result.t) =
-          Action_runner.exec_action worker action
-        in
+        let+ (_ : Action_exec.Exec_result.t) = Action_runner.exec_action worker action in
         print_endline "executed action";
         Unix.kill (Pid.to_int pid) Sys.sigterm)
   in
   Fiber.fork_and_join_unit run_action_runner_server run_worker
+;;
 
 let%expect_test "run an action runner and dispatch one job to it" =
   let on_event _ _ = () in
@@ -118,5 +125,5 @@ let%expect_test "run an action runner and dispatch one job to it" =
     running action runner
     running action_runner_server
     server: client connected
-    # RPC accepted the last client. No more clients will be accepted.
     executed action |}]
+;;

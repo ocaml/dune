@@ -14,9 +14,7 @@ val is_empty : t -> bool
 val combine : t -> t -> t
 
 val diff : t -> t -> t
-
-val iter :
-  t -> file:(Path.Build.t -> unit) -> dir:(Path.Build.t -> unit) -> unit
+val iter : t -> file:(Path.Build.t -> unit) -> dir:(Path.Build.t -> unit) -> unit
 
 module File : sig
   (** A single file target. *)
@@ -46,7 +44,6 @@ module Validated : sig
   val head : t -> Path.Build.t
 
   val to_dyn : t -> Dyn.t
-
   val unvalidate : t -> unvalidated
 end
 
@@ -69,7 +66,6 @@ val validate : t -> Validation_result.t
 val head : t -> Path.Build.t option
 
 val to_dyn : t -> Dyn.t
-
 val pp : t -> _ Pp.t
 
 (** The set of targets produced by an action. Each target may be tagged with a
@@ -82,13 +78,13 @@ module Produced : sig
 
   (** Expand [targets : Validated.t] by recursively traversing directory targets
       and collecting all contained files. *)
-  val of_validated :
-       Validated.t
+  val of_validated
+    :  Validated.t
     -> (unit t, [ `Directory of Path.Build.t ] * Unix_error.Detailed.t) result
 
   (** Like [of_validated] but assumes the targets have been just produced by a
       rule. If some directory targets aren't readable, an error is raised *)
-  val produced_after_rule_executed_exn : loc:Loc.t -> Validated.t -> unit t
+  val produced_after_rule_executed_exn : loc:Loc.t -> Validated.t -> unit t Fiber.t
 
   (** Populates only the [files] field, leaving [dirs] empty. Raises a code
       error if the list contains duplicates. *)
@@ -96,8 +92,7 @@ module Produced : sig
 
   (** Add a list of discovered directory-filename pairs to [Validated.t]. Raises
       a code error on an unexpected directory. *)
-  val expand_validated_exn :
-    Validated.t -> (Path.Build.t * string) list -> unit t
+  val expand_validated_exn : Validated.t -> (Path.Build.t * string) list -> unit t
 
   (** Union of [t.files] and all files in [t.dirs]. *)
   val all_files : 'a t -> 'a Path.Build.Map.t
@@ -112,5 +107,16 @@ module Produced : sig
     val mapi : 'a t -> f:(Path.Build.t -> 'a -> 'b option) -> 'b t option
   end
 
+  val collect_digests
+    :  'a t
+    -> f:(Path.Build.t -> 'a -> Cached_digest.Digest_result.t)
+    -> ( Digest.t t
+       , (Path.Build.t * Cached_digest.Digest_result.Error.t) Nonempty_list.t )
+       result
+
   val to_dyn : _ t -> Dyn.t
 end
+
+(** will run in a background thread if
+    [background_file_system_operations_in_rule_execution] is set *)
+val maybe_async : (unit -> 'a) -> 'a Fiber.t

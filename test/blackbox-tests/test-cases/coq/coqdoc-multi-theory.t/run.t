@@ -3,6 +3,8 @@ HTML
 
 First we build the doc alias for the first theory
   $ dune build @A/doc
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
 The first theory doc is built
   $ ls _build/default/A/A.html
   A.AA.aa.html
@@ -18,6 +20,8 @@ Clean
 
 Next we build the doc for the second theory
   $ dune build @B/doc
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
 Check that the first theory doc is not built
   $ ls _build/default/A/
   AA
@@ -37,6 +41,8 @@ LaTeX
 
 Next we test the LaTeX targets in the same manner
   $ dune build @A/doc-latex
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
 The first theory doc is built
   $ ls _build/default/A/A.tex
   A.AA.aa.tex
@@ -50,6 +56,8 @@ Clean
 
 Next we build the doc for the second theory
   $ dune build @B/doc-latex
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
 Check that the first theory doc is not built
   $ ls _build/default/A
   AA

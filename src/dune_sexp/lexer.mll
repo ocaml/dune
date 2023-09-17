@@ -18,10 +18,9 @@ type t = with_comments:bool -> Lexing.lexbuf -> Token.t
 
 let error ?(delta = 0) lexbuf message =
   let start = Lexing.lexeme_start_p lexbuf in
-  let loc : Loc.t =
-    { start = { start with pos_cnum = start.pos_cnum + delta }
-    ; stop = Lexing.lexeme_end_p lexbuf
-    }
+  let loc =
+    Loc.create ~start:{ start with pos_cnum = start.pos_cnum + delta }
+      ~stop:(Lexing.lexeme_end_p lexbuf)
   in
   User_error.raise ~loc [ Pp.text message ]
 
@@ -57,11 +56,7 @@ type block_string_line_kind =
 module Template = struct
   include Template
 
-  let dummy_loc =
-    { Loc.
-      start = Lexing.dummy_pos
-    ; stop = Lexing.dummy_pos
-    }
+  let dummy_loc = Loc.create ~start:Lexing.dummy_pos ~stop:Lexing.dummy_pos
 
   let add_text parts s =
     match parts with
@@ -352,18 +347,19 @@ and template_variable = parse
       let start = Lexing.lexeme_start_p lexbuf in
       (* -2 to account for the "%{" *)
       let start = { start with pos_cnum = start.pos_cnum - 2 } in
-      Template.Pform
-        { loc =
-            { start
-            ; stop = Lexing.lexeme_end_p lexbuf
-            }
-        ; name
-        ; payload
-        }
+      let loc = Loc.create ~start ~stop:(Lexing.lexeme_end_p lexbuf) in
+      Template.Pform { loc ; name ; payload = Option.map ~f:Template.Pform.Payload.of_string payload }
   }
   | '}' | eof
     { error lexbuf "%{...} forms cannot be empty" }
-  | _ { error lexbuf "This character is not allowed inside %{...} forms" }
+  | (varname_char* as skip) (_ as other)
+  | (varname_char+ ':' ((':' | varname_char)*) as skip) (_ as other)
+  {
+    error
+      ~delta:(String.length skip)
+      lexbuf
+      (Printf.sprintf "The character %C is not allowed inside %%{...} forms" other)
+  }
 
 {
   let token ~with_comments lexbuf = token with_comments lexbuf

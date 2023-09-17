@@ -54,6 +54,9 @@ files for executables. See `executables_implicit_empty_intf`_.
        (section bin)
        (files (<name>.exe as <public-name>)))
 
+  As a special case, ``(public_name -)`` is the same as if the field was
+  absent.
+
 .. _shared-exe-fields:
 
 - ``(package <package>)`` if there is a ``(public_name ...)`` field, this

@@ -1,5 +1,5 @@
 open Stdune
-module Jsoo_rules = Dune_rules.Jsoo_rules
+module Jsoo_rules = Dune_rules.For_tests.Jsoo_rules
 
 let%expect_test _ =
   let test s l =
@@ -32,7 +32,6 @@ let%expect_test _ =
   [%expect {| = |}];
   test "5.0.1+git-5.0.1-14-g904cf100b0" (5, 0);
   [%expect {| = |}];
-
   test "5.0.1" (5, 1);
   [%expect {| < |}];
   test "5.0" (5, 1);
@@ -46,3 +45,4 @@ let%expect_test _ =
   test "5.0.1" (4, 0);
   [%expect {| > |}];
   ()
+;;

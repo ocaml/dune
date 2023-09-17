@@ -13,7 +13,7 @@ We also need to set up a fake Coq install.
   $TESTCASE_ROOT/lib/coq
 
   $ mkdir -p lib/coq/theories/Init/
-  $ echo > lib/coq/theories/Init/Prelude.v << EOF
+  $ cat > lib/coq/theories/Init/Prelude.v << EOF
   > Inductive PreludeLoaded := Yes.
   > EOF
 
@@ -30,8 +30,12 @@ so this also tests that it won't be a problem.
 
   $ dune build --root B @install
   Entering directory 'B'
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   Leaving directory 'B'
   $ dune install --root B --prefix=$PWD --display=short
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   Installing $TESTCASE_ROOT/lib/B/META
   Installing $TESTCASE_ROOT/lib/B/dune-package
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmi

@@ -14,6 +14,7 @@ Test `melange.runtime_deps` in a library that has been installed
   > (library
   >  (public_name foo)
   >  (modes melange)
+  >  (preprocess (pps melange.ppx))
   >  (melange.runtime_deps index.txt nested/hello.txt))
   > EOF
   $ cat > lib/foo.ml <<EOF
@@ -58,6 +59,8 @@ Test `melange.runtime_deps` in a library that has been installed
   > (melange.emit
   >  (target output)
   >  (alias mel)
+  >  (emit_stdlib false)
+  >  (preprocess (pps melange.ppx))
   >  (libraries foo))
   > EOF
 

@@ -1,0 +1,4 @@
+(library
+ (name dune_lwd)
+ (modules lwd lwd_utils)
+ (wrapped false))

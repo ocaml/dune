@@ -1,0 +1,5 @@
+(rule (with-stdout-to x.gen (echo "")))
+
+(rule
+ (alias blah-non-existent)
+ (action (diff x-non-existent x.gen)))

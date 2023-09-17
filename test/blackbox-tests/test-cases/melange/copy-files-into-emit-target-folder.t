@@ -2,7 +2,7 @@ Example showing melange.emit and copy_files, where the files are copied
 into the melange.emit target folder
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 

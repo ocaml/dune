@@ -92,8 +92,8 @@ file:
 
 .. code:: dune
 
-  (lang dune 3.8)
-  (using ctypes 0.1)
+  (lang dune 3.11)
+  (using ctypes 0.3)
 
 
 Next, here is a ``dune`` file you can use to define an OCaml program that binds
@@ -112,11 +112,11 @@ location.
      (build_flags_resolver pkg_config)
      (headers (include "foo.h"))
      (type_description
-      (instance Type)
+      (instance Types)
       (functor Type_description))
      (function_description
       (concurrency unlocked)
-      (instance Function)
+      (instance Functions)
       (functor Function_description))
      (generated_types Types_generated)
      (generated_entry_point C)))
@@ -248,7 +248,7 @@ descriptions by referencing them as the module specified in optional
   module(s).
 
 - ``(generated_entry_point <module-name>)`` is the name of a generated module
-  that your instantiated ``Types`` and ``Function`` modules will instantiated
+  that your instantiated ``Types`` and ``Functions`` modules will instantiated
   under. We suggest calling it ``C``.
 
 - Headers can be added to the generated C files:
@@ -342,9 +342,9 @@ writing the following code ``src/dune``:
       (copy libfoo/libfoo.so dllfoo.so)))))
 
 We copy the resulting archive files to the top directory where they can be
-declared as ``targets``. The build is done in a ``no-infer`` action because
-``libfoo/libfoo.a`` and ``libfoo/libfoo.so`` are dependencies produced by an
-external build system.
+declared as ``targets``. The build is done in a :dune:ref:`action-no-infer`
+action because ``libfoo/libfoo.a`` and ``libfoo/libfoo.so`` are dependencies
+produced by an external build system.
 
 The last step is to attach these archives to an OCaml library as follows:
 

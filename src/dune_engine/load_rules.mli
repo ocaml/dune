@@ -24,8 +24,7 @@ module Loaded : sig
     | Source of { files : Path.Source.Set.t }
     | External of { files : Path.External.Set.t }
     | Build of build
-    | Build_under_directory_target of
-        { directory_target_ancestor : Path.Build.t }
+    | Build_under_directory_target of { directory_target_ancestor : Path.Build.t }
 
   val no_rules : allowed_subdirs:Path.Unspecified.w Dir_set.t -> t
 end
@@ -33,14 +32,13 @@ end
 (** Load the rules for this directory. *)
 val load_dir : dir:Path.t -> Loaded.t Memo.t
 
-val alias_exists : Alias.t -> bool Memo.t
-
 (** Return the rule that has the given file has target, if any *)
 val get_rule : Path.t -> Rule.t option Memo.t
 
 (** Return the definition of an alias. *)
-val get_alias_definition :
-  Alias.t -> (Loc.t * Rules.Dir_rules.Alias_spec.item) list Memo.t
+val get_alias_definition
+  :  Alias.t
+  -> (Loc.t * Rules.Dir_rules.Alias_spec.item) list Memo.t
 
 type target_type =
   | File
@@ -59,7 +57,8 @@ val is_target : Path.t -> is_target Memo.t
     This is similar to:
 
     {[
-      is_target p >>= function
+      is_target p
+      >>= function
       | No | Yes File -> false
       | Yes Directory | under_directory_target_so_cannot_say -> true
     ]}

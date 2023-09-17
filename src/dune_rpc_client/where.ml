@@ -9,7 +9,6 @@ module Where =
 
       module O = struct
         let ( let+ ) x f = f x
-
         let ( let* ) x f = f x
       end
     end)
@@ -22,6 +21,7 @@ module Where =
         | S_REG -> Ok `Normal_file
         | _ | (exception Unix.Unix_error (Unix.ENOENT, _, _)) -> Ok `Other
         | exception (Unix.Unix_error _ as e) -> Error e
+      ;;
     end)
 
 let build_dir =
@@ -30,6 +30,7 @@ let build_dir =
      match String.drop_prefix build_dir ~prefix:(Sys.getcwd () ^ "/") with
      | None -> build_dir
      | Some s -> Filename.concat "." s)
+;;
 
 let get () =
   let env = Env.get Env.initial in
@@ -37,22 +38,24 @@ let get () =
   | Ok s -> s
   | Error exn ->
     User_error.raise [ Pp.text "Unable to find dune rpc address"; Exn.pp exn ]
+;;
 
 let default () = Where.default ~build_dir:(Lazy.force build_dir) ()
 
 let to_socket = function
   | `Unix p -> Unix.ADDR_UNIX p
-  | `Ip (`Host host, `Port port) ->
-    Unix.ADDR_INET (Unix.inet_addr_of_string host, port)
+  | `Ip (`Host host, `Port port) -> Unix.ADDR_INET (Unix.inet_addr_of_string host, port)
+;;
 
 let to_string = function
   | `Unix p -> sprintf "unix://%s" p
   | `Ip (`Host host, `Port port) -> sprintf "%s:%d" host port
+;;
 
 let rpc_socket_file =
   let f =
     lazy
-      (Path.Build.(relative root)
-         Dune_rpc_private.Where.rpc_socket_relative_to_build_dir)
+      (Path.Build.(relative root) Dune_rpc_private.Where.rpc_socket_relative_to_build_dir)
   in
   fun () -> Lazy.force f
+;;

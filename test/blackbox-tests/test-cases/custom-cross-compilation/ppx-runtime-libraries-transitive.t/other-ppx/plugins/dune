@@ -1,0 +1,7 @@
+(library
+ (name other_ppx_eq)
+ (public_name other-ppx.eq)
+ (libraries other-ppx.api)
+ (ppx.driver
+  (main Other_ppx_eq.main))
+ (kind ppx_deriver))

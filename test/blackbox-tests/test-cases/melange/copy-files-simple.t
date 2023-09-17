@@ -1,13 +1,15 @@
 Test simple interactions between melange.emit and copy_files
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (emit_stdlib false)
+  >  (preprocess (pps melange.ppx))
   >  (alias mel))
   > 
   > (copy_files
@@ -32,11 +34,14 @@ Test simple interactions between melange.emit and copy_files
   hello from file
   
 
+
 Copy the file into the output folder, so we can use same path as in-source
 
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (emit_stdlib false)
+  >  (preprocess (pps melange.ppx))
   >  (alias mel))
   > 
   > (subdir output
@@ -55,4 +60,3 @@ Copy the file into the output folder, so we can use same path as in-source
   $ node _build/default/output/main.js
   hello from file
   
-

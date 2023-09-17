@@ -1,10 +1,8 @@
 This test characterizes how the ctypes support deals with directories, in
 particular when relative paths are passed as `-I`.
 
-With `(using ctypes 0.2)`, some commands are executed in workspace root and
-others are executed in the directory where `(ctypes)` is found, so it is
-necessary to pass relative dirs twice. (this prevents vendorability, since this
-requires knowing the path from the workspace root to the current directory).
+This test checks that relative paths are relative to the directory where rules
+are defined, to make sure that vendoring works.
 
 To test that, we create a binding to `BUFSIZ` and `fopen`, both in the C
 library. These are provided by `stdio.h`, but instead of using this header,
@@ -12,8 +10,8 @@ we're proxying it through a `lib.h` which should be in the include path for
 compilation to work.
 
   $ cat > dune-project << EOF
-  > (lang dune 3.4)
-  > (using ctypes 0.2)
+  > (lang dune 3.7)
+  > (using ctypes 0.3)
   > EOF
 
   $ mkdir lib
@@ -24,7 +22,7 @@ compilation to work.
   >  (flags :standard -w -27)
   >  (ctypes
   >   (build_flags_resolver
-  >    (vendored (c_flags :standard (:include extra_flags.sexp))))
+  >    (vendored (c_flags :standard -I .)))
   >   (external_library_name l)
   >   (headers (include lib.h))
   >   (deps lib.h)
@@ -36,8 +34,6 @@ compilation to work.
   >    (instance functions))
   >   (generated_entry_point entry)))
   > EOF
-
-  $ echo "(-I lib -I .)" > lib/extra_flags.sexp
 
   $ cat > lib/lib.h << EOF
   > #include <stdio.h>
@@ -63,24 +59,4 @@ compilation to work.
   > end
   > EOF
 
-  $ dune build
-
-We ensure that just `-I lib` or `-I .` are not enough on their own.
-
-  $ echo "(-I lib)" > lib/extra_flags.sexp
-  $ dune build > /dev/null 2>&1
-  [1]
-
-  $ echo "(-I .)" > lib/extra_flags.sexp
-  $ dune build > /dev/null 2>&1
-  [1]
-
-With 0.3, everything is relative to the directory.
-
-  $ cat > dune-project << EOF
-  > (lang dune 3.7)
-  > (using ctypes 0.3)
-  > EOF
-
-  $ echo "(-I .)" > lib/extra_flags.sexp
   $ dune build

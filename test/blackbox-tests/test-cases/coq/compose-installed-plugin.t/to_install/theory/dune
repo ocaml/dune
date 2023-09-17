@@ -1,0 +1,4 @@
+(coq.theory
+ (name Bar)
+ (package global)
+ (plugins global.plugin))

@@ -1,15 +1,8 @@
-:orphan:
-
 .. _melange_main:
 
 ***********************************
 JavaScript Compilation With Melange
 ***********************************
-
-.. warning::
-
-   Melange support is not officially released, and any bugs or missing
-   functionality should be reported as a GitHub issue.
 
 Introduction
 ============
@@ -27,7 +20,7 @@ JavaScript files by defining a :ref:`melange-emit` stanza. Dune libraries can be
 used with Melange by adding ``melange`` to ``(modes ...)`` in the
 :ref:`library` stanza.
 
-Melange support is still experimental in Dune and needs to be enabled 
+Melange support is still experimental in Dune and needs to be enabled
 in the :ref:`dune-project` file:
 
 .. code:: dune
@@ -36,6 +29,55 @@ in the :ref:`dune-project` file:
 
 Once that's in place, you can use the Melange mode in :ref:`library` stanzas
 ``melange.emit`` stanzas.
+
+Simple Project
+==============
+
+Let's start by looking at a simple project with Melange and Dune. Subsequent
+sections explain the different concepts used here in further detail.
+
+First, make sure that the :ref:`dune-project` file specifies at least
+version 3.8 of the dune language and the Melange extension is enabled:
+
+.. code:: dune
+
+  (lang dune 3.11)
+  (using melange 0.1)
+
+Next, write a :ref:`dune<dune-files>` file with a :ref:`melange-emit` stanza:
+
+.. code:: dune
+
+  (melange.emit
+   (target output))
+
+Finally, add a source file to build:
+
+.. code:: bash
+
+  echo 'Js.log "hello from melange"' > hello.ml
+
+After running ``dune build @melange`` or just ``dune build``, Dune
+produces the following file structure:
+
+.. code::
+
+  .
+  ├── _build
+  │   └── default
+  │       └── output
+  │           └── hello.js
+  ├── dune
+  ├── dune-project
+  └── hello.ml
+
+The resulting JavaScript can now be run:
+
+.. code:: bash
+
+   $ node _build/default/output/hello.js
+   hello from melange
+
 
 Libraries
 =========
@@ -53,6 +95,8 @@ Adding Melange support to Dune libraries is done as follows:
 
 melange.emit
 ============
+
+.. versionadded:: 3.8
 
 The ``melange.emit`` stanza allows the user to produce JavaScript files
 from Melange libraries and entry-point modules. It's similar to the OCaml
@@ -98,11 +142,14 @@ The resulting layout in ``_build/default/output`` will be as follows:
     modules, the targets for the ``.js`` files of any library that the stanza
     depends on, and any copy rules for runtime dependencies (see
     ``runtime_deps`` field below).
-    
+
   - By default, all stanzas will have their targets attached to an alias
     ``melange``. The behavior of this default alias is exclusive: if an alias
     is explicitly defined in the stanza, the targets from this stanza will
     be excluded from the ``melange`` alias.
+
+  - The targets of ``melange.emit`` are also attached to the Dune default
+    alias (``@all``), regardless of whether the ``(alias ...)`` field is present.
 
 - ``(module_systems <module_systems>)`` specifies the JavaScript import and
   export format used. The values allowed for ``<module_systems>`` are ``es6``
@@ -190,6 +237,10 @@ The resulting layout in ``_build/default/output`` will be as follows:
 - ``(allow_overlapping_dependencies)`` is the same as the corresponding field of
   :ref:`library`.
 
+- ``(enabled_if <blang expression>)`` conditionally disables a melange emit
+  stanza. The JavaScript files associated with the stanza won't be built. The
+  condition is specified using the :doc:`reference/boolean-language`.
+
 Recommended Practices
 =====================
 
@@ -210,8 +261,8 @@ are used across them. As an example:
   (melange.emit
    (target app2)
    (libraries foo))
-   
-The JavaScript artifacts for library ``foo`` will be emitted twice in the 
+
+The JavaScript artifacts for library ``foo`` will be emitted twice in the
 ``_build`` folder. They will be present under ``_build/default/app1``
 and ``_build/default/app2``.
 
@@ -230,7 +281,7 @@ unnecessary folders in ``node_modules``, it is recommended to explicitly
 include only the folders that are relevant for Melange builds.
 
 This can be accomplished by combining :ref:`subdir` and :ref:`dune-subdirs`
-stanzas in a ``dune`` file next to the ``node_modules`` folder. The 
+stanzas in a ``dune`` file next to the ``node_modules`` folder. The
 :ref:`dune-vendored_dirs` stanza can be used to avoid warnings in Melange
 libraries during the application build. The :ref:`dune-data_only_dirs` stanza
 can be useful as well if you need to override the build rules in one of the
@@ -243,49 +294,3 @@ packages.
    (vendored_dirs reason-react)
    (dirs reason-react))
 
-Simple Project
-==============
-
-Let's look at building a simple project with Melange and Dune.
-
-First, make sure that the :ref:`dune-project` file specifies at least
-version 3.8 of the dune language and the Melange extension is enabled:
-
-.. code:: dune
-
-  (lang dune 3.8)
-  (using melange 0.1)
-
-Next, write a :ref:`dune<dune-files>` file with a :ref:`melange-emit` stanza:
-
-.. code:: dune
-
-  (melange.emit
-   (target output))
-
-Finally, add a source file to build:
-
-.. code:: bash
-
-  echo 'Js.log "hello from melange"' > hello.ml
-
-After running ``dune build output/hello.js``, Dune produces the following
-file structure:
-
-.. code::
-
-  .
-  ├── _build
-  │   └── default
-  │       └── output
-  │           └── hello.js
-  ├── dune
-  ├── dune-project
-  └── hello.ml
-
-The resulting JavaScript can now be run:
-
-.. code:: bash
-
-   $ node _build/default/output/hello.js
-   hello from melange

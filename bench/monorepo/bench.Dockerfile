@@ -1,12 +1,12 @@
 # Creates a monorepo out of packages in opam and builds it with dune
 
-FROM debian
+FROM debian:stable-20230522
 
 # Enable non-free packages
 RUN sed -i '/^deb/ s/$/ non-free/' /etc/apt/sources.list
 
 # Install tools and system dependencies of packages
-RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y \
   build-essential \
   sudo \
   pkg-config \
@@ -113,6 +113,8 @@ RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y \
   qtdeclarative5-dev \
   libgpiod-dev \
   libzstd-dev \
+  neovim \
+  tmux \
   ;
 
 # create a non-root user
@@ -133,47 +135,36 @@ RUN opam install -y dune ocamlbuild
 RUN opam switch create prepare 4.14.1
 RUN opam install -y opam-monorepo ppx_sexp_conv ocamlfind ctypes ctypes-foreign re sexplib menhir camlp-streams zarith stdcompat refl
 
-# Make a directory to store the monorepo benchmark project
-RUN mkdir -p $HOME/monorepo-bench
-
 # Download the monorepo benchmark and copy files into the benchmark project
-ENV MONOREPO_BENCHMARK_TAG=2023-03-16.0
-RUN wget https://github.com/ocaml-dune/ocaml-monorepo-benchmark/archive/refs/tags/$MONOREPO_BENCHMARK_TAG.tar.gz -O ocaml-monorepo-benchmark.tar.gz && tar xf ocaml-monorepo-benchmark.tar.gz && mv ocaml-monorepo-benchmark-$MONOREPO_BENCHMARK_TAG ocaml-monorepo-benchmark
-WORKDIR $HOME/monorepo-bench
-RUN mkdir -p monorepo && cp -r $HOME/ocaml-monorepo-benchmark/benchmark/dune $HOME/ocaml-monorepo-benchmark/benchmark/monorepo.ml monorepo && cp -r $HOME/ocaml-monorepo-benchmark/benchmark/monorepo-bench.opam $HOME/ocaml-monorepo-benchmark/benchmark/monorepo-bench.opam.locked $HOME/ocaml-monorepo-benchmark/benchmark/patches .
+ENV MONOREPO_BENCHMARK_TAG=2023-08-23.0
+RUN wget https://github.com/ocaml-dune/ocaml-monorepo-benchmark/archive/refs/tags/$MONOREPO_BENCHMARK_TAG.tar.gz -O ocaml-monorepo-benchmark.tar.gz && \
+  tar xf ocaml-monorepo-benchmark.tar.gz && \
+  mv ocaml-monorepo-benchmark-$MONOREPO_BENCHMARK_TAG monorepo-benchmark && \
+  opam install -y monorepo-benchmark/dune-monorepo-benchmark-runner
 
-# Running `opam monorepo pull` with a large package set is very likely to fail on at least
-# one package in a non-deterministic manner. Repeating it several times reduces the chance
-# that all attempts fail.
-RUN opam monorepo pull || opam monorepo pull || opam monorepo pull
-
-# Initialize some projects' source code
-RUN . ~/.profile && cd duniverse/clangml && ./configure
-RUN cd duniverse/zelus && ./configure
-RUN rm -rf duniverse/magic-trace/vendor
-RUN cd duniverse/cpu && autoconf && autoheader && ./configure
-RUN cd duniverse/setcore && autoconf && autoheader && ./configure
-RUN cd duniverse/batsat-ocaml && ./build_rust.sh
-
-# Some packages define conflicting definitions of libraries so they must be removed for the build to succeed
-RUN rm -r duniverse/coq-of-ocaml
-RUN rm -r duniverse/coq
-
-# Bulid the dune binary that we'll be benchmarking
+# Build the dune binary that we'll be benchmarking.
+# Only copy the files needed to build dune so that changes to other files in this project
+# don't cause the docker image cache to be invalidated.
 RUN mkdir -p $HOME/dune
 WORKDIR $HOME/dune
-ADD --chown=user:users . .
+COPY --chown=user:users bin bin
+COPY --chown=user:users src src
+COPY --chown=user:users otherlibs otherlibs
+COPY --chown=user:users vendor vendor
+COPY --chown=user:users dune-project dune-project
+COPY --chown=user:users dune-file dune-file
 RUN . ~/.profile && dune build bin/main.exe --release
 
-# Copy the remaininder of the files needed for the monorepo benchmark
-WORKDIR $HOME/monorepo-bench
-COPY --chown=user:users bench/monorepo/bench.ml .
-COPY --chown=user:users bench/monorepo/Makefile .
-COPY --chown=user:users bench/monorepo/dune .
-COPY --chown=user:users bench/monorepo/dune-project .
+# Switch to the benchmark project
+WORKDIR $HOME/monorepo-benchmark/benchmark
 
-# Apply some custom packages to some packages
-RUN bash -c 'for f in patches/*; do p=$(basename ${f%.diff}); patch -p1 -d duniverse/$p < $f; done'
+# Copy the custom makefile into the project
+COPY --chown=user:users bench/monorepo/Makefile .
+
+# Build the benchmark runner
+RUN . ~/.profile && \
+    cd /home/user/monorepo-benchmark/dune-monorepo-benchmark-runner && \
+    dune build src/main.exe --release
 
 # Change to the benchmarking switch to run the benchmark
 RUN opam switch bench

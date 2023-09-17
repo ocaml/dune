@@ -1,0 +1,5 @@
+(library
+ (name        opam_state)
+ (libraries   opam_repository dune_re)
+ (modules_without_implementation OpamStateTypes OpamScript)
+ (wrapped     false))

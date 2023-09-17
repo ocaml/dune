@@ -24,6 +24,16 @@ Welcome to Dune's Documentation!
 
    howto/formatting
    howto/opam-file-generation
+   cross-compilation
+   foreign-code
+   documentation
+   sites
+   instrumentation
+   jsoo
+   melange
+   toplevel-integration
+   variants
+   tests
 
 .. toctree::
    :caption: Reference Guides
@@ -40,6 +50,7 @@ Welcome to Dune's Documentation!
    reference/preprocessing-spec
    reference/packages
    reference/findlib
+   reference/aliases
    concepts/scopes
    concepts/variables
    concepts/dependency-spec
@@ -49,18 +60,9 @@ Welcome to Dune's Documentation!
    concepts/promotion
    concepts/package-spec
    coq
-   cross-compilation
-   foreign-code
    caching
    dune-libs
    rpc
-   documentation
-   sites
-   instrumentation
-   jsoo
-   toplevel-integration
-   variants
-   tests
 
 .. toctree::
    :caption: Explanations

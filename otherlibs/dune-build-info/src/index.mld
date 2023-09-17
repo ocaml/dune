@@ -1,0 +1,39 @@
+{1 [dune-build-info] - access information generated at build time. }
+
+{2 Introduction}
+
+This library exposes some functions to query pieces of information generated at
+build time, in particular:
+
+- the version of the project being built. You can use [dune-build-info] to
+  implement a [--version] flag.
+- the list of libraries an executable is linked against. You can use
+  [dune-build-info] to write a [--build-info] flag that will display a software
+  bill of materials listing the libraries used to build an executable.
+
+{2 Example}
+
+This displays the version number and the libraries the executable is statically
+linked with:
+
+{[
+  let version_string v =
+    match Build_info.V1.version v with
+    | None -> "n/a"
+    | Some v -> Build_info.V1.Version.to_string v
+  in
+  let version = Build_info.V1.version ();
+  Printf.printf "version: %s\n" (version_string version);
+  let libs = Build_info.V1.Statically_linked_libraries.to_list () in
+  Printf.printf "statically linked libraries:\n";
+  List.iter
+    (fun lib ->
+       let name = Build_info.V1.Statically_linked_library.name lib in
+       let version = Build_info.V1.Statically_linked_library.version lib in
+       Printf.printf "- %s (%s)\n" name (version_string version)
+    ) libs
+]}
+
+{2 API documentation}
+
+The entry point for this library is {!Build_info.V1}.

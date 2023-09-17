@@ -1,7 +1,7 @@
 Test dependency on a private library in the same package as melange.emit
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (package  (name a))
   > (using melange 0.1)
   > EOF
@@ -23,12 +23,12 @@ Test dependency on a private library in the same package as melange.emit
 
   $ dune install --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/a/META
-  Installing $TESTCASE_ROOT/prefix/lib/a/__private__/a/.public_cmi_melange/a.cmi
-  Installing $TESTCASE_ROOT/prefix/lib/a/__private__/a/.public_cmi_melange/a.cmt
-  Installing $TESTCASE_ROOT/prefix/lib/a/__private__/a/.public_cmi_melange/a__Foo.cmi
-  Installing $TESTCASE_ROOT/prefix/lib/a/__private__/a/.public_cmi_melange/a__Foo.cmt
   Installing $TESTCASE_ROOT/prefix/lib/a/__private__/a/a.ml
   Installing $TESTCASE_ROOT/prefix/lib/a/__private__/a/foo.ml
+  Installing $TESTCASE_ROOT/prefix/lib/a/__private__/a/melange/.public_cmi_melange/a.cmi
+  Installing $TESTCASE_ROOT/prefix/lib/a/__private__/a/melange/.public_cmi_melange/a.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/a/__private__/a/melange/.public_cmi_melange/a__Foo.cmi
+  Installing $TESTCASE_ROOT/prefix/lib/a/__private__/a/melange/.public_cmi_melange/a__Foo.cmt
   Installing $TESTCASE_ROOT/prefix/lib/a/__private__/a/melange/a.cmj
   Installing $TESTCASE_ROOT/prefix/lib/a/__private__/a/melange/a__Foo.cmj
   Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
@@ -38,6 +38,7 @@ Test dependency on a private library in the same package as melange.emit
   >  (target dist)
   >  (alias dist)
   >  (libraries a)
+  >  (emit_stdlib false)
   >  (package a))
   > EOF
 

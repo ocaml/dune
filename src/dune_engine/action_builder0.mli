@@ -4,40 +4,27 @@ type 'a t
 
 module O : sig
   val ( >>> ) : unit t -> 'a t -> 'a t
-
   val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
-
   val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
-
   val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
   val ( and* ) : 'a t -> 'b t -> ('a * 'b) t
-
   val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-
   val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
 end
 
 val return : 'a -> 'a t
-
 val bind : 'a t -> f:('a -> 'b t) -> 'b t
-
 val map : 'a t -> f:('a -> 'b) -> 'b t
-
 val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
-
 val both : 'a t -> 'b t -> ('a * 'b) t
-
 val ignore : 'a t -> unit t
-
 val all : 'a t list -> 'a list t
-
 val all_unit : unit t list -> unit t
 
 module List : Monad.List with type 'a t := 'a t
 
-val push_stack_frame :
-     human_readable_description:(unit -> User_message.Style.t Pp.t)
+val push_stack_frame
+  :  human_readable_description:(unit -> User_message.Style.t Pp.t)
   -> (unit -> 'a t)
   -> 'a t
 
@@ -61,8 +48,8 @@ val memoize : ?cutoff:('a -> 'a -> bool) -> string -> 'a t -> 'a t
 type ('input, 'output) memo
 
 (** Same as [Memo.create] but for [Action_builder] *)
-val create_memo :
-     string
+val create_memo
+  :  string
   -> input:(module Memo.Input with type t = 'i)
   -> ?cutoff:('o -> 'o -> bool)
   -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
@@ -77,8 +64,6 @@ val exec_memo : ('i, 'o) memo -> 'i -> 'o t
     the "goal" of the resulting action builder, which means [p] must be built,
     but the contents of [p] is irrelevant. *)
 val goal : 'a t -> 'a t
-
-module Expander : String_with_vars.Expander with type 'a app := 'a t
 
 (** If you're thinking of using [Process.run] here, check that: (i) you don't in
     fact need [Command.run], and that (ii) [Process.run] only reads the declared
@@ -113,13 +98,11 @@ val run : 'a t -> 'b eval_mode -> ('a * 'b Dep.Map.t) Memo.t
 
 (** {1 Low-level} *)
 
-type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm Dep.Map.t) Memo.t }
-[@@unboxed]
+type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm Dep.Map.t) Memo.t } [@@unboxed]
 
 val of_thunk : 'a thunk -> 'a t
 
 module Deps_or_facts : sig
   val union : 'a eval_mode -> 'a Dep.Map.t -> 'a Dep.Map.t -> 'a Dep.Map.t
-
   val union_all : 'a eval_mode -> 'a Dep.Map.t list -> 'a Dep.Map.t
 end

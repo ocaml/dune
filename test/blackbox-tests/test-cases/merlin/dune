@@ -3,7 +3,7 @@
  (alias all-merlin-tests))
 
 (cram
- (applies_to merlin-tests)
+ (applies_to merlin-tests instrumentation)
  (deps %{bin:ocamlfind}))
 
 (cram

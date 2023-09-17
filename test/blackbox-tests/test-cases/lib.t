@@ -262,3 +262,20 @@ But will fail when we release it, as it will need to run with -p:
   -> required by _build/default/public_lib2.install
   -> required by alias install
   [1]
+
+----------------------------------------------------------------------------------
+* Error when the wrong number of arguments are passed to %{lib-private:...}
+
+  $ cat >dune <<EOF
+  > (rule
+  >  (alias find-a)
+  >  (action (echo "%{lib-private:a.ml}")))
+  > EOF
+
+  $ dune build @find-a
+  File "dune", line 3, characters 30-34:
+  3 |  (action (echo "%{lib-private:a.ml}")))
+                                    ^^^^
+  Incorrect arguments for macro lib-private.
+  Error: Expected two arguments separated by ':' but no ':' found.
+  [1]

@@ -15,6 +15,11 @@ module Toggle : sig
     [ `Enabled
     | `Disabled
     ]
+
+  val all : (string * t) list
+  val of_string : string -> (t, string) result
+  val to_string : t -> string
+  val to_dyn : t -> Dyn.t
 end
 
 (** [get t] return the value of the configuration for [t] *)
@@ -37,4 +42,18 @@ val copy_file : [ `Portable | `Best ] t
     Note that environment variables take precedence over the values passed here
     for easy overriding. *)
 
+(** Execute some actions in background threads. See [Action_exec] for the
+    concrete list of actions *)
+val background_actions : Toggle.t t
+
+(** Compute digests of files in a background thread *)
+val background_digests : Toggle.t t
+
+(** Build and destroy sandboxes in background threads *)
+val background_sandboxes : Toggle.t t
+
+(** Run file operations when executing rules in background threads *)
+val background_file_system_operations_in_rule_execution : Toggle.t t
+
+val threaded_console : Toggle.t t
 val init : (Loc.t * string) String.Map.t -> unit

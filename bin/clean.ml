@@ -1,12 +1,10 @@
-open Stdune
 open Import
 
 let command =
   let doc = "Clean the project." in
   let man =
     [ `S "DESCRIPTION"
-    ; `P
-        {|Removes files added by dune such as _build, <package>.install, and .merlin|}
+    ; `P {|Removes files added by dune such as _build, <package>.install, and .merlin|}
     ; `Blocks Common.help_secs
     ]
   in
@@ -24,3 +22,4 @@ let command =
     Path.rm_rf Path.build_dir
   in
   Cmd.v (Cmd.info "clean" ~doc ~man) term
+;;

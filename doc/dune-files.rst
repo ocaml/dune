@@ -14,7 +14,7 @@ contents of all configuration files read by Dune and looks like:
 
 .. code:: dune
 
-   (lang dune 3.8)
+   (lang dune 3.11)
 
 Additionally, they can contains the following stanzas.
 
@@ -70,14 +70,17 @@ dialect
 
       Details related to the implementation files (corresponding to `*.ml`).
 
+      .. versionchanged:: 3.9 This field is made optional.
+
       .. dune:field:: extension
          :param: <string>
 
          Specify the file extension used for this dialect.
 
-         The extension string must not contain any dots and be unique in a given
-         project (so that a given extension can be mapped back to a
-         corresponding dialect).
+         The extension string must not start with a period and be unique in a
+         given project (so that a given extension can be mapped back to a
+         corresponding dialect). In Dune 3.9 and later, the extension string may
+         contain periods (e.g., `cppo.ml`).
 
          This field is required.
 
@@ -117,6 +120,8 @@ dialect
       Details related to the interface files (corresponding to `*.mli`).
 
       This field supports the same sub-fields as ``implementation``.
+
+      .. versionchanged:: 3.9 This field is made optional.
 
 .. _executables_implicit_empty_intf:
 
@@ -218,7 +223,7 @@ formatting
      .. code:: dune
 
         (formatting
-         (enabled_for <languages>)
+         (enabled_for <languages>))
 
      The list of `<languages>` can be either ``dune`` (formatting of dune
      files) or a :term:`dialect` name.
@@ -403,6 +408,25 @@ name
    Set the name of the project.
 
    It is used by :ref:`dune subst <dune-subst>` and error messages.
+
+opam_file_location
+------------------
+
+.. dune:stanza:: opam_file_location
+   :param: <location>
+
+   .. versionadded:: 3.8
+
+   Configure where generated ``.opam`` files are located. `<location>` can
+   be one of the following:
+
+   - ``relative_to_project``: the ``.opam`` files are generated in the project
+     root directory. This is the default.
+
+   - ``inside_opam_directory``: the ``.opam`` files are generated in a directory
+     named ``opam`` in the project root directory.
+
+   .. seealso:: :doc:`howto/opam-file-generation`
 
 .. _package:
 
@@ -648,8 +672,6 @@ map_workspace_root
 .. dune:stanza:: map_workspace_root
    :param: <bool>
 
-   .. versionadded:: 3.7
-
    Control references to the file system locations where the project has been
    built.
 
@@ -657,9 +679,31 @@ map_workspace_root
      workspace root to ``/workspace_root``. Note that when this mapping is
      enabled, the debug information produced by the bytecode compiler is
      incorrect, as the location information is lost.
+
    - with ``(map_workspace_root false)``, the references are not rewritten.
 
-   Starting from language version 3.0, the default is ``true``.
+   The default is ``(map_workspace_root true)``.
+
+   .. versionadded:: 3.0
+        Initial version with the mapping always enabled.
+   .. versionchanged:: 3.7
+        Add a way to disable the mapping.
+
+.. _warnings:
+
+warnings
+--------
+
+.. dune:stanza:: warnings
+
+   .. versionadded:: 3.11
+
+   Configure Dune warnings for the project.
+
+   .. dune:field:: <name>
+      :param: <enabled | disabled>
+
+      Enable or disable the warning <name> for the current project.
 
 .. _dune-files:
 
@@ -741,7 +785,7 @@ The ``dune-workspace`` file uses the S-expression syntax. This is what a typical
 
 .. code:: dune
 
-    (lang dune 3.8)
+    (lang dune 3.11)
     (context (opam (switch 4.07.1)))
     (context (opam (switch 4.08.1)))
     (context (opam (switch 4.11.1)))

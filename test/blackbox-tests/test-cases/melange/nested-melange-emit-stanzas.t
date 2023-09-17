@@ -1,7 +1,7 @@
 Make sure an error is returned if trying to nest `melange.emit` stanzas
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
   $ mkdir -p a/output/b

@@ -50,7 +50,7 @@ echo Starting dune
 start_dune
 
 echo Checking for error
-until grep 'Had errors' .#dune-output > /dev/null; do sleep 0.1; done
+until grep 'error' .#dune-output > /dev/null; do sleep 0.1; done
 
 echo Found, fixing build
 echo "let f() = ()" > ./internal/m_1_1_1_1.ml

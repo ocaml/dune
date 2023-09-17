@@ -8,8 +8,7 @@ Handling ppx_runtime_libraries dependencies correctly
   $ chmod +x sdune
 
 ----------------------------------------------------------------------------------
-ppx_runtime_libraries detection is delayed until they're used so this doesn't
-cause a dependency cycle
+* Incorrect cycle detection due to ppx_runtime_libraries (TODO: fix this bug!)
 
   $ cat >dune-project <<EOF
   > (lang dune 2.0)
@@ -60,7 +59,12 @@ cause a dependency cycle
   > EOF
 
   $ ./sdune exec bin/main.exe
-  Should print 3: 3
+  Error: Dependency cycle between:
+     library "b" in _build/default
+  -> library "a" in _build/default
+  -> library "c" in _build/default
+  -> library "b" in _build/default
+  [1]
 
 ----------------------------------------------------------------------------------
 * Ppx rewriters (and their ppx_runtime_libraries information) are collected recursively

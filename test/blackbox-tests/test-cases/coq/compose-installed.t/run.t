@@ -11,7 +11,7 @@ We also need to set up a fake Coq install.
   $TESTCASE_ROOT/lib/coq
 
   $ mkdir -p lib/coq/theories/Init/
-  $ echo > lib/coq/theories/Init/Prelude.v << EOF
+  $ cat > lib/coq/theories/Init/Prelude.v << EOF
   > Inductive PreludeLoaded := Yes.
   > EOF
 
@@ -103,7 +103,8 @@ any problems. It shouldn't do, as the workspace should take precedence.
       I : hello | am : hello | an : hello | install : hello | loc : hello.
 
 We test whether installing B again in user-contrib will cause Dune to reject the
-build.
+build. Currently this is not the case and the first theory is preferred inline
+with the loadpath semantics of Coq.
 
   $ dune install --root B --prefix=$PWD --display=short
   Installing $TESTCASE_ROOT/lib/B/META
@@ -115,10 +116,4 @@ build.
 
   $ dune build --root A
   Entering directory 'A'
-  Error: Coq theory B is defined twice:
-  - theory B in
-    $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B
-  - theory B in
-    $TESTCASE_ROOT/lib/coq/user-contrib/B
   Leaving directory 'A'
-  [1]

@@ -1,0 +1,5 @@
+opam-version: "2.0"
+depends: [
+    "baz" {>= "0.1"}
+    "bar" {>= "0.2"}
+]

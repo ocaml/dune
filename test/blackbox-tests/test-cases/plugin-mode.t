@@ -79,30 +79,11 @@ Testsuite for (mode plugin).
   >   Dynlink.loadfile (Dynlink.adapt_filename "b.cma")
   > EOF
 
-  $ dune build --display short @all 2>&1 | dune_cmd sanitize
-        ocamlc foo/.foo.objs/byte/foo.{cmi,cmo,cmt}
-        ocamlc main2/.main.eobjs/byte/dune__exe__Main.{cmi,cmo,cmt}
-        ocamlc $ext_lib.eobjs/byte/dune__exe__A.{cmi,cmo,cmt}
-      ocamlopt foo/.foo.objs/native/foo.{cmx,o}
-        ocamlc foo/.bar.objs/byte/bar.{cmi,cmo,cmt}
-        ocamlc main/.main.eobjs/byte/dune__exe__Main.{cmi,cmo,cmt}
-        ocamlc foo/foo.cma
-      ocamlopt main2/.main.eobjs/native/dune__exe__Main.{cmx,o}
-      ocamlopt $ext_lib.eobjs/native/dune__exe__A.{cmx,o}
-      ocamlopt foo/foo.{a,cmxa}
-        ocamlc .b.eobjs/byte/dune__exe__B.{cmi,cmo,cmt}
-      ocamlopt foo/.bar.objs/native/bar.{cmx,o}
-        ocamlc foo/bar.cma
-      ocamlopt main/.main.eobjs/native/dune__exe__Main.{cmx,o}
-      ocamlopt main2/main.exe
+  $ dune build --display short @all 2>&1 | dune_cmd sanitize | grep cmxs | sort
       ocamlopt a.cmxs
-      ocamlopt a.exe
-      ocamlopt foo/foo.cmxs
-      ocamlopt .b.eobjs/native/dune__exe__B.{cmx,o}
-      ocamlopt foo/bar.{a,cmxa}
-      ocamlopt main/main.exe
       ocamlopt b.cmxs
       ocamlopt foo/bar.cmxs
+      ocamlopt foo/foo.cmxs
 
   $ (cd _build/default && main/main.exe)
   12

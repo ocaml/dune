@@ -1,0 +1,11 @@
+(executable
+ (name main)
+ (modules main))
+
+(executable
+ (name cppo)
+ (modules cppo))
+
+(rule
+ (alias show)
+ (action (cat main.cppo.ml.ml)))

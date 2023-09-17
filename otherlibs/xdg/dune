@@ -14,3 +14,6 @@
  (synopsis "[Internal] XDG base directories specification implementation")
  (instrumentation
   (backend bisect_ppx)))
+
+(documentation
+ (package xdg))

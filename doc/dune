@@ -29,3 +29,6 @@
   (with-stdout-to
    dune.inc
    (run bash %{dep:update-jbuild.sh}))))
+
+(documentation
+ (package dune))

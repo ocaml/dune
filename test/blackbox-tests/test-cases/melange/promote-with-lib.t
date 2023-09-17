@@ -1,7 +1,7 @@
 Test melange.emit promotion
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 
@@ -31,23 +31,6 @@ Test melange.emit promotion
   >   print_endline "hello"
   > EOF
 
-Fails with an informative error message if we parsed OSL for modes
-
-  $ dune build @dist
-  File "lib/dune", line 1, characters 0-50:
-  1 | (library
-  2 |  (modes :standard melange)
-  3 |  (name mylib))
-  Error: Ordered set language for modes is only available since version 3.8 of
-  the dune language. Please update your dune-project file to have (lang dune
-  3.8).
-  [1]
-
-
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using melange 0.1)
-  > EOF
   $ dune build @dist
 
 Library has `(modes :standard)` so it also builds for bytecode / native

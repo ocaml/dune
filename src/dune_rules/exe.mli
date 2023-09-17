@@ -34,13 +34,9 @@ module Linkage : sig
   val js : t
 
   val is_native : t -> bool
-
   val is_js : t -> bool
-
   val is_byte : t -> bool
-
-  val of_user_config :
-    Context.t -> loc:Loc.t -> Dune_file.Executables.Link_mode.t -> t
+  val of_user_config : Context.t -> loc:Loc.t -> Dune_file.Executables.Link_mode.t -> t
 end
 
 type dep_graphs = { for_exes : Module.t list Action_builder.t list }
@@ -51,8 +47,8 @@ type dep_graphs = { for_exes : Module.t list Action_builder.t list }
 
 (* [link_many] is like [build_and_link_many], but it allows you to share modules
    between executables without requiring an intermediate library. *)
-val link_many :
-     ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
+val link_many
+  :  ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
   -> ?o_files:Path.t Mode.Map.Multi.t
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> ?sandbox:Sandbox_config.t
@@ -62,8 +58,8 @@ val link_many :
   -> Compilation_context.t
   -> dep_graphs Memo.t
 
-val build_and_link :
-     ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
+val build_and_link
+  :  ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
   -> ?o_files:Path.t Mode.Map.Multi.t
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> ?sandbox:Sandbox_config.t
@@ -73,8 +69,8 @@ val build_and_link :
   -> Compilation_context.t
   -> dep_graphs Memo.t
 
-val build_and_link_many :
-     ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
+val build_and_link_many
+  :  ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
   -> ?o_files:Path.t Mode.Map.Multi.t
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> ?sandbox:Sandbox_config.t
@@ -84,8 +80,8 @@ val build_and_link_many :
   -> Compilation_context.t
   -> dep_graphs Memo.t
 
-val exe_path :
-     Compilation_context.t
+val exe_path
+  :  Compilation_context.t
   -> program:Program.t
   -> linkage:Linkage.t
   -> Path.Build.t

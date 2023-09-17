@@ -10,6 +10,8 @@ Test `melange.runtime_deps` in a private library
   >  (target output)
   >  (alias mel)
   >  (libraries foo)
+  >  (emit_stdlib false)
+  >  (preprocess (pps melange.ppx))
   >  (runtime_deps assets/file.txt))
   > EOF
 
@@ -19,6 +21,7 @@ Test `melange.runtime_deps` in a private library
   > (library
   >  (name foo)
   >  (modes melange)
+  >  (preprocess (pps melange.ppx))
   >  (melange.runtime_deps index.txt))
   > EOF
   $ cat > lib/foo.ml <<EOF
@@ -46,6 +49,7 @@ The runtime_dep index.txt was copied to the library build folder
 
   $ ls _build/default/lib
   foo.ml
+  foo.pp.ml
   index.txt
 
 The runtime_dep index.txt was copied to the build folder

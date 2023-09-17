@@ -7,23 +7,14 @@ type t
 include Comparable_intf.S with type key := t
 
 val to_dyn : t -> Dyn.t
-
 val hash : t -> int
-
 val equal : t -> t -> bool
-
 val compare : t -> t -> Ordering.t
-
 val to_string : t -> string
-
 val from_hex : string -> t option
-
 val file : Path.t -> t
-
 val string : string -> t
-
 val to_string_raw : t -> string
-
 val generic : 'a -> t
 
 (** The subset of fields of [Unix.stats] used by this module.
@@ -63,8 +54,11 @@ end
     may get stale, so [path_with_stats] may return [Unix_error (ENOENT, _, _)]
     even though you've just successfully run [Path.stat] on it. The call sites
     are expected to gracefully handle such races. *)
-val path_with_stats :
-  allow_dirs:bool -> Path.t -> Stats_for_digest.t -> Path_digest_result.t
+val path_with_stats
+  :  allow_dirs:bool
+  -> Path.t
+  -> Stats_for_digest.t
+  -> Path_digest_result.t
 
 (** Digest a file taking the [executable] bit into account. Should not be called
     on a directory. *)

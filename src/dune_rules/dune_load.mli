@@ -10,7 +10,6 @@ module Dune_files : sig
   type t
 
   val eval : t -> context:Context.t -> Dune_file.t list Memo.t
-
   val in_dir : Path.Build.t -> Dune_file.t option Memo.t
 end
 

@@ -1,0 +1,20 @@
+(library
+ (name dune_async_io_tests)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
+ (libraries
+  stdune
+  dune_engine
+  unix
+  threads.posix
+  fiber
+  dune_async_io
+  dune_tests_common
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  ppx_expect.common
+  base
+  ppx_inline_test.config))

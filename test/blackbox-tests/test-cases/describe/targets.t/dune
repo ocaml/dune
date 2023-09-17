@@ -1,0 +1,10 @@
+(library
+ (name simple))
+
+(rule
+ (targets
+  (dir d))
+ (action
+  (progn
+   (run mkdir d)
+   (run cat > d/foo))))

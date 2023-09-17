@@ -80,19 +80,68 @@ let mkdir dir =
     end in
   aux dir
 
-let rm_command =
-  if Sys.win32 then
-    "cmd /d /v:off /c rd /s /q"
-  else
-    "rm -rf"
+let get_files dirname =
+  let dir = Unix.opendir dirname in
+  let rec aux files =
+    match Unix.readdir dir with
+    | "." | ".." -> aux files
+    | file -> aux (file :: files)
+    | exception End_of_file -> files
+  in
+  let files = aux [] in
+  Unix.closedir dir;
+  files
+
+let log_for_file_management () =
+  OpamCoreConfig.(!r.debug_level) >= 4
+
+(* From stdune/src/fpath.ml *)
+let win32_unlink fn =
+  try Unix.unlink fn
+  with Unix.Unix_error (Unix.EACCES, _, _) as e -> (
+    try
+      (* Try removing the read-only attribute *)
+      Unix.chmod fn 0o666;
+      Unix.unlink fn
+    with _ -> raise e)
+
+let remove_file_t ?(with_log=true) file =
+  if
+    try ignore (Unix.lstat file); true with Unix.Unix_error _ -> false
+  then (
+    try
+      if with_log || log_for_file_management () then
+        log "rm %s" file;
+      if Sys.win32 then
+        win32_unlink file
+      else
+        Unix.unlink file
+    with Unix.Unix_error _ as e ->
+      internal_error "Cannot remove %s (%s)." file (Printexc.to_string e)
+  )
+
+let rec remove_dir_t dir =
+  let files = get_files dir in
+  List.iter (fun file ->
+      let file = Filename.concat dir file in
+      match Unix.lstat file with
+      | {Unix.st_kind = Unix.S_DIR; _} ->
+        remove_dir_t file
+      | {Unix.st_kind = Unix.(S_REG | S_LNK | S_CHR | S_BLK | S_FIFO | S_SOCK); _} ->
+        remove_file_t ~with_log:false file
+    ) files;
+  Unix.rmdir dir
+
+let remove_file = remove_file_t ~with_log:true
 
 let remove_dir dir =
   log "rmdir %s" dir;
-  if Sys.file_exists dir then (
-    let err = Sys.command (Printf.sprintf "%s %s" rm_command (Filename.quote dir)) in
-      if err <> 0 then
-        internal_error "Cannot remove %s (error %d)." dir err
-  )
+  if Sys.file_exists dir then begin
+    if Sys.is_directory dir then
+      remove_dir_t dir
+    else
+      remove_file dir
+  end
 
 let temp_files = Hashtbl.create 1024
 let logs_cleaner =
@@ -352,11 +401,6 @@ let real_path p =
 
 type command = string list
 
-let default_env () =
-  (OpamStd.Env.list () :> (string * string) list)
-    |> List.map (fun (var, v) -> var^"="^v)
-    |> Array.of_list
-
 let env_var env var =
   let len = Array.length env in
   let f = if Sys.win32 then String.uppercase_ascii else fun x -> x in
@@ -457,7 +501,7 @@ let t_resolve_command =
         `Denied
   in
   fun ?env ?dir name ->
-    let env = match env with None -> default_env () | Some e -> e in
+    let env = match env with None -> OpamProcess.default_env () | Some e -> e in
     resolve env ?dir name
 
 let resolve_command ?env ?dir name =
@@ -466,23 +510,36 @@ let resolve_command ?env ?dir name =
   | `Denied | `Not_found -> None
 
 let apply_cygpath name =
-  let r =
-    OpamProcess.run
-      (OpamProcess.command ~name:(temp_file "command") ~allow_stdin:false ~verbose:false "cygpath" ["--"; name])
-  in
-  OpamProcess.cleanup ~force:true r;
-  if OpamProcess.is_success r then
-    List.hd r.OpamProcess.r_stdout
-  else
+  (* XXX Deeper bug, looking in the cygvoke code (see OpamProcess.create) *)
+  match resolve_command "cygpath" with
+  | Some cygpath ->
+    let r =
+      OpamProcess.run
+        (OpamProcess.command ~name:(temp_file "command")
+           ~allow_stdin:false ~verbose:false cygpath ["--"; name])
+    in
+    OpamProcess.cleanup ~force:true r;
+    if OpamProcess.is_success r then
+      match r.OpamProcess.r_stdout with
+      | l::_ -> l
+      | _ -> ""
+    else
+      OpamConsole.error_and_exit `Internal_error "Could not apply cygpath to %s" name
+  | None ->
     OpamConsole.error_and_exit `Internal_error "Could not apply cygpath to %s" name
 
 let get_cygpath_function =
   if Sys.win32 then
     fun ~command ->
-      lazy (if OpamStd.(Option.map_default Sys.is_cygwin_variant `Native (resolve_command command)) = `Cygwin then
-              apply_cygpath
-            else
-              fun x -> x)
+      lazy (
+        if OpamStd.Option.map_default
+            (OpamStd.Sys.is_cygwin_variant
+               ~cygbin:(OpamCoreConfig.(!r.cygbin)))
+               false
+               (resolve_command command) then
+          apply_cygpath
+        else fun x -> x
+      )
   else
     let f = Lazy.from_val (fun x -> x) in
     fun ~command:_ -> f
@@ -523,14 +580,11 @@ let make_command
     ?verbose ?env ?name ?text ?metadata ?allow_stdin ?stdout
     ?dir ?(resolve_path=true)
     cmd args =
-  let env = match env with None -> default_env () | Some e -> e in
+  let env = match env with None -> OpamProcess.default_env () | Some e -> e in
   let name = log_file name in
   let verbose =
     OpamStd.Option.default OpamCoreConfig.(!r.verbose_level >= 2) verbose
   in
-  (* Check that the command doesn't contain whitespaces *)
-  if None <> try Some (String.index cmd ' ') with Not_found -> None then
-    OpamConsole.warning "Command %S contains space characters" cmd;
   let full_cmd =
     if resolve_path then t_resolve_command ~env ?dir cmd
     else `Cmd cmd
@@ -545,16 +599,12 @@ let make_command
 
 let run_process
     ?verbose ?env ~name ?metadata ?stdout ?allow_stdin command =
-  let env = match env with None -> default_env () | Some e -> e in
+  let env = match env with None -> OpamProcess.default_env () | Some e -> e in
   let chrono = OpamConsole.timer () in
   runs := command :: !runs;
   match command with
   | []          -> invalid_arg "run_process"
   | cmd :: args ->
-
-    if OpamStd.String.contains_char cmd ' ' then
-      OpamConsole.warning "Command %S contains space characters" cmd;
-
     match t_resolve_command ~env cmd with
     | `Cmd full_cmd ->
       let verbose = match verbose with
@@ -617,13 +667,7 @@ let read_command_output ?verbose ?env ?metadata ?allow_stdin
 let verbose_for_base_commands () =
   OpamCoreConfig.(!r.verbose_level) >= 3
 
-let cygify f =
-  if Sys.win32 then
-    List.map (Lazy.force f)
-  else
-    fun x -> x
-
-let copy_file src dst =
+let copy_file_t ?(with_log=true) src dst =
   if (try Sys.is_directory src
       with Sys_error _ -> raise (File_not_found src))
   then internal_error "Cannot copy %s: it is a directory." src;
@@ -632,75 +676,71 @@ let copy_file src dst =
   if file_or_symlink_exists dst
   then remove_file dst;
   mkdir (Filename.dirname dst);
-  log "copy %s -> %s" src dst;
+  if with_log || log_for_file_management () then
+    log "copy %s -> %s" src dst;
   copy_file_aux ~src ~dst ()
 
-let copy_dir src dst =
-  (* MSYS2 requires special handling because its uses copying rather than
-     symlinks for maximum portability on Windows. However copying a source
-     directory containing symlinks presents a problem.
-
-     As a real example look at https://github.com/OCamlPro/ocp-indent/tree/1.8.2/tests/inplace:
-
-      $ ls -l tests/inplace/
-      total 0
-      -rw-r--r-- 1 user group  0 Aug 12 20:53 executable.ml
-      lrwxrwxrwx 1 user group 12 Aug 12 20:53 link.ml -> otherfile.ml
-      lrwxrwxrwx 1 user group  7 Aug 12 20:53 link2.ml -> link.ml
-      -rw-r--r-- 1 user group  0 Aug 12 20:53 otherfile.ml
-
-    With a regular copy:
-
-      cp -PRp ...\ocp-indent-1.8.1\tests ... \tmp\ocp-indent.1.8.1
-
-    it _can_ fail with:
-
-      # /usr/bin/cp: cannot create symbolic link 'C:\somewhere/tests/inplace/link.ml': No such file or directory
-      # /usr/bin/cp: cannot create symbolic link 'C:\somewhere/tests/inplace/link2.ml': No such file or directory
-
-    What is happening is that _if_ link2.ml is copied before link.ml, then the
-    copy of link2.ml will fail with "No such file or directory". What is worse,
-    it depends on the opaque order in which the files are copied; sometimes it
-    can work and sometimes it won't.
-
-    So we do a two-pass copy. The first pass copies everything except the
-    symlinks, and the second pass copies everything that remained. Rsync is the
-    perfect tool for that.
-   *)
-  if OpamStd.Sys.get_windows_executable_variant "rsync" = `Msys2 then
-    let convert_path = Lazy.force (get_cygpath_function ~command:"rsync") in
-    (* ensure that rsync doesn't recreate a subdir: add trailing '/' even if
-       cygpath may add one *)
-    let trailingslash_cygsrc =
-      (OpamStd.String.remove_suffix ~suffix:"/" (convert_path src)) ^ "/"
+let rec link_t ?(with_log=true) src dst =
+  mkdir (Filename.dirname dst);
+  if file_or_symlink_exists dst then
+    remove_file dst;
+  try
+    if with_log || log_for_file_management () then
+      log "ln -s %s %s" src dst;
+    Unix.symlink src dst
+  with Unix.Unix_error (Unix.EXDEV, _, _) ->
+    (* Fall back to copy if symlinks are not supported *)
+    let src =
+      if Filename.is_relative src then Filename.dirname dst / src
+      else src
     in
-    let cygdest = convert_path dst in
-    (if Sys.file_exists dst then () else mkdir (Filename.dirname dst);
-     command ~verbose:(verbose_for_base_commands ())
-       ([ "rsync"; "-a"; "--no-links"; trailingslash_cygsrc; cygdest ]);
-     command ~verbose:(verbose_for_base_commands ())
-       ([ "rsync"; "-a"; "--ignore-existing"; trailingslash_cygsrc; cygdest ]))
-  else if Sys.file_exists dst then
-    if Sys.is_directory dst then
-      match ls src with
-      | [] -> ()
-      | srcfiles ->
-        command ~verbose:(verbose_for_base_commands ())
-          ([ "cp"; "-PRp" ] @ srcfiles @ [ dst ])
+    if Sys.is_directory src then
+      copy_dir_t src dst
     else
-      internal_error
-        "Can not copy dir %s to %s, which is not a directory" src dst
-  else
-    (mkdir (Filename.dirname dst);
-     command ~verbose:(verbose_for_base_commands ())
-       [ "cp"; "-PRp"; src; dst ])
+      copy_file_t src dst
 
-let mv_aux f src dst =
+and copy_dir_t ?(with_log=true) src dst =
+  if with_log || log_for_file_management () then
+    log "copydir %s -> %s" src dst;
+  let files = get_files src in
+  mkdir dst;
+  let with_log = false in
+  List.iter (fun file ->
+      let src = Filename.concat src file in
+      let dst = Filename.concat dst file in
+      match Unix.lstat src with
+      | {Unix.st_kind = Unix.S_REG; _} ->
+        copy_file_t ~with_log src dst
+      | {Unix.st_kind = Unix.S_DIR; _} ->
+        copy_dir_t ~with_log src dst
+      | {Unix.st_kind = Unix.S_LNK; _} ->
+        let src = Unix.readlink src in
+        link_t ~with_log src dst
+      | {Unix.st_kind = Unix.S_CHR; _} ->
+        failwith (Printf.sprintf "Copying character devices (%s) is unsupported" src)
+      | {Unix.st_kind = Unix.S_BLK; _} ->
+        failwith (Printf.sprintf "Copying block devices (%s) is unsupported" src)
+      | {Unix.st_kind = Unix.S_FIFO; _} ->
+        failwith (Printf.sprintf "Copying named pipes (%s) is unsupported" src)
+      | {Unix.st_kind = Unix.S_SOCK; _} ->
+        failwith (Printf.sprintf "Copying sockets (%s) is unsupported" src)
+    ) files
+
+let copy_dir = copy_dir_t ~with_log:true
+let copy_file = copy_file_t ~with_log:true
+
+let mv src dst =
   if file_or_symlink_exists dst then remove_file dst;
   mkdir (Filename.dirname dst);
-  command ~verbose:(verbose_for_base_commands ()) ("mv"::(cygify f [src; dst]))
-
-let mv = mv_aux (get_cygpath_function ~command:"mv")
+  log "mv %s -> %s" src dst;
+  try
+    Unix.rename src dst
+  with
+  | Unix.Unix_error(Unix.EXDEV, _, _) ->
+    let with_log = false in
+    if Sys.is_directory src
+    then (copy_dir_t ~with_log src dst; remove_dir_t src)
+    else (copy_file_t ~with_log src dst; remove_file_t ~with_log src)
 
 let is_exec file =
   let stat = Unix.stat file in
@@ -837,11 +877,10 @@ let install ?(warning=default_install_warning) ?exec src dst =
       in
       copy_file_aux ~src ~dst ();
       if cygcheck then
-        match OpamStd.Sys.get_windows_executable_variant dst with
-        | `Native ->
-            ()
-        | (`Cygwin | `Msys2 | `Tainted _) as code ->
-            warning dst code
+        match OpamStd.Sys.get_windows_executable_variant
+                ~cygbin:OpamCoreConfig.(!r.cygbin) dst with
+        | `Native -> ()
+        | (`Cygwin | `Msys2 | `Tainted _) as code -> warning dst code
     end else
       copy_file_aux ~src ~dst ()
   else

@@ -25,9 +25,8 @@ ppx_inline_test \
 ppxlib \
 ctypes \
 "utop>=2.6.0" \
-"melange>=0.3.1" \
-"mel>=0.3.1"
-
+"melange>=1.0.0" \
+"rescript-syntax"
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
 DEV_DEPS := \
@@ -41,6 +40,10 @@ TEST_OCAMLVERSION := 4.14.1
 .PHONY: help
 help:
 	@cat doc/make-help.txt
+
+.PHONY: bootstrap
+bootstrap:
+	$(MAKE) -B $(BIN)
 
 .PHONY: release
 release: $(BIN)
@@ -72,22 +75,13 @@ install-ocamlformat:
 dev-depext:
 	opam depext -y $(TEST_DEPS)
 
-.PHONY: melange
-melange:
-	opam pin add -n melange-compiler-libs https://github.com/melange-re/melange-compiler-libs.git#7263bea2285499f5da857f2bb374345a5178791e
-	opam pin add -n melange https://github.com/melange-re/melange.git#68c6eff82ed056feed809d6cc82558e8697b965b
-
 .PHONY: dev-deps
-dev-deps: melange
+dev-deps:
 	opam install -y $(TEST_DEPS)
 
 .PHONY: coverage-deps
 coverage-deps:
 	opam install -y bisect_ppx
-
-.PHONY: dev-deps-sans-melange
-dev-deps-sans-melange:
-	opam install -y $(TEST_DEPS)
 
 .PHONY: dev-switch
 dev-switch:
@@ -115,9 +109,6 @@ test-melange: $(BIN)
 
 test-all: $(BIN)
 	$(BIN) build @runtest @runtest-js @runtest-coq @runtest-melange
-
-test-all-sans-melange: $(BIN)
-	$(BIN) build @runtest @runtest-js @runtest-coq
 
 test-coverage: $(BIN)
 	- $(BIN) build --instrument-with bisect_ppx --force @runtest
@@ -229,7 +220,3 @@ docker-build-image:
 .PHONY: docker-compose
 docker-compose:
 	docker compose -f docker/dev.yml run dune bash
-
-.PHONY: bootstrap
-bootstrap:
-	$(BIN) build @install -p dune --profile dune-bootstrap

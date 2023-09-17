@@ -13,6 +13,7 @@ let () =
       loop l
   in
   loop Bytes_unit.conversion_table
+;;
 
 let%expect_test _ =
   let bytes =
@@ -49,3 +50,4 @@ let%expect_test _ =
       12.35GB
       123.46GB
       1.23TB |}]
+;;

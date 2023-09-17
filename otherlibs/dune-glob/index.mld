@@ -1,0 +1,38 @@
+{1 dune-glob - file globbing}
+
+{2 Introduction}
+
+A {e glob} is a way of referring to a set of files that match a certain
+pattern, such as "files with the [.ml] extension" or "files with [test] in
+their name".
+
+[dune-glob] exposes an abstraction so that we can refer to the first group as
+[*.ml] and the second one as [*test*].
+
+This library is used by Dune to implement this syntax in several places in
+[dune] files, but it can be used in other contexts as well.
+
+{2 Example}
+
+This is an executable that takes a glob as a command line argument, and lists
+the contents of the current directory that matches it:
+
+{[
+let () =
+  let glob_string = Sys.argv.(1) in
+  let glob = Dune_glob.V1.of_string glob_string in
+  let files = Sys.readdir "." in
+  ArrayLabels.iter files ~f:(fun n ->
+    if Dune_glob.V1.test glob n then
+      print_endline n)
+]}
+
+{2 API documentation}
+
+The entry point for this library is {!Dune_glob.V1}.
+
+{2 Note on stability}
+
+This library is fairly stable, but does not come with strong stability
+guarantees. In particular, while the module name suggests the API is versioned,
+it is not in the strict sense.

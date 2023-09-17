@@ -9,7 +9,6 @@ type 'a memo := 'a t
 (** A type of Memo-like monads. *)
 module type S = sig
   include Monad.S
-
   module List : Monad.List with type 'a t := 'a t
 
   (** Inject a value of type ['a Memo.t] into ['a t]. *)
@@ -17,9 +16,7 @@ module type S = sig
 end
 
 include S with type 'a t := 'a t
-
 module Option : Monad.Option with type 'a t := 'a t
-
 module Result : Monad.Result with type 'a t := 'a t
 
 (* CR-someday amokhov: Return the set of exceptions explicitly. *)
@@ -43,8 +40,8 @@ val run : 'a t -> 'a Fiber.t
     it may be possible to lift it by eagerly bubbling up each error through
     individual dependency edges instead of sending errors directly to the
     handler in scope. *)
-val run_with_error_handler :
-     (unit -> 'a t)
+val run_with_error_handler
+  :  (unit -> 'a t)
   -> handle_error_no_raise:(Exn_with_backtrace.t -> unit Fiber.t)
   -> 'a Fiber.t
 
@@ -81,26 +78,20 @@ val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
 val all : 'a t list -> 'a list t
 
 val all_concurrently : 'a t list -> 'a list t
-
 val when_ : bool -> (unit -> unit t) -> unit t
-
 val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
-
 val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
-
 val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
-
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
 
-val parallel_iter_set :
-     (module Set.S with type elt = 'a and type t = 's)
+val parallel_iter_set
+  :  (module Set.S with type elt = 'a and type t = 's)
   -> 's
   -> f:('a -> unit t)
   -> unit t
 
 module Make_map_traversals (Map : Map.S) : sig
   val parallel_iter : 'a Map.t -> f:(Map.key -> 'a -> unit t) -> unit t
-
   val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
 end
 [@@inline always]
@@ -115,9 +106,7 @@ module Stack_frame : sig
   type t
 
   val to_dyn : t -> Dyn.t
-
   val name : t -> string option
-
   val input : t -> Dyn.t
 
   (** Checks if the stack frame is a frame of the given memoized function and if
@@ -238,8 +227,8 @@ end
 
     Running the computation may raise [Memo.Cycle_error.E] if a dependency cycle
     is detected. *)
-val create :
-     string
+val create
+  :  string
   -> input:(module Input with type t = 'i)
   -> ?cutoff:('o -> 'o -> bool)
   -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
@@ -259,8 +248,8 @@ end
 (** Like [create] but accepts a custom [store] for memoization. This is useful
     when there is a custom data structure indexed by keys of type ['i] that is
     more efficient than the one that Memo uses by default (a plain hash table). *)
-val create_with_store :
-     string
+val create_with_store
+  :  string
   -> store:(module Store.S with type key = 'i)
   -> input:(module Store.Input with type t = 'i)
   -> ?cutoff:('o -> 'o -> bool)
@@ -282,8 +271,8 @@ val get_call_stack : unit -> Stack_frame.t list t
 
 (** Insert a stack frame to make call stacks more precise when showing them to
     the user. *)
-val push_stack_frame :
-     human_readable_description:(unit -> User_message.Style.t Pp.t)
+val push_stack_frame
+  :  human_readable_description:(unit -> User_message.Style.t Pp.t)
   -> (unit -> 'a t)
   -> 'a t
 
@@ -293,7 +282,6 @@ module Run : sig
 
   module For_tests : sig
     val compare : t -> t -> Ordering.t
-
     val current : unit -> t
   end
 end
@@ -305,7 +293,6 @@ module Cell : sig
   type ('i, 'o) t
 
   val input : ('i, _) t -> 'i
-
   val read : (_, 'o) t -> 'o memo
 
   (** Mark this cell as invalid, forcing recomputation of this value. The
@@ -317,16 +304,16 @@ end
     memoized function. *)
 val cell : ('i, 'o) Table.t -> 'i -> ('i, 'o) Cell.t
 
-val lazy_cell :
-     ?cutoff:('a -> 'a -> bool)
+val lazy_cell
+  :  ?cutoff:('a -> 'a -> bool)
   -> ?name:string
   -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
   -> (unit -> 'a t)
   -> (unit, 'a) Cell.t
 
 (** Returns the cached dependency graph discoverable from the specified node *)
-val dump_cached_graph :
-     ?on_not_cached:[ `Ignore | `Raise ]
+val dump_cached_graph
+  :  ?on_not_cached:[ `Ignore | `Raise ]
   -> ?time_nodes:bool
   -> ('i, 'o) Cell.t
   -> Dune_graph.Graph.t Fiber.t
@@ -336,22 +323,21 @@ module Lazy : sig
 
   val of_val : 'a -> 'a t
 
-  val create :
-       ?cutoff:('a -> 'a -> bool)
+  val create
+    :  ?cutoff:('a -> 'a -> bool)
     -> ?name:string
     -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
     -> (unit -> 'a memo)
     -> 'a t
 
   val force : 'a t -> 'a memo
-
   val map : 'a t -> f:('a -> 'b) -> 'b t
 
   module Expert : sig
     (** Like [Lazy.create] but returns the underlying Memo [Cell], which can be
         useful for testing and debugging. *)
-    val create :
-         ?cutoff:('a -> 'a -> bool)
+    val create
+      :  ?cutoff:('a -> 'a -> bool)
       -> ?name:string
       -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
       -> (unit -> 'a memo)
@@ -359,8 +345,8 @@ module Lazy : sig
   end
 end
 
-val lazy_ :
-     ?cutoff:('a -> 'a -> bool)
+val lazy_
+  :  ?cutoff:('a -> 'a -> bool)
   -> ?name:string
   -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
   -> (unit -> 'a t)
@@ -391,8 +377,8 @@ end
 module With_implicit_output : sig
   type ('i, 'o) t
 
-  val create :
-       string
+  val create
+    :  string
     -> input:(module Input with type t = 'i)
     -> implicit_output:'io Implicit_output.t
     -> ('i -> 'o memo)
@@ -405,18 +391,14 @@ end
     [id] function must be injective, i.e. there must be a one-to-one
     correspondence between [input]s and their [id]s. *)
 module Poly (Function : sig
-  type 'a input
+    type 'a input
+    type 'a output
 
-  type 'a output
-
-  val name : string
-
-  val eval : 'a input -> 'a output t
-
-  val to_dyn : _ input -> Dyn.t
-
-  val id : 'a input -> 'a Type_eq.Id.t
-end) : sig
+    val name : string
+    val eval : 'a input -> 'a output t
+    val to_dyn : _ input -> Dyn.t
+    val id : 'a input -> 'a Type_eq.Id.t
+  end) : sig
   val eval : 'a Function.input -> 'a Function.output t
 end
 

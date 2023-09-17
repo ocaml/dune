@@ -63,6 +63,7 @@ type t = {
   errlog_length: int;
   merged_output: bool;
   precise_tracking: bool;
+  cygbin: string option;
   set: bool;
 }
 
@@ -81,6 +82,7 @@ type 'a options_fun =
   ?errlog_length:int ->
   ?merged_output:bool ->
   ?precise_tracking:bool ->
+  ?cygbin:string ->
   'a
 
 let default = {
@@ -101,6 +103,7 @@ let default = {
   errlog_length = 12;
   merged_output = true;
   precise_tracking = false;
+  cygbin = None;
   set = false;
 }
 
@@ -119,6 +122,7 @@ let setk k t
     ?errlog_length
     ?merged_output
     ?precise_tracking
+    ?cygbin
   =
   let (+) x opt = match opt with Some x -> x | None -> x in
   k {
@@ -139,6 +143,7 @@ let setk k t
     errlog_length = t.errlog_length + errlog_length;
     merged_output = t.merged_output + merged_output;
     precise_tracking = t.precise_tracking + precise_tracking;
+    cygbin = (match cygbin with Some _ -> cygbin | None -> t.cygbin);
     set = true;
   }
 
@@ -179,6 +184,7 @@ let initk k =
     ?errlog_length:(E.errloglen ())
     ?merged_output:(E.mergeout ())
     ?precise_tracking:(E.precisetracking ())
+    ?cygbin:None
 
 let init ?noop:_ = initk (fun () -> ())
 

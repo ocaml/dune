@@ -1,5 +1,4 @@
 module type Basic = Monoid_intf.Basic
-
 module type S = Monoid_intf.S
 
 module Make (M : Basic) = struct
@@ -10,162 +9,147 @@ module Make (M : Basic) = struct
   end
 
   let reduce = List.fold_left ~init:empty ~f:combine
-
-  let map_reduce ~f =
-    List.fold_left ~init:empty ~f:(fun acc a -> combine acc (f a))
+  let map_reduce ~f = List.fold_left ~init:empty ~f:(fun acc a -> combine acc (f a))
 end
 
 module Exists = Make (struct
-  type t = bool
+    type t = bool
 
-  let empty = false
-
-  let combine = ( || )
-end)
+    let empty = false
+    let combine = ( || )
+  end)
 
 module Forall = Make (struct
-  type t = bool
+    type t = bool
 
-  let empty = true
-
-  let combine = ( && )
-end)
+    let empty = true
+    let combine = ( && )
+  end)
 
 module String = Make (struct
-  type t = string
+    type t = string
 
-  let empty = ""
-
-  let combine = ( ^ )
-end)
+    let empty = ""
+    let combine = ( ^ )
+  end)
 
 module List (M : sig
-  type t
-end) =
+    type t
+  end) =
 Make (struct
-  type t = M.t list
+    type t = M.t list
 
-  let empty = []
-
-  let combine = ( @ )
-end)
+    let empty = []
+    let combine = ( @ )
+  end)
 
 module Appendable_list (M : sig
-  type t
-end) =
+    type t
+  end) =
 Make (struct
-  type t = M.t Appendable_list.t
+    type t = M.t Appendable_list.t
 
-  let empty = Appendable_list.empty
-
-  let combine = Appendable_list.( @ )
-end)
+    let empty = Appendable_list.empty
+    let combine = Appendable_list.( @ )
+  end)
 
 module Unit = Make (struct
-  include Unit
+    include Unit
 
-  let empty = ()
-
-  let combine () () = ()
-end)
+    let empty = ()
+    let combine () () = ()
+  end)
 
 module type Add = sig
   type t
 
   val zero : t
-
   val ( + ) : t -> t -> t
 end
 
 module Add (M : Add) = Make (struct
-  include M
+    include M
 
-  let empty = zero
-
-  let combine = ( + )
-end)
+    let empty = zero
+    let combine = ( + )
+  end)
 
 module type Mul = sig
   type t
 
   val one : t
-
   val ( * ) : t -> t -> t
 end
 
 module Mul (M : Mul) = Make (struct
-  include M
+    include M
 
-  let empty = one
-
-  let combine = ( * )
-end)
+    let empty = one
+    let combine = ( * )
+  end)
 
 module type Union = sig
   type t
 
   val empty : t
-
   val union : t -> t -> t
 end
 
 module Union (M : Union) = Make (struct
-  include M
+    include M
 
-  let combine = union
-end)
+    let combine = union
+  end)
 
 module Product (A : Basic) (B : Basic) = Make (struct
-  type t = A.t * B.t
+    type t = A.t * B.t
 
-  let empty = (A.empty, B.empty)
-
-  let combine (a1, b1) (a2, b2) = (A.combine a1 a2, B.combine b1 b2)
-end)
+    let empty = A.empty, B.empty
+    let combine (a1, b1) (a2, b2) = A.combine a1 a2, B.combine b1 b2
+  end)
 
 module Product3 (A : Basic) (B : Basic) (C : Basic) = Make (struct
-  type t = A.t * B.t * C.t
+    type t = A.t * B.t * C.t
 
-  let empty = (A.empty, B.empty, C.empty)
+    let empty = A.empty, B.empty, C.empty
 
-  let combine (a1, b1, c1) (a2, b2, c2) =
-    (A.combine a1 a2, B.combine b1 b2, C.combine c1 c2)
-end)
+    let combine (a1, b1, c1) (a2, b2, c2) =
+      A.combine a1 a2, B.combine b1 b2, C.combine c1 c2
+    ;;
+  end)
 
-module Function (A : sig
-  type t
-end)
-(M : Basic) =
+module Function
+    (A : sig
+       type t
+     end)
+    (M : Basic) =
 Make (struct
-  type t = A.t -> M.t
+    type t = A.t -> M.t
 
-  let empty _ = M.empty
-
-  let combine f g x = M.combine (f x) (g x)
-end)
+    let empty _ = M.empty
+    let combine f g x = M.combine (f x) (g x)
+  end)
 
 module Endofunction = struct
   module Left (A : sig
-    type t
-  end) =
+      type t
+    end) =
   Make (struct
-    type t = A.t -> A.t
+      type t = A.t -> A.t
 
-    let empty x = x
-
-    let combine f g x = g (f x)
-  end)
+      let empty x = x
+      let combine f g x = g (f x)
+    end)
 
   module Right (A : sig
-    type t
-  end) =
+      type t
+    end) =
   Make (struct
-    type t = A.t -> A.t
+      type t = A.t -> A.t
 
-    let empty x = x
-
-    let combine f g x = f (g x)
-  end)
+      let empty x = x
+      let combine f g x = f (g x)
+    end)
 end
 
 module Commutative = struct
@@ -177,7 +161,6 @@ module Commutative = struct
   end
 
   module type Basic = Monoid_intf.Commutative.Basic
-
   module type S = Monoid_intf.Commutative.S
 
   module Make (M : Basic) = Make_commutative (Make (M))
@@ -188,11 +171,14 @@ module Commutative = struct
   module Mul (M : Mul) = Make_commutative (Mul (M))
   module Union (M : Union) = Make_commutative (Union (M))
   module Product (A : Basic) (B : Basic) = Make_commutative (Product (A) (B))
+
   module Product3 (A : Basic) (B : Basic) (C : Basic) =
     Make_commutative (Product3 (A) (B) (C))
-  module Function (A : sig
-    type t
-  end)
-  (M : Basic) =
+
+  module Function
+      (A : sig
+         type t
+       end)
+      (M : Basic) =
     Make_commutative (Function (A) (M))
 end

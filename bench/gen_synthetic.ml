@@ -6,6 +6,7 @@ let write_modules basedir num_modules =
     let f = open_out (sprintf "%s.ml" modname) in
     close_out f
   done
+;;
 
 let dune = {|
 (library
@@ -18,6 +19,7 @@ let write basedir =
   output_string f dune;
   let () = close_out f in
   write_modules basedir
+;;
 
 let () =
   let basedir = ref "." in
@@ -29,5 +31,5 @@ let () =
     ]
     (fun d -> basedir := d)
     (sprintf "usage: %s [basedir]" (Filename.basename Sys.argv.(0)));
-
   write !basedir !num_modules
+;;

@@ -117,11 +117,11 @@ Testing the output of dune cache trim.
   EXAMPLES
          Trimming the Dune cache to 1 GB.
          
-                    $ dune cache trim --trimmed-size=1GB 
+                    $ dune cache trim --size=1GB 
   
          Trimming 500 MB from the Dune cache.
          
-                    $ dune cache trim --size=500MB 
+                    $ dune cache trim --trimmed-size=500MB 
   
   SEE ALSO
          dune(1)

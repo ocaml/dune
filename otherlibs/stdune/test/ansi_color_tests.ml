@@ -23,8 +23,9 @@ let dyn_of_pp tag pp =
   in
   conv
     (match Pp.to_ast pp with
-    | Ok s -> s
-    | Error () -> assert false)
+     | Ok s -> s
+     | Error () -> assert false)
+;;
 
 let%expect_test "reproduce #2664" =
   (* https://github.com/ocaml/dune/issues/2664 *)
@@ -111,11 +112,14 @@ let%expect_test "reproduce #2664" =
                                                                         [ Fg_blue
                                                                         ],Verbatim
                                                                         "20" |}]
+;;
 
 let%expect_test "Ansi_color.strip" =
   print_string
-    (String.concat ~sep:"\n"
-       (List.map ~f:Ansi_color.strip
+    (String.concat
+       ~sep:"\n"
+       (List.map
+          ~f:Ansi_color.strip
           [ "\027[34mthe lazy fox\027[39m jumps over the brown dog\027[0m"
           ; "the lazy fox \027[34mjumps over\027[39m the brown dog\027[0m"
           ; "\027[34mthe lazy fox\027[39m jumps over \027[0mthe brown dog"
@@ -127,13 +131,13 @@ the lazy fox jumps over the brown dog
 the lazy fox jumps over the brown dog
 the lazy fox jumps over the brown dog
 the lazy fox jumps over|}]
+;;
 
 let%expect_test "parse fg and bg colors" =
   let example =
     "This is a \027[34mblue\027[39m string with \027[31mred\027[39m and \
-     \027[32mgreen\027[39m together with strings of a \027[44mblue \
-     blackground\027[49m and \027[41mred background\027[49m and \027[42mgreen \
-     background\027[49m"
+     \027[32mgreen\027[39m together with strings of a \027[44mblue blackground\027[49m \
+     and \027[41mred background\027[49m and \027[42mgreen background\027[49m"
   in
   Ansi_color.parse example
   |> dyn_of_pp (Dyn.list Ansi_color.Style.to_dyn)
@@ -173,6 +177,7 @@ Vbox
                                                                  " and ",
       Tag
         [ Bg_green ],Verbatim "green background" |}]
+;;
 
 let%expect_test "parse multiple fg and bg colors" =
   let example =
@@ -196,12 +201,12 @@ Vbox
           " and ",Tag
                     [ Fg_green; Bg_blue ],Verbatim
                                             "green string with a blue background" |}]
+;;
 
 let%expect_test "fg default overrides" =
   let example =
-    "This text has a \027[34mblue foreground\027[39m but here it becomes the \
-     default foreground,\027[34;39m even together with another foreground \
-     modifier."
+    "This text has a \027[34mblue foreground\027[39m but here it becomes the default \
+     foreground,\027[34;39m even together with another foreground modifier."
   in
   Ansi_color.parse example
   |> dyn_of_pp (Dyn.list Ansi_color.Style.to_dyn)
@@ -219,12 +224,12 @@ let%expect_test "fg default overrides" =
           Verbatim
             " but here it becomes the default foreground,",Verbatim
                                                              " even together with another foreground modifier." |}]
+;;
 
 let%expect_test "bg default overrides" =
   let example =
-    "This text has a \027[44mblue background\027[49m but here it becomes the \
-     default background,\027[44;49m even together with another background \
-     modifier."
+    "This text has a \027[44mblue background\027[49m but here it becomes the default \
+     background,\027[44;49m even together with another background modifier."
   in
   Ansi_color.parse example
   |> dyn_of_pp (Dyn.list Ansi_color.Style.to_dyn)
@@ -242,13 +247,14 @@ Vbox
         Verbatim
           " but here it becomes the default background,",Verbatim
                                                            " even together with another background modifier." |}]
+;;
 
 let%expect_test "parse 8-bit colors" =
   let example =
-    "This is a \027[38;5;33mblue\027[39m string with \027[38;5;196mred\027[39m \
-     and \027[38;5;46mgreen\027[39m together with strings of a \
-     \027[48;5;33mblue blackground\027[49m and \027[48;5;196mred \
-     background\027[49m and \027[48;5;46mgreen background\027[49m"
+    "This is a \027[38;5;33mblue\027[39m string with \027[38;5;196mred\027[39m and \
+     \027[38;5;46mgreen\027[39m together with strings of a \027[48;5;33mblue \
+     blackground\027[49m and \027[48;5;196mred background\027[49m and \027[48;5;46mgreen \
+     background\027[49m"
   in
   Ansi_color.parse example
   |> dyn_of_pp (Dyn.list Ansi_color.Style.to_dyn)
@@ -286,14 +292,14 @@ Vbox
               " and ",Tag [ Bg_8_bit_color 196 ],Verbatim "red background",
         Verbatim
           " and ",Tag [ Bg_8_bit_color 46 ],Verbatim "green background" |}]
+;;
 
 let%expect_test "parse 24-bit colors" =
   let example =
-    "This is a \027[38;2;255;0;0mblue\027[39m string with \
-     \027[38;2;0;255;0mred\027[39m and \027[38;2;0;0;255mgreen\027[39m \
-     together with strings of a \027[48;2;255;0;0mblue blackground\027[49m and \
-     \027[48;2;0;255;0mred background\027[49m and \027[48;2;0;0;255mgreen \
-     background\027[49m"
+    "This is a \027[38;2;255;0;0mblue\027[39m string with \027[38;2;0;255;0mred\027[39m \
+     and \027[38;2;0;0;255mgreen\027[39m together with strings of a \
+     \027[48;2;255;0;0mblue blackground\027[49m and \027[48;2;0;255;0mred \
+     background\027[49m and \027[48;2;0;0;255mgreen background\027[49m"
   in
   Ansi_color.parse example
   |> dyn_of_pp (Dyn.list Ansi_color.Style.to_dyn)
@@ -339,3 +345,4 @@ let%expect_test "parse 24-bit colors" =
                         [ Bg_24_bit_color [ 0; 0; 255 ] ],Verbatim
                                                             "green background"
 |}]
+;;

@@ -1,0 +1,5 @@
+(executable
+ (name rpc_client)
+ (package dune-rpc-lwt)
+ (public_name dune-rpc-lwt-example-client)
+ (libraries dune-rpc dune-rpc-lwt csexp lwt lwt.unix))

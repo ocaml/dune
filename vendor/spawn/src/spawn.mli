@@ -96,7 +96,14 @@ end
 
     {b Signals}
 
-    On Unix, the sub-process will have all its signals unblocked.
+    On Unix, by default, the sub-process will have all its signals unblocked. If
+    [sigprocmask] is passed, the sub-process will have its sigprocmask modified
+    with the given [sigprocmask_command], relative to the calling thread. At no
+    point will any OCaml function observe any intermediate signal mask.
+
+    Attempts to unblock a signal that is not blocked, to block a signal that is
+    already blocked, or to block a signal that cannot be blocked (e.g., SIGSTOP,
+    SIGKILL) are allowed and will be silently ignored.
 
     {b Implementation}
 
@@ -113,6 +120,8 @@ val spawn :
   -> ?stderr:Unix.file_descr
   -> ?unix_backend:Unix_backend.t (* default: [Unix_backend.default] *)
   -> ?setpgid:Pgid.t
+  -> ?sigprocmask:Unix.sigprocmask_command * int list
+       (** default: unblock all signals in child *)
   -> unit
   -> int
 

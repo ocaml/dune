@@ -5,3 +5,4 @@ module Mode = Mode
 module Ml_kind = Ml_kind
 module Variant = Variant
 module Version = Version
+module Env = Env

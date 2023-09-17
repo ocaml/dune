@@ -15,22 +15,22 @@ open Dune_pkg
 
 module Sys_vars = struct
   type t =
-    { os_version : string option
-    ; os_distribution : string option
-    ; os_family : string option
-    ; arch : string option
+    { os_version : string option Memo.Lazy.t
+    ; os_distribution : string option Memo.Lazy.t
+    ; os_family : string option Memo.Lazy.t
+    ; arch : string option Memo.Lazy.t
     }
 
   let poll =
     let path = Env_path.path Stdune.Env.initial in
-    let sys_poll_memo key = Memo.of_reproducible_fiber @@ key ~path in
-    Memo.lazy_ (fun () ->
-      let open Memo.O in
-      let+ os_version = sys_poll_memo Sys_poll.os_version
-      and+ os_distribution = sys_poll_memo Sys_poll.os_distribution
-      and+ os_family = sys_poll_memo Sys_poll.os_family
-      and+ arch = sys_poll_memo Sys_poll.arch in
-      { os_version; os_distribution; os_family; arch })
+    let sys_poll_memo key =
+      Memo.lazy_ (fun () -> Memo.of_reproducible_fiber @@ key ~path)
+    in
+    { os_version = sys_poll_memo Sys_poll.os_version
+    ; os_distribution = sys_poll_memo Sys_poll.os_distribution
+    ; os_family = sys_poll_memo Sys_poll.os_family
+    ; arch = sys_poll_memo Sys_poll.arch
+    }
   ;;
 end
 
@@ -476,8 +476,9 @@ module Action_expander = struct
     ;;
 
     let sys_poll_var accessor =
-      let+ map = Memo.Lazy.force Sys_vars.poll in
-      match accessor map with
+      accessor Sys_vars.poll
+      |> Memo.Lazy.force
+      >>| function
       | Some v -> [ Value.String v ]
       | None ->
         (* TODO: in OPAM an unset variable evaluates to false, but we

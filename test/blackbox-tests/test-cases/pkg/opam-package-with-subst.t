@@ -38,7 +38,9 @@ add this in.
   (version 0.0.1)
   
   (build
-   (run sh -c "[ -e foo.ml ] && cat foo.ml"))
+   (progn
+    (substitute foo.ml.in foo.ml)
+    (run sh -c "[ -e foo.ml ] && cat foo.ml")))
   (source (copy $TESTCASE_ROOT/source))
 
   $ mkdir source
@@ -49,6 +51,4 @@ add this in.
 The file foo.ml should have been built:
 
   $ build_pkg with-substs 
-  Command exited with code 1.
-  -> required by _build/_private/default/.pkg/with-substs/target
-  [1]
+  I have been substituted.

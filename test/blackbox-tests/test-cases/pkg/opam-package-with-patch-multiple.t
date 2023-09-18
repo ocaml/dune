@@ -81,9 +81,8 @@ this in.
   
   (build
    (progn
-    (progn
-     (patch foo.patch)
-     (patch dir/bar.patch))
+    (patch foo.patch)
+    (patch dir/bar.patch)
     (run cat foo.ml bar.ml dir/baz.ml)))
   (source (copy $TESTCASE_ROOT/source))
 

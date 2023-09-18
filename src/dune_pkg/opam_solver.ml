@@ -386,12 +386,7 @@ let opam_commands_to_actions package (commands : OpamTypes.command list) =
     | [] -> None)
 ;;
 
-(* returns:
-   [None] if the command list is empty
-   [Some (Action.Run ...)] if there is a single command
-   [Some (Action.Progn [Action.Run ...; ...])] if there are multiple commands *)
-let opam_commands_to_action package (commands : OpamTypes.command list) =
-  match opam_commands_to_actions package commands with
+let make_action = function
   | [] -> None
   | [ action ] -> Some action
   | actions -> Some (Action.Progn actions)
@@ -437,27 +432,30 @@ let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
       Loc.none, Package_name.of_string (OpamPackage.Name.to_string name))
   in
   let build_command =
+    let subst_step =
+      OpamFile.OPAM.substs opam_file
+      |> List.map ~f:(fun x ->
+        let x = OpamFilename.Base.to_string x in
+        let input = String_with_vars.make_text Loc.none (x ^ ".in") in
+        let output = String_with_vars.make_text Loc.none x in
+        Action.Substitute (input, output))
+    in
     let patch_step =
       (* CR-someday alizter: Patches don't take into account filters that are present. For
          now we take them all. *)
-      match
-        OpamFile.OPAM.patches opam_file
-        |> List.map ~f:(fun (x, _) ->
-          Action.Patch
-            (String_with_vars.make_text Loc.none (OpamFilename.Base.to_string x)))
-      with
-      | [] -> None
-      | [ x ] -> Some x
-      | xs -> Some (Action.Progn xs)
+      OpamFile.OPAM.patches opam_file
+      |> List.map ~f:(fun (x, _) ->
+        Action.Patch (String_with_vars.make_text Loc.none (OpamFilename.Base.to_string x)))
     in
-    opam_commands_to_action opam_package (OpamFile.OPAM.build opam_file)
-    |> Option.map ~f:(fun action ->
-      match patch_step with
-      | None -> action
-      | Some patch_step -> Action.Progn [ patch_step; action ])
+    let build_step =
+      opam_commands_to_actions opam_package (OpamFile.OPAM.build opam_file)
+    in
+    List.concat [ subst_step; patch_step; build_step ] |> make_action
   in
   let install_command =
-    opam_commands_to_action opam_package (OpamFile.OPAM.install opam_file)
+    OpamFile.OPAM.install opam_file
+    |> opam_commands_to_actions opam_package
+    |> make_action
   in
   { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env = [] }
 ;;

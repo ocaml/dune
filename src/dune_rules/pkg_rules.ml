@@ -1034,12 +1034,14 @@ module Install_action = struct
           | false -> Section.Map.empty
           | true ->
             let map =
-              let install_dir = Path.parent_exn install_file in
-              let install_entries = Install.Entry.load_install_file install_file in
+              let install_entries =
+                let dir = Path.parent_exn install_file in
+                Install.Entry.load_install_file install_file (fun local ->
+                  Path.append_local dir local)
+              in
               let by_src =
                 List.rev_map install_entries ~f:(fun (entry : _ Install.Entry.t) ->
-                  ( Path.as_in_source_tree_exn entry.src |> Path.append_source install_dir
-                  , entry ))
+                  entry.src, entry)
                 |> Path.Map.of_list_multi
               in
               let install_entries =

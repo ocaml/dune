@@ -63,4 +63,4 @@ val add_install_prefix : 'a t -> paths:Paths.t -> prefix:Path.t -> 'a t
 val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
 val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 val gen_install_file : Path.t t list -> string
-val load_install_file : Path.t -> Path.t t list
+val load_install_file : Path.t -> (Path.Local.t -> Path.t) -> Path.t t list

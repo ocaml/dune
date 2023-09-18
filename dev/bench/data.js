@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695027655485,
+  "lastUpdate": 1695027931910,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -97062,6 +97062,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.932280673786664",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "07844d806101073c116a98d8bad1ced03acb26b4",
+          "message": "refactor: move more logic to builder module (#8675)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-18T09:50:48+01:00",
+          "tree_id": "a85b5aef93f5255d37fcef40171c0fb5e657670f",
+          "url": "https://github.com/ocaml/dune/commit/07844d806101073c116a98d8bad1ced03acb26b4"
+        },
+        "date": 1695027916656,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.58815350038",
             "unit": "seconds"
           }
         ]

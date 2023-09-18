@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695043808638,
+  "lastUpdate": 1695044320398,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30245,6 +30245,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.00929811453333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f2c760c74af1608c768adb8eb4e9ef5f07ed9b45",
+          "message": "fix(pkg): add support for %{arch} (#8678)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-18T14:13:38+01:00",
+          "tree_id": "3a28ee31c98cee0fd1efee78c291cbaadca905dc",
+          "url": "https://github.com/ocaml/dune/commit/f2c760c74af1608c768adb8eb4e9ef5f07ed9b45"
+        },
+        "date": 1695044317251,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "47.95813806026666",
             "unit": "seconds"
           }
         ]

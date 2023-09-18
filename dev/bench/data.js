@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695028430557,
+  "lastUpdate": 1695028780909,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -97207,6 +97207,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "26.58815350038",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d7b72169a2e7fefd8313909aacd32da3a2057277",
+          "message": "feature(pkg): translate extra-source field of opam file into lock file (#8672)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-18T10:06:11+01:00",
+          "tree_id": "04043047a7ca26f90082635527fa1dc59ce8f4c3",
+          "url": "https://github.com/ocaml/dune/commit/d7b72169a2e7fefd8313909aacd32da3a2057277"
+        },
+        "date": 1695028767533,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.75270950683333",
             "unit": "seconds"
           }
         ]

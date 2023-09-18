@@ -1013,6 +1013,12 @@ module Install_action = struct
       |> Section.Map.of_list_multi
     ;;
 
+    let hardlink_or_copy ~src ~dst =
+      match Unix.link (Unix.readlink (Path.to_string src)) (Path.to_string dst) with
+      | () -> ()
+      | exception _ -> Io.copy_file ~src ~dst ()
+    ;;
+
     let action
       { package; install_file; config_file; target_dir; install_action }
       ~ectx:_
@@ -1067,7 +1073,7 @@ module Install_action = struct
                     then []
                     else (
                       let dst = prepare_copy_or_move ~install_file ~target_dir entry in
-                      Path.rename src dst;
+                      hardlink_or_copy ~src ~dst;
                       maybe_set_executable entry.section dst;
                       [ entry.section, dst ])
                   | entry :: entries ->
@@ -1079,8 +1085,7 @@ module Install_action = struct
                           let dst =
                             prepare_copy_or_move ~install_file ~target_dir entry
                           in
-                          (* TODO hard link if possible *)
-                          Io.copy_file ~src ~dst ();
+                          hardlink_or_copy ~src ~dst;
                           maybe_set_executable entry.section dst;
                           Some (entry.section, dst)))
                     in
@@ -1088,7 +1093,7 @@ module Install_action = struct
                     then install_entries
                     else (
                       let dst = prepare_copy_or_move ~install_file ~target_dir entry in
-                      Path.rename src dst;
+                      hardlink_or_copy ~src ~dst;
                       maybe_set_executable entry.section dst;
                       (entry.section, dst) :: install_entries))
               in

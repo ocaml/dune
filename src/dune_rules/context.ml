@@ -108,6 +108,57 @@ module Builder = struct
     ; path = []
     }
   ;;
+
+  let extend_paths t ~env =
+    let t =
+      let f (var, t) =
+        let parse ~loc:_ s = s in
+        let standard = Env_path.path env |> List.map ~f:Path.to_string in
+        var, Ordered_set_lang.eval t ~parse ~standard ~eq:String.equal
+      in
+      List.map ~f t
+    in
+    let vars =
+      let to_absolute_filename s = Path.of_string s |> Path.to_absolute_filename in
+      let sep = String.make 1 Bin.path_sep in
+      let env = Env.Map.of_list_exn t in
+      let f l = String.concat ~sep (List.map ~f:to_absolute_filename l) in
+      Env.Map.map ~f env
+    in
+    Env.extend ~vars env
+  ;;
+
+  let set_workspace_base
+    t
+    { Workspace.Context.Common.targets = _
+    ; name
+    ; host_context = _
+    ; profile
+    ; env = _
+    ; toolchain
+    ; paths
+    ; loc = _
+    ; fdo_target_exe
+    ; dynamically_linked_foreign_archives
+    ; instrument_with
+    ; merlin
+    }
+    =
+    let env =
+      let env = Global.env () in
+      extend_paths ~env paths
+    in
+    { t with
+      merlin
+    ; profile
+    ; dynamically_linked_foreign_archives
+    ; instrument_with
+    ; fdo_target_exe
+    ; name
+    ; env
+    ; findlib_toolchain = toolchain
+    }
+  ;;
 end
 
 let ocaml t = t.ocaml
@@ -460,27 +511,8 @@ module Group = struct
         Env_path.path builder.env
       | Some s -> Bin.parse_path s
     in
-    let builder = { builder with env = Env.extend builder.env ~vars } in
-    create { builder with path } ~kind:(Opam switch) ~targets
-  ;;
-
-  let extend_paths t ~env =
-    let t =
-      let f (var, t) =
-        let parse ~loc:_ s = s in
-        let standard = Env_path.path env |> List.map ~f:Path.to_string in
-        var, Ordered_set_lang.eval t ~parse ~standard ~eq:String.equal
-      in
-      List.map ~f t
-    in
-    let vars =
-      let to_absolute_filename s = Path.of_string s |> Path.to_absolute_filename in
-      let sep = String.make 1 Bin.path_sep in
-      let env = Env.Map.of_list_exn t in
-      let f l = String.concat ~sep (List.map ~f:to_absolute_filename l) in
-      Env.Map.map ~f env
-    in
-    Env.extend ~vars env
+    let builder = { builder with path; env = Env.extend builder.env ~vars } in
+    create builder ~kind:(Opam switch) ~targets
   ;;
 
   module rec Instantiate : sig
@@ -509,115 +541,28 @@ module Group = struct
           { Builder.empty with env_nodes; for_host = host_context }
         in
         match context with
-        | Default
-            { lock = _
-            ; version_preference = _
-            ; solver_env = _
-            ; base =
-                { targets = _
-                ; name
-                ; host_context = _
-                ; profile
-                ; env = _
-                ; toolchain = _
-                ; paths
-                ; loc = _
-                ; fdo_target_exe
-                ; dynamically_linked_foreign_archives
-                ; instrument_with
-                ; merlin = _
-                }
-            } ->
+        | Opam opam -> Builder.set_workspace_base builder opam.base
+        | Default default ->
+          let builder = Builder.set_workspace_base builder default.base in
           let merlin = workspace.merlin_context = Some (Workspace.Context.name context) in
-          let env = extend_paths ~env paths in
-          { builder with
-            profile
-          ; merlin
-          ; dynamically_linked_foreign_archives
-          ; instrument_with
-          ; fdo_target_exe
-          ; name
-          ; env
-          }
-        | Opam
-            { base =
-                { targets = _
-                ; name
-                ; host_context = _
-                ; profile
-                ; env = _
-                ; toolchain = _
-                ; paths
-                ; loc = _
-                ; fdo_target_exe
-                ; dynamically_linked_foreign_archives
-                ; instrument_with
-                ; merlin
-                }
-            ; switch = _
-            } ->
-          let env = extend_paths ~env paths in
-          { Builder.empty with
-            merlin
-          ; profile
-          ; dynamically_linked_foreign_archives
-          ; instrument_with
-          ; fdo_target_exe
-          ; name
-          ; env
-          }
+          { builder with merlin }
       in
       match context with
-      | Default
-          { lock = _
-          ; version_preference = _
-          ; solver_env = _
-          ; base =
-              { targets
-              ; name = _
-              ; host_context = _
-              ; profile = _
-              ; env = _
-              ; toolchain
-              ; paths = _
-              ; loc = _
-              ; fdo_target_exe = _
-              ; dynamically_linked_foreign_archives = _
-              ; instrument_with = _
-              ; merlin = _
-              }
-          } ->
-        let host_toolchain : Context_name.t option =
-          match toolchain with
-          | Some _ -> toolchain
+      | Opam { base; switch } ->
+        create_for_opam builder ~switch ~loc:base.loc ~targets:base.targets
+      | Default { lock = _; version_preference = _; solver_env = _; base } ->
+        let builder =
+          match builder.findlib_toolchain with
+          | Some _ -> builder
           | None ->
-            let open Option.O in
-            let+ name = Env.get env "OCAMLFIND_TOOLCHAIN" in
-            Context_name.parse_string_exn (Loc.none, name)
+            (match Env.get env "OCAMLFIND_TOOLCHAIN" with
+             | None -> builder
+             | Some name ->
+               { builder with
+                 findlib_toolchain = Some (Context_name.parse_string_exn (Loc.none, name))
+               })
         in
-        default { builder with findlib_toolchain = host_toolchain } ~targets
-      | Opam
-          { base =
-              { targets
-              ; name = _
-              ; host_context = _
-              ; profile = _
-              ; env = _
-              ; toolchain
-              ; paths = _
-              ; loc
-              ; fdo_target_exe = _
-              ; dynamically_linked_foreign_archives = _
-              ; instrument_with = _
-              ; merlin = _
-              }
-          ; switch
-          } ->
-        create_for_opam
-          { builder with findlib_toolchain = toolchain }
-          ~switch
-          ~loc
-          ~targets
+        default builder ~targets:base.targets
     ;;
 
     let memo =

@@ -2,12 +2,7 @@ We test the translation of an opam package with a patches field with a filter in
 lock file.
 
   $ . ./helpers.sh
-
-Generate a mock opam repository
-  $ mkdir -p mock-opam-repository
-  $ cat >mock-opam-repository/repo <<EOF
-  > opam-version: "2.0"
-  > EOF
+  $ mkrepo
 
 Make a package with a patch behind a filter
   $ mkpkg with-patch-filter <<EOF
@@ -16,8 +11,8 @@ Make a package with a patch behind a filter
   > build: ["cat" "foo.ml"]
   > EOF
 
-  $ mkdir -p mock-opam-repository/packages/with-patch-filter/with-patch-filter.0.0.1/files
-  $ cat >mock-opam-repository/packages/with-patch-filter/with-patch-filter.0.0.1/files/foo.patch <<EOF
+  $ mkdir -p $mock_packages/with-patch-filter/with-patch-filter.0.0.1/files
+  $ cat >$mock_packages/with-patch-filter/with-patch-filter.0.0.1/files/foo.patch <<EOF
   > diff --git a/foo.ml b/foo.ml
   > index b69a69a5a..ea988f6bd 100644
   > --- a/foo.ml

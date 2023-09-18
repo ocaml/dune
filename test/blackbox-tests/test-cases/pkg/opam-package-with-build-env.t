@@ -2,12 +2,7 @@ In this test we test the translation of a package with a build-env field into a 
 file.
 
   $ . ./helpers.sh
-
-Generate a mock opam repository
-  $ mkdir -p mock-opam-repository
-  $ cat >mock-opam-repository/repo <<EOF
-  > opam-version: "2.0"
-  > EOF
+  $ mkrepo
 
 Make a package with a build-env field
   $ mkpkg with-build-env <<EOF
@@ -17,7 +12,7 @@ Make a package with a build-env field
   > install: ["printenv" "MY_ENV_VAR"]
   > EOF
 
-  $ mkdir -p mock-opam-repository/packages/with-build-env/with-build-env.0.0.1/
+  $ mkdir -p $mock_packages/with-build-env/with-build-env.0.0.1/
 
   $ solve_project <<EOF
   > (lang dune 3.8)

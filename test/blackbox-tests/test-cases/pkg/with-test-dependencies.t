@@ -1,12 +1,7 @@
 Test variable filters on dependencies
 
   $ . ./helpers.sh
-
-Generate a mock opam repository including some test dependencies:
-  $ mkdir -p mock-opam-repository
-  $ cat >mock-opam-repository/repo <<EOF
-  > opam-version: "2.0"
-  > EOF
+  $ mkrepo
 
   $ mkpkg foo-dependency <<EOF
   > opam-version: "2.0"

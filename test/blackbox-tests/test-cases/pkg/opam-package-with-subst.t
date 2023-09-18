@@ -1,12 +1,7 @@
 We test how opam files with substs fields are translated into the dune.lock file.
  
   $ . ./helpers.sh
-
-Generate a mock opam repository
-  $ mkdir -p mock-opam-repository
-  $ cat >mock-opam-repository/repo <<EOF
-  > opam-version: "2.0"
-  > EOF
+  $ mkrepo
 
 Make a package with a substs field 
   $ mkpkg with-substs <<EOF
@@ -15,7 +10,7 @@ Make a package with a substs field
   > build: [ "sh" "-c" "[ -e foo.ml ] && cat foo.ml" ]
   > EOF
 
-  $ opam_repo=mock-opam-repository/packages/with-substs/with-substs.0.0.1
+  $ opam_repo=$opam_repo/with-substs/with-substs.0.0.1
 
   $ solve_project <<EOF
   > (lang dune 3.8)

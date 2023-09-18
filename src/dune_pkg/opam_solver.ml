@@ -386,6 +386,12 @@ let opam_commands_to_actions package (commands : OpamTypes.command list) =
     | [] -> None)
 ;;
 
+let make_action = function
+  | [] -> None
+  | [ action ] -> Some action
+  | actions -> Some (Action.Progn actions)
+;;
+
 let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
   let name = OpamPackage.name opam_package in
   let version = OpamPackage.version opam_package |> OpamPackage.Version.to_string in
@@ -431,16 +437,12 @@ let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
     let build_step =
       opam_commands_to_actions opam_package (OpamFile.OPAM.build opam_file)
     in
-    match List.concat [ subst_step; patch_step; build_step ] with
-    | [] -> None
-    | [ action ] -> Some action
-    | actions -> Some (Action.Progn actions)
+    List.concat [ subst_step; patch_step; build_step ] |> make_action
   in
   let install_command =
-    match opam_commands_to_actions opam_package (OpamFile.OPAM.install opam_file) with
-    | [] -> None
-    | [ action ] -> Some action
-    | actions -> Some (Action.Progn actions)
+    OpamFile.OPAM.install opam_file
+    |> opam_commands_to_actions opam_package
+    |> make_action
   in
   { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env = [] }
 ;;

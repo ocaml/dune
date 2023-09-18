@@ -343,29 +343,30 @@ module Build_environment_kind = struct
   ;;
 
   let findlib_paths t ~findlib ~ocaml_bin =
-    match t, findlib with
-    | ( (Cross_compilation_using_findlib_toolchain _ | Opam2_environment _ | Unknown)
-      , Some findlib ) -> Findlib_config.ocamlpath findlib
-    | Cross_compilation_using_findlib_toolchain toolchain, None ->
-      User_error.raise
-        [ Pp.textf
-            "Could not find `ocamlfind' in PATH or an environment variable \
-             `OCAMLFIND_CONF' while cross-compiling with toolchain `%s'"
-            (Context_name.to_string toolchain)
-        ]
-        ~hints:
-          [ Pp.enumerate
-              [ "`opam install ocamlfind' and/or:"
-              ; "Point `OCAMLFIND_CONF' to the findlib configuration that defines this \
-                 toolchain"
-              ]
-              ~f:Pp.text
-          ]
-    | Hardcoded_path l, _ -> List.map l ~f:Path.of_filename_relative_to_initial_cwd
-    | Opam2_environment opam_prefix, None ->
-      let p = Path.of_filename_relative_to_initial_cwd opam_prefix in
-      [ Path.relative p "lib" ]
-    | Unknown, None -> [ Path.relative (Path.parent_exn ocaml_bin) "lib" ]
+    match findlib with
+    | Some findlib -> Findlib_config.ocamlpath findlib
+    | None ->
+      (match t with
+       | Cross_compilation_using_findlib_toolchain toolchain ->
+         User_error.raise
+           [ Pp.textf
+               "Could not find `ocamlfind' in PATH or an environment variable \
+                `OCAMLFIND_CONF' while cross-compiling with toolchain `%s'"
+               (Context_name.to_string toolchain)
+           ]
+           ~hints:
+             [ Pp.enumerate
+                 [ "`opam install ocamlfind' and/or:"
+                 ; "Point `OCAMLFIND_CONF' to the findlib configuration that defines \
+                    this toolchain"
+                 ]
+                 ~f:Pp.text
+             ]
+       | Hardcoded_path l -> List.map l ~f:Path.of_filename_relative_to_initial_cwd
+       | Opam2_environment opam_prefix ->
+         let p = Path.of_filename_relative_to_initial_cwd opam_prefix in
+         [ Path.relative p "lib" ]
+       | Unknown -> [ Path.relative (Path.parent_exn ocaml_bin) "lib" ])
   ;;
 end
 

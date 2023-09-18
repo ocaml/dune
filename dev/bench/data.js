@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695047837918,
+  "lastUpdate": 1695047847217,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -75978,6 +75978,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6489502049333336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7f4f14959b0e5de23898308c0512b575c97bcbbf",
+          "message": "fix(pkg): hardlink or copy when installing (#8681)\n\nsymlinking is fragile and pointless\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-18T15:12:06+01:00",
+          "tree_id": "58894e82b8ff99a89c8d1012964d55c06c35b5d5",
+          "url": "https://github.com/ocaml/dune/commit/7f4f14959b0e5de23898308c0512b575c97bcbbf"
+        },
+        "date": 1695047845722,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "64.53908488087333",
             "unit": "seconds"
           }
         ]

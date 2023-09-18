@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694945148748,
+  "lastUpdate": 1695024498471,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -96917,6 +96917,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.652120570546668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e9707c718b0eaae3b4ac721ac34e55b757cfcf59",
+          "message": "Fix stdune -> pp bound (#8658)\n\nIt uses `Pp.compare`, introduced in `pp.1.2.0`.\r\n\r\nFixes #8657\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-09-18T09:53:02+02:00",
+          "tree_id": "ef35230f498eb95d6c1a5146b2c6d77ba00491bc",
+          "url": "https://github.com/ocaml/dune/commit/e9707c718b0eaae3b4ac721ac34e55b757cfcf59"
+        },
+        "date": 1695024482767,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.386704349539997",
             "unit": "seconds"
           }
         ]

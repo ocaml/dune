@@ -422,6 +422,8 @@ val drop_prefix_exn : t -> prefix:t -> Local.t
     leftover `/` prefix. Returns [None] if the prefix wasn't found. *)
 val drop_prefix : t -> prefix:t -> Local.t option
 
+val make_local_path : Local.t -> t
+
 module Expert : sig
   (** Attempt to convert external paths to source/build paths. Don't use this
       function unless strictly necessary. It's not completely reliable and we

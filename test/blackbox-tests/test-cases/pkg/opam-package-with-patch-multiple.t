@@ -2,13 +2,7 @@ We test the conversion and build of the opam file patch field with multiple entr
 patch files that patch multiple files.
 
   $ . ./helpers.sh
-
-Generate a mock opam repository
-  $ mkdir -p mock-opam-repository
-  $ cat >mock-opam-repository/repo <<EOF
-  > opam-version: "2.0"
-  > EOF
-
+  $ mkrepo
 
 Make a package with two patches, one inside a directory. The first patch patches a single
 file and the second patches two, one of the files is in a subdirectory.:w
@@ -19,7 +13,7 @@ file and the second patches two, one of the files is in a subdirectory.:w
   > build: ["cat" "foo.ml" "bar.ml" "dir/baz.ml"]
   > EOF
 
-  $ opam_dir=mock-opam-repository/packages/with-patch/with-patch.0.0.1
+  $ opam_dir=$mock_packages/with-patch/with-patch.0.0.1
 
   $ mkdir -p $opam_dir/files/dir
 

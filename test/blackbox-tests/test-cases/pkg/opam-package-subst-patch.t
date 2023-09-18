@@ -3,12 +3,7 @@ the dune.lock file. Opam allows substitution to happen before the patches phase,
 must do the same.
  
   $ . ./helpers.sh
-
-Generate a mock opam repository
-  $ mkdir -p mock-opam-repository
-  $ cat >mock-opam-repository/repo <<EOF
-  > opam-version: "2.0"
-  > EOF
+  $ mkrepo
 
 Make a package with a substs and patches field field 
   $ mkpkg with-substs-and-patches <<EOF
@@ -18,7 +13,7 @@ Make a package with a substs and patches field field
   > build: [ "sh" "-c" "[ -e foo.ml ] && cat foo.ml" ]
   > EOF
 
-  $ opam_repo=mock-opam-repository/packages/with-substs-and-patches/with-substs-and-patches.0.0.1
+  $ opam_repo=$mock_packages/with-substs-and-patches/with-substs-and-patches.0.0.1
 
   $ solve_project <<EOF
   > (lang dune 3.8)

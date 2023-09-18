@@ -18,6 +18,13 @@ show_pkg_cookie() {
   $dune internal dump $pkg_root/$1/target/cookie
 }
 
+mkrepo() {
+  mkdir -p mock-opam-repository
+  cat >mock-opam-repository/repo <<EOF
+opam-version: "2.0"
+EOF
+}
+
 mock_packages="mock-opam-repository/packages"
 
 mkpkg() {

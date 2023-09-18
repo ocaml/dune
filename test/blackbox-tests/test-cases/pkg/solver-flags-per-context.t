@@ -1,4 +1,5 @@
   $ . ./helpers.sh
+  $ mkrepo
 
 Helper shell function to generate a dune-project file and generate lockdir:
 
@@ -51,12 +52,6 @@ Create a workspace file with some contexts with different combinations of with-t
   >   (lock with-standard-flags.lock)
   >   (solver_env
   >    (flags :standard))))
-  > EOF
-
-Generate a mock opam repository
-  $ mkdir -p mock-opam-repository/packages
-  $ cat >mock-opam-repository/repo <<EOF
-  > opam-version: "2.0"
   > EOF
 
   $ mkpkg regular-package <<EOF

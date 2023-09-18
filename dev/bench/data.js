@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695029577162,
+  "lastUpdate": 1695040898280,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -97381,6 +97381,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.75270950683333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5b8ec5ab03832c6bae8ee0ae3f8154886ff2739a",
+          "message": "fix(pkg): interpret install entries correctly (#8679)\n\nInterpret all entries relative to the path of the install file\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-18T13:28:26+01:00",
+          "tree_id": "f9cf4f70760c86372b9e53841724199ad5b10c28",
+          "url": "https://github.com/ocaml/dune/commit/5b8ec5ab03832c6bae8ee0ae3f8154886ff2739a"
+        },
+        "date": 1695040883757,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.16215474498",
             "unit": "seconds"
           }
         ]

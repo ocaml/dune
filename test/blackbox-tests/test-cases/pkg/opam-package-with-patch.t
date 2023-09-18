@@ -1,3 +1,6 @@
+This test checks that the patches field of an opam file is correctly translated into the
+appropriate build step.
+
   $ . ./helpers.sh
 
 Generate a mock opam repository

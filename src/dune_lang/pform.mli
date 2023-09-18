@@ -32,6 +32,8 @@ module Var : sig
       | Group
       | Jobs
       | Arch
+      | With_test
+      | With_doc
       | Section_dir of Section.t
 
     val compare : t -> t -> Ordering.t

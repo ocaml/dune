@@ -103,10 +103,10 @@ corresponding Dune version.
     (run echo 32 %{pkg:foo:dev})
     (run echo 33 %{pkg-self:opamfile})
     (run echo 34 %{pkg:foo:opamfile})
-    (run echo 35 %{pkg-self:with-test})
+    (run echo 35 %{with-test})
     (run echo 36 %{pkg-self:with-test})
     (run echo 37 %{pkg:foo:with-test})
-    (run echo 38 %{pkg-self:with-doc})
+    (run echo 38 %{with-doc})
     (run echo 39 %{pkg-self:with-doc})
     (run echo 40 %{pkg:foo:with-doc})
     (run echo 41 %{pkg-self:with-dev-setup})
@@ -201,10 +201,10 @@ The values here are not important, but Dune should be able to interpret the vari
   38 |   (run echo 34 %{pkg:foo:opamfile})
                       ^^^^^^^^^^^^^^^^^^^
   Error: invalid section "opamfile"
-  File "dune.lock/testpkg.pkg", line 39, characters 15-36:
-  39 |   (run echo 35 %{pkg-self:with-test})
-                      ^^^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
+  File "dune.lock/testpkg.pkg", line 39, characters 15-27:
+  39 |   (run echo 35 %{with-test})
+                      ^^^^^^^^^^^^
+  Error: Unknown variable %{with-test}
   File "dune.lock/testpkg.pkg", line 40, characters 15-36:
   40 |   (run echo 36 %{pkg-self:with-test})
                       ^^^^^^^^^^^^^^^^^^^^^
@@ -213,10 +213,10 @@ The values here are not important, but Dune should be able to interpret the vari
   41 |   (run echo 37 %{pkg:foo:with-test})
                       ^^^^^^^^^^^^^^^^^^^^
   Error: invalid section "with-test"
-  File "dune.lock/testpkg.pkg", line 42, characters 15-35:
-  42 |   (run echo 38 %{pkg-self:with-doc})
-                      ^^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
+  File "dune.lock/testpkg.pkg", line 42, characters 15-26:
+  42 |   (run echo 38 %{with-doc})
+                      ^^^^^^^^^^^
+  Error: Unknown variable %{with-doc}
   File "dune.lock/testpkg.pkg", line 43, characters 15-35:
   43 |   (run echo 39 %{pkg-self:with-doc})
                       ^^^^^^^^^^^^^^^^^^^^

@@ -502,6 +502,10 @@ module Action_expander = struct
         let roots = Paths.install_roots paths in
         let dir = section_dir_of_root roots section in
         Memo.return [ Value.Dir dir ]
+      (* CR-someday alizter: We are always passing with-test here. *)
+      | With_test -> Memo.return [ Value.String "true" ]
+      (* CR-someday alizter: We are always passing with-doc here. *)
+      | With_doc -> Memo.return [ Value.String "true" ]
     ;;
 
     let expand_pform

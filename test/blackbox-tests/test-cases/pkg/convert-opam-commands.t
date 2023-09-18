@@ -209,7 +209,7 @@ Package which has boolean where string was expected. This should be caught while
      (run echo g))
     (when
      (and
-      %{pkg-self:with-test}
+      %{with-test}
       (< %{pkg:ocaml:version} 5.0.0))
      (run echo h))
     (when

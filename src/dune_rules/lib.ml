@@ -409,6 +409,7 @@ and resolve_result =
     Redirect of
       db option * (Loc.t * Lib_name.t)
 
+let equal_db : db -> db -> bool = phys_equal
 let lib_config (t : lib) = t.lib_config
 let name t = t.name
 let info t = t.info
@@ -1062,7 +1063,7 @@ end = struct
       let hash x = Poly.hash x
 
       let equal (db, lib_name, info, hidden) (db', lib_name', info', hidden') =
-        phys_equal db db'
+        equal_db db db'
         && Lib_name.equal lib_name lib_name'
         && Lib_info.equal info info'
         && Option.equal String.equal hidden hidden'
@@ -1770,6 +1771,9 @@ module DB = struct
   end
 
   type t = db
+
+  let equal = equal_db
+  let hash = Poly.hash
 
   let create ~parent ~resolve ~all ~lib_config ~instrument_with () =
     { parent; resolve; all = Memo.lazy_ all; lib_config; instrument_with }

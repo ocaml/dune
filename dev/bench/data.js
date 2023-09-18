@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695067623068,
+  "lastUpdate": 1695068051723,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30419,6 +30419,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "49.61420445956666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "46fbbc30d23df54f885a32b16e1deb3dc31e135d",
+          "message": "test(pkg): add comment for patches test (#8696)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-18T20:49:29+01:00",
+          "tree_id": "82cf6693a11fe0200e43d15fb94e34b237a2a5ea",
+          "url": "https://github.com/ocaml/dune/commit/46fbbc30d23df54f885a32b16e1deb3dc31e135d"
+        },
+        "date": 1695068050131,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "46.52849310157333",
             "unit": "seconds"
           }
         ]

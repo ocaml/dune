@@ -9,7 +9,7 @@ let utop_exe =
      (byte))], the [.exe] correspond the bytecode linked in custom mode. We do
      that so that it works without hassle when generating a utop for a library
      with C stubs. *)
-  Filename.concat utop_dir_basename (exe_name ^ Mode.exe_ext Mode.Native)
+  Filename.concat utop_dir_basename (exe_name ^ Mode.exe_ext Mode.Byte)
 ;;
 
 let source ~dir =
@@ -137,6 +137,14 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
 
 let libs_under_dir sctx ~db ~dir = libs_and_ppx_under_dir sctx ~db ~dir >>| fst
 
+let requires ~loc ~db ~libs =
+  let open Resolve.Memo.O in
+  (loc, Lib_name.of_string "utop")
+  |> Lib.DB.resolve db
+  >>| (fun utop -> utop :: libs)
+  >>= Lib.closure ~linking:true
+;;
+
 let setup sctx ~dir =
   let open Memo.O in
   let* expander = Super_context.expander sctx ~dir in
@@ -165,13 +173,7 @@ let setup sctx ~dir =
   let obj_dir = Toplevel.Source.obj_dir source in
   let loc = Toplevel.Source.loc source in
   let* modules = Toplevel.Source.modules source preprocessing in
-  let requires =
-    let open Resolve.Memo.O in
-    (loc, Lib_name.of_string "utop")
-    |> Lib.DB.resolve db
-    >>| (fun utop -> utop :: libs)
-    >>= Lib.closure ~linking:true
-  in
+  let requires = requires ~loc ~db ~libs in
   let flags =
     let project = Scope.project scope in
     let dune_version = Dune_project.dune_version project in
@@ -195,5 +197,14 @@ let setup sctx ~dir =
       ~preprocessing
   in
   let toplevel = Toplevel.make ~cctx ~source ~preprocess:pps expander in
-  Toplevel.setup_rules toplevel
+  Toplevel.setup_rules toplevel ~linkage:Exe.Linkage.byte
+;;
+
+let requires_under_dir sctx ~dir =
+  let open Memo.O in
+  let* scope = Scope.DB.find_by_dir dir in
+  let db = Scope.libs scope in
+  let* libs = libs_under_dir sctx ~db ~dir:(Path.build dir) in
+  let loc = Toplevel.Source.loc (source ~dir) in
+  requires ~loc ~db ~libs
 ;;

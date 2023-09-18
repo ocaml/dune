@@ -81,7 +81,7 @@ let ocamlpath = Findlib.Config.ocamlpath_var
 let ocamlfind_ignore_dups_in = Findlib.Config.ocamlfind_ignore_dups_in
 
 let to_env_without_path t =
-  [ "CAML_LD_LIBRARY_PATH", Path.Build.relative t.lib_root "stublibs"
+  [ Ocaml.Env.caml_ld_library_path, Path.Build.relative t.lib_root "stublibs"
   ; ocamlpath, t.lib_root
   ; "OCAMLTOP_INCLUDE_PATH", Path.Build.relative t.lib_root "toplevel"
   ; ocamlfind_ignore_dups_in, t.lib_root

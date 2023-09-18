@@ -104,7 +104,8 @@ not stable across different setups.
    (executables
     ((names (exe))
      (requires
-      (c9367091ddd9a70d99fc22ede348f17c
+      (c39d8e11db2363236e69af7750ce7b9a
+       c9367091ddd9a70d99fc22ede348f17c
        1f2b5eb300ea716920494385a31bb5fb
        5014e215e204cf8da6c32644cda1b31e
        249b2edaf3cc552a247667041bb5f015
@@ -126,10 +127,18 @@ not stable across different setups.
         (cmti ()))))
      (include_dirs (_build/default/exe/.exe.eobjs/byte))))
    (library
+    ((name compiler-libs)
+     (uid c39d8e11db2363236e69af7750ce7b9a)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB/ocaml/compiler-libs)
+     (modules ())
+     (include_dirs (/FINDLIB/ocaml/compiler-libs))))
+   (library
     ((name compiler-libs.common)
      (uid c9367091ddd9a70d99fc22ede348f17c)
      (local false)
-     (requires ())
+     (requires (c39d8e11db2363236e69af7750ce7b9a))
      (source_dir /FINDLIB/ocaml/compiler-libs)
      (modules ())
      (include_dirs (/FINDLIB/ocaml/compiler-libs))))
@@ -267,10 +276,18 @@ not stable across different setups.
   ((root /WORKSPACE_ROOT)
    (build_context _build/default)
    (library
+    ((name compiler-libs)
+     (uid c39d8e11db2363236e69af7750ce7b9a)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB/ocaml/compiler-libs)
+     (modules ())
+     (include_dirs (/FINDLIB/ocaml/compiler-libs))))
+   (library
     ((name compiler-libs.common)
      (uid c9367091ddd9a70d99fc22ede348f17c)
      (local false)
-     (requires ())
+     (requires (c39d8e11db2363236e69af7750ce7b9a))
      (source_dir /FINDLIB/ocaml/compiler-libs)
      (modules ())
      (include_dirs (/FINDLIB/ocaml/compiler-libs))))

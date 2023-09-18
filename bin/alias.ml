@@ -25,6 +25,8 @@ let in_dir ~name ~recursive ~contexts dir =
     User_error.raise
       [ Pp.textf "@@ on the command line must be followed by a relative path" ]
   | In_source_dir dir -> { dir; recursive; name; contexts }
+  | In_private_context _ ->
+    User_error.raise [ Pp.textf "no aliases in the testing context" ]
   | In_install_dir _ ->
     User_error.raise
       [ Pp.textf

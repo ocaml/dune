@@ -424,7 +424,24 @@ let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
       Loc.none, Package_name.of_string (OpamPackage.Name.to_string name))
   in
   let build_command =
+    let patch_step =
+      (* CR-someday alizter: Patches don't take into account filters that are present. For
+         now we take them all. *)
+      match
+        OpamFile.OPAM.patches opam_file
+        |> List.map ~f:(fun (x, _) ->
+          Action.Patch
+            (String_with_vars.make_text Loc.none (OpamFilename.Base.to_string x)))
+      with
+      | [] -> None
+      | [ x ] -> Some x
+      | xs -> Some (Action.Progn xs)
+    in
     opam_commands_to_action opam_package (OpamFile.OPAM.build opam_file)
+    |> Option.map ~f:(fun action ->
+      match patch_step with
+      | None -> action
+      | Some patch_step -> Action.Progn [ patch_step; action ])
   in
   let install_command =
     opam_commands_to_action opam_package (OpamFile.OPAM.install opam_file)
@@ -455,6 +472,43 @@ let solve_package_list local_packages context =
   | Ok packages -> Ok (Solver.packages_of_result packages)
 ;;
 
+(* Scan a path recursively down retrieving a list of all files together with their
+   relative path. *)
+let scan_files_entries ~repo_id path =
+  (* TODO Add some cycle detection *)
+  let rec read acc dir =
+    let path = Path.append_local path dir in
+    match Path.readdir_unsorted_with_kinds path with
+    | Ok entries ->
+      List.fold_left entries ~init:acc ~f:(fun acc (filename, kind) ->
+        let local_path = Path.Local.relative dir filename in
+        match (kind : Unix.file_kind) with
+        | S_REG -> local_path :: acc
+        | S_DIR -> read acc local_path
+        | _ ->
+          (* TODO should be an error *)
+          acc)
+    | Error (Unix.ENOENT, _, _) -> acc
+    | Error err ->
+      User_error.raise
+        ?loc:(Option.map ~f:fst repo_id)
+        [ Pp.text "Unable to read file in opam repository:"; Unix_error.Detailed.pp err ]
+  in
+  read [] Path.Local.root
+  |> List.map ~f:(fun local_file ->
+    { Lock_dir.Write_disk.Files_entry.original_file = Path.append_local path local_file
+    ; local_file
+    })
+;;
+
+module Solver_result = struct
+  type t =
+    { summary : Summary.t
+    ; lock_dir : Lock_dir.t
+    ; files : Lock_dir.Write_disk.Files_entry.t Package_name.Map.Multi.t
+    }
+end
+
 let solve_lock_dir solver_env version_preference (repo, repo_id) ~local_packages =
   let is_local_package package =
     OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
@@ -482,5 +536,14 @@ let solve_lock_dir solver_env version_preference (repo, repo_id) ~local_packages
       | Ok pkgs_by_name ->
         Lock_dir.create_latest_version pkgs_by_name ~ocaml:None ~repo_id
     in
-    summary, lock_dir)
+    let files =
+      Package_name.Map.of_list_map_exn opam_packages_to_lock ~f:(fun opam_package ->
+        let files_path = Opam_repo.get_opam_package_files_path repo opam_package in
+        ( Package_name.of_string
+            (OpamPackage.Name.to_string (OpamPackage.name opam_package))
+        , scan_files_entries ~repo_id files_path ))
+      |> Package_name.Map.filter_map ~f:(fun files ->
+        if List.is_empty files then None else Some files)
+    in
+    { Solver_result.summary; lock_dir; files })
 ;;

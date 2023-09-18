@@ -130,7 +130,9 @@ module Paths = struct
   let extra_source t extra_source = Path.Build.append_local t.extra_sources extra_source
 
   let make name (ctx : Context_name.t) =
-    let build_dir = Context_name.build_dir ctx in
+    let build_dir =
+      Path.Build.relative Private_context.t.build_dir (Context_name.to_string ctx)
+    in
     let root = Path.Build.L.relative build_dir [ ".pkg"; Package.Name.to_string name ] in
     of_root name ~root
   ;;
@@ -323,7 +325,7 @@ module Pkg = struct
   let exported_env t =
     let base =
       Env.Map.of_list_exn
-        [ "OPAM_SWITCH_PREFIX", Path.Build.to_string t.paths.target_dir
+        [ Opam_switch.opam_switch_prefix_var_name, Path.Build.to_string t.paths.target_dir
         ; "CDPATH", ""
         ; "MAKELEVEL", ""
         ; "OPAM_PACKAGE_NAME", Package.Name.to_string t.info.name
@@ -513,8 +515,11 @@ module Action_expander = struct
       | Var (Pkg var) -> expand_pkg paths var
       | Var Context_name -> Memo.return [ Value.String (Context_name.to_string context) ]
       | Var Make ->
-        (* TODO *)
-        assert false
+        let+ make =
+          let path = Env_path.path Env.initial in
+          Make_prog.which loc context ~path
+        in
+        [ Value.Path make ]
       | Macro ({ macro = Pkg | Pkg_self; _ } as macro_invocation) ->
         let { Package_variable.name = variable_name; scope } =
           match Package_variable.of_macro_invocation ~loc macro_invocation with
@@ -677,20 +682,9 @@ module Action_expander = struct
       let arg = arg |> Value.to_string ~dir in
       Action.System arg
     | Patch p ->
-      let* input = Expander.expand_pform_gen ~mode:Single expander p in
-      let input = Value.to_string ~dir input in
-      let+ patch =
-        let path = Global.env () |> Env_path.path in
-        let program = "patch" in
-        Which.which ~path program
-        >>| function
-        | Some p -> Ok p
-        | None ->
-          let loc = Some (String_with_vars.loc p) in
-          Error (Action.Prog.Not_found.create ~context:expander.context ~program ~loc ())
-      in
-      (* TODO opam has a preprocessing step that we should probably apply *)
-      Action.Run (patch, Array.Immutable.of_array [| "-p1"; "-i"; input |])
+      let+ input = Expander.expand_pform_gen ~mode:Single expander p in
+      let input = Value.to_path ~dir input in
+      Dune_patch.action ~patch:input
     | Substitute (input, output) ->
       let+ input =
         Expander.expand_pform_gen ~mode:Single expander input >>| Value.to_path ~dir
@@ -870,8 +864,11 @@ end = struct
     fun db ctx (loc, name) ->
       Memo.exec memo (db, ctx, name)
       >>| function
-      | None -> User_error.raise ~loc [ Pp.text "Unknown package" ]
       | Some s -> s
+      | None ->
+        User_error.raise
+          ~loc
+          [ Pp.textf "Unknown package %S" (Package.Name.to_string name) ]
   ;;
 end
 

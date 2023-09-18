@@ -1,9 +1,9 @@
 dune="dune"
 
-pkg_root="_build/default/.pkg"
+pkg_root="_build/_private/default/.pkg"
 
 build_pkg() {
-  $dune build .pkg/$1/target/
+  $dune build _build/_private/default/.pkg/$1/target/
 }
 
 show_pkg() {
@@ -35,4 +35,11 @@ mkpkg() {
 solve_project() {
   cat >dune-project
   dune pkg lock --opam-repository-path=mock-opam-repository
+}
+
+make_lockdir() {
+mkdir dune.lock
+cat >dune.lock/lock.dune <<EOF
+(lang package 0.1)
+EOF
 }

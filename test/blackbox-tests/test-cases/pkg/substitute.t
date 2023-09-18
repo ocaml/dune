@@ -91,19 +91,19 @@ Now with variables set
   We substitute '%{name}%' into 'test' and '%{_:name}%' into 'test'
   And '%{version}%' is set to 'dev'
   There is also some paths set:
-  '%{lib}%' is '_build/default/.pkg/test/target/lib/test'
-  '%{lib_root}%' is '_build/default/.pkg/test/target/lib'
-  '%{libexec}%' is '_build/default/.pkg/test/target/lib/test'
-  '%{libexec_root}%' is '_build/default/.pkg/test/target/lib'
-  '%{bin}%' is '_build/default/.pkg/test/target/bin'
-  '%{sbin}%' is '_build/default/.pkg/test/target/sbin'
-  '%{toplevel}%' is '_build/default/.pkg/test/target/lib/toplevel'
-  '%{share}%' is '_build/default/.pkg/test/target/share/test'
-  '%{share_root}%' is '_build/default/.pkg/test/target/share'
-  '%{etc}%' is '_build/default/.pkg/test/target/etc/test'
-  '%{doc}%' is '_build/default/.pkg/test/target/doc/test'
-  '%{stublibs}%' is '_build/default/.pkg/test/target/lib/stublibs'
-  '%{man}%' is '_build/default/.pkg/test/target/man'
+  '%{lib}%' is '_build/_private/default/.pkg/test/target/lib/test'
+  '%{lib_root}%' is '_build/_private/default/.pkg/test/target/lib'
+  '%{libexec}%' is '_build/_private/default/.pkg/test/target/lib/test'
+  '%{libexec_root}%' is '_build/_private/default/.pkg/test/target/lib'
+  '%{bin}%' is '_build/_private/default/.pkg/test/target/bin'
+  '%{sbin}%' is '_build/_private/default/.pkg/test/target/sbin'
+  '%{toplevel}%' is '_build/_private/default/.pkg/test/target/lib/toplevel'
+  '%{share}%' is '_build/_private/default/.pkg/test/target/share/test'
+  '%{share_root}%' is '_build/_private/default/.pkg/test/target/share'
+  '%{etc}%' is '_build/_private/default/.pkg/test/target/etc/test'
+  '%{doc}%' is '_build/_private/default/.pkg/test/target/doc/test'
+  '%{stublibs}%' is '_build/_private/default/.pkg/test/target/lib/stublibs'
+  '%{man}%' is '_build/_private/default/.pkg/test/target/man'
   Finally, '%{custom}%' is 'defined-here'
 
 It is also possible to use variables of your dependencies:
@@ -127,4 +127,4 @@ It is also possible to use variables of your dependencies:
   > EOF
   $ build_pkg test
   There is also some paths set:
-  '%{dependency:lib}%' is '_build/default/.pkg/test/target/lib/test'
+  '%{dependency:lib}%' is '_build/_private/default/.pkg/test/target/lib/test'

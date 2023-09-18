@@ -398,28 +398,11 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
   Action_builder.of_memo_join p
 ;;
 
-let make =
+let make loc context =
+  let path = Context.path context in
   let open Memo.O in
-  let make context =
-    let which = Context.which context in
-    match Sys.unix with
-    | false -> which "make"
-    | true ->
-      let* res = which "gmake" in
-      (match res with
-       | Some _ as s -> Memo.return s
-       | None -> which "make")
-  in
-  let memo =
-    Memo.create
-      "make"
-      ~input:(module Context_name)
-      ~cutoff:(Option.equal Path.equal)
-      (fun name ->
-        let* context = Context.DB.get name in
-        make context)
-  in
-  fun (context : Context.t) -> Memo.exec memo (Context.name context)
+  let+ make = Make_prog.which loc (Context.name context) ~path in
+  [ Value.Path make ]
 ;;
 
 let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
@@ -451,18 +434,7 @@ let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
   | Ocaml -> static (get_prog (Context.ocaml context).ocaml)
   | Ocamlc -> static (path (Context.ocaml context).ocamlc)
   | Ocamlopt -> static (get_prog (Context.ocaml context).ocamlopt)
-  | Make ->
-    let open Memo.O in
-    Direct
-      (Without
-         (make context
-          >>| function
-          | Some p -> path p
-          | None ->
-            Utils.program_not_found
-              ~context:(Context.name context)
-              ~loc:(Some (Dune_lang.Template.Pform.loc source))
-              "make"))
+  | Make -> Direct (Without (make (Dune_lang.Template.Pform.loc source) context))
   | Cpp ->
     c_compiler_and_flags (Context.ocaml context).ocaml_config @ [ "-E" ]
     |> strings

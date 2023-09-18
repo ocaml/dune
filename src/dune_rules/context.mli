@@ -22,16 +22,9 @@
 open Import
 
 module Kind : sig
-  module Opam : sig
-    type t =
-      { root : string option
-      ; switch : string
-      }
-  end
-
   type t =
     | Default
-    | Opam of Opam.t
+    | Opam of Opam_switch.t
 end
 
 module Env_nodes : sig

@@ -27,5 +27,4 @@ Applying patches
   > EOF
 
   $ build_pkg test
-  patching file foo.ml
   Hello World

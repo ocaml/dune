@@ -2,40 +2,23 @@ open Import
 open Memo.O
 
 module Kind = struct
-  module Opam = struct
-    type t =
-      { root : string option
-      ; switch : string
-      }
-
-    let to_dyn { root; switch } =
-      Dyn.(record [ "root", option string root; "switch", string switch ])
-    ;;
-
-    let equal { root; switch } t =
-      Option.equal String.equal root t.root && String.equal switch t.switch
-    ;;
-
-    let hash { root; switch } =
-      Tuple.T2.hash (Option.hash String.hash) String.hash (root, switch)
-    ;;
-  end
-
   type t =
     | Default
-    | Opam of Opam.t
+    | Opam of Opam_switch.t
 
   let to_dyn : t -> Dyn.t = function
     | Default -> Dyn.string "default"
-    | Opam o -> Opam.to_dyn o
+    | Opam o -> Opam_switch.to_dyn o
   ;;
+
+  let initial_ocamlpath = lazy (Findlib_config.ocamlpath_of_env Env.initial)
 
   let ocamlpath t ~env ~findlib_toolchain =
     let env_ocamlpath = Findlib_config.ocamlpath_of_env env in
     match t, findlib_toolchain with
     | Default, None -> Option.value ~default:[] env_ocamlpath
     | _, _ ->
-      let initial_ocamlpath = Findlib_config.ocamlpath_of_env Env.initial in
+      let initial_ocamlpath = Lazy.force initial_ocamlpath in
       (* If we are not in the default context, we can only use the OCAMLPATH
          variable if it is specific to this build context *)
       (* CR-someday diml: maybe we should actually clear OCAMLPATH in other
@@ -182,7 +165,7 @@ let to_dyn t : Dyn.t =
 (* Wrap calls to the opam binary *)
 module Opam : sig
   (* Environment for this opam switch *)
-  val env : env:Env.t -> Kind.Opam.t -> string Env.Map.t Memo.t
+  val env : env:Env.t -> Opam_switch.t -> string Env.Map.t Memo.t
 end = struct
   let opam =
     Memo.Lazy.create ~name:"context-opam" (fun () ->
@@ -224,7 +207,7 @@ end = struct
   let opam_binary_exn () = Memo.Lazy.force opam
 
   let env =
-    let impl (env, { Kind.Opam.root; switch }) =
+    let impl (env, { Opam_switch.root; switch }) =
       let* opam = opam_binary_exn () in
       let args =
         List.concat
@@ -256,14 +239,14 @@ end = struct
           x)
     in
     let module Input = struct
-      type t = Env.t * Kind.Opam.t
+      type t = Env.t * Opam_switch.t
 
       let equal (env_a, opam_a) (env_b, opam_b) =
-        Env.equal env_a env_b && Kind.Opam.equal opam_a opam_b
+        Env.equal env_a env_b && Opam_switch.equal opam_a opam_b
       ;;
 
-      let hash = Tuple.T2.hash Env.hash Kind.Opam.hash
-      let to_dyn (env, kind) = Dyn.Tuple [ Env.to_dyn env; Kind.Opam.to_dyn kind ]
+      let hash = Tuple.T2.hash Env.hash Opam_switch.hash
+      let to_dyn (env, kind) = Dyn.Tuple [ Env.to_dyn env; Opam_switch.to_dyn kind ]
     end
     in
     let memo =
@@ -286,13 +269,11 @@ module Build_environment_kind = struct
     | Opam2_environment of string (* opam switch prefix *)
     | Unknown
 
-  let opam_switch_prefix_var_name = "OPAM_SWITCH_PREFIX"
-
   let query ~(kind : Kind.t) ~findlib_toolchain ~env =
     match findlib_toolchain with
     | Some s -> Cross_compilation_using_findlib_toolchain s
     | None ->
-      let opam_prefix = Env.get env opam_switch_prefix_var_name in
+      let opam_prefix = Env.get env Opam_switch.opam_switch_prefix_var_name in
       (match kind with
        | Opam _ ->
          (match opam_prefix with
@@ -461,16 +442,16 @@ module Group = struct
     create { builder with path } ~kind:Default ~targets
   ;;
 
-  let create_for_opam (builder : Builder.t) ~kind ~loc ~targets =
-    let* vars = Opam.env ~env:builder.env kind in
-    if not (Env.Map.mem vars Build_environment_kind.opam_switch_prefix_var_name)
+  let create_for_opam (builder : Builder.t) ~switch ~loc ~targets =
+    let* vars = Opam.env ~env:builder.env switch in
+    if not (Env.Map.mem vars Opam_switch.opam_switch_prefix_var_name)
     then
       User_error.raise
         ~loc
         [ Pp.textf
             "opam doesn't set the environment variable %s. I cannot create an opam build \
              context without opam setting this variable."
-            Build_environment_kind.opam_switch_prefix_var_name
+            Opam_switch.opam_switch_prefix_var_name
         ];
     let path =
       match Env.Map.find vars Env_path.var with
@@ -480,7 +461,7 @@ module Group = struct
       | Some s -> Bin.parse_path s
     in
     let builder = { builder with env = Env.extend builder.env ~vars } in
-    create { builder with path } ~kind:(Opam kind) ~targets
+    create { builder with path } ~kind:(Opam switch) ~targets
   ;;
 
   let extend_paths t ~env =
@@ -574,7 +555,6 @@ module Group = struct
                 ; merlin
                 }
             ; switch = _
-            ; root = _
             } ->
           let env = extend_paths ~env paths in
           { Builder.empty with
@@ -632,11 +612,10 @@ module Group = struct
               ; merlin = _
               }
           ; switch
-          ; root
           } ->
         create_for_opam
           { builder with findlib_toolchain = toolchain }
-          ~kind:{ Kind.Opam.root; switch }
+          ~switch
           ~loc
           ~targets
     ;;
@@ -725,7 +704,7 @@ let map_exe (context : t) =
 let roots t =
   let module Roots = Install.Roots in
   let prefix_roots =
-    match Env.get t.builder.env Build_environment_kind.opam_switch_prefix_var_name with
+    match Env.get t.builder.env Opam_switch.opam_switch_prefix_var_name with
     | None -> Roots.make_all None
     | Some prefix ->
       let prefix = Path.of_filename_relative_to_initial_cwd prefix in

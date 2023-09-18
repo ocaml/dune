@@ -424,7 +424,24 @@ let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
       Loc.none, Package_name.of_string (OpamPackage.Name.to_string name))
   in
   let build_command =
+    let patch_step =
+      (* CR-someday alizter: Patches don't take into account filters that are present. For
+         now we take them all. *)
+      match
+        OpamFile.OPAM.patches opam_file
+        |> List.map ~f:(fun (x, _) ->
+          Action.Patch
+            (String_with_vars.make_text Loc.none (OpamFilename.Base.to_string x)))
+      with
+      | [] -> None
+      | [ x ] -> Some x
+      | xs -> Some (Action.Progn xs)
+    in
     opam_commands_to_action opam_package (OpamFile.OPAM.build opam_file)
+    |> Option.map ~f:(fun action ->
+      match patch_step with
+      | None -> action
+      | Some patch_step -> Action.Progn [ patch_step; action ])
   in
   let install_command =
     opam_commands_to_action opam_package (OpamFile.OPAM.install opam_file)

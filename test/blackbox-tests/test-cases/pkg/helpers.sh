@@ -36,3 +36,10 @@ solve_project() {
   cat >dune-project
   dune pkg lock --opam-repository-path=mock-opam-repository
 }
+
+make_lockdir() {
+mkdir dune.lock
+cat >dune.lock/lock.dune <<EOF
+(lang package 0.1)
+EOF
+}

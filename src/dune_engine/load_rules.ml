@@ -283,15 +283,16 @@ let source_or_external_file_digest path =
   Fs_memo.file_digest path
   >>= function
   | Ok digest -> Memo.return digest
-  | No_such_file -> report_user_error []
-  | Broken_symlink -> report_user_error [ Pp.text "Broken symbolic link" ]
-  | Cyclic_symlink -> report_user_error [ Pp.text "Cyclic symbolic link" ]
-  | Unexpected_kind st_kind ->
+  | Error No_such_file -> report_user_error []
+  | Error Broken_symlink -> report_user_error [ Pp.text "Broken symbolic link" ]
+  | Error Cyclic_symlink -> report_user_error [ Pp.text "Cyclic symbolic link" ]
+  | Error (Unexpected_kind st_kind) ->
     report_user_error
       [ Pp.textf "This is not a regular file (%s)" (File_kind.to_string st_kind) ]
-  | Unix_error unix_error ->
+  | Error (Unix_error unix_error) ->
     report_user_error [ Unix_error.Detailed.pp ~prefix:"Reason: " unix_error ]
-  | Error exn -> report_user_error [ Pp.textf "%s" (Printexc.to_string exn) ]
+  | Error (Unrecognized exn) ->
+    report_user_error [ Pp.textf "%s" (Printexc.to_string exn) ]
 ;;
 
 let eval_source_file : type a. a Action_builder.eval_mode -> Path.Source.t -> a Memo.t =

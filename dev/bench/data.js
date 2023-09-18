@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695069528924,
+  "lastUpdate": 1695069882535,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -76500,6 +76500,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.2154226943199995",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b57b94580d454bd7cd83a774066d17b083aab7bb",
+          "message": "fix: remove phsyical equality (#8690)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-18T21:18:22+01:00",
+          "tree_id": "a23623f4e97a60e167ab45dfeaf367a9bb5a3924",
+          "url": "https://github.com/ocaml/dune/commit/b57b94580d454bd7cd83a774066d17b083aab7bb"
+        },
+        "date": 1695069881784,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "70.15271629004665",
             "unit": "seconds"
           }
         ]

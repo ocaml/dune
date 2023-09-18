@@ -155,9 +155,6 @@ module Dep : sig
       targets produced by odoc for [target] in output format [output]. *)
   val format_alias : Output_format.t -> Context.t -> target -> Alias.t
 
-  (** [html_alias] is [format_alias Html] *)
-  val html_alias : Context.t -> target -> Alias.t
-
   (** [deps ctx pkg libraries] returns all odoc dependencies of [libraries]. If
       [libraries] are all part of a package [pkg], then the odoc dependencies of
       the package are also returned*)
@@ -172,7 +169,6 @@ module Dep : sig
   val setup_deps : Context.t -> target -> Path.Set.t -> unit Memo.t
 end = struct
   let format_alias f ctx m = Output_format.alias f ~dir:(Paths.html ctx m)
-  let html_alias = format_alias Html
   let alias = Alias.make (Alias.Name.of_string ".odoc-all")
 
   let deps ctx pkg requires =
@@ -919,7 +915,7 @@ let setup_private_library_doc_alias sctx ~scope ~dir (l : Dune_file.Library.t) =
     let lib = Lib (Lib.Local.of_lib_exn lib) in
     Rules.Produce.Alias.add_deps
       (Alias.make ~dir Alias0.private_doc)
-      (lib |> Dep.html_alias ctx |> Dune_engine.Dep.alias |> Action_builder.dep)
+      (lib |> Dep.format_alias Html ctx |> Dune_engine.Dep.alias |> Action_builder.dep)
 ;;
 
 let has_rules ?(directory_targets = Path.Build.Map.empty) m =

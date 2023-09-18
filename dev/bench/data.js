@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695047517829,
+  "lastUpdate": 1695047826971,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -75920,6 +75920,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.26051991952",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3e377ba39e2c1ecf5ee0d329741aff81e6ba2b83",
+          "message": "refactor(pkg): improve sys_vars handling (#8682)\n\nMake all variables lazy\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-18T15:11:43+01:00",
+          "tree_id": "76222d2e9252a451ced1621cb261a9fc7877cf0f",
+          "url": "https://github.com/ocaml/dune/commit/3e377ba39e2c1ecf5ee0d329741aff81e6ba2b83"
+        },
+        "date": 1695047826109,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "64.97746197483333",
             "unit": "seconds"
           }
         ]

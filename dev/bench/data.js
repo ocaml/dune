@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695072994930,
+  "lastUpdate": 1695073337611,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -76587,6 +76587,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.8844323164599999",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e8822c1d3e7bcbe0ad806fbaec7af3468b6e895b",
+          "message": "test(pkg): clean up mock opam repo creation (#8695)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-18T22:16:02+01:00",
+          "tree_id": "1a83c304210a20940e88e58e1a674e121ccd48ac",
+          "url": "https://github.com/ocaml/dune/commit/e8822c1d3e7bcbe0ad806fbaec7af3468b6e895b"
+        },
+        "date": 1695073336547,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "67.46267109832",
             "unit": "seconds"
           }
         ]

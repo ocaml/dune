@@ -441,11 +441,15 @@ let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
         Action.Substitute (input, output))
     in
     let patch_step =
-      (* CR-someday alizter: Patches don't take into account filters that are present. For
-         now we take them all. *)
       OpamFile.OPAM.patches opam_file
-      |> List.map ~f:(fun (x, _) ->
-        Action.Patch (String_with_vars.make_text Loc.none (OpamFilename.Base.to_string x)))
+      |> List.map ~f:(fun (basename, filter) ->
+        let action =
+          Action.Patch
+            (String_with_vars.make_text Loc.none (OpamFilename.Base.to_string basename))
+        in
+        match filter with
+        | None -> action
+        | Some filter -> Action.When (filter_to_blang opam_package filter, action))
     in
     let build_step =
       opam_commands_to_actions opam_package (OpamFile.OPAM.build opam_file)

@@ -43,7 +43,9 @@ The lockfile should contain the patch action with the appropriate filter.
   
   (build
    (progn
-    (patch foo.patch)
+    (when
+     (= %{switch} foobar)
+     (patch foo.patch))
     (run cat foo.ml)))
   (source (copy $TESTCASE_ROOT/source))
 
@@ -53,4 +55,4 @@ The lockfile should contain the patch action with the appropriate filter.
   > EOF
 
   $ build_pkg with-patch-filter 
-  This is wrong; this patch should have been filtered out.
+  This is right; the patch should never be applied.

@@ -30,18 +30,17 @@ The lockfile should contain a setenv action.
   (version 0.0.1)
   
   (install
-   (run sh -c "echo $MY_ENV_VAR"))
+   (withenv
+    ((= MY_ENV_VAR "Hello from env var!"))
+    (run sh -c "echo $MY_ENV_VAR")))
   
   (build
-   (run sh -c "echo $MY_ENV_VAR"))
+   (withenv
+    ((= MY_ENV_VAR "Hello from env var!"))
+    (run sh -c "echo $MY_ENV_VAR")))
 
-  $ mkdir source
-  $ cat > source/foo.ml <<EOF
-  > This is wrong
-  > EOF
-
-printenv should print the value given in the build-env field.
+This should print the value given in the build-env field.
 
   $ MY_ENV_VAR="invisible" build_pkg with-build-env 
-  invisible
-  invisible
+  Hello from env var!
+  Hello from env var!

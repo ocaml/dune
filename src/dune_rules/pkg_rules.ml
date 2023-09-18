@@ -18,6 +18,7 @@ module Sys_vars = struct
     { os_version : string option
     ; os_distribution : string option
     ; os_family : string option
+    ; arch : string option
     }
 
   let poll =
@@ -25,10 +26,11 @@ module Sys_vars = struct
     let sys_poll_memo key = Memo.of_reproducible_fiber @@ key ~path in
     Memo.lazy_ (fun () ->
       let open Memo.O in
-      let* os_version = sys_poll_memo Sys_poll.os_version in
-      let* os_distribution = sys_poll_memo Sys_poll.os_distribution in
-      let+ os_family = sys_poll_memo Sys_poll.os_family in
-      { os_version; os_distribution; os_family })
+      let+ os_version = sys_poll_memo Sys_poll.os_version
+      and+ os_distribution = sys_poll_memo Sys_poll.os_distribution
+      and+ os_family = sys_poll_memo Sys_poll.os_family
+      and+ arch = sys_poll_memo Sys_poll.arch in
+      { os_version; os_distribution; os_family; arch })
   ;;
 end
 
@@ -494,7 +496,7 @@ module Action_expander = struct
       | Prefix -> Memo.return [ Value.Dir (Path.build paths.target_dir) ]
       | User -> Memo.return [ Value.String (Unix.getlogin ()) ]
       | Jobs -> Memo.return [ Value.String "1" ]
-      | Arch -> Memo.return [ Value.String (assert false) ]
+      | Arch -> sys_poll_var (fun { arch; _ } -> arch)
       | Group ->
         let group = Unix.getgid () |> Unix.getgrgid in
         Memo.return [ Value.String group.gr_name ]

@@ -14,6 +14,7 @@ Make a package with a build-env field
   > opam-version: "2.0"
   > build-env: [ [ MY_ENV_VAR = "Hello from env var!" ] ]
   > build: ["printenv" "MY_ENV_VAR"]
+  > install: ["printenv" "MY_ENV_VAR"]
   > EOF
 
   $ mkdir -p mock-opam-repository/packages/with-build-env/with-build-env.0.0.1/
@@ -32,6 +33,9 @@ The lockfile should contain a setenv action.
 
   $ cat dune.lock/with-build-env.pkg 
   (version 0.0.1)
+  
+  (install
+   (run printenv MY_ENV_VAR))
   
   (build
    (run printenv MY_ENV_VAR))

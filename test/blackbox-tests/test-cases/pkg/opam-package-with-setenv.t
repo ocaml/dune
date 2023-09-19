@@ -47,6 +47,13 @@ The exported env from the first package should be in the lock dir.
 
   $ cat dune.lock/with-setenv.pkg
   (version 0.0.1)
+  
+  (exported_env
+   (= EXPORTED_ENV_VAR "Hello from the other package!")
+   (:= prepend_with_trailing_sep "Prepended with trailing sep")
+   (+= prepend_without_trailing_sep "Prepended without trailing sep")
+   (=+ append_without_leading_sep "Appended without leading sep")
+   (=: append_with_leading_sep "Appended with leading sep"))
   $ cat dune.lock/deps-on-with-setenv.pkg
   (version 0.0.1)
   
@@ -69,8 +76,8 @@ available and all the env updates should be applied correctly.
   > append_without_leading_sep="foo:bar" \
   > append_with_leading_sep="foo:bar" \
   > build_pkg deps-on-with-setenv 
-  I have not been exported yet.
-  foo:bar
-  foo:bar
-  foo:bar
-  foo:bar
+  Hello from the other package!
+  Prepended without trailing sep
+  Prepended with trailing sep
+  Appended without leading sep
+  Appended with leading sep

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695136573020,
+  "lastUpdate": 1695136585375,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -77399,6 +77399,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "70.12658451426667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "977a943858ae1a32e3cbd0e5708952371cccf229",
+          "message": "test(pkg): test env updates in opam-package-with-setenv (#8702)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-19T15:49:05+01:00",
+          "tree_id": "8688f67392abfb15d46c6d14c32651b8e37a9319",
+          "url": "https://github.com/ocaml/dune/commit/977a943858ae1a32e3cbd0e5708952371cccf229"
+        },
+        "date": 1695136584545,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.9344892413399999",
             "unit": "seconds"
           }
         ]

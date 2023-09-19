@@ -1,4 +1,4 @@
-# Release process
+# Release Process
 
 ```mermaid
 gitGraph
@@ -25,45 +25,45 @@ gitGraph
   checkout main
 ```
 
-## Minor releases (`x.y.0`)
+## Minor Releases (`x.y.0`)
 
 - 1 month before:
-  - open tracking issue with expected alpha1 date
-  - list (and update) known blockers. these prevent releasing `x.y.0`
+  - Open tracking issue with expected alpha1 date
+  - List (and update) known blockers. these prevent releasing `x.y.0`
 
-- first alpha:
-  - create `x.y.0~alpha` branch
+- First alpha:
+  - Create `x.y.0~alpha` branch
 
-- alpha time:
-  - on alpha branch, prepare alpha release:
+- Alpha time:
+  - On alpha branch, prepare alpha release:
     - (for N>1) merge main into alpha branch
     - cherry-pick extra commits from `main` (if any)
     - prepare changelog (ensure version is `x.y.0~alphaN`)
     - `make opam-release`
     - mark opam-repo PR as draft
-  - wait for `opam-repo-ci`
-  - triage phase:
+  - Wait for `opam-repo-ci`
+  - Triage phase:
     - consider new failures comparing from latest "known good" release
     - ignore transient errors (disk full, switch disconnected, cancelled, etc)
     - file issues about regressions, add them to known blockers
-  - go/no go for next alpha:
+  - Go/no go for next alpha:
     - the goal is to determine, once the known blockers are fixed, if we need
       an alpha(N+1) to get enough confidence about `x.y.0`
     - downside if release is GO but a bug is found: need a quick point release.
     - downside if release is NO GO but not bug is found: waste of ~1 day and
       the ~50k builds.
 
-- release time:
-  - on main, prepare changelog (compile entries, set header with version)
-  - open a PR `prepare-x.y.0`
-  - self-merge
+- Release time:
+  - On main, prepare changelog (compile entries, set header with version)
+  - Open a PR `prepare-x.y.0`
+  - Self-merge
   - `make opam-release` from updated main
-  - triage
-  - in case of regression:
+  - Triage
+  - In case of regression:
     - mitigate (for example if this happens on a single OS, set `available`
       appropriately)
     - prepare point release
     - in the worst case, the release can be cancelled completely and only come
       in a point release.
 
-## Point releases / patch releases (`x.y.z`, `z >= 0`)
+## Point Releases / Patch Releases (`x.y.z`, `z >= 0`)

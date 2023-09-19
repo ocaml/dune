@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695133818482,
+  "lastUpdate": 1695134220334,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -99498,6 +99498,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.759097384133337",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f9d3d903b980083f592534231c6c6aedf8251d32",
+          "message": "Add directory target support to copy sandbox (#8705)\n\nFixes #7724\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-09-19T16:21:11+02:00",
+          "tree_id": "8d36ec219c0d3c6ef65bdbd43527b9dae1e3c68e",
+          "url": "https://github.com/ocaml/dune/commit/f9d3d903b980083f592534231c6c6aedf8251d32"
+        },
+        "date": 1695134203661,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "27.169691530146668",
             "unit": "seconds"
           }
         ]

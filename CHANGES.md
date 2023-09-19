@@ -1,3 +1,11 @@
+3.11.0~alpha2 (2023-09-19)
+--------------------------
+
+- init: check that module names are valid (#8644, fixes #8252, @emillon)
+
+- Add a new alias `@doc-json` to build odoc documentation in JSON format. This
+  output can be consumed by external tools. (#8178, @emillon)
+
 3.11.0~alpha1 (2023-09-14)
 --------------------------
 

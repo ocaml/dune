@@ -105,7 +105,14 @@ used instead. For example, if the following is present in ``tests/dune``,
 @doc
 ^^^^
 
-This alias builds documentation for public libraries.
+This alias builds documentation for public libraries as HTML pages.
+
+@doc-json
+^^^^^^^^^
+
+This alias builds documentation for public libraries as JSON files. These are
+produced by ``odoc``'s option ``--as-json`` and can be consumed by external
+tools.
 
 @doc-private
 ^^^^^^^^^^^^

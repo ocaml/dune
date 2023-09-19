@@ -15,20 +15,22 @@ open Dune_pkg
 
 module Sys_vars = struct
   type t =
-    { os_version : string option
-    ; os_distribution : string option
-    ; os_family : string option
+    { os_version : string option Memo.Lazy.t
+    ; os_distribution : string option Memo.Lazy.t
+    ; os_family : string option Memo.Lazy.t
+    ; arch : string option Memo.Lazy.t
     }
 
   let poll =
     let path = Env_path.path Stdune.Env.initial in
-    let sys_poll_memo key = Memo.of_reproducible_fiber @@ key ~path in
-    Memo.lazy_ (fun () ->
-      let open Memo.O in
-      let* os_version = sys_poll_memo Sys_poll.os_version in
-      let* os_distribution = sys_poll_memo Sys_poll.os_distribution in
-      let+ os_family = sys_poll_memo Sys_poll.os_family in
-      { os_version; os_distribution; os_family })
+    let sys_poll_memo key =
+      Memo.lazy_ (fun () -> Memo.of_reproducible_fiber @@ key ~path)
+    in
+    { os_version = sys_poll_memo Sys_poll.os_version
+    ; os_distribution = sys_poll_memo Sys_poll.os_distribution
+    ; os_family = sys_poll_memo Sys_poll.os_family
+    ; arch = sys_poll_memo Sys_poll.arch
+    }
   ;;
 end
 
@@ -325,7 +327,7 @@ module Pkg = struct
   let exported_env t =
     let base =
       Env.Map.of_list_exn
-        [ "OPAM_SWITCH_PREFIX", Path.Build.to_string t.paths.target_dir
+        [ Opam_switch.opam_switch_prefix_var_name, Path.Build.to_string t.paths.target_dir
         ; "CDPATH", ""
         ; "MAKELEVEL", ""
         ; "OPAM_PACKAGE_NAME", Package.Name.to_string t.info.name
@@ -474,8 +476,9 @@ module Action_expander = struct
     ;;
 
     let sys_poll_var accessor =
-      let+ map = Memo.Lazy.force Sys_vars.poll in
-      match accessor map with
+      accessor Sys_vars.poll
+      |> Memo.Lazy.force
+      >>| function
       | Some v -> [ Value.String v ]
       | None ->
         (* TODO: in OPAM an unset variable evaluates to false, but we
@@ -494,7 +497,7 @@ module Action_expander = struct
       | Prefix -> Memo.return [ Value.Dir (Path.build paths.target_dir) ]
       | User -> Memo.return [ Value.String (Unix.getlogin ()) ]
       | Jobs -> Memo.return [ Value.String "1" ]
-      | Arch -> Memo.return [ Value.String (assert false) ]
+      | Arch -> sys_poll_var (fun { arch; _ } -> arch)
       | Group ->
         let group = Unix.getgid () |> Unix.getgrgid in
         Memo.return [ Value.String group.gr_name ]
@@ -515,8 +518,11 @@ module Action_expander = struct
       | Var (Pkg var) -> expand_pkg paths var
       | Var Context_name -> Memo.return [ Value.String (Context_name.to_string context) ]
       | Var Make ->
-        (* TODO *)
-        assert false
+        let+ make =
+          let path = Env_path.path Env.initial in
+          Make_prog.which loc context ~path
+        in
+        [ Value.Path make ]
       | Macro ({ macro = Pkg | Pkg_self; _ } as macro_invocation) ->
         let { Package_variable.name = variable_name; scope } =
           match Package_variable.of_macro_invocation ~loc macro_invocation with
@@ -679,20 +685,9 @@ module Action_expander = struct
       let arg = arg |> Value.to_string ~dir in
       Action.System arg
     | Patch p ->
-      let* input = Expander.expand_pform_gen ~mode:Single expander p in
-      let input = Value.to_string ~dir input in
-      let+ patch =
-        let path = Global.env () |> Env_path.path in
-        let program = "patch" in
-        Which.which ~path program
-        >>| function
-        | Some p -> Ok p
-        | None ->
-          let loc = Some (String_with_vars.loc p) in
-          Error (Action.Prog.Not_found.create ~context:expander.context ~program ~loc ())
-      in
-      (* TODO opam has a preprocessing step that we should probably apply *)
-      Action.Run (patch, Array.Immutable.of_array [| "-p1"; "-i"; input |])
+      let+ input = Expander.expand_pform_gen ~mode:Single expander p in
+      let input = Value.to_path ~dir input in
+      Dune_patch.action ~patch:input
     | Substitute (input, output) ->
       let+ input =
         Expander.expand_pform_gen ~mode:Single expander input >>| Value.to_path ~dir
@@ -872,8 +867,11 @@ end = struct
     fun db ctx (loc, name) ->
       Memo.exec memo (db, ctx, name)
       >>| function
-      | None -> User_error.raise ~loc [ Pp.text "Unknown package" ]
       | Some s -> s
+      | None ->
+        User_error.raise
+          ~loc
+          [ Pp.textf "Unknown package %S" (Package.Name.to_string name) ]
   ;;
 end
 
@@ -1016,6 +1014,12 @@ module Install_action = struct
       |> Section.Map.of_list_multi
     ;;
 
+    let hardlink_or_copy ~src ~dst =
+      match Unix.link (Unix.readlink (Path.to_string src)) (Path.to_string dst) with
+      | () -> ()
+      | exception _ -> Io.copy_file ~src ~dst ()
+    ;;
+
     let action
       { package; install_file; config_file; target_dir; install_action }
       ~ectx:_
@@ -1039,12 +1043,14 @@ module Install_action = struct
           | false -> Section.Map.empty
           | true ->
             let map =
-              let install_dir = Path.parent_exn install_file in
-              let install_entries = Install.Entry.load_install_file install_file in
+              let install_entries =
+                let dir = Path.parent_exn install_file in
+                Install.Entry.load_install_file install_file (fun local ->
+                  Path.append_local dir local)
+              in
               let by_src =
                 List.rev_map install_entries ~f:(fun (entry : _ Install.Entry.t) ->
-                  ( Path.as_in_source_tree_exn entry.src |> Path.append_source install_dir
-                  , entry ))
+                  entry.src, entry)
                 |> Path.Map.of_list_multi
               in
               let install_entries =
@@ -1068,7 +1074,7 @@ module Install_action = struct
                     then []
                     else (
                       let dst = prepare_copy_or_move ~install_file ~target_dir entry in
-                      Path.rename src dst;
+                      hardlink_or_copy ~src ~dst;
                       maybe_set_executable entry.section dst;
                       [ entry.section, dst ])
                   | entry :: entries ->
@@ -1080,8 +1086,7 @@ module Install_action = struct
                           let dst =
                             prepare_copy_or_move ~install_file ~target_dir entry
                           in
-                          (* TODO hard link if possible *)
-                          Io.copy_file ~src ~dst ();
+                          hardlink_or_copy ~src ~dst;
                           maybe_set_executable entry.section dst;
                           Some (entry.section, dst)))
                     in
@@ -1089,7 +1094,7 @@ module Install_action = struct
                     then install_entries
                     else (
                       let dst = prepare_copy_or_move ~install_file ~target_dir entry in
-                      Path.rename src dst;
+                      hardlink_or_copy ~src ~dst;
                       maybe_set_executable entry.section dst;
                       (entry.section, dst) :: install_entries))
               in

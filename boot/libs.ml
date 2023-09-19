@@ -83,6 +83,7 @@ let local_libraries =
   ; ("src/dune_tui", Some "Dune_tui", true, None)
   ; ("src/dune_config_file", Some "Dune_config_file", false, None)
   ; ("src/dune_shared_cache", Some "Dune_shared_cache", false, None)
+  ; ("src/dune_patch", Some "Dune_patch", false, None)
   ; ("src/scheme", Some "Scheme", false, None)
   ; ("src/dune_rules", Some "Dune_rules", true, None)
   ; ("src/upgrader", Some "Dune_upgrader", false, None)

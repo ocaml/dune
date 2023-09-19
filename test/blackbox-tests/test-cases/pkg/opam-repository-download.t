@@ -1,13 +1,10 @@
 Helper shell function that generates an opam file for a package:
 
   $ . ./helpers.sh
+  $ mkrepo
 
 Make a mock repo tarball that will get used by dune to download the package
 
-  $ mkdir mock-opam-repository
-  $ cat > mock-opam-repository/repo <<EOF
-  > opam-version: "2.0"
-  > EOF
   $ mkpkg foo <<EOF
   > opam-version: "2.0"
   > EOF

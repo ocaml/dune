@@ -181,68 +181,63 @@ let set path digest =
 ;;
 
 module Digest_result = struct
-  type t =
-    | Ok of Digest.t
-    | No_such_file
-    | Broken_symlink
-    | Cyclic_symlink
-    | Unexpected_kind of File_kind.t
-    | Unix_error of Unix_error.Detailed.t
-    | Error of exn
+  module Error = struct
+    type t =
+      | No_such_file
+      | Broken_symlink
+      | Cyclic_symlink
+      | Unexpected_kind of File_kind.t
+      | Unix_error of Unix_error.Detailed.t
+      | Unrecognized of exn
 
-  let equal x y =
-    match x, y with
-    | Ok x, Ok y -> Digest.equal x y
-    | Ok _, _ | _, Ok _ -> false
-    | No_such_file, No_such_file -> true
-    | No_such_file, _ | _, No_such_file -> false
-    | Broken_symlink, Broken_symlink -> true
-    | Broken_symlink, _ | _, Broken_symlink -> false
-    | Cyclic_symlink, Cyclic_symlink -> true
-    | Cyclic_symlink, _ | _, Cyclic_symlink -> false
-    | Unexpected_kind x, Unexpected_kind y -> File_kind.equal x y
-    | Unexpected_kind _, _ | _, Unexpected_kind _ -> false
-    | Unix_error x, Unix_error y ->
-      Tuple.T3.equal Unix_error.equal String.equal String.equal x y
-    | Unix_error _, _ | _, Unix_error _ -> false
-    | Error x, Error y ->
-      (* Falling back to polymorphic equality check seems OK for this rare case.
-         We could also just return [false] but that would break the reflexivity
-         of the equality check, which doesn't seem nice. *)
-      x = y
-  ;;
+    let equal x y =
+      match x, y with
+      | No_such_file, No_such_file -> true
+      | No_such_file, _ | _, No_such_file -> false
+      | Broken_symlink, Broken_symlink -> true
+      | Broken_symlink, _ | _, Broken_symlink -> false
+      | Cyclic_symlink, Cyclic_symlink -> true
+      | Cyclic_symlink, _ | _, Cyclic_symlink -> false
+      | Unexpected_kind x, Unexpected_kind y -> File_kind.equal x y
+      | Unexpected_kind _, _ | _, Unexpected_kind _ -> false
+      | Unix_error x, Unix_error y ->
+        Tuple.T3.equal Unix_error.equal String.equal String.equal x y
+      | Unix_error _, _ | _, Unix_error _ -> false
+      | Unrecognized x, Unrecognized y ->
+        (* Falling back to polymorphic equality check seems OK for this rare case.
+           We could also just return [false] but that would break the reflexivity
+           of the equality check, which doesn't seem nice. *)
+        x = y
+    ;;
 
-  let to_option = function
-    | Ok t -> Some t
-    | No_such_file
-    | Broken_symlink
-    | Cyclic_symlink
-    | Unexpected_kind _
-    | Unix_error _
-    | Error _ -> None
-  ;;
+    let to_dyn =
+      let open Dyn in
+      function
+      | No_such_file -> Variant ("No_such_file", [])
+      | Broken_symlink -> Variant ("Broken_symlink", [])
+      | Cyclic_symlink -> Variant ("Cyclic_symlink", [])
+      | Unexpected_kind kind -> Variant ("Unexpected_kind", [ File_kind.to_dyn kind ])
+      | Unix_error error -> Variant ("Unix_error", [ Unix_error.Detailed.to_dyn error ])
+      | Unrecognized exn -> Variant ("Unrecognized", [ String (Printexc.to_string exn) ])
+    ;;
+  end
 
-  let iter t ~f = Option.iter (to_option t) ~f
+  type t = (Digest.t, Error.t) result
 
-  let to_dyn = function
-    | Ok digest -> Dyn.Variant ("Ok", [ Digest.to_dyn digest ])
-    | No_such_file -> Variant ("No_such_file", [])
-    | Broken_symlink -> Variant ("Broken_symlink", [])
-    | Cyclic_symlink -> Variant ("Cyclic_symlink", [])
-    | Unexpected_kind kind -> Variant ("Unexpected_kind", [ File_kind.to_dyn kind ])
-    | Unix_error error -> Variant ("Unix_error", [ Unix_error.Detailed.to_dyn error ])
-    | Error exn -> Variant ("Error", [ String (Printexc.to_string exn) ])
-  ;;
+  let equal = Result.equal Digest.equal Error.equal
+  let to_option = Result.to_option
+  let iter t ~f = Result.iter t ~f
+  let to_dyn = Result.to_dyn Digest.to_dyn Error.to_dyn
 end
 
 let digest_path_with_stats ~allow_dirs path stats =
   match
     Digest.path_with_stats ~allow_dirs path (Digest.Stats_for_digest.of_unix_stats stats)
   with
-  | Ok digest -> Digest_result.Ok digest
-  | Unexpected_kind -> Unexpected_kind stats.st_kind
-  | Unix_error (ENOENT, _, _) -> No_such_file
-  | Unix_error other_error -> Unix_error other_error
+  | Ok digest -> Ok digest
+  | Unexpected_kind -> Error (Digest_result.Error.Unexpected_kind stats.st_kind)
+  | Unix_error (ENOENT, _, _) -> Error No_such_file
+  | Unix_error other_error -> Error (Unix_error other_error)
 ;;
 
 let refresh ~allow_dirs stats path =
@@ -258,8 +253,8 @@ let catch_fs_errors f =
   match f () with
   | result -> result
   | exception Unix.Unix_error (error, syscall, arg) ->
-    Digest_result.Unix_error (error, syscall, arg)
-  | exception exn -> Error exn
+    Error (Digest_result.Error.Unix_error (error, syscall, arg))
+  | exception exn -> Error (Digest_result.Error.Unrecognized exn)
 ;;
 
 (* Here we make only one [stat] call on the happy path. *)
@@ -267,12 +262,12 @@ let refresh_without_removing_write_permissions ~allow_dirs path =
   catch_fs_errors (fun () ->
     match Path.Untracked.stat_exn path with
     | stats -> refresh stats ~allow_dirs path
-    | exception Unix.Unix_error (ELOOP, _, _) -> Cyclic_symlink
+    | exception Unix.Unix_error (ELOOP, _, _) -> Error Cyclic_symlink
     | exception Unix.Unix_error (ENOENT, _, _) ->
       (* Test if this is a broken symlink for better error messages. *)
       (match Path.Untracked.lstat_exn path with
-       | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
-       | _stats_so_must_be_a_symlink -> Broken_symlink))
+       | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
+       | _stats_so_must_be_a_symlink -> Error Broken_symlink))
 ;;
 
 (* CR-someday amokhov: We do [lstat] followed by [stat] only because we do not
@@ -283,14 +278,14 @@ let refresh_without_removing_write_permissions ~allow_dirs path =
 let refresh_and_remove_write_permissions ~allow_dirs path =
   catch_fs_errors (fun () ->
     match Path.Untracked.lstat_exn path with
-    | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
+    | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
     | stats ->
       (match stats.st_kind with
        | S_LNK ->
          (match Path.Untracked.stat_exn path with
           | stats -> refresh stats ~allow_dirs:false path
-          | exception Unix.Unix_error (ELOOP, _, _) -> Cyclic_symlink
-          | exception Unix.Unix_error (ENOENT, _, _) -> Broken_symlink)
+          | exception Unix.Unix_error (ELOOP, _, _) -> Error Cyclic_symlink
+          | exception Unix.Unix_error (ENOENT, _, _) -> Error Broken_symlink)
        | S_REG ->
          let perm = Path.Permissions.remove Path.Permissions.write stats.st_perm in
          Path.chmod ~mode:perm path;
@@ -316,15 +311,16 @@ let peek_file ~allow_dirs path =
   | Some x ->
     Some
       (if x.stats_checked = cache.checked_key
-       then Digest_result.Ok x.digest
+       then Ok x.digest
        else (
          (* The [stat_exn] below follows symlinks. *)
          match Path.Untracked.stat_exn path with
-         | exception Unix.Unix_error (ELOOP, _, _) -> Cyclic_symlink
-         | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
+         | exception Unix.Unix_error (ELOOP, _, _) ->
+           Error Digest_result.Error.Cyclic_symlink
+         | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
          | exception Unix.Unix_error (error, syscall, arg) ->
-           Unix_error (Unix_error.Detailed.create ~syscall ~arg error)
-         | exception exn -> Error exn
+           Error (Unix_error (Unix_error.Detailed.create ~syscall ~arg error))
+         | exception exn -> Error (Unrecognized exn)
          | stats ->
            let reduced_stats = Reduced_stats.of_unix_stats stats in
            (match Reduced_stats.compare x.stats reduced_stats with

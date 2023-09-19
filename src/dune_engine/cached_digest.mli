@@ -3,14 +3,19 @@
 open Import
 
 module Digest_result : sig
-  type t =
-    | Ok of Digest.t
-    | No_such_file
-    | Broken_symlink
-    | Cyclic_symlink
-    | Unexpected_kind of File_kind.t
-    | Unix_error of Unix_error.Detailed.t (** Can't be [ENOENT]. *)
-    | Error of exn
+  module Error : sig
+    type t =
+      | No_such_file
+      | Broken_symlink
+      | Cyclic_symlink
+      | Unexpected_kind of File_kind.t
+      | Unix_error of Unix_error.Detailed.t (** Can't be [ENOENT]. *)
+      | Unrecognized of exn
+
+    val to_dyn : t -> Dyn.t
+  end
+
+  type t = (Digest.t, Error.t) result
 
   val equal : t -> t -> bool
   val to_option : t -> Digest.t option

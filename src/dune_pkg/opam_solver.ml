@@ -386,12 +386,7 @@ let opam_commands_to_actions package (commands : OpamTypes.command list) =
     | [] -> None)
 ;;
 
-(* returns:
-   [None] if the command list is empty
-   [Some (Action.Run ...)] if there is a single command
-   [Some (Action.Progn [Action.Run ...; ...])] if there are multiple commands *)
-let opam_commands_to_action package (commands : OpamTypes.command list) =
-  match opam_commands_to_actions package commands with
+let make_action = function
   | [] -> None
   | [ action ] -> Some action
   | actions -> Some (Action.Progn actions)
@@ -401,18 +396,31 @@ let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
   let name = OpamPackage.name opam_package in
   let version = OpamPackage.version opam_package |> OpamPackage.Version.to_string in
   let dev = OpamPackage.Name.Map.mem name local_packages in
+  let opam_file =
+    match OpamPackage.Name.Map.find_opt name local_packages with
+    | None -> Opam_repo.load_opam_package repo opam_package
+    | Some local_package -> local_package
+  in
+  let extra_sources =
+    OpamFile.OPAM.extra_sources opam_file
+    |> List.map ~f:(fun (opam_basename, opam_url) ->
+      ( Path.Local.of_string (OpamFilename.Base.to_string opam_basename)
+      , let url = Loc.none, OpamUrl.to_string (OpamFile.URL.url opam_url) in
+        let checksum =
+          match OpamFile.URL.checksum opam_url with
+          | [] -> None
+          (* opam discards the later checksums, so we only take the first one *)
+          | checksum :: _ -> Some (Loc.none, Checksum.of_opam_hash checksum)
+        in
+        Lock_dir.Source.Fetch { Lock_dir.Source.url; checksum } ))
+  in
   let info =
     { Lock_dir.Pkg_info.name = Package_name.of_string (OpamPackage.Name.to_string name)
     ; version
     ; dev
     ; source = None
-    ; extra_sources = []
+    ; extra_sources
     }
-  in
-  let opam_file =
-    match OpamPackage.Name.Map.find_opt name local_packages with
-    | None -> Opam_repo.load_opam_package repo opam_package
-    | Some local_package -> local_package
   in
   (* This will collect all the atoms from the package's dependency formula regardless of conditions *)
   let deps =
@@ -424,10 +432,34 @@ let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
       Loc.none, Package_name.of_string (OpamPackage.Name.to_string name))
   in
   let build_command =
-    opam_commands_to_action opam_package (OpamFile.OPAM.build opam_file)
+    let subst_step =
+      OpamFile.OPAM.substs opam_file
+      |> List.map ~f:(fun x ->
+        let x = OpamFilename.Base.to_string x in
+        let input = String_with_vars.make_text Loc.none (x ^ ".in") in
+        let output = String_with_vars.make_text Loc.none x in
+        Action.Substitute (input, output))
+    in
+    let patch_step =
+      OpamFile.OPAM.patches opam_file
+      |> List.map ~f:(fun (basename, filter) ->
+        let action =
+          Action.Patch
+            (String_with_vars.make_text Loc.none (OpamFilename.Base.to_string basename))
+        in
+        match filter with
+        | None -> action
+        | Some filter -> Action.When (filter_to_blang opam_package filter, action))
+    in
+    let build_step =
+      opam_commands_to_actions opam_package (OpamFile.OPAM.build opam_file)
+    in
+    List.concat [ subst_step; patch_step; build_step ] |> make_action
   in
   let install_command =
-    opam_commands_to_action opam_package (OpamFile.OPAM.install opam_file)
+    OpamFile.OPAM.install opam_file
+    |> opam_commands_to_actions opam_package
+    |> make_action
   in
   { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env = [] }
 ;;
@@ -454,6 +486,43 @@ let solve_package_list local_packages context =
   | Error e -> Error (`Diagnostic_message (Solver.diagnostics e |> Pp.text))
   | Ok packages -> Ok (Solver.packages_of_result packages)
 ;;
+
+(* Scan a path recursively down retrieving a list of all files together with their
+   relative path. *)
+let scan_files_entries ~repo_id path =
+  (* TODO Add some cycle detection *)
+  let rec read acc dir =
+    let path = Path.append_local path dir in
+    match Path.readdir_unsorted_with_kinds path with
+    | Ok entries ->
+      List.fold_left entries ~init:acc ~f:(fun acc (filename, kind) ->
+        let local_path = Path.Local.relative dir filename in
+        match (kind : Unix.file_kind) with
+        | S_REG -> local_path :: acc
+        | S_DIR -> read acc local_path
+        | _ ->
+          (* TODO should be an error *)
+          acc)
+    | Error (Unix.ENOENT, _, _) -> acc
+    | Error err ->
+      User_error.raise
+        ?loc:(Option.map ~f:fst repo_id)
+        [ Pp.text "Unable to read file in opam repository:"; Unix_error.Detailed.pp err ]
+  in
+  read [] Path.Local.root
+  |> List.map ~f:(fun local_file ->
+    { Lock_dir.Write_disk.Files_entry.original_file = Path.append_local path local_file
+    ; local_file
+    })
+;;
+
+module Solver_result = struct
+  type t =
+    { summary : Summary.t
+    ; lock_dir : Lock_dir.t
+    ; files : Lock_dir.Write_disk.Files_entry.t Package_name.Map.Multi.t
+    }
+end
 
 let solve_lock_dir solver_env version_preference (repo, repo_id) ~local_packages =
   let is_local_package package =
@@ -482,5 +551,14 @@ let solve_lock_dir solver_env version_preference (repo, repo_id) ~local_packages
       | Ok pkgs_by_name ->
         Lock_dir.create_latest_version pkgs_by_name ~ocaml:None ~repo_id
     in
-    summary, lock_dir)
+    let files =
+      Package_name.Map.of_list_map_exn opam_packages_to_lock ~f:(fun opam_package ->
+        let files_path = Opam_repo.get_opam_package_files_path repo opam_package in
+        ( Package_name.of_string
+            (OpamPackage.Name.to_string (OpamPackage.name opam_package))
+        , scan_files_entries ~repo_id files_path ))
+      |> Package_name.Map.filter_map ~f:(fun files ->
+        if List.is_empty files then None else Some files)
+    in
+    { Solver_result.summary; lock_dir; files })
 ;;

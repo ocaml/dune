@@ -1,11 +1,6 @@
   $ . ./helpers.sh
-
-Generate a mock opam repository including some test dependencies:
-  $ mkdir -p mock-opam-repository
-  $ cat >mock-opam-repository/repo <<EOF
-  > opam-version: "2.0"
-  > EOF
-
+  $ mkrepo
+ 
 A package with different linux and macos dependencies including a test-only
 dependency:
   $ mkpkg foo <<EOF

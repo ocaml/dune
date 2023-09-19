@@ -263,6 +263,32 @@ module Produced = struct
     ;;
   end
 
+  (* Dummy digest because we want to continue discoverign all the errors
+     and we need some value to return in [mapi]. It will never be returned *)
+  let dummy_digest = Digest.generic ""
+
+  let collect_digests
+    { files; dirs }
+    ~(f : Path.Build.t -> 'a -> Cached_digest.Digest_result.t)
+    =
+    let errors = ref [] in
+    let f path a =
+      match f path a with
+      | Ok s -> s
+      | Error e ->
+        errors := (path, e) :: !errors;
+        dummy_digest
+    in
+    let files = Path.Build.Map.mapi files ~f in
+    let dirs =
+      Path.Build.Map.mapi dirs ~f:(fun dir ->
+        Filename.Map.mapi ~f:(fun filename -> f (Path.Build.relative dir filename)))
+    in
+    match Nonempty_list.of_list !errors with
+    | None -> Ok { files; dirs }
+    | Some list -> Error list
+  ;;
+
   let to_dyn { files; dirs } =
     Dyn.record
       [ "files", Path.Build.Map.to_dyn Dyn.opaque files

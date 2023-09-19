@@ -1,4 +1,5 @@
   $ . ./helpers.sh
+  $ mkrepo
 
 Set up two build contexts: a default one for all systems and another just for macos.
   $ cat >dune-workspace <<EOF
@@ -19,12 +20,6 @@ Helper shell function to generate a dune-project file and generate lockdir for b
   >   dune pkg lock --opam-repository-path=mock-opam-repository --context=default
   >   dune pkg lock --opam-repository-path=mock-opam-repository --context=macos
   > }
-
-Generate a mock opam repository including some test dependencies:
-  $ mkdir -p mock-opam-repository
-  $ cat >mock-opam-repository/repo <<EOF
-  > opam-version: "2.0"
-  > EOF
 
 A package which is only available on linux:
   $ mkpkg linux-only 0.0.1 <<EOF

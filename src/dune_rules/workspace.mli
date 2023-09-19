@@ -39,8 +39,7 @@ module Context : sig
       { base : Common.t
           (** Either a switch name or a path to a local switch. This argument
               is left opaque as we leave to opam to interpret it. *)
-      ; switch : string
-      ; root : string option
+      ; switch : Opam_switch.t
       }
   end
 

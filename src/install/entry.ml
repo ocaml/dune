@@ -271,7 +271,7 @@ let gen_install_file entries =
   Buffer.contents buf
 ;;
 
-let load_install_file path =
+let load_install_file path local =
   let open OpamParserTypes.FullPos in
   let file = Io.with_lexbuf_from_file path ~f:Dune_pkg.Opam_file.parse in
   let fail { filename = pos_fname; start; stop } msg =
@@ -296,7 +296,11 @@ let load_install_file path =
                 | None -> false, src
                 | Some src -> true, src
               in
-              let src = Path.of_string src in
+              let src =
+                if Filename.is_relative src
+                then local (Path.Local.of_string src)
+                else Path.external_ (Path.External.of_string src)
+              in
               of_install_file ~optional ~src ~dst ~section
             in
             List.map l.pelem ~f:(function

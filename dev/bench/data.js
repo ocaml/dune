@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695151049944,
+  "lastUpdate": 1695151483375,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30796,6 +30796,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.25452905794666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bbd4d371f3b3501c63dc7b7ca9f3d6f320ac94b3",
+          "message": "test(pkg): translation of build-doc and build-test of opam to lockfile (#8687)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-19T20:03:46+01:00",
+          "tree_id": "b155d11481d3100931f2ed3bf84998235b95deb4",
+          "url": "https://github.com/ocaml/dune/commit/bbd4d371f3b3501c63dc7b7ca9f3d6f320ac94b3"
+        },
+        "date": 1695151481317,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.16797701954",
             "unit": "seconds"
           }
         ]

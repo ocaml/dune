@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695106568363,
+  "lastUpdate": 1695106701540,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30535,6 +30535,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.727315194439996",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "79ad7ccfdd0263b525c220d52d62ec38dcd8c22f",
+          "message": "test(pkg): modify test to use switch instead (#8692)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-19T07:37:54+01:00",
+          "tree_id": "e114f75d321a6923a412a9bbd8335501a7d4c1ae",
+          "url": "https://github.com/ocaml/dune/commit/79ad7ccfdd0263b525c220d52d62ec38dcd8c22f"
+        },
+        "date": 1695106700617,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.00905446928001",
             "unit": "seconds"
           }
         ]

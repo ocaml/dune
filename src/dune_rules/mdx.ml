@@ -478,10 +478,10 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
       cctx
       ~program:{ name; main_module_name; loc }
       ~link_args:(Action_builder.return (Command.Args.A "-linkall"))
-      ~linkages:[ Exe.Linkage.byte ]
+      ~linkages:[ Exe.Linkage.custom (Compilation_context.context cctx) ]
       ~promote:None
   in
-  Path.Build.relative dir (name ^ ".bc")
+  Path.Build.relative dir (name ^ ".exe")
 ;;
 
 (** Generates the rules for a given mdx stanza *)

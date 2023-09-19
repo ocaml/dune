@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695134220334,
+  "lastUpdate": 1695134239876,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30709,6 +30709,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.92188019462667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd1120ec4be6c73977341a53481655c4b7aeecb6",
+          "message": "fix(bench): set correct account names for docker (#8628)\n\n* fix(bench): set correct account names for docker\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\n\r\n* specify dockerfile directly\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\n\r\n---------\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-09-19T16:17:04+02:00",
+          "tree_id": "65390fd88ed539d3c391b28bdc80beb64a5925df",
+          "url": "https://github.com/ocaml/dune/commit/bd1120ec4be6c73977341a53481655c4b7aeecb6"
+        },
+        "date": 1695134238367,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.73412103746",
             "unit": "seconds"
           }
         ]

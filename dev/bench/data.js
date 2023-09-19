@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695122267590,
+  "lastUpdate": 1695122473119,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30680,6 +30680,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.09660384718667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0bc934511f747a081824b755c7283eedf0c90e91",
+          "message": "feature(pkg): add filtering to opam patches field transtion (#8685)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-19T11:59:48+01:00",
+          "tree_id": "ba9eb17e4504d1fa23a37dbb372a8b26970e764f",
+          "url": "https://github.com/ocaml/dune/commit/0bc934511f747a081824b755c7283eedf0c90e91"
+        },
+        "date": 1695122470670,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.92188019462667",
             "unit": "seconds"
           }
         ]

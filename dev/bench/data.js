@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695122036297,
+  "lastUpdate": 1695122112895,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30622,6 +30622,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.27958959258",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4299604a9f117e33e988ae7a4668c54dd5183700",
+          "message": "test(pkg): remove printenv (#8700)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-19T11:53:58+01:00",
+          "tree_id": "adc9a9c5e9a0501fba263bf25fda97b2476bf8cf",
+          "url": "https://github.com/ocaml/dune/commit/4299604a9f117e33e988ae7a4668c54dd5183700"
+        },
+        "date": 1695122111886,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.9466401891",
             "unit": "seconds"
           }
         ]

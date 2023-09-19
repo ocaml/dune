@@ -12,6 +12,15 @@ order to keep the project in a good state and pleasant to work on for everybody.
    :local:
    :backlinks: none
 
+Dependencies
+============
+
+To create a directory-local opam switch with the dependencies necessary to build the tests, run:
+
+.. code:: sh
+
+   make dev-switch
+
 Bootstrapping
 =============
 

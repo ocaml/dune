@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695122494022,
+  "lastUpdate": 1695122500019,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -77080,6 +77080,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.032436456673333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f862983d2753265fda2df7ca148bff9dba542758",
+          "message": "test(pkg): translation of setenv field of opam file into lock file (#8697)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-19T11:55:47+01:00",
+          "tree_id": "bfebd94a0044c3c12c416d4b09cd7daf35973a27",
+          "url": "https://github.com/ocaml/dune/commit/f862983d2753265fda2df7ca148bff9dba542758"
+        },
+        "date": 1695122498082,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.80703389362",
             "unit": "seconds"
           }
         ]

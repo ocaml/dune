@@ -2,17 +2,6 @@ open Import
 open Memo.O
 open Dune_pkg
 
-(* TODO
-   - post dependencies
-   - build dependencies
-   - cross compilation
-   - filters
-   - stage forms: with-test, with-doc, with-dev-setup
-   - full support for dune actions
-   - initialize context using packages in lock file
-   - sandboxing
-*)
-
 module Sys_vars = struct
   type t =
     { os_version : string option Memo.Lazy.t

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695122255060,
+  "lastUpdate": 1695122267590,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -76935,6 +76935,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "69.02555267513334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c045fa625a7f9adc37088e19efa3cf35169bbd19",
+          "message": "feature: dune build @doc-json (#8178)\n\n* feature: dune build @doc-json\r\n\r\nThe `odoc` tool supports a `--as-json` flag. When used in `odoc\r\nhtml-generate`, it will output `.html.json` files instead of `.html`\r\nfiles.\r\n\r\nThese files contain HTML fragments that can be used by external tools to\r\ngenerate HTML documents using a different pipeline.\r\n\r\nThis is exposed in Dune by defining a new `@doc-json` alias that works\r\nlike `@doc` (it builds the documentation for public packages) but emits\r\nJSON files.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-09-19T12:51:31+02:00",
+          "tree_id": "1c99966e73913e0c06403b52a57fa3ce8ebda721",
+          "url": "https://github.com/ocaml/dune/commit/c045fa625a7f9adc37088e19efa3cf35169bbd19"
+        },
+        "date": 1695122266546,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.9232144151333335",
             "unit": "seconds"
           }
         ]

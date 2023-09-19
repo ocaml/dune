@@ -5,11 +5,11 @@ file.
   $ mkrepo
 
 Make a package with a build-env field
-  $ mkpkg with-build-env <<EOF
+  $ mkpkg with-build-env <<'EOF'
   > opam-version: "2.0"
   > build-env: [ [ MY_ENV_VAR = "Hello from env var!" ] ]
-  > build: ["printenv" "MY_ENV_VAR"]
-  > install: ["printenv" "MY_ENV_VAR"]
+  > build: ["sh" "-c" "echo $MY_ENV_VAR"]
+  > install: ["sh" "-c" "echo $MY_ENV_VAR"]
   > EOF
 
   $ mkdir -p $mock_packages/with-build-env/with-build-env.0.0.1/
@@ -30,10 +30,10 @@ The lockfile should contain a setenv action.
   (version 0.0.1)
   
   (install
-   (run printenv MY_ENV_VAR))
+   (run sh -c "echo $MY_ENV_VAR"))
   
   (build
-   (run printenv MY_ENV_VAR))
+   (run sh -c "echo $MY_ENV_VAR"))
 
   $ mkdir source
   $ cat > source/foo.ml <<EOF
@@ -42,7 +42,6 @@ The lockfile should contain a setenv action.
 
 printenv should print the value given in the build-env field.
 
-  $ build_pkg with-build-env 
-  Command exited with code 1.
-  -> required by _build/_private/default/.pkg/with-build-env/target
-  [1]
+  $ MY_ENV_VAR="invisible" build_pkg with-build-env 
+  invisible
+  invisible

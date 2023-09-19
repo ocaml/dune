@@ -386,12 +386,7 @@ let opam_commands_to_actions package (commands : OpamTypes.command list) =
     | [] -> None)
 ;;
 
-(* returns:
-   [None] if the command list is empty
-   [Some (Action.Run ...)] if there is a single command
-   [Some (Action.Progn [Action.Run ...; ...])] if there are multiple commands *)
-let opam_commands_to_action package (commands : OpamTypes.command list) =
-  match opam_commands_to_actions package commands with
+let make_action = function
   | [] -> None
   | [ action ] -> Some action
   | actions -> Some (Action.Progn actions)
@@ -401,18 +396,31 @@ let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
   let name = OpamPackage.name opam_package in
   let version = OpamPackage.version opam_package |> OpamPackage.Version.to_string in
   let dev = OpamPackage.Name.Map.mem name local_packages in
+  let opam_file =
+    match OpamPackage.Name.Map.find_opt name local_packages with
+    | None -> Opam_repo.load_opam_package repo opam_package
+    | Some local_package -> local_package
+  in
+  let extra_sources =
+    OpamFile.OPAM.extra_sources opam_file
+    |> List.map ~f:(fun (opam_basename, opam_url) ->
+      ( Path.Local.of_string (OpamFilename.Base.to_string opam_basename)
+      , let url = Loc.none, OpamUrl.to_string (OpamFile.URL.url opam_url) in
+        let checksum =
+          match OpamFile.URL.checksum opam_url with
+          | [] -> None
+          (* opam discards the later checksums, so we only take the first one *)
+          | checksum :: _ -> Some (Loc.none, Checksum.of_opam_hash checksum)
+        in
+        Lock_dir.Source.Fetch { Lock_dir.Source.url; checksum } ))
+  in
   let info =
     { Lock_dir.Pkg_info.name = Package_name.of_string (OpamPackage.Name.to_string name)
     ; version
     ; dev
     ; source = None
-    ; extra_sources = []
+    ; extra_sources
     }
-  in
-  let opam_file =
-    match OpamPackage.Name.Map.find_opt name local_packages with
-    | None -> Opam_repo.load_opam_package repo opam_package
-    | Some local_package -> local_package
   in
   (* This will collect all the atoms from the package's dependency formula regardless of conditions *)
   let deps =
@@ -424,27 +432,34 @@ let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
       Loc.none, Package_name.of_string (OpamPackage.Name.to_string name))
   in
   let build_command =
-    let patch_step =
-      (* CR-someday alizter: Patches don't take into account filters that are present. For
-         now we take them all. *)
-      match
-        OpamFile.OPAM.patches opam_file
-        |> List.map ~f:(fun (x, _) ->
-          Action.Patch
-            (String_with_vars.make_text Loc.none (OpamFilename.Base.to_string x)))
-      with
-      | [] -> None
-      | [ x ] -> Some x
-      | xs -> Some (Action.Progn xs)
+    let subst_step =
+      OpamFile.OPAM.substs opam_file
+      |> List.map ~f:(fun x ->
+        let x = OpamFilename.Base.to_string x in
+        let input = String_with_vars.make_text Loc.none (x ^ ".in") in
+        let output = String_with_vars.make_text Loc.none x in
+        Action.Substitute (input, output))
     in
-    opam_commands_to_action opam_package (OpamFile.OPAM.build opam_file)
-    |> Option.map ~f:(fun action ->
-      match patch_step with
-      | None -> action
-      | Some patch_step -> Action.Progn [ patch_step; action ])
+    let patch_step =
+      OpamFile.OPAM.patches opam_file
+      |> List.map ~f:(fun (basename, filter) ->
+        let action =
+          Action.Patch
+            (String_with_vars.make_text Loc.none (OpamFilename.Base.to_string basename))
+        in
+        match filter with
+        | None -> action
+        | Some filter -> Action.When (filter_to_blang opam_package filter, action))
+    in
+    let build_step =
+      opam_commands_to_actions opam_package (OpamFile.OPAM.build opam_file)
+    in
+    List.concat [ subst_step; patch_step; build_step ] |> make_action
   in
   let install_command =
-    opam_commands_to_action opam_package (OpamFile.OPAM.install opam_file)
+    OpamFile.OPAM.install opam_file
+    |> opam_commands_to_actions opam_package
+    |> make_action
   in
   { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env = [] }
 ;;

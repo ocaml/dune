@@ -1,11 +1,8 @@
+This test checks that the patches field of an opam file is correctly translated into the
+appropriate build step.
+
   $ . ./helpers.sh
-
-Generate a mock opam repository
-  $ mkdir -p mock-opam-repository
-  $ cat >mock-opam-repository/repo <<EOF
-  > opam-version: "2.0"
-  > EOF
-
+  $ mkrepo
 
 Make a package with a patch
   $ mkpkg with-patch <<EOF
@@ -15,8 +12,8 @@ Make a package with a patch
   > EOF
 
 
-  $ mkdir -p mock-opam-repository/packages/with-patch/with-patch.0.0.1/files
-  $ cat >mock-opam-repository/packages/with-patch/with-patch.0.0.1/files/foo.patch <<EOF
+  $ mkdir -p $mock_packages/with-patch/with-patch.0.0.1/files
+  $ cat >$mock_packages/with-patch/with-patch.0.0.1/files/foo.patch <<EOF
   > diff --git a/foo.ml b/foo.ml
   > index b69a69a5a..ea988f6bd 100644
   > --- a/foo.ml

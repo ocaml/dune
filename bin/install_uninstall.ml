@@ -654,13 +654,17 @@ let install_uninstall ~what =
         |> CMap.to_list_map ~f:(fun context install_files ->
           let entries_per_package =
             List.map install_files ~f:(fun (package, install_file) ->
-              let entries = Install.Entry.load_install_file install_file in
+              let entries =
+                Install.Entry.load_install_file install_file (fun local ->
+                  Path.append_local (Path.source Path.Source.root) local)
+              in
               let entries =
                 List.filter entries ~f:(fun (entry : Path.t Install.Entry.t) ->
                   Sections.should_install sections entry.section)
               in
               match
                 List.filter_map entries ~f:(fun entry ->
+                  (* CR rgrinberg: this is ignoring optional entries *)
                   Option.some_if (not (Path.exists entry.src)) entry.src)
               with
               | [] -> package, entries
@@ -725,6 +729,7 @@ let install_uninstall ~what =
             Fiber.sequential_iter entries_per_package ~f:(fun (package, entries) ->
               let paths = Install.Paths.make ~package ~roots in
               let+ entries =
+                (* CR rgrinberg: why don't we install things concurrently? *)
                 Fiber.sequential_map entries ~f:(fun entry ->
                   let special_file = Special_file.of_entry entry in
                   let dst =

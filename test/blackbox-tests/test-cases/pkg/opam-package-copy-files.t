@@ -2,13 +2,7 @@ This test checks that the files in the files/ directory inside a package in an o
 repository are copied correctly to the dune.lock file.
 
   $ . ./helpers.sh
-
-Generate a mock opam repository
-  $ mkdir -p mock-opam-repository
-  $ cat >mock-opam-repository/repo <<EOF
-  > opam-version: "2.0"
-  > EOF
-
+  $ mkrepo
 
 Make a package with a patch
   $ mkpkg with-patch <<EOF
@@ -17,7 +11,7 @@ Make a package with a patch
 
   $ fname1="foo.patch"
   $ fname2="dir/bar.patch"
-  $ opam_repo="mock-opam-repository/packages/with-patch/with-patch.0.0.1"
+  $ opam_repo="$mock_packages/with-patch/with-patch.0.0.1"
   $ mkdir -p $opam_repo/files/dir
   $ cat >$opam_repo/files/$fname1 <<EOF
   > foo

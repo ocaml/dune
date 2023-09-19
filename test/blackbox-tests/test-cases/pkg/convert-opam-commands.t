@@ -1,10 +1,5 @@
   $ . ./helpers.sh
-
-Generate a mock opam repository
-  $ mkdir -p mock-opam-repository
-  $ cat >mock-opam-repository/repo <<EOF
-  > opam-version: "2.0"
-  > EOF
+  $ mkrepo
 
   $ mkpkg standard-dune <<EOF
   > opam-version: "2.0"

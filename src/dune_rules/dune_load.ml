@@ -130,10 +130,21 @@ module Script = struct
     ; project : Dune_project.t
     }
 
+  let script_equal t { dir; file; project } =
+    Path.Source.equal t.dir dir
+    && Path.Source.equal t.file file
+    && Dune_project.equal t.project project
+  ;;
+
   type t =
     { script : script
     ; from_parent : Dune_lang.Ast.t list
     }
+
+  let equal t { script; from_parent } =
+    script_equal t.script script
+    && List.equal Dune_lang.Ast.equal t.from_parent from_parent
+  ;;
 
   let generated_dune_files_dir = Path.Build.relative Path.Build.root ".dune"
 
@@ -193,7 +204,7 @@ module Script = struct
     let module Input = struct
       type nonrec t = Context.t * t
 
-      let equal = Tuple.T2.equal Context.equal phys_equal
+      let equal = Tuple.T2.equal Context.equal equal
       let hash = Tuple.T2.hash Context.hash Poly.hash
       let to_dyn = Dyn.opaque
     end

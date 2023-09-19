@@ -19,6 +19,7 @@ module Json : sig
     | `List of t list
     | `Bool of bool
     | `Assoc of (string * t) list
+    | `Null
     ]
 end
 

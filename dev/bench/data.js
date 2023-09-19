@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695159003736,
+  "lastUpdate": 1695159477752,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30825,6 +30825,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.16797701954",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b471b8a5a091d28d5dd93dcff1745e6a1a0e4330",
+          "message": "feature(pkg): translate build-env from opam file into lock dir (#8701)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-19T22:15:39+01:00",
+          "tree_id": "02c9c1c06b850c391ffde08a973f1e666f38096d",
+          "url": "https://github.com/ocaml/dune/commit/b471b8a5a091d28d5dd93dcff1745e6a1a0e4330"
+        },
+        "date": 1695159476612,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "44.607437353853335",
             "unit": "seconds"
           }
         ]

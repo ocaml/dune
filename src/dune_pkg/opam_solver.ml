@@ -386,6 +386,22 @@ let opam_commands_to_actions package (commands : OpamTypes.command list) =
     | [] -> None)
 ;;
 
+let opam_env_update_to_env_update ((var, env_op, value_string, _) : OpamTypes.env_update)
+  : String_with_vars.t Action.Env_update.t
+  =
+  { Action.Env_update.op =
+      (match (env_op : OpamParserTypes.env_update_op) with
+       | Eq -> Eq
+       | PlusEq -> PlusEq
+       | EqPlus -> EqPlus
+       | ColonEq -> ColonEq
+       | EqColon -> EqColon
+       | EqPlusEq -> EqPlusEq)
+  ; var
+  ; value = String_with_vars.make_text Loc.none value_string
+  }
+;;
+
 let make_action = function
   | [] -> None
   | [ action ] -> Some action
@@ -431,6 +447,14 @@ let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
     |> List.map ~f:(fun name ->
       Loc.none, Package_name.of_string (OpamPackage.Name.to_string name))
   in
+  let build_env action =
+    let env_update =
+      OpamFile.OPAM.build_env opam_file |> List.map ~f:opam_env_update_to_env_update
+    in
+    match env_update with
+    | [] -> action
+    | env_update -> Action.Withenv (env_update, action)
+  in
   let build_command =
     let subst_step =
       OpamFile.OPAM.substs opam_file
@@ -454,12 +478,15 @@ let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
     let build_step =
       opam_commands_to_actions opam_package (OpamFile.OPAM.build opam_file)
     in
-    List.concat [ subst_step; patch_step; build_step ] |> make_action
+    List.concat [ subst_step; patch_step; build_step ]
+    |> make_action
+    |> Option.map ~f:build_env
   in
   let install_command =
     OpamFile.OPAM.install opam_file
     |> opam_commands_to_actions opam_package
     |> make_action
+    |> Option.map ~f:build_env
   in
   { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env = [] }
 ;;

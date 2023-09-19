@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695107354414,
+  "lastUpdate": 1695107365640,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -76790,6 +76790,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "68.30318525990002",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e28d5091f9a0bbb851125162eb5c53e1560fc517",
+          "message": "test(pkg): opam package with install but no build step (#8693)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-19T07:42:48+01:00",
+          "tree_id": "b8d11fcc740b71dcb9694c488bda7887eaf2c81d",
+          "url": "https://github.com/ocaml/dune/commit/e28d5091f9a0bbb851125162eb5c53e1560fc517"
+        },
+        "date": 1695107364709,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.7035365005466667",
             "unit": "seconds"
           }
         ]

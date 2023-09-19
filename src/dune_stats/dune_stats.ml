@@ -68,6 +68,7 @@ module Json = struct
       Buffer.add_char buf '{';
       object_body_to_buf o buf;
       Buffer.add_char buf '}'
+    | `Null -> Buffer.add_string buf "null"
 
   and array_body_to_buf t buf =
     match t with

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695239097488,
+  "lastUpdate": 1695239108908,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -77747,6 +77747,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "66.88229036416668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "96c497e1d016fa992752f8611c65abb37c021735",
+          "message": "feature(pkg): initialize context with packages (#8689)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-20T20:19:17+01:00",
+          "tree_id": "42ed4be21da4c63491413e3e4527896965cd25ca",
+          "url": "https://github.com/ocaml/dune/commit/96c497e1d016fa992752f8611c65abb37c021735"
+        },
+        "date": 1695239108124,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.7966450128666667",
             "unit": "seconds"
           }
         ]

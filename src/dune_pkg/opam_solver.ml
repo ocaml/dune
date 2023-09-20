@@ -249,7 +249,11 @@ let filter_to_blang package filter =
     let variable_string = OpamVariable.to_string variable in
     match packages with
     | [] ->
-      let pform = Package_variable.pform_of_opam_ident variable_string in
+      let pform =
+        Package_variable.pform_of_opam_ident
+          ~package_name:(OpamPackage.to_string package)
+          variable_string
+      in
       Blang.Expr (String_with_vars.make_pform Loc.none pform)
     | packages ->
       let blangs =
@@ -350,7 +354,10 @@ let opam_commands_to_actions package (commands : OpamTypes.command list) =
              when String.is_prefix ~prefix:"%{" interp
                   && String.is_suffix ~suffix:"}%" interp ->
              let ident = String.sub ~pos:2 ~len:(String.length interp - 4) interp in
-             `Pform (Package_variable.pform_of_opam_ident ident)
+             `Pform
+               (Package_variable.pform_of_opam_ident
+                  ~package_name:(OpamPackage.to_string package)
+                  ident)
            | other ->
              User_error.raise
                [ Pp.textf
@@ -372,7 +379,9 @@ let opam_commands_to_actions package (commands : OpamTypes.command list) =
         | CIdent ident ->
           String_with_vars.make_pform
             Loc.none
-            (Package_variable.pform_of_opam_ident ident))
+            (Package_variable.pform_of_opam_ident
+               ~package_name:(OpamPackage.to_string package)
+               ident))
     in
     match terms with
     | program :: args ->

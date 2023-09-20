@@ -450,7 +450,6 @@ module Action_expander = struct
       | Doc -> Doc
       | Stublibs -> Stublibs
       | Man -> Man
-      | Misc -> Misc
     ;;
 
     let section_dir_of_root
@@ -468,7 +467,6 @@ module Action_expander = struct
       | Man -> roots.man
       | Toplevel -> Path.relative roots.lib_root "toplevel"
       | Stublibs -> Path.relative roots.lib_root "stublibs"
-      | Misc -> assert false
     ;;
 
     let sys_poll_var accessor =

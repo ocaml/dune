@@ -63,20 +63,34 @@ let to_macro_invocation { name; scope } =
 
 let to_pform t = Pform.Macro (to_macro_invocation t)
 
-let of_opam_ident ident =
-  match String.lsplit2 ident ~on:':' with
-  | Some ("_", variable) -> `Package_variable (self_scoped (Name.of_string variable))
-  | Some (package, variable) ->
+let package_variable package variable =
+  match package, variable with
+  | _, ("root" | "hash" | "build-id" | "misc" | "opam-version") ->
+    `Unsupported_variable variable
+  | "_", variable -> `Package_variable (self_scoped (Name.of_string variable))
+  | package, variable ->
     `Package_variable
       (package_scoped (Name.of_string variable) (Package_name.of_string package))
+;;
+
+let of_opam_ident ident =
+  match String.lsplit2 ident ~on:':' with
+  | Some (package, variable) -> package_variable package variable
   | None ->
     (match Pform.Var.of_opam_global_variable_name ident with
      | Some var -> `Global_variable var
-     | None -> `Package_variable (self_scoped (Name.of_string ident)))
+     | None -> package_variable "_" ident)
 ;;
 
-let pform_of_opam_ident ident =
+let pform_of_opam_ident ~package_name ident =
   match of_opam_ident ident with
   | `Package_variable t -> to_pform t
   | `Global_variable var -> Pform.Var var
+  | `Unsupported_variable name ->
+    User_error.raise
+      [ Pp.textf
+          "Variable %S occuring in opam package %S is not supported."
+          name
+          package_name
+      ]
 ;;

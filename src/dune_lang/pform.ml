@@ -16,7 +16,6 @@ module Var = struct
         | Doc
         | Stublibs
         | Man
-        | Misc
 
       let all =
         [ Lib, "lib"
@@ -29,7 +28,6 @@ module Var = struct
         ; Doc, "doc"
         ; Stublibs, "stublibs"
         ; Man, "man"
-        ; Misc, "misc"
         ]
       ;;
 

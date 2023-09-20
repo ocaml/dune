@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695159881932,
+  "lastUpdate": 1695218288455,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -100049,6 +100049,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.534013769920005",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "riku@tarides.com",
+            "name": "Riku Silvola",
+            "username": "rikusilvola"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89fb85e9a43ba9f2964f5ac61a2906e2be175f0d",
+          "message": "fixed wrapped_executables doc description format (#8710)\n\nIndentation grouped first line with versionadded\r\n\r\nSigned-off-by: Riku Silvola <riku@tarides.com>\r\nCo-authored-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-09-20T15:41:10+02:00",
+          "tree_id": "167a5923260a000c90ca50d6c4281c7c361ab3e0",
+          "url": "https://github.com/ocaml/dune/commit/89fb85e9a43ba9f2964f5ac61a2906e2be175f0d"
+        },
+        "date": 1695218271091,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "29.328735308213336",
             "unit": "seconds"
           }
         ]

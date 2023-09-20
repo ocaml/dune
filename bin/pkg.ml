@@ -206,6 +206,7 @@ module Lock = struct
     ~context_name
     ~solver_env_from_context
     ~sys_bindings_from_current_system
+    ~use_env_from_current_system
     =
     let sys =
       match
@@ -218,14 +219,21 @@ module Lock = struct
       | Error
           (`Var_in_both_with_different_values
             (var, value_from_context, value_from_system)) ->
+        let hints =
+          if use_env_from_current_system
+          then
+            [ Pp.text
+                "This can happen if --use-env-from-current-system is passed and the \
+                 build context specifies environment variables which differ from those \
+                 of the current system."
+            ]
+          else []
+        in
         User_error.raise
+          ~hints
           [ Pp.textf
               "Can't create solver environment for context %s"
               (String.maybe_quoted @@ Dune_engine.Context_name.to_string context_name)
-          ; Pp.text
-              "This can happen if --use-env-from-current-system is passed and the build \
-               context specifies environment variables which differ from those of the \
-               current system."
           ; Pp.textf
               "Conflicting values for system environment variable: %s"
               (String.maybe_quoted @@ Dune_pkg.Solver_env.Variable.Sys.to_string var)
@@ -325,6 +333,7 @@ module Lock = struct
               ~context_name
               ~solver_env_from_context
               ~sys_bindings_from_current_system
+              ~use_env_from_current_system
           in
           Console.print
             [ Pp.textf
@@ -382,6 +391,7 @@ module Lock = struct
                ~context_name
                ~solver_env_from_context
                ~sys_bindings_from_current_system
+               ~use_env_from_current_system
            in
            match
              Dune_pkg.Opam_solver.solve_lock_dir

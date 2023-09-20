@@ -332,8 +332,8 @@ Documentation
 
 User documentation lives in the ``./doc`` directory.
 
-In order to build the user documentation, you must install python-sphinx_ and
-sphinx_rtd_theme_.
+In order to build the user documentation, you must install python-sphinx_,
+sphinx_rtd_theme_ and sphinx-copybutton_.
 
 Build the documentation with
 
@@ -341,7 +341,7 @@ Build the documentation with
 
    $ make doc
 
-For automatically updated builds, you can install sphinx-autobuild, and run
+For automatically updated builds, you can install sphinx-autobuild_, and run
 
 .. code:: sh
 
@@ -350,6 +350,7 @@ For automatically updated builds, you can install sphinx-autobuild, and run
 .. _python-sphinx: http://www.sphinx-doc.org/en/master/usage/installation.html
 .. _sphinx_rtd_theme: https://sphinx-rtd-theme.readthedocs.io/en/stable/
 .. _sphinx-autobuild: https://pypi.org/project/sphinx-autobuild/
+.. _sphinx-copybutton: https://sphinx-copybutton.readthedocs.io/en/latest/index.html
 .. _dune-release: https://github.com/ocamllabs/dune-release
 
 Nix users may drop into a development shell with the necessary dependencies for

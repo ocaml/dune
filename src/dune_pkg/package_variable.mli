@@ -30,10 +30,16 @@ val of_macro_invocation
 
 val to_pform : t -> Pform.t
 
-(** Parse an opam variable name. Identifiers beginning with "<package>:" are
-    treated as package-scoped variables unless <package> is "_" in which case
-    they are treated as self-scoped. Identifiers without the "<package>:"
-    prefix are treated as self-scoped unless they are the name of an opam
-    global variable. Global variables are encoded as pform variables while all
-    other variables are encoded as pform macros with the [Macro.Pkg] macro. *)
-val pform_of_opam_ident : string -> Pform.t
+(** Parse an opam variable name.
+
+    Identifiers beginning with "<package>:" are treated as package-scoped variables unless
+    <package> is "_" in which case they are treated as self-scoped.
+
+    Identifiers without the "<package>:" prefix are treated as self-scoped unless they are
+    the name of an opam global variable.
+
+    Global variables are encoded as pform variables while all other variables are encoded
+    as pform macros with the [Macro.Pkg] macro.
+
+    Returns an [Error] if the identifier is not a valid opam variable name. *)
+val pform_of_opam_ident : string -> (Pform.t, [ `Root_unsupported ]) result

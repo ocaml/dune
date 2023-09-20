@@ -77,6 +77,9 @@ let of_opam_ident ident =
 
 let pform_of_opam_ident ident =
   match of_opam_ident ident with
-  | `Package_variable t -> to_pform t
-  | `Global_variable var -> Pform.Var var
+  | `Package_variable t -> Ok (to_pform t)
+  | `Global_variable var ->
+    (match (var : Pform.Var.t) with
+     | Pkg Root -> Error `Root_unsupported
+     | var -> Ok (Pform.Var var))
 ;;

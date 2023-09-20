@@ -489,6 +489,7 @@ module Action_expander = struct
 
     let expand_pkg (paths : Paths.t) (pform : Pform.Var.Pkg.t) =
       match pform with
+      | Root -> Code_error.raise "Root is not supported" []
       | Switch -> Memo.return [ Value.String "dune" ]
       | Os_version -> sys_poll_var (fun { os_version; _ } -> os_version)
       | Os_distribution -> sys_poll_var (fun { os_distribution; _ } -> os_distribution)

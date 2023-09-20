@@ -11,6 +11,8 @@ have a good error message in that case.
 
   $ mkdir -p $mock_packages/with-root/with-root.0.0.1
 
+Dune should reject the variable during the solving stage.
+
   $ solve_project <<EOF
   > (lang dune 3.8)
   > (package
@@ -18,13 +20,6 @@ have a good error message in that case.
   >  (allow_empty)
   >  (depends with-root))
   > EOF
-  Solution for dune.lock:
-  with-root.0.0.1
-  
-Generating a lock file with this variable should give an error.
-
-  $ cat dune.lock/with-root.pkg
-  (version 0.0.1)
-  
-  (build
-   (run echo %{pkg-self:root}))
+  Error: Variable "root" occuring in opam package "with-root.0.0.1" is not
+  supported.
+  [1]

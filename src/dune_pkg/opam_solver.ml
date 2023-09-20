@@ -237,6 +237,20 @@ let opam_command_to_string_debug (args, _filter_opt) =
   |> String.concat ~sep:" "
 ;;
 
+let package_variable_of_opam_ident package ident =
+  let err_not_supported var package =
+    User_error.raise
+      [ Pp.textf
+          "Variable %S occuring in opam package %S is not supported."
+          var
+          (OpamPackage.to_string package)
+      ]
+  in
+  match Package_variable.pform_of_opam_ident ident with
+  | Ok pform -> pform
+  | Error `Root_unsupported -> err_not_supported "root" package
+;;
+
 let filter_to_blang package filter =
   let fident_to_blang packages variable string_converter =
     if Option.is_some string_converter
@@ -249,7 +263,7 @@ let filter_to_blang package filter =
     let variable_string = OpamVariable.to_string variable in
     match packages with
     | [] ->
-      let pform = Package_variable.pform_of_opam_ident variable_string in
+      let pform = package_variable_of_opam_ident package variable_string in
       Blang.Expr (String_with_vars.make_pform Loc.none pform)
     | packages ->
       let blangs =
@@ -350,7 +364,7 @@ let opam_commands_to_actions package (commands : OpamTypes.command list) =
              when String.is_prefix ~prefix:"%{" interp
                   && String.is_suffix ~suffix:"}%" interp ->
              let ident = String.sub ~pos:2 ~len:(String.length interp - 4) interp in
-             `Pform (Package_variable.pform_of_opam_ident ident)
+             `Pform (package_variable_of_opam_ident package ident)
            | other ->
              User_error.raise
                [ Pp.textf
@@ -372,7 +386,7 @@ let opam_commands_to_actions package (commands : OpamTypes.command list) =
         | CIdent ident ->
           String_with_vars.make_pform
             Loc.none
-            (Package_variable.pform_of_opam_ident ident))
+            (package_variable_of_opam_ident package ident))
     in
     match terms with
     | program :: args ->

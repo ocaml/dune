@@ -33,6 +33,7 @@ module Var : sig
       | Jobs
       | Arch
       | Section_dir of Section.t
+      | Root
 
     val compare : t -> t -> Ordering.t
     val to_dyn : t -> Dyn.t

@@ -26,9 +26,7 @@ Make a package with a substs field
   > (source (copy $PWD/source))
   > EOF
 
-The lockfile should contain the substitute action. The generation step currently doesn't
-add this in.
-
+The lockfile should contain the substitute action. 
   $ cat dune.lock/with-substs.pkg 
   (version 0.0.1)
   

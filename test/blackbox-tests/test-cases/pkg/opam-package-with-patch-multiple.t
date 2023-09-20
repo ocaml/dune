@@ -67,9 +67,7 @@ Checking that the patch files have been copied to the dune.lock dir
   $ [ -d dune.lock/with-patch.files/dir ] && ls dune.lock/with-patch.files/dir/bar.patch
   dune.lock/with-patch.files/dir/bar.patch
 
-The lockfile should contain the patch action. The generation step currently doesn't add
-this in.
-
+The lockfile should contain the patch action. 
   $ cat dune.lock/with-patch.pkg 
   (version 0.0.1)
   

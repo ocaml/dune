@@ -1,0 +1,7 @@
+(lang dune 3.10)
+
+(using mdx 0.4)
+
+(using ctypes 0.3)
+
+;(use_standard_c_and_cxx_flags false)

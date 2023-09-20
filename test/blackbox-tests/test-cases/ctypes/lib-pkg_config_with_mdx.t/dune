@@ -1,0 +1,8 @@
+(executable
+ (name example)
+ (modes native byte)
+ (libraries examplelib))
+
+(mdx
+ (files README.md)
+ (libraries examplelib))

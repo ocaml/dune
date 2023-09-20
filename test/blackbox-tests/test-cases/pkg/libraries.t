@@ -1,6 +1,8 @@
 This test attempts to build a library installed through a lock file and then
 use it inside dune.
 
+  $ . ./helpers.sh
+
 We set up a library that will be installed as part of the package:
 
   $ mkdir external_sources
@@ -30,7 +32,7 @@ Now we set up a lock file with this package and then attempt to use it:
 
   $ cat >dune.lock/mypkg.pkg <<EOF
   > (source (copy $PWD/external_sources))
-  > (build (run dune build @install))
+  > (build (run dune build --promote-install-file=true . @install))
   > EOF
 
   $ cat >dune <<EOF
@@ -45,11 +47,3 @@ Now we set up a lock file with this package and then attempt to use it:
   > EOF
 
   $ dune build foo.cma
-  File "dune", line 4, characters 12-21:
-  4 |  (libraries mypkg.lib))
-                  ^^^^^^^^^
-  Error: Library "mypkg.lib" not found.
-  -> required by library "foo" in _build/default
-  -> required by _build/default/.foo.objs/byte/foo.cmo
-  -> required by _build/default/foo.cma
-  [1]

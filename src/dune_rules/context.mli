@@ -25,6 +25,7 @@ module Kind : sig
   type t =
     | Default
     | Opam of Opam_switch.t
+    | Lock of { default : bool }
 end
 
 module Env_nodes : sig

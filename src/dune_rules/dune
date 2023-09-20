@@ -36,6 +36,7 @@
   dune_findlib
   dune_patch
   scheme
+  fs
   unix)
  (synopsis "Internal Dune library, do not use!")
  (instrumentation

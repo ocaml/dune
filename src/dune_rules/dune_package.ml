@@ -496,40 +496,31 @@ module Or_meta = struct
          Dune_package package)
   ;;
 
-  module Load
-      (Monad : sig
-         type 'a t
-       end)
-      (Fs : sig
-         val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a Monad.t
-       end) =
-  struct
-    let load file =
-      let dir = Path.parent_exn file in
-      Fs.with_lexbuf_from_file file ~f:(fun lexbuf ->
-        match
-          Vfile.parse_contents lexbuf ~f:(fun lang ->
-            String_with_vars.set_decoding_env
-              (Pform.Env.initial lang.version)
-              (decode ~lang ~dir))
-        with
-        | contents -> Ok contents
-        | exception User_error.E message -> Error message
-        | exception Sys_error msg ->
-          Error
-            (User_message.make
-               [ Pp.textf "Failed to read %s:" (Path.to_string_maybe_quoted file)
-               ; Pp.text msg
-               ])
-        | exception End_of_file ->
-          Error
-            (User_message.make
-               [ Pp.textf
-                   "Unexpected end of file when reading %s."
-                   (Path.to_string_maybe_quoted file)
-               ]))
-    ;;
-  end
+  let load file =
+    let dir = Path.parent_exn file in
+    Fs.with_lexbuf_from_file file ~f:(fun lexbuf ->
+      match
+        Vfile.parse_contents lexbuf ~f:(fun lang ->
+          String_with_vars.set_decoding_env
+            (Pform.Env.initial lang.version)
+            (decode ~lang ~dir))
+      with
+      | contents -> Ok contents
+      | exception User_error.E message -> Error message
+      | exception Sys_error msg ->
+        Error
+          (User_message.make
+             [ Pp.textf "Failed to read %s:" (Path.to_string_maybe_quoted file)
+             ; Pp.text msg
+             ])
+      | exception End_of_file ->
+        Error
+          (User_message.make
+             [ Pp.textf
+                 "Unexpected end of file when reading %s."
+                 (Path.to_string_maybe_quoted file)
+             ]))
+  ;;
 
   let pp ~dune_version ppf t =
     let t = encode ~dune_version t in

@@ -5,9 +5,12 @@ module Kind = struct
   type t =
     | Default
     | Opam of Opam_switch.t
+    | Lock of { default : bool }
 
   let to_dyn : t -> Dyn.t = function
     | Default -> Dyn.string "default"
+    | Lock { default } ->
+      Dyn.variant "lock" [ Dyn.record [ "default", Dyn.bool default ] ]
     | Opam o -> Opam_switch.to_dyn o
   ;;
 
@@ -318,22 +321,24 @@ module Build_environment_kind = struct
     | Cross_compilation_using_findlib_toolchain of Context_name.t
     | Hardcoded_path of string list
     | Opam2_environment of string (* opam switch prefix *)
+    | Lock
     | Unknown
 
-  let query ~(kind : Kind.t) ~findlib_toolchain ~env =
+  let query ~kind ~findlib_toolchain ~env =
     match findlib_toolchain with
     | Some s -> Cross_compilation_using_findlib_toolchain s
     | None ->
       let opam_prefix = Env.get env Opam_switch.opam_switch_prefix_var_name in
       (match kind with
-       | Opam _ ->
+       | `Opam ->
          (match opam_prefix with
           | Some s -> Opam2_environment s
           | None ->
             (* This is unreachable because we check in [create_for_opam] that opam
                sets this variable *)
             assert false)
-       | Default ->
+       | `Lock -> Lock
+       | `Default ->
          (match Setup.library_path with
           | _ :: _ as l -> Hardcoded_path l
           | [] ->
@@ -366,6 +371,7 @@ module Build_environment_kind = struct
        | Opam2_environment opam_prefix ->
          let p = Path.of_filename_relative_to_initial_cwd opam_prefix in
          [ Path.relative p "lib" ]
+       | Lock -> []
        | Unknown -> [ Path.relative (Path.parent_exn ocaml_bin) "lib" ])
   ;;
 end
@@ -399,7 +405,22 @@ let make_installed_env env name findlib env_nodes version profile =
 ;;
 
 let create (builder : Builder.t) ~(kind : Kind.t) =
-  let which = Which.which ~path:builder.path in
+  let* which, builder =
+    match kind with
+    | Default | Opam _ -> Memo.return (Which.which ~path:builder.path, builder)
+    | Lock _ ->
+      let+ env = Pkg_rules.exported_env builder.name in
+      let which =
+        let which = Staged.unstage @@ Pkg_rules.which builder.name in
+        fun prog ->
+          which prog
+          >>= function
+          | Some p -> Memo.return (Some p)
+          | None -> Which.which ~path:builder.path prog
+      in
+      let env = Env_path.extend_env_concat_path builder.env env in
+      which, { builder with env }
+  in
   let ocamlpath =
     Kind.ocamlpath kind ~env:builder.env ~findlib_toolchain:builder.findlib_toolchain
   in
@@ -409,13 +430,28 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
     in
     Findlib_config.discover_from_env ~env:builder.env ~which ~ocamlpath ~findlib_toolchain
   in
-  let* ocaml =
-    Ocaml_toolchain.of_env_with_findlib builder.name builder.env findlib ~which
+  let* ocaml, build_env_kind =
+    let toolchain kind =
+      let+ toolchain =
+        Ocaml_toolchain.of_env_with_findlib builder.name builder.env findlib ~which
+      in
+      toolchain, kind
+    in
+    match kind with
+    | Default -> toolchain `Default
+    | Opam _ -> toolchain `Opam
+    | Lock _ ->
+      Pkg_rules.ocaml_toolchain builder.name
+      >>= (function
+      | None -> toolchain `Lock
+      | Some toolchain ->
+        let+ toolchain, _ = Action_builder.run toolchain Eager in
+        toolchain, `Default)
   in
   let default_ocamlpath =
     let default_ocamlpath =
       Build_environment_kind.query
-        ~kind
+        ~kind:build_env_kind
         ~findlib_toolchain:builder.findlib_toolchain
         ~env:builder.env
       |> Build_environment_kind.findlib_paths ~findlib ~ocaml_bin:ocaml.bin_dir
@@ -489,9 +525,16 @@ module Group = struct
     { native; targets = List.filter_opt others }
   ;;
 
-  let default (builder : Builder.t) ~targets =
+  let default (builder : Builder.t) ~lock ~targets =
     let path = Env_path.path builder.env in
-    create { builder with path } ~kind:Default ~targets
+    let* (kind : Kind.t) =
+      if lock
+      then Memo.return @@ Kind.Lock { default = true }
+      else
+        let+ has_lock = Pkg_rules.has_lock builder.name in
+        if has_lock then Kind.Lock { default = true } else Default
+    in
+    create { builder with path } ~kind ~targets
   ;;
 
   let create_for_opam (builder : Builder.t) ~switch ~loc ~targets =
@@ -551,7 +594,7 @@ module Group = struct
       match context with
       | Opam { base; switch } ->
         create_for_opam builder ~switch ~loc:base.loc ~targets:base.targets
-      | Default { lock = _; version_preference = _; solver_env = _; base } ->
+      | Default { lock; version_preference = _; solver_env = _; base } ->
         let builder =
           match builder.findlib_toolchain with
           | Some _ -> builder
@@ -563,7 +606,8 @@ module Group = struct
                  findlib_toolchain = Some (Context_name.parse_string_exn (Loc.none, name))
                })
         in
-        default builder ~targets:base.targets
+        let lock = Option.is_some lock in
+        default builder ~targets:base.targets ~lock
     ;;
 
     let memo =
@@ -657,7 +701,7 @@ let roots t =
       Roots.opam_from_prefix prefix |> Roots.map ~f:(fun s -> Some s)
   in
   match t.kind with
-  | Default ->
+  | Lock _ | Default ->
     let setup_roots = Roots.map ~f:(Option.map ~f:Path.of_string) Setup.roots in
     Roots.first_has_priority setup_roots prefix_roots
   | Opam _ -> prefix_roots

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695298544626,
+  "lastUpdate": 1695298944984,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -78066,6 +78066,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.179281387746667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "abc324b3035105221b5183b785e855065f6ddec3",
+          "message": "ci: only push to docker on push events (#8722)\n\n`pull_request` events do not have access to secrets, so can't push.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-09-21T13:51:03+02:00",
+          "tree_id": "d71513b88a6a829bd1797fd7c0895bfd79c2077f",
+          "url": "https://github.com/ocaml/dune/commit/abc324b3035105221b5183b785e855065f6ddec3"
+        },
+        "date": 1695298943666,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "78.57117882987332",
             "unit": "seconds"
           }
         ]

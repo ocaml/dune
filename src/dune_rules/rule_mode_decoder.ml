@@ -99,15 +99,3 @@ end
 
 let decode = sum mode_decoders
 let field = field "mode" decode ~default:Rule.Mode.Standard
-
-let is_ignored (mode : Rule.Mode.t) ~until_clean =
-  !Clflags.ignore_promoted_rules
-  &&
-  match mode with
-  | Promote { only = None; lifetime = Unlimited; _ } -> true
-  | Promote { only = None; lifetime = Until_clean; _ } ->
-    (match until_clean with
-     | `Ignore -> true
-     | `Keep -> false)
-  | _ -> false
-;;

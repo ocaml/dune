@@ -259,11 +259,6 @@ let extend_action t ~dir action =
 ;;
 
 let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =
-  let (mode : Rule.Mode.t option) =
-    match mode with
-    | Some mode when Rule_mode_decoder.is_ignored mode ~until_clean:`Keep -> Some Fallback
-    | _ -> mode
-  in
   let build = extend_action t build ~dir in
   Rule.make
     ?mode
@@ -281,7 +276,7 @@ let add_rule t ?mode ?loc ~dir build =
 let add_rule_get_targets t ?mode ?loc ~dir build =
   let rule = make_rule t ?mode ?loc ~dir build in
   let+ () = Rules.Produce.rule rule in
-  Some rule.targets
+  rule.targets
 ;;
 
 let add_rules t ?loc ~dir builds = Memo.parallel_iter builds ~f:(add_rule ?loc t ~dir)

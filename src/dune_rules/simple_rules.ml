@@ -134,7 +134,9 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       else action
     in
     (match rule_kind ~rule ~action with
-     | No_alias -> add_user_rule sctx ~dir ~rule ~action ~expander
+     | No_alias ->
+       let+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in
+       Some targets
      | Aliases_with_targets (aliases, alias_target) ->
        let* () =
          let aliases = List.map ~f:(Alias.make ~dir) aliases in
@@ -143,7 +145,8 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
              alias
              (Action_builder.path (Path.build alias_target)))
        in
-       add_user_rule sctx ~dir ~rule ~action ~expander
+       let+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in
+       Some targets
      | Aliases_only aliases ->
        let aliases = List.map ~f:(Alias.make ~dir) aliases in
        let* action = interpret_and_add_locks ~expander rule.locks action.build in

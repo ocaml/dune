@@ -158,7 +158,6 @@ Test with an opam like installation
     ["dune" "install" "-p" name "--create-install-files" name]
   ]
 
-  $ dune build b/b.opam c/c.opam d/d.opam
   $ dune build -p a --promote-install-files="false" @install
 
   $ test -e a/a.install

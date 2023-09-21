@@ -59,6 +59,7 @@ let local_libraries =
   ; ("src/dune_engine", Some "Dune_engine", false, None)
   ; ("otherlibs/dune-private-libs/meta_parser", Some "Dune_meta_parser",
     false, None)
+  ; ("src/fs", Some "Fs", false, None)
   ; ("src/dune_findlib", Some "Dune_findlib", false, None)
   ; ("vendor/sha", None, false, None)
   ; ("vendor/uutf", None, false, None)

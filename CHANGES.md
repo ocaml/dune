@@ -1,3 +1,12 @@
+3.11.0~alpha3 (2023-09-21)
+--------------------------
+
+- Turn internal promote rules into fallback rules when
+  `--ignore-promoted-rules` is set (#8518, #8706, fix #8417, fix #8703,
+  @rgrinberg, @emillon)
+
+- Make copy sandbox support directory targets. (#8705, fixes #7724, @emillon)
+
 3.11.0~alpha2 (2023-09-19)
 --------------------------
 

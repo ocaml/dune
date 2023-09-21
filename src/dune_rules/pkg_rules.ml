@@ -2,17 +2,6 @@ open Import
 open Memo.O
 open Dune_pkg
 
-(* TODO
-   - post dependencies
-   - build dependencies
-   - cross compilation
-   - filters
-   - stage forms: with-test, with-doc, with-dev-setup
-   - full support for dune actions
-   - initialize context using packages in lock file
-   - sandboxing
-*)
-
 module Sys_vars = struct
   type t =
     { os_version : string option Memo.Lazy.t
@@ -105,6 +94,11 @@ module Lock_dir = struct
   ;;
 
   let get (ctx : Context_name.t) : t Memo.t = get_path ctx >>= Load.load
+
+  let has_lock ctx =
+    let* path = get_path ctx in
+    Fs_memo.dir_exists (In_source_dir path)
+  ;;
 end
 
 module Paths = struct
@@ -298,21 +292,21 @@ module Pkg = struct
     | Some (Fetch _) -> assert false
   ;;
 
+  let dep t = Dep.file (Path.build t.paths.target_dir)
+
   let package_deps t =
     deps_closure t
-    |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t ->
-      Path.build t.paths.target_dir |> Dep.file |> Dep.Set.add acc)
+    |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t -> dep t |> Dep.Set.add acc)
   ;;
 
-  let build_env =
+  let build_env_of_deps =
     let add_to_path env var what =
       Env.Map.update env var ~f:(fun paths ->
         let paths = Option.value paths ~default:[] in
         Some (Value.Dir (Path.build what) :: paths))
     in
-    fun t ->
-      deps_closure t
-      |> List.fold_left ~init:Env.Map.empty ~f:(fun env t ->
+    fun xs ->
+      List.fold_left xs ~init:Env.Map.empty ~f:(fun env t ->
         let env =
           let roots =
             Paths.install_roots t.paths |> Install.Roots.map ~f:Path.as_in_build_dir_exn
@@ -323,6 +317,8 @@ module Pkg = struct
         in
         List.fold_left t.exported_env ~init:env ~f:Env_update.set)
   ;;
+
+  let build_env t = build_env_of_deps @@ deps_closure t
 
   let exported_env t =
     let base =
@@ -803,23 +799,55 @@ module Action_expander = struct
   ;;
 end
 
-module DB = struct
-  type t = Lock_dir.Pkg.t Package.Name.Map.t
+let ocaml_package_name = Package.Name.of_string "ocaml"
 
-  let equal = Package.Name.Map.equal ~equal:Lock_dir.Pkg.equal
+module DB = struct
+  type t =
+    { all : Lock_dir.Pkg.t Package.Name.Map.t
+    ; system_provided : Package.Name.Set.t
+    }
+
+  let equal t { all; system_provided } =
+    Package.Name.Map.equal ~equal:Lock_dir.Pkg.equal t.all all
+    && Package.Name.Set.equal t.system_provided system_provided
+  ;;
+
+  let get context =
+    let+ all = Lock_dir.get context in
+    let system_provided =
+      if Env.mem Env.initial ~var:"DUNE_PKG_OVERRIDE_OCAML"
+      then (
+        match all.ocaml with
+        | None -> Package.Name.Set.singleton ocaml_package_name
+        | Some (_, name) -> Package.Name.Set.singleton name)
+      else Package.Name.Set.empty
+    in
+    { all = all.packages; system_provided }
+  ;;
 end
 
 module rec Resolve : sig
-  val resolve : DB.t -> Context_name.t -> Loc.t * Package.Name.t -> Pkg.t Memo.t
+  val resolve
+    :  DB.t
+    -> Context_name.t
+    -> Loc.t * Package.Name.t
+    -> [ `Inside_lock_dir of Pkg.t | `System_provided ] Memo.t
 end = struct
   open Resolve
 
   let resolve_impl ((db : DB.t), ctx, (name : Package.Name.t)) =
-    match Package.Name.Map.find db name with
+    match Package.Name.Map.find db.all name with
     | None -> Memo.return None
     | Some { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env } ->
       assert (Package.Name.equal name info.name);
-      let* deps = Memo.parallel_map deps ~f:(resolve db ctx) in
+      let* deps =
+        Memo.parallel_map deps ~f:(fun name ->
+          resolve db ctx name
+          >>| function
+          | `Inside_lock_dir pkg -> Some pkg
+          | `System_provided -> None)
+        >>| List.filter_opt
+      in
       let id = Pkg.Id.gen () in
       let paths = Paths.make name ctx in
       let* lock_dir = Lock_dir.get_path ctx in
@@ -864,18 +892,19 @@ end = struct
           Pp.textf "- package %s" (Package.Name.to_string pkg))
         resolve_impl
     in
-    fun db ctx (loc, name) ->
-      Memo.exec memo (db, ctx, name)
-      >>| function
-      | Some s -> s
-      | None ->
-        User_error.raise
-          ~loc
-          [ Pp.textf "Unknown package %S" (Package.Name.to_string name) ]
+    fun (db : DB.t) ctx (loc, name) ->
+      if Package.Name.Set.mem db.system_provided name
+      then Memo.return `System_provided
+      else
+        Memo.exec memo (db, ctx, name)
+        >>| function
+        | Some s -> `Inside_lock_dir s
+        | None ->
+          User_error.raise
+            ~loc
+            [ Pp.textf "Unknown package %S" (Package.Name.to_string name) ]
   ;;
 end
-
-open Resolve
 
 module Install_action = struct
   let installable_sections =
@@ -1415,8 +1444,18 @@ module Gen_rules = Build_config.Gen_rules
 
 let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
   let name = User_error.ok_exn (Package.Name.of_string_user_error (Loc.none, pkg_name)) in
-  let* db = Lock_dir.get context in
-  let+ pkg = resolve db.packages context (Loc.none, name) in
+  let* db = DB.get context in
+  let+ pkg =
+    Resolve.resolve db context (Loc.none, name)
+    >>| function
+    | `Inside_lock_dir pkg -> pkg
+    | `System_provided ->
+      User_error.raise
+        [ Pp.textf
+            "There are no rules for %S because it's set as provided by the system"
+            (Package.Name.to_string name)
+        ]
+  in
   let paths = Paths.make name context in
   let directory_targets =
     let target_dir = paths.target_dir in
@@ -1433,32 +1472,79 @@ let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
 ;;
 
 let ocaml_toolchain context =
-  let* db = Lock_dir.get context in
+  let* lock_dir = Lock_dir.get context in
   let+ pkg =
-    match db.ocaml with
-    | None -> User_error.raise [ Pp.text "no ocaml toolchain defined" ]
-    | Some ocaml -> resolve db.packages context ocaml
+    let* db = DB.get context in
+    match lock_dir.ocaml with
+    | None -> Resolve.resolve db context (Loc.none, ocaml_package_name)
+    | Some ocaml -> Resolve.resolve db context ocaml
   in
-  let toolchain =
-    let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-    let open Action_builder.O in
-    let* cookie = cookie in
-    let binaries =
-      Section.Map.find cookie.files Bin |> Option.value ~default:[] |> Path.Set.of_list
+  match pkg with
+  | `System_provided -> None
+  | `Inside_lock_dir pkg ->
+    let toolchain =
+      let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+      let open Action_builder.O in
+      let* cookie = cookie in
+      let binaries =
+        Section.Map.find cookie.files Bin |> Option.value ~default:[] |> Path.Set.of_list
+      in
+      let env = Pkg.exported_env pkg in
+      Action_builder.of_memo @@ Ocaml_toolchain.of_binaries context env binaries
     in
-    let env = Pkg.exported_env pkg in
-    Action_builder.of_memo @@ Ocaml_toolchain.of_binaries context env binaries
-  in
-  Action_builder.memoize "ocaml_toolchain" toolchain
+    Some (Action_builder.memoize "ocaml_toolchain" toolchain)
 ;;
 
-let which context program =
-  let* db = Lock_dir.get context in
-  let+ artifacts, _ =
-    Package.Name.Map.values db.packages
-    |> Memo.parallel_map ~f:(fun (pkg : Lock_dir.Pkg.t) ->
-      resolve db.packages context (Loc.none, pkg.info.name))
-    >>= Action_expander.artifacts_and_deps
+let all_packages context =
+  let* db = DB.get context in
+  let+ closure =
+    Dune_lang.Package_name.Map.values db.all
+    |> Memo.parallel_map ~f:(fun (package : Lock_dir.Pkg.t) ->
+      let package = package.info.name in
+      Resolve.resolve db context (Loc.none, package)
+      >>| function
+      | `Inside_lock_dir pkg -> Some pkg
+      | `System_provided -> None)
+    >>| List.filter_opt
+    >>| Pkg.top_closure
   in
-  Filename.Map.find artifacts program
+  match closure with
+  | Error _ -> assert false
+  | Ok closure -> closure
+;;
+
+let which context =
+  let artifacts_and_deps =
+    Memo.lazy_ (fun () ->
+      let+ artifacts, _ = all_packages context >>= Action_expander.artifacts_and_deps in
+      artifacts)
+  in
+  Staged.stage (fun program ->
+    let+ artifacts = Memo.Lazy.force artifacts_and_deps in
+    Filename.Map.find artifacts program)
+;;
+
+let has_lock = Lock_dir.has_lock
+
+let exported_env context =
+  let+ all_packages = all_packages context in
+  let env = Pkg.build_env_of_deps all_packages in
+  let vars = Env.Map.map env ~f:Env_update.string_of_env_values in
+  Env.extend Env.empty ~vars
+;;
+
+let find_package ctx pkg =
+  has_lock ctx
+  >>= function
+  | false -> Memo.return None
+  | true ->
+    let* db = DB.get ctx in
+    Resolve.resolve db ctx (Loc.none, pkg)
+    >>| (function
+          | `System_provided -> Action_builder.return ()
+          | `Inside_lock_dir pkg ->
+            let open Action_builder.O in
+            let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+            ())
+    >>| Option.some
 ;;

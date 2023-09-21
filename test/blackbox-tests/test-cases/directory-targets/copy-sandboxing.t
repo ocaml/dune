@@ -14,10 +14,11 @@ mode:
   >  (target foo)
   >  (deps (sandbox always) output/)
   >  (action
-  >   (run touch foo)))
+  >   (progn
+  >    (bash "ls output | sort")
+  >    (run touch foo))))
   > EOF
 
   $ dune build foo --sandbox=copy
-  Error: Is a directory
-  -> required by _build/default/foo
-  [1]
+  x
+  y

@@ -1,15 +1,14 @@
 We should be able to specify (package ..) deps on locally built packages.
 
+  $ . ./helpers.sh
+
   $ cat >dune-project <<EOF
   > (lang dune 3.11)
   > EOF
 
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ make_lockdir
   $ cat >dune.lock/foo.pkg <<EOF
-  > (build
+  > (install
   >  (progn
   >   (run mkdir -p %{prefix}/bin)
   >   (run touch %{prefix}/bin/foo)))
@@ -19,15 +18,19 @@ We should be able to specify (package ..) deps on locally built packages.
   > (dirs :standard \ external_sources)
   > (rule
   >  (alias foo)
-  >  (action (system "command -v foo"))
+  >  (action
+  >   (progn
+  >    (run which foo)
+  >    (echo %{bin:foo})))
   >  (deps (package foo)))
   > EOF
 
   $ dune build @foo
-  File "dune", line 5, characters 16-19:
-  5 |  (deps (package foo)))
-                      ^^^
-  Error: Package foo does not exist
+  File "dune", line 7, characters 9-19:
+  7 |    (echo %{bin:foo})))
+               ^^^^^^^^^^
+  Error: Program foo not found in the tree or in PATH
+   (context: default)
   [1]
 
 Now we define the external package using a dune project:
@@ -50,8 +53,9 @@ Now we define the external package using a dune project:
   > (build (run dune build @install --promote-install-files))
   > EOF
   $ dune build @foo
-  File "dune", line 5, characters 16-19:
-  5 |  (deps (package foo)))
-                      ^^^
-  Error: Package foo does not exist
+  File "dune", line 7, characters 9-19:
+  7 |    (echo %{bin:foo})))
+               ^^^^^^^^^^
+  Error: Program foo not found in the tree or in PATH
+   (context: default)
   [1]

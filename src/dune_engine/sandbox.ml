@@ -41,6 +41,22 @@ type t =
 let dir t = t.dir
 let map_path t p = Path.Build.append t.dir p
 
+let rec copy_recursively (src_kind : Unix.file_kind) ~src ~dst =
+  match src_kind with
+  | S_REG -> Io.copy_file ~src ~dst ()
+  | S_DIR ->
+    (match Path.Untracked.readdir_unsorted_with_kinds src with
+     | Error e -> Unix_error.Detailed.raise e
+     | Ok contents ->
+       Path.mkdir_p dst;
+       List.iter contents ~f:(fun (name, kind) ->
+         copy_recursively kind ~src:(Path.relative src name) ~dst:(Path.relative dst name)))
+  | _ ->
+    Code_error.raise
+      "Can not copy file of this kind"
+      [ "src_kind", File_kind.to_dyn src_kind; "src", Path.to_dyn src ]
+;;
+
 let create_dirs t ~deps ~rule_dir =
   Path.Build.Set.add (Dep.Facts.necessary_dirs_for_sandboxing deps) rule_dir
   |> Path.Build.Set.iter ~f:(fun path ->
@@ -66,7 +82,10 @@ let link_function ~(mode : Sandbox_mode.some) =
        (match Sys.win32 with
         | true -> win32_error mode
         | false -> fun src dst -> Io.portable_symlink ~src ~dst)
-     | Copy -> fun src dst -> Io.copy_file ~src ~dst ()
+     | Copy ->
+       fun src dst ->
+         let { Unix.st_kind; _ } = Path.Untracked.stat_exn src in
+         copy_recursively st_kind ~src ~dst
      | Hardlink ->
        (match Sys.win32 with
         | true -> win32_error mode

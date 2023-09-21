@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695298958946,
+  "lastUpdate": 1695300149889,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -100745,6 +100745,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.98182563928667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b326c30331b5fdb039e06b02b88bdff96bf17da3",
+          "message": "fix: make ignored rules fallback (#8706)\n\nFixes #8703\r\n\r\nThis is a lighter change than the original in #8518.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-09-21T14:29:38+02:00",
+          "tree_id": "0c2175cc3770822bf613978424ef210b1a9df3f1",
+          "url": "https://github.com/ocaml/dune/commit/b326c30331b5fdb039e06b02b88bdff96bf17da3"
+        },
+        "date": 1695300136031,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.91536410468667",
             "unit": "seconds"
           }
         ]

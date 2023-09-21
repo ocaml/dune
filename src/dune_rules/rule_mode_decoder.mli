@@ -16,10 +16,6 @@ end
 val decode : Rule.Mode.t Dune_lang.Decoder.t
 val field : Rule.Mode.t Dune_lang.Decoder.fields_parser
 
-(** [is_ignored mode ~until_clean] will return if a rule with [mode] should be
-    ignored whenever [--ignored-promoted-rules] is set.
-
-    [until_clean] is used to set if [(promote (until-clean))] is ignored as
-    considered by this function. Old versions of dune would incorrectly ignore
-    this, so we need to maintain the old behavior for now. *)
-val is_ignored : Rule.Mode.t -> until_clean:[ `Ignore | `Keep ] -> bool
+(** [is_ignored mode] will return if a rule with [mode] should be
+    ignored, considering whether [--ignored-promoted-rules] is set. *)
+val is_ignored : Rule.Mode.t -> bool

@@ -260,7 +260,7 @@ let extend_action t ~dir action =
 
 let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =
   match mode with
-  | Some mode when Rule_mode_decoder.is_ignored mode ~until_clean:`Keep -> None
+  | Some mode when Rule_mode_decoder.is_ignored mode -> None
   | _ ->
     let build = extend_action t build ~dir in
     Some

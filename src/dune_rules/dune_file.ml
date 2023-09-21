@@ -2472,24 +2472,21 @@ type t =
   ; stanzas : Stanzas.t
   }
 
-let is_promoted_rule version rule =
-  match rule with
-  | Rule { mode; _ } | Menhir_stanza.T { mode; _ } ->
-    let until_clean = if version >= (3, 5) then `Keep else `Ignore in
-    Rule_mode_decoder.is_ignored mode ~until_clean
-  | _ -> false
+let stanza_mode = function
+  | Rule { mode; _ } | Menhir_stanza.T { mode; _ } -> Some mode
+  | _ -> None
+;;
+
+let is_ignored_stanza s =
+  match stanza_mode s with
+  | Some mode -> Rule_mode_decoder.is_ignored mode
+  | None -> false
 ;;
 
 let parse sexps ~dir ~file ~project =
   let open Memo.O in
   let+ stanzas = Stanzas.parse ~file ~dir project sexps in
-  let stanzas =
-    if !Clflags.ignore_promoted_rules
-    then (
-      let version = Dune_project.dune_version project in
-      List.filter stanzas ~f:(fun s -> not (is_promoted_rule version s)))
-    else stanzas
-  in
+  let stanzas = List.filter stanzas ~f:(fun s -> not (is_ignored_stanza s)) in
   { dir; project; stanzas }
 ;;
 

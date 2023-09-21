@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695298023960,
+  "lastUpdate": 1695298544626,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -30999,6 +30999,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "46.805239432406665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "abc324b3035105221b5183b785e855065f6ddec3",
+          "message": "ci: only push to docker on push events (#8722)\n\n`pull_request` events do not have access to secrets, so can't push.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-09-21T13:51:03+02:00",
+          "tree_id": "d71513b88a6a829bd1797fd7c0895bfd79c2077f",
+          "url": "https://github.com/ocaml/dune/commit/abc324b3035105221b5183b785e855065f6ddec3"
+        },
+        "date": 1695298542798,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "47.474341622286666",
             "unit": "seconds"
           }
         ]

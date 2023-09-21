@@ -139,8 +139,13 @@ Test for (promote (into ...)) + (enabled_if %{ignoring_promoted_rules}
 
   $ dune clean
   $ dune build into+ignoring --ignore-promoted-rules
+  Error: Multiple rules generated for _build/default/into+ignoring:
+  - dune:30
+  - dune:35
+  [1]
   $ ls -1 _build/default/into*
-  _build/default/into+ignoring
+  ls: cannot access '_build/default/into*': No such file or directory
+  [2]
 
 Reproduction case for #3069
 ---------------------------

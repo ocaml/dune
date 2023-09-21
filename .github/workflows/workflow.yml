@@ -244,6 +244,6 @@ jobs:
         with:
           image_name: monorepobenchmark
           dockerfile: bench/monorepo/bench.Dockerfile
-          push_image_and_stages: true
+          push_image_and_stages: on:push
           username: ocamldune
           password: "${{ secrets.DOCKER_HUB_PASSWORD }}"

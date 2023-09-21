@@ -174,6 +174,7 @@ let rec dep expander : Dep_conf.t -> _ = function
             let* package_db = Package_db.create (Context.name context) in
             Package_db.find_package package_db pkg)
          >>= function
+         | Some (Build build) -> build
          | Some (Local pkg) ->
            Action_builder.alias
              (package_install ~context:(Context.build_context context) ~pkg)

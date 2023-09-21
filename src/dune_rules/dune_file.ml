@@ -2472,27 +2472,21 @@ type t =
   ; stanzas : Stanzas.t
   }
 
-let filter_map_stanza_mode ~f =
-  let open Option.O in
-  function
-  | Rule r ->
-    let+ mode = f r.mode in
-    Rule { r with mode }
-  | Menhir_stanza.T m ->
-    let+ mode = f m.mode in
-    Menhir_stanza.T { m with mode }
-  | s -> Some s
+let map_stanza_mode ~f = function
+  | Rule r -> Rule { r with mode = f r.mode }
+  | Menhir_stanza.T m -> Menhir_stanza.T { m with mode = f m.mode }
+  | s -> s
 ;;
 
-let change_stanza s =
-  filter_map_stanza_mode s ~f:(fun mode ->
-    if Rule_mode_decoder.is_ignored mode then Some Fallback else Some mode)
+let change_stanza =
+  map_stanza_mode ~f:(fun mode ->
+    if Rule_mode_decoder.is_ignored mode then Fallback else mode)
 ;;
 
 let parse sexps ~dir ~file ~project =
   let open Memo.O in
   let+ stanzas = Stanzas.parse ~file ~dir project sexps in
-  let stanzas = List.filter_map stanzas ~f:change_stanza in
+  let stanzas = List.map stanzas ~f:change_stanza in
   { dir; project; stanzas }
 ;;
 

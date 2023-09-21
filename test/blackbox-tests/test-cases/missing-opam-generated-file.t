@@ -16,3 +16,6 @@ will overwrite `pkg.opam`. Now it does not update the file.
   $ touch opam
 
   $ dune build -p pkg @install
+  Error: No rule found for pkg.opam
+  -> required by alias install
+  [1]

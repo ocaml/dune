@@ -45,8 +45,10 @@ static value alloc_process_status(int status) {
 
 static int wait_flag_table[] = {WNOHANG, WUNTRACED};
 
-value dune_wait4(value flags) {
-  CAMLparam1(flags);
+// see https://man7.org/linux/man-pages/man2/waitpid.2.html for a description of possible i_pid values
+// -1 is the one we typically use, which means wait for any child process
+value dune_wait4(value i_pid, value flags) {
+  CAMLparam2(i_pid, flags);
   CAMLlocal2(times, res);
 
   int pid, status, cv_flags;
@@ -56,7 +58,8 @@ value dune_wait4(value flags) {
   struct rusage ru;
 
   caml_enter_blocking_section();
-  pid = wait4(-1, &status, cv_flags, &ru);
+  // returns the pid of the terminated process, or -1 on error
+  pid = wait4(Int_val(i_pid), &status, cv_flags, &ru);
   gettimeofday(&tp, NULL);
   caml_leave_blocking_section();
   if (pid == -1)

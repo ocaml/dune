@@ -47,15 +47,15 @@ module Process_info = struct
 end
 
 external stub_wait4
-  :  Unix.wait_flag list
+  :  int -> Unix.wait_flag list
   -> int * Unix.process_status * float * Resource_usage.t
   = "dune_wait4"
 
-let wait flags =
+let wait pid flags =
   if Sys.win32
   then Code_error.raise "wait4 not available on windows" []
   else (
-    let pid, status, end_time, resource_usage = stub_wait4 flags in
+    let pid, status, end_time, resource_usage = stub_wait4 (Pid.to_int pid) flags in
     { Process_info.pid = Pid.of_int pid
     ; status
     ; end_time

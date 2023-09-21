@@ -24,4 +24,4 @@ module Process_info : sig
 end
 
 (** This function is not implemented on Windows *)
-val wait : Unix.wait_flag list -> Process_info.t
+val wait : Pid.t -> Unix.wait_flag list -> Process_info.t

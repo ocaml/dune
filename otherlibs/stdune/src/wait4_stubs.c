@@ -3,9 +3,9 @@
 #ifdef _WIN32
 #include <caml/fail.h>
 
-void dune_wait3(value flags) {
+void dune_wait4(value flags) {
   (void)flags;
-  caml_failwith("wait3: not supported on windows");
+  caml_failwith("wait4: not supported on windows");
 }
 
 #else
@@ -45,7 +45,7 @@ static value alloc_process_status(int status) {
 
 static int wait_flag_table[] = {WNOHANG, WUNTRACED};
 
-value dune_wait3(value flags) {
+value dune_wait4(value flags) {
   CAMLparam1(flags);
   CAMLlocal2(times, res);
 
@@ -56,11 +56,11 @@ value dune_wait3(value flags) {
   struct rusage ru;
 
   caml_enter_blocking_section();
-  pid = wait3(&status, cv_flags, &ru);
+  pid = wait4(-1, &status, cv_flags, &ru);
   gettimeofday(&tp, NULL);
   caml_leave_blocking_section();
   if (pid == -1)
-    uerror("wait3", Nothing);
+    uerror("wait4", Nothing);
 
   times = caml_alloc_small(2 * Double_wosize, Double_array_tag);
   Store_double_field(times, 0, ru.ru_utime.tv_sec + ru.ru_utime.tv_usec / 1e6);

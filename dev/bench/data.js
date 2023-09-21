@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695245168554,
+  "lastUpdate": 1695284204092,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -100397,6 +100397,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.162323172393332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a5fdf20a6ab720f13b819ad8da7317c806200c16",
+          "message": "pkg: make --use-env-from-current-system hint a hint (#8719)\n\nThis makes the solver failure error message less verbose.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-21T08:59:32+01:00",
+          "tree_id": "0e3f09c9a01807d42b84cc4a44a154809dcf7a3d",
+          "url": "https://github.com/ocaml/dune/commit/a5fdf20a6ab720f13b819ad8da7317c806200c16"
+        },
+        "date": 1695284186694,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "30.319121538293334",
             "unit": "seconds"
           }
         ]

@@ -13,3 +13,7 @@
 (cram
  (deps %{bin:make})
  (applies_to make))
+
+(cram
+ (deps %{bin:which})
+ (applies_to pkg-deps))

@@ -1532,3 +1532,19 @@ let exported_env context =
   let vars = Env.Map.map env ~f:Env_update.string_of_env_values in
   Env.extend Env.empty ~vars
 ;;
+
+let find_package ctx pkg =
+  has_lock ctx
+  >>= function
+  | false -> Memo.return None
+  | true ->
+    let* db = DB.get ctx in
+    Resolve.resolve db ctx (Loc.none, pkg)
+    >>| (function
+          | `System_provided -> Action_builder.return ()
+          | `Inside_lock_dir pkg ->
+            let open Action_builder.O in
+            let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+            ())
+    >>| Option.some
+;;

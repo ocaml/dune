@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695290730820,
+  "lastUpdate": 1695291141358,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -77979,6 +77979,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.4437986642266667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "36a199eb336460826d97ecc8b709c19da66410d0",
+          "message": "fix(pkg): resolve lock dir packages in (package ..) (#8717)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-21T10:41:31+01:00",
+          "tree_id": "8a60180918afe0db3e8720359b680701ee2645f6",
+          "url": "https://github.com/ocaml/dune/commit/36a199eb336460826d97ecc8b709c19da66410d0"
+        },
+        "date": 1695291140511,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "81.12965886346",
             "unit": "seconds"
           }
         ]

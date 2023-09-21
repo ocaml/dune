@@ -26,4 +26,5 @@ TODO: versioning will be added once this feature is stable
   $ ln -s foo.lock bar.lock
 
   $ build_pkg test
+  building from foo
   building from default

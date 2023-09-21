@@ -22,7 +22,7 @@ Dune should gracefully error when packages introduce circular dependenices
 
   $ build_pkg c
   Error: Dependency cycle between:
-     - package c
-  -> - package a
+     - package a
   -> - package c
+  -> - package a
   [1]

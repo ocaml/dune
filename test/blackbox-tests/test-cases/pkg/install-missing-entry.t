@@ -20,7 +20,7 @@ This should give us a proper error that myfile wasn't generated
   Error:
   $ROOT/_private/default/.pkg/test/source/myfile:
   No such file or directory
-  -> required by $ROOT/_private/default/.pkg/test/target
+  -> required by $ROOT/_private/default/.pkg/test/target/cookie
 
 This on the other hand shouldn't error because myfile is optional
 

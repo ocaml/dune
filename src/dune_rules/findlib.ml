@@ -38,29 +38,52 @@ let builtin_for_dune : Dune_package.t =
   }
 ;;
 
-type t =
-  { stdlib_dir : Path.t
-  ; paths : Path.t list
-  ; builtins : Meta.Simplified.t Package.Name.Map.t
-  ; ext_lib : Filename.Extension.t
-  }
+module DB = struct
+  type t =
+    { stdlib_dir : Path.t
+    ; paths : Path.t list
+    ; builtins : Meta.Simplified.t Package.Name.Map.t
+    ; ext_lib : Filename.Extension.t
+    }
 
-let equal t { stdlib_dir; paths; builtins; ext_lib } =
-  Path.equal t.stdlib_dir stdlib_dir
-  && List.equal Path.equal t.paths paths
-  && Package.Name.Map.equal ~equal:Meta.Simplified.equal t.builtins builtins
-  && String.equal t.ext_lib ext_lib
-;;
+  let to_dyn { stdlib_dir; paths; builtins; ext_lib } =
+    let open Dyn in
+    record
+      [ "stdlib_dir", Path.to_dyn stdlib_dir
+      ; "paths", list Path.to_dyn paths
+      ; "builtins", Package.Name.Map.to_dyn Meta.Simplified.to_dyn builtins
+      ; "ext_lib", string ext_lib
+      ]
+  ;;
 
-let hash { stdlib_dir; paths; builtins; ext_lib } =
-  Poly.hash
-    ( Path.hash stdlib_dir
-    , List.hash Path.hash paths
-    , Package.Name.Map.to_list builtins
-      |> List.hash (fun (k, v) ->
-        Tuple.T2.hash Package.Name.hash Meta.Simplified.hash (k, v))
-    , String.hash ext_lib )
-;;
+  let equal t { stdlib_dir; paths; builtins; ext_lib } =
+    Path.equal t.stdlib_dir stdlib_dir
+    && List.equal Path.equal t.paths paths
+    && Package.Name.Map.equal ~equal:Meta.Simplified.equal t.builtins builtins
+    && String.equal t.ext_lib ext_lib
+  ;;
+
+  let hash { stdlib_dir; paths; builtins; ext_lib } =
+    Poly.hash
+      ( Path.hash stdlib_dir
+      , List.hash Path.hash paths
+      , Package.Name.Map.to_list builtins
+        |> List.hash (fun (k, v) ->
+          Tuple.T2.hash Package.Name.hash Meta.Simplified.hash (k, v))
+      , String.hash ext_lib )
+  ;;
+
+  let create ~paths ~(lib_config : Lib_config.t) =
+    let stdlib_dir = lib_config.stdlib_dir in
+    let ext_lib = lib_config.ext_lib in
+    let open Memo.O in
+    let+ builtins =
+      let version = lib_config.ocaml_version in
+      Meta.builtins ~stdlib_dir ~version
+    in
+    { stdlib_dir; paths; builtins; ext_lib }
+  ;;
+end
 
 let has_double_underscore s =
   let len = String.length s in
@@ -236,50 +259,11 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib =
   Dune_package.Lib.of_findlib info
 ;;
 
-module Make_loader
-    (Monad : sig
-       type 'a t
-
-       val return : 'a -> 'a t
-
-       module List : sig
-         val for_all : 'a list -> f:('a -> bool t) -> bool t
-         val exists : 'a list -> f:('a -> bool t) -> bool t
-         val fold_left : 'a list -> f:('acc -> 'a -> 'acc t) -> init:'acc -> 'acc t
-         val find_map : 'a list -> f:('a -> 'b option t) -> 'b option t
-         val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
-         val filter_map : 'a list -> f:('a -> 'b option t) -> 'b list t
-       end
-
-       module O : sig
-         val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-         val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-         val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
-         val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
-       end
-     end)
-    (Fs : sig
-       val dir_contents
-         :  Path.t
-         -> (Filename.t list, Unix_error.Detailed.t) result Monad.t
-
-       val file_exists : Path.t -> bool Monad.t
-       val dir_exists : Path.t -> bool Monad.t
-       val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a Monad.t
-     end) : sig
-  (* Search for a <package>/{META,dune-package} file in the findlib search path *)
-  val lookup_and_load
-    :  t
-    -> Package.Name.t
-    -> (Dune_package.t, Unavailable_reason.t) result Monad.t
-
-  val root_packages : t -> Package.Name.Set.t Monad.t
-end = struct
-  open Monad.O
-  module Exists = Findlib.Package.Exists (Monad) (Fs)
+module Loader = struct
+  open Memo.O
 
   (* Parse all the packages defined in a META file *)
-  let dune_package_of_meta (db : t) ~dir ~meta_file ~(meta : Meta.Simplified.t) =
+  let dune_package_of_meta (db : DB.t) ~dir ~meta_file ~(meta : Meta.Simplified.t) =
     let rec loop ~dir ~full_name (meta : Meta.Simplified.t) acc =
       let vars = Vars.of_meta_rules meta.vars in
       let pkg_dir = Vars.get vars "directory" Ps.empty in
@@ -302,7 +286,7 @@ end = struct
       in
       let* (entry : Dune_package.Entry.t) =
         let+ exists =
-          Exists.exists
+          Findlib.Package.exists
             pkg
             ~is_builtin:
               (Package.Name.Map.mem db.builtins (Lib_name.package_name pkg.name))
@@ -310,7 +294,7 @@ end = struct
         if exists then Dune_package.Entry.Library lib else Hidden_library lib
       in
       let acc = Lib_name.Map.add_exn acc (Dune_package.Entry.name entry) entry in
-      Monad.List.fold_left meta.subs ~init:acc ~f:(fun acc (meta : Meta.Simplified.t) ->
+      Memo.List.fold_left meta.subs ~init:acc ~f:(fun acc (meta : Meta.Simplified.t) ->
         let full_name =
           match meta.name with
           | None -> full_name
@@ -338,7 +322,7 @@ end = struct
   let load_meta name file =
     Fs.file_exists file
     >>= function
-    | false -> Monad.return None
+    | false -> Memo.return None
     | true -> Fs.with_lexbuf_from_file file ~f:(Meta.of_lex ~name) >>| Option.some
   ;;
 
@@ -350,60 +334,58 @@ end = struct
       ~meta
   ;;
 
-  module Load_dune_package = Dune_package.Or_meta.Load (Monad) (Fs)
-
-  let lookup db name dir : (Dune_package.t, Unavailable_reason.t) result option Monad.t =
+  let lookup db name dir : (Dune_package.t, Unavailable_reason.t) result option Memo.t =
     let load_meta ~dir meta_file =
       load_meta (Some name) meta_file
       >>= function
-      | None -> Monad.return None
+      | None -> Memo.return None
       | Some meta -> dune_package_of_meta db ~dir ~meta_file ~meta >>| Option.some
     in
     (* XXX DUNE4 why do we allow [META.foo] override [dune-package] file? *)
     Path.relative dir (Findlib.Package.meta_fn ^ "." ^ Package.Name.to_string name)
     |> load_meta ~dir
     >>= function
-    | Some pkg -> Monad.return (Some (Ok pkg))
+    | Some pkg -> Memo.return (Some (Ok pkg))
     | None ->
       let dir = Path.relative dir (Package.Name.to_string name) in
       Fs.dir_exists dir
       >>= (function
-      | false -> Monad.return None
+      | false -> Memo.return None
       | true ->
         (let dune = Path.relative dir Dune_package.fn in
          Fs.file_exists dune
          >>= function
-         | true -> Load_dune_package.load dune
-         | false -> Monad.return (Ok Dune_package.Or_meta.Use_meta))
+         | true -> Dune_package.Or_meta.load dune
+         | false -> Memo.return (Ok Dune_package.Or_meta.Use_meta))
         >>= (function
         | Error e ->
-          Monad.return (Some (Error (Unavailable_reason.Invalid_dune_package e)))
-        | Ok (Dune_package.Or_meta.Dune_package p) -> Monad.return (Some (Ok p))
+          Memo.return (Some (Error (Unavailable_reason.Invalid_dune_package e)))
+        | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.return (Some (Ok p))
         | Ok Use_meta ->
           Path.relative dir Findlib.Package.meta_fn
           |> load_meta ~dir
           >>| Option.map ~f:(fun pkg -> Ok pkg)))
   ;;
 
-  let lookup_and_load (db : t) name =
-    Monad.List.find_map db.paths ~f:(lookup db name)
+  let lookup_and_load (db : DB.t) name =
+    Memo.List.find_map db.paths ~f:(lookup db name)
     >>= function
-    | Some m -> Monad.return m
+    | Some m -> Memo.return m
     | None ->
       (match Package.Name.to_string name with
-       | "dune" -> Monad.return (Ok builtin_for_dune)
+       | "dune" -> Memo.return (Ok builtin_for_dune)
        | _ ->
          (match Package.Name.Map.find db.builtins name with
-          | None -> Monad.return (Error Unavailable_reason.Not_found)
+          | None -> Memo.return (Error Unavailable_reason.Not_found)
           | Some meta -> load_builtin db meta >>| Result.ok))
   ;;
 
-  let root_packages (db : t) =
+  let root_packages (db : DB.t) =
     let+ pkgs =
-      Monad.List.concat_map db.paths ~f:(fun dir ->
+      Memo.List.concat_map db.paths ~f:(fun dir ->
         Fs.dir_contents dir
         >>= function
-        | Error (ENOENT, _, _) -> Monad.return []
+        | Error (ENOENT, _, _) -> Memo.return []
         | Error (unix_error, _, _) ->
           User_error.raise
             [ Pp.textf
@@ -412,7 +394,7 @@ end = struct
             ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
             ]
         | Ok dir_contents ->
-          Monad.List.filter_map dir_contents ~f:(fun name ->
+          Memo.List.filter_map dir_contents ~f:(fun name ->
             let+ exists =
               Fs.file_exists (Path.L.relative dir [ name; Findlib.Package.meta_fn ])
             in
@@ -423,102 +405,77 @@ end = struct
   ;;
 end
 
-module Loader =
-  Make_loader
-    (Memo)
-    (struct
-      open Memo.O
+module Public = struct
+  let memo =
+    let module Input = struct
+      type nonrec t = DB.t * Package.Name.t
 
-      let dir_contents f =
-        Path.as_outside_build_dir_exn f
-        |> Fs_memo.dir_contents
-        >>| Result.map ~f:(fun contents ->
-          Fs_cache.Dir_contents.to_list contents |> List.map ~f:fst)
-      ;;
+      let to_dyn = Tuple.T2.to_dyn DB.to_dyn Package.Name.to_dyn
+      let hash = Tuple.T2.hash DB.hash Package.Name.hash
+      let equal = Tuple.T2.equal DB.equal Package.Name.equal
+    end
+    in
+    Memo.create
+      "findlib-loader"
+      ~input:(module Input)
+      (fun (db, name) -> Loader.lookup_and_load db name)
+  ;;
 
-      let file_exists f = Fs_memo.file_exists (Path.as_outside_build_dir_exn f)
-      let dir_exists f = Fs_memo.dir_exists (Path.as_outside_build_dir_exn f)
+  let find_root_package db name : (Dune_package.t, Unavailable_reason.t) result Memo.t =
+    Memo.exec memo (db, name)
+  ;;
 
-      let with_lexbuf_from_file file ~f =
-        Fs_memo.with_lexbuf_from_file (Path.as_outside_build_dir_exn file) ~f
-      ;;
-    end)
+  open Memo.O
 
-let memo =
-  let module Input = struct
-    type nonrec t = t * Package.Name.t
+  let find t name =
+    let+ p = find_root_package t (Lib_name.package_name name) in
+    let open Result.O in
+    let* p = p in
+    match Lib_name.Map.find p.entries name with
+    | Some x -> Ok x
+    | None -> Error Unavailable_reason.Not_found
+  ;;
 
-    let to_dyn = Dyn.opaque
-    let hash = Tuple.T2.hash hash Package.Name.hash
-    let equal = Tuple.T2.equal equal Package.Name.equal
-  end
-  in
-  Memo.create
-    "findlib"
-    ~input:(module Input)
-    (fun (db, name) -> Loader.lookup_and_load db name)
-;;
+  let load_all_packages (t : DB.t) =
+    Loader.root_packages t
+    >>| Package.Name.Set.to_list
+    >>= Memo.parallel_map ~f:(fun name ->
+      let+ pkg = find_root_package t name in
+      name, pkg)
+  ;;
 
-let find_root_package db name : (Dune_package.t, Unavailable_reason.t) result Memo.t =
-  Memo.exec memo (db, name)
-;;
+  let all_packages t =
+    let+ root_packages = load_all_packages t in
+    List.fold_left root_packages ~init:[] ~f:(fun acc (_, x) ->
+      match x with
+      | Ok (p : Dune_package.t) ->
+        Lib_name.Map.fold p.entries ~init:acc ~f:(fun x acc -> x :: acc)
+      | Error _ -> acc)
+    |> List.sort ~compare:(fun a b ->
+      Lib_name.compare (Dune_package.Entry.name a) (Dune_package.Entry.name b))
+  ;;
 
-open Memo.O
-
-let find t name =
-  let+ p = find_root_package t (Lib_name.package_name name) in
-  let open Result.O in
-  let* p = p in
-  match Lib_name.Map.find p.entries name with
-  | Some x -> Ok x
-  | None -> Error Unavailable_reason.Not_found
-;;
-
-let load_all_packages (t : t) =
-  Loader.root_packages t
-  >>| Package.Name.Set.to_list
-  >>= Memo.parallel_map ~f:(fun name ->
-    let+ pkg = find_root_package t name in
-    name, pkg)
-;;
-
-let all_packages t =
-  let+ root_packages = load_all_packages t in
-  List.fold_left root_packages ~init:[] ~f:(fun acc (_, x) ->
-    match x with
-    | Ok (p : Dune_package.t) ->
-      Lib_name.Map.fold p.entries ~init:acc ~f:(fun x acc -> x :: acc)
-    | Error _ -> acc)
-  |> List.sort ~compare:(fun a b ->
-    Lib_name.compare (Dune_package.Entry.name a) (Dune_package.Entry.name b))
-;;
-
-let all_broken_packages t =
-  let+ packages = load_all_packages t in
-  List.fold_left packages ~init:[] ~f:(fun acc (name, x) ->
-    match x with
-    | Ok _ | Error Unavailable_reason.Not_found -> acc
-    | Error (Invalid_dune_package exn) -> (name, exn) :: acc)
-  |> List.sort ~compare:(fun (a, _) (b, _) -> Package.Name.compare a b)
-;;
-
-let create ~paths ~(lib_config : Lib_config.t) =
-  let stdlib_dir = lib_config.stdlib_dir in
-  let ext_lib = lib_config.ext_lib in
-  let+ builtins =
-    let version = lib_config.ocaml_version in
-    Meta.builtins ~stdlib_dir ~version
-  in
-  { stdlib_dir; paths; builtins; ext_lib }
-;;
+  let all_broken_packages t =
+    let+ packages = load_all_packages t in
+    List.fold_left packages ~init:[] ~f:(fun acc (name, x) ->
+      match x with
+      | Ok _ | Error Unavailable_reason.Not_found -> acc
+      | Error (Invalid_dune_package exn) -> (name, exn) :: acc)
+    |> List.sort ~compare:(fun (a, _) (b, _) -> Package.Name.compare a b)
+  ;;
+end
 
 module For_tests = struct
-  let create = create
+  let create ~paths ~lib_config = DB.create ~paths ~lib_config
 end
+
+type t = DB.t
 
 let create =
   Context.DB.create_db ~name:"findlib" (fun context ->
     let paths = Context.findlib_paths context in
-    create ~paths ~lib_config:(Context.ocaml context).lib_config)
+    DB.create ~paths ~lib_config:(Context.ocaml context).lib_config)
   |> Staged.unstage
 ;;
+
+include Public

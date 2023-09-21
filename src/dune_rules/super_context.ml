@@ -281,7 +281,7 @@ let add_rule t ?mode ?loc ~dir build =
 let add_rule_get_targets t ?mode ?loc ~dir build =
   let rule = make_rule t ?mode ?loc ~dir build in
   let+ () = Rules.Produce.rule rule in
-  Some rule.targets
+  rule.targets
 ;;
 
 let add_rules t ?loc ~dir builds = Memo.parallel_iter builds ~f:(add_rule ?loc t ~dir)

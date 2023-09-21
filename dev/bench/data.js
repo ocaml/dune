@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695326331955,
+  "lastUpdate": 1695326874465,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -31057,6 +31057,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.53850715863334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2067f716ca0506dc20a786f49efe5b85fa68c2d4",
+          "message": "Revert \"fix: make ignored rules fallback (#8706)\" (#8726)\n\n* refactor: simplify left over type signature\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\n\r\n* Revert \"refactor: simplify left over type signature\"\r\n\r\nThis reverts commit ec929ce6a79af4a48725ac7a4804694ef251687a.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\n\r\n* Revert \"fix: make ignored rules fallback (#8706)\"\r\n\r\nThis reverts commit b326c30331b5fdb039e06b02b88bdff96bf17da3.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\n\r\n* Revert \"fix: --ignore-promoted-rules should work on internal rules (#8518)\"\r\n\r\nThis reverts commit 853490be05448542408c1309934dbddbad7067af.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\n\r\n* test: promote\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\n\r\n---------\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-21T20:42:25+01:00",
+          "tree_id": "8a1826d1004aa393d12a96278539ae34ca2c4c76",
+          "url": "https://github.com/ocaml/dune/commit/2067f716ca0506dc20a786f49efe5b85fa68c2d4"
+        },
+        "date": 1695326873194,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "49.91278142278",
             "unit": "seconds"
           }
         ]

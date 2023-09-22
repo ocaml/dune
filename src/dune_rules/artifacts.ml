@@ -79,25 +79,7 @@ module Bin = struct
   let create ~(context : Context.t) ~local_bins = { context; local_bins }
 end
 
-module Public_libs = struct
-  type t =
-    { context : Context.t
-    ; public_libs : Lib.DB.t
-    }
-
-  let create ~context ~public_libs = { context; public_libs }
-end
-
-type t =
-  { public_libs : Public_libs.t
-  ; bin : Bin.t
-  }
+type t = { bin : Bin.t }
 
 let bin t = t.bin
-let public_libs t = t.public_libs
-
-let create (context : Context.t) ~public_libs ~local_bins =
-  { public_libs = Public_libs.create ~context ~public_libs
-  ; bin = Bin.create ~context ~local_bins
-  }
-;;
+let create (context : Context.t) ~local_bins = { bin = Bin.create ~context ~local_bins }

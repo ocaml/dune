@@ -29,15 +29,7 @@ module Bin : sig
   val add_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list -> t
 end
 
-module Public_libs : sig
-  type t =
-    { context : Context.t
-    ; public_libs : Lib.DB.t
-    }
-end
-
 type t
 
 val bin : t -> Bin.t
-val public_libs : t -> Public_libs.t
-val create : Context.t -> public_libs:Lib.DB.t -> local_bins:Bin.Local.t Memo.Lazy.t -> t
+val create : Context.t -> local_bins:Bin.Local.t Memo.Lazy.t -> t

@@ -214,15 +214,15 @@ struct
     | Ok result -> result
     | Error errors ->
       let missing, errors =
-        let process_target (missing, errors) (target, error) =
+        let process_target (target, error) =
           match error with
-          | Cached_digest.Digest_result.Error.No_such_file -> target :: missing, errors
+          | Cached_digest.Digest_result.Error.No_such_file -> Left target
           | Broken_symlink ->
             let error = Pp.verbatim "Broken symbolic link" in
-            missing, (target, error) :: errors
+            Right (target, error)
           | Cyclic_symlink ->
             let error = Pp.verbatim "Cyclic symbolic link" in
-            missing, (target, error) :: errors
+            Right (target, error)
           | Unexpected_kind file_kind ->
             let error =
               Pp.verbatim
@@ -231,10 +231,10 @@ struct
                    (File_kind.to_string file_kind)
                    (File_kind.to_string_hum file_kind))
             in
-            missing, (target, error) :: errors
+            Right (target, error)
           | Unix_error (error, syscall, arg) ->
             let unix_error = Unix_error.Detailed.create error ~syscall ~arg in
-            missing, (target, Unix_error.Detailed.pp unix_error) :: errors
+            Right (target, Unix_error.Detailed.pp unix_error)
           | Unrecognized exn ->
             let error =
               Pp.verbatim
@@ -247,15 +247,16 @@ struct
                    String.drop_prefix_if_exists ~prefix msg
                  | exn -> Printexc.to_string exn)
             in
-            missing, (target, error) :: errors
+            Right (target, error)
         in
-        let missing, errors =
-          Nonempty_list.to_list errors |> List.fold_left ~init:([], []) ~f:process_target
-        in
-        List.rev missing, List.rev errors
+        Nonempty_list.to_list errors |> List.partition_map ~f:process_target
       in
       (match missing, errors with
        | [], [] ->
+         (* This is impossible because [errors] is non-empty and [List.partition_map]
+            on a non empty list should also return at least one least that isn't empty.
+            Unfortunately, the type of such a [Nonempty_list.partition_map] would be
+            rather awkward. *)
          Code_error.raise
            "compute_target_digests_or_raise_error: this is impossible because we should \
             at least be showing the original error"

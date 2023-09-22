@@ -1,1 +1,0 @@
-- init: check that module names are valid (#8644, fixes #8252, @emillon)

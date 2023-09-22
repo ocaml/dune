@@ -93,6 +93,9 @@ type t =
   ; bin : Bin.t
   }
 
+let bin t = t.bin
+let public_libs t = t.public_libs
+
 let create (context : Context.t) ~public_libs ~local_bins =
   { public_libs = Public_libs.create ~context ~public_libs
   ; bin = Bin.create ~context ~local_bins

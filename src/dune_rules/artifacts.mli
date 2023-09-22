@@ -36,9 +36,8 @@ module Public_libs : sig
     }
 end
 
-type t = private
-  { public_libs : Public_libs.t
-  ; bin : Bin.t
-  }
+type t
 
+val bin : t -> Bin.t
+val public_libs : t -> Public_libs.t
 val create : Context.t -> public_libs:Lib.DB.t -> local_bins:Bin.Local.t Memo.Lazy.t -> t

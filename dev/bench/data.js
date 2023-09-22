@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695407525280,
+  "lastUpdate": 1695417591990,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -101673,6 +101673,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.17903349496",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "85a6b7e53becf00ab767def0ff5dfd56b16df767",
+          "message": "refactor: make Artifacts.t abstract (#8739)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-22T22:05:27+01:00",
+          "tree_id": "ab829cc801f0a9cd001cd2aad2c9b43ac83385c4",
+          "url": "https://github.com/ocaml/dune/commit/85a6b7e53becf00ab767def0ff5dfd56b16df767"
+        },
+        "date": 1695417576542,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "24.557616294966664",
             "unit": "seconds"
           }
         ]

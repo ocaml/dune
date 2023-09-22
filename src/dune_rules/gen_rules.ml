@@ -415,7 +415,7 @@ module Automatic_subdir = struct
     Filename.Map.of_list_exn
       [ Utop.utop_dir_basename, Utop
       ; Format_rules.formatted_dir_basename, Formatted
-      ; Artifacts.Bin.bin_dir_basename, Bin
+      ; Artifacts.bin_dir_basename, Bin
       ]
   ;;
 

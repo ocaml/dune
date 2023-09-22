@@ -88,7 +88,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
       | _ -> Memo.return Path.Build.Set.empty)
     >>| Path.Build.Set.union_all)
   >>| Path.Build.Set.union_all
-  >>| Artifacts.Bin.Local.create
+  >>| Artifacts.Local.create
 ;;
 
 let all =

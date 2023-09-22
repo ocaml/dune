@@ -18,12 +18,5 @@ val local_bin : Path.Build.t -> Path.Build.t
 val binary : t -> ?hint:string -> loc:Loc.t option -> string -> Action.Prog.t Memo.t
 
 val binary_available : t -> string -> bool Memo.t
-
-module Local : sig
-  type t
-
-  val create : Path.Build.Set.t -> t
-end
-
 val add_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list -> t
-val create : Context.t -> local_bins:Local.t Memo.Lazy.t -> t
+val create : Context.t -> local_bins:Path.Build.Set.t Memo.Lazy.t -> t

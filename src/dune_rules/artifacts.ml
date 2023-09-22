@@ -60,19 +60,20 @@ let add_binaries t ~dir l =
   { t with local_bins }
 ;;
 
-module Local = struct
-  type t = Path.Build.t Filename.Map.t
-
-  let create =
-    Path.Build.Set.fold ~init:Filename.Map.empty ~f:(fun path acc ->
-      let name = Path.Build.basename path in
-      let key =
-        if Sys.win32
-        then Option.value ~default:name (String.drop_suffix name ~suffix:".exe")
-        else name
-      in
-      Filename.Map.set acc key path)
-  ;;
-end
-
-let create (context : Context.t) ~local_bins = { context; local_bins }
+let create =
+  let drop_suffix name =
+    if Sys.win32
+    then Option.value ~default:name (String.drop_suffix name ~suffix:".exe")
+    else name
+  in
+  fun (context : Context.t) ~local_bins ->
+    let local_bins =
+      Memo.lazy_ (fun () ->
+        let+ local_bins = Memo.Lazy.force local_bins in
+        Path.Build.Set.fold local_bins ~init:Filename.Map.empty ~f:(fun path acc ->
+          let name = Path.Build.basename path in
+          let key = drop_suffix name in
+          Filename.Map.set acc key path))
+    in
+    { context; local_bins }
+;;

@@ -20,37 +20,34 @@ module Bin = struct
     ()
   ;;
 
-  let binary t ?hint ~loc name =
+  let analyze_binary t name =
     match Filename.is_relative name with
-    | false -> Memo.return (Ok (Path.of_filename_relative_to_initial_cwd name))
+    | false -> Memo.return (Some (Path.of_filename_relative_to_initial_cwd name))
     | true ->
       let* local_bins = Memo.Lazy.force t.local_bins in
       (match Filename.Map.find local_bins name with
-       | Some path -> Memo.return (Ok (Path.build path))
-       | None ->
-         Context.which t.context name
-         >>| (function
-         | Some p -> Ok p
-         | None ->
-           Error
-             (let context = Context.name t.context in
-              Action.Prog.Not_found.create ~program:name ?hint ~context ~loc ())))
+       | Some path -> Memo.return (Some (Path.build path))
+       | None -> Context.which t.context name)
+  ;;
+
+  let binary t ?hint ~loc name =
+    analyze_binary t name
+    >>| function
+    | Some path -> Ok path
+    | None ->
+      let context = Context.name t.context in
+      Error (Action.Prog.Not_found.create ~program:name ?hint ~context ~loc ())
   ;;
 
   let binary_available t name =
-    match Filename.is_relative name with
-    | false ->
-      Fs_memo.file_exists
-        (External (Path.External.of_filename_relative_to_initial_cwd name))
-    | true ->
-      let* local_bins = Memo.Lazy.force t.local_bins in
-      (match Filename.Map.find local_bins name with
-       | Some _ -> Memo.return true
-       | None ->
-         Context.which t.context name
-         >>| (function
-         | Some _ -> true
-         | None -> false))
+    analyze_binary t name
+    >>= function
+    | None -> Memo.return false
+    | Some path ->
+      (match path with
+       | External e -> Fs_memo.file_exists @@ External e
+       | In_source_tree e -> Fs_memo.file_exists @@ In_source_dir e
+       | In_build_dir _ -> Build_system.file_exists path)
   ;;
 
   let add_binaries t ~dir l =

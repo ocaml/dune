@@ -181,6 +181,7 @@ module Invalidation : sig
       | Event_queue_overflow
       | Upgrade
       | Test
+      | Variable_changed of string
   end
 
   val is_empty : t -> bool
@@ -385,6 +386,26 @@ module With_implicit_output : sig
     -> ('i, 'o) t
 
   val exec : ('i, 'o) t -> 'i -> 'o memo
+end
+
+(** A memoization node that can be explicitly set and invalidated. *)
+module Var : sig
+  type 'a memo := 'a t
+  type 'a t
+
+  (** [create ~name] creates a new variable with the name [name].
+
+      [name]s are currently only used for debugging and there is no validation, i.e., you
+      can create multiple variables with the same name and Memo will not complain. *)
+  val create : ?cutoff:('a -> 'a -> bool) -> 'a -> name:string -> 'a t
+
+  (** [set t value] sets the value of [t] to [value]. Returns the corresponding
+      invalidation that will trigger the subsequent re-evaluation of dependant nodes. *)
+  val set : 'a t -> 'a -> Invalidation.t
+
+  (** [read t] returns the value [t] and introduces a dependency on this node in the
+      current Memo computation. *)
+  val read : 'a t -> 'a memo
 end
 
 (** Memoization of polymorphic functions ['a input -> 'a output t]. The provided

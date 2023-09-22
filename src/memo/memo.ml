@@ -1446,6 +1446,7 @@ module Invalidation = struct
       | Event_queue_overflow
       | Upgrade
       | Test
+      | Variable_changed of string
 
     let to_string_hum = function
       | Unknown -> None
@@ -1453,6 +1454,7 @@ module Invalidation = struct
       | Event_queue_overflow -> Some "Event queue overflow; full rebuild required"
       | Upgrade -> Some "Dune upgrader initiated a full rebuild"
       | Test -> Some "Rebuild initiated by an internal testsuite"
+      | Variable_changed v -> Some (sprintf "Variable %s changed" v)
     ;;
   end
 
@@ -1828,3 +1830,59 @@ end
 
 module Option = Monad.Option (Fiber)
 module Result = Monad.Result (Fiber)
+
+(* CR-soon amokhov: The code below is currently untested. There is a comprehensive Memo
+   testsuite externally. We should bring it into Jane, and test this functionality. *)
+module Var = struct
+  (* CR-soon amokhov: Simplify this to [type 'a t = (unit, 'a) Cell.t].
+
+     [Cell.t]s already store all the information we need, and the only change that needs
+     to happen is making [Cell.invalidate] smart enough to return [Invalidation.empty]
+     when the [cutoff] fires. (Better do this after adding tests for [Var.t] though.)
+
+     Once we have that, we should also be able to implement [Fs_memo] on top of [Var.t]s
+     instead of hand-written "variable tables".
+  *)
+  type 'a t =
+    { cell : (unit, 'a) Cell.t
+    ; mutable value : 'a
+        (* We manually cutoff instead of depending on [Cell.t] cutoff mechanism,
+           so that we don't pay for invalidation when the value doesn't change. *)
+    ; cutoff : ('a -> 'a -> bool) option
+    }
+
+  let create (type a) ?cutoff value ~name : a t =
+    let rec t =
+      lazy
+        { cell =
+            lazy_cell ~name (fun () ->
+              let t = Stdlib.Lazy.force t in
+              return t.value)
+        ; value
+        ; cutoff
+        }
+    in
+    Stdlib.Lazy.force t
+  ;;
+
+  let set t v =
+    match t.cutoff with
+    | Some cutoff when cutoff t.value v ->
+      (* Note: We do *not* set [t.value := v] when the change is insignificant according
+         to the [cutoff]. This is consistent with how cutoffs work in the rest of Memo,
+         e.g., see the [compute] and [confirm_old_value] functions.
+
+         This prevents the "cutoff creep" where, e.g., the [cutoff] returns [true] for
+         changes within 1% of the current [float] value and a sequence of smaller changes
+         goes unnoticed, even when the aggregate change far exceeds the 1% threshold. *)
+      Invalidation.empty
+    | Some _ | None ->
+      t.value <- v;
+      Cell.invalidate
+        t.cell
+        ~reason:
+          (Variable_changed (Stdune.Option.value_exn t.cell.without_state.spec.name))
+  ;;
+
+  let read t = Cell.read t.cell
+end

@@ -437,7 +437,7 @@ let make_default_env_node
       ~expander_for_artifacts
       ~default_context_flags
       ~default_env:root_env
-      ~default_bin_artifacts:artifacts.bin
+      ~default_bin_artifacts:(Artifacts.bin artifacts)
       ~default_bin_annot:true
   in
   make
@@ -504,9 +504,9 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
       ~scope_host
       ~context
       ~env:expander_env
-      ~lib_artifacts:artifacts.public_libs
-      ~bin_artifacts_host:artifacts_host.bin
-      ~lib_artifacts_host:artifacts_host.public_libs
+      ~lib_artifacts:(Artifacts.public_libs artifacts)
+      ~bin_artifacts_host:(Artifacts.bin artifacts_host)
+      ~lib_artifacts_host:(Artifacts.public_libs artifacts_host)
   and+ root_env =
     add_packages_env (Context.name context) ~base:expander_env stanzas packages
   in
@@ -529,7 +529,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
     ~default_env
     ~host_env_tree:host
     ~root_expander
-    ~bin_artifacts:artifacts.bin
+    ~bin_artifacts:(Artifacts.bin artifacts)
     ~context_env:root_env
 ;;
 

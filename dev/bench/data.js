@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695377833503,
+  "lastUpdate": 1695381583852,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -101093,6 +101093,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.33173116304667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "05e1b7b03e0764d34eae89c1977c1267641789c6",
+          "message": "ci: use opam-monorepo < 0.4 in mirage build (#8734)\n\nFor some reason this fails with 0.4.0. The existing build plan was using\r\n0.3.6 so let's keep it that way and upgrade the dependencies later.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-09-22T13:06:28+02:00",
+          "tree_id": "12d538e231f6ea671017c7c087c9146e381f7355",
+          "url": "https://github.com/ocaml/dune/commit/05e1b7b03e0764d34eae89c1977c1267641789c6"
+        },
+        "date": 1695381569714,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.324737621193332",
             "unit": "seconds"
           }
         ]

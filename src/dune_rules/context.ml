@@ -91,6 +91,7 @@ and t =
   ; default_ocamlpath : Path.t list
   ; build_context : Build_context.t
   ; builder : builder
+  ; which : Filename.t -> Path.t option Memo.t
   }
 
 module Builder = struct
@@ -181,7 +182,7 @@ let profile t = t.builder.profile
 let equal x y = Context_name.equal x.builder.name y.builder.name
 let hash t = Context_name.hash t.builder.name
 let build_context t = t.build_context
-let which t fname = Which.which ~path:t.builder.path fname
+let which t fname = t.which fname
 let host t = Option.value ~default:t t.builder.for_host
 let name t = t.builder.name
 let path t = t.builder.path
@@ -490,6 +491,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
     ; findlib_paths = ocamlpath @ default_ocamlpath
     ; default_ocamlpath
     ; build_context = Build_context.create ~name:builder.name
+    ; which
     }
 ;;
 

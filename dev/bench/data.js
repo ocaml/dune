@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695377822287,
+  "lastUpdate": 1695377833503,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -78356,6 +78356,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "67.34984421174666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e0db8d7fd63a990daee9b8874f20e315a0f0d85f",
+          "message": "refactor: artifact handling (#8729)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-22T10:50:57+01:00",
+          "tree_id": "23591e7f421b88722e933a10d67a7cd4be41045e",
+          "url": "https://github.com/ocaml/dune/commit/e0db8d7fd63a990daee9b8874f20e315a0f0d85f"
+        },
+        "date": 1695377832548,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.66886734646",
             "unit": "seconds"
           }
         ]

@@ -50,7 +50,7 @@ type t =
   ; local_env : string Action_builder.t Env.Var.Map.t
   ; lib_artifacts : Lib.DB.t
   ; lib_artifacts_host : Lib.DB.t
-  ; bin_artifacts_host : Artifacts.t
+  ; artifacts_host : Artifacts.t
   ; bindings : value Pform.Map.t
   ; scope : Scope.t
   ; scope_host : Scope.t
@@ -63,7 +63,7 @@ type t =
   }
 
 let scope t = t.scope
-let artifacts t = t.bin_artifacts_host
+let artifacts t = t.artifacts_host
 let dir t = t.dir
 let context t = t.context
 let set_foreign_flags t ~f:foreign_flags = { t with foreign_flags }
@@ -74,7 +74,7 @@ let set_local_env_var t ~var ~value =
 
 let set_dir t ~dir = { t with dir }
 let set_scope t ~scope ~scope_host = { t with scope; scope_host }
-let set_bin_artifacts t ~bin_artifacts_host = { t with bin_artifacts_host }
+let set_artifacts t ~artifacts_host = { t with artifacts_host }
 let set_lookup_ml_sources t ~f = { t with lookup_artifacts = Some f }
 let set_expanding_what t x = { t with expanding_what = x }
 
@@ -570,7 +570,7 @@ let expand_pform_macro
              Action_builder.of_memo
                (Artifacts.binary
                   ~loc:(Some (Dune_lang.Template.Pform.loc source))
-                  t.bin_artifacts_host
+                  t.artifacts_host
                   s)
            in
            dep (Action.Prog.ok_exn prog)))
@@ -596,7 +596,7 @@ let expand_pform_macro
       (fun t ->
         Without
           (let open Memo.O in
-           let+ b = Artifacts.binary_available t.bin_artifacts_host s in
+           let+ b = Artifacts.binary_available t.artifacts_host s in
            b |> string_of_bool |> string))
   | Read -> expand_read_macro ~dir ~source s ~read:Io.read_file ~pack:string
   | Read_lines -> expand_read_macro ~dir ~source s ~read:Io.lines_of_file ~pack:strings
@@ -617,7 +617,7 @@ let expand_pform_macro
       (fun t ->
         Without
           (let open Memo.O in
-           let* coqc = Artifacts.binary t.bin_artifacts_host ~loc:None "coqc" in
+           let* coqc = Artifacts.binary t.artifacts_host ~loc:None "coqc" in
            let+ t = Coq_config.make ~coqc in
            match Coq_config.by_name t s with
            | None ->
@@ -725,7 +725,7 @@ let make_root
   ~env
   ~lib_artifacts
   ~lib_artifacts_host
-  ~bin_artifacts_host
+  ~artifacts_host
   =
   { dir = Context.build_dir context
   ; env
@@ -735,7 +735,7 @@ let make_root
   ; scope_host
   ; lib_artifacts
   ; lib_artifacts_host
-  ; bin_artifacts_host
+  ; artifacts_host
   ; c_compiler = Ocaml_config.c_compiler (Context.ocaml context).ocaml_config
   ; context
   ; lookup_artifacts = None

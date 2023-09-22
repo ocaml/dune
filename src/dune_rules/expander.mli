@@ -15,7 +15,7 @@ val make_root
   -> env:Env.t
   -> lib_artifacts:Lib.DB.t
   -> lib_artifacts_host:Lib.DB.t
-  -> bin_artifacts_host:Artifacts.t
+  -> artifacts_host:Artifacts.t
   -> t
 
 val set_foreign_flags
@@ -26,7 +26,7 @@ val set_foreign_flags
 val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
 val set_dir : t -> dir:Path.Build.t -> t
 val set_scope : t -> scope:Scope.t -> scope_host:Scope.t -> t
-val set_bin_artifacts : t -> bin_artifacts_host:Artifacts.t -> t
+val set_artifacts : t -> artifacts_host:Artifacts.t -> t
 
 val set_lookup_ml_sources
   :  t

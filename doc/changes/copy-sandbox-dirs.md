@@ -1,1 +1,0 @@
-- Make copy sandbox support directory targets. (#8705, fixes #7724, @emillon)

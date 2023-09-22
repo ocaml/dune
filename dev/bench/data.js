@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695390281711,
+  "lastUpdate": 1695391102828,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -101325,6 +101325,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.026174127740003",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d49d6fdf1f052d81db8fa906b7730fb2c274519c",
+          "message": "refactor: simplify digest collection (#8731)\n\nUse [List.partition_map] to split missing targets and errors\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-22T14:42:55+01:00",
+          "tree_id": "842533cd75d1b9f765ba8082ec913c8ac835756f",
+          "url": "https://github.com/ocaml/dune/commit/d49d6fdf1f052d81db8fa906b7730fb2c274519c"
+        },
+        "date": 1695391085582,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.82536513544667",
             "unit": "seconds"
           }
         ]

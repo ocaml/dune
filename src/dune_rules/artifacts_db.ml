@@ -1,6 +1,39 @@
 open Import
 open Memo.O
 
+let available_exes ~dir (exes : Dune_file.Executables.t) =
+  let* compile_info =
+    let* scope = Scope.DB.find_by_dir dir in
+    let dune_version =
+      let project = Scope.project scope in
+      Dune_project.dune_version project
+    in
+    let+ pps =
+      (* Instead of making the binary unavailable, this will just
+         fail when loading artifacts. This is clearly bad but
+         "optional" executables shouldn't be used. *)
+      Resolve.Memo.read_memo
+        (Preprocess.Per_module.with_instrumentation
+           exes.buildable.preprocess
+           ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
+      >>| Preprocess.Per_module.pps
+    in
+    let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names) in
+    Lib.DB.resolve_user_written_deps
+      (Scope.libs scope)
+      (`Exe exes.names)
+      exes.buildable.libraries
+      ~pps
+      ~dune_version
+      ~forbidden_libraries:exes.forbidden_libraries
+      ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
+      ~merlin_ident
+  in
+  let open Memo.O in
+  let+ available = Lib.Compile.direct_requires compile_info in
+  Resolve.is_ok available
+;;
+
 let get_installed_binaries ~(context : Context.t) stanzas =
   let open Memo.O in
   let install_dir = Install.Context.bin_dir ~context:(Context.name context) in
@@ -38,51 +71,20 @@ let get_installed_binaries ~(context : Context.t) stanzas =
         binaries_from_install files
       | Dune_file.Executables
           ({ install_conf = Some { section = Section Bin; files; _ }; _ } as exes) ->
-        let* enabled_if =
-          Expander.With_reduced_var_set.eval_blang ~context ~dir exes.enabled_if
+        let* available =
+          let* enabled_if =
+            Expander.With_reduced_var_set.eval_blang ~context ~dir exes.enabled_if
+          in
+          match enabled_if with
+          | false -> Memo.return false
+          | true ->
+            (match exes.optional with
+             | false -> Memo.return true
+             | true -> available_exes ~dir exes)
         in
-        (match enabled_if with
-         | false -> Memo.return Path.Build.Set.empty
-         | true ->
-           (match exes.optional with
-            | false -> binaries_from_install files
-            | true ->
-              let* compile_info =
-                let* scope = Scope.DB.find_by_dir dir in
-                let project = Scope.project scope in
-                let dune_version = Dune_project.dune_version project in
-                let+ pps =
-                  (* Instead of making the binary unavailable, this will just
-                     fail when loading artifacts. This is clearly bad but
-                     "optional" executables shouldn't be used. *)
-                  Resolve.Memo.read_memo
-                    (Preprocess.Per_module.with_instrumentation
-                       exes.buildable.preprocess
-                       ~instrumentation_backend:
-                         (Lib.DB.instrumentation_backend (Scope.libs scope)))
-                  >>| Preprocess.Per_module.pps
-                in
-                let merlin_ident =
-                  Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names)
-                in
-                Lib.DB.resolve_user_written_deps
-                  (Scope.libs scope)
-                  (`Exe exes.names)
-                  exes.buildable.libraries
-                  ~pps
-                  ~dune_version
-                  ~forbidden_libraries:exes.forbidden_libraries
-                  ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-                  ~merlin_ident
-              in
-              let* available =
-                let open Memo.O in
-                let+ available = Lib.Compile.direct_requires compile_info in
-                Resolve.is_ok available
-              in
-              if available
-              then binaries_from_install files
-              else Memo.return Path.Build.Set.empty))
+        if available
+        then binaries_from_install files
+        else Memo.return Path.Build.Set.empty
       | _ -> Memo.return Path.Build.Set.empty)
     >>| Path.Build.Set.union_all)
   >>| Path.Build.Set.union_all

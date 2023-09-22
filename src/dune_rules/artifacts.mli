@@ -23,11 +23,9 @@ module Bin : sig
   module Local : sig
     type t
 
-    val equal : t -> t -> bool
     val create : Path.Build.Set.t -> t
   end
 
-  val create : context:Context.t -> local_bins:Local.t Memo.Lazy.t -> t
   val add_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list -> t
 end
 

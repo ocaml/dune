@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695395134960,
+  "lastUpdate": 1695395483288,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -78675,6 +78675,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.1660098634000007",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e2b282a3ef8dcd09f9f72422dc8a3aa20e89c280",
+          "message": "refactor: artifact binary improvement (#8733)\n\nremove duplicated code\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-22T15:45:07+01:00",
+          "tree_id": "91ec42a5aa036704dd2e38d93e3db2b512080433",
+          "url": "https://github.com/ocaml/dune/commit/e2b282a3ef8dcd09f9f72422dc8a3aa20e89c280"
+        },
+        "date": 1695395482471,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "69.09888466155333",
             "unit": "seconds"
           }
         ]

@@ -50,7 +50,7 @@ type t =
   ; local_env : string Action_builder.t Env.Var.Map.t
   ; lib_artifacts : Lib.DB.t
   ; lib_artifacts_host : Lib.DB.t
-  ; bin_artifacts_host : Artifacts.Bin.t
+  ; bin_artifacts_host : Artifacts.t
   ; bindings : value Pform.Map.t
   ; scope : Scope.t
   ; scope_host : Scope.t
@@ -568,7 +568,7 @@ let expand_pform_macro
         With
           (let* prog =
              Action_builder.of_memo
-               (Artifacts.Bin.binary
+               (Artifacts.binary
                   ~loc:(Some (Dune_lang.Template.Pform.loc source))
                   t.bin_artifacts_host
                   s)
@@ -596,7 +596,7 @@ let expand_pform_macro
       (fun t ->
         Without
           (let open Memo.O in
-           let+ b = Artifacts.Bin.binary_available t.bin_artifacts_host s in
+           let+ b = Artifacts.binary_available t.bin_artifacts_host s in
            b |> string_of_bool |> string))
   | Read -> expand_read_macro ~dir ~source s ~read:Io.read_file ~pack:string
   | Read_lines -> expand_read_macro ~dir ~source s ~read:Io.lines_of_file ~pack:strings
@@ -617,7 +617,7 @@ let expand_pform_macro
       (fun t ->
         Without
           (let open Memo.O in
-           let* coqc = Artifacts.Bin.binary t.bin_artifacts_host ~loc:None "coqc" in
+           let* coqc = Artifacts.binary t.bin_artifacts_host ~loc:None "coqc" in
            let+ t = Coq_config.make ~coqc in
            match Coq_config.by_name t s with
            | None ->

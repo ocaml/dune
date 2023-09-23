@@ -19,7 +19,7 @@ type t =
   ; foreign_flags : string list Action_builder.t Foreign_language.Dict.t
   ; link_flags : Link_flags.t Memo.Lazy.t
   ; external_env : Env.t Memo.Lazy.t
-  ; bin_artifacts : Artifacts.Bin.t Memo.Lazy.t
+  ; bin_artifacts : Artifacts.t Memo.Lazy.t
   ; inline_tests : Dune_env.Stanza.Inline_tests.t Memo.Lazy.t
   ; menhir_flags : string list Action_builder.t Memo.Lazy.t
   ; odoc : Odoc.t Memo.Lazy.t
@@ -108,7 +108,7 @@ let make
         match config.binaries with
         | [] -> env
         | _ :: _ ->
-          let dir = Artifacts.Bin.local_bin dir |> Path.build in
+          let dir = Artifacts.local_bin dir |> Path.build in
           Env_path.cons env ~dir
       in
       Memo.return env)
@@ -116,7 +116,7 @@ let make
   let bin_artifacts =
     inherited ~field:bin_artifacts ~root:default_bin_artifacts (fun binaries ->
       let+ local_binaries = Memo.Lazy.force local_binaries in
-      Artifacts.Bin.add_binaries binaries ~dir local_binaries)
+      Artifacts.add_binaries binaries ~dir local_binaries)
   in
   let ocaml_flags =
     let default_ocaml_flags =

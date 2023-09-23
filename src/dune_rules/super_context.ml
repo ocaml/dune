@@ -39,11 +39,11 @@ module Env_tree : sig
     -> host_env_tree:t option
     -> default_env:Env_node.t Memo.Lazy.t
     -> root_expander:Expander.t
-    -> bin_artifacts:Artifacts.Bin.t
+    -> bin_artifacts:Artifacts.t
     -> context_env:Env.t
     -> t
 
-  val bin_artifacts_host : t -> dir:Path.Build.t -> Artifacts.Bin.t Memo.t
+  val bin_artifacts_host : t -> dir:Path.Build.t -> Artifacts.t Memo.t
   val expander : t -> dir:Path.Build.t -> Expander.t Memo.t
 end = struct
   open Memo.O
@@ -54,11 +54,11 @@ end = struct
     ; default_env : Env_node.t Memo.Lazy.t
     ; host : t option
     ; root_expander : Expander.t
-    ; bin_artifacts : Artifacts.Bin.t
+    ; bin_artifacts : Artifacts.t
     ; get_node : Path.Build.t -> Env_node.t Memo.t
     }
 
-  let force_bin_artifacts { bin_artifacts; _ } = Artifacts.Bin.force bin_artifacts
+  let force_bin_artifacts { bin_artifacts; _ } = Artifacts.force bin_artifacts
   let context t = t.context
   let get_node t ~dir = t.get_node dir
   let get_context_env t = t.context_env
@@ -331,7 +331,7 @@ let dump_env t ~dir =
 
 let resolve_program t ~dir ?hint ~loc bin =
   let* bin_artifacts = Env_tree.bin_artifacts_host t ~dir in
-  Artifacts.Bin.binary ?hint ~loc bin_artifacts bin
+  Artifacts.binary ?hint ~loc bin_artifacts bin
 ;;
 
 let add_packages_env context ~base stanzas packages =
@@ -437,7 +437,7 @@ let make_default_env_node
       ~expander_for_artifacts
       ~default_context_flags
       ~default_env:root_env
-      ~default_bin_artifacts:(Artifacts.bin artifacts)
+      ~default_bin_artifacts:artifacts
       ~default_bin_annot:true
   in
   make
@@ -510,7 +510,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
       ~context
       ~env:expander_env
       ~lib_artifacts:public_libs
-      ~bin_artifacts_host:(Artifacts.bin artifacts_host)
+      ~bin_artifacts_host:artifacts_host
       ~lib_artifacts_host:public_libs_host
   and+ artifacts = artifacts
   and+ root_env =
@@ -535,7 +535,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
     ~default_env
     ~host_env_tree:host
     ~root_expander
-    ~bin_artifacts:(Artifacts.bin artifacts)
+    ~bin_artifacts:artifacts
     ~context_env:root_env
 ;;
 

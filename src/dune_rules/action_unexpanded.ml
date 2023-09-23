@@ -404,10 +404,7 @@ end = struct
                Action_builder.return (Ok (Path.relative dir s))
              | In_path ->
                Action_builder.of_memo
-                 (Artifacts.Bin.binary
-                    ~loc:(Some loc)
-                    (Expander.artifacts env.expander)
-                    s))
+                 (Artifacts.binary ~loc:(Some loc) (Expander.artifacts env.expander) s))
         in
         let prog = Result.map prog ~f:(Expander.map_exe env.expander) in
         let args = Value.L.to_strings ~dir args in

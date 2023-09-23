@@ -15,7 +15,7 @@ val make_root
   -> env:Env.t
   -> lib_artifacts:Lib.DB.t
   -> lib_artifacts_host:Lib.DB.t
-  -> bin_artifacts_host:Artifacts.Bin.t
+  -> bin_artifacts_host:Artifacts.t
   -> t
 
 val set_foreign_flags
@@ -26,7 +26,7 @@ val set_foreign_flags
 val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
 val set_dir : t -> dir:Path.Build.t -> t
 val set_scope : t -> scope:Scope.t -> scope_host:Scope.t -> t
-val set_bin_artifacts : t -> bin_artifacts_host:Artifacts.Bin.t -> t
+val set_bin_artifacts : t -> bin_artifacts_host:Artifacts.t -> t
 
 val set_lookup_ml_sources
   :  t
@@ -123,7 +123,7 @@ val expand_and_eval_set
 
 val eval_blang : t -> Blang.t -> bool Memo.t
 val map_exe : t -> Path.t -> Path.t
-val artifacts : t -> Artifacts.Bin.t
+val artifacts : t -> Artifacts.t
 
 val expand_locks
   :  base:[ `Of_expander | `This of Path.t ]

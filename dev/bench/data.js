@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695486297059,
+  "lastUpdate": 1695486311994,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -79574,6 +79574,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "81.24402681567334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2a4d492c414f66cdc6c2a11fe17e82afa38b4256",
+          "message": "refactor: do not initialize context to load stanzas (#8747)\n\nWhen this isn't necessary, we stop initializing the context to get all\r\nthe stanzas.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-23T16:54:52+01:00",
+          "tree_id": "7c2d7db513809a8e3257fbbfeb24011aa8f59276",
+          "url": "https://github.com/ocaml/dune/commit/2a4d492c414f66cdc6c2a11fe17e82afa38b4256"
+        },
+        "date": 1695486310755,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.3720854208333333",
             "unit": "seconds"
           }
         ]

@@ -72,9 +72,4 @@ It should also be visible in the workspace:
   > EOF
 
   $ dune build ./testout && cat _build/default/testout
-  File "dune", line 2, characters 30-40:
-  2 |  (with-stdout-to testout (run %{bin:foo})))
-                                    ^^^^^^^^^^
-  Error: Program foo not found in the tree or in PATH
-   (context: default)
-  [1]
+  from test package

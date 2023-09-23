@@ -289,6 +289,7 @@ let file_of_lib db context ~loc ~lib ~file =
       in
       let pkg_root =
         let package = Lib_name.package_name name in
+        (* Why do we return the install path? *)
         Install.Context.lib_dir ~context:(Context.name context) ~package
       in
       Path.build (Path.Build.append_local pkg_root subdir)

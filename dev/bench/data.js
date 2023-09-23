@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695467604068,
+  "lastUpdate": 1695467982358,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -31405,6 +31405,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.78301439267333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "165f3d689465f8fcca8c95f62059e8d702245500",
+          "message": "refactor: make stanza loading lazier (#8745)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-23T12:00:06+01:00",
+          "tree_id": "e20fc511cca500dc6d76dc685285739ce7e67bb1",
+          "url": "https://github.com/ocaml/dune/commit/165f3d689465f8fcca8c95f62059e8d702245500"
+        },
+        "date": 1695467980473,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.80092754020001",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695486311994,
+  "lastUpdate": 1695493377101,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -102717,6 +102717,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.016845996606666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "seanbrecke@gmail.com",
+            "name": "seanbreckenridge",
+            "username": "seanbreckenridge"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "63b4bb975cad44e6bc4598f21e77b7632063beea",
+          "message": "fix: replace obsolete wait3 with wait4 (#8720)\n\n* fix: replace obsolete wait3 with wait4\r\n\r\nhttps://www.gnu.org/software/libc/manual/html_node/BSD-Wait-Functions.html\r\n\r\n`wait4` is available on android unlike `wait3`.",
+          "timestamp": "2023-09-23T19:06:46+01:00",
+          "tree_id": "0f17cd35e4bf95b11a85f9195e841b50b532e9cf",
+          "url": "https://github.com/ocaml/dune/commit/63b4bb975cad44e6bc4598f21e77b7632063beea"
+        },
+        "date": 1695493359474,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "26.896912780906664",
             "unit": "seconds"
           }
         ]

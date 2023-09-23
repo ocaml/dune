@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695455325352,
+  "lastUpdate": 1695455683016,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -78936,6 +78936,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.0785706822133334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fa81f4e3da077f261152d755bf0d90630f033234",
+          "message": "refactor: remove public_libs from artifacts (#8740)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-23T08:27:59+01:00",
+          "tree_id": "048b9721f7130d5c1fbaa0383dd425f9f7b30e6c",
+          "url": "https://github.com/ocaml/dune/commit/fa81f4e3da077f261152d755bf0d90630f033234"
+        },
+        "date": 1695455681950,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "70.48578646131334",
             "unit": "seconds"
           }
         ]

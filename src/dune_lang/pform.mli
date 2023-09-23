@@ -16,7 +16,6 @@ module Var : sig
         | Doc
         | Stublibs
         | Man
-        | Misc
 
       val of_string : string -> t option
     end

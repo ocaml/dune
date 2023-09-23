@@ -20,19 +20,25 @@ These should all have nice error messages explaining that they are not supported
 
 # opam-version
   $ fail_solve opam-version
-  Expected solve to fail, but it succeeded
+  Error: Variable "opam-version" occuring in opam package "testpkg.0.0.1" is
+  not supported.
 # root
   $ fail_solve root 
-  Expected solve to fail, but it succeeded
+  Error: Variable "root" occuring in opam package "testpkg.0.0.1" is not
+  supported.
 # _:hash
   $ fail_solve _:hash
-  Expected solve to fail, but it succeeded
+  Error: Variable "hash" occuring in opam package "testpkg.0.0.1" is not
+  supported.
 # _:build-id
   $ fail_solve _:build-id
-  Expected solve to fail, but it succeeded
+  Error: Variable "build-id" occuring in opam package "testpkg.0.0.1" is not
+  supported.
 # misc
   $ fail_solve misc
-  Expected solve to fail, but it succeeded
+  Error: Variable "misc" occuring in opam package "testpkg.0.0.1" is not
+  supported.
 # _:misc
   $ fail_solve _:misc
-  Expected solve to fail, but it succeeded
+  Error: Variable "misc" occuring in opam package "testpkg.0.0.1" is not
+  supported.

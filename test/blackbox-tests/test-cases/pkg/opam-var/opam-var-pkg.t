@@ -71,67 +71,52 @@ corresponding Dune version.
    (progn
     (run echo 1 %{pkg-self:name})
     (run echo 2 %{pkg-self:name})
-    (run echo 3 %{pkg:name:foo})
+    (run echo 3 %{pkg:foo:name})
     (run echo 4 %{pkg-self:version})
     (run echo 5 %{pkg-self:version})
-    (run echo 6 %{pkg:version:foo})
+    (run echo 6 %{pkg:foo:version})
     (run echo 7 %{pkg-self:depends})
-    (run echo 8 %{pkg:depends:foo})
+    (run echo 8 %{pkg:foo:depends})
     (run echo 9 %{pkg-self:installed})
-    (run echo 10 %{pkg:installed:foo})
+    (run echo 10 %{pkg:foo:installed})
     (run echo 11 %{pkg-self:enable})
-    (run echo 12 %{pkg:enable:foo})
+    (run echo 12 %{pkg:foo:enable})
     (run echo 13 %{pkg-self:pinned})
-    (run echo 14 %{pkg:pinned:foo})
+    (run echo 14 %{pkg:foo:pinned})
     (run echo 15 %{pkg-self:bin})
-    (run echo 16 %{pkg:bin:foo})
+    (run echo 16 %{pkg:foo:bin})
     (run echo 17 %{pkg-self:sbin})
-    (run echo 18 %{pkg:sbin:foo})
+    (run echo 18 %{pkg:foo:sbin})
     (run echo 19 %{pkg-self:lib})
-    (run echo 20 %{pkg:lib:foo})
+    (run echo 20 %{pkg:foo:lib})
     (run echo 21 %{pkg-self:man})
-    (run echo 22 %{pkg:man:foo})
+    (run echo 22 %{pkg:foo:man})
     (run echo 23 %{pkg-self:doc})
-    (run echo 24 %{pkg:doc:foo})
+    (run echo 24 %{pkg:foo:doc})
     (run echo 25 %{pkg-self:share})
-    (run echo 26 %{pkg:share:foo})
+    (run echo 26 %{pkg:foo:share})
     (run echo 27 %{pkg-self:etc})
-    (run echo 28 %{pkg:etc:foo})
+    (run echo 28 %{pkg:foo:etc})
     (run echo 29 %{pkg-self:build})
-    (run echo 30 %{pkg:build:foo})
+    (run echo 30 %{pkg:foo:build})
     (run echo 31 %{pkg-self:dev})
-    (run echo 32 %{pkg:dev:foo})
+    (run echo 32 %{pkg:foo:dev})
     (run echo 33 %{pkg-self:opamfile})
-    (run echo 34 %{pkg:opamfile:foo})
+    (run echo 34 %{pkg:foo:opamfile})
     (run echo 35 %{pkg-self:with-test})
     (run echo 36 %{pkg-self:with-test})
-    (run echo 37 %{pkg:with-test:foo})
+    (run echo 37 %{pkg:foo:with-test})
     (run echo 38 %{pkg-self:with-doc})
     (run echo 39 %{pkg-self:with-doc})
-    (run echo 40 %{pkg:with-doc:foo})
+    (run echo 40 %{pkg:foo:with-doc})
     (run echo 41 %{pkg-self:with-dev-setup})
-    (run echo 42 %{pkg:with-dev-setup:foo})))
+    (run echo 42 %{pkg:foo:with-dev-setup})))
   
   (deps foo)
 
 The values here are not important, but Dune should be able to interpret the variables.
 
   $ build_pkg testpkg
-  File "src/dune_rules/pkg_rules.ml", line 556, characters 17-23:
-  File "src/dune_rules/pkg_rules.ml", line 556, characters 17-23: Assertion
-  failed
-  Raised at Dune_rules__Pkg_rules.Action_expander.Expander.expand_pform in file
-    "src/dune_rules/pkg_rules.ml", line 556, characters 17-29
-  Called from Dune_lang__String_with_vars.Make_expander.expand in file
-    "src/dune_lang/string_with_vars.ml", line 271, characters 15-26
-  Called from Fiber__Scheduler.exec in file "vendor/fiber/src/scheduler.ml",
-    line 76, characters 8-11
-  
-  I must not crash.  Uncertainty is the mind-killer. Exceptions are the
-  little-death that brings total obliteration.  I will fully express my cases. 
-  Execution will pass over me and through me.  And when it has gone past, I
-  will unwind the stack along its path.  Where the cases are handled there will
-  be nothing.  Only I will remain.
   File "dune.lock/testpkg.pkg", line 5, characters 14-30:
   5 |   (run echo 1 %{pkg-self:name})
                     ^^^^^^^^^^^^^^^^
@@ -152,6 +137,10 @@ The values here are not important, but Dune should be able to interpret the vari
   11 |   (run echo 7 %{pkg-self:depends})
                      ^^^^^^^^^^^^^^^^^^^
   Error: Unknown macro %{pkg-self:..}
+  File "dune.lock/testpkg.pkg", line 12, characters 14-32:
+  12 |   (run echo 8 %{pkg:foo:depends})
+                     ^^^^^^^^^^^^^^^^^^
+  Error: invalid section "depends"
   File "dune.lock/testpkg.pkg", line 13, characters 14-35:
   13 |   (run echo 9 %{pkg-self:installed})
                      ^^^^^^^^^^^^^^^^^^^^^
@@ -196,6 +185,10 @@ The values here are not important, but Dune should be able to interpret the vari
   33 |   (run echo 29 %{pkg-self:build})
                       ^^^^^^^^^^^^^^^^^
   Error: Unknown macro %{pkg-self:..}
+  File "dune.lock/testpkg.pkg", line 34, characters 15-31:
+  34 |   (run echo 30 %{pkg:foo:build})
+                      ^^^^^^^^^^^^^^^^
+  Error: invalid section "build"
   File "dune.lock/testpkg.pkg", line 35, characters 15-30:
   35 |   (run echo 31 %{pkg-self:dev})
                       ^^^^^^^^^^^^^^^
@@ -204,6 +197,10 @@ The values here are not important, but Dune should be able to interpret the vari
   37 |   (run echo 33 %{pkg-self:opamfile})
                       ^^^^^^^^^^^^^^^^^^^^
   Error: Unknown macro %{pkg-self:..}
+  File "dune.lock/testpkg.pkg", line 38, characters 15-34:
+  38 |   (run echo 34 %{pkg:foo:opamfile})
+                      ^^^^^^^^^^^^^^^^^^^
+  Error: invalid section "opamfile"
   File "dune.lock/testpkg.pkg", line 39, characters 15-36:
   39 |   (run echo 35 %{pkg-self:with-test})
                       ^^^^^^^^^^^^^^^^^^^^^
@@ -212,6 +209,10 @@ The values here are not important, but Dune should be able to interpret the vari
   40 |   (run echo 36 %{pkg-self:with-test})
                       ^^^^^^^^^^^^^^^^^^^^^
   Error: Unknown macro %{pkg-self:..}
+  File "dune.lock/testpkg.pkg", line 41, characters 15-35:
+  41 |   (run echo 37 %{pkg:foo:with-test})
+                      ^^^^^^^^^^^^^^^^^^^^
+  Error: invalid section "with-test"
   File "dune.lock/testpkg.pkg", line 42, characters 15-35:
   42 |   (run echo 38 %{pkg-self:with-doc})
                       ^^^^^^^^^^^^^^^^^^^^
@@ -220,8 +221,16 @@ The values here are not important, but Dune should be able to interpret the vari
   43 |   (run echo 39 %{pkg-self:with-doc})
                       ^^^^^^^^^^^^^^^^^^^^
   Error: Unknown macro %{pkg-self:..}
+  File "dune.lock/testpkg.pkg", line 44, characters 15-34:
+  44 |   (run echo 40 %{pkg:foo:with-doc})
+                      ^^^^^^^^^^^^^^^^^^^
+  Error: invalid section "with-doc"
   File "dune.lock/testpkg.pkg", line 45, characters 15-41:
   45 |   (run echo 41 %{pkg-self:with-dev-setup})
                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Unknown macro %{pkg-self:..}
+  File "dune.lock/testpkg.pkg", line 46, characters 15-40:
+  46 |   (run echo 42 %{pkg:foo:with-dev-setup})))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: invalid section "with-dev-setup"
   [1]

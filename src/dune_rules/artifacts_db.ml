@@ -96,19 +96,17 @@ let all =
   let+ contexts = Context.DB.all () in
   Context_name.Map.of_list_map_exn contexts ~f:(fun context ->
     let artifacts =
-      Memo.lazy_
-      @@ fun () ->
-      let+ stanzas = Only_packages.filtered_stanzas context in
       let local_bins =
         Memo.lazy_ ~name:"get_installed_binaries" (fun () ->
+          let* stanzas = Only_packages.filtered_stanzas context in
           get_installed_binaries ~context stanzas)
       in
-      Artifacts.create context ~local_bins
+      Artifacts.create context ~local_bins |> Memo.return
     in
     Context.name context, artifacts)
 ;;
 
 let get (context : Context.t) =
   let* all = Memo.Lazy.force all in
-  Context_name.Map.find_exn all (Context.name context) |> Memo.Lazy.force
+  Context_name.Map.find_exn all (Context.name context)
 ;;

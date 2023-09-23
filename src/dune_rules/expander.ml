@@ -48,8 +48,8 @@ type t =
   { dir : Path.Build.t
   ; env : Env.t
   ; local_env : string Action_builder.t Env.Var.Map.t
-  ; lib_artifacts : Artifacts.Public_libs.t
-  ; lib_artifacts_host : Artifacts.Public_libs.t
+  ; lib_artifacts : Lib.DB.t
+  ; lib_artifacts_host : Lib.DB.t
   ; bin_artifacts_host : Artifacts.Bin.t
   ; bindings : value Pform.Map.t
   ; scope : Scope.t
@@ -274,9 +274,9 @@ let expand_read_macro ~dir ~source s ~read ~pack =
         With (Action_builder.of_memo read))
 ;;
 
-let file_of_lib { Artifacts.Public_libs.context; public_libs } ~loc ~lib ~file =
+let file_of_lib db context ~loc ~lib ~file =
   let open Resolve.Memo.O in
-  let+ lib = Lib.DB.resolve public_libs (loc, lib) in
+  let+ lib = Lib.DB.resolve db (loc, lib) in
   let dir =
     let info = Lib.info lib in
     match Lib.is_local lib with
@@ -330,7 +330,7 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
              ])
     else (
       let artifacts = if lib_exec then t.lib_artifacts_host else t.lib_artifacts in
-      file_of_lib artifacts ~loc ~lib ~file)
+      file_of_lib artifacts (Context.host t.context) ~loc ~lib ~file)
   in
   let p =
     let open Memo.O in

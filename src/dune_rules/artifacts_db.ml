@@ -99,13 +99,12 @@ let all =
     let artifacts =
       Memo.lazy_
       @@ fun () ->
-      let* public_libs = Scope.DB.public_libs context in
       let+ stanzas = Only_packages.filtered_stanzas context in
       let local_bins =
         Memo.lazy_ ~name:"get_installed_binaries" (fun () ->
           get_installed_binaries ~context stanzas)
       in
-      Artifacts.create context ~public_libs ~local_bins
+      Artifacts.create context ~local_bins
     in
     Context.name context, artifacts)
 ;;

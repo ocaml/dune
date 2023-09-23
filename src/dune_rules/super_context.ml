@@ -488,25 +488,31 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
          ~default_ocamlpath:(Context.default_ocamlpath context)
          ~stdlib:(Context.ocaml context).lib_config.stdlib_dir)
   in
-  let* artifacts = Artifacts_db.get context in
+  let public_libs = Scope.DB.public_libs context in
+  let artifacts = Artifacts_db.get context in
   let+ root_expander =
-    let* artifacts_host, context_host =
+    let artifacts_host, public_libs_host, context_host =
       match Context.for_host context with
-      | None -> Memo.return (artifacts, context)
+      | None -> artifacts, public_libs, context
       | Some host ->
-        let+ artifacts = Artifacts_db.get host in
-        artifacts, host
+        let artifacts = Artifacts_db.get host in
+        let public_libs = Scope.DB.public_libs host in
+        artifacts, public_libs, host
     in
     let+ scope = Scope.DB.find_by_dir (Context.build_dir context)
+    and+ public_libs = public_libs
+    and+ artifacts_host = artifacts_host
+    and+ public_libs_host = public_libs_host
     and+ scope_host = Scope.DB.find_by_dir (Context.build_dir context_host) in
     Expander.make_root
       ~scope
       ~scope_host
       ~context
       ~env:expander_env
-      ~lib_artifacts:(Artifacts.public_libs artifacts)
+      ~lib_artifacts:public_libs
       ~bin_artifacts_host:(Artifacts.bin artifacts_host)
-      ~lib_artifacts_host:(Artifacts.public_libs artifacts_host)
+      ~lib_artifacts_host:public_libs_host
+  and+ artifacts = artifacts
   and+ root_env =
     add_packages_env (Context.name context) ~base:expander_env stanzas packages
   in

@@ -597,7 +597,7 @@ end = struct
 
   let wait_unix t =
     Mutex.unlock t.mutex;
-    let proc_info = Proc.wait [] in
+    let proc_info = Proc.wait Any [] in
     Mutex.lock t.mutex;
     Process_table.remove t proc_info
   ;;

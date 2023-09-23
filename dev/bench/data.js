@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695459476743,
+  "lastUpdate": 1695459813178,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -79023,6 +79023,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.9431426257266669",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "597e6b929008217466ed9a0dbecf48b7a2473cdd",
+          "message": "refactor: remove [Artifacts.Bin.t] (#8741)\n\nThis intermediate module is useless now\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-23T09:37:55+01:00",
+          "tree_id": "064a0b9b197f6b3a05c4ec9a534ad890dd1da090",
+          "url": "https://github.com/ocaml/dune/commit/597e6b929008217466ed9a0dbecf48b7a2473cdd"
+        },
+        "date": 1695459812055,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "66.60884785546666",
             "unit": "seconds"
           }
         ]

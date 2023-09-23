@@ -518,10 +518,11 @@ module Crawl = struct
     dirs
     : Descr.Workspace.t Memo.t
     =
-    let sctx = Context_name.Map.find_exn scontexts (Context.name context) in
+    let context_name = Context.name context in
+    let sctx = Context_name.Map.find_exn scontexts context_name in
     let open Memo.O in
     let* dune_files =
-      Dune_load.Dune_files.eval conf.dune_files ~context
+      Dune_load.Dune_files.eval conf.dune_files ~context:context_name
       >>| List.filter ~f:(dune_file_is_in_dirs dirs)
     in
     let* exes, exe_libs =

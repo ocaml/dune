@@ -43,6 +43,16 @@ let or_invalid ctx = function
   | None -> Code_error.raise "invalid context" [ "context", Context_name.to_dyn ctx ]
 ;;
 
+let create_by_name ~name f =
+  let f =
+    Staged.unstage
+    @@ create_db ~name (function
+      | `Native ctx -> f (Workspace.Context.name ctx)
+      | `Target (_ctx, name) -> f name)
+  in
+  Staged.stage (fun name -> f name >>= or_invalid name)
+;;
+
 let profile =
   let profile =
     create_db ~cutoff:Profile.equal ~name:"profile" (function

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695494651535,
+  "lastUpdate": 1695494986827,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -79719,6 +79719,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.168974989626667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e92627f71f80b9507743b00bbba52b94d3049ea5",
+          "message": "Merge pull request #8724 from Alizter/ps/branch/test_pkg___opam_variable_tests\n\ntest(pkg): opam variable tests",
+          "timestamp": "2023-09-23T19:24:11+01:00",
+          "tree_id": "5d62aa949f716c951980a9173619c8246a063a40",
+          "url": "https://github.com/ocaml/dune/commit/e92627f71f80b9507743b00bbba52b94d3049ea5"
+        },
+        "date": 1695494985650,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "66.21138711612666",
             "unit": "seconds"
           }
         ]

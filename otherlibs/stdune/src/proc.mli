@@ -23,5 +23,9 @@ module Process_info : sig
     }
 end
 
+type wait =
+  | Any
+  | Pid of Pid.t
+
 (** This function is not implemented on Windows *)
-val wait : Pid.t -> Unix.wait_flag list -> Process_info.t
+val wait : wait -> Unix.wait_flag list -> Process_info.t

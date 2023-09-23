@@ -101,29 +101,25 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
 ;;
 
 let filtered_stanzas_by_contexts =
-  Memo.lazy_
-  @@ fun () ->
-  let* contexts = Context.DB.all () in
-  let+ { Dune_load.dune_files; packages = _; projects = _ } = Dune_load.load () in
-  Context_name.Map.of_list_map_exn contexts ~f:(fun context ->
-    ( Context.name context
-    , Memo.lazy_
-      @@ fun () ->
-      let* stanzas = Dune_load.Dune_files.eval ~context dune_files in
-      let+ only_packages = Memo.Lazy.force conf in
-      match only_packages with
-      | None -> stanzas
-      | Some visible_pkgs ->
-        List.map stanzas ~f:(fun (dir_conf : Dune_file.t) ->
-          { dir_conf with
-            stanzas =
-              filter_out_stanzas_from_hidden_packages ~visible_pkgs dir_conf.stanzas
-          }) ))
+  let db =
+    Per_context.create_by_name ~name:"filtered_stanzas"
+    @@ fun context ->
+    let* { Dune_load.dune_files; packages = _; projects = _ } = Dune_load.load () in
+    let* stanzas = Dune_load.Dune_files.eval ~context dune_files in
+    let+ only_packages = Memo.Lazy.force conf in
+    match only_packages with
+    | None -> stanzas
+    | Some visible_pkgs ->
+      List.map stanzas ~f:(fun (dir_conf : Dune_file.t) ->
+        { dir_conf with
+          stanzas = filter_out_stanzas_from_hidden_packages ~visible_pkgs dir_conf.stanzas
+        })
+  in
+  fun ctx -> Staged.unstage db ctx
 ;;
 
 let filtered_stanzas (context : Context.t) =
-  let* map = Memo.Lazy.force filtered_stanzas_by_contexts in
-  Context_name.Map.find_exn map (Context.name context) |> Memo.Lazy.force
+  filtered_stanzas_by_contexts (Context.name context)
 ;;
 
 let get () =

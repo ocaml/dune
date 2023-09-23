@@ -152,16 +152,15 @@ module Script = struct
     Path.build path |> Path.parent |> Option.iter ~f:Path.mkdir_p
   ;;
 
-  let eval_one ((context : Context.t), { script = { dir; file; project }; from_parent }) =
+  let eval_one (context, { script = { dir; file; project }; from_parent }) =
     let generated_dune_file =
       Path.Build.append_source
-        (Path.Build.relative
-           generated_dune_files_dir
-           (Context_name.to_string (Context.name context)))
+        (Path.Build.relative generated_dune_files_dir (Context_name.to_string context))
         file
     in
     let wrapper = Path.Build.extend_basename generated_dune_file ~suffix:".ml" in
     ensure_parent_dir_exists generated_dune_file;
+    let* context = Context.DB.get context in
     let* () =
       Jbuild_plugin.create_plugin_wrapper
         context
@@ -202,10 +201,10 @@ module Script = struct
 
   let eval_one =
     let module Input = struct
-      type nonrec t = Context.t * t
+      type nonrec t = Context_name.t * t
 
-      let equal = Tuple.T2.equal Context.equal equal
-      let hash = Tuple.T2.hash Context.hash Poly.hash
+      let equal = Tuple.T2.equal Context_name.equal equal
+      let hash = Tuple.T2.hash Context_name.hash Poly.hash
       let to_dyn = Dyn.opaque
     end
     in
@@ -275,12 +274,21 @@ module Dune_files = struct
          (match dune_file with
           | Literal dune_file -> Memo.return (Some dune_file)
           | Script script ->
-            let* context = Context.DB.by_dir dir in
+            let context =
+              match Install.Context.of_path dir with
+              | Some c -> c
+              | None ->
+                User_error.raise
+                  [ Pp.textf
+                      "no context in directory %s"
+                      (Path.Build.to_string_maybe_quoted dir)
+                  ]
+            in
             let+ dune_file = Script.eval_one ~context script in
             Some dune_file))
   ;;
 
-  let eval dune_files ~(context : Context.t) =
+  let eval dune_files ~context =
     let open Memo.O in
     let static, dynamic =
       List.partition_map dune_files ~f:(function

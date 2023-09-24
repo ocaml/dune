@@ -273,6 +273,163 @@ module Lock = struct
              be used if this is omitted)")
   ;;
 
+  let print_solver_env
+    per_context
+    ~sys_bindings_from_current_system
+    ~use_env_from_current_system
+    =
+    List.iter
+      per_context
+      ~f:
+        (fun
+          { Per_context.solver_env = solver_env_from_context
+          ; context_common = { name = context_name; _ }
+          ; _
+          }
+        ->
+        let solver_env =
+          merge_current_system_bindings_into_solver_env_from_context
+            ~context_name
+            ~solver_env_from_context
+            ~sys_bindings_from_current_system
+            ~use_env_from_current_system
+        in
+        Console.print
+          [ Pp.textf
+              "Solver environment for context %s:"
+              (String.maybe_quoted @@ Dune_engine.Context_name.to_string context_name)
+          ; Dune_pkg.Solver_env.pp solver_env
+          ])
+  ;;
+
+  let solve
+    per_context
+    ~opam_repository_path
+    ~opam_repository_url
+    ~sys_bindings_from_current_system
+    ~use_env_from_current_system
+    =
+    let open Fiber.O in
+    Per_context.check_for_dup_lock_dir_paths per_context;
+    (* a list of thunks that will perform all the file IO side
+       effects after performing validation so that if materializing any
+       lockdir would fail then no side effect takes place. *)
+    (let* local_packages =
+       let+ dune_package_map =
+         let+ source_dir = Memo.run (Source_tree.root ()) in
+         let project = Source_tree.Dir.project source_dir in
+         Dune_project.packages project
+       in
+       opam_file_map_of_dune_package_map dune_package_map
+     in
+     let* solutions =
+       List.map
+         per_context
+         ~f:
+           (fun
+             { Per_context.lock_dir_path
+             ; version_preference
+             ; repos
+             ; solver_env = solver_env_from_context
+             ; context_common = { name = context_name; _ }
+             }
+           ->
+           let solver_env =
+             merge_current_system_bindings_into_solver_env_from_context
+               ~context_name
+               ~solver_env_from_context
+               ~sys_bindings_from_current_system
+               ~use_env_from_current_system
+           in
+           let+ repos =
+             match opam_repository_path, opam_repository_url with
+             | Some _, Some _ ->
+               (* in theory you can set both, but how to prioritize them? *)
+               User_error.raise
+                 [ Pp.text "Can't specify both path and URL to an opam-repository" ]
+             | Some path, None ->
+               let repo_id = Repository_id.of_path path in
+               Fiber.return
+               @@ [ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path ]
+             | None, Some url ->
+               let repo = Fetch.Opam_repository.of_url url in
+               let+ opam_repository = Fetch.Opam_repository.path repo in
+               (match opam_repository with
+                | Ok { path; repo_id } ->
+                  [ Opam_repo.of_opam_repo_dir_path
+                      ~source:(Some (OpamUrl.to_string url))
+                      ~repo_id
+                      path
+                  ]
+                | Error _ ->
+                  User_error.raise
+                    [ Pp.text "Can't determine the location of the opam-repository" ])
+             | None, None ->
+               (* read from workspace *)
+               solver_env
+               |> Dune_pkg.Solver_env.repos
+               |> List.map ~f:(fun name ->
+                 match Dune_pkg.Pkg_workspace.Repository.Name.Map.find repos name with
+                 | None ->
+                   (* TODO: have loc for this failure? *)
+                   User_error.raise
+                     [ Pp.textf "Repository '%s' is not a known repository"
+                       @@ Dune_pkg.Pkg_workspace.Repository.Name.to_string name
+                     ]
+                 | Some repo ->
+                   let url = Dune_pkg.Pkg_workspace.Repository.opam_url repo in
+                   let repo = Fetch.Opam_repository.of_url url in
+                   let+ opam_repository = Fetch.Opam_repository.path repo in
+                   (match opam_repository with
+                    | Ok { path; repo_id } ->
+                      Opam_repo.of_opam_repo_dir_path
+                        ~source:(Some (OpamUrl.to_string url))
+                        ~repo_id
+                        path
+                    | Error _ ->
+                      User_error.raise
+                        [ Pp.textf
+                            "Can't determine the location of the opam-repository '%s'"
+                          @@ Dune_pkg.Pkg_workspace.Repository.Name.to_string name
+                        ]))
+               |> Fiber.all_concurrently
+           in
+           match
+             Dune_pkg.Opam_solver.solve_lock_dir
+               solver_env
+               version_preference
+               repos
+               ~local_packages
+           with
+           | Error (`Diagnostic_message message) -> Error (context_name, message)
+           | Ok { Dune_pkg.Opam_solver.Solver_result.summary; lock_dir; files } ->
+             let summary_message =
+               Dune_pkg.Opam_solver.Summary.selected_packages_message
+                 summary
+                 ~lock_dir_path
+               |> User_message.pp
+             in
+             Ok
+               ( Lock_dir.Write_disk.prepare ~lock_dir_path ~files lock_dir
+               , summary_message ))
+       |> Fiber.all_concurrently
+     in
+     Result.List.all solutions |> Fiber.return)
+    >>| function
+    | Error (context_name, message) ->
+      User_error.raise
+        [ Pp.textf
+            "Unable to solve dependencies in build context: %s"
+            (Dune_engine.Context_name.to_string context_name |> String.maybe_quoted)
+        ; message
+        ]
+    | Ok write_disks_with_summaries ->
+      let write_disk_list, summary_pps = List.split write_disks_with_summaries in
+      Dune_console.print summary_pps;
+      (* All the file IO side effects happen here: *)
+      List.iter write_disk_list ~f:Lock_dir.Write_disk.commit
+  ;;
+
   let term =
     let+ (common : Common.t) = Common.term
     and+ opam_repository_path = Opam_repository_path.term
@@ -331,147 +488,17 @@ module Lock = struct
     if just_print_solver_env
     then
       let+ () = Fiber.return () in
-      List.iter
+      print_solver_env
         per_context
-        ~f:
-          (fun
-            { Per_context.solver_env = solver_env_from_context
-            ; context_common = { name = context_name; _ }
-            ; _
-            }
-          ->
-          let solver_env =
-            merge_current_system_bindings_into_solver_env_from_context
-              ~context_name
-              ~solver_env_from_context
-              ~sys_bindings_from_current_system
-              ~use_env_from_current_system
-          in
-          Console.print
-            [ Pp.textf
-                "Solver environment for context %s:"
-                (String.maybe_quoted @@ Dune_engine.Context_name.to_string context_name)
-            ; Dune_pkg.Solver_env.pp solver_env
-            ])
-    else (
-      Per_context.check_for_dup_lock_dir_paths per_context;
-      (* a list of thunks that will perform all the file IO side
-         effects after performing validation so that if materializing any
-         lockdir would fail then no side effect takes place. *)
-      (let* local_packages =
-         let+ dune_package_map =
-           let+ source_dir = Memo.run (Source_tree.root ()) in
-           let project = Source_tree.Dir.project source_dir in
-           Dune_project.packages project
-         in
-         opam_file_map_of_dune_package_map dune_package_map
-       in
-       let* solutions =
-         List.map
-           per_context
-           ~f:
-             (fun
-               { Per_context.lock_dir_path
-               ; version_preference
-               ; repos
-               ; solver_env = solver_env_from_context
-               ; context_common = { name = context_name; _ }
-               }
-             ->
-             let solver_env =
-               merge_current_system_bindings_into_solver_env_from_context
-                 ~context_name
-                 ~solver_env_from_context
-                 ~sys_bindings_from_current_system
-                 ~use_env_from_current_system
-             in
-             let+ repos =
-               match opam_repository_path, opam_repository_url with
-               | Some _, Some _ ->
-                 (* in theory you can set both, but how to prioritize them? *)
-                 User_error.raise
-                   [ Pp.text "Can't specify both path and URL to an opam-repository" ]
-               | Some path, None ->
-                 let repo_id = Repository_id.of_path path in
-                 Fiber.return
-                 @@ [ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path ]
-               | None, Some url ->
-                 let repo = Fetch.Opam_repository.of_url url in
-                 let+ opam_repository = Fetch.Opam_repository.path repo in
-                 (match opam_repository with
-                  | Ok { path; repo_id } ->
-                    [ Opam_repo.of_opam_repo_dir_path
-                        ~source:(Some (OpamUrl.to_string url))
-                        ~repo_id
-                        path
-                    ]
-                  | Error _ ->
-                    User_error.raise
-                      [ Pp.text "Can't determine the location of the opam-repository" ])
-               | None, None ->
-                 (* read from workspace *)
-                 solver_env
-                 |> Dune_pkg.Solver_env.repos
-                 |> List.map ~f:(fun name ->
-                   match Dune_pkg.Pkg_workspace.Repository.Name.Map.find repos name with
-                   | None ->
-                     (* TODO: have loc for this failure? *)
-                     User_error.raise
-                       [ Pp.textf "Repository '%s' is not a known repository"
-                         @@ Dune_pkg.Pkg_workspace.Repository.Name.to_string name
-                       ]
-                   | Some repo ->
-                     let url = Dune_pkg.Pkg_workspace.Repository.opam_url repo in
-                     let repo = Fetch.Opam_repository.of_url url in
-                     let+ opam_repository = Fetch.Opam_repository.path repo in
-                     (match opam_repository with
-                      | Ok { path; repo_id } ->
-                        Opam_repo.of_opam_repo_dir_path
-                          ~source:(Some (OpamUrl.to_string url))
-                          ~repo_id
-                          path
-                      | Error _ ->
-                        User_error.raise
-                          [ Pp.textf
-                              "Can't determine the location of the opam-repository '%s'"
-                            @@ Dune_pkg.Pkg_workspace.Repository.Name.to_string name
-                          ]))
-                 |> Fiber.all_concurrently
-             in
-             match
-               Dune_pkg.Opam_solver.solve_lock_dir
-                 solver_env
-                 version_preference
-                 repos
-                 ~local_packages
-             with
-             | Error (`Diagnostic_message message) -> Error (context_name, message)
-             | Ok { Dune_pkg.Opam_solver.Solver_result.summary; lock_dir; files } ->
-               let summary_message =
-                 Dune_pkg.Opam_solver.Summary.selected_packages_message
-                   summary
-                   ~lock_dir_path
-                 |> User_message.pp
-               in
-               Ok
-                 ( Lock_dir.Write_disk.prepare ~lock_dir_path ~files lock_dir
-                 , summary_message ))
-         |> Fiber.all_concurrently
-       in
-       Result.List.all solutions |> Fiber.return)
-      >>| function
-      | Error (context_name, message) ->
-        User_error.raise
-          [ Pp.textf
-              "Unable to solve dependencies in build context: %s"
-              (Dune_engine.Context_name.to_string context_name |> String.maybe_quoted)
-          ; message
-          ]
-      | Ok write_disks_with_summaries ->
-        let write_disk_list, summary_pps = List.split write_disks_with_summaries in
-        Dune_console.print summary_pps;
-        (* All the file IO side effects happen here: *)
-        List.iter write_disk_list ~f:Lock_dir.Write_disk.commit)
+        ~sys_bindings_from_current_system
+        ~use_env_from_current_system
+    else
+      solve
+        per_context
+        ~opam_repository_path
+        ~opam_repository_url
+        ~sys_bindings_from_current_system
+        ~use_env_from_current_system
   ;;
 
   let info =

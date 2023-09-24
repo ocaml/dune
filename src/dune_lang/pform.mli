@@ -22,6 +22,7 @@ module Var : sig
 
     type t =
       | Switch
+      | Os
       | Os_version
       | Os_distribution
       | Os_family

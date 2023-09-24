@@ -28,7 +28,7 @@ to compare their values.
   (build
    (progn
     (run echo %{arch})
-    (run echo %{pkg-self:os})
+    (run echo %{os})
     (run echo %{os_distribution})
     (run echo %{os_family})
     (run echo %{os_version})))
@@ -36,10 +36,7 @@ to compare their values.
 We write all the dune values to a file and then diff them with the output of opam var.
 
   $ build_pkg testpkg 2> dune-vars
-  [1]
 
 The two files should be identical.
 
-  $ diff -q --label="opam-vars"  opam-vars --label="dune-vars" dune-vars 
-  Files opam-vars and dune-vars differ
-  [1]
+  $ diff --label="opam-vars"  opam-vars --label="dune-vars" dune-vars 

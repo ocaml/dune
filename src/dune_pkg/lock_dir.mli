@@ -38,11 +38,15 @@ module Pkg : sig
   val decode : (lock_dir:Path.Source.t -> Package_name.t -> t) Dune_sexp.Decoder.t
 end
 
+module Repositories : sig
+  type t
+end
+
 type t =
   { version : Syntax.Version.t
   ; packages : Pkg.t Package_name.Map.t
   ; ocaml : (Loc.t * Package_name.t) option
-  ; repo_id : (Loc.t * Repository_id.t) option
+  ; repos : Repositories.t
   }
 
 val remove_locs : t -> t
@@ -52,7 +56,7 @@ val to_dyn : t -> Dyn.t
 val create_latest_version
   :  Pkg.t Package_name.Map.t
   -> ocaml:(Loc.t * Package_name.t) option
-  -> repo_id:(Loc.t * Repository_id.t) option
+  -> repos:Opam_repo.t list option
   -> t
 
 val default_path : Path.Source.t

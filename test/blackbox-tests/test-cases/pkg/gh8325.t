@@ -2,10 +2,7 @@ Things should be the same whether dependencies are specified or not.
 
   $ . ./helpers.sh
 
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ make_lockdir
 
 If we have a package we depend on
 

@@ -1,6 +1,8 @@
 open Import
 module Lock_dir = Dune_pkg.Lock_dir
 module Fetch = Dune_pkg.Fetch
+module Opam_repo = Dune_pkg.Opam_repo
+module Repository_id = Dune_pkg.Repository_id
 
 module Lock = struct
   module Opam_repository_path = struct
@@ -96,7 +98,15 @@ module Lock = struct
       ; version_preference : Version_preference.t
       ; solver_env : Dune_pkg.Solver_env.t
       ; context_common : Dune_rules.Workspace.Context.Common.t
+      ; repos :
+          Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t
       }
+
+    let repositories_of_workspace (workspace : Workspace.t) =
+      List.map workspace.repos ~f:(fun repo ->
+        Dune_pkg.Pkg_workspace.Repository.name repo, repo)
+      |> Dune_pkg.Pkg_workspace.Repository.Name.Map.of_list_exn
+    ;;
 
     let choose ~context_name_arg ~all_contexts_arg ~version_preference_arg =
       let open Fiber.O in
@@ -134,6 +144,7 @@ module Lock = struct
                    ~from_context:version_preference_context
              ; solver_env = Option.value solver_env ~default:Dune_pkg.Solver_env.default
              ; context_common
+             ; repos = repositories_of_workspace workspace
              }
            ]
          | Some (Opam _) ->
@@ -162,6 +173,7 @@ module Lock = struct
                     ~from_context:version_preference_context
               ; context_common
               ; solver_env = Option.value solver_env ~default:Dune_pkg.Solver_env.default
+              ; repos = repositories_of_workspace workspace
               }
           | Opam _ -> None)
     ;;
@@ -346,72 +358,107 @@ module Lock = struct
       (* a list of thunks that will perform all the file IO side
          effects after performing validation so that if materializing any
          lockdir would fail then no side effect takes place. *)
-      (let+ opam_file_map =
+      (let* local_packages =
          let+ dune_package_map =
            let+ source_dir = Memo.run (Source_tree.root ()) in
            let project = Source_tree.Dir.project source_dir in
            Dune_project.packages project
          in
          opam_file_map_of_dune_package_map dune_package_map
-       and+ repo, repo_id =
-         let+ opam_repo_dir, repo_id =
-           match opam_repository_path with
-           | Some path ->
-             (* TODO determine repo_id here *)
-             let repo_id = Dune_pkg.Repository_id.of_path path in
-             Fiber.return (path, repo_id)
-           | None ->
-             let repo =
-               Option.map ~f:Fetch.Opam_repository.of_url opam_repository_url
-               |> Option.value ~default:Fetch.Opam_repository.default
-             in
-             let+ opam_repository = Fetch.Opam_repository.path repo in
-             (match opam_repository with
-              | Ok { path; repo_id } -> path, repo_id
-              | Error _ ->
-                User_error.raise
-                  [ Pp.textf "Can't determine the location of the opam-repository" ])
-         in
-         Dune_pkg.Opam_repo.of_opam_repo_dir_path opam_repo_dir, repo_id
        in
-       (* TODO figure out the loc situation *)
-       let repo_id = Option.map ~f:(fun repo_id -> Loc.none, repo_id) repo_id in
-       List.map
-         per_context
-         ~f:
-           (fun
-             { Per_context.lock_dir_path
-             ; version_preference
-             ; solver_env = solver_env_from_context
-             ; context_common = { name = context_name; _ }
-             }
-           ->
-           let solver_env =
-             merge_current_system_bindings_into_solver_env_from_context
-               ~context_name
-               ~solver_env_from_context
-               ~sys_bindings_from_current_system
-               ~use_env_from_current_system
-           in
-           match
-             Dune_pkg.Opam_solver.solve_lock_dir
-               solver_env
-               version_preference
-               (repo, repo_id)
-               ~local_packages:opam_file_map
-           with
-           | Error (`Diagnostic_message message) -> Error (context_name, message)
-           | Ok { Dune_pkg.Opam_solver.Solver_result.summary; lock_dir; files } ->
-             let summary_message =
-               Dune_pkg.Opam_solver.Summary.selected_packages_message
-                 summary
-                 ~lock_dir_path
-               |> User_message.pp
+       let* solutions =
+         List.map
+           per_context
+           ~f:
+             (fun
+               { Per_context.lock_dir_path
+               ; version_preference
+               ; repos
+               ; solver_env = solver_env_from_context
+               ; context_common = { name = context_name; _ }
+               }
+             ->
+             let solver_env =
+               merge_current_system_bindings_into_solver_env_from_context
+                 ~context_name
+                 ~solver_env_from_context
+                 ~sys_bindings_from_current_system
+                 ~use_env_from_current_system
              in
-             Ok
-               ( Lock_dir.Write_disk.prepare ~lock_dir_path ~files lock_dir
-               , summary_message ))
-       |> Result.List.all)
+             let+ repos =
+               match opam_repository_path, opam_repository_url with
+               | Some _, Some _ ->
+                 (* in theory you can set both, but how to prioritize them? *)
+                 User_error.raise
+                   [ Pp.text "Can't specify both path and URL to an opam-repository" ]
+               | Some path, None ->
+                 let repo_id = Repository_id.of_path path in
+                 Fiber.return
+                 @@ [ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path ]
+               | None, Some url ->
+                 let repo = Fetch.Opam_repository.of_url url in
+                 let+ opam_repository = Fetch.Opam_repository.path repo in
+                 (match opam_repository with
+                  | Ok { path; repo_id } ->
+                    [ Opam_repo.of_opam_repo_dir_path
+                        ~source:(Some (OpamUrl.to_string url))
+                        ~repo_id
+                        path
+                    ]
+                  | Error _ ->
+                    User_error.raise
+                      [ Pp.text "Can't determine the location of the opam-repository" ])
+               | None, None ->
+                 (* read from workspace *)
+                 solver_env
+                 |> Dune_pkg.Solver_env.repos
+                 |> List.map ~f:(fun name ->
+                   match Dune_pkg.Pkg_workspace.Repository.Name.Map.find repos name with
+                   | None ->
+                     (* TODO: have loc for this failure? *)
+                     User_error.raise
+                       [ Pp.textf "Repository '%s' is not a known repository"
+                         @@ Dune_pkg.Pkg_workspace.Repository.Name.to_string name
+                       ]
+                   | Some repo ->
+                     let url = Dune_pkg.Pkg_workspace.Repository.opam_url repo in
+                     let repo = Fetch.Opam_repository.of_url url in
+                     let+ opam_repository = Fetch.Opam_repository.path repo in
+                     (match opam_repository with
+                      | Ok { path; repo_id } ->
+                        Opam_repo.of_opam_repo_dir_path
+                          ~source:(Some (OpamUrl.to_string url))
+                          ~repo_id
+                          path
+                      | Error _ ->
+                        User_error.raise
+                          [ Pp.textf
+                              "Can't determine the location of the opam-repository '%s'"
+                            @@ Dune_pkg.Pkg_workspace.Repository.Name.to_string name
+                          ]))
+                 |> Fiber.all_concurrently
+             in
+             match
+               Dune_pkg.Opam_solver.solve_lock_dir
+                 solver_env
+                 version_preference
+                 repos
+                 ~local_packages
+             with
+             | Error (`Diagnostic_message message) -> Error (context_name, message)
+             | Ok { Dune_pkg.Opam_solver.Solver_result.summary; lock_dir; files } ->
+               let summary_message =
+                 Dune_pkg.Opam_solver.Summary.selected_packages_message
+                   summary
+                   ~lock_dir_path
+                 |> User_message.pp
+               in
+               Ok
+                 ( Lock_dir.Write_disk.prepare ~lock_dir_path ~files lock_dir
+                 , summary_message ))
+         |> Fiber.all_concurrently
+       in
+       Result.List.all solutions |> Fiber.return)
       >>| function
       | Error (context_name, message) ->
         User_error.raise

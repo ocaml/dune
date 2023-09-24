@@ -2,11 +2,7 @@ Fetch from more than one source
 
   $ . ./helpers.sh
 
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
-
+  $ make_lockdir
   $ mkdir foo
   $ cat >foo/bar <<EOF
   > this is bar

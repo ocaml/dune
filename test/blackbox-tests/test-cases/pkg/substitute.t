@@ -6,10 +6,7 @@ The test-source folder has a file to use substitution on.
   $ cat >test-source/foo.ml.in <<EOF
   > This file will be fed to the substitution mechanism
   > EOF
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ make_lockdir
   $ cat >dune.lock/test.pkg <<EOF
   > (source (copy $PWD/test-source))
   > (build

@@ -18,6 +18,7 @@ TODO: versioning will be added once this feature is stable
   $ mkdir foo.lock
   $ cat >foo.lock/lock.dune <<EOF
   > (lang package 0.1)
+  > (repositories (complete true))
   > EOF
   $ cat >foo.lock/test.pkg <<EOF
   > (build

@@ -114,12 +114,37 @@ reproducible)
   bar.0.0.1
   foo.0.0.1
   
+
   $ grep "git_hash $REPO_HASH" dune.lock/lock.dune > /dev/null
 
-Now try it with an existing cached dir
+Now try it with an existing cached dir, which given it is not reproducible should not be included
 
   $ rm -r dune.lock
   $ dune pkg lock --opam-repository-path=$(pwd)/fake-xdg-cache-with-git/dune/opam-repository
+  Solution for dune.lock:
+  bar.0.0.1
+  foo.0.0.1
+  
+
+  $ grep "git_hash $REPO_HASH" dune.lock/lock.dune > /dev/null || echo "not found"
+  not found
+
+
+The repository can also be injected via the dune-workspace file
+
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.10)
+  > (repository
+  >   (name foo)
+  >   (source "git+file://$(pwd)/mock-opam-repository"))
+  > (context
+  >   (default
+  >     (name default)
+  >     (solver_env
+  >       (repositories foo))))
+  > EOF
+  $ mkdir dune-workspace-cache
+  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
   Solution for dune.lock:
   bar.0.0.1
   foo.0.0.1

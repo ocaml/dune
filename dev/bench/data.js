@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695551200435,
+  "lastUpdate": 1695575096734,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -103065,6 +103065,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.740928420293333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5cdeacb11a60dad9b7c42b060c9876f5b1f7de47",
+          "message": "Merge pull request #8633 from Leonidas-from-XIV/dune-workspace-opam-repos\n\nfeature(pkg): Opam repositories from dune-workspace",
+          "timestamp": "2023-09-24T17:51:39+01:00",
+          "tree_id": "0bf298031b0bf6a518b2d8ec5dd0efcf4a9c7632",
+          "url": "https://github.com/ocaml/dune/commit/5cdeacb11a60dad9b7c42b060c9876f5b1f7de47"
+        },
+        "date": 1695575082237,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.318322606813336",
             "unit": "seconds"
           }
         ]

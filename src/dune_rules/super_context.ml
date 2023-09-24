@@ -29,7 +29,7 @@ let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
 module Env_tree : sig
   type t
 
-  val force_bin_artifacts : t -> unit Memo.t
+  val force_artifacts : t -> unit Memo.t
   val context : t -> Context.t
   val get_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
   val get_context_env : t -> Env.t
@@ -39,11 +39,11 @@ module Env_tree : sig
     -> host_env_tree:t option
     -> default_env:Env_node.t Memo.Lazy.t
     -> root_expander:Expander.t
-    -> bin_artifacts:Artifacts.Bin.t
+    -> artifacts:Artifacts.t
     -> context_env:Env.t
     -> t
 
-  val bin_artifacts_host : t -> dir:Path.Build.t -> Artifacts.Bin.t Memo.t
+  val artifacts_host : t -> dir:Path.Build.t -> Artifacts.t Memo.t
   val expander : t -> dir:Path.Build.t -> Expander.t Memo.t
 end = struct
   open Memo.O
@@ -54,25 +54,25 @@ end = struct
     ; default_env : Env_node.t Memo.Lazy.t
     ; host : t option
     ; root_expander : Expander.t
-    ; bin_artifacts : Artifacts.Bin.t
+    ; artifacts : Artifacts.t
     ; get_node : Path.Build.t -> Env_node.t Memo.t
     }
 
-  let force_bin_artifacts { bin_artifacts; _ } = Artifacts.Bin.force bin_artifacts
+  let force_artifacts { artifacts; _ } = Artifacts.force artifacts
   let context t = t.context
   let get_node t ~dir = t.get_node dir
   let get_context_env t = t.context_env
 
-  let bin_artifacts_host t ~dir =
-    let bin_artifacts t ~dir = get_node t ~dir >>= Env_node.bin_artifacts in
+  let artifacts_host t ~dir =
+    let artifacts t ~dir = get_node t ~dir >>= Env_node.artifacts in
     match t.host with
-    | None -> bin_artifacts t ~dir
+    | None -> artifacts t ~dir
     | Some host ->
       let dir =
         Path.Build.drop_build_context_exn dir
         |> Path.Build.append_source (Context.build_dir host.context)
       in
-      bin_artifacts host ~dir
+      artifacts host ~dir
   ;;
 
   let external_env t ~dir = get_node t ~dir >>= Env_node.external_env
@@ -97,14 +97,14 @@ end = struct
   ;;
 
   let extend_expander t ~dir ~expander_for_artifacts =
-    let+ bin_artifacts_host = bin_artifacts_host t ~dir
+    let+ artifacts_host = artifacts_host t ~dir
     and+ bindings =
       let+ inline_tests = get_node t ~dir >>= Env_node.inline_tests in
       let str = Dune_env.Stanza.Inline_tests.to_string inline_tests in
       Pform.Map.singleton (Var Inline_tests) [ Value.String str ]
     in
     Expander.add_bindings ~bindings expander_for_artifacts
-    |> Expander.set_bin_artifacts ~bin_artifacts_host
+    |> Expander.set_artifacts ~artifacts_host
   ;;
 
   let expander t ~dir =
@@ -177,7 +177,7 @@ end = struct
       ~expander_for_artifacts
       ~default_context_flags
       ~default_env:t.context_env
-      ~default_bin_artifacts:t.bin_artifacts
+      ~default_artifacts:t.artifacts
       ~default_bin_annot:true
   ;;
 
@@ -192,14 +192,7 @@ end = struct
      binding. To work around this limitation, we place the functions into a
      recursive module [Rec]. Since recursive let-modules are not allowed either,
      we need to also wrap [Rec] inside a non-recursive module [Non_rec]. *)
-  let create
-    ~context
-    ~host_env_tree
-    ~default_env
-    ~root_expander
-    ~bin_artifacts
-    ~context_env
-    =
+  let create ~context ~host_env_tree ~default_env ~root_expander ~artifacts ~context_env =
     let module Non_rec = struct
       module rec Rec : sig
         val env_tree : unit -> t
@@ -211,7 +204,7 @@ end = struct
           ; default_env
           ; host = host_env_tree
           ; root_expander
-          ; bin_artifacts
+          ; artifacts
           ; get_node = Rec.memo
           }
         ;;
@@ -330,8 +323,8 @@ let dump_env t ~dir =
 ;;
 
 let resolve_program t ~dir ?hint ~loc bin =
-  let* bin_artifacts = Env_tree.bin_artifacts_host t ~dir in
-  Artifacts.Bin.binary ?hint ~loc bin_artifacts bin
+  let* artifacts = Env_tree.artifacts_host t ~dir in
+  Artifacts.binary ?hint ~loc artifacts bin
 ;;
 
 let add_packages_env context ~base stanzas packages =
@@ -437,7 +430,7 @@ let make_default_env_node
       ~expander_for_artifacts
       ~default_context_flags
       ~default_env:root_env
-      ~default_bin_artifacts:artifacts.bin
+      ~default_artifacts:artifacts
       ~default_bin_annot:true
   in
   make
@@ -488,25 +481,31 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
          ~default_ocamlpath:(Context.default_ocamlpath context)
          ~stdlib:(Context.ocaml context).lib_config.stdlib_dir)
   in
-  let* artifacts = Artifacts_db.get context in
+  let public_libs = Scope.DB.public_libs context in
+  let artifacts = Artifacts_db.get context in
   let+ root_expander =
-    let* artifacts_host, context_host =
+    let artifacts_host, public_libs_host, context_host =
       match Context.for_host context with
-      | None -> Memo.return (artifacts, context)
+      | None -> artifacts, public_libs, context
       | Some host ->
-        let+ artifacts = Artifacts_db.get host in
-        artifacts, host
+        let artifacts = Artifacts_db.get host in
+        let public_libs = Scope.DB.public_libs host in
+        artifacts, public_libs, host
     in
     let+ scope = Scope.DB.find_by_dir (Context.build_dir context)
+    and+ public_libs = public_libs
+    and+ artifacts_host = artifacts_host
+    and+ public_libs_host = public_libs_host
     and+ scope_host = Scope.DB.find_by_dir (Context.build_dir context_host) in
     Expander.make_root
       ~scope
       ~scope_host
       ~context
       ~env:expander_env
-      ~lib_artifacts:artifacts.public_libs
-      ~bin_artifacts_host:artifacts_host.bin
-      ~lib_artifacts_host:artifacts_host.public_libs
+      ~lib_artifacts:public_libs
+      ~artifacts_host
+      ~lib_artifacts_host:public_libs_host
+  and+ artifacts = artifacts
   and+ root_env =
     add_packages_env (Context.name context) ~base:expander_env stanzas packages
   in
@@ -529,7 +528,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
     ~default_env
     ~host_env_tree:host
     ~root_expander
-    ~bin_artifacts:artifacts.bin
+    ~artifacts
     ~context_env:root_env
 ;;
 
@@ -574,7 +573,7 @@ let find name =
 
 let all_init_deferred () =
   let* all = Memo.Lazy.force all in
-  Context_name.Map.values all |> Memo.parallel_iter ~f:Env_tree.force_bin_artifacts
+  Context_name.Map.values all |> Memo.parallel_iter ~f:Env_tree.force_artifacts
 ;;
 
 module As_memo_key = struct

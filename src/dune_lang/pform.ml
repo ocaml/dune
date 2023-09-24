@@ -43,6 +43,7 @@ module Var = struct
 
     type t =
       | Switch
+      | Os
       | Os_version
       | Os_distribution
       | Os_family
@@ -60,6 +61,7 @@ module Var = struct
       let open Dyn in
       match t with
       | Switch -> variant "Switch" []
+      | Os -> variant "Os" []
       | Os_version -> variant "Os_version" []
       | Os_distribution -> variant "Os_distribution" []
       | Os_family -> variant "Os_family" []
@@ -75,6 +77,7 @@ module Var = struct
 
     let encode_to_latest_dune_lang_version = function
       | Switch -> "switch"
+      | Os -> "os"
       | Os_version -> "os_version"
       | Os_distribution -> "os_distribution"
       | Os_family -> "os_family"
@@ -196,6 +199,7 @@ module Var = struct
       (match name with
        | "make" -> Some Make
        | "switch" -> Some (Pkg Switch)
+       | "os" -> Some (Pkg Os)
        | "os-version" -> Some (Pkg Os_version)
        | "os-distribution" -> Some (Pkg Os_distribution)
        | "os-family" -> Some (Pkg Os_family)
@@ -558,9 +562,10 @@ module Env = struct
     let vars =
       let pkg =
         [ "switch", Var.Pkg.Switch
-        ; "os-version", Os_version
-        ; "os-distribution", Os_distribution
-        ; "os-family", Os_family
+        ; "os", Os
+        ; "os_version", Os_version
+        ; "os_distribution", Os_distribution
+        ; "os_family", Os_family
         ; "build", Build
         ; "prefix", Prefix
         ; "user", User

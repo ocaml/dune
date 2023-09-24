@@ -11,10 +11,11 @@ We should be able to specify (package ..) deps on locally built packages.
   > (install
   >  (progn
   >   (run mkdir -p %{prefix}/bin)
-  >   (run touch %{prefix}/bin/foo)))
+  >   (run touch %{prefix}/bin/foo)
+  >   (run chmod +x %{prefix}/bin/foo)))
   > EOF
 
-  $ cat >dune <<EOF
+  $ cat >dune <<'EOF'
   > (dirs :standard \ external_sources)
   > (rule
   >  (alias foo)
@@ -26,12 +27,8 @@ We should be able to specify (package ..) deps on locally built packages.
   > EOF
 
   $ dune build @foo
-  File "dune", line 7, characters 9-19:
-  7 |    (echo %{bin:foo})))
-               ^^^^^^^^^^
-  Error: Program foo not found in the tree or in PATH
-   (context: default)
-  [1]
+  $TESTCASE_ROOT/_build/_private/default/.pkg/foo/target/bin/foo
+  ../_private/default/.pkg/foo/target/bin/foo
 
 Now we define the external package using a dune project:
 
@@ -53,9 +50,5 @@ Now we define the external package using a dune project:
   > (build (run dune build @install --promote-install-files))
   > EOF
   $ dune build @foo
-  File "dune", line 7, characters 9-19:
-  7 |    (echo %{bin:foo})))
-               ^^^^^^^^^^
-  Error: Program foo not found in the tree or in PATH
-   (context: default)
-  [1]
+  $TESTCASE_ROOT/_build/_private/default/.pkg/foo/target/bin/foo
+  ../_private/default/.pkg/foo/target/bin/foo

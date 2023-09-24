@@ -48,9 +48,9 @@ type t =
   { dir : Path.Build.t
   ; env : Env.t
   ; local_env : string Action_builder.t Env.Var.Map.t
-  ; lib_artifacts : Artifacts.Public_libs.t
-  ; lib_artifacts_host : Artifacts.Public_libs.t
-  ; bin_artifacts_host : Artifacts.Bin.t
+  ; lib_artifacts : Lib.DB.t
+  ; lib_artifacts_host : Lib.DB.t
+  ; artifacts_host : Artifacts.t
   ; bindings : value Pform.Map.t
   ; scope : Scope.t
   ; scope_host : Scope.t
@@ -63,7 +63,7 @@ type t =
   }
 
 let scope t = t.scope
-let artifacts t = t.bin_artifacts_host
+let artifacts t = t.artifacts_host
 let dir t = t.dir
 let context t = t.context
 let set_foreign_flags t ~f:foreign_flags = { t with foreign_flags }
@@ -74,7 +74,7 @@ let set_local_env_var t ~var ~value =
 
 let set_dir t ~dir = { t with dir }
 let set_scope t ~scope ~scope_host = { t with scope; scope_host }
-let set_bin_artifacts t ~bin_artifacts_host = { t with bin_artifacts_host }
+let set_artifacts t ~artifacts_host = { t with artifacts_host }
 let set_lookup_ml_sources t ~f = { t with lookup_artifacts = Some f }
 let set_expanding_what t x = { t with expanding_what = x }
 
@@ -274,9 +274,9 @@ let expand_read_macro ~dir ~source s ~read ~pack =
         With (Action_builder.of_memo read))
 ;;
 
-let file_of_lib { Artifacts.Public_libs.context; public_libs } ~loc ~lib ~file =
+let file_of_lib db context ~loc ~lib ~file =
   let open Resolve.Memo.O in
-  let+ lib = Lib.DB.resolve public_libs (loc, lib) in
+  let+ lib = Lib.DB.resolve db (loc, lib) in
   let dir =
     let info = Lib.info lib in
     match Lib.is_local lib with
@@ -289,6 +289,7 @@ let file_of_lib { Artifacts.Public_libs.context; public_libs } ~loc ~lib ~file =
       in
       let pkg_root =
         let package = Lib_name.package_name name in
+        (* Why do we return the install path? *)
         Install.Context.lib_dir ~context:(Context.name context) ~package
       in
       Path.build (Path.Build.append_local pkg_root subdir)
@@ -330,7 +331,7 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
              ])
     else (
       let artifacts = if lib_exec then t.lib_artifacts_host else t.lib_artifacts in
-      file_of_lib artifacts ~loc ~lib ~file)
+      file_of_lib artifacts (Context.host t.context) ~loc ~lib ~file)
   in
   let p =
     let open Memo.O in
@@ -568,9 +569,9 @@ let expand_pform_macro
         With
           (let* prog =
              Action_builder.of_memo
-               (Artifacts.Bin.binary
+               (Artifacts.binary
                   ~loc:(Some (Dune_lang.Template.Pform.loc source))
-                  t.bin_artifacts_host
+                  t.artifacts_host
                   s)
            in
            dep (Action.Prog.ok_exn prog)))
@@ -596,7 +597,7 @@ let expand_pform_macro
       (fun t ->
         Without
           (let open Memo.O in
-           let+ b = Artifacts.Bin.binary_available t.bin_artifacts_host s in
+           let+ b = Artifacts.binary_available t.artifacts_host s in
            b |> string_of_bool |> string))
   | Read -> expand_read_macro ~dir ~source s ~read:Io.read_file ~pack:string
   | Read_lines -> expand_read_macro ~dir ~source s ~read:Io.lines_of_file ~pack:strings
@@ -617,7 +618,7 @@ let expand_pform_macro
       (fun t ->
         Without
           (let open Memo.O in
-           let* coqc = Artifacts.Bin.binary t.bin_artifacts_host ~loc:None "coqc" in
+           let* coqc = Artifacts.binary t.artifacts_host ~loc:None "coqc" in
            let+ t = Coq_config.make ~coqc in
            match Coq_config.by_name t s with
            | None ->
@@ -725,7 +726,7 @@ let make_root
   ~env
   ~lib_artifacts
   ~lib_artifacts_host
-  ~bin_artifacts_host
+  ~artifacts_host
   =
   { dir = Context.build_dir context
   ; env
@@ -735,7 +736,7 @@ let make_root
   ; scope_host
   ; lib_artifacts
   ; lib_artifacts_host
-  ; bin_artifacts_host
+  ; artifacts_host
   ; c_compiler = Ocaml_config.c_compiler (Context.ocaml context).ocaml_config
   ; context
   ; lookup_artifacts = None

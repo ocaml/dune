@@ -19,7 +19,7 @@ type t =
   ; foreign_flags : string list Action_builder.t Foreign_language.Dict.t
   ; link_flags : Link_flags.t Memo.Lazy.t
   ; external_env : Env.t Memo.Lazy.t
-  ; bin_artifacts : Artifacts.Bin.t Memo.Lazy.t
+  ; artifacts : Artifacts.t Memo.Lazy.t
   ; inline_tests : Dune_env.Stanza.Inline_tests.t Memo.Lazy.t
   ; menhir_flags : string list Action_builder.t Memo.Lazy.t
   ; odoc : Odoc.t Memo.Lazy.t
@@ -35,7 +35,7 @@ let ocaml_flags t = Memo.Lazy.force t.ocaml_flags
 let foreign_flags t = t.foreign_flags
 let link_flags t = Memo.Lazy.force t.link_flags
 let external_env t = Memo.Lazy.force t.external_env
-let bin_artifacts t = Memo.Lazy.force t.bin_artifacts
+let artifacts t = Memo.Lazy.force t.artifacts
 let inline_tests t = Memo.Lazy.force t.inline_tests
 let js_of_ocaml t = Memo.Lazy.force t.js_of_ocaml
 let menhir_flags t = Memo.Lazy.force t.menhir_flags |> Action_builder.of_memo_join
@@ -69,7 +69,7 @@ let make
   ~expander_for_artifacts
   ~default_context_flags
   ~default_env
-  ~default_bin_artifacts
+  ~default_artifacts
   ~default_bin_annot
   =
   let open Memo.O in
@@ -108,15 +108,15 @@ let make
         match config.binaries with
         | [] -> env
         | _ :: _ ->
-          let dir = Artifacts.Bin.local_bin dir |> Path.build in
+          let dir = Artifacts.local_bin dir |> Path.build in
           Env_path.cons env ~dir
       in
       Memo.return env)
   in
-  let bin_artifacts =
-    inherited ~field:bin_artifacts ~root:default_bin_artifacts (fun binaries ->
+  let artifacts =
+    inherited ~field:artifacts ~root:default_artifacts (fun binaries ->
       let+ local_binaries = Memo.Lazy.force local_binaries in
-      Artifacts.Bin.add_binaries binaries ~dir local_binaries)
+      Artifacts.add_binaries binaries ~dir local_binaries)
   in
   let ocaml_flags =
     let default_ocaml_flags =
@@ -234,7 +234,7 @@ let make
   ; foreign_flags
   ; link_flags
   ; external_env
-  ; bin_artifacts
+  ; artifacts
   ; local_binaries
   ; inline_tests
   ; js_of_ocaml

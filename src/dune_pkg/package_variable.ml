@@ -57,7 +57,7 @@ let to_macro_invocation { name; scope } =
   | Package package_name ->
     { Pform.Macro_invocation.macro = Pkg
     ; payload =
-        Pform.Payload.of_args [ Name.to_string name; Package_name.to_string package_name ]
+        Pform.Payload.of_args [ Package_name.to_string package_name; Name.to_string name ]
     }
 ;;
 

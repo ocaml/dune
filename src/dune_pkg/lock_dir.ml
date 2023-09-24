@@ -267,6 +267,8 @@ module Repositories = struct
     ; used : Opam_repo.Serializable.t list option
     }
 
+  let default = { complete = false; used = None }
+
   let equal { complete; used } t =
     Bool.equal complete t.complete
     && Option.equal (List.equal Opam_repo.Serializable.equal) used t.used
@@ -376,7 +378,9 @@ let decode_metadata =
   let open Decoder in
   fields
     (let+ ocaml = field_o "ocaml" (located Package_name.decode)
-     and+ repos = field "repositories" Repositories.decode in
+     and+ repos =
+       field "repositories" ~default:Repositories.default Repositories.decode
+     in
      ocaml, repos)
 ;;
 

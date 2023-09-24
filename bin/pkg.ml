@@ -322,8 +322,8 @@ module Lock = struct
        in
        opam_file_map_of_dune_package_map dune_package_map
      in
-     let* solutions =
-       List.map
+     let+ solutions =
+       Fiber.parallel_map
          per_context
          ~f:
            (fun
@@ -366,9 +366,8 @@ module Lock = struct
                     [ Pp.text "Can't determine the location of the opam-repository" ])
              | None, None ->
                (* read from workspace *)
-               solver_env
-               |> Dune_pkg.Solver_env.repos
-               |> List.map ~f:(fun name ->
+               Dune_pkg.Solver_env.repos solver_env
+               |> Fiber.parallel_map ~f:(fun name ->
                  match Dune_pkg.Pkg_workspace.Repository.Name.Map.find repos name with
                  | None ->
                    (* TODO: have loc for this failure? *)
@@ -392,7 +391,6 @@ module Lock = struct
                             "Can't determine the location of the opam-repository '%s'"
                           @@ Dune_pkg.Pkg_workspace.Repository.Name.to_string name
                         ]))
-               |> Fiber.all_concurrently
            in
            match
              Dune_pkg.Opam_solver.solve_lock_dir
@@ -412,9 +410,8 @@ module Lock = struct
              Ok
                ( Lock_dir.Write_disk.prepare ~lock_dir_path ~files lock_dir
                , summary_message ))
-       |> Fiber.all_concurrently
      in
-     Result.List.all solutions |> Fiber.return)
+     Result.List.all solutions)
     >>| function
     | Error (context_name, message) ->
       User_error.raise
@@ -479,8 +476,7 @@ module Lock = struct
         ~context_name_arg:context_name
         ~all_contexts_arg:all_contexts
         ~version_preference_arg:version_preference
-    in
-    let* sys_bindings_from_current_system =
+    and* sys_bindings_from_current_system =
       if use_env_from_current_system
       then Dune_pkg.Sys_poll.sys_bindings ~path:(Env_path.path Stdune.Env.initial)
       else Fiber.return Dune_pkg.Solver_env.Variable.Sys.Bindings.empty

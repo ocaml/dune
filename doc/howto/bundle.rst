@@ -9,7 +9,7 @@ Folder Structure
 
 .. code:: bash
 
-    ❯ tree src
+    $ tree src
     src
     └── lib
         └── my_lib
@@ -20,7 +20,7 @@ Folder Structure
 Dune Configuration
 ------------------
 
-See the section on :doc:`../reference/actions` for more details on ``progn`` and ``with-stdout-to``.
+See the section on :doc:`../reference/actions` for more details on :dune:ref:`action-progn` and :dune:ref:`action-with-<outputs>-to`.
 
 .. code:: dune
 

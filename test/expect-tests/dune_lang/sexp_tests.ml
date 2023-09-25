@@ -424,7 +424,7 @@ let cram_script = Dune_lang.String_with_vars.make_text loc "test.t"
 
 let%expect_test _ =
   print_action (Cram (cram_script, System_shell));
-  [%expect {| (cram test.t) |}]
+  [%expect {| (cram test.t (shell :system)) |}]
 ;;
 
 let%expect_test _ =

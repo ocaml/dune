@@ -439,11 +439,7 @@ let rec encode =
   | Pipe (outputs, l) ->
     List (atom (sprintf "pipe-%s" (Outputs.to_string outputs)) :: List.map l ~f:encode)
   | Cram (script, shell_spec) ->
-    let shell_spec =
-      if shell_spec = Shell_spec.default
-      then []
-      else [ List (atom "shell" :: Shell_spec.encode shell_spec) ]
-    in
+    let shell_spec = [ List (atom "shell" :: Shell_spec.encode shell_spec) ] in
     List (atom "cram" :: sw script :: shell_spec)
   | Patch i -> List [ atom "patch"; sw i ]
   | Substitute (i, o) -> List [ atom "substitute"; sw i; sw o ]

@@ -76,7 +76,11 @@
         let
           pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
             (self: super: {
-              ocamlPackages = self.ocaml-ng.ocamlPackages_4_14;
+              ocamlPackages = self.ocaml-ng.ocamlPackages_4_14.overrideScope' (oself: osuper: {
+                utop = osuper.utop.overrideAttrs {
+                  dontGzipMan = true;
+                };
+              });
             })
             melange.overlays.default
           ];

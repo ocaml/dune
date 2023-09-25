@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695634199214,
+  "lastUpdate": 1695634557795,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -79980,6 +79980,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.9192589689333335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "32607a6a4bf1907549c9b8941961e3f61f5f209e",
+          "message": "Merge pull request #8751 from ocaml/ps/rr/refactor_pkg___split_printing_and_solving\n\nrefactor(pkg): split printing and solving",
+          "timestamp": "2023-09-25T10:09:18+01:00",
+          "tree_id": "de74e08c7820d5adc8f23bbd2b79bfa6e51ae3e2",
+          "url": "https://github.com/ocaml/dune/commit/32607a6a4bf1907549c9b8941961e3f61f5f209e"
+        },
+        "date": 1695634556855,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "70.37455536083333",
             "unit": "seconds"
           }
         ]

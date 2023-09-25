@@ -9,6 +9,6 @@ description modules.
 
   $ LIBEX=$(realpath "$PWD/../libexample")
   $ TARGET=./stubgen/vendor
-  $ mkdir -p $TARGET && install $LIBEX/* $TARGET
+  $ mkdir -p $TARGET && install $LIBEX/*example* $TARGET
   $ dune exec ./example.exe
   6

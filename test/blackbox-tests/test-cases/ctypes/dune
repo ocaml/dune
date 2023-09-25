@@ -4,7 +4,7 @@
   libexample/libexample.a
   libexample/libexample.so
   libexample/example.h
-  libexample/libexample.pc
+  libexample/pkgconfig/libexample.pc
   %{bin:install}
   %{bin:awk}
   (package ctypes)))
@@ -15,7 +15,7 @@
   libneed-mangling/libneed-mangling.a
   libneed-mangling/libneed-mangling.so
   libneed-mangling/example.h
-  libneed-mangling/need-mangling.pc
+  libneed-mangling/pkgconfig/need-mangling.pc
   %{bin:install}
   %{bin:awk}
   (package ctypes)))

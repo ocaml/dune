@@ -71,6 +71,10 @@ let arg_info_subst ~subst a = function
 let cmd_info_subst ei = function
 | "tname" -> Some (strf "$(b,%s)" @@ cmd_name (Cmdliner_info.Eval.cmd ei))
 | "mname" -> Some (strf "$(b,%s)" @@ cmd_name (Cmdliner_info.Eval.main ei))
+| "iname" ->
+    let cmd = Cmdliner_info.Eval.cmd ei :: Cmdliner_info.Eval.parents ei in
+    let cmd = String.concat " " (List.rev_map Cmdliner_info.Cmd.name cmd) in
+    Some (strf "$(b,%s)" cmd)
 | _ -> None
 
 (* Command docs *)

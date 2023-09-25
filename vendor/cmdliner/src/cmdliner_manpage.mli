@@ -77,7 +77,7 @@ val subst_vars :
 val doc_to_plain :
   errs:Format.formatter -> subst:(string -> string option) -> Buffer.t ->
   string -> string
-(** [doc_to_plain b ~subst s] using [b], subsitutes in [s] variables by
+(** [doc_to_plain b ~subst s] using [b], substitutes in [s] variables by
     their [subst] definition and renders cmdliner directives to plain
     text.
 

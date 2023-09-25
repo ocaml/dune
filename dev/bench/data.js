@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695660158377,
+  "lastUpdate": 1695660384404,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -80357,6 +80357,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.29743094862",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3c13196f062f0b6c899000de34015c6e0294118b",
+          "message": "test(pkg): post dependencies (#8757)\n\nDemonstrate that we ignore post dependencies for the purposes of\r\ntranslation\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-25T17:13:37+01:00",
+          "tree_id": "c6b2c7db7d54d22d10c43f930d284753631e1b86",
+          "url": "https://github.com/ocaml/dune/commit/3c13196f062f0b6c899000de34015c6e0294118b"
+        },
+        "date": 1695660382973,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "84.00639746355334",
             "unit": "seconds"
           }
         ]

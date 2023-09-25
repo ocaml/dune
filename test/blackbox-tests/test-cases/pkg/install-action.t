@@ -2,10 +2,7 @@ Testing install actions
 
   $ . ./helpers.sh
 
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ make_lockdir
   $ cat >dune.lock/test.pkg <<'EOF'
   > (install (system "echo foobar; mkdir -p %{lib}; touch %{lib}/xxx"))
   > EOF

@@ -79,6 +79,7 @@ type t = private
   ; contexts : Context.t list
   ; env : Dune_env.Stanza.t option
   ; config : Dune_config.t
+  ; repos : Dune_pkg.Pkg_workspace.Repository.t list
   }
 
 val equal : t -> t -> bool

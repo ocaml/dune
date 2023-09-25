@@ -12,10 +12,7 @@ Create a directory containing a shell script and add the directory to PATH.
   $ PATH=$PATH:$PWD/bin
 
 Create a lockdir with a lockfile that runs the shell script in a build command.
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ make_lockdir
   $ cat >dune.lock/test.pkg <<'EOF'
   > (build (system hello))
   > EOF

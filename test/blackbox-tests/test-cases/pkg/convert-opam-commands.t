@@ -145,7 +145,7 @@ Package which has boolean where string was expected. This should be caught while
    (progn
     (run echo %{pkg-self:local_var})
     (run echo %{pkg-self:explicit_local_var})
-    (run echo %{pkg:package_var:foo})
+    (run echo %{pkg:foo:package_var})
     (run echo %{os_family})))
 
   $ solve_project <<EOF
@@ -210,7 +210,7 @@ Package which has boolean where string was expected. This should be caught while
     (when
      (and
       %{pkg-self:with-test}
-      (< %{pkg:version:ocaml} 5.0.0))
+      (< %{pkg:ocaml:version} 5.0.0))
      (run echo h))
     (when
      true
@@ -219,13 +219,13 @@ Package which has boolean where string was expected. This should be caught while
      (not false)
      (run echo j))
     (when
-     %{pkg:installed:foo}
+     %{pkg:foo:installed}
      (run echo k))
     (when
-     (< %{pkg:version:foo} 0.4)
+     (< %{pkg:foo:version} 0.4)
      (run echo l))
     (when
-     (and %{pkg:installed:foo} %{pkg:installed:bar} %{pkg:installed:baz})
+     (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg:baz:installed})
      (run echo m))))
 
   $ solve_project <<EOF

@@ -2,10 +2,7 @@ Install actions should have the switch directory prepared:
 
   $ . ./helpers.sh
 
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ make_lockdir
   $ cat >dune.lock/test.pkg <<'EOF'
   > (install (system "find %{prefix} | sort"))
   > EOF

@@ -2,10 +2,7 @@ Test that installed binaries are visible in dependent packages
 
   $ . ./helpers.sh
 
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ make_lockdir
   $ cat >dune.lock/test.pkg <<EOF
   > (build
   >  (system "\| echo "#!/bin/sh\necho from test package" > foo;

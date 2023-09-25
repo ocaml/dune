@@ -2,13 +2,8 @@ Some environment variables are automatically exported by packages:
 
   $ . ./helpers.sh
 
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
-
+  $ make_lockdir
   $ touch dune.lock/test.pkg
-
   $ cat >dune.lock/usetest.pkg <<'EOF'
   > (deps test)
   > (build

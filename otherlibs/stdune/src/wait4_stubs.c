@@ -3,9 +3,9 @@
 #ifdef _WIN32
 #include <caml/fail.h>
 
-void dune_wait3(value flags) {
+void dune_wait4(value v_pid, value flags) {
   (void)flags;
-  caml_failwith("wait3: not supported on windows");
+  caml_failwith("wait4: not supported on windows");
 }
 
 #else
@@ -45,8 +45,11 @@ static value alloc_process_status(int status) {
 
 static int wait_flag_table[] = {WNOHANG, WUNTRACED};
 
-value dune_wait3(value flags) {
-  CAMLparam1(flags);
+// see https://man7.org/linux/man-pages/man2/waitpid.2.html for a description of
+// possible v_pid values -1 is the one we typically use, which means wait for
+// any child process
+value dune_wait4(value v_pid, value flags) {
+  CAMLparam2(v_pid, flags);
   CAMLlocal2(times, res);
 
   int pid, status, cv_flags;
@@ -56,11 +59,12 @@ value dune_wait3(value flags) {
   struct rusage ru;
 
   caml_enter_blocking_section();
-  pid = wait3(&status, cv_flags, &ru);
+  // returns the pid of the terminated process, or -1 on error
+  pid = wait4(Int_val(v_pid), &status, cv_flags, &ru);
   gettimeofday(&tp, NULL);
   caml_leave_blocking_section();
   if (pid == -1)
-    uerror("wait3", Nothing);
+    uerror("wait4", Nothing);
 
   times = caml_alloc_small(2 * Double_wosize, Double_array_tag);
   Store_double_field(times, 0, ru.ru_utime.tv_sec + ru.ru_utime.tv_usec / 1e6);
@@ -69,7 +73,8 @@ value dune_wait3(value flags) {
   res = caml_alloc_tuple(4);
   Store_field(res, 0, Val_int(pid));
   Store_field(res, 1, alloc_process_status(status));
-  Store_field(res, 2, caml_copy_double(((double) tp.tv_sec + (double) tp.tv_usec / 1e6)));
+  Store_field(res, 2,
+              caml_copy_double(((double)tp.tv_sec + (double)tp.tv_usec / 1e6)));
   Store_field(res, 3, times);
   CAMLreturn(res);
 }

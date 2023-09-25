@@ -1,5 +1,6 @@
 open Import
 open Dune_lang.Decoder
+module Repository = Dune_pkg.Pkg_workspace.Repository
 
 (* workspace files use the same version numbers as dune-project files for
    simplicity *)
@@ -424,31 +425,35 @@ type t =
   ; contexts : Context.t list
   ; env : Dune_env.Stanza.t option
   ; config : Dune_config.t
+  ; repos : Dune_pkg.Pkg_workspace.Repository.t list
   }
 
-let to_dyn { merlin_context; contexts; env; config } =
+let to_dyn { merlin_context; contexts; env; config; repos } =
   let open Dyn in
   record
     [ "merlin_context", option Context_name.to_dyn merlin_context
     ; "contexts", list Context.to_dyn contexts
     ; "env", option Dune_env.Stanza.to_dyn env
     ; "config", Dune_config.to_dyn config
+    ; "repos", list Repository.to_dyn repos
     ]
 ;;
 
-let equal { merlin_context; contexts; env; config } w =
+let equal { merlin_context; contexts; env; config; repos } w =
   Option.equal Context_name.equal merlin_context w.merlin_context
   && List.equal Context.equal contexts w.contexts
   && Option.equal Dune_env.Stanza.equal env w.env
   && Dune_config.equal config w.config
+  && List.equal Repository.equal repos w.repos
 ;;
 
-let hash { merlin_context; contexts; env; config } =
+let hash { merlin_context; contexts; env; config; repos } =
   Poly.hash
     ( Option.hash Context_name.hash merlin_context
     , List.hash Context.hash contexts
     , Option.hash Dune_env.Stanza.hash env
-    , Dune_config.hash config )
+    , Dune_config.hash config
+    , List.hash Repository.hash repos )
 ;;
 
 include Dune_lang.Versioned_file.Make (struct
@@ -551,7 +556,7 @@ let create_final_config
   ++ config_from_command_line
 ;;
 
-(* We load the configuration it two steps:
+(* We load the configuration in two steps:
 
    - step1: we eagerly interpret all the bits that are common to the workspace
      file and the user configuration file. The other fields are left under a lazy
@@ -590,6 +595,7 @@ let step1 clflags =
     superpose_with_command_line
       cl_profile
       (field "profile" (lazy_ Profile.decode) ~default:(lazy Profile.default))
+  and+ repos = multi_field "repository" (lazy_ Repository.decode)
   and+ instrument_with =
     superpose_with_command_line
       cl_instrument_with
@@ -619,6 +625,7 @@ let step1 clflags =
        in
        let defined_names = ref Context_name.Set.empty in
        let env = Lazy.force env in
+       let repos = Repository.default :: List.map ~f:Lazy.force repos in
        let merlin_context =
          List.fold_left contexts ~init:None ~f:(fun acc ctx ->
            let name = Context.name ctx in
@@ -662,7 +669,7 @@ let step1 clflags =
            then Some Context_name.default
            else None
        in
-       { merlin_context; contexts = top_sort (List.rev contexts); env; config })
+       { merlin_context; contexts = top_sort (List.rev contexts); env; config; repos })
   in
   { Step1.t; config }
 ;;
@@ -691,6 +698,7 @@ let default clflags =
   ; contexts = [ Context.default ~x ~profile ~instrument_with ]
   ; env = None
   ; config
+  ; repos = [ Repository.default ]
   }
 ;;
 

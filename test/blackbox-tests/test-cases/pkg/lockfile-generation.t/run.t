@@ -74,6 +74,10 @@ Print the contents of each file in the lockdir:
   
   (lang package 0.1)
   
+  (repositories
+   (complete false)
+   (used))
+  
   
   ---
   
@@ -113,6 +117,10 @@ Run the solver again preferring oldest versions of dependencies:
   dune.lock/lock.dune:
   
   (lang package 0.1)
+  
+  (repositories
+   (complete false)
+   (used))
   
   
   ---

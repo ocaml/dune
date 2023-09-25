@@ -4,7 +4,8 @@ open Dune_pkg
 
 module Sys_vars = struct
   type t =
-    { os_version : string option Memo.Lazy.t
+    { os : string option Memo.Lazy.t
+    ; os_version : string option Memo.Lazy.t
     ; os_distribution : string option Memo.Lazy.t
     ; os_family : string option Memo.Lazy.t
     ; arch : string option Memo.Lazy.t
@@ -15,7 +16,8 @@ module Sys_vars = struct
     let sys_poll_memo key =
       Memo.lazy_ (fun () -> Memo.of_reproducible_fiber @@ key ~path)
     in
-    { os_version = sys_poll_memo Sys_poll.os_version
+    { os = sys_poll_memo Sys_poll.os
+    ; os_version = sys_poll_memo Sys_poll.os_version
     ; os_distribution = sys_poll_memo Sys_poll.os_distribution
     ; os_family = sys_poll_memo Sys_poll.os_family
     ; arch = sys_poll_memo Sys_poll.arch
@@ -450,7 +452,6 @@ module Action_expander = struct
       | Doc -> Doc
       | Stublibs -> Stublibs
       | Man -> Man
-      | Misc -> Misc
     ;;
 
     let section_dir_of_root
@@ -468,7 +469,6 @@ module Action_expander = struct
       | Man -> roots.man
       | Toplevel -> Path.relative roots.lib_root "toplevel"
       | Stublibs -> Path.relative roots.lib_root "stublibs"
-      | Misc -> assert false
     ;;
 
     let sys_poll_var accessor =
@@ -486,6 +486,7 @@ module Action_expander = struct
     let expand_pkg (paths : Paths.t) (pform : Pform.Var.Pkg.t) =
       match pform with
       | Switch -> Memo.return [ Value.String "dune" ]
+      | Os -> sys_poll_var (fun { os; _ } -> os)
       | Os_version -> sys_poll_var (fun { os_version; _ } -> os_version)
       | Os_distribution -> sys_poll_var (fun { os_distribution; _ } -> os_distribution)
       | Os_family -> sys_poll_var (fun { os_family; _ } -> os_family)

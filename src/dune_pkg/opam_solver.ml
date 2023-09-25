@@ -91,14 +91,14 @@ module Context_for_dune = struct
   ;;
 
   type t =
-    { repo : Opam_repo.t
+    { repos : Opam_repo.t list
     ; version_preference : Version_preference.t
     ; local_packages : OpamFile.OPAM.t OpamPackage.Name.Map.t
     ; solver_env : Solver_env.t
     }
 
-  let create ~solver_env ~repo ~local_packages ~version_preference =
-    { repo; version_preference; local_packages; solver_env }
+  let create ~solver_env ~repos ~local_packages ~version_preference =
+    { repos; version_preference; local_packages; solver_env }
   ;;
 
   type rejection = Unavailable
@@ -162,7 +162,7 @@ module Context_for_dune = struct
       in
       [ version, Ok opam_file ]
     | None ->
-      (match Opam_repo.load_all_versions t.repo name with
+      (match Opam_repo.load_all_versions t.repos name with
        | Error `Package_not_found ->
          (* The CONTEXT interface doesn't give us a way to report this type of
             error and there's not enough context to give a helpful error message
@@ -249,7 +249,11 @@ let filter_to_blang package filter =
     let variable_string = OpamVariable.to_string variable in
     match packages with
     | [] ->
-      let pform = Package_variable.pform_of_opam_ident variable_string in
+      let pform =
+        Package_variable.pform_of_opam_ident
+          ~package_name:(OpamPackage.to_string package)
+          variable_string
+      in
       Blang.Expr (String_with_vars.make_pform Loc.none pform)
     | packages ->
       let blangs =
@@ -350,7 +354,10 @@ let opam_commands_to_actions package (commands : OpamTypes.command list) =
              when String.is_prefix ~prefix:"%{" interp
                   && String.is_suffix ~suffix:"}%" interp ->
              let ident = String.sub ~pos:2 ~len:(String.length interp - 4) interp in
-             `Pform (Package_variable.pform_of_opam_ident ident)
+             `Pform
+               (Package_variable.pform_of_opam_ident
+                  ~package_name:(OpamPackage.to_string package)
+                  ident)
            | other ->
              User_error.raise
                [ Pp.textf
@@ -372,7 +379,9 @@ let opam_commands_to_actions package (commands : OpamTypes.command list) =
         | CIdent ident ->
           String_with_vars.make_pform
             Loc.none
-            (Package_variable.pform_of_opam_ident ident))
+            (Package_variable.pform_of_opam_ident
+               ~package_name:(OpamPackage.to_string package)
+               ident))
     in
     match terms with
     | program :: args ->
@@ -408,13 +417,20 @@ let make_action = function
   | actions -> Some (Action.Progn actions)
 ;;
 
-let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
+let opam_package_to_lock_file_pkg ~repos ~local_packages opam_package =
   let name = OpamPackage.name opam_package in
   let version = OpamPackage.version opam_package |> OpamPackage.Version.to_string in
   let dev = OpamPackage.Name.Map.mem name local_packages in
   let opam_file =
     match OpamPackage.Name.Map.find_opt name local_packages with
-    | None -> Opam_repo.load_opam_package repo opam_package
+    | None ->
+      let opam_files =
+        List.filter_map repos ~f:(fun repo ->
+          Opam_repo.load_opam_package repo opam_package)
+      in
+      (match opam_files with
+       | [ opam_file ] -> opam_file
+       | _ -> Code_error.raise "Couldn't map opam package to a repository" [])
     | Some local_package -> local_package
   in
   let extra_sources =
@@ -488,7 +504,10 @@ let opam_package_to_lock_file_pkg ~repo ~local_packages opam_package =
     |> make_action
     |> Option.map ~f:build_env
   in
-  { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env = [] }
+  let exported_env =
+    OpamFile.OPAM.env opam_file |> List.map ~f:opam_env_update_to_env_update
+  in
+  { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env }
 ;;
 
 let solve_package_list local_packages context =
@@ -516,7 +535,7 @@ let solve_package_list local_packages context =
 
 (* Scan a path recursively down retrieving a list of all files together with their
    relative path. *)
-let scan_files_entries ~repo_id path =
+let scan_files_entries path =
   (* TODO Add some cycle detection *)
   let rec read acc dir =
     let path = Path.append_local path dir in
@@ -533,7 +552,6 @@ let scan_files_entries ~repo_id path =
     | Error (Unix.ENOENT, _, _) -> acc
     | Error err ->
       User_error.raise
-        ?loc:(Option.map ~f:fst repo_id)
         [ Pp.text "Unable to read file in opam repository:"; Unix_error.Detailed.pp err ]
   in
   read [] Path.Local.root
@@ -551,12 +569,12 @@ module Solver_result = struct
     }
 end
 
-let solve_lock_dir solver_env version_preference (repo, repo_id) ~local_packages =
+let solve_lock_dir solver_env version_preference repos ~local_packages =
   let is_local_package package =
     OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
   in
   let context =
-    Context_for_dune.create ~solver_env ~repo ~version_preference ~local_packages
+    Context_for_dune.create ~solver_env ~repos ~version_preference ~local_packages
   in
   solve_package_list local_packages context
   |> Result.map ~f:(fun solution ->
@@ -566,7 +584,7 @@ let solve_lock_dir solver_env version_preference (repo, repo_id) ~local_packages
     let lock_dir =
       match
         Package_name.Map.of_list_map opam_packages_to_lock ~f:(fun opam_package ->
-          let pkg = opam_package_to_lock_file_pkg ~repo ~local_packages opam_package in
+          let pkg = opam_package_to_lock_file_pkg ~repos ~local_packages opam_package in
           pkg.info.name, pkg)
       with
       | Error (name, _pkg1, _pkg2) ->
@@ -576,16 +594,26 @@ let solve_lock_dir solver_env version_preference (repo, repo_id) ~local_packages
              (Package_name.to_string name))
           []
       | Ok pkgs_by_name ->
-        Lock_dir.create_latest_version pkgs_by_name ~ocaml:None ~repo_id
+        Lock_dir.create_latest_version pkgs_by_name ~ocaml:None ~repos:(Some repos)
     in
     let files =
-      Package_name.Map.of_list_map_exn opam_packages_to_lock ~f:(fun opam_package ->
-        let files_path = Opam_repo.get_opam_package_files_path repo opam_package in
-        ( Package_name.of_string
-            (OpamPackage.Name.to_string (OpamPackage.name opam_package))
-        , scan_files_entries ~repo_id files_path ))
-      |> Package_name.Map.filter_map ~f:(fun files ->
-        if List.is_empty files then None else Some files)
+      opam_packages_to_lock
+      |> List.filter_map ~f:(fun opam_package ->
+        let files_path =
+          List.find_map repos ~f:(fun repo ->
+            Opam_repo.get_opam_package_files_path repo opam_package)
+        in
+        match files_path with
+        | None -> None
+        | Some files_path ->
+          (match scan_files_entries files_path with
+           | [] -> None
+           | files ->
+             Some
+               ( Package_name.of_string
+                   (OpamPackage.Name.to_string (OpamPackage.name opam_package))
+               , files )))
+      |> Package_name.Map.of_list_exn
     in
     { Solver_result.summary; lock_dir; files })
 ;;

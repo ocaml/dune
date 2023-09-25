@@ -6,10 +6,7 @@ Dune should gracefully error when packages introduce circular dependenices
   > (lang dune 3.11)
   > EOF
 
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ make_lockdir
   $ cat >dune.lock/a.pkg <<EOF
   > (deps c)
   > EOF

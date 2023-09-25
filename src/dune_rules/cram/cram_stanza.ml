@@ -60,7 +60,7 @@ let system_shell_prog ?loc ~context (shell : [ `sh ]) : Action.Prog.t =
     | None ->
       Error
         (Action.Prog.Not_found.create
-           ~hint:"unable to find system shell program `sh`"
+           ~hint:(Format.sprintf "unable to find system shell program %S" shell_name)
            ~context:(Context.name context)
            ~program:shell_name
            ~loc

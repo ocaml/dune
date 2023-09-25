@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695648605482,
+  "lastUpdate": 1695648620323,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -80270,6 +80270,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "84.43162127058001",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "robin.bjorklin@protonmail.com",
+            "name": "Robin Björklin",
+            "username": "rbjorklin"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a2beade1d60c7b9b39f29660737accfa0826015a",
+          "message": "doc: add how-to for bundling text resources (#8748)\n\n* doc: add how-to for bundling text resources\r\n\r\nThis documents a working example of what is described in #4358.\r\n\r\nSigned-off-by: Robin Björklin <robin.bjorklin@gmail.com>\r\n\r\n* minor formatting fixes\r\n\r\nSigned-off-by: Christine Rose <christinerose@users.noreply.github.com>\r\n\r\n* Apply suggestions from code review\r\n\r\nSigned-off-by: Etienne Millon <etienne.millon@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: Robin Björklin <robin.bjorklin@gmail.com>\r\nSigned-off-by: Christine Rose <christinerose@users.noreply.github.com>\r\nSigned-off-by: Etienne Millon <etienne.millon@gmail.com>\r\nCo-authored-by: Christine Rose <christinerose@users.noreply.github.com>\r\nCo-authored-by: Etienne Millon <etienne.millon@gmail.com>\r\nCo-authored-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-09-25T14:58:23+02:00",
+          "tree_id": "474e94e7e6f154e912ec3571540e322dd5f25a76",
+          "url": "https://github.com/ocaml/dune/commit/a2beade1d60c7b9b39f29660737accfa0826015a"
+        },
+        "date": 1695648619161,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.29743094862",
             "unit": "seconds"
           }
         ]

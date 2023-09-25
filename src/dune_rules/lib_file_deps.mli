@@ -23,8 +23,8 @@ type path_specification =
 
 val raise_disallowed_external_path : loc:Loc.t -> Lib_name.t -> Path.t -> 'a
 
-val eval :
-     loc:Loc.t
+val eval
+  :  loc:Loc.t
   -> expander:Expander.t
   -> paths:path_specification
   -> Dep_conf.t list

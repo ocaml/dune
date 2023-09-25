@@ -15,6 +15,11 @@ module Toggle : sig
     [ `Enabled
     | `Disabled
     ]
+
+  val all : (string * t) list
+  val of_string : string -> (t, string) result
+  val to_string : t -> string
+  val to_dyn : t -> Dyn.t
 end
 
 (** [get t] return the value of the configuration for [t] *)
@@ -51,5 +56,4 @@ val background_sandboxes : Toggle.t t
 val background_file_system_operations_in_rule_execution : Toggle.t t
 
 val threaded_console : Toggle.t t
-
 val init : (Loc.t * string) String.Map.t -> unit

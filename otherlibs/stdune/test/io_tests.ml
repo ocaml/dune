@@ -10,6 +10,7 @@ let%expect_test "copy file simple" =
   Io.copy_file ~src ~dst ();
   print_endline (Io.read_file dst);
   [%expect {| foobarbaz |}]
+;;
 
 let%expect_test "copy file overwrite" =
   let dir = temp_dir () in
@@ -20,6 +21,7 @@ let%expect_test "copy file overwrite" =
   Io.copy_file ~src ~dst ();
   print_endline (Io.read_file dst);
   [%expect {| foobarbaz |}]
+;;
 
 let%expect_test "copy file chmod" =
   let dir = temp_dir () in
@@ -32,6 +34,7 @@ let%expect_test "copy file chmod" =
   [%expect {|
     foobarbaz
     permissions: 428 |}]
+;;
 
 let%expect_test "copy file - no src" =
   let dir = temp_dir () in
@@ -46,6 +49,7 @@ let%expect_test "copy file - no src" =
     in
     print_endline s;
     [%expect {| $PATH: No such file or directory |}]
+;;
 
 let%expect_test "copy file - src is a directory" =
   let dir = temp_dir () in
@@ -54,7 +58,8 @@ let%expect_test "copy file - src is a directory" =
   Unix.mkdir (Path.to_string src) 0o755;
   Io.copy_file ~src ~dst ();
   [%expect.unreachable]
-  [@@expect.uncaught_exn {| (Sys_error "Is a directory") |}]
+[@@expect.uncaught_exn {| (Sys_error "Is a directory") |}]
+;;
 
 let%expect_test "copy file - dst is a directory" =
   let dir = temp_dir () in
@@ -72,6 +77,7 @@ let%expect_test "copy file - dst is a directory" =
     in
     print_endline s;
     [%expect {| $DIR: Is a directory |}]
+;;
 
 let%expect_test "making a directory for an existing file" =
   let dir = temp_dir () in
@@ -83,3 +89,4 @@ let%expect_test "making a directory for an existing file" =
   Path.mkdir_p fn;
   (* This in turn does not error *)
   [%expect {| |}]
+;;

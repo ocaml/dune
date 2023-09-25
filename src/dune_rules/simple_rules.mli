@@ -4,20 +4,19 @@ open Import
 open Dune_file
 
 module Alias_rules : sig
-  val add :
-       Super_context.t
+  val add
+    :  Super_context.t
     -> alias:Alias.t
-    -> loc:Loc.t option
+    -> loc:Loc.t
     -> Action.Full.t Action_builder.t
     -> unit Memo.t
 
-  val add_empty :
-    Super_context.t -> loc:Stdune.Loc.t option -> alias:Alias.t -> unit Memo.t
+  val add_empty : Super_context.t -> loc:Stdune.Loc.t -> alias:Alias.t -> unit Memo.t
 end
 
 (** Interpret a [(rule ...)] stanza and return the targets it produces, if any. *)
-val user_rule :
-     Super_context.t
+val user_rule
+  :  Super_context.t
   -> ?extra_bindings:Value.t list Pform.Map.t
   -> dir:Path.Build.t
   -> expander:Expander.t
@@ -25,8 +24,8 @@ val user_rule :
   -> Targets.Validated.t option Memo.t
 
 (** Interpret a [(copy_files ...)] stanza and return the targets it produces. *)
-val copy_files :
-     Super_context.t
+val copy_files
+  :  Super_context.t
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> src_dir:Path.Source.t
@@ -34,8 +33,8 @@ val copy_files :
   -> Path.Set.t Memo.t
 
 (** Interpret an [(alias ...)] stanza. *)
-val alias :
-     Super_context.t
+val alias
+  :  Super_context.t
   -> ?extra_bindings:Value.t list Pform.Map.t
   -> dir:Path.Build.t
   -> expander:Expander.t

@@ -5,9 +5,7 @@ open! Import
 type t
 
 val for_lib : Lib_name.t -> t
-
 val for_exes : names:string list -> t
-
 val for_melange : target:string -> t
 
 (** Merlin config folder name *)

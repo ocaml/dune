@@ -9,7 +9,6 @@ module V1 = struct
     type t = string * string option
 
     let name = fst
-
     let version = snd
   end
 
@@ -20,6 +19,7 @@ module V1 = struct
       match List.assoc name (to_list ()) with
       | exception Not_found -> None
       | version -> Some (name, version)
+    ;;
   end
 
   let version () = Build_info_data.version

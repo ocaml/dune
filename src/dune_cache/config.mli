@@ -13,7 +13,7 @@ module Reproducibility_check : sig
       Dune's behaviour is indeed deterministic. *)
   type t =
     | Skip
-    | Check_with_probability of float  (** [0 < p < 1] *)
+    | Check_with_probability of float (** [0 < p < 1] *)
     | Check
 
   (** Should we check the current build rule for reproducibility?

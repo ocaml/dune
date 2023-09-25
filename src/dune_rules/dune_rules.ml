@@ -1,4 +1,4 @@
-module Meta = Meta
+module Alias = Alias0
 module Findlib = Findlib
 module Main = Main
 module Context = Context
@@ -8,11 +8,9 @@ module Colors = Colors
 module Workspace = Workspace
 module Dune_package = Dune_package
 module Alias_rec = Alias_rec
-module Dep_conf = Dep_conf
 module Dir_contents = Dir_contents
 module Expander = Expander
 module Lib = Lib
-module Lib_dep = Lib_dep
 module Lib_flags = Lib_flags
 module Lib_info = Lib_info
 module Modules = Modules
@@ -41,6 +39,7 @@ module Resolve = Resolve
 module Ocamldep = Ocamldep
 module Dep_rules = Dep_rules
 module Dep_graph = Dep_graph
+module Lib_config = Lib_config
 module Preprocess = Preprocess
 module Preprocessing = Preprocessing
 module Coq_mode = Coq_mode
@@ -56,14 +55,14 @@ module Source_tree = Source_tree
 module Sub_dirs = Sub_dirs
 module Package = Package
 module Dialect = Dialect
+module Private_context = Private_context
 
 module Install_rules = struct
   let install_file = Install_rules.install_file
+  let stanzas_to_entries = Install_rules.stanzas_to_entries
 end
 
 module For_tests = struct
-  module Scheme = Scheme
-  module Lib_config = Lib_config
   module Dynlink_supported = Dynlink_supported
   module Ocamlobjinfo = Ocamlobjinfo
   module Action_unexpanded = Action_unexpanded

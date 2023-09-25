@@ -1,5 +1,7 @@
 Test fetching from git
 
+  $ . ./helpers.sh
+
   $ mkdir somerepo
   $ cd somerepo
   $ git init --quiet
@@ -11,14 +13,11 @@ Test fetching from git
   $ MYGITREPO=$PWD/somerepo
 
   $ mkdir foo && cd foo
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ make_lockdir
   $ cat >dune.lock/test.pkg <<EOF
   > (source (fetch (url "git+file://$MYGITREPO")))
   > (build (run cat foo))
   > EOF
 
-  $ dune build _build/default/.pkg/test/target
+  $ build_pkg test
   hello world

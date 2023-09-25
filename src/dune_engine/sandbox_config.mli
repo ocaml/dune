@@ -13,14 +13,12 @@ open Import
 type t = Sandbox_mode.Set.t
 
 val compare : t -> t -> Ordering.t
-
 val equal : t -> t -> bool
 
 (** Computes the intersection of allowed sandbox modes *)
 val inter : t -> t -> t
 
 val no_special_requirements : t
-
 val no_sandboxing : t
 
 (** Allow any sandboxing mode, except [Patch_back_source_tree] *)
@@ -35,7 +33,6 @@ val needs_sandboxing : t
 val default : t
 
 val disallow : Sandbox_mode.t -> t
-
 val mem : t -> Sandbox_mode.t -> bool
 
 module Partial : sig
@@ -48,10 +45,7 @@ module Partial : sig
   val merge : loc:Loc.t -> t list -> Sandbox_mode.Set.t
 
   val no_special_requirements : t
-
   val no_sandboxing : t
-
   val needs_sandboxing : t
-
   val disallow : Sandbox_mode.t -> t
 end

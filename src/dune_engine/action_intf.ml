@@ -20,17 +20,13 @@ end
 
 module type Ast = sig
   type program
-
   type path
-
   type target
-
   type string
-
   type ext
 
   type t =
-    | Run of program * string list
+    | Run of program * string Array.Immutable.t
     | With_accepted_exit_codes of int Predicate_lang.t * t
     | Dynamic_run of program * string list
     | Chdir of path * t
@@ -62,59 +58,34 @@ end
 
 module type Helpers = sig
   type program
-
   type path
-
   type target
-
   type string
-
   type t
 
+  (* TODO consider changing this to a [string array] to save some conversion *)
   val run : program -> string list -> t
-
   val chdir : path -> t -> t
-
   val setenv : string -> string -> t -> t
-
   val with_stdout_to : ?perm:File_perm.t -> target -> t -> t
-
   val with_stderr_to : ?perm:File_perm.t -> target -> t -> t
-
   val with_outputs_to : ?perm:File_perm.t -> target -> t -> t
-
   val with_stdin_from : path -> t -> t
-
   val ignore_stdout : t -> t
-
   val ignore_stderr : t -> t
-
   val ignore_outputs : t -> t
-
   val progn : t list -> t
-
   val concurrent : t list -> t
-
   val echo : string list -> t
-
   val cat : path list -> t
-
   val copy : path -> target -> t
-
   val symlink : path -> target -> t
-
   val system : string -> t
-
   val bash : string -> t
-
   val write_file : ?perm:File_perm.t -> target -> string -> t
-
   val rename : target -> target -> t
-
   val remove_tree : target -> t
-
   val mkdir : target -> t
-
   val diff : ?optional:bool -> ?mode:Diff.Mode.t -> path -> target -> t
 end
 
@@ -139,18 +110,13 @@ module Ext = struct
     type ('path, 'target) t
 
     val name : string
-
     val version : int
-
     val is_useful_to : distribute:bool -> memoize:bool -> bool
-
-    val encode :
-      ('p, 't) t -> ('p -> Dune_sexp.t) -> ('t -> Dune_sexp.t) -> Dune_sexp.t
-
+    val encode : ('p, 't) t -> ('p -> Dune_sexp.t) -> ('t -> Dune_sexp.t) -> Dune_sexp.t
     val bimap : ('a, 'b) t -> ('a -> 'x) -> ('b -> 'y) -> ('x, 'y) t
 
-    val action :
-         (Path.t, Path.Build.t) t
+    val action
+      :  (Path.t, Path.Build.t) t
       -> ectx:context
       -> eenv:env
       -> (* cwong: For now, I think we should only worry about extensions with
@@ -162,7 +128,6 @@ module Ext = struct
 
   module type Instance = sig
     type target
-
     type path
 
     module Spec : Spec

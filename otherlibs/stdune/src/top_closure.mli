@@ -1,5 +1,4 @@
-module Int :
-  Top_closure_intf.S with type key := int and type 'a monad := 'a Monad.Id.t
+module Int : Top_closure_intf.S with type key := int and type 'a monad := 'a Monad.Id.t
 
 module String :
   Top_closure_intf.S with type key := string and type 'a monad := 'a Monad.Id.t

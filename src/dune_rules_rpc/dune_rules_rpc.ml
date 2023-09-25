@@ -1,8 +1,8 @@
 open Stdune
+module Dep_conf = Dune_lang.Dep_conf
 
 include struct
   open Dune_rules
-  module Dep_conf = Dep_conf
   module Source_tree = Source_tree
   module Dune_project = Dune_project
 end
@@ -24,9 +24,7 @@ let register rpc =
       let+ version =
         Memo.run
           (let open Memo.O in
-           let source_path =
-             Dune_rpc_impl.For_handlers.source_path_of_string path
-           in
+           let source_path = Dune_rpc_impl.For_handlers.source_path_of_string path in
            let+ dir = Source_tree.nearest_dir source_path in
            let project = Source_tree.Dir.project dir in
            Dune_project.dune_version project)
@@ -36,6 +34,7 @@ let register rpc =
     Handler.implement_request rpc Procedures.Public.format_dune_file f
   in
   ()
+;;
 
 include struct
   open Dune_lang
@@ -46,15 +45,18 @@ end
 
 (* TODO un-copy-paste from dune/bin/arg.ml *)
 let dep_parser =
-  Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version)
-    Dep_conf.decode
+  Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version) Dep_conf.decode
+;;
 
 let parse_build s =
-  Dune_lang.Decoder.parse dep_parser
-    (Univ_map.set Univ_map.empty String_with_vars.decoding_env_key
+  Dune_lang.Decoder.parse
+    dep_parser
+    (Univ_map.set
+       Univ_map.empty
+       String_with_vars.decoding_env_key
        (* CR-someday aalekseyev: hardcoding the version here is not
           ideal, but it will do for now since this command is not
           stable and we're only using it in tests. *)
        (Pform.Env.initial (3, 0)))
-    (Dune_lang.Parser.parse_string ~fname:"dune rpc"
-       ~mode:Dune_lang.Parser.Mode.Single s)
+    (Dune_lang.Parser.parse_string ~fname:"dune rpc" ~mode:Dune_lang.Parser.Mode.Single s)
+;;

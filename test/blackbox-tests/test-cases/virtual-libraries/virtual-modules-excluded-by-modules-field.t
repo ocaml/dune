@@ -29,15 +29,13 @@ Specifying a virtual module that isn't inside the (modules ..) field:
 
 X is warned about:
 
-  $ dune build --display short
+  $ dune build
   File "src/dune", line 4, characters 18-19:
   4 |  (virtual_modules x)
                         ^
   Warning: These modules appear in the virtual_modules field:
   - X
   They must also appear in the modules field.
-      ocamldep src/impl/.impl.objs/x.impl.d
-        ocamlc src/.foo.objs/byte/y.{cmi,cmo,cmt} (exit 2)
   File "src/y.ml", line 1, characters 16-17:
   1 | module type F = X
                       ^
@@ -49,6 +47,20 @@ X is warned about:
   Error: No rule found for src/.foo.objs/y.impl.all-deps
   [1]
 
+In 3.11 onwards this warning becomes an error
+
+  $ cat > dune-project << EOF
+  > (lang dune 3.11)
+  > EOF
+
+  $ dune build ./bar.exe
+  File "src/dune", line 4, characters 18-19:
+  4 |  (virtual_modules x)
+                        ^
+  Error: These modules appear in the virtual_modules field:
+  - X
+  They must also appear in the modules field.
+  [1]
 
 This should be ignored if we are in vendored_dirs
 

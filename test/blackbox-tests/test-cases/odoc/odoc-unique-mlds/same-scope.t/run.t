@@ -9,6 +9,6 @@ Duplicate mld's in the same scope
           odoc _doc/_odocls/root/root_lib1.odocl
           odoc _doc/_odocls/root/root_lib2.odocl
           odoc _doc/_odocls/root/page-index.odocl
-          odoc _doc/_html/root/Root_lib1/.dummy,_doc/_html/root/Root_lib1/index.html
-          odoc _doc/_html/root/Root_lib2/.dummy,_doc/_html/root/Root_lib2/index.html
+          odoc _doc/_html/root/Root_lib1/index.html
+          odoc _doc/_html/root/Root_lib2/index.html
           odoc _doc/_html/root/index.html

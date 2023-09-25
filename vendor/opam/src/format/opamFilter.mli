@@ -8,6 +8,7 @@
 (*  exception on linking described in the file LICENSE.                   *)
 (*                                                                        *)
 (**************************************************************************)
+module Re = Dune_re
 
 (** Formulas on variables, as used in opam files build scripts
 
@@ -49,6 +50,10 @@ val fold_down_left: ('a -> filter -> 'a) -> 'a -> filter -> 'a
 
 (** Maps on all nodes of a filter, bottom-up *)
 val map_up: (filter -> filter) -> filter -> filter
+
+(** Regex matching string interpolation syntax (["%%"], ["%{xxx}%"], or
+    ["%{xxx"] if unclosed) *)
+val string_interp_regex : Re.re
 
 (** Returns all the variables appearing in a filter (including the ones within
     string interpolations *)
@@ -128,6 +133,8 @@ val ident_string: ?default:string -> env -> fident -> string
 
 (** Like [ident_value], but casts the result to a bool *)
 val ident_bool: ?default:bool -> env -> fident -> bool
+
+val expand_interpolations_in_file_full: env -> src:filename -> dst:filename -> unit
 
 (** Rewrites [basename].in to [basename], expanding interpolations.
     If the first line begins ["opam-version:"], assumes that expansion of

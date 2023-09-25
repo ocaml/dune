@@ -21,6 +21,9 @@ module Style : sig
     | Debug
     | Success
     | Ansi_styles of Ansi_color.Style.t list
+
+  val to_dyn : t -> Dyn.t
+  val compare : t -> t -> Ordering.t
 end
 
 module Annots : sig
@@ -33,15 +36,10 @@ module Annots : sig
   type t
 
   val to_dyn : t -> Dyn.t
-
   val find : t -> 'a Key.t -> 'a option
-
   val set : t -> 'a Key.t -> 'a -> t
-
   val empty : t
-
   val is_empty : t -> bool
-
   val singleton : 'a Key.t -> 'a -> t
 
   (** The message has a location embed in the text. *)
@@ -71,9 +69,7 @@ type t =
   }
 
 val compare : t -> t -> Ordering.t
-
 val equal : t -> t -> bool
-
 val pp : t -> Style.t Pp.t
 
 module Print_config : sig
@@ -89,8 +85,8 @@ end
     The first paragraph is prefixed with [prefix] inside the box. [prefix]
     should not end with a space as a space is automatically inserted by [make]
     if necessary. *)
-val make :
-     ?loc:Loc0.t
+val make
+  :  ?loc:Loc0.t
   -> ?prefix:Style.t Pp.t
   -> ?hints:Style.t Pp.t list
   -> ?annots:Annots.t

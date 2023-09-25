@@ -92,7 +92,7 @@ file:
 
 .. code:: dune
 
-  (lang dune 3.10)
+  (lang dune 3.11)
   (using ctypes 0.3)
 
 
@@ -112,11 +112,11 @@ location.
      (build_flags_resolver pkg_config)
      (headers (include "foo.h"))
      (type_description
-      (instance Type)
+      (instance Types)
       (functor Type_description))
      (function_description
       (concurrency unlocked)
-      (instance Function)
+      (instance Functions)
       (functor Function_description))
      (generated_types Types_generated)
      (generated_entry_point C)))
@@ -248,7 +248,7 @@ descriptions by referencing them as the module specified in optional
   module(s).
 
 - ``(generated_entry_point <module-name>)`` is the name of a generated module
-  that your instantiated ``Types`` and ``Function`` modules will instantiated
+  that your instantiated ``Types`` and ``Functions`` modules will instantiated
   under. We suggest calling it ``C``.
 
 - Headers can be added to the generated C files:

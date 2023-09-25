@@ -108,10 +108,7 @@ Terminology
      A build target that doesn't produce any file and has configurable
      dependencies. Targets starting with ``@`` on the command line are
      interpreted as aliases (e.g., ``dune build @src/runtest``). Aliases are
-     per-directory. However, asking to build an alias in a given directory will
-     also trigger alias construction in all children directories recursively.
-     If no target is specified, Dune builds the ``default`` alias. Dune defines
-     several :ref:`builtin-aliases`.
+     per-directory. See :doc:`reference/aliases`.
 
    environment
      Determines the default values of various parameters, such as the

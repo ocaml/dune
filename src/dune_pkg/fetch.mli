@@ -12,8 +12,22 @@ type failure =
       pass the actually computed checksum.
     @raise Unavailable
       When the file can't be retrieved, e.g. not available at the location. *)
-val fetch :
-     checksum:Checksum.t option
+val fetch
+  :  unpack:bool
+  -> checksum:Checksum.t option
   -> target:Path.t
   -> OpamUrl.t
   -> (unit, failure) result Fiber.t
+
+module Opam_repository : sig
+  type t
+
+  type success =
+    { path : Path.t
+    ; repo_id : Repository_id.t option
+    }
+
+  val of_url : OpamUrl.t -> t
+  val default : t
+  val path : t -> (success, failure) result Fiber.t
+end

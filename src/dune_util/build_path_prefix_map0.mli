@@ -12,8 +12,8 @@ val _BUILD_PATH_PREFIX_MAP : Env.Var.t
     If the environment variable is already defined in [env], [how] explains
     whether the rules in [map] should be tried before or after the existing
     ones. *)
-val extend_build_path_prefix_map :
-     Env.t
+val extend_build_path_prefix_map
+  :  Env.t
   -> [ `Existing_rules_have_precedence | `New_rules_have_precedence ]
   -> Build_path_prefix_map.map
   -> Env.t

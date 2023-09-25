@@ -1,15 +1,11 @@
-
-Helper shell function that generates an opam file for a package:
-  $ mkpkg() {
-  >   name=$1
-  >   mkdir -p mock-opam-repository/packages/$name/$name.0.0.1
-  >   cat >mock-opam-repository/packages/$name/$name.0.0.1/opam
-  > }
+  $ . ./helpers.sh
+  $ mkrepo
 
 Helper shell function to generate a dune-project file and generate lockdir:
+
   $ solve_project() {
   >   cat >dune-project
-  >   dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository --all-contexts
+  >   dune pkg lock --opam-repository-path=mock-opam-repository --all-contexts
   > }
 
 Create a workspace file with some contexts with different combinations of with-test and with-doc flags
@@ -58,12 +54,6 @@ Create a workspace file with some contexts with different combinations of with-t
   >    (flags :standard))))
   > EOF
 
-Generate a mock opam repository
-  $ mkdir -p mock-opam-repository/packages
-  $ cat >mock-opam-repository/repo <<EOF
-  > opam-version: "2.0"
-  > EOF
-
   $ mkpkg regular-package <<EOF
   > opam-version: "2.0"
   > EOF
@@ -89,24 +79,35 @@ Generate a mock opam repository
   doc-package.0.0.1
   regular-package.0.0.1
   test-package.0.0.1
+  
   Solution for with-doc-and-with-test.lock:
   doc-package.0.0.1
   regular-package.0.0.1
   test-package.0.0.1
+  
   Solution for with-doc-only.lock:
   doc-package.0.0.1
   regular-package.0.0.1
+  
   Solution for with-test-only.lock:
   regular-package.0.0.1
   test-package.0.0.1
+  
   Solution for empty-solver-flags.lock:
   regular-package.0.0.1
+  
   Solution for default-solver-flags.lock:
   doc-package.0.0.1
   regular-package.0.0.1
   test-package.0.0.1
+  
   Solution for default-solver-env.lock:
   doc-package.0.0.1
   regular-package.0.0.1
   test-package.0.0.1
-
+  
+  Solution for dune.lock:
+  doc-package.0.0.1
+  regular-package.0.0.1
+  test-package.0.0.1
+  

@@ -1,9 +1,8 @@
 Test that installed binaries are visible in dependent packages
 
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ . ./helpers.sh
+
+  $ make_lockdir
   $ cat >dune.lock/test.pkg <<EOF
   > (build
   >  (system "\| echo "#!/bin/sh\necho from test package" > foo;
@@ -26,29 +25,34 @@ Test that installed binaries are visible in dependent packages
   >   (run mkdir -p %{prefix})))
   > EOF
 
-  $ dune build .pkg/usetest/target/
+  $ build_pkg usetest
   from test package
 
-  $ find _build/default/.pkg/test/target | sort
-  _build/default/.pkg/test/target
-  _build/default/.pkg/test/target/bin
-  _build/default/.pkg/test/target/bin/foo
-  _build/default/.pkg/test/target/cookie
-  _build/default/.pkg/test/target/lib
-  _build/default/.pkg/test/target/lib/lib_rootxxx
-  _build/default/.pkg/test/target/lib/test
-  _build/default/.pkg/test/target/lib/test/libxxx
-  _build/default/.pkg/test/target/share
-  _build/default/.pkg/test/target/share/lib_rootxxx
-  $ dune internal dump _build/default/.pkg/test/target/cookie
+  $ show_pkg_targets test
+  
+  /bin
+  /bin/foo
+  /cookie
+  /lib
+  /lib/lib_rootxxx
+  /lib/test
+  /lib/test/libxxx
+  /share
+  /share/lib_rootxxx
+  $ show_pkg_cookie test
   { files =
       map
-        { LIB : [ In_build_dir "default/.pkg/test/target/lib/test/libxxx" ]
+        { LIB :
+            [ In_build_dir "_private/default/.pkg/test/target/lib/test/libxxx"
+            ]
         ; LIB_ROOT :
-            [ In_build_dir "default/.pkg/test/target/lib/lib_rootxxx" ]
-        ; BIN : [ In_build_dir "default/.pkg/test/target/bin/foo" ]
+            [ In_build_dir "_private/default/.pkg/test/target/lib/lib_rootxxx"
+            ]
+        ; BIN : [ In_build_dir "_private/default/.pkg/test/target/bin/foo" ]
         ; SHARE_ROOT :
-            [ In_build_dir "default/.pkg/test/target/share/lib_rootxxx" ]
+            [ In_build_dir
+                "_private/default/.pkg/test/target/share/lib_rootxxx"
+            ]
         }
   ; variables = []
   }
@@ -65,9 +69,4 @@ It should also be visible in the workspace:
   > EOF
 
   $ dune build ./testout && cat _build/default/testout
-  File "dune", line 2, characters 30-40:
-  2 |  (with-stdout-to testout (run %{bin:foo})))
-                                    ^^^^^^^^^^
-  Error: Program foo not found in the tree or in PATH
-   (context: default)
-  [1]
+  from test package

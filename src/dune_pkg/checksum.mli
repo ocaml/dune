@@ -14,5 +14,4 @@ val to_opam_hash : t -> OpamHash.t
 val of_opam_hash : OpamHash.t -> t
 
 val pp : t -> 'a Pp.t
-
 val equal : t -> t -> bool

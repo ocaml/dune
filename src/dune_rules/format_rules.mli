@@ -11,4 +11,4 @@ val gen_rules : Super_context.t -> output_dir:Path.Build.t -> unit Memo.t
     source files and the the [formatted_dir_basename] sub-directory. *)
 val setup_alias : Super_context.t -> dir:Path.Build.t -> unit Memo.t
 
-val formatted_dir_basename : string
+val formatted_dir_basename : Filename.t

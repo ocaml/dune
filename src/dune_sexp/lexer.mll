@@ -348,11 +348,18 @@ and template_variable = parse
       (* -2 to account for the "%{" *)
       let start = { start with pos_cnum = start.pos_cnum - 2 } in
       let loc = Loc.create ~start ~stop:(Lexing.lexeme_end_p lexbuf) in
-      Template.Pform { loc ; name ; payload }
+      Template.Pform { loc ; name ; payload = Option.map ~f:Template.Pform.Payload.of_string payload }
   }
   | '}' | eof
     { error lexbuf "%{...} forms cannot be empty" }
-  | _ { error lexbuf "This character is not allowed inside %{...} forms" }
+  | (varname_char* as skip) (_ as other)
+  | (varname_char+ ':' ((':' | varname_char)*) as skip) (_ as other)
+  {
+    error
+      ~delta:(String.length skip)
+      lexbuf
+      (Printf.sprintf "The character %C is not allowed inside %%{...} forms" other)
+  }
 
 {
   let token ~with_comments lexbuf = token with_comments lexbuf

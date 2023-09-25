@@ -1,9 +1,8 @@
 Test that we can set variables
 
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ . ./helpers.sh
+
+  $ make_lockdir
   $ cat >dune.lock/test.pkg <<EOF
   > (build
   >  (system "\| cat >test.config <<EOF
@@ -21,19 +20,19 @@ Test that we can set variables
   > (deps test)
   > (build
   >  (progn
-  >   (system "\| echo %{pkg:var:test:abool}
-  >           "\| echo %{pkg:var:test:astring}
-  >           "\| echo %{pkg:var:test:somestrings}
+  >   (system "\| echo %{pkg:test:abool}
+  >           "\| echo %{pkg:test:astring}
+  >           "\| echo %{pkg:test:somestrings}
   >   )
   >   (run mkdir -p %{prefix})))
   > EOF
 
-  $ dune build .pkg/usetest/target/
+  $ build_pkg usetest
   true
   foobar
   foo bar
 
-  $ dune internal dump _build/default/.pkg/test/target/cookie
+  $ show_pkg_cookie test
   { files = map {}
   ; variables =
       [ ("abool", Bool true)

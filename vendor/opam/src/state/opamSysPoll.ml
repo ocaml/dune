@@ -37,10 +37,14 @@ let poll_arch () =
   let raw = match Sys.os_type with
     | "Unix" | "Cygwin" -> OpamStd.Sys.uname "-m"
     | "Win32" ->
-      if Sys.word_size = 32 && not (OpamStubs.isWoW64 ()) then
-        Some "i686"
-      else
-        Some "x86_64"
+      begin match OpamStubs.getArchitecture () with
+      | OpamStubs.AMD64 -> Some "x86_64"
+      | ARM -> Some "arm32"
+      | ARM64 -> Some "arm64"
+      | IA64 -> Some "ia64"
+      | Intel -> Some "x86_32"
+      | Unknown -> None
+      end
     | _ -> None
   in
   match raw with
@@ -98,13 +102,26 @@ let poll_os_distribution () =
     (if is_android () then Some "android" else
      os_release_field "ID" >>= norm >>+ fun () ->
      command_output ["lsb_release"; "-i"; "-s"] >>= norm >>+ fun () ->
-     try
-       List.find Sys.file_exists ["/etc/redhat-release";
-                                  "/etc/centos-release";
-                                  "/etc/gentoo-release";
-                                  "/etc/issue"] |>
-       fun s -> Scanf.sscanf s " %s " norm
-     with Not_found -> linux)
+     let release_file =
+       List.find_opt Sys.file_exists ["/etc/redhat-release";
+                                      "/etc/centos-release";
+                                      "/etc/gentoo-release";
+                                      "/etc/issue"]
+     in
+     match OpamStd.Option.map OpamProcess.read_lines release_file with
+     | None |  Some [] -> linux
+     | Some (s::_) ->
+       try Scanf.sscanf s " %s " norm
+       with Scanf.Scan_failure _ -> linux)
+  | Some "win32" ->
+    (* If the user provides a Cygwin installation in PATH, by default we'll use
+       it. Note that this is _not_ done for MSYS2. *)
+    let cygwin =
+      OpamSystem.resolve_command "cygcheck"
+      >>| Filename.dirname
+      |> (fun cygbin -> OpamStd.Sys.is_cygwin_cygcheck ~cygbin)
+    in
+    if cygwin then Some "cygwin" else os
   | os -> os
 let os_distribution = Lazy.from_fun poll_os_distribution
 

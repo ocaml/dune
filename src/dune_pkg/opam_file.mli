@@ -20,17 +20,12 @@ val parse_value : Lexing.lexbuf -> value
 val absolutify_positions : file_contents:string -> t -> t
 
 val nopos : OpamParserTypes.FullPos.pos
-
 val existing_variables : t -> String.Set.t
 
 module Create : sig
   val string : string -> value
-
   val list : ('a -> value) -> 'a list -> value
-
   val string_list : string list -> value
-
   val normalise_field_order : (string * value) list -> (string * value) list
-
   val of_bindings : (string * value) list -> file:Path.t -> t
 end

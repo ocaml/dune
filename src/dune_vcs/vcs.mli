@@ -8,7 +8,6 @@ module Kind : sig
     | Hg
 
   val of_dir_name : Filename.t -> t option
-
   val of_dir_contents : Filename.Set.t -> t option
 end
 
@@ -18,7 +17,6 @@ type t =
   }
 
 val equal : t -> t -> bool
-
 val to_dyn : t -> Dyn.t
 
 (** Nice description of the current tip *)

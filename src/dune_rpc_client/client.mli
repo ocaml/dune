@@ -1,5 +1,4 @@
 open Import
-
 include Dune_rpc.Client.S with type 'a fiber := 'a Fiber.t
 
 module Connection : sig
@@ -14,8 +13,8 @@ end
 (** [client t where init ~on_notification ~f] Establishes a client connection to
     [where], initializes it with [init]. Once initialization is done, cals [f]
     with the active client. All notifications are fed to [on_notification]*)
-val client :
-     ?handler:Handler.t
+val client
+  :  ?handler:Handler.t
   -> private_menu:proc list
   -> Connection.t
   -> Dune_rpc.Initialize.Request.t

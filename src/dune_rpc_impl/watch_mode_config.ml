@@ -14,6 +14,7 @@ let to_string = function
   | No -> "no"
   | Yes Eager -> "eager"
   | Yes Passive -> "passive"
+;;
 
 let of_string s =
   match s with
@@ -22,5 +23,8 @@ let of_string s =
   | "passive" -> Ok (Yes Passive)
   | s ->
     Error
-      (Printf.sprintf "invalid watch mode %S, should be one of: %s" s
+      (Printf.sprintf
+         "invalid watch mode %S, should be one of: %s"
+         s
          (String.concat ~sep:", " (List.map ~f:to_string all)))
+;;

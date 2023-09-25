@@ -418,12 +418,10 @@ let ident_string ?default env id = value_string ?default (resolve_ident env id)
 
 let ident_bool ?default env id = value_bool ?default (resolve_ident env id)
 
-(* Substitute the file contents *)
-let expand_interpolations_in_file env file =
-  let f = OpamFilename.of_basename file in
-  let src = OpamFilename.add_extension f "in" in
+(* Substitute the file contents and specify the source and destination *)
+let expand_interpolations_in_file_full env ~src ~dst =
   let ic = OpamFilename.open_in_bin src in
-  let oc = OpamFilename.open_out_bin f in
+  let oc = OpamFilename.open_out_bin dst in
   (* Determine if the input file parses in opam-file-format *)
   let is_opam_format =
     try
@@ -455,6 +453,12 @@ let expand_interpolations_in_file env file =
   process ();
   close_in ic;
   close_out oc
+
+(* Substitute the file contents *)
+let expand_interpolations_in_file env file =
+  let file = OpamFilename.of_basename file in
+  let src = OpamFilename.add_extension file "in" in
+  expand_interpolations_in_file_full env ~src ~dst:file
 
 (* Apply filters and interpolations to package commands *)
 

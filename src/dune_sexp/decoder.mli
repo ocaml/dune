@@ -13,10 +13,10 @@ type hint =
     The input can be seen either as a plain sequence of S-expressions or a list
     of fields. The ['kind] parameter indicates how the input is seen:
 
-    - with ['kind = \[values\]], the input is seen as an ordered sequence of
+    - with ['kind = [values]], the input is seen as an ordered sequence of
       S-expressions
 
-    - with [!'kind = \[fields\]], the input is seen as an unordered sequence of
+    - with [!'kind = [fields]], the input is seen as an unordered sequence of
       fields
 
     A field is a S-expression of the form: [(<atom> <values>...)] where [atom]
@@ -29,11 +29,8 @@ type hint =
 type ('a, 'kind) parser
 
 type values
-
 type fields
-
 type 'a t = ('a, values) parser
-
 type 'a fields_parser = ('a, fields) parser
 
 (** [parse parser context sexp] parse a S-expression using the following parser.
@@ -42,34 +39,24 @@ type 'a fields_parser = ('a, fields) parser
 val parse : 'a t -> Univ_map.t -> Ast.t -> 'a
 
 val set_input : Ast.t list -> (unit, 'k) parser
-
 val return : 'a -> ('a, _) parser
-
 val ( >>= ) : ('a, 'k) parser -> ('a -> ('b, 'k) parser) -> ('b, 'k) parser
-
 val ( >>| ) : ('a, 'k) parser -> ('a -> 'b) -> ('b, 'k) parser
-
 val ( >>> ) : (unit, 'k) parser -> ('a, 'k) parser -> ('a, 'k) parser
-
 val map : ('a, 'k) parser -> f:('a -> 'b) -> ('b, 'k) parser
-
 val try_ : ('a, 'k) parser -> (exn -> ('a, 'k) parser) -> ('a, 'k) parser
-
 val traverse : 'a list -> f:('a -> ('b, 'k) parser) -> ('b list, 'k) parser
-
 val all : ('a, 'k) parser list -> ('a list, 'k) parser
 
 (** Access to the context *)
 val get : 'a Univ_map.Key.t -> ('a option, _) parser
 
 val set : 'a Univ_map.Key.t -> 'a -> ('b, 'k) parser -> ('b, 'k) parser
-
 val get_all : (Univ_map.t, _) parser
-
 val set_many : Univ_map.t -> ('a, 'k) parser -> ('a, 'k) parser
 
-val update_var :
-     'a Univ_map.Key.t
+val update_var
+  :  'a Univ_map.Key.t
   -> f:('a option -> 'a option)
   -> ('b, 'k) parser
   -> ('b, 'k) parser
@@ -82,8 +69,7 @@ val loc : (Loc.t, _) parser
     most input. *)
 val ( <|> ) : ('a, 'k) parser -> ('a, 'k) parser -> ('a, 'k) parser
 
-val either :
-  ('a, 'k) parser -> ('b, 'k) parser -> (('a, 'b) Either.t, 'k) parser
+val either : ('a, 'k) parser -> ('b, 'k) parser -> (('a, 'b) Either.t, 'k) parser
 
 (** [atom_matching f] expects the next element to be an atom for which [f]
     returns [Some v]. [desc] is used to describe the atom in case of error. [f]
@@ -99,8 +85,7 @@ val keyword : string -> unit t
 
 (** Use [before] to parse elements until the keyword is reached. Then use
     [after] to parse the rest. *)
-val until_keyword :
-  string -> before:'a t -> after:'b t -> ('a list * 'b option) t
+val until_keyword : string -> before:'a t -> after:'b t -> ('a list * 'b option) t
 
 (** What is currently being parsed. The second argument is the atom at the
     beginning of the list when inside a [sum ...] or [field ...]. *)
@@ -136,13 +121,9 @@ val fields : 'a fields_parser -> 'a t
 val string : string t
 
 val int : int t
-
 val float : float t
-
 val bool : bool t
-
 val pair : 'a t -> 'b t -> ('a * 'b) t
-
 val triple : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
 
 (** [maybe t] is a short-hand for:
@@ -191,11 +172,8 @@ val extension : string t
 val relative_file : string t
 
 val fix : ('a t -> 'a t) -> 'a t
-
 val located : ('a, 'k) parser -> (Loc.t * 'a, 'k) parser
-
 val enum : (string * 'a) list -> 'a t
-
 val enum' : (string * 'a t) list -> 'a t
 
 (** Parser that parse a S-expression of the form
@@ -209,42 +187,44 @@ val sum : ?force_parens:bool -> (string * 'a t) list -> 'a t
 
 (** Check the result of a list parser, and raise a properly located error in
     case of failure. *)
-val map_validate :
-  ('a, 'k) parser -> f:('a -> ('b, User_message.t) Result.t) -> ('b, 'k) parser
+val map_validate
+  :  ('a, 'k) parser
+  -> f:('a -> ('b, User_message.t) Result.t)
+  -> ('b, 'k) parser
 
 (** {3 Parsing record fields} *)
 
-val field :
-     string
+val field
+  :  string
   -> ?default:'a
   -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
   -> 'a t
   -> 'a fields_parser
 
-val field_o :
-     string
+val field_o
+  :  string
   -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
   -> 'a t
   -> 'a option fields_parser
 
 (** Parser for mutually exclusive fields. If [default] is provided, allow fields
     absence. *)
-val fields_mutually_exclusive :
-     ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
+val fields_mutually_exclusive
+  :  ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
   -> ?default:'a
   -> (string * 'a t) list
   -> 'a fields_parser
 
 (** Test if the field is present *)
-val field_b :
-     ?check:unit t
+val field_b
+  :  ?check:unit t
   -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
   -> string
   -> bool fields_parser
 
 (** Differentiate between not present and set to true or false *)
-val field_o_b :
-     ?check:unit t
+val field_o_b
+  :  ?check:unit t
   -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
   -> string
   -> bool option fields_parser
@@ -259,9 +239,6 @@ val leftover_fields_as_sums : (string * 'a t) list -> 'a list fields_parser
 val field_present_too_many_times : Univ_map.t -> string -> Ast.t list -> _
 
 val leftover_fields : Ast.t list fields_parser
-
 val ( let* ) : ('a, 'k) parser -> ('a -> ('b, 'k) parser) -> ('b, 'k) parser
-
 val ( let+ ) : ('a, 'k) parser -> ('a -> 'b) -> ('b, 'k) parser
-
 val ( and+ ) : ('a, 'k) parser -> ('b, 'k) parser -> ('a * 'b, 'k) parser

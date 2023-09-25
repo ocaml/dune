@@ -6,7 +6,6 @@ module Ast = struct
   [@@@warning "-37"]
 
   type expanded = Expanded
-
   type unexpanded = Unexpanded
 
   type ('a, _) t =
@@ -17,17 +16,18 @@ module Ast = struct
     | Include : String_with_vars.t -> ('a, unexpanded) t
 
   let rec equal f x y =
-    match (x, y) with
+    match x, y with
     | Element x, Element y -> f x y
     | Standard, Standard -> true
     | Union x, Union y -> List.equal (equal f) x y
-    | Diff (x, x'), Diff (y, y') ->
-      Tuple.T2.equal (equal f) (equal f) (x, x') (y, y')
+    | Diff (x, x'), Diff (y, y') -> Tuple.T2.equal (equal f) (equal f) (x, x') (y, y')
     | _, _ -> false
+  ;;
 
   let union = function
     | [ x ] -> x
     | xs -> Union xs
+  ;;
 end
 
 type 'ast generic =
@@ -36,8 +36,7 @@ type 'ast generic =
   ; context : Univ_map.t (* Parsing context for Decoder.parse *)
   }
 
-let equal_generic f { ast; loc = _; context } t =
-  f ast t.ast && context == t.context
+let equal_generic f { ast; loc = _; context } t = f ast t.ast && context == t.context
 
 type ast_expanded = (Loc.t * string, Ast.expanded) Ast.t
 
@@ -48,9 +47,9 @@ type t = ast_expanded generic
 let of_atoms ~loc lst =
   let ast = Ast.Union (List.map lst ~f:(fun s -> Ast.Element (loc, s))) in
   { ast; loc = Some loc; context = Univ_map.empty }
+;;
 
 let equal = equal_generic (Ast.equal (fun (_, x) (_, y) -> String.equal x y))
-
 let loc t = t.loc
 
 module Parse = struct
@@ -60,33 +59,35 @@ module Parse = struct
   let generic ~inc ~elt =
     let open Decoder in
     let rec one () =
-      peek_exn >>= function
+      peek_exn
+      >>= function
       | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
       | Atom (_, A "") | Quoted_string (_, _) | Template _ -> elt
-      | Atom (loc, A s) -> (
-        match s with
-        | ":standard" -> junk >>> return Standard
-        | ":include" ->
-          User_error.raise ~loc
-            [ Pp.text
-                "Invalid use of :include, should be: (:include <filename>)"
-            ]
-        | _ when s.[0] = ':' ->
-          User_error.raise ~loc [ Pp.textf "undefined symbol %s" s ]
-        | _ -> elt)
-      | List (_, Atom (loc, A s) :: _) -> (
-        match s with
-        | ":include" -> inc
-        | s when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
-          User_error.raise ~loc
-            [ Pp.text
-                "This atom must be quoted because it is the first element of a \
-                 list and doesn't start with - or:"
-            ]
-        | _ -> enter (many []))
+      | Atom (loc, A s) ->
+        (match s with
+         | ":standard" -> junk >>> return Standard
+         | ":include" ->
+           User_error.raise
+             ~loc
+             [ Pp.text "Invalid use of :include, should be: (:include <filename>)" ]
+         | _ when s.[0] = ':' ->
+           User_error.raise ~loc [ Pp.textf "undefined symbol %s" s ]
+         | _ -> elt)
+      | List (_, Atom (loc, A s) :: _) ->
+        (match s with
+         | ":include" -> inc
+         | s when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
+           User_error.raise
+             ~loc
+             [ Pp.text
+                 "This atom must be quoted because it is the first element of a list and \
+                  doesn't start with - or:"
+             ]
+         | _ -> enter (many []))
       | List _ -> enter (many [])
     and many acc =
-      peek >>= function
+      peek
+      >>= function
       | None -> return (Union (List.rev acc))
       | Some (Atom (_, A "\\")) ->
         let+ to_remove = junk >>> many [] in
@@ -96,19 +97,22 @@ module Parse = struct
         many (x :: acc)
     in
     many []
+  ;;
 
   let with_include ~elt =
-    generic ~elt
-      ~inc:
-        (sum [ (":include", String_with_vars.decode >>| fun s -> Include s) ])
+    generic
+      ~elt
+      ~inc:(sum [ (":include", String_with_vars.decode >>| fun s -> Include s) ])
+  ;;
 
   let without_include ~elt =
-    generic ~elt
+    generic
+      ~elt
       ~inc:
         (enter
            (let* loc = loc in
-            User_error.raise ~loc
-              [ Pp.text "(:include ...) is not allowed here" ]))
+            User_error.raise ~loc [ Pp.text "(:include ...) is not allowed here" ]))
+  ;;
 end
 
 let decode =
@@ -116,15 +120,16 @@ let decode =
   let+ context = get_all
   and+ loc, ast =
     located
-      (Parse.without_include
-         ~elt:(plain_string (fun ~loc s -> Ast.Element (loc, s))))
+      (Parse.without_include ~elt:(plain_string (fun ~loc s -> Ast.Element (loc, s))))
   in
   { ast; loc = Some loc; context }
+;;
 
 let is_standard t =
   match (t.ast : ast_expanded) with
   | Ast.Standard -> true
   | _ -> false
+;;
 
 module Eval = struct
   let of_ast ~diff ~singleton ~union t ~parse ~standard =
@@ -141,6 +146,7 @@ module Eval = struct
         diff left right
     in
     if is_standard t then standard else loop t.ast
+  ;;
 
   let ordered eq =
     let singleton = List.singleton in
@@ -149,23 +155,25 @@ module Eval = struct
       List.filter a ~f:(fun x -> List.for_all b ~f:(fun y -> not (eq x y)))
     in
     of_ast ~diff ~singleton ~union
+  ;;
 
   let unordered ~singleton ~empty ~merge ~key =
     let singleton x = singleton (key x) x in
     let union =
       List.fold_left ~init:empty ~f:(fun acc t ->
-          merge acc t ~f:(fun _name x y ->
-              match (x, y) with
-              | Some x, _ | _, Some x -> Some x
-              | _ -> None))
+        merge acc t ~f:(fun _name x y ->
+          match x, y with
+          | Some x, _ | _, Some x -> Some x
+          | _ -> None))
     in
     let diff a b =
       merge a b ~f:(fun _name x y ->
-          match (x, y) with
-          | Some _, None -> x
-          | _ -> None)
+        match x, y with
+        | Some _, None -> x
+        | _ -> None)
     in
     of_ast ~diff ~singleton ~union
+  ;;
 end
 
 let eval t ~parse ~eq ~standard = Eval.ordered eq t ~parse ~standard
@@ -180,17 +188,20 @@ module Unordered (Key : Key) = struct
     let empty = Key.Map.empty in
     let merge = Key.Map.merge in
     Eval.unordered ~singleton ~empty ~merge ~key t ~parse ~standard
+  ;;
 
-  let loc_parse f ~loc s = (loc, f ~loc s)
+  let loc_parse f ~loc s = loc, f ~loc s
 
   let eval_loc t ~parse ~key ~standard =
     eval t ~parse:(loc_parse parse) ~key:(fun (_, x) -> key x) ~standard
+  ;;
 end
 
 let eval_loc t ~parse ~eq ~standard =
-  let loc_parse f ~loc s = (loc, f ~loc s) in
+  let loc_parse f ~loc s = loc, f ~loc s in
   let eq (_, a) (_, b) = eq a b in
   eval t ~parse:(loc_parse parse) ~standard ~eq
+;;
 
 let standard = { ast = Ast.Standard; loc = None; context = Univ_map.empty }
 
@@ -203,9 +214,11 @@ let replace_standard ~where ~with_ : ast_expanded generic =
     | Ast.Diff (x, y) -> Diff (f x, f y)
   in
   { ast = f where.ast; loc = where.loc; context = where.context }
+;;
 
 let replace_standard_with_empty where =
   replace_standard ~where ~with_:(Union [] : ast_expanded)
+;;
 
 let field ?check name =
   let decode =
@@ -214,10 +227,10 @@ let field ?check name =
     | Some x -> Decoder.( >>> ) x decode
   in
   Decoder.field name decode ~default:standard
+;;
 
 module Unexpanded = struct
   type ast = (String_with_vars.t, Ast.unexpanded) Ast.t
-
   type t = ast generic
 
   let equal x y = equal_generic (Ast.equal String_with_vars.equal_no_loc) x y
@@ -227,10 +240,10 @@ module Unexpanded = struct
     let+ context = get_all
     and+ loc, ast =
       located
-        (Parse.with_include
-           ~elt:(String_with_vars.decode >>| fun s -> Ast.Element s))
+        (Parse.with_include ~elt:(String_with_vars.decode >>| fun s -> Ast.Element s))
     in
     { ast; loc = Some loc; context }
+  ;;
 
   let encode t =
     let open Ast in
@@ -246,23 +259,25 @@ module Unexpanded = struct
     | Union l -> List.map l ~f:loop
     | Diff (a, b) -> [ loop a; atom "\\"; loop b ]
     | ast -> [ loop ast ]
+  ;;
 
   let standard = standard
 
   let of_strings ~pos l =
     { ast =
         Ast.Union
-          (List.map l ~f:(fun x ->
-               Ast.Element (String_with_vars.virt_text pos x)))
+          (List.map l ~f:(fun x -> Ast.Element (String_with_vars.virt_text pos x)))
     ; loc = Some (Loc.of_pos pos)
     ; context = Univ_map.empty
     }
+  ;;
 
   let include_single ~context ~pos f =
     { ast = Ast.Include (String_with_vars.virt_text pos f)
     ; loc = Some (Loc.of_pos pos)
     ; context
     }
+  ;;
 
   let field ?check name =
     let decode =
@@ -271,6 +286,7 @@ module Unexpanded = struct
       | Some x -> Decoder.( >>> ) x decode
     in
     Decoder.field name decode ~default:standard
+  ;;
 
   let has_special_forms t =
     let rec loop (t : ast) =
@@ -282,6 +298,7 @@ module Unexpanded = struct
       | Diff (l, r) -> loop l || loop r
     in
     loop t.ast
+  ;;
 
   let has_standard t =
     let rec loop ast =
@@ -293,6 +310,7 @@ module Unexpanded = struct
       | Ast.Include _ -> false
     in
     loop t.ast
+  ;;
 
   type position =
     | Pos
@@ -315,18 +333,18 @@ module Unexpanded = struct
         loop r pos acc
     in
     loop t.ast Pos init
+  ;;
 
   module Expand (Action_builder : Action_builder) = struct
-    let expand (t : t) ~dir
-        ~(f : Value.t list Action_builder.t String_with_vars.expander) =
+    let expand (t : t) ~dir ~(f : Value.t list Action_builder.t String_with_vars.expander)
+      =
       let open Action_builder.O in
       let context = t.context in
       let expand_template ~mode sw = Action_builder.expand sw ~mode ~dir ~f in
       let f_elems s =
         let loc = String_with_vars.loc s in
         let+ l = expand_template s ~mode:Many in
-        Ast.union
-          (List.map l ~f:(fun s -> Ast.Element (loc, Value.to_string ~dir s)))
+        Ast.union (List.map l ~f:(fun s -> Ast.Element (loc, Value.to_string ~dir s)))
       in
       let rec expand ~allow_include (t : ast) : ast_expanded Action_builder.t =
         let open Ast in
@@ -335,9 +353,8 @@ module Unexpanded = struct
         | Standard -> Action_builder.return Standard
         | Include fn ->
           let loc = String_with_vars.loc fn in
-          if not allow_include then
-            User_error.raise ~loc
-              [ Pp.text "(:include ...) is not allowed here" ]
+          if not allow_include
+          then User_error.raise ~loc [ Pp.text "(:include ...) is not allowed here" ]
           else
             let* sexp =
               let* path = expand_template fn ~mode:Single in
@@ -356,6 +373,7 @@ module Unexpanded = struct
       in
       let+ ast = expand t.ast ~allow_include:true in
       { t with ast }
+    ;;
   end
 end
 

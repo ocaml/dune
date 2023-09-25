@@ -123,7 +123,7 @@ Print rules:
 
   $ dune rules output
   ((deps ((File (In_build_dir _build/default/src_x))))
-   (targets ((files ()) (directories (default/output))))
+   (targets ((files ()) (directories (_build/default/output))))
    (context default)
    (action
     (chdir

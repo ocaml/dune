@@ -2,11 +2,8 @@ open Import
 
 type t
 
-val version :
-  coqc:Action.Prog.t -> (string, User_message.Style.t Pp.t) Result.t Memo.t
-
+val version : coqc:Action.Prog.t -> (string, User_message.Style.t Pp.t) Result.t Memo.t
 val make : coqc:Action.Prog.t -> t Memo.t
-
 val make_opt : coqc:Action.Prog.t -> t Option.t Memo.t
 
 module Value : sig
@@ -16,11 +13,8 @@ module Value : sig
     | String of string
 
   val int : int -> t
-
   val string : string -> t
-
   val path : Path.t -> t
-
   val to_dyn : t -> Dyn.t
 end
 

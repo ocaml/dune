@@ -17,9 +17,7 @@ end
 module Artifacts : sig
   type t
 
-  val lookup_module :
-    t -> Module_name.t -> (Path.Build.t Obj_dir.t * Module.t) option
-
+  val lookup_module : t -> Module_name.t -> (Path.Build.t Obj_dir.t * Module.t) option
   val lookup_library : t -> Lib_name.t -> Lib_info.local option
 end
 
@@ -28,10 +26,9 @@ type t
 val artifacts : t -> Artifacts.t Memo.t
 
 type for_ =
-  | Library of Lib_name.t  (** Library name *)
+  | Library of Lib_name.t (** Library name *)
   | Exe of
-      { first_exe : string
-            (** Name of first executable appearing in executables stanza *)
+      { first_exe : string (** Name of first executable appearing in executables stanza *)
       }
   | Melange of { target : string }
 
@@ -52,8 +49,8 @@ val empty : t
     all virtual modules are implemented - make sure that we construct [Module.t]
     with the correct [kind] *)
 
-val make :
-     Dune_file.t
+val make
+  :  Dune_file.t
   -> dir:Path.Build.t
   -> scope:Scope.t
   -> lib_config:Lib_config.t

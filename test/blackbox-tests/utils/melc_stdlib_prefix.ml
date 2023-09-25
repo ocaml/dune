@@ -7,6 +7,7 @@ let command cmd args =
   | WEXITED n when n = 0 -> Ok output
   | WEXITED n -> Error n
   | WSIGNALED _ | WSTOPPED _ -> assert false
+;;
 
 let () =
   let where = command "melc" [ "--where" ] in
@@ -17,7 +18,7 @@ let () =
   | Ok where ->
     let parts =
       List.map (Bin.parse_path where) ~f:(fun part ->
-          Format.asprintf "/MELC_STDLIB=%s"
-            (part |> Path.parent_exn |> Path.to_string))
+        Format.asprintf "/MELC_STDLIB=%s" (part |> Path.parent_exn |> Path.to_string))
     in
     Format.printf "%s" (String.concat parts ~sep:":")
+;;

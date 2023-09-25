@@ -10,7 +10,6 @@ module Stanza : sig
       | Ignored
 
     val decode : t Dune_lang.Decoder.t
-
     val to_string : t -> string
   end
 
@@ -31,7 +30,7 @@ module Stanza : sig
     ; env_vars : Env.t
     ; binaries : File_binding.Unexpanded.t list
     ; inline_tests : Inline_tests.t option
-    ; menhir_flags : Ordered_set_lang.Unexpanded.t
+    ; menhir_flags : Ordered_set_lang.Unexpanded.t option
     ; odoc : Odoc.t
     ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
     ; coq : Ordered_set_lang.Unexpanded.t
@@ -51,26 +50,20 @@ module Stanza : sig
     }
 
   val hash : t -> int
-
   val to_dyn : t -> Dyn.t
-
   val equal : t -> t -> bool
 
-  val foreign_flags :
-       since:Dune_lang.Syntax.Version.t option
+  val foreign_flags
+    :  since:Dune_lang.Syntax.Version.t option
     -> Ordered_set_lang.Unexpanded.t Foreign_language.Dict.t
        Dune_lang.Decoder.fields_parser
 
   val decode : t Dune_lang.Decoder.t
-
   val empty : t
-
+  val find_opt : t -> profile:Profile.t -> config option
   val find : t -> profile:Profile.t -> config
-
   val add_error : t -> message:User_message.t -> t
-
   val add_warning : t -> message:User_message.t -> t
-
   val fire_hooks : t -> profile:Profile.t -> unit
 end
 

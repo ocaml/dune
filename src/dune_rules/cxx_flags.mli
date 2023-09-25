@@ -19,11 +19,11 @@ type ccomp_type =
 val preprocessed_filename : string
 
 (** [ccomp_type ctx] returns the C/C++ compiler type. *)
-val ccomp_type : Context.t -> ccomp_type Action_builder.t
+val ccomp_type : Build_context.t -> ccomp_type Action_builder.t
 
 (** [get_flags for_:phase ctx] returns the necessary flags to turn this compiler
     into a c++ compiler for some of the most common compilers *)
-val get_flags : for_:phase -> Context.t -> string list Action_builder.t
+val get_flags : for_:phase -> Build_context.t -> string list Action_builder.t
 
 (** [fdiagnostics_color cc] returns the flags activating color diagnostics for
     the C/C++ compiler, if supported. *)

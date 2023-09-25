@@ -1,6 +1,4 @@
-[@@@alert
-unstable "The API of this library is not stable and may change without notice."]
-
+[@@@alert unstable "The API of this library is not stable and may change without notice."]
 [@@@alert "-unstable"]
 
 module V1 : sig
@@ -103,8 +101,7 @@ module V1 : sig
 
       BUG: the returned listing includes directories even though that dependency
       is not tracked. *)
-  val read_directory_with_glob :
-    path:Path.t -> glob:Dune_glob.V1.t -> string list t
+  val read_directory_with_glob : path:Path.t -> glob:Dune_glob.V1.t -> string list t
 
   (** {1:running Running the computation} *)
 

@@ -41,13 +41,13 @@ ast_impl_magic_number: Caml1999M016
 ast_intf_magic_number: Caml1999N015
 cmxs_magic_number: Caml2007D002
 cmt_magic_number: Caml2012T004|}
-    pwd pwd
+    pwd
+    pwd
+;;
 
 let () =
   match
-    match
-      valid_ocaml_config |> String.split_lines |> Ocaml_config.Vars.of_lines
-    with
+    match valid_ocaml_config |> String.split_lines |> Ocaml_config.Vars.of_lines with
     | Ok x -> Ocaml_config.make x
     | Error msg -> Error (Ocamlc_config, msg)
   with
@@ -55,4 +55,5 @@ let () =
   | Ok c ->
     (* Check that [Ocaml_config.to_list] and [Ocaml_config.by_name] agree *)
     List.iter (Ocaml_config.to_list c) ~f:(fun (name, v) ->
-        assert (Ocaml_config.by_name c name = Some v))
+      assert (Ocaml_config.by_name c name = Some v))
+;;

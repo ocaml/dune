@@ -1,17 +1,7 @@
 Test variable filters on dependencies
 
-Helper shell function that generates an opam file for a package:
-  $ mkpkg() {
-  >   name=$1
-  >   mkdir -p mock-opam-repository/packages/$name/$name.0.0.1
-  >   cat >mock-opam-repository/packages/$name/$name.0.0.1/opam
-  > }
-
-Generate a mock opam repository including some test dependencies:
-  $ mkdir -p mock-opam-repository
-  $ cat >mock-opam-repository/repo <<EOF
-  > opam-version: "2.0"
-  > EOF
+  $ . ./helpers.sh
+  $ mkrepo
 
   $ mkpkg foo-dependency <<EOF
   > opam-version: "2.0"
@@ -45,12 +35,6 @@ Generate a mock opam repository including some test dependencies:
   > ]
   > EOF
 
-Helper shell function to generate a dune-project file and generate lockdir:
-  $ solve_project() {
-  >   cat >dune-project
-  >   dune pkg lock --opam-env=pure --opam-repository=mock-opam-repository
-  > }
-
 Regular dependencies are resolved transitively:
   $ solve_project <<EOF
   > (lang dune 3.8)
@@ -62,6 +46,7 @@ Regular dependencies are resolved transitively:
   depends-on-foo.0.0.1
   foo.0.0.1
   foo-dependency.0.0.1
+  
 
 Transitive test dependencies are not included:
   $ solve_project <<EOF
@@ -72,6 +57,7 @@ Transitive test dependencies are not included:
   > EOF
   Solution for dune.lock:
   depends-on-foo-with-test.0.0.1
+  
 
 Test dependencies of the project are included:
   $ solve_project <<EOF
@@ -84,6 +70,7 @@ Test dependencies of the project are included:
   Solution for dune.lock:
   foo.0.0.1
   foo-dependency.0.0.1
+  
 
 Test dependencies of test dependencies are excluded:
   $ solve_project <<EOF
@@ -94,6 +81,7 @@ Test dependencies of test dependencies are excluded:
   > EOF
   Solution for dune.lock:
   depends-on-foo-with-test.0.0.1
+  
 
 Conflicting packages can't be co-installed:
   $ solve_project <<EOF
@@ -102,7 +90,8 @@ Conflicting packages can't be co-installed:
   >  (name x)
   >  (depends foo conflicts-with-foo))
   > EOF
-  Error: Can't find all required versions.
+  Error: Unable to solve dependencies in build context: default
+  Can't find all required versions.
   Selected: foo.0.0.1 foo-dependency.0.0.1 x.dev
   - conflicts-with-foo -> (problem)
       Rejected candidates:
@@ -116,7 +105,8 @@ Conflicting packages in transitive dependencies can't be co-installed:
   >  (name x)
   >  (depends depends-on-foo conflicts-with-foo))
   > EOF
-  Error: Can't find all required versions.
+  Error: Unable to solve dependencies in build context: default
+  Can't find all required versions.
   Selected: depends-on-foo.0.0.1 foo.0.0.1 foo-dependency.0.0.1 x.dev
   - conflicts-with-foo -> (problem)
       Rejected candidates:
@@ -133,4 +123,5 @@ Conflicts with transitive test dependencies don't affect the solution:
   Solution for dune.lock:
   conflicts-with-foo.0.0.1
   depends-on-foo-with-test.0.0.1
+  
 

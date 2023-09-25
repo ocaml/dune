@@ -1,0 +1,25 @@
+(cram
+ (deps opam-var-helpers.sh)
+ (applies_to :whole_subtree))
+
+(cram
+ (deps opam-vars)
+ (applies_to opam-var-os))
+
+(data_only_dirs fake_opam_root)
+
+; We trick opam into thinking it has a config file with fake_opam_root so that we can
+; access the os variables without having to do opam init
+
+(rule
+ (target opam-vars)
+ (deps fake_opam_root/config)
+ (action
+  (with-stdout-to
+   %{target}
+   (progn
+    (run %{bin:opam} var --root fake_opam_root arch)
+    (run %{bin:opam} var --root fake_opam_root os)
+    (run %{bin:opam} var --root fake_opam_root os-distribution)
+    (run %{bin:opam} var --root fake_opam_root os-family)
+    (run %{bin:opam} var --root fake_opam_root os-version)))))

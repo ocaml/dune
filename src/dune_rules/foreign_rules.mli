@@ -1,7 +1,15 @@
 open Import
 
-val build_o_files :
-     sctx:Super_context.t
+val foreign_flags
+  :  Super_context.t
+  -> dir:Path.Build.t
+  -> expander:Expander.t
+  -> flags:Ordered_set_lang.Unexpanded.t
+  -> language:Foreign_language.t
+  -> string list Action_builder.t
+
+val build_o_files
+  :  sctx:Super_context.t
   -> foreign_sources:Foreign.Sources.t
   -> dir:Path.Build.t
   -> expander:Expander.t

@@ -13,29 +13,30 @@ let dirs : (string * Dune_section.t, string) Hashtbl.t = Hashtbl.create 10
 let () =
   match Sys.getenv_opt dune_dir_locations_env_var with
   | None -> ()
-  | Some s -> (
-    match decode_dune_dir_locations s with
-    | None ->
-      invalid_arg
-        (Printf.sprintf "Invalid value %s=%S" dune_dir_locations_env_var s)
-    | Some entries ->
-      List.iter
-        (fun { package; section; dir } ->
-          Hashtbl.add dirs (package, section) dir)
-        entries)
+  | Some s ->
+    (match decode_dune_dir_locations s with
+     | None ->
+       invalid_arg (Printf.sprintf "Invalid value %s=%S" dune_dir_locations_env_var s)
+     | Some entries ->
+       List.iter
+         (fun { package; section; dir } -> Hashtbl.add dirs (package, section) dir)
+         entries)
+;;
 
 (* Parse the replacement format described in [artifact_substitution.ml]. *)
 let eval s =
   let len = String.length s in
-  if s.[0] = '=' then
+  if s.[0] = '='
+  then (
     let colon_pos = String.index_from s 1 ':' in
     let vlen = int_of_string (String.sub s 1 (colon_pos - 1)) in
     (* This [min] is because the value might have been truncated if it was too
        large *)
     let vlen = min vlen (len - colon_pos - 1) in
-    Some (String.sub s (colon_pos + 1) vlen)
+    Some (String.sub s (colon_pos + 1) vlen))
   else None
-  [@@inline never]
+[@@inline never]
+;;
 
 let get_dir ~package ~section = Hashtbl.find_all dirs (package, section)
 
@@ -49,21 +50,23 @@ module Hardcoded_ocaml_path = struct
   let t =
     lazy
       (match eval Dune_site_data.hardcoded_ocamlpath with
-      | None -> None
-      | Some "relocatable" -> Relocatable
-      | Some s -> (
-        let l = String.split_on_char '\000' s in
-        match l with
-        | "hardcoded" :: l -> Hardcoded l
-        | [ "findlibconfig"; p ] -> Findlib_config p
-        | _ -> invalid_arg "dune error: hardcoded_ocamlpath parsing error"))
+       | None -> None
+       | Some "relocatable" -> Relocatable
+       | Some s ->
+         let l = String.split_on_char '\000' s in
+         (match l with
+          | "hardcoded" :: l -> Hardcoded l
+          | [ "findlibconfig"; p ] -> Findlib_config p
+          | _ -> invalid_arg "dune error: hardcoded_ocamlpath parsing error"))
+  ;;
 end
 
 let relocatable =
   lazy
     (match Lazy.force Hardcoded_ocaml_path.t with
-    | Relocatable -> true
-    | _ -> false)
+     | Relocatable -> true
+     | _ -> false)
+;;
 
 let prefix =
   lazy
@@ -71,10 +74,11 @@ let prefix =
      let bin = Filename.dirname path in
      let prefix = Filename.dirname bin in
      prefix)
+;;
 
 let relocate_if_needed path =
-  if Lazy.force relocatable then Filename.concat (Lazy.force prefix) path
-  else path
+  if Lazy.force relocatable then Filename.concat (Lazy.force prefix) path else path
+;;
 
 let site ~package ~section ~suffix ~encoded =
   let dirs = get_dir ~package ~section in
@@ -84,7 +88,8 @@ let site ~package ~section ~suffix ~encoded =
     | Some d -> relocate_if_needed d :: dirs
   in
   List.rev_map (fun dir -> Filename.concat dir suffix) dirs
-  [@@inline never]
+[@@inline never]
+;;
 
 let sourceroot local =
   match eval local with
@@ -94,6 +99,7 @@ let sourceroot local =
     (* None if the binary is executed from _build but not by dune, which should
        not happen *)
     Sys.getenv_opt dune_sourceroot_env_var
+;;
 
 let ocamlpath =
   lazy
@@ -106,15 +112,16 @@ let ocamlpath =
        match Lazy.force Hardcoded_ocaml_path.t with
        | Hardcoded_ocaml_path.None ->
          String.split_on_char path_sep (Sys.getenv dune_ocaml_hardcoded_env_var)
-       | Hardcoded_ocaml_path.Relocatable ->
-         [ Filename.concat (Lazy.force prefix) "lib" ]
+       | Hardcoded_ocaml_path.Relocatable -> [ Filename.concat (Lazy.force prefix) "lib" ]
        | Hardcoded_ocaml_path.Hardcoded l -> l
        | Hardcoded_ocaml_path.Findlib_config _ -> assert false
      in
      env @ static)
+;;
 
 let stdlib =
   lazy
     (match eval Dune_site_data.stdlib_dir with
-    | None -> Sys.getenv dune_ocaml_stdlib_env_var
-    | Some s -> s)
+     | None -> Sys.getenv dune_ocaml_stdlib_env_var
+     | Some s -> s)
+;;

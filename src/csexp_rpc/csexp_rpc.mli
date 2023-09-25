@@ -35,11 +35,8 @@ module Client : sig
   type t
 
   val create : Unix.sockaddr -> t
-
   val stop : t -> unit
-
   val connect_exn : t -> Session.t Fiber.t
-
   val connect : t -> (Session.t, Exn_with_backtrace.t) result Fiber.t
 end
 
@@ -47,17 +44,14 @@ module Server : sig
   (** RPC Server *)
   type t
 
-  val create :
-    Unix.sockaddr list -> backlog:int -> (t, [ `Already_in_use ]) result
+  val create : Unix.sockaddr list -> backlog:int -> (t, [ `Already_in_use ]) result
 
   (** [ready t] returns a fiber that completes when clients can start connecting
       to the server *)
   val ready : t -> unit Fiber.t
 
   val stop : t -> unit Fiber.t
-
   val serve : t -> Session.t Fiber.Stream.In.t Fiber.t
-
   val listening_address : t -> Unix.sockaddr list
 end
 

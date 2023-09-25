@@ -97,10 +97,13 @@ type test_setup = {
 (* Internal module to get package manager commands defined in global config file *)
 module Commands = struct
 
+  let get_cmd_opt config family =
+    OpamStd.String.Map.find_opt family
+            (OpamFile.Config.sys_pkg_manager_cmd config)
+
   let get_cmd config family =
-    match OpamStd.String.Map.find_opt family
-            (OpamFile.Config.sys_pkg_manager_cmd config) with
-    | Some cmd -> OpamFilename.to_string cmd
+    match get_cmd_opt config family with
+    | Some cmd -> cmd
     | None ->
       let field = "sys-pkg-manager-cmd" in
       Printf.ksprintf failwith
@@ -108,7 +111,11 @@ module Commands = struct
          Use opam option --global '%s+=[\"%s\" \"<path-to-%s-system-package-manager>\"]'"
         field family field family family
 
-  let msys2 config = get_cmd config "msys2"
+  let msys2 config = OpamFilename.to_string (get_cmd config "msys2")
+
+  let cygwin_t = "cygwin"
+  let cygcheck_opt config = get_cmd_opt config cygwin_t
+  let cygcheck config = OpamFilename.to_string (get_cmd config cygwin_t)
 
 end
 
@@ -118,6 +125,7 @@ type families =
   | Alpine
   | Arch
   | Centos
+  | Cygwin
   | Debian
   | Dummy of test_setup
   | Freebsd
@@ -198,15 +206,169 @@ let family ~env () =
     | "windows" ->
       (match OpamSysPoll.os_distribution env with
        | Some "msys2" -> Msys2
+       | Some "cygwin" -> Cygwin
        | _ ->
          failwith
            "External dependency handling not supported for Windows unless \
-            MSYS2 is installed. In particular 'os-distribution' must be set \
-            to 'msys2'.")
+            MSYS2 or Cygwin is installed. In particular 'os-distribution' \
+            must be set to 'msys2' or 'cygwin'.")
     | family ->
       Printf.ksprintf failwith
         "External dependency handling not supported for OS family '%s'."
         family
+
+module Cygwin = struct
+  open OpamFilename.Op
+
+  let url_setupexe = OpamUrl.of_string "https://cygwin.com/setup-x86_64.exe"
+  let url_setupexe_sha512 = OpamUrl.of_string "https://cygwin.com/sha512.sum"
+  let mirror = "https://cygwin.mirror.constant.com/"
+
+  (* Cygwin setup exe must be stored at Cygwin installation root *)
+  let setupexe = "setup-x86_64.exe"
+  let cygcheckexe = "cygcheck.exe"
+
+  let cygcheck_opt = Commands.cygcheck_opt
+  open OpamStd.Option.Op
+  let cygbin_opt config =
+    cygcheck_opt config
+    >>| OpamFilename.dirname
+  let cygroot_opt config =
+    cygbin_opt config
+    >>| OpamFilename.dirname_dir
+  let get_opt = function
+    | Some c -> c
+    | None -> failwith "Cygwin install not found"
+  let cygroot config = get_opt (cygroot_opt config)
+
+  let internal_cygwin =
+    let internal =
+      Lazy.from_fun @@ fun () -> (OpamStateConfig.((Lazy.force !r.root_dir)) / ".cygwin")
+    in
+    fun () -> Lazy.force internal
+  let internal_cygroot () = internal_cygwin () / "root"
+  let internal_cygcache () = internal_cygwin () / "cache"
+  let cygsetup () = internal_cygwin () // setupexe
+  let is_internal config =
+    OpamStd.Option.equal OpamFilename.Dir.equal
+      (cygroot_opt config)
+      (Some (internal_cygroot ()))
+
+  let download_setupexe dst =
+    let overwrite = true in
+    let open OpamProcess.Job.Op in
+    OpamFilename.with_tmp_dir_job @@ fun dir ->
+    OpamDownload.download ~overwrite url_setupexe_sha512 dir @@+ fun file ->
+    let checksum =
+      let content = OpamFilename.read file in
+      let re =
+        (* File content:
+           >SHA512  setup-x86.exe
+           >SHA512  setup-x86_64.exe
+        *)
+        Re.(compile @@ seq [
+            group @@ repn
+              (alt [ digit ; rg 'A' 'F'; rg 'a' 'f' ]) 128 (Some 128);
+            rep space;
+            str "setup-x86_64.exe"
+          ])
+      in
+      try Some (OpamHash.sha512 Re.(Group.get (exec re content) 1))
+      with Not_found -> None
+    in
+    OpamDownload.download_as ~overwrite ?checksum url_setupexe dst
+
+  let install ~packages =
+    let open OpamProcess.Job.Op in
+    let cygwin_root = internal_cygroot () in
+    let cygwin_bin = cygwin_root / "bin" in
+    let cygcheck = cygwin_bin // cygcheckexe in
+    let local_cygwin_setupexe = cygsetup () in
+    if OpamFilename.exists cygcheck then
+      OpamConsole.warning "Cygwin already installed in root %s"
+        (OpamFilename.Dir.to_string cygwin_root)
+    else
+      (* rjbou: dry run ? there is no dry run on install, from where this
+         function is called *)
+      (OpamProcess.Job.run @@
+       (* download setup.exe *)
+       download_setupexe local_cygwin_setupexe @@+ fun () ->
+       (* launch install *)
+       let args = [
+         "--root"; OpamFilename.Dir.to_string cygwin_root;
+         "--arch"; "x86_64";
+         "--only-site";
+         "--site"; mirror;
+         "--local-package-dir";
+         OpamFilename.Dir.to_string (internal_cygcache ());
+         "--no-admin";
+         "--no-desktop";
+         "--no-replaceonreboot";
+         "--no-shortcuts";
+         "--no-startmenu";
+         "--no-write-registry";
+         "--quiet-mode";
+       ] @
+         match packages with
+         | [] -> []
+         | spkgs ->
+           [ "--packages";
+             OpamStd.List.concat_map "," OpamSysPkg.to_string spkgs ]
+       in
+       OpamSystem.make_command
+         (OpamFilename.to_string local_cygwin_setupexe)
+         args @@> fun r ->
+       OpamSystem.raise_on_process_error r;
+       Done ());
+    cygcheck
+
+  let default_cygroot = "C:\\cygwin64"
+
+  let check_install path =
+    if not (Sys.file_exists path) then
+      Error (Printf.sprintf "%s not found!" path)
+    else if Filename.basename path = "cygcheck.exe" then
+      (* We have cygcheck.exe path *)
+      let cygbin = Some (Filename.dirname path) in
+      if OpamStd.Sys.is_cygwin_cygcheck ~cygbin then
+        Ok (OpamFilename.of_string path)
+      else
+        Error
+          (Printf.sprintf
+             "%s found, but it is not from a Cygwin installation"
+             path)
+    else if not (Sys.is_directory path) then
+      Error (Printf.sprintf "%s is not a directory" path)
+    else
+    let cygbin = Filename.concat path "bin" in
+    (* We have cygroot path *)
+    if Sys.file_exists cygbin then
+      if OpamStd.Sys.is_cygwin_cygcheck ~cygbin:(Some cygbin) then
+        Ok (OpamFilename.of_string (Filename.concat cygbin "cygcheck.exe"))
+      else
+        Error
+          (Printf.sprintf
+             "%s found, but it does not appear to be a Cygwin installation"
+             path)
+    else
+      Error
+        (Printf.sprintf "bin\\cygcheck.exe not found in %s"
+           path)
+
+  (* Set setup.exe in the good place, ie in .opam/.cygwin/ *)
+  let check_setup setup =
+    let dst = cygsetup () in
+    if OpamFilename.exists dst then () else
+      (match setup with
+       | Some setup ->
+         log "Copying %s into %s"
+           (OpamFilename.to_string setup)
+           (OpamFilename.to_string dst);
+         OpamFilename.copy ~src:setup ~dst
+       | None ->
+         log "Donwloading setup exe";
+         OpamProcess.Job.run @@ download_setupexe dst)
+end
 
 let yum_cmd = lazy begin
   if OpamSystem.resolve_command "yum" <> None then
@@ -452,6 +614,25 @@ let packages_status ?(env=OpamVariable.Map.empty) config packages =
     *)
     let sys_installed =
       run_query_command "rpm" ["-qa"; "--qf"; "%{NAME}\\n"]
+      |> List.map OpamSysPkg.of_string
+      |> OpamSysPkg.Set.of_list
+    in
+    compute_sets sys_installed
+  | Cygwin ->
+    (* Output format:
+       >Cygwin Package Information
+       >Package         Version
+       >git             2.35.1-1
+       >binutils        2.37-2
+    *)
+    let sys_installed =
+      run_query_command (Commands.cygcheck config)
+      ([ "-c"; "-d" ] @ to_string_list packages)
+      |> (function | _::_::l -> l | _ -> [])
+      |> OpamStd.List.filter_map (fun l ->
+          match OpamStd.String.split l ' ' with
+          | pkg::_ -> Some pkg
+          | _ -> None)
       |> List.map OpamSysPkg.of_string
       |> OpamSysPkg.Set.of_list
     in
@@ -752,8 +933,30 @@ let install_packages_commands_t ?(env=OpamVariable.Map.empty) config sys_package
                  |> OpamStd.String.Set.remove epel_release
                  |> OpamStd.String.Set.elements);
        `AsUser "rpm", "-q"::"--whatprovides"::packages], None
-  | Debian -> [`AsAdmin "apt-get", "install"::yes ["-qq"; "-yy"] packages],
-      (if unsafe_yes then Some ["DEBIAN_FRONTEND", "noninteractive"] else None)
+  | Cygwin ->
+    (* We use setp_x86_64 to install package instead of `cygcheck` that is
+       stored in `sys-pkg-manager-cmd` field *)
+    [`AsUser (OpamFilename.to_string (Cygwin.cygsetup ())),
+     [ "--root"; (OpamFilename.Dir.to_string (Cygwin.cygroot config));
+       "--quiet-mode";
+       "--no-shortcuts";
+       "--no-startmenu";
+       "--no-desktop";
+       "--no-admin";
+       "--packages";
+       String.concat "," packages;
+     ] @ (if Cygwin.is_internal config then
+            [ "--upgrade-also";
+              "--only-site";
+              "--site"; Cygwin.mirror;
+              "--local-package-dir";
+              OpamFilename.Dir.to_string (Cygwin.internal_cygcache ());
+            ] else [])
+    ],
+    None
+  | Debian ->
+    [`AsAdmin "apt-get", "install"::yes ["-qq"; "-yy"] packages],
+    (if unsafe_yes then Some ["DEBIAN_FRONTEND", "noninteractive"] else None)
   | Dummy test ->
     if test.install then
       [`AsUser "echo", packages], None
@@ -828,17 +1031,18 @@ let update ?(env=OpamVariable.Map.empty) config =
     | Alpine -> Some (`AsAdmin "apk", ["update"])
     | Arch -> Some (`AsAdmin "pacman", ["-Sy"])
     | Centos -> Some (`AsAdmin (Lazy.force yum_cmd), ["makecache"])
+    | Cygwin -> None
     | Debian -> Some (`AsAdmin "apt-get", ["update"])
     | Dummy test ->
-      if test.install then None else
-        Some (`AsUser "false", [])
+      if test.install then None else Some (`AsUser "false", [])
+    | Freebsd -> None
     | Gentoo -> Some (`AsAdmin "emerge", ["--sync"])
     | Homebrew -> Some (`AsUser "brew", ["update"])
     | Macports -> Some (`AsAdmin "port", ["sync"])
     | Msys2 -> Some (`AsUser (Commands.msys2 config), ["-Sy"])
+    | Netbsd -> None
+    | Openbsd -> None
     | Suse -> Some (`AsAdmin "zypper", ["--non-interactive"; "refresh"])
-    | Freebsd | Netbsd | Openbsd ->
-      None
   in
   match cmd with
   | None ->

@@ -16,9 +16,9 @@ let make_with_site (section : Section_with_site.t) ?dst get_section ~kind src =
     let dst_with_pkg_prefix = Dst.add_prefix (Package.Name.to_string pkg) dst in
     let (section : Section.t), dst =
       match section with
-      | Lib -> (Lib_root, dst_with_pkg_prefix)
-      | Libexec -> (Libexec_root, dst_with_pkg_prefix)
-      | Share -> (Share_root, dst_with_pkg_prefix)
+      | Lib -> Lib_root, dst_with_pkg_prefix
+      | Libexec -> Libexec_root, dst_with_pkg_prefix
+      | Share -> Share_root, dst_with_pkg_prefix
       | Etc | Doc ->
         User_error.raise [ Pp.textf "Can't have site in etc and doc for opam" ]
       | Lib_root
@@ -29,9 +29,10 @@ let make_with_site (section : Section_with_site.t) ?dst get_section ~kind src =
       | Share_root
       | Stublibs
       | Man
-      | Misc -> (section, dst)
+      | Misc -> section, dst
     in
     Entry.make_with_dst section dst ~kind ~src
+;;
 
 module Entry_with_site = struct
   type 'src t =

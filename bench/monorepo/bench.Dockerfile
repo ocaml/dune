@@ -136,7 +136,7 @@ RUN opam switch create prepare 4.14.1
 RUN opam install -y opam-monorepo ppx_sexp_conv ocamlfind ctypes ctypes-foreign re sexplib menhir camlp-streams zarith stdcompat refl
 
 # Download the monorepo benchmark and copy files into the benchmark project
-ENV MONOREPO_BENCHMARK_TAG=2023-06-15.0
+ENV MONOREPO_BENCHMARK_TAG=2023-08-23.0
 RUN wget https://github.com/ocaml-dune/ocaml-monorepo-benchmark/archive/refs/tags/$MONOREPO_BENCHMARK_TAG.tar.gz -O ocaml-monorepo-benchmark.tar.gz && \
   tar xf ocaml-monorepo-benchmark.tar.gz && \
   mv ocaml-monorepo-benchmark-$MONOREPO_BENCHMARK_TAG monorepo-benchmark && \
@@ -153,12 +153,7 @@ COPY --chown=user:users otherlibs otherlibs
 COPY --chown=user:users vendor vendor
 COPY --chown=user:users dune-project dune-project
 COPY --chown=user:users dune-file dune-file
-COPY --chown=user:users stdune.opam stdune.opam
-COPY --chown=user:users dune-rpc.opam dune-rpc.opam
-COPY --chown=user:users dune-rpc-lwt.opam dune-rpc-lwt.opam
-COPY --chown=user:users dune-private-libs.opam.template dune-private-libs.opam.template
 RUN . ~/.profile && dune build bin/main.exe --release
-RUN . ~/.profile && opam pin add /home/user/dune -y
 
 # Switch to the benchmark project
 WORKDIR $HOME/monorepo-benchmark/benchmark

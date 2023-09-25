@@ -1,10 +1,8 @@
 Fetch from more than one source
 
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ . ./helpers.sh
 
+  $ make_lockdir
   $ mkdir foo
   $ cat >foo/bar <<EOF
   > this is bar
@@ -21,7 +19,7 @@ Fetch from more than one source
   >  (system "find . | sort -u"))
   > EOF
 
-  $ dune build .pkg/test/target/
+  $ build_pkg test
   .
   ./bar
   ./mybaz

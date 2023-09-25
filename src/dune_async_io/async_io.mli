@@ -17,11 +17,8 @@
 
 module type Scheduler = sig
   val fill_jobs : Fiber.fill list -> unit
-
   val register_job_started : unit -> unit
-
   val cancel_job_started : unit -> unit
-
   val spawn_thread : (unit -> unit) -> unit
 end
 
@@ -49,11 +46,10 @@ end
 (** [ready fd what ~f] wait until [what] can be done on [fd] in a non-blocking
     way and then call [f]. Note that [f] will be called in a different thread,
     so it should only be used for atomic or synchronized operations. *)
-val ready :
-  Unix.file_descr -> [ `Read | `Write ] -> f:(unit -> 'a) -> 'a Task.t Fiber.t
+val ready : Unix.file_descr -> [ `Read | `Write ] -> f:(unit -> 'a) -> 'a Task.t Fiber.t
 
-val ready_one :
-     ('label * Unix.file_descr) list
+val ready_one
+  :  ('label * Unix.file_descr) list
   -> [ `Read | `Write ]
   -> f:('label -> Unix.file_descr -> 'a)
   -> 'a Task.t Fiber.t
@@ -64,8 +60,8 @@ val ready_one :
 
     It's possible to implement this function using the other functions in this
     module. But since it's a bit non trivial, the implementation is done here. *)
-val connect :
-     (Unix.file_descr -> Unix.sockaddr -> unit)
+val connect
+  :  (Unix.file_descr -> Unix.sockaddr -> unit)
   -> Unix.file_descr
   -> Unix.sockaddr
   -> (unit, [ `Cancelled | `Exn of exn ]) result Fiber.t

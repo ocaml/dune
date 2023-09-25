@@ -9,13 +9,9 @@ val valid_format_doc : User_message.Style.t Pp.t
 include Stringlike with type t := t
 
 val add_suffix : t -> string -> t
-
 val equal : t -> t -> bool
-
 val compare : t -> t -> Ordering.t
-
 val uncapitalize : t -> string
-
 val pp_quote : Format.formatter -> t -> unit
 
 module Per_item : sig
@@ -27,7 +23,6 @@ end
 module Infix : Comparator.OPS with type t = t
 
 val of_local_lib_name : Loc.t * Lib_name.Local.t -> t
-
 val to_local_lib_name : t -> Lib_name.Local.t
 
 module Unique : sig
@@ -45,31 +40,23 @@ module Unique : sig
   type nonrec t
 
   val of_string : string -> t
-
   val of_name_assuming_needs_no_mangling : name -> t
 
   (** We allow invalid module names for backwards compatibility *)
   val of_path_assuming_needs_no_mangling_allow_invalid : Path.t -> t
 
   val to_dyn : t -> Dyn.t
-
   val to_name : t -> loc:Loc.t -> name
-
   val to_string : t -> string
-
   val compare : t -> t -> Ordering.t
-
   val equal : t -> t -> bool
-
   val artifact_filename : t -> ext:string -> string
 
   include Dune_lang.Conv.S with type t := t
-
   include Comparable_intf.S with type key := t
 
   module Map_traversals : sig
     val parallel_iter : 'a Map.t -> f:(t -> 'a -> unit Memo.t) -> unit Memo.t
-
     val parallel_map : 'a Map.t -> f:(t -> 'a -> 'b Memo.t) -> 'b Map.t Memo.t
   end
 end
@@ -78,25 +65,17 @@ module Path : sig
   type nonrec t = t list
 
   val compare : t -> t -> Ordering.t
-
   val equal : t -> t -> bool
-
   val to_dyn : t -> Dyn.t
-
   val to_string : t -> string
-
   val uncapitalize : t -> string
 
   module Map : Stdune.Map.S with type key = t
-
   module Set : Stdune.Set.S with type elt = t and type 'a map = 'a Map.t
 
   val wrap : t -> Unique.t
-
   val encode : t -> Dune_lang.t list
-
   val decode : t Dune_lang.Decoder.t
-
   val append_double_underscore : t -> t
 end
 
@@ -106,7 +85,6 @@ include Comparable_intf.S with type key := t
 
 module Map_traversals : sig
   val parallel_iter : 'a Map.t -> f:(t -> 'a -> unit Memo.t) -> unit Memo.t
-
   val parallel_map : 'a Map.t -> f:(t -> 'a -> 'b Memo.t) -> 'b Map.t Memo.t
 end
 

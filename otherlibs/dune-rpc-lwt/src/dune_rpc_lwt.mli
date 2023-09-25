@@ -8,6 +8,7 @@ module V1 : sig
 
   module Where : Where.S with type 'a fiber := 'a Lwt.t
 
-  val connect_chan :
-    Dune_rpc.V1.Where.t -> (Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
+  val connect_chan
+    :  Dune_rpc.V1.Where.t
+    -> (Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
 end

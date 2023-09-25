@@ -22,18 +22,32 @@ field
 
 X is warned about:
 
-  $ dune build --display short
+  $ dune build
   File "src/dune", line 4, characters 33-34:
   4 |  (modules_without_implementation x)
                                        ^
   Warning: These modules appear in the modules_without_implementation field:
   - X
   They must also appear in the modules field.
-        ocamlc src/.foo.objs/byte/y.{cmi,cmo,cmt} (exit 2)
   File "src/y.ml", line 1, characters 16-17:
   1 | module type F = X
                       ^
   Error: Unbound module type X
+  [1]
+
+In 3.11 onwards this warning becomes an error
+
+  $ cat > dune-project << EOF
+  > (lang dune 3.11)
+  > EOF
+
+  $ dune build
+  File "src/dune", line 4, characters 33-34:
+  4 |  (modules_without_implementation x)
+                                       ^
+  Error: These modules appear in the modules_without_implementation field:
+  - X
+  They must also appear in the modules field.
   [1]
 
 This should be ignored if we are in vendored_dirs

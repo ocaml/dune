@@ -3,8 +3,8 @@
 (** A thread pool *)
 type t
 
-val create :
-     min_workers:int (** minimum number of threads to spawn *)
+val create
+  :  min_workers:int (** minimum number of threads to spawn *)
   -> max_workers:int (** maximum number of threads to spawn *)
   -> spawn_thread:((unit -> unit) -> unit)
        (** [spawn_thread f] launches [f] in a thread *)

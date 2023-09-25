@@ -4,17 +4,15 @@ open Dune_config_file
 let () = Printexc.record_backtrace false
 
 let parse s =
-  let ast =
-    Parser.parse_string ~fname:"expect_test" ~mode:Parser.Mode.Single s
-  in
+  let ast = Parser.parse_string ~fname:"expect_test" ~mode:Parser.Mode.Single s in
   let decode =
-    Dune_lang.Syntax.set Dune_lang.Stanza.syntax
-      (Active (3, 0))
-      Dune_config.decode
+    Dune_lang.Syntax.set Dune_lang.Stanza.syntax (Active (3, 0)) Dune_config.decode
   in
   Dune_lang.Decoder.parse decode Stdune.Univ_map.empty ast
   |> Dune_config.(superpose default)
-  |> Dune_config.to_dyn |> Dune_tests_common.print_dyn
+  |> Dune_config.to_dyn
+  |> Dune_tests_common.print_dyn
+;;
 
 let%expect_test "cache-check-probability 0.1" =
   parse "(cache-check-probability 0.1)";
@@ -32,6 +30,7 @@ let%expect_test "cache-check-probability 0.1" =
     ; experimental = []
     }
  |}]
+;;
 
 let%expect_test "cache-storage-mode copy" =
   parse "(cache-storage-mode copy)";
@@ -49,6 +48,7 @@ let%expect_test "cache-storage-mode copy" =
     ; experimental = []
     }
  |}]
+;;
 
 let%expect_test "cache-storage-mode hardlink" =
   parse "(cache-storage-mode hardlink)";
@@ -66,3 +66,4 @@ let%expect_test "cache-storage-mode hardlink" =
     ; experimental = []
     }
  |}]
+;;

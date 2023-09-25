@@ -39,3 +39,37 @@ val package_manager_name: ?env:gt_variables -> OpamFile.Config.t -> string
    Presently used to check for epel-release on CentOS and RHEL.
    [env] is used to determine host specification. *)
 val repo_enablers: ?env:gt_variables -> OpamFile.Config.t -> string option
+
+
+module Cygwin : sig
+
+  (* Default Cygwin installation prefix C:\cygwin64 *)
+  val default_cygroot: string
+
+  (* Install an internal Cygwin install, in <root>/.cygwin *)
+  val install: packages:OpamSysPkg.t list -> OpamFilename.t
+
+  (* [check_install path] checks a Cygwin installation at [path]. It checks
+     that 'path\cygcheck.exe' or 'path\bin\cygcheck.exe' exists. *)
+  val check_install:
+    string -> (OpamFilename.t, string) result
+
+  (* Returns true if Cygwin install is internal *)
+  val is_internal: OpamFile.Config.t -> bool
+
+  (* [check_setup path] checks and store Cygwin setup executable. Is [path] is
+     [None], it downloads it, otherwise it copies it to
+     <opamroot>/.cygwin/setup-x86_64.exe. If the file is already existent, it
+     is a no-op. *)
+  val check_setup: OpamFilename.t option -> unit
+
+  (* Return Cygwin binary path *)
+  val cygbin_opt: OpamFile.Config.t -> OpamFilename.Dir.t option
+
+  (* Return Cygwin cygcheck.exe path *)
+  val cygcheck_opt: OpamFile.Config.t -> OpamFilename.t option
+
+  (* Return Cygwin installation prefix *)
+  val cygroot_opt: OpamFile.Config.t -> OpamFilename.Dir.t option
+
+end

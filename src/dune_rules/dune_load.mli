@@ -9,8 +9,7 @@ module Dune_files : sig
       dune files in ocaml syntax *)
   type t
 
-  val eval : t -> context:Context.t -> Dune_file.t list Memo.t
-
+  val eval : t -> context:Context_name.t -> Dune_file.t list Memo.t
   val in_dir : Path.Build.t -> Dune_file.t option Memo.t
 end
 

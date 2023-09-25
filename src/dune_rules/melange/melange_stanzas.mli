@@ -18,14 +18,13 @@ module Emit : sig
     ; compile_flags : Ordered_set_lang.Unexpanded.t
     ; allow_overlapping_dependencies : bool
     ; enabled_if : Blang.t
+    ; dune_version : Dune_lang.Syntax.Version.t
     }
 
   type Stanza.t += T of t
 
   val implicit_alias : Alias.Name.t
-
   val decode : t Dune_lang.Decoder.t
-
   val target_dir : t -> dir:Path.Build.t -> Path.Build.t
 end
 

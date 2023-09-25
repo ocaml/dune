@@ -1,9 +1,8 @@
 Test that we run the build command
 
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ . ./helpers.sh
+
+  $ make_lockdir
   $ cat >dune.lock/test.pkg <<EOF
   > (build
   >  (progn
@@ -11,11 +10,11 @@ Test that we run the build command
   >   (run touch %{prefix}/bin/foo)))
   > EOF
 
-  $ dune build .pkg/test/target/bin/foo
+  $ build_pkg test
 
-  $ find _build/default/.pkg/test | sort
-  _build/default/.pkg/test
-  _build/default/.pkg/test/target
-  _build/default/.pkg/test/target/bin
-  _build/default/.pkg/test/target/bin/foo
-  _build/default/.pkg/test/target/cookie
+  $ show_pkg test
+  
+  /target
+  /target/bin
+  /target/bin/foo
+  /target/cookie

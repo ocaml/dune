@@ -21,11 +21,11 @@
         "systems": "systems"
       },
       "locked": {
-        "lastModified": 1687709756,
-        "narHash": "sha256-Y5wKlQSkgEK2weWdOu4J3riRd+kV/VCgHsqLNTTWQ/0=",
+        "lastModified": 1692799911,
+        "narHash": "sha256-3eihraek4qL744EvQXsK1Ha6C3CR7nnT8X2qWap4RNk=",
         "owner": "numtide",
         "repo": "flake-utils",
-        "rev": "dbabf0ca0c0c4bce6ea5eaf65af5cb694d2082c7",
+        "rev": "f9e7cf818399d17d347f847525c5a5a8032e4e44",
         "type": "github"
       },
       "original": {
@@ -60,15 +60,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1686249833,
-        "narHash": "sha256-3O6J+H+QTVCbwAczTXuUAlhTorI/rHJi+M7pjrVTrJY=",
+        "lastModified": 1685563568,
+        "narHash": "sha256-nbdH3TKhgCfofhRxOyl5pv4nz9EiuOqZM4ExFkwTgAw=",
         "owner": "melange-re",
         "repo": "melange",
-        "rev": "6b0bdb669fdbaa959809cc8014da54c9bc1222e6",
+        "rev": "c989a91761a9b1bcc8af80fb9653eab897360325",
         "type": "github"
       },
       "original": {
         "owner": "melange-re",
+        "ref": "1.0.0",
         "repo": "melange",
         "type": "github"
       }
@@ -91,11 +92,11 @@
     },
     "nix-filter": {
       "locked": {
-        "lastModified": 1687178632,
-        "narHash": "sha256-HS7YR5erss0JCaUijPeyg2XrisEb959FIct3n2TMGbE=",
+        "lastModified": 1681154353,
+        "narHash": "sha256-MCJ5FHOlbfQRFwN0brqPbCunLEVw05D/3sRVoNVt2tI=",
         "owner": "numtide",
         "repo": "nix-filter",
-        "rev": "d90c75e8319d0dd9be67d933d8eb9d0894ec9174",
+        "rev": "f529f42792ade8e32c4be274af6b6d60857fbee7",
         "type": "github"
       },
       "original": {
@@ -106,11 +107,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1688523306,
-        "narHash": "sha256-xcJHmwlw0w05D/c8oPX6COxVLYNbu6lXF2mIV7dFGkc=",
+        "lastModified": 1692808169,
+        "narHash": "sha256-x9Opq06rIiwdwGeK2Ykj69dNc2IvUH1fY55Wm7atwrE=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "023b1df882979a413a3f7e2009424db30d51a0fe",
+        "rev": "9201b5ff357e781bf014d0330d18555695df7ba8",
         "type": "github"
       },
       "original": {
@@ -148,11 +149,11 @@
         "opam-repository": "opam-repository"
       },
       "locked": {
-        "lastModified": 1687690294,
-        "narHash": "sha256-B/zVZ5CJVTXe9STQFQNm26+RJqKmgSCyVUsZlWtazBs=",
+        "lastModified": 1692785055,
+        "narHash": "sha256-Bilj0xK7BYPvE+e/wq3QEUjjAvxYtDxOvBh1ycSsXhg=",
         "ref": "refs/heads/master",
-        "rev": "ca325e770100adca845a563cad7eaffa75480fbc",
-        "revCount": 2030,
+        "rev": "2fc7f0a0d165519ef6e5b1b2d4b89c408818e08d",
+        "revCount": 2037,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/ocaml/ocaml-lsp"

@@ -1,12 +1,13 @@
 (** State monad transformer. *)
 
-module Make (S : sig
-  (* The state isn't a type variable as is done traditionally, because we want
-     to reuse our existing monad machinery. All that machinery requires the
-     monad to have only one type variable *)
-  type t
-end)
-(M : Monad.S) : sig
+module Make
+    (S : sig
+       (* The state isn't a type variable as is done traditionally, because we want
+          to reuse our existing monad machinery. All that machinery requires the
+          monad to have only one type variable *)
+       type t
+     end)
+    (M : Monad.S) : sig
   include Monad.S
 
   (** [run t state] runs computation [t] with [state] as the initial state. The

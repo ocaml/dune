@@ -20,25 +20,25 @@ type hardcoded_ocaml_path =
   | Hardcoded of Path.t list
   | Relocatable of Path.t
 
-type conf = private
-  { get_vcs : Path.Source.t -> Vcs.t option Memo.t
-  ; get_location : Section.t -> Package.Name.t -> Path.t
-  ; get_config_path : configpath -> Path.t option
-  ; hardcoded_ocaml_path : hardcoded_ocaml_path
-        (** Initial prefix of installation when relocatable chosen *)
-  ; sign_hook : (Path.t -> unit Fiber.t) option Lazy.t
-        (** Called on binary after if has been edited *)
-  }
+module Conf : sig
+  type t
 
-val conf_of_context : Context.t option -> conf
+  (* val get_vcs : t -> Path.Source.t -> Vcs.t option Memo.t *)
+  val get_location : t -> Section.t -> Package.Name.t -> Path.t
+  (* val get_config_path : t -> configpath -> Path.t option *)
+  (* val hardcoded_ocaml_path : t -> hardcoded_ocaml_path *)
+  (* val sign_hook : t -> (Path.t -> unit Fiber.t) option Lazy.t *)
 
-val conf_for_install :
-     relocatable:Path.t option
-  -> roots:Path.t Install.Roots.t
-  -> context:Context.t
-  -> conf
+  val of_context : Context.t option -> t
 
-val conf_dummy : conf
+  val of_install
+    :  relocatable:Path.t option
+    -> roots:Path.t Install.Roots.t
+    -> context:Context.t
+    -> t
+
+  val dummy : t
+end
 
 val to_dyn : t -> Dyn.t
 
@@ -56,8 +56,9 @@ val decode : string -> t option
 (** Copy a file, performing all required substitutions. The operation is atomic,
     i.e., the contents is first copied to a temporary file in the same directory
     and then atomically renamed to [dst]. *)
-val copy_file :
-     conf:conf
+val copy_file
+  :  conf:Conf.t
+  -> ?executable:bool
   -> ?chmod:(int -> int)
   -> ?delete_dst_if_it_is_a_directory:bool
   -> src:Path.t
@@ -77,8 +78,8 @@ type status =
     source file.
 
     Return whether a substitution happened. *)
-val copy :
-     conf:conf
+val copy
+  :  conf:Conf.t
   -> input_file:Path.t
   -> input:(Bytes.t -> int -> int -> int)
   -> output:(Bytes.t -> int -> int -> unit)

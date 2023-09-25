@@ -14,7 +14,7 @@ contents of all configuration files read by Dune and looks like:
 
 .. code:: dune
 
-   (lang dune 3.10)
+   (lang dune 3.11)
 
 Additionally, they can contains the following stanzas.
 
@@ -651,18 +651,18 @@ wrapped_executables
 
    .. versionadded:: 1.11
 
-      Control wrapping of modules in executables.
+   Control wrapping of modules in executables.
 
-      Executables are made of compilation units whose names may collide with
-      libraries' compilation units. To avoid this possibility, Dune prefixes
-      these compilation unit names with ``Dune__exe__``. This is entirely
-      transparent to users except when such executables are debugged. In which
-      case, the mangled names will be visible in the debugger.
+   Executables are made of compilation units whose names may collide with
+   libraries' compilation units. To avoid this possibility, Dune prefixes
+   these compilation unit names with ``Dune__exe__``. This is entirely
+   transparent to users except when such executables are debugged. In which
+   case, the mangled names will be visible in the debugger.
 
-      - with ``(wrapped_executables false)``, the original names are used.
-      - with ``(wrapped_executables true)``, the names are mangled.
+   - with ``(wrapped_executables false)``, the original names are used.
+   - with ``(wrapped_executables true)``, the names are mangled.
 
-      Starting in language version 2.0, the default value is ``true``.
+   Starting in language version 2.0, the default value is ``true``.
 
 .. _map-workspace-root:
 
@@ -688,6 +688,22 @@ map_workspace_root
         Initial version with the mapping always enabled.
    .. versionchanged:: 3.7
         Add a way to disable the mapping.
+
+.. _warnings:
+
+warnings
+--------
+
+.. dune:stanza:: warnings
+
+   .. versionadded:: 3.11
+
+   Configure Dune warnings for the project.
+
+   .. dune:field:: <name>
+      :param: <enabled | disabled>
+
+      Enable or disable the warning <name> for the current project.
 
 .. _dune-files:
 
@@ -769,7 +785,7 @@ The ``dune-workspace`` file uses the S-expression syntax. This is what a typical
 
 .. code:: dune
 
-    (lang dune 3.10)
+    (lang dune 3.11)
     (context (opam (switch 4.07.1)))
     (context (opam (switch 4.08.1)))
     (context (opam (switch 4.11.1)))

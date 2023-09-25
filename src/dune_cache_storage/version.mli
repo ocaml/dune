@@ -10,9 +10,7 @@ module File : sig
     | V4
 
   val current : t
-
   val all : t list
-
   val to_string : t -> string
 end
 
@@ -20,9 +18,7 @@ module Value : sig
   type t = V3
 
   val current : t
-
   val all : t list
-
   val to_string : t -> string
 end
 
@@ -33,9 +29,7 @@ module Metadata : sig
     | V5
 
   val current : t
-
   val all : t list
-
   val to_string : t -> string
 
   (** Metadata entries contain references to file entries. This function links

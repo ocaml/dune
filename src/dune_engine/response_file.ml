@@ -9,7 +9,5 @@ type t =
    to hold, it would be better to avoid the need for it to simplify
    reasoning. *)
 let registry = Table.create (module Path) 128
-
 let get ~prog = Option.value (Table.find registry prog) ~default:Not_supported
-
 let set ~prog t = Table.set registry prog t

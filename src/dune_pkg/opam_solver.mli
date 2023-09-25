@@ -1,20 +1,24 @@
-open Stdune
+open Import
 
-module Context_for_dune : sig
-  include Opam_0install.S.CONTEXT
+module Summary : sig
+  (** Some intermediate state from the solve exposed for logging purposes *)
+  type t
 
-  val create_dir_context :
-       solver_env:Solver_env.t
-    -> env:(string -> OpamVariable.variable_contents option)
-    -> packages_dir_path:Filename.t
-    -> local_packages:OpamFile.OPAM.t OpamTypes.name_map
-    -> version_preference:Version_preference.t
-    -> t
-
-  val create_switch_context :
-       solver_env:Solver_env.t
-    -> switch_state:OpamStateTypes.unlocked OpamStateTypes.switch_state
-    -> local_packages:OpamFile.OPAM.t OpamTypes.name_map
-    -> version_preference:Version_preference.t
-    -> t
+  (** A message listing selected packages *)
+  val selected_packages_message : t -> lock_dir_path:Path.Source.t -> User_message.t
 end
+
+module Solver_result : sig
+  type t =
+    { summary : Summary.t
+    ; lock_dir : Lock_dir.t
+    ; files : Lock_dir.Write_disk.Files_entry.t Package_name.Map.Multi.t
+    }
+end
+
+val solve_lock_dir
+  :  Solver_env.t
+  -> Version_preference.t
+  -> Opam_repo.t list
+  -> local_packages:OpamFile.OPAM.t OpamTypes.name_map
+  -> (Solver_result.t, [ `Diagnostic_message of _ Pp.t ]) result

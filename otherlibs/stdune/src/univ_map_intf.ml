@@ -2,7 +2,6 @@
 
 module type Key = sig
   type 'a t
-
   type 'a info
 
   val create : 'a info -> 'a t
@@ -15,31 +14,21 @@ module type S = sig
 
   module Key : sig
     type 'a t
-
     type 'a info
   end
 
   val empty : t
-
   val is_empty : t -> bool
-
   val mem : t -> 'a Key.t -> bool
-
   val set : t -> 'a Key.t -> 'a -> t
-
   val add : t -> 'a Key.t -> 'a -> (t, 'a) Result.t
-
   val update : t -> 'a Key.t -> f:('a option -> 'a option) -> t
-
   val remove : t -> 'a Key.t -> t
-
   val find : t -> 'a Key.t -> 'a option
-
   val find_exn : t -> 'a Key.t -> 'a
-
   val singleton : 'a Key.t -> 'a -> t
 
-  (** [superpose a b] is [b] augmented with bindings of [a] that are not in [b]. *)
+  (** [superpose a b] is [a] augmented with bindings of [b] that are not in [a]. *)
   val superpose : t -> t -> t
 
   type 'acc fold = { fold : 'a. 'a Key.info -> 'a -> 'acc -> 'acc }

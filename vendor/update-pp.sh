@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/bin/sh
 
-version=6be5e76d48806245255407b4d5881efe703cb5a0
+version=0021887f75a6017486908cfd837b2ee126e063e7
 
 set -e -o pipefail
 
@@ -23,4 +23,5 @@ cp -v $SRC/src/pp.{ml,mli} pp/src
 cp -v $SRC/LICENSE.md pp/
 
 git checkout pp/src/dune
+git checkout pp/LICENSE.md
 git add -A .

@@ -8,7 +8,6 @@ module RunLoop : sig
   type t
 
   val in_current_thread : unit -> t
-
   val run_current_thread : t -> (unit, exn) result
 end
 
@@ -22,7 +21,6 @@ module Event : sig
   type t
 
   val to_dyn_raw : t -> Dyn.t
-
   val to_dyn : t -> Dyn.t
 
   (** [id t] return the id of the event *)
@@ -32,8 +30,8 @@ module Event : sig
   val path : t -> string
 
   type kind =
-    | Dir  (** directory *)
-    | File  (** file event *)
+    | Dir (** directory *)
+    | File (** file event *)
     | Dir_and_descendants
         (** non-specific directory event. all descendants of this directory are
             invalidated *)

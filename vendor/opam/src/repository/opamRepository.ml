@@ -93,15 +93,14 @@ let fetch_from_cache =
       failwith "Version control not allowed as cache URL"
   in
   try
-    let hit_checksum, hit_file =
+    let hit_file =
       OpamStd.List.find_map (fun ck ->
           let f = cache_file cache_dir ck in
-          if OpamFilename.exists f then Some (ck, f) else None)
+          if OpamFilename.exists f then Some f else None)
         checksums
     in
     if List.for_all
-        (fun ck -> ck = hit_checksum ||
-                   OpamHash.check_file (OpamFilename.to_string hit_file) ck)
+        (fun ck -> OpamHash.check_file (OpamFilename.to_string hit_file) ck)
         checksums
     then Done (Up_to_date (hit_file, OpamUrl.empty))
     else mismatch hit_file

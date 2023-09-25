@@ -18,3 +18,7 @@
  (modules melc_stdlib_prefix)
  (name melc_stdlib_prefix)
  (libraries stdune))
+
+(executable
+ (name refmt)
+ (modules refmt))

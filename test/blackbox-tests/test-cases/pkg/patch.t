@@ -1,10 +1,9 @@
 Applying patches
 
+  $ . ./helpers.sh
+
   $ mkdir test-source
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ make_lockdir
   $ cat >dune.lock/test.pkg <<EOF
   > (source (copy $PWD/test-source))
   > (build
@@ -24,6 +23,5 @@ Applying patches
   > +Hello World
   > EOF
 
-  $ dune build .pkg/test/target/
-  patching file foo.ml
+  $ build_pkg test
   Hello World

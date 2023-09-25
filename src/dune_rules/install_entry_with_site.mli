@@ -2,11 +2,11 @@
 
 open Import
 
-val make_with_site :
-     Section_with_site.t
+val make_with_site
+  :  Section_with_site.t
   -> ?dst:string
   -> (loc:Loc.t -> pkg:Package.Name.t -> site:Site.t -> Section.t Memo.t)
-  -> kind:[ `File | `Directory ]
+  -> kind:Install.Entry.kind
   -> Path.Build.t
   -> Path.Build.t Install.Entry.t Memo.t
 

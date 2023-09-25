@@ -53,8 +53,8 @@ module Public_lib : sig
   (** Package it is part of *)
   val package : t -> Package.t
 
-  val make :
-       allow_deprecated_names:bool
+  val make
+    :  allow_deprecated_names:bool
     -> Dune_project.t
     -> Loc.t * Lib_name.t
     -> (t, User_message.t) result
@@ -64,12 +64,10 @@ module Mode_conf : sig
   type t =
     | Byte
     | Native
-    | Best  (** [Native] if available and [Byte] if not *)
+    | Best (** [Native] if available and [Byte] if not *)
 
   val decode : t Dune_lang.Decoder.t
-
   val compare : t -> t -> Ordering.t
-
   val to_dyn : t -> Dyn.t
 
   module Kind : sig
@@ -92,7 +90,6 @@ module Mode_conf : sig
     type nonrec t = Kind.t option Map.t
 
     val of_list : (mode_conf * Kind.t) list -> t
-
     val decode : t Dune_lang.Decoder.t
 
     module Details : sig
@@ -100,7 +97,6 @@ module Mode_conf : sig
     end
 
     val eval_detailed : t -> has_native:bool -> Details.t Mode.Dict.t
-
     val eval : t -> has_native:bool -> Mode.Dict.Set.t
   end
 
@@ -120,11 +116,9 @@ module Mode_conf : sig
 
     module Set : sig
       type mode_conf := t
-
       type nonrec t = Kind.t option Map.t
 
       val of_list : (mode_conf * Kind.t) list -> t
-
       val decode : t Dune_lang.Decoder.t
 
       module Details : sig
@@ -132,7 +126,6 @@ module Mode_conf : sig
       end
 
       val eval_detailed : t -> has_native:bool -> Details.t Lib_mode.Map.t
-
       val eval : t -> has_native:bool -> Lib_mode.Map.Set.t
     end
   end
@@ -152,11 +145,11 @@ module Library : sig
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
     ; modes : Mode_conf.Lib.Set.t
     ; kind : Lib_kind.t
-          (* TODO: It may be worth remaming [c_library_flags] to
-             [link_time_flags_for_c_compiler] and [library_flags] to
-             [link_time_flags_for_ocaml_compiler], both here and in the Dune
-             language, to make it easier to understand the purpose of various
-             flags. Also we could add [c_library_flags] to [Foreign.Stubs.t]. *)
+        (* TODO: It may be worth remaming [c_library_flags] to
+           [link_time_flags_for_c_compiler] and [library_flags] to
+           [link_time_flags_for_ocaml_compiler], both here and in the Dune
+           language, to make it easier to understand the purpose of various
+           flags. Also we could add [c_library_flags] to [Foreign.Stubs.t]. *)
     ; library_flags : Ordered_set_lang.Unexpanded.t
     ; c_library_flags : Ordered_set_lang.Unexpanded.t
     ; virtual_deps : (Loc.t * Lib_name.t) list
@@ -172,15 +165,13 @@ module Library : sig
     ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
     ; stdlib : Ocaml_stdlib.t option
-    ; special_builtin_support :
-        (Loc.t * Lib_info.Special_builtin_support.t) option
+    ; special_builtin_support : (Loc.t * Lib_info.Special_builtin_support.t) option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
     ; melange_runtime_deps : Loc.t * Dep_conf.t list
     }
 
   val sub_dir : t -> string option
-
   val package : t -> Package.t option
 
   (** Check if the library has any foreign stubs or archives. *)
@@ -198,8 +189,8 @@ module Library : sig
   (** The [lib*.a] files of all foreign archives, including foreign stubs. [dir]
       is the directory the library is declared in. Only files relevant to the
       [for_mode] selection will be returned. *)
-  val foreign_lib_files :
-       t
+  val foreign_lib_files
+    :  t
     -> dir:Path.Build.t
     -> ext_lib:string
     -> for_mode:Mode.Select.t
@@ -210,17 +201,16 @@ module Library : sig
   val archive : t -> dir:Path.Build.t -> ext:string -> Path.Build.t
 
   val best_name : t -> Lib_name.t
-
   val is_virtual : t -> bool
-
   val is_impl : t -> bool
-
   val obj_dir : dir:Path.Build.t -> t -> Path.Build.t Obj_dir.t
-
   val main_module_name : t -> Lib_info.Main_module_name.t
 
-  val to_lib_info :
-    t -> dir:Path.Build.t -> lib_config:Lib_config.t -> Lib_info.local Memo.t
+  val to_lib_info
+    :  t
+    -> dir:Path.Build.t
+    -> lib_config:Lib_config.t
+    -> Lib_info.local Memo.t
 end
 
 module Plugin : sig
@@ -238,6 +228,7 @@ module Install_conf : sig
     { section : Section_with_site.t
     ; files : Install_entry.File.t list
     ; dirs : Install_entry.Dir.t list
+    ; source_trees : Install_entry.Dir.t list
     ; package : Package.t
     ; enabled_if : Blang.t
     }
@@ -255,23 +246,16 @@ module Executables : sig
     include Dune_lang.Conv.S with type t := t
 
     val exe : t
-
     val object_ : t
-
     val shared_object : t
-
     val byte : t
-
     val native : t
-
     val js : t
-
     val compare : t -> t -> Ordering.t
-
     val to_dyn : t -> Dyn.t
 
-    val extension :
-         t
+    val extension
+      :  t
       -> loc:Loc.t
       -> ext_obj:Filename.Extension.t
       -> ext_dll:Filename.Extension.t
@@ -454,24 +438,21 @@ type t =
   }
 
 val equal : t -> t -> bool
-
 val hash : t -> int
-
 val to_dyn : t -> Dyn.t
 
-val parse :
-     Dune_lang.Ast.t list
+val parse
+  :  Dune_lang.Ast.t list
   -> dir:Path.Source.t
   -> file:Path.Source.t option
   -> project:Dune_project.t
   -> t Memo.t
 
-val fold_stanzas :
-  t list -> init:'acc -> f:(t -> Stanza.t -> 'acc -> 'acc) -> 'acc
+val fold_stanzas : t list -> init:'acc -> f:(t -> Stanza.t -> 'acc -> 'acc) -> 'acc
 
 module Memo_fold : sig
-  val fold_stanzas :
-       t list
+  val fold_stanzas
+    :  t list
     -> init:'acc
     -> f:(t -> Stanza.t -> 'acc -> 'acc Memo.t)
     -> 'acc Memo.t

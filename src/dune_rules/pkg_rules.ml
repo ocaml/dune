@@ -958,7 +958,7 @@ module Install_action = struct
         ]
     ;;
 
-    let prepare_copy_or_move ~install_file ~target_dir entry =
+    let prepare_copy ~install_file ~target_dir entry =
       let dst =
         let paths =
           let package =
@@ -1050,6 +1050,47 @@ module Install_action = struct
       | exception _ -> Io.copy_file ~src ~dst ()
     ;;
 
+    let maybe_set_executable section dst =
+      match Section.should_set_executable_bit section with
+      | false -> ()
+      | true ->
+        let permission =
+          let perm = (Path.Untracked.stat_exn dst).st_perm in
+          Path.Permissions.(add execute) perm
+        in
+        Path.chmod dst ~mode:permission
+    ;;
+
+    let read_variables config_file =
+      match Path.Untracked.exists config_file with
+      | false -> []
+      | true ->
+        let config =
+          Path.to_string config_file
+          |> OpamFilename.of_string
+          |> OpamFile.make
+          |> OpamFile.Dot_config.read
+        in
+        OpamFile.Dot_config.bindings config
+        |> List.map ~f:(fun (name, value) -> OpamVariable.to_string name, value)
+    ;;
+
+    let install_entry
+      ~src
+      ~install_file
+      ~target_dir
+      ~exists
+      (entry : Path.t Install.Entry.t)
+      =
+      if entry.optional && (not @@ Lazy.force exists)
+      then None
+      else (
+        let dst = prepare_copy ~install_file ~target_dir entry in
+        hardlink_or_copy ~src ~dst;
+        maybe_set_executable entry.section dst;
+        Some (entry.section, dst))
+    ;;
+
     let action
       { package; install_file; config_file; target_dir; install_action }
       ~ectx:_
@@ -1085,48 +1126,10 @@ module Install_action = struct
               in
               let install_entries =
                 Path.Map.to_list_map by_src ~f:(fun src entries ->
-                  (* TODO set permissions *)
-                  let maybe_set_executable section dst =
-                    match Section.should_set_executable_bit section with
-                    | false -> ()
-                    | true ->
-                      let permission =
-                        let perm = (Path.Untracked.stat_exn dst).st_perm in
-                        Path.Permissions.(add execute) perm
-                      in
-                      Path.chmod dst ~mode:permission
-                  in
                   let exists = lazy (Path.Untracked.exists src) in
-                  match entries with
-                  | [] -> assert false
-                  | [ entry ] ->
-                    if entry.optional && (not @@ Lazy.force exists)
-                    then []
-                    else (
-                      let dst = prepare_copy_or_move ~install_file ~target_dir entry in
-                      hardlink_or_copy ~src ~dst;
-                      maybe_set_executable entry.section dst;
-                      [ entry.section, dst ])
-                  | entry :: entries ->
-                    let install_entries =
-                      List.filter_map entries ~f:(fun entry ->
-                        if entry.optional && (not @@ Lazy.force exists)
-                        then None
-                        else (
-                          let dst =
-                            prepare_copy_or_move ~install_file ~target_dir entry
-                          in
-                          hardlink_or_copy ~src ~dst;
-                          maybe_set_executable entry.section dst;
-                          Some (entry.section, dst)))
-                    in
-                    if entry.optional && (not @@ Lazy.force exists)
-                    then install_entries
-                    else (
-                      let dst = prepare_copy_or_move ~install_file ~target_dir entry in
-                      hardlink_or_copy ~src ~dst;
-                      maybe_set_executable entry.section dst;
-                      (entry.section, dst) :: install_entries))
+                  List.filter_map
+                    entries
+                    ~f:(install_entry ~src ~install_file ~target_dir ~exists))
               in
               List.concat install_entries
               |> List.rev_map ~f:(fun (section, file) ->
@@ -1141,20 +1144,10 @@ module Install_action = struct
         Section.Map.union from_install_action from_install_file ~f:(fun _ x y ->
           Some (x @ y))
       in
-      let variables =
-        match Path.Untracked.exists config_file with
-        | false -> []
-        | true ->
-          let config =
-            Path.to_string config_file
-            |> OpamFilename.of_string
-            |> OpamFile.make
-            |> OpamFile.Dot_config.read
-          in
-          OpamFile.Dot_config.bindings config
-          |> List.map ~f:(fun (name, value) -> OpamVariable.to_string name, value)
+      let cookies =
+        let variables = read_variables config_file in
+        { Install_cookie.files; variables }
       in
-      let cookies = { Install_cookie.files; variables } in
       let cookie_file = Path.build @@ Paths.install_cookie' target_dir in
       cookie_file |> Path.parent_exn |> Path.mkdir_p;
       Install_cookie.dump cookie_file cookies

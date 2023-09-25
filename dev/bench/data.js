@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695665485075,
+  "lastUpdate": 1695665499587,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -80531,6 +80531,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "80.25486471804666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9ed1c21ccb39b9ab3692592fc29c28ae86a63335",
+          "message": "test(pkg): build package dep in release mode (#8758)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-25T18:40:29+01:00",
+          "tree_id": "e81bd8b2c9dc1d1421c02895a4cbb4cc6244d4c1",
+          "url": "https://github.com/ocaml/dune/commit/9ed1c21ccb39b9ab3692592fc29c28ae86a63335"
+        },
+        "date": 1695665498491,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.220131541786667",
             "unit": "seconds"
           }
         ]

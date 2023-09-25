@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695639767237,
+  "lastUpdate": 1695646721947,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -103413,6 +103413,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.242743258260003",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6a7e83aad32f6ad9db7d8f994300ad17b65c4579",
+          "message": "refactor(pkg): use parallel_map and concurrent bindings (#8753)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-25T13:45:42+01:00",
+          "tree_id": "5b64501a136f9b199ed901a6f27b4e50d10f01c6",
+          "url": "https://github.com/ocaml/dune/commit/6a7e83aad32f6ad9db7d8f994300ad17b65c4579"
+        },
+        "date": 1695646707471,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.894420673373332",
             "unit": "seconds"
           }
         ]

@@ -4,7 +4,7 @@ How to Bundle Resources
 This guide will show you how to configure Dune to generate modules with string resources
 from other files in your project.
 
-Folder structure
+Folder Structure
 ----------------
 
 .. code:: bash
@@ -17,7 +17,7 @@ Folder structure
             └── resources
                 └── site.css
 
-Dune configuration
+Dune Configuration
 ------------------
 
 See the section on :doc:`../reference/actions` for more details on ``progn`` and ``with-stdout-to``.
@@ -32,7 +32,7 @@ See the section on :doc:`../reference/actions` for more details on ``progn`` and
        (cat resources/site.css)
        (echo "|}"))))
 
-Using the bundled resource
+Using the Bundled Resource
 --------------------------
 
 .. code:: ocaml

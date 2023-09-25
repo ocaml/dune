@@ -52,13 +52,20 @@ let decode =
      { loc; alias; deps; shell; enabled_if; locks; applies_to; package })
 ;;
 
-let path_of_shell ?(env = Env.initial) shell =
+let system_shell_prog ?loc ~context (shell : [ `sh ]) : Action.Prog.t =
+  let path = Context.installed_env context |> Env_path.path in
   let which shell_name =
-    let path = Env_path.path env in
-    Option.value_exn (Bin.which ~path shell_name)
+    match Bin.which ~path shell_name with
+    | Some p -> Ok p
+    | None ->
+      Error
+        (Action.Prog.Not_found.create
+           ~hint:"unable to find system shell program `sh`"
+           ~context:(Context.name context)
+           ~program:shell_name
+           ~loc
+           ())
   in
   match shell with
-  | `system -> which "sh"
-  | `bash -> which "bash"
-  | `exec sh -> sh
+  | `sh -> which "sh"
 ;;

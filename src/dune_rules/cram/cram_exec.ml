@@ -384,7 +384,7 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
 
 let _display_with_bars s = List.iter (String.split_lines s) ~f:(Printf.eprintf "| %s\n")
 
-let run ~env ~script ~shell lexbuf : string Fiber.t =
+let run ~env ~script ~shell:(shell, shell_args) lexbuf : string Fiber.t =
   let temp_dir =
     let suffix =
       let basename = Path.basename script in
@@ -433,7 +433,7 @@ let run ~env ~script ~shell lexbuf : string Fiber.t =
       ~env
       Strict
       shell
-      [ Path.to_string sh_script.script ]
+      (shell_args @ [ Path.to_string sh_script.script ])
   in
   let raw = read_and_attach_exit_codes sh_script in
   let sanitized = sanitize ~parent_script:sh_script.script raw in
@@ -446,7 +446,8 @@ let run ~env ~script ~shell =
 
 type ('path, _) spec =
   { script : 'path
-  ; shell : 'path
+  ; shell_prog : 'path
+  ; shell_args : string list
   }
 
 module Spec = struct
@@ -454,15 +455,27 @@ module Spec = struct
 
   let name = "cram"
   let version = 1
-  let bimap spec f _ = { script = f spec.script; shell = f spec.shell }
-  let is_useful_to ~distribute:_ ~memoize:_ = true
 
-  let encode { script; shell } path _ : Dune_sexp.t =
-    let atom = Dune_lang.atom_or_quoted_string in
-    List [ atom "cram"; path script; List [ atom "shell"; path shell ] ]
+  let bimap spec f _ =
+    { script = f spec.script
+    ; shell_prog = f spec.shell_prog
+    ; shell_args = spec.shell_args
+    }
   ;;
 
-  let action { script; shell } ~ectx:_ ~(eenv : Action.Ext.env) =
+  let is_useful_to ~distribute:_ ~memoize:_ = true
+
+  let encode { script; shell_prog; shell_args } path _ : Dune_sexp.t =
+    let atom = Dune_lang.atom_or_quoted_string in
+    List
+      [ atom "cram"
+      ; path script
+      ; List [ atom "shell"; List (path shell_prog :: List.map ~f:atom shell_args) ]
+      ]
+  ;;
+
+  let action { script; shell_prog; shell_args } ~ectx:_ ~(eenv : Action.Ext.env) =
+    let shell = shell_prog, shell_args in
     run ~env:eenv.env ~script ~shell
   ;;
 end

@@ -76,7 +76,7 @@ Check that shell option unset uses `env sh`
     $ echo "foo from foo.cram"
     ***** UNREACHABLE *****
 
-Check that shell = :bash uses `env bash`
+Check that shell = bash uses `env bash`
 
   $ PATH=$PWD:$PATH
   $ cat > dune <<EOF
@@ -84,7 +84,7 @@ Check that shell = :bash uses `env bash`
   >  (target foo.cram.corrected)
   >  (mode (promote (until-clean)))
   >  (deps sh)
-  >  (action (cram foo.cram (shell :bash))))
+  >  (action (cram foo.cram (shell bash))))
   > EOF
 
   $ cat > foo.cram <<EOF

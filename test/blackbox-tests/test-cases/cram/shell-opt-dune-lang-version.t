@@ -25,7 +25,7 @@ Check that `(shell ..)` option on `(cram ..)` user action fail before `(lang dun
   $ cat > dune <<EOF
   > (rule
   >   (target foo.cram.corrected)
-  >   (action (cram foo.cram (shell :bash)))
+  >   (action (cram foo.cram (shell bash)))
   > )
   > EOF
 
@@ -35,7 +35,7 @@ Check that `(shell ..)` option on `(cram ..)` user action fail before `(lang dun
 
   $ dune runtest -f
   File "dune", line 3, characters 25-38:
-  3 |   (action (cram foo.cram (shell :bash)))
+  3 |   (action (cram foo.cram (shell bash)))
                                ^^^^^^^^^^^^^
   Error: 'shell' is only available since version 3.10 of the dune language.
   Please update your dune-project file to have (lang dune 3.10).

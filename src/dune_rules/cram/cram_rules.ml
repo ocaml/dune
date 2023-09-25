@@ -4,7 +4,7 @@ type effective =
   { loc : Loc.t
   ; alias : Alias.Name.Set.t
   ; deps : unit Action_builder.t list
-  ; shell : Path.t Action_builder.t option
+  ; shell : (Path.t * string list) Action_builder.t option
   ; sandbox : Sandbox_config.t
   ; enabled_if : Blang.t list
   ; locks : Path.Set.t
@@ -66,9 +66,9 @@ let test_rule
      | true ->
        let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
        let script = Path.Build.append_source prefix_with (Cram_test.script test) in
-       let action ~shell =
+       let action ~shell:(shell_prog, shell_args) =
          Action.progn
-           [ Cram_exec.action { script = Path.build script; shell }
+           [ Cram_exec.action { script = Path.build script; shell_prog; shell_args }
            ; Diff
                { Diff.optional = true
                ; mode = Text
@@ -92,7 +92,10 @@ let test_rule
              Action_builder.dyn_memo_deps deps
          and+ shell =
            match spec.shell with
-           | None -> Action_builder.return (Cram_stanza.path_of_shell `system)
+           | None ->
+             let context = Expander.context expander in
+             Action_builder.return
+               (Cram_stanza.system_shell_prog ~loc ~context `sh |> Action.Prog.ok_exn, [])
            | Some p -> p
          in
          Action.Full.make (action ~shell) ~locks ~sandbox:spec.sandbox
@@ -167,19 +170,33 @@ let rules ~sctx ~expander ~dir tests =
               shell, deps, sandbox
             in
             match spec.shell with
-            | System_shell -> return (Action_builder.return `system)
-            | Bash_shell -> return (Action_builder.return `bash)
-            | Exec_file_shell p ->
-              let shell_deps, sandbox = Dep_conf_eval.unnamed ~expander [ File p ] in
-              let shell =
-                Expander.(
-                  With_deps_if_necessary.expand_single_path expander p
-                  |> Deps.action_builder)
-                |> Action_builder.map ~f:(fun p -> `exec p)
+            | System_shell -> return None
+            | Custom_shell { prog; args } ->
+              let shell_deps, sandbox = Dep_conf_eval.unnamed ~expander [ File prog ] in
+              let dir = Path.build dir in
+              let expand_arg sw =
+                let open Action_builder.O in
+                let+ v =
+                  String_expander.Action_builder.expand
+                    sw
+                    ~dir
+                    ~mode:Many
+                    ~f:(Expander.expand_pform expander)
+                in
+                Value.L.to_strings v ~dir
               in
-              return ~shell_deps ~sandbox shell
+              let shell =
+                let open Action_builder.O in
+                let+ shell_args = Action_builder.all (List.map args ~f:expand_arg)
+                and+ shell_prog =
+                  Expander.(
+                    With_deps_if_necessary.expand_single_path expander prog
+                    |> Deps.action_builder)
+                in
+                shell_prog, List.concat shell_args
+              in
+              return ~shell_deps ~sandbox (Some shell)
           in
-          let shell = Action_builder.map shell ~f:Cram_stanza.path_of_shell in
           let deps, sandbox =
             match spec.deps with
             | None -> deps, sandbox
@@ -209,15 +226,7 @@ let rules ~sctx ~expander ~dir tests =
             >>| Path.Set.of_list
             >>| Path.Set.union acc.locks
           in
-          { acc with
-            enabled_if
-          ; locks
-          ; deps
-          ; shell = Some shell
-          ; alias
-          ; packages
-          ; sandbox
-          })
+          { acc with enabled_if; locks; deps; shell; alias; packages; sandbox })
     in
     let test_rule () = test_rule ~sctx ~expander ~dir effective test in
     Only_packages.get_mask ()

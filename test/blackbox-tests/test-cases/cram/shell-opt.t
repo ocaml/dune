@@ -102,10 +102,10 @@ Check that shell = :system uses `env sh`
     $ echo "foo from foo.t"
     ***** UNREACHABLE *****
 
-Check that shell = :bash uses `env bash`
+Check that shell = bash uses `env bash`
 
   $ cat > dune <<EOF
-  > (cram (deps bash) (shell :bash))
+  > (cram (deps bash) (shell bash))
   > EOF
   $ PATH=$PWD:$PATH
 

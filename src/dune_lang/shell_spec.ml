@@ -2,20 +2,22 @@ open Dune_sexp
 
 type t =
   | System_shell
-  | Bash_shell
-  | Exec_file_shell of String_with_vars.t
+  | Custom_shell of
+      { prog : String_with_vars.t
+      ; args : String_with_vars.t list
+      }
 
 let default : t = System_shell
 
 let map f = function
-  | (System_shell | Bash_shell) as s -> s
-  | Exec_file_shell p -> Exec_file_shell (f p)
+  | System_shell as s -> s
+  | Custom_shell { prog; args } -> Custom_shell { prog = f prog; args = List.map f args }
 ;;
 
 let encode : t Encoder.t = function
   | System_shell -> atom ":system"
-  | Bash_shell -> atom ":bash"
-  | Exec_file_shell p -> String_with_vars.encode p
+  | Custom_shell { prog; args } ->
+    List (String_with_vars.encode prog :: List.map String_with_vars.encode args)
 ;;
 
 let decode : t Decoder.t =
@@ -25,7 +27,7 @@ let decode : t Decoder.t =
     v
   in
   kw ":system" System_shell
-  <|> kw ":bash" Bash_shell
-  <|> let+ p = String_with_vars.decode in
-      Exec_file_shell p
+  <|> let+ prog = String_with_vars.decode
+      and+ args = repeat String_with_vars.decode in
+      Custom_shell { prog; args }
 ;;

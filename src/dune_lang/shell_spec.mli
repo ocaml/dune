@@ -4,7 +4,7 @@
 open Dune_sexp
 
 type t =
-  | System_shell (** when selected, {v env sh v} is used; this is the {b default} *)
+  | System_shell (** when selected, [env sh] is used; this is the {b default} *)
   | Custom_shell of
       { prog : String_with_vars.t
       ; args : String_with_vars.t list
@@ -15,5 +15,5 @@ type t =
 
 val default : t
 val map : (String_with_vars.t -> String_with_vars.t) -> t -> t
-val encode : t Encoder.t
+val encode : t -> Dune_sexp.t list
 val decode : t Decoder.t

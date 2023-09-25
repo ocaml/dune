@@ -14,10 +14,10 @@ let map f = function
   | Custom_shell { prog; args } -> Custom_shell { prog = f prog; args = List.map f args }
 ;;
 
-let encode : t Encoder.t = function
-  | System_shell -> atom ":system"
+let encode : t -> Dune_sexp.t list = function
+  | System_shell -> [ atom ":system" ]
   | Custom_shell { prog; args } ->
-    List (String_with_vars.encode prog :: List.map String_with_vars.encode args)
+    String_with_vars.encode prog :: List.map String_with_vars.encode args
 ;;
 
 let decode : t Decoder.t =

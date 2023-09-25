@@ -389,24 +389,31 @@ comment|#
 ;;
 
 let print_shell_spec : Dune_lang.Shell_spec.t -> unit =
-  fun spec -> Dune_lang.pp (Dune_lang.Shell_spec.encode spec) |> print
+  fun spec -> Dune_lang.pp Dune_lang.(List (Shell_spec.encode spec)) |> print
 ;;
 
-let shell_path = Dune_lang.String_with_vars.make_text loc "/bin/zsh"
+let bash_path = Dune_lang.String_with_vars.make_text loc "/bin/bash"
+let zsh_path = Dune_lang.String_with_vars.make_text loc "/bin/zsh"
+let opt_x = Dune_lang.String_with_vars.make_text loc "-x"
 
 let%expect_test _ =
   print_shell_spec System_shell;
-  [%expect {| :system |}]
+  [%expect {| (:system) |}]
 ;;
 
 let%expect_test _ =
-  print_shell_spec Bash_shell;
-  [%expect {| :bash |}]
+  print_shell_spec (Custom_shell { prog = bash_path; args = [] });
+  [%expect {| (/bin/bash) |}]
 ;;
 
 let%expect_test _ =
-  print_shell_spec (Exec_file_shell shell_path);
-  [%expect {| /bin/zsh |}]
+  print_shell_spec (Custom_shell { prog = bash_path; args = [ opt_x ] });
+  [%expect {| (/bin/bash -x) |}]
+;;
+
+let%expect_test _ =
+  print_shell_spec (Custom_shell { prog = zsh_path; args = [] });
+  [%expect {| (/bin/zsh) |}]
 ;;
 
 let print_action : Dune_lang.Action.t -> unit =
@@ -421,11 +428,16 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  print_action (Cram (cram_script, Bash_shell));
-  [%expect {| (cram test.t (shell :bash)) |}]
+  print_action (Cram (cram_script, Custom_shell { prog = bash_path; args = [] }));
+  [%expect {| (cram test.t (shell /bin/bash)) |}]
 ;;
 
 let%expect_test _ =
-  print_action (Cram (cram_script, Exec_file_shell shell_path));
+  print_action (Cram (cram_script, Custom_shell { prog = bash_path; args = [ opt_x ] }));
+  [%expect {| (cram test.t (shell /bin/bash -x)) |}]
+;;
+
+let%expect_test _ =
+  print_action (Cram (cram_script, Custom_shell { prog = zsh_path; args = [] }));
   [%expect {| (cram test.t (shell /bin/zsh)) |}]
 ;;

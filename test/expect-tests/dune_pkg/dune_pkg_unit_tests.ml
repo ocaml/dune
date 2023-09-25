@@ -196,25 +196,23 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
     } |}]
 ;;
 
+let empty_package name ~version =
+  { Lock_dir.Pkg.build_command = None
+  ; install_command = None
+  ; deps = []
+  ; info =
+      { Lock_dir.Pkg_info.name; version; dev = false; source = None; extra_sources = [] }
+  ; exported_env = []
+  }
+;;
+
 let%expect_test "encode/decode round trip test for lockdir with simple deps" =
   lock_dir_encode_decode_round_trip_test
     ~lock_dir_path:"simple_lock_dir"
     ~lock_dir:
       (let mk_pkg_basic ~name ~version =
          let name = Package_name.of_string name in
-         ( name
-         , { Lock_dir.Pkg.build_command = None
-           ; install_command = None
-           ; deps = []
-           ; info =
-               { Lock_dir.Pkg_info.name
-               ; version
-               ; dev = false
-               ; source = None
-               ; extra_sources = []
-               }
-           ; exported_env = []
-           } )
+         name, empty_package name ~version
        in
        Lock_dir.create_latest_version
          ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
@@ -273,7 +271,9 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
            External_copy (Loc.none, Path.External.of_string "/tmp/a")
          in
          ( name
-         , { Lock_dir.Pkg.build_command =
+         , let pkg = empty_package name ~version:"0.1.0" in
+           { pkg with
+             build_command =
                Some
                  Action.(Progn [ Echo [ String_with_vars.make_text Loc.none "hello" ] ])
            ; install_command =
@@ -282,11 +282,9 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                     (* String_with_vars.t doesn't round trip so we have to set
                        [quoted] if the string would be quoted *)
                     (String_with_vars.make_text ~quoted:true Loc.none "echo 'world'"))
-           ; deps = []
            ; info =
-               { Lock_dir.Pkg_info.name
-               ; version = "0.1.0"
-               ; dev = false
+               { pkg.info with
+                 dev = false
                ; source = Some extra_source
                ; extra_sources =
                    [ Path.Local.of_string "one", extra_source
@@ -305,13 +303,13 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
        let pkg_b =
          let name = Package_name.of_string "b" in
          ( name
-         , { Lock_dir.Pkg.build_command = None
-           ; install_command = None
+         , let pkg = empty_package name ~version:"dev" in
+           { pkg with
+             install_command = None
            ; deps = [ Loc.none, fst pkg_a ]
            ; info =
-               { Lock_dir.Pkg_info.name
-               ; version = "dev"
-               ; dev = true
+               { pkg.info with
+                 dev = true
                ; source =
                    Some
                      (Fetch
@@ -323,28 +321,23 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                                   "sha256=adfc38f14c0188a2ad80d61451d011d27ab8839b717492d7ad42f7cb911c54c3"
                               )
                         })
-               ; extra_sources = []
                }
-           ; exported_env = []
            } )
        in
        let pkg_c =
          let name = Package_name.of_string "c" in
          ( name
-         , { Lock_dir.Pkg.build_command = None
-           ; install_command = None
-           ; deps = [ Loc.none, fst pkg_a; Loc.none, fst pkg_b ]
+         , let pkg = empty_package name ~version:"0.2" in
+           { pkg with
+             deps = [ Loc.none, fst pkg_a; Loc.none, fst pkg_b ]
            ; info =
-               { Lock_dir.Pkg_info.name
-               ; version = "0.2"
-               ; dev = false
+               { pkg.info with
+                 dev = false
                ; source =
                    Some
                      (Fetch
                         { url = Loc.none, "https://github.com/foo/c"; checksum = None })
-               ; extra_sources = []
                }
-           ; exported_env = []
            } )
        in
        let repo_id = Dune_pkg.Repository_id.Private.git_hash "95cf548dc" in

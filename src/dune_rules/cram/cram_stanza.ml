@@ -42,7 +42,7 @@ let decode =
      and+ shell =
        field
          "shell"
-         Dune_lang.Decoder.(Syntax.since Stanza.syntax (3, 10) >>> Shell_spec.decode)
+         Dune_lang.Decoder.(Syntax.since Stanza.syntax (3, 12) >>> Shell_spec.decode)
          ~default:Shell_spec.default
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
      and+ locks = Locks.field ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9)) ()

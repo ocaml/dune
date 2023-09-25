@@ -674,16 +674,13 @@ The ``cram`` stanza accepts the following fields:
 - ``deps`` - dependencies of the test
 - ``(package <package-name>)`` - attach the tests selected by this stanza to the
   specified package
-- ``(shell <shell-spec>)`` - (available since Dune 3.10) specify the shell to be
-  used when executing the commands in Cram test files. ``<shell-spec>`` can now
+- ``(shell <shell-prog> <args>..)`` - (available since Dune 3.12) specify the shell to be
+  used when executing the commands in Cram test files. ``<shell-prog>`` can now
   be one of the following values:
 
   - ``:system`` - this stipulates that the system shell (that is, what you get
     with ``/usr/bin/env sh``) should be used.  This is the default when this
     field does not present.
-
-  - ``:bash`` - this stipulates that the Bourne Again shell (that is, what you
-    get with ``/usr/bin/env bash``) should be used.
 
   - ``<dep>`` - ``<dep>`` should specify the path to an executable, which will
     be used as the shell program. :doc:`concepts/variables` will be expanded.

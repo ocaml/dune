@@ -1,6 +1,6 @@
 Check that shell = %{bin:zsh} uses zsh
 
-  $ echo '(lang dune 3.10)' > dune-project
+  $ echo '(lang dune 3.12)' > dune-project
   $ cat > dune <<EOF
   > (cram (shell %{bin:zsh}))
   > EOF

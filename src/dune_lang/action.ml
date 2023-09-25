@@ -357,7 +357,7 @@ let cstrs_dune_file t =
             fields
               (field
                  "shell"
-                 (Syntax.since Stanza.syntax (3, 10) >>> Shell_spec.decode)
+                 (Syntax.since Stanza.syntax (3, 12) >>> Shell_spec.decode)
                  ~default:Shell_spec.default)
           in
           Cram (script, shell_spec) )

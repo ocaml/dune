@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695659958091,
+  "lastUpdate": 1695660158377,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -31782,6 +31782,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "49.17328526404666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "66ca520f8cacc2c9b97960ebb5f5165cb251ab48",
+          "message": "refactor(pkg): split installation into multiple functions (#8756)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-25T17:13:16+01:00",
+          "tree_id": "5c9f8a48d3f267392ca98a32f6b17e0f7a8eb238",
+          "url": "https://github.com/ocaml/dune/commit/66ca520f8cacc2c9b97960ebb5f5165cb251ab48"
+        },
+        "date": 1695660156973,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "52.45062960356",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695684548393,
+  "lastUpdate": 1695685052953,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -31840,6 +31840,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "48.138561999086654",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "928b969b1173f94e4b35071a5551aa33504f3a80",
+          "message": "refactor(pkg): split source and build rules (#8760)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-26T00:13:28+01:00",
+          "tree_id": "ed961c288191fd588880d9b8101227acf7577732",
+          "url": "https://github.com/ocaml/dune/commit/928b969b1173f94e4b35071a5551aa33504f3a80"
+        },
+        "date": 1695685050374,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "47.6119962493",
             "unit": "seconds"
           }
         ]

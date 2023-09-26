@@ -5,7 +5,6 @@ We test how opam files with substs fields are translated into the dune.lock file
 
 Make a package with a substs field 
   $ mkpkg with-substs <<EOF
-  > opam-version: "2.0"
   > substs: ["foo.ml"]
   > build: [ "sh" "-c" "[ -e foo.ml ] && cat foo.ml" ]
   > EOF

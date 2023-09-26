@@ -6,10 +6,8 @@ Helper shell function that generates an opam file for a package:
 Make a mock repo tarball that will get used by dune to download the package
 
   $ mkpkg foo <<EOF
-  > opam-version: "2.0"
   > EOF
   $ mkpkg bar <<EOF
-  > opam-version: "2.0"
   > depends: [ "foo" ]
   > EOF
   $ cd mock-opam-repository

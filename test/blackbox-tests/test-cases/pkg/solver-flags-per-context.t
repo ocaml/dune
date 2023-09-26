@@ -55,15 +55,12 @@ Create a workspace file with some contexts with different combinations of with-t
   > EOF
 
   $ mkpkg regular-package <<EOF
-  > opam-version: "2.0"
   > EOF
 
   $ mkpkg test-package <<EOF
-  > opam-version: "2.0"
   > EOF
 
   $ mkpkg doc-package <<EOF
-  > opam-version: "2.0"
   > EOF
 
   $ solve_project <<EOF

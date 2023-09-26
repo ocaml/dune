@@ -6,7 +6,6 @@ We echo each package variable.
 
   $ mkrepo
   > mkpkg "testpkg" <<'EOF' 
-  > opam-version: "2.0"
   > depends: [ "foo" ]
   > build: [
   >   [ "echo" "1"     name ]
@@ -54,7 +53,6 @@ We echo each package variable.
   > ]
   > EOF
   > mkpkg "foo" <<EOF
-  > opam-version: "2.0"
   > EOF
   > solve testpkg
   Solution for dune.lock:

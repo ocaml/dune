@@ -4,32 +4,27 @@ Test variable filters on dependencies
   $ mkrepo
 
   $ mkpkg foo-dependency <<EOF
-  > opam-version: "2.0"
   > EOF
 
   $ mkpkg foo <<EOF
-  > opam-version: "2.0"
   > depends: [
   >   "foo-dependency"
   > ]
   > EOF
 
   $ mkpkg depends-on-foo <<EOF
-  > opam-version: "2.0"
   > depends: [
   >   "foo"
   > ]
   > EOF
 
   $ mkpkg depends-on-foo-with-test <<EOF
-  > opam-version: "2.0"
   > depends: [
   >   "foo" {with-test}
   > ]
   > EOF
 
   $ mkpkg conflicts-with-foo <<EOF
-  > opam-version: "2.0"
   > conflicts: [
   >   "foo"
   > ]

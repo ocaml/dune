@@ -2,7 +2,6 @@
   $ mkrepo
 
   $ mkpkg standard-dune <<EOF
-  > opam-version: "2.0"
   > build: [
   >   ["dune" "subst"] {dev}
   >   [
@@ -21,7 +20,6 @@
   > EOF
 
   $ mkpkg with-interpolation <<EOF
-  > opam-version: "2.0"
   > build: [
   >   [
   >     "./configure"
@@ -35,17 +33,14 @@
 
 Make sure we don't mess up percent signs that aren't part of variable interpolation syntax:
   $ mkpkg with-percent-sign <<EOF
-  > opam-version: "2.0"
   > build: [ "printf" "%d" "42" ]
   > EOF
 
   $ mkpkg with-malformed-interpolation <<EOF
-  > opam-version: "2.0"
   > build: [ "./configure" "--prefix=%{prefix" ]
   > EOF
 
   $ mkpkg variable-types <<EOF
-  > opam-version: "2.0"
   > build: [
   >   ["echo" local_var]
   >   ["echo" _:explicit_local_var]
@@ -56,7 +51,6 @@ Make sure we don't mess up percent signs that aren't part of variable interpolat
 
 Package for exercising opam filters on commands:
   $ mkpkg exercise-filters <<EOF
-  > opam-version: "2.0"
   > build: [
   >   [ "echo" "a" ] { foo  }
   >   [ "echo" "b" ] { foo & bar }
@@ -77,7 +71,6 @@ Package for exercising opam filters on commands:
 
 Package with incorrect package variable conjunction where string was expected:
   $ mkpkg filter-error-invalid-conjunction <<EOF
-  > opam-version: "2.0"
   > build: [
   >   [ "echo" "a" ] { foo+bar+baz:version < "0.4" }
   > ]
@@ -85,7 +78,6 @@ Package with incorrect package variable conjunction where string was expected:
 
 Package which has boolean where string was expected. This should be caught while parsing:
   $ mkpkg filter-error-bool-where-string-expected <<EOF
-  > opam-version: "2.0"
   > build: [
   >   [ "echo" "a" ] { foo:version < (foo = bar) }
   > ]

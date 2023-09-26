@@ -5,7 +5,6 @@ variables can be found in `opam-var-os.t`.
 
   $ mkrepo
   > mkpkg testpkg << EOF
-  > opam-version: "2.0"
   > build: [
   >   [ "echo" jobs ]
   >   [ "echo" make ]
@@ -34,7 +33,6 @@ variables can be found in `opam-var-os.t`.
 Therefore we modify the lockfile here to remove these from the opam file:
 
   $ mkpkg testpkg << EOF
-  > opam-version: "2.0"
   > build: [
   >   [ "echo" jobs ]
   >   [ "echo" group ]

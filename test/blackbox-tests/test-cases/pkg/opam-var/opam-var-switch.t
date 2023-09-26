@@ -9,7 +9,6 @@ Note that misc is not supported in dune and a test for it can be found in
 opam-var-unsupported.t
   $ mkrepo
   $ mkpkg testpkg <<EOF
-  > opam-version: "2.0"
   > build: [
   >   [ "echo" switch ]
   >   [ "echo" build ]

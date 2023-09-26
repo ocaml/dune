@@ -4,23 +4,17 @@ Demonstrate the translation of filtered dependencies
   $ mkrepo
 
   $ mkpkg pkg-post <<EOF
-  > opam-version: "2.0"
   > EOF
   $ mkpkg pkg-dev <<EOF
-  > opam-version: "2.0"
   > EOF
   $ mkpkg pkg-build <<EOF
-  > opam-version: "2.0"
   > EOF
   $ mkpkg pkg-dev <<EOF
-  > opam-version: "2.0"
   > EOF
   $ mkpkg pkg-test <<EOF
-  > opam-version: "2.0"
   > EOF
 
   $ mkpkg bar <<EOF
-  > opam-version: "2.0"
   > depends: [
   >   "pkg-post" {post}
   >   "pkg-dev" {dev}

@@ -7,7 +7,6 @@ In this test we demonstrate that we don't currently do anything special with tho
   $ mkrepo
 
   $ mkpkg with-build-test-doc <<EOF
-  > opam-version: "2.0"
   > build: [ "echo" "Building" ]
   > build-doc: [ "echo" "Building doc" ]
   > build-test: [ "echo" "Building test" ]

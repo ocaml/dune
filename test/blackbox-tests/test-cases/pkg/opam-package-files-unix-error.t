@@ -6,7 +6,6 @@ files/ directory from a package directory inside an opam repostory.
 
 Make a package with a patch
   $ mkpkg with-patch <<EOF
-  > opam-version: "2.0"
   > EOF
 
   $ fname1="foo.patch"

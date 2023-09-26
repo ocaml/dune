@@ -5,7 +5,6 @@ In this test we test the translation of an opam package with only an install ste
 
 Make a package with only an install step 
   $ mkpkg install-no-build <<EOF
-  > opam-version: "2.0"
   > install: ["echo" "just installing"]
   > EOF
 

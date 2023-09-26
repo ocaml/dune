@@ -5,7 +5,6 @@ variables can be found in `opam-var-os.t`.
 
   $ mkrepo
   > mkpkg testpkg << EOF
-  > opam-version: "2.0"
   > build: [
   >   [ "echo" jobs ]
   >   [ "echo" make ]
@@ -31,7 +30,6 @@ The implementation of %{user} uses Unix.getlogin which doesn't work in our Linux
 Therefore we modify the lockfile here to remove that from the opam file:
 
   $ mkpkg testpkg << EOF
-  > opam-version: "2.0"
   > build: [
   >   [ "echo" jobs ]
   >   [ "echo" make ]

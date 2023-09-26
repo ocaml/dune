@@ -6,7 +6,6 @@ install step into a dune lock file.
 
 Make a package with a build-env field and no build or install step
   $ mkpkg with-build-env <<'EOF'
-  > opam-version: "2.0"
   > build-env: [ [ MY_ENV_VAR = "Hello from env var!" ] ]
   > EOF
 

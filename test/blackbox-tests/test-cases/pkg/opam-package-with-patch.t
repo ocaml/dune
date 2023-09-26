@@ -6,7 +6,6 @@ appropriate build step.
 
 Make a package with a patch
   $ mkpkg with-patch <<EOF
-  > opam-version: "2.0"
   > patches: ["foo.patch"]
   > build: ["cat" "foo.ml"]
   > EOF

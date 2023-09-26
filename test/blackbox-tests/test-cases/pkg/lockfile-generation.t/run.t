@@ -6,12 +6,10 @@ Helper shell function that generates an opam file for a package:
 
   $ emptypkg() {
   >   mkpkg $1 <<EOF
-  > opam-version: "2.0"
   > EOF
   > }
   $ emptyverpkg() {
   >   mkpkg $1 $2 <<EOF
-  > opam-version: "2.0"
   > EOF
   > }
 
@@ -25,7 +23,6 @@ Generate a `dune-project` file.
   >    (bar (>= "0.3"))))
   > EOF
   > mkpkg foo <<EOF
-  > opam-version: "2.0"
   > depends: [
   >     "baz" {>= "0.1"}
   >     "bar" {>= "0.2"}
@@ -161,7 +158,6 @@ should pick one of them.
   >  (depends bar-or-baz))
   > EOF
   $ mkpkg bar-or-baz <<EOF
-  > opam-version: "2.0"
   > depends: [ "bar" | "baz" ]
   > EOF
 
@@ -187,7 +183,6 @@ patterns that can't be simplified
   $ emptypkg quux
   $ emptypkg corge
   $ mkpkg nested-or <<EOF
-  > opam-version: "2.0"
   > depends: [ "quux" (("baz" | "quz") & ("bar" | "qux")) ]
   > EOF
 
@@ -212,7 +207,6 @@ in between.
   >  (depends priorities))
   > EOF
   $ mkpkg priorities <<EOF
-  > opam-version: "2.0"
   > depends: [ ("bar" & "quux") | "baz" ]
   > EOF
 
@@ -238,7 +232,6 @@ versions 1 or 3, as well as making sure it doesn't pick the newest version.
   >  (depends negation))
   > EOF
   $ mkpkg negation <<EOF
-  > opam-version: "2.0"
   > depends: [ "pkg" {!((= "1") | (= "3")) & (< "4")} ]
   > EOF
 

@@ -23,58 +23,46 @@ Helper shell function to generate a dune-project file and generate lockdir for b
 
 A package which is only available on linux:
   $ mkpkg linux-only 0.0.1 <<EOF
-  > opam-version: "2.0"
   > available: os = "linux"
   > EOF
   $ mkpkg linux-only 0.0.2 <<EOF
-  > opam-version: "2.0"
   > available: os = "linux"
   > EOF
 
 A package with three versions with only the middle version available on macos:
   $ mkpkg macos-sometimes 0.0.1 <<EOF
-  > opam-version: "2.0"
   > available: os = "linux"
   > EOF
   $ mkpkg macos-sometimes 0.0.2 <<EOF
-  > opam-version: "2.0"
   > EOF
   $ mkpkg macos-sometimes 0.0.3 <<EOF
-  > opam-version: "2.0"
   > available: os = "linux"
   > EOF
 
 A package with an undefined variable in its availability filter for 0.0.1, and
 which is only available on linux for 0.0.2:
   $ mkpkg undefined-var 0.0.1 <<EOF
-  > opam-version: "2.0"
   > available: xos = "linux"
   > EOF
   $ mkpkg undefined-var 0.0.2 <<EOF
-  > opam-version: "2.0"
   > available: os = "linux"
   > EOF
 
 A package whose availability filter resolves to a string:
   $ mkpkg availability-string 0.0.1 <<EOF
-  > opam-version: "2.0"
   > available: "foo"
   > EOF
   $ mkpkg availability-string 0.0.2 <<EOF
-  > opam-version: "2.0"
   > available: os
   > EOF
 
 A package whose oldest and newest version is only available if with-test is false.
   $ mkpkg with-test-check 0.0.1 <<EOF
-  > opam-version: "2.0"
   > available: ! with-test
   > EOF
   $ mkpkg with-test-check 0.0.2 <<EOF
-  > opam-version: "2.0"
   > EOF
   $ mkpkg with-test-check 0.0.3 <<EOF
-  > opam-version: "2.0"
   > available: ! with-test
   > EOF
 

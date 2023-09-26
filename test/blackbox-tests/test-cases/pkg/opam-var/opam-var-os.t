@@ -9,7 +9,6 @@ to compare their values.
 
   $ mkrepo
   > mkpkg testpkg <<EOF
-  > opam-version: "2.0"
   > build: [
   >   ["echo" arch]
   >   ["echo" os]

@@ -6,7 +6,6 @@ lock file.
 
 Make a package with a patch behind a filter
   $ mkpkg with-patch-filter <<EOF
-  > opam-version: "2.0"
   > patches: ["foo.patch" {switch = "foobar"}]
   > build: ["cat" "foo.ml"]
   > EOF

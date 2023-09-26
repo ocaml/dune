@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695701659536,
+  "lastUpdate": 1695736227753,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -104341,6 +104341,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.472584197633335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ebbfffb7c911e9d4594913a22023ffda4e9826b5",
+          "message": "chore: update spawn (#8768)\n\n- pull some upstream changes including janestreet/spawn#51 (Haiku) and\r\n  janestreet/spawn#52 (Android)\r\n- point to `ocaml-dune/spawn`\r\n- point to a commit instead of a branch name\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-09-26T15:37:00+02:00",
+          "tree_id": "487f5273461b6fe2a03e2ceed99b65f5756dbd35",
+          "url": "https://github.com/ocaml/dune/commit/ebbfffb7c911e9d4594913a22023ffda4e9826b5"
+        },
+        "date": 1695736212997,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "23.6763250321",
             "unit": "seconds"
           }
         ]

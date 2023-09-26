@@ -34,6 +34,7 @@ Welcome to Dune's Documentation!
    toplevel-integration
    variants
    tests
+   howto/bundle
 
 .. toctree::
    :caption: Reference Guides

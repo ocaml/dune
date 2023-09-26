@@ -4,16 +4,8 @@ module Fetch = Dune_pkg.Fetch
 module Opam_repo = Dune_pkg.Opam_repo
 module Repository_id = Dune_pkg.Repository_id
 
-let context_term =
-  Arg.(
-    value
-    & opt (some Arg.context_name) None
-    & info
-        [ "context" ]
-        ~docv:"CONTEXT"
-        ~doc:
-          "Generate the lockdir associated with this context (the default context will \
-           be used if this is omitted)")
+let context_term ~doc =
+  Arg.(value & opt (some Arg.context_name) None & info [ "context" ] ~docv:"CONTEXT" ~doc)
 ;;
 
 module Version_preference = struct
@@ -215,7 +207,11 @@ module Print_solver_env = struct
 
   let term =
     let+ (common : Common.t) = Common.term
-    and+ context_name = context_term
+    and+ context_name =
+      context_term
+        ~doc:
+          "Generate the lockdir associated with this context (the default context will \
+           be used if this is omitted)"
     and+ all_contexts =
       Arg.(
         value
@@ -356,6 +352,25 @@ module Lock = struct
                ]))
   ;;
 
+  let find_local_packages =
+    let open Fiber.O in
+    let+ project =
+      let+ source_dir = Memo.run (Source_tree.root ()) in
+      Source_tree.Dir.project source_dir
+    in
+    Dune_project.packages project
+    |> Package.Name.Map.map ~f:(fun pkg ->
+      let opam_file = Package.to_opam_file pkg in
+      let file =
+        Path.source
+        @@
+        match pkg.has_opam_file with
+        | Generated | Exists false -> Dune_project.file project
+        | Exists true -> pkg.opam_file
+      in
+      { Opam_repo.With_file.opam_file; file })
+  ;;
+
   let solve
     per_context
     ~opam_repository_path
@@ -368,23 +383,7 @@ module Lock = struct
     (* a list of thunks that will perform all the file IO side
        effects after performing validation so that if materializing any
        lockdir would fail then no side effect takes place. *)
-    (let* local_packages =
-       let+ project =
-         let+ source_dir = Memo.run (Source_tree.root ()) in
-         Source_tree.Dir.project source_dir
-       in
-       Dune_project.packages project
-       |> Package.Name.Map.map ~f:(fun pkg ->
-         let opam_file = Package.to_opam_file pkg in
-         let file =
-           Path.source
-           @@
-           match pkg.has_opam_file with
-           | Generated | Exists false -> Dune_project.file project
-           | Exists true -> pkg.opam_file
-         in
-         { Opam_repo.With_file.opam_file; file })
-     in
+    (let* local_packages = find_local_packages in
      let+ solutions =
        Fiber.parallel_map
          per_context
@@ -476,7 +475,11 @@ module Lock = struct
     let+ (common : Common.t) = Common.term
     and+ opam_repository_path = Opam_repository_path.term
     and+ opam_repository_url = Opam_repository_url.term
-    and+ context_name = context_term
+    and+ context_name =
+      context_term
+        ~doc:
+          "Generate the lockdir associated with this context (the default context will \
+           be used if this is omitted)"
     and+ all_contexts =
       Arg.(
         value
@@ -529,6 +532,133 @@ module Lock = struct
   let command = Cmd.v info term
 end
 
+module Outdated = struct
+  let find_outdated_packages
+    ~context_name_arg
+    ~all_contexts_arg
+    ~opam_repository_path
+    ~opam_repository_url
+    ~transitive
+    ()
+    =
+    let open Fiber.O in
+    let+ pps, not_founds =
+      Per_context.choose ~context_name_arg ~all_contexts_arg ~version_preference_arg:None
+      >>= Fiber.parallel_map
+            ~f:
+              (fun
+                { Per_context.lock_dir_path
+                ; version_preference = _
+                ; repos
+                ; solver_env = solver_env_from_context
+                ; context_common = _
+                }
+              ->
+              let solver_env =
+                Print_solver_env.override_solver_env_variables
+                  ~solver_env_from_context
+                  ~sys_bindings_from_current_system:
+                    Dune_pkg.Solver_env.Variable.Sys.Bindings.empty
+              in
+              let+ repos =
+                Lock.get_repos repos solver_env ~opam_repository_path ~opam_repository_url
+              and+ local_packages = Lock.find_local_packages in
+              let lock_dir = Lock_dir.read_disk lock_dir_path in
+              let results =
+                Dune_pkg_outdated.find ~repos ~local_packages lock_dir.packages
+              in
+              ( Dune_pkg_outdated.pp ~transitive ~lock_dir_path results
+              , ( Dune_pkg_outdated.packages_that_were_not_found results
+                  |> Package_name.Set.of_list
+                  |> Package_name.Set.to_list
+                , lock_dir_path
+                , repos ) ))
+      >>| List.split
+    in
+    (match pps with
+     | [ _ ] -> Console.print pps
+     | _ -> Console.print [ Pp.enumerate ~f:Fun.id pps ]);
+    let error_messages =
+      List.filter_map not_founds ~f:(function
+        | [], _, _ -> None
+        | packages, lock_dir_path, repos ->
+          Some
+            [ Pp.textf
+                "When checking %s, the following packages:"
+                (Path.Source.to_string_maybe_quoted lock_dir_path)
+            ; Pp.enumerate packages ~f:(fun name ->
+                Dune_lang.Package_name.to_string name |> Pp.verbatim)
+            ; Pp.text "were not found in the following opam repositories:"
+            ; Pp.enumerate repos ~f:(fun repo ->
+                Opam_repo.serializable repo
+                |> Dyn.option Opam_repo.Serializable.to_dyn
+                |> Dyn.pp)
+            ])
+    in
+    match error_messages with
+    | [] -> ()
+    | [ error_message ] -> User_error.raise error_message
+    | error_messages ->
+      User_error.raise
+        [ Pp.text "Some packages could not be found."
+        ; Pp.enumerate ~f:(Pp.concat ~sep:Pp.newline) error_messages
+        ]
+  ;;
+
+  let term =
+    let+ (common : Common.t) = Common.term
+    and+ context_name_arg =
+      context_term ~doc:"Check for outdated packages in this context"
+    and+ all_contexts_arg =
+      Arg.(
+        value
+        & flag
+        & info [ "all-contexts" ] ~doc:"Check for outdated packages in all contexts")
+    and+ opam_repository_path = Lock.Opam_repository_path.term
+    and+ opam_repository_url = Lock.Opam_repository_url.term
+    and+ transitive =
+      Arg.(
+        value
+        & flag
+        & info
+            [ "transitive" ]
+            ~doc:"Check for outdated packages in transitive dependencies")
+    in
+    let common = Common.forbid_builds common in
+    let config = Common.init common in
+    Scheduler.go ~common ~config
+    @@ find_outdated_packages
+         ~context_name_arg
+         ~all_contexts_arg
+         ~opam_repository_path
+         ~opam_repository_url
+         ~transitive
+  ;;
+
+  let info =
+    let doc = "Check for outdated packages" in
+    let man =
+      [ `S "DESCRIPTION"
+      ; `P
+          "List packages in from lock directory that have newer versions available. By \
+           default, only direct dependencies are checked. The $(b,--transitive) flag can \
+           be used to check transitive dependencies as well."
+      ; `P "For example:"
+      ; `Pre "    \\$ dune pkg outdated"
+      ; `Noblank
+      ; `Pre "    1/2 packages in dune.lock are outdated."
+      ; `Noblank
+      ; `Pre "    - ocaml 4.14.1 < 5.1.0"
+      ; `Noblank
+      ; `Pre "    - dune 3.7.1 < 3.11.0"
+      ]
+    in
+    Cmd.info "outdated" ~doc ~man
+  ;;
+
+  let command = Cmd.v info term
+end
+
 let info =
   let doc = "Experimental package management" in
   let man =
@@ -540,4 +670,4 @@ let info =
   Cmd.info "pkg" ~doc ~man
 ;;
 
-let group = Cmd.group info [ Lock.command; Print_solver_env.command ]
+let group = Cmd.group info [ Lock.command; Print_solver_env.command; Outdated.command ]

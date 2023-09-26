@@ -73,7 +73,7 @@ CAMLprim value spawn_is_osx()
 
 #include <assert.h>
 #include <string.h>
-#if !defined(__CYGWIN__)
+#if !defined(__CYGWIN__) && !defined(__HAIKU__)
 #include <sys/syscall.h>
 #endif
 #include <sys/types.h>
@@ -88,7 +88,7 @@ CAMLprim value spawn_is_osx()
    | pipe2                                                           |
    +-----------------------------------------------------------------+ */
 
-#if defined(__APPLE__)
+#if defined(__APPLE__) || defined(__HAIKU__)
 
 /* vfork(2) is deprecated on macOS >= 12, so we use fork(2) instead. */
 # if defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
@@ -215,7 +215,11 @@ static void subprocess_failure(int failure_fd,
   sigset_t sigset;
   ssize_t written;
 
+#ifdef PIPE_BUF
   CASSERT(sizeof(failure) < PIPE_BUF)
+#else
+  CASSERT(sizeof(failure) < _POSIX_PIPE_BUF)
+#endif
 
   set_error(&failure, errno, function, error_arg);
 
@@ -702,8 +706,15 @@ CAMLprim value spawn_unix(value v_env,
 
      For instance:
      http://git.musl-libc.org/cgit/musl/tree/src/process/posix_spawn.c
+
+     On android, pthread_cancel is not implemented, it is typically
+     patched out or in certain cases reimplemented with atomic_flags
+     https://github.com/search?q=org%3Atermux+pthread_setcancelstate+language%3ADiff&type=code&l=Diff
   */
+
+  #if !defined(__ANDROID__)
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
+  #endif
   sigfillset(&sigset);
   pthread_sigmask(SIG_SETMASK, &sigset, &saved_procmask);
 
@@ -750,7 +761,9 @@ CAMLprim value spawn_unix(value v_env,
 
   close(result_pipe[0]);
   pthread_sigmask(SIG_SETMASK, &saved_procmask, NULL);
+  #if !defined(__ANDROID__)
   pthread_setcancelstate(cancel_state, NULL);
+  #endif
 
   caml_leave_blocking_section();
 

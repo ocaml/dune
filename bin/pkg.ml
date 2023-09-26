@@ -158,72 +158,30 @@ module Per_context = struct
 end
 
 module Print_solver_env = struct
-  (* Add the opam system variables derived from the current system into a
-     solver environment configured in a build context. If variables derived
-     from the current system are also present in the solver environment
-     configured in the build context, an error is raised unless they both have
-     the same value (in which case that value is used). *)
-  let merge_current_system_bindings_into_solver_env_from_context
-    ~context_name
+  (* The system environment variables used by the solver are taken from the
+     current system by default but can be overridden by the build context. *)
+  let override_solver_env_variables
     ~solver_env_from_context
     ~sys_bindings_from_current_system
-    ~use_env_from_current_system
     =
-    let sys =
-      match
-        Dune_pkg.Solver_env.(
-          Variable.Sys.Bindings.union
-            (sys solver_env_from_context)
-            sys_bindings_from_current_system)
-      with
-      | Ok solver_env -> solver_env
-      | Error
-          (`Var_in_both_with_different_values
-            (var, value_from_context, value_from_system)) ->
-        let hints =
-          if use_env_from_current_system
-          then
-            [ Pp.text
-                "This can happen if --use-env-from-current-system is passed and the \
-                 build context specifies environment variables which differ from those \
-                 of the current system."
-            ]
-          else []
-        in
-        User_error.raise
-          ~hints
-          [ Pp.textf
-              "Can't create solver environment for context %s"
-              (String.maybe_quoted @@ Dune_engine.Context_name.to_string context_name)
-          ; Pp.textf
-              "Conflicting values for system environment variable: %s"
-              (String.maybe_quoted @@ Dune_pkg.Solver_env.Variable.Sys.to_string var)
-          ; Pp.textf
-              "The value inferred from the current system is: %s"
-              (String.maybe_quoted value_from_system)
-          ; Pp.textf
-              "The value configured in the build context (%s) is: %s"
-              (String.maybe_quoted @@ Dune_engine.Context_name.to_string context_name)
-              (String.maybe_quoted value_from_context)
-          ]
-    in
-    Dune_pkg.Solver_env.set_sys solver_env_from_context sys
+    Dune_pkg.Solver_env.(
+      Variable.Sys.Bindings.extend
+        sys_bindings_from_current_system
+        (sys solver_env_from_context)
+      |> set_sys solver_env_from_context)
   ;;
 
   let print_solver_env_for_one_context
     ~sys_bindings_from_current_system
-    ~use_env_from_current_system
     { Per_context.solver_env = solver_env_from_context
     ; context_common = { name = context_name; _ }
     ; _
     }
     =
     let solver_env =
-      merge_current_system_bindings_into_solver_env_from_context
-        ~context_name
+      override_solver_env_variables
         ~solver_env_from_context
         ~sys_bindings_from_current_system
-        ~use_env_from_current_system
     in
     Console.print
       [ Pp.textf
@@ -237,7 +195,7 @@ module Print_solver_env = struct
     ~context_name
     ~all_contexts
     ~version_preference
-    ~use_env_from_current_system
+    ~dont_poll_system_solver_variables
     =
     let open Fiber.O in
     let+ per_context =
@@ -246,16 +204,13 @@ module Print_solver_env = struct
         ~all_contexts_arg:all_contexts
         ~version_preference_arg:version_preference
     and+ sys_bindings_from_current_system =
-      if use_env_from_current_system
-      then Dune_pkg.Sys_poll.sys_bindings ~path:(Env_path.path Stdune.Env.initial)
-      else Fiber.return Dune_pkg.Solver_env.Variable.Sys.Bindings.empty
+      if dont_poll_system_solver_variables
+      then Fiber.return Dune_pkg.Solver_env.Variable.Sys.Bindings.empty
+      else Dune_pkg.Sys_poll.sys_bindings ~path:(Env_path.path Stdune.Env.initial)
     in
     List.iter
       per_context
-      ~f:
-        (print_solver_env_for_one_context
-           ~sys_bindings_from_current_system
-           ~use_env_from_current_system)
+      ~f:(print_solver_env_for_one_context ~sys_bindings_from_current_system)
   ;;
 
   let term =
@@ -267,22 +222,19 @@ module Print_solver_env = struct
         & flag
         & info [ "all-contexts" ] ~doc:"Generate the lockdir for all contexts")
     and+ version_preference = Version_preference.term
-    and+ use_env_from_current_system =
+    and+ dont_poll_system_solver_variables =
       Arg.(
         value
         & flag
         & info
-            [ "use-env-from-current-system" ]
+            [ "dont-poll-system-solver-variables" ]
             ~doc:
-              "Set opam system environment variables based on the current system when \
-               solving dependencies. This will restrict packages to just those which can \
-               be installed on the current system. Note that this will mean that the \
-               generated lockdir may not be compatible with other systems. If the build \
-               context(s) specify system environment variables then the solver will use \
-               the union of the environment variables inferred from the current system \
-               and the environment variables set in the build context(s). If the current \
-               system and the build context(s) disagree on the value of an environment \
-               variable then an error is raised.")
+              "Don't derive system solver variables from the current system. Values \
+               assigned to these variables in build contexts will still be used. Note \
+               that Opam filters that depend on unset variables resolve to the value \
+               \"undefined\" which is treated as false. For example if a dependency has \
+               a filter `{os = \"linux\"}` and the variable \"os\" is unset, the \
+               dependency will be excluded. ")
     in
     let common = Common.forbid_builds common in
     let config = Common.init common in
@@ -291,7 +243,7 @@ module Print_solver_env = struct
         ~context_name
         ~all_contexts
         ~version_preference
-        ~use_env_from_current_system)
+        ~dont_poll_system_solver_variables)
   ;;
 
   let info =
@@ -409,7 +361,6 @@ module Lock = struct
     ~opam_repository_path
     ~opam_repository_url
     ~sys_bindings_from_current_system
-    ~use_env_from_current_system
     =
     let open Fiber.O in
     Per_context.check_for_dup_lock_dir_paths per_context;
@@ -437,11 +388,9 @@ module Lock = struct
              }
            ->
            let solver_env =
-             Print_solver_env.merge_current_system_bindings_into_solver_env_from_context
-               ~context_name
+             Print_solver_env.override_solver_env_variables
                ~solver_env_from_context
                ~sys_bindings_from_current_system
-               ~use_env_from_current_system
            in
            let+ repos =
              get_repos repos solver_env ~opam_repository_path ~opam_repository_url
@@ -487,8 +436,8 @@ module Lock = struct
   let lock
     ~context_name
     ~all_contexts
+    ~dont_poll_system_solver_variables
     ~version_preference
-    ~use_env_from_current_system
     ~opam_repository_path
     ~opam_repository_url
     =
@@ -499,16 +448,15 @@ module Lock = struct
         ~all_contexts_arg:all_contexts
         ~version_preference_arg:version_preference
     and* sys_bindings_from_current_system =
-      if use_env_from_current_system
-      then Dune_pkg.Sys_poll.sys_bindings ~path:(Env_path.path Stdune.Env.initial)
-      else Fiber.return Dune_pkg.Solver_env.Variable.Sys.Bindings.empty
+      if dont_poll_system_solver_variables
+      then Fiber.return Dune_pkg.Solver_env.Variable.Sys.Bindings.empty
+      else Dune_pkg.Sys_poll.sys_bindings ~path:(Env_path.path Stdune.Env.initial)
     in
     solve
       per_context
       ~opam_repository_path
       ~opam_repository_url
       ~sys_bindings_from_current_system
-      ~use_env_from_current_system
   ;;
 
   let term =
@@ -522,22 +470,19 @@ module Lock = struct
         & flag
         & info [ "all-contexts" ] ~doc:"Generate the lockdir for all contexts")
     and+ version_preference = Version_preference.term
-    and+ use_env_from_current_system =
+    and+ dont_poll_system_solver_variables =
       Arg.(
         value
         & flag
         & info
-            [ "use-env-from-current-system" ]
+            [ "dont-poll-system-solver-variables" ]
             ~doc:
-              "Set opam system environment variables based on the current system when \
-               solving dependencies. This will restrict packages to just those which can \
-               be installed on the current system. Note that this will mean that the \
-               generated lockdir may not be compatible with other systems. If the build \
-               context(s) specify system environment variables then the solver will use \
-               the union of the environment variables inferred from the current system \
-               and the environment variables set in the build context(s). If the current \
-               system and the build context(s) disagree on the value of an environment \
-               variable then an error is raised.")
+              "Don't derive system solver variables from the current system. Values \
+               assigned to these variables in build contexts will still be used. Note \
+               that Opam filters that depend on unset variables resolve to the value \
+               \"undefined\" which is treated as false. For example if a dependency has \
+               a filter `{os = \"linux\"}` and the variable \"os\" is unset, the \
+               dependency will be excluded. ")
     in
     let common = Common.forbid_builds common in
     let config = Common.init common in
@@ -545,8 +490,8 @@ module Lock = struct
       lock
         ~context_name
         ~all_contexts
+        ~dont_poll_system_solver_variables
         ~version_preference
-        ~use_env_from_current_system
         ~opam_repository_path
         ~opam_repository_url)
   ;;

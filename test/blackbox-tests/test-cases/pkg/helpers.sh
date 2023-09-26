@@ -44,7 +44,7 @@ mkpkg() {
 
 solve_project() {
   cat >dune-project
-  dune pkg lock --opam-repository-path=mock-opam-repository
+  dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
 }
 
 make_lockdir() {

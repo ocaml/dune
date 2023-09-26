@@ -85,7 +85,16 @@ end = struct
   ;;
 end
 
-module Context_for_dune = struct
+module Context_for_dune : sig
+  include CONTEXT
+
+  val create
+    :  solver_env:Solver_env.t
+    -> repos:Opam_repo.t list
+    -> local_packages:OpamFile.OPAM.t OpamTypes.name_map
+    -> version_preference:Version_preference.t
+    -> t
+end = struct
   let local_package_default_version =
     OpamPackage.Version.of_string Lock_dir.Pkg_info.default_version
   ;;

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695772107776,
+  "lastUpdate": 1695772437889,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -81111,6 +81111,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.7895122680133333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6d2b2b2d134199f7e6770e39f6d555621d786873",
+          "message": "Add [Stdune.Bit_set] (#8771)\n\nThis allows us to represent small sets as a single word\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-27T00:28:34+01:00",
+          "tree_id": "ed41eb27e744d57230d753dec09ef1e9bd80f22e",
+          "url": "https://github.com/ocaml/dune/commit/6d2b2b2d134199f7e6770e39f6d555621d786873"
+        },
+        "date": 1695772436730,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "65.08099687656666",
             "unit": "seconds"
           }
         ]

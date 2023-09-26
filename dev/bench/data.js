@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695748423447,
+  "lastUpdate": 1695748760954,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -80937,6 +80937,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.9334221108799998",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a5d9522d39487e8af9811e8c6498a58bee144caf",
+          "message": "test(pkg): make make test more repro (#8755)\n\nWe stop outputing the expansion of make and rely on it being tested in\r\nmake.t.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-26T17:53:36+01:00",
+          "tree_id": "09ecde7c21f2b9ceb763b28c6b473206009ee4dc",
+          "url": "https://github.com/ocaml/dune/commit/a5d9522d39487e8af9811e8c6498a58bee144caf"
+        },
+        "date": 1695748759871,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "66.05883736051332",
             "unit": "seconds"
           }
         ]

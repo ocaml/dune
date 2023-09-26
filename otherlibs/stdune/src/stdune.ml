@@ -108,6 +108,7 @@ module Bytes_unit = Bytes_unit
 module Dev_null = Dev_null
 module Platform = Platform
 module Per_item = Per_item
+module Bit_set = Bit_set
 
 module type Per_item = Per_item_intf.S
 

@@ -323,7 +323,7 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
              let+ driver, _ = driver_and_libs in
              sprintf "let () = %s ()\n" driver.info.main)))
   in
-  let linkages = [ Exe.Linkage.native_or_custom ctx ] in
+  let linkages = [ Exe.Linkage.native_or_custom (Context.ocaml ctx) ] in
   let program : Exe.Program.t =
     { name = Filename.remove_extension (Path.Build.basename target)
     ; main_module_name

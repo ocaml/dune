@@ -8,10 +8,15 @@ let first_exe (exes : Executables.t) = snd (List.hd exes.names)
 let linkages (ctx : Context.t) ~(exes : Executables.t) ~explicit_js_mode =
   let module L = Dune_file.Executables.Link_mode in
   let l =
-    let has_native = Result.is_ok (Context.ocaml ctx).ocamlopt in
+    let ocaml = Context.ocaml ctx in
+    let has_native = Result.is_ok ocaml.ocamlopt in
+    let dynamically_linked_foreign_archives =
+      Context.dynamically_linked_foreign_archives ctx
+    in
     let modes =
       L.Map.to_list exes.modes
-      |> List.map ~f:(fun (mode, loc) -> Exe.Linkage.of_user_config ctx ~loc mode)
+      |> List.map ~f:(fun (mode, loc) ->
+        Exe.Linkage.of_user_config ocaml ~dynamically_linked_foreign_archives ~loc mode)
     in
     let modes =
       if has_native
@@ -34,7 +39,7 @@ let linkages (ctx : Context.t) ~(exes : Executables.t) ~explicit_js_mode =
   if L.Map.mem exes.modes L.byte
      && (not (L.Map.mem exes.modes L.native))
      && not (L.Map.mem exes.modes L.exe)
-  then Exe.Linkage.custom ctx :: l
+  then Exe.Linkage.custom (Context.ocaml ctx).version :: l
   else l
 ;;
 

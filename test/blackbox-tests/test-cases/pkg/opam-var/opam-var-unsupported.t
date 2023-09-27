@@ -3,7 +3,6 @@
   $ mkrepo
   > fail_solve() {
   >   mkpkg testpkg <<EOF
-  > opam-version: "2.0"
   > build: [ "echo" $1 ]
   > EOF
   >   solve_output=$(solve testpkg 2>&1)

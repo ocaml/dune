@@ -7,7 +7,6 @@ must do the same.
 
 Make a package with a substs and patches field field 
   $ mkpkg with-substs-and-patches <<EOF
-  > opam-version: "2.0"
   > substs: ["foo.patch"]
   > patches: ["foo.patch"]
   > build: [ "sh" "-c" "[ -e foo.ml ] && cat foo.ml" ]

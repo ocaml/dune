@@ -4,7 +4,6 @@
 A package with different linux and macos dependencies including a test-only
 dependency:
   $ mkpkg foo <<EOF
-  > opam-version: "2.0"
   > depends: [
   >   "foo-linux" {os = "linux"}
   >   "foo-macos" {os = "macos"}
@@ -12,15 +11,12 @@ dependency:
   > ]
   > EOF
   $ mkpkg foo-linux <<EOF
-  > opam-version: "2.0"
   > available: os = "linux"
   > EOF
   $ mkpkg foo-linux-test-only <<EOF
-  > opam-version: "2.0"
   > available: os = "linux"
   > EOF
   $ mkpkg foo-macos <<EOF
-  > opam-version: "2.0"
   > available: os = "macos"
   > EOF
 
@@ -41,21 +37,18 @@ test-only dependency because we don't add transitive test dependencies:
 A package with different linux and macos dependencies which are mutually
 incompatible:
   $ mkpkg bar <<EOF
-  > opam-version: "2.0"
   > depends: [
   >   "bar-linux" {os = "linux"}
   >   "bar-macos" {os = "macos"}
   > ]
   > EOF
   $ mkpkg bar-linux <<EOF
-  > opam-version: "2.0"
   > available: os = "linux"
   > conflicts: [
   >   "bar-macos"
   > ]
   > EOF
   $ mkpkg bar-macos <<EOF
-  > opam-version: "2.0"
   > available: os = "macos"
   > conflicts: [
   >   "bar-linux"

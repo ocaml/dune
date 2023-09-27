@@ -8,7 +8,6 @@ Make a package with two patches, one inside a directory. The first patch patches
 file and the second patches two, one of the files is in a subdirectory.:w
 
   $ mkpkg with-patch <<EOF
-  > opam-version: "2.0"
   > patches: ["foo.patch" "dir/bar.patch"]
   > build: ["cat" "foo.ml" "bar.ml" "dir/baz.ml"]
   > EOF

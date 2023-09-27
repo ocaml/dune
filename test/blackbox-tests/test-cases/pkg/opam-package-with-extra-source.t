@@ -3,7 +3,6 @@
 
 Make a package with an extra-source field
   $ mkpkg with-extra-source <<EOF
-  > opam-version: "2.0"
   > extra-source "some/file" {
   >   src: "https://some-url"
   >   checksum: "sha256=8beda92f97cde6d4a55a836ca6dc9f860bb5f1a6b765b80be4594943288571cf"
@@ -13,7 +12,6 @@ Make a package with an extra-source field
 Make a package with an extra-source field with an md5 checksum
 
   $ mkpkg with-extra-source-md5 <<EOF
-  > opam-version: "2.0"
   > extra-source "some/file" {
   >   src: "https://some-url"
   >   checksum: "md5=8beda92f97cde6d4a55a836ca6dc9f86"
@@ -23,7 +21,6 @@ Make a package with an extra-source field with an md5 checksum
 Make a package with an extra-source field and multiple checksums
 
   $ mkpkg with-extra-source-multiple-checksums <<EOF
-  > opam-version: "2.0"
   > extra-source "some/file" {
   >   src: "https://some-url"
   >   checksum: [

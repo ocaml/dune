@@ -38,7 +38,8 @@ mkpkg() {
     version="$2"
   fi
   mkdir -p $mock_packages/$name/$name.$version
-  cat >$mock_packages/$name/$name.$version/opam
+  echo 'opam-version: "2.0"' > $mock_packages/$name/$name.$version/opam
+  cat >>$mock_packages/$name/$name.$version/opam
 }
 
 solve_project() {

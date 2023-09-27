@@ -504,7 +504,10 @@ let opam_package_to_lock_file_pkg ~repos ~local_packages opam_package =
     |> make_action
     |> Option.map ~f:build_env
   in
-  { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env = [] }
+  let exported_env =
+    OpamFile.OPAM.env opam_file |> List.map ~f:opam_env_update_to_env_update
+  in
+  { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env }
 ;;
 
 let solve_package_list local_packages context =

@@ -208,12 +208,11 @@ let ocamlmklib
   then
     (* Build both the static and dynamic targets in one [ocamlmklib] invocation,
        unless dynamically linked foreign archives are disabled. *)
-    build
-      ~sandbox:Sandbox_config.no_special_requirements
-      ~custom:false
-      (if Context.dynamically_linked_foreign_archives ctx
-       then [ static_target; dynamic_target ]
-       else [ static_target ])
+    Context.dynamically_linked_foreign_archives ctx
+    >>| (function
+          | true -> [ static_target; dynamic_target ]
+          | false -> [ static_target ])
+    >>= build ~sandbox:Sandbox_config.no_special_requirements ~custom:false
   else
     let open Memo.O in
     (* Build the static target only by passing the [-custom] flag. *)
@@ -231,7 +230,10 @@ let ocamlmklib
        "optional targets", allowing us to run [ocamlmklib] with the [-failsafe]
        flag, which always produces the static target and sometimes produces the
        dynamic target too. *)
-    Memo.when_ (Context.dynamically_linked_foreign_archives ctx) (fun () ->
+    let* dynamically_linked_foreign_archives =
+      Context.dynamically_linked_foreign_archives ctx
+    in
+    Memo.when_ dynamically_linked_foreign_archives (fun () ->
       build ~sandbox:Sandbox_config.needs_sandboxing ~custom:false [ dynamic_target ])
 ;;
 

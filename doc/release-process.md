@@ -41,6 +41,7 @@ stateDiagram-v2
 - Prepare:
   - Open tracking issue with expected alpha1 date
   - List (and update) known blockers. These prevent releasing `x.y.0`
+  - Add "All x.y.z changelogs merged" as blocker
 
 - Alpha time:
   - On alpha branch, prepare alpha release:
@@ -58,9 +59,7 @@ stateDiagram-v2
   - Go/no go for next alpha:
     - the goal is to determine, once the known blockers are fixed, if we need
       an alpha(N+1) to get enough confidence about `x.y.0`
-    - downside if release is GO but a bug is found: need a quick point release.
-    - downside if release is NO GO but not bug is found: waste of ~1 day and
-      the ~50k builds.
+    - Mark alpha PR as closed
 
 - Release time:
   - On main, prepare changelog (compile entries, set header with version)
@@ -84,4 +83,50 @@ stateDiagram-v2
 
 ## Point Releases / Patch Releases (`x.y.z`, `z >= 0`)
 
-TODO
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Prepare
+    Prepare --> Backport
+    Backport --> Backport
+    Backport --> Release
+    Release --> PostRelease
+    PostRelease --> [*]
+```
+
+- Prepare
+  - Create release tracking issue
+  - List fixes present in main to backport
+  - Blockers for this release include:
+    - all backports of listed fixes
+    - changelogs of previous point releases are merged
+
+- Backport
+  - Branch setup
+    - (z=1) Create branch `x.y` from commit tagged `x.y.0`
+    - (z>1) Position on branch `x.y`
+  - `git cherry-pick` commits as merged in `main`
+  - Open PR
+    - Set `x.y` as target branch, e.g. `gh pr create -B x.y`
+    - Title starts with `[x.y]`
+    - List PR in blockers
+
+- Release
+  - Position on `x.y`
+  - Prepare changelog
+  - Open a PR `prepare-x.y.z`
+  - `make opam-release`
+  - Triage
+
+- Post-release
+  - Open PR on `ocaml/ocaml.org` to add a file in under `data/changelog/dune`
+  - Post changelog on Discuss in the same thread as `x.y.0`
+  - Merge changelog
+  - Close release tracking issue
+
+## Decisions
+
+- Release Go/No Go after alpha:
+  - downside if release is GO but a bug is found: need a quick point release.
+  - downside if release is NO GO but not bug is found: waste of ~1 day and
+    the ~50k builds.

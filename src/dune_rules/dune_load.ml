@@ -3,7 +3,8 @@ open Memo.O
 
 module Jbuild_plugin : sig
   val create_plugin_wrapper
-    :  Context.t
+    :  Context_name.t
+    -> Ocaml_config.t
     -> exec_dir:Path.t
     -> plugin:Path.Outside_build_dir.t
     -> wrapper:Path.Build.t
@@ -106,19 +107,11 @@ end = struct
           ])
   ;;
 
-  let create_plugin_wrapper (context : Context.t) ~exec_dir ~plugin ~wrapper ~target =
+  let create_plugin_wrapper context ocaml_config ~exec_dir ~plugin ~wrapper ~target =
     let open Memo.O in
     let+ plugin_contents = Fs_memo.file_contents plugin in
-    let ocaml_config = (Context.ocaml context).ocaml_config in
     Io.with_file_out (Path.build wrapper) ~f:(fun oc ->
-      write
-        oc
-        ~context:(Context.name context)
-        ~ocaml_config
-        ~target
-        ~exec_dir
-        ~plugin
-        ~plugin_contents);
+      write oc ~context ~ocaml_config ~target ~exec_dir ~plugin ~plugin_contents);
     check_no_requires (Path.outside_build_dir plugin) plugin_contents
   ;;
 end
@@ -161,9 +154,11 @@ module Script = struct
     let wrapper = Path.Build.extend_basename generated_dune_file ~suffix:".ml" in
     ensure_parent_dir_exists generated_dune_file;
     let* context = Context.DB.get context in
+    let ocaml = Context.ocaml context in
     let* () =
       Jbuild_plugin.create_plugin_wrapper
-        context
+        (Context.name context)
+        ocaml.ocaml_config
         ~exec_dir:(Path.source dir)
         ~plugin:(In_source_dir file)
         ~wrapper

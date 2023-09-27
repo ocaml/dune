@@ -27,6 +27,16 @@ gitGraph
 
 ## Minor Releases (`x.y.0`)
 
+```mermaid
+stateDiagram-v2
+    [*] --> Prepare
+    Prepare --> Alpha
+    Alpha --> Alpha
+    Alpha --> Release
+    Release --> PostRelease
+    PostRelease --> [*]
+```
+
 - Prepare:
   - Open tracking issue with expected alpha1 date
   - List (and update) known blockers. These prevent releasing `x.y.0`

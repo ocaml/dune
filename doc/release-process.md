@@ -140,3 +140,7 @@ stateDiagram-v2
   - downside if release is GO but a bug is found: need a quick point release.
   - downside if release is NO GO but not bug is found: waste of ~1 day and
     the ~50k builds.
+
+- Determine if a change can be backported:
+  - it needs to be a fix, with no version-specific behaviour
+  - it needs to be merged in `main`

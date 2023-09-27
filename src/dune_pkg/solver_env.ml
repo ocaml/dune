@@ -138,7 +138,7 @@ module Variable = struct
 
       let encode t =
         let open Encoder in
-        Map.to_list t |> list (pair (fun x -> string (to_string x)) string)
+        Map.to_list t |> List.map ~f:(pair (fun x -> string (to_string x)) string)
       ;;
 
       type union_error = [ `Var_in_both_with_different_values of T.t * string * string ]
@@ -190,7 +190,8 @@ module Variable = struct
 
       let encode { opam_version } =
         let open Encoder in
-        list (pair (fun x -> string (to_string x)) string) [ `Opam_version, opam_version ]
+        [ `Opam_version, opam_version ]
+        |> List.map ~f:(pair (fun x -> string (to_string x)) string)
       ;;
 
       let pp { opam_version } =

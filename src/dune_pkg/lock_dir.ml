@@ -375,7 +375,7 @@ let encode_metadata { version; ocaml; repos; solver_env; packages = _ } =
      | None -> []
      | Some ocaml -> [ list sexp [ string "ocaml"; Package_name.encode (snd ocaml) ] ])
   @ [ list sexp (string "repositories" :: Repositories.encode repos) ]
-  @ [ List [ string "solver_env"; Solver_env.encode solver_env ] ]
+  @ [ List (string "solver_env" :: Solver_env.encode solver_env) ]
 ;;
 
 let decode_metadata =

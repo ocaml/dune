@@ -32,15 +32,15 @@ gitGraph
   commit id: "feat(1)"
   commit id: "feat(2)"
   commit id: "feat(3)"
-  branch "3.10-0~alpha"
-  commit tag: "3.10.0~alpha1"
+  branch "x.y-0~alpha"
+  commit tag: "x.y.0~alpha1"
   checkout main
   commit id: "fix(1)"
-  checkout "3.10-0~alpha"
+  checkout "x.y-0~alpha"
   cherry-pick id: "fix(1)"
-  commit tag: "3.10.0~alpha2"
+  commit tag: "x.y.0~alpha2"
   checkout main
-  commit tag: "3.10.0"
+  commit tag: "x.y.0"
 ```
 
 ```mermaid
@@ -98,6 +98,20 @@ stateDiagram-v2
   - Close tracking issue
 
 ## Point Releases / Patch Releases (`x.y.z`, `z >= 0`)
+
+```mermaid
+gitGraph
+  commit tag: "3.10.0"
+  commit id: "fix(1)"
+  commit id: "feat(1)"
+  commit id: "fix(2)"
+  commit tag: "3.10.0"
+  branch 3.10
+  cherry-pick id: "fix(1)"
+  cherry-pick id: "fix(2)"
+  commit tag: "3.10.1"
+  checkout main
+```
 
 ```mermaid
 stateDiagram-v2

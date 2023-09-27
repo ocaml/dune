@@ -377,23 +377,7 @@ module Build_environment_kind = struct
   ;;
 end
 
-let make_installed_env env name findlib env_nodes version profile =
-  let env =
-    (* See comment in ansi_color.ml for setup_env_for_colors. For versions
-       where OCAML_COLOR is not supported, but 'color' is in OCAMLPARAM, use
-       the latter. If 'color' is not supported, we just don't force colors
-       with 4.02. *)
-    if !Clflags.capture_outputs
-       (* CR rgrinberg: what if we just set [OCAML_COLOR] and [OCAMLPARAM]
-          unconditionally? These ancient versions of OCaml aren't important
-          anymore and thsi would allow us to initialize the environment without
-          building and running the compiler *)
-       && Lazy.force Ansi_color.stderr_supports_color
-       && Ocaml.Version.supports_color_in_ocamlparam version
-       && not (Ocaml.Version.supports_ocaml_color version)
-    then Ocaml.Env.with_color env
-    else env
-  in
+let make_installed_env env name findlib env_nodes profile =
   let vars =
     Env.Map.singleton
       Execution_env.Inside_dune.var
@@ -468,7 +452,6 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
         builder.name
         findlib
         builder.env_nodes
-        ocaml.version
         builder.profile
     in
     { builder with env = installed_env }

@@ -311,6 +311,7 @@ type t =
   ; packages : Pkg.t Package_name.Map.t
   ; ocaml : (Loc.t * Package_name.t) option
   ; repos : Repositories.t
+  ; solver_env : Solver_env.t
   }
 
 let remove_locs t =
@@ -320,23 +321,25 @@ let remove_locs t =
   }
 ;;
 
-let equal { version; packages; ocaml; repos } t =
+let equal { version; packages; ocaml; repos; solver_env } t =
   Syntax.Version.equal version t.version
   && Option.equal (Tuple.T2.equal Loc.equal Package_name.equal) ocaml t.ocaml
   && Repositories.equal repos t.repos
   && Package_name.Map.equal packages t.packages ~equal:Pkg.equal
+  && Solver_env.equal solver_env t.solver_env
 ;;
 
-let to_dyn { version; packages; ocaml; repos } =
+let to_dyn { version; packages; ocaml; repos; solver_env } =
   Dyn.record
     [ "version", Syntax.Version.to_dyn version
     ; "packages", Package_name.Map.to_dyn Pkg.to_dyn packages
     ; "ocaml", Dyn.option (Tuple.T2.to_dyn Loc.to_dyn_hum Package_name.to_dyn) ocaml
     ; "repos", Repositories.to_dyn repos
+    ; "solver_env", Solver_env.to_dyn solver_env
     ]
 ;;
 
-let create_latest_version packages ~ocaml ~repos =
+let create_latest_version packages ~ocaml ~repos ~solver_env =
   let version = Syntax.greatest_supported_version Dune_lang.Pkg.syntax in
   let complete, used =
     match repos with
@@ -347,7 +350,7 @@ let create_latest_version packages ~ocaml ~repos =
       complete, Some used
   in
   let repos : Repositories.t = { complete; used } in
-  { version; packages; ocaml; repos }
+  { version; packages; ocaml; repos; solver_env }
 ;;
 
 let default_path = Path.Source.(relative root "dune.lock")
@@ -357,7 +360,7 @@ module Metadata = Dune_sexp.Versioned_file.Make (Unit)
 
 let () = Metadata.Lang.register Dune_lang.Pkg.syntax ()
 
-let encode_metadata { version; ocaml; repos; packages = _ } =
+let encode_metadata { version; ocaml; repos; solver_env; packages = _ } =
   let open Encoder in
   let base =
     list
@@ -372,16 +375,16 @@ let encode_metadata { version; ocaml; repos; packages = _ } =
      | None -> []
      | Some ocaml -> [ list sexp [ string "ocaml"; Package_name.encode (snd ocaml) ] ])
   @ [ list sexp (string "repositories" :: Repositories.encode repos) ]
+  @ [ List [ string "solver_env"; Solver_env.encode solver_env ] ]
 ;;
 
 let decode_metadata =
   let open Decoder in
   fields
     (let+ ocaml = field_o "ocaml" (located Package_name.decode)
-     and+ repos =
-       field "repositories" ~default:Repositories.default Repositories.decode
-     in
-     ocaml, repos)
+     and+ repos = field "repositories" ~default:Repositories.default Repositories.decode
+     and+ solver_env = field "solver_env" Solver_env.decode in
+     ocaml, repos, solver_env)
 ;;
 
 module Package_filename = struct
@@ -503,17 +506,17 @@ module Make_load (Io : sig
 struct
   let load_metadata metadata_file_path =
     let open Io.O in
-    let+ syntax, version, ocaml, repos =
+    let+ syntax, version, ocaml, repos, solver_env =
       Io.with_lexbuf_from_file metadata_file_path ~f:(fun lexbuf ->
         Metadata.parse_contents
           lexbuf
           ~f:(fun { Metadata.Lang.Instance.syntax; data = (); version } ->
             let open Decoder in
-            let+ ocaml, repos = decode_metadata in
-            syntax, version, ocaml, repos))
+            let+ ocaml, repos, solver_env = decode_metadata in
+            syntax, version, ocaml, repos, solver_env))
     in
     if String.equal (Syntax.name syntax) (Syntax.name Dune_lang.Pkg.syntax)
-    then version, ocaml, repos
+    then version, ocaml, repos, solver_env
     else
       User_error.raise
         [ Pp.textf
@@ -561,7 +564,7 @@ struct
   let load lock_dir_path =
     let open Io.O in
     check_path lock_dir_path;
-    let* version, ocaml, repos =
+    let* version, ocaml, repos, solver_env =
       load_metadata (Path.Source.relative lock_dir_path metadata)
     in
     let+ packages =
@@ -577,7 +580,7 @@ struct
         package_name, pkg)
       >>| Package_name.Map.of_list_exn
     in
-    { version; packages; ocaml; repos }
+    { version; packages; ocaml; repos; solver_env }
   ;;
 end
 

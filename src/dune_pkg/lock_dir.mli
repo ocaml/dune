@@ -47,6 +47,7 @@ type t =
   ; packages : Pkg.t Package_name.Map.t
   ; ocaml : (Loc.t * Package_name.t) option
   ; repos : Repositories.t
+  ; solver_env : Solver_env.t
   }
 
 val remove_locs : t -> t
@@ -57,6 +58,7 @@ val create_latest_version
   :  Pkg.t Package_name.Map.t
   -> ocaml:(Loc.t * Package_name.t) option
   -> repos:Opam_repo.t list option
+  -> solver_env:Solver_env.t
   -> t
 
 val default_path : Path.Source.t

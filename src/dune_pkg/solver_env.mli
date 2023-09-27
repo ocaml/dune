@@ -43,6 +43,8 @@ module Variable : sig
       (** Merge two environments returning an error if they both contain a
           binding of the same variable to different values. *)
       val union : t -> t -> (t, union_error) result
+
+      val encode : t Dune_lang.Encoder.t
     end
   end
 
@@ -68,6 +70,7 @@ type t
 
 val default : t
 val decode : t Dune_sexp.Decoder.t
+val encode : t Dune_sexp.Encoder.t
 val to_dyn : t -> Dyn.t
 val equal : t -> t -> bool
 val sys : t -> Variable.Sys.Bindings.t

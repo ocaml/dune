@@ -54,6 +54,11 @@ module Variable = struct
         of_ordered_set ordered_set
       ;;
 
+      let encode t =
+        let open Encoder in
+        list (fun x -> string (to_string x)) (to_list t)
+      ;;
+
       let pp t =
         to_list all
         |> Pp.enumerate ~f:(fun flag -> Pp.textf "%s = %b" (to_string flag) (mem t flag))
@@ -131,6 +136,11 @@ module Variable = struct
             ]
       ;;
 
+      let encode t =
+        let open Encoder in
+        Map.to_list t |> list (pair (fun x -> string (to_string x)) string)
+      ;;
+
       type union_error = [ `Var_in_both_with_different_values of T.t * string * string ]
 
       exception E of union_error
@@ -176,6 +186,11 @@ module Variable = struct
 
       let get { opam_version } = function
         | `Opam_version -> opam_version
+      ;;
+
+      let encode { opam_version } =
+        let open Encoder in
+        list (pair (fun x -> string (to_string x)) string) [ `Opam_version, opam_version ]
       ;;
 
       let pp { opam_version } =
@@ -238,6 +253,17 @@ let decode =
      in
      let const = default.const in
      { flags; sys; const; repos }
+;;
+
+let encode { flags; sys; const; repos } =
+  let open Encoder in
+  Dune_lang.List
+    (record_fields
+       [ field Fields.flags Variable.Flag.Set.encode flags
+       ; field Fields.sys Variable.Sys.Bindings.encode sys
+       ; field Fields.const Variable.Const.Bindings.encode const
+       ; field Fields.repos (list Workspace.Repository.Name.encode) repos
+       ])
 ;;
 
 let to_dyn { flags; sys; const; repos } =

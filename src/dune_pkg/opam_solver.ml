@@ -594,7 +594,11 @@ let solve_lock_dir solver_env version_preference repos ~local_packages =
              (Package_name.to_string name))
           []
       | Ok pkgs_by_name ->
-        Lock_dir.create_latest_version pkgs_by_name ~ocaml:None ~repos:(Some repos)
+        Lock_dir.create_latest_version
+          pkgs_by_name
+          ~ocaml:None
+          ~repos:(Some repos)
+          ~solver_env
     in
     let files =
       opam_packages_to_lock

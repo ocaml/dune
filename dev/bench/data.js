@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695831997988,
+  "lastUpdate": 1695832253686,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -32101,6 +32101,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.4592142216",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0f4da58b74bb8a2816eed6f941e7aae81a58b688",
+          "message": "pkg: add hint to \"dune.lock does not exist\" error (#8777)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-27T17:09:57+01:00",
+          "tree_id": "553992f4ab7fc26fbd08a6f1c65a0c389356aec4",
+          "url": "https://github.com/ocaml/dune/commit/0f4da58b74bb8a2816eed6f941e7aae81a58b688"
+        },
+        "date": 1695832251161,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.20960314230667",
             "unit": "seconds"
           }
         ]

@@ -20,7 +20,7 @@ let term =
     let open Action_builder.O in
     let+ () =
       Alias.in_dir
-        ~name:(Dune_engine.Alias.Name.of_string "doc")
+        ~name:Dune_engine.Alias.Name.doc
         ~recursive:true
         ~contexts:setup.contexts
         dir

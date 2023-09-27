@@ -247,24 +247,11 @@ let default =
 let decode =
   let open Decoder in
   fields
-  @@ let+ flags = field Fields.flags ~default:default.flags Variable.Flag.Set.decode
-     and+ sys = field Fields.sys ~default:default.sys Variable.Sys.Bindings.decode
-     and+ repos =
-       field Fields.repos ~default:default.repos (repeat Workspace.Repository.Name.decode)
-     in
+    (let+ sys = field Fields.sys ~default:default.sys Variable.Sys.Bindings.decode in
+     let repos = default.repos in
+     let flags = default.flags in
      let const = default.const in
-     { flags; sys; const; repos }
-;;
-
-let encode { flags; sys; const; repos } =
-  let open Encoder in
-  Dune_lang.List
-    (record_fields
-       [ field Fields.flags Variable.Flag.Set.encode flags
-       ; field Fields.sys Variable.Sys.Bindings.encode sys
-       ; field Fields.const Variable.Const.Bindings.encode const
-       ; field Fields.repos (list Workspace.Repository.Name.encode) repos
-       ])
+     { flags; sys; const; repos })
 ;;
 
 let to_dyn { flags; sys; const; repos } =

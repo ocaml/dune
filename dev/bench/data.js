@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695846609844,
+  "lastUpdate": 1695847037734,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -32188,6 +32188,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "46.91374396851334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9e6bb889b4601c16c6054694a08ddf06e88fbee3",
+          "message": "refactor: remove color settings for 4.03 and 4.04 (#8778)\n\nStop supporting OCAMLPARAM to turn off colors for OCaml 4.03 and 4.04\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-27T21:16:43+01:00",
+          "tree_id": "f2f1d68eb4c8e322c772a8eaf5abc7daabb1308d",
+          "url": "https://github.com/ocaml/dune/commit/9e6bb889b4601c16c6054694a08ddf06e88fbee3"
+        },
+        "date": 1695847036975,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.01541273892",
             "unit": "seconds"
           }
         ]

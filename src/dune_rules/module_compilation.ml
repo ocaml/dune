@@ -293,9 +293,10 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
       let* () = build_cm ~cm_kind:(Ocaml Cmo) ~phase:None
       and* () =
         let ctx = Compilation_context.context cctx in
+        let ocaml = Compilation_context.ocaml cctx in
         let can_split =
-          Ocaml.Version.supports_split_at_emit (Context.ocaml ctx).version
-          || Ocaml_config.is_dev_version (Context.ocaml ctx).ocaml_config
+          Ocaml.Version.supports_split_at_emit ocaml.version
+          || Ocaml_config.is_dev_version ocaml.ocaml_config
         in
         match Context.fdo_target_exe ctx, can_split with
         | None, _ -> build_cm ~cm_kind:(Ocaml Cmx) ~phase:None

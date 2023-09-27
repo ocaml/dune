@@ -435,8 +435,8 @@ let setup_build_archives
   let modules = Compilation_context.modules cctx in
   let js_of_ocaml = Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml in
   let sctx = Compilation_context.super_context cctx in
-  let ctx = Compilation_context.context cctx in
-  let { Lib_config.ext_obj; natdynlink_supported; _ } = (Context.ocaml ctx).lib_config in
+  let ocaml = Compilation_context.ocaml cctx in
+  let { Lib_config.ext_obj; natdynlink_supported; _ } = ocaml.lib_config in
   let open Memo.O in
   let* () =
     Modules.exit_module modules
@@ -572,9 +572,7 @@ let library_rules
   let dir = Compilation_context.dir cctx in
   let scope = Compilation_context.scope cctx in
   let* requires_compile = Compilation_context.requires_compile cctx in
-  let stdlib_dir =
-    (Compilation_context.context cctx |> Context.ocaml).lib_config.stdlib_dir
-  in
+  let stdlib_dir = (Compilation_context.ocaml cctx).lib_config.stdlib_dir in
   let top_sorted_modules =
     let impl_only = Modules.impl_only modules in
     Dep_graph.top_closed_implementations

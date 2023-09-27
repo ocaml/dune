@@ -44,7 +44,7 @@ let term =
         | Darwin -> Some ("open", [ "-u" ])
         | Linux -> Some ("xdg-open", [])
         | Windows -> None
-        | Other -> None
+        | Other | FreeBSD | NetBSD | OpenBSD -> None
       in
       let+ p = Bin.which ~path cmd_name in
       ( p

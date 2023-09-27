@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695781245520,
+  "lastUpdate": 1695781675517,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -32043,6 +32043,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.37965581409333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "af1ffbd654594d4377b7af38e16beacc12a670d9",
+          "message": "fix(pkg): respect filters for dependency list (#8763)\n\nWhen converting the dependencies from opam to dune, we need to filter\r\nthem according to the effective set of dependencies.\r\n\r\nThis is needed to avoid downloading & building unnecessary packages for\r\nthe current build plan.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-27T03:07:27+01:00",
+          "tree_id": "9f7050ea34341787fcbb5a4b2b8e34581b608a30",
+          "url": "https://github.com/ocaml/dune/commit/af1ffbd654594d4377b7af38e16beacc12a670d9"
+        },
+        "date": 1695781674473,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.02418686498",
             "unit": "seconds"
           }
         ]

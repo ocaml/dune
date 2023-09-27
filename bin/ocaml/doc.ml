@@ -1,4 +1,3 @@
-open Stdune
 open Import
 
 let doc = "Build and view the documentation of an OCaml project"
@@ -9,6 +8,7 @@ let man =
       {|$(b,dune ocaml doc) builds and then opens the documention of an OCaml project in the users default browser.|}
   ; `Blocks Common.help_secs
   ]
+;;
 
 let info = Cmd.info "doc" ~doc ~man
 
@@ -21,22 +21,20 @@ let term =
     let+ () =
       Alias.in_dir
         ~name:(Dune_engine.Alias.Name.of_string "doc")
-        ~recursive:true ~contexts:setup.contexts dir
+        ~recursive:true
+        ~contexts:setup.contexts
+        dir
       |> Alias.request
     in
-    let is_default ctx =
-      ctx |> Context.name |> Dune_engine.Context_name.is_default
-    in
+    let is_default ctx = ctx |> Context.name |> Dune_engine.Context_name.is_default in
     let doc_ctx = List.find_exn setup.contexts ~f:is_default in
     let toplevel_index_path = Dune_rules.Odoc.Paths.toplevel_index doc_ctx in
     let absolute_toplevel_index_path =
       Path.(toplevel_index_path |> build |> to_absolute_filename)
     in
     Dune_console.print
-      [ Pp.textf "Docs built. Index can be found here: %s\n"
-          absolute_toplevel_index_path
+      [ Pp.textf "Docs built. Index can be found here: %s\n" absolute_toplevel_index_path
       ];
-
     let url = "file://" ^ absolute_toplevel_index_path in
     let cmd =
       let open Option.O in
@@ -55,16 +53,14 @@ let term =
     in
     match cmd with
     | Some (cmd, args) ->
-      Proc.restore_cwd_and_execve
-        (Path.to_absolute_filename cmd)
-        args ~env:Env.initial
+      Proc.restore_cwd_and_execve (Path.to_absolute_filename cmd) args ~env:Env.initial
     | None ->
       User_warning.emit
         [ Pp.text
-            "No browser could be found, you will have to open the \
-             documentation yourself."
+            "No browser could be found, you will have to open the documentation yourself."
         ]
   in
   Build_cmd.run_build_command ~common ~config ~request
+;;
 
 let cmd = Cmd.v info term

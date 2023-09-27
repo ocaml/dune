@@ -29,6 +29,7 @@ gitGraph
 
 ```mermaid
 stateDiagram-v2
+    direction LR
     [*] --> Prepare
     Prepare --> Alpha
     Alpha --> Alpha

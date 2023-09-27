@@ -22,13 +22,13 @@ module Linkage : sig
   val native : t
 
   (** like [custom] but allows for a custom extension *)
-  val custom_with_ext : ext:string -> Context.t -> t
+  val custom_with_ext : ext:string -> Ocaml.Version.t -> t
 
   (** Byte compilation with stubs statically linked in, extension [.exe] *)
-  val custom : Context.t -> t
+  val custom : Ocaml.Version.t -> t
 
   (** [native] if supported, [custom] if not *)
-  val native_or_custom : Context.t -> t
+  val native_or_custom : Ocaml_toolchain.t -> t
 
   (** Javascript compilation, extension [.bc.js] *)
   val js : t
@@ -36,7 +36,13 @@ module Linkage : sig
   val is_native : t -> bool
   val is_js : t -> bool
   val is_byte : t -> bool
-  val of_user_config : Context.t -> loc:Loc.t -> Dune_file.Executables.Link_mode.t -> t
+
+  val of_user_config
+    :  Ocaml_toolchain.t
+    -> dynamically_linked_foreign_archives:bool
+    -> loc:Loc.t
+    -> Dune_file.Executables.Link_mode.t
+    -> t
 end
 
 type dep_graphs = { for_exes : Module.t list Action_builder.t list }

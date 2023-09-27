@@ -188,7 +188,8 @@ let gen_rules sctx t ~dir ~scope =
       cctx
       ~link_args
       ~program:{ name; main_module_name; loc }
-      ~linkages:[ Exe.Linkage.native_or_custom (Super_context.context sctx) ]
+      ~linkages:
+        [ Exe.Linkage.native_or_custom (Super_context.context sctx |> Context.ocaml) ]
       ~promote:None
   in
   let action =

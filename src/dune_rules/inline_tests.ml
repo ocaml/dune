@@ -180,9 +180,13 @@ include Sub_system.Register_end_point (struct
         List.concat_map (Mode_conf.Set.to_list modes) ~f:(fun (mode : Mode_conf.t) ->
           match mode with
           | Native -> [ Exe.Linkage.native ]
-          | Best -> [ Exe.Linkage.native_or_custom (Super_context.context sctx) ]
+          | Best ->
+            [ Exe.Linkage.native_or_custom (Super_context.context sctx |> Context.ocaml) ]
           | Byte ->
-            [ Exe.Linkage.custom_with_ext ~ext:".bc" (Super_context.context sctx) ]
+            [ Exe.Linkage.custom_with_ext
+                ~ext:".bc"
+                (Super_context.context sctx |> Context.ocaml).version
+            ]
           | Javascript -> [ Exe.Linkage.js; Exe.Linkage.byte_for_jsoo ])
       in
       let* (_ : Exe.dep_graphs) =

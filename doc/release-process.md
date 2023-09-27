@@ -27,15 +27,13 @@ gitGraph
 
 ## Minor Releases (`x.y.0`)
 
-- 1 month before:
+- Prepare:
   - Open tracking issue with expected alpha1 date
-  - List (and update) known blockers. these prevent releasing `x.y.0`
-
-- First alpha:
-  - Create `x.y.0~alpha` branch
+  - List (and update) known blockers. These prevent releasing `x.y.0`
 
 - Alpha time:
   - On alpha branch, prepare alpha release:
+    - (for N=0) create `x.y.0~alpha` branch
     - (for N>1) merge main into alpha branch
     - cherry-pick extra commits from `main` (if any)
     - prepare changelog (ensure version is `x.y.0~alphaN`)
@@ -66,4 +64,13 @@ gitGraph
     - in the worst case, the release can be cancelled completely and only come
       in a point release.
 
+- Post-release:
+  - Categorize changelog entries into Added / Fixed / Changed / Removed / Deprecated
+  - Open PR on `ocaml/ocaml.org` to add a file in under `data/changelog/dune`
+  - Post to discuss
+  - Close release milestone
+  - Close tracking issue
+
 ## Point Releases / Patch Releases (`x.y.z`, `z >= 0`)
+
+TODO

@@ -80,7 +80,6 @@ gitGraph
   commit id: "fix(1)"
   commit id: "feat(1)"
   commit id: "fix(2)"
-  commit tag: "x.y.0"
   branch x.y
   cherry-pick id: "fix(1)"
   cherry-pick id: "fix(2)"

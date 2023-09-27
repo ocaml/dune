@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695782044178,
+  "lastUpdate": 1695782405334,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -104921,6 +104921,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "23.704594130986667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "843c5e58e5a07e8e6ec70db2be2dc62560a6d0b1",
+          "message": "fix(nix): fix utop tests (#8752)\n\nNix was compressing the man pages for utop which meant the dune-package\r\nfile was pointing to non-existant files. Overriding utop and disabling\r\nthe compression of man pages fixes this issue.\r\n\r\nWe can also use this fix for other `(package)` dependencies that are\r\nproblematic with nix.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-27T03:25:55+01:00",
+          "tree_id": "28d7057210d42f9013bffcb9023f078c2a8aa5d8",
+          "url": "https://github.com/ocaml/dune/commit/843c5e58e5a07e8e6ec70db2be2dc62560a6d0b1"
+        },
+        "date": 1695782389633,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "24.975746080219995",
             "unit": "seconds"
           }
         ]

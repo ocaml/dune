@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695833038848,
+  "lastUpdate": 1695845023587,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -105269,6 +105269,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "30.673499812600003",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "069eed22ad0a5982ed3e0cadaca9552f2d7c815f",
+          "message": "refactor: pass less contexts (#8780)\n\nPass whatever is needed directly instead of passing the entire context\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-27T20:47:36+01:00",
+          "tree_id": "519f3b675c308f6f3edb8111b2e43e383172ce27",
+          "url": "https://github.com/ocaml/dune/commit/069eed22ad0a5982ed3e0cadaca9552f2d7c815f"
+        },
+        "date": 1695845005444,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "27.444218010106667",
             "unit": "seconds"
           }
         ]

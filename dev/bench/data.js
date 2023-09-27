@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695851960597,
+  "lastUpdate": 1695851972329,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -81923,6 +81923,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "70.01222228933334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0dca12568fbbce12ae42559020271b7231943170",
+          "message": "test(x-compile): setting toolchain (#8664)\n\nTest setting toolchain with OCAML_TOOLCHAIN and the toolchain option in\r\nthe workspace. Undefined toolchains are silently ignored.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-27T22:33:23+01:00",
+          "tree_id": "5caf0c3a020807d684919664e7814ed6efbdfa8a",
+          "url": "https://github.com/ocaml/dune/commit/0dca12568fbbce12ae42559020271b7231943170"
+        },
+        "date": 1695851971700,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8775909835466666",
             "unit": "seconds"
           }
         ]

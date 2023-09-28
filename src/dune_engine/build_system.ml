@@ -380,53 +380,47 @@ end = struct
          | None -> root
          | Some sandbox -> Sandbox.map_path sandbox root)
     in
-    let* exec_result =
-      Fiber.collect_errors
-      @@ fun () ->
-      with_locks locks ~f:(fun () ->
-        let build_deps deps = Memo.run (build_deps deps) in
-        let* action_exec_result =
-          let input =
-            { Action_exec.root
-            ; context
-            ; env
-            ; targets = Some targets
-            ; rule_loc = loc
-            ; execution_parameters
-            ; action
-            }
-          in
-          match (Build_config.get ()).action_runner input with
-          | None -> Action_exec.exec input ~build_deps
-          | Some runner -> Action_runner.exec_action runner input
-        in
-        let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
-        let+ produced_targets =
-          match sandbox with
-          | None -> Targets.Produced.produced_after_rule_executed_exn ~loc targets
-          | Some sandbox ->
-            (* The stamp file for anonymous actions is always created outside
-               the sandbox, so we can't move it. *)
-            let should_be_skipped =
-              match rule_kind with
-              | Normal_rule -> fun (_ : Path.Build.t) -> false
-              | Anonymous_action { stamp_file; _ } -> Path.Build.equal stamp_file
+    Fiber.finalize
+      ~finally:(fun () ->
+        match sandbox with
+        | Some sandbox -> Sandbox.destroy sandbox
+        | None ->
+          (* All went well, these targets are no longer pending. *)
+          Pending_targets.remove targets;
+          Fiber.return ())
+      (fun () ->
+        with_locks locks ~f:(fun () ->
+          let build_deps deps = Memo.run (build_deps deps) in
+          let* action_exec_result =
+            let input =
+              { Action_exec.root
+              ; context
+              ; env
+              ; targets = Some targets
+              ; rule_loc = loc
+              ; execution_parameters
+              ; action
+              }
             in
-            Sandbox.move_targets_to_build_dir sandbox ~loc ~should_be_skipped ~targets
-        in
-        { Exec_result.produced_targets; action_exec_result })
-    in
-    let* () =
-      match sandbox with
-      | Some sandbox -> Sandbox.destroy sandbox
-      | None ->
-        (* All went well, these targets are no longer pending. *)
-        Pending_targets.remove targets;
-        Fiber.return ()
-    in
-    match exec_result with
-    | Ok res -> Fiber.return res
-    | Error l -> Fiber.reraise_all l
+            match (Build_config.get ()).action_runner input with
+            | None -> Action_exec.exec input ~build_deps
+            | Some runner -> Action_runner.exec_action runner input
+          in
+          let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
+          let+ produced_targets =
+            match sandbox with
+            | None -> Targets.Produced.produced_after_rule_executed_exn ~loc targets
+            | Some sandbox ->
+              (* The stamp file for anonymous actions is always created outside
+                 the sandbox, so we can't move it. *)
+              let should_be_skipped =
+                match rule_kind with
+                | Normal_rule -> fun (_ : Path.Build.t) -> false
+                | Anonymous_action { stamp_file; _ } -> Path.Build.equal stamp_file
+              in
+              Sandbox.move_targets_to_build_dir sandbox ~loc ~should_be_skipped ~targets
+          in
+          { Exec_result.produced_targets; action_exec_result }))
   ;;
 
   let promote_targets ~rule_mode ~dir ~targets ~promote_source =

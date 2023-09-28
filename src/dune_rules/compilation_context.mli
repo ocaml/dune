@@ -69,6 +69,7 @@ val public_lib_name : t -> Lib_name.t option
 val modes : t -> Lib_mode.Map.Set.t
 val for_wrapped_compat : t -> t
 val for_root_module : t -> Module.t -> t
+val ocaml : t -> Ocaml_toolchain.t
 
 val for_module_generated_at_link_time
   :  t

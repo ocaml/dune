@@ -112,6 +112,7 @@ let build_cm
     | _ -> default
   in
   let open Memo.O in
+  let ocaml = Compilation_context.ocaml cctx in
   let* compiler =
     match mode with
     | Melange ->
@@ -120,7 +121,7 @@ let build_cm
       Some melc
     | Ocaml mode ->
       Memo.return
-        (let compiler = Ocaml_toolchain.compiler (Context.ocaml ctx) mode in
+        (let compiler = Ocaml_toolchain.compiler ocaml mode in
          (* TODO one day remove this silly optimization *)
          match compiler with
          | Ok _ as s -> Some s
@@ -132,11 +133,7 @@ let build_cm
    let+ src = Module.file m ~ml_kind in
    let dst = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
    let obj =
-     Obj_dir.Module.obj_file
-       obj_dir
-       m
-       ~kind:(Ocaml Cmx)
-       ~ext:(Context.ocaml ctx).lib_config.ext_obj
+     Obj_dir.Module.obj_file obj_dir m ~kind:(Ocaml Cmx) ~ext:ocaml.lib_config.ext_obj
    in
    let open Memo.O in
    let* extra_args, extra_deps, other_targets =
@@ -204,8 +201,7 @@ let build_cm
    in
    let opaque_arg : _ Command.Args.t =
      let intf_only = cm_kind = Ocaml Cmi && not (Module.has m ~ml_kind:Impl) in
-     if opaque
-        || (intf_only && Ocaml.Version.supports_opaque_for_mli (Context.ocaml ctx).version)
+     if opaque || (intf_only && Ocaml.Version.supports_opaque_for_mli ocaml.version)
      then A "-opaque"
      else Command.Args.empty
    in
@@ -351,6 +347,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
   in
   let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml Byte) in
   let modules = Compilation_context.modules cctx in
+  let ocaml = Compilation_context.ocaml cctx in
   Super_context.add_rule
     sctx
     ~dir
@@ -359,7 +356,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
        (let open Action_builder.With_targets.O in
         Action_builder.with_no_targets cm_deps
         >>> Command.run
-              (Ok (Context.ocaml ctx).ocamlc)
+              (Ok ocaml.ocamlc)
               ~dir:(Path.build (Context.build_dir ctx))
               ~stdout_to:output
               [ Command.Args.dyn ocaml_flags

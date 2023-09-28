@@ -293,8 +293,9 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
   let c_generated_types_module = Ctypes_field.c_generated_types_module ctypes in
   let open Memo.O in
   let foreign_archives_deps =
-    let ctx = Super_context.context sctx in
-    let { Lib_config.ext_lib; ext_dll; _ } = (Context.ocaml ctx).lib_config in
+    let { Lib_config.ext_lib; ext_dll; _ } =
+      (Compilation_context.ocaml cctx).lib_config
+    in
     List.concat_map buildable.foreign_archives ~f:(fun (_loc, archive) ->
       let mode = Mode.Select.All in
       [ Foreign.Archive.lib_file ~mode ~archive ~dir ~ext_lib

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695912269938,
+  "lastUpdate": 1695912500003,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -32362,6 +32362,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "51.95103826909334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "frej.soya@gmail.com",
+            "name": "Frej Soya",
+            "username": "frejsoya"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "678e8f9fdbd3b4bb24fc7bf9339ef2dac7866533",
+          "message": "Relative paths with pkg-config (#8759)\n\nRelies on dune 3.8 and passing --define-prefix through PKG_CONFIG_ARGN\r\nto pkg-config. The prefix defined will be the grandparent dir of .pc\r\nfile. IE. /foo/bar/libdir/pkgconfig/libexample.pc -> prefix=/foo.\r\nThe location of .pc file must be in a dir named 'pkgconfig'\r\n\r\nSigned-off-by: Frej Soya <frej.soya@gmail.com>",
+          "timestamp": "2023-09-28T15:27:53+01:00",
+          "tree_id": "ff8b33f3626f2ca4ec0ae767660ea94fe67ccf4c",
+          "url": "https://github.com/ocaml/dune/commit/678e8f9fdbd3b4bb24fc7bf9339ef2dac7866533"
+        },
+        "date": 1695912498980,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.75643605618001",
             "unit": "seconds"
           }
         ]

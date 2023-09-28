@@ -405,14 +405,20 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
      mdx *)
   let open Resolve.Memo.O in
   let directory_args =
-    let+ libs_to_include =
+    let* libs_to_include =
       Resolve.Memo.List.filter_map t.libraries ~f:(function
         | Direct lib | Re_export lib ->
           let+ lib = Lib.DB.resolve (Scope.libs scope) lib in
           Some lib
         | _ -> Resolve.Memo.return None)
     in
-    let mode = Ocaml_toolchain.best_mode (Super_context.context sctx |> Context.ocaml) in
+    let+ mode =
+      Resolve.Memo.lift_memo
+      @@
+      let open Memo.O in
+      let+ ocaml = Context.ocaml (Super_context.context sctx) in
+      Ocaml_toolchain.best_mode ocaml
+    in
     let libs_include_paths = Lib_flags.L.include_paths libs_to_include (Ocaml mode) in
     let open Command.Args in
     let args =

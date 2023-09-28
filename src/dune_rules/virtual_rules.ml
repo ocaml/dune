@@ -10,7 +10,11 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let copy_to_obj_dir ~src ~dst =
     add_rule ~loc:(Loc.of_pos __POS__) (Action_builder.symlink ~src ~dst)
   in
-  let { Lib_config.has_native; ext_obj; _ } = (Context.ocaml ctx).lib_config in
+  let open Memo.O in
+  let* { Lib_config.has_native; ext_obj; _ } =
+    let+ ocaml = Context.ocaml ctx in
+    ocaml.lib_config
+  in
   let { Lib_mode.Map.ocaml = { byte; native }; melange } =
     Dune_file.Mode_conf.Lib.Set.eval impl.modes ~has_native
   in
@@ -19,7 +23,6 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     let dst = Obj_dir.Module.cm_file_exn impl_obj_dir m ~kind in
     copy_to_obj_dir ~src ~dst
   in
-  let open Memo.O in
   let copy_interface_to_impl ~src kind () =
     let dst = Obj_dir.Module.cm_public_file_exn impl_obj_dir src ~kind in
     let src = Obj_dir.Module.cm_public_file_exn vlib_obj_dir src ~kind in
@@ -98,19 +101,18 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
                    ~instrumentation_backend:
                      (Lib.DB.instrumentation_backend (Scope.libs scope)))
             in
+            let* ocaml = Context.ocaml (Super_context.context sctx) in
             let pp_spec =
-              Staged.unstage
-                (Preprocessing.pped_modules_map
-                   preprocess
-                   (Super_context.context sctx |> Context.ocaml).version)
+              Staged.unstage (Preprocessing.pped_modules_map preprocess ocaml.version)
             in
             Dir_contents.ocaml dir_contents
             >>| Ml_sources.modules ~for_:(Library name)
             >>= Modules.map_user_written ~f:(fun m -> Memo.return (pp_spec m))
           in
           let+ foreign_objects =
-            let ext_obj =
-              (Super_context.context sctx |> Context.ocaml).lib_config.ext_obj
+            let* ext_obj =
+              let+ ocaml = Context.ocaml (Super_context.context sctx) in
+              ocaml.lib_config.ext_obj
             in
             let dir = Obj_dir.obj_dir (Lib.Local.obj_dir vlib) in
             let+ foreign_sources = Dir_contents.foreign_sources dir_contents in

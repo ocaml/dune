@@ -1,12 +1,10 @@
 open Import
 
-let pp_with_ocamlc sctx project pp_file =
+let pp_with_ocamlc env ~ocamlc dialects pp_file =
   let open Dune_engine in
   let dump_file =
     Path.map_extension pp_file ~f:(fun ext ->
-      let dialect =
-        Dune_rules.Dialect.DB.find_by_extension (Dune_project.dialects project) ext
-      in
+      let dialect = Dune_rules.Dialect.DB.find_by_extension dialects ext in
       match dialect with
       | None -> User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
       | Some (_, (kind : Ocaml.Ml_kind.t)) ->
@@ -18,9 +16,9 @@ let pp_with_ocamlc sctx project pp_file =
   let+ () =
     Process.run
       ~display:!Clflags.display
-      ~env:(Super_context.context_env sctx)
+      ~env
       Strict
-      (Super_context.context sctx |> Context.ocaml).ocamlc
+      ocamlc
       [ "-stop-after"; "parsing"; "-dsource"; Path.to_string pp_file; "-dump-into-file" ]
   in
   match Path.stat dump_file with
@@ -104,7 +102,13 @@ let term =
   match result with
   | Error file -> Io.cat file |> Memo.return
   | Ok (project, file) ->
-    pp_with_ocamlc super_context project file |> Memo.of_non_reproducible_fiber
+    let* ocamlc =
+      let+ ocaml = Context.ocaml (Super_context.context super_context) in
+      ocaml.ocamlc
+    in
+    let env = Super_context.context_env super_context in
+    let dialects = Dune_project.dialects project in
+    pp_with_ocamlc env ~ocamlc dialects file |> Memo.of_non_reproducible_fiber
 ;;
 
 let command =

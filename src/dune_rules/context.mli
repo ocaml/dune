@@ -41,7 +41,7 @@ end
     potential dependency cycle. *)
 type t
 
-val ocaml : t -> Ocaml_toolchain.t
+val ocaml : t -> Ocaml_toolchain.t Memo.t
 val build_context : t -> Build_context.t
 val kind : t -> Kind.t
 val findlib_paths : t -> Path.t list Memo.t

@@ -11,10 +11,13 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
       ~eval:(Expander.expand_and_eval_set expander)
   in
   Source_tree.is_vendored (Path.Build.drop_build_context_exn dir)
-  >>| function
-  | false -> flags
+  >>= function
+  | false -> Memo.return flags
   | true ->
-    let ocaml_version = (Super_context.context t |> Context.ocaml).version in
+    let+ ocaml_version =
+      let+ ocaml = Super_context.context t |> Context.ocaml in
+      ocaml.version
+    in
     Ocaml_flags.with_vendored_flags ~ocaml_version flags
 ;;
 
@@ -81,7 +84,7 @@ let modules_rules
       Resolve.Memo.read_memo
         (Preprocess.Per_module.with_instrumentation preprocess ~instrumentation_backend)
     in
-    let+ instrumentation_deps =
+    let* instrumentation_deps =
       (* TODO wrong and blocks loading all the rules in this directory *)
       Resolve.Memo.read_memo
         (Preprocess.Per_module.instrumentation_deps preprocess ~instrumentation_backend)

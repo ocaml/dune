@@ -149,10 +149,10 @@ end = struct
             [ "dir", Path.Build.to_dyn dir ]
         | Some parent -> Memo.lazy_ (fun () -> get_node t ~dir:parent))
     in
-    let+ config_stanza = get_env_stanza ~dir in
+    let* config_stanza = get_env_stanza ~dir in
     let build_context = Context.build_context t.context in
-    let default_context_flags =
-      let ocaml = Context.ocaml t.context in
+    let+ default_context_flags =
+      let+ ocaml = Context.ocaml t.context in
       default_context_flags build_context ocaml.ocaml_config ~project
     in
     let expander_for_artifacts =
@@ -474,9 +474,9 @@ let dune_sites_env ~default_ocamlpath ~stdlib =
 ;;
 
 let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
+  let* ocaml = Context.ocaml context in
   let* expander_env =
     let+ default_ocamlpath = Context.default_ocamlpath context in
-    let ocaml = Context.ocaml context in
     Env.extend_env
       (make_root_env context ~host)
       (dune_sites_env ~default_ocamlpath ~stdlib:ocaml.lib_config.stdlib_dir)
@@ -515,7 +515,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
     let profile = Context.profile context in
     Memo.lazy_ (fun () ->
       make_default_env_node
-        (Context.ocaml context).ocaml_config
+        ocaml.ocaml_config
         (Context.build_context context)
         profile
         root_expander

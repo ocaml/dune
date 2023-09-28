@@ -363,7 +363,8 @@ let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas
     >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
   in
   let+ modules =
-    let version = (Super_context.context sctx |> Context.ocaml).version in
+    let* ocaml = Context.ocaml (Super_context.context sctx) in
+    let version = ocaml.version in
     let* preprocess =
       Resolve.Memo.read_memo
         (Preprocess.Per_module.with_instrumentation

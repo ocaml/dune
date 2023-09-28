@@ -22,13 +22,13 @@ let ooi_deps
     | Intf -> Cm_kind.Cmi
     | Impl -> vimpl |> Option.value_exn |> Vimpl.impl_cm_kind
   in
-  let write, read =
+  let* write, read =
     let ctx = Super_context.context sctx in
     let unit = Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml cm_kind) |> Path.build in
     let sandbox =
       if dune_version >= (3, 3) then Some Sandbox_config.needs_sandboxing else None
     in
-    let ocaml = Context.ocaml ctx in
+    let+ ocaml = Context.ocaml ctx in
     Ocamlobjinfo.rules ocaml ~sandbox ~dir ~unit
   in
   let add_rule = Super_context.add_rule sctx ~dir in

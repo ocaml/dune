@@ -474,8 +474,12 @@ type t = DB.t
 let create =
   Context.DB.create_db ~name:"findlib" (fun context ->
     let open Memo.O in
-    let* paths = Context.findlib_paths context in
-    DB.create ~paths ~lib_config:(Context.ocaml context).lib_config)
+    let* paths = Context.findlib_paths context
+    and* lib_config =
+      let+ ocaml = Context.ocaml context in
+      ocaml.lib_config
+    in
+    DB.create ~paths ~lib_config)
   |> Staged.unstage
 ;;
 

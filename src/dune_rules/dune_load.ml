@@ -154,7 +154,7 @@ module Script = struct
     let wrapper = Path.Build.extend_basename generated_dune_file ~suffix:".ml" in
     ensure_parent_dir_exists generated_dune_file;
     let* context = Context.DB.get context in
-    let ocaml = Context.ocaml context in
+    let* ocaml = Context.ocaml context in
     let* () =
       Jbuild_plugin.create_plugin_wrapper
         (Context.name context)
@@ -169,8 +169,8 @@ module Script = struct
       List.concat
         [ [ "-I"; "+compiler-libs" ]; [ Path.to_absolute_filename (Path.build wrapper) ] ]
     in
-    let ocaml = Action.Prog.ok_exn (Context.ocaml context).ocaml in
     let* () =
+      let ocaml = Action.Prog.ok_exn ocaml.ocaml in
       Memo.of_reproducible_fiber
         (Process.run
            Strict

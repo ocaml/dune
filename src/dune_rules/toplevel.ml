@@ -186,7 +186,7 @@ module Stanza = struct
       | Action _ | Future_syntax _ -> assert false (* Error in parsing *)
       | No_preprocessing -> []
     in
-    let preprocessing =
+    let* preprocessing =
       let preprocess = Module_name.Per_item.for_all toplevel.pps in
       Preprocessing.make
         sctx

@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 let header_file_content =
   {|
@@ -18,7 +19,10 @@ CCOMP
 
 let rules ~sctx ~dir =
   let file = Path.Build.relative dir Cxx_flags.preprocessed_filename in
-  let ocfg = (Super_context.context sctx |> Context.ocaml).ocaml_config in
+  let* ocfg =
+    let+ ocaml = Super_context.context sctx |> Context.ocaml in
+    ocaml.ocaml_config
+  in
   let open Memo.O in
   let* prog =
     Super_context.resolve_program sctx ~dir ~loc:None (Ocaml_config.c_compiler ocfg)

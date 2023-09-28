@@ -17,11 +17,16 @@ let default_foreign_flags t ~dir ~language =
 
 let foreign_flags t ~dir ~expander ~flags ~language =
   let context = Super_context.context t in
-  let ccg = Lib_config.cc_g (Context.ocaml context).lib_config in
   let default = default_foreign_flags t ~dir ~language in
   let open Action_builder.O in
   let name = Foreign_language.proper_name language in
   let flags =
+    let* ccg =
+      Action_builder.of_memo
+        (let open Memo.O in
+         let+ ocaml = Context.ocaml context in
+         Lib_config.cc_g ocaml.lib_config)
+    in
     let+ l = Expander.expand_and_eval_set expander flags ~standard:default in
     l @ ccg
   in
@@ -145,6 +150,7 @@ let build_c
   let ctx = Super_context.context sctx in
   let* project = Scope.DB.find_by_dir dir >>| Scope.project in
   let use_standard_flags = Dune_project.use_standard_c_and_cxx_flags project in
+  let* ocaml = Context.ocaml ctx in
   let base_flags =
     match kind with
     | Cxx -> Fdo.cxx_flags ctx
@@ -153,7 +159,7 @@ let build_c
        | Some true -> Fdo.c_flags ctx
        | None | Some false ->
          (* In dune < 2.8 flags from ocamlc_config are always added *)
-         let cfg = (Context.ocaml ctx).ocaml_config in
+         let cfg = ocaml.ocaml_config in
          List.concat
            [ Ocaml_config.ocamlc_cflags cfg
            ; Ocaml_config.ocamlc_cppflags cfg
@@ -215,10 +221,10 @@ let build_c
       ~loc:None
       ~dir
       sctx
-      (Ocaml_config.c_compiler (Context.ocaml ctx).ocaml_config)
+      (Ocaml_config.c_compiler ocaml.ocaml_config)
   in
   let output_param =
-    match (Context.ocaml ctx).lib_config.ccomp_type with
+    match ocaml.lib_config.ccomp_type with
     | Msvc -> [ Command.Args.Concat ("", [ A "/Fo"; Target dst ]) ]
     | Other _ -> [ A "-o"; Target dst ]
   in
@@ -234,7 +240,7 @@ let build_c
        ~dir:(Path.build dir)
        c_compiler
        ([ Command.Args.dyn with_user_and_std_flags
-        ; S [ A "-I"; Path (Context.ocaml ctx).lib_config.stdlib_dir ]
+        ; S [ A "-I"; Path ocaml.lib_config.stdlib_dir ]
         ; include_flags
         ]
         @ output_param
@@ -276,6 +282,8 @@ let build_o_files
              ])
       ]
   in
+  let ctx = Super_context.context sctx in
+  let* ocaml = Context.ocaml ctx in
   String.Map.to_list_map foreign_sources ~f:(fun obj (loc, (src : Foreign.Source.t)) ->
     let+ build_file =
       let include_flags =
@@ -301,10 +309,7 @@ let build_o_files
         in
         Command.Args.S [ includes; extra_flags; Dyn extra_deps ]
       in
-      let dst =
-        let ctx = Super_context.context sctx in
-        Path.Build.relative dir (obj ^ (Context.ocaml ctx).lib_config.ext_obj)
-      in
+      let dst = Path.Build.relative dir (obj ^ ocaml.lib_config.ext_obj) in
       let+ () =
         build_c
           ~kind:(Foreign.Source.language src)

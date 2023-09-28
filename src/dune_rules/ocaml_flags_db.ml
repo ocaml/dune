@@ -11,10 +11,13 @@ let ocaml_flags sctx ~dir (spec : Ocaml_flags.Spec.t) =
       ~eval:(Expander.expand_and_eval_set expander)
   in
   Source_tree.is_vendored (Path.Build.drop_build_context_exn dir)
-  >>| function
-  | false -> flags
+  >>= function
+  | false -> Memo.return flags
   | true ->
-    let ocaml_version = (Super_context.context sctx |> Context.ocaml).version in
+    let+ ocaml_version =
+      let+ ocaml = Super_context.context sctx |> Context.ocaml in
+      ocaml.version
+    in
     Ocaml_flags.with_vendored_flags ~ocaml_version flags
 ;;
 

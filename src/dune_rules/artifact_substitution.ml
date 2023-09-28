@@ -66,8 +66,8 @@ module Conf = struct
   type t =
     { get_vcs : Path.Source.t -> Vcs.t option Memo.t
     ; get_location : Section.t -> Package.Name.t -> Path.t
-    ; get_config_path : configpath -> Path.t option
-    ; sign_hook : (Path.t -> unit Fiber.t) option Lazy.t
+    ; get_config_path : configpath -> Path.t option Memo.t
+    ; sign_hook : (Path.t -> unit Fiber.t) option Memo.t
     ; hardcoded_ocaml_path : hardcoded_ocaml_path Memo.t
     }
 
@@ -94,7 +94,11 @@ module Conf = struct
   ;;
 
   let sign_hook_of_context (context : Context.t) =
-    let config = (Context.ocaml context).ocaml_config in
+    let open Memo.O in
+    let+ config =
+      let+ ocaml = Context.ocaml context in
+      ocaml.ocaml_config
+    in
     match Ocaml_config.system config, Ocaml_config.architecture config with
     | "macosx", "arm64" ->
       let codesign_name = "codesign" in
@@ -119,16 +123,16 @@ module Conf = struct
       { get_vcs
       ; get_location = (fun _ _ -> Code_error.raise "no context available" [])
       ; get_config_path = (fun _ -> Code_error.raise "no context available" [])
-      ; sign_hook = lazy None
+      ; sign_hook = Memo.return None
       ; hardcoded_ocaml_path = Memo.return @@ Hardcoded []
       }
     | Some context ->
       let name = Context.name context in
       let get_location = Install.Paths.get_local_location name in
       let get_config_path = function
-        | Sourceroot -> Some (Path.source Path.Source.root)
+        | Sourceroot -> Memo.return @@ Some (Path.source Path.Source.root)
         | Stdlib ->
-          let ocaml = Context.ocaml context in
+          let+ ocaml = Context.ocaml context in
           Some ocaml.lib_config.stdlib_dir
       in
       let hardcoded_ocaml_path =
@@ -139,7 +143,7 @@ module Conf = struct
         let+ default_ocamlpath = Context.default_ocamlpath context in
         Hardcoded (install_dir :: default_ocamlpath)
       in
-      let sign_hook = lazy (sign_hook_of_context context) in
+      let sign_hook = sign_hook_of_context context in
       { get_vcs; get_location; get_config_path; hardcoded_ocaml_path; sign_hook }
   ;;
 
@@ -158,21 +162,21 @@ module Conf = struct
       Install.Paths.get paths section
     in
     let get_config_path = function
-      | Sourceroot -> None
+      | Sourceroot -> Memo.return None
       | Stdlib ->
-        let ocaml = Context.ocaml context in
+        let+ ocaml = Context.ocaml context in
         Some ocaml.lib_config.stdlib_dir
     in
-    let sign_hook = lazy (sign_hook_of_context context) in
+    let sign_hook = sign_hook_of_context context in
     { get_location; get_vcs; get_config_path; hardcoded_ocaml_path; sign_hook }
   ;;
 
   let dummy =
     { get_vcs = (fun _ -> Memo.return None)
     ; get_location = (fun _ _ -> Path.root)
-    ; get_config_path = (fun _ -> None)
+    ; get_config_path = (fun _ -> Memo.return None)
     ; hardcoded_ocaml_path = Memo.return @@ Hardcoded []
-    ; sign_hook = lazy None
+    ; sign_hook = Memo.return None
     }
   ;;
 
@@ -180,9 +184,10 @@ module Conf = struct
     match has_subst with
     | No_substitution -> Fiber.return ()
     | Some_substitution ->
-      (match Lazy.force t.sign_hook with
-       | Some hook -> hook file
-       | None -> Fiber.return ())
+      Memo.run t.sign_hook
+      |> Fiber.bind ~f:(function
+        | Some hook -> hook file
+        | None -> Fiber.return ())
   ;;
 end
 
@@ -212,7 +217,7 @@ let eval t ~(conf : Conf.t) =
     conf.get_location name lib_name |> relocatable |> Memo.run
   | Configpath d ->
     let open Memo.O in
-    (let dir = conf.get_config_path d in
+    (let* dir = conf.get_config_path d in
      match dir with
      | None -> Memo.return None
      | Some dir -> relocatable dir >>| Option.some)

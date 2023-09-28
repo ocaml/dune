@@ -60,5 +60,6 @@ let force_files =
 ;;
 
 let gen_rules (context : Context.t) =
-  gen_rules (Context.build_context context) (Context.ocaml context)
+  let* ocaml = Context.ocaml context in
+  gen_rules (Context.build_context context) ocaml
 ;;

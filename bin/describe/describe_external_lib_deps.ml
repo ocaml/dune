@@ -150,6 +150,7 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
       let dir = dune_file.dir in
       match stanza with
       | Dune_rules.Dune_file.Executables exes ->
+        let* ocaml = Context.ocaml context in
         resolve_libs
           db
           dir
@@ -158,7 +159,7 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
           (List.map exes.names ~f:snd)
           exes.package
           Item.Kind.Executables
-          (exes_extensions (Context.ocaml context).lib_config exes.modes)
+          (exes_extensions ocaml.lib_config exes.modes)
         >>| List.singleton
       | Dune_rules.Dune_file.Library lib ->
         resolve_libs
@@ -172,6 +173,7 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
           []
         >>| List.singleton
       | Dune_rules.Dune_file.Tests tests ->
+        let* ocaml = Context.ocaml context in
         resolve_libs
           db
           dir
@@ -180,7 +182,7 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
           (List.map tests.exes.names ~f:snd)
           (if Option.is_none tests.package then tests.exes.package else tests.package)
           Item.Kind.Tests
-          (exes_extensions (Context.ocaml context).lib_config tests.exes.modes)
+          (exes_extensions ocaml.lib_config tests.exes.modes)
         >>| List.singleton
       | _ -> Memo.return [])
     >>| List.concat)

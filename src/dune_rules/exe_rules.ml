@@ -94,9 +94,10 @@ let o_files
       let first_exe = first_exe exes in
       Foreign_sources.for_exes foreign_sources ~first_exe
     in
-    let foreign_o_files =
-      let { Lib_config.ext_obj; _ } =
-        (Super_context.context sctx |> Context.ocaml).lib_config
+    let* foreign_o_files =
+      let+ { Lib_config.ext_obj; _ } =
+        let+ ocaml = Super_context.context sctx |> Context.ocaml in
+        ocaml.lib_config
       in
       Foreign.Objects.build_paths exes.buildable.extra_objects ~ext_obj ~dir
     in
@@ -132,7 +133,7 @@ let executables_rules
   in
   let* () = Check_rules.add_obj_dir sctx ~obj_dir (Ocaml Byte) in
   let ctx = Super_context.context sctx in
-  let ocaml = Context.ocaml ctx in
+  let* ocaml = Context.ocaml ctx in
   let project = Scope.project scope in
   let programs = programs ~modules ~exes in
   let explicit_js_mode = Dune_project.explicit_js_mode project in

@@ -388,13 +388,15 @@ module Crawl = struct
       >>= Dir_contents.ocaml
       >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
     in
-    let pp_map =
+    let* pp_map =
+      let+ version =
+        let+ ocaml = Super_context.context sctx |> Context.ocaml in
+        ocaml.version
+      in
       Staged.unstage
-      @@
-      let version = (Super_context.context sctx |> Context.ocaml).version in
-      Preprocessing.pped_modules_map
-        (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
-        version
+      @@ Preprocessing.pped_modules_map
+           (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
+           version
     in
     let deps_of module_ =
       let module_ = pp_map module_ in
@@ -447,13 +449,16 @@ module Crawl = struct
             >>= Dir_contents.ocaml
             >>| Ml_sources.modules_and_obj_dir ~for_:(Library name)
           in
-          let pp_map =
+          let* pp_map =
+            let+ version =
+              let+ ocaml = Super_context.context sctx |> Context.ocaml in
+              ocaml.version
+            in
             Staged.unstage
-            @@
-            let version = (Super_context.context sctx |> Context.ocaml).version in
-            Preprocessing.pped_modules_map
-              (Preprocess.Per_module.without_instrumentation (Lib_info.preprocess info))
-              version
+            @@ Preprocessing.pped_modules_map
+                 (Preprocess.Per_module.without_instrumentation
+                    (Lib_info.preprocess info))
+                 version
           in
           let deps_of module_ =
             immediate_deps_of_module

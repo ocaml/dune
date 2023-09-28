@@ -54,7 +54,7 @@ type t =
   ; bindings : value Pform.Map.t
   ; scope : Scope.t
   ; scope_host : Scope.t
-  ; c_compiler : string
+  ; c_compiler : string Memo.t
   ; context : Context.t
   ; lookup_artifacts : (dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.t) option
   ; foreign_flags :
@@ -200,8 +200,9 @@ let expand_artifact ~source t a s =
 let cc t =
   Memo.map (t.foreign_flags ~dir:t.dir) ~f:(fun cc ->
     Foreign_language.Dict.map cc ~f:(fun cc ->
-      let+ flags = cc in
-      strings (t.c_compiler :: flags)))
+      let+ flags = cc
+      and+ c_compiler = Action_builder.of_memo t.c_compiler in
+      strings (c_compiler :: flags)))
 ;;
 
 let get_prog = function
@@ -222,6 +223,7 @@ type nonrec expansion_result =
   | Need_full_expander of (t -> value)
 
 let static v = Direct (Without (Memo.return v))
+let static' v = Direct (Without v)
 
 let[@inline never] invalid_use_of_target_variable
   t
@@ -406,8 +408,43 @@ let make loc context =
   [ Value.Path make ]
 ;;
 
+let lib_config_var (var : Pform.Var.t) (lib_config : Lib_config.t) =
+  string
+  @@
+  match var with
+  | Ocaml_stdlib_dir -> Path.to_string lib_config.stdlib_dir
+  | Ext_obj -> lib_config.ext_obj
+  | Ext_lib -> lib_config.ext_lib
+  | Ext_dll -> lib_config.ext_dll
+  | Ccomp_type -> Ocaml_config.Ccomp_type.to_string lib_config.ccomp_type
+  | _ -> Code_error.raise "not a Lib_config.t variable" [ "var", Pform.Var.to_dyn var ]
+;;
+
+let ocaml_config_var (var : Pform.Var.t) (ocaml_config : Ocaml_config.t) =
+  match var with
+  | Cpp -> c_compiler_and_flags ocaml_config @ [ "-E" ] |> strings
+  | Pa_cpp ->
+    c_compiler_and_flags ocaml_config @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ]
+    |> strings
+  | Arch_sixtyfour -> 64 = Ocaml_config.word_size ocaml_config |> string_of_bool |> string
+  | Ocaml_version -> Ocaml_config.version_string ocaml_config |> string
+  | Ext_asm -> Ocaml_config.ext_asm ocaml_config |> string
+  | Ext_plugin ->
+    (if Ocaml_config.natdynlink_supported ocaml_config then Mode.Native else Byte)
+    |> Mode.plugin_ext
+    |> string
+  | Os_type ->
+    Ocaml_config.os_type ocaml_config |> Ocaml_config.Os_type.to_string |> string
+  | Architecture -> Ocaml_config.architecture ocaml_config |> string
+  | System -> Ocaml_config.system ocaml_config |> string
+  | Model -> Ocaml_config.model ocaml_config |> string
+  | Ext_exe -> Ocaml_config.ext_exe ocaml_config |> string
+  | _ -> Code_error.raise "not a ocaml_config variables" [ "var", Pform.Var.to_dyn var ]
+;;
+
 let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
-  let lib_config = (Context.ocaml context).lib_config in
+  let open Memo.O in
+  let ocaml = Context.ocaml context in
   match var with
   | Pkg _ -> assert false
   | Nothing -> static []
@@ -432,54 +469,48 @@ let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
   | Targets ->
     Need_full_expander
       (fun t -> invalid_use_of_target_variable t ~source ~var_multiplicity:Multiple)
-  | Ocaml -> static (get_prog (Context.ocaml context).ocaml)
-  | Ocamlc -> static (path (Context.ocaml context).ocamlc)
-  | Ocamlopt -> static (get_prog (Context.ocaml context).ocamlopt)
-  | Make -> Direct (Without (make (Dune_lang.Template.Pform.loc source) context))
-  | Cpp ->
-    c_compiler_and_flags (Context.ocaml context).ocaml_config @ [ "-E" ]
-    |> strings
-    |> static
-  | Pa_cpp ->
-    c_compiler_and_flags (Context.ocaml context).ocaml_config
-    @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ]
-    |> strings
-    |> static
-  | Arch_sixtyfour ->
-    64
-    = Ocaml_config.word_size (Context.ocaml context).ocaml_config
-    |> string_of_bool
-    |> string
-    |> static
-  | Ocaml_bin_dir -> static [ Dir (Context.ocaml context).bin_dir ]
-  | Ocaml_version ->
-    static (string (Ocaml_config.version_string (Context.ocaml context).ocaml_config))
-  | Ocaml_stdlib_dir -> static (string (Path.to_string lib_config.stdlib_dir))
-  | Dev_null -> static (string (Path.to_string Dev_null.path))
-  | Ext_obj -> static (string lib_config.ext_obj)
-  | Ext_asm -> static (string (Ocaml_config.ext_asm (Context.ocaml context).ocaml_config))
-  | Ext_lib -> static (string lib_config.ext_lib)
-  | Ext_dll -> static (string lib_config.ext_dll)
-  | Ext_exe -> static (string (Ocaml_config.ext_exe (Context.ocaml context).ocaml_config))
-  | Ext_plugin ->
-    (if Ocaml_config.natdynlink_supported (Context.ocaml context).ocaml_config
-     then Mode.Native
-     else Byte)
-    |> Mode.plugin_ext
-    |> string
-    |> static
   | Profile -> Context.profile context |> Profile.to_string |> string |> static
   | Workspace_root -> static [ Value.Dir (Path.build (Context.build_dir context)) ]
   | Context_name -> static (string (Context_name.to_string (Context.name context)))
-  | Os_type ->
-    static
-    @@ string
-    @@ Ocaml_config.Os_type.to_string
-         (Ocaml_config.os_type (Context.ocaml context).ocaml_config)
-  | Architecture ->
-    static (string (Ocaml_config.architecture (Context.ocaml context).ocaml_config))
-  | System -> static (string (Ocaml_config.system (Context.ocaml context).ocaml_config))
-  | Model -> static (string (Ocaml_config.model (Context.ocaml context).ocaml_config))
+  | Ocaml ->
+    static'
+    @@ let+ ocaml = ocaml in
+       get_prog ocaml.ocaml
+  | Ocaml_bin_dir ->
+    static'
+    @@ let+ ocaml = ocaml in
+       [ Value.Dir ocaml.bin_dir ]
+  | Ocamlc ->
+    static'
+    @@ let+ ocaml = ocaml in
+       path ocaml.ocamlc
+  | Ocamlopt ->
+    static'
+    @@ let+ ocaml = ocaml in
+       get_prog ocaml.ocamlopt
+  | Make -> Direct (Without (make (Dune_lang.Template.Pform.loc source) context))
+  | Dev_null ->
+    Path.to_string Dev_null.path
+    |> string
+    |> static (* why don't we expand this as a path? *)
+  | Ocaml_stdlib_dir | Ext_obj | Ext_lib | Ext_dll | Ccomp_type ->
+    (let+ ocaml = ocaml in
+     lib_config_var var ocaml.lib_config)
+    |> static'
+  | Ext_exe
+  | Cpp
+  | Pa_cpp
+  | Arch_sixtyfour
+  | Ocaml_version
+  | Ext_asm
+  | Ext_plugin
+  | Os_type
+  | Architecture
+  | System
+  | Model ->
+    (let+ ocaml = ocaml in
+     ocaml_config_var var ocaml.ocaml_config)
+    |> static'
   | Ignoring_promoted_rules ->
     static (string (string_of_bool !Clflags.ignore_promoted_rules))
   | Project_root ->
@@ -489,16 +520,16 @@ let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
     Need_full_expander
       (fun t ->
         With
-          (let* cc = Action_builder.of_memo (cc t) in
+          (let open Action_builder.O in
+           let* cc = Action_builder.of_memo (cc t) in
            cc.c))
   | Cxx ->
     Need_full_expander
       (fun t ->
         With
-          (let* cc = Action_builder.of_memo (cc t) in
+          (let open Action_builder.O in
+           let* cc = Action_builder.of_memo (cc t) in
            cc.cxx))
-  | Ccomp_type ->
-    static @@ string @@ Ocaml_config.Ccomp_type.to_string lib_config.ccomp_type
   | Toolchain ->
     static
     @@ string
@@ -521,20 +552,25 @@ let expand_pform_macro
   | Pkg -> Code_error.raise "pkg forms aren't possible here" []
   | Pkg_self -> Code_error.raise "pkg-self forms aren't possible here" []
   | Ocaml_config ->
-    static
+    static'
     @@
-      (match Ocaml_config.by_name (Context.ocaml context).ocaml_config s with
-      | None ->
-        User_error.raise
-          ~loc:(Dune_lang.Template.Pform.loc source)
-          [ Pp.textf "Unknown ocaml configuration variable %S" s ]
-      | Some v ->
-        (match v with
-         | Bool x -> string (string_of_bool x)
-         | Int x -> string (string_of_int x)
-         | String x -> string x
-         | Words x -> strings x
-         | Prog_and_args x -> strings (x.prog :: x.args)))
+    let open Memo.O in
+    let+ ocaml_config =
+      let+ ocaml = Context.ocaml context in
+      ocaml.ocaml_config
+    in
+    (match Ocaml_config.by_name ocaml_config s with
+     | None ->
+       User_error.raise
+         ~loc:(Dune_lang.Template.Pform.loc source)
+         [ Pp.textf "Unknown ocaml configuration variable %S" s ]
+     | Some v ->
+       (match v with
+        | Bool x -> string (string_of_bool x)
+        | Int x -> string (string_of_int x)
+        | String x -> string x
+        | Words x -> strings x
+        | Prog_and_args x -> strings (x.prog :: x.args)))
   | Env ->
     Need_full_expander
       (fun t ->
@@ -728,6 +764,11 @@ let make_root
   ~lib_artifacts_host
   ~artifacts_host
   =
+  let c_compiler =
+    let open Memo.O in
+    let+ ocaml = Context.ocaml context in
+    Ocaml_config.c_compiler ocaml.ocaml_config
+  in
   { dir = Context.build_dir context
   ; env
   ; local_env = Env.Var.Map.empty
@@ -737,7 +778,7 @@ let make_root
   ; lib_artifacts
   ; lib_artifacts_host
   ; artifacts_host
-  ; c_compiler = Ocaml_config.c_compiler (Context.ocaml context).ocaml_config
+  ; c_compiler
   ; context
   ; lookup_artifacts = None
   ; foreign_flags =

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695912041091,
+  "lastUpdate": 1695912269938,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -32333,6 +32333,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.53599978968",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "524bdbbd0802580e52f8afd441e04a1152389c9f",
+          "message": "refactor: wrap findlib/ocamlpath with Memo (#8782)\n\nThis will be needed to make the loading of OCaml rules lazy\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-28T15:16:57+01:00",
+          "tree_id": "a84483c4567d3c84e6ca89e3e6370ee5be332bd6",
+          "url": "https://github.com/ocaml/dune/commit/524bdbbd0802580e52f8afd441e04a1152389c9f"
+        },
+        "date": 1695912268304,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "51.95103826909334",
             "unit": "seconds"
           }
         ]

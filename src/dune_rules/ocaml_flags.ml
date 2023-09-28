@@ -68,6 +68,8 @@ module Spec = struct
     }
   ;;
 
+  let make ~common ~specific : t = { common; specific }
+
   let decode =
     let open Dune_lang.Decoder in
     let field_oslu = Ordered_set_lang.Unexpanded.field in
@@ -121,19 +123,6 @@ let make ~spec ~default ~eval =
   }
 ;;
 
-let make_with_melange ~melange ~default ~eval =
-  { common = default.common
-  ; specific =
-      { ocaml = default.specific.ocaml
-      ; melange =
-          Action_builder.memoize
-            ~cutoff:(List.equal String.equal)
-            "melange compile_flags"
-            (eval melange ~standard:default.specific.melange)
-      }
-  }
-;;
-
 let get t mode =
   let+ common = t.common
   and+ specific = Lib_mode.Map.get t.specific mode in
@@ -171,4 +160,18 @@ let with_vendored_flags flags ~ocaml_version =
   if Ocaml.Version.supports_alerts ocaml_version
   then with_vendored_alerts with_warnings
   else with_warnings
+;;
+
+let allow_only_melange t =
+  let ocaml =
+    Ocaml.Mode.Dict.make_both
+      (Action_builder.fail
+         { fail =
+             (fun () ->
+               Code_error.raise
+                 "only melange flags are allowed to be evaluated with this flags set"
+                 [])
+         })
+  in
+  { t with specific = { t.specific with ocaml } }
 ;;

@@ -10,6 +10,11 @@ module Spec : sig
   val equal : t -> t -> bool
   val decode : t Dune_lang.Decoder.fields_parser
   val standard : t
+
+  val make
+    :  common:Ordered_set_lang.Unexpanded.t
+    -> specific:Ordered_set_lang.Unexpanded.t Lib_mode.Map.t
+    -> t
 end
 
 val make
@@ -21,15 +26,7 @@ val make
         -> string list Action_builder.t)
   -> t
 
-val make_with_melange
-  :  melange:Ordered_set_lang.Unexpanded.t
-  -> default:t
-  -> eval:
-       (Ordered_set_lang.Unexpanded.t
-        -> standard:string list Action_builder.t
-        -> string list Action_builder.t)
-  -> t
-
+val allow_only_melange : t -> t
 val default : dune_version:Dune_lang.Syntax.Version.t -> profile:Profile.t -> t
 val empty : t
 val of_list : string list -> t

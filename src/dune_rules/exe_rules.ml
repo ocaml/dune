@@ -233,20 +233,22 @@ let executables_rules
          run bits from [Exe.build_and_link_many] and run them here, then pass
          that to the [Exe.link_many] call here as well as the Ctypes_rules. This
          dance is done to avoid triggering duplicate rule exceptions. *)
-      let* () =
-        let loc = fst (List.hd exes.Executables.names) in
+      let+ () =
+        let loc = fst (List.hd exes.names) in
         Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir
+      and+ () = Module_compilation.build_all cctx
+      and+ link =
+        Exe.link_many
+          ~programs
+          ~linkages
+          ~link_args
+          ~o_files
+          ~promote:exes.promote
+          ~embed_in_plugin_libraries
+          cctx
+          ~sandbox
       in
-      let* () = Module_compilation.build_all cctx in
-      Exe.link_many
-        ~programs
-        ~linkages
-        ~link_args
-        ~o_files
-        ~promote:exes.promote
-        ~embed_in_plugin_libraries
-        cctx
-        ~sandbox
+      link
   in
   let+ () =
     Memo.parallel_iter dep_graphs.for_exes ~f:(Check_rules.add_cycle_check sctx ~dir)

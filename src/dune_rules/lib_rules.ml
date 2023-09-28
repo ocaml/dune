@@ -292,9 +292,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
   in
   let* o_files =
     let lib_foreign_o_files =
-      let { Lib_config.ext_obj; _ } =
-        (Super_context.context sctx |> Context.ocaml).lib_config
-      in
+      let { Lib_config.ext_obj; _ } = (Compilation_context.ocaml cctx).lib_config in
       Foreign.Objects.build_paths lib.buildable.extra_objects ~ext_obj ~dir
     in
     let+ tbl =
@@ -320,7 +318,9 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
     let build_targets_together =
       modes.ocaml.native
       && modes.ocaml.byte
-      && Dynlink_supported.get_ocaml_config lib.dynlink (Context.ocaml ctx).ocaml_config
+      && Dynlink_supported.get_ocaml_config
+           lib.dynlink
+           (Compilation_context.ocaml cctx).ocaml_config
     in
     let* standard =
       let+ project = Scope.DB.find_by_dir dir >>| Scope.project in
@@ -572,7 +572,8 @@ let library_rules
   let dir = Compilation_context.dir cctx in
   let scope = Compilation_context.scope cctx in
   let* requires_compile = Compilation_context.requires_compile cctx in
-  let stdlib_dir = (Compilation_context.ocaml cctx).lib_config.stdlib_dir in
+  let ocaml = Compilation_context.ocaml cctx in
+  let stdlib_dir = ocaml.lib_config.stdlib_dir in
   let top_sorted_modules =
     let impl_only = Modules.impl_only modules in
     Dep_graph.top_closed_implementations
@@ -587,7 +588,7 @@ let library_rules
   and* () = Module_compilation.build_all cctx
   and* expander = Super_context.expander sctx ~dir
   and* lib_info =
-    let lib_config = (Super_context.context sctx |> Context.ocaml).lib_config in
+    let lib_config = ocaml.lib_config in
     let* info = Library.to_lib_info lib ~dir ~lib_config in
     let mode = Lib_mode.Map.Set.for_merlin (Lib_info.modes info) in
     let+ () = Check_rules.add_obj_dir sctx ~obj_dir mode in

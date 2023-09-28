@@ -46,7 +46,5 @@ The value for "jobs" should always be 1.
 
   $ GROUP="$(id -gn)"
   > build_pkg testpkg 2>&1 | sed "s/$GROUP/GROUP/g"
-  File "dune.lock/testpkg.pkg", line 5, characters 12-19:
-  5 |   (run echo %{jobs})
-                  ^^^^^^^
-  Error: Unknown variable %{jobs}
+  1
+  GROUP

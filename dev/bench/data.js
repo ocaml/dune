@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695928577377,
+  "lastUpdate": 1695928590566,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -82358,6 +82358,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "69.90940352573334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0f261a35ddcd97212b5e63cc0841e233274fdeca",
+          "message": "refactor(melange): remove duplicate flag handling (#8787)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-28T19:49:37+01:00",
+          "tree_id": "a8f20d7cc66ca686f84502ac143de1102d506524",
+          "url": "https://github.com/ocaml/dune/commit/0f261a35ddcd97212b5e63cc0841e233274fdeca"
+        },
+        "date": 1695928589775,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.9187627167466665",
             "unit": "seconds"
           }
         ]

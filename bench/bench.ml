@@ -188,8 +188,7 @@ let tag_results { size; clean; zero; clean_sandbox; zero_sandbox } =
     - fragments - not consistent between builds
     - stack_size - not very useful
     - forced_collections - only available in OCaml >= 4.12 *)
-let display_clean_and_zero
-  ~name_suffix
+let display_clean_and_zero_with_sandboxing
   ({ elapsed_time
    ; user_cpu_time
    ; system_cpu_time
@@ -212,30 +211,138 @@ let display_clean_and_zero
    } :
     _ Metrics.t)
   (zero : _ Metrics.t)
+  (clean_sandbox : _ Metrics.t)
+  (zero_sandbox : _ Metrics.t)
   =
-  (* Display single what stat clean and null build *)
-  let display what units clean zero =
-    { Output.name = what ^ name_suffix
-    ; metrics = [ "[Clean] " ^ what, clean, units; "[Null] " ^ what, zero, units ]
+  let display what units clean zero clean_sandbox zero_sandbox =
+    { Output.name = what
+    ; metrics =
+        [ "[Clean] " ^ what, clean, units
+        ; "[Null] " ^ what, zero, units
+        ; "[Clean Sandbox] " ^ what, clean_sandbox, units
+        ; "[Null Sandbox] " ^ what, zero_sandbox, units
+        ]
     }
   in
-  [ display "Build Time" "Seconds" elapsed_time zero.elapsed_time
-  ; display "User CPU Time" "Seconds" user_cpu_time zero.user_cpu_time
-  ; display "System CPU Time" "Seconds" system_cpu_time zero.system_cpu_time
-  ; display "Minor Words" "Approx. Words" minor_words zero.minor_words
-  ; display "Promoted Words" "Approx. Words" promoted_words zero.promoted_words
-  ; display "Major Words" "Approx. Words" major_words zero.major_words
-  ; display "Minor Collections" "Collections" minor_collections zero.minor_collections
-  ; display "Major Collections" "Collections" major_collections zero.major_collections
-  ; display "Heap Words" "Words" heap_words zero.heap_words
-  ; display "Heap Chunks" "Chunks" heap_chunks zero.heap_chunks
-  ; display "Live Words" "Words" live_words zero.live_words
-  ; display "Live Blocks" "Blocks" live_blocks zero.live_blocks
-  ; display "Free Words" "Words" free_words zero.free_words
-  ; display "Free Blocks" "Blocks" free_blocks zero.free_blocks
-  ; display "Largest Free" "Words" largest_free zero.largest_free
-  ; display "Compactions" "Compactions" compactions zero.compactions
-  ; display "Top Heap Words" "Words" top_heap_words zero.top_heap_words
+  [ display
+      "Build Time"
+      "Seconds"
+      elapsed_time
+      zero.elapsed_time
+      clean_sandbox.elapsed_time
+      zero_sandbox.elapsed_time
+  ; display
+      "User CPU Time"
+      "Seconds"
+      user_cpu_time
+      zero.user_cpu_time
+      clean_sandbox.user_cpu_time
+      zero_sandbox.user_cpu_time
+  ; display
+      "System CPU Time"
+      "Seconds"
+      system_cpu_time
+      zero.system_cpu_time
+      clean_sandbox.system_cpu_time
+      zero_sandbox.system_cpu_time
+  ; display
+      "Minor Words"
+      "Approx. Words"
+      minor_words
+      zero.minor_words
+      clean_sandbox.minor_words
+      zero_sandbox.minor_words
+  ; display
+      "Promoted Words"
+      "Approx. Words"
+      promoted_words
+      zero.promoted_words
+      clean_sandbox.promoted_words
+      zero_sandbox.promoted_words
+  ; display
+      "Major Words"
+      "Approx. Words"
+      major_words
+      zero.major_words
+      clean_sandbox.major_words
+      zero_sandbox.major_words
+  ; display
+      "Minor Collections"
+      "Collections"
+      minor_collections
+      zero.minor_collections
+      clean_sandbox.minor_collections
+      zero_sandbox.minor_collections
+  ; display
+      "Major Collections"
+      "Collections"
+      major_collections
+      zero.major_collections
+      clean_sandbox.major_collections
+      zero_sandbox.major_collections
+  ; display
+      "Heap Words"
+      "Words"
+      heap_words
+      zero.heap_words
+      clean_sandbox.heap_words
+      zero_sandbox.heap_words
+  ; display
+      "Heap Chunks"
+      "Chunks"
+      heap_chunks
+      zero.heap_chunks
+      clean_sandbox.heap_chunks
+      zero_sandbox.heap_chunks
+  ; display
+      "Live Words"
+      "Words"
+      live_words
+      zero.live_words
+      clean_sandbox.live_words
+      zero_sandbox.live_words
+  ; display
+      "Live Blocks"
+      "Blocks"
+      live_blocks
+      zero.live_blocks
+      clean_sandbox.live_blocks
+      zero_sandbox.live_blocks
+  ; display
+      "Free Words"
+      "Words"
+      free_words
+      zero.free_words
+      clean_sandbox.free_words
+      zero_sandbox.free_words
+  ; display
+      "Free Blocks"
+      "Blocks"
+      free_blocks
+      zero.free_blocks
+      clean_sandbox.free_blocks
+      zero_sandbox.free_blocks
+  ; display
+      "Largest Free"
+      "Words"
+      largest_free
+      zero.largest_free
+      clean_sandbox.largest_free
+      zero_sandbox.largest_free
+  ; display
+      "Compactions"
+      "Compactions"
+      compactions
+      zero.compactions
+      clean_sandbox.compactions
+      zero_sandbox.compactions
+  ; display
+      "Top Heap Words"
+      "Words"
+      top_heap_words
+      zero.top_heap_words
+      clean_sandbox.top_heap_words
+      zero_sandbox.top_heap_words
   ]
 ;;
 
@@ -244,10 +351,7 @@ let format_results bench_results =
   let size, clean, zero, clean_sandbox, zero_sandbox = tag_results bench_results in
   (* bench results *)
   [ { Output.name = "Misc"; metrics = [ "Size of _boot/dune.exe", size, "Bytes" ] } ]
-  (* clean and null builds *)
-  @ display_clean_and_zero ~name_suffix:"" clean zero
-  (* clean and null builds with sandbox *)
-  @ display_clean_and_zero ~name_suffix:" [sandbox]" clean_sandbox zero_sandbox
+  @ display_clean_and_zero_with_sandboxing clean zero clean_sandbox zero_sandbox
 ;;
 
 let () =

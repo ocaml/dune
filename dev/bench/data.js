@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695936626742,
+  "lastUpdate": 1695936982690,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -82416,6 +82416,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.9187627167466665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aff8994c1302cb3f9a9af54763867e8f8bfbf043",
+          "message": "fix(pkg): dune.lock is ignored in --release (#8761)\n\nWe add a new --ignore-lock-directory option that will always skip the\r\nlockfile. We also add this to --release (and -p).\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-28T22:09:46+01:00",
+          "tree_id": "c8b0bebb791c238dac86ac6a5ec3f2faf009c1ee",
+          "url": "https://github.com/ocaml/dune/commit/aff8994c1302cb3f9a9af54763867e8f8bfbf043"
+        },
+        "date": 1695936982056,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "70.45652428138668",
             "unit": "seconds"
           }
         ]

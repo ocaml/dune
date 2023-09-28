@@ -628,7 +628,7 @@ let term : unit Term.t =
   let* setup = setup in
   let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
   let context = Super_context.context super_context in
-  let findlib_paths = Context.findlib_paths context in
+  let* findlib_paths = Context.findlib_paths context in
   (* prefix directories with the workspace root, so that the
      command also works correctly when it is run from a
      subdirectory *)

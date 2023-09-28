@@ -26,6 +26,7 @@ let rule sctx ~requires_link (exes : Dune_file.Executables.t) =
     ; "win64", win_link_flags
     ; "mingw", win_link_flags
     ; "mingw64", win_link_flags
+    ; "beos", [ "-cclib"; "-lbsd" ] (* flags for Haiku *)
     ]
   in
   let+ locals =

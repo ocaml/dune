@@ -7,6 +7,7 @@ module OS = struct
     | FreeBSD
     | NetBSD
     | OpenBSD
+    | Haiku
     | Other
 
   let equal = Poly.equal
@@ -15,6 +16,7 @@ module OS = struct
   external is_freebsd : unit -> bool = "stdune_is_freebsd"
   external is_netbsd : unit -> bool = "stdune_is_netbsd"
   external is_openbsd : unit -> bool = "stdune_is_openbsd"
+  external is_haiku : unit -> bool = "stdune_is_haiku"
 
   let to_dyn : t -> Dyn.t = function
     | Windows -> Dyn.variant "Windows" []
@@ -23,6 +25,7 @@ module OS = struct
     | FreeBSD -> Dyn.variant "FreeBSD" []
     | NetBSD -> Dyn.variant "NetBSD" []
     | OpenBSD -> Dyn.variant "OpenBSD" []
+    | Haiku -> Dyn.variant "Haiku" []
     | Other -> Dyn.variant "Other" []
   ;;
 
@@ -52,6 +55,8 @@ module OS = struct
     then NetBSD
     else if is_openbsd ()
     then OpenBSD
+    else if is_haiku ()
+    then Haiku
     else Other
   ;;
 end

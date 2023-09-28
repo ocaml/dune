@@ -10,6 +10,7 @@ module OS : sig
     | FreeBSD
     | NetBSD
     | OpenBSD
+    | Haiku
     | Other
 
   (** [value] is the current os we're running on. *)

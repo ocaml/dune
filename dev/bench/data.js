@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695995356506,
+  "lastUpdate": 1695995776859,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -107038,6 +107038,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.163210711040005",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5d6a2bded3d3fad4cd457edee98849be7b5651c1",
+          "message": "fix(pkg): mark more variables as unsupported (#8797)\n\nAlso split the handling of global and package variables\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-29T14:43:30+01:00",
+          "tree_id": "fec1b8266de4d0540a769d6c449a2cb625f9d177",
+          "url": "https://github.com/ocaml/dune/commit/5d6a2bded3d3fad4cd457edee98849be7b5651c1"
+        },
+        "date": 1695995760001,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.369408550299998",
             "unit": "seconds"
           }
         ]

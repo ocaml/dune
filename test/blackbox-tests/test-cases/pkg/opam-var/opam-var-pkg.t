@@ -115,86 +115,26 @@ corresponding Dune version.
 The values here are not important, but Dune should be able to interpret the variables.
 
   $ build_pkg testpkg
-  File "dune.lock/testpkg.pkg", line 5, characters 14-30:
-  5 |   (run echo 1 %{pkg-self:name})
-                    ^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
-  File "dune.lock/testpkg.pkg", line 6, characters 14-30:
-  6 |   (run echo 2 %{pkg-self:name})
-                    ^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
-  File "dune.lock/testpkg.pkg", line 8, characters 14-33:
-  8 |   (run echo 4 %{pkg-self:version})
-                    ^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
-  File "dune.lock/testpkg.pkg", line 9, characters 14-33:
-  9 |   (run echo 5 %{pkg-self:version})
-                    ^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
   File "dune.lock/testpkg.pkg", line 11, characters 14-33:
   11 |   (run echo 7 %{pkg-self:depends})
                      ^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
+  Error: invalid section "depends"
   File "dune.lock/testpkg.pkg", line 12, characters 14-32:
   12 |   (run echo 8 %{pkg:foo:depends})
                      ^^^^^^^^^^^^^^^^^^
   Error: invalid section "depends"
-  File "dune.lock/testpkg.pkg", line 13, characters 14-35:
-  13 |   (run echo 9 %{pkg-self:installed})
-                     ^^^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
-  File "dune.lock/testpkg.pkg", line 15, characters 15-33:
-  15 |   (run echo 11 %{pkg-self:enable})
-                      ^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
-  File "dune.lock/testpkg.pkg", line 17, characters 15-33:
-  17 |   (run echo 13 %{pkg-self:pinned})
-                      ^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
-  File "dune.lock/testpkg.pkg", line 19, characters 15-30:
-  19 |   (run echo 15 %{pkg-self:bin})
-                      ^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
-  File "dune.lock/testpkg.pkg", line 21, characters 15-31:
-  21 |   (run echo 17 %{pkg-self:sbin})
-                      ^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
-  File "dune.lock/testpkg.pkg", line 23, characters 15-30:
-  23 |   (run echo 19 %{pkg-self:lib})
-                      ^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
-  File "dune.lock/testpkg.pkg", line 25, characters 15-30:
-  25 |   (run echo 21 %{pkg-self:man})
-                      ^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
-  File "dune.lock/testpkg.pkg", line 27, characters 15-30:
-  27 |   (run echo 23 %{pkg-self:doc})
-                      ^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
-  File "dune.lock/testpkg.pkg", line 29, characters 15-32:
-  29 |   (run echo 25 %{pkg-self:share})
-                      ^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
-  File "dune.lock/testpkg.pkg", line 31, characters 15-30:
-  31 |   (run echo 27 %{pkg-self:etc})
-                      ^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
   File "dune.lock/testpkg.pkg", line 33, characters 15-32:
   33 |   (run echo 29 %{pkg-self:build})
                       ^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
+  Error: invalid section "build"
   File "dune.lock/testpkg.pkg", line 34, characters 15-31:
   34 |   (run echo 30 %{pkg:foo:build})
                       ^^^^^^^^^^^^^^^^
   Error: invalid section "build"
-  File "dune.lock/testpkg.pkg", line 35, characters 15-30:
-  35 |   (run echo 31 %{pkg-self:dev})
-                      ^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
   File "dune.lock/testpkg.pkg", line 37, characters 15-35:
   37 |   (run echo 33 %{pkg-self:opamfile})
                       ^^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
+  Error: invalid section "opamfile"
   File "dune.lock/testpkg.pkg", line 38, characters 15-34:
   38 |   (run echo 34 %{pkg:foo:opamfile})
                       ^^^^^^^^^^^^^^^^^^^
@@ -202,11 +142,11 @@ The values here are not important, but Dune should be able to interpret the vari
   File "dune.lock/testpkg.pkg", line 39, characters 15-36:
   39 |   (run echo 35 %{pkg-self:with-test})
                       ^^^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
+  Error: invalid section "with-test"
   File "dune.lock/testpkg.pkg", line 40, characters 15-36:
   40 |   (run echo 36 %{pkg-self:with-test})
                       ^^^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
+  Error: invalid section "with-test"
   File "dune.lock/testpkg.pkg", line 41, characters 15-35:
   41 |   (run echo 37 %{pkg:foo:with-test})
                       ^^^^^^^^^^^^^^^^^^^^
@@ -214,11 +154,11 @@ The values here are not important, but Dune should be able to interpret the vari
   File "dune.lock/testpkg.pkg", line 42, characters 15-35:
   42 |   (run echo 38 %{pkg-self:with-doc})
                       ^^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
+  Error: invalid section "with-doc"
   File "dune.lock/testpkg.pkg", line 43, characters 15-35:
   43 |   (run echo 39 %{pkg-self:with-doc})
                       ^^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
+  Error: invalid section "with-doc"
   File "dune.lock/testpkg.pkg", line 44, characters 15-34:
   44 |   (run echo 40 %{pkg:foo:with-doc})
                       ^^^^^^^^^^^^^^^^^^^
@@ -226,7 +166,7 @@ The values here are not important, but Dune should be able to interpret the vari
   File "dune.lock/testpkg.pkg", line 45, characters 15-41:
   45 |   (run echo 41 %{pkg-self:with-dev-setup})
                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{pkg-self:..}
+  Error: invalid section "with-dev-setup"
   File "dune.lock/testpkg.pkg", line 46, characters 15-40:
   46 |   (run echo 42 %{pkg:foo:with-dev-setup})))
                       ^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695974568152,
+  "lastUpdate": 1695984600810,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -106777,6 +106777,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "24.204131541833334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "amokhov@janestreet.com",
+            "name": "Andrey Mokhov",
+            "username": "snowleopard"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9b8cca15e1b1e444177cdf29cb53565bd8445bab",
+          "message": "Rename [memoize_tests] to [main] since this is not the only test module (#8786)\n\nSigned-off-by: Andrey Mokhov <andrey.mokhov@gmail.com>",
+          "timestamp": "2023-09-29T11:37:44+01:00",
+          "tree_id": "af50567ad32dcb379d9c4bcf1119467f4655aaa1",
+          "url": "https://github.com/ocaml/dune/commit/9b8cca15e1b1e444177cdf29cb53565bd8445bab"
+        },
+        "date": 1695984584354,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.13257529044",
             "unit": "seconds"
           }
         ]

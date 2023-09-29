@@ -16,12 +16,6 @@ module Optimistically = struct
   ;;
 end
 
-let link_or_copy ~mode ~src ~dst =
-  match (mode : Mode.t) with
-  | Hardlink -> Path.link src dst
-  | Copy -> Io.copy_file ~src ~dst ()
-;;
-
 module Write_result = struct
   type t =
     | Ok
@@ -41,6 +35,8 @@ end
 let add_atomically ~mode ~src ~dst : Write_result.t =
   match (mode : Mode.t) with
   | Hardlink ->
+    (* The [src] comes from a fresh temporary file, so we should never get
+       [EMLINK] *)
     (match Optimistically.link ~src ~dst with
      | () -> Ok
      | exception Unix.Unix_error (Unix.EEXIST, _, _) -> Already_present

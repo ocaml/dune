@@ -3,7 +3,7 @@
    Distributed under the ISC license, see terms at the end of the file.
   ---------------------------------------------------------------------------*)
 
-(** Exit codes, environment variabes, arguments, commands and eval information.
+(** Exit codes, environment variables, arguments, commands and eval information.
 
     These information types gathers untyped data used to parse command
     lines report errors and format man pages. *)

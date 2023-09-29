@@ -407,9 +407,8 @@ module Dune_config = struct
        the output is getting piped to a file or something. *)
     let config =
       match config.display with
-      | Simple { verbosity; _ }
-        when (not output_is_a_tty) && not Execution_env.inside_emacs ->
-        { config with display = Simple { verbosity; status_line = false } }
+      | Simple { verbosity; _ } when (not output_is_a_tty) || Execution_env.inside_emacs
+        -> { config with display = Simple { verbosity; status_line = false } }
       | _ -> config
     in
     (* Similarly, terminal clearing is meaningless if stderr doesn't support ANSI

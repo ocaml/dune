@@ -41,3 +41,15 @@ These should all have nice error messages explaining that they are not supported
   $ fail_solve _:misc
   Error: Variable "misc" occuring in opam package "testpkg.0.0.1" is not
   supported.
+# _:depends
+  $ fail_solve _:depends
+  Error: Variable "depends" occuring in opam package "testpkg.0.0.1" is not
+  supported.
+# _:build
+  $ fail_solve _:build
+  Error: Variable "build" occuring in opam package "testpkg.0.0.1" is not
+  supported.
+# _:opamfile
+  $ fail_solve _:opamfile
+  Error: Variable "opamfile" occuring in opam package "testpkg.0.0.1" is not
+  supported.

@@ -14,8 +14,6 @@ We echo each package variable.
   >   [ "echo" "4"     version ]
   >   [ "echo" "5"   _:version ]
   >   [ "echo" "6" foo:version ]
-  >   [ "echo" "7"   _:depends ]
-  >   [ "echo" "8" foo:depends ]
   >   [ "echo" "9"    _:installed ]
   >   [ "echo" "10" foo:installed ]
   >   [ "echo" "11"   _:enable ]
@@ -36,12 +34,8 @@ We echo each package variable.
   >   [ "echo" "26" foo:share ]
   >   [ "echo" "27"   _:etc ]
   >   [ "echo" "28" foo:etc ]
-  >   [ "echo" "29"   _:build ]
-  >   [ "echo" "30" foo:build ]
   >   [ "echo" "31"   _:dev ]
   >   [ "echo" "32" foo:dev ]
-  >   [ "echo" "33"   _:opamfile ]
-  >   [ "echo" "34" foo:opamfile ]
   >   [ "echo" "35"     with-test ]
   >   [ "echo" "36"   _:with-test ]
   >   [ "echo" "37" foo:with-test ]
@@ -73,8 +67,6 @@ corresponding Dune version.
     (run echo 4 %{pkg-self:version})
     (run echo 5 %{pkg-self:version})
     (run echo 6 %{pkg:foo:version})
-    (run echo 7 %{pkg-self:depends})
-    (run echo 8 %{pkg:foo:depends})
     (run echo 9 %{pkg-self:installed})
     (run echo 10 %{pkg:foo:installed})
     (run echo 11 %{pkg-self:enable})
@@ -95,12 +87,8 @@ corresponding Dune version.
     (run echo 26 %{pkg:foo:share})
     (run echo 27 %{pkg-self:etc})
     (run echo 28 %{pkg:foo:etc})
-    (run echo 29 %{pkg-self:build})
-    (run echo 30 %{pkg:foo:build})
     (run echo 31 %{pkg-self:dev})
     (run echo 32 %{pkg:foo:dev})
-    (run echo 33 %{pkg-self:opamfile})
-    (run echo 34 %{pkg:foo:opamfile})
     (run echo 35 %{pkg-self:with-test})
     (run echo 36 %{pkg-self:with-test})
     (run echo 37 %{pkg:foo:with-test})
@@ -115,60 +103,36 @@ corresponding Dune version.
 The values here are not important, but Dune should be able to interpret the variables.
 
   $ build_pkg testpkg
-  File "dune.lock/testpkg.pkg", line 11, characters 14-33:
-  11 |   (run echo 7 %{pkg-self:depends})
-                     ^^^^^^^^^^^^^^^^^^^
-  Error: invalid section "depends"
-  File "dune.lock/testpkg.pkg", line 12, characters 14-32:
-  12 |   (run echo 8 %{pkg:foo:depends})
-                     ^^^^^^^^^^^^^^^^^^
-  Error: invalid section "depends"
-  File "dune.lock/testpkg.pkg", line 33, characters 15-32:
-  33 |   (run echo 29 %{pkg-self:build})
-                      ^^^^^^^^^^^^^^^^^
-  Error: invalid section "build"
-  File "dune.lock/testpkg.pkg", line 34, characters 15-31:
-  34 |   (run echo 30 %{pkg:foo:build})
-                      ^^^^^^^^^^^^^^^^
-  Error: invalid section "build"
+  File "dune.lock/testpkg.pkg", line 33, characters 15-36:
+  33 |   (run echo 35 %{pkg-self:with-test})
+                      ^^^^^^^^^^^^^^^^^^^^^
+  Error: invalid section "with-test"
+  File "dune.lock/testpkg.pkg", line 34, characters 15-36:
+  34 |   (run echo 36 %{pkg-self:with-test})
+                      ^^^^^^^^^^^^^^^^^^^^^
+  Error: invalid section "with-test"
+  File "dune.lock/testpkg.pkg", line 35, characters 15-35:
+  35 |   (run echo 37 %{pkg:foo:with-test})
+                      ^^^^^^^^^^^^^^^^^^^^
+  Error: invalid section "with-test"
+  File "dune.lock/testpkg.pkg", line 36, characters 15-35:
+  36 |   (run echo 38 %{pkg-self:with-doc})
+                      ^^^^^^^^^^^^^^^^^^^^
+  Error: invalid section "with-doc"
   File "dune.lock/testpkg.pkg", line 37, characters 15-35:
-  37 |   (run echo 33 %{pkg-self:opamfile})
+  37 |   (run echo 39 %{pkg-self:with-doc})
                       ^^^^^^^^^^^^^^^^^^^^
-  Error: invalid section "opamfile"
+  Error: invalid section "with-doc"
   File "dune.lock/testpkg.pkg", line 38, characters 15-34:
-  38 |   (run echo 34 %{pkg:foo:opamfile})
-                      ^^^^^^^^^^^^^^^^^^^
-  Error: invalid section "opamfile"
-  File "dune.lock/testpkg.pkg", line 39, characters 15-36:
-  39 |   (run echo 35 %{pkg-self:with-test})
-                      ^^^^^^^^^^^^^^^^^^^^^
-  Error: invalid section "with-test"
-  File "dune.lock/testpkg.pkg", line 40, characters 15-36:
-  40 |   (run echo 36 %{pkg-self:with-test})
-                      ^^^^^^^^^^^^^^^^^^^^^
-  Error: invalid section "with-test"
-  File "dune.lock/testpkg.pkg", line 41, characters 15-35:
-  41 |   (run echo 37 %{pkg:foo:with-test})
-                      ^^^^^^^^^^^^^^^^^^^^
-  Error: invalid section "with-test"
-  File "dune.lock/testpkg.pkg", line 42, characters 15-35:
-  42 |   (run echo 38 %{pkg-self:with-doc})
-                      ^^^^^^^^^^^^^^^^^^^^
-  Error: invalid section "with-doc"
-  File "dune.lock/testpkg.pkg", line 43, characters 15-35:
-  43 |   (run echo 39 %{pkg-self:with-doc})
-                      ^^^^^^^^^^^^^^^^^^^^
-  Error: invalid section "with-doc"
-  File "dune.lock/testpkg.pkg", line 44, characters 15-34:
-  44 |   (run echo 40 %{pkg:foo:with-doc})
+  38 |   (run echo 40 %{pkg:foo:with-doc})
                       ^^^^^^^^^^^^^^^^^^^
   Error: invalid section "with-doc"
-  File "dune.lock/testpkg.pkg", line 45, characters 15-41:
-  45 |   (run echo 41 %{pkg-self:with-dev-setup})
+  File "dune.lock/testpkg.pkg", line 39, characters 15-41:
+  39 |   (run echo 41 %{pkg-self:with-dev-setup})
                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: invalid section "with-dev-setup"
-  File "dune.lock/testpkg.pkg", line 46, characters 15-40:
-  46 |   (run echo 42 %{pkg:foo:with-dev-setup})))
+  File "dune.lock/testpkg.pkg", line 40, characters 15-40:
+  40 |   (run echo 42 %{pkg:foo:with-dev-setup})))
                       ^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: invalid section "with-dev-setup"
   [1]

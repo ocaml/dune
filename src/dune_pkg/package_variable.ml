@@ -63,30 +63,42 @@ let to_macro_invocation { name; scope } =
 
 let to_pform t = Pform.Macro (to_macro_invocation t)
 
-let package_variable package variable =
-  match package, variable with
-  | _, ("root" | "hash" | "build-id" | "misc" | "opam-version") ->
-    `Unsupported_variable variable
-  | "_", variable -> `Package_variable (self_scoped (Name.of_string variable))
-  | package, variable ->
-    `Package_variable
-      (package_scoped (Name.of_string variable) (Package_name.of_string package))
+let global_variable variable =
+  match variable with
+  | "root" -> Error (`Unsupported_variable variable)
+  | s -> Ok (Pform.Var.of_opam_global_variable_name s)
+;;
+
+let package_variable variable =
+  match variable with
+  | "hash" | "build-id" | "misc" | "opam-version" | "depends" | "build" | "opamfile" ->
+    Error (`Unsupported_variable variable)
+  | s -> Ok (Name.of_string s)
 ;;
 
 let of_opam_ident ident =
   match String.lsplit2 ident ~on:':' with
-  | Some (package, variable) -> package_variable package variable
+  | Some (package, variable) ->
+    let variable = package_variable variable in
+    Result.map variable ~f:(fun var ->
+      `Package_variable
+        (if package = "_"
+         then self_scoped var
+         else package_scoped var (Package_name.of_string package)))
   | None ->
-    (match Pform.Var.of_opam_global_variable_name ident with
-     | Some var -> `Global_variable var
-     | None -> package_variable "_" ident)
+    global_variable ident
+    |> Result.bind ~f:(function
+      | Some var -> Ok (`Global_variable var)
+      | None ->
+        let variable = package_variable ident in
+        Result.map variable ~f:(fun var -> `Package_variable (self_scoped var)))
 ;;
 
 let pform_of_opam_ident ~package_name ident =
   match of_opam_ident ident with
-  | `Package_variable t -> to_pform t
-  | `Global_variable var -> Pform.Var var
-  | `Unsupported_variable name ->
+  | Ok (`Package_variable t) -> to_pform t
+  | Ok (`Global_variable var) -> Pform.Var var
+  | Error (`Unsupported_variable name) ->
     User_error.raise
       [ Pp.textf
           "Variable %S occuring in opam package %S is not supported."

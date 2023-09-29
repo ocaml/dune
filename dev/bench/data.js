@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695995825564,
+  "lastUpdate": 1695996195663,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -82851,6 +82851,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "2.112748813873333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "samuel@tarides.com",
+            "name": "shym",
+            "username": "shym"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d5bc7ea7bc63f0a1dc1987ca083d556394071e4e",
+          "message": "Avoid a warning of the C compiler on Windows (#8796)\n\nThe macro `unix_error` is also defined in `caml/unixsupport.h` so the C\r\ncompiler generates a warning when it is redefined in `fswatch_win_stubs`\r\n\r\nSigned-off-by: Samuel Hym <samuel.hym@rustyne.lautre.net>",
+          "timestamp": "2023-09-29T14:35:19+01:00",
+          "tree_id": "be97a47289627cbc6c4d4dd416ef5f841dc44d49",
+          "url": "https://github.com/ocaml/dune/commit/d5bc7ea7bc63f0a1dc1987ca083d556394071e4e"
+        },
+        "date": 1695996194697,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "73.37696801084667",
             "unit": "seconds"
           }
         ]

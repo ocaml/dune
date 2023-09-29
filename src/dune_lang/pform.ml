@@ -557,7 +557,7 @@ module Env = struct
   let pkg =
     let macros =
       let macro (x : Macro.t) = No_info x in
-      String.Map.of_list_exn [ "pkg", macro Pkg ]
+      String.Map.of_list_exn [ "pkg", macro Pkg; "pkg-self", macro Pkg_self ]
     in
     let vars =
       let pkg =

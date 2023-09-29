@@ -3,6 +3,8 @@ open Memo.O
 module Caml_lazy = Lazy
 open Dune_tests_common
 
+(* CR-someday amokhov: We should split this humongous test file into smaller pieces. *)
+
 module Scheduler = struct
   let t = Test_scheduler.create ()
   let yield () = Test_scheduler.yield t

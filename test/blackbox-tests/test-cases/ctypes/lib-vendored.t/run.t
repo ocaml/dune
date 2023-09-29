@@ -7,6 +7,6 @@ it.
 This is the version that builds into a library.
   $ LIBEX=$(realpath "$PWD/../libexample")
   $ TARGET=./stubgen/vendor
-  $ mkdir -p $TARGET && install $LIBEX/* $TARGET
+  $ mkdir -p $TARGET && install $LIBEX/*example* $TARGET
   $ dune exec ./example.exe
   4

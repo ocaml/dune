@@ -87,8 +87,8 @@ and t =
   { kind : Kind.t
   ; build_dir : Path.Build.t
   ; ocaml : Ocaml_toolchain.t
-  ; findlib_paths : Path.t list
-  ; default_ocamlpath : Path.t list
+  ; findlib_paths : Path.t list Memo.Lazy.t
+  ; default_ocamlpath : Path.t list Memo.Lazy.t
   ; build_context : Build_context.t
   ; builder : builder
   ; which : Filename.t -> Path.t option Memo.t
@@ -168,13 +168,23 @@ end
 let ocaml t = t.ocaml
 let build_dir t = t.build_dir
 let kind t = t.kind
-let findlib_paths t = t.findlib_paths
+let findlib_paths t = Memo.Lazy.force t.findlib_paths
 let for_host t = t.builder.for_host
-let default_ocamlpath t = t.default_ocamlpath
+let default_ocamlpath t = Memo.Lazy.force t.default_ocamlpath
 let implicit t = t.builder.implicit
 let findlib_toolchain t = t.builder.findlib_toolchain
 let env_nodes t = t.builder.env_nodes
-let dynamically_linked_foreign_archives t = t.builder.dynamically_linked_foreign_archives
+
+let dynamically_linked_foreign_archives t =
+  Memo.return
+  @@
+  match t.builder.dynamically_linked_foreign_archives with
+  | false -> false
+  | true ->
+    let ocaml = ocaml t in
+    Ocaml_config.supports_shared_libraries ocaml.ocaml_config
+;;
+
 let fdo_target_exe t = t.builder.fdo_target_exe
 let instrument_with t = t.builder.instrument_with
 let merlin t = t.builder.merlin
@@ -211,7 +221,6 @@ let to_dyn t : Dyn.t =
     ; "ocamldep", Action.Prog.to_dyn t.ocaml.ocamldep
     ; "ocamlmklib", Action.Prog.to_dyn t.ocaml.ocamlmklib
     ; "installed_env", Env.to_dyn (Env.diff t.builder.env Env.initial)
-    ; "findlib_paths", list path t.findlib_paths
     ; "ocaml_config", Ocaml_config.to_dyn t.ocaml.ocaml_config
     ; "instrument_with", (list Lib_name.to_dyn) t.builder.instrument_with
     ]
@@ -377,23 +386,7 @@ module Build_environment_kind = struct
   ;;
 end
 
-let make_installed_env env name findlib env_nodes version profile =
-  let env =
-    (* See comment in ansi_color.ml for setup_env_for_colors. For versions
-       where OCAML_COLOR is not supported, but 'color' is in OCAMLPARAM, use
-       the latter. If 'color' is not supported, we just don't force colors
-       with 4.02. *)
-    if !Clflags.capture_outputs
-       (* CR rgrinberg: what if we just set [OCAML_COLOR] and [OCAMLPARAM]
-          unconditionally? These ancient versions of OCaml aren't important
-          anymore and thsi would allow us to initialize the environment without
-          building and running the compiler *)
-       && Lazy.force Ansi_color.stderr_supports_color
-       && Ocaml.Version.supports_color_in_ocamlparam version
-       && not (Ocaml.Version.supports_ocaml_color version)
-    then Ocaml.Env.with_color env
-    else env
-  in
+let make_installed_env env name findlib env_nodes profile =
   let vars =
     Env.Map.singleton
       Execution_env.Inside_dune.var
@@ -450,16 +443,19 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
         toolchain, `Default)
   in
   let default_ocamlpath =
-    let default_ocamlpath =
-      Build_environment_kind.query
-        ~kind:build_env_kind
-        ~findlib_toolchain:builder.findlib_toolchain
-        ~env:builder.env
-      |> Build_environment_kind.findlib_paths ~findlib ~ocaml_bin:ocaml.bin_dir
-    in
-    if Ocaml.Version.has_META_files ocaml.version
-    then ocaml.lib_config.stdlib_dir :: default_ocamlpath
-    else default_ocamlpath
+    Memo.Lazy.create ~name:"default_ocamlpath" ~cutoff:(List.equal Path.equal) (fun () ->
+      Memo.return
+      @@
+      let default_ocamlpath =
+        Build_environment_kind.query
+          ~kind:build_env_kind
+          ~findlib_toolchain:builder.findlib_toolchain
+          ~env:builder.env
+        |> Build_environment_kind.findlib_paths ~findlib ~ocaml_bin:ocaml.bin_dir
+      in
+      if Ocaml.Version.has_META_files ocaml.version
+      then ocaml.lib_config.stdlib_dir :: default_ocamlpath
+      else default_ocamlpath)
   in
   let builder =
     let installed_env =
@@ -468,7 +464,6 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
         builder.name
         findlib
         builder.env_nodes
-        ocaml.version
         builder.profile
     in
     { builder with env = installed_env }
@@ -488,7 +483,10 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
     ; builder
     ; build_dir = Context_name.build_dir builder.name
     ; ocaml
-    ; findlib_paths = ocamlpath @ default_ocamlpath
+    ; findlib_paths =
+        Memo.Lazy.create (fun () ->
+          let+ default_ocamlpath = Memo.Lazy.force default_ocamlpath in
+          ocamlpath @ default_ocamlpath)
     ; default_ocamlpath
     ; build_context = Build_context.create ~name:builder.name
     ; which

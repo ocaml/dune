@@ -52,11 +52,10 @@ type opaque =
   | Explicit of bool
   | Inherit_from_settings
 
-let eval_opaque (context : Context.t) = function
+let eval_opaque (ocaml : Ocaml_toolchain.t) profile = function
   | Explicit b -> b
   | Inherit_from_settings ->
-    Profile.is_dev (Context.profile context)
-    && Ocaml.Version.supports_opaque_for_mli (Context.ocaml context).version
+    Profile.is_dev profile && Ocaml.Version.supports_opaque_for_mli ocaml.version
 ;;
 
 type modules =
@@ -89,6 +88,7 @@ type t =
   ; bin_annot : bool
   ; ocamldep_modules_data : Ocamldep.Modules_data.t
   ; loc : Loc.t option
+  ; ocaml : Ocaml_toolchain.t
   }
 
 let loc t = t.loc
@@ -115,6 +115,7 @@ let bin_annot t = t.bin_annot
 let context t = Super_context.context t.super_context
 let ocamldep_modules_data t = t.ocamldep_modules_data
 let dep_graphs t = t.modules.dep_graphs
+let ocaml t = t.ocaml
 
 let create
   ~super_context
@@ -159,7 +160,12 @@ let create
     in
     Option.value ~default modes |> Lib_mode.Map.map ~f:Option.is_some
   in
-  let opaque = eval_opaque (Super_context.context super_context) opaque in
+  let context = Super_context.context super_context in
+  let ocaml = Context.ocaml context in
+  let opaque =
+    let profile = Context.profile context in
+    eval_opaque ocaml profile opaque
+  in
   let ocamldep_modules_data : Ocamldep.Modules_data.t =
     { dir = Obj_dir.dir obj_dir
     ; sandbox = Sandbox_config.no_special_requirements
@@ -196,6 +202,7 @@ let create
   ; bin_annot
   ; ocamldep_modules_data
   ; loc
+  ; ocaml
   }
 ;;
 
@@ -217,11 +224,10 @@ let for_alias_module t alias_module =
       Ocaml_flags.default ~dune_version ~profile)
   in
   let sandbox =
-    let ctx = Super_context.context t.super_context in
     (* If the compiler reads the cmi for module alias even with [-w -49
        -no-alias-deps], we must sandbox the build of the alias module since the
        modules it references are built after. *)
-    if Ocaml.Version.always_reads_alias_cmi (Context.ocaml ctx).version
+    if Ocaml.Version.always_reads_alias_cmi t.ocaml.version
     then Sandbox_config.needs_sandboxing
     else Sandbox_config.no_special_requirements
   in
@@ -262,8 +268,7 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
   let opaque =
     (* Cmi's of link time generated modules are compiled with -opaque, hence
        their implementation must also be compiled with -opaque *)
-    let ctx = Super_context.context cctx.super_context in
-    Ocaml.Version.supports_opaque_for_mli (Context.ocaml ctx).version
+    Ocaml.Version.supports_opaque_for_mli cctx.ocaml.version
   in
   let modules = singleton_modules module_ in
   let includes = Includes.make ~project:(Scope.project cctx.scope) ~opaque ~requires in

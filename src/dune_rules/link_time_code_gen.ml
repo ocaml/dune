@@ -170,9 +170,8 @@ let build_info_code cctx ~libs ~api_version =
 [@@inline never]
 |ocaml};
   let fmt_eval : _ format6 =
-    let context = Compilation_context.context cctx in
-    let ocaml_version = (Context.ocaml context).version in
-    if Ocaml.Version.has_sys_opaque_identity ocaml_version
+    let ocaml = Compilation_context.ocaml cctx in
+    if Ocaml.Version.has_sys_opaque_identity ocaml.version
     then "let %s = eval (Sys.opaque_identity %S)"
     else "let %s = eval %S"
   in
@@ -264,14 +263,10 @@ let handle_special_libs cctx =
   let ( let& ) m f = Resolve.Memo.bind m ~f in
   let& all_libs = Compilation_context.requires_link cctx in
   let obj_dir = Compilation_context.obj_dir cctx |> Obj_dir.of_local in
-  let ctx =
-    let sctx = Compilation_context.super_context cctx in
-    Super_context.context sctx
-  in
   let open Memo.O in
   let dune_site_plugin_code =
     let* () = Memo.return () in
-    let+ builtins = (Context.ocaml ctx).builtins in
+    let+ builtins = (Compilation_context.ocaml cctx).builtins in
     dune_site_plugins_code ~libs:all_libs ~builtins
   in
   let rec process_libs ~to_link_rev ~force_linkall libs =

@@ -243,9 +243,8 @@ module Stanza = struct
     in
     let resolved = make ~cctx ~source ~preprocess:toplevel.pps expander in
     let* exe =
-      setup_rules_and_return_exe_path
-        resolved
-        ~linkage:(Exe.Linkage.custom (Compilation_context.context cctx))
+      let linkage = Exe.Linkage.custom (Compilation_context.ocaml cctx).version in
+      setup_rules_and_return_exe_path resolved ~linkage
     in
     let symlink = Path.Build.relative dir (Path.Build.basename exe) in
     Super_context.add_rule

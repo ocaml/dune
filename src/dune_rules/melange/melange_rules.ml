@@ -1,22 +1,5 @@
 open Import
-
-let ocaml_flags sctx ~dir melange =
-  let open Memo.O in
-  let* expander = Super_context.expander sctx ~dir in
-  let* flags =
-    let+ ocaml_flags = Super_context.env_node sctx ~dir >>= Env_node.ocaml_flags in
-    Ocaml_flags.make_with_melange
-      ~melange
-      ~default:ocaml_flags
-      ~eval:(Expander.expand_and_eval_set expander)
-  in
-  Source_tree.is_vendored (Path.Build.drop_build_context_exn dir)
-  >>| function
-  | false -> flags
-  | true ->
-    let ocaml_version = (Super_context.context sctx |> Context.ocaml).version in
-    Ocaml_flags.with_vendored_flags ~ocaml_version flags
-;;
+open Memo.O
 
 let output_of_lib ~target_dir lib =
   let info = Lib.info lib in
@@ -58,7 +41,6 @@ let make_js_name ~js_ext ~output m =
 ;;
 
 let impl_only_modules_defined_in_this_lib sctx lib =
-  let open Memo.O in
   let+ modules = Dir_contents.modules_of_lib sctx lib in
   match modules with
   | None ->
@@ -233,7 +215,12 @@ let setup_emit_cmj_rules
         modules
     in
     let requires_link = Lib.Compile.requires_link compile_info in
-    let* flags = ocaml_flags sctx ~dir mel.compile_flags in
+    let* flags =
+      let specific = Lib_mode.Map.make_all mel.compile_flags in
+      Ocaml_flags.Spec.make ~common:Ordered_set_lang.Unexpanded.standard ~specific
+      |> Ocaml_flags_db.ocaml_flags sctx ~dir
+      >>| Ocaml_flags.allow_only_melange
+    in
     let* cctx =
       let direct_requires = Lib.Compile.direct_requires compile_info in
       Compilation_context.create
@@ -255,7 +242,7 @@ let setup_emit_cmj_rules
     in
     let* () = Module_compilation.build_all cctx in
     let* requires_compile = Compilation_context.requires_compile cctx in
-    let stdlib_dir = (Context.ocaml ctx).lib_config.stdlib_dir in
+    let stdlib_dir = (Compilation_context.ocaml cctx).lib_config.stdlib_dir in
     let+ () =
       let emit_and_libs_deps =
         let target_dir = Path.Build.relative dir mel.target in

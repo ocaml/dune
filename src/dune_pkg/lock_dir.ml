@@ -549,12 +549,13 @@ struct
     match Path.exists (Path.source lock_dir_path) with
     | false ->
       User_error.raise
-        [ Pp.textf "%s does not exist" (Path.Source.to_string lock_dir_path) ]
+        ~hints:[ Pp.text "Run dune pkg lock to generate it." ]
+        [ Pp.textf "%s does not exist." (Path.Source.to_string lock_dir_path) ]
     | true ->
       (match Path.is_directory (Path.source lock_dir_path) with
        | false ->
          User_error.raise
-           [ Pp.textf "%s is not a directory" (Path.Source.to_string lock_dir_path) ]
+           [ Pp.textf "%s is not a directory." (Path.Source.to_string lock_dir_path) ]
        | true -> ())
   ;;
 

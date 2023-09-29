@@ -474,12 +474,12 @@ let dune_sites_env ~default_ocamlpath ~stdlib =
 ;;
 
 let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
-  let expander_env =
+  let* expander_env =
+    let+ default_ocamlpath = Context.default_ocamlpath context in
+    let ocaml = Context.ocaml context in
     Env.extend_env
       (make_root_env context ~host)
-      (dune_sites_env
-         ~default_ocamlpath:(Context.default_ocamlpath context)
-         ~stdlib:(Context.ocaml context).lib_config.stdlib_dir)
+      (dune_sites_env ~default_ocamlpath ~stdlib:ocaml.lib_config.stdlib_dir)
   in
   let public_libs = Scope.DB.public_libs context in
   let artifacts = Artifacts_db.get context in

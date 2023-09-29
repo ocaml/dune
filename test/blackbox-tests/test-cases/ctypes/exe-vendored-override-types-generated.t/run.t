@@ -11,6 +11,6 @@ generated_types stanza field.
 
   $ LIBEX=$(realpath "$PWD/../libexample")
   $ TARGET=./vendor
-  $ mkdir -p $TARGET && install $LIBEX/* $TARGET
+  $ mkdir -p $TARGET && install $LIBEX/*example* $TARGET
   $ dune exec ./example.exe
   4

@@ -571,6 +571,7 @@ module Env = struct
         ; "user", User
         ; "group", Group
         ; "arch", Arch
+        ; "jobs", Jobs
         ]
         |> List.rev_append
              (List.rev_map Var.Pkg.Section.all ~f:(fun (section, name) ->

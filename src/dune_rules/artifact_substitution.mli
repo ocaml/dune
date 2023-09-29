@@ -23,12 +23,7 @@ type hardcoded_ocaml_path =
 module Conf : sig
   type t
 
-  (* val get_vcs : t -> Path.Source.t -> Vcs.t option Memo.t *)
   val get_location : t -> Section.t -> Package.Name.t -> Path.t
-  (* val get_config_path : t -> configpath -> Path.t option *)
-  (* val hardcoded_ocaml_path : t -> hardcoded_ocaml_path *)
-  (* val sign_hook : t -> (Path.t -> unit Fiber.t) option Lazy.t *)
-
   val of_context : Context.t option -> t
 
   val of_install

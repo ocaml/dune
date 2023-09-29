@@ -208,12 +208,11 @@ let ocamlmklib
   then
     (* Build both the static and dynamic targets in one [ocamlmklib] invocation,
        unless dynamically linked foreign archives are disabled. *)
-    build
-      ~sandbox:Sandbox_config.no_special_requirements
-      ~custom:false
-      (if Context.dynamically_linked_foreign_archives ctx
-       then [ static_target; dynamic_target ]
-       else [ static_target ])
+    Context.dynamically_linked_foreign_archives ctx
+    >>| (function
+          | true -> [ static_target; dynamic_target ]
+          | false -> [ static_target ])
+    >>= build ~sandbox:Sandbox_config.no_special_requirements ~custom:false
   else
     let open Memo.O in
     (* Build the static target only by passing the [-custom] flag. *)
@@ -231,7 +230,10 @@ let ocamlmklib
        "optional targets", allowing us to run [ocamlmklib] with the [-failsafe]
        flag, which always produces the static target and sometimes produces the
        dynamic target too. *)
-    Memo.when_ (Context.dynamically_linked_foreign_archives ctx) (fun () ->
+    let* dynamically_linked_foreign_archives =
+      Context.dynamically_linked_foreign_archives ctx
+    in
+    Memo.when_ dynamically_linked_foreign_archives (fun () ->
       build ~sandbox:Sandbox_config.needs_sandboxing ~custom:false [ dynamic_target ])
 ;;
 
@@ -292,9 +294,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
   in
   let* o_files =
     let lib_foreign_o_files =
-      let { Lib_config.ext_obj; _ } =
-        (Super_context.context sctx |> Context.ocaml).lib_config
-      in
+      let { Lib_config.ext_obj; _ } = (Compilation_context.ocaml cctx).lib_config in
       Foreign.Objects.build_paths lib.buildable.extra_objects ~ext_obj ~dir
     in
     let+ tbl =
@@ -320,7 +320,9 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
     let build_targets_together =
       modes.ocaml.native
       && modes.ocaml.byte
-      && Dynlink_supported.get_ocaml_config lib.dynlink (Context.ocaml ctx).ocaml_config
+      && Dynlink_supported.get_ocaml_config
+           lib.dynlink
+           (Compilation_context.ocaml cctx).ocaml_config
     in
     let* standard =
       let+ project = Scope.DB.find_by_dir dir >>| Scope.project in
@@ -435,8 +437,8 @@ let setup_build_archives
   let modules = Compilation_context.modules cctx in
   let js_of_ocaml = Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml in
   let sctx = Compilation_context.super_context cctx in
-  let ctx = Compilation_context.context cctx in
-  let { Lib_config.ext_obj; natdynlink_supported; _ } = (Context.ocaml ctx).lib_config in
+  let ocaml = Compilation_context.ocaml cctx in
+  let { Lib_config.ext_obj; natdynlink_supported; _ } = ocaml.lib_config in
   let open Memo.O in
   let* () =
     Modules.exit_module modules
@@ -572,9 +574,8 @@ let library_rules
   let dir = Compilation_context.dir cctx in
   let scope = Compilation_context.scope cctx in
   let* requires_compile = Compilation_context.requires_compile cctx in
-  let stdlib_dir =
-    (Compilation_context.context cctx |> Context.ocaml).lib_config.stdlib_dir
-  in
+  let ocaml = Compilation_context.ocaml cctx in
+  let stdlib_dir = ocaml.lib_config.stdlib_dir in
   let top_sorted_modules =
     let impl_only = Modules.impl_only modules in
     Dep_graph.top_closed_implementations
@@ -589,7 +590,7 @@ let library_rules
   and* () = Module_compilation.build_all cctx
   and* expander = Super_context.expander sctx ~dir
   and* lib_info =
-    let lib_config = (Super_context.context sctx |> Context.ocaml).lib_config in
+    let lib_config = ocaml.lib_config in
     let* info = Library.to_lib_info lib ~dir ~lib_config in
     let mode = Lib_mode.Map.Set.for_merlin (Lib_info.modes info) in
     let+ () = Check_rules.add_obj_dir sctx ~obj_dir mode in

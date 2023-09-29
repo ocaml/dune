@@ -79,6 +79,10 @@ struct watch {
   LPVOID buffer;
 };
 
+#ifdef unix_error
+#undef unix_error
+#endif
+
 #define unix_error(s, err) \
   do { \
     caml_win32_maperr(err); \

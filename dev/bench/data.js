@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695974556253,
+  "lastUpdate": 1695974568152,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -82619,6 +82619,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "71.48380719948666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d32b633e54e8ecbbd6db9d0c665082bb4467c8a4",
+          "message": "Update cmdliner to 1.2.0 (#8754)\n\nSee ocaml-dune/cmdliner#3\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-09-29T09:35:24+02:00",
+          "tree_id": "038cc910ca83c2b8034bdc185ada8b3e68aed058",
+          "url": "https://github.com/ocaml/dune/commit/d32b633e54e8ecbbd6db9d0c665082bb4467c8a4"
+        },
+        "date": 1695974567408,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.8976807406266667",
             "unit": "seconds"
           }
         ]

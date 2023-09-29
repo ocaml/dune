@@ -84,8 +84,6 @@ end = struct
       [ ppx_exe ]
   ;;
 
-  let if_ cond l = if cond then l else []
-
   let lib_files ~dir_contents ~dir ~lib_config lib =
     let+ modules =
       let+ ml_sources = Dir_contents.ocaml dir_contents in
@@ -113,11 +111,15 @@ end = struct
   ;;
 
   let dll_files ~(modes : Mode.Dict.Set.t) ~dynlink ~(ctx : Context.t) lib =
-    if_
-      (modes.byte
+    (match
+       modes.byte
        && Dynlink_supported.get_ocaml_config dynlink (Context.ocaml ctx).ocaml_config
-       && Context.dynamically_linked_foreign_archives ctx)
-      (Lib_info.foreign_dll_files lib)
+     with
+     | false -> Memo.return false
+     | true -> Context.dynamically_linked_foreign_archives ctx)
+    >>| function
+    | false -> []
+    | true -> Lib_info.foreign_dll_files lib
   ;;
 
   let lib_install_files
@@ -293,8 +295,13 @@ end = struct
       in
       modules_vlib @ modules_impl
     and+ lib_files = lib_files ~dir ~dir_contents ~lib_config info
-    and+ execs = lib_ppxs ctx ~scope ~lib in
-    let dll_files = dll_files ~modes:ocaml ~dynlink:lib.dynlink ~ctx info in
+    and+ execs = lib_ppxs ctx ~scope ~lib
+    and+ dll_files =
+      dll_files ~modes:ocaml ~dynlink:lib.dynlink ~ctx info
+      >>| List.map ~f:(fun a ->
+        let entry = Install.Entry.make ~kind:`File Stublibs a in
+        Install.Entry.Sourced.create ~loc entry)
+    in
     let install_c_headers =
       List.rev_map lib.install_c_headers ~f:(fun (loc, base) ->
         Path.Build.relative dir (base ^ Foreign_language.header_extension)
@@ -306,9 +313,7 @@ end = struct
       ; List.map module_files ~f:(fun (sub_dir, file) -> make_entry ?sub_dir Lib file)
       ; List.map lib_files ~f:(fun (section, file) -> make_entry section file)
       ; List.map execs ~f:(make_entry Libexec)
-      ; List.map dll_files ~f:(fun a ->
-          let entry = Install.Entry.make ~kind:`File Stublibs a in
-          Install.Entry.Sourced.create ~loc entry)
+      ; dll_files
       ; install_c_headers
       ; public_headers
       ]

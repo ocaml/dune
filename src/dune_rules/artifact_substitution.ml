@@ -67,8 +67,8 @@ module Conf = struct
     { get_vcs : Path.Source.t -> Vcs.t option Memo.t
     ; get_location : Section.t -> Package.Name.t -> Path.t
     ; get_config_path : configpath -> Path.t option
-    ; hardcoded_ocaml_path : hardcoded_ocaml_path
     ; sign_hook : (Path.t -> unit Fiber.t) option Lazy.t
+    ; hardcoded_ocaml_path : hardcoded_ocaml_path Memo.t
     }
 
   let get_location t = t.get_location
@@ -112,28 +112,31 @@ module Conf = struct
   ;;
 
   let of_context (context : Context.t option) =
+    let open Memo.O in
     let get_vcs = Source_tree.nearest_vcs in
     match context with
     | None ->
       { get_vcs
       ; get_location = (fun _ _ -> Code_error.raise "no context available" [])
       ; get_config_path = (fun _ -> Code_error.raise "no context available" [])
-      ; hardcoded_ocaml_path = Hardcoded []
       ; sign_hook = lazy None
+      ; hardcoded_ocaml_path = Memo.return @@ Hardcoded []
       }
     | Some context ->
       let name = Context.name context in
       let get_location = Install.Paths.get_local_location name in
       let get_config_path = function
         | Sourceroot -> Some (Path.source Path.Source.root)
-        | Stdlib -> Some (Context.ocaml context).lib_config.stdlib_dir
+        | Stdlib ->
+          let ocaml = Context.ocaml context in
+          Some ocaml.lib_config.stdlib_dir
       in
       let hardcoded_ocaml_path =
         let install_dir =
           let install_dir = Install.Context.dir ~context:name in
           Path.build (Path.Build.relative install_dir "lib")
         in
-        let default_ocamlpath = Context.default_ocamlpath context in
+        let+ default_ocamlpath = Context.default_ocamlpath context in
         Hardcoded (install_dir :: default_ocamlpath)
       in
       let sign_hook = lazy (sign_hook_of_context context) in
@@ -141,11 +144,14 @@ module Conf = struct
   ;;
 
   let of_install ~relocatable ~roots ~(context : Context.t) =
+    let open Memo.O in
     let get_vcs = Source_tree.nearest_vcs in
     let hardcoded_ocaml_path =
       match relocatable with
-      | Some prefix -> Relocatable prefix
-      | None -> Hardcoded (Context.default_ocamlpath context)
+      | Some prefix -> Memo.return @@ Relocatable prefix
+      | None ->
+        let+ default_ocamlpath = Context.default_ocamlpath context in
+        Hardcoded default_ocamlpath
     in
     let get_location section package =
       let paths = Install.Paths.make ~package ~roots in
@@ -153,7 +159,9 @@ module Conf = struct
     in
     let get_config_path = function
       | Sourceroot -> None
-      | Stdlib -> Some (Context.ocaml context).lib_config.stdlib_dir
+      | Stdlib ->
+        let ocaml = Context.ocaml context in
+        Some ocaml.lib_config.stdlib_dir
     in
     let sign_hook = lazy (sign_hook_of_context context) in
     { get_location; get_vcs; get_config_path; hardcoded_ocaml_path; sign_hook }
@@ -163,7 +171,7 @@ module Conf = struct
     { get_vcs = (fun _ -> Memo.return None)
     ; get_location = (fun _ _ -> Path.root)
     ; get_config_path = (fun _ -> None)
-    ; hardcoded_ocaml_path = Hardcoded []
+    ; hardcoded_ocaml_path = Memo.return @@ Hardcoded []
     ; sign_hook = lazy None
     }
   ;;
@@ -182,7 +190,9 @@ let eval t ~(conf : Conf.t) =
   let relocatable path =
     (* return a relative path to the install directory in case of relocatable
        instead of absolute path *)
-    match conf.hardcoded_ocaml_path with
+    let open Memo.O in
+    conf.hardcoded_ocaml_path
+    >>| function
     | Hardcoded _ -> Path.to_absolute_filename path
     | Relocatable install -> Path.reach path ~from:install
   in
@@ -199,21 +209,24 @@ let eval t ~(conf : Conf.t) =
          let+ res = Vcs.describe vcs in
          Option.value res ~default:"")
   | Location (name, lib_name) ->
-    Fiber.return (relocatable (conf.get_location name lib_name))
+    conf.get_location name lib_name |> relocatable |> Memo.run
   | Configpath d ->
-    Fiber.return
-      (Option.value
-         ~default:""
-         (let open Option.O in
-          let+ dir = conf.get_config_path d in
-          relocatable dir))
+    let open Memo.O in
+    (let dir = conf.get_config_path d in
+     match dir with
+     | None -> Memo.return None
+     | Some dir -> relocatable dir >>| Option.some)
+    >>| Option.value ~default:""
+    |> Memo.run
   | Hardcoded_ocaml_path ->
-    Fiber.return
-      (match conf.hardcoded_ocaml_path with
-       | Relocatable _ -> "relocatable"
-       | Hardcoded l ->
-         let l = List.map l ~f:Path.to_absolute_filename in
-         "hardcoded\000" ^ String.concat ~sep:"\000" l)
+    (let open Memo.O in
+     conf.hardcoded_ocaml_path
+     >>| function
+     | Relocatable _ -> "relocatable"
+     | Hardcoded l ->
+       let l = List.map l ~f:Path.to_absolute_filename in
+       "hardcoded\000" ^ String.concat ~sep:"\000" l)
+    |> Memo.run
 ;;
 
 let encode_replacement ~len ~repl:s =

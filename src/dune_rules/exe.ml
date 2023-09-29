@@ -181,10 +181,11 @@ let link_exe
 
        In each case, we could then pass the argument in dependency order, which
        would provide a better fix for this issue. *)
+    let ocaml = Compilation_context.ocaml cctx in
     Action_builder.with_no_targets prefix
     >>> Command.run
           ~dir:(Path.build (Context.build_dir ctx))
-          (Ocaml_toolchain.compiler (Context.ocaml ctx) mode)
+          (Ocaml_toolchain.compiler ocaml mode)
           [ Command.Args.dyn ocaml_flags
           ; A "-o"
           ; Target exe
@@ -197,7 +198,7 @@ let link_exe
                  ; Lib_flags.Lib_and_module.L.link_flags
                      sctx
                      to_link
-                     ~lib_config:(Context.ocaml ctx).lib_config
+                     ~lib_config:ocaml.lib_config
                      ~mode:linkage.mode
                  ])
           ; Deps o_files
@@ -291,14 +292,13 @@ let link_many
           [ main ]
       in
       let cm_files =
-        let sctx = Compilation_context.super_context cctx in
-        let ctx = Super_context.context sctx in
+        let ocaml = Compilation_context.ocaml cctx in
         let obj_dir = Compilation_context.obj_dir cctx in
         Cm_files.make
           ~obj_dir
           ~modules
           ~top_sorted_modules
-          ~ext_obj:(Context.ocaml ctx).lib_config.ext_obj
+          ~ext_obj:ocaml.lib_config.ext_obj
           ()
       in
       let+ () =

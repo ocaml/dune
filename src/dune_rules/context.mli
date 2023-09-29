@@ -44,9 +44,9 @@ type t
 val ocaml : t -> Ocaml_toolchain.t
 val build_context : t -> Build_context.t
 val kind : t -> Kind.t
-val findlib_paths : t -> Path.t list
+val findlib_paths : t -> Path.t list Memo.t
 val installed_env : t -> Env.t
-val default_ocamlpath : t -> Path.t list
+val default_ocamlpath : t -> Path.t list Memo.t
 val findlib_toolchain : t -> Context_name.t option
 val instrument_with : t -> Lib_name.t list
 val profile : t -> Profile.t
@@ -67,7 +67,7 @@ val fdo_target_exe : t -> Path.t option
     adding (disable_dynamically_linked_foreign_archives true) to the workspace
     file, in which case bytecode executables will be built with all foreign
     archives statically linked into the runtime system. *)
-val dynamically_linked_foreign_archives : t -> bool
+val dynamically_linked_foreign_archives : t -> bool Memo.t
 
 (** [env_nodes] env nodes to initialize this context with. *)
 val env_nodes : t -> Env_nodes.t

@@ -29,7 +29,7 @@ Here we observe the documentation for the dune cache commands.
              Show version information.
   
   EXIT STATUS
-         cache exits with the following status:
+         dune cache exits with:
   
          0   on success.
   
@@ -67,7 +67,7 @@ Testing the output of `dune cache size --machine-readable`
              Show version information.
   
   EXIT STATUS
-         size exits with the following status:
+         dune cache size exits with:
   
          0   on success.
   
@@ -106,7 +106,7 @@ Testing the output of dune cache trim.
              Show version information.
   
   EXIT STATUS
-         trim exits with the following status:
+         dune cache trim exits with:
   
          0   on success.
   

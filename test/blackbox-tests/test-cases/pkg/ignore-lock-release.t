@@ -17,5 +17,4 @@ When building a project in release mode we should ignore the lock directory.
   >  (depends test))
   > EOF
 
-  $ dune build @install --release 2>&1 | tail -n1 
-  I have not been ignored.
+  $ dune build @install --release

@@ -5,14 +5,15 @@ module Buildable = Dune_file.Buildable
 
 let first_exe (exes : Executables.t) = snd (List.hd exes.names)
 
-let linkages (ctx : Context.t) ~(exes : Executables.t) ~explicit_js_mode =
+let linkages
+  ~dynamically_linked_foreign_archives
+  (ocaml : Ocaml_toolchain.t)
+  ~(exes : Executables.t)
+  ~explicit_js_mode
+  =
   let module L = Dune_file.Executables.Link_mode in
   let l =
-    let ocaml = Context.ocaml ctx in
     let has_native = Result.is_ok ocaml.ocamlopt in
-    let dynamically_linked_foreign_archives =
-      Context.dynamically_linked_foreign_archives ctx
-    in
     let modes =
       L.Map.to_list exes.modes
       |> List.map ~f:(fun (mode, loc) ->
@@ -39,7 +40,7 @@ let linkages (ctx : Context.t) ~(exes : Executables.t) ~explicit_js_mode =
   if L.Map.mem exes.modes L.byte
      && (not (L.Map.mem exes.modes L.native))
      && not (L.Map.mem exes.modes L.exe)
-  then Exe.Linkage.custom (Context.ocaml ctx).version :: l
+  then Exe.Linkage.custom ocaml.version :: l
   else l
 ;;
 
@@ -131,10 +132,16 @@ let executables_rules
   in
   let* () = Check_rules.add_obj_dir sctx ~obj_dir (Ocaml Byte) in
   let ctx = Super_context.context sctx in
+  let ocaml = Context.ocaml ctx in
   let project = Scope.project scope in
   let programs = programs ~modules ~exes in
   let explicit_js_mode = Dune_project.explicit_js_mode project in
-  let linkages = linkages ctx ~exes ~explicit_js_mode in
+  let* linkages =
+    let+ dynamically_linked_foreign_archives =
+      Context.dynamically_linked_foreign_archives ctx
+    in
+    linkages ocaml ~dynamically_linked_foreign_archives ~exes ~explicit_js_mode
+  in
   let* flags = Buildable_rules.ocaml_flags sctx ~dir exes.buildable.flags in
   let* modules, pp =
     Buildable_rules.modules_rules
@@ -169,7 +176,7 @@ let executables_rules
       ~opaque:Inherit_from_settings
       ~package:exes.package
   in
-  let lib_config = (Context.ocaml ctx).lib_config in
+  let lib_config = ocaml.lib_config in
   let stdlib_dir = lib_config.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let* dep_graphs =
@@ -233,20 +240,22 @@ let executables_rules
          run bits from [Exe.build_and_link_many] and run them here, then pass
          that to the [Exe.link_many] call here as well as the Ctypes_rules. This
          dance is done to avoid triggering duplicate rule exceptions. *)
-      let* () =
-        let loc = fst (List.hd exes.Executables.names) in
+      let+ () =
+        let loc = fst (List.hd exes.names) in
         Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir
+      and+ () = Module_compilation.build_all cctx
+      and+ link =
+        Exe.link_many
+          ~programs
+          ~linkages
+          ~link_args
+          ~o_files
+          ~promote:exes.promote
+          ~embed_in_plugin_libraries
+          cctx
+          ~sandbox
       in
-      let* () = Module_compilation.build_all cctx in
-      Exe.link_many
-        ~programs
-        ~linkages
-        ~link_args
-        ~o_files
-        ~promote:exes.promote
-        ~embed_in_plugin_libraries
-        cctx
-        ~sandbox
+      link
   in
   let+ () =
     Memo.parallel_iter dep_graphs.for_exes ~f:(Check_rules.add_cycle_check sctx ~dir)

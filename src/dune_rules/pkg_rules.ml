@@ -98,8 +98,11 @@ module Lock_dir = struct
   let get (ctx : Context_name.t) : t Memo.t = get_path ctx >>= Load.load
 
   let has_lock ctx =
-    let* path = get_path ctx in
-    Fs_memo.dir_exists (In_source_dir path)
+    if !Clflags.ignore_lock_directory
+    then Memo.return false
+    else
+      let* path = get_path ctx in
+      Fs_memo.dir_exists (In_source_dir path)
   ;;
 end
 

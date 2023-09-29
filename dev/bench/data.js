@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695994357296,
+  "lastUpdate": 1695994786036,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -82764,6 +82764,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6161671214",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "222a0ac500240f19e3a856116acbfde013315bf3",
+          "message": "fix(pkg): decode pkg-self macro (#8794)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-29T14:05:59+01:00",
+          "tree_id": "4833317f9bf26fcf4dafba93f220d8ff927908fa",
+          "url": "https://github.com/ocaml/dune/commit/222a0ac500240f19e3a856116acbfde013315bf3"
+        },
+        "date": 1695994784847,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "80.49522275168",
             "unit": "seconds"
           }
         ]

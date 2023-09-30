@@ -310,4 +310,20 @@ let move_targets_to_build_dir t ~loc ~should_be_skipped ~(targets : Targets.Vali
     Targets.Produced.expand_validated_exn targets discovered_targets)
 ;;
 
-let destroy t = maybe_async (fun () -> Path.rm_rf (Path.build t.dir))
+let failed_to_delete_sandbox dir reason =
+  User_error.raise
+    [ Pp.textf "failed to delete sandbox in %s" (Path.Build.to_string_maybe_quoted dir)
+    ; Pp.text "Reason:"
+    ; reason
+    ]
+;;
+
+let destroy t =
+  maybe_async (fun () ->
+    try Path.rm_rf (Path.build t.dir) with
+    | Sys_error e -> failed_to_delete_sandbox t.dir (Pp.verbatim e)
+    | Unix.Unix_error (error, syscall, arg) ->
+      failed_to_delete_sandbox
+        t.dir
+        (Unix_error.Detailed.pp (Unix_error.Detailed.create error ~syscall ~arg)))
+;;

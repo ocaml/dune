@@ -15,7 +15,17 @@ the rule and the sandbox cleanup.
   > (lang dune 3.11)
   > EOF
 
-  $ dune build ./foo --sandbox=copy 2>&1 | sed -E 's#.*.sandbox/[^/]+#.sandbox/$SANDBOX#g'
+  $ dune build ./foo --sandbox=copy 2>&1 | sed -E 's#/.*.sandbox/[^/]+#/.sandbox/$SANDBOX#g'
+  File "dune", line 1, characters 0-161:
+  1 | (rule
+  2 |  (target foo)
+  3 |  (action (system "\| touch foo && mkdir bar && touch bar/x && chmod -w bar &&
+  4 |                  "\| echo failed action && exit 1
+  5 |           )))
+  Error: failed to delete sandbox in
+  _build/.sandbox/$SANDBOX
+  Reason:
+  rmdir(_build/.sandbox/$SANDBOX/default/bar): Directory not empty
   File "dune", line 1, characters 0-161:
   1 | (rule
   2 |  (target foo)
@@ -23,9 +33,6 @@ the rule and the sandbox cleanup.
   4 |                  "\| echo failed action && exit 1
   5 |           )))
   failed action
-  Error:
-  .sandbox/$SANDBOX/default/bar): Directory not empty
-  -> required by _build/default/foo
 
 Manual cleaning step so the dune executing the test suite doesn't croak trying
 to delete the readonly dir

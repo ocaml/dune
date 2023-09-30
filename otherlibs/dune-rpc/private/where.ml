@@ -151,20 +151,22 @@ module Make
          | Ok s -> Ok (Some s)
          | Error exn -> Error exn)
     | None ->
-      let of_file f =
-        let+ contents = IO.read_file f in
-        match contents with
-        | Error e -> Error e
-        | Ok contents ->
-          (match of_string contents with
+      (match default ~build_dir () with
+       | `Ip _ as x -> Fiber.return (Ok (Some x))
+       | `Unix file as x ->
+         let of_file f =
+           let+ contents = IO.read_file f in
+           match contents with
            | Error e -> Error e
-           | Ok s -> Ok (Some s))
-      in
-      let file = Filename.concat build_dir rpc_socket_relative_to_build_dir in
-      let** analyze = IO.analyze_path file in
-      (match analyze with
-       | `Other -> Fiber.return (Ok None)
-       | `Normal_file -> of_file file
-       | `Unix_socket -> Fiber.return (Ok (Some (`Unix file))))
+           | Ok contents ->
+             (match of_string contents with
+              | Error e -> Error e
+              | Ok s -> Ok (Some s))
+         in
+         let** analyze = IO.analyze_path file in
+         (match analyze with
+          | `Other -> Fiber.return (Ok None)
+          | `Normal_file -> of_file file
+          | `Unix_socket -> Fiber.return (Ok (Some x))))
   ;;
 end

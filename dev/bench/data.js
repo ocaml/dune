@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696036368225,
+  "lastUpdate": 1696036379110,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -83141,6 +83141,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "64.74183637302667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a6467479fa5e11bcae28d867aa3ca44f90f80eb8",
+          "message": "feature: Haiku support (#8795)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-09-30T01:47:06+01:00",
+          "tree_id": "4da2105073efff73fa72a2dd944ed93a87c33a87",
+          "url": "https://github.com/ocaml/dune/commit/a6467479fa5e11bcae28d867aa3ca44f90f80eb8"
+        },
+        "date": 1696036378276,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6620550572333335",
             "unit": "seconds"
           }
         ]

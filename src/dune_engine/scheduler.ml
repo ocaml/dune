@@ -602,7 +602,11 @@ end = struct
     Process_table.remove t proc_info
   ;;
 
-  let wait = if Sys.win32 then wait_win32 else wait_unix
+  let wait =
+    match Platform.OS.value with
+    | Windows -> wait_win32
+    | Linux | Darwin | FreeBSD | OpenBSD | NetBSD | Haiku | Other -> wait_unix
+  ;;
 
   let run t =
     Mutex.lock t.mutex;

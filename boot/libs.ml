@@ -110,4 +110,5 @@ let link_flags =
     [ "-cclib"; "-lshell32"; "-cclib"; "-lole32"; "-cclib"; "-luuid" ])
   ; ("mingw64",
     [ "-cclib"; "-lshell32"; "-cclib"; "-lole32"; "-cclib"; "-luuid" ])
+  ; ("beos", [ "-cclib"; "-lbsd" ])
   ]

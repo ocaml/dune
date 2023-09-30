@@ -7,6 +7,11 @@
 #include <signal.h>
 #endif
 
+#ifdef __HAIKU__
+/* On some platforms, ioctl() is declared in <unistd.h>. */
+#include <unistd.h>
+#endif
+
 CAMLprim value caml_notty_winsize (value vfd) {
 #ifdef _WIN32
   (void) vfd;

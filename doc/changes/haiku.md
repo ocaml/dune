@@ -1,0 +1,1 @@
+- Dune can now be built and installed on Haiku (#8795, fix #8551, @Alizter)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696035001199,
+  "lastUpdate": 1696035486440,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -32652,6 +32652,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.573491468086665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "127837becb79361e701786d0989f3ca0d4ab890d",
+          "message": "refactor(engine): replace collect_errors with finalize (#8791)\n\nThe behavior should be equivalent but [finalize] is a little cleaner and\r\nfaster.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-09-30T01:35:56+01:00",
+          "tree_id": "16b07513f88afd7262e6b29b3910c3b4a43d6c0f",
+          "url": "https://github.com/ocaml/dune/commit/127837becb79361e701786d0989f3ca0d4ab890d"
+        },
+        "date": 1696035485624,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "44.46211450782",
             "unit": "seconds"
           }
         ]

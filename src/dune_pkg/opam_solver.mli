@@ -20,5 +20,5 @@ val solve_lock_dir
   :  Solver_env.t
   -> Version_preference.t
   -> Opam_repo.t list
-  -> local_packages:OpamFile.OPAM.t OpamTypes.name_map
+  -> local_packages:OpamFile.OPAM.t Package_name.Map.t
   -> (Solver_result.t, [ `Diagnostic_message of _ Pp.t ]) result

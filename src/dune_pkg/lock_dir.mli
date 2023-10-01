@@ -60,16 +60,8 @@ val create_latest_version
   -> t
 
 val default_path : Path.Source.t
-val metadata : Filename.t
 
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit
-
-module Package_filename : sig
-  type t = Filename.t
-
-  val of_package_name : Package_name.t -> t
-  val to_package_name : t -> (Package_name.t, [ `Bad_extension ]) result
-end
 
 module Write_disk : sig
   type lock_dir := t

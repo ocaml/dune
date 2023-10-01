@@ -379,7 +379,7 @@ module Substitute = struct
          The two implementations are bound to drift. Better would be to
          reconstruct everything that is needed to call our one and only
          substitution function. *)
-      OpamVariable.variable_contents Substs.Map.t
+      OpamVariable.variable_contents Substs.Var.Map.t
       * Dune_lang.Package_name.t
       * 'path
       * 'target
@@ -391,7 +391,7 @@ module Substitute = struct
 
     let encode (e, s, i, o) input output : Dune_lang.t =
       let e =
-        Substs.Map.to_list_map e ~f:(fun { Substs.Var.package; variable } v ->
+        Substs.Var.Map.to_list_map e ~f:(fun { Substs.Var.package; variable } v ->
           let k =
             let package =
               Dune_sexp.Encoder.option Dune_lang.Package_name.encode package
@@ -624,7 +624,7 @@ module Action_expander = struct
   let substitute_env (expander : Expander.t) =
     let setenv package variable value env =
       let var = { Substs.Var.package = Some package; variable } in
-      Substs.Map.add_exn env var value
+      Substs.Var.Map.add_exn env var value
     in
     let env =
       (* values set with withenv *)
@@ -633,7 +633,7 @@ module Action_expander = struct
         (* TODO why is [package = None]? *)
         ( { Substs.Var.package = None; variable = Substs.Variable.of_string variable }
         , OpamVariable.S value ))
-      |> Substs.Map.of_list_exn
+      |> Substs.Var.Map.of_list_exn
     in
     Dune_lang.Package_name.Map.foldi
       expander.deps

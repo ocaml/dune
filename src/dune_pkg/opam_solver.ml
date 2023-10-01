@@ -417,6 +417,15 @@ let make_action = function
   | actions -> Some (Action.Progn actions)
 ;;
 
+let opam_file_map_of_dune_package_map dune_package_map =
+  Package_name.Map.to_list_map dune_package_map ~f:(fun dune_package_name opam_file ->
+    let opam_package_name =
+      Package_name.to_string dune_package_name |> OpamPackage.Name.of_string
+    in
+    opam_package_name, opam_file)
+  |> OpamPackage.Name.Map.of_list
+;;
+
 let opam_package_to_lock_file_pkg context_for_dune ~repos ~local_packages opam_package =
   let name = OpamPackage.name opam_package in
   let version = OpamPackage.version opam_package |> OpamPackage.Version.to_string in
@@ -570,6 +579,7 @@ module Solver_result = struct
 end
 
 let solve_lock_dir solver_env version_preference repos ~local_packages =
+  let local_packages = opam_file_map_of_dune_package_map local_packages in
   let is_local_package package =
     OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
   in

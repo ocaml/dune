@@ -61,8 +61,7 @@ end
    hard links on [$file] will be allowed, triggering the [EMLINK] code path. *)
 let link_even_if_there_are_too_many_links_already ~src ~dst =
   try Path.link src dst with
-  | Unix.Unix_error (Unix.EMLINK, _, _)
-  | Unix.Unix_error (Unix.EUNKNOWNERR -1142, _, _) (* Needed for OCaml < 5.1 *) ->
+  | Unix.Unix_error (Unix.EMLINK, _, _) ->
     Temp.with_temp_file ~dir:temp_dir ~prefix:"dune" ~suffix:"copy" ~f:(function
       | Error e -> raise e
       | Ok temp_file ->

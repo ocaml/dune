@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696186412344,
+  "lastUpdate": 1696186423074,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -83489,6 +83489,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "64.29411085852666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c91a9f62a513bd1c7cc24b8ec473ad88d0643737",
+          "message": "Fix `dune rpc` commands on Windows (#8806)\n\nSigned-off-by: nojebar <nicolas.ojeda.bar@lexifi.com>",
+          "timestamp": "2023-10-01T20:27:58+02:00",
+          "tree_id": "67defe4e0fec5dd2dcd7633638d4776d1f50e28e",
+          "url": "https://github.com/ocaml/dune/commit/c91a9f62a513bd1c7cc24b8ec473ad88d0643737"
+        },
+        "date": 1696186422347,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6509159817333332",
             "unit": "seconds"
           }
         ]

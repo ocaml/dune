@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696131452881,
+  "lastUpdate": 1696131588013,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -83228,6 +83228,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6620550572333335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9b7bab5ed57805ff6511113a5ee7e58b4fc7625e",
+          "message": "refactor: move package map conversion to Lock_dir (#8801)\n\nIdeally, dune_pkg should wrap opam related implementation details\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-10-01T04:13:56+01:00",
+          "tree_id": "30d049b173db68146feb753b88448ee210676133",
+          "url": "https://github.com/ocaml/dune/commit/9b7bab5ed57805ff6511113a5ee7e58b4fc7625e"
+        },
+        "date": 1696131586926,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "64.57638296362",
             "unit": "seconds"
           }
         ]

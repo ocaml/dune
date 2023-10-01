@@ -1137,7 +1137,6 @@ let link src dst =
   (* Needed for OCaml < 5.1 on windows *) ->
     Exn.reraise (Unix.Unix_error (Unix.EMLINK, syscall, arg))
   | s -> s
-  | exception e -> Exn.reraise e
 ;;
 
 let unlink_no_err t = Fpath.unlink_no_err (to_string t)

@@ -22,10 +22,8 @@ module Var : sig
   val to_dyn : t -> Dyn.t
 end
 
-module Map = Var.Map
-
 val subst
-  :  OpamVariable.variable_contents Map.t
+  :  OpamVariable.variable_contents Var.Map.t
   -> Dune_lang.Package_name.t
   -> src:Path.t
   -> dst:Path.Build.t

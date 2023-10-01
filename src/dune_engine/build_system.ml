@@ -385,7 +385,6 @@ end = struct
         match sandbox with
         | Some sandbox -> Sandbox.destroy sandbox
         | None ->
-          (* All went well, these targets are no longer pending. *)
           Pending_targets.remove targets;
           Fiber.return ())
       (fun () ->

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696182534991,
+  "lastUpdate": 1696182978079,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -32768,6 +32768,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "47.807231254319994",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d9a9b00443128126c0971166072267fdd74f98d5",
+          "message": "refactor: remove pointless exception catch-all (#8807)\n\nIf we don't match on the exception, it will be re-raised anyway\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-10-01T18:36:06+01:00",
+          "tree_id": "0e24e59a71846f372b56b459d5ec6e9c6094dfe4",
+          "url": "https://github.com/ocaml/dune/commit/d9a9b00443128126c0971166072267fdd74f98d5"
+        },
+        "date": 1696182977306,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "39.24584341724667",
             "unit": "seconds"
           }
         ]

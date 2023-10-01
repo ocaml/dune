@@ -78,20 +78,6 @@ module Lock = struct
     ;;
   end
 
-  (* Converts the package table found inside a [Dune_project.t] into the
-     package table expected by the dependency solver *)
-  let opam_file_map_of_dune_package_map (dune_package_map : Package.t Package.Name.Map.t)
-    : OpamFile.OPAM.t OpamTypes.name_map
-    =
-    Package.Name.Map.to_list_map
-      dune_package_map
-      ~f:(fun dune_package_name dune_package ->
-        let opam_package_name = Package.Name.to_opam_package_name dune_package_name in
-        let opam_file = Package.to_opam_file dune_package in
-        opam_package_name, opam_file)
-    |> OpamPackage.Name.Map.of_list
-  ;;
-
   module Per_context = struct
     type t =
       { lock_dir_path : Path.Source.t
@@ -320,7 +306,7 @@ module Lock = struct
          let project = Source_tree.Dir.project source_dir in
          Dune_project.packages project
        in
-       opam_file_map_of_dune_package_map dune_package_map
+       Package.Name.Map.map dune_package_map ~f:Package.to_opam_file
      in
      let+ solutions =
        Fiber.parallel_map

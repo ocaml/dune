@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696186423074,
+  "lastUpdate": 1696202398828,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -107937,6 +107937,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.30953467034",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "amokhov@janestreet.com",
+            "name": "Andrey Mokhov",
+            "username": "snowleopard"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d17496ea5764bd85475db5dc21b2989ce773f1fb",
+          "message": "Remove a confusing/unnecessary comment (#8808)\n\nThe \"all went well\" part is confusing. The action might have failed actually, so it's unclear what is meant. After removing this bit, the comment becomes trivial, so I think we can just delete the whole thing.\r\n\r\nSigned-off-by: Andrey Mokhov <amokhov@janestreet.com>",
+          "timestamp": "2023-10-02T00:06:03+01:00",
+          "tree_id": "f15d727c4f35e7c2920842f5ccac6fc96b067020",
+          "url": "https://github.com/ocaml/dune/commit/d17496ea5764bd85475db5dc21b2989ce773f1fb"
+        },
+        "date": 1696202382531,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "24.60202342738",
             "unit": "seconds"
           }
         ]

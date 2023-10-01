@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696131599101,
+  "lastUpdate": 1696131871435,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -83286,6 +83286,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": "1.6484900999333334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "baa5b98975bff408a18d2e3d97f414fc0c595b3d",
+          "message": "refactor: simplify lock_dir interface (#8800)\n\nremove some functions from the public api that aren't used\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-10-01T04:12:35+01:00",
+          "tree_id": "ff254119b31fcd61d127110e621e36f38d749b55",
+          "url": "https://github.com/ocaml/dune/commit/baa5b98975bff408a18d2e3d97f414fc0c595b3d"
+        },
+        "date": 1696131869801,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": "82.47641702692",
             "unit": "seconds"
           }
         ]

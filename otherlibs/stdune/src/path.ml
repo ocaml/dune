@@ -1130,7 +1130,16 @@ let is_directory t =
 
 let rmdir t = Unix.rmdir (to_string t)
 let unlink t = Fpath.unlink (to_string t)
-let link x y = Unix.link (to_string x) (to_string y)
+
+let link src dst =
+  match Unix.link (to_string src) (to_string dst) with
+  | exception Unix.Unix_error (Unix.EUNKNOWNERR -1142, syscall, arg)
+  (* Needed for OCaml < 5.1 on windows *) ->
+    Exn.reraise (Unix.Unix_error (Unix.EMLINK, syscall, arg))
+  | s -> s
+  | exception e -> Exn.reraise e
+;;
+
 let unlink_no_err t = Fpath.unlink_no_err (to_string t)
 let build_dir_exists () = is_directory build_dir
 

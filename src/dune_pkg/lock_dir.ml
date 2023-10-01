@@ -385,8 +385,6 @@ let decode_metadata =
 ;;
 
 module Package_filename = struct
-  type t = Filename.t
-
   let file_extension = ".pkg"
   let of_package_name package_name = Package_name.to_string package_name ^ file_extension
 

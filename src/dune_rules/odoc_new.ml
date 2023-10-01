@@ -1243,25 +1243,23 @@ let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =
       | Dune_section.Doc, fs ->
         let doc_path = Section.Map.find_exn dpkg.sections Doc in
         Some
-          (List.filter_map
-             ~f:(fun dst ->
-               let str = Install.Entry.Dst.to_string dst in
-               if Filename.check_suffix str ".mld"
-               then Some (Path.relative doc_path str)
-               else None)
-             fs)
+          (List.filter_map fs ~f:(fun dst ->
+             let str = Install.Entry.Dst.to_string dst in
+             if Filename.check_suffix str ".mld"
+             then Some (Path.relative doc_path str)
+             else None))
       | _ -> None)
     |> List.concat
     |> Memo.return
 ;;
 
 let pkg_mlds sctx pkg =
-  let* mlds_by_package = Packages.mlds_by_package sctx in
-  match Package.Name.Map.find mlds_by_package pkg with
-  | Some xs -> Memo.return (List.map ~f:Path.build xs)
-  | None ->
+  let* pkgs = Only_packages.get () in
+  if Package.Name.Map.mem pkgs pkg
+  then Packages.mlds sctx pkg >>| List.map ~f:Path.build
+  else (
     let ctx = Super_context.context sctx in
-    ext_package_mlds ctx pkg
+    ext_package_mlds ctx pkg)
 ;;
 
 let check_mlds_no_dupes ~pkg ~mlds =

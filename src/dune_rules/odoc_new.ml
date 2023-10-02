@@ -1351,15 +1351,9 @@ module Index_tree = struct
       { artifacts = []; predefined_index = None; libs = Lib.Map.empty; package = None }
     in
     let combine x y =
-      let combine_opt x y =
-        match x, y with
-        | None, None -> None
-        | Some x, None | None, Some x -> Some x
-        | Some x, Some _ -> Some x
-      in
-      let predefined_index = combine_opt x.predefined_index y.predefined_index in
+      let predefined_index = Option.first_some x.predefined_index y.predefined_index in
       let libs = Lib.Map.union x.libs y.libs ~f:(fun _lib x _y -> Some x) in
-      let package = combine_opt x.package y.package in
+      let package = Option.first_some x.package y.package in
       { artifacts = x.artifacts @ y.artifacts; predefined_index; libs; package }
     in
     fun x -> of_index_list ~empty ~combine x

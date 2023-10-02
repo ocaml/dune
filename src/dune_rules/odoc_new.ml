@@ -405,18 +405,20 @@ module Valid = struct
                 let scope = find proj in
                 Scope.libs scope
               in
-              let+ libs = Lib.DB.all lib_db in
-              let libs =
-                match mask with
-                | None -> libs
-                | Some mask ->
-                  Lib.Set.filter libs ~f:(fun lib ->
-                    let info = Lib.info lib in
-                    match Lib_info.package info with
-                    | Some p -> List.mem ~equal:Package.Name.equal mask p
-                    | None -> false)
+              let+ libs_acc =
+                let+ libs = Lib.DB.all lib_db in
+                let libs =
+                  match mask with
+                  | None -> libs
+                  | Some mask ->
+                    Lib.Set.filter libs ~f:(fun lib ->
+                      let info = Lib.info lib in
+                      match Lib_info.package info with
+                      | Some p -> List.mem ~equal:Package.Name.equal mask p
+                      | None -> false)
+                in
+                (proj, lib_db, libs) :: libs_acc
               in
-              let libs_acc = (proj, lib_db, libs) :: libs_acc in
               let pkg_acc =
                 let pkgs =
                   let proj_pkgs = Dune_project.packages proj |> Package.Name.Map.keys in
@@ -437,8 +439,10 @@ module Valid = struct
             Memo.parallel_map libs ~f:(fun (_, _lib_db, libs) ->
               Lib.Set.fold ~init:(Memo.return []) libs ~f:(fun lib acc ->
                 let* acc = acc in
-                let* libs = Lib.closure (lib :: Option.to_list stdlib) ~linking:false in
-                let+ libs = Resolve.read_memo libs in
+                let+ libs =
+                  let* libs = Lib.closure (lib :: Option.to_list stdlib) ~linking:false in
+                  Resolve.read_memo libs
+                in
                 libs :: acc))
           in
           List.concat libs_list

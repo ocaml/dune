@@ -169,8 +169,10 @@ module Index = struct
   let of_external_lib findlib_paths ty lib =
     let local =
       let local_full =
-        let obj_dir = Lib.info lib |> Lib_info.obj_dir |> Obj_dir.dir in
-        Paths.local_path_of_findlib_path findlib_paths obj_dir
+        Lib.info lib
+        |> Lib_info.obj_dir
+        |> Obj_dir.dir
+        |> Paths.local_path_of_findlib_path findlib_paths
       in
       String.split ~on:'/' local_full
     in
@@ -300,8 +302,8 @@ module Classify = struct
 
   let fallback_hash f =
     String.Map.fold f.libs ~init:0 ~f:(fun libs acc ->
-      let l = List.sort libs ~compare:Lib.compare in
-      List.fold_left ~init:acc l ~f:(fun acc lib -> Poly.hash (acc, Lib.hash lib)))
+      List.sort libs ~compare:Lib.compare
+      |> List.fold_left ~init:acc ~f:(fun acc lib -> Poly.hash (acc, Lib.hash lib)))
   ;;
 
   type local_dir_type =
@@ -330,16 +332,18 @@ module Classify = struct
            let f libs acc =
              match Lib_name.Map.values libs with
              | [ (lib, _) ] ->
-               let info = Dune_package.Lib.info lib in
-               let mods_opt = Lib_info.modules info in
-               (match mods_opt, Lib_info.entry_modules info with
+               (match
+                  let info = Dune_package.Lib.info lib in
+                  let mods_opt = Lib_info.modules info in
+                  mods_opt, Lib_info.entry_modules info
+                with
                 | External (Some modules), External (Ok _) -> (lib, modules) :: acc
                 | _ -> raise Fallback)
              | _ -> raise Fallback
            in
            let* ms =
              String.Map.fold libs ~f ~init:[]
-             |> Memo.List.map ~f:(fun (dune_package_lib, modules) ->
+             |> Memo.parallel_map ~f:(fun (dune_package_lib, modules) ->
                let info = Dune_package.Lib.info dune_package_lib in
                let* resolved_lib =
                  let* public_libs = Lib.DB.installed ctx in
@@ -689,7 +693,7 @@ module Artifact : sig
   val reference : t -> string
   val module_name : t -> Module_name.t option
   val name : t -> string
-  val make_module : Context.t -> bool -> Index.t -> Path.t -> bool -> t
+  val make_module : Context.t -> all:bool -> Index.t -> Path.t -> visible:bool -> t
   val external_mld : Context.t -> Index.t -> Path.t -> t
   val index : Context.t -> all:bool -> Index.t -> t
 end = struct
@@ -748,15 +752,15 @@ end = struct
   ;;
 
   let name v =
+    let name = Path.basename v.source |> Filename.chop_extension in
     match v.ty with
-    | Module _ ->
-      Path.basename v.source |> Filename.chop_extension |> Stdune.String.capitalize
-    | Mld -> Path.basename v.source |> Filename.chop_extension
+    | Module _ -> name
+    | Mld -> Filename.chop_extension name
   ;;
 
   let v ~source ~odoc ~html_dir ~html_file ~ty = { source; odoc; html_dir; html_file; ty }
 
-  let make_module ctx all index source visible =
+  let make_module ctx ~all index source ~visible =
     let basename =
       Path.basename source |> Filename.chop_extension |> Stdune.String.uncapitalize
     in
@@ -1059,7 +1063,7 @@ let external_module_deps_rule sctx ~all a =
   | Module _ ->
     let ctx = Super_context.context sctx in
     let deps_file = Path.Build.set_extension (Artifact.odoc_file a) ~ext:".deps" in
-    let* () =
+    let+ () =
       let* odoc = Odoc.odoc_program sctx (Paths.root ctx ~all) in
       Super_context.add_rule
         sctx
@@ -1070,7 +1074,7 @@ let external_module_deps_rule sctx ~all a =
            ~stdout_to:deps_file
            [ A "compile-deps"; Dep (Artifact.source_file a) ])
     in
-    Memo.return (Some deps_file)
+    Some deps_file
   | _ -> Memo.return None
 ;;
 
@@ -1181,15 +1185,15 @@ let fallback_artifacts sctx (libs : Lib.t list String.Map.t) =
         let cmti_paths =
           List.map findlib_paths ~f:(fun path -> Path.relative path local_dir)
         in
-        Memo.List.map ~f:modules_of_dir cmti_paths
+        Memo.parallel_map ~f:modules_of_dir cmti_paths
         >>| List.concat
         >>| List.fold_left ~init:[] ~f:(fun acc (mod_name, (cmti_file, _)) ->
           let artifact =
-            let visibility =
+            let visible =
               not (contains_double_underscore (Module_name.to_string mod_name))
             in
             let index = Index.of_dir local_dir in
-            Artifact.make_module ctx true index cmti_file visibility
+            Artifact.make_module ctx ~all:true index cmti_file ~visible
           in
           artifact :: acc)
       in
@@ -1220,7 +1224,7 @@ let lib_artifacts ctx all index lib modules =
       visible && not (contains_double_underscore (Module.name m |> Module_name.to_string))
     in
     let cmti_file = Obj_dir.Module.cmti_file obj_dir ~cm_kind m in
-    Artifact.make_module ctx all index cmti_file visible :: acc)
+    Artifact.make_module ctx ~all index cmti_file ~visible :: acc)
 ;;
 
 let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =
@@ -1274,8 +1278,8 @@ let pkg_artifacts sctx index pkg =
     let+ mlds = pkg_mlds sctx pkg in
     check_mlds_no_dupes ~pkg ~mlds
   in
-  let mlds_noindex = String.Map.filteri ~f:(fun i _ -> i <> "index") mlds_map in
   let artifacts =
+    let mlds_noindex = String.Map.filteri ~f:(fun i _ -> i <> "index") mlds_map in
     String.Map.values mlds_noindex
     |> List.map ~f:(fun mld -> Artifact.external_mld ctx index mld)
   in

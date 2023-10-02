@@ -1,6 +1,10 @@
 #!/bin/bash
 
+<<<<<<< HEAD
 version=e184beb298d9abe0c524a4839bb0bec3d2571282
+=======
+version=48a7145ca41e60d7124e6215bb19139b846985be
+>>>>>>> parent of be9aa2820 (feature: use posix_spawn on macos (#8090))
 
 set -e -o pipefail
 

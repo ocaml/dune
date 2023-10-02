@@ -13,39 +13,6 @@ CAMLextern int caml_convert_signal_number(int);
 
 #if defined(__APPLE__)
 
-# if defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
-#  define USE_POSIX_SPAWN
-#  define vfork fork
-# endif
-
-#include <fcntl.h>
-#include <sys/socket.h>
-#include <sys/syscall.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-#ifndef SYS___pthread_chdir
-#define SYS___pthread_chdir 348
-#endif
-#ifndef SYS___pthread_fchdir
-#define SYS___pthread_fchdir 349
-#endif
-
-static int __pthread_chdir(const char *path) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated"
-  return syscall(SYS___pthread_chdir, path);
-#pragma clang diagnostic pop
-}
-
-static int __pthread_fchdir(int fd) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated"
-  return syscall(SYS___pthread_fchdir, fd);
-#pragma clang diagnostic pop
-}
-
-
 CAMLprim value spawn_is_osx()
 {
   return Val_true;
@@ -61,15 +28,6 @@ CAMLprim value spawn_is_osx()
 #endif
 
 #if !defined(_WIN32)
-
-# if defined(USE_POSIX_SPAWN)
-#  include <spawn.h>
-
-#  if !defined(__APPLE__)
-#   define posix_spawn_file_actions_addchdir_np(...)  ENOSYS
-#   define posix_spawn_file_actions_addfchdir_np(...) ENOSYS
-#  endif
-# endif
 
 #include <assert.h>
 #include <string.h>
@@ -239,26 +197,18 @@ static void subprocess_failure(int failure_fd,
   _exit(127);
 }
 
-/* same as [dup] but ensures the result is -1 or >= 3. */
-static int safe_dup(int fd)
+/* same as [dup] but ensures the result is >= 3. */
+static int safe_dup(int failure_fd, int fd)
 {
   int new_fd = dup(fd);
-  if (new_fd == -1 || new_fd >= 3)
+  if (new_fd == -1) subprocess_failure(failure_fd, "dup", NOTHING);
+  if (new_fd >= 3)
     return new_fd;
   else {
-    int result = safe_dup(fd);
+    int result = safe_dup(failure_fd, fd);
     close(new_fd);
     return result;
   }
-}
-
-/* same as [safe_dup] but writes errors to a file descriptor,
-   as from a subprocess. */
-static int safe_dup_failure_fd(int failure_fd, int fd)
-{
-  int new_fd = safe_dup(fd);
-  if (new_fd == -1) subprocess_failure(failure_fd, "dup", NOTHING);
-  return new_fd;
 }
 
 enum working_dir_kind { PATH, FD, INHERIT };
@@ -316,7 +266,7 @@ static void subprocess(int failure_fd, struct spawn_info *info)
      when redirecting stdout to stderr for instance. */
 
   for (fd = 0; fd < 3; fd++)
-    tmp_fds[fd] = safe_dup_failure_fd(failure_fd, info->std_fds[fd]);
+    tmp_fds[fd] = safe_dup(failure_fd, info->std_fds[fd]);
 
   for (fd = 0; fd < 3; fd++)
     close(info->std_fds[fd]);
@@ -337,22 +287,6 @@ static void subprocess(int failure_fd, struct spawn_info *info)
 /* +-----------------------------------------------------------------+
    | Parent code                                                     |
    +-----------------------------------------------------------------+ */
-
-/* Raise a Unix error based on the contents of a [subprocess_failure] structure
-   (and some context arguments). */
-void raise_subprocess_failure(struct subprocess_failure* failure,
-                              value v_cwd,
-                              value v_prog)
-{
-  value arg = Nothing;
-  switch (failure->arg) {
-    case NOTHING: arg = Nothing;         break;
-    case CWD    : arg = Field(v_cwd, 0); break;
-    case PROG   : arg = v_prog;          break;
-  }
-  assert(memchr(failure->function, 0, sizeof(failure->function)));
-  unix_error(failure->error, failure->function, arg);
-}
 
 /* Convert a [string list] into a NULL terminated array of C
    strings.
@@ -425,240 +359,18 @@ static char **copy_c_string_array(char ** strings)
 static void free_spawn_info(struct spawn_info *info)
 {
   if (info->cwd_kind == PATH) free(info->cwd.path);
-  free(info->prog);
-  free(info->argv);
-  free(info->env);
+  if (info->prog)             free(info->prog);
+  if (info->argv)             free(info->argv);
+  if (info->env)              free(info->env);
 }
+
+extern char ** environ;
 
 enum caml_unix_sigprocmask_command {
   CAML_SIG_SETMASK,
   CAML_SIG_BLOCK,
   CAML_SIG_UNBLOCK,
 };
-
-/* Initializes all fields of `*info` except for `info->child_sigmask`,
-   which must be initalized by `init_spawn_info_sigmask` (below). */
-static void init_spawn_info(struct spawn_info *info,
-                            value v_env,
-                            value v_cwd,
-                            value v_prog,
-                            value v_argv,
-                            value v_stdin,
-                            value v_stdout,
-                            value v_stderr,
-                            value v_setpgid,
-                            value v_sigprocmask)
-{
-  extern char ** environ;
-
-  info->std_fds[0] = Int_val(v_stdin);
-  info->std_fds[1] = Int_val(v_stdout);
-  info->std_fds[2] = Int_val(v_stderr);
-
-  if (Is_long(v_cwd)) {
-    assert(v_cwd == Val_long(0));
-    info->cwd_kind = INHERIT;
-  } else {
-    switch (Tag_val(v_cwd)) {
-      case 0: /* Path of string */
-        assert (Tag_val(Field(v_cwd, 0)) == String_tag);
-        info->cwd_kind = PATH;
-        info->cwd.path = strdup(String_val(Field(v_cwd, 0)));
-        if (info->cwd.path == NULL) caml_raise_out_of_memory();
-        break;
-      case 1: /* Fd of Unix.file_descr */
-        assert (Is_long(Field(v_cwd, 0)));
-        info->cwd_kind = FD;
-        info->cwd.fd = Int_val(Field(v_cwd, 0));
-        break;
-      default:
-        assert(0);
-    }
-  }
-
-  info->prog = strdup(String_val(v_prog));
-  if (info->prog == NULL) caml_raise_out_of_memory();
-  info->argv = alloc_string_vect(v_argv);
-  info->env =
-    Is_block(v_env) ?
-    alloc_string_vect(Field(v_env, 0)) : copy_c_string_array(environ);
-  info->set_pgid = Is_block(v_setpgid);
-  info->pgid =
-    Is_block(v_setpgid) ?
-    Long_val(Field(v_setpgid, 0)) : 0;
-
-  if (v_sigprocmask == Val_long(0)) {
-    sigemptyset(&info->child_sigmask);
-  } else {
-    v_sigprocmask = Field(v_sigprocmask, 0);
-    value v_sigprocmask_command = Field(v_sigprocmask, 0);
-    enum caml_unix_sigprocmask_command sigprocmask_command = Long_val(v_sigprocmask_command);
-
-    switch (sigprocmask_command) {
-      case CAML_SIG_SETMASK:
-        sigemptyset(&info->child_sigmask);
-        break;
-
-      case CAML_SIG_BLOCK:
-      case CAML_SIG_UNBLOCK:
-        pthread_sigmask(SIG_SETMASK, NULL, &info->child_sigmask);
-        break;
-
-      default:
-        caml_failwith("Unknown sigprocmask action");
-    }
-
-    for (value v_signals_list = Field(v_sigprocmask, 1);
-         v_signals_list != Val_emptylist;
-         v_signals_list = Field(v_signals_list, 1)) {
-      int signal = caml_convert_signal_number(Long_val(Field(v_signals_list, 0)));
-      switch (sigprocmask_command) {
-        case CAML_SIG_SETMASK:
-        case CAML_SIG_BLOCK:
-          sigaddset(&info->child_sigmask, signal);
-          break;
-
-        case CAML_SIG_UNBLOCK:
-          sigdelset(&info->child_sigmask, signal);
-          break;
-
-        default:
-          assert(0);
-      }
-    }
-  }
-}
-
-#if defined(USE_POSIX_SPAWN)
-
-CAMLprim value spawn_unix(value v_env,
-                          value v_cwd,
-                          value v_prog,
-                          value v_argv,
-                          value v_stdin,
-                          value v_stdout,
-                          value v_stderr,
-                          value v_use_vfork,
-                          value v_setpgid,
-                          value v_sigprocmask)
-{
-  CAMLparam4(v_env, v_cwd, v_prog, v_argv);
-  CAMLlocal1(e_arg);
-  e_arg = Nothing;
-
-  pid_t pid;
-  int tmp_fds[3] = {0};  // invariant: initialized > 2
-
-  int e_error;
-  char *e_function = NULL;
-
-  posix_spawn_file_actions_t actions;
-  if (posix_spawn_file_actions_init(&actions)) {
-    e_function = "posix_spawn_file_actions_init";
-    goto cleanup;
-  }
-
-  posix_spawnattr_t attr;
-  if (posix_spawnattr_init(&attr)) {
-    e_function = "posix_spawnattr_init";
-    goto cleanup;
-  }
-
-  struct spawn_info info;
-  init_spawn_info(&info, v_env, v_cwd, v_prog, v_argv,
-                  v_stdin, v_stdout, v_stderr, v_setpgid, v_sigprocmask);
-
-  short attr_flags = POSIX_SPAWN_SETSIGMASK;
-  if (info.set_pgid) attr_flags |= POSIX_SPAWN_SETPGROUP;
-  e_error = posix_spawnattr_setflags(&attr, attr_flags);
-  if (e_error) {
-    e_function = "posix_spawnattr_setflags";
-    goto cleanup;
-  }
-
-  e_error = posix_spawnattr_setsigmask(&attr, &info.child_sigmask);
-  if (e_error) {
-    e_function = "posix_spawnattr_setsigmask";
-    goto cleanup;
-  }
-
-  if (info.set_pgid) {
-    e_error = posix_spawnattr_setpgroup(&attr, info.pgid);
-    if (e_error) {
-      e_function = "posix_spawnattr_setpgroup";
-      goto cleanup;
-    }
-  }
-
-  for (int fd = 0; fd < 3; fd++) {
-    int tmp_fd = tmp_fds[fd] = safe_dup(info.std_fds[fd]);
-    if (tmp_fd == -1) {
-      e_error = errno;
-      e_function = "dup";
-      goto cleanup;
-    }
-
-    e_error = posix_spawn_file_actions_adddup2(&actions, tmp_fd, fd);
-    if (e_error) {
-      e_function = "posix_spawn_file_actions_adddup2";
-      goto cleanup;
-    }
-
-    e_error = posix_spawn_file_actions_addclose(&actions, tmp_fd);
-    if (e_error) {
-      e_function = "posix_spawn_file_actions_addclose";
-      goto cleanup;
-    }
-  }
-
-  switch (info.cwd_kind) {
-    case INHERIT: break;
-    case PATH:
-      e_error = __pthread_chdir(info.cwd.path);
-      if (e_error) {
-        e_function = "__pthread_chdir";
-        goto cleanup;
-      }
-      break;
-    case FD:
-      e_error = __pthread_fchdir(info.cwd.fd);
-      if (e_error) {
-        e_function = "__pthread_fchdir";
-        goto cleanup;
-      }
-  }
-  caml_enter_blocking_section();
-  e_error = posix_spawn(&pid, info.prog,
-                        &actions, &attr,
-                        info.argv, info.env);
-  if (info.cwd_kind != INHERIT) {
-    /* go back to inheriting the process cwd */
-    __pthread_fchdir(-1);
-  }
-  caml_leave_blocking_section();
-
-  if (e_error) {
-    e_function = "posix_spawn";
-    goto cleanup;
-  }
-
- cleanup:
-  for (int fd = 0; fd < 3; fd++)
-    if (tmp_fds[fd] > 2)
-      close(tmp_fds[fd]);
-
-  free_spawn_info(&info);
-  posix_spawnattr_destroy(&attr);
-  posix_spawn_file_actions_destroy(&actions);
-
-  if (e_function) {
-    unix_error(e_error, e_function, e_arg);
-  }
-
-  CAMLreturn(Val_int(pid));
-}
-
-#else
 
 CAMLprim value spawn_unix(value v_env,
                           value v_cwd,
@@ -683,8 +395,41 @@ CAMLprim value spawn_unix(value v_env,
   int errno_after_forking = 0;
   int status;
 
-  init_spawn_info(&info, v_env, v_cwd, v_prog, v_argv,
-                  v_stdin, v_stdout, v_stderr, v_setpgid, v_sigprocmask);
+  info.std_fds[0] = Int_val(v_stdin);
+  info.std_fds[1] = Int_val(v_stdout);
+  info.std_fds[2] = Int_val(v_stderr);
+
+  if (Is_long(v_cwd)) {
+    assert(v_cwd == Val_long(0));
+    info.cwd_kind = INHERIT;
+  } else {
+    switch (Tag_val(v_cwd)) {
+      case 0: /* Path of string */
+        assert (Tag_val(Field(v_cwd, 0)) == String_tag);
+        info.cwd_kind = PATH;
+        info.cwd.path = strdup(String_val(Field(v_cwd, 0)));
+        if (info.cwd.path == NULL) caml_raise_out_of_memory();
+        break;
+      case 1: /* Fd of Unix.file_descr */
+        assert (Is_long(Field(v_cwd, 0)));
+        info.cwd_kind = FD;
+        info.cwd.fd = Int_val(Field(v_cwd, 0));
+        break;
+      default:
+        assert(0);
+    }
+  }
+
+  info.prog = strdup(String_val(v_prog));
+  if (info.prog == NULL) caml_raise_out_of_memory();
+  info.argv = alloc_string_vect(v_argv);
+  info.env =
+    Is_block(v_env) ?
+    alloc_string_vect(Field(v_env, 0)) : copy_c_string_array(environ);
+  info.set_pgid = Is_block(v_setpgid);
+  info.pgid =
+    Is_block(v_setpgid) ?
+    Long_val(Field(v_setpgid, 0)) : 0;
 
   caml_enter_blocking_section();
   enter_safe_pipe_section();
@@ -717,6 +462,47 @@ CAMLprim value spawn_unix(value v_env,
   #endif
   sigfillset(&sigset);
   pthread_sigmask(SIG_SETMASK, &sigset, &saved_procmask);
+
+  if (v_sigprocmask == Val_long(0)) {
+    sigemptyset(&info.child_sigmask);
+  } else {
+    v_sigprocmask = Field(v_sigprocmask, 0);
+    value v_sigprocmask_command = Field(v_sigprocmask, 0);
+    enum caml_unix_sigprocmask_command sigprocmask_command = Long_val(v_sigprocmask_command);
+
+    switch (sigprocmask_command) {
+      case CAML_SIG_SETMASK:
+        sigemptyset(&info.child_sigmask);
+        break;
+
+      case CAML_SIG_BLOCK:
+      case CAML_SIG_UNBLOCK:
+        info.child_sigmask = saved_procmask;
+        break;
+
+      default:
+        caml_failwith("Unknown sigprocmask action");
+    }
+
+    for (value v_signals_list = Field(v_sigprocmask, 1);
+         v_signals_list != Val_emptylist;
+         v_signals_list = Field(v_signals_list, 1)) {
+      int signal = caml_convert_signal_number(Long_val(Field(v_signals_list, 0)));
+      switch (sigprocmask_command) {
+        case CAML_SIG_SETMASK:
+        case CAML_SIG_BLOCK:
+          sigaddset(&info.child_sigmask, signal);
+          break;
+
+        case CAML_SIG_UNBLOCK:
+          sigdelset(&info.child_sigmask, signal);
+          break;
+
+        default:
+          assert(0);
+      }
+    }
+  }
 
   ret = Bool_val(v_use_vfork) ? vfork() : fork();
 
@@ -768,13 +554,18 @@ CAMLprim value spawn_unix(value v_env,
   caml_leave_blocking_section();
 
   if (got_error) {
-    raise_subprocess_failure(&failure, v_cwd, v_prog);
+    value arg = Nothing;
+    switch (failure.arg) {
+      case NOTHING: arg = Nothing;         break;
+      case CWD    : arg = Field(v_cwd, 0); break;
+      case PROG   : arg = v_prog;          break;
+    }
+    assert(memchr(failure.function, 0, sizeof(failure.function)));
+    unix_error(failure.error, failure.function, arg);
   }
 
   CAMLreturn(Val_int(ret));
 }
-
-#endif
 
 CAMLprim value spawn_windows(value v_env,
                              value v_cwd,

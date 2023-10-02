@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696274169099,
+  "lastUpdate": 1696287356401,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -108749,6 +108749,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "25.285222163606672",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5421ce0ace9985c227a2cc1107315ebb735b7143",
+          "message": "refactor(cache): Make [Util.add_atomically] private (#8816)\n\nIt doesn't seem to be used outside of [Util]\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-10-02T23:42:56+01:00",
+          "tree_id": "58e28e8c0e2ea22a710b6fb9a13a62ec13b68a99",
+          "url": "https://github.com/ocaml/dune/commit/5421ce0ace9985c227a2cc1107315ebb735b7143"
+        },
+        "date": 1696287340633,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "22.316582991719997",
             "unit": "seconds"
           }
         ]

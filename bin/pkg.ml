@@ -413,6 +413,42 @@ module Lock = struct
       List.iter write_disk_list ~f:Lock_dir.Write_disk.commit
   ;;
 
+  let lock
+    ~context_name
+    ~all_contexts
+    ~version_preference
+    ~use_env_from_current_system
+    ~just_print_solver_env
+    ~opam_repository_path
+    ~opam_repository_url
+    =
+    let open Fiber.O in
+    let* per_context =
+      Per_context.choose
+        ~context_name_arg:context_name
+        ~all_contexts_arg:all_contexts
+        ~version_preference_arg:version_preference
+    and* sys_bindings_from_current_system =
+      if use_env_from_current_system
+      then Dune_pkg.Sys_poll.sys_bindings ~path:(Env_path.path Stdune.Env.initial)
+      else Fiber.return Dune_pkg.Solver_env.Variable.Sys.Bindings.empty
+    in
+    if just_print_solver_env
+    then
+      let+ () = Fiber.return () in
+      print_solver_env
+        per_context
+        ~sys_bindings_from_current_system
+        ~use_env_from_current_system
+    else
+      solve
+        per_context
+        ~opam_repository_path
+        ~opam_repository_url
+        ~sys_bindings_from_current_system
+        ~use_env_from_current_system
+  ;;
+
   let term =
     let+ (common : Common.t) = Common.term
     and+ opam_repository_path = Opam_repository_path.term
@@ -454,33 +490,15 @@ module Lock = struct
     in
     let common = Common.forbid_builds common in
     let config = Common.init common in
-    Scheduler.go ~common ~config
-    @@ fun () ->
-    let open Fiber.O in
-    let* per_context =
-      Per_context.choose
-        ~context_name_arg:context_name
-        ~all_contexts_arg:all_contexts
-        ~version_preference_arg:version_preference
-    and* sys_bindings_from_current_system =
-      if use_env_from_current_system
-      then Dune_pkg.Sys_poll.sys_bindings ~path:(Env_path.path Stdune.Env.initial)
-      else Fiber.return Dune_pkg.Solver_env.Variable.Sys.Bindings.empty
-    in
-    if just_print_solver_env
-    then
-      let+ () = Fiber.return () in
-      print_solver_env
-        per_context
-        ~sys_bindings_from_current_system
+    Scheduler.go ~common ~config (fun () ->
+      lock
+        ~context_name
+        ~all_contexts
+        ~version_preference
         ~use_env_from_current_system
-    else
-      solve
-        per_context
+        ~just_print_solver_env
         ~opam_repository_path
-        ~opam_repository_url
-        ~sys_bindings_from_current_system
-        ~use_env_from_current_system
+        ~opam_repository_url)
   ;;
 
   let info =

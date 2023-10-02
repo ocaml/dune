@@ -1,8 +1,4 @@
 (cram
- (deps opam-var-helpers.sh)
- (applies_to :whole_subtree))
-
-(cram
  (deps opam-vars)
  (applies_to opam-var-os))
 

@@ -1,4 +1,4 @@
-  $ . ./opam-var-helpers.sh
+  $ . ../helpers.sh
 
   $ mkrepo
   > fail_solve() {

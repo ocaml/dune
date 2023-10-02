@@ -28,7 +28,8 @@ end = struct
 
   (* Returns true iff a variable is an opam system environment variable *)
   let is_variable_sys variable =
-    Solver_env.Variable.Sys.of_string_opt (OpamVariable.to_string variable)
+    OpamVariable.to_string variable
+    |> Solver_env.Variable.Sys.of_string_opt
     |> Option.is_some
   ;;
 
@@ -107,16 +108,18 @@ module Context_for_dune = struct
     | Unavailable -> Fmt.string f "Availability condition not satisfied"
   ;;
 
-  let opam_version_compare t =
-    let opam_package_version_compare a b =
-      OpamPackage.Version.compare a b |> Ordering.of_int
+  let opam_version_compare =
+    let opam_file_compare_by_version =
+      let opam_package_version_compare a b =
+        OpamPackage.Version.compare a b |> Ordering.of_int
+      in
+      fun a b ->
+        opam_package_version_compare (OpamFile.OPAM.version a) (OpamFile.OPAM.version b)
     in
-    let opam_file_compare_by_version a b =
-      opam_package_version_compare (OpamFile.OPAM.version a) (OpamFile.OPAM.version b)
-    in
-    match t.version_preference with
-    | Oldest -> opam_file_compare_by_version
-    | Newest -> Ordering.reverse opam_file_compare_by_version
+    fun t ->
+      match t.version_preference with
+      | Oldest -> opam_file_compare_by_version
+      | Newest -> Ordering.reverse opam_file_compare_by_version
   ;;
 
   let is_opam_available =
@@ -127,22 +130,24 @@ module Context_for_dune = struct
     let warned_packages = ref OpamPackage.Set.empty in
     fun t opam ->
       let available = OpamFile.OPAM.available opam in
-      let available_vars_resolved =
-        Filter.resolve_solver_env_treating_unset_sys_variables_as_wildcards
-          t.solver_env
-          available
-      in
-      match Filter.eval_to_bool available_vars_resolved with
+      match
+        let available_vars_resolved =
+          Filter.resolve_solver_env_treating_unset_sys_variables_as_wildcards
+            t.solver_env
+            available
+        in
+        Filter.eval_to_bool available_vars_resolved
+      with
       | Ok available -> available
       | Error error ->
         let package = OpamFile.OPAM.package opam in
         if not (OpamPackage.Set.mem package !warned_packages)
         then (
           warned_packages := OpamPackage.Set.add package !warned_packages;
-          let package_string = OpamFile.OPAM.package opam |> OpamPackage.to_string in
-          let available_string = OpamFilter.to_string available in
           match error with
           | `Not_a_bool msg ->
+            let package_string = OpamFile.OPAM.package opam |> OpamPackage.to_string in
+            let available_string = OpamFilter.to_string available in
             User_warning.emit
               [ Pp.textf
                   "Ignoring package %s as its `available` filter can't be resolved to a \
@@ -184,10 +189,10 @@ module Context_for_dune = struct
   let user_restrictions _ _ = None
 
   let filter_deps t package filtered_formula =
-    let package_is_local =
-      OpamPackage.Name.Map.mem (OpamPackage.name package) t.local_packages
-    in
     let solver_env =
+      let package_is_local =
+        OpamPackage.Name.Map.mem (OpamPackage.name package) t.local_packages
+      in
       if package_is_local
       then t.solver_env
       else
@@ -258,18 +263,20 @@ let filter_to_blang package filter =
     | packages ->
       let blangs =
         List.map packages ~f:(fun package ->
-          let scope =
-            match package with
-            | None -> Package_variable.Scope.Self
-            | Some package ->
-              Package (Package_name.of_string (OpamPackage.Name.to_string package))
+          let pform =
+            let package_variable =
+              let scope =
+                match package with
+                | None -> Package_variable.Scope.Self
+                | Some package ->
+                  Package (Package_name.of_string (OpamPackage.Name.to_string package))
+              in
+              { Package_variable.name = Package_variable.Name.of_string variable_string
+              ; scope
+              }
+            in
+            Package_variable.to_pform package_variable
           in
-          let package_variable =
-            { Package_variable.name = Package_variable.Name.of_string variable_string
-            ; scope
-            }
-          in
-          let pform = Package_variable.to_pform package_variable in
           Blang.Expr (String_with_vars.make_pform Loc.none pform))
       in
       (match blangs with
@@ -342,57 +349,53 @@ let filter_to_blang package filter =
 ;;
 
 let opam_commands_to_actions package (commands : OpamTypes.command list) =
+  let package_name = OpamPackage.to_string package in
   List.filter_map commands ~f:(fun ((args, filter) as command) ->
-    let interpolate_opam_variables s =
-      Re.Seq.split_full OpamFilter.string_interp_regex s
-      |> Seq.map ~f:(function
-        | `Text text -> `Text text
-        | `Delim group ->
-          (match Re.Group.get group 0 with
-           | "%%" -> `Text "%"
-           | interp
-             when String.is_prefix ~prefix:"%{" interp
-                  && String.is_suffix ~suffix:"}%" interp ->
-             let ident = String.sub ~pos:2 ~len:(String.length interp - 4) interp in
-             `Pform
-               (Package_variable.pform_of_opam_ident
-                  ~package_name:(OpamPackage.to_string package)
-                  ident)
-           | other ->
-             User_error.raise
-               [ Pp.textf
-                   "Encountered malformed variable interpolation while processing \
-                    commands for package %s."
-                   (OpamPackage.to_string package)
-               ; Pp.text "The variable interpolation:"
-               ; Pp.text other
-               ; Pp.text "The full command:"
-               ; Pp.text (opam_command_to_string_debug command)
-               ]))
-      |> List.of_seq
-      |> String_with_vars.make Loc.none
-    in
     let terms =
+      let interpolate_opam_variables s =
+        Re.Seq.split_full OpamFilter.string_interp_regex s
+        |> Seq.map ~f:(function
+          | `Text text -> `Text text
+          | `Delim group ->
+            (match Re.Group.get group 0 with
+             | "%%" -> `Text "%"
+             | interp
+               when String.is_prefix ~prefix:"%{" interp
+                    && String.is_suffix ~suffix:"}%" interp ->
+               let ident = String.sub ~pos:2 ~len:(String.length interp - 4) interp in
+               `Pform (Package_variable.pform_of_opam_ident ~package_name ident)
+             | other ->
+               User_error.raise
+                 [ Pp.textf
+                     "Encountered malformed variable interpolation while processing \
+                      commands for package %s."
+                     (OpamPackage.to_string package)
+                 ; Pp.text "The variable interpolation:"
+                 ; Pp.text other
+                 ; Pp.text "The full command:"
+                 ; Pp.text (opam_command_to_string_debug command)
+                 ]))
+        |> List.of_seq
+        |> String_with_vars.make Loc.none
+      in
       List.map args ~f:(fun (simple_arg, _filter_opt) ->
         match simple_arg with
         | OpamTypes.CString s -> interpolate_opam_variables s
         | CIdent ident ->
           String_with_vars.make_pform
             Loc.none
-            (Package_variable.pform_of_opam_ident
-               ~package_name:(OpamPackage.to_string package)
-               ident))
+            (Package_variable.pform_of_opam_ident ident ~package_name))
     in
     match terms with
+    | [] -> None
     | program :: args ->
-      let action = Action.run program args in
       let action =
+        let action = Action.run program args in
         match filter with
-        | Some filter -> Action.When (filter_to_blang package filter, action)
         | None -> action
+        | Some filter -> Action.When (filter_to_blang package filter, action)
       in
-      Some action
-    | [] -> None)
+      Some action)
 ;;
 
 let opam_env_update_to_env_update ((var, env_op, value_string, _) : OpamTypes.env_update)
@@ -432,6 +435,7 @@ let opam_package_to_lock_file_pkg context_for_dune ~repos ~local_packages opam_p
   let dev = OpamPackage.Name.Map.mem name local_packages in
   let opam_file =
     match OpamPackage.Name.Map.find_opt name local_packages with
+    | Some local_package -> local_package
     | None ->
       let opam_files =
         List.filter_map repos ~f:(fun repo ->
@@ -440,7 +444,6 @@ let opam_package_to_lock_file_pkg context_for_dune ~repos ~local_packages opam_p
       (match opam_files with
        | [ opam_file ] -> opam_file
        | _ -> Code_error.raise "Couldn't map opam package to a repository" [])
-    | Some local_package -> local_package
   in
   let extra_sources =
     OpamFile.OPAM.extra_sources opam_file
@@ -465,10 +468,8 @@ let opam_package_to_lock_file_pkg context_for_dune ~repos ~local_packages opam_p
   in
   (* This will collect all the atoms from the package's dependency formula regardless of conditions *)
   let deps =
-    let deps =
-      Context_for_dune.filter_deps context_for_dune opam_package opam_file.depends
-    in
-    OpamFormula.fold_right (fun acc (name, _condition) -> name :: acc) [] deps
+    Context_for_dune.filter_deps context_for_dune opam_package opam_file.depends
+    |> OpamFormula.fold_right (fun acc (name, _condition) -> name :: acc) []
     |> List.map ~f:(fun name ->
       Loc.none, Package_name.of_string (OpamPackage.Name.to_string name))
   in

@@ -29,6 +29,15 @@ module Write_result = struct
     | Error of exn
 end
 
+(* A primitive for atomically adding entries to the cache. The behaviour
+   differs depending on the [mode]:
+
+   - [Hardlink]: If [dst] already exists, return [Already_present]. Otherwise,
+     create a hard link [dst] pointing to [src].
+
+   - [Copy]: If [dst] already exists, return [Already_present]. Otherwise,
+     rename [src] to [dst]. If [dst] is created after the file existence check
+     but before renaming, [dst] will be silently overwritten. *)
 let add_atomically ~mode ~src ~dst : Write_result.t =
   match (mode : Mode.t) with
   | Hardlink ->

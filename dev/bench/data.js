@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696271416491,
+  "lastUpdate": 1696271867080,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -32971,6 +32971,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "45.66954852333333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f14f9655bc588d877ce870b128288f1064e14090",
+          "message": "refactor(pkg): use portable hardlinking (#8815)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-10-02T19:17:44+01:00",
+          "tree_id": "2752c839c285d8eedfb4470f89a8b89f927ec029",
+          "url": "https://github.com/ocaml/dune/commit/f14f9655bc588d877ce870b128288f1064e14090"
+        },
+        "date": 1696271866182,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.80252496800667",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696245488950,
+  "lastUpdate": 1696245499801,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -83692,6 +83692,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "65.31430771978",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "andrey.mokhov@gmail.com",
+            "name": "Andrey Mokhov",
+            "username": "snowleopard"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "30c8b50d082c6e7c1481ff27fa9493521540a668",
+          "message": "Fix the year of the Memo presentation\n\nSigned-off-by: Andrey Mokhov <amokhov@janestreet.com>",
+          "timestamp": "2023-10-02T12:51:51+02:00",
+          "tree_id": "550feafcbcce786831c0b711ea440b6f152c5486",
+          "url": "https://github.com/ocaml/dune/commit/30c8b50d082c6e7c1481ff27fa9493521540a668"
+        },
+        "date": 1696245499034,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.6658360378666668",
             "unit": "seconds"
           }
         ]

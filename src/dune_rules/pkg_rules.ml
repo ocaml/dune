@@ -1047,12 +1047,6 @@ module Install_action = struct
       |> Section.Map.of_list_multi
     ;;
 
-    let hardlink_or_copy ~src ~dst =
-      match Unix.link (Unix.readlink (Path.to_string src)) (Path.to_string dst) with
-      | () -> ()
-      | exception _ -> Io.copy_file ~src ~dst ()
-    ;;
-
     let maybe_set_executable section dst =
       match Section.should_set_executable_bit section with
       | false -> ()
@@ -1078,20 +1072,30 @@ module Install_action = struct
         |> List.map ~f:(fun (name, value) -> OpamVariable.to_string name, value)
     ;;
 
-    let install_entry
-      ~src
-      ~install_file
-      ~target_dir
-      ~exists
-      (entry : Path.t Install.Entry.t)
-      =
-      if entry.optional && (not @@ Lazy.force exists)
-      then None
-      else (
+    let install_entry ~src ~install_file ~target_dir (entry : Path.t Install.Entry.t) =
+      match Path.Untracked.exists src, entry.optional with
+      | false, true -> None
+      | false, false ->
+        User_error.raise
+          [ Pp.textf
+              "entry %s in %s does not exist"
+              (Path.to_string_maybe_quoted src)
+              (Path.to_string install_file)
+          ]
+      | true, _ ->
         let dst = prepare_copy ~install_file ~target_dir entry in
-        hardlink_or_copy ~src ~dst;
+        (let src =
+           match Path.to_string src |> Unix.readlink with
+           | exception Unix.Unix_error (_, _, _) -> src
+           | link ->
+             Path.external_
+               (let base = Path.parent_exn src in
+                Filename.concat (Path.to_absolute_filename base) link
+                |> Path.External.of_string)
+         in
+         Io.portable_hardlink ~src ~dst);
         maybe_set_executable entry.section dst;
-        Some (entry.section, dst))
+        Some (entry.section, dst)
     ;;
 
     let action
@@ -1129,10 +1133,9 @@ module Install_action = struct
               in
               let install_entries =
                 Path.Map.to_list_map by_src ~f:(fun src entries ->
-                  let exists = lazy (Path.Untracked.exists src) in
                   List.filter_map
                     entries
-                    ~f:(install_entry ~src ~install_file ~target_dir ~exists))
+                    ~f:(install_entry ~src ~install_file ~target_dir))
               in
               List.concat install_entries
               |> List.rev_map ~f:(fun (section, file) ->

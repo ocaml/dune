@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696245158046,
+  "lastUpdate": 1696245306002,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -32884,6 +32884,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.95694187166",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "amokhov@janestreet.com",
+            "name": "Andrey Mokhov",
+            "username": "snowleopard"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1dada74c8f0f3ae62babe057853e3fedefd6b3dc",
+          "message": "Update README.md\n\nFix the Memo presentation README\r\n\r\nSigned-off-by: Andrey Mokhov <amokhov@janestreet.com>\r\n\n\nSigned-off-by: Andrey Mokhov <amokhov@janestreet.com>",
+          "timestamp": "2023-10-02T11:54:17+01:00",
+          "tree_id": "5e0bf951bfa058b60ff340aa9ca42838cd261d58",
+          "url": "https://github.com/ocaml/dune/commit/1dada74c8f0f3ae62babe057853e3fedefd6b3dc"
+        },
+        "date": 1696245305080,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.705937259866666",
             "unit": "seconds"
           }
         ]

@@ -679,7 +679,7 @@ The ``cram`` stanza accepts the following fields:
   be one of the following values:
 
   - ``:system`` - this stipulates that the system shell (that is, what you get
-    with ``/usr/bin/env sh``) should be used.  This is the default when this
+    with ``/usr/bin/env sh``) should be used. This is the default when this
     field does not present.
 
   - ``<dep>`` - ``<dep>`` should specify the path to an executable, which will

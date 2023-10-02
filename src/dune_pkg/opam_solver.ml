@@ -611,20 +611,18 @@ let solve_lock_dir solver_env version_preference repos ~local_packages =
     let files =
       opam_packages_to_lock
       |> List.filter_map ~f:(fun opam_package ->
-        let files_path =
+        let open Option.O in
+        let* files_path =
           List.find_map repos ~f:(fun repo ->
             Opam_repo.get_opam_package_files_path repo opam_package)
         in
-        match files_path with
-        | None -> None
-        | Some files_path ->
-          (match scan_files_entries files_path with
-           | [] -> None
-           | files ->
-             Some
-               ( Package_name.of_string
-                   (OpamPackage.Name.to_string (OpamPackage.name opam_package))
-               , files )))
+        match scan_files_entries files_path with
+        | [] -> None
+        | files ->
+          Some
+            ( Package_name.of_string
+                (OpamPackage.Name.to_string (OpamPackage.name opam_package))
+            , files ))
       |> Package_name.Map.of_list_exn
     in
     { Solver_result.summary; lock_dir; files })

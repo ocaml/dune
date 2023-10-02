@@ -35,13 +35,6 @@ val cutoffs_that_reduce_concurrency_in_watch_mode : Toggle.t t
 (** whether dune should optimize file copying on Linux/MacOS *)
 val copy_file : [ `Portable | `Best ] t
 
-(** Before any configuration value is accessed, this function must be called
-    with all the configuration values from the relevant config file
-    ([dune-workspace], or [dune-config]).
-
-    Note that environment variables take precedence over the values passed here
-    for easy overriding. *)
-
 (** Execute some actions in background threads. See [Action_exec] for the
     concrete list of actions *)
 val background_actions : Toggle.t t
@@ -56,4 +49,11 @@ val background_sandboxes : Toggle.t t
 val background_file_system_operations_in_rule_execution : Toggle.t t
 
 val threaded_console : Toggle.t t
+
+(** Before any configuration value is accessed, this function must be called
+    with all the configuration values from the relevant config file
+    ([dune-workspace], or [dune-config]).
+
+    Note that environment variables take precedence over the values passed here
+    for easy overriding. *)
 val init : (Loc.t * string) String.Map.t -> unit

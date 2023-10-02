@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696273298785,
+  "lastUpdate": 1696273779484,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -33000,6 +33000,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.80252496800667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "92c36677fdf76d0f3e3f37814bab2c105f626cf1",
+          "message": "refactor(pkg): move solve step into own function (#8818)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-10-02T19:47:36+01:00",
+          "tree_id": "cc73d2414ff62613c9b46fd6bc33459509fb3d38",
+          "url": "https://github.com/ocaml/dune/commit/92c36677fdf76d0f3e3f37814bab2c105f626cf1"
+        },
+        "date": 1696273778830,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "43.855381557920005",
             "unit": "seconds"
           }
         ]

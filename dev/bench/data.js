@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696346987030,
+  "lastUpdate": 1696347037659,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -109619,6 +109619,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.509186680880003",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7fe74db663f8d5364ddcccce429317acfa5242ad",
+          "message": "refactor(pkg): move repo fetching to own function (#8827)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-10-03T16:14:56+01:00",
+          "tree_id": "8969f5af2a6f35b6863797ab6fed2672bb605812",
+          "url": "https://github.com/ocaml/dune/commit/7fe74db663f8d5364ddcccce429317acfa5242ad"
+        },
+        "date": 1696347019444,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "25.96032028861333",
             "unit": "seconds"
           }
         ]

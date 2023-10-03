@@ -26,13 +26,7 @@ Make another package that depends on that and outputs the exported env vars
   >  [ "sh" "-c" "echo $append_with_leading_sep" ]
   > ]
   > EOF
-  > solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends deps-on-with-setenv))
-  > EOF
+  > solve deps-on-with-setenv
   Solution for dune.lock:
   deps-on-with-setenv.0.0.1
   with-setenv.0.0.1
@@ -64,12 +58,17 @@ The exported env from the first package should be in the lock dir.
 When building the second package the exported env vars from the first package should be
 available and all the env updates should be applied correctly.
 
-$ EXPORTED_ENV_VAR="I have not been exported yet." \
-> prepend_without_trailing_sep="foo:bar" \
-> prepend_with_trailing_sep="foo:bar" \
-> append_without_leading_sep="foo:bar" \
-> append_with_leading_sep="foo:bar" \
-> build_pkg deps-on-with-setenv 
+  $ EXPORTED_ENV_VAR="I have not been exported yet." \
+  > prepend_without_trailing_sep="foo:bar" \
+  > prepend_with_trailing_sep="foo:bar" \
+  > append_without_leading_sep="foo:bar" \
+  > append_with_leading_sep="foo:bar" \
+  > build_pkg deps-on-with-setenv 
+  Hello from the other package!
+  Prepended without trailing sep
+  Prepended with trailing sep
+  Appended without leading sep
+  Appended with leading sep
 
 We now make a third package that updates the env in a similar way, in order to see the
 difference between a propagated export_env versus the initial env.
@@ -94,13 +93,7 @@ difference between a propagated export_env versus the initial env.
   >  [ "sh" "-c" "echo $append_with_leading_sep" ]
   > ]
   > EOF
-  > solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends deps-on-with-setenv-2))
-  > EOF
+  > solve deps-on-with-setenv-2
   Solution for dune.lock:
   deps-on-with-setenv-2.0.0.1
   with-setenv.0.0.1
@@ -111,7 +104,6 @@ We can now observe how the environment updates are applied a second time.
 We currently have the following issues:
 - The leading and traling seperators are missing.
 - The initial enviornment is missing.
-
 
   $ EXPORTED_ENV_VAR="I have not been exported yet." \
   > prepend_without_trailing_sep="foo:bar" \

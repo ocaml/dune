@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696343390107,
+  "lastUpdate": 1696343403809,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -84504,6 +84504,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "74.03477557032",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0f3e503d2a73048888055dd21b1b8124063fd2a1",
+          "message": "feature(pkg): include checksums in lock dir pkgs (#8820)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-10-03T15:01:19+01:00",
+          "tree_id": "9a39bf051791c890ef462df982a1e2a19841d59b",
+          "url": "https://github.com/ocaml/dune/commit/0f3e503d2a73048888055dd21b1b8124063fd2a1"
+        },
+        "date": 1696343401867,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "1.9301046743",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696342236844,
+  "lastUpdate": 1696342421968,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -108894,6 +108894,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "21.615714916680002",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ff7e72e9cfe7ce7632a70420727e9731887e0cf2",
+          "message": "refactor(pkg): reduce scopes of identifiers (#8825)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-10-03T15:00:39+01:00",
+          "tree_id": "912a3ccaccce98a4daed6c92d53be37d828d2020",
+          "url": "https://github.com/ocaml/dune/commit/ff7e72e9cfe7ce7632a70420727e9731887e0cf2"
+        },
+        "date": 1696342406039,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "20.842483854586664",
             "unit": "seconds"
           }
         ]

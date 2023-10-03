@@ -1,5 +1,5 @@
 Print the solver env when no dune-workspace is present
-  $ dune pkg lock --just-print-solver-env
+  $ dune pkg print-solver-env
   Solver environment for context default:
   - Flags
     - with-doc = true
@@ -33,7 +33,7 @@ Add some build contexts with different environments
   >    (flags (:standard \ with-doc)))))
   > EOF
 
-  $ dune pkg lock --all-contexts --just-print-solver-env
+  $ dune pkg print-solver-env --all-contexts
   Solver environment for context no-doc:
   - Flags
     - with-doc = false

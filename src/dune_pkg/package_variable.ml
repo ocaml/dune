@@ -77,6 +77,7 @@ let package_variable variable =
 ;;
 
 let of_opam_ident ident =
+  let ident = OpamVariable.to_string ident in
   match String.lsplit2 ident ~on:':' with
   | Some (package, variable) ->
     let variable = package_variable variable in

@@ -210,10 +210,9 @@ let filter_to_blang loc package filter =
         [ "package", Dyn.string (OpamPackage.to_string package)
         ; "filter", Dyn.string (OpamFilter.to_string filter)
         ];
-    let variable_string = OpamVariable.to_string variable in
     match packages with
     | [] ->
-      let pform = Package_variable.pform_of_opam_ident (loc, variable_string) in
+      let pform = Package_variable.pform_of_opam_ident (loc, variable) in
       Blang.Expr (String_with_vars.make_pform Loc.none pform)
     | packages ->
       let blangs =
@@ -226,6 +225,7 @@ let filter_to_blang loc package filter =
                 | Some package ->
                   Package (Package_name.of_string (OpamPackage.Name.to_string package))
               in
+              let variable_string = OpamVariable.to_string variable in
               { Package_variable.name = Package_variable.Name.of_string variable_string
               ; scope
               }
@@ -317,7 +317,10 @@ let opam_commands_to_actions loc package (commands : OpamTypes.command list) =
              | interp
                when String.is_prefix ~prefix:"%{" interp
                     && String.is_suffix ~suffix:"}%" interp ->
-               let ident = String.sub ~pos:2 ~len:(String.length interp - 4) interp in
+               let ident =
+                 OpamVariable.of_string
+                 @@ String.sub ~pos:2 ~len:(String.length interp - 4) interp
+               in
                `Pform (Package_variable.pform_of_opam_ident (loc, ident))
              | other ->
                User_error.raise
@@ -340,7 +343,7 @@ let opam_commands_to_actions loc package (commands : OpamTypes.command list) =
         | CIdent ident ->
           String_with_vars.make_pform
             Loc.none
-            (Package_variable.pform_of_opam_ident (loc, ident)))
+            (Package_variable.pform_of_opam_ident (loc, OpamVariable.of_string ident)))
     in
     match terms with
     | [] -> None

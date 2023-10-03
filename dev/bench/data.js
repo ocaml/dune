@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696346609033,
+  "lastUpdate": 1696346987030,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -33232,6 +33232,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.138545126573334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8d8cbf9efc0d5adfa4250a2c254de29e699eba90",
+          "message": "feature(pkg): add status line for solving step (#8826)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-10-03T16:09:11+01:00",
+          "tree_id": "baa5926e352bf95762ce74dc70e2401dc77b4ab8",
+          "url": "https://github.com/ocaml/dune/commit/8d8cbf9efc0d5adfa4250a2c254de29e699eba90"
+        },
+        "date": 1696346984322,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.03452792918667",
             "unit": "seconds"
           }
         ]

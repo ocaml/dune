@@ -9,15 +9,7 @@ Make a package with a build-env field and no build or install step
   > build-env: [ [ MY_ENV_VAR = "Hello from env var!" ] ]
   > EOF
 
-  $ mkdir -p $mock_packages/with-build-env/with-build-env.0.0.1/
-
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends with-build-env))
-  > EOF
+  $ solve with-build-env
   Solution for dune.lock:
   with-build-env.0.0.1
   

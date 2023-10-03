@@ -21,13 +21,7 @@ Make a package with a patch behind a filter
   > +This is wrong; this patch should have been filtered out.
   > EOF
 
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends with-patch-filter))
-  > EOF
+  $ solve with-patch-filter
   Solution for dune.lock:
   with-patch-filter.0.0.1
   

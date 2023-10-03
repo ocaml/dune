@@ -22,13 +22,7 @@ Make a package with a patch
   > +This is right
   > EOF
 
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends with-patch))
-  > EOF
+  $ solve with-patch
   Solution for dune.lock:
   with-patch.0.0.1
   

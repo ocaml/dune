@@ -1,6 +1,7 @@
   $ . ./helpers.sh
   $ mkrepo
 
+!! Do not delete this one for the one in helpers.sh as it passes --all-contexts !!
 Helper shell function to generate a dune-project file and generate lockdir:
 
   $ solve_project() {
@@ -63,15 +64,7 @@ Create a workspace file with some contexts with different combinations of with-t
   $ mkpkg doc-package <<EOF
   > EOF
 
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends
-  >   regular-package
-  >   (test-package :with-test)
-  >   (doc-package :with-doc)))
-  > EOF
+  $ solve regular-package "(test-package :with-test)" "(doc-package :with-doc)"
   Solution for with-standard-flags.lock:
   doc-package.0.0.1
   regular-package.0.0.1

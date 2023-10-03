@@ -22,12 +22,7 @@ dependency:
 
 Depending on foo should add the macos and linux dependency but not the
 test-only dependency because we don't add transitive test dependencies:
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends foo))
-  > EOF
+  $ solve foo
   Solution for dune.lock:
   foo.0.0.1
   foo-linux.0.0.1
@@ -56,12 +51,7 @@ incompatible:
   > EOF
 
 There's no solution to these dependencies:
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends bar))
-  > EOF
+  $ solve bar
   Error: Unable to solve dependencies in build context: default
   Can't find all required versions.
   Selected: bar.0.0.1 bar-linux.0.0.1 x.dev

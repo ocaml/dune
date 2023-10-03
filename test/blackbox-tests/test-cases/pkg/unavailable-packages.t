@@ -14,6 +14,7 @@ Set up two build contexts: a default one for all systems and another just for ma
   >     (os macos)))))
   > EOF
 
+!! Do not delete this one for the one in helpers.sh as it passes --context !!
 Helper shell function to generate a dune-project file and generate lockdir for both contexts:
   $ solve_project() {
   >   cat >dune-project
@@ -68,12 +69,7 @@ A package whose oldest and newest version is only available if with-test is fals
 
 No solution will be available on macos as all versions of this package are only
 available on linux.
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends linux-only))
-  > EOF
+  $ solve linux-only
   Solution for dune.lock:
   linux-only.0.0.2
   
@@ -88,12 +84,7 @@ available on linux.
 
 The latest version of the package will be chosen on linux but the middle
 version will be chosen on macos as that's the only version available on macos.
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends macos-sometimes))
-  > EOF
+  $ solve macos-sometimes
   Solution for dune.lock:
   macos-sometimes.0.0.3
   
@@ -104,12 +95,7 @@ version will be chosen on macos as that's the only version available on macos.
 A warning will be printed as the undefined-var.0.0.1 package has an undefined
 variable in its `available` filter. The undefined-var.0.0.2 package has a valid
 `available` filter but is only available on linux.
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends undefined-var))
-  > EOF
+  $ solve undefined-var
   Solution for dune.lock:
   undefined-var.0.0.2
   
@@ -124,12 +110,7 @@ variable in its `available` filter. The undefined-var.0.0.2 package has a valid
 
 Warnings will be printed and no solution will be found as the availability
 filter resolves to a string instead of to a boolean.
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends availability-string))
-  > EOF
+  $ solve availability-string
   Error: Unable to solve dependencies in build context: default
   Can't find all required versions.
   Selected: x.dev
@@ -149,12 +130,7 @@ filter resolves to a string instead of to a boolean.
 The middle version will be picked as this is the only one available if
 with-test is set. This exercises that we can handle flags in the available
 filter.
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends with-test-check))
-  > EOF
+  $ solve with-test-check
   Solution for dune.lock:
   with-test-check.0.0.2
   

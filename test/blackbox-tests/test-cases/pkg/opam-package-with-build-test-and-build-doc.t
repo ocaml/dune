@@ -12,15 +12,7 @@ In this test we demonstrate that we don't currently do anything special with tho
   > build-test: [ "echo" "Building test" ]
   > EOF
 
-  $ mkdir -p $mock_packages/with-build-test-doc/with-build-test-doc.0.0.1
-
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends with-build-test-doc))
-  > EOF
+  $ solve with-build-test-doc
   Solution for dune.lock:
   with-build-test-doc.0.0.1
   

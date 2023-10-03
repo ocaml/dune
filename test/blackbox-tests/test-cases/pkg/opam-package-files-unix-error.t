@@ -26,13 +26,7 @@ The error message should have a location for the opam repository.
 
 This does not currently seem to be the case.
 
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends with-patch))
-  > EOF
+  $ solve with-patch
   Error: Unable to read file in opam repository:
   opendir($TESTCASE_ROOT/mock-opam-repository/packages/with-patch/with-patch.0.0.1/files/dir): Permission denied
   [1]

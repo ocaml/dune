@@ -14,13 +14,7 @@ Make a package with a substs and patches field field
 
   $ opam_repo=$mock_packages/with-substs-and-patches/with-substs-and-patches.0.0.1
 
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends with-substs-and-patches)) 
-  > EOF
+  $ solve with-substs-and-patches
   Solution for dune.lock:
   with-substs-and-patches.0.0.1
   

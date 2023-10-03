@@ -6,34 +6,14 @@ module type CONTEXT = Opam_0install.S.CONTEXT
 module Filter : sig
   type filter := OpamTypes.filter
 
-  (** Substitute variables with their values.
-
-      Comparisons with unset system environment variables resolve to true,
-      treating them as wildcards. This creates a formula which is as permissive
-      as possible within the constraints for system environment variables
-      specified by the user. The intention is to generate lockdirs which will
-      work on as many systems as possible, but to allow the user to constrain
-      this by setting environment variables to handle situations where the most
-      permissive solve is not possible or otherwise produces undesirable
-      outcomes (e.g. when there are mutually-incompatible os-specific packages
-      for different operating systems). *)
-  val resolve_solver_env_treating_unset_sys_variables_as_wildcards
-    :  Solver_env.t
-    -> filter
-    -> filter
+  (** Substitute variables with their values *)
+  val resolve_solver_env : Solver_env.t -> filter -> filter
 
   val eval_to_bool : filter -> (bool, [ `Not_a_bool of string ]) result
 end = struct
   open OpamTypes
 
-  (* Returns true iff a variable is an opam system environment variable *)
-  let is_variable_sys variable =
-    OpamVariable.to_string variable
-    |> Solver_env.Variable.Sys.of_string_opt
-    |> Option.is_some
-  ;;
-
-  let resolve_solver_env_treating_unset_sys_variables_as_wildcards solver_env =
+  let resolve_solver_env solver_env =
     OpamFilter.map_up (function
       | FIdent ([], variable, None) as filter ->
         (match Solver_env.Variable.of_string_opt (OpamVariable.to_string variable) with
@@ -43,23 +23,6 @@ end = struct
             | Unset_sys -> filter
             | String string -> FString string
             | Bool bool -> FBool bool))
-      | (FOp (FIdent (_, variable, _), _, _) | FOp (_, _, FIdent (_, variable, _))) as
-        filter ->
-        if is_variable_sys variable
-        then
-          (* Comparisons with unset system environment variables resolve to
-             true. This is so that we add dependencies guarded by filters on
-             unset system variables. For example if a package has a linux-only
-             and a macos-only dependency and the user hasn't specified that they
-             only want to solve for a specific os, then we should add both the
-             linux-only and macos-only dependencies to the solution.
-
-             Note that this branch is only followed for unset variables as
-             [OpamFilter.map_up] traverses the formula bottom up, so variables
-             with values in [solver_env] will have been substituted for those
-             values already by the time control gets here.*)
-          FBool true
-        else filter
       | other -> other)
   ;;
 
@@ -131,11 +94,7 @@ module Context_for_dune = struct
     fun t opam ->
       let available = OpamFile.OPAM.available opam in
       match
-        let available_vars_resolved =
-          Filter.resolve_solver_env_treating_unset_sys_variables_as_wildcards
-            t.solver_env
-            available
-        in
+        let available_vars_resolved = Filter.resolve_solver_env t.solver_env available in
         Filter.eval_to_bool available_vars_resolved
       with
       | Ok available -> available
@@ -204,7 +163,7 @@ module Context_for_dune = struct
     in
     Filtered_formula.map_filters
       filtered_formula
-      ~f:(Filter.resolve_solver_env_treating_unset_sys_variables_as_wildcards solver_env)
+      ~f:(Filter.resolve_solver_env solver_env)
     |> OpamFilter.filter_deps
          ~build:true
          ~post:true

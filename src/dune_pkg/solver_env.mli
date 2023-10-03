@@ -37,12 +37,9 @@ module Variable : sig
       val set : t -> sys_var -> string -> t
       val get : t -> sys_var -> string option
 
-      type union_error =
-        [ `Var_in_both_with_different_values of sys_var * string * string ]
-
-      (** Merge two environments returning an error if they both contain a
-          binding of the same variable to different values. *)
-      val union : t -> t -> (t, union_error) result
+      (** [extend a b] adds all variables from [b] to [a] overwriting any
+          existing values of those variables in [a]. *)
+      val extend : t -> t -> t
     end
   end
 

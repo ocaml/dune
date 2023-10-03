@@ -1,10 +1,13 @@
   $ . ./helpers.sh
   $ mkrepo
 
-Set up two build contexts: a default one for all systems and another just for macos.
+Set up two build contexts: a default one for linux and another for macos.
   $ cat >dune-workspace <<EOF
   > (lang dune 3.8)
-  > (context (default))
+  > (context (default
+  >   (solver_env
+  >    (sys
+  >     (os linux)))))
   > (context
   >  (default
   >   (name macos)
@@ -18,8 +21,8 @@ Set up two build contexts: a default one for all systems and another just for ma
 Helper shell function to generate a dune-project file and generate lockdir for both contexts:
   $ solve_project() {
   >   cat >dune-project
-  >   dune pkg lock --opam-repository-path=mock-opam-repository --context=default
-  >   dune pkg lock --opam-repository-path=mock-opam-repository --context=macos
+  >   dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository --context=default
+  >   dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository --context=macos
   > }
 
 A package which is only available on linux:

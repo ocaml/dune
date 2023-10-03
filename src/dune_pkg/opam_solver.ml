@@ -296,26 +296,23 @@ let opam_commands_to_actions loc package (commands : OpamTypes.command list) =
           | `Delim group ->
             (match Re.Group.get group 0 with
              | "%%" -> `Text "%"
-             | interp
-               when String.is_prefix ~prefix:"%{" interp
-                    && String.is_suffix ~suffix:"}%" interp ->
-               let ident =
-                 OpamVariable.of_string
-                 @@ String.sub ~pos:2 ~len:(String.length interp - 4) interp
-               in
-               `Pform (Package_variable.pform_of_opam_ident (loc, ident))
-             | other ->
-               User_error.raise
-                 ~loc
-                 [ Pp.textf
-                     "Encountered malformed variable interpolation while processing \
-                      commands for package %s."
-                     (OpamPackage.to_string package)
-                 ; Pp.text "The variable interpolation:"
-                 ; Pp.text other
-                 ; Pp.text "The full command:"
-                 ; Pp.text (opam_command_to_string_debug command)
-                 ]))
+             | var ->
+               (match String.drop_prefix_and_suffix var ~prefix:"%{" ~suffix:"}%" with
+                | Some var ->
+                  let ident = OpamVariable.of_string var in
+                  `Pform (Package_variable.pform_of_opam_ident (loc, ident))
+                | None ->
+                  User_error.raise
+                    ~loc
+                    [ Pp.textf
+                        "Encountered malformed variable interpolation while processing \
+                         commands for package %s."
+                        (OpamPackage.to_string package)
+                    ; Pp.text "The variable interpolation:"
+                    ; Pp.text var
+                    ; Pp.text "The full command:"
+                    ; Pp.text (opam_command_to_string_debug command)
+                    ])))
         |> List.of_seq
         |> String_with_vars.make Loc.none
       in

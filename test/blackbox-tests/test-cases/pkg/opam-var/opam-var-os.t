@@ -1,4 +1,4 @@
-  $ . ./opam-var-helpers.sh
+  $ . ../helpers.sh
 
 Here we test global opam variables that are system specific. Since these values change
 between systems, we can't hardcode them in the test. Instead, we use the opam var command

@@ -54,3 +54,13 @@ make_lockdir() {
 (repositories (complete true))
 EOF
 }
+
+solve() {
+  solve_project <<EOF
+(lang dune 3.11)
+ (package
+  (name x)
+  (allow_empty)
+  (depends $@))
+EOF
+}

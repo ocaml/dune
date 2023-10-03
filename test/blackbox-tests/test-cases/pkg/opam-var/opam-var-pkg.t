@@ -1,4 +1,4 @@
-  $ . ./opam-var-helpers.sh
+  $ . ../helpers.sh
 
 Here we test the translation and implementation of opam package variables.
 

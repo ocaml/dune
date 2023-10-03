@@ -459,10 +459,24 @@ let opam_package_to_lock_file_pkg context_for_dune ~repos ~local_packages opam_p
         Lock_dir.Source.Fetch { Lock_dir.Source.url; checksum } ))
   in
   let info =
+    let source =
+      OpamFile.OPAM.url opam_file
+      |> Option.map ~f:(fun (url : OpamFile.URL.t) ->
+        let checksum =
+          OpamFile.URL.checksum url
+          |> List.hd_opt
+          |> Option.map ~f:(fun hash -> Loc.none, Checksum.of_opam_hash hash)
+        in
+        let url =
+          let url = OpamFile.URL.url url in
+          Loc.none, OpamUrl.to_string url
+        in
+        Lock_dir.Source.Fetch { url; checksum })
+    in
     { Lock_dir.Pkg_info.name = Package_name.of_string (OpamPackage.Name.to_string name)
     ; version
     ; dev
-    ; source = None
+    ; source
     ; extra_sources
     }
   in

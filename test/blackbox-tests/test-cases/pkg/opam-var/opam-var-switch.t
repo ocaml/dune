@@ -1,4 +1,4 @@
-  $ . ./opam-var-helpers.sh
+  $ . ../helpers.sh
 
 These opam variables are known as "switch variables" in opam, but since in Dune we don't
 have switches, we consider them glboal variables. To keep inline with opam we consider

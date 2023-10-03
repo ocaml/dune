@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696288158626,
+  "lastUpdate": 1696342236844,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -108865,6 +108865,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.316582991719997",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "30fbae2c66dc7d297a1ac572a699dbb6f777689e",
+          "message": "refactor(pkg): simplify using option monad (#8824)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-10-03T14:58:03+01:00",
+          "tree_id": "8160f1566e186825cf0ce8aefc8acf259e515d68",
+          "url": "https://github.com/ocaml/dune/commit/30fbae2c66dc7d297a1ac572a699dbb6f777689e"
+        },
+        "date": 1696342219196,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.615714916680002",
             "unit": "seconds"
           }
         ]

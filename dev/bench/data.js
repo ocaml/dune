@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696346263028,
+  "lastUpdate": 1696346530820,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -109503,6 +109503,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "22.111619874546673",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8d8cbf9efc0d5adfa4250a2c254de29e699eba90",
+          "message": "feature(pkg): add status line for solving step (#8826)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-10-03T16:09:11+01:00",
+          "tree_id": "baa5926e352bf95762ce74dc70e2401dc77b4ab8",
+          "url": "https://github.com/ocaml/dune/commit/8d8cbf9efc0d5adfa4250a2c254de29e699eba90"
+        },
+        "date": 1696346512503,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "21.509186680880003",
             "unit": "seconds"
           }
         ]

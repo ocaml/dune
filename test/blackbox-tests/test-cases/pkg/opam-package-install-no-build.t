@@ -10,13 +10,7 @@ Make a package with only an install step
 
   $ mkdir -p $mock_packages/install-no-build/install-no-build.0.0.1/
 
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends install-no-build))
-  > EOF
+  $ solve install-no-build
   Solution for dune.lock:
   install-no-build.0.0.1
   

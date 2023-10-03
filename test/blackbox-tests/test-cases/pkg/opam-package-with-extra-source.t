@@ -30,21 +30,7 @@ Make a package with an extra-source field and multiple checksums
   > }
   > EOF
 
-  $ opam_repo=$mock_packages
-  $ mkdir -p $opam_repo/with-extra-source/with-extra-source.0.0.1
-  $ mkdir -p $opam_repo/with-extra-source-md5/with-extra-source-md5.0.0.1
-  $ mkdir -p $opam_repo/with-extra-source-multiple-checksums/with-extra-source-multiple-checksums.0.0.1
-
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends
-  >   with-extra-source
-  >   with-extra-source-md5
-  >   with-extra-source-multiple-checksums))
-  > EOF
+  $ solve with-extra-source with-extra-source-md5 with-extra-source-multiple-checksums
   Solution for dune.lock:
   with-extra-source.0.0.1
   with-extra-source-md5.0.0.1

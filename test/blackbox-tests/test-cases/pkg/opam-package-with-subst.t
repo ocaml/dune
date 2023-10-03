@@ -9,15 +9,7 @@ Make a package with a substs field
   > build: [ "sh" "-c" "[ -e foo.ml ] && cat foo.ml" ]
   > EOF
 
-  $ opam_repo=$opam_repo/with-substs/with-substs.0.0.1
-
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends with-substs)) 
-  > EOF
+  $ solve with-substs
   Solution for dune.lock:
   with-substs.0.0.1
   

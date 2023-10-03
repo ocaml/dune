@@ -24,13 +24,7 @@ Demonstrate the translation of filtered dependencies
   > ]
   > EOF
 
-  $ solve_project 2>/dev/null <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends bar))
-  > EOF
+  $ solve bar 2>/dev/null
 
   $ cat dune.lock/bar.pkg
   (version 0.0.1)

@@ -45,13 +45,7 @@ file and the second patches two, one of the files is in a subdirectory.:w
   > +This is right
   > EOF
 
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends with-patch))
-  > EOF
+  $ solve with-patch
   Solution for dune.lock:
   with-patch.0.0.1
   

@@ -31,12 +31,7 @@ Test variable filters on dependencies
   > EOF
 
 Regular dependencies are resolved transitively:
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends depends-on-foo))
-  > EOF
+  $ solve depends-on-foo
   Solution for dune.lock:
   depends-on-foo.0.0.1
   foo.0.0.1
@@ -44,47 +39,26 @@ Regular dependencies are resolved transitively:
   
 
 Transitive test dependencies are not included:
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends depends-on-foo-with-test))
-  > EOF
+  $ solve depends-on-foo-with-test
   Solution for dune.lock:
   depends-on-foo-with-test.0.0.1
   
 
 Test dependencies of the project are included:
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends
-  >   (foo :with-test)))
-  > EOF
+  $ solve "(foo :with-test)"
   Solution for dune.lock:
   foo.0.0.1
   foo-dependency.0.0.1
   
 
 Test dependencies of test dependencies are excluded:
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends (depends-on-foo-with-test :with-test)))
-  > EOF
+  $ solve "(depends-on-foo-with-test :with-test)"
   Solution for dune.lock:
   depends-on-foo-with-test.0.0.1
   
 
 Conflicting packages can't be co-installed:
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends foo conflicts-with-foo))
-  > EOF
+  $ solve foo conflicts-with-foo
   Error: Unable to solve dependencies in build context: default
   Can't find all required versions.
   Selected: foo.0.0.1 foo-dependency.0.0.1 x.dev
@@ -94,12 +68,7 @@ Conflicting packages can't be co-installed:
   [1]
 
 Conflicting packages in transitive dependencies can't be co-installed:
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends depends-on-foo conflicts-with-foo))
-  > EOF
+  $ solve depends-on-foo conflicts-with-foo
   Error: Unable to solve dependencies in build context: default
   Can't find all required versions.
   Selected: depends-on-foo.0.0.1 foo.0.0.1 foo-dependency.0.0.1 x.dev
@@ -109,12 +78,7 @@ Conflicting packages in transitive dependencies can't be co-installed:
   [1]
 
 Conflicts with transitive test dependencies don't affect the solution:
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends depends-on-foo-with-test conflicts-with-foo))
-  > EOF
+  $ solve depends-on-foo-with-test conflicts-with-foo
   Solution for dune.lock:
   conflicts-with-foo.0.0.1
   depends-on-foo-with-test.0.0.1

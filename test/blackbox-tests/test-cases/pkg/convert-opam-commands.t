@@ -83,16 +83,7 @@ Package which has boolean where string was expected. This should be caught while
   > ]
   > EOF
 
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends
-  >   standard-dune
-  >   with-interpolation
-  >   with-percent-sign
-  >   variable-types))
-  > EOF
+  $ solve standard-dune with-interpolation with-percent-sign variable-types
   Solution for dune.lock:
   standard-dune.0.0.1
   variable-types.0.0.1
@@ -140,12 +131,7 @@ Package which has boolean where string was expected. This should be caught while
     (run echo %{pkg:foo:package_var})
     (run echo %{os_family})))
 
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends with-malformed-interpolation))
-  > EOF
+  $ solve with-malformed-interpolation
   Error: Encountered malformed variable interpolation while processing commands
   for package with-malformed-interpolation.0.0.1.
   The variable interpolation:
@@ -154,12 +140,7 @@ Package which has boolean where string was expected. This should be caught while
   "./configure" "--prefix=%{prefix"
   [1]
 
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends exercise-filters))
-  > EOF
+  $ solve exercise-filters
   Solution for dune.lock:
   exercise-filters.0.0.1
   
@@ -220,12 +201,7 @@ Package which has boolean where string was expected. This should be caught while
      (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg:baz:installed})
      (run echo m))))
 
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends filter-error-invalid-conjunction))
-  > EOF
+  $ solve filter-error-invalid-conjunction
   Error: Expected string or identifier but found conjunction of identifiers:
   foo+bar+baz:version
   ...while processing commands for package:
@@ -235,12 +211,7 @@ Package which has boolean where string was expected. This should be caught while
   name2 and name3, i.e it is equivalent to name1:var & name2:var & name3:var.
   [1]
 
-  $ solve_project <<EOF
-  > (lang dune 3.8)
-  > (package
-  >  (name x)
-  >  (depends filter-error-bool-where-string-expected))
-  > EOF
+  $ solve filter-error-bool-where-string-expected
   Error: At
   $TESTCASE_ROOT/mock-opam-repository/packages/filter-error-bool-where-string-expected/filter-error-bool-where-string-expected.0.0.1/opam:3:33-3:34::
   Parse error

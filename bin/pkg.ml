@@ -417,12 +417,21 @@ module Lock = struct
        effects after performing validation so that if materializing any
        lockdir would fail then no side effect takes place. *)
     (let* local_packages =
-       let+ dune_package_map =
+       let+ project =
          let+ source_dir = Memo.run (Source_tree.root ()) in
-         let project = Source_tree.Dir.project source_dir in
-         Dune_project.packages project
+         Source_tree.Dir.project source_dir
        in
-       Package.Name.Map.map dune_package_map ~f:Package.to_opam_file
+       Dune_project.packages project
+       |> Package.Name.Map.map ~f:(fun pkg ->
+         let opam_file = Package.to_opam_file pkg in
+         let file =
+           Path.source
+           @@
+           match pkg.has_opam_file with
+           | Generated | Exists false -> Dune_project.file project
+           | Exists true -> pkg.opam_file
+         in
+         { Opam_repo.With_file.opam_file; file })
      in
      let+ solutions =
        Fiber.parallel_map

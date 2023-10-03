@@ -170,27 +170,36 @@ let all_package_versions t opam_package_name =
   | Ok version_dirs -> Some (List.map version_dirs ~f:OpamPackage.of_string)
 ;;
 
+module With_file = struct
+  type t =
+    { opam_file : OpamFile.OPAM.t
+    ; file : Path.t
+    }
+end
+
 (* Reads an opam package definition from an "opam" file in this repository
    corresponding to a package (name and version). *)
 let load_opam_package t opam_package =
   let open Option.O in
-  let* opam_file_path = get_opam_file_path t opam_package in
-  Some
-    (OpamFile.OPAM.read
-       (OpamFile.make (OpamFilename.raw (Path.to_string opam_file_path))))
+  let+ opam_file_path = get_opam_file_path t opam_package in
+  let opam_file =
+    Path.to_string opam_file_path
+    |> OpamFilename.raw
+    |> OpamFile.make
+    |> OpamFile.OPAM.read
+  in
+  { With_file.opam_file; file = opam_file_path }
 ;;
 
 let load_all_versions ts opam_package_name =
-  let versions =
-    List.filter_map ts ~f:(fun t -> all_package_versions t opam_package_name)
-  in
-  match versions with
+  match List.filter_map ts ~f:(fun t -> all_package_versions t opam_package_name) with
   | [] -> Error `Package_not_found
   | pkgs ->
-    pkgs
-    |> List.concat
+    List.concat pkgs
     |> List.filter_map ~f:(fun opam_pkg ->
-      List.find_map ts ~f:(fun t -> load_opam_package t opam_pkg))
+      List.find_map ts ~f:(fun t ->
+        load_opam_package t opam_pkg
+        |> Option.map ~f:(fun (with_file : With_file.t) -> with_file.opam_file)))
     |> Result.ok
 ;;
 

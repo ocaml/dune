@@ -24,8 +24,15 @@ val of_opam_repo_dir_path
 val repo_id : t -> Repository_id.t option
 val serializable : t -> Serializable.t option
 
+module With_file : sig
+  type t =
+    { opam_file : OpamFile.OPAM.t
+    ; file : Path.t
+    }
+end
+
 (** Load package metadata for a single package *)
-val load_opam_package : t -> OpamPackage.t -> OpamFile.OPAM.t option
+val load_opam_package : t -> OpamPackage.t -> With_file.t option
 
 (** Load package metadata for all versions of a package with a given name *)
 val load_all_versions

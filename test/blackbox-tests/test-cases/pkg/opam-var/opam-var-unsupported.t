@@ -19,37 +19,37 @@ These should all have nice error messages explaining that they are not supported
 
 # opam-version
   $ fail_solve opam-version
-  Error: Variable "opam-version" occuring in opam package "testpkg.0.0.1" is
-  not supported.
+  File "$TESTCASE_ROOT/mock-opam-repository/packages/testpkg/testpkg.0.0.1/opam", line 1, characters 0-0:
+  Error: Variable "opam-version" is not supported.
 # root
   $ fail_solve root 
-  Error: Variable "root" occuring in opam package "testpkg.0.0.1" is not
-  supported.
+  File "$TESTCASE_ROOT/mock-opam-repository/packages/testpkg/testpkg.0.0.1/opam", line 1, characters 0-0:
+  Error: Variable "root" is not supported.
 # _:hash
   $ fail_solve _:hash
-  Error: Variable "hash" occuring in opam package "testpkg.0.0.1" is not
-  supported.
+  File "$TESTCASE_ROOT/mock-opam-repository/packages/testpkg/testpkg.0.0.1/opam", line 1, characters 0-0:
+  Error: Variable "hash" is not supported.
 # _:build-id
   $ fail_solve _:build-id
-  Error: Variable "build-id" occuring in opam package "testpkg.0.0.1" is not
-  supported.
+  File "$TESTCASE_ROOT/mock-opam-repository/packages/testpkg/testpkg.0.0.1/opam", line 1, characters 0-0:
+  Error: Variable "build-id" is not supported.
 # misc
   $ fail_solve misc
-  Error: Variable "misc" occuring in opam package "testpkg.0.0.1" is not
-  supported.
+  File "$TESTCASE_ROOT/mock-opam-repository/packages/testpkg/testpkg.0.0.1/opam", line 1, characters 0-0:
+  Error: Variable "misc" is not supported.
 # _:misc
   $ fail_solve _:misc
-  Error: Variable "misc" occuring in opam package "testpkg.0.0.1" is not
-  supported.
+  File "$TESTCASE_ROOT/mock-opam-repository/packages/testpkg/testpkg.0.0.1/opam", line 1, characters 0-0:
+  Error: Variable "misc" is not supported.
 # _:depends
   $ fail_solve _:depends
-  Error: Variable "depends" occuring in opam package "testpkg.0.0.1" is not
-  supported.
+  File "$TESTCASE_ROOT/mock-opam-repository/packages/testpkg/testpkg.0.0.1/opam", line 1, characters 0-0:
+  Error: Variable "depends" is not supported.
 # _:build
   $ fail_solve _:build
-  Error: Variable "build" occuring in opam package "testpkg.0.0.1" is not
-  supported.
+  File "$TESTCASE_ROOT/mock-opam-repository/packages/testpkg/testpkg.0.0.1/opam", line 1, characters 0-0:
+  Error: Variable "build" is not supported.
 # _:opamfile
   $ fail_solve _:opamfile
-  Error: Variable "opamfile" occuring in opam package "testpkg.0.0.1" is not
-  supported.
+  File "$TESTCASE_ROOT/mock-opam-repository/packages/testpkg/testpkg.0.0.1/opam", line 1, characters 0-0:
+  Error: Variable "opamfile" is not supported.

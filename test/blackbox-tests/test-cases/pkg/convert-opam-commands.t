@@ -132,6 +132,7 @@ Package which has boolean where string was expected. This should be caught while
     (run echo %{os_family})))
 
   $ solve with-malformed-interpolation
+  File "$TESTCASE_ROOT/mock-opam-repository/packages/with-malformed-interpolation/with-malformed-interpolation.0.0.1/opam", line 1, characters 0-0:
   Error: Encountered malformed variable interpolation while processing commands
   for package with-malformed-interpolation.0.0.1.
   The variable interpolation:
@@ -202,6 +203,7 @@ Package which has boolean where string was expected. This should be caught while
      (run echo m))))
 
   $ solve filter-error-invalid-conjunction
+  File "$TESTCASE_ROOT/mock-opam-repository/packages/filter-error-invalid-conjunction/filter-error-invalid-conjunction.0.0.1/opam", line 1, characters 0-0:
   Error: Expected string or identifier but found conjunction of identifiers:
   foo+bar+baz:version
   ...while processing commands for package:

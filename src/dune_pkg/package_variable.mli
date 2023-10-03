@@ -42,4 +42,4 @@ val to_pform : t -> Pform.t
     as pform macros with the [Macro.Pkg] macro.
 
     Raises a user error if the variable is unsupported. *)
-val pform_of_opam_ident : package_name:string -> string -> Pform.t
+val pform_of_opam_ident : Loc.t * string -> Pform.t

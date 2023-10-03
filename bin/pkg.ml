@@ -354,6 +354,56 @@ module Lock = struct
     ;;
   end
 
+  let get_repos repos solver_env ~opam_repository_path ~opam_repository_url =
+    let open Fiber.O in
+    match opam_repository_path, opam_repository_url with
+    | Some _, Some _ ->
+      (* in theory you can set both, but how to prioritize them? *)
+      User_error.raise [ Pp.text "Can't specify both path and URL to an opam-repository" ]
+    | Some path, None ->
+      let repo_id = Repository_id.of_path path in
+      Fiber.return @@ [ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path ]
+    | None, Some url ->
+      let repo = Fetch.Opam_repository.of_url url in
+      let+ opam_repository = Fetch.Opam_repository.path repo in
+      (match opam_repository with
+       | Ok { path; repo_id } ->
+         [ Opam_repo.of_opam_repo_dir_path
+             ~source:(Some (OpamUrl.to_string url))
+             ~repo_id
+             path
+         ]
+       | Error _ ->
+         User_error.raise
+           [ Pp.text "Can't determine the location of the opam-repository" ])
+    | None, None ->
+      (* read from workspace *)
+      Dune_pkg.Solver_env.repos solver_env
+      |> Fiber.parallel_map ~f:(fun name ->
+        match Dune_pkg.Pkg_workspace.Repository.Name.Map.find repos name with
+        | None ->
+          (* TODO: have loc for this failure? *)
+          User_error.raise
+            [ Pp.textf "Repository '%s' is not a known repository"
+              @@ Dune_pkg.Pkg_workspace.Repository.Name.to_string name
+            ]
+        | Some repo ->
+          let url = Dune_pkg.Pkg_workspace.Repository.opam_url repo in
+          let repo = Fetch.Opam_repository.of_url url in
+          let+ opam_repository = Fetch.Opam_repository.path repo in
+          (match opam_repository with
+           | Ok { path; repo_id } ->
+             Opam_repo.of_opam_repo_dir_path
+               ~source:(Some (OpamUrl.to_string url))
+               ~repo_id
+               path
+           | Error _ ->
+             User_error.raise
+               [ Pp.textf "Can't determine the location of the opam-repository '%s'"
+                 @@ Dune_pkg.Pkg_workspace.Repository.Name.to_string name
+               ]))
+  ;;
+
   let solve
     per_context
     ~opam_repository_path
@@ -394,55 +444,7 @@ module Lock = struct
                ~use_env_from_current_system
            in
            let+ repos =
-             match opam_repository_path, opam_repository_url with
-             | Some _, Some _ ->
-               (* in theory you can set both, but how to prioritize them? *)
-               User_error.raise
-                 [ Pp.text "Can't specify both path and URL to an opam-repository" ]
-             | Some path, None ->
-               let repo_id = Repository_id.of_path path in
-               Fiber.return
-               @@ [ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path ]
-             | None, Some url ->
-               let repo = Fetch.Opam_repository.of_url url in
-               let+ opam_repository = Fetch.Opam_repository.path repo in
-               (match opam_repository with
-                | Ok { path; repo_id } ->
-                  [ Opam_repo.of_opam_repo_dir_path
-                      ~source:(Some (OpamUrl.to_string url))
-                      ~repo_id
-                      path
-                  ]
-                | Error _ ->
-                  User_error.raise
-                    [ Pp.text "Can't determine the location of the opam-repository" ])
-             | None, None ->
-               (* read from workspace *)
-               Dune_pkg.Solver_env.repos solver_env
-               |> Fiber.parallel_map ~f:(fun name ->
-                 match Dune_pkg.Pkg_workspace.Repository.Name.Map.find repos name with
-                 | None ->
-                   (* TODO: have loc for this failure? *)
-                   User_error.raise
-                     [ Pp.textf "Repository '%s' is not a known repository"
-                       @@ Dune_pkg.Pkg_workspace.Repository.Name.to_string name
-                     ]
-                 | Some repo ->
-                   let url = Dune_pkg.Pkg_workspace.Repository.opam_url repo in
-                   let repo = Fetch.Opam_repository.of_url url in
-                   let+ opam_repository = Fetch.Opam_repository.path repo in
-                   (match opam_repository with
-                    | Ok { path; repo_id } ->
-                      Opam_repo.of_opam_repo_dir_path
-                        ~source:(Some (OpamUrl.to_string url))
-                        ~repo_id
-                        path
-                    | Error _ ->
-                      User_error.raise
-                        [ Pp.textf
-                            "Can't determine the location of the opam-repository '%s'"
-                          @@ Dune_pkg.Pkg_workspace.Repository.Name.to_string name
-                        ]))
+             get_repos repos solver_env ~opam_repository_path ~opam_repository_url
            in
            match
              Console.Status_line.with_overlay

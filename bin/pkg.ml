@@ -445,11 +445,14 @@ module Lock = struct
                         ]))
            in
            match
-             Dune_pkg.Opam_solver.solve_lock_dir
-               solver_env
-               version_preference
-               repos
-               ~local_packages
+             Console.Status_line.with_overlay
+               (Constant (Pp.text "Solving for Build Plan"))
+               ~f:(fun () ->
+                 Dune_pkg.Opam_solver.solve_lock_dir
+                   solver_env
+                   version_preference
+                   repos
+                   ~local_packages)
            with
            | Error (`Diagnostic_message message) -> Error (context_name, message)
            | Ok { Dune_pkg.Opam_solver.Solver_result.summary; lock_dir; files } ->

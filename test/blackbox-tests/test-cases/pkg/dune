@@ -8,7 +8,7 @@
 
 (cram
  (deps %{bin:git})
- (applies_to git-source opam-repository-download))
+ (applies_to git-source opam-repository-download multiple-opam-repos))
 
 (cram
  (deps %{bin:make})

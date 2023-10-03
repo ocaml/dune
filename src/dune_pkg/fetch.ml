@@ -135,10 +135,16 @@ let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
 ;;
 
 module Opam_repository = struct
-  type t = { url : OpamUrl.t }
+  type t = Workspace.Repository.t
 
-  let of_url url = { url }
-  let default = of_url @@ OpamUrl.of_string "https://opam.ocaml.org/index.tar.gz"
+  let of_url url =
+    let name = Workspace.Repository.Name.of_string "unknown" in
+    let source = OpamUrl.to_string url in
+    Workspace.Repository.create ~name ~source
+  ;;
+
+  let of_workspace_repo v = v
+  let default = Workspace.Repository.default
 
   let is_archive name =
     List.exists
@@ -154,11 +160,19 @@ module Opam_repository = struct
   let path =
     let open Fiber.O in
     let ( / ) = Filename.concat in
-    fun { url } ->
+    fun repo ->
+      let url = Workspace.Repository.opam_url repo in
+      let name =
+        repo |> Workspace.Repository.name |> Workspace.Repository.Name.to_string
+      in
+      let path_digest =
+        url |> OpamUrl.to_string |> Dune_digest.string |> Dune_digest.to_string
+      in
+      let folder = sprintf "%s-%s" name path_digest in
       Fiber.of_thunk
       @@ fun () ->
       let target_dir =
-        Xdg.cache_dir (Lazy.force Dune_util.xdg) / "dune/opam-repository"
+        Xdg.cache_dir (Lazy.force Dune_util.xdg) / "dune/opam-repositories" / folder
       in
       let target = target_dir |> Path.External.of_string |> Path.external_ in
       let unpack = url |> OpamUrl.to_string |> is_archive in

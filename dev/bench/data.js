@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696342696972,
+  "lastUpdate": 1696342753133,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -109010,6 +109010,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": "27.638340139493334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd9240f84551ad7b84d4213c374daef2d35df357",
+          "message": "chore(pkg): leave TODO mentioning bug (#8830)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-10-03T15:05:40+01:00",
+          "tree_id": "9e9e61cc4df3951d1f806b56121a79fa8a4217ea",
+          "url": "https://github.com/ocaml/dune/commit/bd9240f84551ad7b84d4213c374daef2d35df357"
+        },
+        "date": 1696342736843,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": "24.369798848506665",
             "unit": "seconds"
           }
         ]

@@ -70,6 +70,7 @@ module Per_context = struct
         Option.value context_name_opt ~default:Dune_engine.Context_name.default
       in
       let context =
+        (* TODO this doesn't work for target contexts defined by cross compilation *)
         List.find workspace.contexts ~f:(fun context ->
           Dune_engine.Context_name.equal (Workspace.Context.name context) context_name)
       in

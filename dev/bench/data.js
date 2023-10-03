@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1696343533214,
+  "lastUpdate": 1696343547993,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -84562,6 +84562,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": "81.70877920797334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3e5385dcc2f79cd8fc31c1490576a32ea46a7c09",
+          "message": "fix(pkg): move solver env printing to own command (#8819)\n\nInstead of [--just-print-solver-env], introduce [dune pkg\r\njust-print-solver-env]\r\n\r\nI didn't remove some of the duplication between the two commands,\r\nbecause some of these duplicated options will be removed.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-10-03T14:59:50+01:00",
+          "tree_id": "04ababe8b3d621c009dc7c2cb67d6a5fa481b68f",
+          "url": "https://github.com/ocaml/dune/commit/3e5385dcc2f79cd8fc31c1490576a32ea46a7c09"
+        },
+        "date": 1696343546872,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": "2.2635386603733334",
             "unit": "seconds"
           }
         ]

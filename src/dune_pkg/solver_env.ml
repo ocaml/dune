@@ -261,21 +261,22 @@ let set_sys t sys = { t with sys }
 let clear_flags t = { t with flags = Variable.Flag.Set.empty }
 let repos { repos; _ } = repos
 
-let pp { flags; sys; const; repos } =
+let pp =
   let pp_section heading pp_section =
     (* The hbox is to prevent long values in [pp_section] from causing the heading to wrap. *)
     let pp_heading = Pp.hbox (Pp.text heading) in
     Pp.concat ~sep:Pp.newline [ pp_heading; pp_section ]
   in
-  Pp.enumerate
-    ~f:Fun.id
-    [ pp_section "Flags" (Variable.Flag.Set.pp flags)
-    ; pp_section "System Environment Variables" (Variable.Sys.Bindings.pp sys)
-    ; pp_section "Constants" (Variable.Const.Bindings.pp const)
-    ; pp_section
-        "Repositories"
-        (Pp.chain repos ~f:(fun r -> Workspace.Repository.Name.pp r))
-    ]
+  fun { flags; sys; const; repos } ->
+    Pp.enumerate
+      ~f:Fun.id
+      [ pp_section "Flags" (Variable.Flag.Set.pp flags)
+      ; pp_section "System Environment Variables" (Variable.Sys.Bindings.pp sys)
+      ; pp_section "Constants" (Variable.Const.Bindings.pp const)
+      ; pp_section
+          "Repositories"
+          (Pp.chain repos ~f:(fun r -> Workspace.Repository.Name.pp r))
+      ]
 ;;
 
 module Variable_value = struct

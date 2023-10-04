@@ -184,10 +184,7 @@ module Variable = struct
     | None ->
       (match Sys.of_string_opt string with
        | Some sys -> Some (Sys sys)
-       | None ->
-         (match Const.of_string_opt string with
-          | Some const -> Some (Const const)
-          | None -> None))
+       | None -> Const.of_string_opt string |> Option.map ~f:(fun const -> Const const))
   ;;
 end
 
@@ -274,9 +271,9 @@ end
 let get t variable =
   match (variable : Variable.t) with
   | Flag flag -> Variable_value.Bool (Variable.Flag.Set.mem t.flags flag)
+  | Const const -> String (Variable.Const.Bindings.get t.const const)
   | Sys sys ->
     (match Variable.Sys.Bindings.get t.sys sys with
      | Some value -> String value
      | None -> Unset_sys)
-  | Const const -> String (Variable.Const.Bindings.get t.const const)
 ;;

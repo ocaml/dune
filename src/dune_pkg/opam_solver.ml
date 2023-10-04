@@ -578,7 +578,11 @@ let solve_lock_dir solver_env version_preference repos ~local_packages =
           "Solver selected multiple versions for the same package"
           [ "name", Package_name.to_dyn name ]
       | Ok pkgs_by_name ->
-        Lock_dir.create_latest_version pkgs_by_name ~ocaml:None ~repos:(Some repos)
+        let ocaml =
+          let name = Package_name.of_string "ocaml" in
+          Option.some_if (Package_name.Map.mem pkgs_by_name name) (Loc.none, name)
+        in
+        Lock_dir.create_latest_version pkgs_by_name ~ocaml ~repos:(Some repos)
     in
     let files =
       opam_packages_to_lock

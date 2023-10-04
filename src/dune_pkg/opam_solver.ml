@@ -2,54 +2,10 @@ open Import
 
 module type CONTEXT = Opam_0install.S.CONTEXT
 
-(* Helper module for working with [OpamTypes.filter] *)
-module Filter : sig
-  type filter := OpamTypes.filter
-
-  (** Substitute variables with their values *)
-  val resolve_solver_env : Solver_env.t -> filter -> filter
-
-  val eval_to_bool : filter -> (bool, [ `Not_a_bool of string ]) result
-end = struct
-  open OpamTypes
-
-  let resolve_solver_env solver_env =
-    OpamFilter.map_up (function
-      | FIdent ([], variable, None) as filter ->
-        (match Solver_env.Variable.of_string_opt (OpamVariable.to_string variable) with
-         | None -> filter
-         | Some variable ->
-           (match Solver_env.get solver_env variable with
-            | Unset_sys -> filter
-            | String string -> FString string
-            | Bool bool -> FBool bool))
-      | other -> other)
-  ;;
-
-  let eval_to_bool filter =
-    try Ok (OpamFilter.eval_to_bool ~default:false (Fun.const None) filter) with
-    | Invalid_argument msg -> Error (`Not_a_bool msg)
-  ;;
-end
-
-(* Helper module for working with [OpamTypes.filtered_formula] *)
-module Filtered_formula : sig
-  open OpamTypes
-
-  (** Transform the filter applied to each formula according to a function [g] *)
-  val map_filters : f:(filter -> filter) -> filtered_formula -> filtered_formula
-end = struct
-  open OpamTypes
-
-  let map_filters ~f =
-    OpamFilter.gen_filter_formula
-      (OpamFormula.partial_eval (function
-        | Filter flt -> `Formula (Atom (Filter (f flt)))
-        | Constraint _ as constraint_ -> `Formula (Atom constraint_)))
-  ;;
-end
-
 module Context_for_dune = struct
+  type filtered_formula = OpamTypes.filtered_formula
+  type filter = OpamTypes.filter
+
   let local_package_default_version =
     OpamPackage.Version.of_string Lock_dir.Pkg_info.default_version
   ;;
@@ -85,6 +41,27 @@ module Context_for_dune = struct
       | Newest -> Ordering.reverse opam_file_compare_by_version
   ;;
 
+  let eval_to_bool (filter : filter) : (bool, [> `Not_a_bool of string ]) result =
+    try Ok (OpamFilter.eval_to_bool ~default:false (Fun.const None) filter) with
+    | Invalid_argument msg -> Error (`Not_a_bool msg)
+  ;;
+
+  (* Substitute variables with their values *)
+  let resolve_solver_env (solver_env : Solver_env.t)
+    : OpamTypes.filter -> OpamTypes.filter
+    =
+    OpamFilter.map_up (function
+      | FIdent ([], variable, None) as filter ->
+        (match Solver_env.Variable.of_string_opt (OpamVariable.to_string variable) with
+         | None -> filter
+         | Some variable ->
+           (match Solver_env.get solver_env variable with
+            | Unset_sys -> filter
+            | String string -> FString string
+            | Bool bool -> FBool bool))
+      | other -> other)
+  ;;
+
   let is_opam_available =
     (* The solver can call this function several times on the same package. If
        the package contains an invalid `available` filter we want to print a
@@ -94,8 +71,8 @@ module Context_for_dune = struct
     fun t opam ->
       let available = OpamFile.OPAM.available opam in
       match
-        let available_vars_resolved = Filter.resolve_solver_env t.solver_env available in
-        Filter.eval_to_bool available_vars_resolved
+        let available_vars_resolved = resolve_solver_env t.solver_env available in
+        eval_to_bool available_vars_resolved
       with
       | Ok available -> available
       | Error error ->
@@ -147,6 +124,13 @@ module Context_for_dune = struct
 
   let user_restrictions _ _ = None
 
+  let map_filters ~(f : filter -> filter) : filtered_formula -> filtered_formula =
+    OpamFilter.gen_filter_formula
+      (OpamFormula.partial_eval (function
+        | OpamTypes.Filter flt -> `Formula (Atom (OpamTypes.Filter (f flt)))
+        | Constraint _ as constraint_ -> `Formula (Atom constraint_)))
+  ;;
+
   let filter_deps t package filtered_formula =
     let solver_env =
       let package_is_local =
@@ -161,9 +145,7 @@ module Context_for_dune = struct
            of local packages. *)
         Solver_env.clear_flags t.solver_env
     in
-    Filtered_formula.map_filters
-      filtered_formula
-      ~f:(Filter.resolve_solver_env solver_env)
+    map_filters filtered_formula ~f:(resolve_solver_env solver_env)
     |> OpamFilter.filter_deps
          ~build:true
          ~post:true

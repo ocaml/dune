@@ -166,23 +166,6 @@ end
 
 module Solver = Opam_0install.Solver.Make (Context_for_dune)
 
-module Summary = struct
-  type t = { opam_packages_to_lock : OpamPackage.t list }
-
-  let selected_packages_message t ~lock_dir_path =
-    let parts =
-      match t.opam_packages_to_lock with
-      | [] -> [ Pp.tag User_message.Style.Success (Pp.text "(no dependencies to lock)") ]
-      | opam_packages_to_lock ->
-        List.map opam_packages_to_lock ~f:(fun package ->
-          Pp.text (OpamPackage.to_string package))
-    in
-    User_message.make
-      (Pp.textf "Solution for %s:" (Path.Source.to_string_maybe_quoted lock_dir_path)
-       :: parts)
-  ;;
-end
-
 let is_valid_global_variable_name = function
   | "root" -> false
   | _ -> true
@@ -614,8 +597,7 @@ let scan_files_entries path =
 
 module Solver_result = struct
   type t =
-    { summary : Summary.t
-    ; lock_dir : Lock_dir.t
+    { lock_dir : Lock_dir.t
     ; files : Lock_dir.Write_disk.Files_entry.t Package_name.Map.Multi.t
     }
 end
@@ -646,7 +628,6 @@ let solve_lock_dir
       List.map solution ~f:OpamPackage.name |> OpamPackage.Name.Set.of_list
     in
     let opam_packages_to_lock = List.filter solution ~f:(Fun.negate is_local_package) in
-    let summary = { Summary.opam_packages_to_lock } in
     let lock_dir =
       match
         Package_name.Map.of_list_map opam_packages_to_lock ~f:(fun opam_package ->
@@ -689,5 +670,5 @@ let solve_lock_dir
             , files ))
       |> Package_name.Map.of_list_exn
     in
-    { Solver_result.summary; lock_dir; files })
+    { Solver_result.lock_dir; files })
 ;;

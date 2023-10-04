@@ -575,10 +575,8 @@ let solve_lock_dir solver_env version_preference repos ~local_packages =
       with
       | Error (name, _pkg1, _pkg2) ->
         Code_error.raise
-          (sprintf
-             "Solver selected multiple packages named \"%s\""
-             (Package_name.to_string name))
-          []
+          "Solver selected multiple versions for the same package"
+          [ "name", Package_name.to_dyn name ]
       | Ok pkgs_by_name ->
         Lock_dir.create_latest_version pkgs_by_name ~ocaml:None ~repos:(Some repos)
     in

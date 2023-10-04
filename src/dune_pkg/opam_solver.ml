@@ -68,7 +68,7 @@ module Context_for_dune = struct
   type rejection = Unavailable
 
   let pp_rejection f = function
-    | Unavailable -> Fmt.string f "Availability condition not satisfied"
+    | Unavailable -> Format.pp_print_string f "Availability condition not satisfied"
   ;;
 
   let opam_version_compare =

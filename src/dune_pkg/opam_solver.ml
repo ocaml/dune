@@ -166,7 +166,7 @@ module Context_for_dune = struct
       ~f:(Filter.resolve_solver_env solver_env)
     |> OpamFilter.filter_deps
          ~build:true
-         ~post:true
+         ~post:false
          ~dev:false
          ~default:false
          ~test:false

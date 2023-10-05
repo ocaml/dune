@@ -286,3 +286,13 @@ let filter_map t ~f =
   (* TODO more efficient implementation *)
   to_seq t |> Seq.filter_map ~f |> of_seq
 ;;
+
+let drop_prefix_and_suffix t ~prefix ~suffix =
+  let p_len = String.length prefix in
+  let s_len = String.length suffix in
+  let t_len = String.length t in
+  let p_s_len = p_len + s_len in
+  if p_s_len <= t_len && is_prefix t ~prefix && is_suffix t ~suffix
+  then Some (sub t ~pos:p_len ~len:(t_len - p_s_len))
+  else None
+;;

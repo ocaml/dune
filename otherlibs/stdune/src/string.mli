@@ -22,6 +22,11 @@ val drop_prefix_if_exists : t -> prefix:t -> t
 val drop_suffix : t -> suffix:t -> t option
 val drop_suffix_if_exists : t -> suffix:t -> t
 
+(** [drop_prefix_and_suffix t ~prefix ~suffix] Will attempt to remove [prefix]
+    from the prefix and [suffix] from the suffix of [t]. Return [Some _] only
+    if the [suffix] and [prefix] were present. *)
+val drop_prefix_and_suffix : t -> prefix:t -> suffix:t -> t option
+
 module Caseless : sig
   (** Case-insensitive matching semantics. *)
 

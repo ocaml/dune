@@ -68,10 +68,10 @@ let validate_repo_file opam_repo_dir_path =
       User_error.raise [ Pp.text (OpamPp.string_of_bad_format bad_format_exn) ]
     | unexpected_exn ->
       Code_error.raise
-        (Printf.sprintf
-           "Unexpected exception raised while validating opam repo file %s"
-           (Path.to_string_maybe_quoted opam_repo_file_path))
-        [ "exception", Exn.to_dyn unexpected_exn ]
+        "Unexpected exception raised while validating opam repo files"
+        [ "exception", Exn.to_dyn unexpected_exn
+        ; "opam_repo_dir_path", Path.to_dyn opam_repo_file_path
+        ]
   in
   match OpamFile.Repo.opam_version repo with
   | None ->

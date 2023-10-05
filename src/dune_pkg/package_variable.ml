@@ -94,15 +94,10 @@ let of_opam_ident ident =
         Result.map variable ~f:(fun var -> `Package_variable (self_scoped var)))
 ;;
 
-let pform_of_opam_ident ~package_name ident =
+let pform_of_opam_ident (loc, ident) =
   match of_opam_ident ident with
   | Ok (`Package_variable t) -> to_pform t
   | Ok (`Global_variable var) -> Pform.Var var
   | Error (`Unsupported_variable name) ->
-    User_error.raise
-      [ Pp.textf
-          "Variable %S occuring in opam package %S is not supported."
-          name
-          package_name
-      ]
+    User_error.raise ~loc [ Pp.textf "Variable %S is not supported." name ]
 ;;

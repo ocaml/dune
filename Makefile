@@ -26,7 +26,8 @@ ppxlib \
 ctypes \
 "utop>=2.6.0" \
 "melange>=1.0.0" \
-"rescript-syntax"
+"rescript-syntax" \
+"dkml-workflows"
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
 DEV_DEPS := \

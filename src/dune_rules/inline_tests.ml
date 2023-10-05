@@ -347,15 +347,18 @@ include Sub_system.Register_end_point (struct
                List.map partitions_flags ~f:(fun p -> action mode (flags p))
                |> Action_builder.all
              and+ () = Action_builder.paths source_files in
-             let run_tests = Action.concurrent actions in
-             let diffs =
-               List.map source_files ~f:(fun fn ->
-                 Path.as_in_build_dir_exn fn
-                 |> Path.Build.extend_basename ~suffix:".corrected"
-                 |> Action.diff ~optional:true fn)
-               |> Action.concurrent
-             in
-             Action.Full.make ~sandbox @@ Action.progn [ run_tests; diffs ]))
+             match actions with
+             | [] -> Action.Full.empty
+             | _ :: _ ->
+               let run_tests = Action.concurrent actions in
+               let diffs =
+                 List.map source_files ~f:(fun fn ->
+                   Path.as_in_build_dir_exn fn
+                   |> Path.Build.extend_basename ~suffix:".corrected"
+                   |> Action.diff ~optional:true fn)
+                 |> Action.concurrent
+               in
+               Action.Full.make ~sandbox @@ Action.progn [ run_tests; diffs ]))
     ;;
 
     let gen_rules c ~(info : Info.t) ~backends =

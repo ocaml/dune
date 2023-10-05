@@ -27,3 +27,14 @@ See that we indeed have 3 partitions
   p1
   p2
   p3
+
+
+  $ dune build --display short @test3/runtest
+        ocamlc test3/.test_lib3.inline-tests/.test_lib3.inline-tests.eobjs/byte/dune__exe__Inline_test_runner_test_lib3.{cmi,cmo,cmt}
+      ocamlopt test3/.test_lib3.inline-tests/.test_lib3.inline-tests.eobjs/native/dune__exe__Inline_test_runner_test_lib3.{cmx,o}
+      ocamlopt test3/.test_lib3.inline-tests/inline_test_runner_test_lib3.exe
+  inline_test_runner_test_lib3 test3/.test_lib3.inline-tests/partitions-best
+
+See that we have no partition.
+
+  $ cat _build/default/test3/.test_lib3.inline-tests/partitions-best

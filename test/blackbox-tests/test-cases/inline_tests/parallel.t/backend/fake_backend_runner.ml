@@ -30,14 +30,14 @@ let register ~libname ~partition name run =
 
 let run () =
   Arg.parse speclist anon_fun usage_msg;
+  if !libname = "" then failwith "Should specify libname";
   if !list_partitions then
     let partitions =
       List.fold_left
-        (fun acc t -> StringSet.add t.partition acc)
+        (fun acc t -> if !libname = t.libname then StringSet.add t.partition acc else acc)
         StringSet.empty !tests
     in
-    StringSet.iter print_endline partitions
-  else if !libname = "" then failwith "Should specify libname";
+    StringSet.iter print_endline partitions;
   List.iter
     (fun t ->
       if t.libname = !libname && t.partition = !partition then (

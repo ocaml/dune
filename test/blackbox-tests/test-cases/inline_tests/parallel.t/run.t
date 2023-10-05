@@ -34,12 +34,6 @@ See that we indeed have 3 partitions
       ocamlopt test3/.test_lib3.inline-tests/.test_lib3.inline-tests.eobjs/native/dune__exe__Inline_test_runner_test_lib3.{cmx,o}
       ocamlopt test3/.test_lib3.inline-tests/inline_test_runner_test_lib3.exe
   inline_test_runner_test_lib3 test3/.test_lib3.inline-tests/partitions-best
-  File "test3/dune", line 4, characters 1-40:
-  4 |  (inline_tests (backend fake_backend_2)))
-       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Rule dependencies are configured to require sandboxing, but the rule
-  has no actions that could potentially require sandboxing.
-  [1]
 
 See that we have no partition.
 

@@ -65,6 +65,7 @@ type t
 
 val default : t
 val decode : t Dune_sexp.Decoder.t
+val encode : t -> Dune_lang.t list
 val to_dyn : t -> Dyn.t
 val equal : t -> t -> bool
 val sys : t -> Variable.Sys.Bindings.t

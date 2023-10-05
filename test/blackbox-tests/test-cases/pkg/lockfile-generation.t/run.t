@@ -31,7 +31,7 @@ Generate a `dune-project` file.
 
 Run the solver and generate a lock directory.
 
-  $ dune pkg lock --opam-repository-path=mock-opam-repository
+  $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   bar.0.5.0
   baz.0.1.0
@@ -75,12 +75,20 @@ Print the contents of each file in the lockdir:
    (complete false)
    (used))
   
+  (solver_env
+   (flags
+    ("with-doc" "with-test"))
+   (sys)
+   (const
+    (opam_version 2.2.0~alpha-vendored))
+   (repositories default))
+  
   
   ---
   
 
 Run the solver again preferring oldest versions of dependencies:
-  $ dune pkg lock --version-preference=oldest --opam-repository-path=mock-opam-repository
+  $ dune pkg lock --dont-poll-system-solver-variables --version-preference=oldest --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   bar.0.4.0
   baz.0.1.0
@@ -119,6 +127,14 @@ Run the solver again preferring oldest versions of dependencies:
    (complete false)
    (used))
   
+  (solver_env
+   (flags
+    ("with-doc" "with-test"))
+   (sys)
+   (const
+    (opam_version 2.2.0~alpha-vendored))
+   (repositories default))
+  
   
   ---
   
@@ -134,7 +150,7 @@ Regenerate the `dune-project` file introducing an unsatisfiable constraint.
   > EOF
 
 Run the solver again. This time it will fail.
-  $ dune pkg lock --opam-repository-path=mock-opam-repository
+  $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
   Error: Unable to solve dependencies in build context: default
   Can't find all required versions.
   Selected: baz.0.1.0 foo.0.0.1 lockfile_generation_test.dev
@@ -164,7 +180,7 @@ should pick one of them.
 After running this we expact a solution that has either `bar` or `baz` but not
 both.
 
-  $ dune pkg lock --opam-repository-path=mock-opam-repository
+  $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   bar.0.5.0
   bar-or-baz.0.0.1
@@ -189,7 +205,7 @@ patterns that can't be simplified
 After runninng we expect the solution to have quux and either baz or quz as
 well as bar or qux.
 
-  $ dune pkg lock --opam-repository-path=mock-opam-repository
+  $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   bar.0.5.0
   baz.0.1.0
@@ -210,7 +226,7 @@ in between.
   > depends: [ ("bar" & "quux") | "baz" ]
   > EOF
 
-  $ dune pkg lock --opam-repository-path=mock-opam-repository
+  $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   bar.0.5.0
   priorities.0.0.1
@@ -238,7 +254,7 @@ versions 1 or 3, as well as making sure it doesn't pick the newest version.
 With versions 1 and 3 negated and version 4 removed via version constraint,
 we'd expect version 2 to be chosen:
 
-  $ dune pkg lock --opam-repository-path=mock-opam-repository
+  $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   negation.0.0.1
   pkg.2

@@ -22,7 +22,11 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
   lock_dir_encode_decode_round_trip_test
     ~lock_dir_path:"empty_lock_dir"
     ~lock_dir:
-      (Lock_dir.create_latest_version Package_name.Map.empty ~ocaml:None ~repos:None);
+      (Lock_dir.create_latest_version
+         Package_name.Map.empty
+         ~ocaml:None
+         ~repos:None
+         ~solver_env:Dune_pkg.Solver_env.default);
   [%expect
     {|
     lockdir matches after roundtrip:
@@ -30,6 +34,12 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
     ; packages = map {}
     ; ocaml = None
     ; repos = { complete = true; used = None }
+    ; solver_env =
+        { flags = set { with-doc; with-test }
+        ; sys = map {}
+        ; const = { opam_version = "2.2.0~alpha-vendored" }
+        ; repositories = [ "default" ]
+        }
     } |}]
 ;;
 
@@ -54,6 +64,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
        Lock_dir.create_latest_version
          ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
          ~repos:None
+         ~solver_env:Dune_pkg.Solver_env.default
          (Package_name.Map.of_list_exn
             [ mk_pkg_basic ~name:"foo" ~version:"0.1.0"
             ; mk_pkg_basic ~name:"bar" ~version:"0.2.0"
@@ -93,6 +104,12 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
           }
     ; ocaml = Some ("simple_lock_dir/lock.dune:3", "ocaml")
     ; repos = { complete = true; used = None }
+    ; solver_env =
+        { flags = set { with-doc; with-test }
+        ; sys = map {}
+        ; const = { opam_version = "2.2.0~alpha-vendored" }
+        ; repositories = [ "default" ]
+        }
     } |}]
 ;;
 
@@ -184,6 +201,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
        Lock_dir.create_latest_version
          ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
          ~repos:(Some [ opam_repo ])
+         ~solver_env:Dune_pkg.Solver_env.default
          (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ]));
   [%expect
     {|
@@ -249,6 +267,12 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               [ opam_repo_serializable
                   Some Git_hash "95cf548dc","well-known-repo"
               ]
+        }
+    ; solver_env =
+        { flags = set { with-doc; with-test }
+        ; sys = map {}
+        ; const = { opam_version = "2.2.0~alpha-vendored" }
+        ; repositories = [ "default" ]
         }
     } |}]
 ;;

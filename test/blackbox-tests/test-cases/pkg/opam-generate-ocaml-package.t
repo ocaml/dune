@@ -18,3 +18,11 @@
   (repositories
    (complete false)
    (used))
+  
+  (solver_env
+   (flags
+    ("with-doc" "with-test"))
+   (sys)
+   (const
+    (opam_version 2.2.0~alpha-vendored))
+   (repositories default))

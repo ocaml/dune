@@ -50,7 +50,10 @@ module Unexpanded : sig
 
   val encode : t -> Dune_sexp.t list
   val standard : t
+
+  (** Generate a [t] from ocaml code. The [pos] argument should be [__POS__]. *)
   val of_strings : pos:string * int * int * int -> string list -> t
+
   val include_single : context:Univ_map.t -> pos:string * int * int * int -> string -> t
   val field : ?check:unit Decoder.t -> string -> t Decoder.fields_parser
   val has_special_forms : t -> bool

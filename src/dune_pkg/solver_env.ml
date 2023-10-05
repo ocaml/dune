@@ -54,6 +54,18 @@ module Variable = struct
         of_ordered_set ordered_set
       ;;
 
+      let encode t =
+        Dune_sexp.List
+          (to_list t
+           |> List.map ~f:(fun flag ->
+             (* Note that flags are quoted to make the output a valid Ordered
+                Set Language expression so that [encode] and [decode] can round
+                trip. Technically only the first flag needs to be quoted to
+                form a valid OSL expression but all are quoted for
+                consistency.*)
+             Dune_sexp.Quoted_string (to_string flag)))
+      ;;
+
       let pp t =
         to_list all
         |> Pp.enumerate ~f:(fun flag -> Pp.textf "%s = %b" (to_string flag) (mem t flag))
@@ -131,6 +143,12 @@ module Variable = struct
             ]
       ;;
 
+      let encode t =
+        let open Encoder in
+        Map.to_list_map t ~f:(fun key value ->
+          Dune_sexp.List [ to_string key |> string; string value ])
+      ;;
+
       let extend t t' = Map.superpose t' t
 
       let pp t =
@@ -153,10 +171,21 @@ module Variable = struct
     let all = [ `Opam_version ]
     let of_string_opt s = List.find all ~f:(fun t -> String.equal s (to_string t))
 
+    module Fields = struct
+      let opam_version = "opam_version"
+    end
+
+    module Values = struct
+      let opam_version = OpamVersion.to_string OpamVersion.current
+    end
+
     module Bindings = struct
       type t = { opam_version : string }
 
-      let to_dyn { opam_version } = Dyn.(record [ "opam_version", string opam_version ])
+      let to_dyn { opam_version } =
+        Dyn.(record [ Fields.opam_version, string opam_version ])
+      ;;
+
       let equal { opam_version } t = String.equal opam_version t.opam_version
 
       let get { opam_version } = function
@@ -168,9 +197,43 @@ module Variable = struct
           [ `Opam_version, opam_version ]
           ~f:(fun (variable, value) -> Pp.textf "%s = %s" (to_string variable) value)
       ;;
-    end
 
-    let bindings = { Bindings.opam_version = OpamVersion.to_string OpamVersion.current }
+      let value =
+        let open Values in
+        { opam_version }
+      ;;
+
+      (* Tests that each field matches the constant value for that field. This
+         is included so that [encode] and [decode] can round trip. *)
+      let decode =
+        let open Decoder in
+        let+ loc, opam_version =
+          fields
+          @@ located
+          @@ field Fields.opam_version ~default:Values.opam_version string
+        in
+        (* Make sure that the value we parsed is the constant value for this
+           field. Otherwise it's an error. This prevents unexpected constant
+           values from being set due to users manually changing the encoded
+           solver environment and then decoding it. *)
+        if not (String.equal opam_version Values.opam_version)
+        then
+          User_error.raise
+            ~loc
+            [ Pp.textf
+                "Field %S must have value %S (found %S)"
+                Fields.opam_version
+                Values.opam_version
+                opam_version
+            ];
+        value
+      ;;
+
+      let encode { opam_version } =
+        let open Encoder in
+        [ Dune_sexp.List [ string Fields.opam_version; string opam_version ] ]
+      ;;
+    end
   end
 
   type t =
@@ -205,7 +268,7 @@ end
 let default =
   { flags = Variable.Flag.Set.all
   ; sys = Variable.Sys.Bindings.empty
-  ; const = Variable.Const.bindings
+  ; const = Variable.Const.Bindings.value
   ; repos = [ Workspace.Repository.Name.of_string "default" ]
   }
 ;;
@@ -223,10 +286,22 @@ let decode =
   fields
   @@ let+ flags = field Fields.flags ~default:default.flags Variable.Flag.Set.decode
      and+ sys = field Fields.sys ~default:default.sys Variable.Sys.Bindings.decode
-     and+ repos = Dune_lang.Ordered_set_lang.field Fields.repos in
-     let const = default.const in
+     and+ repos = Dune_lang.Ordered_set_lang.field Fields.repos
+     and+ const =
+       field Fields.const ~default:default.const Variable.Const.Bindings.decode
+     in
      let repos = repos_of_ordered_set repos in
      { flags; sys; const; repos }
+;;
+
+let encode { flags; sys; const; repos } =
+  let open Encoder in
+  [ [ string Fields.flags; Variable.Flag.Set.encode flags ]
+  ; string Fields.sys :: Variable.Sys.Bindings.encode sys
+  ; string Fields.const :: Variable.Const.Bindings.encode const
+  ; string Fields.repos :: List.map repos ~f:Workspace.Repository.Name.encode
+  ]
+  |> List.map ~f:(fun x -> Dune_sexp.List x)
 ;;
 
 let to_dyn { flags; sys; const; repos } =

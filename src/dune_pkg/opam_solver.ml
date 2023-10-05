@@ -309,9 +309,9 @@ let opam_commands_to_actions loc package (commands : OpamTypes.command list) =
                          commands for package %s."
                         (OpamPackage.to_string package)
                     ; Pp.text "The variable interpolation:"
-                    ; Pp.text var
+                    ; Pp.verbatim var
                     ; Pp.text "The full command:"
-                    ; Pp.text (opam_command_to_string_debug command)
+                    ; Pp.verbatim (opam_command_to_string_debug command)
                     ])))
         |> List.of_seq
         |> String_with_vars.make Loc.none

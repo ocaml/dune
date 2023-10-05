@@ -367,7 +367,13 @@ let opam_file_map_of_dune_package_map dune_package_map =
   |> OpamPackage.Name.Map.of_list
 ;;
 
-let opam_package_to_lock_file_pkg context_for_dune ~repos ~local_packages opam_package =
+let opam_package_to_lock_file_pkg
+  context_for_dune
+  ~all_package_names
+  ~repos
+  ~local_packages
+  opam_package
+  =
   let name = OpamPackage.name opam_package in
   let version = OpamPackage.version opam_package |> OpamPackage.Version.to_string in
   let dev = OpamPackage.Name.Map.mem name local_packages in
@@ -425,7 +431,10 @@ let opam_package_to_lock_file_pkg context_for_dune ~repos ~local_packages opam_p
   (* This will collect all the atoms from the package's dependency formula regardless of conditions *)
   let deps =
     Context_for_dune.filter_deps context_for_dune opam_package opam_file.depends
-    |> OpamFormula.fold_right (fun acc (name, _condition) -> name :: acc) []
+    |> OpamFormula.fold_right
+         (fun acc (name, _condition) ->
+           if OpamPackage.Name.Set.mem name all_package_names then name :: acc else acc)
+         []
     |> List.map ~f:(fun name ->
       Loc.none, Package_name.of_string (OpamPackage.Name.to_string name))
   in
@@ -552,13 +561,21 @@ let solve_lock_dir solver_env version_preference repos ~local_packages =
   solve_package_list (OpamPackage.Name.Map.keys local_packages) context
   |> Result.map ~f:(fun solution ->
     (* don't include local packages in the lock dir *)
+    let all_package_names =
+      List.map solution ~f:OpamPackage.name |> OpamPackage.Name.Set.of_list
+    in
     let opam_packages_to_lock = List.filter solution ~f:(Fun.negate is_local_package) in
     let summary = { Summary.opam_packages_to_lock } in
     let lock_dir =
       match
         Package_name.Map.of_list_map opam_packages_to_lock ~f:(fun opam_package ->
           let pkg =
-            opam_package_to_lock_file_pkg context ~repos ~local_packages opam_package
+            opam_package_to_lock_file_pkg
+              context
+              ~all_package_names
+              ~repos
+              ~local_packages
+              opam_package
           in
           pkg.info.name, pkg)
       with

@@ -341,7 +341,7 @@ module Lock = struct
             ]
         | Some repo ->
           let url = Dune_pkg.Pkg_workspace.Repository.opam_url repo in
-          let repo = Fetch.Opam_repository.of_url url in
+          let repo = Fetch.Opam_repository.of_workspace_repo repo in
           let+ opam_repository = Fetch.Opam_repository.path repo in
           (match opam_repository with
            | Ok { path; repo_id } ->

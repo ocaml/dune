@@ -13,7 +13,7 @@ Print the solver env when no dune-workspace is present
   - Constants
     - opam-version = 2.2.0~alpha-vendored
   - Repositories
-       :standard
+       default
 
 Add some build contexts with different environments
   $ cat >dune-workspace <<EOF
@@ -47,7 +47,7 @@ Add some build contexts with different environments
   - Constants
     - opam-version = 2.2.0~alpha-vendored
   - Repositories
-       :standard
+       default
   Solver environment for context linux:
   - Flags
     - with-doc = true
@@ -61,4 +61,4 @@ Add some build contexts with different environments
   - Constants
     - opam-version = 2.2.0~alpha-vendored
   - Repositories
-       :standard
+       default

@@ -21,4 +21,5 @@ module Repository : sig
   end
 
   val name : t -> Name.t
+  val create : name:Name.t -> source:string -> t
 end

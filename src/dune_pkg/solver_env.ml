@@ -206,8 +206,16 @@ let default =
   { flags = Variable.Flag.Set.all
   ; sys = Variable.Sys.Bindings.empty
   ; const = Variable.Const.bindings
-  ; repos = [ Workspace.Repository.Name.of_string ":standard" ] (* TODO *)
+  ; repos = [ Workspace.Repository.Name.of_string "default" ]
   }
+;;
+
+let repos_of_ordered_set ordered_set =
+  Dune_lang.Ordered_set_lang.eval
+    ordered_set
+    ~parse:(fun ~loc string -> Workspace.Repository.Name.parse_string_exn (loc, string))
+    ~eq:Workspace.Repository.Name.equal
+    ~standard:default.repos
 ;;
 
 let decode =
@@ -215,10 +223,9 @@ let decode =
   fields
   @@ let+ flags = field Fields.flags ~default:default.flags Variable.Flag.Set.decode
      and+ sys = field Fields.sys ~default:default.sys Variable.Sys.Bindings.decode
-     and+ repos =
-       field Fields.repos ~default:default.repos (repeat Workspace.Repository.Name.decode)
-     in
+     and+ repos = Dune_lang.Ordered_set_lang.field Fields.repos in
      let const = default.const in
+     let repos = repos_of_ordered_set repos in
      { flags; sys; const; repos }
 ;;
 

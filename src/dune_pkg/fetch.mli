@@ -28,6 +28,7 @@ module Opam_repository : sig
     }
 
   val of_url : OpamUrl.t -> t
+  val of_workspace_repo : Workspace.Repository.t -> t
   val default : t
   val path : t -> (success, failure) result Fiber.t
 end

@@ -6,6 +6,7 @@
   fiber
   chrome_trace
   dune_engine
+  dune_digest
   dune_util
   dune_stats
   dune_lang

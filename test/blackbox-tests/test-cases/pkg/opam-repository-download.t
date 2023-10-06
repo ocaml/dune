@@ -79,18 +79,19 @@ Run Dune and tell it to cache into our custom cache folder.
 Our custom cache folder should be populated with the unpacked tarball
 containing the repository:
 
-  $ find fake-xdg-cache | sort
+  $ find fake-xdg-cache | sort | sed s#unknown-[0-9a-f]*#unknown-\$HASH#
   fake-xdg-cache
   fake-xdg-cache/dune
-  fake-xdg-cache/dune/opam-repository
-  fake-xdg-cache/dune/opam-repository/packages
-  fake-xdg-cache/dune/opam-repository/packages/bar
-  fake-xdg-cache/dune/opam-repository/packages/bar/bar.0.0.1
-  fake-xdg-cache/dune/opam-repository/packages/bar/bar.0.0.1/opam
-  fake-xdg-cache/dune/opam-repository/packages/foo
-  fake-xdg-cache/dune/opam-repository/packages/foo/foo.0.0.1
-  fake-xdg-cache/dune/opam-repository/packages/foo/foo.0.0.1/opam
-  fake-xdg-cache/dune/opam-repository/repo
+  fake-xdg-cache/dune/opam-repositories
+  fake-xdg-cache/dune/opam-repositories/unknown-$HASH
+  fake-xdg-cache/dune/opam-repositories/unknown-$HASH/packages
+  fake-xdg-cache/dune/opam-repositories/unknown-$HASH/packages/bar
+  fake-xdg-cache/dune/opam-repositories/unknown-$HASH/packages/bar/bar.0.0.1
+  fake-xdg-cache/dune/opam-repositories/unknown-$HASH/packages/bar/bar.0.0.1/opam
+  fake-xdg-cache/dune/opam-repositories/unknown-$HASH/packages/foo
+  fake-xdg-cache/dune/opam-repositories/unknown-$HASH/packages/foo/foo.0.0.1
+  fake-xdg-cache/dune/opam-repositories/unknown-$HASH/packages/foo/foo.0.0.1/opam
+  fake-xdg-cache/dune/opam-repositories/unknown-$HASH/repo
 
 Let's make sure this works with git repositories as well, by putting our repo in git.
 
@@ -118,7 +119,8 @@ reproducible)
 Now try it with an existing cached dir, which given it is not reproducible should not be included
 
   $ rm -r dune.lock
-  $ dune pkg lock --opam-repository-path=$(pwd)/fake-xdg-cache-with-git/dune/opam-repository
+  $ FOLDER=$(ls $(pwd)/fake-xdg-cache-with-git/dune/opam-repositories/)
+  $ dune pkg lock --opam-repository-path=$(pwd)/fake-xdg-cache-with-git/dune/opam-repositories/$FOLDER
   Solution for dune.lock:
   bar.0.0.1
   foo.0.0.1
@@ -133,13 +135,13 @@ The repository can also be injected via the dune-workspace file
   $ cat > dune-workspace <<EOF
   > (lang dune 3.10)
   > (repository
-  >   (name foo)
-  >   (source "git+file://$(pwd)/mock-opam-repository"))
+  >  (name foo)
+  >  (source "git+file://$(pwd)/mock-opam-repository"))
   > (context
-  >   (default
-  >     (name default)
-  >     (solver_env
-  >       (repositories foo))))
+  >  (default
+  >   (name default)
+  >   (solver_env
+  >    (repositories foo))))
   > EOF
   $ mkdir dune-workspace-cache
   $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock

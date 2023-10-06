@@ -25,3 +25,9 @@ Applying patches
 
   $ build_pkg test
   Hello World
+
+Demonstrate that the original source shouldn't be modified:
+
+  $ cat _build/_private/default/.pkg/test/source/foo.ml
+  cat: _build/_private/default/.pkg/test/source/foo.ml: No such file or directory
+  [1]

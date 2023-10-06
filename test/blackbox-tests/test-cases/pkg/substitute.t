@@ -20,6 +20,11 @@ This should take the `foo.ml.in`, do the substitutions and create `foo.ml`:
   $ build_pkg test
   This file will be fed to the substitution mechanism
 
+Demonstrate that the original sources aren't modified:
+
+  $ src=_build/_private/default/.pkg/test/source/foo.ml; [ -e $src ] && cat $src
+  [1]
+
 This should also work with any other filename combination:
 
   $ cat >test-source/foo.ml.template <<EOF

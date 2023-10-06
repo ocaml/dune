@@ -55,3 +55,11 @@ displayed, but the files should be created.
   true
   $ dune_cmd exists _build/default/out/b
   true
+
+If part of a directory target is removed, we expect it to be rebuilt using the
+cache.
+
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ rm _build/default/out/a
+  $ dune build out
+  Running create.sh

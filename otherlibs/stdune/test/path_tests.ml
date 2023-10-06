@@ -39,6 +39,10 @@ let drop_build_context p =
 
 let local_part p = Path.local_part p |> Path.Local.to_dyn |> print_dyn
 
+let drop_prefix p ~prefix =
+  drop_prefix p ~prefix |> Dyn.option Path.Local.to_dyn |> print_dyn
+;;
+
 let%expect_test _ =
   let p = Path.(relative root) "foo" in
   descendant p ~of_:p;
@@ -459,4 +463,11 @@ let%expect_test _ =
   [%expect {|
 None
 |}]
+;;
+
+let%expect_test "Path.drop_prefix doesn't respect paths" =
+  drop_prefix
+    (Path.of_string "/foo/bar/ocaml-foo")
+    ~prefix:(Path.of_string "/foo/bar/ocaml");
+  [%expect {| Some "-foo" |}]
 ;;

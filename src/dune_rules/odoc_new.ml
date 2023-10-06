@@ -1600,7 +1600,7 @@ let default_index ~main_name ~pkg_opt ~subindexes entry_modules =
   (match pkg_opt with
    | None -> ()
    | Some pkg ->
-     (match pkg.Package.description with
+     (match pkg.description with
       | None -> ()
       | Some s -> Printf.bprintf b "%s\n" s));
   if List.length subindexes > 0

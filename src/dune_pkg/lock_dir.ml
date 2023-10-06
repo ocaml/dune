@@ -481,8 +481,12 @@ module Write_disk = struct
   type t = unit -> unit
 
   module Files_entry = struct
+    type source =
+      | Path of Path.t
+      | Content of string
+
     type t =
-      { original_file : Path.t
+      { original : source
       ; local_file : Path.Local.t
       }
   end
@@ -508,13 +512,12 @@ module Write_disk = struct
             Path.relative lock_dir_path (Package_name.to_string package_name ^ ".files")
           in
           Path.mkdir_p files_dir;
-          List.iter files ~f:(fun { Files_entry.original_file; local_file } ->
+          List.iter files ~f:(fun { Files_entry.original; local_file } ->
             let dst = Path.append_local files_dir local_file in
             Path.mkdir_p (Path.parent_exn dst);
-            Io.copy_file
-              ~src:original_file
-              ~dst:(Path.append_local files_dir local_file)
-              ())))
+            match original with
+            | Path src -> Io.copy_file ~src ~dst ()
+            | Content content -> Io.write_file dst content)))
   ;;
 
   let commit t = t ()

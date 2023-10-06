@@ -85,8 +85,8 @@ let better_candidate
   ~repos
   ~(local_packages : Opam_repo.With_file.t Package_name.Map.t)
   (pkg : Lock_dir.Pkg.t)
-  : result
   =
+  let open Fiber.O in
   let pkg_name = pkg.info.name |> Package_name.to_string |> OpamPackage.Name.of_string in
   let is_immediate_dep_of_local_package =
     Package_name.Map.exists local_packages ~f:(fun { Opam_repo.With_file.opam_file; _ } ->
@@ -101,7 +101,8 @@ let better_candidate
       |> OpamFormula.atoms
       |> List.exists ~f:(fun (name', _) -> OpamPackage.Name.equal pkg_name name'))
   in
-  match Opam_repo.load_all_versions repos pkg_name with
+  let+ all_versions = Opam_repo.load_all_versions repos pkg_name in
+  match all_versions with
   | Error `Package_not_found -> Package_not_found pkg.info.name
   | Ok versions ->
     (match
@@ -170,6 +171,7 @@ let pp results ~transitive ~lock_dir_path =
 let find ~repos ~local_packages packages =
   Package_name.Map.to_list_map packages ~f:(fun _name pkg ->
     better_candidate ~repos ~local_packages pkg)
+  |> Fiber.all_concurrently
 ;;
 
 module For_tests = struct

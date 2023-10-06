@@ -75,8 +75,12 @@ module Write_disk : sig
   type t
 
   module Files_entry : sig
+    type source =
+      | Path of Path.t
+      | Content of string
+
     type t =
-      { original_file : Path.t
+      { original : source
       ; local_file : Path.Local.t
       }
   end

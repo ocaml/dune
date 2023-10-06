@@ -11,7 +11,7 @@ val find
   :  repos:Opam_repo.t list
   -> local_packages:Opam_repo.With_file.t Package_name.Map.t
   -> Lock_dir.Pkg.t Package_name.Map.t
-  -> t
+  -> t Fiber.t
 
 (** [pp t ~transitive ~lock_dir_path] returns a specially constructed user message
     explaining the outdated packages. It begins with a summary detailing the number of

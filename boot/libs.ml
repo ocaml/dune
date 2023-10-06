@@ -61,6 +61,7 @@ let local_libraries =
     false, None)
   ; ("src/fs", Some "Fs", false, None)
   ; ("src/dune_findlib", Some "Dune_findlib", false, None)
+  ; ("src/dune_vcs", Some "Dune_vcs", false, None)
   ; ("vendor/sha", None, false, None)
   ; ("vendor/uutf", None, false, None)
   ; ("vendor/opam/src/core", None, false, None)
@@ -77,7 +78,6 @@ let local_libraries =
   ; ("src/install", Some "Install", false, None)
   ; ("otherlibs/dune-site/src/private", Some "Dune_site_private", false,
     None)
-  ; ("src/dune_vcs", Some "Dune_vcs", false, None)
   ; ("src/dune_threaded_console", Some "Dune_threaded_console", false, None)
   ; ("vendor/lwd/lwd", None, false, None)
   ; ("vendor/notty/src", None, true, None)

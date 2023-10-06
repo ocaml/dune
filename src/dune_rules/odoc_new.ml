@@ -1397,8 +1397,8 @@ let index_info_of_pkg_def =
       pkg_artifacts sctx index pkg_name
     in
     let+ index_infos =
-      let* findlib_paths = Context.findlib_paths ctx in
-      let+ dwms = Valid.filter_dune_with_modules ctx ~all dwms in
+      let+ findlib_paths = Context.findlib_paths ctx
+      and+ dwms = Valid.filter_dune_with_modules ctx ~all dwms in
       List.fold_left ~init:[] dwms ~f:(fun acc (dwm : Classify.dune_with_modules) ->
         assert (Lib.is_local dwm.lib = is_local);
         let index =

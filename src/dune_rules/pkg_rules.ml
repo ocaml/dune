@@ -859,15 +859,14 @@ end = struct
           | `Inside_lock_dir pkg -> Some pkg
           | `System_provided -> None)
         >>| List.filter_opt
-      in
-      let id = Pkg.Id.gen () in
-      let paths = Paths.make name ctx in
-      let* lock_dir = Lock_dir.get_path ctx in
-      let files_dir =
+      and+ files_dir =
+        let+ lock_dir = Lock_dir.get_path ctx in
         Path.Source.relative
           lock_dir
           (sprintf "%s.files" (Package.Name.to_string info.name))
       in
+      let id = Pkg.Id.gen () in
+      let paths = Paths.make name ctx in
       let t =
         { Pkg.id
         ; build_command
@@ -879,8 +878,8 @@ end = struct
         ; exported_env = []
         }
       in
-      let* expander = Action_expander.expander ctx t in
       let+ exported_env =
+        let* expander = Action_expander.expander ctx t in
         Memo.parallel_map exported_env ~f:(Action_expander.exported_env expander)
       in
       t.exported_env <- exported_env;
@@ -1383,53 +1382,51 @@ let source_rules (pkg : Pkg.t) =
 
 let build_rule context_name ~source_deps (pkg : Pkg.t) =
   let+ build_action =
-    let install_action = Action_expander.install_command context_name pkg in
     let+ build_and_install =
-      let* copy_action =
-        Fs_memo.dir_exists (In_source_dir pkg.files_dir)
-        >>| function
-        | false -> []
-        | true ->
-          [ Copy_tree.action ~src:(Path.source pkg.files_dir) ~dst:pkg.paths.source_dir
-            |> Action.Full.make
-            |> Action_builder.With_targets.return
-          ]
-      in
-      let copy_action =
+      let+ copy_action =
+        let+ copy_action =
+          Fs_memo.dir_exists (In_source_dir pkg.files_dir)
+          >>| function
+          | false -> []
+          | true ->
+            [ Copy_tree.action ~src:(Path.source pkg.files_dir) ~dst:pkg.paths.source_dir
+              |> Action.Full.make
+              |> Action_builder.With_targets.return
+            ]
+        in
         copy_action
         @ List.map pkg.info.extra_sources ~f:(fun (local, _) ->
           let src = Path.build (Paths.extra_source pkg.paths local) in
           let dst = Path.Build.append_local pkg.paths.source_dir local in
           Action.copy src dst |> Action.Full.make |> Action_builder.With_targets.return)
-      in
-      let* build_action =
+      and+ build_action =
         match Action_expander.build_command context_name pkg with
-        | None -> Memo.return copy_action
-        | Some build_command ->
-          let+ build_command = build_command in
-          copy_action @ [ build_command ]
+        | None -> Memo.return []
+        | Some build_command -> build_command >>| List.singleton
+      and+ install_action =
+        match Action_expander.install_command context_name pkg with
+        | None -> Memo.return []
+        | Some install_action ->
+          let+ install_action = install_action in
+          let mkdir_install_dirs =
+            let install_paths = Paths.install_paths pkg.paths in
+            Install_action.installable_sections
+            |> List.rev_map ~f:(fun section ->
+              Install.Paths.get install_paths section
+              |> Path.as_in_build_dir_exn
+              |> Action.mkdir)
+            |> Action.progn
+            |> Action.Full.make
+            |> Action_builder.With_targets.return
+          in
+          [ mkdir_install_dirs; install_action ]
       in
-      match Action_expander.install_command context_name pkg with
-      | None -> Memo.return build_action
-      | Some install_action ->
-        let+ install_action = install_action in
-        let mkdir_install_dirs =
-          let install_paths = Paths.install_paths pkg.paths in
-          Install_action.installable_sections
-          |> List.rev_map ~f:(fun section ->
-            Install.Paths.get install_paths section
-            |> Path.as_in_build_dir_exn
-            |> Action.mkdir)
-          |> Action.progn
-          |> Action.Full.make
-          |> Action_builder.With_targets.return
-        in
-        build_action @ [ mkdir_install_dirs; install_action ]
+      List.concat [ copy_action; build_action; install_action ]
     in
     let install_file_action =
       Install_action.action
         pkg.paths
-        (match install_action with
+        (match Action_expander.install_command context_name pkg with
          | None -> `No_install_action
          | Some _ -> `Has_install_action)
       |> Action.Full.make

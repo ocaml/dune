@@ -16,40 +16,42 @@ let wrong_checksum =
   OpamHash.compute_from_string "random content" |> Checksum.of_opam_hash
 ;;
 
-let random_port () =
-  let state = Base.Random.State.make_self_init ~allow_in_tests:true () in
-  (* ephemeral port range that is not assinged by IANA to prevent collisions *)
-  Base.Random.State.int_incl state 49152 65535
-;;
-
 let target destination =
   let ext = Path.External.of_filename_relative_to_initial_cwd destination in
   Path.external_ ext
 ;;
 
-let serve_once ~filename ~port () =
+let serve_once ~filename =
   let host = Unix.inet_addr_loopback in
-  let addr = Unix.ADDR_INET (host, port) in
+  let addr = Unix.ADDR_INET (host, 0) in
   let sock = Unix.socket ~cloexec:true Unix.PF_INET Unix.SOCK_STREAM 0 in
   Unix.setsockopt sock Unix.SO_REUSEADDR true;
   Unix.bind sock addr;
   Unix.listen sock 5;
-  Thread.create
-    (fun sock ->
-      let descr, _sockaddr = Unix.accept sock in
-      let content = Io.String_path.read_file filename in
-      let content_length = String.length content in
-      let write_end = Unix.out_channel_of_descr descr in
-      Printf.fprintf
-        write_end
-        {|HTTP/1.1 200 Ok
+  let port =
+    match Unix.getsockname sock with
+    | Unix.ADDR_INET (_, port) -> port
+    | ADDR_UNIX _ -> assert false
+  in
+  let thread =
+    Thread.create
+      (fun sock ->
+        let descr, _sockaddr = Unix.accept sock in
+        let content = Io.String_path.read_file filename in
+        let content_length = String.length content in
+        let write_end = Unix.out_channel_of_descr descr in
+        Printf.fprintf
+          write_end
+          {|HTTP/1.1 200 Ok
 Content-Length: %d
 
 %s|}
-        content_length
-        content;
-      close_out write_end)
-    sock
+          content_length
+          content;
+        close_out write_end)
+      sock
+  in
+  port, thread
 ;;
 
 let download ~port ~filename ~target ?checksum () =
@@ -91,8 +93,7 @@ let run thunk =
 
 let%expect_test "downloading simple file" =
   let filename = "plaintext.md" in
-  let port = random_port () in
-  let server = serve_once ~filename ~port () in
+  let port, server = serve_once ~filename in
   let destination = "destination.md" in
   run
     (download
@@ -130,8 +131,7 @@ let%expect_test "downloading simple file" =
 
 let%expect_test "downloading but the checksums don't match" =
   let filename = "plaintext.md" in
-  let port = random_port () in
-  let server = serve_once ~filename ~port () in
+  let port, server = serve_once ~filename in
   let destination = "destination.md" in
   run (download ~port ~filename ~target:(target destination) ~checksum:wrong_checksum);
   Thread.join server;
@@ -150,8 +150,7 @@ let%expect_test "downloading but the checksums don't match" =
 
 let%expect_test "downloading, without any checksum" =
   let filename = "plaintext.md" in
-  let port = random_port () in
-  let server = serve_once ~filename ~port () in
+  let port, server = serve_once ~filename in
   let destination = "destination.md" in
   run (download ~port ~filename ~target:(target destination));
   Thread.join server;

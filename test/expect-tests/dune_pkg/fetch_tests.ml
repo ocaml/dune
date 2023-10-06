@@ -54,10 +54,10 @@ Content-Length: %d
   port, thread
 ;;
 
-let download ~port ~filename ~target ?checksum () =
+let download ~unpack ~port ~filename ~target ?checksum () =
   let open Fiber.O in
   let url = url ~port ~filename in
-  let* res = Fetch.fetch ~unpack:false ~checksum ~target url in
+  let* res = Fetch.fetch ~unpack ~checksum ~target url in
   match res with
   | Error (Unavailable None) ->
     let errs = [ Pp.text "Failure while downloading" ] in
@@ -97,6 +97,7 @@ let%expect_test "downloading simple file" =
   let destination = "destination.md" in
   run
     (download
+       ~unpack:false
        ~port
        ~filename
        ~target:(target destination)
@@ -133,7 +134,13 @@ let%expect_test "downloading but the checksums don't match" =
   let filename = "plaintext.md" in
   let port, server = serve_once ~filename in
   let destination = "destination.md" in
-  run (download ~port ~filename ~target:(target destination) ~checksum:wrong_checksum);
+  run
+    (download
+       ~unpack:false
+       ~port
+       ~filename
+       ~target:(target destination)
+       ~checksum:wrong_checksum);
   Thread.join server;
   print_endline "Finished successfully?";
   [%expect.unreachable]
@@ -152,10 +159,32 @@ let%expect_test "downloading, without any checksum" =
   let filename = "plaintext.md" in
   let port, server = serve_once ~filename in
   let destination = "destination.md" in
-  run (download ~port ~filename ~target:(target destination));
+  run (download ~unpack:false ~port ~filename ~target:(target destination));
   Thread.join server;
   print_endline "Finished successfully, no checksum verification";
   [%expect {|
     Done downloading
     Finished successfully, no checksum verification |}]
+;;
+
+let%expect_test "downloading, tarball" =
+  let filename = "tarball.tar.gz" in
+  let port, server = serve_once ~filename in
+  let destination = "tarball" in
+  run
+    (download
+       ~unpack:true
+       ~checksum:wrong_checksum
+       ~port
+       ~filename
+       ~target:(target destination));
+  Thread.join server;
+  print_endline "Finished successfully, no checksum verification";
+  [%expect.unreachable]
+[@@expect.uncaught_exn
+  {|
+  (Dune_util__Report_error.Already_reported)
+  Trailing output
+  ---------------
+  Error: Is a directory |}]
 ;;

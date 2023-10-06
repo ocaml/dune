@@ -1222,7 +1222,7 @@ module Fetch = struct
       let* res =
         let checksum = Option.map checksum ~f:snd in
         Dune_pkg.Fetch.fetch
-          ~unpack:false
+          ~unpack:true
           ~checksum
           ~target:(Path.build target_dir)
           (OpamUrl.of_string url)

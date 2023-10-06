@@ -14,6 +14,7 @@ Test that we run the build command
 
   $ show_pkg test
   
+  /source
   /target
   /target/bin
   /target/bin/foo

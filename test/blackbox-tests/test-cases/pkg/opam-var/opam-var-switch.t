@@ -51,14 +51,14 @@ opam-var-unsupported.t
   $ build_pkg testpkg
   dune
   .
-  ../target
-  ../target/lib
-  ../target/lib
-  ../target/bin
-  ../target/sbin
-  ../target/share
-  ../target/doc
-  ../target/etc
-  ../target/man
-  ../target/lib/toplevel
-  ../target/lib/stublibs
+  $TESTCASE_ROOT/_build/_private/default/.pkg/testpkg/target
+  $TESTCASE_ROOT/_build/_private/default/.pkg/testpkg/target/lib
+  $TESTCASE_ROOT/_build/_private/default/.pkg/testpkg/target/lib
+  $TESTCASE_ROOT/_build/_private/default/.pkg/testpkg/target/bin
+  $TESTCASE_ROOT/_build/_private/default/.pkg/testpkg/target/sbin
+  $TESTCASE_ROOT/_build/_private/default/.pkg/testpkg/target/share
+  $TESTCASE_ROOT/_build/_private/default/.pkg/testpkg/target/doc
+  $TESTCASE_ROOT/_build/_private/default/.pkg/testpkg/target/etc
+  $TESTCASE_ROOT/_build/_private/default/.pkg/testpkg/target/man
+  $TESTCASE_ROOT/_build/_private/default/.pkg/testpkg/target/lib/toplevel
+  $TESTCASE_ROOT/_build/_private/default/.pkg/testpkg/target/lib/stublibs

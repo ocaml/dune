@@ -486,6 +486,14 @@ module Action_expander = struct
         [ Value.String "" ]
     ;;
 
+    let encode_path path =
+      (* This hack is needed because the ocaml configure script requires
+          paths like %{prefix} to be absolute. Unfortunately, it completely
+          breaks caching so we need to find a way around this. The else clause
+          contains what the code should look like *)
+      if true then Value.String (Path.to_absolute_filename path) else Value.Dir path
+    ;;
+
     let expand_pkg (paths : Paths.t) (pform : Pform.Var.Pkg.t) =
       match pform with
       | Switch -> Memo.return [ Value.String "dune" ]
@@ -494,7 +502,7 @@ module Action_expander = struct
       | Os_distribution -> sys_poll_var (fun { os_distribution; _ } -> os_distribution)
       | Os_family -> sys_poll_var (fun { os_family; _ } -> os_family)
       | Build -> Memo.return [ Value.Dir (Path.build paths.source_dir) ]
-      | Prefix -> Memo.return [ Value.Dir (Path.build paths.target_dir) ]
+      | Prefix -> Memo.return [ encode_path (Path.build paths.target_dir) ]
       | User -> Memo.return [ Value.String (Unix.getlogin ()) ]
       | Jobs -> Memo.return [ Value.String "1" ]
       | Arch -> sys_poll_var (fun { arch; _ } -> arch)
@@ -504,7 +512,7 @@ module Action_expander = struct
       | Section_dir section ->
         let roots = Paths.install_roots paths in
         let dir = section_dir_of_root roots section in
-        Memo.return [ Value.Dir dir ]
+        Memo.return [ encode_path dir ]
     ;;
 
     let expand_pform
@@ -776,14 +784,12 @@ module Action_expander = struct
   ;;
 
   let expand context (pkg : Pkg.t) action =
-    let* expander = expander context pkg in
     let+ action =
+      let* expander = expander context pkg in
       expand action ~expander >>| Action.chdir (Path.build pkg.paths.source_dir)
     in
     (* TODO copying is needed because patch/substitute might be present *)
-    Action.Full.make ~sandbox:Sandbox_config.needs_sandboxing action
-    |> Action_builder.return
-    |> Action_builder.with_no_targets
+    Action.Full.make action |> Action_builder.return |> Action_builder.with_no_targets
   ;;
 
   let build_command context (pkg : Pkg.t) =

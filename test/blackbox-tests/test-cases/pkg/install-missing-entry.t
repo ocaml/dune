@@ -14,11 +14,8 @@ This should give us a proper error that myfile wasn't generated
 
   $ lockfile "myfile"
   $ build_pkg test 2>&1 | sed 's#_build.*_private#$ROOT/_private#'
-  Error: entry
-  $ROOT/_private/default/.pkg/test/source/myfile
-  in
-  $ROOT/_private/default/.pkg/test/source/test.install
-  does not exist
+  Error: entry $ROOT/_private/default/.pkg/test/source/myfile in
+  $ROOT/_private/default/.pkg/test/source/test.install does not exist
   -> required by $ROOT/_private/default/.pkg/test/target/cookie
 
 This on the other hand shouldn't error because myfile is optional

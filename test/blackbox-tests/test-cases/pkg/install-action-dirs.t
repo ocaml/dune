@@ -8,17 +8,17 @@ Install actions should have the switch directory prepared:
   > EOF
 
   $ build_pkg test
-  ../target
-  ../target/bin
-  ../target/doc
-  ../target/doc/test
-  ../target/etc
-  ../target/etc/test
-  ../target/lib
-  ../target/lib/stublibs
-  ../target/lib/test
-  ../target/lib/toplevel
-  ../target/man
-  ../target/sbin
-  ../target/share
-  ../target/share/test
+  $TESTCASE_ROOT/_build/_private/default/.pkg/test/target
+  $TESTCASE_ROOT/_build/_private/default/.pkg/test/target/bin
+  $TESTCASE_ROOT/_build/_private/default/.pkg/test/target/doc
+  $TESTCASE_ROOT/_build/_private/default/.pkg/test/target/doc/test
+  $TESTCASE_ROOT/_build/_private/default/.pkg/test/target/etc
+  $TESTCASE_ROOT/_build/_private/default/.pkg/test/target/etc/test
+  $TESTCASE_ROOT/_build/_private/default/.pkg/test/target/lib
+  $TESTCASE_ROOT/_build/_private/default/.pkg/test/target/lib/stublibs
+  $TESTCASE_ROOT/_build/_private/default/.pkg/test/target/lib/test
+  $TESTCASE_ROOT/_build/_private/default/.pkg/test/target/lib/toplevel
+  $TESTCASE_ROOT/_build/_private/default/.pkg/test/target/man
+  $TESTCASE_ROOT/_build/_private/default/.pkg/test/target/sbin
+  $TESTCASE_ROOT/_build/_private/default/.pkg/test/target/share
+  $TESTCASE_ROOT/_build/_private/default/.pkg/test/target/share/test

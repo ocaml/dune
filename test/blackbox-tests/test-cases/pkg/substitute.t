@@ -23,7 +23,7 @@ This should take the `foo.ml.in`, do the substitutions and create `foo.ml`:
 Demonstrate that the original sources aren't modified:
 
   $ src=_build/_private/default/.pkg/test/source/foo.ml; [ -e $src ] && cat $src
-  [1]
+  This file will be fed to the substitution mechanism
 
 This should also work with any other filename combination:
 

@@ -673,21 +673,23 @@ module Action_expander = struct
     let dir = Path.build expander.paths.source_dir in
     match action with
     | Run (exe, args) ->
-      let* exe, more_args = Expander.expand_exe expander exe in
-      let+ args = Memo.parallel_map args ~f:(Expander.expand_sw expander) in
+      let+ exe, more_args = Expander.expand_exe expander exe
+      and+ args = Memo.parallel_map args ~f:(Expander.expand_sw expander) in
       let args = more_args @ List.concat args |> Value.L.to_strings ~dir in
       Action.Run (exe, Array.Immutable.of_list args)
     | Progn t ->
       let+ args = Memo.parallel_map t ~f:(expand ~expander) in
       Action.Progn args
     | System arg ->
-      let+ arg = Expander.expand_pform_gen ~mode:Single expander arg in
-      let arg = arg |> Value.to_string ~dir in
+      let+ arg =
+        Expander.expand_pform_gen ~mode:Single expander arg >>| Value.to_string ~dir
+      in
       Action.System arg
     | Patch p ->
-      let+ input = Expander.expand_pform_gen ~mode:Single expander p in
-      let input = Value.to_path ~dir input in
-      Dune_patch.action ~patch:input
+      let+ patch =
+        Expander.expand_pform_gen ~mode:Single expander p >>| Value.to_path ~dir
+      in
+      Dune_patch.action ~patch
     | Substitute (input, output) ->
       let+ input =
         Expander.expand_pform_gen ~mode:Single expander input >>| Value.to_path ~dir
@@ -705,8 +707,10 @@ module Action_expander = struct
           updates
           ~f:(fun (env, updates) ({ Env_update.op = _; var; value } as update) ->
             let+ value =
-              let expander = { expander with env } in
-              let+ value = Expander.expand_pform_gen expander value ~mode:Single in
+              let+ value =
+                let expander = { expander with env } in
+                Expander.expand_pform_gen expander value ~mode:Single
+              in
               Value.to_string ~dir value
             in
             let env = Env_update.set env { update with value } in
@@ -722,13 +726,17 @@ module Action_expander = struct
             in
             env, update :: updates)
       in
-      let expander = { expander with env } in
-      let+ action = expand action ~expander in
+      let+ action =
+        let expander = { expander with env } in
+        expand action ~expander
+      in
       List.fold_left updates ~init:action ~f:(fun action (k, v) ->
         Action.Setenv (k, v, action))
     | When (condition, action) ->
-      let* condition_value = Expander.eval_blang expander condition in
-      if condition_value then expand action ~expander else Memo.return (Action.progn [])
+      Expander.eval_blang expander condition
+      >>= (function
+      | true -> expand action ~expander
+      | false -> Memo.return (Action.progn []))
     | _ ->
       (* TODO *)
       assert false

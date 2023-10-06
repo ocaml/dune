@@ -495,7 +495,7 @@ module Valid = struct
     List.filter libs ~f:(fun l -> List.mem valid_libs l ~equal:lib_equal)
   ;;
 
-  let filter_dwms ctx ~all dwms =
+  let filter_dune_with_modules ctx ~all dwms =
     let+ valid_libs, _ = get ctx ~all in
     List.filter dwms ~f:(fun (dwm : Classify.dune_with_modules) ->
       List.mem valid_libs dwm.lib ~equal:lib_equal)
@@ -1397,7 +1397,8 @@ let index_info_of_pkg_def =
       pkg_artifacts sctx index pkg_name
     in
     let+ index_infos =
-      let+ findlib_paths = Context.findlib_paths ctx in
+      let* findlib_paths = Context.findlib_paths ctx in
+      let+ dwms = Valid.filter_dune_with_modules ctx ~all dwms in
       List.fold_left ~init:[] dwms ~f:(fun acc (dwm : Classify.dune_with_modules) ->
         assert (Lib.is_local dwm.lib = is_local);
         let index =

@@ -85,21 +85,6 @@ module DB = struct
   ;;
 end
 
-let has_double_underscore s =
-  let len = String.length s in
-  len >= 2
-  &&
-  let last = ref s.[0] in
-  try
-    for i = 1 to len - 1 do
-      let c = s.[i] in
-      if c = '_' && !last = '_' then raise_notrace Exit else last := c
-    done;
-    false
-  with
-  | Exit -> true
-;;
-
 let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib =
   let loc = Loc.in_file t.meta_file in
   let add_loc x = loc, x in
@@ -206,7 +191,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib =
                 | true ->
                   if (* We add this hack to skip manually mangled
                         libraries *)
-                     has_double_underscore fname
+                     String.contains_double_underscore fname
                   then Ok None
                   else (
                     match

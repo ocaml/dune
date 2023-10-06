@@ -663,18 +663,6 @@ end = struct
   ;;
 end
 
-let contains_double_underscore s =
-  let len = String.length s in
-  let rec aux i =
-    if i > len - 2
-    then false
-    else if s.[i] = '_' && s.[i + 1] = '_'
-    then true
-    else aux (i + 1)
-  in
-  aux 0
-;;
-
 (* An artifact is a single compilation unit (module) or mld file, and contains
    all info to find the html output, the odoc file, the source, whether it's
    hidden or not, to construct a reference to it, to find the index under
@@ -775,7 +763,7 @@ end = struct
        hidden - which entirely depends upon whether there is a double underscore
        in the name. So we declare anything with a double underscore as hidden
        in addition to anything that dune believes should not be an entry module. *)
-    let visible = visible && not (contains_double_underscore basename) in
+    let visible = visible && not (String.contains_double_underscore basename) in
     v ~source ~odoc ~html_dir ~html_file:html ~ty:(Module visible)
   ;;
 
@@ -1194,7 +1182,7 @@ let fallback_artifacts sctx (libs : Lib.t list String.Map.t) =
         >>| List.fold_left ~init:[] ~f:(fun acc (mod_name, (cmti_file, _)) ->
           let artifact =
             let visible =
-              not (contains_double_underscore (Module_name.to_string mod_name))
+              Module_name.to_string mod_name |> String.contains_double_underscore |> not
             in
             let index = Index.of_dir local_dir in
             Artifact.make_module ctx ~all:true index cmti_file ~visible
@@ -1225,7 +1213,11 @@ let lib_artifacts ctx all index lib modules =
         List.mem entry_modules m ~equal:(fun m1 m2 ->
           Module_name.equal (Module.name m1) (Module.name m2))
       in
-      visible && not (contains_double_underscore (Module.name m |> Module_name.to_string))
+      visible
+      && Module.name m
+         |> Module_name.to_string
+         |> String.contains_double_underscore
+         |> not
     in
     let cmti_file = Obj_dir.Module.cmti_file obj_dir ~cm_kind m in
     Artifact.make_module ctx ~all index cmti_file ~visible :: acc)

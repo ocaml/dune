@@ -212,6 +212,24 @@ jobs:
       - uses: cachix/install-nix-action@v18
       - run: nix develop .#doc -c make doc
 
+  melange:
+    name: Melange 1.0.0
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: 4.14.x
+          opam-pin: false
+          opam-depext: false
+          dune-cache: true  
+      - name: Install Melange
+        run: make melange-deps
+      - run: opam exec -- make test-melange
+        env:
+          # We disable the Dune cache when running the tests
+          DUNE_CACHE: disabled
+
   coq:
     name: Coq 8.16.1
     runs-on: ubuntu-latest
@@ -227,7 +245,7 @@ jobs:
           dune-cache: true
 
       - name: Install Coq
-        run: opam install coq.8.16.1 coq-native
+        run: make coq-deps
 
       - run: opam exec -- make test-coq
         env:

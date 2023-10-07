@@ -1,6 +1,9 @@
 (cram
+ (applies_to :whole_subtree)
  (deps %{bin:node} %{bin:melc})
- (alias runtest-melange))
+ (alias runtest-melange)
+ (enabled_if
+  (= %{env:DUNE_MELANGE_TEST=disable} enable)))
 
 (cram
  (deps %{bin:rescript_syntax})

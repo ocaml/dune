@@ -8,6 +8,12 @@ BIN := ./_boot/dune.exe
 
 # Dependencies used for testing dune, when developed locally and
 # when tested in CI
+
+# odoc is shared by multiple sets so we declare it here first.
+ODOC := \
+"odoc>=2.0.1"
+
+# main dev dependencies
 TEST_DEPS := \
 lwt \
 cinaps \
@@ -19,14 +25,24 @@ js_of_ocaml-compiler \
 menhir \
 ocamlfind \
 ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat) \
-"odoc>=2.0.1" \
+$(ODOC) \
 "ppx_expect.v0.15.0" \
 ppx_inline_test \
 ppxlib \
 ctypes \
-"utop>=2.6.0" \
-"melange>=1.0.0" \
-"rescript-syntax"
+"utop>=2.6.0" 
+
+# melange dependencies
+MELANGE_DEPS := \
+rescript-syntax \
+melange.1.0.0 \
+$(ODOC)
+
+# coq dependencies
+COQ_DEPS := \
+coq.8.16.1 \
+coq-native
+
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
 DEV_DEPS := \
@@ -83,6 +99,14 @@ dev-deps:
 coverage-deps:
 	opam install -y bisect_ppx
 
+.PHONY: melange-deps
+melange-deps:
+	opam install -y $(MELANGE_DEPS)
+
+.PHONY: coq-deps
+coq-deps:
+	opam install -y $(COQ_DEPS)
+
 .PHONY: dev-switch
 dev-switch:
 	opam update
@@ -105,9 +129,11 @@ test-coq: $(BIN)
 	DUNE_COQ_TEST=enable $(BIN) build @runtest-coq
 
 test-melange: $(BIN)
-	$(BIN) build @runtest-melange
+	DUNE_MELANGE_TEST=enable $(BIN) build @runtest-melange
 
 test-all: $(BIN)
+	DUNE_COQ_TEST=enable \
+	DUNE_MELANGE_TEST=enable \
 	$(BIN) build @runtest @runtest-js @runtest-coq @runtest-melange
 
 test-coverage: $(BIN)

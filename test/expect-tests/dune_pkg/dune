@@ -1,7 +1,7 @@
 (library
  (name dune_pkg_unit_tests)
  (inline_tests
-  (deps plaintext.md))
+  (deps plaintext.md tarball.tar.gz))
  (libraries
   dune_tests_common
   stdune
@@ -22,3 +22,9 @@
   ppx_inline_test.config)
  (preprocess
   (pps ppx_expect)))
+
+(rule
+ (target tarball.tar.gz)
+ (deps plaintext.md)
+ (action
+  (run tar -czf %{target} %{deps})))

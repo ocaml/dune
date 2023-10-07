@@ -1,4 +1,0 @@
-(executable
- (name pp_future_syntax)
- (preprocess future_syntax)
-)

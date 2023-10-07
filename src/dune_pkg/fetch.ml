@@ -76,28 +76,11 @@ type failure =
   | Checksum_mismatch of Checksum.t
   | Unavailable of User_message.t option
 
+let label = "dune-fetch"
+
 let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
   let open Fiber.O in
   let path = Path.to_string target in
-  let pull =
-    (* hashes have to be empty otherwise OPAM deletes the file after
-       downloading if the hash does not match *)
-    let hashes = [] in
-    match url.backend, unpack with
-    | #OpamUrl.version_control, _ | _, true ->
-      let dirname = OpamFilename.Dir.of_string path in
-      fun label url ->
-        let open OpamProcess.Job.Op in
-        OpamRepository.pull_tree label dirname hashes [ url ]
-        @@| (function
-        | Up_to_date _ -> OpamTypes.Up_to_date ()
-        | Result _ -> Result ()
-        | Not_available (a, b) -> Not_available (a, b))
-    | _ ->
-      let fname = OpamFilename.of_string path in
-      fun label url -> OpamRepository.pull_file label fname hashes [ url ]
-  in
-  let label = "dune-fetch" in
   let event =
     Dune_stats.(
       start (global ()) (fun () ->
@@ -114,7 +97,25 @@ let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
                   ("checksum", `String (Checksum.to_string checksum)) :: args))
         }))
   in
-  let+ downloaded = Fiber_job.run (pull label url) in
+  let+ downloaded =
+    Fiber_job.run
+    @@
+    (* hashes have to be empty otherwise OPAM deletes the file after
+       downloading if the hash does not match *)
+    let hashes = [] in
+    match url.backend, unpack with
+    | #OpamUrl.version_control, _ | _, true ->
+      let dirname = OpamFilename.Dir.of_string path in
+      let open OpamProcess.Job.Op in
+      OpamRepository.pull_tree label dirname hashes [ url ]
+      @@| (function
+      | Up_to_date _ -> OpamTypes.Up_to_date ()
+      | Result _ -> Result ()
+      | Not_available (a, b) -> Not_available (a, b))
+    | _ ->
+      let fname = OpamFilename.of_string path in
+      OpamRepository.pull_file label fname hashes [ url ]
+  in
   Dune_stats.finish event;
   match downloaded with
   | Up_to_date () | Result () ->

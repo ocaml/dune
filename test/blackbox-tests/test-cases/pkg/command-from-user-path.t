@@ -9,12 +9,12 @@ Create a directory containing a shell script and add the directory to PATH.
   > echo "Hello, World!"
   > EOF
   $ chmod a+x bin/hello
-  $ PATH=$PATH:$PWD/bin
+  $ export PATH=$PATH:$PWD/bin
 
 Create a lockdir with a lockfile that runs the shell script in a build command.
   $ make_lockdir
   $ cat >dune.lock/test.pkg <<'EOF'
-  > (build (system hello))
+  > (build (run hello))
   > EOF
 
 The build command is run from an environment including the custom PATH variable.

@@ -1,6 +1,5 @@
 (library
  (name foo)
- (libraries bytes unix findlib)
  (private_modules privmod)
  (modules privmod)
  (instrumentation

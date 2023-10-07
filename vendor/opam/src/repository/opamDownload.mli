@@ -14,6 +14,7 @@ open OpamTypes
 (** Configuration init and handling of downloading commands *)
 
 exception Download_fail of string option * string
+exception Checksum_mismatch of OpamHash.t
 
 (** downloads a file from an URL, using Curl, Wget, or a custom configured
     tool, to the given directory. Returns the downloaded filename.

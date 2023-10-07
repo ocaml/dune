@@ -100,9 +100,11 @@ let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
   let+ downloaded =
     Fiber_job.run
     @@
-    (* hashes have to be empty otherwise OPAM deletes the file after
-       downloading if the hash does not match *)
-    let hashes = [] in
+    let hashes =
+      match checksum with
+      | None -> []
+      | Some checksum -> [ Checksum.to_opam_hash checksum ]
+    in
     match url.backend, unpack with
     | #OpamUrl.version_control, _ | _, true ->
       let dirname = OpamFilename.Dir.of_string path in
@@ -110,6 +112,7 @@ let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
       OpamRepository.pull_tree label dirname hashes [ url ]
       @@| (function
       | Up_to_date _ -> OpamTypes.Up_to_date ()
+      | Checksum_mismatch e -> Checksum_mismatch e
       | Result _ -> Result ()
       | Not_available (a, b) -> Not_available (a, b))
     | _ ->
@@ -118,21 +121,13 @@ let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
   in
   Dune_stats.finish event;
   match downloaded with
-  | Up_to_date () | Result () ->
-    (match checksum with
-     | None -> Ok ()
-     | Some expected ->
-       let expected = Checksum.to_opam_hash expected in
-       (match OpamHash.mismatch path expected with
-        | None -> Ok ()
-        | Some actual ->
-          (* the file is invalid, so remove it before returning to the user *)
-          Path.unlink target;
-          Error (Checksum_mismatch (Checksum.of_opam_hash actual))))
+  | Up_to_date () | Result () -> Ok ()
   | Not_available (None, _verbose) -> Error (Unavailable None)
   | Not_available (Some normal, verbose) ->
     let msg = User_message.make [ Pp.text normal; Pp.text verbose ] in
     Error (Unavailable (Some msg))
+  | Checksum_mismatch expected ->
+    Error (Checksum_mismatch (Checksum.of_opam_hash expected))
 ;;
 
 module Opam_repository = struct

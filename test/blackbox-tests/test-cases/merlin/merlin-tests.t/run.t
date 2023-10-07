@@ -3,22 +3,27 @@
   $ ocamlfind_libs="$(ocamlfind printconf path | while read line; do printf lib=${line}:; done)"
   $ export BUILD_PATH_PREFIX_MAP="$ocamlfind_libs:$BUILD_PATH_PREFIX_MAP"
 
+We're going create a fake findlib library for use:
+
+  $ mkdir -p _findlib/publicfoo
+  $ cat >_findlib/publicfoo/META <<EOF
+  > EOF
+  $ export OCAMLPATH="$PWD/_findlib:$OCAMLPATH"
+
 CRAM sanitization
   $ dune build ./exe/.merlin-conf/exe-x --profile release
   $ dune ocaml merlin dump-config $PWD/exe
   X
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
-   (B lib/bytes)
-   (B lib/findlib)
-   (B /OCAMLC_WHERE)
+   (B
+    $TESTCASE_ROOT/_findlib/publicfoo)
    (B
     $TESTCASE_ROOT/_build/default/exe/.x.eobjs/byte)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/public_cmi)
-   (S lib/bytes)
-   (S lib/findlib)
-   (S /OCAMLC_WHERE)
+   (S
+    $TESTCASE_ROOT/_findlib/publicfoo)
    (S
     $TESTCASE_ROOT/exe)
    (S
@@ -66,14 +71,12 @@ CRAM sanitization
   Foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
-   (B lib/bytes)
-   (B lib/findlib)
-   (B /OCAMLC_WHERE)
+   (B
+    $TESTCASE_ROOT/_findlib/publicfoo)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
-   (S lib/bytes)
-   (S lib/findlib)
-   (S /OCAMLC_WHERE)
+   (S
+    $TESTCASE_ROOT/_findlib/publicfoo)
    (S
     $TESTCASE_ROOT/lib)
    (S
@@ -88,14 +91,12 @@ CRAM sanitization
   Privmod
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
-   (B lib/bytes)
-   (B lib/findlib)
-   (B /OCAMLC_WHERE)
+   (B
+    $TESTCASE_ROOT/_findlib/publicfoo)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
-   (S lib/bytes)
-   (S lib/findlib)
-   (S /OCAMLC_WHERE)
+   (S
+    $TESTCASE_ROOT/_findlib/publicfoo)
    (S
     $TESTCASE_ROOT/lib)
    (S

@@ -1,6 +1,6 @@
 (library
  (name foo)
- (libraries bytes unix findlib)
+ (libraries publicfoo)
  (private_modules privmod)
  (modules privmod)
  (preprocess (pps fooppx)))

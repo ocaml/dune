@@ -189,3 +189,9 @@ let rules ~sctx ~expander ~dir tests =
          || Package.Name.Set.(not (is_empty (inter only effective.packages))))
         test_rule)
 ;;
+
+let rules ~sctx ~expander ~dir tests =
+  match tests with
+  | [] -> Memo.return ()
+  | tests -> rules ~sctx ~expander ~dir tests
+;;

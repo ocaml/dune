@@ -134,18 +134,17 @@ let rules ~sctx ~expander ~dir tests =
         let alias =
           Alias.Name.of_string name |> Alias.Name.Set.add empty_effective.alias
         in
-        Memo.return { empty_effective with alias }
+        { empty_effective with alias }
       in
-      List.fold_left stanzas ~init ~f:(fun acc (dir, (spec : Cram_stanza.t)) ->
+      Memo.List.fold_left stanzas ~init ~f:(fun acc (dir, (spec : Cram_stanza.t)) ->
         match
           match spec.applies_to with
           | Whole_subtree -> true
           | Files_matching_in_this_dir pred ->
             Predicate_lang.Glob.test pred ~standard:Predicate_lang.true_ name
         with
-        | false -> acc
+        | false -> Memo.return acc
         | true ->
-          let* acc = acc in
           let* deps, sandbox =
             match spec.deps with
             | None -> Memo.return (acc.deps, acc.sandbox)

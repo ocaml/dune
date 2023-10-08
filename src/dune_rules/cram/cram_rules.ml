@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 module Spec = struct
   type t =
@@ -46,92 +47,107 @@ let test_rule
   ~sctx
   ~expander
   ~dir
-  (spec : Spec.t)
+  ({ alias; loc; enabled_if; deps; locks; sandbox; packages = _ } : Spec.t)
   (test : (Cram_test.t, Source_tree.Dir.error) result)
   =
-  let open Memo.O in
   let module Alias_rules = Simple_rules.Alias_rules in
-  let* enabled = Expander.eval_blang expander (Blang.And spec.enabled_if) in
-  let loc = spec.loc in
-  let aliases = Alias.Name.Set.to_list_map spec.alias ~f:(Alias.make ~dir) in
+  let aliases = Alias.Name.Set.to_list_map alias ~f:(Alias.make ~dir) in
   match test with
   | Error (Missing_run_t test) ->
     (* We error out on invalid tests even if they are disabled. *)
     Memo.parallel_iter aliases ~f:(fun alias ->
       Alias_rules.add sctx ~alias ~loc (missing_run_t test))
   | Ok test ->
-    (match enabled with
-     | false ->
-       Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add_empty sctx ~alias ~loc)
-     | true ->
-       let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
-       let script = Path.Build.append_source prefix_with (Cram_test.script test) in
-       let action =
-         Action.progn
-           [ Cram_exec.action (Path.build script)
-           ; Diff
-               { Diff.optional = true
-               ; mode = Text
-               ; file1 = Path.build script
-               ; file2 = Path.Build.extend_basename script ~suffix:".corrected"
-               }
-           ]
-       in
-       let locks = Path.Set.to_list spec.locks in
-       let cram =
-         let open Action_builder.O in
-         let+ () = Action_builder.path (Path.build script)
-         and+ () = Action_builder.all_unit spec.deps
-         and+ (_ : Path.Set.t) =
-           match test with
-           | File _ -> Action_builder.return Path.Set.empty
-           | Dir { dir; file = _ } ->
-             let deps =
-               Path.Build.append_source prefix_with dir |> Path.build |> Source_deps.files
-             in
-             Action_builder.dyn_memo_deps deps
-         in
-         Action.Full.make action ~locks ~sandbox:spec.sandbox
-       in
-       Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add sctx ~alias ~loc cram))
+    Expander.eval_blang expander (Blang.And enabled_if)
+    >>= (function
+    | false ->
+      Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add_empty sctx ~alias ~loc)
+    | true ->
+      let cram =
+        let open Action_builder.O in
+        let+ action =
+          let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
+          let script = Path.Build.append_source prefix_with (Cram_test.script test) in
+          let+ () = Action_builder.path (Path.build script)
+          and+ () = Action_builder.all_unit deps
+          and+ () =
+            match test with
+            | File _ -> Action_builder.return ()
+            | Dir { dir; file = _ } ->
+              let deps =
+                Path.Build.append_source prefix_with dir
+                |> Path.build
+                |> Source_deps.files
+              in
+              let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
+              ()
+          in
+          Action.progn
+            [ Cram_exec.action (Path.build script)
+            ; Diff
+                { Diff.optional = true
+                ; mode = Text
+                ; file1 = Path.build script
+                ; file2 = Path.Build.extend_basename script ~suffix:".corrected"
+                }
+            ]
+        in
+        let locks = Path.Set.to_list locks in
+        Action.Full.make action ~locks ~sandbox
+      in
+      Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add sctx ~alias ~loc cram))
 ;;
 
-let rules ~sctx ~expander ~dir tests =
-  let open Memo.O in
-  let* stanzas =
-    let stanzas dir ~f =
-      let+ stanzas = Only_packages.stanzas_in_dir dir in
-      match stanzas with
-      | None -> []
-      | Some (d : Dune_file.t) ->
-        List.filter_map d.stanzas ~f:(function
-          | Cram_stanza.T c -> Option.some_if (f c) (dir, c)
-          | _ -> None)
-    in
-    let rec collect_whole_subtree acc dir =
-      let* acc =
-        let+ cram =
-          stanzas dir ~f:(fun (s : Cram_stanza.t) -> s.applies_to = Whole_subtree)
-        in
-        cram :: acc
+let collect_stanzas =
+  let stanzas dir ~f =
+    let+ stanzas = Only_packages.stanzas_in_dir dir in
+    match stanzas with
+    | None -> []
+    | Some (d : Dune_file.t) ->
+      List.filter_map d.stanzas ~f:(function
+        | Cram_stanza.T c -> Option.some_if (f c) (dir, c)
+        | _ -> None)
+  in
+  let rec collect_whole_subtree acc dir =
+    let* acc =
+      let+ cram =
+        stanzas dir ~f:(fun (s : Cram_stanza.t) -> s.applies_to = Whole_subtree)
       in
-      match Path.Build.parent dir with
-      | None -> Memo.return (List.concat acc)
-      | Some dir -> collect_whole_subtree acc dir
+      cram :: acc
     in
+    match Path.Build.parent dir with
+    | None -> Memo.return (List.concat acc)
+    | Some dir -> collect_whole_subtree acc dir
+  in
+  fun ~dir ->
     let* acc = stanzas dir ~f:(fun _ -> true) in
     match Path.Build.parent dir with
     | None -> Memo.return acc
     | Some dir -> collect_whole_subtree [ acc ] dir
+;;
+
+let rules ~sctx ~expander ~dir tests =
+  let open Memo.O in
+  let* stanzas = collect_stanzas ~dir
+  and* with_package_mask =
+    Only_packages.get_mask ()
+    >>| function
+    | None -> fun _packages f -> f ()
+    | Some only ->
+      let only = Package.Name.Set.of_keys only in
+      fun packages f ->
+        Memo.when_
+          (Package.Name.Set.is_empty packages
+           || Package.Name.Set.(not (is_empty (inter only packages))))
+          f
   in
   Memo.parallel_iter tests ~f:(fun test ->
-    let name =
-      match test with
-      | Ok test -> Cram_test.name test
-      | Error (Source_tree.Dir.Missing_run_t test) -> Cram_test.name test
-    in
-    let open Memo.O in
     let* spec =
+      let name =
+        match test with
+        | Ok test -> Cram_test.name test
+        | Error (Source_tree.Dir.Missing_run_t test) -> Cram_test.name test
+      in
       let init =
         let alias = Alias.Name.of_string name |> Alias.Name.Set.add Spec.empty.alias in
         { Spec.empty with alias }
@@ -179,16 +195,7 @@ let rules ~sctx ~expander ~dir tests =
             in
             { acc with enabled_if; locks; deps; alias; packages; sandbox })
     in
-    let test_rule () = test_rule ~sctx ~expander ~dir spec test in
-    Only_packages.get_mask ()
-    >>= function
-    | None -> test_rule ()
-    | Some only ->
-      let only = Package.Name.Set.of_keys only in
-      Memo.when_
-        (Package.Name.Set.is_empty spec.packages
-         || Package.Name.Set.(not (is_empty (inter only spec.packages))))
-        test_rule)
+    with_package_mask spec.packages (fun () -> test_rule ~sctx ~expander ~dir spec test))
 ;;
 
 let rules ~sctx ~expander ~dir tests =

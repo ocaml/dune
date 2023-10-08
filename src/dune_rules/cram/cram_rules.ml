@@ -1,25 +1,27 @@
 open Import
 
-type effective =
-  { loc : Loc.t
-  ; alias : Alias.Name.Set.t
-  ; deps : unit Action_builder.t list
-  ; sandbox : Sandbox_config.t
-  ; enabled_if : Blang.t list
-  ; locks : Path.Set.t
-  ; packages : Package.Name.Set.t
-  }
+module Spec = struct
+  type t =
+    { loc : Loc.t
+    ; alias : Alias.Name.Set.t
+    ; deps : unit Action_builder.t list
+    ; sandbox : Sandbox_config.t
+    ; enabled_if : Blang.t list
+    ; locks : Path.Set.t
+    ; packages : Package.Name.Set.t
+    }
 
-let empty_effective =
-  { loc = Loc.none
-  ; alias = Alias.Name.Set.singleton Alias0.runtest
-  ; enabled_if = [ Blang.true_ ]
-  ; locks = Path.Set.empty
-  ; deps = []
-  ; sandbox = Sandbox_config.needs_sandboxing
-  ; packages = Package.Name.Set.empty
-  }
-;;
+  let empty =
+    { loc = Loc.none
+    ; alias = Alias.Name.Set.singleton Alias0.runtest
+    ; enabled_if = [ Blang.true_ ]
+    ; locks = Path.Set.empty
+    ; deps = []
+    ; sandbox = Sandbox_config.needs_sandboxing
+    ; packages = Package.Name.Set.empty
+    }
+  ;;
+end
 
 let missing_run_t (error : Cram_test.t) =
   Action_builder.fail
@@ -44,7 +46,7 @@ let test_rule
   ~sctx
   ~expander
   ~dir
-  (spec : effective)
+  (spec : Spec.t)
   (test : (Cram_test.t, Source_tree.Dir.error) result)
   =
   let open Memo.O in
@@ -129,63 +131,63 @@ let rules ~sctx ~expander ~dir tests =
       | Error (Source_tree.Dir.Missing_run_t test) -> Cram_test.name test
     in
     let open Memo.O in
-    let* effective =
+    let* spec =
       let init =
-        let alias =
-          Alias.Name.of_string name |> Alias.Name.Set.add empty_effective.alias
-        in
-        { empty_effective with alias }
+        let alias = Alias.Name.of_string name |> Alias.Name.Set.add Spec.empty.alias in
+        { Spec.empty with alias }
       in
-      Memo.List.fold_left stanzas ~init ~f:(fun acc (dir, (spec : Cram_stanza.t)) ->
-        match
-          match spec.applies_to with
-          | Whole_subtree -> true
-          | Files_matching_in_this_dir pred ->
-            Predicate_lang.Glob.test pred ~standard:Predicate_lang.true_ name
-        with
-        | false -> Memo.return acc
-        | true ->
-          let* deps, sandbox =
-            match spec.deps with
-            | None -> Memo.return (acc.deps, acc.sandbox)
-            | Some deps ->
-              let+ (deps : unit Action_builder.t), _, sandbox =
-                let+ expander = Super_context.expander sctx ~dir in
-                Dep_conf_eval.named ~expander deps
-              in
-              deps :: acc.deps, Sandbox_config.inter acc.sandbox sandbox
-          in
-          let enabled_if = spec.enabled_if :: acc.enabled_if in
-          let alias =
-            match spec.alias with
-            | None -> acc.alias
-            | Some a -> Alias.Name.Set.add acc.alias a
-          in
-          let packages =
-            match spec.package with
-            | None -> acc.packages
-            | Some (p : Package.t) ->
-              Package.Name.Set.add acc.packages (Package.Id.name p.id)
-          in
-          let+ locks =
-            (* Locks must be relative to the cram stanza directory and not
-               the individual tests directories *)
-            let base = `This (Path.build dir) in
-            Expander.expand_locks ~base expander spec.locks
-            >>| Path.Set.of_list
-            >>| Path.Set.union acc.locks
-          in
-          { acc with enabled_if; locks; deps; alias; packages; sandbox })
+      Memo.List.fold_left
+        stanzas
+        ~init
+        ~f:(fun (acc : Spec.t) (dir, (stanza : Cram_stanza.t)) ->
+          match
+            match stanza.applies_to with
+            | Whole_subtree -> true
+            | Files_matching_in_this_dir pred ->
+              Predicate_lang.Glob.test pred ~standard:Predicate_lang.true_ name
+          with
+          | false -> Memo.return acc
+          | true ->
+            let+ deps, sandbox =
+              match stanza.deps with
+              | None -> Memo.return (acc.deps, acc.sandbox)
+              | Some deps ->
+                let+ (deps : unit Action_builder.t), _, sandbox =
+                  let+ expander = Super_context.expander sctx ~dir in
+                  Dep_conf_eval.named ~expander deps
+                in
+                deps :: acc.deps, Sandbox_config.inter acc.sandbox sandbox
+            and+ locks =
+              (* Locks must be relative to the cram stanza directory and not
+                 the individual tests directories *)
+              let base = `This (Path.build dir) in
+              Expander.expand_locks ~base expander stanza.locks
+              >>| Path.Set.of_list
+              >>| Path.Set.union acc.locks
+            in
+            let enabled_if = stanza.enabled_if :: acc.enabled_if in
+            let alias =
+              match stanza.alias with
+              | None -> acc.alias
+              | Some a -> Alias.Name.Set.add acc.alias a
+            in
+            let packages =
+              match stanza.package with
+              | None -> acc.packages
+              | Some (p : Package.t) ->
+                Package.Name.Set.add acc.packages (Package.Id.name p.id)
+            in
+            { acc with enabled_if; locks; deps; alias; packages; sandbox })
     in
-    let test_rule () = test_rule ~sctx ~expander ~dir effective test in
+    let test_rule () = test_rule ~sctx ~expander ~dir spec test in
     Only_packages.get_mask ()
     >>= function
     | None -> test_rule ()
     | Some only ->
-      let only = Package.Name.Map.keys only |> Package.Name.Set.of_list in
+      let only = Package.Name.Set.of_keys only in
       Memo.when_
-        (Package.Name.Set.is_empty effective.packages
-         || Package.Name.Set.(not (is_empty (inter only effective.packages))))
+        (Package.Name.Set.is_empty spec.packages
+         || Package.Name.Set.(not (is_empty (inter only spec.packages))))
         test_rule)
 ;;
 

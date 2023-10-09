@@ -14,7 +14,7 @@ module Spec = struct
 
   let empty =
     { loc = Loc.none
-    ; alias = Alias.Name.Set.singleton Alias0.runtest
+    ; alias = Alias.Name.Set.empty
     ; enabled_if = [ Blang.true_ ]
     ; locks = Path.Set.empty
     ; deps = []
@@ -149,51 +149,97 @@ let rules ~sctx ~expander ~dir tests =
         | Error (Source_tree.Dir.Missing_run_t test) -> Cram_test.name test
       in
       let init =
-        let alias = Alias.Name.of_string name |> Alias.Name.Set.add Spec.empty.alias in
-        { Spec.empty with alias }
+        ( None
+        , let alias = Alias.Name.of_string name |> Alias.Name.Set.add Spec.empty.alias in
+          { Spec.empty with alias } )
       in
-      Memo.List.fold_left
-        stanzas
-        ~init
-        ~f:(fun (acc : Spec.t) (dir, (stanza : Cram_stanza.t)) ->
-          match
-            match stanza.applies_to with
-            | Whole_subtree -> true
-            | Files_matching_in_this_dir pred ->
-              Predicate_lang.Glob.test pred ~standard:Predicate_lang.true_ name
-          with
-          | false -> Memo.return acc
-          | true ->
-            let+ deps, sandbox =
-              match stanza.deps with
-              | None -> Memo.return (acc.deps, acc.sandbox)
-              | Some deps ->
-                let+ (deps : unit Action_builder.t), _, sandbox =
-                  let+ expander = Super_context.expander sctx ~dir in
-                  Dep_conf_eval.named ~expander deps
-                in
-                deps :: acc.deps, Sandbox_config.inter acc.sandbox sandbox
-            and+ locks =
-              (* Locks must be relative to the cram stanza directory and not
-                 the individual tests directories *)
-              let base = `This (Path.build dir) in
-              Expander.expand_locks ~base expander stanza.locks
-              >>| Path.Set.of_list
-              >>| Path.Set.union acc.locks
-            in
-            let enabled_if = stanza.enabled_if :: acc.enabled_if in
-            let alias =
-              match stanza.alias with
-              | None -> acc.alias
-              | Some a -> Alias.Name.Set.add acc.alias a
-            in
-            let packages =
-              match stanza.package with
-              | None -> acc.packages
-              | Some (p : Package.t) ->
-                Package.Name.Set.add acc.packages (Package.Id.name p.id)
-            in
-            { acc with enabled_if; locks; deps; alias; packages; sandbox })
+      let+ runtest_alias, acc =
+        Memo.List.fold_left
+          stanzas
+          ~init
+          ~f:(fun (runtest_alias, (acc : Spec.t)) (dir, (stanza : Cram_stanza.t)) ->
+            match
+              match stanza.applies_to with
+              | Whole_subtree -> true
+              | Files_matching_in_this_dir pred ->
+                Predicate_lang.Glob.test pred ~standard:Predicate_lang.true_ name
+            with
+            | false -> Memo.return (runtest_alias, acc)
+            | true ->
+              let+ deps, sandbox =
+                match stanza.deps with
+                | None -> Memo.return (acc.deps, acc.sandbox)
+                | Some deps ->
+                  let+ (deps : unit Action_builder.t), _, sandbox =
+                    let+ expander = Super_context.expander sctx ~dir in
+                    Dep_conf_eval.named ~expander deps
+                  in
+                  deps :: acc.deps, Sandbox_config.inter acc.sandbox sandbox
+              and+ locks =
+                (* Locks must be relative to the cram stanza directory and not
+                   the individual tests directories *)
+                let base = `This (Path.build dir) in
+                Expander.expand_locks ~base expander stanza.locks
+                >>| Path.Set.of_list
+                >>| Path.Set.union acc.locks
+              in
+              let runtest_alias =
+                match stanza.runtest_alias with
+                | None -> None
+                | Some (loc, set) ->
+                  (match runtest_alias with
+                   | None -> Some (loc, set)
+                   | Some (loc', _) ->
+                     let main_message =
+                       Pp.concat
+                         ~sep:Pp.newline
+                         [ Pp.text
+                             "enabling or disabling the runtest alias for a cram test \
+                              may only be set once."
+                         ; Pp.textf "It's already set for the test %S" name
+                         ]
+                     in
+                     let annots =
+                       let main = User_message.make ~loc:loc' [ main_message ] in
+                       let related =
+                         [ User_message.make ~loc [ Pp.text "Already set here" ] ]
+                       in
+                       User_message.Annots.singleton
+                         Compound_user_error.annot
+                         [ Compound_user_error.make ~main ~related ]
+                     in
+                     User_error.raise
+                       ~annots
+                       ~loc
+                       [ main_message
+                       ; Pp.text "The first definition is at:"
+                       ; Pp.text (Loc.to_file_colon_line loc')
+                       ])
+              in
+              let enabled_if = stanza.enabled_if :: acc.enabled_if in
+              let alias =
+                match stanza.alias with
+                | None -> acc.alias
+                | Some a -> Alias.Name.Set.add acc.alias a
+              in
+              let packages =
+                match stanza.package with
+                | None -> acc.packages
+                | Some (p : Package.t) ->
+                  Package.Name.Set.add acc.packages (Package.Id.name p.id)
+              in
+              ( runtest_alias
+              , { acc with enabled_if; locks; deps; alias; packages; sandbox } ))
+      in
+      let alias =
+        let to_add =
+          match runtest_alias with
+          | None | Some (_, true) -> Alias.Name.Set.singleton Alias0.runtest
+          | Some (_, false) -> Alias.Name.Set.empty
+        in
+        Alias.Name.Set.union to_add acc.alias
+      in
+      { acc with alias }
     in
     with_package_mask spec.packages (fun () -> test_rule ~sctx ~expander ~dir spec test))
 ;;

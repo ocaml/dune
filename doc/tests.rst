@@ -674,6 +674,9 @@ The ``cram`` stanza accepts the following fields:
 - ``deps`` - dependencies of the test
 - ``(package <package-name>)`` - attach the tests selected by this stanza to the
   specified package
+- ``(runtest_alias <true|false>)`` - when set to ``false``, do not add the
+  tests to the ``runtest`` alias. The default is to add every cram test to
+  ``runtest``, but this is not always desired.
 
 A single test may be configured by more than one ``cram`` stanza. In such cases,
 the values from all applicable ``cram`` stanzas are merged together to get the

@@ -553,7 +553,8 @@ let all =
           Some sctx
       in
       let* host, stanzas =
-        Memo.fork_and_join host (fun () -> Only_packages.filtered_stanzas context)
+        Memo.fork_and_join host (fun () ->
+          Only_packages.filtered_stanzas (Context.name context))
       in
       create ~host ~context ~packages ~stanzas
     in

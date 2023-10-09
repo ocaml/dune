@@ -100,7 +100,7 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
       | _ -> None))
 ;;
 
-let filtered_stanzas_by_contexts =
+let filtered_stanzas =
   let db =
     Per_context.create_by_name ~name:"filtered_stanzas"
     @@ fun context ->
@@ -116,10 +116,6 @@ let filtered_stanzas_by_contexts =
         })
   in
   fun ctx -> Staged.unstage db ctx
-;;
-
-let filtered_stanzas (context : Context.t) =
-  filtered_stanzas_by_contexts (Context.name context)
 ;;
 
 let get () =

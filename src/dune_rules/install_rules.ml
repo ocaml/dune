@@ -484,7 +484,7 @@ end = struct
 
   let stanzas_to_entries sctx =
     let ctx = Super_context.context sctx in
-    let* stanzas = Only_packages.filtered_stanzas ctx in
+    let* stanzas = Only_packages.filtered_stanzas (Context.name ctx) in
     let* packages = Only_packages.get () in
     let+ init =
       Package.Name.Map_traversals.parallel_map packages ~f:(fun _name (pkg : Package.t) ->

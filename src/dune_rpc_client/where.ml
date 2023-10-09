@@ -47,10 +47,7 @@ let to_socket = function
   | `Ip (`Host host, `Port port) -> Unix.ADDR_INET (Unix.inet_addr_of_string host, port)
 ;;
 
-let to_string = function
-  | `Unix p -> sprintf "unix://%s" p
-  | `Ip (`Host host, `Port port) -> sprintf "%s:%d" host port
-;;
+let to_string t = Dune_rpc_private.Where.to_string t
 
 let rpc_socket_file =
   let f =

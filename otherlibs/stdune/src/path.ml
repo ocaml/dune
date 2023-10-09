@@ -1184,28 +1184,6 @@ let mkdir_p ?perms = function
       (Outside_build_dir.append_local (Fdecl.get Build.build_dir) k)
 ;;
 
-let touch ?(create = true) p =
-  let p =
-    match p with
-    | External s -> External.to_string s
-    | In_source_tree s -> Local_gen.to_string s
-    | In_build_dir k ->
-      Outside_build_dir.to_string
-        (Outside_build_dir.append_local (Fdecl.get Build.build_dir) k)
-  in
-  let create =
-    if create
-    then fun () -> Unix.close (Unix.openfile p [ Unix.O_CREAT ] 0o777)
-    else Fun.id
-  in
-  try Unix.utimes p 0.0 0.0 with
-  | Unix.Unix_error (Unix.ENOENT, _, _) -> create ()
-  | Unix.Unix_error (Unix.EUNKNOWNERR 0, _, _) when Sys.win32 && not (Sys.file_exists p)
-    ->
-    (* OCaml PR#8857 *)
-    create ()
-;;
-
 let extension t =
   match t with
   | External t -> External.extension t

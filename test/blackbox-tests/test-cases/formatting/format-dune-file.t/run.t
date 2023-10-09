@@ -68,12 +68,13 @@ it gets wrapped.
     (action
      (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))
 
-In multi-line strings, newlines are escaped.
+In multi-line strings, newlines are escaped, but their syntax is not preserved.
 
   $ dune format-dune-file <<EOF
   > (echo "\> multi
   >       "\> line
   >       "\> string
+  >       "\| string
   > )
   > 
   > (echo "\
@@ -82,7 +83,7 @@ In multi-line strings, newlines are escaped.
   > string
   > ")
   > EOF
-  (echo "multi\nline\nstring\n")
+  (echo "multi\nline\nstring\nstring\n")
   
   (echo "multi\nline\nstring\n")
 

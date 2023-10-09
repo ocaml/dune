@@ -43,7 +43,7 @@ Now we create another project with the same contents.
 
   $ cd ..
   $ mkdir b
-  $ cp -t b a/dune-project a/dune a/create.sh
+  $ cp a/dune-project a/dune a/create.sh b/
   $ cd b
 
 When building, we expect to restore from cache. So the message should not be

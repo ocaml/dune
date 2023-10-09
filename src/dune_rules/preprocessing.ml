@@ -323,7 +323,10 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
              let+ driver, _ = driver_and_libs in
              sprintf "let () = %s ()\n" driver.info.main)))
   in
-  let linkages = [ Exe.Linkage.native_or_custom (Context.ocaml ctx) ] in
+  let* linkages =
+    let+ ocaml = Context.ocaml ctx in
+    [ Exe.Linkage.native_or_custom ocaml ]
+  in
   let program : Exe.Program.t =
     { name = Filename.remove_extension (Path.Build.basename target)
     ; main_module_name
@@ -789,12 +792,10 @@ let make
   ~scope
   =
   let preprocessor_deps = preprocessor_deps @ instrumentation_deps in
+  let+ ocaml = Context.ocaml (Super_context.context sctx) in
   let preprocess =
     Module_name.Per_item.map preprocess ~f:(fun pp ->
-      Preprocess.remove_future_syntax
-        ~for_:Compiler
-        pp
-        (Super_context.context sctx |> Context.ocaml).version)
+      Preprocess.remove_future_syntax ~for_:Compiler pp ocaml.version)
   in
   let preprocessor_deps, sandbox = Dep_conf_eval.unnamed preprocessor_deps ~expander in
   let sandbox =

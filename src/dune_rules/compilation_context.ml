@@ -161,7 +161,7 @@ let create
     Option.value ~default modes |> Lib_mode.Map.map ~f:Option.is_some
   in
   let context = Super_context.context super_context in
-  let ocaml = Context.ocaml context in
+  let* ocaml = Context.ocaml context in
   let opaque =
     let profile = Context.profile context in
     eval_opaque ocaml profile opaque

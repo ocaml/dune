@@ -111,12 +111,15 @@ end = struct
   ;;
 
   let dll_files ~(modes : Mode.Dict.Set.t) ~dynlink ~(ctx : Context.t) lib =
-    (match
-       modes.byte
-       && Dynlink_supported.get_ocaml_config dynlink (Context.ocaml ctx).ocaml_config
-     with
+    (match modes.byte with
      | false -> Memo.return false
-     | true -> Context.dynamically_linked_foreign_archives ctx)
+     | true ->
+       let+ ocaml = Context.ocaml ctx
+       and+ dynamically_linked_foreign_archives =
+         Context.dynamically_linked_foreign_archives ctx
+       in
+       Dynlink_supported.get_ocaml_config dynlink ocaml.ocaml_config
+       && dynamically_linked_foreign_archives)
     >>| function
     | false -> []
     | true -> Lib_info.foreign_dll_files lib
@@ -132,7 +135,10 @@ end = struct
     =
     let loc = lib.buildable.loc in
     let ctx = Super_context.context sctx in
-    let lib_config = (Context.ocaml ctx).lib_config in
+    let* lib_config =
+      let+ ocaml = Context.ocaml ctx in
+      ocaml.lib_config
+    in
     let* info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
     let make_entry =
       let in_sub_dir = function
@@ -637,11 +643,13 @@ end = struct
                actually only install them for virtual libraries. See
                [Lib_archives.make] *)
             let dir = Obj_dir.obj_dir obj_dir in
+            let* ext_obj =
+              let+ ocaml = Context.ocaml ctx in
+              ocaml.lib_config.ext_obj
+            in
             let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
             Foreign_sources.for_lib ~name foreign_sources
-            |> Foreign.Sources.object_files
-                 ~dir
-                 ~ext_obj:(Context.ocaml ctx).lib_config.ext_obj
+            |> Foreign.Sources.object_files ~dir ~ext_obj
             |> List.map ~f:Path.build
           and* modules =
             Dir_contents.ocaml dir_contents >>| Ml_sources.modules ~for_:(Library name)

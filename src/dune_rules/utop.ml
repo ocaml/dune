@@ -156,7 +156,7 @@ let setup sctx ~dir =
     then Preprocess.No_preprocessing
     else Preprocess.Pps { loc = Loc.none; pps; flags = []; staged = false }
   in
-  let preprocessing =
+  let* preprocessing =
     let preprocess = Module_name.Per_item.for_all pps in
     Preprocessing.make
       sctx

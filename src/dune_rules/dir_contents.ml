@@ -290,7 +290,10 @@ end = struct
 
   let get0_impl (sctx, dir) : result0 Memo.t =
     let ctx = Super_context.context sctx in
-    let lib_config = (Super_context.context sctx |> Context.ocaml).lib_config in
+    let* lib_config =
+      let+ ocaml = Context.ocaml ctx in
+      ocaml.lib_config
+    in
     let* status = Dir_status.DB.get ~dir in
     let human_readable_description () =
       Pp.textf
@@ -349,11 +352,11 @@ end = struct
                      ; mlds = Memo.lazy_ (fun () -> build_mlds_map d.stanzas ~dir ~files)
                      ; foreign_sources =
                          Memo.lazy_ (fun () ->
-                           Foreign_sources.make
-                             d.stanzas
-                             ~dune_version
-                             ~lib_config:(Context.ocaml ctx).lib_config
-                             ~dirs
+                           let* lib_config =
+                             let+ ocaml = Context.ocaml ctx in
+                             ocaml.lib_config
+                           in
+                           Foreign_sources.make d.stanzas ~dune_version ~lib_config ~dirs
                            |> Memo.return)
                      ; coq =
                          Memo.lazy_ (fun () ->
@@ -416,10 +419,11 @@ end = struct
           let dune_version = Dune_project.dune_version d.project in
           let foreign_sources =
             Memo.lazy_ (fun () ->
+              let* ocaml = Context.ocaml ctx in
               Foreign_sources.make
                 d.stanzas
                 ~dune_version
-                ~lib_config:(Context.ocaml ctx).lib_config
+                ~lib_config:ocaml.lib_config
                 ~dirs
               |> Memo.return)
           in

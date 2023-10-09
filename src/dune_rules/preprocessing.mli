@@ -17,7 +17,7 @@ val make
   -> instrumentation_deps:Dep_conf.t list
   -> lib_name:Lib_name.Local.t option
   -> scope:Scope.t
-  -> Pp_spec.t
+  -> Pp_spec.t Memo.t
 
 (** Get a path to a cached ppx driver with some extra flags for cookies. *)
 val get_ppx_driver

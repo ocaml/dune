@@ -462,12 +462,9 @@ module Unprocessed = struct
   let pp_flags sctx ~expander lib_name preprocess
     : Processed.pp_flag option Action_builder.t
     =
-    match
-      Preprocess.remove_future_syntax
-        preprocess
-        ~for_:Merlin
-        (Super_context.context sctx |> Context.ocaml).version
-    with
+    let open Action_builder.O in
+    let* ocaml = Action_builder.of_memo (Context.ocaml (Super_context.context sctx)) in
+    match Preprocess.remove_future_syntax preprocess ~for_:Merlin ocaml.version with
     | Action (loc, (action : Dune_lang.Action.t)) ->
       pp_flag_of_action ~expander ~loc ~action
     | No_preprocessing -> Action_builder.return None

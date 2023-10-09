@@ -86,7 +86,7 @@ type builder =
 and t =
   { kind : Kind.t
   ; build_dir : Path.Build.t
-  ; ocaml : Ocaml_toolchain.t
+  ; ocaml : Ocaml_toolchain.t Memo.t
   ; findlib_paths : Path.t list Memo.Lazy.t
   ; default_ocamlpath : Path.t list Memo.Lazy.t
   ; build_context : Build_context.t
@@ -176,12 +176,10 @@ let findlib_toolchain t = t.builder.findlib_toolchain
 let env_nodes t = t.builder.env_nodes
 
 let dynamically_linked_foreign_archives t =
-  Memo.return
-  @@
   match t.builder.dynamically_linked_foreign_archives with
-  | false -> false
+  | false -> Memo.return false
   | true ->
-    let ocaml = ocaml t in
+    let+ ocaml = ocaml t in
     Ocaml_config.supports_shared_libraries ocaml.ocaml_config
 ;;
 
@@ -214,14 +212,7 @@ let to_dyn t : Dyn.t =
           (Option.map t.builder.for_host ~f:(fun t -> t.builder.name)) )
     ; "fdo_target_exe", option path t.builder.fdo_target_exe
     ; "build_dir", Path.Build.to_dyn t.build_dir
-    ; "ocaml_bin", path t.ocaml.bin_dir
-    ; "ocaml", Action.Prog.to_dyn t.ocaml.ocaml
-    ; "ocamlc", path t.ocaml.ocamlc
-    ; "ocamlopt", Action.Prog.to_dyn t.ocaml.ocamlopt
-    ; "ocamldep", Action.Prog.to_dyn t.ocaml.ocamldep
-    ; "ocamlmklib", Action.Prog.to_dyn t.ocaml.ocamlmklib
     ; "installed_env", Env.to_dyn (Env.diff t.builder.env Env.initial)
-    ; "ocaml_config", Ocaml_config.to_dyn t.ocaml.ocaml_config
     ; "instrument_with", (list Lib_name.to_dyn) t.builder.instrument_with
     ]
 ;;
@@ -424,31 +415,37 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
     in
     Findlib_config.discover_from_env ~env:builder.env ~which ~ocamlpath ~findlib_toolchain
   in
-  let* ocaml, build_env_kind =
-    let toolchain kind =
-      let+ toolchain =
-        Ocaml_toolchain.of_env_with_findlib builder.name builder.env findlib ~which
+  let ocaml_and_build_env_kind =
+    Memo.Lazy.create (fun () ->
+      let+ ocaml, env =
+        let toolchain kind =
+          let+ toolchain =
+            Ocaml_toolchain.of_env_with_findlib builder.name builder.env findlib ~which
+          in
+          toolchain, kind
+        in
+        match kind with
+        | Default -> toolchain `Default
+        | Opam _ -> toolchain `Opam
+        | Lock _ ->
+          Pkg_rules.ocaml_toolchain builder.name
+          >>= (function
+          | None -> toolchain `Lock
+          | Some toolchain ->
+            let+ toolchain, _ = Action_builder.run toolchain Eager in
+            toolchain, `Default)
       in
-      toolchain, kind
-    in
-    match kind with
-    | Default -> toolchain `Default
-    | Opam _ -> toolchain `Opam
-    | Lock _ ->
-      Pkg_rules.ocaml_toolchain builder.name
-      >>= (function
-      | None -> toolchain `Lock
-      | Some toolchain ->
-        let+ toolchain, _ = Action_builder.run toolchain Eager in
-        toolchain, `Default)
+      Ocaml_toolchain.register_response_file_support ocaml;
+      if Option.is_some builder.fdo_target_exe
+      then Ocaml_toolchain.check_fdo_support ocaml builder.name;
+      ocaml, env)
   in
   let default_ocamlpath =
     Memo.Lazy.create ~name:"default_ocamlpath" ~cutoff:(List.equal Path.equal) (fun () ->
-      Memo.return
-      @@
+      let+ ocaml, kind = Memo.Lazy.force ocaml_and_build_env_kind in
       let default_ocamlpath =
         Build_environment_kind.query
-          ~kind:build_env_kind
+          ~kind
           ~findlib_toolchain:builder.findlib_toolchain
           ~env:builder.env
         |> Build_environment_kind.findlib_paths ~findlib ~ocaml_bin:ocaml.bin_dir
@@ -468,21 +465,14 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
     in
     { builder with env = installed_env }
   in
-  if Option.is_some builder.fdo_target_exe
-  then Ocaml_toolchain.check_fdo_support ocaml builder.name;
-  let builder =
-    let dynamically_linked_foreign_archives =
-      Ocaml_config.supports_shared_libraries ocaml.ocaml_config
-      && builder.dynamically_linked_foreign_archives
-    in
-    { builder with dynamically_linked_foreign_archives }
-  in
-  Ocaml_toolchain.register_response_file_support ocaml;
   Memo.return
     { kind
     ; builder
     ; build_dir = Context_name.build_dir builder.name
-    ; ocaml
+    ; ocaml =
+        Memo.of_thunk (fun () ->
+          let+ ocaml, _ = Memo.Lazy.force ocaml_and_build_env_kind in
+          ocaml)
     ; findlib_paths =
         Memo.Lazy.create (fun () ->
           let+ default_ocamlpath = Memo.Lazy.force default_ocamlpath in

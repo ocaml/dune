@@ -1802,11 +1802,14 @@ module DB = struct
 
   let installed (context : Context.t) =
     let open Memo.O in
-    let+ findlib = Findlib.create (Context.name context) in
+    let+ lib_config =
+      let+ ocaml = Context.ocaml context in
+      ocaml.lib_config
+    and+ findlib = Findlib.create (Context.name context) in
     create_from_findlib
       findlib
       ~instrument_with:(Context.instrument_with context)
-      ~lib_config:(Context.ocaml context).lib_config
+      ~lib_config
   ;;
 
   let find t name =

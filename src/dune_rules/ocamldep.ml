@@ -78,6 +78,8 @@ let deps_of
   let ocamldep_output = dep (Immediate (unit, ml_kind)) in
   let open Memo.O in
   let* () =
+    (* perhaps delay this further? *)
+    let* ocaml = Context.ocaml context in
     Super_context.add_rule
       sctx
       ~dir
@@ -86,7 +88,7 @@ let deps_of
          Option.value (Module.pp_flags unit) ~default:(Action_builder.return [], sandbox)
        in
        Command.run
-         (Context.ocaml context).ocamldep
+         ocaml.ocamldep
          ~dir:(Path.build (Context.build_dir context))
          ~stdout_to:ocamldep_output
          [ A "-modules"

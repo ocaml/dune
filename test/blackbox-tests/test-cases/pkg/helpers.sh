@@ -47,6 +47,14 @@ solve_project() {
   dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
 }
 
+solve_project_translate_opam_filters() {
+  cat >dune-project
+  dune pkg lock \
+    --dont-poll-system-solver-variables \
+    --opam-repository-path=mock-opam-repository \
+    --experimental-translate-opam-filters
+}
+
 make_lockdir() {
   mkdir dune.lock
   cat >dune.lock/lock.dune <<EOF
@@ -55,12 +63,20 @@ make_lockdir() {
 EOF
 }
 
-solve() {
-  solve_project <<EOF
+make_project() {
+  cat <<EOF
 (lang dune 3.11)
  (package
   (name x)
   (allow_empty)
   (depends $@))
 EOF
+}
+
+solve() {
+  make_project $@ | solve_project
+}
+
+solve_translate_opam_filters() {
+  make_project $@ | solve_project_translate_opam_filters
 }

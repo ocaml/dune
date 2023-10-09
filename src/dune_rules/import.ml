@@ -86,6 +86,7 @@ include struct
   module Outputs = Action.Outputs
   module Value = Value
   module Blang = Blang
+  module Slang = Slang
   module Binary_kind = Binary_kind
   module Visibility = Visibility
   module Dep_conf = Dep_conf

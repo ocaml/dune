@@ -89,7 +89,7 @@ module Env_update : sig
 end
 
 type t =
-  | Run of String_with_vars.t * String_with_vars.t list
+  | Run of Slang.t list
   | With_accepted_exit_codes of int Predicate_lang.t * t
   | Dynamic_run of String_with_vars.t * String_with_vars.t list
   | Chdir of String_with_vars.t * t
@@ -118,7 +118,7 @@ type t =
   | Patch of String_with_vars.t
   | Substitute of String_with_vars.t * String_with_vars.t
   | Withenv of String_with_vars.t Env_update.t list * t
-  | When of Blang.t * t
+  | When of Slang.blang * t
 
 val encode : t Encoder.t
 val decode_dune_file : t Decoder.t

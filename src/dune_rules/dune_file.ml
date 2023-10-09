@@ -1912,13 +1912,13 @@ module Rule = struct
           ( loc
           , Chdir
               ( S.virt_pform __POS__ (Var Workspace_root)
-              , Run
-                  ( S.virt_text __POS__ "ocamllex"
-                  , [ S.virt_text __POS__ "-q"
-                    ; S.virt_text __POS__ "-o"
-                    ; S.virt_pform __POS__ (Var Targets)
-                    ; S.virt_pform __POS__ (Var Deps)
-                    ] ) ) )
+              , Dune_lang.Action.run
+                  (S.virt_text __POS__ "ocamllex")
+                  [ S.virt_text __POS__ "-q"
+                  ; S.virt_text __POS__ "-o"
+                  ; S.virt_pform __POS__ (Var Targets)
+                  ; S.virt_pform __POS__ (Var Deps)
+                  ] ) )
       ; mode
       ; patch_back_source_tree = false
       ; locks = []
@@ -1946,8 +1946,9 @@ module Rule = struct
           ( loc
           , Chdir
               ( S.virt_pform __POS__ (Var Workspace_root)
-              , Run (S.virt_text __POS__ "ocamlyacc", [ S.virt_pform __POS__ (Var Deps) ])
-              ) )
+              , Dune_lang.Action.run
+                  (S.virt_text __POS__ "ocamlyacc")
+                  [ S.virt_pform __POS__ (Var Deps) ] ) )
       ; mode
       ; patch_back_source_tree = false
       ; locks = []

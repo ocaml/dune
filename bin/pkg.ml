@@ -361,6 +361,7 @@ module Lock = struct
     ~opam_repository_path
     ~opam_repository_url
     ~sys_bindings_from_current_system
+    ~experimental_translate_opam_filters
     =
     let open Fiber.O in
     Per_context.check_for_dup_lock_dir_paths per_context;
@@ -412,7 +413,8 @@ module Lock = struct
                    solver_env
                    version_preference
                    repos
-                   ~local_packages)
+                   ~local_packages
+                   ~experimental_translate_opam_filters)
            with
            | Error (`Diagnostic_message message) -> Error (context_name, message)
            | Ok { Dune_pkg.Opam_solver.Solver_result.summary; lock_dir; files } ->
@@ -449,6 +451,7 @@ module Lock = struct
     ~version_preference
     ~opam_repository_path
     ~opam_repository_url
+    ~experimental_translate_opam_filters
     =
     let open Fiber.O in
     let* per_context =
@@ -466,6 +469,7 @@ module Lock = struct
       ~opam_repository_path
       ~opam_repository_url
       ~sys_bindings_from_current_system
+      ~experimental_translate_opam_filters
   ;;
 
   let term =
@@ -492,6 +496,17 @@ module Lock = struct
                \"undefined\" which is treated as false. For example if a dependency has \
                a filter `{os = \"linux\"}` and the variable \"os\" is unset, the \
                dependency will be excluded. ")
+    and+ experimental_translate_opam_filters =
+      Arg.(
+        value
+        & flag
+        & info
+            [ "experimental-translate-opam-filters" ]
+            ~doc:
+              "Translate Opam filters into Dune's \"Slang\" DSL. This will eventually be \
+               enabled by default but is currently opt-in as we expect to make major \
+               changes to it in the future. Without this flag all conditional commands \
+               and terms in Opam files are included unconditionally.")
     in
     let common = Common.forbid_builds common in
     let config = Common.init common in
@@ -502,7 +517,8 @@ module Lock = struct
         ~dont_poll_system_solver_variables
         ~version_preference
         ~opam_repository_path
-        ~opam_repository_url)
+        ~opam_repository_url
+        ~experimental_translate_opam_filters)
   ;;
 
   let info =

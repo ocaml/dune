@@ -146,7 +146,7 @@ module Env_update = struct
 end
 
 type t =
-  | Run of String_with_vars.t * String_with_vars.t list
+  | Run of Slang.t list
   | With_accepted_exit_codes of int Predicate_lang.t * t
   | Dynamic_run of String_with_vars.t * String_with_vars.t list
   | Chdir of String_with_vars.t * t
@@ -175,7 +175,7 @@ type t =
   | Patch of String_with_vars.t
   | Substitute of String_with_vars.t * String_with_vars.t
   | Withenv of String_with_vars.t Env_update.t list * t
-  | When of Blang.t * t
+  | When of Slang.blang * t
 
 let is_dev_null t = String_with_vars.is_pform t (Var Dev_null)
 
@@ -259,9 +259,13 @@ let sw = String_with_vars.decode
 let cstrs_dune_file t =
   let open Decoder in
   [ ( "run"
-    , let+ prog = sw
-      and+ args = repeat sw in
-      Run (prog, args) )
+    , let+ args =
+        (* Although a single [Slang.t] evaluates to a list of strings, individual
+           terms of the command are represented by individual [Slang.t]s, hence
+           the [repeat] below. *)
+        repeat Slang.decode
+      in
+      Run args )
   ; "with-accepted-exit-codes", decode_with_accepted_exit_codes t
   ; ( "dynamic-run"
     , Syntax.since Action_plugin.syntax (0, 1)
@@ -378,7 +382,7 @@ let decode_pkg =
             Withenv (ops, t) )
     ; ( "when"
       , Syntax.since Stanza.syntax (0, 1)
-        >>> let+ condition = Blang.decode
+        >>> let+ condition = Slang.decode_blang
             and+ action = t in
             When (condition, action) )
     ]
@@ -389,7 +393,7 @@ let decode_pkg =
 let rec encode =
   let sw = String_with_vars.encode in
   function
-  | Run (a, xs) -> List (atom "run" :: sw a :: List.map xs ~f:sw)
+  | Run xs -> List (atom "run" :: List.map xs ~f:Slang.encode)
   | With_accepted_exit_codes (pred, t) ->
     List
       [ atom "with-accepted-exit-codes"
@@ -437,7 +441,7 @@ let rec encode =
   | Withenv (ops, t) ->
     List [ atom "withenv"; List (List.map ~f:Env_update.encode ops); encode t ]
   | When (condition, action) ->
-    List [ atom "when"; Blang.encode condition; encode action ]
+    List [ atom "when"; Slang.encode_blang condition; encode action ]
 ;;
 
 (* In [Action_exec] we rely on one-to-one mapping between the cwd-relative paths
@@ -502,9 +506,48 @@ let rec blang_map_string_with_vars ~f = function
   | Compare (op, a, b) -> Compare (op, f a, f b)
 ;;
 
+let rec slang_map_string_with_vars ~f = function
+  | Slang.Nil -> Slang.Nil
+  | Literal sw -> Literal (f sw)
+  | Form (loc, form) ->
+    let form =
+      match form with
+      | Slang.Concat ts -> Slang.Concat (List.map ts ~f:(slang_map_string_with_vars ~f))
+      | When (condition, t) ->
+        When
+          ( blang_map_string_with_vars condition ~f:(slang_map_string_with_vars ~f)
+          , slang_map_string_with_vars t ~f )
+      | If { condition; then_; else_ } ->
+        If
+          { condition =
+              blang_map_string_with_vars condition ~f:(slang_map_string_with_vars ~f)
+          ; then_ = slang_map_string_with_vars then_ ~f
+          ; else_ = slang_map_string_with_vars else_ ~f
+          }
+      | Has_undefined_var t -> Has_undefined_var (slang_map_string_with_vars t ~f)
+      | Catch_undefined_var { value; fallback } ->
+        Catch_undefined_var
+          { value = slang_map_string_with_vars value ~f
+          ; fallback = slang_map_string_with_vars fallback ~f
+          }
+      | And_absorb_undefined_var blangs ->
+        And_absorb_undefined_var
+          (List.map
+             blangs
+             ~f:(blang_map_string_with_vars ~f:(slang_map_string_with_vars ~f)))
+      | Or_absorb_undefined_var blangs ->
+        Or_absorb_undefined_var
+          (List.map
+             blangs
+             ~f:(blang_map_string_with_vars ~f:(slang_map_string_with_vars ~f)))
+      | Blang b -> Blang (blang_map_string_with_vars b ~f:(slang_map_string_with_vars ~f))
+    in
+    Form (loc, form)
+;;
+
 let rec map_string_with_vars t ~f =
   match t with
-  | Run (sw, xs) -> Run (f sw, List.map ~f xs)
+  | Run xs -> Run (List.map ~f:(slang_map_string_with_vars ~f) xs)
   | With_accepted_exit_codes (lang, t) ->
     With_accepted_exit_codes (lang, map_string_with_vars t ~f)
   | Dynamic_run (sw, sws) -> Dynamic_run (f sw, List.map sws ~f)
@@ -535,7 +578,9 @@ let rec map_string_with_vars t ~f =
       ( List.map ops ~f:(fun (op : _ Env_update.t) -> { op with value = f op.value })
       , map_string_with_vars t ~f )
   | When (condition, t) ->
-    When (blang_map_string_with_vars condition ~f, map_string_with_vars t ~f)
+    When
+      ( blang_map_string_with_vars condition ~f:(slang_map_string_with_vars ~f)
+      , map_string_with_vars t ~f )
 ;;
 
 let remove_locs = map_string_with_vars ~f:String_with_vars.remove_locs
@@ -561,4 +606,4 @@ let decode_pkg = make_decode decode_pkg
 let to_dyn a = to_dyn (encode a)
 let equal x y = Poly.equal x y
 let chdir dir t = Chdir (dir, t)
-let run prog args = Run (prog, args)
+let run prog args = Run (Slang.Literal prog :: List.map args ~f:(fun x -> Slang.Literal x))

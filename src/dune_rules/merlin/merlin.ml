@@ -421,16 +421,21 @@ module Unprocessed = struct
   let pp_flag_of_action ~expander ~loc ~action : Processed.pp_flag option Action_builder.t
     =
     match (action : Dune_lang.Action.t) with
-    | Run (exe, args) ->
+    | Run args ->
       (match
          let open Option.O in
          let* args, input_file = List.destruct_last args in
-         if String_with_vars.is_pform input_file (Var Input_file) then Some args else None
+         match input_file with
+         | Slang.Literal input_file ->
+           if String_with_vars.is_pform input_file (Var Input_file)
+           then Some args
+           else None
+         | _ -> None
        with
        | None -> Action_builder.return None
        | Some args ->
          let action =
-           let action = Action_unexpanded.Run (exe, args) in
+           let action = Action_unexpanded.Run args in
            let chdir = Expander.context expander |> Context.build_dir in
            Action_unexpanded.expand_no_targets
              ~loc

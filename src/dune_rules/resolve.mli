@@ -140,6 +140,7 @@ val push_stack_frame
 val all : 'a t list -> 'a list t
 
 module List : sig
+  val all : 'a t list -> 'a list t
   val map : 'a list -> f:('a -> 'b t) -> 'b list t
   val filter_map : 'a list -> f:('a -> 'b option t) -> 'b list t
   val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t

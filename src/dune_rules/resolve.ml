@@ -98,6 +98,7 @@ let push_stack_frame ~human_readable_description:f t =
 ;;
 
 module List = struct
+  let all = Result.List.all
   let map = Result.List.map
   let filter_map = Result.List.filter_map
   let concat_map = Result.List.concat_map

@@ -23,10 +23,7 @@ Check that the version guard is correct.
   > (using cinaps 1.3)
   > EOF
 
-  $ dune build --verbose @cinaps
-  Shared cache: disabled
-  Workspace root:
-  $TESTCASE_ROOT
+  $ dune build @cinaps
   File "dune-project", line 2, characters 14-17:
   2 | (using cinaps 1.3)
                     ^^^
@@ -41,10 +38,7 @@ Check that the version guard is correct.
   > (using cinaps 1.2)
   > EOF
 
-  $ dune build --verbose @cinaps
-  Shared cache: disabled
-  Workspace root:
-  $TESTCASE_ROOT
+  $ dune build @cinaps
   File "dune", line 3, characters 1-22:
   3 |  (link_flags -linkall))
        ^^^^^^^^^^^^^^^^^^^^^

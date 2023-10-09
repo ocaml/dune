@@ -1,3 +1,10 @@
+3.11.1 (2023-10-09)
+-------------------
+
+- Fix `dune rpc` commands on Windows (#8806, fixes #8799, @nojb)
+
+- Fix `inline_tests` when the partition list is empty (#8849, fixes #8848, @hhugo)
+
 3.11.0 (2023-09-22)
 -------------------
 

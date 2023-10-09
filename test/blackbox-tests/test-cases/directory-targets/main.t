@@ -323,14 +323,6 @@ since the produced directory has the same contents.
   b:
   new-b
 
-There is no shared cache support for directory targets at the moment, which is
-why we rerun the first action.
-
-  $ dune_cmd wait-for-fs-clock-to-advance
-  $ rm _build/default/output/a
-  $ dune build contents
-  running
-
 Check that Dune clears stale files from directory targets.
 
   $ cat > dune <<EOF

@@ -366,7 +366,6 @@ val rm_rf : ?allow_external:bool -> t -> unit
 val clear_dir : t -> Fpath.clear_dir_result
 
 val mkdir_p : ?perms:int -> t -> unit
-val touch : ?create:bool -> t -> unit
 val build_dir_exists : unit -> bool
 val ensure_build_dir_exists : unit -> unit
 val source : Source.t -> t

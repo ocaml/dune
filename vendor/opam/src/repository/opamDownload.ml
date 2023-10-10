@@ -15,6 +15,7 @@ open OpamProcess.Job.Op
 let log fmt = OpamConsole.log "CURL" fmt
 
 exception Download_fail of string option * string
+exception Checksum_mismatch of OpamHash.t
 let fail (s,l) = raise (Download_fail (s,l))
 
 let user_agent =
@@ -162,10 +163,9 @@ let really_download
   if validate &&
      OpamRepositoryConfig.(!r.force_checksums <> Some false) then
     OpamStd.Option.iter (fun cksum ->
-        if not (OpamHash.check_file tmp_dst cksum) then
-          fail (Some "Bad checksum",
-                    Printf.sprintf "Bad checksum, expected %s"
-                      (OpamHash.to_string cksum)))
+        match OpamHash.mismatch tmp_dst cksum with
+        | None -> ()
+        | Some cksum -> raise (Checksum_mismatch cksum))
       checksum;
   OpamSystem.mv tmp_dst dst;
   Done ()

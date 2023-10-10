@@ -98,7 +98,7 @@ module Artifacts = struct
      the result is [Error] with the corresponding exception. Otherwise, the
      result is [Ok ()]. *)
   let store_targets_to ~temp_dir ~targets ~mode : unit Or_exn.t =
-    let portable_hard_link_or_copy =
+    let portable_hardlink_or_copy =
       match (mode : Dune_cache_storage.Mode.t) with
       | Hardlink -> Io.portable_hardlink
       | Copy -> fun ~src ~dst -> Io.copy_file ~src ~dst ()
@@ -107,7 +107,7 @@ module Artifacts = struct
       let path_in_build_dir = Path.build path in
       let path_in_temp_dir = Path.relative temp_dir (Path.basename path_in_build_dir) in
       Result.try_with (fun () ->
-        portable_hard_link_or_copy ~src:path_in_build_dir ~dst:path_in_temp_dir))
+        portable_hardlink_or_copy ~src:path_in_build_dir ~dst:path_in_temp_dir))
   ;;
 
   (* Step II of [store_skipping_metadata].

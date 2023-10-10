@@ -845,12 +845,13 @@ module DB = struct
   let get context =
     let+ all = Lock_dir.get context in
     let system_provided =
-      if Env.mem Env.initial ~var:"DUNE_PKG_OVERRIDE_OCAML"
-      then (
-        match all.ocaml with
-        | None -> Package.Name.Set.singleton ocaml_package_name
-        | Some (_, name) -> Package.Name.Set.singleton name)
-      else Package.Name.Set.empty
+      let base = Package.Name.Set.singleton (Package.Name.of_string "dune") in
+      match Env.mem Env.initial ~var:"DUNE_PKG_OVERRIDE_OCAML" with
+      | false -> base
+      | true ->
+        (match all.ocaml with
+         | None -> Package.Name.Set.add base ocaml_package_name
+         | Some (_, name) -> Package.Name.Set.singleton name)
     in
     { all = all.packages; system_provided }
   ;;

@@ -95,14 +95,16 @@ module Error = struct
      [dune] file, a dependency path should be used to explain how dune came to
      consider the library that triggered the error. *)
 
-  let make ?loc ?hints paragraphs =
-    Resolve.Memo.fail
+  let make_resolve ?loc ?hints paragraphs =
+    Resolve.fail
       (User_error.make
          ?loc
          ?hints
          paragraphs
          ~annots:(User_message.Annots.singleton User_message.Annots.needs_stack_trace ()))
   ;;
+
+  let make ?loc ?hints paragraphs = Memo.return @@ make_resolve ?loc ?hints paragraphs
 
   let pp_lib info =
     let name = Lib_info.name info in
@@ -213,7 +215,7 @@ module Error = struct
 
   let only_ppx_deps_allowed ~loc dep =
     let name = Lib_info.name dep in
-    make
+    make_resolve
       ~loc
       [ Pp.textf
           "Ppx dependency on a non-ppx library %S. If %S is in fact a ppx rewriter \
@@ -380,6 +382,7 @@ module Status = struct
     | Not_found
     | Hidden of lib Hidden.t
     | Invalid of User_message.t
+    | Ignore
 
   let to_dyn t =
     let open Dyn in
@@ -389,6 +392,7 @@ module Status = struct
     | Hidden { lib = _; path; reason } ->
       variant "Hidden" [ Path.to_dyn path; string reason ]
     | Found t -> variant "Found" [ to_dyn t ]
+    | Ignore -> variant "Ignore" []
   ;;
 end
 
@@ -405,6 +409,7 @@ and resolve_result =
   | Found of Lib_info.external_
   | Hidden of Lib_info.external_ Hidden.t
   | Invalid of User_message.t
+  | Ignore
   | (* Redirect (None, lib) looks up lib in the same database *)
     Redirect of
       db option * (Loc.t * Lib_name.t)
@@ -809,7 +814,7 @@ module rec Resolve_names : sig
     :  db
     -> Loc.t * Lib_name.t
     -> private_deps:private_deps
-    -> lib Resolve.Memo.t
+    -> lib Resolve.t option Memo.t
 
   val resolve_name : db -> Lib_name.t -> Status.t Memo.t
   val available_internal : db -> Lib_name.t -> bool Memo.t
@@ -877,11 +882,23 @@ end = struct
       | Public (_, _) -> From_same_project `Public
     in
     let resolve name = resolve_dep db name ~private_deps in
+    let resolve_forbid_ignore ((loc, _) as name) =
+      resolve name
+      >>| function
+      | Some x -> x
+      | None ->
+        User_error.raise
+          ~loc
+          [ Pp.text
+              "librarys does not exist but is automatically provided. It cannot be used \
+               in this position"
+          ]
+    in
     let* resolved =
       let open Resolve.Memo.O in
       let* pps =
         let instrumentation_backend =
-          instrumentation_backend db.instrument_with resolve
+          instrumentation_backend db.instrument_with resolve_forbid_ignore
         in
         Lib_info.preprocess info
         |> Preprocess.Per_module.with_instrumentation ~instrumentation_backend
@@ -898,7 +915,7 @@ end = struct
       | Some ((loc, _) as name) ->
         let res =
           let open Resolve.Memo.O in
-          let* vlib = resolve name in
+          let* vlib = resolve_forbid_ignore name in
           let virtual_ = Lib_info.virtual_ vlib.info in
           match virtual_ with
           | None -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
@@ -933,7 +950,7 @@ end = struct
     in
     let resolve_impl impl_name =
       let open Resolve.Memo.O in
-      let* impl = resolve impl_name in
+      let* impl = resolve_forbid_ignore impl_name in
       let* vlib =
         match impl.implements with
         | Some vlib -> Memo.return vlib
@@ -1027,7 +1044,11 @@ end = struct
          ; sub_systems =
              Sub_system_name.Map.mapi (Lib_info.sub_systems info) ~f:(fun name info ->
                Memo.Lazy.create (fun () ->
-                 Sub_system.instantiate name info (Lazy.force t) ~resolve))
+                 Sub_system.instantiate
+                   name
+                   info
+                   (Lazy.force t)
+                   ~resolve:resolve_forbid_ignore))
          })
     in
     let t = Lazy.force t in
@@ -1081,20 +1102,23 @@ end = struct
   let instantiate db name info ~hidden = Memo.exec memo (db, name, info, hidden)
   let find_internal db (name : Lib_name.t) = resolve_name db name
 
-  let resolve_dep db (loc, name) ~private_deps : t Resolve.Memo.t =
+  let resolve_dep db (loc, name) ~private_deps : t Resolve.t option Memo.t =
     let open Memo.O in
     find_internal db name
     >>= function
-    | Found lib -> Resolve.Memo.of_result (check_private_deps lib ~loc ~private_deps)
-    | Not_found -> Error.not_found ~loc ~name
-    | Invalid why -> Resolve.Memo.of_result (Error why)
-    | Hidden h -> Hidden.error h ~loc ~name
+    | Ignore -> Memo.return None
+    | Found lib ->
+      Resolve.Memo.of_result (check_private_deps lib ~loc ~private_deps) >>| Option.some
+    | Not_found -> Error.not_found ~loc ~name >>| Option.some
+    | Invalid why -> Resolve.Memo.of_result (Error why) >>| Option.some
+    | Hidden h -> Hidden.error h ~loc ~name >>| Option.some
   ;;
 
   let resolve_name db name =
     let open Memo.O in
     db.resolve name
     >>= function
+    | Ignore -> Memo.return Status.Ignore
     | Redirect (db', (_, name')) ->
       let db' = Option.value db' ~default:db in
       find_internal db' name'
@@ -1117,11 +1141,20 @@ end = struct
   ;;
 
   let available_internal db (name : Lib_name.t) =
-    resolve_dep db (Loc.none, name) ~private_deps:Allow_all |> Resolve.Memo.is_ok
+    let open Memo.O in
+    resolve_dep db (Loc.none, name) ~private_deps:Allow_all
+    >>| function
+    | Some x -> Resolve.is_ok x
+    | None -> false
   ;;
 
-  let resolve_simple_deps db names ~private_deps =
-    Resolve.Memo.List.map names ~f:(resolve_dep db ~private_deps)
+  let resolve_simple_deps db names ~private_deps : t list Resolve.Memo.t =
+    Resolve.Memo.List.filter_map names ~f:(fun dep ->
+      let open Memo.O in
+      let+ dep = resolve_dep db ~private_deps dep in
+      match dep with
+      | None -> Resolve.return None
+      | Some r -> Resolve.map r ~f:Option.some)
   ;;
 
   let re_exports_closure =
@@ -1228,22 +1261,6 @@ end = struct
     end
   end
 
-  let remove_library deps target =
-    List.filter_map deps ~f:(fun (dep : Lib_dep.t) ->
-      match dep with
-      | Re_export (_, name) | Direct (_, name) ->
-        Option.some_if (not (Lib_name.equal target name)) dep
-      | Select select ->
-        let choices =
-          List.filter_map select.choices ~f:(fun choice ->
-            if Lib_name.Set.mem choice.forbidden target
-            then None
-            else
-              Some { choice with required = Lib_name.Set.remove choice.required target })
-        in
-        Some (Select { select with choices }))
-  ;;
-
   let resolve_select db ~private_deps { Lib_dep.Select.result_fn; choices; loc } =
     let open Memo.O in
     let+ res, src_fn =
@@ -1275,28 +1292,22 @@ end = struct
   ;;
 
   let resolve_complex_deps db deps ~private_deps : Resolved.deps Memo.t =
-    Memo.List.fold_left
-      ~init:Resolved.Builder.empty
-      (let ocaml_version = db.lib_config.ocaml_version in
-       let bigarray_in_std_libraries = Ocaml.Version.has_bigarray_library ocaml_version in
-       if bigarray_in_std_libraries
-       then deps
-       else (
-         (* TODO this is wrong because it breaks shadowing *)
-         let bigarray = Lib_name.of_string "bigarray" in
-         remove_library deps bigarray))
-      ~f:(fun acc (dep : Lib_dep.t) ->
-        let open Memo.O in
-        match dep with
-        | Re_export lib ->
-          let+ lib = resolve_dep db lib ~private_deps in
-          Resolved.Builder.add_re_exports acc lib
-        | Direct lib ->
-          let+ lib = resolve_dep db lib ~private_deps in
-          Resolved.Builder.add_resolved acc lib
-        | Select select ->
-          let+ resolved, select = resolve_select db ~private_deps select in
-          Resolved.Builder.add_select acc resolved select)
+    Memo.List.fold_left ~init:Resolved.Builder.empty deps ~f:(fun acc (dep : Lib_dep.t) ->
+      let open Memo.O in
+      match dep with
+      | Re_export lib ->
+        let+ lib = resolve_dep db lib ~private_deps in
+        (match lib with
+         | None -> acc
+         | Some lib -> Resolved.Builder.add_re_exports acc lib)
+      | Direct lib ->
+        let+ lib = resolve_dep db lib ~private_deps in
+        (match lib with
+         | None -> acc
+         | Some lib -> Resolved.Builder.add_resolved acc lib)
+      | Select select ->
+        let+ resolved, select = resolve_select db ~private_deps select in
+        Resolved.Builder.add_select acc resolved select)
     |> Memo.map ~f:Resolved.Builder.value
   ;;
 
@@ -1329,11 +1340,17 @@ end = struct
       in
       let pps =
         let* pps =
-          Resolve.Memo.List.map pps ~f:(fun (loc, name) ->
-            let* lib = resolve_dep db (loc, name) ~private_deps:Allow_all in
-            match allow_only_ppx_deps, Lib_info.kind lib.info with
-            | true, Normal -> Error.only_ppx_deps_allowed ~loc lib.info
-            | _ -> Resolve.Memo.return lib)
+          Resolve.Memo.List.filter_map pps ~f:(fun (loc, name) ->
+            let open Memo.O in
+            let+ lib = resolve_dep db (loc, name) ~private_deps:Allow_all in
+            match lib with
+            | None -> Resolve.return None
+            | Some lib ->
+              let open Resolve.O in
+              let* lib = lib in
+              (match allow_only_ppx_deps, Lib_info.kind lib.info with
+               | true, Normal -> Error.only_ppx_deps_allowed ~loc lib.info
+               | _ -> Resolve.return (Some lib)))
         in
         linking_closure_with_overlap_checks None pps ~forbidden_libraries:Map.empty
       in
@@ -1753,6 +1770,7 @@ module DB = struct
       | Found of Lib_info.external_
       | Hidden of Lib_info.external_ Hidden.t
       | Invalid of User_message.t
+      | Ignore
       | Redirect of db option * (Loc.t * Lib_name.t)
 
     let found f = Found f
@@ -1766,6 +1784,7 @@ module DB = struct
       | Invalid e -> variant "Invalid" [ Dyn.string (User_message.to_string e) ]
       | Found lib -> variant "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
       | Hidden h -> variant "Hidden" [ Hidden.to_dyn (Lib_info.to_dyn Path.to_dyn) h ]
+      | Ignore -> variant "Ignore" []
       | Redirect (_, (_, name)) -> variant "Redirect" [ Lib_name.to_dyn name ]
     ;;
   end
@@ -1779,37 +1798,40 @@ module DB = struct
     { parent; resolve; all = Memo.lazy_ all; lib_config; instrument_with }
   ;;
 
-  let create_from_findlib findlib ~lib_config =
-    create
-      ()
-      ~parent:None
-      ~lib_config
-      ~resolve:(fun name ->
-        let open Memo.O in
-        Findlib.find findlib name
-        >>| function
-        | Ok (Library pkg) -> Found (Dune_package.Lib.info pkg)
-        | Ok (Deprecated_library_name d) -> Redirect (None, (d.loc, d.new_public_name))
-        | Ok (Hidden_library pkg) -> Hidden (Hidden.unsatisfied_exist_if pkg)
-        | Error e ->
-          (match e with
-           | Invalid_dune_package why -> Invalid why
-           | Not_found -> Not_found))
-      ~all:(fun () ->
-        let open Memo.O in
-        Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.name)
+  let create_from_findlib =
+    let bigarray = Lib_name.of_string "bigarray" in
+    fun findlib ~has_bigarray_library ~lib_config ->
+      create
+        ()
+        ~parent:None
+        ~lib_config
+        ~resolve:(fun name ->
+          let open Memo.O in
+          Findlib.find findlib name
+          >>| function
+          | Ok (Library pkg) -> Found (Dune_package.Lib.info pkg)
+          | Ok (Deprecated_library_name d) -> Redirect (None, (d.loc, d.new_public_name))
+          | Ok (Hidden_library pkg) -> Hidden (Hidden.unsatisfied_exist_if pkg)
+          | Error e ->
+            (match e with
+             | Invalid_dune_package why -> Invalid why
+             | Not_found when has_bigarray_library && Lib_name.equal name bigarray ->
+               Ignore
+             | Not_found -> Not_found))
+        ~all:(fun () ->
+          let open Memo.O in
+          Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.name)
   ;;
 
   let installed (context : Context.t) =
     let open Memo.O in
-    let+ lib_config =
-      let+ ocaml = Context.ocaml context in
-      ocaml.lib_config
+    let+ ocaml = Context.ocaml context
     and+ findlib = Findlib.create (Context.name context) in
     create_from_findlib
       findlib
+      ~has_bigarray_library:(Ocaml.Version.has_bigarray_library ocaml.version)
       ~instrument_with:(Context.instrument_with context)
-      ~lib_config
+      ~lib_config:ocaml.lib_config
   ;;
 
   let find t name =
@@ -1817,7 +1839,7 @@ module DB = struct
     Resolve_names.find_internal t name
     >>| function
     | Found t -> Some t
-    | Not_found | Invalid _ | Hidden _ -> None
+    | Ignore | Not_found | Invalid _ | Hidden _ -> None
   ;;
 
   let find_even_when_hidden t name =
@@ -1825,7 +1847,7 @@ module DB = struct
     Resolve_names.find_internal t name
     >>| function
     | Found t | Hidden { lib = t; reason = _; path = _ } -> Some t
-    | Invalid _ | Not_found -> None
+    | Ignore | Invalid _ | Not_found -> None
   ;;
 
   let resolve_when_exists t (loc, name) =
@@ -1834,7 +1856,7 @@ module DB = struct
     >>= function
     | Found t -> Memo.return @@ Some (Resolve.return t)
     | Invalid w -> Some (Resolve.of_result (Error w)) |> Memo.return
-    | Not_found -> None |> Memo.return
+    | Ignore | Not_found -> None |> Memo.return
     | Hidden h ->
       let+ res = Hidden.error h ~loc ~name in
       Some res

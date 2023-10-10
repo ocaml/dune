@@ -263,8 +263,8 @@ module Pkg = struct
   let source_files t ~loc =
     let rec loop root acc path =
       let full_path = Path.External.append_local root path in
-      let* contents = Fs_memo.dir_contents (External full_path) in
-      match contents with
+      Fs_memo.dir_contents (External full_path)
+      >>= function
       | Error e ->
         User_error.raise
           ~loc
@@ -272,8 +272,8 @@ module Pkg = struct
           ; Unix_error.Detailed.pp e
           ]
       | Ok contents ->
-        let contents = Fs_cache.Dir_contents.to_list contents in
         let files, dirs =
+          let contents = Fs_cache.Dir_contents.to_list contents in
           List.partition_map contents ~f:(fun (name, kind) ->
             (* TODO handle links and cycles correctly *)
             match kind with
@@ -507,6 +507,49 @@ module Action_expander = struct
         Memo.return [ Value.Dir dir ]
     ;;
 
+    let expand_pkg_macro ~loc (paths : Paths.t) deps macro_invocation =
+      let { Package_variable.name = variable_name; scope } =
+        match Package_variable.of_macro_invocation ~loc macro_invocation with
+        | Ok package_variable -> package_variable
+        | Error `Unexpected_macro ->
+          Code_error.raise
+            "Attempted to treat an unexpected macro invocation as a package variable \
+             encoding"
+            []
+      in
+      let variables, paths =
+        let package_name =
+          match scope with
+          | Self -> paths.name
+          | Package package_name -> package_name
+        in
+        match Package.Name.Map.find deps package_name with
+        | None -> String.Map.empty, None
+        | Some (var, paths) -> var, Some paths
+      in
+      let variable_name = Package_variable.Name.to_string variable_name in
+      match String.Map.find variables variable_name with
+      | Some v -> Memo.return @@ Ok (Variable.dune_value v)
+      | None ->
+        let present = Option.is_some paths in
+        (* TODO we should be looking it up in all packages now *)
+        (match variable_name with
+         | "pinned" -> Memo.return @@ Ok [ Value.String "false" ]
+         | "enable" ->
+           Memo.return @@ Ok [ Value.String (if present then "enable" else "disable") ]
+         | "installed" -> Memo.return @@ Ok [ Value.String (Bool.to_string present) ]
+         | _ ->
+           (match paths with
+            | None -> Memo.return (Error (`Undefined_pkg_var variable_name))
+            | Some paths ->
+              (match Pform.Var.Pkg.Section.of_string variable_name with
+               | None -> Memo.return (Error (`Undefined_pkg_var variable_name))
+               | Some section ->
+                 let section = dune_section_of_pform section in
+                 let install_paths = Paths.install_paths paths in
+                 Memo.return @@ Ok [ Value.Dir (Install.Paths.get install_paths section) ])))
+    ;;
+
     let expand_pform
       { env = _; paths; artifacts = _; context; deps; version = _ }
       ~source
@@ -525,46 +568,7 @@ module Action_expander = struct
         in
         Ok [ Value.Path make ]
       | Macro ({ macro = Pkg | Pkg_self; _ } as macro_invocation) ->
-        let { Package_variable.name = variable_name; scope } =
-          match Package_variable.of_macro_invocation ~loc macro_invocation with
-          | Ok package_variable -> package_variable
-          | Error `Unexpected_macro ->
-            Code_error.raise
-              "Attempted to treat an unexpected macro invocation as a package variable \
-               encoding"
-              []
-        in
-        let package_name =
-          match scope with
-          | Self -> paths.name
-          | Package package_name -> package_name
-        in
-        let variables, paths =
-          match Package.Name.Map.find deps package_name with
-          | None -> String.Map.empty, None
-          | Some (var, paths) -> var, Some paths
-        in
-        let variable_name = Package_variable.Name.to_string variable_name in
-        (match String.Map.find variables variable_name with
-         | Some v -> Memo.return @@ Ok (Variable.dune_value v)
-         | None ->
-           let present = Option.is_some paths in
-           (match variable_name with
-            | "pinned" -> Memo.return @@ Ok [ Value.String "false" ]
-            | "enable" ->
-              Memo.return @@ Ok [ Value.String (if present then "enable" else "disable") ]
-            | "installed" -> Memo.return @@ Ok [ Value.String (Bool.to_string present) ]
-            | _ ->
-              (match paths with
-               | None -> Memo.return (Error (`Undefined_pkg_var variable_name))
-               | Some paths ->
-                 (match Pform.Var.Pkg.Section.of_string variable_name with
-                  | None -> Memo.return (Error (`Undefined_pkg_var variable_name))
-                  | Some section ->
-                    let section = dune_section_of_pform section in
-                    let install_paths = Paths.install_paths paths in
-                    Memo.return
-                    @@ Ok [ Value.Dir (Install.Paths.get install_paths section) ]))))
+        expand_pkg_macro ~loc paths deps macro_invocation
       | _ -> Expander0.isn't_allowed_in_this_position ~source
     ;;
 

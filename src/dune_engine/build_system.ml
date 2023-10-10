@@ -442,7 +442,8 @@ end = struct
       match Dpath.Target_dir.of_target dir with
       | Regular (With_context (_, dir)) | Anonymous_action (With_context (_, dir)) ->
         (Build_config.get ()).execution_parameters ~dir
-      | _ -> Execution_parameters.default
+      | Anonymous_action Root | Regular Root | Invalid _ ->
+        Code_error.raise "invalid dir for rule execution" [ "dir", Path.Build.to_dyn dir ]
     in
     (* Note: we do not run the below in parallel with the above: if we fail to
        compute action execution parameters, we have no use for the action and

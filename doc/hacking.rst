@@ -62,6 +62,13 @@ Here are the most common commands you'll be running:
    # run a particular cram foo.t:
    $ ./dune.exe build @foo
 
+Note that tests are currently written for version 4.14.1 of the OCaml compiler.
+Some tests depend on the specific wording of compilation errors which can change
+between compiler versions, so to reliably run the tests make sure that
+`ocaml.4.14.1` is installed. The ``TEST_OCAMLVERSION`` in the ``Makefile`` at
+the root of the Dune repo contains the current compiler version for which tests
+are written.
+
 Writing Tests
 =============
 
@@ -316,7 +323,7 @@ Loading Rules
 Dune rules are loaded lazily to improve performance. Here's a sketch of the
 algorithm that tries to load the rule that generates some target file ``t``.
 
-- Get the directory that of ``t``. Call it ``d``.
+- Get the directory that contains ``t``. Call it ``d``.
 
 - Load all rules in ``d`` into a map from targets in that directory to rules
   that produce it.

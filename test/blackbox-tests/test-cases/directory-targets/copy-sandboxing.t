@@ -9,14 +9,14 @@ mode:
   $ cat >dune <<EOF
   > (rule
   >  (targets (dir output))
-  >  (action (bash "mkdir -p output/; echo x > output/x; echo y > output/y")))
+  >  (action (system "\| mkdir -p output/;
+  >                  "\| echo x > output/x;
+  >                  "\| echo y > output/y
+  >          )))
   > (rule
   >  (target foo)
   >  (deps (sandbox always) output/)
-  >  (action
-  >   (progn
-  >    (bash "ls output | sort")
-  >    (run touch foo))))
+  >  (action (system "ls output | sort; touch foo")))
   > EOF
 
   $ dune build foo --sandbox=copy

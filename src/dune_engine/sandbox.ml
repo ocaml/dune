@@ -41,26 +41,60 @@ type t =
 let dir t = t.dir
 let map_path t p = Path.Build.append t.dir p
 
-let rec copy_recursively (src_kind : Unix.file_kind) ~src ~dst =
-  match src_kind with
-  | S_REG -> Io.copy_file ~src ~dst ()
-  | S_DIR ->
-    (match Path.Untracked.readdir_unsorted_with_kinds src with
-     | Error e -> Unix_error.Detailed.raise e
-     | Ok contents ->
-       Path.mkdir_p dst;
-       List.iter contents ~f:(fun (name, kind) ->
-         copy_recursively kind ~src:(Path.relative src name) ~dst:(Path.relative dst name)))
-  | _ ->
-    User_error.raise
-      ~hints:
-        [ Pp.text "re-run dune to delete the stale artifact, or manually delete this file"
+module Item = struct
+  type t =
+    | File
+    | Directory of { perms : int }
+    | Other of Unix.file_kind
+
+  let of_path path =
+    let { Unix.st_kind; st_perm; _ } = Path.Untracked.stat_exn path in
+    match st_kind with
+    | S_DIR -> Directory { perms = st_perm }
+    | S_REG -> File
+    | kind -> Other kind
+  ;;
+
+  let of_kind path (kind : Unix.file_kind) =
+    match kind with
+    | S_DIR -> Directory { perms = (Path.Untracked.stat_exn path).st_perm }
+    | S_REG -> File
+    | _ -> Other kind
+  ;;
+end
+
+let copy_recursively =
+  let chmod_file = Path.Permissions.add Path.Permissions.write in
+  let chmod_dir p =
+    Path.Permissions.add Path.Permissions.execute p
+    |> Path.Permissions.add Path.Permissions.write
+  in
+  let rec loop item ~src ~dst =
+    match (item : Item.t) with
+    | File -> Io.copy_file ~chmod:chmod_file ~src ~dst ()
+    | Directory { perms } ->
+      (match Path.Untracked.readdir_unsorted_with_kinds src with
+       | Error e -> Unix_error.Detailed.raise e
+       | Ok contents ->
+         let perms = chmod_dir perms in
+         Path.mkdir_p ~perms dst;
+         List.iter contents ~f:(fun (name, kind) ->
+           let src = Path.relative src name in
+           let item = Item.of_kind src kind in
+           loop item ~src ~dst:(Path.relative dst name)))
+    | Other kind ->
+      User_error.raise
+        ~hints:
+          [ Pp.text
+              "Re-run Dune to delete the stale artifact, or manually delete this file"
+          ]
+        [ Pp.textf
+            "Failed to copy file %s of kind %S while creating a copy sandbox"
+            (Path.to_string_maybe_quoted src)
+            (File_kind.to_string_hum kind)
         ]
-      [ Pp.textf
-          "Failed to copy file %s of kind %s while creating a copy sandbox"
-          (Path.to_string_maybe_quoted src)
-          (File_kind.to_string_hum src_kind)
-      ]
+  in
+  loop
 ;;
 
 let create_dirs t ~deps ~rule_dir =
@@ -90,8 +124,8 @@ let link_function ~(mode : Sandbox_mode.some) =
         | false -> fun src dst -> Io.portable_symlink ~src ~dst)
      | Copy ->
        fun src dst ->
-         let { Unix.st_kind; _ } = Path.Untracked.stat_exn src in
-         copy_recursively st_kind ~src ~dst
+         let what = Item.of_path src in
+         copy_recursively what ~src ~dst
      | Hardlink ->
        (match Sys.win32 with
         | true -> win32_error mode
@@ -99,6 +133,7 @@ let link_function ~(mode : Sandbox_mode.some) =
      | Patch_back_source_tree ->
        (* We need to let the action modify its dependencies, so we copy
           dependencies and make them writable. *)
+       (* CR-someday: this doesn't work with directory targets *)
        let chmod = Path.Permissions.add Path.Permissions.write in
        fun src dst -> Io.copy_file ~src ~dst ~chmod ())
 ;;
@@ -318,7 +353,7 @@ let move_targets_to_build_dir t ~loc ~should_be_skipped ~(targets : Targets.Vali
            User_error.raise
              ~hints:hint_delete_dir
              [ Pp.textf
-                 "Target %s of kind %s already exists in the build directory"
+                 "Target %s of kind %S already exists in the build directory"
                  (Path.Build.to_string_maybe_quoted target)
                  (File_kind.to_string_hum st_kind)
              ]);

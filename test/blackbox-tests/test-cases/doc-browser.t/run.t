@@ -5,4 +5,5 @@ documentation index to a browser.
   Docs built. Index can be found here:
   $TESTCASE_ROOT/_build/default/_doc/_html/index.html
   
+  open command received args :
   $TESTCASE_ROOT/_build/default/_doc/_html/index.html

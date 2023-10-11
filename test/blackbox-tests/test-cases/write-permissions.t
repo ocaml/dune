@@ -16,8 +16,8 @@ Check that dune <= 2.3 leaves write permissions alone.
   $ dune build --root 2.3 target | head -c1
   Entering directory '2.3'
   Leaving directory '2.3'
-  $ dune_cmd stat permissions 2.3/_build/default/target | head -c1
-  6
+  $ dune_cmd ls 2.3/_build/default/target 
+  -rw-r--r-- 2.3/_build/default/target
 
 Check that dune >= 2.4 removes target write permissions.
 
@@ -49,15 +49,15 @@ Check that dune >= 2.4 removes target write permissions.
   $ dune build --root 2.4 foo.exe @install
   Entering directory '2.4'
   Leaving directory '2.4'
-  $ dune_cmd stat permissions 2.4/_build/default/foo.exe | head -c1
-  5
+  $ dune_cmd ls 2.4/_build/default/foo.exe 
+  -r-xr-xr-x 2.4/_build/default/foo.exe
   $ dune install --root 2.4 --prefix ./ --display short
   Installing lib/foo/META
   Installing lib/foo/dune-package
   Installing bin/foo
   Installing bin/foo.exe
   Installing share/foo/target
-  $ dune_cmd stat permissions 2.4/bin/foo.exe | head -c1
-  7
-  $ dune_cmd stat permissions 2.4/share/foo/target | head -c1
-  6
+  $ dune_cmd ls 2.4/bin/foo.exe 
+  -rwxr-xr-x 2.4/bin/foo.exe
+  $ dune_cmd ls 2.4/share/foo/target 
+  -rw-r--r-- 2.4/share/foo/target

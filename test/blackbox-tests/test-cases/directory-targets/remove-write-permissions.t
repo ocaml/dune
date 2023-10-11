@@ -13,9 +13,9 @@ Write permissions on directory targets.
 
   $ dune build ./foo
   $ dir=_build/default/foo
-  $ dune_cmd stat permissions $dir
-  755
-  $ dune_cmd stat permissions $dir/foo2
-  755
-  $ dune_cmd stat permissions $dir/foo2/bar
-  444
+  $ dune_cmd ls -d $dir
+  drwxr-xr-x _build/default/foo
+  $ dune_cmd ls -d $dir/foo2
+  drwxr-xr-x _build/default/foo/foo2
+  $ dune_cmd ls -d $dir/foo2/bar
+  -r--r--r-- _build/default/foo/foo2/bar

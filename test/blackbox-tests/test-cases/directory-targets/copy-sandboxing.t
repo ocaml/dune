@@ -8,16 +8,7 @@ mode:
 
   $ cat >print-permissions.sh <<EOF
   > /usr/bin/env sh
-  > echo permissions of output/
-  > dune_cmd stat permissions output
-  > echo permissions of output/y
-  > dune_cmd stat permissions output/y
-  > echo permissions of output/x
-  > dune_cmd stat permissions output/x
-  > echo permissions of output/subdir
-  > dune_cmd stat permissions output/subdir
-  > echo permissions of output/subdir/z
-  > dune_cmd stat permissions output/subdir/z
+  > dune_cmd ls -d output output/y output/x output/subdir output/subdir/z
   > echo ""
   > EOF
 
@@ -46,38 +37,23 @@ mode:
 
   $ dune build foo --sandbox=copy
   building output/
-  permissions of output/
-  777
-  permissions of output/y
-  444
-  permissions of output/x
-  644
-  permissions of output/subdir
-  776
-  permissions of output/subdir/z
-  666
+  drwxrwxrwx output
+  -r--r--r-- output/y
+  -rw-r--r-- output/x
+  drwxrwxrw- output/subdir
+  -rw-rw-rw- output/subdir/z
   
-  permissions of output/
-  755
-  permissions of output/y
-  444
-  permissions of output/x
-  444
-  permissions of output/subdir
-  755
-  permissions of output/subdir/z
-  444
+  drwxr-xr-x output
+  -r--r--r-- output/y
+  -r--r--r-- output/x
+  drwxr-xr-x output/subdir
+  -r--r--r-- output/subdir/z
   
 
   $ ( cd _build/default && ../../print-permissions.sh )
-  permissions of output/
-  777
-  permissions of output/y
-  444
-  permissions of output/x
-  444
-  permissions of output/subdir
-  776
-  permissions of output/subdir/z
-  444
+  drwxrwxrwx output
+  -r--r--r-- output/y
+  -r--r--r-- output/x
+  drwxrwxrw- output/subdir
+  -r--r--r-- output/subdir/z
   

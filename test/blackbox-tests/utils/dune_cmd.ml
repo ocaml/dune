@@ -59,6 +59,101 @@ module Stat = struct
   let () = register name of_args run
 end
 
+module Ls = struct
+  let name = "ls"
+
+  let permission_to_string (perm : int) : string =
+    let permission_to_char p =
+      match p with
+      | 0 -> '-'
+      | 1 -> 'x'
+      | 2 -> 'w'
+      | 4 -> 'r'
+      | _ -> '?' (* Unknown permission *)
+    in
+    let triad_to_string triad =
+      let p1 = permission_to_char (triad land 4) in
+      let p2 = permission_to_char (triad land 2) in
+      let p3 = permission_to_char (triad land 1) in
+      sprintf "%c%c%c" p1 p2 p3
+    in
+    let user = triad_to_string ((perm lsr 6) land 7) in
+    let group = triad_to_string ((perm lsr 3) land 7) in
+    let others = triad_to_string (perm land 7) in
+    sprintf "%s%s%s" user group others
+  ;;
+
+  let kind_to_char = function
+    | Unix.S_REG -> '-'
+    | S_DIR -> 'd'
+    | S_CHR -> 'c'
+    | S_BLK -> 'b'
+    | S_LNK -> 'l'
+    | S_FIFO -> 'p'
+    | S_SOCK -> 's'
+  ;;
+
+  let print_stat filename (stat : Unix.stats) =
+    Printf.printf
+      "%c%s %s\n"
+      (kind_to_char stat.st_kind)
+      (permission_to_string stat.st_perm)
+      filename
+  ;;
+
+  let print_stats_of_dir file =
+    let stats = Path.lstat_exn file in
+    match stats.st_kind with
+    | S_DIR ->
+      (match Path.readdir_unsorted file with
+       | Ok files ->
+         List.map files ~f:(fun x -> x, Path.lstat_exn (Path.relative file x))
+         |> List.sort ~compare:(fun (x, _) (y, _) -> String.compare x y)
+         |> List.iter ~f:(fun (x, stat) ->
+           print_stat (Path.relative file x |> Path.to_string) stat)
+       | Error unix_err -> Unix_error.Detailed.raise unix_err)
+    | _ ->
+      raise (Arg.Bad (sprintf "%s is not a directory" (Path.to_string_maybe_quoted file)))
+  ;;
+
+  let stat_files files =
+    List.iter files ~f:(fun file ->
+      let stat = Path.lstat_exn file in
+      print_stat (Path.to_string file) stat)
+  ;;
+
+  let run (options, files) =
+    Path.set_root (Path.External.of_filename_relative_to_initial_cwd ".");
+    Path.Build.set_build_dir (Path.Outside_build_dir.of_string "_build");
+    let files = List.map files ~f:Path.of_string in
+    match options with
+    | `default ->
+      let dirs, files = List.partition files ~f:Path.is_directory in
+      stat_files files;
+      if List.length files > 0 && List.length dirs > 0 then Printf.printf "\n";
+      let many = List.length dirs > 1 in
+      List.iteri dirs ~f:(fun dir_num dir ->
+        if many then Printf.printf "%s/:\n" (Path.to_string dir);
+        print_stats_of_dir dir;
+        if many && dir_num < List.length dirs - 1 then Printf.printf "\n")
+    | `d -> stat_files files
+  ;;
+
+  let of_args =
+    let is_option s = String.is_prefix s ~prefix:"-" in
+    let option = function
+      | "-d" -> `d
+      | _ -> raise (Arg.Bad "Usage: dune_cmd ls [-d] <file1> ...")
+    in
+    function
+    | [] -> `default, [ "." ]
+    | first :: files when is_option first -> option first, files
+    | files -> `default, files
+  ;;
+
+  let () = register name of_args run
+end
+
 module Wait_for_fs_clock_to_advance = struct
   let name = "wait-for-fs-clock-to-advance"
 

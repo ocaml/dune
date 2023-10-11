@@ -387,6 +387,14 @@ end = struct
       String.is_prefix fn ~prefix)
   ;;
 
+  (* Expand [`Directory] entries into [`File] ones based on the the produced targets. *)
+  let entries_of_targets (init : _ Install.Entry.t) targets =
+    Path.Build.Map.to_list_map targets ~f:(fun path _ ->
+      let relative = Path.reach (Path.build path) ~from:(Path.build init.src) in
+      let new_dst = Install.Entry.Dst.add_suffix init.dst relative in
+      Install.Entry.make_with_dst init.section new_dst ~kind:`File ~src:path)
+  ;;
+
   let entries_of_install_stanza ~dir ~expander ~package_db (i : Dune_file.Install_conf.t) =
     let expand_str = Expander.No_deps.expand_str expander in
     let make_entry =
@@ -412,10 +420,18 @@ end = struct
           ~dir
           ~relative_dst_path_starts_with_parent_error_when:`Deprecation_warning_from_3_11
       in
-      Memo.List.map dirs_expanded ~f:(fun fb ->
+      Memo.List.concat_map dirs_expanded ~f:(fun fb ->
         let loc = File_binding.Expanded.src_loc fb in
-        let+ entry = make_entry ~kind:`Directory fb in
-        Install.Entry.Sourced.create ~loc entry)
+        let* entry = make_entry ~kind:`Directory fb in
+        let* rule_opt = Load_rules.get_rule (Path.build entry.src) in
+        let+ entries =
+          match rule_opt with
+          | None -> Memo.return [ entry ]
+          | Some rule ->
+            let+ { targets; _ } = Build_system.execute_rule rule in
+            entries_of_targets entry targets
+        in
+        List.map entries ~f:(Install.Entry.Sourced.create ~loc))
     and+ source_trees =
       (* There's no deprecation warning when a relative destination path
          starts with a parent in this feature. It's safe to raise an error in

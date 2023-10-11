@@ -26,7 +26,9 @@ Allow directories to be installable
   (lang dune 3.11)
   (name foo)
   (sections (lib .) (share ../../share/foo))
-  (files (lib (META dune-package)) (share (bar)))
+  (files
+   (lib (META dune-package))
+   (share (bar/baz/a bar/baz/b bar/x bar/y bar/z)))
   $ dune install --root a --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/foo/META
   Installing $TESTCASE_ROOT/prefix/lib/foo/dune-package
@@ -45,9 +47,4 @@ Allow directories to be installable
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root=b @foo --display=short
   Entering directory 'b'
-  Error: File unavailable:
-  $TESTCASE_ROOT/prefix/share/foo/bar
-  This is not a regular file (S_DIR)
-  -> required by alias foo in dune:1
   Leaving directory 'b'
-  [1]

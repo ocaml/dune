@@ -221,8 +221,9 @@ let project =
          | None -> name
          | Some path -> Filename.concat path name
        in
-       let common, config = Builder.set_root common_builder root |> Common.init in
+       let builder = Builder.set_root common_builder root in
        let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p root in
+       let common, config = Common.init builder in
        Scheduler.go ~common ~config (fun () -> Memo.run init_context)
      in
      Component.init

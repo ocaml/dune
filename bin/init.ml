@@ -70,10 +70,11 @@ let path =
 ;;
 
 let context_cwd : Init_context.t Term.t =
-  let+ common_term = Common.term_with_default_root_is_cwd
+  let+ builder = Common.Builder.term
   and+ path = path in
-  let config = Common.init common_term in
-  Scheduler.go ~common:common_term ~config (fun () -> Memo.run (Init_context.make path))
+  let builder = Common.Builder.set_default_root_is_cwd builder true in
+  let common, config = Common.init builder in
+  Scheduler.go ~common ~config (fun () -> Memo.run (Init_context.make path))
 ;;
 
 module Public_name = struct
@@ -220,9 +221,8 @@ let project =
          | None -> name
          | Some path -> Filename.concat path name
        in
-       let common = Builder.set_root common_builder root |> Common.build in
+       let common, config = Builder.set_root common_builder root |> Common.init in
        let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p root in
-       let config = Common.init common in
        Scheduler.go ~common ~config (fun () -> Memo.run init_context)
      in
      Component.init

@@ -554,6 +554,14 @@ let cache_debug_flags_term : Cache_debug_flags.t Term.t =
   value initial
 ;;
 
+module Action_runner = struct
+  type t =
+    | No
+    | Yes of
+        (Dune_lang.Dep_conf.t Dune_rpc_impl.Server.t
+         -> (Dune_engine.Action_exec.input -> Dune_engine.Action_runner.t option) Staged.t)
+end
+
 module Builder = struct
   type t =
     { debug_dep_path : bool
@@ -594,9 +602,20 @@ module Builder = struct
     ; root : string option
     ; stats_trace_file : string option
     ; stats_trace_extended : bool
+    ; allow_builds : bool
+    ; default_root_is_cwd : bool
+    ; action_runner : Action_runner.t
+    ; log_file : Dune_util.Log.File.t
     }
 
   let set_root t root = { t with root = Some root }
+  let forbid_builds t = { t with allow_builds = false; no_print_directory = true }
+  let set_default_root_is_cwd t x = { t with default_root_is_cwd = x }
+  let set_action_runner t x = { t with action_runner = x }
+  let set_log_file t x = { t with log_file = x }
+  let disable_log_file t = { t with log_file = No_log_file }
+  let set_promote t v = { t with promote = Some v }
+  let default_target t = t.default_target
 
   (** Cmdliner documentation markup language
       (https://erratique.ch/software/cmdliner/doc/tool_man.html#doclang)
@@ -1023,6 +1042,10 @@ module Builder = struct
     ; root
     ; stats_trace_file
     ; stats_trace_extended
+    ; allow_builds = true
+    ; default_root_is_cwd = false
+    ; action_runner = No
+    ; log_file = Default
     }
   ;;
 end
@@ -1044,17 +1067,12 @@ let dump_memo_graph_file t = t.builder.dump_memo_graph_file
 let dump_memo_graph_format t = t.builder.dump_memo_graph_format
 let dump_memo_graph_with_timing t = t.builder.dump_memo_graph_with_timing
 let file_watcher t = t.builder.file_watcher
-let default_target t = t.builder.default_target
 let prefix_target t s = t.root.reach_from_root_prefix ^ s
 
 let rpc t =
   match t.rpc with
   | `Forbid_builds -> `Forbid_builds
   | `Allow rpc -> `Allow (Lazy.force rpc)
-;;
-
-let forbid_builds t =
-  { t with rpc = `Forbid_builds; builder = { t.builder with no_print_directory = true } }
 ;;
 
 let signal_watcher t =
@@ -1068,7 +1086,6 @@ let signal_watcher t =
 let watch_exclusions t = t.builder.watch_exclusions
 let stats t = t.stats
 let insignificant_changes t = t.builder.insignificant_changes
-let set_promote t v = { t with builder = { t.builder with promote = Some v } }
 
 (* To avoid needless recompilations under Windows, where the case of
    [Sys.getcwd] can vary between different invocations of [dune], normalize to
@@ -1134,13 +1151,67 @@ let print_entering_message c =
       Console.print [ Pp.verbatim (sprintf "Leaving directory '%s'" dir) ]))
 ;;
 
-let init ?action_runner ?log_file c =
+(* CR-someday rleshchinskiy: The split between `build` and `init` seems quite arbitrary,
+   we should probably refactor that at some point. *)
+let build (builder : Builder.t) =
+  let root =
+    Workspace_root.create
+      ~default_is_cwd:builder.default_root_is_cwd
+      ~specified_by_user:builder.root
+  in
+  let stats =
+    Option.map builder.stats_trace_file ~f:(fun f ->
+      let stats =
+        Dune_stats.create
+          ~extended_build_job_info:builder.stats_trace_extended
+          (Out (open_out f))
+      in
+      Dune_stats.set_global stats;
+      stats)
+  in
+  let rpc =
+    if builder.allow_builds
+    then
+      `Allow
+        (lazy
+          (let registry =
+             match builder.watch with
+             | Yes _ -> `Add
+             | No -> `Skip
+           in
+           let lock_timeout =
+             match builder.watch with
+             | Yes Passive -> Some 1.0
+             | _ -> None
+           in
+           let action_runner = Dune_engine.Action_runner.Rpc_server.create () in
+           Dune_rpc_impl.Server.create
+             ~lock_timeout
+             ~registry
+             ~root:root.dir
+             ~handle:Dune_rules_rpc.register
+             ~watch_mode_config:builder.watch
+             ~parse_build:Dune_rules_rpc.parse_build
+             stats
+             action_runner))
+    else `Forbid_builds
+  in
+  if builder.store_digest_preimage then Dune_engine.Reversible_digest.enable ();
+  if builder.print_metrics
+  then (
+    Memo.Perf_counters.enable ();
+    Dune_metrics.enable ());
+  { builder; root; rpc; stats }
+;;
+
+let init (builder : Builder.t) =
+  let c = build builder in
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string c.builder.build_dir);
   (* Once we have the build directory set, initialise the logging. We can't do
      this earlier, because the build log typically goes into [_build/log]. *)
-  Log.init () ?file:log_file;
+  Log.init () ~file:builder.log_file;
   (* We need to print this before reading the workspace file, so that the editor
      can interpret errors in the workspace file. *)
   print_entering_message c;
@@ -1179,9 +1250,9 @@ let init ?action_runner ?log_file c =
   in
   Log.info [ Pp.textf "Shared cache: %s" (Config.Toggle.to_string config.cache_enabled) ];
   let action_runner =
-    match action_runner with
-    | None -> None
-    | Some f ->
+    match builder.action_runner with
+    | No -> None
+    | Yes f ->
       (match rpc c with
        | `Forbid_builds -> Code_error.raise "action runners require building" []
        | `Allow server -> Some (Staged.unstage @@ f server))
@@ -1240,7 +1311,7 @@ let init ?action_runner ?log_file c =
       let stat = Gc.stat () in
       let path = Path.external_ file in
       Dune_util.Gc.serialize ~path stat);
-  config
+  c, config
 ;;
 
 let footer =
@@ -1280,63 +1351,6 @@ let help_secs =
   ; footer
   ]
 ;;
-
-let build (builder : Builder.t) ~default_root_is_cwd =
-  let root =
-    Workspace_root.create
-      ~default_is_cwd:default_root_is_cwd
-      ~specified_by_user:builder.root
-  in
-  let stats =
-    Option.map builder.stats_trace_file ~f:(fun f ->
-      let stats =
-        Dune_stats.create
-          ~extended_build_job_info:builder.stats_trace_extended
-          (Out (open_out f))
-      in
-      Dune_stats.set_global stats;
-      stats)
-  in
-  let rpc =
-    `Allow
-      (lazy
-        (let registry =
-           match builder.watch with
-           | Yes _ -> `Add
-           | No -> `Skip
-         in
-         let lock_timeout =
-           match builder.watch with
-           | Yes Passive -> Some 1.0
-           | _ -> None
-         in
-         let action_runner = Dune_engine.Action_runner.Rpc_server.create () in
-         Dune_rpc_impl.Server.create
-           ~lock_timeout
-           ~registry
-           ~root:root.dir
-           ~handle:Dune_rules_rpc.register
-           ~watch_mode_config:builder.watch
-           ~parse_build:Dune_rules_rpc.parse_build
-           stats
-           action_runner))
-  in
-  if builder.store_digest_preimage then Dune_engine.Reversible_digest.enable ();
-  if builder.print_metrics
-  then (
-    Memo.Perf_counters.enable ();
-    Dune_metrics.enable ());
-  { builder; root; rpc; stats }
-;;
-
-let term ~default_root_is_cwd =
-  let+ builder = Builder.term in
-  build builder ~default_root_is_cwd
-;;
-
-let term_with_default_root_is_cwd = term ~default_root_is_cwd:true
-let term = term ~default_root_is_cwd:false
-let build = build ~default_root_is_cwd:false
 
 let envs =
   Cmd.Env.

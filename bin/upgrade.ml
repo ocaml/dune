@@ -14,8 +14,8 @@ let man =
 let info = Cmd.info "upgrade" ~doc ~man
 
 let term =
-  let+ common = Common.term in
-  let config = Common.init common in
+  let+ builder = Common.Builder.term in
+  let common, config = Common.init builder in
   Scheduler.go ~common ~config (fun () -> Dune_upgrader.upgrade ())
 ;;
 

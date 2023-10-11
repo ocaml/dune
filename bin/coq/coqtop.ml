@@ -18,7 +18,7 @@ let man =
 let info = Cmd.info "top" ~doc ~man
 
 let term =
-  let+ common = Common.term
+  let+ builder = Common.Builder.term
   and+ context =
     let doc = "Run the Coq toplevel in this build context." in
     Common.context_arg ~doc
@@ -34,7 +34,7 @@ let term =
       & flag
       & info [ "no-build" ] ~doc:"Don't rebuild dependencies before executing.")
   in
-  let config = Common.init common in
+  let common, config = Common.init builder in
   let coq_file_arg = Common.prefix_target common coq_file_arg |> Path.Local.of_string in
   let coqtop, argv, env =
     Scheduler.go ~common ~config

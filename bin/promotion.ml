@@ -35,9 +35,9 @@ module Apply = struct
   ;;
 
   let term =
-    let+ common = Common.term
+    let+ builder = Common.Builder.term
     and+ files = Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE") in
-    let _config = Common.init common in
+    let common, _config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
     Diff_promotion.promote_files_registered_in_last_run files_to_promote
   ;;
@@ -49,9 +49,9 @@ module Diff = struct
   let info = Cmd.info ~doc:"List promotions to be applied" "diff"
 
   let term =
-    let+ common = Common.term
+    let+ builder = Common.Builder.term
     and+ files = Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE") in
-    let config = Common.init common in
+    let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
     Scheduler.go ~common ~config (fun () -> Diff_promotion.display files_to_promote)
   ;;

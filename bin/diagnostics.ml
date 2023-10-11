@@ -31,8 +31,8 @@ let info =
 ;;
 
 let term =
-  let+ (common : Common.t) = Common.term in
-  Rpc_common.client_term common exec
+  let+ (builder : Common.Builder.t) = Common.Builder.term in
+  Rpc_common.client_term builder exec
 ;;
 
 let command = Cmd.v info term

@@ -34,10 +34,10 @@ let files_to_load_of_requires sctx requires =
 ;;
 
 let term =
-  let+ common = Common.term
+  let+ builder = Common.Builder.term
   and+ dir = Arg.(value & pos 0 string "" & Arg.info [] ~docv:"DIR")
   and+ ctx_name = Common.context_arg ~doc:{|Select context where to build/run utop.|} in
-  let config = Common.init common in
+  let common, config = Common.init builder in
   Scheduler.go ~common ~config (fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in
@@ -187,11 +187,11 @@ module Module = struct
   ;;
 
   let term =
-    let+ common = Common.term
+    let+ builder = Common.Builder.term
     and+ module_path =
       Arg.(required & pos 0 (some string) None & Arg.info [] ~docv:"MODULE")
     and+ ctx_name = Common.context_arg ~doc:{|Select context where to build/run utop.|} in
-    let config = Common.init common in
+    let common, config = Common.init builder in
     Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in

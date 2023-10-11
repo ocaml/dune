@@ -4,7 +4,7 @@ let doc = "Print out libraries installed on the system."
 let info = Cmd.info "installed-libraries" ~doc
 
 let term =
-  let+ common = Common.term
+  let+ builder = Common.Builder.term
   and+ na =
     Arg.(
       value
@@ -13,7 +13,7 @@ let term =
           [ "na"; "not-available" ]
           ~doc:"List libraries that are not available and explain why")
   in
-  let config = Common.init common in
+  let common, config = Common.init builder in
   Scheduler.go
     ~common
     ~config

@@ -19,11 +19,7 @@ let term =
     let dir = Path.(relative root) (Common.prefix_target common ".") in
     let open Action_builder.O in
     let+ () =
-      Alias.in_dir
-        ~name:Dune_engine.Alias.Name.doc
-        ~recursive:true
-        ~contexts:setup.contexts
-        dir
+      Alias.in_dir ~name:Dune_rules.Alias.doc ~recursive:true ~contexts:setup.contexts dir
       |> Alias.request
     in
     let is_default ctx = ctx |> Context.name |> Dune_engine.Context_name.is_default in

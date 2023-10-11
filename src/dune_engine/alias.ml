@@ -24,8 +24,6 @@ module Name = struct
         ~loc
         [ Pp.textf "Invalid alias path: %S" (Path.Local.to_string_maybe_quoted p) ]
   ;;
-
-  let doc = of_string "doc"
 end
 
 module T : sig

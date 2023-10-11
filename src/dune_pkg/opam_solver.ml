@@ -1,7 +1,5 @@
 open Import
 
-module type CONTEXT = Opam_0install.S.CONTEXT
-
 module Context_for_dune = struct
   type filtered_formula = OpamTypes.filtered_formula
   type filter = OpamTypes.filter

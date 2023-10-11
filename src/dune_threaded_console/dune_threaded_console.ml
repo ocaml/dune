@@ -1,11 +1,7 @@
 include Dune_threaded_console_intf
 open Stdune
 
-(** [threaded (module T)] is a backend that renders the user interface in a
-    separate thread. The module [T] must implement the [Threaded] interface.
-    There are special functions included to handle various functions of a user
-    interface. *)
-let make (module Base : S) : (module Dune_console.Backend) =
+let make ~frames_per_second (module Base : S) : (module Dune_console.Backend) =
   let module T = struct
     let mutex = Mutex.create ()
     let finish_cv = Condition.create ()
@@ -73,7 +69,7 @@ let make (module Base : S) : (module Dune_console.Backend) =
       @@ fun () ->
       Dune_util.Terminal_signals.unblock ();
       let last = ref (Unix.gettimeofday ()) in
-      let frame_rate = 1. /. 60. in
+      let frame_rate = 1. /. float_of_int frames_per_second in
       let cleanup exn =
         state.finished <- true;
         Option.iter exn ~f:(fun exn ->
@@ -158,8 +154,9 @@ let make (module Base : S) : (module Dune_console.Backend) =
   (module T)
 ;;
 
-let progress () =
+let progress ~frames_per_second =
   make
+    ~frames_per_second
     (module struct
       include (val Dune_console.Backend.progress_no_flush)
 

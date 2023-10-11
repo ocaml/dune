@@ -40,7 +40,9 @@ let console_backend = function
        Dune_console.Backend.dumb
      | true ->
        (match Config.(get threaded_console) with
-        | `Enabled -> Dune_threaded_console.progress ()
+        | `Enabled ->
+          Dune_threaded_console.progress
+            ~frames_per_second:(Dune_util.frames_per_second ())
         | `Disabled ->
           Dune_util.Terminal_signals.unblock ();
           Dune_console.Backend.progress))

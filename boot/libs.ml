@@ -88,6 +88,7 @@ let local_libraries =
   ; ("src/scheme", Some "Scheme", false, None)
   ; ("src/dune_rules", Some "Dune_rules", true, None)
   ; ("src/upgrader", Some "Dune_upgrader", false, None)
+  ; ("src/dune_pkg_outdated", Some "Dune_pkg_outdated", false, None)
   ; ("vendor/cmdliner/src", None, false, None)
   ; ("otherlibs/dune-build-info/src", Some "Build_info", false,
     Some "Build_info_data")

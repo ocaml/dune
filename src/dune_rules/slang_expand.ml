@@ -47,8 +47,8 @@ let rec eval_rec (t : Slang.t) ~dir ~f =
        let+ result = eval_rec t ~dir ~f in
        Ok
          (match result with
-          | Ok _ -> [ Value.String "false" ]
-          | Error (Undefined_pkg_var _) -> [ Value.String "true" ])
+          | Ok _ -> [ Value.false_ ]
+          | Error (Undefined_pkg_var _) -> [ Value.true_ ])
      | Catch_undefined_var { value; fallback } ->
        let* value = eval_rec value ~dir ~f in
        (match value with
@@ -64,9 +64,9 @@ let rec eval_rec (t : Slang.t) ~dir ~f =
               (* Propagate the first error rather than the last *)
               if Result.is_ok acc then loop e xs else loop acc xs
             | Ok true -> loop acc xs
-            | Ok false -> Memo.return (Ok [ Value.String "false" ]))
+            | Ok false -> Memo.return (Ok [ Value.false_ ]))
        in
-       loop (Ok [ Value.String "true" ]) blangs
+       loop (Ok [ Value.true_ ]) blangs
      | Or_absorb_undefined_var blangs ->
        let rec loop acc = function
          | [] -> Memo.return acc
@@ -77,22 +77,22 @@ let rec eval_rec (t : Slang.t) ~dir ~f =
               (* Propagate the first error rather than the last *)
               if Result.is_ok acc then loop e xs else loop acc xs
             | Ok false -> loop acc xs
-            | Ok true -> Memo.return (Ok [ Value.String "true" ]))
+            | Ok true -> Memo.return (Ok [ Value.true_ ]))
        in
-       loop (Ok [ Value.String "false" ]) blangs
+       loop (Ok [ Value.false_ ]) blangs
      | Blang b ->
        let+ result = eval_blang_rec b ~dir ~f in
        Result.map result ~f:(function
-         | true -> [ Value.String "true" ]
-         | false -> [ Value.String "false" ]))
+         | true -> [ Value.true_ ]
+         | false -> [ Value.false_ ]))
 
 and eval_to_bool (t : Slang.t) ~dir ~f =
   let open Memo.O in
   let+ result = eval_rec t ~dir ~f in
   Result.map result ~f:(function
-    | [ String "true" ] -> true
-    | [ String "false" ] -> false
-    | [ String other ] ->
+    | [ x ] when Value.(equal true_ x) -> true
+    | [ x ] when Value.(equal false_ x) -> false
+    | [ Value.String other ] ->
       User_error.raise
         ~loc:(Slang.loc t)
         [ Pp.textf

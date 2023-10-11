@@ -534,7 +534,7 @@ module Action_expander = struct
         let present = Option.is_some paths in
         (* TODO we should be looking it up in all packages now *)
         (match variable_name with
-         | "pinned" -> Memo.return @@ Ok [ Value.String "false" ]
+         | "pinned" -> Memo.return @@ Ok [ Value.false_ ]
          | "enable" ->
            Memo.return @@ Ok [ Value.String (if present then "enable" else "disable") ]
          | "installed" -> Memo.return @@ Ok [ Value.String (Bool.to_string present) ]

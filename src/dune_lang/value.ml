@@ -5,6 +5,10 @@ type t =
   | Dir of Path.t
   | Path of Path.t
 
+(* CR-someday rgrinberg: one day, make these first class *)
+let true_ = String "true"
+let false_ = String "false"
+
 let compare x y =
   match x, y with
   | String x, String y -> String.compare x y

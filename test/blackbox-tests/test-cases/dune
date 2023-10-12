@@ -7,7 +7,8 @@
    ../utils/dune_cmd.exe
    ../utils/dunepp.exe
    ../utils/melc_stdlib_prefix.exe
-   ../utils/refmt.exe)))
+   ../utils/refmt.exe
+   ../utils/dune_console_styles.exe)))
 
 (cram
  (applies_to pp-cwd)
@@ -136,3 +137,7 @@
 (cram
  (applies_to reason)
  (deps %{bin:refmt}))
+
+(cram
+ (applies_to console-styles)
+ (deps %{bin:dune_console_styles}))

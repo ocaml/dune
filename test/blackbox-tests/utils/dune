@@ -22,3 +22,17 @@
 (executable
  (name refmt)
  (modules refmt))
+
+(executable
+ (name dune_console_styles)
+ (modules dune_console_styles)
+ (libraries
+  stdune
+  fiber
+  dune_config_file
+  dune_config
+  dune_console
+  cmdliner
+  dune_util
+  dune_engine
+  dune_tui))

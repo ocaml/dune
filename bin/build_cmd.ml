@@ -143,9 +143,9 @@ let runtest_info =
 
 let runtest_term =
   let name_ = Arg.info [] ~docv:"DIR" in
-  let+ common = Common.term
+  let+ builder = Common.Builder.term
   and+ dirs = Arg.(value & pos_all string [ "." ] name_) in
-  let config = Common.init common in
+  let common, config = Common.init builder in
   let request (setup : Import.Main.build_system) =
     Action_builder.all_unit
       (List.map dirs ~f:(fun dir ->
@@ -180,14 +180,14 @@ let build =
   in
   let name_ = Arg.info [] ~docv:"TARGET" in
   let term =
-    let+ common = Common.term
+    let+ builder = Common.Builder.term
     and+ targets = Arg.(value & pos_all dep [] name_) in
     let targets =
       match targets with
-      | [] -> [ Common.default_target common ]
+      | [] -> [ Common.Builder.default_target builder ]
       | _ :: _ -> targets
     in
-    let config = Common.init common in
+    let common, config = Common.init builder in
     let request setup =
       Target.interpret_targets (Common.root common) config setup targets
     in
@@ -209,7 +209,7 @@ let fmt =
     ]
   in
   let term =
-    let+ common = Common.term
+    let+ builder = Common.Builder.term
     and+ no_promote =
       Arg.(
         value
@@ -221,10 +221,10 @@ let fmt =
                This takes precedence over auto-promote as that flag is assumed for this \
                command.")
     in
-    let common =
-      Common.set_promote common (if no_promote then Never else Automatically)
+    let builder =
+      Common.Builder.set_promote builder (if no_promote then Never else Automatically)
     in
-    let config = Common.init common in
+    let common, config = Common.init builder in
     let request (setup : Import.Main.build_system) =
       let dir = Path.(relative root) (Common.prefix_target common ".") in
       Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts:setup.contexts dir

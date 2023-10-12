@@ -1,10 +1,10 @@
 open Import
 
 let term =
-  let+ common = Common.term
+  let+ builder = Common.Builder.term
   and+ format = Describe_format.arg
   and+ _ = Describe_lang_compat.arg in
-  let config = Common.init common in
+  let common, config = Common.init builder in
   Scheduler.go ~common ~config
   @@ fun () ->
   Build_system.run_exn

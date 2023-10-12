@@ -30,18 +30,19 @@ let action_runner runners server =
 *)
 let build =
   let name_ = Arg.info [] ~docv:"TARGET" in
-  let+ common = Common.term
+  let+ builder = Common.Builder.term
   and+ targets = Arg.(value & pos_all dep [] name_)
   and+ runners =
     Arg.(value & opt_all string [] & info [ "runner" ] ~docv:"NAME" ~doc:"runner.")
   in
-  let config =
+  let builder =
     let action_runner = action_runner runners in
-    Common.init ~action_runner common
+    Common.Builder.set_action_runner builder (Yes action_runner)
   in
+  let common, config = Common.init builder in
   let targets =
     match targets with
-    | [] -> [ Common.default_target common ]
+    | [] -> [ Common.Builder.default_target builder ]
     | _ :: _ -> targets
   in
   let request setup =
@@ -85,10 +86,10 @@ let build =
 ;;
 
 let start =
-  let+ common = Common.term
+  let+ builder = Common.Builder.term
   and+ name = Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"NAME")) in
-  let common = Common.forbid_builds common in
-  let config =
+  let builder = Common.Builder.forbid_builds builder in
+  let builder =
     let log_file =
       (* make sure that runners have their own individual logs *)
       let file =
@@ -97,8 +98,9 @@ let start =
       in
       Log.File.This file
     in
-    Common.init ~log_file common
+    Common.Builder.set_log_file builder log_file
   in
+  let common, config = Common.init builder in
   Scheduler.go ~common ~config
   @@ fun () ->
   let where =

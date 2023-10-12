@@ -1,10 +1,10 @@
 open Import
 
 let term =
-  let+ common = Common.term
+  let+ builder = Common.Builder.term
   and+ context_name = Common.context_arg ~doc:"Build context to use."
   and+ format = Describe_format.arg in
-  let config = Common.init common in
+  let common, config = Common.init builder in
   Scheduler.go ~common ~config
   @@ fun () ->
   let open Fiber.O in

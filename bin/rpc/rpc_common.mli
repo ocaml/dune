@@ -13,7 +13,7 @@ val request_exn
   -> ('b, Dune_rpc_private.Response.Error.t) result Fiber.t
 
 (** Cmdliner term for a generic RPC client. *)
-val client_term : Common.t -> (unit -> 'a Fiber.t) -> 'a
+val client_term : Common.Builder.t -> (unit -> 'a Fiber.t) -> 'a
 
 (** Cmdliner argument for a wait flag. *)
 val wait_term : bool Cmdliner.Term.t

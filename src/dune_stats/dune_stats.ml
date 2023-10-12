@@ -120,8 +120,9 @@ type t =
 
 (* all fields of record used *)
 
-let close { print; close; _ } =
-  print "]\n";
+let close { print; close; after_first_event; _ } =
+  let s = if after_first_event then "]\n" else "[]\n" in
+  print s;
   close ()
 ;;
 

@@ -4,6 +4,15 @@ module Gen_rules = Build_config.Gen_rules
 
 let ( ++ ) = Path.Build.relative
 
+module Ext_loc_map = Map.Make (Dune_package.External_location)
+
+type ext_loc_maps =
+  { findlib_paths : int Path.Map.t
+  ; loc_of_pkg : Dune_package.External_location.t Package.Name.Map.t
+  ; loc_of_lib : Dune_package.External_location.t Lib_name.Map.t
+  ; libs_of_loc : (Dune_package.Lib.t * Lib.t) Lib_name.Map.t Ext_loc_map.t
+  }
+
 let stdlib_lib ctx =
   let* public_libs = Scope.DB.public_libs ctx in
   Lib.DB.find public_libs (Lib_name.of_string "stdlib")
@@ -27,17 +36,6 @@ module Paths = struct
     Path.Build.relative (Context.build_dir context) sub
   ;;
 
-  (* This is used to turn a fully-qualified library path
-     into the bit below the findlib path. For example, it will
-     convert /home/user/.opam/5.0.0/lib/foo/bar into foo/bar *)
-  let local_path_of_findlib_path findlib_paths obj_dir =
-    List.find_map findlib_paths ~f:(fun p ->
-      if Path.is_descendant ~of_:p obj_dir
-      then Some (Path.reach obj_dir ~from:p)
-      else None)
-    |> Option.value_exn
-  ;;
-
   let html_root ctx ~all = root ctx ~all ++ "html"
   let odoc_support ctx ~all = html_root ctx ~all ++ odoc_support_dirname
 end
@@ -46,94 +44,69 @@ module Index = struct
   (* The index represents the position in the output HTML where the
      an artifact will be found. *)
 
-  (* A particular package might be a 'dune-with-modules' type package,
-     where for every library within the package we know it was built
-     with dune and we know all the modules that make it up. Or it might
-     be a local one (which is, of course, built with dune and we know
-     all of its modules!) or it might be a fallback type where at least
-     one of its libraries doesn't satisfy the condition, or it might be
-     unknown (used only when computing the alias that can be built to
-     create all of the odoc files for a library within the package) *)
-  type pkg_ty =
-    | Unknown
-    | Dune_with_modules
-    | Fallback
-    | Local
+  (* Packages are found in various places on the system*)
+  type ext_ty =
+    | Relative_to_stdlib
+    | Relative_to_findlib of (int * Path.t)
+    | Local_packages
+    | Other (* plan b *)
 
-  (* The directories immediately below 'docs' represent packages or
-     private libraries. Within the packages there are subdirectories
-     for sublibraries. We also slightly abuse this for replicating
-     the directory structure within opam for non-dune packages. For
-     example, there will almost always be a
+  (* The directories immediately below 'docs' represent the various
+     locations of packages, and also private libraries. Underneath
+     the package locations are directories that map one-to-one with
+     those in the filesystem, and within these there are subdirectories
+     for sublibraries. For packages installed with dune the directories
+     will have the same name as the package, but for packages installed
+     with other build/packaging systems we fall back to simply replicating
+     the filesystem structure, which in many cases is the package name,
+     but not necessarily. *)
 
-     [Package (Fallback, "ocaml")]
-
-     index which will contain the standard library, unix an so on,
-     even though there is no package 'ocaml' *)
   type ty =
     | Private_lib of string
-    | Package of pkg_ty * string
-    | Subdir of string
+    | Top_dir of ext_ty
+    | Sub_dir of string
 
   type t = ty list
-
-  let ty_name = function
-    | Private_lib lnu -> lnu
-    | Package (_, s) -> s
-    | Subdir str -> str
-  ;;
-
-  let name : t -> string = function
-    | [] -> "toplevel"
-    | xs -> String.concat ~sep:"." (List.rev_map xs ~f:ty_name)
-  ;;
-
-  let rec might_be_fallback = function
-    | [] -> false
-    | Private_lib _ :: _ -> false
-    | Package (Fallback, _) :: _ -> true
-    | Package (Unknown, _) :: _ -> true
-    | Package (Dune_with_modules, _) :: _ -> false
-    | Package (Local, _) :: _ -> false
-    | Subdir _ :: xs -> might_be_fallback xs
-  ;;
 
   (* Used to suppress warnings on packages from the switch *)
   let rec is_external = function
     | [] -> false
     | Private_lib _ :: _ -> false
-    | Package (Local, _) :: _ -> false
-    | Package (_, _) :: _ -> true
-    | Subdir _ :: xs -> is_external xs
+    | Top_dir (Relative_to_findlib _) :: _ -> true
+    | Top_dir Relative_to_stdlib :: _ -> true
+    | Top_dir Local_packages :: _ -> false
+    | Top_dir Other :: _ -> true
+    | Sub_dir _ :: xs -> is_external xs
   ;;
 
   let external_ty_to_dyn x =
     let open Dyn in
     match x with
-    | Unknown -> variant "Unknown" []
-    | Dune_with_modules -> variant "Dune_with_modules" []
-    | Fallback -> variant "Fallback" []
-    | Local -> variant "Local" []
+    | Local_packages -> variant "Local_packages" []
+    | Relative_to_stdlib -> variant "Relative_to_stdlib" []
+    | Relative_to_findlib (x, _) -> variant "Relative_to_findlib" [ Int x ]
+    | Other -> variant "Other" []
   ;;
 
   let ty_to_dyn x =
     let open Dyn in
     match x with
     | Private_lib lnu -> variant "Private_lib" [ String lnu ]
-    | Package (e, str) -> variant "Package" [ external_ty_to_dyn e; String str ]
-    | Subdir str -> variant "LocalSubLib" [ String str ]
+    | Top_dir e -> variant "Package" [ external_ty_to_dyn e ]
+    | Sub_dir str -> variant "LocalSubLib" [ String str ]
   ;;
 
   let to_dyn x = Dyn.list ty_to_dyn x
   let compare_ty x y = Dyn.compare (ty_to_dyn x) (ty_to_dyn y)
 
   let subdir = function
-    | Package (_, str) -> str
-    | Private_lib lnu -> lnu
-    | Subdir str -> str
+    | Private_lib s -> s
+    | Top_dir Local_packages -> "local"
+    | Top_dir Relative_to_stdlib -> "stdlib"
+    | Top_dir (Relative_to_findlib (n, _)) -> "findlib-" ^ string_of_int n
+    | Top_dir Other -> "other"
+    | Sub_dir str -> str
   ;;
-
-  let local_dir : t -> string = fun v -> List.map ~f:subdir v |> String.concat ~sep:"/"
 
   (* Where we find the odoc files for the indexes *)
   let obj_dir ctx ~all : t -> Path.Build.t =
@@ -164,35 +137,9 @@ module Index = struct
   let mld_filename index = mld_name index ^ ".mld"
   let mld_path ctx ~all index = obj_dir ctx ~all index ++ mld_filename index
 
-  (* Here we have the three constructors of the indexes. The first
-     takes an external lib found in a findlib directory: *)
-  let of_external_lib findlib_paths ty lib =
-    let local =
-      let local_full =
-        Lib.info lib
-        |> Lib_info.obj_dir
-        |> Obj_dir.dir
-        |> Paths.local_path_of_findlib_path findlib_paths
-      in
-      String.split ~on:'/' local_full
-    in
-    let init = [ Package (ty, List.hd local) ] in
-    List.fold_left ~init ~f:(fun acc s -> Subdir s :: acc) (List.tl local)
-  ;;
-
-  (* This one is used for fallback findlib directories *)
-  let of_dir dir =
-    match String.split ~on:'/' dir with
-    | [] -> assert false
-    | x :: xs ->
-      List.fold_left ~f:(fun acc s -> Subdir s :: acc) ~init:[ Package (Fallback, x) ] xs
-  ;;
-
-  (* And finally for a local library, it's either associated with a package
-     or it's a private library. *)
-  let of_local_lib (lib : Lib.t) =
+  let of_local_lib lib =
     match
-      let info = Lib.info lib in
+      let info = Lib.Local.info lib in
       Lib_info.package info
     with
     | None -> [ Private_lib (Odoc.lib_unique_name (lib :> Lib.t)) ]
@@ -201,9 +148,53 @@ module Index = struct
        | Private (_, _) -> [ Private_lib (Odoc.lib_unique_name (lib :> Lib.t)) ]
        | Public (pkg, rest) ->
          List.fold_left
-           ~f:(fun acc s -> Subdir s :: acc)
+           ~f:(fun acc s -> Sub_dir s :: acc)
            rest
-           ~init:[ Package (Local, Package.Name.to_string pkg) ])
+           ~init:[ Sub_dir (Package.Name.to_string pkg); Top_dir Local_packages ])
+  ;;
+
+  let of_local_package pkg =
+    [ Sub_dir (Package.Name.to_string pkg); Top_dir Local_packages ]
+  ;;
+
+  let of_external_loc maps (loc : Dune_package.External_location.t) : t option =
+    let open Option.O in
+    let* top, local =
+      match loc with
+      | Relative_to_stdlib local_path -> Some (Relative_to_stdlib, local_path)
+      | Relative_to_findlib (findlib_path, local_path) ->
+        let+ n = Path.Map.find maps.findlib_paths findlib_path in
+        Relative_to_findlib (n, findlib_path), local_path
+      | Absolute _ -> None
+    in
+    let s = Path.Local.explode local in
+    let index =
+      List.fold_left s ~f:(fun acc s -> Sub_dir s :: acc) ~init:[ Top_dir top ]
+    in
+    Some index
+  ;;
+
+  let of_external_lib maps lib =
+    let name = Lib.name lib in
+    match
+      let open Option.O in
+      let* loc = Lib_name.Map.find maps.loc_of_lib name in
+      of_external_loc maps loc
+    with
+    | Some loc -> loc
+    | None ->
+      Log.info [ Pp.textf "Argh lib ex loc: %s" (Lib_name.to_string name) ];
+      [ Sub_dir (Lib_name.to_string (Lib.name lib)); Top_dir Other ]
+  ;;
+
+  let of_pkg maps pkg =
+    match
+      let open Option.O in
+      let* loc = Package.Name.Map.find maps.loc_of_pkg pkg in
+      of_external_loc maps loc
+    with
+    | Some loc -> loc
+    | None -> of_local_package pkg
   ;;
 end
 
@@ -212,174 +203,198 @@ let add_rule sctx =
   Super_context.add_rule sctx ~dir
 ;;
 
-(* Returns a map from a 'local dir' - defined as a directory in
-   your switch's lib dir, e.g. 'ocaml' or 'dune' - to a map from
-   subdir to a map from library name to Dune_package.Lib.t. For
-   example, on 4.14.1, looking up "ocaml" in the map gives a map
-   containing the following:
+(* Returns a [ext_loc_maps] value that contains all the information
+   needed to find the location of a library or package stored externally
+   to the current workspace.
 
-   [ ocaml ->
-     [ bigarray -> <lib>, bytes -> <lib>, dynlink -> <lib> ... ]
-   [ ocaml/compiler-libs ->
-     [ compiler-libs -> <lib>, compiler-libs.bytecomp -> <lib> ... ]
+   Note that this list may contain entries for libraries that are also
+   in the dune workspace, if they happen to be installed elsewhere. These
+   are filtered out in the `Valid` module below, and this general function
+   should not be used.
+
+   Note: There are two reasons why we have a fallback mechanism for
+   non-dune installed packages - first that there is more than one library
+   in a particular directory, and the second is that we don't have a
+   [Modules.t] value for the library. They essentially boil down to the
+   problem that it's very hard to know which modules correspond to which
+   library given a simple include path. Introspecting the cmas isn't
+   sufficient because of the existence of cmi-only modules. A potential
+   improvement is to handle the case of only one library per directory,
+   though this is likely only of limited benefit. If we do this, we would
+   need to modify this function to work on _all_ packages in the findlib
+   directory so we can correctly identify those directories containing
+   multiple libs.
 *)
-let libs_of_local_dir_def =
-  let f (ctx : Context.t) =
-    let* findlib_paths = Context.findlib_paths ctx
-    and* db = Scope.DB.public_libs ctx
-    and* all_packages =
+let libs_maps_def =
+  let f (ctx, libs) =
+    let* db = Scope.DB.public_libs ctx
+    and* all_packages_entries =
       let* findlib = Findlib.create (Context.name ctx) in
-      Findlib.all_packages findlib
+      let* results = Memo.all_concurrently (List.map ~f:(Findlib.find findlib) libs) in
+      Memo.return
+        (List.filter_map
+           ~f:(function
+             | Ok x -> Some x
+             | _ -> None)
+           results)
     in
-    Memo.List.fold_left all_packages ~init:String.Map.empty ~f:(fun map entry ->
-      match entry with
-      | Dune_package.Entry.Library l ->
-        let local =
-          let obj_dir = Dune_package.Lib.info l |> Lib_info.obj_dir |> Obj_dir.dir in
-          Paths.local_path_of_findlib_path findlib_paths obj_dir
-        in
-        let name = Dune_package.Lib.info l |> Lib_info.name in
-        Lib.DB.find db name
-        >>| (function
-        | None -> map
-        | Some lib ->
-          let update_fn = function
-            | None ->
-              Some (String.Map.singleton local (Lib_name.Map.singleton name (l, lib)))
-            | Some libs ->
-              Some
-                (String.Map.update libs local ~f:(function
-                  | Some libs -> Some (Lib_name.Map.add_exn libs name (l, lib))
-                  | None -> Some (Lib_name.Map.singleton name (l, lib))))
-          in
-          let toplocal = String.split local ~on:'/' |> List.hd in
-          String.Map.update map toplocal ~f:update_fn)
-      | _ -> Memo.return map)
+    let* findlib_paths_list = Context.findlib_paths ctx in
+    let findlib_paths =
+      List.fold_left findlib_paths_list ~init:(0, Path.Map.empty) ~f:(fun (i, acc) path ->
+        match Path.Map.add acc path i with
+        | Ok acc -> i + 1, acc
+        | Error _ ->
+          Log.info [ Pp.textf "Error adding findlib path to map" ];
+          i + 1, acc)
+      |> snd
+    in
+    let init =
+      { findlib_paths
+      ; loc_of_pkg = Package.Name.Map.empty
+      ; loc_of_lib = Lib_name.Map.empty
+      ; libs_of_loc = Ext_loc_map.empty
+      }
+    in
+    let+ result =
+      Memo.List.fold_left all_packages_entries ~init ~f:(fun maps entry ->
+        match (entry : Dune_package.Entry.t) with
+        | Deprecated_library_name _ | Hidden_library _ -> Memo.return maps
+        | Dune_package.Entry.Library l ->
+          (match Dune_package.Lib.external_location l with
+           | None ->
+             Log.info
+               [ Pp.textf
+                   "No location for lib %s"
+                   (Dune_package.Lib.info l |> Lib_info.name |> Lib_name.to_string)
+               ];
+             Memo.return maps
+           | Some location ->
+             let info = Dune_package.Lib.info l in
+             let name = Lib_info.name info in
+             let pkg = Lib_info.package info in
+             Lib.DB.find db name
+             >>| (function
+             | None -> maps
+             | Some lib ->
+               let loc_of_lib =
+                 match Lib_name.Map.add maps.loc_of_lib name location with
+                 | Ok l -> l
+                 | Error _ ->
+                   (* I don't expect this should ever happen *)
+                   Log.info
+                     [ Pp.textf
+                         "Error adding lib %s to loc_of_lib map"
+                         (Lib_name.to_string name)
+                     ];
+                   maps.loc_of_lib
+               in
+               let loc_of_pkg =
+                 match pkg with
+                 | None -> maps.loc_of_pkg
+                 | Some pkg_name ->
+                   (match Package.Name.Map.add maps.loc_of_pkg pkg_name location with
+                    | Ok l -> l
+                    | Error _ ->
+                      (* There will be lots of repeated packages, no problem here *)
+                      maps.loc_of_pkg)
+               in
+               let update_fn = function
+                 | None -> Some (Lib_name.Map.singleton name (l, lib))
+                 | Some libs ->
+                   (match Lib_name.Map.add libs name (l, lib) with
+                    | Ok libs -> Some libs
+                    | Error _ ->
+                      Log.info
+                        [ Pp.textf
+                            "Error adding lib %s to libs_of_loc map"
+                            (Lib_name.to_string name)
+                        ];
+                      Some libs)
+               in
+               let libs_of_loc =
+                 Ext_loc_map.update maps.libs_of_loc location ~f:update_fn
+               in
+               { maps with loc_of_lib; loc_of_pkg; libs_of_loc })))
+    in
+    result
   in
-  let module Input = Context in
-  Memo.create "libs_of_local_dir" ~input:(module Input) f
+  let module Input = struct
+    type t = Context.t * Lib_name.t list
+
+    let equal (c1, l1) (c2, l2) = Context.equal c1 c2 && List.equal Lib_name.equal l1 l2
+    let to_dyn = Dyn.pair Context.to_dyn (Dyn.list Lib_name.to_dyn)
+    let hash (c, l) = Poly.hash (Context.hash c, List.hash Lib_name.hash l)
+  end
+  in
+  Memo.create "odoc_lib_maps" ~input:(module Input) f
 ;;
 
-let libs_of_local_dir ctx = Memo.exec libs_of_local_dir_def ctx
+let libs_maps_general ctx libs = Memo.exec libs_maps_def (ctx, libs)
 
 module Classify = struct
-  (* Here we classify top-level dirs in the opam switch. They are either
+  (* Here we classify top-level dirs in the findlib paths. They are either
      packages built by dune for which we have all the info we need -
-     a [Modules.t] value - or there exists one or more libraries within
+     a [Modules.t] value - or there exists one (or more!) libraries within
      the directory that don't satisfy this, and these are labelled
      fallback directories. *)
   exception Fallback
 
-  (* You can get the Modules.t value out of the lib, but that yields an
-     option, and since we've classified it as one where the modules are
-     definitely available, we can avoid a `Option.value_exn` call later
-     by just keeping it available. *)
-  type dune_with_modules =
-    { lib : Lib.t
-    ; modules : Modules.t
-    }
-
-  let dwm_to_dyn x =
-    let open Dyn in
-    record [ "lib", Lib.to_dyn x.lib; "modules", Modules.to_dyn x.modules ]
-  ;;
-
-  let dwm_equal d1 d2 = Lib.equal d1.lib d2.lib && Modules.equal d1.modules d2.modules
-  let dwm_hash d = Lib.hash d.lib
-
   (* The fallback is simply a map of subdirectory to list of libraries
      found in that subdir. This is the value returned by [libs_of_local_dir] *)
-  type fallback = { libs : Lib.t list String.Map.t }
+  type fallback = { libs : Lib.t Lib_name.Map.t }
 
   let fallback_to_dyn x =
     let open Dyn in
-    record [ "libs", String.Map.to_dyn (list Lib.to_dyn) x.libs ]
+    record [ "libs", Lib_name.Map.to_dyn Lib.to_dyn x.libs ]
   ;;
 
-  let fallback_equal f1 f2 =
-    String.Map.equal ~equal:(List.equal Lib.equal) f1.libs f2.libs
-  ;;
+  let fallback_equal f1 f2 = Lib_name.Map.equal ~equal:Lib.equal f1.libs f2.libs
 
   let fallback_hash f =
-    String.Map.fold f.libs ~init:0 ~f:(fun libs acc ->
-      List.sort libs ~compare:Lib.compare
-      |> List.fold_left ~init:acc ~f:(fun acc lib -> Poly.hash (acc, Lib.hash lib)))
+    Lib_name.Map.fold f.libs ~init:0 ~f:(fun lib acc -> Poly.hash (acc, Lib.hash lib))
   ;;
 
   type local_dir_type =
     | Nothing
-    | Dune_with_modules of (Package.Name.t * dune_with_modules list)
+    | Dune_with_modules of (Package.Name.t * Lib.t)
     | Fallback of fallback
 
-  (* We need to know if every single library within a opam package dir is
+  (* We need to know if every single library within a findlib package dir is
      confined to its own subdirectory (ie, no two libraries are found in the
      same dir), and that we have information about the modules of every
      library within the tree. If this is not the case, we'll fall back to a
      less specific mode that simply documents the modules found within each
      dir without assigning them a library. *)
-  let classify_local_dir_memo =
-    let run (ctx, local_dir) =
-      (match String.index_opt local_dir '/' with
-       | Some _ -> assert false
-       | None -> ());
-      let* map = libs_of_local_dir ctx in
-      match String.Map.find map local_dir with
-      | None ->
-        Log.info [ Pp.textf "classify_local_dir: No lib at this path: %s" local_dir ];
-        Memo.return Nothing
-      | Some libs ->
-        (try
-           let f libs acc =
-             match Lib_name.Map.values libs with
-             | [ (lib, _) ] ->
-               (match
-                  let info = Dune_package.Lib.info lib in
-                  let mods_opt = Lib_info.modules info in
-                  mods_opt, Lib_info.entry_modules info
-                with
-                | External (Some modules), External (Ok _) -> (lib, modules) :: acc
-                | _ -> raise Fallback)
-             | _ -> raise Fallback
-           in
-           let* ms =
-             String.Map.fold libs ~f ~init:[]
-             |> Memo.parallel_map ~f:(fun (dune_package_lib, modules) ->
-               let info = Dune_package.Lib.info dune_package_lib in
-               let* resolved_lib =
-                 let* public_libs = Lib.DB.installed ctx in
-                 Lib.DB.resolve public_libs (Loc.none, Lib_info.name info)
-               in
-               let+ lib = Resolve.read_memo resolved_lib in
-               let package = Lib_info.package info |> Option.value_exn in
-               package, { lib; modules })
-           in
-           let pkg =
-             List.fold_left ~init:None ms ~f:(fun acc m ->
-               match acc with
-               | None -> Some (fst m)
-               | Some p -> if p <> fst m then raise Fallback else acc)
-             |> Option.value_exn
-           in
-           Memo.return (Dune_with_modules (pkg, List.map ~f:snd ms))
-         with
-         | Fallback ->
-           let libs =
-             String.Map.map libs ~f:(Lib_name.Map.to_list_map ~f:(fun _name (_, y) -> y))
-           in
-           Memo.return (Fallback { libs }))
-    in
-    let module Input = struct
-      type t = Context.t * string
-
-      let equal (c1, s1) (c2, s2) = Context.equal c1 c2 && String.equal s1 s2
-      let hash (c, s) = Poly.hash (Context.hash c, String.hash s)
-      let to_dyn = Dyn.pair Context.to_dyn Dyn.string
-    end
-    in
-    Memo.create "libs_and_packages" ~input:(module Input) run
+  let classify_location maps location =
+    match Ext_loc_map.find maps.libs_of_loc location with
+    | None ->
+      Log.info
+        [ Pp.textf
+            "classify_local_dir: No lib at this location: %s"
+            (Dyn.to_string (Dune_package.External_location.to_dyn location))
+        ];
+      Memo.return Nothing
+    | Some libs ->
+      (try
+         let pkg, lib =
+           match Lib_name.Map.values libs with
+           | [ (dlib, lib) ] ->
+             let info = Dune_package.Lib.info dlib in
+             let pkg = Lib_name.package_name (Lib_info.name info) in
+             (match
+                let mods_opt = Lib_info.modules info in
+                mods_opt, Lib_info.entry_modules info
+              with
+              | External (Some _), External (Ok _) -> pkg, lib
+              | _ -> raise Fallback)
+           | _ -> raise Fallback
+         in
+         Memo.return (Dune_with_modules (pkg, lib))
+       with
+       | Fallback ->
+         let libs = Lib_name.Map.map libs ~f:snd in
+         Memo.return (Fallback { libs }))
   ;;
-
-  let classify_local_dir ctx dir = Memo.exec classify_local_dir_memo (ctx, dir)
 end
 
 module Valid = struct
@@ -482,11 +497,6 @@ module Valid = struct
     Memo.exec valid_libs_and_packages (ctx, all, projects)
   ;;
 
-  let is_local_package ctx ~all pkg =
-    let+ _, packages = get ctx ~all in
-    List.mem ~equal:Package.Name.equal packages pkg
-  ;;
-
   (* Some functions to filter various values containing libraries
      against the allowlist *)
 
@@ -495,19 +505,19 @@ module Valid = struct
     List.filter libs ~f:(fun l -> List.mem valid_libs l ~equal:lib_equal)
   ;;
 
-  let filter_dune_with_modules ctx ~all dwms =
-    let+ valid_libs, _ = get ctx ~all in
-    List.filter dwms ~f:(fun (dwm : Classify.dune_with_modules) ->
-      List.mem valid_libs dwm.lib ~equal:lib_equal)
-  ;;
-
   let filter_fallback_libs ctx ~all libs =
     let+ valid_libs, _ = get ctx ~all in
-    String.Map.filter_map libs ~f:(fun libs ->
-      let filtered =
-        List.filter libs ~f:(fun l -> List.mem valid_libs l ~equal:lib_equal)
-      in
-      if List.length filtered > 0 then Some filtered else None)
+    Lib_name.Map.filter libs ~f:(fun lib -> List.mem valid_libs lib ~equal:lib_equal)
+  ;;
+
+  let libs_maps ctx ~all =
+    let* libs, _packages = get ctx ~all in
+    let libs =
+      List.filter_map
+        ~f:(fun l -> if Lib.is_local l then None else Some (Lib.name l))
+        libs
+    in
+    libs_maps_general ctx libs
   ;;
 
   (* It's handy for the toplevel index generation to be able to construct
@@ -516,22 +526,19 @@ module Valid = struct
   type categorized =
     { packages : Package.Name.Set.t
     ; local : Lib.Local.t Lib_name.Map.t
-    ; localprivate : Lib.Local.t String.Map.t
-    ; external_dirs : Classify.local_dir_type String.Map.t
+    ; externals : Classify.local_dir_type Ext_loc_map.t
     }
 
   let empty_categorized =
     { packages = Package.Name.Set.empty
     ; local = Lib_name.Map.empty
-    ; localprivate = String.Map.empty
-    ; external_dirs = String.Map.empty
+    ; externals = Ext_loc_map.empty
     }
   ;;
 
   let get_categorized_memo =
     let run (ctx, all) =
       let* libs, packages = get ctx ~all in
-      let* findlib_paths = Context.findlib_paths ctx in
       let init =
         Memo.return
           { empty_categorized with packages = Package.Name.Set.of_list packages }
@@ -540,55 +547,45 @@ module Valid = struct
         let* cats = cats in
         match Lib.Local.of_lib lib with
         | Some llib ->
-          (match Lib_info.package (Lib.Local.info llib) with
-           | Some _pkg ->
-             let local =
-               match Lib_name.Map.add cats.local (Lib.name (llib :> Lib.t)) llib with
-               | Ok l -> l
-               | Error _ ->
-                 Log.info
-                   [ Pp.textf
-                       "Error adding local library %s to categorized map"
-                       (Lib.name (llib :> Lib.t) |> Lib_name.to_string)
-                   ];
-                 cats.local
-             in
-             Memo.return { cats with local }
-           | None ->
-             let localprivate =
-               let lnu = Odoc.lib_unique_name (llib :> Lib.t) in
-               match String.Map.add cats.localprivate lnu llib with
-               | Ok l -> l
-               | Error _ ->
-                 Log.info
-                   [ Pp.textf
-                       "Error adding local private library %s to categorized map"
-                       (Lib.name (llib :> Lib.t) |> Lib_name.to_string)
-                   ];
-                 cats.localprivate
-             in
-             Memo.return { cats with localprivate })
-        | None ->
-          let top_dir =
-            let local =
-              let obj_dir = Lib.info lib |> Lib_info.obj_dir |> Obj_dir.dir in
-              Paths.local_path_of_findlib_path findlib_paths obj_dir
-            in
-            local |> String.split ~on:'/' |> List.hd
+          let local =
+            match Lib_name.Map.add cats.local (Lib.name (llib :> Lib.t)) llib with
+            | Ok l -> l
+            | Error _ ->
+              Log.info
+                [ Pp.textf
+                    "Error adding local library %s to categorized map"
+                    (Lib.name (llib :> Lib.t) |> Lib_name.to_string)
+                ];
+              cats.local
           in
-          if String.Map.mem cats.external_dirs top_dir
-          then Memo.return cats
-          else
-            let* c = Classify.classify_local_dir ctx top_dir in
-            let external_dirs =
-              match String.Map.add cats.external_dirs top_dir c with
-              | Ok l -> l
-              | Error _ ->
-                Log.info
-                  [ Pp.textf "Error adding external dir %s to categorized map" top_dir ];
-                cats.external_dirs
-            in
-            Memo.return { cats with external_dirs })
+          Memo.return { cats with local }
+        | None ->
+          let* maps = libs_maps ctx ~all in
+          (match Lib_name.Map.find maps.loc_of_lib (Lib.name lib) with
+           | None ->
+             Log.info
+               [ Pp.textf "No location for lib: %s" (Lib.name lib |> Lib_name.to_string) ];
+             Memo.return cats
+           | Some location ->
+             let* classification = Classify.classify_location maps location in
+             let f (old : Classify.local_dir_type option) =
+               match old with
+               | None -> Some classification
+               | Some Nothing -> old
+               | Some (Fallback _) -> old
+               | Some (Dune_with_modules _) ->
+                 let loc_str =
+                   Dyn.to_string (Dune_package.External_location.to_dyn location)
+                 in
+                 Log.info
+                   [ Pp.textf
+                       "Duplicate 'Dune_with_modules' library found in location %s"
+                       loc_str
+                   ];
+                 old
+             in
+             let externals = Ext_loc_map.update cats.externals location ~f in
+             Memo.return { cats with externals }))
     in
     let module Input = struct
       type t = Context.t * bool
@@ -609,18 +606,17 @@ module Dep : sig
       produced by odoc for [target] *)
   val html_alias : Path.Build.t -> Alias.t
 
-  (** [deps ctx all findlib_paths valid_libs pkg requires] returns all odoc
+  (** [deps ctx all maps valid_libs pkg requires] returns all odoc
       dependencies of [requires]. If a package [pkg] is also specified, then
       the odoc dependencies of the package are returned - these are the odoc
-      files representing mld files in the package. [findlib_paths] is the
-      result of [Context.findlib_paths] and [valid_libs] comes from the
-      [Valid] module above. *)
+      files representing mld files in the package. [maps] is obtained via
+      [Valid.libs_maps] and [valid_libs] comes from [Valid.get]. *)
   val deps
     :  Context.t
     -> all:bool
-    -> Path.t list
+    -> ext_loc_maps
     -> Lib.t list
-    -> string option
+    -> Package.Name.t option
     -> Lib.t list Resolve.t
     -> unit Action_builder.t
 
@@ -631,16 +627,22 @@ end = struct
   let html_alias dir = Alias.make Alias0.doc_new ~dir
   let alias = Alias.make (Alias.Name.of_string ".odoc-all")
 
-  let deps ctx ~all findlib_paths valid_libs pkg requires =
+  let deps ctx ~all maps valid_libs pkg requires =
     let open Action_builder.O in
     let* libs = Resolve.read requires in
     Action_builder.deps
-      (let init =
+      (let libs, init =
          match pkg with
-         | None -> Dep.Set.empty
+         | None -> libs, Dep.Set.empty
          | Some p ->
-           let index = [ Index.Package (Unknown, p) ] in
-           Dep.Set.singleton (Dep.alias (alias ~dir:(Index.odoc_dir ctx ~all index)))
+           let index = Index.of_pkg maps p in
+           let init =
+             Dep.Set.singleton (Dep.alias (alias ~dir:(Index.odoc_dir ctx ~all index)))
+           in
+           let pkg_libs =
+             List.filter ~f:(fun l -> Lib.info l |> Lib_info.package = pkg) valid_libs
+           in
+           List.rev_append pkg_libs libs, init
        in
        List.fold_left libs ~init ~f:(fun acc (lib : Lib.t) ->
          match List.mem ~equal:lib_equal valid_libs lib with
@@ -648,8 +650,8 @@ end = struct
          | true ->
            let index =
              match Lib.Local.of_lib lib with
-             | None -> Index.of_external_lib findlib_paths Unknown lib
-             | Some _ -> Index.of_local_lib lib
+             | None -> Index.of_external_lib maps lib
+             | Some l -> Index.of_local_lib l
            in
            let dir = Index.odoc_dir ctx ~all index in
            let alias = alias ~dir in
@@ -743,13 +745,7 @@ end = struct
     | _ -> None
   ;;
 
-  let name v =
-    let name = Path.basename v.source |> Filename.chop_extension in
-    match v.ty with
-    | Module _ -> name
-    | Mld -> Filename.chop_extension name
-  ;;
-
+  let name v = Path.basename v.source |> Filename.chop_extension
   let v ~source ~odoc ~html_dir ~html_file ~ty = { source; odoc; html_dir; html_file; ty }
 
   let make_module ctx ~all index source ~visible =
@@ -818,7 +814,7 @@ let parent_args parent_opt =
 
 (* Given a list of dependency libraries, construct the command line options
    to odoc to use them. *)
-let odoc_include_flags ctx all findlib_paths pkg requires indices =
+let odoc_include_flags ctx all maps pkg requires indices =
   Resolve.args
   @@
   let open Resolve.O in
@@ -829,15 +825,15 @@ let odoc_include_flags ctx all findlib_paths pkg requires indices =
         >>| List.fold_left ~init:Path.Set.empty ~f:(fun paths lib ->
           let index =
             match Lib.Local.of_lib lib with
-            | None -> Index.of_external_lib findlib_paths Unknown lib
-            | Some lib -> Index.of_local_lib (lib :> Lib.t)
+            | None -> Index.of_external_lib maps lib
+            | Some lib -> Index.of_local_lib lib
           in
           Index.odoc_dir ctx ~all index |> Path.build |> Path.Set.add paths)
       in
       match pkg with
       | None -> paths
       | Some p ->
-        Index.odoc_dir ctx ~all [ Package (Unknown, p) ]
+        Index.odoc_dir ctx ~all (Index.of_local_package p)
         |> Path.build
         |> Path.Set.add paths
     in
@@ -858,7 +854,6 @@ let index_dep index =
   |> Dune_engine.Dep.Set.singleton
 ;;
 
-(* Compile a single module. *)
 let compile_module
   sctx
   all
@@ -873,16 +868,15 @@ let compile_module
   let odoc_file = Artifact.odoc_file a in
   let open Memo.O in
   let ctx = Super_context.context sctx in
-  let* findlib_paths = Context.findlib_paths ctx in
   let* valid_libs, _ = Valid.get ctx ~all in
+  let* maps = Valid.libs_maps ctx ~all in
   let+ () =
     let* action_with_targets =
       let doc_dir = Path.parent_exn (Path.build (Artifact.odoc_file a)) in
       let+ run_odoc =
         let cmti = Artifact.source_file a in
         let iflags =
-          Command.Args.memo
-            (odoc_include_flags ctx all findlib_paths package requires indices)
+          Command.Args.memo (odoc_include_flags ctx all maps package requires indices)
         in
         let parent_args = parent_args parent_opt in
         let quiet_arg =
@@ -904,7 +898,7 @@ let compile_module
            @ parent_args
            @ [ quiet_arg ])
       in
-      let file_deps = Dep.deps ctx ~all findlib_paths valid_libs package requires in
+      let file_deps = Dep.deps ctx ~all maps valid_libs package requires in
       let open Action_builder.With_targets.O in
       Action_builder.with_no_targets file_deps
       >>> Action_builder.with_no_targets module_deps
@@ -918,17 +912,25 @@ let compile_module
 (* Calculate the dependency libraries for the compilation step. We
    require all of the odoc files for all dependency libraries to be
    created rather than doing any fine-grained dependency management. *)
-let compile_requires libs =
+let compile_requires stdlib_opt libs =
   let+ requires = Memo.List.map ~f:Lib.requires libs in
   let requires = Resolve.all requires |> Resolve.map ~f:List.flatten in
-  Resolve.map
-    requires
-    ~f:(List.filter ~f:(fun l -> not (List.mem libs l ~equal:lib_equal)))
+  Resolve.map requires ~f:(fun requires ->
+    let requires =
+      match stdlib_opt with
+      | Some l -> l :: requires
+      | None -> requires
+    in
+    List.filter requires ~f:(fun l -> not (List.mem libs l ~equal:lib_equal)))
 ;;
 
-let link_requires libs = Lib.closure libs ~linking:false
+let link_requires stdlib_opt libs =
+  Resolve.Memo.map (Lib.closure libs ~linking:false) ~f:(fun libs ->
+    match stdlib_opt with
+    | None -> libs
+    | Some stdlib -> stdlib :: libs)
+;;
 
-(* Compile an mld file *)
 let compile_mld sctx a ~parent_opt ~quiet ~is_index ~children =
   assert (Artifact.artifact_ty a = Artifact.Mld);
   let odoc_file = Artifact.odoc_file a in
@@ -958,7 +960,7 @@ let compile_mld sctx a ~parent_opt ~quiet ~is_index ~children =
       "compile"
       ~flags_for:(Some odoc_file)
       ~quiet
-      (A "-o"
+      (Command.Args.A "-o"
        :: Target odoc_file
        :: Dep odoc_input
        :: As child_args
@@ -973,11 +975,12 @@ let compile_mld sctx a ~parent_opt ~quiet ~is_index ~children =
 let link_odoc_rules sctx ~all (artifacts : Artifact.t list) ~quiet ~package ~libs ~indices
   =
   let ctx = Super_context.context sctx in
-  let* findlib_paths = Context.findlib_paths ctx in
-  let* requires = link_requires libs in
+  let* maps = Valid.libs_maps ctx ~all in
+  let* stdlib_opt = stdlib_lib ctx in
+  let* requires = link_requires stdlib_opt libs in
   let* deps =
     let+ valid_libs, _ = Valid.get ctx ~all in
-    Dep.deps ctx ~all findlib_paths valid_libs package requires
+    Dep.deps ctx ~all maps valid_libs package requires
   in
   let index_deps =
     List.map indices ~f:(fun x -> Command.Args.Hidden_deps (index_dep x))
@@ -995,7 +998,7 @@ let link_odoc_rules sctx ~all (artifacts : Artifact.t list) ~quiet ~package ~lib
         ~quiet
         ~flags_for:(Some (Artifact.odoc_file a))
         (index_deps
-         @ [ odoc_include_flags ctx all findlib_paths package requires indices
+         @ [ odoc_include_flags ctx all maps package requires indices
            ; A "-o"
            ; Target (Artifact.odocl_file a)
            ; Dep (Path.build (Artifact.odoc_file a))
@@ -1024,7 +1027,7 @@ let html_generate sctx all (a : Artifact.t) =
       ~dir:(Path.build html_output)
       "html-generate"
       ~flags_for:None
-      [ A "-o"
+      [ Command.Args.A "-o"
       ; Path (Path.build html_output)
       ; A "--support-uri"
       ; A support_relative
@@ -1087,7 +1090,8 @@ let parse_odoc_deps lines =
 let compile_odocs sctx ~all ~quiet artifacts parent libs =
   let* requires =
     let ctx = Super_context.context sctx in
-    let requires = compile_requires libs in
+    let* stdlib_opt = stdlib_lib ctx in
+    let requires = compile_requires stdlib_opt libs in
     Resolve.Memo.bind requires ~f:(fun libs ->
       let+ libs = Valid.filter_libs ctx ~all libs in
       Resolve.return libs)
@@ -1168,31 +1172,36 @@ let modules_of_dir d : (Module_name.t * (Path.t * [ `Cmti | `Cmt | `Cmi ])) list
 (* Here we are constructing the list of artifacts for various types of things
    to be documented - packages, fallback dirs, libraries (both private and those
    in packages) *)
-let fallback_artifacts sctx (libs : Lib.t list String.Map.t) =
+let fallback_artifacts
+  sctx
+  (location : Dune_package.External_location.t)
+  (libs : Lib.t Lib_name.Map.t)
+  =
   let ctx = Super_context.context sctx in
-  let* findlib_paths = Context.findlib_paths ctx in
-  String.Map.foldi libs ~init:[] ~f:(fun local_dir libs acc ->
-    let result =
-      let+ mods =
-        let cmti_paths =
-          List.map findlib_paths ~f:(fun path -> Path.relative path local_dir)
-        in
-        Memo.parallel_map ~f:modules_of_dir cmti_paths
-        >>| List.concat
-        >>| List.fold_left ~init:[] ~f:(fun acc (mod_name, (cmti_file, _)) ->
-          let artifact =
-            let visible =
-              Module_name.to_string mod_name |> String.contains_double_underscore |> not
-            in
-            let index = Index.of_dir local_dir in
-            Artifact.make_module ctx ~all:true index cmti_file ~visible
-          in
-          artifact :: acc)
+  let* maps = Valid.libs_maps ctx ~all:true in
+  match Index.of_external_loc maps location with
+  | None -> Memo.return []
+  | Some index ->
+    let+ mods =
+      let* ocaml = Context.ocaml ctx in
+      let stdlib_dir = ocaml.lib_config.Lib_config.stdlib_dir in
+      let cmti_path =
+        match location with
+        | Absolute d -> d
+        | Relative_to_findlib (dir, l) -> Path.relative dir (Path.Local.to_string l)
+        | Relative_to_stdlib l -> Path.relative stdlib_dir (Path.Local.to_string l)
       in
-      local_dir, mods, libs
+      let+ modules = modules_of_dir cmti_path in
+      List.fold_left modules ~init:[] ~f:(fun acc (mod_name, (cmti_file, _)) ->
+        let artifact =
+          let visible =
+            Module_name.to_string mod_name |> String.contains_double_underscore |> not
+          in
+          Artifact.make_module ctx ~all:true index cmti_file ~visible
+        in
+        artifact :: acc)
     in
-    result :: acc)
-  |> Memo.all_concurrently
+    [ mods, libs ]
 ;;
 
 let lib_artifacts ctx all index lib modules =
@@ -1305,22 +1314,25 @@ module Index_tree = struct
      For example, we might have a package with two sublibraries whose
      indexes and infos are:
 
-     [Package (Dune_with_modules, "foo")], <foo package info>
-     [Package (Dune_with_modules, "foo"); SubDir "bar"], <foo.baz info>
-     [Package (Dune_with_modules, "foo"); SubDir "baz"], <foo.baz info>
+     [Sub_dir "pkg"; Top_dir Local_packages], <pkg package info>
+     [Sub_dir "bar"; Sub_dir "pkg"; Top_dir Local_packages], <pkg.bar info>
+     [Sub_dir "baz"; Sub_dir "pkg"; Top_dir Local_packages], <pkg.baz info>
 
      This will be represented by the tree:
 
-     Br (empty, [ (Package (Dune_with_modules, "foo"), Br (<foo package info>,
-      [ (Subdir "bar", Br (<foo.baz info>, []))
-      ; (Subdir "baz", Br (<foo.baz info>, []))
-      ]))])
+     Br (empty,
+     [ Top_dir Local_packages, Br (empty,
+         [ Sub_dir "pkg", Br (<foo package info>,
+           [ Sub_dir "bar", Br (<foo.bar info>, [])
+           ; Sub_dir "baz", Br (<foo.baz info>, [])
+     ])])])
   *)
   type info =
     { artifacts : Artifact.t list
     ; predefined_index : Path.t option
     ; libs : Artifact.t list Lib.Map.t
-    ; package : string option
+    ; package : Package.Name.t option
+    ; is_fallback : bool
     }
 
   type 'a t = Br of 'a * (Index.ty * 'a t) list
@@ -1348,13 +1360,24 @@ module Index_tree = struct
 
   let of_index_info =
     let empty =
-      { artifacts = []; predefined_index = None; libs = Lib.Map.empty; package = None }
+      { artifacts = []
+      ; predefined_index = None
+      ; libs = Lib.Map.empty
+      ; package = None
+      ; is_fallback = false
+      }
     in
     let combine x y =
       let predefined_index = Option.first_some x.predefined_index y.predefined_index in
       let libs = Lib.Map.union x.libs y.libs ~f:(fun _lib x _y -> Some x) in
       let package = Option.first_some x.package y.package in
-      { artifacts = x.artifacts @ y.artifacts; predefined_index; libs; package }
+      let is_fallback = x.is_fallback || y.is_fallback in
+      { artifacts = x.artifacts @ y.artifacts
+      ; predefined_index
+      ; libs
+      ; package
+      ; is_fallback
+      }
     in
     fun x -> of_index_list ~empty ~combine x
   ;;
@@ -1377,117 +1400,82 @@ module Index_tree = struct
   ;;
 end
 
-(* Here we construct the index info for each package, private library
-   and external fallback *)
 let index_info_of_pkg_def =
-  let f (sctx, all, pkg_name, dwms) =
+  let f (sctx, all, pkg_name) =
     let ctx = Super_context.context sctx in
-    let* is_local = Valid.is_local_package ctx ~all pkg_name in
-    let pkg_ty = if is_local then Index.Local else Dune_with_modules in
-    let* main_index_path, main_artifacts =
-      let index = [ Index.Package (pkg_ty, Package.Name.to_string pkg_name) ] in
-      pkg_artifacts sctx index pkg_name
-    in
-    let+ index_infos =
-      let+ findlib_paths = Context.findlib_paths ctx
-      and+ dwms = Valid.filter_dune_with_modules ctx ~all dwms in
-      List.fold_left ~init:[] dwms ~f:(fun acc (dwm : Classify.dune_with_modules) ->
-        assert (Lib.is_local dwm.lib = is_local);
-        let index =
-          if is_local
-          then Index.of_local_lib dwm.lib
-          else Index.of_external_lib findlib_paths Dune_with_modules dwm.lib
-        in
-        let artifacts = lib_artifacts ctx all index dwm.lib dwm.modules in
-        let entry_modules =
-          artifacts
-          |> List.filter ~f:Artifact.is_module
-          |> List.filter ~f:Artifact.is_visible
-        in
-        let libs = Lib.Map.singleton dwm.lib entry_modules in
-        ( index
-        , { Index_tree.libs
-          ; artifacts
-          ; predefined_index = None
-          ; package = Some (Package.Name.to_string pkg_name)
-          } )
-        :: acc)
-    in
-    (* The main package mlds can link to any library in the package *)
-    let libs =
-      List.fold_left index_infos ~init:Lib.Map.empty ~f:(fun acc (_, x) ->
-        Lib.Map.union x.Index_tree.libs acc ~f:(fun _lib x _y -> Some x))
-    in
+    let* maps = Valid.libs_maps ctx ~all in
+    let index = Index.of_pkg maps pkg_name in
+    let+ main_index_path, main_artifacts = pkg_artifacts sctx index pkg_name in
     let pkg_index_info =
-      ( [ Index.Package (pkg_ty, Package.Name.to_string pkg_name) ]
-      , { Index_tree.libs
+      ( index
+      , { Index_tree.libs = Lib.Map.empty
         ; artifacts = main_artifacts
         ; predefined_index = main_index_path
-        ; package = Some (Package.Name.to_string pkg_name)
+        ; package = Some pkg_name
+        ; is_fallback = false
         } )
     in
-    pkg_index_info :: index_infos
+    [ pkg_index_info ]
   in
   let module Input = struct
     module Super_context = Super_context.As_memo_key
 
-    type t = Super_context.t * bool * Package.Name.t * Classify.dune_with_modules list
+    type t = Super_context.t * bool * Package.Name.t
 
-    let equal (c1, b1, n1, dwms1) (c2, b2, n2, dwms2) =
-      Super_context.equal c1 c2
-      && b1 = b2
-      && Package.Name.equal n1 n2
-      && List.equal Classify.dwm_equal dwms1 dwms2
+    let equal (c1, b1, n1) (c2, b2, n2) =
+      Super_context.equal c1 c2 && Package.Name.equal n1 n2 && b1 = b2
     ;;
 
-    let hash (c, b, n, dwms) =
-      Poly.hash
-        (Super_context.hash c, b, Package.Name.hash n, List.hash Classify.dwm_hash dwms)
-    ;;
+    let hash (c, b, n) = Poly.hash (Super_context.hash c, b, Package.Name.hash n)
 
-    let to_dyn (c, b, n, dwms) =
-      Dyn.Tuple
-        [ Super_context.to_dyn c
-        ; Dyn.Bool b
-        ; Package.Name.to_dyn n
-        ; Dyn.list Classify.dwm_to_dyn dwms
-        ]
+    let to_dyn (c, b, n) =
+      Dyn.Tuple [ Super_context.to_dyn c; Dyn.bool b; Package.Name.to_dyn n ]
     ;;
   end
   in
-  Memo.create "index_info_of_local_pkg" ~input:(module Input) f
+  Memo.create "index_info_of_pkg" ~input:(module Input) f
 ;;
 
-let index_info_of_pkg sctx all pkg_name dwms =
-  Memo.exec index_info_of_pkg_def (sctx, all, pkg_name, dwms)
+let index_info_of_pkg sctx all pkg_name =
+  Memo.exec index_info_of_pkg_def (sctx, all, pkg_name)
 ;;
 
-let index_info_of_private_lib_def =
+let index_info_of_lib_def =
   let module Input = struct
     module Super_context = Super_context.As_memo_key
 
-    type t = Super_context.t * bool * string * Lib.Local.t
+    type t = Super_context.t * bool * Lib.t
 
-    let equal (c1, b1, s1, l1) (c2, b2, s2, l2) =
-      Super_context.equal c1 c2 && b1 = b2 && String.equal s1 s2 && Lib.Local.equal l1 l2
+    let equal (c1, b1, l1) (c2, b2, l2) =
+      Super_context.equal c1 c2 && b1 = b2 && Lib.equal l1 l2
     ;;
 
-    let hash (c, b, s, l) = Poly.hash (Super_context.hash c, b, s, Lib.Local.hash l)
-
-    let to_dyn (c, b, s, l) =
-      Dyn.Tuple [ Super_context.to_dyn c; Dyn.Bool b; Dyn.String s; Lib.Local.to_dyn l ]
-    ;;
+    let hash (c, b, l) = Poly.hash (Super_context.hash c, b, Lib.hash l)
+    let to_dyn (c, b, l) = Dyn.Tuple [ Super_context.to_dyn c; Dyn.Bool b; Lib.to_dyn l ]
   end
   in
   let f : Input.t -> _ =
-    fun (sctx, all, lnu, lib) ->
+    fun (sctx, all, lib) ->
     let ctx = Super_context.context sctx in
-    let index = [ Index.Private_lib lnu ] in
+    let* maps = Valid.libs_maps ctx ~all in
+    let index =
+      match Lib.Local.of_lib lib with
+      | Some l -> Index.of_local_lib l
+      | None -> Index.of_external_lib maps lib
+    in
     let+ artifacts =
-      let+ modules =
-        Dir_contents.modules_of_lib sctx (lib :> Lib.t) >>| Option.value_exn
-      in
-      lib_artifacts ctx all index (lib :> Lib.t) modules
+      let+ modules = Dir_contents.modules_of_lib sctx (lib :> Lib.t) in
+      match modules with
+      | Some m -> lib_artifacts ctx all index (lib :> Lib.t) m
+      | None ->
+        (* Note this shouldn't happen as we've filtered out libs
+           without a [Modules.t] in the classification stage. *)
+        Log.info
+          [ Pp.textf
+              "Expecting modules info for library %s"
+              (Lib.name lib |> Lib_name.to_string)
+          ];
+        []
     in
     let libs =
       let entry_modules =
@@ -1495,72 +1483,114 @@ let index_info_of_private_lib_def =
         |> List.filter ~f:Artifact.is_module
         |> List.filter ~f:Artifact.is_visible
       in
-      Lib.Map.singleton (lib :> Lib.t) entry_modules
+      Lib.Map.singleton lib entry_modules
     in
-    [ index, { Index_tree.libs; artifacts; predefined_index = None; package = None } ]
+    let package = Lib_info.package (Lib.info lib) in
+    let lib_index_info =
+      ( index
+      , { Index_tree.libs
+        ; artifacts
+        ; predefined_index = None
+        ; package
+        ; is_fallback = false
+        } )
+    in
+    match package with
+    | None -> [ lib_index_info ]
+    | Some pkg ->
+      let pkg_index = Index.of_pkg maps pkg in
+      let pkg_index_info =
+        ( pkg_index
+        , { Index_tree.libs
+          ; artifacts = []
+          ; predefined_index = None
+          ; package = Some pkg
+          ; is_fallback = false
+          } )
+      in
+      [ lib_index_info; pkg_index_info ]
   in
-  Memo.create "index_info_of_private_lib" ~input:(module Input) f
+  Memo.create "index_info_of_lib" ~input:(module Input) f
 ;;
 
-let index_info_of_private_lib sctx all lnu lib =
-  Memo.exec index_info_of_private_lib_def (sctx, all, lnu, lib)
-;;
+let index_info_of_lib sctx all lib = Memo.exec index_info_of_lib_def (sctx, all, lib)
 
 let index_info_of_external_fallback_def =
-  let f (sctx, (fallback : Classify.fallback)) =
+  let f (sctx, location, (fallback : Classify.fallback)) =
     let ctx = Super_context.context sctx in
-    let* libs = Valid.filter_fallback_libs ctx ~all:true fallback.libs in
-    let* artifacts = fallback_artifacts sctx libs in
-    List.fold_left artifacts ~init:(Memo.return []) ~f:(fun acc (dir, artifacts, libs) ->
-      let+ acc = acc in
-      (* Urgh grotty hack time. The [ocaml] dir contains the [threads] library, which
-         actually has no implementation and merely depends upon either [threads.vm]
-         or [threads.posix], both of which are found as subdirectories. These libraries
-         are in separate directories and, in turn, depend upon [unix], which is found in
-         the [ocaml] directory. Since we only do fine-grained dependencies _between_
-         directories this means that the [ocaml] dir depends on the [threads] dir, and
-         the [threads] dir depends on the [ocaml] dir. We remove this dependency cycle
-         by pretending the [threads] library is not present in the [ocaml] dir. This
-         works because there actually aren't any modules in the [threads] library itself,
-         they're all in the subdirs. *)
-      let libs =
-        if dir = "ocaml"
-        then
-          List.filter ~f:(fun lib -> Lib.name lib |> Lib_name.to_string <> "threads") libs
-        else libs
-      in
-      let index = Index.of_dir dir in
-      let libs =
-        match List.map libs ~f:(fun lib -> lib, []) |> Lib.Map.of_list with
-        | Ok m -> m
-        | Error _ ->
-          Log.info [ Pp.textf "Error combining libs for fallback dir" ];
-          Lib.Map.empty
-      in
-      (index, { Index_tree.artifacts; libs; predefined_index = None; package = None })
-      :: acc)
+    let* maps = Valid.libs_maps ctx ~all:true in
+    match Index.of_external_loc maps location with
+    | None -> Memo.return []
+    | Some index ->
+      let* libs = Valid.filter_fallback_libs ctx ~all:true fallback.libs in
+      let* artifacts = fallback_artifacts sctx location libs in
+      List.fold_left artifacts ~init:(Memo.return []) ~f:(fun acc (artifacts, libs) ->
+        let+ acc = acc in
+        (* Urgh grotty hack time. The [ocaml] dir contains the [threads] library, which
+           actually has no implementation and merely depends upon either [threads.vm]
+           or [threads.posix], both of which are found as subdirectories. These libraries
+           are in separate directories and, in turn, depend upon [unix], which is found in
+           the [ocaml] directory. Since we only do fine-grained dependencies _between_
+           directories this means that the [ocaml] dir depends on the [threads] dir, and
+           the [threads] dir depends on the [ocaml] dir. We remove this dependency cycle
+           by pretending the [threads] library is not present in the [ocaml] dir. This
+           works because there actually aren't any modules in the [threads] library itself,
+           they're all in the subdirs. *)
+        let libs =
+          if Lib_name.Map.mem libs (Lib_name.of_string "stdlib")
+          then
+            Lib_name.Map.filter
+              ~f:(fun lib -> Lib.name lib |> Lib_name.to_string <> "threads")
+              libs
+          else libs
+        in
+        let libs =
+          Lib_name.Map.fold libs ~init:Lib.Map.empty ~f:(fun lib map ->
+            match Lib.Map.add map lib [] with
+            | Ok map -> map
+            | Error _ -> map)
+        in
+        ( index
+        , { Index_tree.artifacts
+          ; libs
+          ; predefined_index = None
+          ; package = None
+          ; is_fallback = true
+          } )
+        :: acc)
   in
   let module Local = struct
     module Super_context = Super_context.As_memo_key
 
-    type t = Super_context.t * Classify.fallback
+    type t = Super_context.t * Dune_package.External_location.t * Classify.fallback
 
-    let equal (sctx1, f1) (sctx2, f2) =
-      Super_context.equal sctx1 sctx2 && Classify.fallback_equal f1 f2
+    let equal (sctx1, l1, f1) (sctx2, l2, f2) =
+      Super_context.equal sctx1 sctx2
+      && Dune_package.External_location.compare l1 l2 = Eq
+      && Classify.fallback_equal f1 f2
     ;;
 
-    let hash = Tuple.T2.hash Super_context.hash Classify.fallback_hash
+    let hash =
+      Tuple.T3.hash
+        Super_context.hash
+        Dune_package.External_location.hash
+        Classify.fallback_hash
+    ;;
 
-    let to_dyn (sctx, f) =
-      Dyn.Tuple [ Super_context.to_dyn sctx; Classify.fallback_to_dyn f ]
+    let to_dyn (sctx, l1, f) =
+      Dyn.Tuple
+        [ Super_context.to_dyn sctx
+        ; Dune_package.External_location.to_dyn l1
+        ; Classify.fallback_to_dyn f
+        ]
     ;;
   end
   in
   Memo.create "index_info_of_external_fallback" ~input:(module Local) f
 ;;
 
-let index_info_of_external_fallback sctx fallback =
-  Memo.exec index_info_of_external_fallback_def (sctx, fallback)
+let index_info_of_external_fallback sctx location fallback =
+  Memo.exec index_info_of_external_fallback_def (sctx, location, fallback)
 ;;
 
 (* Index generation
@@ -1572,44 +1602,13 @@ let index_info_of_external_fallback sctx fallback =
    0. The toplevel index
    1. Dune packages for which we have module info (both local and
    installed)
-   2. External opam-lib directories
+   2. External findlib directories
    3. Private libraries
-
-   These should all be disjoint as local packages override external
-   packages, local private libs have unique names generated for them
-   and 'other' opam lib directories share the same namespace in the
-   opam dir as external packages (as dune enforces that the package
-   name is equal to the dir name in the opam lib directory).
 
    We actually use the same function for private libaries as for
    dune packages.
 *)
-
-let default_index ~main_name ~pkg_opt ~subindexes entry_modules =
-  let b = Buffer.create 512 in
-  Printf.bprintf
-    b
-    "{0 %s %s}\n"
-    main_name
-    (match pkg_opt with
-     | None -> "index"
-     | Some pkg ->
-       (match pkg.Package.synopsis with
-        | None -> ""
-        | Some s -> " : " ^ s));
-  (match pkg_opt with
-   | None -> ()
-   | Some pkg ->
-     (match pkg.description with
-      | None -> ()
-      | Some s -> Printf.bprintf b "%s\n" s));
-  if List.length subindexes > 0
-  then (
-    Printf.bprintf b "{1 Sub-packages}\n%!";
-    subindexes
-    |> List.sort ~compare:(fun x y -> Dyn.compare (Index.to_dyn x) (Index.to_dyn y))
-    |> List.iter ~f:(fun i ->
-      Printf.bprintf b "- {{!page-\"%s\"}%s}\n" (Index.mld_name i) (Index.name i)));
+let standard_index_contents b entry_modules =
   entry_modules
   |> List.sort ~compare:(fun (x, _) (y, _) -> Lib_name.compare x y)
   |> List.iter ~f:(fun (lib, modules) ->
@@ -1627,20 +1626,15 @@ let default_index ~main_name ~pkg_opt ~subindexes entry_modules =
            (modules
             |> List.map ~f:Artifact.name
             |> List.sort ~compare:String.compare
-            |> String.concat ~sep:" ")));
-  Buffer.contents b
+            |> String.concat ~sep:" ")))
 ;;
 
-let default_fallback_index local_path ~subindexes artifacts =
-  let b = Buffer.create 512 in
-  Printf.bprintf b "{0 Index for filesystem path %s}\n" local_path;
-  if List.length subindexes > 0
-  then (
-    Printf.bprintf b "{1 Sub-directories}\n%!";
-    subindexes
-    |> List.sort ~compare:(fun x y -> Dyn.compare (Index.to_dyn x) (Index.to_dyn y))
-    |> List.iter ~f:(fun i ->
-      Printf.bprintf b "- {{!page-\"%s\"}%s}\n" (Index.mld_name i) (Index.local_dir i)));
+let fallback_index_contents b entry_modules artifacts =
+  Printf.bprintf b "{1 Libraries}\nThe following libraries are found in this directory.\n";
+  entry_modules
+  |> List.sort ~compare:(fun (x, _) (y, _) -> Lib_name.compare x y)
+  |> List.iter ~f:(fun (lib, _modules) ->
+    Printf.bprintf b "- %s\n" (Lib_name.to_string lib));
   Printf.bprintf
     b
     "{1 Modules}\n\
@@ -1651,13 +1645,60 @@ let default_fallback_index local_path ~subindexes artifacts =
      |> List.filter_map ~f:Artifact.module_name
      |> List.sort ~compare:(fun x y -> Module_name.compare x y)
      |> List.map ~f:Module_name.to_string
-     |> String.concat ~sep:" ");
+     |> String.concat ~sep:" ")
+;;
+
+let default_index index tree entry_modules =
+  let (Index_tree.Br (info, children)) = tree in
+  let b = Buffer.create 512 in
+  let main_name, subtitle =
+    match index with
+    | [] -> "Main index", None (* unused! *)
+    | [ Index.Top_dir (Relative_to_findlib (_, dir)) ] ->
+      "Opam index", Some (sprintf "Packages installed in %s" (Path.to_string dir))
+    | [ Index.Top_dir Relative_to_stdlib ] -> "Packages located relative to stdlib", None
+    | [ Index.Top_dir Local_packages ] -> "Local packages", None
+    | [ Index.Private_lib l ] -> sprintf "Private library %s" l, None
+    | xs ->
+      let subdirs =
+        List.filter_map
+          ~f:(fun x ->
+            match x with
+            | Index.Sub_dir x -> Some x
+            | _ -> None)
+          xs
+      in
+      if info.Index_tree.is_fallback
+      then sprintf "Directory %s" (String.concat ~sep:"/" (List.rev subdirs)), None
+      else sprintf "Package %s" (String.concat ~sep:"." (List.rev subdirs)), None
+  in
+  Printf.bprintf b "{0 %s}\n" main_name;
+  (match subtitle with
+   | None -> ()
+   | Some s -> Printf.bprintf b "{i %s}\n" s);
+  let subindexes = List.map children ~f:(fun (ty, _) -> ty :: index) in
+  if List.length children > 0
+  then (
+    Printf.bprintf b "{1 Sub-indexes}\n%!";
+    subindexes
+    |> List.sort ~compare:(fun x y -> Dyn.compare (Index.to_dyn x) (Index.to_dyn y))
+    |> List.iter ~f:(fun i ->
+      Printf.bprintf b "- {{!page-\"%s\"}%s}\n" (Index.mld_name i) (Index.mld_name i)));
+  if info.is_fallback
+  then fallback_index_contents b entry_modules info.artifacts
+  else standard_index_contents b entry_modules;
   Buffer.contents b
 ;;
 
-let toplevel_index_contents (Index_tree.Br (_, children)) =
+let toplevel_index_contents t =
   let b = Buffer.create 1024 in
   Printf.bprintf b "{0 Docs}\n\n";
+  let all_descendents = Index_tree.fold ~init:[] ~f:(fun idx _ acc -> idx :: acc) t in
+  let sorted =
+    List.sort
+      ~compare:(fun x y -> Dyn.compare (Index.to_dyn x) (Index.to_dyn y))
+      all_descendents
+  in
   let output_indices label = function
     | [] -> ()
     | indices ->
@@ -1665,27 +1706,22 @@ let toplevel_index_contents (Index_tree.Br (_, children)) =
       List.iter indices ~f:(fun i ->
         Printf.bprintf b "- {!page-\"%s\"}\n" (Index.mld_name_ty i))
   in
-  let top = List.map ~f:fst children in
   output_indices
     "Local Packages"
-    (List.filter top ~f:(function
-      | Index.Package (ty, _) when ty = Local -> true
-      | _ -> false));
+    (List.filter_map sorted ~f:(function
+      | [ x; Index.Top_dir Local_packages ] -> Some x
+      | _ -> None));
   output_indices
     "Switch-installed packages"
-    (List.filter top ~f:(function
-      | Index.Package (ty, _) when ty = Dune_with_modules -> true
-      | _ -> false));
-  output_indices
-    "Other switch library directories"
-    (List.filter top ~f:(function
-      | Index.Package (ty, _) when ty = Unknown || ty = Fallback -> true
-      | _ -> false));
+    (List.filter_map sorted ~f:(function
+      | [ x; Index.Top_dir (Relative_to_findlib _) ] -> Some x
+      | [ (Index.Top_dir Relative_to_stdlib as x) ] -> Some x
+      | _ -> None));
   output_indices
     "Private libraries"
-    (List.filter top ~f:(function
-      | Index.Private_lib _ -> true
-      | _ -> false));
+    (List.filter_map sorted ~f:(function
+      | [ (Index.Private_lib _ as x) ] -> Some x
+      | _ -> None));
   Buffer.contents b
 ;;
 
@@ -1701,30 +1737,22 @@ let full_tree sctx ~all =
           ~init:(Memo.return [])
           ~f:(fun pkg acc ->
             let* acc = acc in
-            let* libs_and_modules =
-              let* libs = Odoc.libs_of_pkg ctx ~pkg in
-              Memo.parallel_map libs ~f:(fun lib ->
-                let+ modules =
-                  Dir_contents.modules_of_lib sctx (lib :> Lib.t) >>| Option.value_exn
-                in
-                { Classify.lib :> Lib.t; modules })
-            in
-            let+ ii = index_info_of_pkg sctx all pkg libs_and_modules in
+            let+ ii = index_info_of_pkg sctx all pkg in
             List.rev_append ii acc)
       in
-      String.Map.foldi ~init:indexes categorized.localprivate ~f:(fun name lib acc ->
+      Lib_name.Map.fold ~init:indexes categorized.local ~f:(fun lib acc ->
         let* acc = acc in
-        let+ ii = index_info_of_private_lib sctx all name lib in
+        let+ ii = index_info_of_lib sctx all (lib :> Lib.t) in
         List.rev_append ii acc)
     in
-    String.Map.fold ~init:indexes categorized.external_dirs ~f:(fun ty acc ->
+    Ext_loc_map.foldi ~init:indexes categorized.externals ~f:(fun loc ty acc ->
       let* acc = acc in
       match ty with
-      | Dune_with_modules (pkg_name, dwms) ->
-        let+ ii = index_info_of_pkg sctx all pkg_name dwms in
+      | Dune_with_modules (_, lib) ->
+        let+ ii = index_info_of_lib sctx all lib in
         List.rev_append ii acc
       | Fallback fallback ->
-        let+ ii = index_info_of_external_fallback sctx fallback in
+        let+ ii = index_info_of_external_fallback sctx loc fallback in
         List.rev_append ii acc
       | Nothing -> Memo.return acc)
   in
@@ -1737,12 +1765,26 @@ let full_tree sctx ~all =
 
 let hierarchical_index_rules sctx ~all (tree : Index_tree.info Index_tree.t) =
   let ctx = Super_context.context sctx in
-  let main_name = "index" in
-  let rec inner index (Index_tree.Br ((ii : Index_tree.info), children)) =
+  let rec inner index (Index_tree.Br ((ii : Index_tree.info), children) as t) =
     let mld = Artifact.index ctx ~all index in
     let subindexes = List.map children ~f:(function x, _ -> x :: index) in
-    let extra_children = List.map ~f:(Artifact.index ctx ~all:true) subindexes in
-    let quiet = Index.is_external index in
+    let extra_children = List.map ~f:(Artifact.index ctx ~all) subindexes in
+    let all_descendent_indices =
+      (* This is down to an odoc deficiency. We should remove this restriction
+         once we can reference page children in odoc ref syntax. The problem
+         here is that we'd like to be able to reference [{!page-pkg.page-sublib}]
+         but we can't, we can only reference [{!page-sublib}] which means there's
+         a danger of a clash if we have, say, library [odoc.odoc]. *)
+      let cur_depth = List.length index in
+      Index_tree.fold t ~init:[] ~f:(fun idx _ acc ->
+        if List.length idx > cur_depth + 2 then acc else (idx @ index) :: acc)
+    in
+    (* First descendent is actually this node. Remove it! *)
+    let all_descendent_indices = List.tl (List.rev all_descendent_indices) in
+    let all_descendent_artifacts =
+      List.map all_descendent_indices ~f:(Artifact.index ctx ~all)
+    in
+    let quiet = false in
     let* () =
       let index_path = Index.mld_path ctx ~all index in
       match ii.predefined_index with
@@ -1751,11 +1793,9 @@ let hierarchical_index_rules sctx ~all (tree : Index_tree.info Index_tree.t) =
         let content =
           match index with
           | [] -> toplevel_index_contents tree
-          | index when Index.might_be_fallback index ->
-            default_fallback_index (Index.local_dir index) ~subindexes ii.artifacts
           | _ ->
             Lib.Map.foldi ~init:[] ~f:(fun l x acc -> (Lib.name l, x) :: acc) ii.libs
-            |> default_index ~main_name ~pkg_opt:None ~subindexes
+            |> default_index index t
         in
         add_rule sctx (Action_builder.write_file index_path content)
     and* (_ : Path.Build.t) =
@@ -1773,18 +1813,14 @@ let hierarchical_index_rules sctx ~all (tree : Index_tree.info Index_tree.t) =
         ~children:(extra_children @ ii.artifacts)
     and* () =
       let libs = Lib.Map.keys ii.libs in
-      let package =
-        match index with
-        | [ Index.Package (_, pkg) ] -> Some pkg
-        | _ -> None
-      in
+      let package = ii.package in
       link_odoc_rules
         sctx
         ~all
         [ mld ]
         ~package
         ~libs
-        ~indices:(extra_children @ ii.artifacts)
+        ~indices:(all_descendent_artifacts @ ii.artifacts)
         ~quiet
     in
     Memo.parallel_iter ~f:(fun (x, tree) -> inner (x :: index) tree) children
@@ -1819,23 +1855,15 @@ let hierarchical_html_rules sctx all tree =
 
 let hierarchical_odoc_rules sctx ~all tree =
   let ctx = Super_context.context sctx in
-  let* stdlib = stdlib_lib ctx in
   Index_tree.iter_memo tree ~f:(fun index (ii : Index_tree.info) ->
     let artifacts = ii.artifacts in
+    let package = ii.package in
     let quiet = Index.is_external index in
-    let libs =
-      let libs = Lib.Map.keys ii.libs in
-      match index, stdlib with
-      | [ Index.Package (_, "ocaml") ], _ -> libs
-      | _, Some lib -> lib :: libs
-      | _, None -> libs
-    in
+    let libs = Lib.Map.keys ii.libs in
     let* () =
       let parent = Artifact.index ctx ~all index in
       compile_odocs sctx ~all ~quiet artifacts parent libs
-    and* () =
-      link_odoc_rules sctx ~all artifacts ~package:ii.package ~libs ~indices:[] ~quiet
-    in
+    and* () = link_odoc_rules sctx ~all artifacts ~package ~libs ~indices:[] ~quiet in
     let all_deps =
       Path.Set.of_list_map artifacts ~f:(fun a -> Artifact.odoc_file a |> Path.build)
     in
@@ -1865,7 +1893,7 @@ let setup_css_rule sctx ~all =
         ~dir:(Path.build (Context.build_dir ctx))
         "support-files"
         ~flags_for:None
-        [ A "-o"; Path (Path.build dir) ]
+        [ Command.Args.A "-o"; Path (Path.build dir) ]
     in
     Action_builder.With_targets.add_directories cmd ~directory_targets:[ dir ]
   in

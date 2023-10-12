@@ -282,6 +282,13 @@ let apply_changes_to_source_tree t ~old_snapshot =
        | Lt | Gt -> copy_file p))
 ;;
 
+let hint_delete_dir =
+  [ Pp.text
+      "delete this file manually or check the permissions of the parent directory of \
+       this file"
+  ]
+;;
+
 let move_targets_to_build_dir t ~loc ~should_be_skipped ~(targets : Targets.Validated.t)
   : unit Targets.Produced.t Fiber.t
   =
@@ -295,13 +302,26 @@ let move_targets_to_build_dir t ~loc ~should_be_skipped ~(targets : Targets.Vali
       Path.Build.Set.to_list_map targets.dirs ~f:(fun target ->
         let src_dir = map_path t target in
         let files = collect_dir_recursively ~loc ~src_dir ~dst_dir:target in
-        if Path.Untracked.exists (Path.build target)
-        then
-          (* We clean up all targets (including directory targets) before running an
-             action, so this branch should be unreachable. *)
-          Code_error.raise
-            "Stale directory target in the build directory"
-            [ "dst_dir", Path.Build.to_dyn target ];
+        (match Path.Untracked.stat (Path.build target) with
+         | Error (Unix.ENOENT, _, _) -> ()
+         | Error e ->
+           User_error.raise
+             ~hints:hint_delete_dir
+             [ Pp.textf "unable to stat %s" (Path.Build.to_string_maybe_quoted target)
+             ; Pp.text "reason:"
+             ; Pp.text (Unix_error.Detailed.to_string_hum e)
+             ]
+         | Ok { Unix.st_kind; _ } ->
+           (* We clean up all targets (including directory targets) before
+              running an action, so this branch should be unreachable unless
+              the rule somehow escaped the sandbox *)
+           User_error.raise
+             ~hints:hint_delete_dir
+             [ Pp.textf
+                 "Target %s of kind %s already exists in the build directory"
+                 (Path.Build.to_string_maybe_quoted target)
+                 (File_kind.to_string_hum st_kind)
+             ]);
         Path.rename (Path.build src_dir) (Path.build target);
         files)
       |> Appendable_list.concat

@@ -41,7 +41,7 @@ The lockfile should contain the substitute and patch actions.
   > index b69a69a5a..ea988f6bd 100644
   > --- a/foo.ml
   > +++ b/foo.ml
-  > @@ -1,2 +1,2 @@
+  > @@ -1,1 +1,1 @@
   > -This is wrong
   > +This is right
   > EOF

@@ -1,7 +1,5 @@
 open Import
 
-module type CONTEXT = Opam_0install.S.CONTEXT
-
 module Context_for_dune = struct
   type filtered_formula = OpamTypes.filtered_formula
   type filter = OpamTypes.filter
@@ -15,10 +13,15 @@ module Context_for_dune = struct
     ; version_preference : Version_preference.t
     ; local_packages : OpamFile.OPAM.t OpamPackage.Name.Map.t
     ; solver_env : Solver_env.t
+    ; dune_version : OpamPackage.Version.t
     }
 
   let create ~solver_env ~repos ~local_packages ~version_preference =
-    { repos; version_preference; local_packages; solver_env }
+    let dune_version =
+      let major, minor = Dune_lang.Stanza.latest_version in
+      OpamPackage.Version.of_string @@ sprintf "%d.%d" major minor
+    in
+    { repos; version_preference; local_packages; solver_env; dune_version }
   ;;
 
   type rejection = Unavailable
@@ -122,7 +125,12 @@ module Context_for_dune = struct
            OpamFile.OPAM.version opam_file, opam_file_result))
   ;;
 
-  let user_restrictions _ _ = None
+  let user_restrictions : t -> OpamPackage.Name.t -> OpamFormula.version_constraint option
+    =
+    let dune = OpamPackage.Name.of_string "dune" in
+    fun t pkg ->
+      if OpamPackage.Name.equal dune pkg then Some (`Eq, t.dune_version) else None
+  ;;
 
   let map_filters ~(f : filter -> filter) : filtered_formula -> filtered_formula =
     OpamFilter.gen_filter_formula

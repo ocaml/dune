@@ -48,7 +48,11 @@ val background_sandboxes : Toggle.t t
 (** Run file operations when executing rules in background threads *)
 val background_file_system_operations_in_rule_execution : Toggle.t t
 
+(** Whether to use the threaded console. *)
 val threaded_console : Toggle.t t
+
+(** The number of frames per second for the threaded console. *)
+val threaded_console_frames_per_second : [ `Default | `Custom of int ] t
 
 (** Before any configuration value is accessed, this function must be called
     with all the configuration values from the relevant config file

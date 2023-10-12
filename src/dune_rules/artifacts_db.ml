@@ -98,7 +98,7 @@ let all =
     let artifacts =
       let local_bins =
         Memo.lazy_ ~name:"get_installed_binaries" (fun () ->
-          let* stanzas = Only_packages.filtered_stanzas context in
+          let* stanzas = Only_packages.filtered_stanzas (Context.name context) in
           get_installed_binaries ~context stanzas)
       in
       Artifacts.create context ~local_bins |> Memo.return

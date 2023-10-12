@@ -11,7 +11,7 @@ let mlds_by_package_def =
     ~input:(module Super_context.As_memo_key)
     (fun sctx ->
       let ctx = Super_context.context sctx in
-      let* dune_files = Only_packages.filtered_stanzas ctx in
+      let* dune_files = Context.name ctx |> Only_packages.filtered_stanzas in
       Memo.parallel_map dune_files ~f:(fun dune_file ->
         Memo.parallel_map dune_file.stanzas ~f:(function
           | Documentation d ->

@@ -22,6 +22,7 @@ val of_opam_repo_dir_path
   -> t
 
 val repo_id : t -> Repository_id.t option
+val source : t -> string option
 val serializable : t -> Serializable.t option
 
 module With_file : sig

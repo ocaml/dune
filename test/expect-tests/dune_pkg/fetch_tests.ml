@@ -54,7 +54,7 @@ Content-Length: %d
   port, thread
 ;;
 
-let download ~unpack ~port ~filename ~target ?checksum () =
+let download ?(reproducible = true) ~unpack ~port ~filename ~target ?checksum () =
   let open Fiber.O in
   let url = url ~port ~filename in
   let* res = Fetch.fetch ~unpack ~checksum ~target url in
@@ -69,9 +69,11 @@ let download ~unpack ~port ~filename ~target ?checksum () =
     User_error.raise
       ~loc:Loc.none
       [ Pp.text "Expected checksum was"
-      ; Pp.text @@ Checksum.to_string expected_checksum
+      ; Pp.verbatim @@ Checksum.to_string expected_checksum
       ; Pp.text "but got"
-      ; Pp.text @@ Checksum.to_string actual_checksum
+      ; (if reproducible
+         then Pp.verbatim @@ Checksum.to_string actual_checksum
+         else Pp.text "<REDACTED>")
       ]
   | Ok () ->
     print_endline "Done downloading";
@@ -173,6 +175,9 @@ let%expect_test "downloading, tarball" =
   let destination = "tarball" in
   run
     (download
+     (* the tar utility that produces [filename] isn't portable and/or
+        deterministic enough to print the actual checksum *)
+       ~reproducible:false
        ~unpack:true
        ~checksum:wrong_checksum
        ~port
@@ -186,5 +191,8 @@ let%expect_test "downloading, tarball" =
   (Dune_util__Report_error.Already_reported)
   Trailing output
   ---------------
-  Error: Is a directory |}]
+  Error: Expected checksum was
+  md5=c533195dc4253503071a19d42f08e877
+  but got
+  <REDACTED> |}]
 ;;

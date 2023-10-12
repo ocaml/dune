@@ -378,7 +378,12 @@ module Console_backend = struct
 end
 
 let backend =
-  let t = lazy (Dune_threaded_console.make (module Console_backend)) in
+  let t =
+    lazy
+      (Dune_threaded_console.make
+         ~frames_per_second:(Dune_util.frames_per_second ())
+         (module Console_backend))
+  in
   fun () ->
     match (Platform.OS.value : Platform.OS.t) with
     | Windows -> User_error.raise [ Pp.text "TUI is currently not supported on Windows." ]

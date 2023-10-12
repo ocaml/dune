@@ -6,19 +6,78 @@ mode:
   > (using directory-targets 0.1)
   > EOF
 
+  $ cat >print-permissions.sh <<EOF
+  > /usr/bin/env sh
+  > echo permissions of output/
+  > dune_cmd stat permissions output
+  > echo permissions of output/y
+  > dune_cmd stat permissions output/y
+  > echo permissions of output/x
+  > dune_cmd stat permissions output/x
+  > echo permissions of output/subdir
+  > dune_cmd stat permissions output/subdir
+  > echo permissions of output/subdir/z
+  > dune_cmd stat permissions output/subdir/z
+  > echo ""
+  > EOF
+
+  $ chmod +x print-permissions.sh
+
   $ cat >dune <<EOF
   > (rule
+  >  (deps print-permissions.sh)
   >  (targets (dir output))
-  >  (action (bash "mkdir -p output/; echo x > output/x; echo y > output/y")))
+  >  (action (system "\| echo building output/
+  >                  "\| mkdir -p output/subdir
+  >                  "\| touch output/x output/y output/subdir/z
+  >                  "\| chmod 0777 output/
+  >                  "\| chmod 0444 output/y
+  >                  "\| chmod 0776 output/subdir
+  >                  "\| chmod 0666 output/subdir/z
+  >                  "\| . ./print-permissions.sh
+  >          )))
   > (rule
   >  (target foo)
-  >  (deps (sandbox always) output/)
-  >  (action
-  >   (progn
-  >    (bash "ls output | sort")
-  >    (run touch foo))))
+  >  (deps print-permissions.sh (sandbox always) output/)
+  >  (action (system "\| . ./print-permissions.sh
+  >                  "\| touch foo;
+  >          )))
   > EOF
 
   $ dune build foo --sandbox=copy
-  x
-  y
+  building output/
+  permissions of output/
+  777
+  permissions of output/y
+  444
+  permissions of output/x
+  644
+  permissions of output/subdir
+  776
+  permissions of output/subdir/z
+  666
+  
+  permissions of output/
+  755
+  permissions of output/y
+  444
+  permissions of output/x
+  444
+  permissions of output/subdir
+  755
+  permissions of output/subdir/z
+  444
+  
+
+  $ ( cd _build/default && ../../print-permissions.sh )
+  permissions of output/
+  777
+  permissions of output/y
+  444
+  permissions of output/x
+  444
+  permissions of output/subdir
+  776
+  permissions of output/subdir/z
+  444
+  

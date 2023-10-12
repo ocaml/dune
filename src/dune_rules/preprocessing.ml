@@ -190,6 +190,7 @@ module Driver = struct
           Resolve.Memo.bind (resolve x) ~f:(fun lib ->
             get ~loc lib
             >>| function
+            | Some t -> Resolve.return t
             | None ->
               Resolve.fail
                 (User_error.make
@@ -198,9 +199,8 @@ module Driver = struct
                        "%S is not a %s"
                        (Lib_name.to_string name)
                        (desc ~plural:false)
-                   ])
-            | Some t -> Resolve.return t))
-        >>| Resolve.List.map ~f:Fun.id
+                   ])))
+        >>| Resolve.List.all
       in
       { info; lib; replaces }
     ;;
@@ -292,7 +292,6 @@ let ppx_exe (ctx : Context.t) ~key =
 
 let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
   let open Memo.O in
-  let ctx = Super_context.context sctx in
   let* driver_and_libs =
     let ( let& ) t f = Resolve.Memo.bind t ~f in
     let& pps = Resolve.Memo.lift pps in
@@ -309,10 +308,10 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
   let dir = Path.Build.parent_exn target in
   let main_module_name = Module_name.of_string_allow_invalid (Loc.none, "_ppx") in
   let module_ = Module.generated ~kind:Impl ~src_dir:dir [ main_module_name ] in
-  let ml_source =
-    Module.file ~ml_kind:Impl module_ |> Option.value_exn |> Path.as_in_build_dir_exn
-  in
   let* () =
+    let ml_source =
+      Module.file ~ml_kind:Impl module_ |> Option.value_exn |> Path.as_in_build_dir_exn
+    in
     Super_context.add_rule
       sctx
       ~dir
@@ -322,19 +321,12 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
             (let open Resolve.O in
              let+ driver, _ = driver_and_libs in
              sprintf "let () = %s ()\n" driver.info.main)))
-  in
-  let* linkages =
+  and* linkages =
+    let ctx = Super_context.context sctx in
     let+ ocaml = Context.ocaml ctx in
     [ Exe.Linkage.native_or_custom ocaml ]
-  in
-  let program : Exe.Program.t =
-    { name = Filename.remove_extension (Path.Build.basename target)
-    ; main_module_name
-    ; loc = Loc.none
-    }
-  in
-  let obj_dir = Obj_dir.for_pp ~dir in
-  let* cctx =
+  and+ cctx =
+    let obj_dir = Obj_dir.for_pp ~dir in
     let requires_compile = Resolve.map driver_and_libs ~f:snd in
     let requires_link = Memo.lazy_ (fun () -> Memo.return requires_compile) in
     let flags = Ocaml_flags.of_list [ "-g"; "-w"; "-24" ] in
@@ -354,7 +346,15 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
       ~bin_annot:false
       ()
   in
-  let+ (_ : Exe.dep_graphs) = Exe.build_and_link ~program ~linkages cctx ~promote:None in
+  let+ (_ : Exe.dep_graphs) =
+    let program : Exe.Program.t =
+      { name = Filename.remove_extension (Path.Build.basename target)
+      ; main_module_name
+      ; loc = Loc.none
+      }
+    in
+    Exe.build_and_link ~program ~linkages cctx ~promote:None
+  in
   ()
 ;;
 
@@ -452,7 +452,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
 
 let ppx_driver_and_flags_internal sctx ~dune_version ~loc ~expander ~lib_name ~flags libs =
   let open Action_builder.O in
-  let* flags =
+  let+ flags =
     if dune_version <= (3, 2)
     then Action_builder.List.map ~f:(Expander.expand_str expander) flags
     else
@@ -460,8 +460,7 @@ let ppx_driver_and_flags_internal sctx ~dune_version ~loc ~expander ~lib_name ~f
       Action_builder.List.concat_map flags ~f:(Expander.expand ~mode:Many expander)
       |> Action_builder.map
            ~f:(List.map ~f:(Value.to_string ~dir:(Path.build @@ Expander.dir expander)))
-  in
-  let+ cookies = Action_builder.of_memo (get_cookies ~loc ~lib_name ~expander libs) in
+  and+ cookies = Action_builder.of_memo (get_cookies ~loc ~lib_name ~expander libs) in
   let ppx_driver_exe =
     let ctx = Context.host (Super_context.context sctx) in
     ppx_driver_exe ctx libs
@@ -472,12 +471,11 @@ let ppx_driver_and_flags_internal sctx ~dune_version ~loc ~expander ~lib_name ~f
 let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~flags pps =
   let open Action_builder.O in
   let* libs = Resolve.Memo.read (Lib.DB.resolve_pps (Scope.libs scope) pps) in
-  let* exe, flags =
+  let+ exe, flags =
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     ppx_driver_and_flags_internal sctx ~loc ~expander ~dune_version ~lib_name ~flags libs
-  in
-  let* libs = Resolve.Memo.read (Lib.closure libs ~linking:true) in
-  let+ driver =
+  and+ driver =
+    let* libs = Resolve.Memo.read (Lib.closure libs ~linking:true) in
     Action_builder.of_memo (Driver.select libs ~loc:(User_file (loc, pps)))
     >>= Resolve.read
   in
@@ -516,8 +514,10 @@ let sandbox_of_setting = function
 
 let action_for_pp ~sandbox ~loc ~expander ~action ~src =
   let chdir = Expander.context expander |> Context.build_dir in
-  let bindings = Pform.Map.singleton (Var Input_file) [ Value.Path (Path.build src) ] in
-  let expander = Expander.add_bindings expander ~bindings in
+  let expander =
+    let bindings = Pform.Map.singleton (Var Input_file) [ Value.Path (Path.build src) ] in
+    Expander.add_bindings expander ~bindings
+  in
   let open Action_builder.O in
   Action_builder.path (Path.build src)
   >>> Action_unexpanded.expand_no_targets

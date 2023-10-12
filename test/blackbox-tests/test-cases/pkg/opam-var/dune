@@ -4,12 +4,19 @@
 
 (data_only_dirs fake_opam_root)
 
+; Without this, no copying rules will be setup for the .opam-switch directory
+
+(subdir
+ fake_opam_root/default
+ (dirs :standard .opam-switch))
+
 ; We trick opam into thinking it has a config file with fake_opam_root so that we can
 ; access the os variables without having to do opam init
 
 (rule
  (target opam-vars)
- (deps fake_opam_root/config)
+ (deps
+  (source_tree fake_opam_root))
  (action
   (with-stdout-to
    %{target}

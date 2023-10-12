@@ -91,10 +91,12 @@ Testing the output of dune cache trim.
   
   OPTIONS
          --size=BYTES
-             Size to trim the cache to.
+             Size to trim the cache to. BYTES is the number of bytes followed
+             by a unit. Byte units can be one of B, kB, KiB, MB, MiB, GB, GiB,
+             TB or TiB.
   
          --trimmed-size=BYTES
-             Size to trim from the cache.
+             Size to trim from the cache. BYTES is the same as for --size.
   
   COMMON OPTIONS
          --help[=FMT] (default=auto)

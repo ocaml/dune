@@ -17,6 +17,9 @@ val to_path : ?error_loc:Loc.t -> t -> dir:Path.t -> Path.t
     directory is returned. *)
 val to_path_in_build_or_external : ?error_loc:Loc.t -> t -> dir:Path.Build.t -> Path.t
 
+val true_ : t
+val false_ : t
+
 module L : sig
   val strings : string list -> t list
 

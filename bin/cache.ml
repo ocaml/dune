@@ -25,12 +25,25 @@ let trim =
        Arg.(
          value
          & opt (some bytes) None
-         & info ~docv:"BYTES" [ "trimmed-size" ] ~doc:"Size to trim from the cache.")
+         & info
+             ~docv:"BYTES"
+             [ "trimmed-size" ]
+             ~doc:"Size to trim from the cache. $(docv) is the same as for --size.")
      and+ size =
        Arg.(
          value
          & opt (some bytes) None
-         & info ~docv:"BYTES" [ "size" ] ~doc:"Size to trim the cache to.")
+         & info
+             ~docv:"BYTES"
+             [ "size" ]
+             ~doc:
+               (sprintf
+                  "Size to trim the cache to. $(docv) is the number of bytes followed by \
+                   a unit. Byte units can be one of %s."
+                  (String.enumerate_or
+                     (List.map
+                        ~f:(fun (units, _) -> List.hd units)
+                        Bytes_unit.conversion_table))))
      in
      Log.init_disabled ();
      let open Result.O in

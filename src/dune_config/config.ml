@@ -168,3 +168,19 @@ let threaded_console =
   register t;
   t
 ;;
+
+let threaded_console_frames_per_second =
+  let t =
+    { name = "threaded_console_frames_per_second"
+    ; of_string =
+        (fun x ->
+          match Int.of_string x with
+          | Some x when x > 0 && x <= 1000 -> Ok (`Custom x)
+          | Some _ -> Error (sprintf "value must be between 1 and 1000")
+          | None -> Error (sprintf "could not parse %S as an integer" x))
+    ; value = `Default
+    }
+  in
+  register t;
+  t
+;;

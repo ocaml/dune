@@ -40,7 +40,7 @@ The special form %{bin:public_name} is supported.
 This wrapper parses its own arguments and executes the rest.
 
   $ cat > wrap.sh << 'EOF'
-  > #!/bin/bash
+  > #!/bin/sh
   > while getopts "xy" o; do
   >   echo "Got option: $o"
   > done

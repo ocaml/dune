@@ -17,9 +17,6 @@ end
     function returns [Ok] instead of [Already_present]. *)
 val write_atomically : mode:Mode.t -> content:string -> Path.t -> Write_result.t
 
-(** Create a hard link or copy depending on the [mode]. *)
-val link_or_copy : mode:Mode.t -> src:Path.t -> dst:Path.t -> unit
-
 (** The functions in this module are bare wrappers that assume that the "target
     directory" (whatever that means for a given function) already exists. If the
     wrapped function fails, then the "target directory" is created, and the

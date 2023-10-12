@@ -52,9 +52,15 @@ let rec copy_recursively (src_kind : Unix.file_kind) ~src ~dst =
        List.iter contents ~f:(fun (name, kind) ->
          copy_recursively kind ~src:(Path.relative src name) ~dst:(Path.relative dst name)))
   | _ ->
-    Code_error.raise
-      "Can not copy file of this kind"
-      [ "src_kind", File_kind.to_dyn src_kind; "src", Path.to_dyn src ]
+    User_error.raise
+      ~hints:
+        [ Pp.text "re-run dune to delete the stale artifact, or manually delete this file"
+        ]
+      [ Pp.textf
+          "Failed to copy file %s of kind %s while creating a copy sandbox"
+          (Path.to_string_maybe_quoted src)
+          (File_kind.to_string_hum src_kind)
+      ]
 ;;
 
 let create_dirs t ~deps ~rule_dir =

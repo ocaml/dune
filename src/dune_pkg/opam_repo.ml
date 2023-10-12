@@ -55,6 +55,12 @@ let repo_id t =
   serializable.repo_id
 ;;
 
+let source t =
+  let open Option.O in
+  let+ serializable = serializable t in
+  serializable.source
+;;
+
 let validate_repo_file opam_repo_dir_path =
   let opam_repo_file_path = opam_repo_dir_path / "repo" in
   let repo =

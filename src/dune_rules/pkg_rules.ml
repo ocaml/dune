@@ -716,9 +716,9 @@ module Action_expander = struct
       let+ input =
         Expander.expand_pform_gen ~mode:Single expander input >>| Value.to_path ~dir
       and+ output =
-        let+ output = Expander.expand_pform_gen ~mode:Single expander output in
-        Value.to_path ~dir output
-        |> (* TODO this needs proper error handling *) Path.as_in_build_dir_exn
+        Expander.expand_pform_gen ~mode:Single expander output
+        >>| Value.to_path ~dir
+        >>| Expander0.as_in_build_dir ~what:"subsitute" ~loc:(String_with_vars.loc output)
       in
       let env = substitute_env expander in
       Substitute.action ~env ~name:expander.paths.name ~input ~output

@@ -1161,13 +1161,7 @@ let build (builder : Builder.t) =
   in
   let stats =
     Option.map builder.stats_trace_file ~f:(fun f ->
-      let stats =
-        Dune_stats.create
-          ~extended_build_job_info:builder.stats_trace_extended
-          (Out (open_out f))
-      in
-      Dune_stats.set_global stats;
-      stats)
+      Dune_stats.create ~extended_build_job_info:builder.stats_trace_extended (File f))
   in
   let rpc =
     if builder.allow_builds

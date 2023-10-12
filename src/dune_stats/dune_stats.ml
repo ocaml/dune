@@ -102,6 +102,7 @@ module Json = struct
 end
 
 type dst =
+  | File of string
   | Out of out_channel
   | Custom of
       { write : string -> unit
@@ -141,22 +142,28 @@ let set_global t =
 let global () = !global
 
 let create ~extended_build_job_info dst =
-  let print =
-    match dst with
-    | Out out -> Stdlib.output_string out
-    | Custom c -> c.write
+  let closed = ref false in
+  let close_once f () =
+    if not !closed
+    then (
+      f ();
+      closed := true)
   in
-  let close =
+  let print, close_, flush =
+    let mkout out =
+      Stdlib.output_string out, (fun () -> Stdlib.close_out out), fun () -> flush out
+    in
     match dst with
-    | Out out -> fun () -> Stdlib.close_out out
-    | Custom c -> c.close
+    | File path -> mkout (open_out path)
+    | Out out -> mkout out
+    | Custom c -> c.write, c.close, c.flush
   in
-  let flush =
-    match dst with
-    | Out out -> fun () -> flush out
-    | Custom c -> c.flush
+  let close_ = close_once close_ in
+  let t =
+    { print; close = close_; after_first_event = false; flush; extended_build_job_info }
   in
-  { print; close; after_first_event = false; flush; extended_build_job_info }
+  at_exit (fun () -> close t);
+  t
 ;;
 
 let flush t = t.flush ()

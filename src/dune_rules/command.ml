@@ -10,8 +10,6 @@ module Args0 = struct
 
   type expand = dir:Path.t -> string list Action_builder.t
 
-  (* Debugging tip: if you changed this file and Dune got broken in a weird way
-     it's probably because of the [Fail] constructor. *)
   type _ t =
     | A : string -> _ t
     | As : string list -> _ t
@@ -25,7 +23,6 @@ module Args0 = struct
     | Hidden_deps : Dep.Set.t -> _ t
     | Hidden_targets : Path.Build.t list -> [> `Targets ] t
     | Dyn : without_targets t Action_builder.t -> _ t
-    | Fail : Action_builder.fail -> _ t
     | Expand : expand -> _ t
 
   let dyn args = Dyn (Action_builder.map args ~f:(fun x -> As x))
@@ -42,7 +39,6 @@ module Args0 = struct
     | Paths _ as x -> (x :> any t)
     | Hidden_deps _ as x -> (x :> any t)
     | Dyn _ as x -> (x :> any t)
-    | Fail _ as x -> (x :> any t)
     | Expand _ as x -> (x :> any t)
   ;;
 end
@@ -79,7 +75,6 @@ let rec expand : type a. dir:Path.t -> a t -> string list Action_builder.With_ta
   | Dyn dyn ->
     Action_builder.with_no_targets
       (Action_builder.bind dyn ~f:(fun t -> expand_no_targets ~dir t))
-  | Fail f -> Action_builder.with_no_targets (Action_builder.fail f)
   | Hidden_deps deps ->
     Action_builder.with_no_targets
       (Action_builder.map (Action_builder.deps deps) ~f:(fun () -> []))
@@ -127,8 +122,6 @@ let quote_args =
   in
   fun quote args -> As (loop quote args)
 ;;
-
-let fail e = Fail { fail = (fun _ -> raise e) }
 
 module Args = struct
   include Args0

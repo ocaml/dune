@@ -54,7 +54,6 @@ module Args : sig
     | Hidden_deps : Dep.Set.t -> _ t
     | Hidden_targets : Path.Build.t list -> [> `Targets ] t
     | Dyn : without_targets t Action_builder.t -> _ t
-    | Fail : Action_builder.fail -> _ t
     | Expand : expand -> _ t
 
   (** Create dynamic command line arguments. *)
@@ -91,8 +90,6 @@ val run'
 
 (** [quote_args quote args] is [As [quote; arg1; quote; arg2; ...]] *)
 val quote_args : string -> string list -> _ Args.t
-
-val fail : exn -> _ Args.t
 
 module Ml_kind : sig
   val flag : Ml_kind.t -> _ Args.t

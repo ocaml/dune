@@ -186,3 +186,11 @@ let%expect_test "truncatation less than 3" =
   [%expect {|
     X |}]
 ;;
+
+let%expect_test "truncatation with newlines" =
+  (* Should not emit newlines *)
+  test_truncate_and_print 20 (Pp.text "XX\nXX");
+  [%expect {|
+    XX
+    XX |}]
+;;

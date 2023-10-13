@@ -71,8 +71,6 @@ module Args : sig
   val as_any : without_targets t -> any t
 end
 
-(* TODO: Using list in [with_targets t list] complicates the API unnecessarily:
-   we can use the constructor [S] to concatenate lists instead. *)
 val run
   :  dir:Path.t
   -> ?sandbox:Sandbox_config.t

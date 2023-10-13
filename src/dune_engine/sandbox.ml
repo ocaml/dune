@@ -123,14 +123,14 @@ let snapshot t =
   (* CR-someday jeremiedimino: we do this kind of traversal in other places.
      Might be worth trying to factorise the code. *)
   let rec walk dir acc =
-    match Path.Untracked.readdir_unsorted dir with
+    match Path.Untracked.readdir_unsorted_with_kinds dir with
     | Error (err, func, arg) -> raise (Unix.Unix_error (err, func, arg))
     | Ok files ->
-      List.fold_left files ~init:acc ~f:(fun acc basename ->
+      List.fold_left files ~init:acc ~f:(fun acc (basename, (kind : Unix.file_kind)) ->
         let p = Path.relative dir basename in
-        let stats = Path.Untracked.lstat_exn p in
-        match stats.st_kind with
+        match kind with
         | S_REG ->
+          let stats = Path.Untracked.lstat_exn p in
           Path.Map.add_exn acc p (Cached_digest.Reduced_stats.of_unix_stats stats)
         | S_DIR -> walk p acc
         | _ -> acc)

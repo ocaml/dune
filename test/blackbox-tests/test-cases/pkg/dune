@@ -1,4 +1,8 @@
 (cram
+ (alias pkg)
+ (applies_to :whole_subtree))
+
+(cram
  (deps helpers.sh)
  (applies_to :whole_subtree))
 

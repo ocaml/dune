@@ -48,7 +48,8 @@ module Context : sig
       { base : Common.t
       ; lock : Path.Source.t option
       ; version_preference : Dune_pkg.Version_preference.t option
-      ; solver_env : Dune_pkg.Solver_env.t option
+      ; solver_sys_vars : Dune_pkg.Solver_env.Variable.Sys.Bindings.t option
+      ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
       }
   end
 

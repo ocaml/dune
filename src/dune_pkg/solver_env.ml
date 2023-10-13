@@ -127,58 +127,38 @@ end
 type t =
   { sys : Variable.Sys.Bindings.t
   ; const : Variable.Const.Bindings.t
-  ; repos : Workspace.Repository.Name.t list
   }
 
 module Fields = struct
   let sys = "sys"
   let const = "const"
-  let repos = "repositories"
 end
 
-let default =
-  { sys = Variable.Sys.Bindings.empty
-  ; const = Variable.Const.bindings
-  ; repos = [ Workspace.Repository.Name.of_string "default" ]
-  }
-;;
-
-let repos_of_ordered_set ordered_set =
-  Dune_lang.Ordered_set_lang.eval
-    ordered_set
-    ~parse:(fun ~loc string -> Workspace.Repository.Name.parse_string_exn (loc, string))
-    ~eq:Workspace.Repository.Name.equal
-    ~standard:default.repos
-;;
+let create ~sys = { sys; const = Variable.Const.bindings }
+let default = create ~sys:Variable.Sys.Bindings.empty
 
 let decode =
   let open Decoder in
   fields
   @@
-  let+ sys = field Fields.sys ~default:default.sys Variable.Sys.Bindings.decode
-  and+ repos = Dune_lang.Ordered_set_lang.field Fields.repos in
+  let+ sys = field Fields.sys ~default:default.sys Variable.Sys.Bindings.decode in
   let const = default.const in
-  let repos = repos_of_ordered_set repos in
-  { sys; const; repos }
+  { sys; const }
 ;;
 
-let to_dyn { sys; const; repos } =
+let to_dyn { sys; const } =
   Dyn.record
     [ Fields.sys, Variable.Sys.Bindings.to_dyn sys
     ; Fields.const, Variable.Const.Bindings.to_dyn const
-    ; Fields.repos, Dyn.list Workspace.Repository.Name.to_dyn repos
     ]
 ;;
 
-let equal { sys; const; repos } t =
-  Variable.Sys.Bindings.equal sys t.sys
-  && Variable.Const.Bindings.equal const t.const
-  && List.equal Workspace.Repository.Name.equal repos t.repos
+let equal { sys; const } t =
+  Variable.Sys.Bindings.equal sys t.sys && Variable.Const.Bindings.equal const t.const
 ;;
 
 let sys { sys; _ } = sys
 let set_sys t sys = { t with sys }
-let repos { repos; _ } = repos
 
 let pp =
   let pp_section heading pp_section =
@@ -186,14 +166,11 @@ let pp =
     let pp_heading = Pp.hbox (Pp.text heading) in
     Pp.concat ~sep:Pp.space [ pp_heading; pp_section ] |> Pp.vbox
   in
-  fun { sys; const; repos } ->
+  fun { sys; const } ->
     Pp.enumerate
       ~f:Fun.id
       [ pp_section "System Environment Variables" (Variable.Sys.Bindings.pp sys)
       ; pp_section "Constants" (Variable.Const.Bindings.pp const)
-      ; pp_section
-          "Repositories"
-          (Pp.chain repos ~f:(fun r -> Workspace.Repository.Name.pp r))
       ]
 ;;
 

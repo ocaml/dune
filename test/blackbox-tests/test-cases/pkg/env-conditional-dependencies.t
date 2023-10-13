@@ -33,16 +33,14 @@ Create a workspace config that defines separate build contexts for macos and lin
   >  (default
   >   (name linux)
   >   (lock dune.linux.lock)
-  >   (solver_env
-  >    (sys
-  >     (os linux)))))
+  >   (solver_sys_vars
+  >    (os linux))))
   > (context
   >  (default
   >   (name macos)
   >   (lock dune.macos.lock)
-  >   (solver_env
-  >    (sys
-  >     (os macos)))))
+  >   (solver_sys_vars
+  >    (os macos))))
   > EOF
 
 Now the os-specific dependencies are included on their respective systems.

@@ -30,14 +30,14 @@ let to_dyn tag_to_dyn t =
     to_dyn t
 ;;
 
-let truncate length pp =
+let truncate max_length pp =
   let ast =
     match Pp.to_ast pp with
     | Ok ast -> ast
     | Error _ -> assert false
   in
   let rec loop length_so_far pp : int * _ Pp.Ast.t =
-    if length_so_far >= length
+    if length_so_far >= max_length
     then 0, Nop
     else (
       match (pp : _ Pp.Ast.t) with
@@ -68,23 +68,24 @@ let truncate length pp =
         length, Tag (tag, pp)
       | Verbatim s ->
         let length_of_s = String.length s in
-        if length_so_far + length_of_s > length
+        if length_so_far + length_of_s > max_length
         then
-          ( length - length_so_far
-          , Verbatim (String.sub s ~pos:0 ~len:(length - length_so_far)) )
+          ( max_length - length_so_far
+          , Verbatim (String.sub s ~pos:0 ~len:(max_length - length_so_far)) )
         else length_of_s, Verbatim s
       | Text s ->
         let length_of_s = String.length s in
-        if length_so_far + length_of_s > length
+        if length_so_far + length_of_s > max_length
         then
-          length - length_so_far, Text (String.sub s ~pos:0 ~len:(length - length_so_far))
+          ( max_length - length_so_far
+          , Text (String.sub s ~pos:0 ~len:(max_length - length_so_far)) )
         else length_of_s, Text s
-      | Char c -> if length_so_far + 1 > length then 0, Nop else 1, Char c)
+      | Char c -> if length_so_far + 1 > max_length then 0, Nop else 1, Char c)
   in
   let truncated_length, pp = loop 0 ast in
-  assert (truncated_length <= length);
+  assert (truncated_length <= max_length);
   let pp =
-    if truncated_length < length
+    if truncated_length < max_length
     then pp
     else (
       let _, pp = loop 3 pp in

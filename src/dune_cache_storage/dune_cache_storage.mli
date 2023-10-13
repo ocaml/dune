@@ -68,7 +68,7 @@ end
 module Artifacts : sig
   module Metadata_entry : sig
     type t =
-      { file_name : string
+      { file_name : Path.Local.t
       ; file_digest : Digest.t
       }
   end

@@ -215,22 +215,25 @@ end
 module Artifacts = struct
   module Metadata_entry = struct
     type t =
-      { file_name : string
+      { file_name : Path.Local.t
       ; file_digest : Digest.t
       }
 
-    let equal x y =
-      Digest.equal x.file_digest y.file_digest && String.equal x.file_name y.file_name
+    let equal { file_digest; file_name } t =
+      Digest.equal file_digest t.file_digest && Path.Local.equal file_name t.file_name
     ;;
 
     let to_sexp { file_name; file_digest } =
-      Sexp.List [ Atom file_name; Atom (Digest.to_string file_digest) ]
+      Sexp.List
+        [ Atom (Path.Local.to_string file_name); Atom (Digest.to_string file_digest) ]
     ;;
 
     let of_sexp = function
       | Sexp.List [ Atom file_name; Atom file_digest ] ->
         (match Digest.from_hex file_digest with
-         | Some file_digest -> Ok { file_name; file_digest }
+         | Some file_digest ->
+           let file_name = Path.Local.of_string file_name in
+           Ok { file_name; file_digest }
          | None ->
            Error
              (Failure

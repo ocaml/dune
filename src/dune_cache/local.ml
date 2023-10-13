@@ -85,7 +85,8 @@ module Artifacts = struct
     let entries =
       List.map artifacts ~f:(fun (target, file_digest) ->
         let entry : Metadata_entry.t =
-          { file_name = Path.Build.basename target; file_digest }
+          let file_name = Path.Build.basename target |> Path.Local.of_string in
+          { file_name; file_digest }
         in
         entry)
     in
@@ -237,7 +238,7 @@ module Artifacts = struct
           ~destroy:(fun (path_in_build_dir, _digest) ->
             Path.Build.unlink_no_err path_in_build_dir)
           ~create:(fun { Metadata_entry.file_name; file_digest } ->
-            let path_in_build_dir = Path.Build.relative target_dir file_name in
+            let path_in_build_dir = Path.Build.append_local target_dir file_name in
             let path_in_cache = file_path ~file_digest in
             match (mode : Dune_cache_storage.Mode.t) with
             | Hardlink ->

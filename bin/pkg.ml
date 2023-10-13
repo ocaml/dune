@@ -206,7 +206,7 @@ module Print_solver_env = struct
   ;;
 
   let term =
-    let+ (common : Common.t) = Common.term
+    let+ builder = Common.Builder.term
     and+ context_name =
       context_term
         ~doc:
@@ -232,8 +232,8 @@ module Print_solver_env = struct
                a filter `{os = \"linux\"}` and the variable \"os\" is unset, the \
                dependency will be excluded. ")
     in
-    let common = Common.forbid_builds common in
-    let config = Common.init common in
+    let builder = Common.Builder.forbid_builds builder in
+    let common, config = Common.init builder in
     Scheduler.go ~common ~config (fun () ->
       print_solver_env
         ~context_name
@@ -472,7 +472,7 @@ module Lock = struct
   ;;
 
   let term =
-    let+ (common : Common.t) = Common.term
+    let+ builder = Common.Builder.term
     and+ opam_repository_path = Opam_repository_path.term
     and+ opam_repository_url = Opam_repository_url.term
     and+ context_name =
@@ -511,8 +511,8 @@ module Lock = struct
                changes to it in the future. Without this flag all conditional commands \
                and terms in Opam files are included unconditionally.")
     in
-    let common = Common.forbid_builds common in
-    let config = Common.init common in
+    let builder = Common.Builder.forbid_builds builder in
+    let common, config = Common.init builder in
     Scheduler.go ~common ~config (fun () ->
       lock
         ~context_name
@@ -606,7 +606,7 @@ module Outdated = struct
   ;;
 
   let term =
-    let+ (common : Common.t) = Common.term
+    let+ builder = Common.Builder.term
     and+ context_name_arg =
       context_term ~doc:"Check for outdated packages in this context"
     and+ all_contexts_arg =
@@ -624,8 +624,8 @@ module Outdated = struct
             [ "transitive" ]
             ~doc:"Check for outdated packages in transitive dependencies")
     in
-    let common = Common.forbid_builds common in
-    let config = Common.init common in
+    let builder = Common.Builder.forbid_builds builder in
+    let common, config = Common.init builder in
     Scheduler.go ~common ~config
     @@ find_outdated_packages
          ~context_name_arg

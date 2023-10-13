@@ -13,11 +13,11 @@ let man =
 let info = Cmd.info "utop" ~doc ~man
 
 let term =
-  let+ common = Common.term
+  let+ builder = Common.Builder.term
   and+ dir = Arg.(value & pos 0 string "" & Arg.info [] ~docv:"DIR")
   and+ ctx_name = Common.context_arg ~doc:{|Select context where to build/run utop.|}
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
-  let config = Common.init common in
+  let common, config = Common.init builder in
   let dir = Common.prefix_target common dir in
   if not (Path.is_directory (Path.of_string dir))
   then User_error.raise [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];

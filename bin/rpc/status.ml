@@ -91,7 +91,7 @@ let print_statuses statuses =
 ;;
 
 let term =
-  let+ (common : Common.t) = Common.term
+  let+ builder = Common.Builder.term
   and+ all =
     Arg.(
       value
@@ -102,7 +102,7 @@ let term =
             "Show all running Dune instances together with their root, pids and number \
              of clients.")
   in
-  Rpc_common.client_term common
+  Rpc_common.client_term builder
   @@ fun () ->
   let open Fiber.O in
   if all

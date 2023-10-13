@@ -462,7 +462,7 @@ let install_uninstall ~what =
       , Arg.conv_printer Arg.string )
   in
   let term =
-    let+ common = Common.term
+    let+ builder = Common.Builder.term
     and+ prefix_from_command_line =
       Arg.(
         value
@@ -574,8 +574,9 @@ let install_uninstall ~what =
               "Select context to install from. By default, install files from all \
                defined contexts.")
     and+ sections = Sections.term in
-    let common = Common.forbid_builds common in
-    let config = Common.init ~log_file:No_log_file common in
+    let builder = Common.Builder.forbid_builds builder in
+    let builder = Common.Builder.disable_log_file builder in
+    let common, config = Common.init builder in
     Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* workspace = Workspace.get () in

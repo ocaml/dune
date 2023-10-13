@@ -12,6 +12,7 @@ type t =
   ; enabled_if : Blang.t
   ; locks : Locks.t
   ; package : Package.t option
+  ; runtest_alias : (Loc.t * bool) option
   }
 
 type Stanza.t += T of t

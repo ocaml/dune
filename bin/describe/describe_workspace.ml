@@ -583,7 +583,7 @@ let find_dir common dir =
 ;;
 
 let term : unit Term.t =
-  let+ common = Common.term
+  let+ builder = Common.Builder.term
   and+ what =
     Arg.(
       value
@@ -598,7 +598,7 @@ let term : unit Term.t =
   and+ format = Describe_format.arg
   and+ lang = Lang.arg
   and+ options = Options.arg in
-  let config = Common.init common in
+  let common, config = Common.init builder in
   let dirs =
     let args = "workspace" :: what in
     let parse =

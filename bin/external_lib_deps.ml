@@ -17,7 +17,7 @@ let info = Cmd.info "external-lib-deps" ~doc ~man
 
 let term =
   Term.ret
-  @@ let+ _ = Common.term
+  @@ let+ _ = Common.Builder.term
      and+ _ = Arg.(value & flag & info [ "missing" ] ~doc:{|unused|})
      and+ _ = Arg.(value & pos_all dep [] & Arg.info [] ~docv:"TARGET")
      and+ _ = Arg.(value & flag & info [ "unstable-by-dir" ] ~doc:{|unused|})

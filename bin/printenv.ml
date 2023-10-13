@@ -27,7 +27,7 @@ let pp ppf ~fields sexps =
 ;;
 
 let term =
-  let+ common = Common.term
+  let+ builder = Common.Builder.term
   and+ dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH")
   and+ fields =
     Arg.(
@@ -40,7 +40,7 @@ let term =
             "Only print this field. This option can be repeated multiple times to print \
              multiple fields.")
   in
-  let config = Common.init common in
+  let common, config = Common.init builder in
   Scheduler.go ~common ~config (fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in

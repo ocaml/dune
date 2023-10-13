@@ -28,3 +28,8 @@
  (deps plaintext.md)
  (action
   (run tar -czf %{target} %{deps})))
+
+(alias
+ (name pkg)
+ (deps
+  (alias runtest)))

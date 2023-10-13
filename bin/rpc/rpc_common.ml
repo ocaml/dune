@@ -29,9 +29,10 @@ let request_exn client witness n =
   | Ok decl -> Client.request client decl n
 ;;
 
-let client_term common f =
-  let common = Common.forbid_builds common in
-  let config = Common.init ~log_file:No_log_file common in
+let client_term builder f =
+  let builder = Common.Builder.forbid_builds builder in
+  let builder = Common.Builder.disable_log_file builder in
+  let common, config = Common.init builder in
   Scheduler.go ~common ~config f
 ;;
 

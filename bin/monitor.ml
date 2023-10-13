@@ -265,7 +265,7 @@ let command =
     Cmd.info "monitor" ~doc ~man
   and term =
     let open Import in
-    let+ (common : Common.t) = Common.term
+    let+ builder = Common.Builder.term
     and+ quit_on_disconnect =
       Arg.(
         value
@@ -274,8 +274,9 @@ let command =
             [ "quit-on-disconnect" ]
             ~doc:"Quit if the connection to the server is lost.")
     in
-    let common = Common.forbid_builds common in
-    let config = Common.init ~log_file:No_log_file common in
+    let builder = Common.Builder.forbid_builds builder in
+    let builder = Common.Builder.disable_log_file builder in
+    let common, config = Common.init builder in
     let stats = Common.stats common in
     let config =
       Dune_config.for_scheduler

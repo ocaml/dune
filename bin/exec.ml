@@ -315,7 +315,7 @@ module Exec_context = struct
 end
 
 let term =
-  let+ common = Common.term
+  let+ builder = Common.Builder.term
   and+ context = Common.context_arg ~doc:{|Run the command in this build context.|}
   and+ prog = Arg.(required & pos 0 (some Cmd_arg.conv) None (Arg.info [] ~docv:"PROG"))
   and+ no_rebuild =
@@ -324,7 +324,7 @@ let term =
   (* TODO we should make sure to finalize the current backend before exiting dune.
      For watch mode, we should finalize the backend and then restart it in between
      runs. *)
-  let config = Common.init common in
+  let common, config = Common.init builder in
   let exec_context = Exec_context.init ~common ~context ~no_rebuild ~prog ~args in
   let f =
     match Common.watch common with

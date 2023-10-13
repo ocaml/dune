@@ -5,19 +5,6 @@ open Import
 let ( let+! ) = Memo.O.( let+ )
 let ( let*! ) = Memo.O.( let* )
 
-let as_in_build_dir ~what ~loc p =
-  match Path.as_in_build_dir p with
-  | Some p -> p
-  | None ->
-    User_error.raise
-      ~loc
-      [ Pp.textf
-          "%s %s is outside the build directory. This is not allowed."
-          what
-          (Path.to_string_maybe_quoted p)
-      ]
-;;
-
 let validate_target_dir ~targets_dir ~loc targets path =
   if Path.Build.(parent_exn path <> targets_dir)
   then
@@ -368,12 +355,12 @@ end = struct
       then
         Memo.return
           ( (let+ p = Expander.expand_path env sw in
-             as_in_build_dir ~what ~loc:(loc sw) p)
+             Expander0.as_in_build_dir ~what ~loc:(loc sw) p)
           , acc )
       else
         let+! p = Expander.No_deps.expand_path env sw in
         let loc = loc sw in
-        let p = as_in_build_dir p ~what ~loc in
+        let p = Expander0.as_in_build_dir p ~what ~loc in
         Action_builder.return p, { acc with file_targets = f acc.file_targets p loc }
     ;;
 
@@ -451,7 +438,7 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
   | Chdir (fn, t) ->
     E.At_rule_eval_stage.path fn ~f:(fun dir ->
       A.chdir
-        (as_in_build_dir dir ~loc:(String_with_vars.loc fn) ~what:"Directory")
+        (Expander0.as_in_build_dir dir ~loc:(String_with_vars.loc fn) ~what:"Directory")
         (let+ t = expand t in
          O.Chdir (dir, t)))
   | Setenv (var, value, t) ->
@@ -544,7 +531,7 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
       then E.consume_file file2
       else
         let+ p = E.dep file2 in
-        as_in_build_dir p ~loc:(String_with_vars.loc file2) ~what:"File"
+        Expander0.as_in_build_dir p ~loc:(String_with_vars.loc file2) ~what:"File"
     in
     O.Diff { optional; file1; file2; mode }
   | No_infer t -> A.no_infer (expand t)

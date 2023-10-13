@@ -28,6 +28,7 @@ type t =
   ; enabled_if : Blang.t
   ; locks : Locks.t
   ; package : Package.t option
+  ; runtest_alias : (Loc.t * bool) option
   }
 
 type Stanza.t += T of t
@@ -42,6 +43,10 @@ let decode =
      and+ locks = Locks.field ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9)) ()
      and+ package =
        Stanza_common.Pkg.field_opt ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8)) ()
+     and+ runtest_alias =
+       field_o
+         "runtest_alias"
+         (Dune_lang.Syntax.since Stanza.syntax (3, 11) >>> located bool)
      in
-     { loc; alias; deps; enabled_if; locks; applies_to; package })
+     { loc; alias; deps; enabled_if; locks; applies_to; package; runtest_alias })
 ;;

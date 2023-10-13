@@ -60,8 +60,7 @@ module Context_for_dune = struct
          | Some variable ->
            (match Solver_env.get solver_env variable with
             | Unset_sys -> filter
-            | String string -> FString string
-            | Bool bool -> FBool bool))
+            | String string -> FString string))
       | other -> other)
   ;;
 
@@ -140,26 +139,16 @@ module Context_for_dune = struct
   ;;
 
   let filter_deps t package filtered_formula =
-    let solver_env =
-      let package_is_local =
-        OpamPackage.Name.Map.mem (OpamPackage.name package) t.local_packages
-      in
-      if package_is_local
-      then t.solver_env
-      else
-        (* Flag variables pertain only to local packages. This is because these
-           variables enable dependencies on test and documentation packages and
-           we don't want to pull in test and doc dependencies for dependencies
-           of local packages. *)
-        Solver_env.clear_flags t.solver_env
+    let package_is_local =
+      OpamPackage.Name.Map.mem (OpamPackage.name package) t.local_packages
     in
-    map_filters filtered_formula ~f:(resolve_solver_env solver_env)
+    map_filters filtered_formula ~f:(resolve_solver_env t.solver_env)
     |> OpamFilter.filter_deps
          ~build:true
          ~post:false
          ~dev:false
          ~default:false
-         ~test:false
+         ~test:package_is_local
          ~doc:false
   ;;
 end

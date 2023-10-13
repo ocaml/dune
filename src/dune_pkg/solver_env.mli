@@ -1,14 +1,6 @@
 open! Stdune
 
 module Variable : sig
-  module Flag : sig
-    (** A boolean variable *)
-    type t =
-      [ `With_test
-      | `With_doc
-      ]
-  end
-
   module Sys : sig
     (** Variables describing a system environment. These can be polled from the
         current system and assigned specific values in dune-workspace but there
@@ -50,17 +42,19 @@ module Variable : sig
   end
 
   type t =
-    | Flag of Flag.t
     | Sys of Sys.t
     | Const of Const.t
 
   val of_string_opt : string -> t option
 end
 
-(** A typed variable environment used by the dependency solver to evaluate
-    package filters. Opam packages can declare conditional dependencies on other
-    packages using a language made up of boolean operators and comparisons of
-    strings. Variables in this language can represent booleans and strings. *)
+(** A variable environment used by the dependency solver to evaluate package
+    dependency filters. Opam packages can declare conditional dependencies on
+    other packages using a language made up of boolean operators and comparisons
+    of strings. Note that the variables in this environment are those that dune
+    allows users to configure or derive from their environment. Other variables,
+    such as the flags "with-test" and "with-doc" are not part of this
+    environment as dune does not give users access to those variables.. *)
 type t
 
 val default : t
@@ -73,15 +67,11 @@ val set_sys : t -> Variable.Sys.Bindings.t -> t
 (** [repos t] returns the selected repository names in priority order *)
 val repos : t -> Workspace.Repository.Name.t list
 
-(** Set all the flags to false *)
-val clear_flags : t -> t
-
 (** A human-readible summary of the variable environment *)
 val pp : t -> 'a Pp.t
 
 module Variable_value : sig
   type t =
-    | Bool of bool
     | String of string
     | Unset_sys
 end

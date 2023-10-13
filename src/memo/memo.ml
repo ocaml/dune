@@ -95,315 +95,18 @@ module Caches = struct
   let clear () = List.iter !cleaners ~f:(fun f -> f ())
 end
 
-module Dep_node_without_state = struct
-  type ('i, 'o) t =
-    { id : Id.t
-        (* If [id] is placed first in this data structure, then polymorphic
-           comparison for dep nodes works fine regardless of the other fields.
-           At the moment polymorphic comparison is used for [Exn_set], but we
-           hope to change that. *)
-    ; spec : ('i, 'o) Spec.t
-    ; input : 'i
-    }
-
-  type packed = T : (_, _) t -> packed [@@unboxed]
-
-  let input_to_dyn (type i) (node : (i, _) t) =
-    let (module Input : Store_intf.Input with type t = i) = node.spec.input in
-    Input.to_dyn node.input
-  ;;
-
-  let to_dyn t =
-    Dyn.Tuple
-      [ String
-          (match t.spec.name with
-           | Some name -> name
-           | None -> "<unnamed>")
-      ; input_to_dyn t
-      ]
-  ;;
-end
-
-module Stack_frame_without_state = struct
-  open Dep_node_without_state
-
-  type t = Dep_node_without_state.packed
-
-  let name (T t) = t.spec.name
-  let input (T t) = input_to_dyn t
-  let to_dyn (T t) = Dep_node_without_state.to_dyn t
-  let id (T a) = a.id
-  let equal (T a) (T b) = Id.equal a.id b.id
-end
-
-module Cycle_error = struct
-  type t = Stack_frame_without_state.t list
-
-  exception E of t
-
-  let get t = t
-  let to_dyn = Dyn.list Stack_frame_without_state.to_dyn
-end
-
-module Error = struct
-  type t =
-    { exn : exn
-    ; rev_stack : Stack_frame_without_state.t list
-    }
-
-  exception E of t
-
-  let rotate_cycle ~is_desired_head cycle =
-    match List.split_while cycle ~f:(fun elem -> not (is_desired_head elem)) with
-    | _, [] -> None
-    | prefix, suffix -> Some (suffix @ prefix)
-  ;;
-
-  let shorten_stack_leading_to_cycle ~rev_stack cycle =
-    let ids_in_cycle = List.map cycle ~f:Stack_frame_without_state.id |> Id.Set.of_list in
-    match
-      List.split_while
-        ~f:(fun frame ->
-          not (Id.Set.mem ids_in_cycle (Stack_frame_without_state.id frame)))
-        rev_stack
-    with
-    | rev_stack, [] -> rev_stack, cycle
-    | rev_stack, node_in_cycle :: _ ->
-      let cycle =
-        rotate_cycle
-          ~is_desired_head:(Stack_frame_without_state.equal node_in_cycle)
-          (List.rev cycle)
-        |> Option.value_exn
-        |> List.rev
-      in
-      rev_stack, cycle
-  ;;
-
-  let get_exn_and_stack t =
-    match t.exn with
-    | Cycle_error.E cycle ->
-      let rev_stack, cycle =
-        shorten_stack_leading_to_cycle ~rev_stack:t.rev_stack cycle
-      in
-      Cycle_error.E cycle, List.rev rev_stack
-    | exn -> exn, List.rev t.rev_stack
-  ;;
-
-  let get t = fst (get_exn_and_stack t)
-  let stack t = snd (get_exn_and_stack t)
-
-  let extend_stack exn ~stack_frame =
-    E
-      (match exn with
-       | E t -> { t with rev_stack = stack_frame :: t.rev_stack }
-       | _ -> { exn; rev_stack = [ stack_frame ] })
-  ;;
-
-  let to_dyn t =
-    let open Dyn in
-    record
-      [ "exn", Exn.to_dyn t.exn
-      ; "stack", Dyn.list Stack_frame_without_state.to_dyn (stack t)
-      ]
-  ;;
-end
-
 (* The user can wrap exceptions into the [Non_reproducible] constructor to tell
    Memo that they shouldn't be cached. We will catch them, unwrap, and re-raise
    without the wrapper. *)
 exception Non_reproducible of exn
 
-let () =
-  Printexc.register_printer (fun exn ->
-    let dyn =
-      let open Dyn in
-      match exn with
-      | Error.E err -> Some (variant "Memo.Error.E" [ Error.to_dyn err ])
-      | Cycle_error.E frames ->
-        Some (variant "Cycle_error.E" [ Cycle_error.to_dyn frames ])
-      | Non_reproducible exn -> Some (variant "Memo.Non_reproducible" [ Exn.to_dyn exn ])
-      | _ -> None
-    in
-    Option.map dyn ~f:Dyn.to_string)
-;;
-
-module Exn_comparable = Comparable.Make (struct
-    type t = Exn_with_backtrace.t
-
-    let unwrap = function
-      | Error.E { exn; _ } -> exn
-      | exn -> exn
-    ;;
-
-    let compare { Exn_with_backtrace.exn; backtrace = _ } (t : t) =
-      Poly.compare (unwrap exn) (unwrap t.exn)
-    ;;
-
-    let to_dyn = Exn_with_backtrace.to_dyn
-  end)
-
-module Exn_set = Exn_comparable.Set
-
-module Collect_errors_monoid = struct
-  module T = struct
-    type t =
-      { exns : Exn_set.t
-      ; reproducible : bool
-      }
-
-    let empty = { exns = Exn_set.empty; reproducible = true }
-
-    let combine
-      { exns = exns1; reproducible = reproducible1 }
-      { exns = exns2; reproducible = reproducible2 }
-      =
-      { exns = Exn_set.union exns1 exns2; reproducible = reproducible1 && reproducible2 }
-    ;;
-  end
-
-  include T
-  include Monoid.Make (T)
-end
-
-(* Restoring or computing a value can fail for two reasons:
-
-   - [Error]: the user-supplied function that was called to compute the value
-     raised one or more exceptions recorded in the [Collect_errors_monoid.t].
-
-   - [Cancelled]: the attempt was cancelled due to a dependency cycle.
-
-   Note that we plan to make [Cancelled] more general and store the reason for
-   cancellation: a dependency cycle or a request to cancel the current run. *)
-module Value = struct
-  type 'a t =
-    | Ok of 'a
-    | Error of Collect_errors_monoid.t
-    | Cancelled of { dependency_cycle : Cycle_error.t }
-
-  let get_exn t ~stack_frame =
-    match t with
-    | Ok a -> Fiber.return a
-    | Error { exns; _ } ->
-      Fiber.reraise_all
-        (Exn_set.to_list_map exns ~f:(fun exn ->
-           { exn with exn = Error.extend_stack exn.exn ~stack_frame }))
-    | Cancelled { dependency_cycle } -> raise (Cycle_error.E dependency_cycle)
-  ;;
-end
-
-module Cache_lookup = struct
-  (* Looking up a value cached in a previous run can fail in three possible
-     ways:
-
-     - [Out_of_date {old_value = None}]: either the value has never been
-       computed before, or the last computation attempt failed.
-
-     - [Out_of_date {old_value = Some _}]: we found a value computed in a
-       previous run but it is out of date because one of its dependencies changed;
-       we return the old value so that it can be compared with a new one to
-       support the early cutoff.
-
-     - [Cancelled _]: the cache lookup attempt has been cancelled because of a
-       dependency cycle. This outcome indicates that a dependency cycle has been
-       introduced in the current run. If a cycle existed in a previous run, the
-       outcome would have been [Out_of_date {old_value = None}] instead. *)
-  module Failure = struct
-    type 'a t =
-      | Out_of_date of
-          { (* ['a] is instantiated to ['a Cached_value.t] below but making
-               this explicit would require us to move this type and [Result]
-               into the recursive module of [M]. We leave this comment to
-               explain why using [Option.Unboxed.t] is OK here. *)
-            old_value : 'a Option.Unboxed.t
-          }
-      | Cancelled of { dependency_cycle : Cycle_error.t }
-  end
-
-  module Result = struct
-    type 'a t =
-      | Ok of 'a
-      | Failure of 'a Failure.t
-
-    let _to_string_hum = function
-      | Ok _ -> "Ok"
-      | Failure (Cancelled _) -> "Failed (dependency cycle)"
-      | Failure (Out_of_date { old_value }) ->
-        (match Option.Unboxed.is_none old_value with
-         | true -> "Failed (no value)"
-         | false -> "Failed (old value)")
-    ;;
-  end
-end
-
-module Dag : Dag.S with type value := Dep_node_without_state.packed =
-  Dag.Make
-    (struct
-      type t = Dep_node_without_state.packed
-    end)
-    ()
-
-(* This is similar to [type t = Dag.node Lazy.t] but avoids creating a closure
-   with a [dep_node]; the latter is available when we need to [force] a [t]. *)
-module Lazy_dag_node = struct
-  type t = Dag.node Option.Unboxed.t ref
-
-  let create () = ref Option.Unboxed.none
-
-  let force t ~(dep_node : _ Dep_node_without_state.t) =
-    match Option.Unboxed.is_none !t with
-    | false ->
-      let (dag_node : Dag.node) = Option.Unboxed.value_exn !t in
-      let (T dep_node_passed_first) = Dag.value dag_node in
-      (* CR-someday amokhov: It would be great to restructure the code to rule
-         out the potential inconsistency between [dep_node]s passed to
-         [force]. *)
-      assert (Id.equal dep_node.id dep_node_passed_first.id);
-      dag_node
-    | true ->
-      let (dag_node : Dag.node) =
-        if !Counters.enabled then incr Counters.nodes_in_cycle_detection_graph;
-        Dag.create_node (Dep_node_without_state.T dep_node)
-      in
-      t := Option.Unboxed.some dag_node;
-      dag_node
-  ;;
-end
-
-(* A "computation" is represented by an [ivar], filled when the computation is
-   finished, and a [dag_node], used for cycle detection before getting blocked
-   on reading the [ivar]. When a run completes, all computations are garbage
-   collected because we no longer hold any references to them. *)
-module Computation0 = struct
-  type 'a t =
-    { ivar : 'a Fiber.Ivar.t
-    ; dag_node : Lazy_dag_node.t
-    }
-
-  let create () = { ivar = Fiber.Ivar.create (); dag_node = Lazy_dag_node.create () }
-end
-
-(* Checking dependencies of a node can lead to one of these outcomes:
-
-   - [Unchanged]: all the dependencies of the current node are up to date and we
-     can therefore skip recomputing the node and can reuse the value computed in
-     the previous run.
-
-   - [Changed]: one of the dependencies has changed since the previous run and
-     the current node should therefore be recomputed.
-
-   - [Cancelled _]: one of the dependencies leads to a dependency cycle. In this
-     case, there is no point in recomputing the current node: it's impossible to
-     bring its dependencies up to date! *)
-module Changed_or_not = struct
-  type t =
-    | Unchanged
-    | Changed
-    | Cancelled of { dependency_cycle : Cycle_error.t }
-end
-
 module M = struct
+  module Import = struct
+    module Dag = Dag
+  end
+
   (* A [value] along with some additional information that allows us to check
-     whether the it is up to date or needs to be recomputed. *)
+     whether it is up to date or needs to be recomputed. *)
   module rec Cached_value : sig
     type 'a t =
       { value : 'a Value.t
@@ -539,20 +242,375 @@ module M = struct
 
   and Dep_node : sig
     type ('i, 'o) t =
-      { without_state : ('i, 'o) Dep_node_without_state.t
+      { id : Id.t
+          (* If [id] is placed first in this data structure, then polymorphic
+             comparison for dep nodes works fine regardless of the other fields.
+             At the moment polymorphic comparison is used for [Exn_set], but we
+             hope to change that. *)
+      ; spec : ('i, 'o) Spec.t
+      ; input : 'i
       ; mutable state : 'o State.t
-      ; (* This field caches the value of [without_state.spec.allow_cutoff] to
-           avoid jumping through two more pointers in a tight loop. *)
+      ; (* CR-soon amokhov: This field caches the value of [spec.allow_cutoff] to
+           avoid an indirection in a tight loop. There used to be two pointers of
+           indirection in the past; now only one remains. Maybe this optimisation
+           no longer makes any sense and we can just drop it. *)
         has_cutoff : bool
       }
 
     type packed = T : (_, _) t -> packed [@@unboxed]
   end =
     Dep_node
+
+  and Cycle_error : sig
+    type t = Dep_node.packed list
+
+    exception E of t
+  end = struct
+    type t = Dep_node.packed list
+
+    exception E of t
+  end
+
+  and Error : sig
+    type t =
+      { exn : exn
+      ; rev_stack : Dep_node.packed list
+      }
+
+    exception E of t
+  end = struct
+    type t =
+      { exn : exn
+      ; rev_stack : Dep_node.packed list
+      }
+
+    exception E of t
+  end
+
+  and Exn_comparable : (Comparable_intf.S with type key := Exn_with_backtrace.t) =
+  Comparable.Make (struct
+      type t = Exn_with_backtrace.t
+
+      let unwrap = function
+        | Error.E { exn; _ } -> exn
+        | exn -> exn
+      ;;
+
+      let compare { Exn_with_backtrace.exn; backtrace = _ } (t : t) =
+        Poly.compare (unwrap exn) (unwrap t.exn)
+      ;;
+
+      let to_dyn = Exn_with_backtrace.to_dyn
+    end)
+
+  and Exn_set : (Set.S with type elt := Exn_with_backtrace.t) = Exn_comparable.Set
+
+  and Collect_errors_monoid : sig
+    type t =
+      { exns : Exn_set.t
+      ; reproducible : bool
+      }
+  end =
+    Collect_errors_monoid
+
+  (* Restoring or computing a value can fail for two reasons:
+
+     - [Error]: the user-supplied function that was called to compute the value
+       raised one or more exceptions recorded in the [Collect_errors_monoid.t].
+
+     - [Cancelled]: the attempt was cancelled due to a dependency cycle.
+
+     Note that we plan to make [Cancelled] more general and store the reason for
+     cancellation: a dependency cycle or a request to cancel the current run. *)
+  and Value : sig
+    type 'a t =
+      | Ok of 'a
+      | Error of Collect_errors_monoid.t
+      | Cancelled of { dependency_cycle : Cycle_error.t }
+  end =
+    Value
+
+  and Cache_lookup : sig
+    (* Looking up a value cached in a previous run can fail in three possible
+       ways:
+
+       - [Out_of_date {old_value = None}]: either the value has never been
+         computed before, or the last computation attempt failed.
+
+       - [Out_of_date {old_value = Some _}]: we found a value computed in a
+         previous run but it is out of date because one of its dependencies changed;
+         we return the old value so that it can be compared with a new one to
+         support the early cutoff.
+
+       - [Cancelled _]: the cache lookup attempt has been cancelled because of a
+         dependency cycle. This outcome indicates that a dependency cycle has been
+         introduced in the current run. If a cycle existed in a previous run, the
+         outcome would have been [Out_of_date {old_value = None}] instead. *)
+    module Failure : sig
+      (* CR-soon amokhov: Now that this module and [Result] are in the same
+         recursive module as [Cached_value], we can remove the parameter ['a]. *)
+      type 'a t =
+        | Out_of_date of
+            { (* ['a] is instantiated to ['a Cached_value.t] below but making
+                 this explicit would require us to move this type and [Result]
+                 into the recursive module of [M]. We leave this comment to
+                 explain why using [Option.Unboxed.t] is OK here. *)
+              old_value : 'a Option.Unboxed.t
+            }
+        | Cancelled of { dependency_cycle : Cycle_error.t }
+    end
+
+    module Result : sig
+      type 'a t =
+        | Ok of 'a
+        | Failure of 'a Failure.t
+    end
+  end =
+    Cache_lookup
+
+  and Dag : (Import.Dag.S with type value := Dep_node.packed) =
+    Import.Dag.Make
+      (struct
+        type t = Dep_node.packed
+      end)
+      ()
+
+  (* This is similar to [type t = Dag.node Lazy.t] but avoids creating a closure
+     with a [dep_node]; the latter is available when we need to [force] a [t]. *)
+  and Lazy_dag_node : sig
+    type t = Dag.node Option.Unboxed.t ref
+  end =
+    Lazy_dag_node
+
+  (* A "computation" is represented by an [ivar], filled when the computation is
+     finished, and a [dag_node], used for cycle detection before getting blocked
+     on reading the [ivar]. When a run completes, all computations are garbage
+     collected because we no longer hold any references to them. *)
+  and Computation0 : sig
+    type 'a t =
+      { ivar : 'a Fiber.Ivar.t
+      ; dag_node : Lazy_dag_node.t
+      }
+  end =
+    Computation0
+
+  (* Checking dependencies of a node can lead to one of these outcomes:
+
+     - [Unchanged]: all the dependencies of the current node are up to date and we
+       can therefore skip recomputing the node and can reuse the value computed in
+       the previous run.
+
+     - [Changed]: one of the dependencies has changed since the previous run and
+       the current node should therefore be recomputed.
+
+     - [Cancelled _]: one of the dependencies leads to a dependency cycle. In this
+       case, there is no point in recomputing the current node: it's impossible to
+       bring its dependencies up to date! *)
+  and Changed_or_not : sig
+    type t =
+      | Unchanged
+      | Changed
+      | Cancelled of { dependency_cycle : Cycle_error.t }
+  end =
+    Changed_or_not
 end
 
-module Dep_node = M.Dep_node
+module Dep_node = struct
+  include M.Dep_node
+
+  let input_to_dyn (type i) (node : (i, _) t) =
+    let (module Input : Store_intf.Input with type t = i) = node.spec.input in
+    Input.to_dyn node.input
+  ;;
+
+  let to_dyn_without_state t =
+    Dyn.Tuple
+      [ String
+          (match t.spec.name with
+           | Some name -> name
+           | None -> "<unnamed>")
+      ; input_to_dyn t
+      ]
+  ;;
+
+  module Packed = struct
+    type t = packed
+
+    let id (T t) = t.id
+    let equal (T a) (T b) = Id.equal a.id b.id
+    let to_dyn_without_state (T t) = to_dyn_without_state t
+
+    let as_instance_of (type i) (T t) (witness : i Type_eq.Id.t) : i option =
+      match Type_eq.Id.same witness t.spec.witness with
+      | Some Type_eq.T -> Some t.input
+      | None -> None
+    ;;
+
+    let human_readable_description (T t) =
+      Option.map t.spec.human_readable_description ~f:(fun f -> f t.input)
+    ;;
+  end
+end
+
 module Deps = M.Deps
+
+module Cycle_error = struct
+  include M.Cycle_error
+
+  let get t = t
+  let to_dyn = Dyn.list Dep_node.Packed.to_dyn_without_state
+end
+
+module Error = struct
+  include M.Error
+
+  let rotate_cycle ~is_desired_head cycle =
+    match List.split_while cycle ~f:(fun elem -> not (is_desired_head elem)) with
+    | _, [] -> None
+    | prefix, suffix -> Some (suffix @ prefix)
+  ;;
+
+  let shorten_stack_leading_to_cycle ~rev_stack cycle =
+    let ids_in_cycle = List.map cycle ~f:Dep_node.Packed.id |> Id.Set.of_list in
+    match
+      List.split_while
+        ~f:(fun frame -> not (Id.Set.mem ids_in_cycle (Dep_node.Packed.id frame)))
+        rev_stack
+    with
+    | rev_stack, [] -> rev_stack, cycle
+    | rev_stack, node_in_cycle :: _ ->
+      let cycle =
+        rotate_cycle
+          ~is_desired_head:(Dep_node.Packed.equal node_in_cycle)
+          (List.rev cycle)
+        |> Option.value_exn
+        |> List.rev
+      in
+      rev_stack, cycle
+  ;;
+
+  let get_exn_and_stack t =
+    match t.exn with
+    | Cycle_error.E cycle ->
+      let rev_stack, cycle =
+        shorten_stack_leading_to_cycle ~rev_stack:t.rev_stack cycle
+      in
+      Cycle_error.E cycle, List.rev rev_stack
+    | exn -> exn, List.rev t.rev_stack
+  ;;
+
+  let get t = fst (get_exn_and_stack t)
+  let stack t = snd (get_exn_and_stack t)
+
+  let extend_stack exn ~stack_frame =
+    E
+      (match exn with
+       | E t -> { t with rev_stack = stack_frame :: t.rev_stack }
+       | _ -> { exn; rev_stack = [ stack_frame ] })
+  ;;
+
+  let to_dyn t =
+    let open Dyn in
+    record
+      [ "exn", Exn.to_dyn t.exn
+      ; "stack", Dyn.list Dep_node.Packed.to_dyn_without_state (stack t)
+      ]
+  ;;
+end
+
+let () =
+  Printexc.register_printer (fun exn ->
+    let dyn =
+      let open Dyn in
+      match exn with
+      | Error.E err -> Some (variant "Memo.Error.E" [ Error.to_dyn err ])
+      | Cycle_error.E frames ->
+        Some (variant "Cycle_error.E" [ Cycle_error.to_dyn frames ])
+      | Non_reproducible exn -> Some (variant "Memo.Non_reproducible" [ Exn.to_dyn exn ])
+      | _ -> None
+    in
+    Option.map dyn ~f:Dyn.to_string)
+;;
+
+module Exn_set = M.Exn_set
+
+module Collect_errors_monoid = struct
+  module T = struct
+    include M.Collect_errors_monoid
+
+    let empty = { exns = Exn_set.empty; reproducible = true }
+
+    let combine
+      { exns = exns1; reproducible = reproducible1 }
+      { exns = exns2; reproducible = reproducible2 }
+      =
+      { exns = Exn_set.union exns1 exns2; reproducible = reproducible1 && reproducible2 }
+    ;;
+  end
+
+  include T
+  include Monoid.Make (T)
+end
+
+(* Restoring or computing a value can fail for two reasons:
+
+   - [Error]: the user-supplied function that was called to compute the value
+     raised one or more exceptions recorded in the [Collect_errors_monoid.t].
+
+   - [Cancelled]: the attempt was cancelled due to a dependency cycle.
+
+   Note that we plan to make [Cancelled] more general and store the reason for
+   cancellation: a dependency cycle or a request to cancel the current run. *)
+module Value = struct
+  include M.Value
+
+  let get_exn t ~stack_frame =
+    match t with
+    | Ok a -> Fiber.return a
+    | Error { exns; _ } ->
+      Fiber.reraise_all
+        (Exn_set.to_list_map exns ~f:(fun exn ->
+           { exn with exn = Error.extend_stack exn.exn ~stack_frame }))
+    | Cancelled { dependency_cycle } -> raise (Cycle_error.E dependency_cycle)
+  ;;
+end
+
+module Cache_lookup = M.Cache_lookup
+module Dag = M.Dag
+
+(* This is similar to [type t = Dag.node Lazy.t] but avoids creating a closure
+   with a [dep_node]; the latter is available when we need to [force] a [t]. *)
+module Lazy_dag_node = struct
+  include M.Lazy_dag_node
+
+  let create () = ref Option.Unboxed.none
+
+  let force t ~(dep_node : Dep_node.Packed.t) =
+    Option.Unboxed.match_
+      !t
+      ~some:(fun (dag_node : Dag.node) ->
+        let dep_node_passed_first = Dag.value dag_node in
+        (* CR-someday amokhov: It would be great to restructure the code to rule
+           out the potential inconsistency between [dep_node]s passed to [force]. *)
+        assert (Dep_node.Packed.equal dep_node dep_node_passed_first);
+        dag_node)
+      ~none:(fun () ->
+        let (dag_node : Dag.node) =
+          if !Counters.enabled then incr Counters.nodes_in_cycle_detection_graph;
+          Dag.create_node dep_node
+        in
+        t := Option.Unboxed.some dag_node;
+        dag_node)
+  ;;
+end
+
+module Computation0 = struct
+  include M.Computation0
+
+  let create () = { ivar = Fiber.Ivar.create (); dag_node = Lazy_dag_node.create () }
+end
+
+module Changed_or_not = M.Changed_or_not
 
 (* For debugging *)
 let _print_dep_node ?prefix (dep_node : _ Dep_node.t) =
@@ -565,10 +623,7 @@ let _print_dep_node ?prefix (dep_node : _ Dep_node.t) =
      with the diagnostic [printf] output in [memoize_tests]. *)
   if !Debug.verbose_diagnostics
   then
-    Format.printf
-      "%s%s\n"
-      prefix
-      (Dep_node_without_state.to_dyn dep_node.without_state |> Dyn.to_string)
+    Format.printf "%s%s\n" prefix (Dep_node.to_dyn_without_state dep_node |> Dyn.to_string)
 ;;
 
 module Stack_frame_with_state : sig
@@ -581,13 +636,8 @@ module Stack_frame_with_state : sig
   val to_dyn : t -> Dyn.t
 
   (* Create a new stack frame related to restoring or computing a [dep_node]. *)
-  val create
-    :  dag_node:Lazy_dag_node.t
-    -> phase
-    -> dep_node:_ Dep_node_without_state.t
-    -> t
-
-  val dep_node : t -> Dep_node_without_state.packed
+  val create : dag_node:Lazy_dag_node.t -> phase -> dep_node:_ Dep_node.t -> t
+  val dep_node : t -> Dep_node.packed
   val dag_node : t -> Dag.node
 
   (* This function accumulates dependencies of frames in the [Compute] phase.
@@ -601,8 +651,8 @@ end = struct
     | Restore_from_cache
     | Compute
 
-  type ('i, 'o) unpacked =
-    { dep_node : ('i, 'o) Dep_node_without_state.t
+  type t =
+    { dep_node : Dep_node.packed
     ; dag_node : Lazy_dag_node.t
     ; (* This [children_added_to_dag] table serves dual purpose:
 
@@ -630,36 +680,33 @@ end = struct
       mutable deps_rev : Dep_node.packed list
     }
 
-  type t = T : ('i, 'o) unpacked -> t [@@unboxed]
-
-  let to_dyn (T t) = Stack_frame_without_state.to_dyn (T t.dep_node)
+  let to_dyn t = Dep_node.Packed.to_dyn_without_state t.dep_node
 
   let create ~dag_node phase ~dep_node =
-    T
-      { dep_node
-      ; phase
-      ; deps_rev = []
-      ; dag_node
-      ; children_added_to_dag = Dag.Id.Set.empty
-      }
+    { dep_node = Dep_node.T dep_node
+    ; phase
+    ; deps_rev = []
+    ; dag_node
+    ; children_added_to_dag = Dag.Id.Set.empty
+    }
   ;;
 
-  let dep_node (T t) = Dep_node_without_state.T t.dep_node
-  let dag_node (T t) = Lazy_dag_node.force t.dag_node ~dep_node:t.dep_node
+  let dep_node t = t.dep_node
+  let dag_node t = Lazy_dag_node.force t.dag_node ~dep_node:t.dep_node
 
-  let add_dep (T t) ~dep_node =
+  let add_dep t ~dep_node =
     match t.phase with
     | Restore_from_cache -> assert false
     | Compute -> t.deps_rev <- Dep_node.T dep_node :: t.deps_rev
   ;;
 
-  let deps_rev (T t) = t.deps_rev
+  let deps_rev t = t.deps_rev
 
-  let record_child_added_to_dag (T t) ~dag_node_id =
+  let record_child_added_to_dag t ~dag_node_id =
     t.children_added_to_dag <- Dag.Id.Set.add t.children_added_to_dag dag_node_id
   ;;
 
-  let children_added_to_dag (T t) = t.children_added_to_dag
+  let children_added_to_dag t = t.children_added_to_dag
 end
 
 module To_open = struct
@@ -818,7 +865,7 @@ module Computation = struct
     >>= function
     | Some res -> Fiber.return (Ok res)
     | None ->
-      let dag_node = Lazy_dag_node.force dag_node ~dep_node in
+      let dag_node = Lazy_dag_node.force dag_node ~dep_node:(Dep_node.T dep_node) in
       Call_stack.add_path_to ~dag_node
       >>= (function
       | Ok () -> Fiber.Ivar.read ivar >>| Result.ok
@@ -963,7 +1010,7 @@ module Cached_value = struct
     | Error _, Ok _
     | Ok _, Error _ -> true
     | Ok prev_value, Ok cur_value ->
-      (match node.without_state.spec.allow_cutoff with
+      (match node.spec.allow_cutoff with
        | Yes equal -> not (equal prev_value cur_value)
        | No -> true)
     | ( Error { exns = prev_exns; reproducible = true }
@@ -1005,18 +1052,14 @@ module Table = struct
 end
 
 module Stack_frame = struct
-  include Stack_frame_without_state
+  include Dep_node.Packed
 
-  let as_instance_of (type i) (Dep_node_without_state.T t) ~of_:(memo : (i, _) Table.t)
-    : i option
-    =
-    match Type_eq.Id.same memo.spec.witness t.spec.witness with
-    | Some Type_eq.T -> Some t.input
-    | None -> None
-  ;;
+  let name (Dep_node.T t) = t.spec.name
+  let input (Dep_node.T t) = Dep_node.input_to_dyn t
+  let to_dyn = Dep_node.Packed.to_dyn_without_state
 
-  let human_readable_description (Dep_node_without_state.T t) =
-    Option.map t.spec.human_readable_description ~f:(fun f -> f t.input)
+  let as_instance_of stack_frame ~(of_ : _ Table.t) =
+    Dep_node.Packed.as_instance_of stack_frame of_.spec.witness
   ;;
 end
 
@@ -1051,11 +1094,11 @@ let invalidate_dep_node (dep_node : _ Dep_node.t) =
   | Restoring _ ->
     Code_error.raise
       "invalidate_dep_node called on a node in Restoring state"
-      [ "dep_node", Dep_node_without_state.to_dyn dep_node.without_state ]
+      [ "dep_node", Dep_node.to_dyn_without_state dep_node ]
   | Computing _ ->
     Code_error.raise
       "invalidate_dep_node called on a node in Computing state"
-      [ "dep_node", Dep_node_without_state.to_dyn dep_node.without_state ]
+      [ "dep_node", Dep_node.to_dyn_without_state dep_node ]
 ;;
 
 let invalidate_store = Store.iter ~f:invalidate_dep_node
@@ -1105,10 +1148,9 @@ let create
 ;;
 
 let make_dep_node ~spec ~input : _ Dep_node.t =
-  let dep_node_without_state : _ Dep_node_without_state.t =
-    { id = Id.gen (); input; spec }
-  in
-  { without_state = dep_node_without_state
+  { id = Id.gen ()
+  ; input
+  ; spec
   ; state = Out_of_date { old_value = Option.Unboxed.none }
   ; has_cutoff =
       (match spec.allow_cutoff with
@@ -1236,7 +1278,7 @@ end = struct
     let+ res =
       report_and_collect_errors (fun () ->
         let* () = !check_point in
-        dep_node.without_state.spec.f dep_node.without_state.input)
+        dep_node.spec.f dep_node.input)
     in
     let value =
       match res with
@@ -1261,21 +1303,16 @@ end = struct
     fun ~dep_node ~cached_value ->
     let computation = Computation.create () in
     dep_node.state <- Restoring { restore_from_cache = computation };
-    Computation.force
-      computation
-      ~phase:Restore_from_cache
-      ~dep_node:dep_node.without_state
-      (fun _stack_frame ->
-        let+ restore_result = restore_from_cache ~cached_value in
-        if !Counters.enabled then incr Counters.nodes_restored;
-        (match restore_result with
-         | Ok cached_value -> dep_node.state <- Cached_value cached_value
-         | Failure (Cancelled { dependency_cycle }) ->
-           dep_node.state
-             <- Cached_value (Cached_value.create_cancelled ~dependency_cycle)
-         | Failure (Out_of_date { old_value }) ->
-           dep_node.state <- Out_of_date { old_value });
-        restore_result)
+    Computation.force computation ~phase:Restore_from_cache ~dep_node (fun _stack_frame ->
+      let+ restore_result = restore_from_cache ~cached_value in
+      if !Counters.enabled then incr Counters.nodes_restored;
+      (match restore_result with
+       | Ok cached_value -> dep_node.state <- Cached_value cached_value
+       | Failure (Cancelled { dependency_cycle }) ->
+         dep_node.state <- Cached_value (Cached_value.create_cancelled ~dependency_cycle)
+       | Failure (Out_of_date { old_value }) ->
+         dep_node.state <- Out_of_date { old_value });
+      restore_result)
 
   and start_computing :
         'i 'o.
@@ -1286,19 +1323,15 @@ end = struct
     fun ~dep_node ~old_value ->
     let computation = Computation.create () in
     dep_node.state <- Computing { old_value; compute = computation };
-    Computation.force
-      computation
-      ~phase:Compute
-      ~dep_node:dep_node.without_state
-      (fun stack_frame ->
-        let+ cached_value = compute ~dep_node ~old_value ~stack_frame in
-        if !Counters.enabled
-        then (
-          incr Counters.nodes_computed;
-          Counters.edges_traversed
-            := !Counters.edges_traversed + Deps.length cached_value.deps);
-        dep_node.state <- Cached_value cached_value;
-        cached_value)
+    Computation.force computation ~phase:Compute ~dep_node (fun stack_frame ->
+      let+ cached_value = compute ~dep_node ~old_value ~stack_frame in
+      if !Counters.enabled
+      then (
+        incr Counters.nodes_computed;
+        Counters.edges_traversed
+          := !Counters.edges_traversed + Deps.length cached_value.deps);
+      dep_node.state <- Cached_value cached_value;
+      cached_value)
 
   and consider_and_restore_from_cache_without_adding_dep :
         'i 'o. ('i, 'o) Dep_node.t -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t
@@ -1314,9 +1347,7 @@ end = struct
       then Fiber.return (Cache_lookup.Result.Ok cached_value)
       else start_restoring ~dep_node ~cached_value
     | Restoring { restore_from_cache } ->
-      Computation.read_but_first_check_for_cycles
-        restore_from_cache
-        ~dep_node:dep_node.without_state
+      Computation.read_but_first_check_for_cycles restore_from_cache ~dep_node
       >>| (function
       | Ok res -> res
       | Error dependency_cycle ->
@@ -1349,7 +1380,7 @@ end = struct
     | Restoring _ -> assert false
     | Out_of_date { old_value } -> start_computing ~dep_node ~old_value >>| Result.ok
     | Computing { compute; _ } ->
-      Computation.read_but_first_check_for_cycles compute ~dep_node:dep_node.without_state
+      Computation.read_but_first_check_for_cycles compute ~dep_node
       >>| (function
       | Ok _ as result -> result
       | Error dependency_cycle as result ->
@@ -1378,7 +1409,7 @@ end = struct
       match result with
       | Ok res ->
         let* () = Call_stack.add_dep_from_caller dep_node in
-        let stack_frame = Dep_node_without_state.T dep_node.without_state in
+        let stack_frame = Dep_node.T dep_node in
         Value.get_exn res.value ~stack_frame
       | Error cycle_error -> raise (Cycle_error.E cycle_error))
   ;;
@@ -1388,7 +1419,7 @@ let exec (type i o) (t : (i, o) Table.t) i = Exec.exec_dep_node (dep_node t i)
 
 let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) cell =
   let rec collect_graph (Dep_node.T dep_node) graph : Graph.t Fiber.t =
-    let src_id = Id.to_int dep_node.without_state.id in
+    let src_id = Id.to_int dep_node.id in
     match get_cached_value_in_current_run dep_node with
     | Some cached ->
       let* attributes =
@@ -1398,26 +1429,19 @@ let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) cell =
           (* CR-someday cmoseley: We could record errors here and include them
              as part of the graph. *)
           let+ (_ : (_, Collect_errors_monoid.t) result) =
-            report_and_collect_errors (fun () ->
-              dep_node.without_state.spec.f dep_node.without_state.input)
+            report_and_collect_errors (fun () -> dep_node.spec.f dep_node.input)
           in
           let runtime = Unix.gettimeofday () -. start in
           String.Map.of_list_exn [ "runtime", Graph.Attribute.Float runtime ])
         else Fiber.return String.Map.empty
       in
-      let graph =
-        Graph.add_node
-          graph
-          ~id:src_id
-          ?label:dep_node.without_state.spec.name
-          ~attributes
-      in
+      let graph = Graph.add_node graph ~id:src_id ?label:dep_node.spec.name ~attributes in
       List.fold_left
         (Deps.to_list cached.deps)
         ~init:(Fiber.return graph)
         ~f:(fun graph (Dep_node.T dst_node as packed) ->
           let* graph = graph in
-          let dst_id = Id.to_int dst_node.without_state.id in
+          let dst_id = Id.to_int dst_node.id in
           let graph = Graph.add_edge graph ~src_id ~dst_id in
           if Graph.has_node graph ~id:dst_id
           then Fiber.return graph
@@ -1634,7 +1658,7 @@ end
 module Cell = struct
   type ('i, 'o) t = ('i, 'o) Dep_node.t
 
-  let input (t : (_, _) t) = t.without_state.input
+  let input (t : (_, _) t) = t.input
   let read = Exec.exec_dep_node
   let invalidate = Invalidation.invalidate_node
 end
@@ -1791,8 +1815,7 @@ module For_tests = struct
          Some
            (Deps.to_list cv.deps
             |> List.map ~f:(fun (Dep_node.T dep) ->
-              ( dep.without_state.spec.name
-              , Dep_node_without_state.input_to_dyn dep.without_state ))))
+              dep.spec.name, Dep_node.input_to_dyn dep)))
   ;;
 
   let clear_memoization_caches () = Caches.clear ()
@@ -1880,8 +1903,7 @@ module Var = struct
       t.value <- v;
       Cell.invalidate
         t.cell
-        ~reason:
-          (Variable_changed (Stdune.Option.value_exn t.cell.without_state.spec.name))
+        ~reason:(Variable_changed (Stdune.Option.value_exn t.cell.spec.name))
   ;;
 
   let read t = Cell.read t.cell

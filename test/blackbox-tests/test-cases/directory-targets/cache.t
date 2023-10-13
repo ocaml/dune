@@ -2,6 +2,7 @@ We test that directory targets can go in the shared cache. See #8067.
 
   $ export DUNE_CACHE_ROOT=$PWD/.cache
   $ export DUNE_CACHE=enabled
+  $ . ./helpers.sh
 
 In project a, we create a rule with a directory target. The script that creates
 the target displays a message.
@@ -36,8 +37,10 @@ created, and the cache to be populated.
   true
   $ dune_cmd exists _build/default/out/b
   true
-  $ dune cache size
-  0B
+  $ is_linked _build/default/out/a
+  not linked
+  $ is_linked _build/default/out/b
+  not linked
 
 Now we create another project with the same contents.
 

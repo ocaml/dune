@@ -1,7 +1,3 @@
-  $ opam_prefix="$(opam var prefix)"
-  $ export BUILD_PATH_PREFIX_MAP=\
-  > "/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
-
 In the following tests, the first line of the output should be different
 depending on the compilation mode but not the second one: 
 

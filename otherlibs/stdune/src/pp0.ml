@@ -71,14 +71,12 @@ let truncate max_length pp =
         if length_so_far + length_of_s > max_length
         then
           ( max_length - length_so_far
-          , Verbatim (String.sub s ~pos:0 ~len:(max_length - length_so_far)) )
+          , Verbatim (String.take s (max_length - length_so_far)) )
         else length_of_s, Verbatim s
       | Text s ->
         let length_of_s = String.length s in
         if length_so_far + length_of_s > max_length
-        then
-          ( max_length - length_so_far
-          , Text (String.sub s ~pos:0 ~len:(max_length - length_so_far)) )
+        then max_length - length_so_far, Text (String.take s (max_length - length_so_far))
         else length_of_s, Text s
       | Char c -> if length_so_far + 1 > max_length then 0, Nop else 1, Char c)
   in

@@ -176,3 +176,13 @@ let%expect_test "truncation of box" =
   [%expect {|
     This is... |}]
 ;;
+
+let%expect_test "truncatation less than 3" =
+  (* Should not emit more than 3 characters *)
+  test_truncate_and_print 2 (Pp.text "XXXX");
+  [%expect {|
+    ... |}];
+  test_truncate_and_print 2 (Pp.text "X");
+  [%expect {|
+    X |}]
+;;

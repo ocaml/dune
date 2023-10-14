@@ -15,6 +15,10 @@
 #include <string.h>
 #include <sys/syslimits.h>
 
+#ifndef COPYFILE_CLONE
+#define COPYFILE_CLONE (1<<24)
+#endif
+
 CAMLprim value stdune_copyfile(value v_from, value v_to) {
   CAMLparam2(v_from, v_to);
   caml_unix_check_path(v_from, "copyfile");

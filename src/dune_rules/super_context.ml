@@ -328,46 +328,7 @@ let resolve_program t ~dir ?hint ~loc bin =
 ;;
 
 let add_packages_env context ~base stanzas packages =
-  let+ package_sections =
-    (* Add the section of the site mentioned in stanzas (it could be a site
-       of an external package) *)
-    let add_in_package_section m pkg section =
-      Package.Name.Map.update m pkg ~f:(function
-        | None -> Some (Section.Set.singleton section)
-        | Some s -> Some (Section.Set.add s section))
-    in
-    let+ package_sections =
-      let* package_db = Package_db.create context in
-      Dune_file.Memo_fold.fold_stanzas
-        stanzas
-        ~init:Package.Name.Map.empty
-        ~f:(fun _ stanza acc ->
-          let add_in_package_sites acc pkg site loc =
-            let+ section = Package_db.section_of_site package_db ~loc ~pkg ~site in
-            add_in_package_section acc pkg section
-          in
-          match stanza with
-          | Dune_file.Install { section = Site { pkg; site; loc }; _ } ->
-            add_in_package_sites acc pkg site loc
-          | Dune_file.Plugin { site = loc, (pkg, site); _ } ->
-            add_in_package_sites acc pkg site loc
-          | _ -> Memo.return acc)
-    in
-    (* Add the site of the local package: it should only useful for making
-       sure that at least one location is given to the site of local package
-       because if the site is used it should already be in
-       [packages_sections] *)
-    Package.Name.Map.foldi
-      packages
-      ~init:package_sections
-      ~f:(fun package_name (package : Package.t) acc ->
-        Site.Map.fold package.sites ~init:acc ~f:(fun section acc ->
-          add_in_package_section acc package_name section))
-  in
-  let env_dune_dir_locations =
-    let roots =
-      Install.Context.dir ~context |> Path.build |> Install.Roots.opam_from_prefix
-    in
+  let+ env_dune_dir_locations =
     let init =
       match Stdune.Env.get base Dune_site_private.dune_dir_locations_env_var with
       | None -> []
@@ -381,6 +342,45 @@ let add_packages_env context ~base stanzas packages =
                  Dune_site_private.dune_dir_locations_env_var
                  var
              ])
+    in
+    let+ package_sections =
+      (* Add the section of the site mentioned in stanzas (it could be a site
+         of an external package) *)
+      let add_in_package_section m pkg section =
+        Package.Name.Map.update m pkg ~f:(function
+          | None -> Some (Section.Set.singleton section)
+          | Some s -> Some (Section.Set.add s section))
+      in
+      let+ package_sections =
+        let* package_db = Package_db.create context in
+        Dune_file.Memo_fold.fold_stanzas
+          stanzas
+          ~init:Package.Name.Map.empty
+          ~f:(fun _ stanza acc ->
+            let add_in_package_sites pkg site loc =
+              let+ section = Package_db.section_of_site package_db ~loc ~pkg ~site in
+              add_in_package_section acc pkg section
+            in
+            match stanza with
+            | Dune_file.Install { section = Site { pkg; site; loc }; _ } ->
+              add_in_package_sites pkg site loc
+            | Dune_file.Plugin { site = loc, (pkg, site); _ } ->
+              add_in_package_sites pkg site loc
+            | _ -> Memo.return acc)
+      in
+      (* Add the site of the local package: it should only useful for making
+         sure that at least one location is given to the site of local package
+         because if the site is used it should already be in
+         [packages_sections] *)
+      Package.Name.Map.foldi
+        packages
+        ~init:package_sections
+        ~f:(fun package_name (package : Package.t) acc ->
+          Site.Map.fold package.sites ~init:acc ~f:(fun section acc ->
+            add_in_package_section acc package_name section))
+    in
+    let roots =
+      Install.Context.dir ~context |> Path.build |> Install.Roots.opam_from_prefix
     in
     Package.Name.Map.foldi ~init package_sections ~f:(fun package_name sections init ->
       let paths = Install.Paths.make ~package:package_name ~roots in

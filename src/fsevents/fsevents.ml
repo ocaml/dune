@@ -30,15 +30,18 @@ end = struct
   ;;
 end
 
-module RunLoop = struct
+module Dispatch_queue = struct
   module Raw = struct
     type t
 
-    external in_current_thread : unit -> t = "dune_fsevents_runloop_current"
+    external create : unit -> t = "dune_fsevents_dispatch_queue_create"
 
     (* After this function terminates, the reference to [t] is no longer
        valid *)
-    external run_current_thread : t -> unit = "dune_fsevents_runloop_run"
+    external wait_until_stopped
+      :  t
+      -> unit
+      = "dune_fsevents_dispatch_queue_wait_until_stopped"
   end
 
   type state =
@@ -48,28 +51,28 @@ module RunLoop = struct
 
   type t = state State.t
 
-  let in_current_thread () = State.create (Idle (Raw.in_current_thread ()))
+  let create () = State.create (Idle (Raw.create ()))
 
   let stop (t : t) =
     State.critical_section t (fun t ->
       match State.get t with
       | Running _ -> State.set t Stopped
       | Stopped -> ()
-      | Idle _ -> Code_error.raise "RunLoop.stop: not started" [])
+      | Idle _ -> Code_error.raise "Dispatch_queue.stop: not started" [])
   ;;
 
-  let run_current_thread t =
+  let wait_until_stopped t =
     let w =
       State.critical_section t (fun t ->
         match State.get t with
-        | Stopped -> Code_error.raise "RunLoop.run_current_thread: stopped" []
-        | Running _ -> Code_error.raise "RunLoop.run_current_thread: running" []
+        | Stopped -> Code_error.raise "Dispatch_queue.wait_until_stopped: stopped" []
+        | Running _ -> Code_error.raise "Dispatch_queue.wait_until_stopped: running" []
         | Idle w ->
           State.set t (Running w);
           w)
     in
     let res =
-      try Ok (Raw.run_current_thread w) with
+      try Ok (Raw.wait_until_stopped w) with
       | exn -> Error exn
     in
     stop t;
@@ -232,7 +235,7 @@ module Raw = struct
   type t
 
   external stop : t -> unit = "dune_fsevents_stop"
-  external start : t -> RunLoop.Raw.t -> unit = "dune_fsevents_start"
+  external start : t -> Dispatch_queue.Raw.t -> unit = "dune_fsevents_start"
 
   external create
     :  string list
@@ -254,8 +257,8 @@ end
 
 type state =
   | Idle of Raw.t
-  | Start of Raw.t * RunLoop.t
-  | Stop of RunLoop.t
+  | Start of Raw.t * Dispatch_queue.t
+  | Stop of Dispatch_queue.t
 
 type t = state State.t
 
@@ -264,30 +267,30 @@ let stop t =
     match State.get t with
     | Idle _ -> Code_error.raise "Fsevents.stop: idle" []
     | Stop _ -> ()
-    | Start (raw, rl) ->
-      State.set t (Stop rl);
+    | Start (raw, dq) ->
+      State.set t (Stop dq);
       Raw.stop raw)
 ;;
 
-let start t (rl : RunLoop.t) =
+let start t (dq : Dispatch_queue.t) =
   State.critical_section t (fun t ->
     match State.get t with
     | Stop _ -> Code_error.raise "Fsevents.start: stop" []
     | Start _ -> Code_error.raise "Fsevents.start: start" []
     | Idle r ->
-      State.critical_section rl (fun rl' ->
-        match State.get rl' with
-        | Stopped -> Code_error.raise "Fsevents.start: runloop stopped" []
-        | Idle rl' | Running rl' ->
-          State.set t (Start (r, rl));
-          Raw.start r rl'))
+      State.critical_section dq (fun dq' ->
+        match State.get dq' with
+        | Stopped -> Code_error.raise "Fsevents.start: dispatch queue stopped" []
+        | Idle dq' | Running dq' ->
+          State.set t (Start (r, dq));
+          Raw.start r dq'))
 ;;
 
-let runloop t =
+let dispatch_queue t =
   State.critical_section t (fun t ->
     match State.get t with
     | Idle _ -> None
-    | Start (_, rl) | Stop rl -> Some rl)
+    | Start (_, dq) | Stop dq -> Some dq)
 ;;
 
 let flush_sync t =

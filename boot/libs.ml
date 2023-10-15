@@ -71,6 +71,8 @@ let local_libraries =
     None)
   ; ("vendor/fmt/src", None, false, None)
   ; ("vendor/opam-0install/lib", Some "Opam_0install", false, None)
+  ; ("otherlibs/dune-build-info/src", Some "Build_info", false,
+    Some "Build_info_data")
   ; ("src/dune_pkg", Some "Dune_pkg", false, None)
   ; ("src/install", Some "Install", false, None)
   ; ("otherlibs/dune-site/src/private", Some "Dune_site_private", false,
@@ -90,8 +92,6 @@ let local_libraries =
   ; ("src/upgrader", Some "Dune_upgrader", false, None)
   ; ("src/dune_pkg_outdated", Some "Dune_pkg_outdated", false, None)
   ; ("vendor/cmdliner/src", None, false, None)
-  ; ("otherlibs/dune-build-info/src", Some "Build_info", false,
-    Some "Build_info_data")
   ; ("src/dune_rpc_impl", Some "Dune_rpc_impl", false, None)
   ; ("src/dune_rules_rpc", Some "Dune_rules_rpc", false, None)
   ]

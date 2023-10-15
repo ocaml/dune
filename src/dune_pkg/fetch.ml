@@ -2,6 +2,75 @@ open Stdune
 module Process = Dune_engine.Process
 module Display = Dune_engine.Display
 
+module Curl = struct
+  let bin = lazy (Bin.which ~path:(Env_path.path Env.initial) "curl")
+
+  let user_agent =
+    lazy
+      (let base = "dune" in
+       match Build_info.V1.version () with
+       | None -> base
+       | Some v -> base ^ "." ^ Build_info.V1.Version.to_string v)
+  ;;
+
+  let run ~url ~temp_dir ~output =
+    let bin =
+      match Lazy.force bin with
+      | Some p -> p
+      | None -> User_error.raise [ Pp.text "curl not available in PATH" ]
+    in
+    let args =
+      [ "-L"
+      ; "-s"
+      ; "--compressed"
+      ; "--user-agent"
+      ; Lazy.force user_agent
+      ; "--write-out"
+      ; "%{http_code}\\n"
+      ; "-o"
+      ; Path.to_string output
+      ; "--"
+      ; url
+      ]
+    in
+    let open Fiber.O in
+    let stderr = Path.relative temp_dir "curl.stderr" in
+    let+ http_code, exit_code =
+      let stderr_to = Process.Io.file stderr Out in
+      Process.run_capture_line Return ~stderr_to ~display:Quiet bin args
+    in
+    if exit_code <> 0
+    then (
+      let stderr =
+        match Io.read_file stderr with
+        | s ->
+          Path.unlink_no_err stderr;
+          [ Pp.text s ]
+        | exception s ->
+          [ Pp.textf
+              "failed to read stderr form file %s"
+              (Path.to_string_maybe_quoted stderr)
+          ; Exn.pp s
+          ]
+      in
+      Error
+        (User_message.make
+           ([ Pp.textf "curl returned an invalid error code %d" exit_code ] @ stderr)))
+    else (
+      Path.unlink_no_err stderr;
+      match Int.of_string http_code with
+      | None ->
+        Error
+          (User_message.make
+             [ Pp.textf "curl returned an HTTP code we don't understand: %S" http_code ])
+      | Some http_code ->
+        if http_code = 200
+        then Ok ()
+        else
+          Error (User_message.make [ Pp.textf "download failed with code %d" http_code ]))
+  ;;
+end
+
 module Fiber_job = struct
   let run (command : OpamProcess.command) =
     let open Fiber.O in
@@ -78,25 +147,54 @@ type failure =
 
 let label = "dune-fetch"
 
-let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
+let fetch_curl ~unpack ~checksum ~target (url : OpamUrl.t) =
+  let url = OpamUrl.to_string url in
+  let temp_dir = Temp.create Dir ~prefix:"dune" ~suffix:(Filename.basename url) in
+  let output = Path.relative temp_dir "download" in
+  let open Fiber.O in
+  Fiber.finalize ~finally:(fun () ->
+    Temp.destroy Dir temp_dir;
+    Fiber.return ())
+  @@ fun () ->
+  let* res = Curl.run ~temp_dir ~url ~output in
+  match res with
+  | Error message -> Fiber.return @@ Error (Unavailable (Some message))
+  | Ok () ->
+    let checksum =
+      let output = Path.to_string output in
+      match checksum with
+      | None -> `New (OpamHash.compute output)
+      | Some checksum ->
+        (match OpamHash.mismatch output (Checksum.to_opam_hash checksum) with
+         | None -> `Match
+         | Some s -> `Mismatch (Checksum.of_opam_hash s))
+    in
+    (match checksum with
+     | `Mismatch m -> Fiber.return @@ Error (Checksum_mismatch m)
+     | `New _ | `Match ->
+       (match unpack with
+        | false ->
+          Io.copy_file ~src:output ~dst:target ();
+          Fiber.return @@ Ok ()
+        | true ->
+          Fiber_job.run
+            (OpamSystem.extract_job ~dir:(Path.to_string target) (Path.to_string output))
+          >>| (function
+          | None -> Ok ()
+          | Some exn ->
+            let exn =
+              User_message.make
+                [ Pp.textf "failed to unpackage archive downloaded from %s" url
+                ; Pp.text "reason:"
+                ; Exn.pp exn
+                ]
+            in
+            Error (Unavailable (Some exn)))))
+;;
+
+let fetch_others ~unpack ~checksum ~target (url : OpamUrl.t) =
   let open Fiber.O in
   let path = Path.to_string target in
-  let event =
-    Dune_stats.(
-      start (global ()) (fun () ->
-        { cat = None
-        ; name = label
-        ; args =
-            (let args =
-               [ "url", `String (OpamUrl.to_string url); "target", `String path ]
-             in
-             Some
-               (match checksum with
-                | None -> args
-                | Some checksum ->
-                  ("checksum", `String (Checksum.to_string checksum)) :: args))
-        }))
-  in
   let+ downloaded =
     Fiber_job.run
     @@
@@ -119,7 +217,6 @@ let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
       let fname = OpamFilename.of_string path in
       OpamRepository.pull_file label fname hashes [ url ]
   in
-  Dune_stats.finish event;
   match downloaded with
   | Up_to_date () | Result () -> Ok ()
   | Not_available (None, _verbose) -> Error (Unavailable None)
@@ -128,6 +225,39 @@ let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
     Error (Unavailable (Some msg))
   | Checksum_mismatch expected ->
     Error (Checksum_mismatch (Checksum.of_opam_hash expected))
+;;
+
+let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
+  let event =
+    Dune_stats.(
+      start (global ()) (fun () ->
+        { cat = None
+        ; name = label
+        ; args =
+            (let args =
+               [ "url", `String (OpamUrl.to_string url)
+               ; "target", `String (Path.to_string target)
+               ]
+             in
+             Some
+               (match checksum with
+                | None -> args
+                | Some checksum ->
+                  ("checksum", `String (Checksum.to_string checksum)) :: args))
+        }))
+  in
+  Fiber.finalize
+    ~finally:(fun () ->
+      Dune_stats.finish event;
+      Fiber.return ())
+    (fun () ->
+      (match url.backend with
+       | `http -> fetch_curl
+       | _ -> fetch_others)
+        ~unpack
+        ~checksum
+        ~target
+        url)
 ;;
 
 module Opam_repository = struct

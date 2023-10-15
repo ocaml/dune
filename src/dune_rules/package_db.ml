@@ -33,7 +33,10 @@ let section_of_site t ~loc ~pkg ~site =
   let+ sites =
     let+ pkg = find_package t pkg in
     Option.map pkg ~f:(function
-      | Build _ -> Site.Map.empty
+      | Build _ ->
+        (* TODO We should be able to extract this information after the package
+           is built *)
+        Site.Map.empty
       | Local p -> p.sites
       | Installed p -> p.sites)
   in

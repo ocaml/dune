@@ -22,32 +22,32 @@ let term =
       Alias.in_dir ~name:Dune_rules.Alias.doc ~recursive:true ~contexts:setup.contexts dir
       |> Alias.request
     in
-    let is_default ctx = ctx |> Context.name |> Dune_engine.Context_name.is_default in
-    let doc_ctx = List.find_exn setup.contexts ~f:is_default in
-    let toplevel_index_path = Dune_rules.Odoc.Paths.toplevel_index doc_ctx in
     let absolute_toplevel_index_path =
-      Path.(toplevel_index_path |> build |> to_absolute_filename)
+      let toplevel_index_path =
+        let is_default ctx = ctx |> Context.name |> Dune_engine.Context_name.is_default in
+        let doc_ctx = List.find_exn setup.contexts ~f:is_default in
+        Dune_rules.Odoc.Paths.toplevel_index doc_ctx
+      in
+      Path.(toplevel_index_path |> build |> to_string_maybe_quoted)
     in
-    Dune_console.print
-      [ Pp.textf "Docs built. Index can be found here: %s\n" absolute_toplevel_index_path
-      ];
-    let url = "file://" ^ absolute_toplevel_index_path in
-    let cmd =
+    Console.print
+      [ Pp.textf "Docs built. Index can be found here: %s" absolute_toplevel_index_path ];
+    match
       let open Option.O in
       let path = Env_path.path Env.initial in
       let* cmd_name, args =
-        match (Platform.OS.value : Platform.OS.t) with
+        match Platform.OS.value with
         | Darwin -> Some ("open", [ "-u" ])
         | Linux -> Some ("xdg-open", [])
         | Windows -> None
         | Other | FreeBSD | NetBSD | OpenBSD | Haiku -> None
       in
       let+ p = Bin.which ~path cmd_name in
+      let url = "file://" ^ absolute_toplevel_index_path in
       ( p
       , (* First element of argv is the name of the command. *)
         (cmd_name :: args) @ [ url ] )
-    in
-    match cmd with
+    with
     | Some (cmd, args) ->
       Proc.restore_cwd_and_execve (Path.to_absolute_filename cmd) args ~env:Env.initial
     | None ->

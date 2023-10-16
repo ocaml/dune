@@ -14,6 +14,12 @@ module Origin = struct
     | Executables e -> e.buildable.loc
     | Melange mel -> mel.loc
   ;;
+
+  let to_dyn = function
+    | Library _ -> Dyn.variant "Library" [ Dyn.Opaque ]
+    | Executables _ -> Dyn.variant "Executables" [ Dyn.Opaque ]
+    | Melange _ -> Dyn.variant "Melange" [ Dyn.Opaque ]
+  ;;
 end
 
 module Modules = struct
@@ -183,9 +189,18 @@ end
 type t =
   { modules : Modules.t
   ; artifacts : Artifacts.t Memo.Lazy.t
+  ; include_subdirs : Dune_file.Include_subdirs.t
   }
 
-let empty = { modules = Modules.empty; artifacts = Memo.Lazy.of_val Artifacts.empty }
+let include_subdirs t = t.include_subdirs
+
+let empty =
+  { modules = Modules.empty
+  ; artifacts = Memo.Lazy.of_val Artifacts.empty
+  ; include_subdirs = No
+  }
+;;
+
 let artifacts t = Memo.Lazy.force t.artifacts
 
 let modules_of_files ~path ~dialects ~dir ~files =
@@ -195,7 +210,7 @@ let modules_of_files ~path ~dialects ~dir ~files =
       name, Module.File.make dialect (Path.relative dir fn)
     in
     let loc = Loc.in_dir dir in
-    String.Set.to_list files
+    Filename.Set.to_list files
     |> List.filter_partition_map ~f:(fun fn ->
       (* we aren't using Filename.extension because we want to handle
          filenames such as foo.cppo.ml *)
@@ -265,11 +280,7 @@ let modules_and_obj_dir t ~for_ =
 ;;
 
 let modules t ~for_ = modules_and_obj_dir t ~for_ |> fst
-
-let find_origin (t : t) name =
-  (* TODO generalize to any path *)
-  Module_name.Path.Map.find t.modules.rev_map [ name ]
-;;
+let find_origin (t : t) path = Module_name.Path.Map.find t.modules.rev_map path
 
 let virtual_modules ~lookup_vlib vlib =
   let info = Lib.info vlib in
@@ -565,5 +576,5 @@ let make
         ~libs:modules_of_stanzas.libraries
         ~exes:modules_of_stanzas.executables)
   in
-  { modules; artifacts }
+  { modules; artifacts; include_subdirs }
 ;;

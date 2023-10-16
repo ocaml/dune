@@ -248,10 +248,22 @@ let gen_rules_for_stanzas
         | true ->
           let* ml_sources = Dir_contents.ocaml dir_contents in
           (match
+             let base_path =
+               match Ml_sources.include_subdirs ml_sources with
+               | Include Unqualified | No -> []
+               | Include Qualified ->
+                 Path.Local.descendant
+                   (Path.Build.local ctx_dir)
+                   ~of_:(Path.Build.local (Dir_contents.dir dir_contents))
+                 |> Option.value_exn
+                 |> Path.Local.explode
+                 |> List.map ~f:Module_name.of_string
+             in
              Menhir_rules.module_names m
              |> List.find_map ~f:(fun name ->
                let open Option.O in
-               let* origin = Ml_sources.find_origin ml_sources name in
+               let path = base_path @ [ name ] in
+               let* origin = Ml_sources.find_origin ml_sources path in
                List.find_map cctxs ~f:(fun (loc, cctx) ->
                  Option.some_if (Loc.equal loc (Ml_sources.Origin.loc origin)) cctx))
            with

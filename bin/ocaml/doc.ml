@@ -13,8 +13,8 @@ let man =
 let info = Cmd.info "doc" ~doc ~man
 
 let term =
-  let+ common = Common.term in
-  let config = Common.init common in
+  let+ builder = Common.Builder.term in
+  let common, config = Common.init builder in
   let request (setup : Import.Main.build_system) =
     let dir = Path.(relative root) (Common.prefix_target common ".") in
     let open Action_builder.O in

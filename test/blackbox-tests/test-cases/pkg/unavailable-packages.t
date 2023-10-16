@@ -74,8 +74,7 @@ No solution will be available on macos as all versions of this package are only
 available on linux.
   $ solve linux-only
   Solution for dune.lock:
-  linux-only.0.0.2
-  
+  - linux-only.0.0.2
   Error: Unable to solve dependencies in build context: macos
   Can't find all required versions.
   Selected: x.dev
@@ -89,19 +88,16 @@ The latest version of the package will be chosen on linux but the middle
 version will be chosen on macos as that's the only version available on macos.
   $ solve macos-sometimes
   Solution for dune.lock:
-  macos-sometimes.0.0.3
-  
+  - macos-sometimes.0.0.3
   Solution for dune.macos.lock:
-  macos-sometimes.0.0.2
-  
+  - macos-sometimes.0.0.2
 
 A warning will be printed as the undefined-var.0.0.1 package has an undefined
 variable in its `available` filter. The undefined-var.0.0.2 package has a valid
 `available` filter but is only available on linux.
   $ solve undefined-var
   Solution for dune.lock:
-  undefined-var.0.0.2
-  
+  - undefined-var.0.0.2
   Error: Unable to solve dependencies in build context: macos
   Can't find all required versions.
   Selected: x.dev
@@ -135,8 +131,6 @@ with-test is set. This exercises that we can handle flags in the available
 filter.
   $ solve with-test-check
   Solution for dune.lock:
-  with-test-check.0.0.2
-  
+  - with-test-check.0.0.2
   Solution for dune.macos.lock:
-  with-test-check.0.0.2
-  
+  - with-test-check.0.0.2

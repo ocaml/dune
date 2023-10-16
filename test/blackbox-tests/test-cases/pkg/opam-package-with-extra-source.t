@@ -32,10 +32,9 @@ Make a package with an extra-source field and multiple checksums
 
   $ solve with-extra-source with-extra-source-md5 with-extra-source-multiple-checksums
   Solution for dune.lock:
-  with-extra-source.0.0.1
-  with-extra-source-md5.0.0.1
-  with-extra-source-multiple-checksums.0.0.1
-  
+  - with-extra-source.0.0.1
+  - with-extra-source-md5.0.0.1
+  - with-extra-source-multiple-checksums.0.0.1
   $ cat >>dune.lock/with-extra-source.pkg <<EOF
   > (source (copy $PWD/source))
   > EOF

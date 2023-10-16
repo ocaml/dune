@@ -26,13 +26,11 @@
   >  (depends bar))
   > EOF
   Solution for dune.workspace.lock:
-  bar.0.0.1
-  foo.0.0.1
-  
+  - bar.0.0.1
+  - foo.0.0.1
   Solution for dune.lock:
-  bar.0.0.1
-  foo.0.0.1
-  
+  - bar.0.0.1
+  - foo.0.0.1
 No package should be outdated after a fresh lock.
   $ outdated
   dune.lock is up to date.

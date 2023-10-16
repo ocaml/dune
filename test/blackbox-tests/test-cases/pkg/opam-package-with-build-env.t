@@ -13,8 +13,7 @@ Make a package with a build-env field
 
   $ solve with-build-env
   Solution for dune.lock:
-  with-build-env.0.0.1
-  
+  - with-build-env.0.0.1
 The lockfile should contain a setenv action.
 
   $ cat dune.lock/with-build-env.pkg 

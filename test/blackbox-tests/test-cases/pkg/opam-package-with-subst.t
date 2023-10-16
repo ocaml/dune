@@ -11,8 +11,7 @@ Make a package with a substs field
 
   $ solve with-substs
   Solution for dune.lock:
-  with-substs.0.0.1
-  
+  - with-substs.0.0.1
   $ cat >>dune.lock/with-substs.pkg <<EOF
   > (source (copy $PWD/source))
   > EOF

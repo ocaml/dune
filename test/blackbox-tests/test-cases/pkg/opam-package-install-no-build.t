@@ -12,8 +12,7 @@ Make a package with only an install step
 
   $ solve install-no-build
   Solution for dune.lock:
-  install-no-build.0.0.1
-  
+  - install-no-build.0.0.1
 The lockfile should only contain an install step.
 
   $ cat dune.lock/install-no-build.pkg 

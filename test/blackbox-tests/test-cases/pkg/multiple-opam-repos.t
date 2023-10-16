@@ -57,8 +57,7 @@ Locking should produce the newest package from `new`
   $ mkdir dune-workspace-cache
   $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
   Solution for dune.lock:
-  foo.2.0
-  
+  - foo.2.0
 
 If we just use `old` we should get the older `foo` package in our lockfile
 solution:
@@ -81,8 +80,7 @@ solution:
   $ rm -r dune-workspace-cache && mkdir dune-workspace-cache
   $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
   Solution for dune.lock:
-  foo.1.0
-  
+  - foo.1.0
 
 If we specify both repositories to be used, we should still get the new foo
 package:
@@ -105,8 +103,7 @@ package:
   $ rm -r dune-workspace-cache && mkdir dune-workspace-cache
   $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
   Solution for dune.lock:
-  foo.2.0
-  
+  - foo.2.0
 
 If we use the ordered set language format and try to exclude `new` from the
 set, we should get a solution that only has `old` and will thus include the
@@ -130,5 +127,4 @@ older version of foo:
   $ rm -r dune-workspace-cache && mkdir dune-workspace-cache
   $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
   Solution for dune.lock:
-  foo.1.0
-  
+  - foo.1.0

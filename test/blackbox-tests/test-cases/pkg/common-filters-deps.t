@@ -17,7 +17,6 @@ included.
 
   $ solve "(test :with-test) (doc :with-doc) (dev :with-dev) (build :build) (post :post)"
   Solution for dune.lock:
-  build.0.0.1
-  doc.0.0.1
-  test.0.0.1
-  
+  - build.0.0.1
+  - doc.0.0.1
+  - test.0.0.1

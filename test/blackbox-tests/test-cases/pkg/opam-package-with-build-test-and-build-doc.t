@@ -14,8 +14,7 @@ In this test we demonstrate that we don't currently do anything special with tho
 
   $ solve with-build-test-doc
   Solution for dune.lock:
-  with-build-test-doc.0.0.1
-  
+  - with-build-test-doc.0.0.1
 The lockfile should contain the `build-test` and `build-doc` fields inside the build
 action.
 

@@ -66,38 +66,30 @@ Create a workspace file with some contexts with different combinations of with-t
 
   $ solve regular-package "(test-package :with-test)" "(doc-package :with-doc)"
   Solution for with-standard-flags.lock:
-  doc-package.0.0.1
-  regular-package.0.0.1
-  test-package.0.0.1
-  
+  - doc-package.0.0.1
+  - regular-package.0.0.1
+  - test-package.0.0.1
   Solution for with-doc-and-with-test.lock:
-  doc-package.0.0.1
-  regular-package.0.0.1
-  test-package.0.0.1
-  
+  - doc-package.0.0.1
+  - regular-package.0.0.1
+  - test-package.0.0.1
   Solution for with-doc-only.lock:
-  doc-package.0.0.1
-  regular-package.0.0.1
-  
+  - doc-package.0.0.1
+  - regular-package.0.0.1
   Solution for with-test-only.lock:
-  regular-package.0.0.1
-  test-package.0.0.1
-  
+  - regular-package.0.0.1
+  - test-package.0.0.1
   Solution for empty-solver-flags.lock:
-  regular-package.0.0.1
-  
+  - regular-package.0.0.1
   Solution for default-solver-flags.lock:
-  doc-package.0.0.1
-  regular-package.0.0.1
-  test-package.0.0.1
-  
+  - doc-package.0.0.1
+  - regular-package.0.0.1
+  - test-package.0.0.1
   Solution for default-solver-env.lock:
-  doc-package.0.0.1
-  regular-package.0.0.1
-  test-package.0.0.1
-  
+  - doc-package.0.0.1
+  - regular-package.0.0.1
+  - test-package.0.0.1
   Solution for dune.lock:
-  doc-package.0.0.1
-  regular-package.0.0.1
-  test-package.0.0.1
-  
+  - doc-package.0.0.1
+  - regular-package.0.0.1
+  - test-package.0.0.1

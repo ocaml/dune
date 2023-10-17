@@ -673,10 +673,16 @@ end = struct
         | None -> acc
         | Some (name, x) -> Lib_name.Map.add_exn acc name x)
     in
+    let file_of_entry { Install.Entry.kind; dst; _ } : Dune_package.file =
+      match kind with
+      | `File -> File dst
+      | `Directory | `Source_tree -> Dir dst
+    in
     let+ files =
       let+ map = Stanzas_to_entries.stanzas_to_entries sctx in
       Package.Name.Map.Multi.find map pkg_name
-      |> List.map ~f:(fun (e : Install.Entry.Sourced.t) -> e.entry.section, e.entry.dst)
+      |> List.map ~f:(fun (e : Install.Entry.Sourced.t) ->
+        e.entry.section, file_of_entry e.entry)
       |> Section.Map.of_list_multi
       |> Section.Map.to_list
     in

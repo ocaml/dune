@@ -46,6 +46,10 @@ module Entry : sig
   val to_dyn : t Dyn.builder
 end
 
+type file =
+  | File of Install.Entry.Dst.t
+  | Dir of Install.Entry.Dst.t
+
 type t =
   { name : Package.Name.t
   ; entries : Entry.t Lib_name.Map.t
@@ -53,7 +57,7 @@ type t =
   ; sections : Path.t Section.Map.t
   ; sites : Section.t Site.Map.t
   ; dir : Path.t
-  ; files : (Section.t * Install.Entry.Dst.t list) list
+  ; files : (Section.t * file list) list
   }
 
 val to_dyn : t Dyn.builder

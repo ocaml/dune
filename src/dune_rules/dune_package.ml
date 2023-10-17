@@ -357,6 +357,33 @@ module Entry = struct
   ;;
 end
 
+type file =
+  | File of Install.Entry.Dst.t
+  | Dir of Install.Entry.Dst.t
+
+let decode_file =
+  let open Dune_lang.Decoder in
+  let* ast = peek_exn in
+  match ast with
+  | Atom _ ->
+    let+ f = Install.Entry.Dst.decode in
+    File f
+  | _ ->
+    fields
+      (let+ d = field "dir" Install.Entry.Dst.decode in
+       Dir d)
+;;
+
+let encode_file = function
+  | File f -> Install.Entry.Dst.encode f
+  | Dir d -> Dune_lang.Encoder.constr "dir" Install.Entry.Dst.encode d
+;;
+
+let file_to_dyn = function
+  | File f -> Install.Entry.Dst.to_dyn f
+  | Dir d -> Dyn.variant "dir" [ Install.Entry.Dst.to_dyn d ]
+;;
+
 type t =
   { name : Package.Name.t
   ; entries : Entry.t Lib_name.Map.t
@@ -364,7 +391,7 @@ type t =
   ; sections : Path.t Section.Map.t
   ; sites : Section.t Site.Map.t
   ; dir : Path.t
-  ; files : (Section.t * Install.Entry.Dst.t list) list
+  ; files : (Section.t * file list) list
   }
 
 let decode ~lang ~dir =
@@ -379,10 +406,7 @@ let decode ~lang ~dir =
   and+ sites =
     field ~default:[] "sites" (repeat (pair (located Site.decode) Section.decode))
   and+ files =
-    field
-      ~default:[]
-      "files"
-      (repeat (pair Section.decode (enter (repeat Install.Entry.Dst.decode))))
+    field ~default:[] "files" (repeat (pair Section.decode (enter (repeat decode_file))))
   and+ entries = leftover_fields_as_sums (Entry.cstrs ~lang ~dir) in
   let entries =
     List.map entries ~f:(fun e ->
@@ -442,7 +466,7 @@ let encode ~dune_version { entries; name; version; dir; sections; sites; files }
           (pair Section.encode (Dune_lang.Path.Local.encode ~dir))
           (Section.Map.to_list sections)
       ; field_l "sites" (pair Site.encode Section.encode) sites
-      ; field_l "files" (pair Section.encode (list Install.Entry.Dst.encode)) files
+      ; field_l "files" (pair Section.encode (list encode_file)) files
       ]
   in
   let list s = Dune_lang.List s in
@@ -471,7 +495,7 @@ let to_dyn { entries; name; version; dir; sections; sites; files } =
     ; "dir", Path.to_dyn dir
     ; "sections", Section.Map.to_dyn Path.to_dyn sections
     ; "sites", Site.Map.to_dyn Section.to_dyn sites
-    ; "files", (list (pair Section.to_dyn (list Install.Entry.Dst.to_dyn))) files
+    ; "files", (list (pair Section.to_dyn (list file_to_dyn))) files
     ]
 ;;
 

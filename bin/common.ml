@@ -1363,6 +1363,9 @@ let envs =
     ; info
         ~doc:"If different than $(b,0), ANSI colors should be enabled no matter what."
         "CLICOLOR_FORCE"
+    ; info
+        "DUNE_CACHE_ROOT"
+        ~doc:"If set, determines the location of the machine-global shared cache."
     ]
 ;;
 

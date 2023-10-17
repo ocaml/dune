@@ -46,23 +46,23 @@ Here is the output of solving for multiple contexts:
 Here is the output of dune describe pkg lock:
   $ dune describe pkg lock
   Contents of dune.lock:
-  - A.1.2.0
-  - B.2.1+rc1
-  - C.81.0.4044.138
-  - D.0.4.0.beta1
-  - E.3.0~alpha1
+  A.1.2.0
+  B.2.1+rc1
+  C.81.0.4044.138
+  D.0.4.0.beta1
+  E.3.0~alpha1
 
 The names of the lockfiles can also be provided:
   $ dune describe pkg lock dune.lock foo.lock 
   Contents of dune.lock:
-  - A.1.2.0
-  - B.2.1+rc1
-  - C.81.0.4044.138
-  - D.0.4.0.beta1
-  - E.3.0~alpha1
+  A.1.2.0
+  B.2.1+rc1
+  C.81.0.4044.138
+  D.0.4.0.beta1
+  E.3.0~alpha1
   Contents of foo.lock:
-  - A.1.2.0
-  - B.2.1+rc1
-  - C.81.0.4044.138
-  - D.0.4.0.beta1
-  - E.3.0~alpha1
+  A.1.2.0
+  B.2.1+rc1
+  C.81.0.4044.138
+  D.0.4.0.beta1
+  E.3.0~alpha1

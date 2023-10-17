@@ -23,10 +23,10 @@ module Lock = struct
     @@ List.map lock_dir_paths ~f:(fun lock_dir_path ->
       let lock_dir = Lock_dir.read_disk lock_dir_path in
       Pp.concat
-        ~sep:Pp.newline
+        ~sep:Pp.space
         [ Pp.hbox
           @@ Pp.textf "Contents of %s:" (Path.Source.to_string_maybe_quoted lock_dir_path)
-        ; Pkg.Lock.pp_packages lock_dir |> Pp.enumerate ~f:Fun.id
+        ; Pkg.Lock.pp_packages lock_dir.packages
         ])
   ;;
 

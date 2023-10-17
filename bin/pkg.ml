@@ -371,13 +371,13 @@ module Lock = struct
       { Opam_repo.With_file.opam_file; file })
   ;;
 
-  (* CR-someday alizter: change this to return ['a Pp.t] rather than ['a Pp.t list] likely
-     using Pp.enumerate. It will also require changing the output of dune pkg lock. *)
-  let pp_packages (t : Lock_dir.t) =
+  let pp_packages packages =
     Package_name.Map.to_list_map
-      t.packages
+      packages
       ~f:(fun _ { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; _ }; _ } ->
-        Pp.text (Package_name.to_string name ^ "." ^ version))
+        Pp.verbatim (Package_name.to_string name ^ "." ^ version))
+    |> Pp.concat ~sep:Pp.space
+    |> Pp.vbox
   ;;
 
   let solve
@@ -425,19 +425,15 @@ module Lock = struct
                    ~experimental_translate_opam_filters)
            with
            | Error (`Diagnostic_message message) -> Error (context_name, message)
-           | Ok { lock_dir; files } ->
+           | Ok { lock_dir; files; _ } ->
              let summary_message =
-               (Pp.textf
-                  "Solution for %s:"
-                  (Path.Source.to_string_maybe_quoted lock_dir_path)
-                (* CR-someday alizter: use Pp.enumerate to print the list here. *)
-                ::
-                (match pp_packages lock_dir with
-                 | [] -> [ Pp.text "(no dependencies to lock)" ]
-                 | packages -> packages))
-               (* CR-someday alizter: Don't print a newline after the last context.
-                  However a newline between any error messages will still need to be
-                  printed. For now we always print one. *)
+               [ Pp.textf
+                   "Solution for %s:"
+                   (Path.Source.to_string_maybe_quoted lock_dir_path)
+               ]
+               @ (if Package_name.Map.is_empty lock_dir.packages
+                  then [ Pp.text "(no dependencies to lock)" ]
+                  else [ pp_packages lock_dir.packages ])
                @ [ Pp.nop ]
              in
              Ok

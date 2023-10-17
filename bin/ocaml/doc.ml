@@ -15,7 +15,7 @@ let info = Cmd.info "doc" ~doc ~man
 let term =
   let+ builder = Common.Builder.term in
   let common, config = Common.init builder in
-  let request (setup : Import.Main.build_system) =
+  let request (setup : Main.build_system) =
     let dir = Path.(relative root) (Common.prefix_target common ".") in
     let open Action_builder.O in
     let+ () =
@@ -34,7 +34,6 @@ let term =
       [ Pp.textf "Docs built. Index can be found here: %s" absolute_toplevel_index_path ];
     match
       let open Option.O in
-      let path = Env_path.path Env.initial in
       let* cmd_name, args =
         match Platform.OS.value with
         | Darwin -> Some ("open", [ "-u" ])
@@ -42,10 +41,13 @@ let term =
         | Windows -> None
         | Other | FreeBSD | NetBSD | OpenBSD | Haiku -> None
       in
-      let+ p = Bin.which ~path cmd_name in
-      let url = "file://" ^ absolute_toplevel_index_path in
-      ( p
+      let+ open_command =
+        let path = Env_path.path Env.initial in
+        Bin.which ~path cmd_name
+      in
+      ( open_command
       , (* First element of argv is the name of the command. *)
+        let url = "file://" ^ absolute_toplevel_index_path in
         (cmd_name :: args) @ [ url ] )
     with
     | Some (cmd, args) ->

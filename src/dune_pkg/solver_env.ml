@@ -254,7 +254,7 @@ let pp =
   let pp_section heading pp_section =
     (* The hbox is to prevent long values in [pp_section] from causing the heading to wrap. *)
     let pp_heading = Pp.hbox (Pp.text heading) in
-    Pp.concat ~sep:Pp.newline [ pp_heading; pp_section ]
+    Pp.concat ~sep:Pp.space [ pp_heading; pp_section ] |> Pp.vbox
   in
   fun { flags; sys; const; repos } ->
     Pp.enumerate

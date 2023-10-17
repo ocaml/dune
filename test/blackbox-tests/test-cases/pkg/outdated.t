@@ -90,7 +90,8 @@ If we remove packages from the repository then we should get a nice error.
   $ outdated 
   1/2 packages in dune.lock are outdated.
   Showing immediate dependencies, use --transitive to see the rest.
-  Error: When checking dune.lock, the following packages:
+  Error: Some packages could not be found.
+  When checking dune.lock, the following packages:
   - bar
   were not found in the following opam repositories:
   - None
@@ -100,7 +101,8 @@ When printing both successes and failures, any errors should appear afterwards.
   $ outdated --transitive
   1/2 packages in dune.lock are outdated.
   - foo 0.0.1 < 0.0.2
-  Error: When checking dune.lock, the following packages:
+  Error: Some packages could not be found.
+  When checking dune.lock, the following packages:
   - bar
   were not found in the following opam repositories:
   - None
@@ -113,14 +115,14 @@ Similarly for all contexts.
   - 1/2 packages in dune.lock are outdated.
     - foo 0.0.1 < 0.0.2
   Error: Some packages could not be found.
-  - When checking dune.workspace.lock, the following packages:
-    - bar
-    were not found in the following opam repositories:
-    - None
-  - When checking dune.lock, the following packages:
-    - bar
-    were not found in the following opam repositories:
-    - None
+  When checking dune.workspace.lock, the following packages:
+  - bar
+  were not found in the following opam repositories:
+  - None
+  When checking dune.lock, the following packages:
+  - bar
+  were not found in the following opam repositories:
+  - None
   [1]
 
 If multiple packages are missing, the error should enumerate them. The errors should
@@ -128,7 +130,8 @@ appear irrespective of being a transitive dependency.
   $ rm -r mock-opam-repository/packages/foo
   $ outdated --transitive 
   dune.lock is up to date.
-  Error: When checking dune.lock, the following packages:
+  Error: Some packages could not be found.
+  When checking dune.lock, the following packages:
   - bar
   - foo
   were not found in the following opam repositories:
@@ -140,14 +143,14 @@ With multiple contexts, the errors should also be printed for each context.
   - dune.workspace.lock is up to date.
   - dune.lock is up to date.
   Error: Some packages could not be found.
-  - When checking dune.workspace.lock, the following packages:
-    - bar
-    - foo
-    were not found in the following opam repositories:
-    - None
-  - When checking dune.lock, the following packages:
-    - bar
-    - foo
-    were not found in the following opam repositories:
-    - None
+  When checking dune.workspace.lock, the following packages:
+  - bar
+  - foo
+  were not found in the following opam repositories:
+  - None
+  When checking dune.lock, the following packages:
+  - bar
+  - foo
+  were not found in the following opam repositories:
+  - None
   [1]

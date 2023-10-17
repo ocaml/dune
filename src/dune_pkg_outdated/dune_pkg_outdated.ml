@@ -111,6 +111,7 @@ let better_candidate
               (OpamFile.OPAM.version x)
               (OpamFile.OPAM.version y)))
      with
+     | None -> Package_not_found pkg.info.name
      | Some newest_opam_file ->
        let version = OpamFile.OPAM.version newest_opam_file in
        (match
@@ -125,8 +126,7 @@ let better_candidate
             ; name = pkg.info.name
             ; newer_version = version |> OpamPackage.Version.to_string
             ; outdated_version = pkg.info.version
-            })
-     | None -> Package_not_found pkg.info.name)
+            }))
 ;;
 
 let pp results ~transitive ~lock_dir_path =
@@ -163,8 +163,8 @@ let pp results ~transitive ~lock_dir_path =
     | outdated_packages -> [ Pp.enumerate ~f:Fun.id outdated_packages ]
   in
   explain_results_to_user ~transitive ~lock_dir_path results @ outdated_packages
-  |> Pp.concat_map ~sep:Pp.newline ~f:Pp.box
-  |> Pp.hovbox
+  |> Pp.concat_map ~sep:Pp.space ~f:Pp.box
+  |> Pp.vbox
 ;;
 
 let find ~repos ~local_packages packages =

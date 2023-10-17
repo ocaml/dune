@@ -217,15 +217,13 @@ module Public_name = struct
     if is_opam_compatible l
     then Ok l
     else
-      let open Pp.O in
-      let descr =
-        Pp.text
-          "Public names are composed of an opam package name and optional dot-separated \
-           string suffixes."
-        ++ Pp.newline
-        ++ Pkg.description_of_valid_string
-      in
-      Error (User_error.make [ descr ])
+      Error
+        (User_error.make
+           [ Pp.text
+               "Public names are composed of an opam package name and optional \
+                dot-separated string suffixes."
+           ; Pkg.description_of_valid_string
+           ])
   ;;
 
   let of_name_exn name =

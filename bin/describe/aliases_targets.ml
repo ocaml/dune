@@ -75,10 +75,11 @@ let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
         (* If we are printing multiple directories, we print the directory
            name as a header. *)
         (if header then [ Pp.textf "%s:" (Path.to_string dir) ] else [])
-        @ [ Pp.concat_map targets ~f:Pp.text ~sep:Pp.newline ]
-        |> Pp.concat ~sep:Pp.newline)
+        @ [ Pp.concat_map targets ~f:Pp.text ~sep:Pp.space ]
+        |> Pp.concat ~sep:Pp.space)
     in
-    Console.print [ Pp.concat paragraphs ~sep:(Pp.seq Pp.newline Pp.newline) ]
+    Console.print
+      [ Pp.vbox @@ Pp.concat_map ~f:Pp.vbox paragraphs ~sep:(Pp.seq Pp.space Pp.space) ]
   in
   Scheduler.go ~common ~config
   @@ fun () ->

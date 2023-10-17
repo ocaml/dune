@@ -431,9 +431,7 @@ module Lock = struct
                      (Pp.textf
                         "Solution for %s:"
                         (Path.Source.to_string_maybe_quoted lock_dir_path))
-                 ; (match
-                      Package_name.Map.to_list_map lock_dir.packages ~f:(fun _ pkg -> pkg)
-                    with
+                 ; (match Package_name.Map.values lock_dir.packages with
                     | [] ->
                       Pp.tag User_message.Style.Warning
                       @@ Pp.text "(no dependencies to lock)"
@@ -599,27 +597,32 @@ module Outdated = struct
       List.filter_map not_founds ~f:(function
         | [], _, _ -> None
         | packages, lock_dir_path, repos ->
-          Some
+          Pp.concat
+            ~sep:Pp.space
             [ Pp.textf
                 "When checking %s, the following packages:"
                 (Path.Source.to_string_maybe_quoted lock_dir_path)
-            ; Pp.enumerate packages ~f:(fun name ->
-                Dune_lang.Package_name.to_string name |> Pp.verbatim)
-            ; Pp.text "were not found in the following opam repositories:"
-            ; Pp.enumerate repos ~f:(fun repo ->
-                Opam_repo.serializable repo
-                |> Dyn.option Opam_repo.Serializable.to_dyn
-                |> Dyn.pp)
-            ])
+              |> Pp.hovbox
+            ; Pp.concat
+                ~sep:Pp.space
+                [ Pp.enumerate packages ~f:(fun name ->
+                    Dune_lang.Package_name.to_string name |> Pp.verbatim)
+                ; Pp.text "were not found in the following opam repositories:"
+                  |> Pp.hovbox
+                ; Pp.enumerate repos ~f:(fun repo ->
+                    Opam_repo.serializable repo
+                    |> Dyn.option Opam_repo.Serializable.to_dyn
+                    |> Dyn.pp)
+                ]
+              |> Pp.vbox
+            ]
+          |> Pp.hovbox
+          |> Option.some)
     in
     match error_messages with
     | [] -> ()
-    | [ error_message ] -> User_error.raise error_message
     | error_messages ->
-      User_error.raise
-        [ Pp.text "Some packages could not be found."
-        ; Pp.enumerate ~f:(Pp.concat ~sep:Pp.newline) error_messages
-        ]
+      User_error.raise (Pp.text "Some packages could not be found." :: error_messages)
   ;;
 
   let term =

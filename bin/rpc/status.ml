@@ -72,9 +72,9 @@ let get_status (dune : Dune_rpc.Registry.Dune.t) =
 (** Print a list of statuses to the console *)
 let print_statuses statuses =
   List.sort statuses ~compare:(fun x y -> String.compare x.root y.root)
-  |> Pp.concat_map ~sep:Pp.newline ~f:(fun { root; pid; result } ->
+  |> Pp.concat_map ~sep:Pp.space ~f:(fun { root; pid; result } ->
     Pp.concat
-      ~sep:Pp.newline
+      ~sep:Pp.space
       [ Pp.textf "root: %s" root
       ; Pp.enumerate
           ~f:Fun.id
@@ -86,6 +86,7 @@ let print_statuses statuses =
                | Error e -> e)
           ]
       ])
+  |> Pp.vbox
   |> List.singleton
   |> Console.print
 ;;
@@ -129,10 +130,10 @@ let term =
               [ Pp.textf "Client [%s], conducting version negotiation" id ]
           | Menu menu ->
             User_message.make
-              [ Pp.box
+              [ Pp.vbox
                   ~indent:2
                   (Pp.concat
-                     ~sep:Pp.newline
+                     ~sep:Pp.space
                      (Pp.textf "Client [%s] with the following RPC versions:" id
                       :: List.map menu ~f:(fun (method_, version) ->
                         Pp.textf "%s: %d" method_ version)))

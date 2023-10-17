@@ -27,7 +27,8 @@ module Lock = struct
         [ Pp.hbox
           @@ Pp.textf "Contents of %s:" (Path.Source.to_string_maybe_quoted lock_dir_path)
         ; Pkg.Lock.pp_packages lock_dir.packages
-        ])
+        ]
+      |> Pp.vbox)
   ;;
 
   let command =

@@ -24,7 +24,7 @@ module Lock = struct
       let lock_dir = Lock_dir.read_disk lock_dir_path in
       Pp.concat
         ~sep:Pp.space
-        [ Pp.hbox
+        [ Pp.hovbox
           @@ Pp.textf "Contents of %s:" (Path.Source.to_string_maybe_quoted lock_dir_path)
         ; Pkg.Lock.pp_packages lock_dir.packages
         ]

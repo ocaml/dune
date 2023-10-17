@@ -2,6 +2,10 @@
 
 open Import
 
+module Paths : sig
+  val toplevel_index : Context.t -> Path.Build.t
+end
+
 val setup_library_odoc_rules : Compilation_context.t -> Lib.Local.t -> unit Memo.t
 val gen_project_rules : Super_context.t -> Dune_project.t -> unit Memo.t
 

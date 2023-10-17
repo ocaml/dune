@@ -9,6 +9,7 @@
  (libraries
   memo
   ocaml
+  ocaml_config
   dune_lang
   predicate_lang
   fiber

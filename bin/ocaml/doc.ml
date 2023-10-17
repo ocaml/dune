@@ -38,9 +38,8 @@ let term =
       let* cmd_name, args =
         match Platform.OS.value with
         | Darwin -> Some ("open", [ "-u" ])
-        | Linux -> Some ("xdg-open", [])
+        | Other | FreeBSD | NetBSD | OpenBSD | Haiku | Linux -> Some ("xdg-open", [])
         | Windows -> None
-        | Other | FreeBSD | NetBSD | OpenBSD | Haiku -> None
       in
       let+ open_command =
         let path = Env_path.path Env.initial in

@@ -579,12 +579,11 @@ let decode_name ~version =
   if version >= (3, 11) then Name.decode_opam_compatible else Name.decode
 ;;
 
-let decode ~dir =
+let decode =
   let open Dune_lang.Decoder in
   let name_map syntax of_list_map to_string name decode print_value error_msg =
-    field ~default:[] name (syntax >>> repeat decode)
-    >>| fun l ->
-    match of_list_map l ~f:(fun (loc, s) -> s, loc) with
+    let+ names = field ~default:[] name (syntax >>> repeat decode) in
+    match of_list_map names ~f:(fun (loc, s) -> s, loc) with
     | Ok x -> x
     | Error (name, (loc1, _), (loc2, _)) ->
       User_error.raise
@@ -593,59 +592,60 @@ let decode ~dir =
         ; Pp.textf "- %s" (print_value loc2)
         ]
   in
-  fields
-  @@ let* version = Syntax.get_exn Stanza.syntax in
-     let+ loc = loc
-     and+ name = field "name" (decode_name ~version)
-     and+ synopsis = field_o "synopsis" string
-     and+ description = field_o "description" string
-     and+ version =
-       field_o "version" (Dune_lang.Syntax.since Stanza.syntax (2, 5) >>> string)
-     and+ depends = field ~default:[] "depends" (repeat Dependency.decode)
-     and+ conflicts = field ~default:[] "conflicts" (repeat Dependency.decode)
-     and+ depopts = field ~default:[] "depopts" (repeat Dependency.decode)
-     and+ info = Info.decode ~since:(2, 0) ()
-     and+ tags = field "tags" (enter (repeat string)) ~default:[]
-     and+ deprecated_package_names =
-       name_map
-         (Dune_lang.Syntax.since Stanza.syntax (2, 0))
-         Name.Map.of_list_map
-         Name.to_string
-         "deprecated_package_names"
-         (located Name.decode)
-         Loc.to_file_colon_line
-         "Deprecated package name"
-     and+ sites =
-       name_map
-         (Dune_lang.Syntax.since Stanza.syntax (2, 8))
-         Site.Map.of_list_map
-         Site.to_string
-         "sites"
-         (pair Section.decode Site.decode)
-         Section.to_string
-         "Site location name"
-     and+ allow_empty =
-       field_b "allow_empty" ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
-     and+ lang_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-     let allow_empty = lang_version < (3, 0) || allow_empty in
-     let id = { Id.name; dir } in
-     let opam_file = Id.default_opam_file id in
-     { id
-     ; loc
-     ; synopsis
-     ; description
-     ; depends
-     ; conflicts
-     ; depopts
-     ; info
-     ; version
-     ; has_opam_file = Exists false
-     ; tags
-     ; deprecated_package_names
-     ; sites
-     ; allow_empty
-     ; opam_file
-     }
+  fun ~dir ->
+    fields
+    @@ let* version = Syntax.get_exn Stanza.syntax in
+       let+ loc = loc
+       and+ name = field "name" (decode_name ~version)
+       and+ synopsis = field_o "synopsis" string
+       and+ description = field_o "description" string
+       and+ version =
+         field_o "version" (Dune_lang.Syntax.since Stanza.syntax (2, 5) >>> string)
+       and+ depends = field ~default:[] "depends" (repeat Dependency.decode)
+       and+ conflicts = field ~default:[] "conflicts" (repeat Dependency.decode)
+       and+ depopts = field ~default:[] "depopts" (repeat Dependency.decode)
+       and+ info = Info.decode ~since:(2, 0) ()
+       and+ tags = field "tags" (enter (repeat string)) ~default:[]
+       and+ deprecated_package_names =
+         name_map
+           (Dune_lang.Syntax.since Stanza.syntax (2, 0))
+           Name.Map.of_list_map
+           Name.to_string
+           "deprecated_package_names"
+           (located Name.decode)
+           Loc.to_file_colon_line
+           "Deprecated package name"
+       and+ sites =
+         name_map
+           (Dune_lang.Syntax.since Stanza.syntax (2, 8))
+           Site.Map.of_list_map
+           Site.to_string
+           "sites"
+           (pair Section.decode Site.decode)
+           Section.to_string
+           "Site location name"
+       and+ allow_empty =
+         field_b "allow_empty" ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
+       and+ lang_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+       let allow_empty = lang_version < (3, 0) || allow_empty in
+       let id = { Id.name; dir } in
+       let opam_file = Id.default_opam_file id in
+       { id
+       ; loc
+       ; synopsis
+       ; description
+       ; depends
+       ; conflicts
+       ; depopts
+       ; info
+       ; version
+       ; has_opam_file = Exists false
+       ; tags
+       ; deprecated_package_names
+       ; sites
+       ; allow_empty
+       ; opam_file
+       }
 ;;
 
 let dyn_of_opam_file =

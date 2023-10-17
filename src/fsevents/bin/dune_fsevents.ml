@@ -16,9 +16,9 @@ let fsevents =
 ;;
 
 let () =
-  let runloop = Fsevents.RunLoop.in_current_thread () in
-  Fsevents.start fsevents runloop;
-  match Fsevents.RunLoop.run_current_thread runloop with
+  let dispatch_queue = Fsevents.Dispatch_queue.create () in
+  Fsevents.start fsevents dispatch_queue;
+  match Fsevents.Dispatch_queue.wait_until_stopped dispatch_queue with
   | Ok () -> ()
   | Error e -> raise e
 ;;

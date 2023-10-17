@@ -56,6 +56,7 @@ module Sub_dirs = Sub_dirs
 module Package = Package
 module Dialect = Dialect
 module Private_context = Private_context
+module Odoc = Odoc
 
 module Install_rules = struct
   let install_file = Install_rules.install_file

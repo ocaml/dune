@@ -371,6 +371,15 @@ module Lock = struct
       { Opam_repo.With_file.opam_file; file })
   ;;
 
+  let pp_packages packages =
+    Package_name.Map.to_list_map
+      packages
+      ~f:(fun _ { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; _ }; _ } ->
+        Pp.verbatim (Package_name.to_string name ^ "." ^ version))
+    |> Pp.concat ~sep:Pp.space
+    |> Pp.vbox
+  ;;
+
   let solve
     per_context
     ~opam_repository_path
@@ -416,16 +425,20 @@ module Lock = struct
                    ~experimental_translate_opam_filters)
            with
            | Error (`Diagnostic_message message) -> Error (context_name, message)
-           | Ok { Dune_pkg.Opam_solver.Solver_result.summary; lock_dir; files } ->
+           | Ok { lock_dir; files; _ } ->
              let summary_message =
-               Dune_pkg.Opam_solver.Summary.selected_packages_message
-                 summary
-                 ~lock_dir_path
-               |> User_message.pp
+               [ Pp.textf
+                   "Solution for %s:"
+                   (Path.Source.to_string_maybe_quoted lock_dir_path)
+               ]
+               @ (if Package_name.Map.is_empty lock_dir.packages
+                  then [ Pp.text "(no dependencies to lock)" ]
+                  else [ pp_packages lock_dir.packages ])
+               @ [ Pp.nop ]
              in
              Ok
                ( Lock_dir.Write_disk.prepare ~lock_dir_path ~files lock_dir
-               , summary_message ))
+               , User_message.make summary_message ))
      in
      Result.List.all solutions)
     >>| function
@@ -437,8 +450,8 @@ module Lock = struct
         ; message
         ]
     | Ok write_disks_with_summaries ->
-      let write_disk_list, summary_pps = List.split write_disks_with_summaries in
-      Dune_console.print summary_pps;
+      let write_disk_list, summary_messages = List.split write_disks_with_summaries in
+      List.iter summary_messages ~f:Console.print_user_message;
       (* All the file IO side effects happen here: *)
       List.iter write_disk_list ~f:Lock_dir.Write_disk.commit
   ;;

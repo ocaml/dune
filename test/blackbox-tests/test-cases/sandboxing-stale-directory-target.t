@@ -16,7 +16,7 @@ A faulty test escapes the sandbox by creating its target outside the sandbox
   1 | (rule
   2 |  (target (dir foo))
   3 |  (action (system "mkdir $TESTCASE_ROOT/_build/default/foo && mkdir foo")))
-  Error: Target _build/default/foo of kind directory already exists in the
+  Error: Target _build/default/foo of kind "directory" already exists in the
   build directory
   Hint: delete this file manually or check the permissions of the parent
   directory of this file

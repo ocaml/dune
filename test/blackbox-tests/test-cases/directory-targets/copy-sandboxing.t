@@ -60,13 +60,13 @@ mode:
   permissions of output/
   755
   permissions of output/y
-  444
+  644
   permissions of output/x
-  444
+  644
   permissions of output/subdir
-  755
+  754
   permissions of output/subdir/z
-  444
+  644
   
 
   $ ( cd _build/default && ../../print-permissions.sh )

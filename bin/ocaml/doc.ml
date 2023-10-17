@@ -1,4 +1,5 @@
 open Import
+module Main = Import.Main
 
 let doc = "Build and view the documentation of an OCaml project"
 

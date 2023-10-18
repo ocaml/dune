@@ -8,7 +8,9 @@ module List = Solver_core.List
 
 let pf = Format.fprintf
 
-module Make (Results : S.SOLVER_RESULT) = struct
+module Make (Monad : S.Monad) (Results : S.SOLVER_RESULT with type 'a Input.monad := 'a Monad.t) = struct
+  open Monad.O
+
   module Model = Results.Input
   module RoleMap = Results.RoleMap
 
@@ -409,16 +411,18 @@ module Make (Results : S.SOLVER_RESULT) = struct
   let of_result result =
     let impls = Results.to_map result in
     let root_req = Results.requirements result in
-    let report =
+    let+ report =
       let get_selected role sel =
         let impl = Results.unwrap sel in
         let diagnostics = lazy (Results.explain result role) in
         let impl = if impl == Model.dummy_impl then None else Some impl in
-        let impl_candidates = Model.implementations role in
-        let rejects, feed_problems = Model.rejects role in
+        let* impl_candidates = Model.implementations role in
+        let+ rejects, feed_problems = Model.rejects role in
         let selected_commands = Results.selected_commands sel in
         Component.create ~role (impl_candidates, rejects, feed_problems) diagnostics impl selected_commands in
-      RoleMap.mapi get_selected impls
+      RoleMap.to_seq impls
+      |> Monad.Seq.parallel_map (fun (k, v) -> let+ v = get_selected k v in (k, v))
+      >>| RoleMap.of_seq
     in
     process_root_req report root_req;
     examine_extra_restrictions report;
@@ -434,6 +438,6 @@ module Make (Results : S.SOLVER_RESULT) = struct
 
   (** Return a message explaining why the solve failed. *)
   let get_failure_reason ?(verbose=false) result =
-    let reasons = of_result result in
+    let+ reasons = of_result result in
     Format.asprintf "Can't find all required implementations:@\n@[<v0>%a@]" (pp_rolemap ~verbose) reasons
 end

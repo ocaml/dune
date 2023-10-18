@@ -18,6 +18,7 @@
   opam_state
   opam_0install
   build_info
+  zeroinstall_solver
   fmt
   xdg)
  (instrumentation

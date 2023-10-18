@@ -1,5 +1,9 @@
-module Make(Context : S.CONTEXT) = struct
-  module Input = Model.Make(Context)
+module Make(Monad : S.Monad)(Context : S.CONTEXT with type 'a monad = 'a Monad.t) = struct
+  open Monad.O
+
+  type 'a monad = 'a Monad.t
+
+  module Input = Model.Make(Monad)(Context)
 
   let version = Input.version
   let package_name = Input.package_name
@@ -15,8 +19,8 @@ module Make(Context : S.CONTEXT) = struct
     in
     { Input.role; command = None }
 
-  module Solver = Zeroinstall_solver.Make(Input)
-  module Diagnostics = Zeroinstall_solver.Diagnostics(Solver.Output)
+  module Solver = Zeroinstall_solver.Make(Monad)(Input)
+  module Diagnostics = Zeroinstall_solver.Diagnostics(Monad)(Solver.Output)
 
   type t = Context.t
   type selections = Solver.Output.t
@@ -24,7 +28,7 @@ module Make(Context : S.CONTEXT) = struct
 
   let solve context pkgs =
     let req = requirements ~context pkgs in
-    match Solver.do_solve ~closest_match:false req with
+    Solver.do_solve ~closest_match:false req >>| function
     | Some sels -> Ok sels
     | None -> Error req
 
@@ -55,12 +59,12 @@ module Make(Context : S.CONTEXT) = struct
 
   let diagnostics_rolemap req =
     Solver.do_solve req ~closest_match:true
-    |> Option.get
-    |> Diagnostics.of_result
+    >>| Option.get
+    >>= Diagnostics.of_result
 
   let diagnostics ?(verbose=false) req =
     diagnostics_rolemap req
-    |> Fmt.str "Can't find all required versions.@\n@[<v0>%a@]" (pp_rolemap ~verbose)
+    >>| Fmt.str "Can't find all required versions.@\n@[<v0>%a@]" (pp_rolemap ~verbose)
 
   let packages_of_result sels =
     sels

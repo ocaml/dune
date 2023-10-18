@@ -6,7 +6,7 @@ module S = S
 (** Select a compatible set of components to run a program.
     See [Zeroinstall.Solver] for the instantiation of this functor on the
     actual 0install types. *)
-module Make(Input : S.SOLVER_INPUT) : sig
+module Make(Monad : S.Monad)(Input : S.SOLVER_INPUT with type 'a monad = 'a Monad.t) : sig
   module Output : S.SOLVER_RESULT with module Input = Input
 
   (** [do_solve model req] finds an implementation matching the given requirements, plus any other implementations needed
@@ -16,11 +16,11 @@ module Make(Input : S.SOLVER_INPUT) : sig
         You should ensure that [Input.get_command] always returns a dummy command for dummy_impl too.
         Note: always try without [closest_match] first, or it may miss a valid solution.
       @return None if the solve fails (only happens if [closest_match] is false). *)
-  val do_solve : closest_match:bool -> Input.requirements -> Output.t option
+  val do_solve : closest_match:bool -> Input.requirements -> Output.t option Monad.t
 end
 
 (** Explaining why a solve failed or gave an unexpected answer. *)
-module Diagnostics(Result : S.SOLVER_RESULT) : sig
+module Diagnostics(Monad : S.Monad)(Result : S.SOLVER_RESULT with type 'a Input.monad := 'a Monad.t) : sig
 
   (** An item of information to display for a component. *)
   module Note : sig
@@ -81,13 +81,13 @@ module Diagnostics(Result : S.SOLVER_RESULT) : sig
   type t = Component.t Result.RoleMap.t
   (** An analysis of why the solve failed. *)
 
-  val of_result : Result.t -> t
+  val of_result : Result.t -> t Monad.t
   (** [of_result r] is an analysis of failed solver result [r].
       We take the partial solution from the solver and discover, for each
       component we couldn't select, which constraints caused the candidates to
       be rejected. *)
 
-  val get_failure_reason : ?verbose:bool -> Result.t -> string
+  val get_failure_reason : ?verbose:bool -> Result.t -> string Monad.t
   (** [get_failure_reason r] analyses [r] with [of_result] and formats the
       analysis as a string. *)
 end

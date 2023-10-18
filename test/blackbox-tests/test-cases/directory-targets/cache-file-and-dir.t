@@ -1,0 +1,56 @@
+This checks what happens when a file available in the cache is used in a directory target.
+
+  $ export DUNE_CACHE_ROOT=$PWD/.cache
+  $ export DUNE_CACHE=enabled
+
+  $ cat > dune-project << EOF
+  > (lang dune 3.11)
+  > (using directory-targets 0.1)
+  > EOF
+
+  $ cat > dune << EOF
+  > (rule
+  >  (with-stdout-to file_out (run ./gen.exe)))
+  > 
+  > (rule
+  >  (target (dir dir_out))
+  >  (deps gen.exe)
+  >  (action
+  >   (no-infer
+  >    (progn
+  >     (run mkdir dir_out)
+  >     (with-stdout-to dir_out/a (run ./gen.exe))
+  >     (write-file dir_out/b contents_b)))))
+  > 
+  > (executable
+  >  (name gen))
+  > EOF
+
+  $ cat > gen.ml << EOF
+  > let () = prerr_endline "running command"
+  > let () = print_endline "contents"
+  > EOF
+
+We will check whether an entry is linked from the cache. This corresponds to a
+file with more than one link.
+
+  $ is_linked() {
+  >   nlinks=$(dune_cmd stat hardlinks $1)
+  >   [ $nlinks -gt 1 ] && echo linked || echo not linked
+  > }
+
+We prime the cache with the file:
+
+  $ dune build file_out
+  running command
+  $ is_linked _build/default/file_out
+  linked
+
+Then use it in the directory target. We expect the command to run (because we
+can not know in advance that it is going to generate that fail); but to link
+the resulting file from the cache.
+
+  $ dune build dir_out/
+  running command
+  $ is_linked _build/default/dir_out/a
+  not linked

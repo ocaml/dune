@@ -715,20 +715,13 @@ end = struct
     type t =
       { source_files : Path.Source.Set.t
       ; source_dirs : Filename.Set.t
-      ; copy_rules : Rule.t list
       }
 
-    let empty =
-      { source_files = Path.Source.Set.empty
-      ; source_dirs = Filename.Set.empty
-      ; copy_rules = []
-      }
-    ;;
+    let empty = { source_files = Path.Source.Set.empty; source_dirs = Filename.Set.empty }
   end
 
   (* Compute all the copying rules from the source directory. *)
-  let rules_from_source_dir source_paths_to_ignore (context_name : Context_name.t) sub_dir
-    =
+  let rules_from_source_dir source_paths_to_ignore sub_dir =
     (* Take into account the source files *)
     let+ source_files, source_dirs =
       let+ files, subdirs =
@@ -751,11 +744,7 @@ end = struct
       files, subdirs
     in
     (* Compile the rules and cleanup stale artifacts *)
-    let copy_rules =
-      let ctx_dir = Context_name.build_dir context_name in
-      create_copy_rules ~ctx_dir ~non_target_source_files:source_files
-    in
-    { Source_rules.source_files; source_dirs; copy_rules }
+    { Source_rules.source_files; source_dirs }
   ;;
 
   let descendants_to_keep
@@ -873,14 +862,18 @@ end = struct
       (* Compute the set of sources and targets promoted to the source tree that
          must not be copied to the build directory. *)
       (* Take into account the source files *)
-      let* { Source_rules.source_files; source_dirs; copy_rules } =
+      let* { Source_rules.source_files; source_dirs } =
         match context_type with
         | Empty -> Memo.return Source_rules.empty
         | With_sources ->
           let source_paths_to_ignore =
             source_paths_to_ignore ~dir build_dir_only_sub_dirs rules
           in
-          rules_from_source_dir source_paths_to_ignore context_name sub_dir
+          rules_from_source_dir source_paths_to_ignore sub_dir
+      in
+      let copy_rules =
+        let ctx_dir = Context_name.build_dir context_name in
+        create_copy_rules ~ctx_dir ~non_target_source_files:source_files
       in
       (* Compile the rules and cleanup stale artifacts *)
       let rules =

@@ -477,22 +477,20 @@ let%expect_test "drop external prefix" =
   [%expect {| Some "baz" |}]
 ;;
 
-(* CR-someday alizter: This is a bug! Should return None *)
 let%expect_test "drop prefix as substring" =
   Path.drop_prefix ~prefix:(r "foo/bar") (r "foo/barbaz")
   |> Dyn.option Path.Local.to_dyn
   |> print_dyn;
-  [%expect {| Some "baz" |}]
+  [%expect {| None |}]
 ;;
 
-(* CR-someday alizter: This is a bug! Should return None *)
 let%expect_test "drop external prefix as substring" =
   Path.External.drop_prefix
     ~prefix:(Path.External.of_filename_relative_to_initial_cwd "foo/bar")
     (Path.External.of_filename_relative_to_initial_cwd "foo/barbaz")
   |> Dyn.option Path.Local.to_dyn
   |> print_dyn;
-  [%expect {| Some "baz" |}]
+  [%expect {| None |}]
 ;;
 
 let%expect_test "drop entire path" =

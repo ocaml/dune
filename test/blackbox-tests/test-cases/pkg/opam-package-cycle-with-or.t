@@ -24,7 +24,6 @@ Solver finds the invalid solution as it doesn't check cycles.
 
   $ solve c
   Solution for dune.lock:
-  a.0.0.1
-  b.0.0.1
-  c.0.0.1
-  
+  - a.0.0.1
+  - b.0.0.1
+  - c.0.0.1

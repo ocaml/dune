@@ -166,7 +166,7 @@ let do_promote db files_to_promote =
       List.iter others ~f:(fun (path, _staging) ->
         Console.print
           [ Pp.textf " -> ignored %s." (Path.to_string_maybe_quoted (Path.build path))
-          ; Pp.newline
+          ; Pp.space
           ])
   in
   match files_to_promote with

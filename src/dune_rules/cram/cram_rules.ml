@@ -191,16 +191,14 @@ let rules ~sctx ~expander ~dir tests =
                    | None -> Some (loc, set)
                    | Some (loc', _) ->
                      let main_message =
-                       Pp.concat
-                         ~sep:Pp.newline
-                         [ Pp.text
-                             "enabling or disabling the runtest alias for a cram test \
-                              may only be set once."
-                         ; Pp.textf "It's already set for the test %S" name
-                         ]
+                       [ Pp.text
+                           "enabling or disabling the runtest alias for a cram test may \
+                            only be set once."
+                       ; Pp.textf "It's already set for the test %S" name
+                       ]
                      in
                      let annots =
-                       let main = User_message.make ~loc:loc' [ main_message ] in
+                       let main = User_message.make ~loc:loc' main_message in
                        let related =
                          [ User_message.make ~loc [ Pp.text "Already set here" ] ]
                        in
@@ -211,10 +209,10 @@ let rules ~sctx ~expander ~dir tests =
                      User_error.raise
                        ~annots
                        ~loc
-                       [ main_message
-                       ; Pp.text "The first definition is at:"
-                       ; Pp.text (Loc.to_file_colon_line loc')
-                       ])
+                       (main_message
+                        @ [ Pp.text "The first definition is at:"
+                          ; Pp.text (Loc.to_file_colon_line loc')
+                          ]))
               in
               let enabled_if = stanza.enabled_if :: acc.enabled_if in
               let alias =

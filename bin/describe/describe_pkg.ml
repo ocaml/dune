@@ -26,7 +26,8 @@ module Lock = struct
         ~sep:Pp.space
         [ Pp.hovbox
           @@ Pp.textf "Contents of %s:" (Path.Source.to_string_maybe_quoted lock_dir_path)
-        ; Pkg.Lock.pp_packages lock_dir.packages
+        ; Pkg.Lock.pp_packages
+            (Package_name.Map.to_list_map ~f:(fun _ pkg -> pkg) lock_dir.packages)
         ]
       |> Pp.vbox)
   ;;

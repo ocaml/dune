@@ -16,9 +16,8 @@ Demonstrate the generation of the lock directory in the presence of "|"
 
   $ solve b
   Solution for dune.lock:
-  a1.0.0.1
-  b.0.0.1
-  
+  - a1.0.0.1
+  - b.0.0.1
 Only a1 or a2 should appear but not both.
 
   $ cat dune.lock/b.pkg

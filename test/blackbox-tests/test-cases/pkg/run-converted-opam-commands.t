@@ -80,8 +80,7 @@ Generate a mock opam repository
 
   $ build_single_package foo
   Solution for dune.lock:
-  foo.0.0.1
-  
+  - foo.0.0.1
   package: foo.0.0.1
   enable: enable
   installed: true
@@ -90,8 +89,7 @@ Generate a mock opam repository
   package conjunction string selection: bar
   $ build_single_package bar
   Solution for dune.lock:
-  bar.0.0.1
-  
+  - bar.0.0.1
   installed
   installed or pinned
   version greater than 0 (version is 0.0.1)
@@ -100,16 +98,14 @@ Generate a mock opam repository
   check if variable 'installed' is defined
   $ build_single_package baz
   Solution for dune.lock:
-  baz.0.0.1
-  
+  - baz.0.0.1
   installed
   not madeup:installed
   hello
   installed-defined
   $ build_single_package error1
   Solution for dune.lock:
-  error1.0.0.1
-  
+  - error1.0.0.1
   File "dune.lock/error1.pkg", line 8, characters 30-43:
   8 |      (or_absorb_undefined_var %{pkg-self:a} %{pkg-self:b})
                                     ^^^^^^^^^^^^^
@@ -117,8 +113,7 @@ Generate a mock opam repository
   [1]
   $ build_single_package error2
   Solution for dune.lock:
-  error2.0.0.1
-  
+  - error2.0.0.1
   File "dune.lock/error2.pkg", line 8, characters 31-44:
   8 |      (and_absorb_undefined_var %{pkg-self:a} %{pkg-self:b})
                                      ^^^^^^^^^^^^^
@@ -126,8 +121,7 @@ Generate a mock opam repository
   [1]
   $ build_single_package error3
   Solution for dune.lock:
-  error3.0.0.1
-  
+  - error3.0.0.1
   File "dune.lock/error3.pkg", line 5, characters 2-46:
   5 |   (when
   6 |    (not
@@ -138,8 +132,7 @@ Generate a mock opam repository
   [1]
   $ build_single_package error4
   Solution for dune.lock:
-  error4.0.0.1
-  
+  - error4.0.0.1
   File "dune.lock/error4.pkg", line 5, characters 2-63:
   5 |   (when
   6 |    (not

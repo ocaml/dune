@@ -26,6 +26,5 @@ constraint.
   [1]
   $ test "4.0.0"
   Solution for dune.lock:
-  dune.3.11.0
-  foo.0.0.1
-  
+  - dune.3.11.0
+  - foo.0.0.1

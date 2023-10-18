@@ -2,7 +2,6 @@ Create a lock directory that didn't originally exist
   $ dune pkg lock --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   (no dependencies to lock)
-  
   $ cat dune.lock/lock.dune
   (lang package 0.1)
   
@@ -14,7 +13,6 @@ Re-create a lock directory in the newly created lock dir
   $ dune pkg lock --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   (no dependencies to lock)
-  
   $ cat dune.lock/lock.dune
   (lang package 0.1)
   

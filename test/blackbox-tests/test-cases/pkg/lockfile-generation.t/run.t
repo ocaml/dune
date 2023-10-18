@@ -33,10 +33,9 @@ Run the solver and generate a lock directory.
 
   $ dune pkg lock --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
-  bar.0.5.0
-  baz.0.1.0
-  foo.0.0.1
-  
+  - bar.0.5.0
+  - baz.0.1.0
+  - foo.0.0.1
 
 Helper to the name and contents of each file in the lock directory separated by
 "---", sorting by filename for consistency.
@@ -82,10 +81,9 @@ Print the contents of each file in the lockdir:
 Run the solver again preferring oldest versions of dependencies:
   $ dune pkg lock --version-preference=oldest --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
-  bar.0.4.0
-  baz.0.1.0
-  foo.0.0.1
-  
+  - bar.0.4.0
+  - baz.0.1.0
+  - foo.0.0.1
 
   $ print_all
   dune.lock/bar.pkg:
@@ -166,9 +164,8 @@ both.
 
   $ dune pkg lock --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
-  bar.0.5.0
-  bar-or-baz.0.0.1
-  
+  - bar.0.5.0
+  - bar-or-baz.0.0.1
 Top level or is simple, but does nested or work? nested-r defines nested or
 patterns that can't be simplified
 
@@ -191,11 +188,10 @@ well as bar or qux.
 
   $ dune pkg lock --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
-  bar.0.5.0
-  baz.0.1.0
-  nested-or.0.0.1
-  quux.0.0.1
-  
+  - bar.0.5.0
+  - baz.0.1.0
+  - nested-or.0.0.1
+  - quux.0.0.1
 In the dependency formulas, & should bind stronger than | so if we depend on
 bar and quux or baz, it should pick the first two or the last one, but nothing
 in between.
@@ -212,10 +208,9 @@ in between.
 
   $ dune pkg lock --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
-  bar.0.5.0
-  priorities.0.0.1
-  quux.0.0.1
-  
+  - bar.0.5.0
+  - priorities.0.0.1
+  - quux.0.0.1
  
 We also want to make sure nested negation in versions work fine. For this we
 have the same package with version 1-4 and we want to negate the choice of
@@ -240,6 +235,5 @@ we'd expect version 2 to be chosen:
 
   $ dune pkg lock --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
-  negation.0.0.1
-  pkg.2
-  
+  - negation.0.0.1
+  - pkg.2

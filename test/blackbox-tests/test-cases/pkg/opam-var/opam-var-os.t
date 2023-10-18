@@ -19,8 +19,7 @@ to compare their values.
   > EOF
   > solve testpkg
   Solution for dune.lock:
-  testpkg.0.0.1
-  
+  - testpkg.0.0.1
   $ cat dune.lock/testpkg.pkg 
   (version 0.0.1)
   

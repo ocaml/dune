@@ -23,8 +23,7 @@ Make a package with a patch behind a filter
 
   $ solve with-patch-filter
   Solution for dune.lock:
-  with-patch-filter.0.0.1
-  
+  - with-patch-filter.0.0.1
   $ cat >>dune.lock/with-patch-filter.pkg <<EOF
   > (source (copy $PWD/source))
   > EOF

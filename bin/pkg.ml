@@ -372,12 +372,10 @@ module Lock = struct
   ;;
 
   let pp_packages packages =
-    Package_name.Map.to_list_map
+    Pp.enumerate
       packages
-      ~f:(fun _ { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; _ }; _ } ->
+      ~f:(fun { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; _ }; _ } ->
         Pp.verbatim (Package_name.to_string name ^ "." ^ version))
-    |> Pp.concat ~sep:Pp.space
-    |> Pp.vbox
   ;;
 
   let solve
@@ -427,18 +425,24 @@ module Lock = struct
            | Error (`Diagnostic_message message) -> Error (context_name, message)
            | Ok { lock_dir; files; _ } ->
              let summary_message =
-               [ Pp.textf
-                   "Solution for %s:"
-                   (Path.Source.to_string_maybe_quoted lock_dir_path)
-               ]
-               @ (if Package_name.Map.is_empty lock_dir.packages
-                  then [ Pp.text "(no dependencies to lock)" ]
-                  else [ pp_packages lock_dir.packages ])
-               @ [ Pp.nop ]
+               User_message.make
+                 [ Pp.tag
+                     User_message.Style.Success
+                     (Pp.textf
+                        "Solution for %s:"
+                        (Path.Source.to_string_maybe_quoted lock_dir_path))
+                 ; (match
+                      Package_name.Map.to_list_map lock_dir.packages ~f:(fun _ pkg -> pkg)
+                    with
+                    | [] ->
+                      Pp.tag User_message.Style.Warning
+                      @@ Pp.text "(no dependencies to lock)"
+                    | packages -> pp_packages packages)
+                 ]
              in
              Ok
                ( Lock_dir.Write_disk.prepare ~lock_dir_path ~files lock_dir
-               , User_message.make summary_message ))
+               , summary_message ))
      in
      Result.List.all solutions)
     >>| function

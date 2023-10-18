@@ -87,11 +87,10 @@ Package which has boolean where string was expected. This should be caught while
 
   $ solve_translate_opam_filters standard-dune with-interpolation with-percent-sign variable-types
   Solution for dune.lock:
-  standard-dune.0.0.1
-  variable-types.0.0.1
-  with-interpolation.0.0.1
-  with-percent-sign.0.0.1
-  
+  - standard-dune.0.0.1
+  - variable-types.0.0.1
+  - with-interpolation.0.0.1
+  - with-percent-sign.0.0.1
 
   $ cat dune.lock/standard-dune.pkg
   (version 0.0.1)
@@ -152,8 +151,7 @@ Package which has boolean where string was expected. This should be caught while
 
   $ solve_translate_opam_filters exercise-filters
   Solution for dune.lock:
-  exercise-filters.0.0.1
-  
+  - exercise-filters.0.0.1
 
   $ cat dune.lock/exercise-filters.pkg
   (version 0.0.1)
@@ -222,8 +220,7 @@ Package which has boolean where string was expected. This should be caught while
 Test that if opam filter translation is disabled the output doesn't contain any translated filters:
   $ solve exercise-filters
   Solution for dune.lock:
-  exercise-filters.0.0.1
-  
+  - exercise-filters.0.0.1
   $ cat dune.lock/exercise-filters.pkg
   (version 0.0.1)
   
@@ -248,8 +245,7 @@ Test that if opam filter translation is disabled the output doesn't contain any 
 
   $ solve_translate_opam_filters exercise-term-filters
   Solution for dune.lock:
-  exercise-term-filters.0.0.1
-  
+  - exercise-term-filters.0.0.1
   $ cat dune.lock/exercise-term-filters.pkg
   (version 0.0.1)
   
@@ -290,8 +286,7 @@ Package with package conjunction and string selections inside variable interpola
   > (package (name x) (depends package-conjunction-and-string-selection))
   > EOF
   Solution for dune.lock:
-  package-conjunction-and-string-selection.0.0.1
-  
+  - package-conjunction-and-string-selection.0.0.1
 Note that "enable" is not a true opam variable. Opam desugars occurances of
 "pkg:enable" into "pkg:enable?enable:disable" but if the explicit package scope
 is omitted then it's treated like a regular variable. That explains why the

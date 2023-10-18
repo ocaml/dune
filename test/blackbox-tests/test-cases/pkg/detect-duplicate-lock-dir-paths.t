@@ -18,15 +18,12 @@ Check that we can still generate lockdirs for individual contexts:
   $ dune pkg lock --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   (no dependencies to lock)
-  
   $ dune pkg lock --opam-repository-path=mock-opam-repository --context=default
   Solution for dune.lock:
   (no dependencies to lock)
-  
   $ dune pkg lock --opam-repository-path=mock-opam-repository --context=custom-context-with-default-lock-dir
   Solution for dune.lock:
   (no dependencies to lock)
-  
 
 It's an error to use --all-contexts when there are multiple contexts with the same lockdir:
   $ dune pkg lock --opam-repository-path=mock-opam-repository --all-contexts
@@ -57,11 +54,9 @@ Check that we can still generate lockdirs for individual contexts:
   $ dune pkg lock --opam-repository-path=mock-opam-repository --context=a
   Solution for foo.lock:
   (no dependencies to lock)
-  
   $ dune pkg lock --opam-repository-path=mock-opam-repository --context=b
   Solution for foo.lock:
   (no dependencies to lock)
-  
 
 It's an error to use --all-contexts when there are multiple contexts with the same lockdir:
   $ dune pkg lock --opam-repository-path=mock-opam-repository --all-contexts

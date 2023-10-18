@@ -72,9 +72,8 @@ Run Dune and tell it to cache into our custom cache folder.
   $ mkdir fake-xdg-cache
   $ XDG_CACHE_HOME=$(pwd)/fake-xdg-cache dune pkg lock --opam-repository-url=http://localhost:$PORT/index.tar.gz
   Solution for dune.lock:
-  bar.0.0.1
-  foo.0.0.1
-  
+  - bar.0.0.1
+  - foo.0.0.1
 
 Our custom cache folder should be populated with the unpacked tarball
 containing the repository:
@@ -110,9 +109,8 @@ reproducible)
   $ mkdir fake-xdg-cache-with-git
   $ XDG_CACHE_HOME=$(pwd)/fake-xdg-cache-with-git dune pkg lock --opam-repository-url=git+file://$(pwd)/mock-opam-repository
   Solution for dune.lock:
-  bar.0.0.1
-  foo.0.0.1
-  
+  - bar.0.0.1
+  - foo.0.0.1
 
   $ grep "git_hash $REPO_HASH" dune.lock/lock.dune > /dev/null
 
@@ -122,9 +120,8 @@ Now try it with an existing cached dir, which given it is not reproducible shoul
   $ FOLDER=$(ls $(pwd)/fake-xdg-cache-with-git/dune/opam-repositories/)
   $ dune pkg lock --opam-repository-path=$(pwd)/fake-xdg-cache-with-git/dune/opam-repositories/$FOLDER
   Solution for dune.lock:
-  bar.0.0.1
-  foo.0.0.1
-  
+  - bar.0.0.1
+  - foo.0.0.1
 
   $ grep "git_hash $REPO_HASH" dune.lock/lock.dune > /dev/null || echo "not found"
   not found
@@ -146,8 +143,7 @@ The repository can also be injected via the dune-workspace file
   $ mkdir dune-workspace-cache
   $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
   Solution for dune.lock:
-  bar.0.0.1
-  foo.0.0.1
-  
+  - bar.0.0.1
+  - foo.0.0.1
 
   $ grep "git_hash $REPO_HASH" dune.lock/lock.dune > /dev/null

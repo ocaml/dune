@@ -24,8 +24,7 @@ With no "os" variable set in the workspace, none of the os-specific
 dependencies are included.
   $ solve foo
   Solution for dune.lock:
-  foo.0.0.1
-  
+  - foo.0.0.1
 
 Create a workspace config that defines separate build contexts for macos and linux.
   $ cat >dune-workspace <<EOF
@@ -49,10 +48,8 @@ Create a workspace config that defines separate build contexts for macos and lin
 Now the os-specific dependencies are included on their respective systems.
   $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository --all-contexts
   Solution for dune.macos.lock:
-  foo.0.0.1
-  foo-macos.0.0.1
-  
+  - foo.0.0.1
+  - foo-macos.0.0.1
   Solution for dune.linux.lock:
-  foo.0.0.1
-  foo-linux.0.0.1
-  
+  - foo.0.0.1
+  - foo-linux.0.0.1

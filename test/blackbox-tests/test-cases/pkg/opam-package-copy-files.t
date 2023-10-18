@@ -21,8 +21,7 @@ Make a package with a patch
 
   $ solve with-patch
   Solution for dune.lock:
-  with-patch.0.0.1
-  
+  - with-patch.0.0.1
 
 We expect that the files in the files directory of the opam repository get copied to the
 lock file. 

@@ -1,4 +1,4 @@
-  $ . ./opam-var-helpers.sh 
+  $ . ../helpers.sh 
 
 If both make and gmake are available, we should prefer make.
 
@@ -9,7 +9,6 @@ replicate that behaviour.
 We create a dummy package that will output the value of the opam make variable:
   $ mkrepo
   > mkpkg testpkg << EOF
-  > opam-version: "2.0"
   > build: [ "echo" make ]
   > EOF
   > solve testpkg 2> /dev/null

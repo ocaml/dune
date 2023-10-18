@@ -402,10 +402,10 @@ end = struct
       Appendable_list.to_list expansions)
   ;;
 
-  let filter_out_fallback_rules ~source_files rules =
-    List.filter rules ~f:(fun (rule : Rule.t) ->
+  let add_non_fallback_rules ~init ~source_files rules =
+    List.fold_left rules ~init ~f:(fun acc (rule : Rule.t) ->
       match rule.mode with
-      | Standard | Promote _ | Ignore_source_files -> true
+      | Standard | Promote _ | Ignore_source_files -> rule :: acc
       | Fallback ->
         let source_files_for_targets =
           if not (Path.Build.Set.is_empty rule.targets.dirs)
@@ -422,11 +422,11 @@ end = struct
         in
         if Path.Source.Set.is_subset source_files_for_targets ~of_:source_files
         then (* All targets are present *)
-          false
+          acc
         else if Path.Source.Set.is_empty
                   (Path.Source.Set.inter source_files_for_targets source_files)
         then (* No target is present *)
-          true
+          rule :: acc
         else (
           let absent_targets =
             Path.Source.Set.diff source_files_for_targets source_files
@@ -877,16 +877,13 @@ end = struct
       in
       (* Compile the rules and cleanup stale artifacts *)
       let rules =
-        let rules =
-          (* Filter out fallback rules *)
-          if Path.Source.Set.is_empty source_files
-          then
-            (* If there are no source files to copy, fallback rules are
-               automatically kept *)
-            rules
-          else filter_out_fallback_rules ~source_files rules
-        in
-        copy_rules @ rules
+        (* Filter out fallback rules *)
+        if Path.Source.Set.is_empty source_files
+        then
+          (* If there are no source files to copy, fallback rules are
+             automatically kept *)
+          rules
+        else add_non_fallback_rules ~init:copy_rules ~source_files rules
       in
       let* descendants_to_keep =
         descendants_to_keep build_dir build_dir_only_sub_dirs ~source_dirs rules_produced

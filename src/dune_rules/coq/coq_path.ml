@@ -170,27 +170,36 @@ let scan_vo root_path =
 let of_coq_install coqc =
   let open Memo.O in
   let* coq_config = Coq_config.make ~coqc:(Ok coqc) in
-  (* Now we query for coqlib *)
-  let coqlib_path = config_path_exn coq_config "coqlib" in
-  let coqcorelib = config_path coq_config "coqcorelib" ~default:coqlib_path in
-  let* stdlib_plugs = scan_stdlib_plugins coqcorelib in
-  let* vo = scan_vo coqlib_path in
-  let cmxs, cmxs_directories = List.split stdlib_plugs in
-  let cmxs = List.concat cmxs in
-  let stdlib =
-    { name = Coq_lib_name.stdlib
-    ; path = Path.relative coqlib_path "theories"
-    ; vo
-    ; cmxs
-    ; cmxs_directories
-    ; stdlib = true
-    }
-  in
-  let* user_contrib =
-    let contrib_path = Path.relative coqlib_path "user-contrib" in
-    scan_user_path contrib_path
-  in
-  Memo.return (stdlib :: user_contrib)
+  match coq_config with
+  | Error msg ->
+    User_warning.emit
+      [ Pp.text "Skipping installed theories due to coqc --config failure:"
+      ; Pp.enumerate ~f:Fun.id [ msg ]
+      ]
+      ~hints:[ Pp.text "Try running `coqc --config` manually to see the error." ];
+    Memo.return []
+  | Ok coq_config ->
+    (* Now we query for coqlib *)
+    let coqlib_path = config_path_exn coq_config "coqlib" in
+    let coqcorelib = config_path coq_config "coqcorelib" ~default:coqlib_path in
+    let* stdlib_plugs = scan_stdlib_plugins coqcorelib in
+    let* vo = scan_vo coqlib_path in
+    let cmxs, cmxs_directories = List.split stdlib_plugs in
+    let cmxs = List.concat cmxs in
+    let stdlib =
+      { name = Coq_lib_name.stdlib
+      ; path = Path.relative coqlib_path "theories"
+      ; vo
+      ; cmxs
+      ; cmxs_directories
+      ; stdlib = true
+      }
+    in
+    let* user_contrib =
+      let contrib_path = Path.relative coqlib_path "user-contrib" in
+      scan_user_path contrib_path
+    in
+    Memo.return (stdlib :: user_contrib)
 ;;
 
 let of_coq_install coqc =

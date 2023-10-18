@@ -67,6 +67,24 @@ end = struct
   ;;
 end
 
+let get_output_from_config_or_version ~(coqc : Action.Prog.t) ~what memo =
+  match coqc with
+  | Ok coqc_path ->
+    let open Memo.O in
+    let+ output, exit_code = Memo.exec memo coqc_path in
+    let sbin = Path.to_string coqc_path in
+    if exit_code <> 0
+    then
+      Error
+        (Pp.vbox
+         @@ Pp.concat_map
+              ~sep:Pp.space
+              ~f:(fun x -> Pp.hbox (Pp.text x))
+              (sprintf "%s %s failed with exit code %d." sbin what exit_code :: output))
+    else Ok output
+  | Error e -> Action.Prog.Not_found.raise e
+;;
+
 module Version = struct
   module Num = struct
     type t =
@@ -127,29 +145,42 @@ module Version = struct
   let impl_version bin =
     let* _ = Build_system.build_file bin in
     Memo.of_reproducible_fiber
-    @@ Process.run_capture_line ~display:Quiet Strict bin [ "--print-version" ]
+    @@ Process.run_capture_lines
+         ~display:Quiet
+         ~stderr_to:
+           (Process.Io.make_stderr
+              ~output_on_success:Swallow
+              ~output_limit:Execution_parameters.Action_output_limit.default)
+         Return
+         bin
+         (* we pass -boot since this means it will work with just coq-core *)
+         [ "--print-version"; "-boot" ]
   ;;
 
   let version_memo = Memo.create "coq-and-ocaml-version" ~input:(module Path) impl_version
 
   let make ~(coqc : Action.Prog.t) =
-    match coqc with
-    | Ok coqc_path ->
-      let open Memo.O in
-      let+ coq_and_ocaml_version = Memo.exec version_memo coqc_path in
-      let sbin = Path.to_string coqc_path in
-      let open Result.O in
-      let* version_string, ocaml_version_string =
-        String.lsplit2 ~on:' ' coq_and_ocaml_version
-        |> function
-        | Some (version_string, ocaml_version_string) ->
-          Result.ok (version_string, ocaml_version_string)
-        | None ->
-          Result.Error Pp.(textf "Unable to parse output of %s --print-version." sbin)
+    let open Memo.O in
+    let+ version_output =
+      get_output_from_config_or_version ~coqc ~what:"--print-version" version_memo
+    in
+    let open Result.O in
+    let* version_output = version_output in
+    let* version_string, ocaml_version_string =
+      (* First check that the command returned a single line *)
+      let* line =
+        match version_output with
+        | [ line ] -> Ok line
+        | _ -> Error Pp.(textf "Multiple lines in output of coqc --print-version.")
       in
-      let* version_num = Num.make version_string in
-      Result.ok { version_num; version_string; ocaml_version_string }
-    | Error e -> Action.Prog.Not_found.raise e
+      (* Next split into two parts, version looks like ["<coq-version> <ocaml-version>"] *)
+      match String.lsplit2 ~on:' ' line with
+      | Some (version_string, ocaml_version_string) ->
+        Ok (version_string, ocaml_version_string)
+      | None -> Error Pp.(textf "Unable to parse output of coqc --print-version.")
+    in
+    let+ version_num = Num.make version_string in
+    { version_num; version_string; ocaml_version_string }
   ;;
 
   let by_name t name =
@@ -177,7 +208,15 @@ type t =
 let impl_config bin =
   let* _ = Build_system.build_file bin in
   Memo.of_reproducible_fiber
-  @@ Process.run_capture_lines ~display:Quiet Return bin [ "--config" ]
+  @@ Process.run_capture_lines
+       ~display:Quiet
+       ~stderr_to:
+         (Process.Io.make_stderr
+            ~output_on_success:Swallow
+            ~output_limit:Execution_parameters.Action_output_limit.default)
+       Return
+       bin
+       [ "--config" ]
 ;;
 
 let config_memo = Memo.create "coq-config" ~input:(module Path) impl_config
@@ -190,49 +229,23 @@ let version ~coqc =
   t.version_string
 ;;
 
-let make_res ~(coqc : Action.Prog.t) =
-  match coqc with
-  | Ok coqc_path ->
-    let open Memo.O in
-    let+ config_lines = Memo.exec config_memo coqc_path
-    and+ version_info = Version.make ~coqc in
-    let config_lines, exit_code = config_lines in
-    if exit_code <> 0
-    then Error (coqc_path, exit_code, config_lines)
-    else (
-      match Vars.of_lines config_lines with
-      | Ok vars ->
-        let coqlib = Vars.get_path vars "COQLIB" in
-        (* this is not available in Coq < 8.14 *)
-        let coqcorelib = Vars.get_path_opt vars "COQCORELIB" in
-        (* this is not available in Coq < 8.13 *)
-        let coq_native_compiler_default =
-          Vars.get_opt vars "COQ_NATIVE_COMPILER_DEFAULT"
-        in
-        Ok { version_info; coqlib; coqcorelib; coq_native_compiler_default }
-      | Error msg ->
-        User_error.raise
-          Pp.
-            [ textf "cannot parse output of %s --config:" (Path.to_string coqc_path)
-            ; msg
-            ])
-  | Error e -> Action.Prog.Not_found.raise e
-;;
-
-let make_opt ~coqc = Memo.map ~f:Result.to_option (make_res ~coqc)
-
-let make ~coqc =
+let make ~(coqc : Action.Prog.t) =
   let open Memo.O in
-  let+ result = make_res ~coqc in
-  match result with
-  | Ok t -> t
-  | Error (coqc_path, exit_code, config_lines) ->
-    User_error.raise
-      Pp.
-        [ textf "Error while running %s --config" (Path.to_string coqc_path)
-        ; textf "Exit code: %d" exit_code
-        ; textf "Output:\n%s" (String.concat ~sep:"\n" config_lines)
-        ]
+  let+ config_output =
+    get_output_from_config_or_version ~coqc ~what:"--config" config_memo
+  and+ version_info = Version.make ~coqc in
+  let open Result.O in
+  let* config_output = config_output in
+  match Vars.of_lines config_output with
+  | Ok vars ->
+    let coqlib = Vars.get_path vars "COQLIB" in
+    (* this is not available in Coq < 8.14 *)
+    let coqcorelib = Vars.get_path_opt vars "COQCORELIB" in
+    (* this is not available in Coq < 8.13 *)
+    let coq_native_compiler_default = Vars.get_opt vars "COQ_NATIVE_COMPILER_DEFAULT" in
+    Ok { version_info; coqlib; coqcorelib; coq_native_compiler_default }
+  | Error msg ->
+    User_error.raise Pp.[ textf "Cannot parse output of coqc --config:"; msg ]
 ;;
 
 let by_name { version_info; coqlib; coqcorelib; coq_native_compiler_default } name =

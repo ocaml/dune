@@ -54,19 +54,12 @@ Should succeed, but should warn that installed theories are being skipped due to
 failure.
   $ FAIL_CONFIG=1 \
   > dune build
-  coqc --config has failed for some reason
-  Error: Error while running
-  $TESTCASE_ROOT/bin/coqc
-  --config
-  Exit code: 1
-  Output:
-  
-  [1]
+  Warning: Skipping installed theories due to coqc --config failure:
+  - $TESTCASE_ROOT/bin/coqc --config failed with exit code 1.
+  Hint: Try running `coqc --config` manually to see the error.
 
   $ FAIL_VERSION=1 \
   > dune build
-  coqc --print-version has failed for some reason
-  [1]
 
   $ dune build
 
@@ -83,21 +76,20 @@ Here we query the version of Coq. Due to the expansion of %{coq:_} macros we nee
 Fails for now, but could be improved in the future.
   $ FAIL_CONFIG=1 \
   > dune build @version
-  coqc --config has failed for some reason
-  Error: Error while running
-  $TESTCASE_ROOT/bin/coqc
-  --config
-  Exit code: 1
-  Output:
-  
-  -> required by %{coq:version} at dune:4
-  -> required by alias version in dune:1
+  File "dune", line 4, characters 8-22:
+  4 |   (echo %{coq:version})))
+              ^^^^^^^^^^^^^^
+  Error: Could not expand %{coq:version} as running coqc --config failed.
+  $TESTCASE_ROOT/bin/coqc --config failed with exit code 1.
+  Hint: coqc --config requires the coq-stdlib package in order to function
+  properly.
   [1]
 
 Should fail.
   $ FAIL_VERSION=1 \
   > dune build @version
-  coqc --print-version has failed for some reason
+  Error: Could not parse coqc version: 
+  $TESTCASE_ROOT/bin/coqc --print-version failed with exit code 1.
   -> required by %{coq:version} at dune:4
   -> required by alias version in dune:1
   [1]
@@ -116,23 +108,18 @@ Should fail.
   $ export coqlib="$(coqc -config | grep COQLIB | sed 's/COQLIB=//')"
   $ FAIL_CONFIG=1 \
   > dune build @config 
-  coqc --config has failed for some reason
-  Error: Error while running
-  $TESTCASE_ROOT/bin/coqc
-  --config
-  Exit code: 1
-  Output:
-  
-  -> required by %{coq:coqlib} at dune:4
-  -> required by alias config in dune:1
+  File "dune", line 4, characters 8-21:
+  4 |   (echo %{coq:coqlib})))
+              ^^^^^^^^^^^^^
+  Error: Could not expand %{coq:coqlib} as running coqc --config failed.
+  $TESTCASE_ROOT/bin/coqc --config failed with exit code 1.
+  Hint: coqc --config requires the coq-stdlib package in order to function
+  properly.
   [1]
 
 Should succeed.
   $ FAIL_VERSION=1 \
   > dune build @config | sed "s,$coqlib,COQLIB," > /dev/null
-  coqc --print-version has failed for some reason
-  -> required by %{coq:coqlib} at dune:4
-  -> required by alias config in dune:1
 
 Should succeed.
   $ dune build @config | sed "s,$coqlib,COQLIB," > /dev/null

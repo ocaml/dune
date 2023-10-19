@@ -129,7 +129,6 @@ module type Build_config = sig
           -> delete_dst_if_it_is_a_directory:bool
           -> src:Path.Build.t
           -> dst:Path.Source.t
-          -> Build_context.t option
           -> unit Fiber.t)
     -> cache_config:Dune_cache.Config.t
     -> cache_debug_flags:Cache_debug_flags.t
@@ -151,7 +150,6 @@ module type Build_config = sig
         -> delete_dst_if_it_is_a_directory:bool
         -> src:Path.Build.t
         -> dst:Path.Source.t
-        -> Build_context.t option
         -> unit Fiber.t
     ; stats : Dune_stats.t option
     ; cache_config : Dune_cache.Config.t

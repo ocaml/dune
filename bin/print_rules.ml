@@ -128,9 +128,9 @@ let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
                  ; "directories", paths rule.targets.dirs
                  ] )
            ]
-         ; (match rule.context with
+         ; (match Path.Build.extract_build_context rule.dir with
             | None -> []
-            | Some c -> [ "context", Dune_engine.Context_name.encode c.name ])
+            | Some (c, _) -> [ "context", Dune_sexp.atom_or_quoted_string c ])
          ; [ "action", sexp_of_action rule.action ]
          ])
   in

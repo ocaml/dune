@@ -235,7 +235,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 16
+  let rule_digest_version = 17
 
   let compute_rule_digest
     (rule : Rule.t)
@@ -264,7 +264,6 @@ end = struct
       , sandbox_mode
       , Dep.Facts.digest deps ~env
       , file_targets @ dir_targets
-      , Option.map rule.context ~f:(fun c -> Context_name.to_string c.name)
       , Action.for_shell action
       , can_go_in_shared_cache
       , List.map locks ~f:Path.to_string
@@ -314,7 +313,6 @@ end = struct
     ~action
     ~deps
     ~loc
-    ~(context : Build_context.t option)
     ~execution_parameters
     ~sandbox_mode
     ~dir
@@ -369,6 +367,7 @@ end = struct
         Action.chdirs action
         |> Path.Build.Set.iter ~f:(fun p -> Path.mkdir_p (Path.build p)))
     in
+    let context = Build_context.of_build_path dir in
     let root =
       match context with
       | None -> Path.Build.root
@@ -393,7 +392,7 @@ end = struct
           let* action_exec_result =
             let input =
               { Action_exec.root
-              ; context
+              ; context (* can be derived from the root *)
               ; env
               ; targets = Some targets
               ; rule_loc = loc
@@ -431,7 +430,7 @@ end = struct
   ;;
 
   let execute_rule_impl ~rule_kind rule =
-    let { Rule.id = _; targets; dir; context; mode; action; info = _; loc } = rule in
+    let { Rule.id = _; targets; dir; mode; action; info = _; loc } = rule in
     (* We run [State.start_rule_exn ()] entirely for its side effect, so one
        might be tempted to use [Memo.of_non_reproducible_fiber] here but that is
        wrong, because that would force us to rerun [execute_rule_impl] on every
@@ -578,7 +577,6 @@ end = struct
                   ~action
                   ~deps
                   ~loc
-                  ~context
                   ~execution_parameters
                   ~sandbox_mode
                   ~dir
@@ -617,7 +615,7 @@ end = struct
           ~rule_mode:mode
           ~dir
           ~targets:produced_targets
-          ~promote_source:(config.promote_source context)
+          ~promote_source:config.promote_source
       in
       let+ () = State.incr_rule_done_exn () in
       produced_targets)
@@ -662,9 +660,8 @@ end = struct
       Path.Build.relative dir basename
     in
     let rule =
-      let { Rule.Anonymous_action.context; action = _; loc; dir = _; alias = _ } = act in
+      let { Rule.Anonymous_action.action = _; loc; dir = _; alias = _ } = act in
       Rule.make
-        ~context
         ~info:(if Loc.is_none loc then Internal else From_dune_file loc)
         ~targets:(Targets.File.create target)
         ~mode:Standard
@@ -729,8 +726,8 @@ end = struct
     let observing_facts = () in
     ignore observing_facts;
     let digest =
-      let { Rule.Anonymous_action.context
-          ; action = { action; env; locks; can_go_in_shared_cache; sandbox }
+      let { Rule.Anonymous_action.action =
+              { action; env; locks; can_go_in_shared_cache; sandbox }
           ; loc
           ; dir
           ; alias
@@ -754,11 +751,7 @@ end = struct
         |> Env.Map.to_list
       in
       Digest.generic
-        ( Option.map context ~f:(fun c ->
-            (* Only looking at the context name is fishy, but it is in line
-               with what we do for build rules. *)
-            Context_name.to_string c.name)
-        , env
+        ( env
         , Dep.Set.digest deps
         , Action.for_shell action
         , List.map locks ~f:Path.to_string

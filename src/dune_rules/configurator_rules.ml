@@ -25,7 +25,7 @@ let gen_rules (ctx : Build_context.t) (ocaml : Ocaml_toolchain.t) =
      |> String.concat ~sep:""
      |> Action.write_file fn
      |> Action.Full.make)
-    |> Rule.make ~targets:(Targets.File.create fn) ~context:None
+    |> Rule.make ~targets:(Targets.File.create fn)
     |> Rules.Produce.rule
   in
   let fn = configurator_v2 ctx in
@@ -42,7 +42,7 @@ let gen_rules (ctx : Build_context.t) (ocaml : Ocaml_toolchain.t) =
    |> Csexp.to_string
    |> Action.write_file fn
    |> Action.Full.make)
-  |> Rule.make ~targets:(Targets.File.create fn) ~context:None
+  |> Rule.make ~targets:(Targets.File.create fn)
   |> Rules.Produce.rule
 ;;
 

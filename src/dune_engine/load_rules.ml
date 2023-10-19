@@ -332,7 +332,6 @@ end = struct
           }
       in
       Rule.make
-        ~context:None
         ~info:(Source_file_copy path)
         ~targets:(Targets.File.create ctx_path)
         build)

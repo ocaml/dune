@@ -11,3 +11,4 @@ type t = private
   }
 
 val create : name:Context_name.t -> t
+val of_build_path : Path.Build.t -> t option

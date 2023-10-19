@@ -253,12 +253,7 @@ let extend_action t ~dir action =
 
 let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =
   let build = extend_action t build ~dir in
-  Rule.make
-    ?mode
-    ~info:(Rule.Info.of_loc_opt loc)
-    ~context:(Some (Context.build_context (Env_tree.context t)))
-    ~targets
-    build
+  Rule.make ?mode ~info:(Rule.Info.of_loc_opt loc) ~targets build
 ;;
 
 let add_rule t ?mode ?loc ~dir build =
@@ -276,11 +271,7 @@ let add_rules t ?loc ~dir builds = Memo.parallel_iter builds ~f:(add_rule ?loc t
 
 let add_alias_action t alias ~dir ~loc action =
   let build = extend_action t action ~dir in
-  Rules.Produce.Alias.add_action
-    ~context:(Context.build_context (Env_tree.context t))
-    alias
-    ~loc
-    build
+  Rules.Produce.Alias.add_action alias ~loc build
 ;;
 
 let local_binaries t ~dir = Env_tree.get_node t ~dir >>= Env_node.local_binaries

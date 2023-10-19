@@ -55,7 +55,6 @@ end
 
 type t = private
   { id : Id.t
-  ; context : Build_context.t option
   ; targets : Targets.Validated.t
   ; action : Action.Full.t Action_builder.t
   ; mode : Mode.t
@@ -74,7 +73,6 @@ val to_dyn : t -> Dyn.t
     [Targets.Validation_result] data type for the list of possible problems. *)
 val make
   :  ?mode:Mode.t
-  -> context:Build_context.t option
   -> ?info:Info.t
   -> targets:Targets.t
   -> Action.Full.t Action_builder.t
@@ -87,8 +85,7 @@ module Anonymous_action : sig
   (* jeremiedimino: this type correspond to a subset of [Rule.t]. We should
      eventually share the code. *)
   type t =
-    { context : Build_context.t option
-    ; action : Action.Full.t
+    { action : Action.Full.t
     ; loc : Loc.t
     ; dir : Path.Build.t
         (** Directory the action is attached to. This is the directory where

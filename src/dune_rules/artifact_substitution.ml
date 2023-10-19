@@ -115,36 +115,27 @@ module Conf = struct
     | _ -> None
   ;;
 
-  let of_context (context : Context.t option) =
+  let of_context (context : Context.t) =
     let open Memo.O in
     let get_vcs = Source_tree.nearest_vcs in
-    match context with
-    | None ->
-      { get_vcs
-      ; get_location = (fun _ _ -> Code_error.raise "no context available" [])
-      ; get_config_path = (fun _ -> Code_error.raise "no context available" [])
-      ; sign_hook = Memo.return None
-      ; hardcoded_ocaml_path = Memo.return @@ Hardcoded []
-      }
-    | Some context ->
-      let name = Context.name context in
-      let get_location = Install.Paths.get_local_location name in
-      let get_config_path = function
-        | Sourceroot -> Memo.return @@ Some (Path.source Path.Source.root)
-        | Stdlib ->
-          let+ ocaml = Context.ocaml context in
-          Some ocaml.lib_config.stdlib_dir
+    let name = Context.name context in
+    let get_location = Install.Paths.get_local_location name in
+    let get_config_path = function
+      | Sourceroot -> Memo.return @@ Some (Path.source Path.Source.root)
+      | Stdlib ->
+        let+ ocaml = Context.ocaml context in
+        Some ocaml.lib_config.stdlib_dir
+    in
+    let hardcoded_ocaml_path =
+      let install_dir =
+        let install_dir = Install.Context.dir ~context:name in
+        Path.build (Path.Build.relative install_dir "lib")
       in
-      let hardcoded_ocaml_path =
-        let install_dir =
-          let install_dir = Install.Context.dir ~context:name in
-          Path.build (Path.Build.relative install_dir "lib")
-        in
-        let+ default_ocamlpath = Context.default_ocamlpath context in
-        Hardcoded (install_dir :: default_ocamlpath)
-      in
-      let sign_hook = sign_hook_of_context context in
-      { get_vcs; get_location; get_config_path; hardcoded_ocaml_path; sign_hook }
+      let+ default_ocamlpath = Context.default_ocamlpath context in
+      Hardcoded (install_dir :: default_ocamlpath)
+    in
+    let sign_hook = sign_hook_of_context context in
+    { get_vcs; get_location; get_config_path; hardcoded_ocaml_path; sign_hook }
   ;;
 
   let of_install ~relocatable ~roots ~(context : Context.t) =

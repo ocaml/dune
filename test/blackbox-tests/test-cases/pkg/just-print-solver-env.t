@@ -1,9 +1,6 @@
 Print the solver env when no dune-workspace is present
   $ dune pkg print-solver-env --dont-poll-system-solver-variables
   Solver environment for context default:
-  - Flags
-    - with-doc = true
-    - with-test = true
   - System Environment Variables
     - arch (unset)
     - os (unset)
@@ -30,28 +27,27 @@ Add some build contexts with different environments
   >   (name no-doc)
   >   (lock dune.linux.lock)
   >   (solver_env
-  >    (flags (:standard \ with-doc)))))
+  >    (sys
+  >     (arch x86_64)
+  >     (os linux)
+  >     (os-family ubuntu)
+  >     (os-distribution ubuntu)
+  >     (os-version 22.04)))))
   > EOF
 
   $ dune pkg print-solver-env --all-contexts --dont-poll-system-solver-variables
   Solver environment for context no-doc:
-  - Flags
-    - with-doc = false
-    - with-test = true
   - System Environment Variables
-    - arch (unset)
-    - os (unset)
-    - os-version (unset)
-    - os-distribution (unset)
-    - os-family (unset)
+    - arch = x86_64
+    - os = linux
+    - os-version = 22.04
+    - os-distribution = ubuntu
+    - os-family = ubuntu
   - Constants
     - opam-version = 2.2.0~alpha-vendored
   - Repositories
        default
   Solver environment for context linux:
-  - Flags
-    - with-doc = true
-    - with-test = true
   - System Environment Variables
     - arch (unset)
     - os = linux

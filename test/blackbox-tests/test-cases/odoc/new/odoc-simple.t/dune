@@ -17,11 +17,6 @@
  (public_name foo.byte))
 
 (alias
- (name runtest)
- (deps _doc_new/html/docs/index.html)
- (action (echo "%{read:_doc_new/html/docs/index.html}")))
-
-(alias
  (name foo-mld)
  (deps _doc_new/index/local/foo/foo.mld)
  (action (echo "%{read:_doc_new/index/local/foo/foo.mld}")))

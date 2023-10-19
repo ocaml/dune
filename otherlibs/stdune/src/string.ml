@@ -307,4 +307,3 @@ let contains_double_underscore =
   in
   fun s -> aux s (String.length s) 0
 ;;
-

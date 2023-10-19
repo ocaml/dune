@@ -5,5 +5,5 @@ This test case is based on code provided by @vphantom, ocaml/dune#2007
 
   $ dune build @doc-new
 
-  $ grep -r xref-unresolved _build/default/_doc_new/html/docs/odoc_page_link_bug/index.html
+  $ grep -r xref-unresolved _build/default/_doc_new/html/docs/local/odoc_page_link_bug/index.html
   [1]

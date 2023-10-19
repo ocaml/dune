@@ -26,9 +26,9 @@ variable, and can rebuild as needed.
   > }
 
   $ dune build @doc-new
-  $ detect _build/default/_doc_new/html/docs/l/L/index.html
+  $ detect _build/default/_doc_new/html/docs/local/l/L/index.html
   it is ocaml
 
   $ ODOC_SYNTAX=re dune build @doc-new
-  $ detect _build/default/_doc_new/html/docs/l/L/index.html
+  $ detect _build/default/_doc_new/html/docs/local/l/L/index.html
   it is reason

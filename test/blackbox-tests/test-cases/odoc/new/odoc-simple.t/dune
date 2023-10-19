@@ -23,10 +23,10 @@
 
 (alias
  (name foo-mld)
- (deps _doc_new/index/foo/foo.mld)
- (action (echo "%{read:_doc_new/index/foo/foo.mld}")))
+ (deps _doc_new/index/local/foo/foo.mld)
+ (action (echo "%{read:_doc_new/index/local/foo/foo.mld}")))
 
 (alias
  (name bar-mld)
- (deps _doc_new/index/bar/bar.mld)
- (action (echo "%{read:_doc_new/index/bar/bar.mld}")))
+ (deps _doc_new/index/local/bar/bar.mld)
+ (action (echo "%{read:_doc_new/index/local/bar/bar.mld}")))

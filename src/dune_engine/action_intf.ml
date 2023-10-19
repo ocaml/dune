@@ -95,6 +95,7 @@ module Ext = struct
     ; context : Build_context.t option
     ; purpose : Process.purpose
     ; rule_loc : Loc.t
+    ; build_deps : Dep.Set.t -> Dep.Facts.t Fiber.t
     }
 
   type env =

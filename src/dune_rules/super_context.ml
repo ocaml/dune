@@ -357,9 +357,19 @@ let add_packages_env context ~base stanzas packages =
           stanzas
           ~init:Package.Name.Map.empty
           ~f:(fun _ stanza acc ->
-            let add_in_package_sites pkg site loc =
-              let+ section = Package_db.section_of_site package_db ~loc ~pkg ~site in
-              add_in_package_section acc pkg section
+            let add_in_package_sites pkg_name site loc =
+              let+ pkg = Package_db.find_package package_db pkg_name in
+              match pkg with
+              | None ->
+                (* Really ugly to supress errors like this. Instead,
+                   executables that rely on sites should declare that
+                   in their dependencies *)
+                acc
+              | Some pkg ->
+                let section =
+                  Package_db.section_of_any_package_site pkg pkg_name loc site
+                in
+                add_in_package_section acc pkg_name section
             in
             match stanza with
             | Dune_file.Install { section = Site { pkg; site; loc }; _ } ->

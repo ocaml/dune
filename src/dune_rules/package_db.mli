@@ -10,6 +10,13 @@ type any_package =
 val create : Context_name.t -> t Memo.t
 val find_package : t -> Package.Name.t -> any_package option Memo.t
 
+val section_of_any_package_site
+  :  any_package
+  -> Package.Name.t
+  -> Loc.t
+  -> Site.t
+  -> Dune_section.t
+
 val section_of_site
   :  t
   -> loc:Loc.t

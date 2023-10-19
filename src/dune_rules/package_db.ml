@@ -29,31 +29,34 @@ let find_package ctx pkg =
 
 let create ctx = Memo.return ctx
 
-let section_of_site t ~loc ~pkg ~site =
-  let+ sites =
-    let+ pkg = find_package t pkg in
-    Option.map pkg ~f:(function
-      | Build _ ->
-        (* TODO We should be able to extract this information after the package
-           is built *)
-        Site.Map.empty
-      | Local p -> p.sites
-      | Installed p -> p.sites)
+let section_of_any_package_site any_package pkg_name loc site =
+  let sites =
+    match any_package with
+    | Build _ ->
+      (* TODO We should be able to extract this information after the package
+         is built *)
+      Site.Map.empty
+    | Local p -> p.sites
+    | Installed p -> p.sites
   in
-  match sites with
+  match Site.Map.find sites site with
+  | Some section -> section
   | None ->
     User_error.raise
       ~loc
-      [ Pp.textf "The package %s is not found" (Package.Name.to_string pkg) ]
-  | Some sites ->
-    (match Site.Map.find sites site with
-     | Some section -> section
-     | None ->
-       User_error.raise
-         ~loc
-         [ Pp.textf
-             "Package %s doesn't define a site %s"
-             (Package.Name.to_string pkg)
-             (Site.to_string site)
-         ])
+      [ Pp.textf
+          "Package %s doesn't define a site %s"
+          (Package.Name.to_string pkg_name)
+          (Site.to_string site)
+      ]
+;;
+
+let section_of_site t ~loc ~pkg:pkg_name ~site =
+  find_package t pkg_name
+  >>| function
+  | None ->
+    User_error.raise
+      ~loc
+      [ Pp.textf "The package %s is not found" (Package.Name.to_string pkg_name) ]
+  | Some pkg -> section_of_any_package_site pkg pkg_name loc site
 ;;

@@ -17,8 +17,3 @@ Github issue #8630
   > EOF
 
   $ dune build foo
-  File "dune", line 2, characters 16-31:
-  2 |  (section (site (foobarpkg baz)))
-                      ^^^^^^^^^^^^^^^
-  Error: The package foobarpkg is not found
-  [1]

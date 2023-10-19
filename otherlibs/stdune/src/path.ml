@@ -862,12 +862,6 @@ let external_of_in_source_tree x = external_of_local x ~root:(Lazy.force abs_roo
 
 let reach t ~from =
   match t, from with
-  | External t, External from ->
-    (match
-       String.drop_prefix ~prefix:(External.to_string from ^ "/") (External.to_string t)
-     with
-     | Some s -> s
-     | _ -> External.to_string t)
   | External t, _ -> External.to_string t
   | In_source_tree t, In_source_tree from | In_build_dir t, In_build_dir from ->
     Local.reach t ~from
@@ -904,7 +898,6 @@ let is_descendant t ~of_ =
   match t, of_ with
   | In_source_tree t, In_source_tree of_ | In_build_dir t, In_build_dir of_ ->
     Local.is_descendant t ~of_
-  | External t, External of_ -> External.is_descendant t ~of_
   | _ -> false
 ;;
 

@@ -23,7 +23,7 @@ Test the case where a test that depends on a melange emit alias
   > EOF
 
 The expected behavior would be that all .js artifacts are copied over to the
-test folder, but only the empty folders structured is copied.
+test folder, but only the empty folders layout is copied.
 
   $ cat > test/foo.t <<EOF
   >   $ ls ..
@@ -35,7 +35,7 @@ test folder, but only the empty folders structured is copied.
 
   $ dune build @foo
 
-Adding (expand_aliases_in_sandbox) does not affect it
+Adding (expand_aliases_in_sandbox) fixes it (needs to clean first)
 
   $ cat <<EOF > dune-project
   > (lang dune 3.8)
@@ -43,5 +43,15 @@ Adding (expand_aliases_in_sandbox) does not affect it
   > (expand_aliases_in_sandbox)
   > EOF
 
-  $ dune build @foo
+  $ cat > test/foo.t <<EOF
+  >   $ ls ..
+  >   app
+  >   test
+  >   $ ls ../app
+  >   a.js
+  >   node_modules
+  > EOF
 
+  $ dune clean
+
+  $ dune build @foo

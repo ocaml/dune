@@ -402,6 +402,8 @@ end = struct
       Appendable_list.to_list expansions)
   ;;
 
+  let disjoint set1 set2 = not (Path.Source.Set.exists set1 ~f:(Path.Source.Set.mem set2))
+
   let add_non_fallback_rules ~init ~source_files rules =
     List.fold_left rules ~init ~f:(fun acc (rule : Rule.t) ->
       match rule.mode with
@@ -423,8 +425,7 @@ end = struct
         if Path.Source.Set.is_subset source_files_for_targets ~of_:source_files
         then (* All targets are present *)
           acc
-        else if Path.Source.Set.is_empty
-                  (Path.Source.Set.inter source_files_for_targets source_files)
+        else if disjoint source_files_for_targets source_files
         then (* No target is present *)
           rule :: acc
         else (
@@ -668,45 +669,51 @@ end = struct
 
   (* Compute source paths ignored by specific rules *)
   let source_paths_to_ignore ~dir build_dir_only_sub_dirs rules =
-    let files = ref Path.Build.Set.empty in
-    let dirnames = ref Filename.Set.empty in
-    List.iter rules ~f:(fun { Rule.targets; mode; loc; _ } ->
-      let target_dirnames =
-        lazy
-          (Path.Build.Set.to_list_map ~f:Path.Build.basename targets.dirs
-           |> Filename.Set.of_list)
-      in
-      (* Check if this rule defines any file targets that conflict with
-         internal Dune directories listed in [build_dir_only_sub_dirs]. We
-         don't check directory targets as these are already checked
-         earlier. *)
-      (match
-         Path.Build.Set.find targets.files ~f:(fun file ->
-           Subdir_set.mem build_dir_only_sub_dirs (Path.Build.basename file))
-       with
-       | None -> ()
-       | Some target_name ->
-         report_rule_internal_dir_conflict (Path.Build.basename target_name) loc);
-      match mode with
-      | Standard | Fallback -> ()
-      | Ignore_source_files ->
-        files := Path.Build.Set.union !files targets.files;
-        dirnames := Filename.Set.union !dirnames (Lazy.force target_dirnames)
-      | Promote { only; _ } ->
-        (* Note that the [only] predicate applies to the files inside the
-           directory targets rather than to directory names themselves. *)
-        let target_files =
-          match only with
-          | None -> targets.files
-          | Some pred ->
-            let is_promoted file =
-              Predicate.test pred (Path.reach (Path.build file) ~from:(Path.build dir))
-            in
-            Path.Build.Set.filter targets.files ~f:is_promoted
+    let rec iter ~files ~dirnames rules =
+      match rules with
+      | [] -> { files; dirnames }
+      | { Rule.targets; mode; loc; _ } :: rules ->
+        let target_dirnames =
+          lazy
+            (Path.Build.Set.to_list_map ~f:Path.Build.basename targets.dirs
+             |> Filename.Set.of_list)
         in
-        files := Path.Build.Set.union !files target_files;
-        dirnames := Filename.Set.union !dirnames (Lazy.force target_dirnames));
-    { files = !files; dirnames = !dirnames }
+        (* Check if this rule defines any file targets that conflict with
+           internal Dune directories listed in [build_dir_only_sub_dirs]. We
+           don't check directory targets as these are already checked
+           earlier. *)
+        (match
+           Path.Build.Set.find targets.files ~f:(fun file ->
+             Subdir_set.mem build_dir_only_sub_dirs (Path.Build.basename file))
+         with
+         | None -> ()
+         | Some target_name ->
+           report_rule_internal_dir_conflict (Path.Build.basename target_name) loc);
+        (match mode with
+         | Standard | Fallback -> iter ~files ~dirnames rules
+         | Ignore_source_files ->
+           iter
+             ~files:(Path.Build.Set.union files targets.files)
+             ~dirnames:(Filename.Set.union dirnames (Lazy.force target_dirnames))
+             rules
+         | Promote { only; _ } ->
+           (* Note that the [only] predicate applies to the files inside the
+              directory targets rather than to directory names themselves. *)
+           let target_files =
+             match only with
+             | None -> targets.files
+             | Some pred ->
+               let is_promoted file =
+                 Predicate.test pred (Path.reach (Path.build file) ~from:(Path.build dir))
+               in
+               Path.Build.Set.filter targets.files ~f:is_promoted
+           in
+           iter
+             ~files:(Path.Build.Set.union files target_files)
+             ~dirnames:(Filename.Set.union dirnames (Lazy.force target_dirnames))
+             rules)
+    in
+    iter ~files:Path.Build.Set.empty ~dirnames:Filename.Set.empty rules
   ;;
 
   module Source_rules = struct

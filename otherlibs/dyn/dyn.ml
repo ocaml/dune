@@ -112,7 +112,11 @@ let rec pp =
   | Variant (v, xs) ->
     Pp.hvbox
       ~indent:2
-      (Pp.concat [ Pp.verbatim v; Pp.space; Pp.concat_map ~sep:(Pp.char ',') xs ~f:pp ])
+      (Pp.concat
+         [ Pp.verbatim v
+         ; Pp.space
+         ; Pp.concat_map ~sep:(Pp.seq (Pp.char ',') Pp.space) xs ~f:pp
+         ])
 ;;
 
 let to_string t = Format.asprintf "%a" Pp.to_fmt (pp t)

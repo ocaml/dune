@@ -9,18 +9,18 @@
   $ echo old-contents > x
   $ cat >dune <<EOF
   > (alias
-  >   (name a)
-  >   (deps x)
-  > )
+  >  (name a)
+  >  (deps x))
   > (rule
-  >   (alias b)
-  >   (deps (alias a))
-  >   (action (bash "echo -n \"running b: \"; cat x"))
-  > )
+  >  (alias b)
+  >  (deps (alias a))
+  >  (action (system "printf \"running b: \"; cat x")))
   > (rule
-  >   (deps (alias a))
-  >   (action (progn (bash "echo -n \"running b: \"; cat x") (with-stdout-to b (bash "cat x"))))
-  > )
+  >  (deps (alias a))
+  >  (action
+  >   (progn
+  >    (system "printf \"running b: \"; cat x")
+  >    (with-stdout-to b (system "cat x")))))
   > EOF
   $ dune build @b
   running b: old-contents
@@ -40,12 +40,11 @@ expanded when creating the sandbox:
   $ echo '(lang dune 2.8)' > dune-project
   $ dune clean
   $ dune build @b --sandbox copy 2>&1 | grep -v 'cd _build/.sandbox'
-  File "dune", line 5, characters 0-89:
-  5 | (rule
-  6 |   (alias b)
-  7 |   (deps (alias a))
-  8 |   (action (bash "echo -n \"running b: \"; cat x"))
-  9 | )
+  File "dune", line 4, characters 0-86:
+  4 | (rule
+  5 |  (alias b)
+  6 |  (deps (alias a))
+  7 |  (action (system "printf \"running b: \"; cat x")))
   running b: cat: x: No such file or directory
   $ cat >dune-project <<EOF
   > (lang dune 3.0)
@@ -55,22 +54,21 @@ expanded when creating the sandbox:
 Now test that including an alias into another alias includes its expansion:
   $ cat >dune <<EOF
   > (alias
-  >   (name a0)
-  >   (deps x)
-  > )
+  >  (name a0)
+  >  (deps x))
   > (alias
-  >   (name a)
-  >   (deps (alias a0))
-  > )
+  >  (name a)
+  >  (deps (alias a0)))
   > (rule
-  >   (alias b)
-  >   (deps (alias a))
-  >   (action (bash "echo -n \"running b: \"; cat x"))
-  > )
+  >  (alias b)
+  >  (deps (alias a))
+  >  (action (system "printf \"running b: \"; cat x")))
   > (rule
-  >   (deps (alias a))
-  >   (action (progn (bash "echo -n \"running b: \"; cat x") (with-stdout-to b (bash "cat x"))))
-  > )
+  >  (deps (alias a))
+  >  (action
+  >   (progn
+  >    (system "printf \"running b: \"; cat x")
+  >    (with-stdout-to b (system "cat x")))))
   > EOF
   $ rm -r _build
   $ echo old-contents > x

@@ -34,7 +34,7 @@ module type CACHE_ENTRY = sig
   val compare : t -> t -> int
 end
 
-module Cache(CacheEntry : CACHE_ENTRY) : sig
+module Cache (Monad : S.Monad)(CacheEntry : CACHE_ENTRY) : sig
   (** The cache is used in [build_problem], while the clauses are still being added. *)
   type t
 
@@ -53,7 +53,7 @@ module Cache(CacheEntry : CACHE_ENTRY) : sig
    * but [process] can be. In other words, [make] does whatever setup *must*
    * be done before anyone can use this cache entry, while [process] does
    * setup that can be done afterwards. *)
-  val lookup : t -> (CacheEntry.t -> (CacheEntry.value * (unit -> unit))) -> CacheEntry.t -> CacheEntry.value
+  val lookup : t -> (CacheEntry.t -> (CacheEntry.value * (unit -> unit Monad.t)) Monad.t) -> CacheEntry.t -> CacheEntry.value Monad.t
 
   val snapshot : t -> snapshot
   val get : CacheEntry.t -> snapshot -> CacheEntry.value option
@@ -69,12 +69,13 @@ end = struct
   let create () = ref M.empty
 
   let lookup table make key =
+    let open Monad.O in
     match M.find_opt key !table with
-    | Some x -> x
+    | Some x -> Monad.return x
     | None ->
-      let value, process = make key in
+      let* value, process = make key in
       table := M.add key value !table;
-      process ();
+      let+ () = process () in
       value
 
   let snapshot table = !table
@@ -90,7 +91,10 @@ end = struct
     ) m M.empty
 end
 
-module Make (Model : S.SOLVER_INPUT) = struct
+module Make (Monad : S.Monad) (Model : S.SOLVER_INPUT with type 'a monad = 'a Monad.t) = struct
+  open Monad.O
+  type 'a monad = 'a Monad.t
+
   (** We attach this data to each SAT variable. *)
   module SolverData =
     struct
@@ -222,8 +226,8 @@ module Make (Model : S.SOLVER_INPUT) = struct
       type value = impl_candidates
     end
 
-  module ImplCache = Cache(RoleEntry)
-  module CommandCache = Cache(CommandRoleEntry)
+  module ImplCache = Cache(Monad)(RoleEntry)
+  module CommandCache = Cache(Monad)(CommandRoleEntry)
 
   module RoleMap = ImplCache.M
 
@@ -331,7 +335,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
      @param dep_iface the required interface this binding targets *)
   let process_self_command sat lookup_command user_var dep_role name =
     (* Note: we only call this for self-bindings, so we could be efficient by selecting the exact command here... *)
-    let candidates = lookup_command (name, dep_role) in
+    let+ candidates = lookup_command (name, dep_role) in
     S.implies sat ~reason:"binding on command" user_var candidates#get_vars
 
   (* Process a dependency of [user_var]:
@@ -339,18 +343,19 @@ module Make (Model : S.SOLVER_INPUT) = struct
      - take just those that satisfy any restrictions in the dependency
      - ensure that we don't pick an incompatbile version if we select [user_var]
      - ensure that we do pick a compatible version if we select [user_var] (for "essential" dependencies only) *)
-  let process_dep sat lookup_impl lookup_command user_var dep =
+  let process_dep sat lookup_impl lookup_command user_var dep : unit Monad.t =
     let { Model.dep_role; dep_importance; dep_required_commands } = Model.dep_info dep in
     let dep_restrictions = Model.restrictions dep in
 
     (* Restrictions on the candidates *)
     let meets_restrictions impl = List.for_all (Model.meets_restriction impl) dep_restrictions in
-    let candidates = lookup_impl dep_role in
+    let* candidates = lookup_impl dep_role in
     let pass, fail = candidates#partition meets_restrictions in
 
     (* Dependencies on commands *)
-    dep_required_commands |> List.iter (fun name ->
-      let candidates = lookup_command (name, dep_role) in
+    let+ () =
+    dep_required_commands |> Monad.List.iter (fun name ->
+      let+ candidates = lookup_command (name, dep_role) in
 
       if dep_importance = `Essential then (
         S.implies sat ~reason:"dep on command" user_var candidates#get_vars
@@ -365,7 +370,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
          * a suitable command. *)
         S.implies sat ~reason:"opt dep on command" user_var (S.neg dep_iface_selected :: candidates#get_vars)
       );
-    );
+    ) in
 
     if dep_importance = `Essential then (
       S.implies sat ~reason:"essential dep" user_var pass     (* Must choose a suitable candidate *)
@@ -381,7 +386,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
 
   (* Add the implementations of an interface to the ImplCache (called the first time we visit it). *)
   let make_impl_clause sat ~dummy_impl replacements role =
-    let {Model.replacement; impls} = Model.implementations role in
+    let+ {Model.replacement; impls} = Model.implementations role in
 
     (* Insert dummy_impl (last) if we're trying to diagnose a problem. *)
     let impls =
@@ -407,7 +412,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
   (* Create a new CommandCache entry (called the first time we request this key). *)
   let make_commands_clause sat lookup_impl process_self_commands process_deps key =
     let (command, role) = key in
-    let impls = lookup_impl role in
+    let+ impls = lookup_impl role in
     let commands = impls#get_commands command in
     let make_provides_command (_impl, elem) =
       (* [var] will be true iff this <command> is selected. *)
@@ -423,11 +428,11 @@ module Make (Model : S.SOLVER_INPUT) = struct
         S.implies sat ~reason:"impl for command" command_var [impl_var];
         let deps, self_commands = Model.command_requires role command in
         (* Commands can depend on other commands in the same implementation *)
-        process_self_commands command_var role self_commands;
+        let* () = process_self_commands command_var role self_commands in
         (* Process command-specific dependencies *)
         process_deps command_var deps
       in
-      List.iter2 depend_on_impl vars commands
+      Monad.List.iter2 depend_on_impl vars commands
     )
 
   (** Starting from [root_req], explore all the feeds, commands and implementations we might need, adding
@@ -444,28 +449,30 @@ module Make (Model : S.SOLVER_INPUT) = struct
     let replacements = ref [] in
 
     let rec add_impls_to_cache role =
-      let clause, impls = make_impl_clause sat ~dummy_impl replacements role in
+      let+ clause, impls = make_impl_clause sat ~dummy_impl replacements role in
       (clause, fun () ->
-        impls |> List.iter (fun (impl_var, impl) ->
+        impls |> Monad.List.iter (fun (impl_var, impl) ->
           Machine_group.process machine_groups impl_var impl;
           Conflict_classes.process conflict_classes impl_var impl;
           let deps, self_commands = Model.requires role impl in
-          process_self_commands impl_var role self_commands;
+          let* () = process_self_commands impl_var role self_commands in
           process_deps impl_var deps
         )
       )
     and add_commands_to_cache key = make_commands_clause sat lookup_impl process_self_commands process_deps key
     and lookup_impl key = ImplCache.lookup impl_cache add_impls_to_cache key
     and lookup_command key = CommandCache.lookup command_cache add_commands_to_cache key
-    and process_self_commands user_var dep_role = List.iter (process_self_command sat lookup_command user_var dep_role)
-    and process_deps user_var = List.iter (process_dep sat lookup_impl lookup_command user_var)
+    and process_self_commands user_var dep_role = Monad.List.iter (process_self_command sat lookup_command user_var dep_role)
+    and process_deps user_var : _ -> unit Monad.t = Monad.List.iter (process_dep sat lookup_impl lookup_command user_var)
     in
 
+    let+ () =
     (* This recursively builds the whole problem up. *)
     begin match root_req with
-      | {Model.role; command = None} -> (lookup_impl role)#get_vars
-      | {Model.role; command = Some command} -> (lookup_command (command, role))#get_vars end
-    |> S.at_least_one sat ~reason:"need root";          (* Must get what we came for! *)
+      | {Model.role; command = None} -> let+ impl = (lookup_impl role) in impl#get_vars
+      | {Model.role; command = Some command} -> let+ command = (lookup_command (command, role)) in command#get_vars end
+    >>| S.at_least_one sat ~reason:"need root" (* Must get what we came for! *)
+    in 
 
     (* All impl_candidates and command_candidates have now been added, so snapshot the cache. *)
     let impl_clauses, command_clauses = ImplCache.snapshot impl_cache, CommandCache.snapshot command_cache in
@@ -538,7 +545,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
 
     let sat = S.create () in
     let dummy_impl = if closest_match then Some Model.dummy_impl else None in
-    let impl_clauses, command_clauses = build_problem root_req sat ~dummy_impl in
+    let+ impl_clauses, command_clauses = build_problem root_req sat ~dummy_impl in
 
     let lookup = function
       | {Model.role; command = None} -> (ImplCache.get_exn role impl_clauses :> candidates)

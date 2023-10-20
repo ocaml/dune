@@ -408,20 +408,24 @@ module Lock = struct
                ~solver_env_from_context
                ~sys_bindings_from_current_system
            in
-           let+ repos =
+           let* repos =
              get_repos repos solver_env ~opam_repository_path ~opam_repository_url
            in
-           match
-             Console.Status_line.with_overlay
-               (Constant (Pp.text "Solving for Build Plan"))
-               ~f:(fun () ->
-                 Dune_pkg.Opam_solver.solve_lock_dir
-                   solver_env
-                   version_preference
-                   repos
-                   ~local_packages
-                   ~experimental_translate_opam_filters)
-           with
+           let overlay =
+             Console.Status_line.add_overlay (Constant (Pp.text "Solving for Build Plan"))
+           in
+           Fiber.finalize
+             ~finally:(fun () ->
+               Console.Status_line.remove_overlay overlay;
+               Fiber.return ())
+             (fun () ->
+               Dune_pkg.Opam_solver.solve_lock_dir
+                 solver_env
+                 version_preference
+                 repos
+                 ~local_packages
+                 ~experimental_translate_opam_filters)
+           >>| function
            | Error (`Diagnostic_message message) -> Error (context_name, message)
            | Ok { lock_dir; files; _ } ->
              let summary_message =

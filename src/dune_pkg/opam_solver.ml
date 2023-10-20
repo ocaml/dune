@@ -35,14 +35,15 @@ module Context_for_dune = struct
     ; local_packages : OpamFile.OPAM.t OpamPackage.Name.Map.t
     ; solver_env : Solver_env.t
     ; dune_version : OpamPackage.Version.t
+    ; stats_updater : Solver_stats.Updater.t
     }
 
-  let create ~solver_env ~repos ~local_packages ~version_preference =
+  let create ~solver_env ~repos ~local_packages ~version_preference ~stats_updater =
     let dune_version =
       let major, minor = Dune_lang.Stanza.latest_version in
       OpamPackage.Version.of_string @@ sprintf "%d.%d" major minor
     in
-    { repos; version_preference; local_packages; solver_env; dune_version }
+    { repos; version_preference; local_packages; solver_env; dune_version; stats_updater }
   ;;
 
   type rejection = Unavailable
@@ -71,7 +72,9 @@ module Context_for_dune = struct
   ;;
 
   (* Substitute variables with their values *)
-  let resolve_solver_env (solver_env : Solver_env.t)
+  let resolve_solver_env
+    (solver_env : Solver_env.t)
+    (stats_updater : Solver_stats.Updater.t)
     : OpamTypes.filter -> OpamTypes.filter
     =
     OpamFilter.map_up (function
@@ -79,6 +82,7 @@ module Context_for_dune = struct
         (match Solver_env.Variable.of_string_opt (OpamVariable.to_string variable) with
          | None -> filter
          | Some variable ->
+           Solver_stats.Updater.expand_variable stats_updater variable;
            (match Solver_env.get solver_env variable with
             | Unset_sys -> filter
             | String string -> FString string))
@@ -94,7 +98,9 @@ module Context_for_dune = struct
     fun t opam ->
       let available = OpamFile.OPAM.available opam in
       match
-        let available_vars_resolved = resolve_solver_env t.solver_env available in
+        let available_vars_resolved =
+          resolve_solver_env t.solver_env t.stats_updater available
+        in
         eval_to_bool available_vars_resolved
       with
       | Ok available -> available
@@ -164,7 +170,7 @@ module Context_for_dune = struct
     let package_is_local =
       OpamPackage.Name.Map.mem (OpamPackage.name package) t.local_packages
     in
-    map_filters filtered_formula ~f:(resolve_solver_env t.solver_env)
+    map_filters filtered_formula ~f:(resolve_solver_env t.solver_env t.stats_updater)
     |> OpamFilter.filter_deps
          ~build:true
          ~post:false
@@ -634,13 +640,19 @@ let solve_lock_dir
   let is_local_package package =
     OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
   in
+  let stats_updater = Solver_stats.Updater.init () in
   let context =
     let local_packages =
       OpamPackage.Name.Map.map
         (fun (w : Opam_repo.With_file.t) -> w.opam_file)
         local_packages
     in
-    Context_for_dune.create ~solver_env ~repos ~version_preference ~local_packages
+    Context_for_dune.create
+      ~solver_env
+      ~repos
+      ~version_preference
+      ~local_packages
+      ~stats_updater
   in
   solve_package_list (OpamPackage.Name.Map.keys local_packages) context
   >>| Result.map ~f:(fun solution ->
@@ -672,7 +684,17 @@ let solve_lock_dir
           let name = Package_name.of_string "ocaml" in
           Option.some_if (Package_name.Map.mem pkgs_by_name name) (Loc.none, name)
         in
-        Lock_dir.create_latest_version pkgs_by_name ~ocaml ~repos:(Some repos)
+        let stats = Solver_stats.Updater.snapshot stats_updater in
+        let expanded_solver_variable_bindings =
+          Solver_stats.Expanded_variable_bindings.of_variable_set
+            stats.expanded_variables
+            solver_env
+        in
+        Lock_dir.create_latest_version
+          pkgs_by_name
+          ~ocaml
+          ~repos:(Some repos)
+          ~expanded_solver_variable_bindings
     in
     let files =
       opam_packages_to_lock

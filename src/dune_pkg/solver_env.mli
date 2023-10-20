@@ -48,7 +48,15 @@ module Variable : sig
     | Sys of Sys.t
     | Const of Const.t
 
+  val to_string : t -> string
   val of_string_opt : string -> t option
+
+  include Comparable_intf.S with type key := t
+
+  val equal : t -> t -> bool
+  val to_dyn : t -> Dyn.t
+  val decode : t Dune_lang.Decoder.t
+  val encode : t Dune_lang.Encoder.t
 end
 
 (** A variable environment used by the dependency solver to evaluate package

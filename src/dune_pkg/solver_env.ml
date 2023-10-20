@@ -90,6 +90,7 @@ module Variable = struct
       | `Opam_version -> "opam-version"
     ;;
 
+    let to_dyn t = Dyn.string (to_string t)
     let all = [ `Opam_version ]
     let of_string_opt s = List.find all ~f:(fun t -> String.equal s (to_string t))
 
@@ -113,15 +114,46 @@ module Variable = struct
     let bindings = { Bindings.opam_version = OpamVersion.to_string OpamVersion.current }
   end
 
-  type t =
-    | Sys of Sys.t
-    | Const of Const.t
+  module T = struct
+    type t =
+      | Sys of Sys.t
+      | Const of Const.t
 
-  let of_string_opt string =
-    match Sys.of_string_opt string with
-    | Some sys -> Some (Sys sys)
-    | None -> Const.of_string_opt string |> Option.map ~f:(fun const -> Const const)
-  ;;
+    let to_dyn = function
+      | Sys sys -> Dyn.variant "Sys" [ Sys.to_dyn sys ]
+      | Const const -> Dyn.variant "Const" [ Const.to_dyn const ]
+    ;;
+
+    let of_string_opt string =
+      match Sys.of_string_opt string with
+      | Some sys -> Some (Sys sys)
+      | None -> Const.of_string_opt string |> Option.map ~f:(fun const -> Const const)
+    ;;
+
+    let to_string = function
+      | Sys sys -> Sys.to_string sys
+      | Const const -> Const.to_string const
+    ;;
+
+    let compare a b = String.compare (to_string a) (to_string b)
+    let equal a b = String.equal (to_string a) (to_string b)
+
+    let decode =
+      let open Dune_lang.Decoder in
+      let+ loc, string = located string in
+      match of_string_opt string with
+      | Some t -> t
+      | None ->
+        User_error.raise
+          ~loc
+          [ Pp.textf "No such variable: %s" (String.maybe_quoted string) ]
+    ;;
+
+    let encode t = Encoder.string (to_string t)
+  end
+
+  include Comparable.Make (T)
+  include T
 end
 
 type t =

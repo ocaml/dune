@@ -53,7 +53,9 @@ let%expect_test "reproduce #2664" =
   [%expect
     {|
     Vbox
-      0,Seq
+      0,
+      Seq
+        Seq
           Seq
             Seq
               Seq
@@ -72,46 +74,27 @@ let%expect_test "reproduce #2664" =
                                         Seq
                                           Seq
                                             Seq
-                                              Seq
-                                                Nop,Tag [ Fg_blue ],Verbatim "1",
-                                              Tag
-                                                [ Fg_blue ],Verbatim "2",
-                                            Tag
-                                              [ Fg_blue ],Verbatim "3",Tag
-                                                                        [ Fg_blue
-                                                                        ],
-                                                                        Verbatim
-                                                                        "4",
-                                        Tag
-                                          [ Fg_blue ],Verbatim "5",Tag
-                                                                     [ Fg_blue ],
-                                                                     Verbatim
-                                                                       "6",
-                                    Tag
-                                      [ Fg_blue ],Verbatim "7",Tag
-                                                                 [ Fg_blue ],
-                                                                 Verbatim
-                                                                   "8",Tag
-                                                                        [ Fg_blue
-                                                                        ],
-                                                                        Verbatim
-                                                                        "9",
-                              Tag
-                                [ Fg_blue ],Verbatim "10",Tag
-                                                            [ Fg_blue ],Verbatim
-                                                                        "11",
-                          Tag
-                            [ Fg_blue ],Verbatim "12",Tag
-                                                        [ Fg_blue ],Verbatim "13",
-                      Tag
-                        [ Fg_blue ],Verbatim "14",Tag [ Fg_blue ],Verbatim "15",
-                  Tag
-                    [ Fg_blue ],Verbatim "16",Tag [ Fg_blue ],Verbatim "17",
-              Tag
-                [ Fg_blue ],Verbatim "18",Tag [ Fg_blue ],Verbatim "19",Tag
-                                                                        [ Fg_blue
-                                                                        ],Verbatim
-                                                                        "20" |}]
+                                              Nop,
+                                              Tag [ Fg_blue ], Verbatim "1",
+                                            Tag [ Fg_blue ], Verbatim "2",
+                                          Tag [ Fg_blue ], Verbatim "3",
+                                        Tag [ Fg_blue ], Verbatim "4",
+                                      Tag [ Fg_blue ], Verbatim "5",
+                                    Tag [ Fg_blue ], Verbatim "6",
+                                  Tag [ Fg_blue ], Verbatim "7",
+                                Tag [ Fg_blue ], Verbatim "8",
+                              Tag [ Fg_blue ], Verbatim "9",
+                            Tag [ Fg_blue ], Verbatim "10",
+                          Tag [ Fg_blue ], Verbatim "11",
+                        Tag [ Fg_blue ], Verbatim "12",
+                      Tag [ Fg_blue ], Verbatim "13",
+                    Tag [ Fg_blue ], Verbatim "14",
+                  Tag [ Fg_blue ], Verbatim "15",
+                Tag [ Fg_blue ], Verbatim "16",
+              Tag [ Fg_blue ], Verbatim "17",
+            Tag [ Fg_blue ], Verbatim "18",
+          Tag [ Fg_blue ], Verbatim "19",
+        Tag [ Fg_blue ], Verbatim "20" |}]
 ;;
 
 let%expect_test "Ansi_color.strip" =
@@ -146,7 +129,9 @@ let%expect_test "parse fg and bg colors" =
   [%expect
     {|
 Vbox
-  0,Seq
+  0,
+  Seq
+    Seq
       Seq
         Seq
           Seq
@@ -156,27 +141,18 @@ Vbox
                   Seq
                     Seq
                       Seq
-                        Seq
-                          Seq Nop,Verbatim "This is a ",Tag
-                                                          [ Fg_blue ],
-                                                          Verbatim
-                                                            "blue",Verbatim
-                                                                    " string with ",
-                      Tag
-                        [ Fg_red ],Verbatim "red",Verbatim " and ",Tag
-                                                                    [ Fg_green
-                                                                    ],
-                                                                    Verbatim
-                                                                    "green",
-                Verbatim
-                  " together with strings of a ",Tag
-                                                   [ Bg_blue ],Verbatim
-                                                                 "blue blackground",
-            Verbatim
-              " and ",Tag [ Bg_red ],Verbatim "red background",Verbatim
-                                                                 " and ",
-      Tag
-        [ Bg_green ],Verbatim "green background" |}]
+                        Seq Nop, Verbatim "This is a ",
+                        Tag [ Fg_blue ], Verbatim "blue",
+                      Verbatim " string with ",
+                    Tag [ Fg_red ], Verbatim "red",
+                  Verbatim " and ",
+                Tag [ Fg_green ], Verbatim "green",
+              Verbatim " together with strings of a ",
+            Tag [ Bg_blue ], Verbatim "blue blackground",
+          Verbatim " and ",
+        Tag [ Bg_red ], Verbatim "red background",
+      Verbatim " and ",
+    Tag [ Bg_green ], Verbatim "green background" |}]
 ;;
 
 let%expect_test "parse multiple fg and bg colors" =
@@ -191,16 +167,14 @@ let%expect_test "parse multiple fg and bg colors" =
   [%expect
     {|
 Vbox
-  0,Seq
+  0,
+  Seq
+    Seq
       Seq
-        Seq
-          Seq Nop,Verbatim "This text is ",Tag
-                                             [ Fg_blue; Bg_red ],Verbatim
-                                                                   "blue string with a red background",
-        Verbatim
-          " and ",Tag
-                    [ Fg_green; Bg_blue ],Verbatim
-                                            "green string with a blue background" |}]
+        Seq Nop, Verbatim "This text is ",
+        Tag [ Fg_blue; Bg_red ], Verbatim "blue string with a red background",
+      Verbatim " and ",
+    Tag [ Fg_green; Bg_blue ], Verbatim "green string with a blue background" |}]
 ;;
 
 let%expect_test "fg default overrides" =
@@ -215,15 +189,14 @@ let%expect_test "fg default overrides" =
   [%expect
     {|
   Vbox
-    0,Seq
+    0,
+    Seq
+      Seq
         Seq
-          Seq
-            Seq Nop,Verbatim "This text has a ",Tag
-                                                  [ Fg_blue ],Verbatim
-                                                                "blue foreground",
-          Verbatim
-            " but here it becomes the default foreground,",Verbatim
-                                                             " even together with another foreground modifier." |}]
+          Seq Nop, Verbatim "This text has a ",
+          Tag [ Fg_blue ], Verbatim "blue foreground",
+        Verbatim " but here it becomes the default foreground,",
+      Verbatim " even together with another foreground modifier." |}]
 ;;
 
 let%expect_test "bg default overrides" =
@@ -238,15 +211,14 @@ let%expect_test "bg default overrides" =
   [%expect
     {|
 Vbox
-  0,Seq
+  0,
+  Seq
+    Seq
       Seq
-        Seq
-          Seq Nop,Verbatim "This text has a ",Tag
-                                                [ Bg_blue ],Verbatim
-                                                              "blue background",
-        Verbatim
-          " but here it becomes the default background,",Verbatim
-                                                           " even together with another background modifier." |}]
+        Seq Nop, Verbatim "This text has a ",
+        Tag [ Bg_blue ], Verbatim "blue background",
+      Verbatim " but here it becomes the default background,",
+    Verbatim " even together with another background modifier." |}]
 ;;
 
 let%expect_test "parse 8-bit colors" =
@@ -263,7 +235,9 @@ let%expect_test "parse 8-bit colors" =
   [%expect
     {|
 Vbox
-  0,Seq
+  0,
+  Seq
+    Seq
       Seq
         Seq
           Seq
@@ -273,25 +247,18 @@ Vbox
                   Seq
                     Seq
                       Seq
-                        Seq
-                          Seq Nop,Verbatim "This is a ",Tag
-                                                          [ Fg_8_bit_color 33
-                                                          ],Verbatim "blue",
-                        Verbatim
-                          " string with ",Tag
-                                            [ Fg_8_bit_color 196 ],Verbatim
-                                                                    "red",
-                    Verbatim
-                      " and ",Tag [ Fg_8_bit_color 46 ],Verbatim "green",
-                Verbatim
-                  " together with strings of a ",Tag
-                                                   [ Bg_8_bit_color 33 ],
-                                                   Verbatim
-                                                     "blue blackground",
-            Verbatim
-              " and ",Tag [ Bg_8_bit_color 196 ],Verbatim "red background",
-        Verbatim
-          " and ",Tag [ Bg_8_bit_color 46 ],Verbatim "green background" |}]
+                        Seq Nop, Verbatim "This is a ",
+                        Tag [ Fg_8_bit_color 33 ], Verbatim "blue",
+                      Verbatim " string with ",
+                    Tag [ Fg_8_bit_color 196 ], Verbatim "red",
+                  Verbatim " and ",
+                Tag [ Fg_8_bit_color 46 ], Verbatim "green",
+              Verbatim " together with strings of a ",
+            Tag [ Bg_8_bit_color 33 ], Verbatim "blue blackground",
+          Verbatim " and ",
+        Tag [ Bg_8_bit_color 196 ], Verbatim "red background",
+      Verbatim " and ",
+    Tag [ Bg_8_bit_color 46 ], Verbatim "green background" |}]
 ;;
 
 let%expect_test "parse 24-bit colors" =
@@ -308,7 +275,9 @@ let%expect_test "parse 24-bit colors" =
   [%expect
     {|
     Vbox
-      0,Seq
+      0,
+      Seq
+        Seq
           Seq
             Seq
               Seq
@@ -318,31 +287,21 @@ let%expect_test "parse 24-bit colors" =
                       Seq
                         Seq
                           Seq
-                            Seq
-                              Seq Nop,Verbatim "This is a ",Tag
-                                                              [ Fg_24_bit_color
-                                                                  [ 255; 0; 0 ]
-                                                              ],Verbatim "blue",
-                            Verbatim
-                              " string with ",Tag
-                                                [ Fg_24_bit_color [ 0; 255; 0 ] ],
-                                                Verbatim
-                                                  "red",Verbatim " and ",
-                      Tag
-                        [ Fg_24_bit_color [ 0; 0; 255 ] ],Verbatim "green",
-                    Verbatim
-                      " together with strings of a ",Tag
-                                                       [ Bg_24_bit_color
-                                                           [ 255; 0; 0 ]
-                                                       ],Verbatim
-                                                           "blue blackground",
-                Verbatim
-                  " and ",Tag
-                            [ Bg_24_bit_color [ 0; 255; 0 ] ],Verbatim
-                                                                "red background",
-            Verbatim
-              " and ",Tag
-                        [ Bg_24_bit_color [ 0; 0; 255 ] ],Verbatim
-                                                            "green background"
+                            Seq Nop, Verbatim "This is a ",
+                            Tag
+                              [ Fg_24_bit_color [ 255; 0; 0 ] ],
+                              Verbatim "blue",
+                          Verbatim " string with ",
+                        Tag [ Fg_24_bit_color [ 0; 255; 0 ] ], Verbatim "red",
+                      Verbatim " and ",
+                    Tag [ Fg_24_bit_color [ 0; 0; 255 ] ], Verbatim "green",
+                  Verbatim " together with strings of a ",
+                Tag
+                  [ Bg_24_bit_color [ 255; 0; 0 ] ],
+                  Verbatim "blue blackground",
+              Verbatim " and ",
+            Tag [ Bg_24_bit_color [ 0; 255; 0 ] ], Verbatim "red background",
+          Verbatim " and ",
+        Tag [ Bg_24_bit_color [ 0; 0; 255 ] ], Verbatim "green background"
 |}]
 ;;

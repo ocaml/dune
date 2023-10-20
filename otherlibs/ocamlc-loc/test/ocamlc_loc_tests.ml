@@ -169,7 +169,7 @@ Error: Signature mismatch:
   [%expect
     {|
     >> error 0
-    { loc = { path = "test.ml"; line = Range 3,5; chars = Some (6, 3) }
+    { loc = { path = "test.ml"; line = Range 3, 5; chars = Some (6, 3) }
     ; message =
         "Signature mismatch:\n\
          Modules do not match:\n\
@@ -316,7 +316,7 @@ Error: Some record fields are undefined: signal_watcher
     >> error 0
     { loc =
         { path = "test/expect-tests/timer_tests.ml"
-        ; line = Range 6,10
+        ; line = Range 6, 10
         ; chars = Some (2, 3)
         }
     ; message = "Some record fields are undefined: signal_watcher"
@@ -573,7 +573,7 @@ Case
     >> error 0
     { loc =
         { path = "src/dune_engine/action.ml"
-        ; line = Range 34,96
+        ; line = Range 34, 96
         ; chars = Some (4, 64)
         }
     ; message =
@@ -586,7 +586,7 @@ Case
     >> error 1
     { loc =
         { path = "src/dune_engine/action.ml"
-        ; line = Range 291,315
+        ; line = Range 291, 315
         ; chars = Some (2, 22)
         }
     ; message =
@@ -599,7 +599,7 @@ Case
     >> error 2
     { loc =
         { path = "src/dune_engine/action.ml"
-        ; line = Range 339,363
+        ; line = Range 339, 363
         ; chars = Some (21, 24)
         }
     ; message =
@@ -612,7 +612,7 @@ Case
     >> error 3
     { loc =
         { path = "src/dune_engine/action.ml"
-        ; line = Range 391,414
+        ; line = Range 391, 414
         ; chars = Some (4, 70)
         }
     ; message =

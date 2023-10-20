@@ -714,7 +714,7 @@ end = struct
     iter ~files:Path.Build.Set.empty ~dirnames:Filename.Set.empty rules
   ;;
 
-  module Source_rules = struct
+  module Source_files_and_dirs = struct
     type t =
       { source_files : Path.Source.Set.t
       ; source_dirs : Filename.Set.t
@@ -723,8 +723,7 @@ end = struct
     let empty = { source_files = Path.Source.Set.empty; source_dirs = Filename.Set.empty }
   end
 
-  (* Compute all the copying rules from the source directory. *)
-  let rules_from_source_dir source_paths_to_ignore sub_dir =
+  let source_files_and_dirs source_paths_to_ignore sub_dir =
     (* Take into account the source files *)
     let+ source_files, source_dirs =
       let+ files, subdirs =
@@ -747,7 +746,7 @@ end = struct
       files, subdirs
     in
     (* Compile the rules and cleanup stale artifacts *)
-    { Source_rules.source_files; source_dirs }
+    { Source_files_and_dirs.source_files; source_dirs }
   ;;
 
   let descendants_to_keep
@@ -865,14 +864,14 @@ end = struct
       (* Compute the set of sources and targets promoted to the source tree that
          must not be copied to the build directory. *)
       (* Take into account the source files *)
-      let* { Source_rules.source_files; source_dirs } =
+      let* { source_files; source_dirs } =
         match context_type with
-        | Empty -> Memo.return Source_rules.empty
+        | Empty -> Memo.return Source_files_and_dirs.empty
         | With_sources ->
           let source_paths_to_ignore =
             source_paths_to_ignore ~dir build_dir_only_sub_dirs rules
           in
-          rules_from_source_dir source_paths_to_ignore sub_dir
+          source_files_and_dirs source_paths_to_ignore sub_dir
       in
       let copy_rules =
         let ctx_dir = Context_name.build_dir context_name in

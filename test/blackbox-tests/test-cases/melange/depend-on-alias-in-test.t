@@ -34,3 +34,14 @@ test folder, but only the empty folders structured is copied.
   > EOF
 
   $ dune build @foo
+
+Adding (expand_aliases_in_sandbox) does not affect it
+
+  $ cat <<EOF > dune-project
+  > (lang dune 3.8)
+  > (using melange 0.1)
+  > (expand_aliases_in_sandbox)
+  > EOF
+
+  $ dune build @foo
+

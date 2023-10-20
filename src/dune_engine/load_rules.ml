@@ -402,8 +402,6 @@ end = struct
       Appendable_list.to_list expansions)
   ;;
 
-  let disjoint set1 set2 = not (Path.Source.Set.exists set1 ~f:(Path.Source.Set.mem set2))
-
   let add_non_fallback_rules ~init ~source_files rules =
     List.fold_left rules ~init ~f:(fun acc (rule : Rule.t) ->
       match rule.mode with
@@ -425,7 +423,7 @@ end = struct
         if Path.Source.Set.is_subset source_files_for_targets ~of_:source_files
         then (* All targets are present *)
           acc
-        else if disjoint source_files_for_targets source_files
+        else if Path.Source.Set.are_disjoint source_files_for_targets source_files
         then (* No target is present *)
           rule :: acc
         else (

@@ -1249,6 +1249,11 @@ let init (builder : Builder.t) =
         }
   in
   Log.info [ Pp.textf "Shared cache: %s" (Config.Toggle.to_string config.cache_enabled) ];
+  Log.info
+    [ Pp.textf
+        "Shared cache location: %s"
+        (Path.to_string Dune_cache_storage.Layout.root_dir)
+    ];
   let action_runner =
     match builder.action_runner with
     | No -> None

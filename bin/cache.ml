@@ -80,16 +80,25 @@ let size =
     Cmd.info "size" ~doc ~man
   in
   Cmd.v info
-  @@ let+ machine_readble =
+  @@ let+ machine_readable =
        Arg.(
          value
          & flag
          & info [ "machine-readable" ] ~doc:"Outputs size as a plain number of bytes.")
      in
      let size = Dune_cache.Trimmer.overhead_size () in
-     if machine_readble
+     if machine_readable
      then User_message.print (User_message.make [ Pp.textf "%Ld" size ])
      else User_message.print (User_message.make [ Pp.textf "%s" (Bytes_unit.pp size) ])
+;;
+
+let clear =
+  let info =
+    let doc = "Clear the Dune cache." in
+    let man = [ `P "Remove any traces of the Dune cache." ] in
+    Cmd.info "clear" ~doc ~man
+  in
+  Cmd.v info @@ Term.(const Dune_cache_storage.clear $ const ())
 ;;
 
 let command =
@@ -104,5 +113,5 @@ let command =
     in
     Cmd.info "cache" ~doc ~man
   in
-  Cmd.group info [ trim; size ]
+  Cmd.group info [ trim; size; clear ]
 ;;

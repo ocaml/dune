@@ -77,7 +77,7 @@ type t =
   ; cache_config : Dune_cache.Config.t
   ; cache_debug_flags : Cache_debug_flags.t
   ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t
-  ; execution_parameters : dir:Path.Source.t -> Execution_parameters.t Memo.t
+  ; execution_parameters : dir:Path.Build.t -> Execution_parameters.t Memo.t
   ; source_tree : (module Source_tree)
   ; action_runner : Action_exec.input -> Action_runner.t option
   ; action_runners : unit -> Action_runner.t list

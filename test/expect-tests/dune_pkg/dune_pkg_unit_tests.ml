@@ -202,7 +202,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   ; source = Some External_copy External "/tmp/a"
                   ; extra_sources =
                       [ ("one", External_copy External "/tmp/a")
-                      ; ("two", Fetch "randomurl",None)
+                      ; ("two", Fetch "randomurl", None)
                       ]
                   }
               ; exported_env = [ { op = "="; var = "foo"; value = "bar" } ]
@@ -218,8 +218,9 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   ; source =
                       Some
                         Fetch
-                          "https://github.com/foo/b",Some
-                                                       "sha256=adfc38f14c0188a2ad80d61451d011d27ab8839b717492d7ad42f7cb911c54c3"
+                          "https://github.com/foo/b",
+                          Some
+                            "sha256=adfc38f14c0188a2ad80d61451d011d27ab8839b717492d7ad42f7cb911c54c3"
                   ; extra_sources = []
                   }
               ; exported_env = []
@@ -235,7 +236,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   { name = "c"
                   ; version = "0.2"
                   ; dev = false
-                  ; source = Some Fetch "https://github.com/foo/c",None
+                  ; source = Some Fetch "https://github.com/foo/c", None
                   ; extra_sources = []
                   }
               ; exported_env = []
@@ -247,7 +248,8 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
         ; used =
             Some
               [ opam_repo_serializable
-                  Some Git_hash "95cf548dc","well-known-repo"
+                  Some Git_hash "95cf548dc",
+                  "well-known-repo"
               ]
         }
     } |}]

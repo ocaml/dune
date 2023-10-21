@@ -26,15 +26,18 @@ let implicit_default_alias dir =
 
 let execution_parameters =
   let f path =
-    let open Memo.O in
-    let+ dir = Source_tree.nearest_dir path
-    and+ ep = Execution_parameters.default in
-    Dune_project.update_execution_parameters (Source_tree.Dir.project dir) ep
+    match Path.Build.drop_build_context path with
+    | None -> Dune_engine.Execution_parameters.default
+    | Some path ->
+      let open Memo.O in
+      let+ dir = Source_tree.nearest_dir path
+      and+ ep = Execution_parameters.default in
+      Dune_project.update_execution_parameters (Source_tree.Dir.project dir) ep
   in
   let memo =
     Memo.create
       "execution-parameters-of-dir"
-      ~input:(module Path.Source)
+      ~input:(module Path.Build)
       ~cutoff:Execution_parameters.equal
       f
   in

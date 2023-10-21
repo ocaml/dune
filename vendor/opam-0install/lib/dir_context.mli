@@ -3,7 +3,9 @@
     It also does not get any opam variables from the environment - instead, the caller
     must provide them explicitly. *)
 
-include S.CONTEXT
+module Make (Monad : S.Monad) : sig
+
+include S.CONTEXT with type 'a monad := 'a Monad.t
 
 val std_env :
   ?ocaml_native:bool ->
@@ -42,3 +44,4 @@ val create :
     up-to-date version of each package, if a solution exists. This is [false] by
     default.
     @before 0.4 the [prefer_oldest] parameter did not exist. *)
+end

@@ -1,6 +1,7 @@
 (* Note: changes to this file may require similar changes to lib-cudf/model.ml *)
 
-module Make (Context : S.CONTEXT) = struct
+module Make (Monad : S.Monad) (Context : S.CONTEXT with type 'a monad = 'a Monad.t) = struct
+  type 'a monad = 'a Monad.t
   (* Note: [OpamFormula.neg] doesn't work in the [Empty] case, so we just
      record whether to negate the result here. *)
   type restriction = {
@@ -63,6 +64,8 @@ module Make (Context : S.CONTEXT) = struct
   end
 
   let role context name = Real { context; name }
+
+  open Monad.O
 
   let fresh_id =
     let i = ref 0 in
@@ -172,12 +175,12 @@ module Make (Context : S.CONTEXT) = struct
 
   (* Get all the candidates for a role. *)
   let implementations = function
-    | Virtual (_, impls) -> { impls; replacement = None }
+    | Virtual (_, impls) -> Monad.return { impls; replacement = None }
     | Real role ->
       let context = role.context in
-      let impls =
+      let+ impls =
         Context.candidates context role.name
-        |> List.filter_map (function
+        >>| List.filter_map (function
             | _, Error _rejection -> None
             | version, Ok opam ->
               let pkg = OpamPackage.create role.name version in
@@ -214,12 +217,12 @@ module Make (Context : S.CONTEXT) = struct
 
   let rejects role =
     match role with
-    | Virtual _ -> [], []
+    | Virtual _ -> Monad.return ([], [])
     | Real role ->
       let context = role.context in
-      let rejects =
+      let+ rejects =
         Context.candidates context role.name
-        |> List.filter_map (function
+        >>| List.filter_map (function
             | _, Ok _ -> None
             | version, Error reason ->
               let pkg = OpamPackage.create role.name version in

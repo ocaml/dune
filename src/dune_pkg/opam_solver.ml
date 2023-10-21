@@ -1,6 +1,27 @@
 open Import
+open Fiber.O
+
+module Monad : Opam_0install.S.Monad with type 'a t = 'a Fiber.t = struct
+  type 'a t = 'a Fiber.t
+
+  module O = Fiber.O
+
+  let return a = Fiber.return a
+
+  module Seq = struct
+    let parallel_map f t =
+      Fiber.parallel_map (List.of_seq t) ~f |> Fiber.map ~f:List.to_seq
+    ;;
+  end
+
+  module List = struct
+    let iter f x = Fiber.sequential_iter x ~f
+    let iter2 f x y = Fiber.sequential_iter (List.combine x y) ~f:(fun (x, y) -> f x y)
+  end
+end
 
 module Context_for_dune = struct
+  type 'a monad = 'a Monad.t
   type filtered_formula = OpamTypes.filtered_formula
   type filter = OpamTypes.filter
 
@@ -98,6 +119,7 @@ module Context_for_dune = struct
   ;;
 
   let candidates t name =
+    let+ () = Fiber.return () in
     match OpamPackage.Name.Map.find_opt name t.local_packages with
     | Some opam_file ->
       let version =
@@ -153,7 +175,7 @@ module Context_for_dune = struct
   ;;
 end
 
-module Solver = Opam_0install.Solver.Make (Context_for_dune)
+module Solver = Opam_0install.Solver.Make (Monad) (Context_for_dune)
 
 let is_valid_global_variable_name = function
   | "root" -> false
@@ -533,26 +555,36 @@ let opam_package_to_lock_file_pkg
 ;;
 
 let solve_package_list local_package_names context =
-  let result =
-    try
+  let* result =
+    Fiber.collect_errors (fun () ->
       (* [Solver.solve] returns [Error] when it's unable to find a solution to
          the dependencies, but can also raise exceptions, for example if opam
          is unable to parse an opam file in the package repository. To prevent
          an unexpected opam exception from crashing dune, we catch all
          exceptions raised by the solver and report them as [User_error]s
          instead. *)
-      Solver.solve context local_package_names
-    with
-    | OpamPp.(Bad_format _ | Bad_format_list _ | Bad_version _) as bad_format ->
-      User_error.raise [ Pp.text (OpamPp.string_of_bad_format bad_format) ]
-    | unexpected_exn ->
-      Code_error.raise
-        "Unexpected exception raised while solving dependencies"
-        [ "exception", Exn.to_dyn unexpected_exn ]
+      Solver.solve context local_package_names)
+    >>| function
+    | Ok (Ok res) -> Ok res
+    | Ok (Error e) -> Error (`Diagnostics e)
+    | Error [] -> assert false
+    | Error (exn :: _) ->
+      (* CR-rgrinberg: this needs to be handled right *)
+      Error (`Exn exn.exn)
   in
   match result with
-  | Error e -> Error (`Diagnostic_message (Solver.diagnostics e |> Pp.text))
-  | Ok packages -> Ok (Solver.packages_of_result packages)
+  | Error (`Exn exn) ->
+    (match exn with
+     | OpamPp.(Bad_format _ | Bad_format_list _ | Bad_version _) as bad_format ->
+       User_error.raise [ Pp.text (OpamPp.string_of_bad_format bad_format) ]
+     | unexpected_exn ->
+       Code_error.raise
+         "Unexpected exception raised while solving dependencies"
+         [ "exception", Exn.to_dyn unexpected_exn ])
+  | Error (`Diagnostics e) ->
+    let+ diagnostics = Solver.diagnostics e in
+    Error (`Diagnostic_message (Pp.text diagnostics))
+  | Ok packages -> Fiber.return @@ Ok (Solver.packages_of_result packages)
 ;;
 
 (* Scan a path recursively down retrieving a list of all files together with their
@@ -611,7 +643,7 @@ let solve_lock_dir
     Context_for_dune.create ~solver_env ~repos ~version_preference ~local_packages
   in
   solve_package_list (OpamPackage.Name.Map.keys local_packages) context
-  |> Result.map ~f:(fun solution ->
+  >>| Result.map ~f:(fun solution ->
     (* don't include local packages in the lock dir *)
     let all_package_names =
       List.map solution ~f:OpamPackage.name |> OpamPackage.Name.Set.of_list

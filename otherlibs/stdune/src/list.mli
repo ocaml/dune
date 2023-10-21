@@ -60,3 +60,5 @@ val max : 'a list -> f:('a -> 'a -> Ordering.t) -> 'a option
 val mem : 'a list -> 'a -> equal:('a -> 'a -> bool) -> bool
 val split_while : 'a t -> f:('a -> bool) -> 'a t * 'a t
 val truncate : max_length:int -> 'a t -> [> `Not_truncated of 'a t | `Truncated of 'a t ]
+val of_seq : 'a Seq.t -> 'a t
+val to_seq : 'a t -> 'a Seq.t

@@ -805,15 +805,18 @@ module Action_expander = struct
     }
   ;;
 
-  let expand context (pkg : Pkg.t) action =
-    let* expander = expander context pkg in
-    let+ action =
-      expand action ~expander >>| Action.chdir (Path.build pkg.paths.source_dir)
-    in
-    (* TODO copying is needed because patch/substitute might be present *)
-    Action.Full.make ~sandbox:Sandbox_config.needs_sandboxing action
-    |> Action_builder.return
-    |> Action_builder.with_no_targets
+  let expand =
+    let sandbox = Sandbox_mode.Set.singleton Sandbox_mode.copy in
+    fun context (pkg : Pkg.t) action ->
+      let+ action =
+        let* expander = expander context pkg in
+        expand action ~expander >>| Action.chdir (Path.build pkg.paths.source_dir)
+      in
+      (* TODO copying is needed for build systems that aren't dune and those
+         with an explicit install step *)
+      Action.Full.make ~sandbox action
+      |> Action_builder.return
+      |> Action_builder.with_no_targets
   ;;
 
   let build_command context (pkg : Pkg.t) =

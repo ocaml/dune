@@ -676,7 +676,13 @@ end = struct
     let+ files =
       let+ map = Stanzas_to_entries.stanzas_to_entries sctx in
       Package.Name.Map.Multi.find map pkg_name
-      |> List.map ~f:(fun (e : Install.Entry.Sourced.t) -> e.entry.section, e.entry.dst)
+      |> List.map ~f:(fun (e : Install.Entry.Sourced.t) ->
+        let kind =
+          match e.entry.kind with
+          | `File -> `File
+          | `Directory | `Source_tree -> `Dir
+        in
+        e.entry.section, (kind, e.entry.dst))
       |> Section.Map.of_list_multi
       |> Section.Map.to_list
     in

@@ -106,6 +106,21 @@ let add_sandbox_config acc (dep : Dep_conf.t) =
   | _ -> acc
 ;;
 
+let rec dir_contents ~loc d =
+  match Path.Untracked.readdir_unsorted_with_kinds d with
+  | Error e -> Unix_error.Detailed.raise e
+  | Ok contents ->
+    List.concat_map contents ~f:(fun (entry, kind) ->
+      let path = Path.relative d entry in
+      match kind with
+      | S_REG -> [ path ]
+      | S_DIR -> dir_contents ~loc path
+      | _ ->
+        User_error.raise
+          ~loc
+          [ Pp.text "Encountered a special file while expanding dependency." ])
+;;
+
 let rec dep expander : Dep_conf.t -> _ = function
   | Include s ->
     (* TODO this is wrong. we shouldn't allow bindings here if we are in an
@@ -182,12 +197,12 @@ let rec dep expander : Dep_conf.t -> _ = function
            let version =
              Dune_project.dune_version @@ Scope.project @@ Expander.scope expander
            in
+           let loc = String_with_vars.loc p in
            if version < (2, 9)
            then
              Action_builder.fail
                { fail =
                    (fun () ->
-                     let loc = String_with_vars.loc p in
                      User_error.raise
                        ~loc
                        [ Pp.textf
@@ -200,8 +215,11 @@ let rec dep expander : Dep_conf.t -> _ = function
                List.concat_map
                  ~f:(fun (s, l) ->
                    let dir = Section.Map.find_exn pkg.sections s in
-                   List.map l ~f:(fun d ->
-                     Path.relative dir (Install.Entry.Dst.to_string d)))
+                   List.concat_map l ~f:(fun (kind, d) ->
+                     let path = Path.relative dir (Install.Entry.Dst.to_string d) in
+                     match kind with
+                     | `File -> [ path ]
+                     | `Dir -> dir_contents ~loc path))
                  pkg.files
              in
              Action_builder.paths files)

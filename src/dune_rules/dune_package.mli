@@ -46,9 +46,7 @@ module Entry : sig
   val to_dyn : t Dyn.builder
 end
 
-type file =
-  | File of Install.Entry.Dst.t
-  | Dir of Install.Entry.Dst.t
+type path = [ `File | `Dir ] * Install.Entry.Dst.t
 
 type t =
   { name : Package.Name.t
@@ -57,7 +55,7 @@ type t =
   ; sections : Path.t Section.Map.t
   ; sites : Section.t Site.Map.t
   ; dir : Path.t
-  ; files : (Section.t * file list) list
+  ; files : (Section.t * path list) list
   }
 
 val to_dyn : t Dyn.builder

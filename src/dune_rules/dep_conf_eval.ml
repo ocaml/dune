@@ -215,11 +215,11 @@ let rec dep expander : Dep_conf.t -> _ = function
                List.concat_map
                  ~f:(fun (s, l) ->
                    let dir = Section.Map.find_exn pkg.sections s in
-                   List.concat_map l ~f:(function
-                     | File d -> [ Path.relative dir (Install.Entry.Dst.to_string d) ]
-                     | Dir d ->
-                       let root = Path.relative dir (Install.Entry.Dst.to_string d) in
-                       dir_contents ~loc root))
+                   List.concat_map l ~f:(fun (kind, d) ->
+                     let path = Path.relative dir (Install.Entry.Dst.to_string d) in
+                     match kind with
+                     | `File -> [ path ]
+                     | `Dir -> dir_contents ~loc path))
                  pkg.files
              in
              Action_builder.paths files)

@@ -21,6 +21,7 @@ module Make (Key : Map_intf.Key) (M : Map_intf.S with type key = Key.t) = struct
   let remove t x = remove x t
   let compare a b = Ordering.of_int (compare a b)
   let is_subset t ~of_ = subset t of_
+  let are_disjoint a b = not (exists a ~f:(mem b))
   let iter t ~f = iter t ~f
   let map t ~f = map t ~f
   let fold t ~init ~f = fold t ~init ~f
@@ -102,6 +103,7 @@ module Of_map (Key : Map_intf.Key) (Map : Map_intf.S with type key = Key.t) = st
     | exception Not_a_subset -> false
   ;;
 
+  let are_disjoint a b = not (Map.existsi a ~f:(fun k () -> mem b k))
   let iter t ~f = Map.iteri t ~f:(fun k () -> f k)
   let fold t ~init ~f = Map.foldi t ~init ~f:(fun k () acc -> f k acc)
   let map t ~f = fold t ~init:empty ~f:(fun x acc -> add acc (f x))

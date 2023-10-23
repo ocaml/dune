@@ -402,10 +402,10 @@ end = struct
       Appendable_list.to_list expansions)
   ;;
 
-  let filter_out_fallback_rules ~source_files rules =
-    List.filter rules ~f:(fun (rule : Rule.t) ->
+  let add_non_fallback_rules ~init ~source_files rules =
+    List.fold_left rules ~init ~f:(fun acc (rule : Rule.t) ->
       match rule.mode with
-      | Standard | Promote _ | Ignore_source_files -> true
+      | Standard | Promote _ | Ignore_source_files -> rule :: acc
       | Fallback ->
         let source_files_for_targets =
           if not (Path.Build.Set.is_empty rule.targets.dirs)
@@ -422,11 +422,10 @@ end = struct
         in
         if Path.Source.Set.is_subset source_files_for_targets ~of_:source_files
         then (* All targets are present *)
-          false
-        else if Path.Source.Set.is_empty
-                  (Path.Source.Set.inter source_files_for_targets source_files)
+          acc
+        else if Path.Source.Set.are_disjoint source_files_for_targets source_files
         then (* No target is present *)
-          true
+          rule :: acc
         else (
           let absent_targets =
             Path.Source.Set.diff source_files_for_targets source_files
@@ -668,10 +667,10 @@ end = struct
 
   (* Compute source paths ignored by specific rules *)
   let source_paths_to_ignore ~dir build_dir_only_sub_dirs rules =
-    List.fold_left
-      rules
-      ~init:{ files = Path.Build.Set.empty; dirnames = Filename.Set.empty }
-      ~f:(fun acc { Rule.targets; mode; loc; _ } ->
+    let rec iter ~files ~dirnames rules =
+      match rules with
+      | [] -> { files; dirnames }
+      | { Rule.targets; mode; loc; _ } :: rules ->
         let target_dirnames =
           lazy
             (Path.Build.Set.to_list_map ~f:Path.Build.basename targets.dirs
@@ -688,47 +687,43 @@ end = struct
          | None -> ()
          | Some target_name ->
            report_rule_internal_dir_conflict (Path.Build.basename target_name) loc);
-        match mode with
-        | Standard | Fallback -> acc
-        | Ignore_source_files ->
-          { files = Path.Build.Set.union acc.files targets.files
-          ; dirnames = Filename.Set.union acc.dirnames (Lazy.force target_dirnames)
-          }
-        | Promote { only; _ } ->
-          (* Note that the [only] predicate applies to the files inside the
-             directory targets rather than to directory names themselves. *)
-          let target_files =
-            match only with
-            | None -> targets.files
-            | Some pred ->
-              let is_promoted file =
-                Predicate.test pred (Path.reach (Path.build file) ~from:(Path.build dir))
-              in
-              Path.Build.Set.filter targets.files ~f:is_promoted
-          in
-          { files = Path.Build.Set.union acc.files target_files
-          ; dirnames = Filename.Set.union acc.dirnames (Lazy.force target_dirnames)
-          })
+        (match mode with
+         | Standard | Fallback -> iter ~files ~dirnames rules
+         | Ignore_source_files ->
+           iter
+             ~files:(Path.Build.Set.union files targets.files)
+             ~dirnames:(Filename.Set.union dirnames (Lazy.force target_dirnames))
+             rules
+         | Promote { only; _ } ->
+           (* Note that the [only] predicate applies to the files inside the
+              directory targets rather than to directory names themselves. *)
+           let target_files =
+             match only with
+             | None -> targets.files
+             | Some pred ->
+               let is_promoted file =
+                 Predicate.test pred (Path.reach (Path.build file) ~from:(Path.build dir))
+               in
+               Path.Build.Set.filter targets.files ~f:is_promoted
+           in
+           iter
+             ~files:(Path.Build.Set.union files target_files)
+             ~dirnames:(Filename.Set.union dirnames (Lazy.force target_dirnames))
+             rules)
+    in
+    iter ~files:Path.Build.Set.empty ~dirnames:Filename.Set.empty rules
   ;;
 
-  module Source_rules = struct
+  module Source_files_and_dirs = struct
     type t =
       { source_files : Path.Source.Set.t
       ; source_dirs : Filename.Set.t
-      ; copy_rules : Rule.t list
       }
 
-    let empty =
-      { source_files = Path.Source.Set.empty
-      ; source_dirs = Filename.Set.empty
-      ; copy_rules = []
-      }
-    ;;
+    let empty = { source_files = Path.Source.Set.empty; source_dirs = Filename.Set.empty }
   end
 
-  (* Compute all the copying rules from the source directory. *)
-  let rules_from_source_dir source_paths_to_ignore (context_name : Context_name.t) sub_dir
-    =
+  let source_files_and_dirs source_paths_to_ignore sub_dir =
     (* Take into account the source files *)
     let+ source_files, source_dirs =
       let+ files, subdirs =
@@ -751,11 +746,7 @@ end = struct
       files, subdirs
     in
     (* Compile the rules and cleanup stale artifacts *)
-    let copy_rules =
-      let ctx_dir = Context_name.build_dir context_name in
-      create_copy_rules ~ctx_dir ~non_target_source_files:source_files
-    in
-    { Source_rules.source_files; source_dirs; copy_rules }
+    { Source_files_and_dirs.source_files; source_dirs }
   ;;
 
   let descendants_to_keep
@@ -873,27 +864,28 @@ end = struct
       (* Compute the set of sources and targets promoted to the source tree that
          must not be copied to the build directory. *)
       (* Take into account the source files *)
-      let* { Source_rules.source_files; source_dirs; copy_rules } =
+      let* { source_files; source_dirs } =
         match context_type with
-        | Empty -> Memo.return Source_rules.empty
+        | Empty -> Memo.return Source_files_and_dirs.empty
         | With_sources ->
           let source_paths_to_ignore =
             source_paths_to_ignore ~dir build_dir_only_sub_dirs rules
           in
-          rules_from_source_dir source_paths_to_ignore context_name sub_dir
+          source_files_and_dirs source_paths_to_ignore sub_dir
+      in
+      let copy_rules =
+        let ctx_dir = Context_name.build_dir context_name in
+        create_copy_rules ~ctx_dir ~non_target_source_files:source_files
       in
       (* Compile the rules and cleanup stale artifacts *)
       let rules =
-        let rules =
-          (* Filter out fallback rules *)
-          if Path.Source.Set.is_empty source_files
-          then
-            (* If there are no source files to copy, fallback rules are
-               automatically kept *)
-            rules
-          else filter_out_fallback_rules ~source_files rules
-        in
-        copy_rules @ rules
+        (* Filter out fallback rules *)
+        if Path.Source.Set.is_empty source_files
+        then
+          (* If there are no source files to copy, fallback rules are
+             automatically kept *)
+          rules
+        else add_non_fallback_rules ~init:copy_rules ~source_files rules
       in
       let* descendants_to_keep =
         descendants_to_keep build_dir build_dir_only_sub_dirs ~source_dirs rules_produced

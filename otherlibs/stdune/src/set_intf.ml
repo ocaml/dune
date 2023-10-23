@@ -15,6 +15,7 @@ module type S = sig
   val compare : t -> t -> Ordering.t
   val equal : t -> t -> bool
   val is_subset : t -> of_:t -> bool
+  val are_disjoint : t -> t -> bool
   val iter : t -> f:(elt -> unit) -> unit
   val map : t -> f:(elt -> elt) -> t
   val fold : t -> init:'a -> f:(elt -> 'a -> 'a) -> 'a

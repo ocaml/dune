@@ -25,6 +25,9 @@ module Variable : sig
       (** A mapping from system environment variables to their values *)
       type t
 
+      val to_dyn : t -> Dyn.t
+      val decode : t Dune_sexp.Decoder.t
+      val equal : t -> t -> bool
       val empty : t
       val set : t -> sys_var -> string -> t
       val get : t -> sys_var -> string option
@@ -57,15 +60,13 @@ end
     environment as dune does not give users access to those variables.. *)
 type t
 
+val create : sys:Variable.Sys.Bindings.t -> t
 val default : t
 val decode : t Dune_sexp.Decoder.t
 val to_dyn : t -> Dyn.t
 val equal : t -> t -> bool
 val sys : t -> Variable.Sys.Bindings.t
 val set_sys : t -> Variable.Sys.Bindings.t -> t
-
-(** [repos t] returns the selected repository names in priority order *)
-val repos : t -> Workspace.Repository.Name.t list
 
 (** A human-readible summary of the variable environment *)
 val pp : t -> 'a Pp.t

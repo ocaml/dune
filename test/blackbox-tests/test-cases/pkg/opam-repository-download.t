@@ -137,8 +137,7 @@ The repository can also be injected via the dune-workspace file
   > (context
   >  (default
   >   (name default)
-  >   (solver_env
-  >    (repositories foo))))
+  >   (repositories foo)))
   > EOF
   $ mkdir dune-workspace-cache
   $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock

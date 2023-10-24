@@ -38,8 +38,7 @@ We have to define both repositories in the workspace, but will only use `new`.
   > (context
   >  (default
   >   (name default)
-  >   (solver_env
-  >    (repositories new))))
+  >   (repositories new)))
   > EOF
 
   $ cat > dune-project <<EOF
@@ -73,8 +72,7 @@ solution:
   > (context
   >  (default
   >   (name default)
-  >   (solver_env
-  >    (repositories old))))
+  >   (repositories old)))
   > EOF
  
   $ rm -r dune-workspace-cache && mkdir dune-workspace-cache
@@ -96,8 +94,7 @@ package:
   > (context
   >  (default
   >   (name default)
-  >   (solver_env
-  >    (repositories new old))))
+  >   (repositories new old)))
   > EOF
 
   $ rm -r dune-workspace-cache && mkdir dune-workspace-cache
@@ -120,8 +117,7 @@ older version of foo:
   > (context
   >  (default
   >   (name default)
-  >   (solver_env
-  >    (repositories new old \ new))))
+  >   (repositories new old \ new)))
   > EOF
 
   $ rm -r dune-workspace-cache && mkdir dune-workspace-cache

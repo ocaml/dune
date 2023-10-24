@@ -2,6 +2,7 @@ This checks what happens when a file available in the cache is used in a directo
 
   $ export DUNE_CACHE_ROOT=$PWD/.cache
   $ export DUNE_CACHE=enabled
+  $ . ./helpers.sh
 
   $ cat > dune-project << EOF
   > (lang dune 3.11)
@@ -32,11 +33,6 @@ This checks what happens when a file available in the cache is used in a directo
 
 We will check whether an entry is linked from the cache. This corresponds to a
 file with more than one link.
-
-  $ is_linked() {
-  >   nlinks=$(dune_cmd stat hardlinks $1)
-  >   [ $nlinks -gt 1 ] && echo linked || echo not linked
-  > }
 
 We prime the cache with the file:
 

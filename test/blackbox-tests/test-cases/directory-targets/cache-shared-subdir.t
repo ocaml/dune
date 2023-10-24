@@ -2,6 +2,7 @@ We create 2 directory targets which share a whole subdirectory.
 
   $ export DUNE_CACHE_ROOT=$PWD/.cache
   $ export DUNE_CACHE=enabled
+  $ . ./helpers.sh
 
   $ cat > dune-project << EOF
   > (lang dune 3.11)
@@ -38,11 +39,6 @@ We create 2 directory targets which share a whole subdirectory.
   $ dune build d1/ d2/
 
 We expect the targets to be linked in the shared cache.
-
-  $ is_linked() {
-  >   nlinks=$(dune_cmd stat hardlinks $1)
-  >   [ $nlinks -gt 1 ] && echo linked || echo not linked
-  > }
 
   $ is_linked _build/default/d1/shared1/a
   not linked

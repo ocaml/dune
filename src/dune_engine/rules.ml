@@ -148,12 +148,11 @@ module Produce = struct
         }
     ;;
 
-    let add_action t ~context ~loc action =
+    let add_action t ~loc action =
       let action =
         let open Action_builder.O in
         let+ action = action in
-        { Rule.Anonymous_action.context = Some context
-        ; action
+        { Rule.Anonymous_action.action
         ; loc
         ; dir = Alias.dir t
         ; alias = Some (Alias.name t)

@@ -40,9 +40,9 @@ never built [target1] before.
   $ dune build --config-file=config target1 --debug-cache=shared,workspace-local \
   >   2>&1 | grep '_build/default/source\|_build/default/target'
   Workspace-local cache miss: _build/default/source: never seen this target before
-  Shared cache miss [9acd3a08d49c004c7c4af47984604b5c] (_build/default/source): not found in cache
+  Shared cache miss [d008bb41344a7d0d53972220079cbb8c] (_build/default/source): not found in cache
   Workspace-local cache miss: _build/default/target1: never seen this target before
-  Shared cache miss [c8ba5d0ce97e5b84d90b24999e54d106] (_build/default/target1): not found in cache
+  Shared cache miss [b13d2ba64fcb9361d4fe1b3b094f2f82] (_build/default/target1): not found in cache
 
   $ dune_cmd stat hardlinks _build/default/source
   1

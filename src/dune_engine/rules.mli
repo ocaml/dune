@@ -74,14 +74,9 @@ module Produce : sig
         [alias]. *)
     val add_deps : t -> ?loc:Stdune.Loc.t -> unit Action_builder.t -> unit Memo.t
 
-    (** [add_action alias ~context ~loc action] arrange things so that [action]
+    (** [add_action alias ~loc action] arrange things so that [action]
         is executed as part of the build of alias [alias]. *)
-    val add_action
-      :  t
-      -> context:Build_context.t
-      -> loc:Loc.t
-      -> Action.Full.t Action_builder.t
-      -> unit Memo.t
+    val add_action : t -> loc:Loc.t -> Action.Full.t Action_builder.t -> unit Memo.t
   end
 end
 

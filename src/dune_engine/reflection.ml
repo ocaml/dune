@@ -9,7 +9,6 @@ module Rule = struct
     ; deps : Dep.Set.t
     ; expanded_deps : Path.Set.t
     ; targets : Targets.Validated.t
-    ; context : Build_context.t option
     ; action : Action.t
     }
 end
@@ -68,7 +67,6 @@ let evaluate_rule =
           ; deps
           ; expanded_deps
           ; targets = rule.targets
-          ; context = rule.context
           ; action = action.action
           })
   in

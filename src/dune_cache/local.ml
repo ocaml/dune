@@ -3,10 +3,33 @@ open Dune_cache_storage.Layout
 open Fiber.O
 open Import
 
+module Artifact = struct
+  type t =
+    { target : Path.Build.t
+    ; digest : Digest.t
+    ; dir : Path.Build.t option
+    }
+
+  let is_in_directory_target t = Option.is_some t.dir
+
+  let local_path = function
+    | { target; dir = None; _ } -> Path.Build.basename target |> Path.Local.of_string
+    | { target; dir = Some dir; _ } ->
+      let rel =
+        Path.reach (Path.build target) ~from:(Path.build dir |> Path.parent_exn)
+      in
+      Path.Local.of_string rel
+  ;;
+
+  let metadata_entry t : Dune_cache_storage.Artifacts.Metadata_entry.t =
+    { file_name = local_path t; file_digest = t.digest }
+  ;;
+end
+
 module Store_artifacts_result = struct
   type t =
-    | Stored of (Path.Build.t * Digest.t * Path.Build.t option) list
-    | Already_present of (Path.Build.t * Digest.t * Path.Build.t option) list
+    | Stored of Artifact.t list
+    | Already_present of Artifact.t list
     | Error of exn
     | Will_not_store_due_to_non_determinism of Sexp.t
 
@@ -77,28 +100,8 @@ let link_even_if_there_are_too_many_links_already ~src ~dst =
 module Artifacts = struct
   include Dune_cache_storage.Artifacts
 
-  let store_metadata
-    ~mode
-    ~metadata
-    ~rule_digest
-    (artifacts : (Path.Build.t * Digest.t * Path.Build.t option) list)
-    =
-    let entries =
-      List.map artifacts ~f:(fun (target, file_digest, dir_opt) ->
-        let entry : Metadata_entry.t =
-          let file_name =
-            match dir_opt with
-            | None -> Path.Build.basename target |> Path.Local.of_string
-            | Some dir ->
-              let rel =
-                Path.reach (Path.build target) ~from:(Path.build dir |> Path.parent_exn)
-              in
-              Path.Local.of_string rel
-          in
-          { file_name; file_digest }
-        in
-        entry)
-    in
+  let store_metadata ~mode ~metadata ~rule_digest (artifacts : Artifact.t list) =
+    let entries = List.map artifacts ~f:Artifact.metadata_entry in
     Metadata_file.store ~mode { metadata; entries } ~rule_digest
   ;;
 
@@ -124,23 +127,20 @@ module Artifacts = struct
 
      Computing digests can be slow, so we do that in parallel. *)
   let compute_digests_in ~temp_dir ~targets ~compute_digest
-    : (Path.Build.t * Digest.t * Path.Build.t option) list Or_exn.t Fiber.t
+    : Artifact.t list Or_exn.t Fiber.t
     =
     let open Fiber.O in
     Fiber.parallel_map targets ~f:(fun { Target.path; executable; dir } ->
       let file = Path.relative temp_dir (Path.Build.basename path) in
-      compute_digest ~executable file >>| Or_exn.map ~f:(fun digest -> path, digest, dir))
+      compute_digest ~executable file
+      >>| Or_exn.map ~f:(fun digest -> { Artifact.target = path; digest; dir }))
     >>| Result.List.all
   ;;
 
   (* Step III of [store_skipping_metadata]. *)
-  let store_to_cache_from
-    ~temp_dir
-    ~mode
-    (artifacts : (Path.Build.t * Digest.t * Path.Build.t option) list)
-    =
+  let store_to_cache_from ~temp_dir ~mode (artifacts : Artifact.t list) =
     let init = Store_result.empty in
-    List.fold_left artifacts ~init ~f:(fun results (target, digest, _dir_opt) ->
+    List.fold_left artifacts ~init ~f:(fun results { Artifact.target; digest; _ } ->
       let file_name = Path.Build.basename target in
       let path_in_temp_dir = Path.relative temp_dir file_name in
       let path_in_cache = file_path ~file_digest:digest in

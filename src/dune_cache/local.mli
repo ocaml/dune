@@ -18,11 +18,23 @@
 open Stdune
 open Import
 
+module Artifact : sig
+  type t = private
+    { target : Path.Build.t
+    ; digest : Digest.t
+    ; dir : Path.Build.t option
+        (** For directory targets, this corresponds to
+            the directory that produced the target. *)
+    }
+
+  val is_in_directory_target : t -> bool
+end
+
 module Store_artifacts_result : sig
   (* Outcomes are ordered in the order of severity. *)
   type t =
-    | Stored of (Path.Build.t * Digest.t * Path.Build.t option) list
-    | Already_present of (Path.Build.t * Digest.t * Path.Build.t option) list
+    | Stored of Artifact.t list
+    | Already_present of Artifact.t list
     | Error of exn
         (** [Error _] can happen due to genuine problems (cannot parse internal
             cache files) or harmless ones (race with a concurrent change to the

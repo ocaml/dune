@@ -135,16 +135,17 @@ struct
         ]
     in
     let update_cached_digests ~targets_and_digests =
-      List.iter targets_and_digests ~f:(fun (target, digest, _dir) ->
-        Cached_digest.set target digest);
+      List.iter targets_and_digests ~f:(fun (artifact : Dune_cache.Local.Artifact.t) ->
+        Cached_digest.set artifact.target artifact.digest);
       let files, dir_map =
         List.fold_left
           targets_and_digests
           ~init:([], Path.Build.Map.empty)
-          ~f:(fun (acc_files, acc_dir_map) (target, digest, dir_opt) ->
-            match dir_opt with
-            | None -> (target, digest) :: acc_files, acc_dir_map
-            | Some _ -> acc_files, Path.Build.Map.add_exn acc_dir_map target digest)
+          ~f:(fun (acc_files, acc_dir_map) artifact ->
+            let { Dune_cache.Local.Artifact.target; digest; _ } = artifact in
+            if Dune_cache.Local.Artifact.is_in_directory_target artifact
+            then acc_files, Path.Build.Map.add_exn acc_dir_map target digest
+            else (target, digest) :: acc_files, acc_dir_map)
       in
       let dirs =
         Path.Build.Map.mapi dir_targets ~f:(fun path ->

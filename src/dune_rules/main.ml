@@ -54,12 +54,9 @@ let init
   ()
   : unit
   =
-  let promote_source ~chmod ~delete_dst_if_it_is_a_directory ~src ~dst ctx =
+  let promote_source ~chmod ~delete_dst_if_it_is_a_directory ~src ~dst =
     let open Fiber.O in
-    let* ctx =
-      Memo.run
-        (Memo.Option.map ctx ~f:(fun (ctx : Build_context.t) -> Context.DB.get ctx.name))
-    in
+    let* ctx = Path.Build.parent_exn src |> Context.DB.by_dir |> Memo.run in
     let conf = Artifact_substitution.Conf.of_context ctx in
     let src = Path.build src in
     let dst = Path.source dst in

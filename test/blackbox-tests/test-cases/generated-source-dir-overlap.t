@@ -19,6 +19,7 @@ If a generated directory is "overlaid" by a source dir, then things break.
   $ dune build @foo
   Error: Alias "foo" specified on the command line is empty.
   It is not defined in . or any of its descendants.
+  Hint: did you mean fmt?
   [1]
 
 The command above claims that @foo isn't defined, but it clearly is if we

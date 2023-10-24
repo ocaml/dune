@@ -39,7 +39,8 @@ module Per_context = struct
   type t =
     { lock_dir_path : Path.Source.t
     ; version_preference : Version_preference.t
-    ; solver_env : Dune_pkg.Solver_env.t
+    ; solver_sys_vars : Dune_pkg.Solver_env.Variable.Sys.Bindings.t option
+    ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
     ; context_common : Dune_rules.Workspace.Context.Common.t
     ; repos :
         Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t
@@ -77,7 +78,8 @@ module Per_context = struct
            (Default
              { lock
              ; version_preference = version_preference_context
-             ; solver_env
+             ; solver_sys_vars
+             ; repositories
              ; base = context_common
              ; _
              }) ->
@@ -86,7 +88,8 @@ module Per_context = struct
                Version_preference.choose
                  ~from_arg:version_preference_arg
                  ~from_context:version_preference_context
-           ; solver_env = Option.value solver_env ~default:Dune_pkg.Solver_env.default
+           ; solver_sys_vars
+           ; repositories
            ; context_common
            ; repos = repositories_of_workspace workspace
            }
@@ -104,7 +107,8 @@ module Per_context = struct
             { lock
             ; version_preference = version_preference_context
             ; base = context_common
-            ; solver_env
+            ; solver_sys_vars
+            ; repositories
             } ->
           let lock_dir_path = Option.value lock ~default:Dune_pkg.Lock_dir.default_path in
           Some
@@ -114,7 +118,8 @@ module Per_context = struct
                   ~from_arg:version_preference_arg
                   ~from_context:version_preference_context
             ; context_common
-            ; solver_env = Option.value solver_env ~default:Dune_pkg.Solver_env.default
+            ; solver_sys_vars
+            ; repositories
             ; repos = repositories_of_workspace workspace
             }
         | Opam _ -> None)
@@ -149,31 +154,31 @@ module Per_context = struct
   ;;
 end
 
-module Print_solver_env = struct
-  (* The system environment variables used by the solver are taken from the
-     current system by default but can be overridden by the build context. *)
-  let override_solver_env_variables
-    ~solver_env_from_context
-    ~sys_bindings_from_current_system
-    =
-    Dune_pkg.Solver_env.(
-      Variable.Sys.Bindings.extend
-        sys_bindings_from_current_system
-        (sys solver_env_from_context)
-      |> set_sys solver_env_from_context)
-  ;;
+(* The system environment variables used by the solver are taken from the
+   current system by default but can be overridden by the build context. *)
+let solver_env_variables ~solver_sys_vars_from_context ~sys_bindings_from_current_system =
+  match solver_sys_vars_from_context with
+  | None -> sys_bindings_from_current_system
+  | Some solver_env_variables ->
+    Dune_pkg.Solver_env.Variable.Sys.Bindings.extend
+      sys_bindings_from_current_system
+      solver_env_variables
+;;
 
+module Print_solver_env = struct
   let print_solver_env_for_one_context
     ~sys_bindings_from_current_system
-    { Per_context.solver_env = solver_env_from_context
+    { Per_context.solver_sys_vars = solver_sys_vars_from_context
     ; context_common = { name = context_name; _ }
     ; _
     }
     =
     let solver_env =
-      override_solver_env_variables
-        ~solver_env_from_context
-        ~sys_bindings_from_current_system
+      Dune_pkg.Solver_env.create
+        ~sys:
+          (solver_env_variables
+             ~solver_sys_vars_from_context
+             ~sys_bindings_from_current_system)
     in
     Console.print
       [ Pp.textf
@@ -302,7 +307,7 @@ module Lock = struct
     ;;
   end
 
-  let get_repos repos solver_env ~opam_repository_path ~opam_repository_url =
+  let get_repos repos ~opam_repository_path ~opam_repository_url ~repositories =
     let open Fiber.O in
     match opam_repository_path, opam_repository_url with
     | Some _, Some _ ->
@@ -325,8 +330,7 @@ module Lock = struct
          User_error.raise
            [ Pp.text "Can't determine the location of the opam-repository" ])
     | None, None ->
-      (* read from workspace *)
-      Dune_pkg.Solver_env.repos solver_env
+      repositories
       |> Fiber.parallel_map ~f:(fun name ->
         match Dune_pkg.Pkg_workspace.Repository.Name.Map.find repos name with
         | None ->
@@ -399,17 +403,20 @@ module Lock = struct
              { Per_context.lock_dir_path
              ; version_preference
              ; repos
-             ; solver_env = solver_env_from_context
+             ; solver_sys_vars = solver_sys_vars_from_context
              ; context_common = { name = context_name; _ }
+             ; repositories
              }
            ->
            let solver_env =
-             Print_solver_env.override_solver_env_variables
-               ~solver_env_from_context
-               ~sys_bindings_from_current_system
+             Dune_pkg.Solver_env.create
+               ~sys:
+                 (solver_env_variables
+                    ~solver_sys_vars_from_context
+                    ~sys_bindings_from_current_system)
            in
            let* repos =
-             get_repos repos solver_env ~opam_repository_path ~opam_repository_url
+             get_repos repos ~opam_repository_path ~opam_repository_url ~repositories
            in
            let overlay =
              Console.Status_line.add_overlay (Constant (Pp.text "Solving for Build Plan"))
@@ -569,18 +576,17 @@ module Outdated = struct
                 { Per_context.lock_dir_path
                 ; version_preference = _
                 ; repos
-                ; solver_env = solver_env_from_context
+                ; solver_sys_vars = _
                 ; context_common = _
+                ; repositories
                 }
               ->
-              let solver_env =
-                Print_solver_env.override_solver_env_variables
-                  ~solver_env_from_context
-                  ~sys_bindings_from_current_system:
-                    Dune_pkg.Solver_env.Variable.Sys.Bindings.empty
-              in
               let+ repos =
-                Lock.get_repos repos solver_env ~opam_repository_path ~opam_repository_url
+                Lock.get_repos
+                  repos
+                  ~opam_repository_path
+                  ~opam_repository_url
+                  ~repositories
               and+ local_packages = Lock.find_local_packages in
               let lock_dir = Lock_dir.read_disk lock_dir_path in
               let results =

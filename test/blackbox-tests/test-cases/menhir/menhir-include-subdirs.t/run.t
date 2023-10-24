@@ -17,9 +17,3 @@ Menhir in other places than the root of the file hierarchy.
   Hint: Did you mean Baz?
   [1]
   $ test qualified
-  File "bar/dune", line 1, characters 0-23:
-  1 | (menhir
-  2 |  (modules baz))
-  Error: I can't determine what library/executable the files produced by this
-  stanza are part of.
-  [1]

@@ -33,7 +33,7 @@ let find_module sctx src =
     let* dir_contents = drop_rules @@ fun () -> Dir_contents.get sctx ~dir in
     let* ocaml = Dir_contents.ocaml dir_contents in
     let stanza =
-      match Ml_sources.find_origin ocaml module_name with
+      match Ml_sources.find_origin ocaml [ module_name ] with
       | Some (Executables exes) -> Some (`Executables exes)
       | Some (Library lib) -> Some (`Library lib)
       | None | Some (Melange _) -> None

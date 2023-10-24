@@ -279,20 +279,32 @@ module Context = struct
       { base : Common.t
       ; lock : Path.Source.t option
       ; version_preference : Dune_pkg.Version_preference.t option
-      ; solver_env : Dune_pkg.Solver_env.t option
+      ; solver_sys_vars : Dune_pkg.Solver_env.Variable.Sys.Bindings.t option
+      ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
       }
 
-    let to_dyn { base; lock; version_preference; solver_env } =
+    let to_dyn { base; lock; version_preference; solver_sys_vars; repositories } =
       Dyn.record
         [ "base", Common.to_dyn base
         ; "lock", Dyn.(option Path.Source.to_dyn) lock
         ; ( "version_preference"
           , Dyn.option Dune_pkg.Version_preference.to_dyn version_preference )
-        ; "solver_env", Dyn.option Dune_pkg.Solver_env.to_dyn solver_env
+        ; ( "solver_sys_vars"
+          , Dyn.option Dune_pkg.Solver_env.Variable.Sys.Bindings.to_dyn solver_sys_vars )
+        ; ( "repositories"
+          , Dyn.list Dune_pkg.Pkg_workspace.Repository.Name.to_dyn repositories )
         ]
     ;;
 
     let decode =
+      let repositories_of_ordered_set ordered_set =
+        Dune_lang.Ordered_set_lang.eval
+          ordered_set
+          ~parse:(fun ~loc string ->
+            Dune_pkg.Pkg_workspace.Repository.Name.parse_string_exn (loc, string))
+          ~eq:Dune_pkg.Pkg_workspace.Repository.Name.equal
+          ~standard:[ Dune_pkg.Pkg_workspace.Repository.Name.of_string "default" ]
+      in
       let+ common = Common.decode
       and+ name =
         field_o "name" (Dune_lang.Syntax.since syntax (1, 10) >>> Context_name.decode)
@@ -304,7 +316,10 @@ module Context = struct
         field_o "lock" (Dune_lang.Path.Local.decode ~dir:(Path.source Path.Source.root))
       and+ version_preference =
         field_o "version_preference" Dune_pkg.Version_preference.decode
-      and+ solver_env = field_o "solver_env" Dune_pkg.Solver_env.decode in
+      and+ solver_sys_vars =
+        field_o "solver_sys_vars" Dune_pkg.Solver_env.Variable.Sys.Bindings.decode
+      and+ repositories_osl = Dune_lang.Ordered_set_lang.field "repositories" in
+      let repositories = repositories_of_ordered_set repositories_osl in
       let lock = Option.map lock ~f:Path.as_in_source_tree_exn in
       fun ~profile_default ~instrument_with_default ~x ->
         let common = common ~profile_default ~instrument_with_default in
@@ -315,17 +330,24 @@ module Context = struct
         in
         let name = Option.value ~default name in
         let base = { common with targets = Target.add common.targets x; name } in
-        { base; lock; version_preference; solver_env }
+        { base; lock; version_preference; solver_sys_vars; repositories }
     ;;
 
-    let equal { base; lock; version_preference; solver_env } t =
+    let equal { base; lock; version_preference; solver_sys_vars; repositories } t =
       Common.equal base t.base
       && Option.equal Path.Source.equal lock t.lock
       && Option.equal
            Dune_pkg.Version_preference.equal
            version_preference
            t.version_preference
-      && Option.equal Dune_pkg.Solver_env.equal solver_env t.solver_env
+      && Option.equal
+           Dune_pkg.Solver_env.Variable.Sys.Bindings.equal
+           solver_sys_vars
+           t.solver_sys_vars
+      && List.equal
+           Dune_pkg.Pkg_workspace.Repository.Name.equal
+           repositories
+           t.repositories
     ;;
   end
 
@@ -390,7 +412,8 @@ module Context = struct
     Default
       { lock = None
       ; version_preference = None
-      ; solver_env = None
+      ; solver_sys_vars = None
+      ; repositories = [ Dune_pkg.Pkg_workspace.Repository.Name.of_string "default" ]
       ; base =
           { loc = Loc.of_pos __POS__
           ; targets = [ Option.value x ~default:Target.Native ]

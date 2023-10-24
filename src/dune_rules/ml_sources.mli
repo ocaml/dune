@@ -12,6 +12,7 @@ module Origin : sig
     | Melange of Melange_stanzas.Emit.t
 
   val loc : t -> Loc.t
+  val to_dyn : t -> Dyn.t
 end
 
 module Artifacts : sig
@@ -38,7 +39,7 @@ val modules_and_obj_dir : t -> for_:for_ -> Modules.t * Path.Build.t Obj_dir.t
 val modules : t -> for_:for_ -> Modules.t
 
 (** Find out the origin of the stanza for a given module *)
-val find_origin : t -> Module_name.t -> Origin.t option
+val find_origin : t -> Module_name.Path.t -> Origin.t option
 
 val empty : t
 
@@ -48,6 +49,8 @@ val empty : t
     We need to know the contents of the virtual library to: - verify conditions
     all virtual modules are implemented - make sure that we construct [Module.t]
     with the correct [kind] *)
+
+val include_subdirs : t -> Dune_file.Include_subdirs.t
 
 val make
   :  Dune_file.t

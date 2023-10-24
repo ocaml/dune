@@ -24,7 +24,7 @@ module Conf : sig
   type t
 
   val get_location : t -> Section.t -> Package.Name.t -> Path.t
-  val of_context : Context.t option -> t
+  val of_context : Context.t -> t
 
   val of_install
     :  relocatable:Path.t option

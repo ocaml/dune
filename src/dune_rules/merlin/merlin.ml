@@ -143,8 +143,7 @@ module Processed = struct
     | None, None -> None
   ;;
 
-  let to_sexp ~opens ~pp { stdlib_dir; obj_dirs; src_dirs; flags; extensions }
-    =
+  let to_sexp ~opens ~pp { stdlib_dir; obj_dirs; src_dirs; flags; extensions } =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
     let make_directive_of_path tag path =
       make_directive tag (Sexp.Atom (serialize_path path))
@@ -291,15 +290,14 @@ module Processed = struct
               (acc_pp, acc_obj, acc_src, acc_flags, acc_ext)
               { per_module_config = _
               ; pp_config
-              ; config =
-                  { stdlib_dir = _; obj_dirs; src_dirs; flags; extensions }
+              ; config = { stdlib_dir = _; obj_dirs; src_dirs; flags; extensions }
               }
             ->
             ( pp_config :: acc_pp
             , Path.Set.union acc_obj obj_dirs
             , Path.Set.union acc_src src_dirs
             , flags :: acc_flags
-            , extensions @ acc_ext))
+            , extensions @ acc_ext ))
       in
       Printf.printf
         "%s\n"

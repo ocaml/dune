@@ -119,7 +119,7 @@ struct
   (* If this function fails to store the rule to the shared cache, it returns
      [None] because we don't want this to be a catastrophic error. We simply log
      this incident and continue without saving the rule to the shared cache. *)
-  let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~file_targets
+  let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~file_targets ~dir_targets
     : Digest.t Targets.Produced.t option Fiber.t
     =
     let open Fiber.O in
@@ -135,18 +135,35 @@ struct
         ]
     in
     let update_cached_digests ~targets_and_digests =
-      let targets_and_digests =
-        List.map targets_and_digests ~f:(fun (target, digest, _dir_opt) -> target, digest)
-      in
-      List.iter targets_and_digests ~f:(fun (target, digest) ->
+      List.iter targets_and_digests ~f:(fun (target, digest, _dir) ->
         Cached_digest.set target digest);
-      Some (Targets.Produced.of_file_list_exn targets_and_digests)
+      let files, dir_map =
+        List.fold_left
+          targets_and_digests
+          ~init:([], Path.Build.Map.empty)
+          ~f:(fun (acc_files, acc_dir_map) (target, digest, dir_opt) ->
+            match dir_opt with
+            | None -> (target, digest) :: acc_files, acc_dir_map
+            | Some _ -> acc_files, Path.Build.Map.add_exn acc_dir_map target digest)
+      in
+      let dirs =
+        Path.Build.Map.mapi dir_targets ~f:(fun path ->
+          Path.Local.Map.mapi ~f:(fun rel () ->
+            let k = Path.Build.append_local path rel in
+            Path.Build.Map.find_exn dir_map k))
+      in
+      Some (Targets.Produced.make_exn ~files ~dirs)
     in
-    match
-      Path.Build.Map.to_list_map file_targets ~f:(fun target () ->
-        Dune_cache.Local.Target.create ~dir:None target)
-      |> Option.List.all
-    with
+    let file_target_keys = Path.Build.Map.keys file_targets in
+    let targets_to_store =
+      List.map file_target_keys ~f:(Dune_cache.Local.Target.create ~dir:None)
+      @ List.concat
+          (Path.Build.Map.to_list_map dir_targets ~f:(fun dir m ->
+             Path.Local.Map.to_list_map m ~f:(fun s () ->
+               let path = Path.Build.append_local dir s in
+               Dune_cache.Local.Target.create ~dir:(Some dir) path)))
+    in
+    match Option.List.all targets_to_store with
     | None -> Fiber.return None
     | Some targets ->
       let compute_digest ~executable path =
@@ -301,6 +318,7 @@ struct
           ~mode
           ~rule_digest
           ~file_targets:produced_targets.files
+          ~dir_targets:produced_targets.dirs
           ~action
       in
       (match produced_targets_with_digests with

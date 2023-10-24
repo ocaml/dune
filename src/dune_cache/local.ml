@@ -254,6 +254,7 @@ module Artifacts = struct
           ~create:(fun { Metadata_entry.file_name; file_digest } ->
             let path_in_build_dir = Path.Build.append_local target_dir file_name in
             let path_in_cache = file_path ~file_digest in
+            Path.mkdir_p (Path.parent_exn (Path.build path_in_build_dir));
             match (mode : Dune_cache_storage.Mode.t) with
             | Hardlink ->
               (match

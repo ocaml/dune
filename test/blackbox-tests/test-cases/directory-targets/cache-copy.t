@@ -28,4 +28,3 @@ We test that directory targets can go in the shared cache in copy mode.
 
   $ dune clean
   $ dune build out
-  Running create.sh

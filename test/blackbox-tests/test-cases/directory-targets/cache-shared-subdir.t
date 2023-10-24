@@ -41,10 +41,10 @@ We create 2 directory targets which share a whole subdirectory.
 We expect the targets to be linked in the shared cache.
 
   $ is_linked _build/default/d1/shared1/a
-  not linked
+  linked
   $ is_linked _build/default/d1/shared1/b
-  not linked
+  linked
   $ is_linked _build/default/d2/shared2/a
-  not linked
+  linked
   $ is_linked _build/default/d2/shared2/b
-  not linked
+  linked

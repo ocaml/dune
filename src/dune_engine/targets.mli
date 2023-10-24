@@ -90,6 +90,11 @@ module Produced : sig
       error if the list contains duplicates. *)
   val of_file_list_exn : (Path.Build.t * Digest.t) list -> Digest.t t
 
+  val make_exn
+    :  files:(Path.Build.t * Digest.t) list
+    -> dirs:Digest.t Path.Local.Map.t Path.Build.Map.t
+    -> Digest.t t
+
   (** Add a list of discovered directory-filename pairs to [Validated.t]. Raises
       a code error on an unexpected directory. *)
   val expand_validated_exn : Validated.t -> (Path.Build.t * Path.Local.t) list -> unit t

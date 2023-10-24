@@ -179,9 +179,8 @@ module Produced = struct
         ]
   ;;
 
-  let of_file_list_exn list =
-    { files = Path.Build.Map.of_list_exn list; dirs = Path.Build.Map.empty }
-  ;;
+  let make_exn ~files ~dirs = { files = Path.Build.Map.of_list_exn files; dirs }
+  let of_file_list_exn files = make_exn ~files ~dirs:Path.Build.Map.empty
 
   let expand_validated_exn (validated : Validated.t) dir_filename_pairs =
     let files = Path.Build.Set.to_map validated.files ~f:(fun (_ : Path.Build.t) -> ()) in

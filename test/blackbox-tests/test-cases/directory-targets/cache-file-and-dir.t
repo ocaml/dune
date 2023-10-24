@@ -48,4 +48,4 @@ the resulting file from the cache.
   $ dune build dir_out/
   running command
   $ is_linked _build/default/dir_out/a
-  not linked
+  linked

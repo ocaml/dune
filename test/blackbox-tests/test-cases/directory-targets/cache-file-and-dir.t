@@ -42,7 +42,7 @@ We prime the cache with the file:
   linked
 
 Then use it in the directory target. We expect the command to run (because we
-can not know in advance that it is going to generate that fail); but to link
+can not know in advance that it is going to generate that file); but to link
 the resulting file from the cache.
 
   $ dune build dir_out/

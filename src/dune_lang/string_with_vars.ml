@@ -305,18 +305,15 @@ module Make_expander (A : Applicative) : Expander with type 'a app := 'a A.t = s
         Mode.string mode (String.concat (List.concat chunks) ~sep:""))
   ;;
 
-  type empty = |
-
   let expand
     : type a. t -> mode:a Mode.t -> dir:Path.t -> f:Value.t list A.t expander -> a A.t
     =
     fun t ~mode ~dir ~f ->
-    let f : (Value.t list, empty) result A.t expander =
+    let f : (Value.t list, Nothing.t) result A.t expander =
       fun ~source pform -> f ~source pform |> A.map ~f:Result.ok
     in
-    let+ result = expand_result t ~mode ~dir ~f in
-    match result with
-    | Ok x -> x
+    let+ (Ok x) = expand_result t ~mode ~dir ~f in
+    x
   ;;
 
   let expand_as_much_as_possible t ~dir ~f =

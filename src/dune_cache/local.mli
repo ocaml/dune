@@ -21,8 +21,8 @@ open Import
 module Store_artifacts_result : sig
   (* Outcomes are ordered in the order of severity. *)
   type t =
-    | Stored of (Path.Build.t * Digest.t) list
-    | Already_present of (Path.Build.t * Digest.t) list
+    | Stored of (Path.Build.t * Digest.t * Path.Build.t option) list
+    | Already_present of (Path.Build.t * Digest.t * Path.Build.t option) list
     | Error of exn
         (** [Error _] can happen due to genuine problems (cannot parse internal
             cache files) or harmless ones (race with a concurrent change to the
@@ -39,7 +39,7 @@ module Target : sig
       because such targets are not supported by the shared cache. Otherwise,
       remove the "write" permissions and record some additional information
       about the file, such as whether it is executable or not. *)
-  val create : Path.Build.t -> t option
+  val create : dir:Path.Build.t option -> Path.Build.t -> t option
 end
 
 (** Store targets produced by a rule with a given digest. If successful, this

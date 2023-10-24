@@ -5,8 +5,8 @@ open Import
 
 module Store_artifacts_result = struct
   type t =
-    | Stored of (Path.Build.t * Digest.t) list
-    | Already_present of (Path.Build.t * Digest.t) list
+    | Stored of (Path.Build.t * Digest.t * Path.Build.t option) list
+    | Already_present of (Path.Build.t * Digest.t * Path.Build.t option) list
     | Error of exn
     | Will_not_store_due_to_non_determinism of Sexp.t
 
@@ -31,14 +31,15 @@ module Target = struct
   type t =
     { path : Path.Build.t
     ; executable : bool
+    ; dir : Path.Build.t option
     }
 
-  let create path =
+  let create ~dir path =
     match Path.Build.lstat path with
     | { Unix.st_kind = Unix.S_REG; st_perm; _ } ->
       Path.Build.chmod path ~mode:(Path.Permissions.remove Path.Permissions.write st_perm);
       let executable = Path.Permissions.test Path.Permissions.execute st_perm in
-      Some { path; executable }
+      Some { path; executable; dir }
     | (exception Unix.Unix_error _) | _ -> None
   ;;
 end
@@ -80,12 +81,20 @@ module Artifacts = struct
     ~mode
     ~metadata
     ~rule_digest
-    (artifacts : (Path.Build.t * Digest.t) list)
+    (artifacts : (Path.Build.t * Digest.t * Path.Build.t option) list)
     =
     let entries =
-      List.map artifacts ~f:(fun (target, file_digest) ->
+      List.map artifacts ~f:(fun (target, file_digest, dir_opt) ->
         let entry : Metadata_entry.t =
-          let file_name = Path.Build.basename target |> Path.Local.of_string in
+          let file_name =
+            match dir_opt with
+            | None -> Path.Build.basename target |> Path.Local.of_string
+            | Some dir ->
+              let rel =
+                Path.reach (Path.build target) ~from:(Path.build dir |> Path.parent_exn)
+              in
+              Path.Local.of_string rel
+          in
           { file_name; file_digest }
         in
         entry)
@@ -115,18 +124,23 @@ module Artifacts = struct
 
      Computing digests can be slow, so we do that in parallel. *)
   let compute_digests_in ~temp_dir ~targets ~compute_digest
-    : (Path.Build.t * Digest.t) list Or_exn.t Fiber.t
+    : (Path.Build.t * Digest.t * Path.Build.t option) list Or_exn.t Fiber.t
     =
     let open Fiber.O in
-    Fiber.parallel_map targets ~f:(fun { Target.path; executable } ->
+    Fiber.parallel_map targets ~f:(fun { Target.path; executable; dir } ->
       let file = Path.relative temp_dir (Path.Build.basename path) in
-      compute_digest ~executable file >>| Or_exn.map ~f:(fun digest -> path, digest))
+      compute_digest ~executable file >>| Or_exn.map ~f:(fun digest -> path, digest, dir))
     >>| Result.List.all
   ;;
 
   (* Step III of [store_skipping_metadata]. *)
-  let store_to_cache_from ~temp_dir ~mode (artifacts : (Path.Build.t * Digest.t) list) =
-    List.fold_left artifacts ~init:Store_result.empty ~f:(fun results (target, digest) ->
+  let store_to_cache_from
+    ~temp_dir
+    ~mode
+    (artifacts : (Path.Build.t * Digest.t * Path.Build.t option) list)
+    =
+    let init = Store_result.empty in
+    List.fold_left artifacts ~init ~f:(fun results (target, digest, _dir_opt) ->
       let file_name = Path.Build.basename target in
       let path_in_temp_dir = Path.relative temp_dir file_name in
       let path_in_cache = file_path ~file_digest:digest in

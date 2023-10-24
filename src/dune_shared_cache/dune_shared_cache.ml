@@ -135,13 +135,16 @@ struct
         ]
     in
     let update_cached_digests ~targets_and_digests =
+      let targets_and_digests =
+        List.map targets_and_digests ~f:(fun (target, digest, _dir_opt) -> target, digest)
+      in
       List.iter targets_and_digests ~f:(fun (target, digest) ->
         Cached_digest.set target digest);
       Some (Targets.Produced.of_file_list_exn targets_and_digests)
     in
     match
       Path.Build.Map.to_list_map file_targets ~f:(fun target () ->
-        Dune_cache.Local.Target.create target)
+        Dune_cache.Local.Target.create ~dir:None target)
       |> Option.List.all
     with
     | None -> Fiber.return None

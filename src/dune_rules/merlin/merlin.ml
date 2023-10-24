@@ -584,18 +584,7 @@ module Unprocessed = struct
       let src_dirs =
         Path.Set.union src_dirs (Path.Set.of_list_map ~f:Path.source more_src_dirs)
       in
-      let+ melc_flags =
-        match t.config.mode with
-        | Ocaml _ -> Action_builder.return []
-        | Melange ->
-          let+ melc_compiler =
-            Action_builder.of_memo (Melange_binary.melc sctx ~loc:None ~dir)
-          in
-          (match melc_compiler with
-           | Error _ -> []
-           | Ok path ->
-             [ Processed.Pp_kind.to_flag Ppx; Processed.serialize_path path ^ " -as-ppx" ])
-      in
+      let+melc_flags = Action_builder.return [] in
       { Processed.stdlib_dir; src_dirs; obj_dirs; flags; extensions; melc_flags }
     and+ pp_config = pp_config t sctx ~expander in
     let per_module_config =

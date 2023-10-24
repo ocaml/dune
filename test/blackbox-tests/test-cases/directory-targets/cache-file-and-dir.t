@@ -10,26 +10,25 @@ This checks what happens when a file available in the cache is used in a directo
 
   $ cat > dune << EOF
   > (rule
-  >  (with-stdout-to file_out (run ./gen.exe)))
+  >  (with-stdout-to file_out (run ./gen.sh)))
   > 
   > (rule
   >  (target (dir dir_out))
-  >  (deps gen.exe)
+  >  (deps gen.sh)
   >  (action
   >   (no-infer
   >    (progn
   >     (run mkdir dir_out)
-  >     (with-stdout-to dir_out/a (run ./gen.exe))
+  >     (with-stdout-to dir_out/a (run ./gen.sh))
   >     (write-file dir_out/b contents_b)))))
-  > 
-  > (executable
-  >  (name gen))
   > EOF
 
-  $ cat > gen.ml << EOF
-  > let () = prerr_endline "running command"
-  > let () = print_endline "contents"
+  $ cat > gen.sh << EOF
+  > #!/usr/bin/env bash
+  > >&2 echo running command
+  > echo contents
   > EOF
+  $ chmod +x gen.sh
 
 We will check whether an entry is linked from the cache. This corresponds to a
 file with more than one link.

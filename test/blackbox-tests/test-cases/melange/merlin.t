@@ -46,9 +46,7 @@ Paths to Melange stdlib appear in B and S entries without melange.emit stanza
 All 3 modules (Foo, Foo__ and Bar) contain a ppx directive
 
   $ dune ocaml merlin dump-config $PWD | grep -i "ppx"
-   (FLG (-ppx "/MELC_COMPILER -as-ppx"))
-   (FLG (-ppx "/MELC_COMPILER -as-ppx"))
-   (FLG (-ppx "/MELC_COMPILER -as-ppx"))
+  [1]
 
   $ target=output
   $ cat >dune <<EOF
@@ -65,7 +63,7 @@ All 3 modules (Foo, Foo__ and Bar) contain a ppx directive
 The melange.emit entry contains a ppx directive
 
   $ dune ocaml merlin dump-config $PWD | grep -i "ppx"
-   (FLG (-ppx "/MELC_COMPILER -as-ppx"))
+  [1]
 
 Dump-dot-merlin includes the melange flags
 
@@ -80,7 +78,6 @@ Dump-dot-merlin includes the melange flags
   S /MELC_STDLIB
   S /MELC_STDLIB
   S $TESTCASE_ROOT
-  # FLG -ppx '/MELC_COMPILER -as-ppx'
   # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g
   
 
@@ -136,7 +133,6 @@ Melange ppx should appear after user ppx, so that Merlin applies the former firs
      --as-ppx
      --cookie
      'library-name="foo"'"))
-   (FLG (-ppx "/MELC_COMPILER -as-ppx"))
    (FLG
     (-w
      @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
@@ -158,7 +154,6 @@ Melange ppx should appear after user ppx, so that Merlin applies the former firs
      --as-ppx
      --cookie
      'library-name="foo"'"))
-   (FLG (-ppx "/MELC_COMPILER -as-ppx"))
    (FLG
     (-w
      @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40

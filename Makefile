@@ -20,7 +20,7 @@ menhir \
 ocamlfind \
 ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat) \
 "odoc>=2.0.1" \
-"ppx_expect.v0.15.0" \
+"ppx_expect>=v0.16.0" \
 ppx_inline_test \
 ppxlib \
 ctypes \

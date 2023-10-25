@@ -1,10 +1,23 @@
 open Import
 
+(** Data of a Coq configuration. *)
 type t
 
-val version : coqc:Action.Prog.t -> (string, User_message.Style.t Pp.t) Result.t Memo.t
-val make : coqc:Action.Prog.t -> t Memo.t
-val make_opt : coqc:Action.Prog.t -> t Option.t Memo.t
+(** [version ~coqc] runs coqc --print-version and returns the version of Coq as a string
+    without having to run coqc --config. Exceptionally, one of the following will happen:
+
+    - Return [Error message] if coqc --print-version exits with a non-zero code.
+    - Throw a user error if coqc --print-version is not parsable.
+    - Throw an [Action.Prog.Not_found] exception if the coqc binary is not found. *)
+val version : coqc:Action.Prog.t -> (string, User_message.Style.t Pp.t) result Memo.t
+
+(** [make ~coqc] runs coqc --config and returns the configuration data. Exceptionally, one
+    of the following will happen:
+
+    - Return [Error message] if coqc --config exits with a non-zero code.
+    - Throw a user error if coqc --config is not parsable.
+    - Throw an [Action.Prog.Not_found] exception if the coqc binary is not found. *)
+val make : coqc:Action.Prog.t -> (t, User_message.Style.t Pp.t) result Memo.t
 
 module Value : sig
   type t = private

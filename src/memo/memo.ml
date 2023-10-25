@@ -231,8 +231,7 @@ module M = struct
     type 'a t =
       | Cached_value of 'a Cached_value.t
       | Out_of_date of { old_value : 'a Cached_value.t Option.Unboxed.t }
-      | Restoring of
-          { restore_from_cache : 'a Cached_value.t Cache_lookup.Result.t Computation0.t }
+      | Restoring of { restore_from_cache : 'a Cache_lookup.t Computation0.t }
       | Computing of
           { old_value : 'a Cached_value.t Option.Unboxed.t
           ; compute : 'a Cached_value.t Computation0.t
@@ -331,40 +330,23 @@ module M = struct
     Value
 
   and Cache_lookup : sig
-    (* Looking up a value cached in a previous run can fail in three possible
-       ways:
+    (* Looking up a value cached in a previous run can fail in three possible ways:
 
-       - [Out_of_date {old_value = None}]: either the value has never been
-         computed before, or the last computation attempt failed.
+       - [Out_of_date {old_value = None}]: either the value has never been computed
+         before, or the last computation attempt failed.
 
-       - [Out_of_date {old_value = Some _}]: we found a value computed in a
-         previous run but it is out of date because one of its dependencies changed;
-         we return the old value so that it can be compared with a new one to
-         support the early cutoff.
+       - [Out_of_date {old_value = Some _}]: we found a value computed in a previous run
+         but it is out of date because one of its dependencies changed; we return the old
+         value so that it can be compared with a new one to support the early cutoff.
 
        - [Cancelled _]: the cache lookup attempt has been cancelled because of a
          dependency cycle. This outcome indicates that a dependency cycle has been
          introduced in the current run. If a cycle existed in a previous run, the
          outcome would have been [Out_of_date {old_value = None}] instead. *)
-    module Failure : sig
-      (* CR-soon amokhov: Now that this module and [Result] are in the same
-         recursive module as [Cached_value], we can remove the parameter ['a]. *)
-      type 'a t =
-        | Out_of_date of
-            { (* ['a] is instantiated to ['a Cached_value.t] below but making
-                 this explicit would require us to move this type and [Result]
-                 into the recursive module of [M]. We leave this comment to
-                 explain why using [Option.Unboxed.t] is OK here. *)
-              old_value : 'a Option.Unboxed.t
-            }
-        | Cancelled of { dependency_cycle : Cycle_error.t }
-    end
-
-    module Result : sig
-      type 'a t =
-        | Ok of 'a
-        | Failure of 'a Failure.t
-    end
+    type 'a t =
+      | Ok of 'a Cached_value.t
+      | Out_of_date of { old_value : 'a Cached_value.t Option.Unboxed.t }
+      | Cancelled of { dependency_cycle : Cycle_error.t }
   end =
     Cache_lookup
 
@@ -552,15 +534,6 @@ module Collect_errors_monoid = struct
   include Monoid.Make (T)
 end
 
-(* Restoring or computing a value can fail for two reasons:
-
-   - [Error]: the user-supplied function that was called to compute the value
-     raised one or more exceptions recorded in the [Collect_errors_monoid.t].
-
-   - [Cancelled]: the attempt was cancelled due to a dependency cycle.
-
-   Note that we plan to make [Cancelled] more general and store the reason for
-   cancellation: a dependency cycle or a request to cancel the current run. *)
 module Value = struct
   include M.Value
 
@@ -1189,9 +1162,7 @@ module Exec : sig
   val exec_dep_node : ('i, 'o) Dep_node.t -> 'o Fiber.t
 end = struct
   let rec restore_from_cache :
-            'o.
-            cached_value:'o Cached_value.t
-            -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t
+            'o. cached_value:'o Cached_value.t -> 'o Cache_lookup.t Fiber.t
     =
     fun ~cached_value ->
     match cached_value.value with
@@ -1199,12 +1170,10 @@ end = struct
       (* Dependencies of cancelled computations are not accurate (in fact, they
          are set to [Deps.empty]), so we can't use [deps_changed] in this
          case. *)
-      Fiber.return
-        (Cache_lookup.Result.Failure (Out_of_date { old_value = Option.Unboxed.none }))
+      Fiber.return (Cache_lookup.Out_of_date { old_value = Option.Unboxed.none })
     | Error { reproducible = false; _ } ->
       (* We do not cache non-reproducible errors. *)
-      Fiber.return
-        (Cache_lookup.Result.Failure (Out_of_date { old_value = Option.Unboxed.none }))
+      Fiber.return (Cache_lookup.Out_of_date { old_value = Option.Unboxed.none })
     | Ok _ | Error { reproducible = true; _ } ->
       (* We cache reproducible errors just like normal values. We assume that
          all [Memo] computations are deterministic, which means if we rerun a
@@ -1230,9 +1199,9 @@ end = struct
              with
              | Gt -> Fiber.return Changed_or_not.Changed
              | Eq | Lt -> Fiber.return Changed_or_not.Unchanged)
-          | Failure (Cancelled { dependency_cycle }) ->
+          | Cancelled { dependency_cycle } ->
             Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
-          | Failure (Out_of_date _old_value) ->
+          | Out_of_date _old_value ->
             (match dep.has_cutoff with
              | false ->
                (* If [dep] has no cutoff, it is sufficient to check whether it
@@ -1263,9 +1232,9 @@ end = struct
       (match deps_changed with
        | Unchanged ->
          cached_value.last_validated_at <- Run.current ();
-         Cache_lookup.Result.Ok cached_value
-       | Changed -> Failure (Out_of_date { old_value = Option.Unboxed.some cached_value })
-       | Cancelled { dependency_cycle } -> Failure (Cancelled { dependency_cycle }))
+         Cache_lookup.Ok cached_value
+       | Changed -> Out_of_date { old_value = Option.Unboxed.some cached_value }
+       | Cancelled { dependency_cycle } -> Cancelled { dependency_cycle })
 
   and compute :
         'i 'o.
@@ -1286,19 +1255,19 @@ end = struct
       | Error errors -> Error errors
     in
     let deps_rev = Stack_frame_with_state.deps_rev stack_frame in
-    match Option.Unboxed.is_none old_value with
-    | true -> Cached_value.create value ~deps_rev
-    | false ->
-      let old_cv = Option.Unboxed.value_exn old_value in
-      (match Cached_value.value_changed dep_node old_cv.value value with
-       | true -> Cached_value.create value ~deps_rev
-       | false -> Cached_value.confirm_old_value ~deps_rev old_cv)
+    Option.Unboxed.match_
+      old_value
+      ~none:(fun () -> Cached_value.create value ~deps_rev)
+      ~some:(fun old_cv ->
+        match Cached_value.value_changed dep_node old_cv.value value with
+        | true -> Cached_value.create value ~deps_rev
+        | false -> Cached_value.confirm_old_value ~deps_rev old_cv)
 
   and start_restoring :
         'i 'o.
         dep_node:('i, 'o) Dep_node.t
         -> cached_value:'o Cached_value.t
-        -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t
+        -> 'o Cache_lookup.t Fiber.t
     =
     fun ~dep_node ~cached_value ->
     let computation = Computation.create () in
@@ -1308,10 +1277,9 @@ end = struct
       if !Counters.enabled then incr Counters.nodes_restored;
       (match restore_result with
        | Ok cached_value -> dep_node.state <- Cached_value cached_value
-       | Failure (Cancelled { dependency_cycle }) ->
+       | Cancelled { dependency_cycle } ->
          dep_node.state <- Cached_value (Cached_value.create_cancelled ~dependency_cycle)
-       | Failure (Out_of_date { old_value }) ->
-         dep_node.state <- Out_of_date { old_value });
+       | Out_of_date { old_value } -> dep_node.state <- Out_of_date { old_value });
       restore_result)
 
   and start_computing :
@@ -1334,7 +1302,7 @@ end = struct
       cached_value)
 
   and consider_and_restore_from_cache_without_adding_dep :
-        'i 'o. ('i, 'o) Dep_node.t -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t
+        'i 'o. ('i, 'o) Dep_node.t -> 'o Cache_lookup.t Fiber.t
     =
     fun dep_node ->
     match dep_node.state with
@@ -1344,16 +1312,15 @@ end = struct
          another hoop [cached_value.last_validated_at] and then, finally, make
          the [Run.is_current] check. We should try to find a shortcut. *)
       if Run.is_current cached_value.last_validated_at
-      then Fiber.return (Cache_lookup.Result.Ok cached_value)
+      then Fiber.return (Cache_lookup.Ok cached_value)
       else start_restoring ~dep_node ~cached_value
     | Restoring { restore_from_cache } ->
       Computation.read_but_first_check_for_cycles restore_from_cache ~dep_node
       >>| (function
       | Ok res -> res
-      | Error dependency_cycle ->
-        Cache_lookup.Result.Failure (Cancelled { dependency_cycle }))
+      | Error dependency_cycle -> Cancelled { dependency_cycle })
     | Out_of_date { old_value } | Computing { old_value; _ } ->
-      Fiber.return (Cache_lookup.Result.Failure (Out_of_date { old_value }))
+      Fiber.return (Cache_lookup.Out_of_date { old_value })
 
   (* This function assumes that restoring the value from cache failed. This
      means we should be in two possible states: [Out_of_date] or [Computing].
@@ -1395,7 +1362,7 @@ end = struct
         consider_and_restore_from_cache_without_adding_dep dep_node
         >>= function
         | Ok cached_value -> Fiber.return (Ok cached_value)
-        | Failure (Cancelled { dependency_cycle }) ->
+        | Cancelled { dependency_cycle } ->
           (* If restoring from cache failed with a cycle error, and the node's
              function is deterministic (as it should be), then we will hit the
              same cycle when trying to recompute the result. We therefore
@@ -1404,7 +1371,7 @@ end = struct
              detection library that can't detect the same cycle twice. *)
           dep_node.state <- Cached_value (Cached_value.create_cancelled ~dependency_cycle);
           Fiber.return (Error dependency_cycle)
-        | Failure (Out_of_date _) -> consider_and_compute_without_adding_dep dep_node
+        | Out_of_date _old_value -> consider_and_compute_without_adding_dep dep_node
       in
       match result with
       | Ok res ->
@@ -1462,8 +1429,6 @@ module Invalidation = struct
   (* This is currently used only for informing the user about the reason for
      restarting a build. *)
   module Reason = struct
-    (* CR-someday amokhov: Add other reasons, e.g. a watched environment
-       variable changed. *)
     type t =
       | Unknown
       | Path_changed of Path.t
@@ -1722,7 +1687,7 @@ struct
   end
 
   module Value = struct
-    type t = T : 'a Type_eq.Id.t * 'a output -> t
+    type t = T : ('a Type_eq.Id.t * 'a output) -> t
 
     let get (type a) ~(input_with_matching_id : a input) value : a output =
       match value with
@@ -1854,8 +1819,6 @@ end
 module Option = Monad.Option (Fiber)
 module Result = Monad.Result (Fiber)
 
-(* CR-soon amokhov: The code below is currently untested. There is a comprehensive Memo
-   testsuite externally. We should bring it into Jane, and test this functionality. *)
 module Var = struct
   (* CR-soon amokhov: Simplify this to [type 'a t = (unit, 'a) Cell.t].
 

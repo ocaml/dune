@@ -249,11 +249,6 @@ module M = struct
       ; spec : ('i, 'o) Spec.t
       ; input : 'i
       ; mutable state : 'o State.t
-      ; (* CR-soon amokhov: This field caches the value of [spec.allow_cutoff] to
-           avoid an indirection in a tight loop. There used to be two pointers of
-           indirection in the past; now only one remains. Maybe this optimisation
-           no longer makes any sense and we can just drop it. *)
-        has_cutoff : bool
       }
 
     type packed = T : (_, _) t -> packed [@@unboxed]
@@ -1121,15 +1116,7 @@ let create
 ;;
 
 let make_dep_node ~spec ~input : _ Dep_node.t =
-  { id = Id.gen ()
-  ; input
-  ; spec
-  ; state = Out_of_date { old_value = Option.Unboxed.none }
-  ; has_cutoff =
-      (match spec.allow_cutoff with
-       | Yes _equal -> true
-       | No -> false)
-  }
+  { id = Id.gen (); input; spec; state = Out_of_date { old_value = Option.Unboxed.none } }
 ;;
 
 let dep_node (t : (_, _) Table.t) input =
@@ -1202,13 +1189,13 @@ end = struct
           | Cancelled { dependency_cycle } ->
             Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
           | Out_of_date _old_value ->
-            (match dep.has_cutoff with
-             | false ->
+            (match dep.spec.allow_cutoff with
+             | No ->
                (* If [dep] has no cutoff, it is sufficient to check whether it
                   is up to date. If not, we must recompute the
                   [cached_value]. *)
                Fiber.return Changed_or_not.Changed
-             | true ->
+             | Yes _equal ->
                (* If [dep] has a cutoff predicate, it is not sufficient to
                   check whether it is up to date: even if it isn't, after we
                   recompute it, the resulting value may remain unchanged,

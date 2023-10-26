@@ -91,3 +91,10 @@ Locking should be successful and it should include the additional file
   dune.lock/foo.files/hello.txt
   dune.lock/foo.pkg
   dune.lock/lock.dune
+
+The extra-file should have the same content as the original file, we determine
+that by hashing with the checksum that we expected in the OPAM file
+
+  $ LOCKED_FILES_CHECKSUM=$(md5sum dune.lock/foo.files/$FILES_NAME | awk '{ print $1 }')
+  $ [ "$LOCKED_FILES_CHECKSUM" = "$FILES_CHECKSUM" ] && echo "The contents match"
+  The contents match

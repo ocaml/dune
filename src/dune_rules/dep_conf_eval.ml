@@ -107,18 +107,22 @@ let add_sandbox_config acc (dep : Dep_conf.t) =
 ;;
 
 let rec dir_contents ~loc d =
-  match Path.Untracked.readdir_unsorted_with_kinds d with
+  let open Memo.O in
+  Fs_memo.dir_contents d
+  >>= function
   | Error e -> Unix_error.Detailed.raise e
   | Ok contents ->
-    List.concat_map contents ~f:(fun (entry, kind) ->
-      let path = Path.relative d entry in
+    Fs_cache.Dir_contents.to_list contents
+    |> Memo.parallel_map ~f:(fun (entry, kind) ->
+      let path = Path.Outside_build_dir.relative d entry in
       match kind with
-      | S_REG -> [ path ]
+      | Unix.S_REG -> Memo.return [ path ]
       | S_DIR -> dir_contents ~loc path
       | _ ->
         User_error.raise
           ~loc
           [ Pp.text "Encountered a special file while expanding dependency." ])
+    >>| List.concat
 ;;
 
 let rec dep expander : Dep_conf.t -> _ = function
@@ -210,19 +214,23 @@ let rec dep expander : Dep_conf.t -> _ = function
                             dune 2.9)"
                        ])
                }
-           else (
-             let files =
-               List.concat_map
-                 ~f:(fun (s, l) ->
-                   let dir = Section.Map.find_exn pkg.sections s in
-                   List.concat_map l ~f:(fun (kind, d) ->
-                     let path = Path.relative dir (Install.Entry.Dst.to_string d) in
-                     match kind with
-                     | `File -> [ path ]
-                     | `Dir -> dir_contents ~loc path))
-                 pkg.files
+           else
+             let* files =
+               (let open Memo.O in
+                Memo.parallel_map pkg.files ~f:(fun (s, l) ->
+                  let dir = Section.Map.find_exn pkg.sections s in
+                  Memo.parallel_map l ~f:(fun (kind, d) ->
+                    let path = Path.relative dir (Install.Entry.Dst.to_string d) in
+                    match kind with
+                    | `File -> Memo.return [ path ]
+                    | `Dir ->
+                      let path = Path.as_outside_build_dir_exn path in
+                      dir_contents ~loc path >>| List.rev_map ~f:Path.outside_build_dir)
+                  >>| List.concat)
+                >>| List.concat)
+               |> Action_builder.of_memo
              in
-             Action_builder.paths files)
+             Action_builder.paths files
          | None ->
            Action_builder.fail
              { fail =

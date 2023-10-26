@@ -98,8 +98,13 @@ let copy_recursively =
 ;;
 
 let create_dirs t ~deps ~rule_dir =
-  Path.Build.Set.add (Dep.Facts.necessary_dirs_for_sandboxing deps) rule_dir
-  |> Path.Build.Set.iter ~f:(fun path -> Path.mkdir_p (Path.build (map_path t path)))
+  let dirs =
+    let base = Dep.Facts.necessary_dirs_for_sandboxing deps in
+    match rule_dir with
+    | None -> base
+    | Some rule_dir -> Path.Build.Set.add base rule_dir
+  in
+  Path.Build.Set.iter dirs ~f:(fun path -> Path.mkdir_p (Path.build (map_path t path)))
 ;;
 
 let link_function ~(mode : Sandbox_mode.some) =

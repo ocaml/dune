@@ -328,10 +328,15 @@ end = struct
       match sandbox_mode with
       | Some mode ->
         let+ sandbox =
+          let rule_dir =
+            match rule_kind with
+            | Anonymous_action _ -> None
+            | Normal_rule -> Some dir
+          in
           Sandbox.create
             ~mode
             ~deps
-            ~rule_dir:dir
+            ~rule_dir
             ~rule_loc:loc
             ~rule_digest
             ~dune_stats

@@ -15,7 +15,7 @@ val create
   -> dune_stats:Dune_stats.t option
   -> rule_loc:Loc.t
   -> deps:Dep.Facts.t
-  -> rule_dir:Path.Build.t
+  -> rule_dir:Path.Build.t option
   -> rule_digest:Digest.t
   -> expand_aliases:bool
   -> t Fiber.t

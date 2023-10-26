@@ -232,20 +232,6 @@ let display_clean_and_zero_with_sandboxing
       clean_sandbox.elapsed_time
       zero_sandbox.elapsed_time
   ; display
-      "User CPU Time"
-      "Seconds"
-      user_cpu_time
-      zero.user_cpu_time
-      clean_sandbox.user_cpu_time
-      zero_sandbox.user_cpu_time
-  ; display
-      "System CPU Time"
-      "Seconds"
-      system_cpu_time
-      zero.system_cpu_time
-      clean_sandbox.system_cpu_time
-      zero_sandbox.system_cpu_time
-  ; display
       "Minor Words"
       "Approx. Words"
       minor_words
@@ -343,6 +329,20 @@ let display_clean_and_zero_with_sandboxing
       zero.top_heap_words
       clean_sandbox.top_heap_words
       zero_sandbox.top_heap_words
+  ; display
+      "User CPU Time"
+      "Seconds"
+      user_cpu_time
+      zero.user_cpu_time
+      clean_sandbox.user_cpu_time
+      zero_sandbox.user_cpu_time
+  ; display
+      "System CPU Time"
+      "Seconds"
+      system_cpu_time
+      zero.system_cpu_time
+      clean_sandbox.system_cpu_time
+      zero_sandbox.system_cpu_time
   ]
 ;;
 

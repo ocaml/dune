@@ -33,6 +33,7 @@ Attempt to create a lock directory inside an existing directory with an invalid 
   $ cp -r dir-with-invalid-metadata dune.lock
   $ dune pkg lock --opam-repository-path=mock-opam-repository
   Error: Refusing to regenerate lock directory dune.lock
+  Unable to parse lock directory metadata file (dune.lock/lock.dune):
   File "dune.lock/lock.dune", line 1, characters 0-12:
   Error: Invalid first line, expected: (lang <lang> <version>)
   

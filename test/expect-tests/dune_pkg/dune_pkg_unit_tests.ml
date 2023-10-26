@@ -1,6 +1,8 @@
 open Stdune
 module Checksum = Dune_pkg.Checksum
 module Lock_dir = Dune_pkg.Lock_dir
+module Expanded_variable_bindings = Dune_pkg.Solver_stats.Expanded_variable_bindings
+module Variable = Dune_pkg.Solver_env.Variable
 module Package_name = Dune_lang.Package_name
 
 let () = Dune_tests_common.init ()
@@ -9,7 +11,18 @@ let lock_dir_encode_decode_round_trip_test ~lock_dir_path ~lock_dir =
   let lock_dir_path = Path.Source.of_string lock_dir_path in
   Lock_dir.Write_disk.(
     prepare ~lock_dir_path ~files:Package_name.Map.empty lock_dir |> commit);
-  let lock_dir_round_tripped = Lock_dir.read_disk lock_dir_path in
+  let lock_dir_round_tripped =
+    try Lock_dir.read_disk lock_dir_path with
+    | User_error.E _ as exn ->
+      let metadata_path =
+        Path.Source.relative lock_dir_path Lock_dir.metadata_filename |> Path.source
+      in
+      let metadata_file_contents = Io.read_file metadata_path in
+      print_endline
+        "Failed to parse lockdir. Dumping raw metadata file to assist debugging.";
+      print_endline metadata_file_contents;
+      Exn.raise exn
+  in
   if Lock_dir.equal
        (Lock_dir.remove_locs lock_dir_round_tripped)
        (Lock_dir.remove_locs lock_dir)
@@ -22,7 +35,11 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
   lock_dir_encode_decode_round_trip_test
     ~lock_dir_path:"empty_lock_dir"
     ~lock_dir:
-      (Lock_dir.create_latest_version Package_name.Map.empty ~ocaml:None ~repos:None);
+      (Lock_dir.create_latest_version
+         Package_name.Map.empty
+         ~ocaml:None
+         ~repos:None
+         ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty);
   [%expect
     {|
     lockdir matches after roundtrip:
@@ -30,6 +47,8 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
     ; packages = map {}
     ; ocaml = None
     ; repos = { complete = true; used = None }
+    ; expanded_solver_variable_bindings =
+        { variable_values = []; unset_variables = [] }
     } |}]
 ;;
 
@@ -54,6 +73,10 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
        Lock_dir.create_latest_version
          ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
          ~repos:None
+         ~expanded_solver_variable_bindings:
+           { Expanded_variable_bindings.variable_values = [ Variable.Sys `Os, "linux" ]
+           ; unset_variables = [ Variable.Sys `Os_family ]
+           }
          (Package_name.Map.of_list_exn
             [ mk_pkg_basic ~name:"foo" ~version:"0.1.0"
             ; mk_pkg_basic ~name:"bar" ~version:"0.2.0"
@@ -93,6 +116,10 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
           }
     ; ocaml = Some ("simple_lock_dir/lock.dune:3", "ocaml")
     ; repos = { complete = true; used = None }
+    ; expanded_solver_variable_bindings =
+        { variable_values = [ (Sys "os", "linux") ]
+        ; unset_variables = [ Sys "os-family" ]
+        }
     } |}]
 ;;
 
@@ -184,6 +211,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
        Lock_dir.create_latest_version
          ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
          ~repos:(Some [ opam_repo ])
+         ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
          (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ]));
   [%expect
     {|
@@ -252,5 +280,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   "well-known-repo"
               ]
         }
+    ; expanded_solver_variable_bindings =
+        { variable_values = []; unset_variables = [] }
     } |}]
 ;;

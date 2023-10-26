@@ -7,6 +7,7 @@ module Opam_solver = Opam_solver
 module Package_variable = Package_variable
 module Repository_id = Repository_id
 module Solver_env = Solver_env
+module Solver_stats = Solver_stats
 module Substs = Substs
 module Sys_poll = Sys_poll
 module Version_preference = Version_preference

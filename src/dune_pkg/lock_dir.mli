@@ -47,6 +47,10 @@ type t =
   ; packages : Pkg.t Package_name.Map.t
   ; ocaml : (Loc.t * Package_name.t) option
   ; repos : Repositories.t
+  ; expanded_solver_variable_bindings : Solver_stats.Expanded_variable_bindings.t
+      (** Stores the solver variables that were evaluated while solving
+          dependencies. Can be used to determine if a lockdir is compatible
+          with a particular system. *)
   }
 
 val remove_locs : t -> t
@@ -57,11 +61,14 @@ val create_latest_version
   :  Pkg.t Package_name.Map.t
   -> ocaml:(Loc.t * Package_name.t) option
   -> repos:Opam_repo.t list option
+  -> expanded_solver_variable_bindings:Solver_stats.Expanded_variable_bindings.t
   -> t
 
 val default_path : Path.Source.t
 
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit
+
+val metadata_filename : Filename.t
 
 module Write_disk : sig
   type lock_dir := t

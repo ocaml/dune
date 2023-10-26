@@ -268,9 +268,11 @@ let get_opam_package_files t opam_package =
     let* dir_entries = Rev_store.Remote.At_rev.directory_entries at_rev file_path in
     let+ file_entries =
       List.map dir_entries ~f:(fun entry ->
-        let+ content = Rev_store.Remote.At_rev.content at_rev entry in
+        let full_path = file_path / Path.to_string entry in
+        let+ content = Rev_store.Remote.At_rev.content at_rev full_path in
         match content with
-        | None -> None
+        | None ->
+          Code_error.raise "Enumerated file in directory but file can't be retrieved" []
         | Some content ->
           let original = File_entry.Content content in
           let local_file = Path.local_part entry in

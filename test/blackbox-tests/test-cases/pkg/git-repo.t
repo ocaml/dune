@@ -79,7 +79,7 @@ should also be included.
   $ git commit -m "foo 1.2 with files" > /dev/null
   $ cd ..
 
-Locking should be successful
+Locking should be successful and it should include the additional file
 
   $ XDG_CACHE_HOME=$(pwd)/dune-cache dune pkg lock
   Solution for dune.lock:
@@ -87,5 +87,7 @@ Locking should be successful
 
   $ find dune.lock | sort
   dune.lock
+  dune.lock/foo.files
+  dune.lock/foo.files/hello.txt
   dune.lock/foo.pkg
   dune.lock/lock.dune

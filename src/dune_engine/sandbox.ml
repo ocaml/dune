@@ -99,10 +99,7 @@ let copy_recursively =
 
 let create_dirs t ~deps ~rule_dir =
   Path.Build.Set.add (Dep.Facts.necessary_dirs_for_sandboxing deps) rule_dir
-  |> Path.Build.Set.iter ~f:(fun path ->
-    (* There is no point in using the memoized version [Fs.mkdir_p] since
-       these directories are not shared between actions. *)
-    Path.mkdir_p (Path.build (map_path t path)))
+  |> Path.Build.Set.iter ~f:(fun path -> Path.mkdir_p (Path.build (map_path t path)))
 ;;
 
 let link_function ~(mode : Sandbox_mode.some) =

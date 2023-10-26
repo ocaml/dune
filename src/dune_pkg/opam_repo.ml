@@ -36,24 +36,26 @@ module Serializable = struct
   ;;
 end
 
-type backend =
-  | Directory of Path.t
-  | Repo of Rev_store.Remote.At_rev.t
+module Backend = struct
+  type t =
+    | Directory of Path.t
+    | Repo of Rev_store.Remote.At_rev.t
 
-let backend_equal a b =
-  match a, b with
-  | Directory a, Directory b -> Path.equal a b
-  | Repo a, Repo b -> Rev_store.Remote.At_rev.equal a b
-  | _, _ -> false
-;;
+  let equal a b =
+    match a, b with
+    | Directory a, Directory b -> Path.equal a b
+    | Repo a, Repo b -> Rev_store.Remote.At_rev.equal a b
+    | _, _ -> false
+  ;;
+end
 
 type t =
-  { source : backend
+  { source : Backend.t
   ; serializable : Serializable.t option
   }
 
 let equal { source; serializable } t =
-  backend_equal source t.source
+  Backend.equal source t.source
   && Option.equal Serializable.equal serializable t.serializable
 ;;
 

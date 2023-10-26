@@ -125,6 +125,54 @@ let rec dir_contents ~loc d =
     >>| List.concat
 ;;
 
+let package loc pkg (context : Build_context.t) ~dune_version =
+  let pkg = Package.Name.of_string pkg in
+  Action_builder.of_memo
+    (let open Memo.O in
+     let* package_db = Package_db.create context.name in
+     Package_db.find_package package_db pkg)
+  >>= function
+  | Some (Build build) -> build
+  | Some (Local pkg) -> Action_builder.alias (package_install ~context ~pkg)
+  | Some (Installed pkg) ->
+    if dune_version < (2, 9)
+    then
+      Action_builder.fail
+        { fail =
+            (fun () ->
+              User_error.raise
+                ~loc
+                [ Pp.textf
+                    "Dependency on an installed package requires at least (lang dune 2.9)"
+                ])
+        }
+    else
+      let* files =
+        (let open Memo.O in
+         Memo.parallel_map pkg.files ~f:(fun (s, l) ->
+           let dir = Section.Map.find_exn pkg.sections s in
+           Memo.parallel_map l ~f:(fun (kind, d) ->
+             let path = Path.relative dir (Install.Entry.Dst.to_string d) in
+             match kind with
+             | `File -> Memo.return [ path ]
+             | `Dir ->
+               let path = Path.as_outside_build_dir_exn path in
+               dir_contents ~loc path >>| List.rev_map ~f:Path.outside_build_dir)
+           >>| List.concat)
+         >>| List.concat)
+        |> Action_builder.of_memo
+      in
+      Action_builder.paths files
+  | None ->
+    Action_builder.fail
+      { fail =
+          (fun () ->
+            User_error.raise
+              ~loc
+              [ Pp.textf "Package %s does not exist" (Package.Name.to_string pkg) ])
+      }
+;;
+
 let rec dep expander : Dep_conf.t -> _ = function
   | Include s ->
     (* TODO this is wrong. we shouldn't allow bindings here if we are in an
@@ -184,62 +232,14 @@ let rec dep expander : Dep_conf.t -> _ = function
        Action_builder.dyn_memo_deps deps |> Action_builder.map ~f:Path.Set.to_list)
   | Package p ->
     Other
-      (let* pkg = Expander.expand_str expander p in
-       let+ () =
-         let pkg = Package.Name.of_string pkg in
-         let context = Expander.context expander in
-         Action_builder.of_memo
-           (let open Memo.O in
-            let* package_db = Package_db.create (Context.name context) in
-            Package_db.find_package package_db pkg)
-         >>= function
-         | Some (Build build) -> build
-         | Some (Local pkg) ->
-           Action_builder.alias
-             (package_install ~context:(Context.build_context context) ~pkg)
-         | Some (Installed pkg) ->
-           let version =
-             Dune_project.dune_version @@ Scope.project @@ Expander.scope expander
-           in
-           let loc = String_with_vars.loc p in
-           if version < (2, 9)
-           then
-             Action_builder.fail
-               { fail =
-                   (fun () ->
-                     User_error.raise
-                       ~loc
-                       [ Pp.textf
-                           "Dependency on an installed package requires at least (lang \
-                            dune 2.9)"
-                       ])
-               }
-           else
-             let* files =
-               (let open Memo.O in
-                Memo.parallel_map pkg.files ~f:(fun (s, l) ->
-                  let dir = Section.Map.find_exn pkg.sections s in
-                  Memo.parallel_map l ~f:(fun (kind, d) ->
-                    let path = Path.relative dir (Install.Entry.Dst.to_string d) in
-                    match kind with
-                    | `File -> Memo.return [ path ]
-                    | `Dir ->
-                      let path = Path.as_outside_build_dir_exn path in
-                      dir_contents ~loc path >>| List.rev_map ~f:Path.outside_build_dir)
-                  >>| List.concat)
-                >>| List.concat)
-               |> Action_builder.of_memo
-             in
-             Action_builder.paths files
-         | None ->
-           Action_builder.fail
-             { fail =
-                 (fun () ->
-                   let loc = String_with_vars.loc p in
-                   User_error.raise
-                     ~loc
-                     [ Pp.textf "Package %s does not exist" (Package.Name.to_string pkg) ])
-             }
+      (let+ () =
+         let* pkg = Expander.expand_str expander p in
+         let context = Context.build_context (Expander.context expander) in
+         let loc = String_with_vars.loc p in
+         let dune_version =
+           Dune_project.dune_version @@ Scope.project @@ Expander.scope expander
+         in
+         package loc pkg context ~dune_version
        in
        [])
   | Universe ->

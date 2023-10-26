@@ -601,7 +601,7 @@ let solve_package_list local_package_names context =
 module Solver_result = struct
   type t =
     { lock_dir : Lock_dir.t
-    ; files : Lock_dir.Write_disk.Files_entry.t Package_name.Map.Multi.t
+    ; files : File_entry.t Package_name.Map.Multi.t
     }
 end
 
@@ -707,22 +707,7 @@ let solve_lock_dir
                 , files ))
           |> Fiber.all_concurrently
         in
-        file_entry_candidates
-        |> List.filter_map ~f:(function
-          | None -> None
-          | Some (name, entries) ->
-            let entries =
-              List.map entries ~f:(fun { Opam_repo.File_entry.original; local_file } ->
-                match original with
-                | Path file ->
-                  { Lock_dir.Write_disk.Files_entry.original = Path file; local_file }
-                | Content content ->
-                  { Lock_dir.Write_disk.Files_entry.original = Content content
-                  ; local_file
-                  })
-            in
-            Some (name, entries))
-        |> Package_name.Map.of_list_exn
+        file_entry_candidates |> List.filter_opt |> Package_name.Map.of_list_exn
       in
       { Solver_result.lock_dir; files })
   in

@@ -44,17 +44,6 @@ val load_all_versions
   -> OpamPackage.Name.t
   -> (OpamFile.OPAM.t list, [ `Package_not_found ]) result Fiber.t
 
-module File_entry : sig
-  type source =
-    | Path of Path.t
-    | Content of string
-
-  type t =
-    { local_file : Path.Local.t
-    ; original : source
-    }
-end
-
 val get_opam_package_files : t -> OpamPackage.t -> File_entry.t list Fiber.t
 
 module Private : sig

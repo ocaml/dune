@@ -232,17 +232,6 @@ let scan_files_entries path =
   read [] Path.Local.root
 ;;
 
-module File_entry = struct
-  type source =
-    | Path of Path.t
-    | Content of string
-
-  type t =
-    { local_file : Path.Local.t
-    ; original : source
-    }
-end
-
 let get_opam_package_files t opam_package =
   let open Fiber.O in
   let name = opam_package |> OpamPackage.name |> OpamPackage.Name.to_string in

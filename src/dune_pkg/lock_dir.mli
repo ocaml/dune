@@ -74,20 +74,9 @@ module Write_disk : sig
   type lock_dir := t
   type t
 
-  module Files_entry : sig
-    type source =
-      | Path of Path.t
-      | Content of string
-
-    type t =
-      { original : source
-      ; local_file : Path.Local.t
-      }
-  end
-
   val prepare
     :  lock_dir_path:Path.Source.t
-    -> files:Files_entry.t Package_name.Map.Multi.t
+    -> files:File_entry.t Package_name.Map.Multi.t
     -> lock_dir
     -> t
 

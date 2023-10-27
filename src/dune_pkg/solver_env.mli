@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 
 module Variable : sig
   module Sys : sig
@@ -26,7 +26,7 @@ module Variable : sig
       type t
 
       val to_dyn : t -> Dyn.t
-      val decode : t Dune_sexp.Decoder.t
+      val decode : t Decoder.t
       val equal : t -> t -> bool
       val empty : t
       val set : t -> sys_var -> string -> t
@@ -55,8 +55,8 @@ module Variable : sig
 
   val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t
-  val decode : t Dune_lang.Decoder.t
-  val encode : t Dune_lang.Encoder.t
+  val decode : t Decoder.t
+  val encode : t Encoder.t
 end
 
 (** A variable environment used by the dependency solver to evaluate package
@@ -70,7 +70,7 @@ type t
 
 val create : sys:Variable.Sys.Bindings.t -> t
 val default : t
-val decode : t Dune_sexp.Decoder.t
+val decode : t Decoder.t
 val to_dyn : t -> Dyn.t
 val equal : t -> t -> bool
 val sys : t -> Variable.Sys.Bindings.t

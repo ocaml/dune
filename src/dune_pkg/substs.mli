@@ -1,17 +1,17 @@
-open Stdune
+open Import
 
 module Variable : sig
   type t
 
   val compare : t -> t -> Ordering.t
   val to_dyn : t -> Dyn.t
-  val encode : t -> Dune_sexp.t
+  val encode : t Encoder.t
   val of_string : string -> t
 end
 
 module Var : sig
   type t =
-    { package : Dune_lang.Package_name.t option
+    { package : Package_name.t option
     ; variable : Variable.t
     }
 
@@ -24,7 +24,7 @@ end
 
 val subst
   :  OpamVariable.variable_contents Var.Map.t
-  -> Dune_lang.Package_name.t
+  -> Package_name.t
   -> src:Path.t
   -> dst:Path.Build.t
   -> unit

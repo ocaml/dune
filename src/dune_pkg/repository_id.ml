@@ -7,7 +7,7 @@ let equal a b =
   | Git_hash a, Git_hash b -> String.equal a b
 ;;
 
-let encode : t -> Dune_sexp.t = function
+let encode : t Encoder.t = function
   | Git_hash commitish ->
     List
       [ Dune_lang.atom_or_quoted_string "git_hash"
@@ -16,7 +16,7 @@ let encode : t -> Dune_sexp.t = function
 ;;
 
 let decode =
-  let open Dune_sexp.Decoder in
+  let open Decoder in
   let+ constr, stamp = pair string string in
   match constr with
   | "git_hash" -> Git_hash stamp

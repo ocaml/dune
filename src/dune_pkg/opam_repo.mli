@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 
 type t
 
@@ -6,7 +6,7 @@ module Serializable : sig
   type t
 
   val encode : t -> Dune_lang.t list
-  val decode : t Dune_lang.Decoder.t
+  val decode : t Decoder.t
   val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t
 end

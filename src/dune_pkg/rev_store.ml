@@ -2,6 +2,7 @@ open Stdune
 module Process = Dune_engine.Process
 module Display = Dune_engine.Display
 module Re = Dune_re
+open Fiber.O
 
 type t =
   { git : Path.t
@@ -36,7 +37,6 @@ let run_capture_zero_separated_lines { git; dir } =
 ;;
 
 let show { git; dir } (Rev rev) path =
-  let open Fiber.O in
   let failure_mode = Dune_vcs.Vcs.git_accept () in
   let command = [ "show"; sprintf "%s:%s" rev (Path.to_string path) ] in
   let stderr_to = make_stderr () in
@@ -49,7 +49,6 @@ let show { git; dir } (Rev rev) path =
 let load ~git ~dir = { git; dir }
 
 let create ~git ~dir =
-  let open Fiber.O in
   Path.mkdir_p dir;
   let t = load ~git ~dir in
   let+ () = run t [ "init"; "--bare" ] in
@@ -72,7 +71,6 @@ module Remote = struct
   let update { repo; handle } = run repo [ "fetch"; handle; "--no-tags" ]
 
   let default_branch { repo; handle } =
-    let open Fiber.O in
     let+ contents = run_capture_lines repo [ "remote"; "show"; handle ] in
     List.find_map contents ~f:(fun line ->
       Re.exec_opt head_branch line |> Option.map ~f:(fun groups -> Re.Group.get groups 1))
@@ -89,7 +87,6 @@ module Remote = struct
     let content { remote = { repo; handle = _ }; revision } path = show repo revision path
 
     let directory_entries { remote = { repo; handle = _ }; revision = Rev rev } path =
-      let open Fiber.O in
       (* TODO future: cache ls-tree *)
       let+ all_files =
         run_capture_zero_separated_lines
@@ -110,7 +107,6 @@ module Remote = struct
   end
 
   let rev_of_name ({ repo; handle } as remote) ~name =
-    let open Fiber.O in
     (* TODO handle non-existing name *)
     let+ rev = run_capture_line repo [ "rev-parse"; sprintf "%s/%s" handle name ] in
     Some { At_rev.remote; revision = Rev rev }
@@ -129,7 +125,6 @@ module Remote = struct
 end
 
 let remote_exists { git; dir } ~name =
-  let open Fiber.O in
   let stdout_to = make_stdout () in
   let stderr_to = make_stderr () in
   let failure_mode = Process.Failure_mode.Return in
@@ -143,7 +138,6 @@ let remote_exists { git; dir } ~name =
 ;;
 
 let add_repo t ~source =
-  let open Fiber.O in
   let handle = source |> Dune_digest.string |> Dune_digest.to_string in
   let* exists = remote_exists t ~name:handle in
   let* () =

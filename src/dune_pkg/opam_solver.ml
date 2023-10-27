@@ -682,15 +682,13 @@ let solve_lock_dir
       in
       let+ files =
         let+ file_entry_candidates =
-          opam_packages_to_lock
-          |> List.map ~f:(fun opam_package ->
+          Fiber.parallel_map opam_packages_to_lock ~f:(fun opam_package ->
             let+ entries_per_repo =
-              List.map repos ~f:(fun repo ->
+              Fiber.parallel_map repos ~f:(fun repo ->
                 let+ file_entries = Opam_repo.get_opam_package_files repo opam_package in
                 match file_entries with
                 | [] -> None
                 | file_entries -> Some file_entries)
-              |> Fiber.all
             in
             let first_matching_repo =
               List.find_map entries_per_repo ~f:(function
@@ -705,7 +703,6 @@ let solve_lock_dir
                 ( Package_name.of_string
                     (OpamPackage.Name.to_string (OpamPackage.name opam_package))
                 , files ))
-          |> Fiber.all_concurrently
         in
         file_entry_candidates |> List.filter_opt |> Package_name.Map.of_list_exn
       in

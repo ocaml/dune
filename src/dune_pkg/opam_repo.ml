@@ -366,7 +366,7 @@ let all_package_versions t opam_package_name =
 let load_all_versions ts opam_package_name =
   let open Fiber.O in
   let* versions =
-    List.map ts ~f:(fun t -> all_package_versions t opam_package_name) |> Fiber.all
+    Fiber.parallel_map ts ~f:(fun t -> all_package_versions t opam_package_name)
   in
   match List.filter_opt versions with
   | [] -> Fiber.return @@ Error `Package_not_found

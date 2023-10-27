@@ -805,22 +805,28 @@ module Action_expander = struct
     }
   ;;
 
-  let expand =
-    let sandbox = Sandbox_mode.Set.singleton Sandbox_mode.copy in
-    fun context (pkg : Pkg.t) action ->
-      let+ action =
-        let* expander = expander context pkg in
-        expand action ~expander >>| Action.chdir (Path.build pkg.paths.source_dir)
-      in
-      (* TODO copying is needed for build systems that aren't dune and those
-         with an explicit install step *)
-      Action.Full.make ~sandbox action
-      |> Action_builder.return
-      |> Action_builder.with_no_targets
+  let expand ~sandbox context (pkg : Pkg.t) action =
+    let+ action =
+      let* expander = expander context pkg in
+      expand action ~expander >>| Action.chdir (Path.build pkg.paths.source_dir)
+    in
+    (* TODO copying is needed for build systems that aren't dune and those
+       with an explicit install step *)
+    Action.Full.make ?sandbox action
+    |> Action_builder.return
+    |> Action_builder.with_no_targets
   ;;
 
+  let expand_no_sandbox = expand ~sandbox:None
+  let expand = expand ~sandbox:(Some (Sandbox_mode.Set.singleton Sandbox_mode.copy))
+
   let build_command context (pkg : Pkg.t) =
-    Option.map pkg.build_command ~f:(expand context pkg)
+    match pkg.build_command with
+    | None ->
+      (* We cannot sandbox the empty action, but we need the expansion to happen in the
+         None case. *)
+      expand_no_sandbox context pkg (Dune_lang.Action.Progn [])
+    | Some action -> expand context pkg action
   ;;
 
   let install_command context (pkg : Pkg.t) =
@@ -1425,9 +1431,7 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
           let dst = Path.Build.append_local pkg.paths.source_dir local in
           Action.copy src dst |> Action.Full.make |> Action_builder.With_targets.return)
       and+ build_action =
-        match Action_expander.build_command context_name pkg with
-        | None -> Memo.return []
-        | Some build_command -> build_command >>| List.singleton
+        Action_expander.build_command context_name pkg >>| List.singleton
       and+ install_action =
         match Action_expander.install_command context_name pkg with
         | None -> Memo.return []

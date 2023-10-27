@@ -132,24 +132,20 @@ module Context_for_dune = struct
       in
       Fiber.return [ version, Ok opam_file ]
     | None ->
-      let+ all_versions = Opam_repo.load_all_versions t.repos name in
-      (match all_versions with
-       | Error `Package_not_found ->
-         (* The CONTEXT interface doesn't give us a way to report this type of
-            error and there's not enough context to give a helpful error message
-            so just tell opam_0install that there are no versions of this
-            package available (technically true) and let it produce the error
-            message. *)
-         []
-       | Ok opam_files ->
-         let opam_files_in_priority_order =
-           List.sort opam_files ~compare:(opam_version_compare t)
-         in
-         List.map opam_files_in_priority_order ~f:(fun opam_file ->
-           let opam_file_result =
-             if is_opam_available t opam_file then Ok opam_file else Error Unavailable
-           in
-           OpamFile.OPAM.version opam_file, opam_file_result))
+      let+ opam_files = Opam_repo.load_all_versions t.repos name in
+      (* The CONTEXT interface doesn't give us a way to report this type of
+         error and there's not enough context to give a helpful error message
+         so just tell opam_0install that there are no versions of this
+         package available (technically true) and let it produce the error
+         message. *)
+      let opam_files_in_priority_order =
+        List.sort opam_files ~compare:(opam_version_compare t)
+      in
+      List.map opam_files_in_priority_order ~f:(fun opam_file ->
+        let opam_file_result =
+          if is_opam_available t opam_file then Ok opam_file else Error Unavailable
+        in
+        OpamFile.OPAM.version opam_file, opam_file_result)
   ;;
 
   let user_restrictions : t -> OpamPackage.Name.t -> OpamFormula.version_constraint option

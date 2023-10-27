@@ -325,7 +325,7 @@ let all_package_versions t opam_package_name =
   match t.source with
   | Directory d ->
     (match get_opam_package_version_dir_path d opam_package_name with
-     | None -> Fiber.return None
+     | None -> Fiber.return []
      | Some version_dir_path ->
        (match Path.readdir_unsorted version_dir_path with
         | Error e ->
@@ -335,50 +335,33 @@ let all_package_versions t opam_package_name =
                 (Path.to_string_maybe_quoted version_dir_path)
                 (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e)
             ]
-        | Ok version_dirs ->
-          Fiber.return (Some (List.map version_dirs ~f:OpamPackage.of_string))))
+        | Ok version_dirs -> Fiber.return (List.map version_dirs ~f:OpamPackage.of_string)))
   | Repo at_rev ->
     let name = OpamPackage.Name.to_string opam_package_name in
     let version_dir_path = Path.Local.relative (Path.Local.of_string "packages") name in
     let+ dir_entries =
       Rev_store.Remote.At_rev.directory_entries at_rev version_dir_path
     in
-    (match dir_entries with
-     | [] -> None
-     | dir_entries ->
-       (match
-          List.filter_map dir_entries ~f:(fun dir_entry ->
-            let open Option.O in
-            Path.Local.basename_opt dir_entry
-            >>= function
-            | "opam" ->
-              let+ parent = Path.Local.parent dir_entry in
-              parent |> Path.Local.basename |> OpamPackage.of_string
-            | _ -> None)
-        with
-        | [] -> None
-        | entries -> Some entries))
+    List.filter_map dir_entries ~f:(fun dir_entry ->
+      let open Option.O in
+      Path.Local.basename_opt dir_entry
+      >>= function
+      | "opam" ->
+        let+ parent = Path.Local.parent dir_entry in
+        parent |> Path.Local.basename |> OpamPackage.of_string
+      | _ -> None)
 ;;
 
 let load_all_versions ts opam_package_name =
-  let* versions =
-    Fiber.parallel_map ts ~f:(fun t -> all_package_versions t opam_package_name)
-  in
-  match List.filter_opt versions with
-  | [] -> Fiber.return @@ Error `Package_not_found
-  | pkgs ->
-    let pkgs = List.concat pkgs in
-    let+ found_versions =
-      Fiber.parallel_map pkgs ~f:(fun opam_pkg ->
-        let+ found_in_repo =
-          Fiber.parallel_map ts ~f:(fun t -> load_opam_package t opam_pkg)
-        in
-        List.find_map found_in_repo ~f:Fun.id)
+  Fiber.parallel_map ts ~f:(fun t -> all_package_versions t opam_package_name)
+  >>| List.concat
+  >>= Fiber.parallel_map ~f:(fun opam_pkg ->
+    let+ found_in_repo =
+      Fiber.parallel_map ts ~f:(fun t -> load_opam_package t opam_pkg)
     in
-    found_versions
-    |> List.filter_opt
-    |> List.map ~f:(fun (with_file : With_file.t) -> with_file.opam_file)
-    |> Result.ok
+    List.find_map found_in_repo ~f:Fun.id)
+  >>| List.filter_opt
+  >>| List.map ~f:(fun (with_file : With_file.t) -> with_file.opam_file)
 ;;
 
 module Private = struct

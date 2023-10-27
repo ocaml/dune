@@ -102,32 +102,27 @@ let better_candidate
       |> List.exists ~f:(fun (name', _) -> OpamPackage.Name.equal pkg_name name'))
   in
   let+ all_versions = Opam_repo.load_all_versions repos pkg_name in
-  match all_versions with
-  | Error `Package_not_found -> Package_not_found pkg.info.name
-  | Ok versions ->
+  match
+    List.max all_versions ~f:(fun x y ->
+      Ordering.of_int
+        (OpamPackage.Version.compare (OpamFile.OPAM.version x) (OpamFile.OPAM.version y)))
+  with
+  | None -> Package_not_found pkg.info.name
+  | Some newest_opam_file ->
+    let version = OpamFile.OPAM.version newest_opam_file in
     (match
-       List.max versions ~f:(fun x y ->
-         Ordering.of_int
-           (OpamPackage.Version.compare
-              (OpamFile.OPAM.version x)
-              (OpamFile.OPAM.version y)))
+       OpamPackage.Version.of_string pkg.info.version
+       |> OpamPackage.Version.compare version
+       |> Ordering.of_int
      with
-     | None -> Package_not_found pkg.info.name
-     | Some newest_opam_file ->
-       let version = OpamFile.OPAM.version newest_opam_file in
-       (match
-          OpamPackage.Version.of_string pkg.info.version
-          |> OpamPackage.Version.compare version
-          |> Ordering.of_int
-        with
-        | Lt | Eq -> Package_is_best_candidate
-        | Gt ->
-          Better_candidate
-            { is_immediate_dep_of_local_package
-            ; name = pkg.info.name
-            ; newer_version = version |> OpamPackage.Version.to_string
-            ; outdated_version = pkg.info.version
-            }))
+     | Lt | Eq -> Package_is_best_candidate
+     | Gt ->
+       Better_candidate
+         { is_immediate_dep_of_local_package
+         ; name = pkg.info.name
+         ; newer_version = version |> OpamPackage.Version.to_string
+         ; outdated_version = pkg.info.version
+         })
 ;;
 
 let pp results ~transitive ~lock_dir_path =

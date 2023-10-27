@@ -11,7 +11,7 @@ We want to make sure our OPAM-repository in git support works well.
   $ cd ..
 
 We'll set up a project that uses (only this) this repository, so doesn't use
-`:standard`:
+:standard:
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.10)
@@ -24,7 +24,7 @@ We'll set up a project that uses (only this) this repository, so doesn't use
   >   (repositories mock)))
   > EOF
 
-We depend on the `foo` package
+We depend on the foo package
 
   $ cat > dune-project <<EOF
   > (lang dune 3.10)
@@ -41,7 +41,7 @@ Locking should produce the newest package from the repo
   Solution for dune.lock:
   - foo.1.0
 
-Now let's assume a new version of `foo` is released.
+Now let's assume a new version of foo is released.
 
   $ mkpkg foo 1.1 <<EOF
   > EOF
@@ -60,7 +60,7 @@ version in the lock file
 If the package selected has some additional files that are supposed to be
 included for building, these should also be part of the lockfile.
 
-So if we create an extra-file (in OPAM parlance) and attach it to `foo.1.2` it
+So if we create an extra-file (in OPAM parlance) and attach it to foo.1.2 it
 should also be included.
 
   $ FILES_NAME=hello.txt

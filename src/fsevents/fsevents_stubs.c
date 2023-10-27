@@ -28,6 +28,7 @@ typedef struct dune_dispatch_queue {
   dispatch_queue_t dq;
   pthread_cond_t dq_finished;
   pthread_mutex_t dq_lock;
+  uint32_t fsevent_streams;
   value v_exn;
 } dune_dispatch_queue;
 
@@ -76,6 +77,7 @@ CAMLprim value dune_fsevents_dispatch_queue_create(value v_unit) {
   pthread_mutex_init(&dq->dq_lock, NULL);
   pthread_cond_init(&dq->dq_finished, NULL);
   dq->dq = dispatch_queue_create("build.dune.fsevents", DISPATCH_QUEUE_SERIAL);
+  dq->fsevent_streams = 0;
   dq->v_exn = Val_unit;
   caml_register_global_root(&dq->v_exn);
   v_dq = caml_alloc_custom(&dune_fsevents_dispatch_queue_ops,
@@ -91,10 +93,10 @@ CAMLprim value dune_fsevents_dispatch_queue_wait_until_stopped(value v_dq) {
   caml_release_runtime_system();
   pthread_mutex_lock(&dq->dq_lock);
   pthread_cond_wait(&dq->dq_finished, &dq->dq_lock);
+  v_exn = dq->v_exn;
   pthread_mutex_unlock(&dq->dq_lock);
   caml_acquire_runtime_system();
   caml_remove_global_root(&dq->v_exn);
-  v_exn = dq->v_exn;
   if (v_exn != Val_unit) {
     caml_raise(v_exn);
   }
@@ -187,10 +189,12 @@ static void dune_fsevents_callback(const FSEventStreamRef streamRef,
   v_res = caml_callback_exn(t->v_callback, v_events_xs);
   if (Is_exception_result(v_res)) {
     v_res = Extract_exception(v_res);
+    caml_release_runtime_system();
     pthread_mutex_lock(&dq->dq_lock);
     dq->v_exn = v_res;
     pthread_cond_broadcast(&dq->dq_finished);
     pthread_mutex_unlock(&dq->dq_lock);
+    caml_acquire_runtime_system();
   }
   CAMLdrop;
   caml_release_runtime_system();
@@ -239,6 +243,7 @@ CAMLprim value dune_fsevents_create(value v_paths, value v_latency,
       &context, paths, kFSEventStreamEventIdSinceNow, Double_val(v_latency),
       flags);
   CFRelease(paths);
+  t->dq = NULL;
   caml_register_global_root(&t->v_callback);
   t->v_callback = v_callback;
   t->stream = stream;
@@ -267,6 +272,11 @@ CAMLprim value dune_fsevents_start(value v_t, value v_dq) {
   dune_fsevents_t *t = Fsevents_val(v_t);
   dune_dispatch_queue *dq = Dispatch_queue_val(v_dq);
   t->dq = dq;
+  caml_release_runtime_system();
+  pthread_mutex_lock(&dq->dq_lock);
+  dq->fsevent_streams++;
+  pthread_mutex_unlock(&dq->dq_lock);
+  caml_acquire_runtime_system();
   FSEventStreamSetDispatchQueue(t->stream, dq->dq);
   bool res = FSEventStreamStart(t->stream);
   if (!res) {
@@ -280,12 +290,21 @@ CAMLprim value dune_fsevents_stop(value v_t) {
   CAMLparam1(v_t);
   dune_fsevents_t *t = Fsevents_val(v_t);
   dune_dispatch_queue *dq = t->dq;
+  if (dq == NULL) {
+    // already stopped
+    CAMLreturn(Val_unit);
+  }
   FSEventStreamStop(t->stream);
   FSEventStreamInvalidate(t->stream);
   FSEventStreamRelease(t->stream);
+  caml_release_runtime_system();
   pthread_mutex_lock(&dq->dq_lock);
-  pthread_cond_broadcast(&dq->dq_finished);
+  dq->fsevent_streams--;
+  if (dq->fsevent_streams == 0) {
+    pthread_cond_broadcast(&dq->dq_finished);
+  }
   pthread_mutex_unlock(&dq->dq_lock);
+  caml_acquire_runtime_system();
   t->dq = NULL;
   CAMLreturn(Val_unit);
 }

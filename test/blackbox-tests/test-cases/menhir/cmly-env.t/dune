@@ -1,0 +1,11 @@
+(env
+ (_ (menhir_flags :standard --cmly)))
+
+(ocamllex lexer1)
+
+(menhir
+ (modules test_menhir1))
+
+
+(executables
+ (names test))

@@ -1,0 +1,8 @@
+(env
+ (_ (menhir_flags --explain)))
+
+(menhir
+ (modules parser))
+
+(executable
+	(name test))

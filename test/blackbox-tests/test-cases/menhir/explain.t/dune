@@ -1,0 +1,6 @@
+(menhir
+ (modules parser)
+ (flags  --explain))
+
+(executable
+	(name test))

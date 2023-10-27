@@ -75,9 +75,11 @@ module Run (P : PARAMS) = struct
 
   let source m = Path.relative (Path.build dir) (m ^ ".mly")
 
-  let targets m ~cmly =
+  let targets m ~cmly ~conflicts =
     let base = [ m ^ ".ml"; m ^ ".mli" ] in
-    List.map ~f:(Path.Build.relative dir) (if cmly then (m ^ ".cmly") :: base else base)
+    let base_conf = if conflicts then (m ^ ".conflicts") :: base else base in
+    let base_conf_cmly = if cmly then (m ^ ".cmly") :: base_conf else base_conf in
+    List.map ~f:(Path.Build.relative dir) base_conf_cmly
   ;;
 
   let sources ms = List.map ~f:source ms
@@ -121,15 +123,30 @@ module Run (P : PARAMS) = struct
     Super_context.add_rule sctx ~dir ~mode ~loc:stanza.loc
   ;;
 
-  let expand_flags flags =
+  (* [expand_flags_and_targets only_tokens flags] delays
+     the search for [--explain] and [--cmly] so that the
+     flags inherited from (env ...(menhir_flags)) are
+     available. *)
+  let expand_flags_and_targets only_tokens flags =
     let standard =
       Action_builder.of_memo @@ Super_context.env_node sctx ~dir >>= Env_node.menhir_flags
     in
-    Action_builder.memoize
-      ~cutoff:(List.equal String.equal)
-      "menhir flags"
-      (let* expander = Action_builder.of_memo expander in
-       Expander.expand_and_eval_set expander flags ~standard)
+    let expanded_flags =
+      Action_builder.memoize
+        ~cutoff:(List.equal String.equal)
+        "menhir flags"
+        (let* expander = Action_builder.of_memo expander in
+         Expander.expand_and_eval_set expander flags ~standard)
+    in
+    Memo.map (Action_builder.run expanded_flags Action_builder.Lazy)
+      ~f:(fun (flags, _) ->
+        flags, List.fold_left ~f:(fun ((cmly, conflicts) as acc) flag ->
+          match flag with
+          | "--explain" when not only_tokens -> (cmly, true)
+          | "--cmly" -> (true, conflicts)
+          | _ -> acc
+        ) ~init:(false, false) flags
+      )
   ;;
 
   (* ------------------------------------------------------------------------ *)
@@ -185,13 +202,15 @@ module Run (P : PARAMS) = struct
      is the three-step process where Menhir is invoked twice and OCaml type
      inference is performed in between. *)
 
-  let process3 base ~cmly (stanza : stanza) : unit Memo.t =
+  let process3 base (stanza : stanza) : unit Memo.t =
     let open Memo.O in
-    let expanded_flags = expand_flags stanza.flags in
+    let* expanded_flags,(cmly, conflicts) =
+      expand_flags_and_targets false stanza.flags
+    in
     (* 1. A first invocation of Menhir creates a mock [.ml] file. *)
     let* () =
       menhir
-        [ Command.Args.dyn expanded_flags
+        [ Command.Args.As expanded_flags
         ; Deps (sources stanza.modules)
         ; A "--base"
         ; Path (Path.relative (Path.build dir) base)
@@ -228,13 +247,13 @@ module Run (P : PARAMS) = struct
     in
     (* 3. A second invocation of Menhir reads the inferred [.mli] file. *)
     menhir
-      [ Command.Args.dyn expanded_flags
+      [ Command.Args.As expanded_flags
       ; Deps (sources stanza.modules)
       ; A "--base"
       ; Path (Path.relative (Path.build dir) base)
       ; A "--infer-read-reply"
       ; Dep (Path.build (inferred_mli base))
-      ; Hidden_targets (targets base ~cmly)
+      ; Hidden_targets (targets base ~cmly ~conflicts)
       ]
     >>= rule
   ;;
@@ -244,15 +263,17 @@ module Run (P : PARAMS) = struct
   (* [process3 stanza] converts a Menhir stanza into a set of build rules. This
      is a simpler one-step process where Menhir is invoked directly. *)
 
-  let process1 base ~cmly (stanza : stanza) : unit Memo.t =
+  let process1 base only_tokens (stanza : stanza) : unit Memo.t =
     let open Memo.O in
-    let expanded_flags = expand_flags stanza.flags in
+    let* expanded_flags,(cmly, conflicts) =
+      expand_flags_and_targets only_tokens stanza.flags
+    in
     menhir
-      [ Command.Args.dyn expanded_flags
+      [ Command.Args.As expanded_flags
       ; Deps (sources stanza.modules)
       ; A "--base"
       ; Path (Path.relative (Path.build dir) base)
-      ; Hidden_targets (targets base ~cmly)
+      ; Hidden_targets (targets base ~cmly ~conflicts)
       ]
     >>= rule
   ;;
@@ -263,26 +284,28 @@ module Run (P : PARAMS) = struct
      either [process3] or [process1], as appropriate. *)
 
   (* Because Menhir processes [--only-tokens] before the [--infer-*] commands,
-     when [--only-tokens] is present, no [--infer-*] command should be used. *)
+     when [--only-tokens] is present, no [--infer-*] command should be used.
+     We can look for [--only-tokens] here since it does not make sense to
+     put this file specific flag in [env].
+  *)
 
   let process (stanza : stanza) : unit Memo.t =
     let base = Option.value_exn stanza.merge_into in
-    let ocaml_type_inference_disabled, cmly =
+    let only_tokens =
       Ordered_set_lang.Unexpanded.fold_strings
         stanza.flags
-        ~init:(false, false)
-        ~f:(fun pos sw ((only_tokens, cmly) as acc) ->
+        ~init:false
+        ~f:(fun pos sw acc ->
           match pos with
           | Neg -> acc
           | Pos ->
             (match String_with_vars.text_only sw with
-             | Some "--only-tokens" -> true, cmly
-             | Some "--cmly" -> only_tokens, true
+             | Some "--only-tokens" -> true
              | Some _ | None -> acc))
     in
-    if ocaml_type_inference_disabled || not stanza.infer
-    then process1 base stanza ~cmly
-    else process3 base stanza ~cmly
+    if only_tokens || not stanza.infer
+    then process1 base only_tokens stanza
+    else process3 base stanza
   ;;
 
   (* ------------------------------------------------------------------------ *)

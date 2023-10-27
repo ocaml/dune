@@ -253,16 +253,13 @@ let get_opam_package_files t opam_package =
        in
        Fiber.return entries)
   | Repo at_rev ->
-    let package_root =
+    let files_root =
       Path.Local.L.relative
         Path.Local.root
-        [ "packages"; name; OpamPackage.to_string opam_package ]
+        [ "packages"; name; OpamPackage.to_string opam_package; "files" ]
     in
-    let* dir_entries =
-      let file_path = Path.Local.relative package_root "files" in
-      Rev_store.Remote.At_rev.directory_entries at_rev file_path
-    in
-    Fiber.parallel_map dir_entries ~f:(fun remote_file ->
+    Rev_store.Remote.At_rev.directory_entries at_rev files_root
+    >>= Fiber.parallel_map ~f:(fun remote_file ->
       let+ content = Rev_store.Remote.At_rev.content at_rev remote_file in
       match content with
       | None ->
@@ -271,7 +268,7 @@ let get_opam_package_files t opam_package =
           [ "local_file", Path.Local.to_dyn remote_file ]
       | Some content ->
         let local_file =
-          Path.Local.descendant ~of_:package_root remote_file |> Option.value_exn
+          Path.Local.descendant ~of_:files_root remote_file |> Option.value_exn
         in
         Some { File_entry.local_file; original = Content content })
     >>| List.filter_opt

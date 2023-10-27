@@ -67,7 +67,7 @@ should also be included.
   $ cat > $FILES_NAME <<EOF
   > Hello World
   > EOF
-  $ FILES_CHECKSUM=$(md5sum $FILES_NAME | awk '{ print $1 }')
+  $ FILES_CHECKSUM=e59ff97941044f85df5297e1c302d260
   $ mkpkg foo 1.2 <<EOF
   > EOF
   $ echo "extra-files: [\"$FILES_NAME\" \"md5=$FILES_CHECKSUM\"]" >> mock-opam-repository/packages/foo/foo.1.2/opam
@@ -88,15 +88,12 @@ Locking should be successful and it should include the additional file
   $ find dune.lock | sort
   dune.lock
   dune.lock/foo.files
-  dune.lock/foo.files/files
-  dune.lock/foo.files/files/hello.txt
+  dune.lock/foo.files/hello.txt
   dune.lock/foo.pkg
   dune.lock/lock.dune
 
 The extra-file should have the same content as the original file, we determine
 that by hashing with the checksum that we expected in the OPAM file
 
-  $ LOCKED_FILES_CHECKSUM=$(md5sum dune.lock/foo.files/$FILES_NAME | awk '{ print $1 }')
-  md5sum: dune.lock/foo.files/hello.txt: No such file or directory
-  $ [ "$LOCKED_FILES_CHECKSUM" = "$FILES_CHECKSUM" ] && echo "The contents match"
-  [1]
+  $ cmp -s dune.lock/foo.files/$FILES_NAME "$FILES_FOLDER/$FILES_NAME" && echo "The contents match"
+  The contents match

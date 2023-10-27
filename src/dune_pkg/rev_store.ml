@@ -85,7 +85,10 @@ module Remote = struct
     let content { remote = { repo; handle = _ }; revision } path = show repo revision path
 
     let directory_entries { remote = { repo; handle = _ }; revision = Rev rev } path =
-      (* TODO future: cache ls-tree *)
+      (* TODO: there are much better of implementing this:
+         1. Using one [$ git show] for the entire director
+         2. using libgit or ocamlgit
+         3. using [$ git archive] *)
       let+ all_files =
         run_capture_zero_separated_lines
           repo
@@ -111,7 +114,6 @@ module Remote = struct
   ;;
 
   let rev_of_repository_id ({ repo; handle = _ } as remote) repo_id =
-    let open Fiber.O in
     match Repository_id.git_hash repo_id with
     | None -> Fiber.return None
     | Some rev ->
@@ -123,6 +125,7 @@ module Remote = struct
 end
 
 let remote_exists { git; dir } ~name =
+  (* TODO read this directly from .git/config *)
   let stdout_to = make_stdout () in
   let stderr_to = make_stderr () in
   let command = [ "remote"; "show"; name ] in
@@ -135,6 +138,7 @@ let remote_exists { git; dir } ~name =
 ;;
 
 let add_repo t ~source =
+  (* TODO add this directly using .git/config *)
   let handle = source |> Dune_digest.string |> Dune_digest.to_string in
   let* exists = remote_exists t ~name:handle in
   let* () =

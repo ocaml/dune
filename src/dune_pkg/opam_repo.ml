@@ -254,19 +254,19 @@ let get_opam_package_files t opam_package =
        Fiber.return entries)
   | Repo at_rev ->
     let file_path =
-      Path.of_string "packages" / name / OpamPackage.to_string opam_package / "files"
+      Path.Local.L.relative
+        Path.Local.root
+        [ "packages"; name; OpamPackage.to_string opam_package; "files" ]
     in
     let* dir_entries = Rev_store.Remote.At_rev.directory_entries at_rev file_path in
     let+ file_entries =
-      List.map dir_entries ~f:(fun entry ->
-        let full_path = file_path / Path.to_string entry in
-        let+ content = Rev_store.Remote.At_rev.content at_rev full_path in
+      List.map dir_entries ~f:(fun local_file ->
+        let+ content = Rev_store.Remote.At_rev.content at_rev local_file in
         match content with
         | None ->
           Code_error.raise "Enumerated file in directory but file can't be retrieved" []
         | Some content ->
           let original = File_entry.Content content in
-          let local_file = Path.local_part entry in
           Some { File_entry.local_file; original })
       |> Fiber.all_concurrently
     in
@@ -304,7 +304,7 @@ let load_opam_package t opam_package =
     let expected_path =
       sprintf "packages/%s/%s.%s/opam" package_name package_name package_version
     in
-    let file = Path.of_string expected_path in
+    let file = Path.Local.of_string expected_path in
     let* content = Rev_store.Remote.At_rev.content at_rev file in
     (match content with
      | None -> Fiber.return None
@@ -312,7 +312,9 @@ let load_opam_package t opam_package =
        (* the filename is used to read the version number *)
        let filename = OpamFile.make (OpamFilename.of_string expected_path) in
        let opam_file = OpamFile.OPAM.read_from_string ~filename content in
-       Fiber.return (Some { With_file.opam_file; file }))
+       (* TODO the [file] here is made up *)
+       Fiber.return
+         (Some { With_file.opam_file; file = Path.source @@ Path.Source.of_local file }))
 ;;
 
 let get_opam_package_version_dir_path packages_dir_path opam_package_name =
@@ -339,26 +341,23 @@ let all_package_versions t opam_package_name =
           Fiber.return (Some (List.map version_dirs ~f:OpamPackage.of_string))))
   | Repo at_rev ->
     let name = OpamPackage.Name.to_string opam_package_name in
-    let version_dir_path = Path.of_string "packages" / name in
+    let version_dir_path = Path.Local.relative (Path.Local.of_string "packages") name in
     let+ dir_entries =
       Rev_store.Remote.At_rev.directory_entries at_rev version_dir_path
     in
     (match dir_entries with
      | [] -> None
      | dir_entries ->
-       let entries =
-         List.filter_map
-           ~f:(fun dir_entry ->
-             let open Option.O in
-             let* basename = Path.basename_opt dir_entry in
-             match basename with
-             | "opam" ->
-               let+ parent = Path.parent dir_entry in
-               parent |> Path.to_string |> OpamPackage.of_string
-             | _ -> None)
-           dir_entries
-       in
-       (match entries with
+       (match
+          List.filter_map dir_entries ~f:(fun dir_entry ->
+            let open Option.O in
+            Path.Local.basename_opt dir_entry
+            >>= function
+            | "opam" ->
+              let+ parent = Path.Local.parent dir_entry in
+              parent |> Path.Local.to_string |> OpamPackage.of_string
+            | _ -> None)
+        with
         | [] -> None
         | entries -> Some entries))
 ;;

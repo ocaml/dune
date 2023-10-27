@@ -11,8 +11,8 @@ module Remote : sig
   module At_rev : sig
     type t
 
-    val content : t -> Path.t -> string option Fiber.t
-    val directory_entries : t -> Path.t -> Path.t list Fiber.t
+    val content : t -> Path.Local.t -> string option Fiber.t
+    val directory_entries : t -> Path.Local.t -> Path.Local.t list Fiber.t
     val equal : t -> t -> bool
     val repository_id : t -> Repository_id.t
   end

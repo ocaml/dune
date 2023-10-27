@@ -38,7 +38,7 @@ let run_capture_zero_separated_lines { git; dir } =
 
 let show { git; dir } (Rev rev) path =
   let failure_mode = Dune_vcs.Vcs.git_accept () in
-  let command = [ "show"; sprintf "%s:%s" rev (Path.to_string path) ] in
+  let command = [ "show"; sprintf "%s:%s" rev (Path.Local.to_string path) ] in
   let stderr_to = make_stderr () in
   Process.run_capture ~dir ~display ~stderr_to failure_mode git command
   >>| Result.to_option
@@ -92,8 +92,8 @@ module Remote = struct
           [ "ls-tree"; "-z"; "--name-only"; "-r"; rev ]
       in
       List.filter_map all_files ~f:(fun entry ->
-        let path_entry = Path.of_string entry in
-        Path.descendant path_entry ~of_:path)
+        let path_entry = Path.Local.of_string entry in
+        Path.Local.descendant path_entry ~of_:path)
     ;;
 
     let equal { remote; revision = Rev revision } t =

@@ -295,31 +295,46 @@ module Remote = struct
   ;;
 end
 
-let remote_exists dir ~name =
-  (* TODO read this directly from .git/config *)
-  let stdout_to = make_stdout () in
-  let stderr_to = make_stderr () in
-  let command = [ "remote"; "show"; name ] in
-  let+ (), exit_code =
-    let git = Lazy.force Vcs.git in
-    Process.run ~dir ~display ~stderr_to ~stdout_to Return git command
+let remote_header =
+  Re.(compile (seq [ bol; str "[remote \""; group (rep1 any); str "\"]"; eol ]))
+;;
+
+let remote_exists ~dir ~name =
+  Path.relative dir "config"
+  |> Io.lines_of_file
+  |> List.find_opt ~f:(fun line ->
+    match Re.exec_opt remote_header line with
+    | Some groups ->
+      let remote_name = Re.Group.get groups 1 in
+      String.equal remote_name name
+    | None -> false)
+  |> Option.is_some
+;;
+
+let remote_add ~dir handle source =
+  let git_config = Path.relative dir "config" in
+  let existing = Io.read_file git_config in
+  let stanza =
+    sprintf
+      {|%s
+
+  [remote "%s"]
+    url = %s
+    fetch = +refs/heads/*:refs/remotes/%s/*
+|}
+      existing
+      handle
+      source
+      handle
   in
-  match exit_code with
-  | 0 -> true
-  | 128 | _ -> false
+  Io.write_file git_config stanza
 ;;
 
 let add_repo ({ dir } as t) ~source =
-  (* TODO add this directly using .git/config *)
   let handle = source |> Dune_digest.string |> Dune_digest.to_string in
   let lock = lock_path t in
   with_flock lock ~f:(fun () ->
-    let* exists = remote_exists dir ~name:handle in
-    let* () =
-      match exists with
-      | true -> Fiber.return ()
-      | false -> run t [ "remote"; "add"; handle; source ]
-    in
+    if not (remote_exists ~dir ~name:handle) then remote_add ~dir handle source;
     let remote : Remote.t = { repo = t; handle } in
     let+ () = Remote.update remote in
     remote)

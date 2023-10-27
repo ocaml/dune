@@ -46,10 +46,21 @@ let show { dir } (Rev rev) path =
   >>| Result.to_option
 ;;
 
+let dir_exists dir =
+  match Path.exists dir with
+  | false -> false
+  | true ->
+    (match Path.stat dir with
+     | Ok stats ->
+       (match stats.st_kind with
+        | S_DIR -> true
+        | _ -> false)
+     | Error issue -> Dune_filesystem_stubs.Unix_error.Detailed.raise issue)
+;;
+
 let load_or_create ~dir =
   let t = { dir } in
-  (* TODO might as well double check it's a directory *)
-  match Path.exists dir with
+  match dir_exists dir with
   | true -> Fiber.return t
   | false ->
     Path.mkdir_p dir;

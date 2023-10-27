@@ -40,10 +40,8 @@ let show { git; dir } (Rev rev) path =
   let failure_mode = Dune_vcs.Vcs.git_accept () in
   let command = [ "show"; sprintf "%s:%s" rev (Path.to_string path) ] in
   let stderr_to = make_stderr () in
-  let+ res = Process.run_capture ~dir ~display ~stderr_to failure_mode git command in
-  match res with
-  | Error _n -> None
-  | Ok v -> Some v
+  Process.run_capture ~dir ~display ~stderr_to failure_mode git command
+  >>| Result.to_option
 ;;
 
 let load ~git ~dir = { git; dir }
@@ -71,8 +69,8 @@ module Remote = struct
   let update { repo; handle } = run repo [ "fetch"; handle; "--no-tags" ]
 
   let default_branch { repo; handle } =
-    let+ contents = run_capture_lines repo [ "remote"; "show"; handle ] in
-    List.find_map contents ~f:(fun line ->
+    run_capture_lines repo [ "remote"; "show"; handle ]
+    >>| List.find_map ~f:(fun line ->
       Re.exec_opt head_branch line |> Option.map ~f:(fun groups -> Re.Group.get groups 1))
   ;;
 
@@ -117,20 +115,19 @@ module Remote = struct
     match Repository_id.git_hash repo_id with
     | None -> Fiber.return None
     | Some rev ->
-      let+ type' = run_capture_line repo [ "cat-file"; "-t"; rev ] in
-      (match type' with
-       | "commit" -> Some { At_rev.remote; revision = Rev rev }
-       | _ -> None)
+      run_capture_line repo [ "cat-file"; "-t"; rev ]
+      >>| (function
+      | "commit" -> Some { At_rev.remote; revision = Rev rev }
+      | _ -> None)
   ;;
 end
 
 let remote_exists { git; dir } ~name =
   let stdout_to = make_stdout () in
   let stderr_to = make_stderr () in
-  let failure_mode = Process.Failure_mode.Return in
   let command = [ "remote"; "show"; name ] in
   let+ (), exit_code =
-    Process.run ~dir ~display ~stderr_to ~stdout_to failure_mode git command
+    Process.run ~dir ~display ~stderr_to ~stdout_to Return git command
   in
   match exit_code with
   | 0 -> true

@@ -27,6 +27,12 @@ let to_dyn = function
   | Git_hash commitish -> Dyn.Variant ("Git_hash", [ String commitish ])
 ;;
 
+let git_hash = function
+  | Git_hash committish -> Some committish
+;;
+
+let of_git_hash v = Git_hash v
+
 let attempt_repo_id ~dir =
   let head_path = Path.append_local dir (Path.Local.of_string "HEAD") in
   match Path.lstat head_path with
@@ -64,5 +70,5 @@ let of_path dir =
 ;;
 
 module Private = struct
-  let git_hash s = Git_hash s
+  let git_hash = of_git_hash
 end

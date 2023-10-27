@@ -32,3 +32,6 @@ val files : t -> Path.t list Memo.t
 val git : Path.t Lazy.t
 
 val hg : Path.t Lazy.t
+
+(** Valid git exit codes *)
+val git_accept : unit -> ('a, ('a, int) result) Dune_engine.Process.Failure_mode.t

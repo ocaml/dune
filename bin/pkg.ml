@@ -316,19 +316,9 @@ module Lock = struct
     | Some path, None ->
       let repo_id = Repository_id.of_path path in
       Fiber.return @@ [ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path ]
-    | None, Some url ->
-      let repo = Fetch.Opam_repository.of_url url in
-      let+ opam_repository = Fetch.Opam_repository.path repo in
-      (match opam_repository with
-       | Ok { path; repo_id } ->
-         [ Opam_repo.of_opam_repo_dir_path
-             ~source:(Some (OpamUrl.to_string url))
-             ~repo_id
-             path
-         ]
-       | Error _ ->
-         User_error.raise
-           [ Pp.text "Can't determine the location of the opam-repository" ])
+    | None, Some (url : OpamUrl.t) ->
+      let+ opam_repo = Opam_repo.of_git_repo ~repo_id:None ~source:url.path in
+      [ opam_repo ]
     | None, None ->
       repositories
       |> Fiber.parallel_map ~f:(fun name ->
@@ -341,19 +331,7 @@ module Lock = struct
             ]
         | Some repo ->
           let url = Dune_pkg.Pkg_workspace.Repository.opam_url repo in
-          let repo = Fetch.Opam_repository.of_workspace_repo repo in
-          let+ opam_repository = Fetch.Opam_repository.path repo in
-          (match opam_repository with
-           | Ok { path; repo_id } ->
-             Opam_repo.of_opam_repo_dir_path
-               ~source:(Some (OpamUrl.to_string url))
-               ~repo_id
-               path
-           | Error _ ->
-             User_error.raise
-               [ Pp.textf "Can't determine the location of the opam-repository '%s'"
-                 @@ Dune_pkg.Pkg_workspace.Repository.Name.to_string name
-               ]))
+          Opam_repo.of_git_repo ~repo_id:None ~source:url.path)
   ;;
 
   let find_local_packages =
@@ -581,7 +559,7 @@ module Outdated = struct
                 ; repositories
                 }
               ->
-              let+ repos =
+              let* repos =
                 Lock.get_repos
                   repos
                   ~opam_repository_path
@@ -589,7 +567,7 @@ module Outdated = struct
                   ~repositories
               and+ local_packages = Lock.find_local_packages in
               let lock_dir = Lock_dir.read_disk lock_dir_path in
-              let results =
+              let+ results =
                 Dune_pkg_outdated.find ~repos ~local_packages lock_dir.packages
               in
               ( Dune_pkg_outdated.pp ~transitive ~lock_dir_path results

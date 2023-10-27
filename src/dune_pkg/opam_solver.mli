@@ -3,7 +3,7 @@ open Import
 module Solver_result : sig
   type t =
     { lock_dir : Lock_dir.t
-    ; files : Lock_dir.Write_disk.Files_entry.t Package_name.Map.Multi.t
+    ; files : File_entry.t Package_name.Map.Multi.t
     }
 end
 

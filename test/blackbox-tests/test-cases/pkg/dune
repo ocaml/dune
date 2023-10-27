@@ -15,7 +15,7 @@
  (applies_to git-source opam-repository-download multiple-opam-repos))
 
 (cram
- (deps %{bin:git} %{bin:awk} %{bin:md5sum})
+ (deps %{bin:git} %{bin:awk} %{bin:cmp})
  (applies_to git-repo))
 
 (cram

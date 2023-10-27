@@ -385,7 +385,7 @@ let load_all_versions ts opam_package_name =
 ;;
 
 module Private = struct
-  let create ?source ?repo_id () =
+  let create ~source ~repo_id =
     let packages_dir_path = Path.of_string "/" in
     let serializable =
       Option.map source ~f:(fun source -> { Serializable.repo_id; source })

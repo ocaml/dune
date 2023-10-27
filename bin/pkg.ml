@@ -317,7 +317,7 @@ module Lock = struct
       let repo_id = Repository_id.of_path path in
       Fiber.return @@ [ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path ]
     | None, Some (url : OpamUrl.t) ->
-      let+ opam_repo = Opam_repo.of_git_repo ~repo_id:None url.path in
+      let+ opam_repo = Opam_repo.of_git_repo ~repo_id:None ~source:url.path in
       [ opam_repo ]
     | None, None ->
       repositories
@@ -331,7 +331,7 @@ module Lock = struct
             ]
         | Some repo ->
           let url = Dune_pkg.Pkg_workspace.Repository.opam_url repo in
-          Opam_repo.of_git_repo ~repo_id:None url.path)
+          Opam_repo.of_git_repo ~repo_id:None ~source:url.path)
   ;;
 
   let find_local_packages =

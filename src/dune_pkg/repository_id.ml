@@ -68,7 +68,3 @@ let of_path dir =
   | Ok { st_kind = S_DIR; _ } -> repo_id_of_git dir
   | Ok _ | Error _ -> None
 ;;
-
-module Private = struct
-  let git_hash = of_git_hash
-end

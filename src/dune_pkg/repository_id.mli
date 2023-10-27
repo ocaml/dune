@@ -11,7 +11,3 @@ val to_dyn : t -> Dyn.t
 val of_path : Path.t -> t option
 val git_hash : t -> string option
 val of_git_hash : string -> t
-
-module Private : sig
-  val git_hash : string -> t
-end

@@ -1,6 +1,7 @@
 open! Stdune
 module Encoder = Dune_lang.Encoder
 module Decoder = Dune_lang.Decoder
+open Fiber.O
 
 let ( / ) = Path.relative
 
@@ -154,7 +155,6 @@ let xdg_repo_location =
 ;;
 
 let of_git_repo ~repo_id ~source =
-  let open Fiber.O in
   let dir = Lazy.force xdg_repo_location in
   let* repo = Rev_store.load_or_create ~dir in
   let* remote = Rev_store.add_repo repo ~source in
@@ -235,7 +235,6 @@ let scan_files_entries path =
 ;;
 
 let get_opam_package_files t opam_package =
-  let open Fiber.O in
   let name = opam_package |> OpamPackage.name |> OpamPackage.Name.to_string in
   match t.source with
   | Directory path ->
@@ -297,7 +296,6 @@ let load_opam_package t opam_package =
        in
        Fiber.return (Some { With_file.opam_file; file = opam_file_path }))
   | Repo at_rev ->
-    let open Fiber.O in
     let package_name = opam_package |> OpamPackage.name |> OpamPackage.Name.to_string in
     let package_version =
       opam_package |> OpamPackage.version |> OpamPackage.Version.to_string
@@ -324,7 +322,6 @@ let get_opam_package_version_dir_path packages_dir_path opam_package_name =
 ;;
 
 let all_package_versions t opam_package_name =
-  let open Fiber.O in
   match t.source with
   | Directory d ->
     (match get_opam_package_version_dir_path d opam_package_name with
@@ -364,7 +361,6 @@ let all_package_versions t opam_package_name =
 ;;
 
 let load_all_versions ts opam_package_name =
-  let open Fiber.O in
   let* versions =
     List.map ts ~f:(fun t -> all_package_versions t opam_package_name) |> Fiber.all
   in

@@ -22,7 +22,7 @@ val of_opam_repo_dir_path
   -> t
 
 (** [of_git_repo git source] loads the data through git *)
-val of_git_repo : git:Path.t -> repo_id:Repository_id.t option -> string -> t Fiber.t
+val of_git_repo : repo_id:Repository_id.t option -> string -> t Fiber.t
 
 val repo_id : t -> Repository_id.t option
 val source : t -> string option

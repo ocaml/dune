@@ -1,62 +1,60 @@
 open Stdune
+open Dune_vcs
 module Process = Dune_engine.Process
 module Display = Dune_engine.Display
 module Re = Dune_re
 open Fiber.O
 
-type t =
-  { git : Path.t
-  ; dir : Path.t
-  }
-
+type t = { dir : Path.t }
 type rev = Rev of string
 
-let equal { git; dir } t = Path.equal git t.git && Path.equal dir t.dir
+let equal { dir } t = Path.equal dir t.dir
 let display = Display.Quiet
 let failure_mode = Process.Failure_mode.Strict
 let output_limit = Sys.max_string_length
 let make_stdout () = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit
 let make_stderr () = Process.Io.make_stderr ~output_on_success:Swallow ~output_limit
 
-let run { git; dir } =
+let run { dir } =
   let stdout_to = make_stdout () in
   let stderr_to = make_stderr () in
+  let git = Lazy.force Vcs.git in
   Process.run ~dir ~display ~stdout_to ~stderr_to failure_mode git
 ;;
 
-let run_capture_line { git; dir } =
+let run_capture_line { dir } =
+  let git = Lazy.force Vcs.git in
   Process.run_capture_line ~dir ~display failure_mode git
 ;;
 
-let run_capture_lines { git; dir } =
+let run_capture_lines { dir } =
+  let git = Lazy.force Vcs.git in
   Process.run_capture_lines ~dir ~display failure_mode git
 ;;
 
-let run_capture_zero_separated_lines { git; dir } =
+let run_capture_zero_separated_lines { dir } =
+  let git = Lazy.force Vcs.git in
   Process.run_capture_zero_separated ~dir ~display failure_mode git
 ;;
 
-let show { git; dir } (Rev rev) path =
-  let failure_mode = Dune_vcs.Vcs.git_accept () in
+let show { dir } (Rev rev) path =
+  let git = Lazy.force Vcs.git in
+  let failure_mode = Vcs.git_accept () in
   let command = [ "show"; sprintf "%s:%s" rev (Path.Local.to_string path) ] in
   let stderr_to = make_stderr () in
   Process.run_capture ~dir ~display ~stderr_to failure_mode git command
   >>| Result.to_option
 ;;
 
-let load ~git ~dir = { git; dir }
-
-let create ~git ~dir =
-  Path.mkdir_p dir;
-  let t = load ~git ~dir in
-  let+ () = run t [ "init"; "--bare" ] in
-  t
-;;
-
-let load_or_create ~git ~dir =
+let load_or_create ~dir =
+  let t = { dir } in
+  (* TODO might as well double check it's a directory *)
   match Path.exists dir with
-  | true -> load ~git ~dir |> Fiber.return
-  | false -> create ~git ~dir
+  | true -> Fiber.return t
+  | false ->
+    Path.mkdir_p dir;
+    let+ () = run t [ "init"; "--bare" ] in
+    t
 ;;
 
 module Remote = struct
@@ -124,12 +122,13 @@ module Remote = struct
   ;;
 end
 
-let remote_exists { git; dir } ~name =
+let remote_exists { dir } ~name =
   (* TODO read this directly from .git/config *)
   let stdout_to = make_stdout () in
   let stderr_to = make_stderr () in
   let command = [ "remote"; "show"; name ] in
   let+ (), exit_code =
+    let git = Lazy.force Vcs.git in
     Process.run ~dir ~display ~stderr_to ~stdout_to Return git command
   in
   match exit_code with

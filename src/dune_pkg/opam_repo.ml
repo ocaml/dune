@@ -153,10 +153,10 @@ let xdg_repo_location =
   lazy (Xdg.cache_dir (Lazy.force Dune_util.xdg) / "dune/git-repo" |> Path.of_string)
 ;;
 
-let of_git_repo ~git ~repo_id source =
+let of_git_repo ~repo_id source =
   let open Fiber.O in
   let dir = Lazy.force xdg_repo_location in
-  let* repo = Rev_store.load_or_create ~git ~dir in
+  let* repo = Rev_store.load_or_create ~dir in
   let* remote = Rev_store.add_repo repo ~source in
   let+ at_rev, computed_repo_id =
     match repo_id with

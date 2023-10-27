@@ -1,7 +1,6 @@
 open Stdune
 
 type t
-type rev
 
 module Remote : sig
   type t

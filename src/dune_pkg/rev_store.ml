@@ -13,7 +13,7 @@ type rev = Rev of string
 let equal { git; dir } t = Path.equal git t.git && Path.equal dir t.dir
 let display = Display.Quiet
 let failure_mode = Process.Failure_mode.Strict
-let output_limit = Dune_engine.Execution_parameters.Action_output_limit.default
+let output_limit = Sys.max_string_length
 let make_stdout () = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit
 let make_stderr () = Process.Io.make_stderr ~output_on_success:Swallow ~output_limit
 

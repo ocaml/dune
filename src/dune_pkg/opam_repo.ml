@@ -153,7 +153,7 @@ let xdg_repo_location =
   lazy (Xdg.cache_dir (Lazy.force Dune_util.xdg) / "dune/git-repo" |> Path.of_string)
 ;;
 
-let of_git_repo ~repo_id source =
+let of_git_repo ~repo_id ~source =
   let open Fiber.O in
   let dir = Lazy.force xdg_repo_location in
   let* repo = Rev_store.load_or_create ~dir in
@@ -253,24 +253,28 @@ let get_opam_package_files t opam_package =
        in
        Fiber.return entries)
   | Repo at_rev ->
-    let file_path =
+    let package_root =
       Path.Local.L.relative
         Path.Local.root
-        [ "packages"; name; OpamPackage.to_string opam_package; "files" ]
+        [ "packages"; name; OpamPackage.to_string opam_package ]
     in
-    let* dir_entries = Rev_store.Remote.At_rev.directory_entries at_rev file_path in
-    let+ file_entries =
-      List.map dir_entries ~f:(fun local_file ->
-        let+ content = Rev_store.Remote.At_rev.content at_rev local_file in
-        match content with
-        | None ->
-          Code_error.raise "Enumerated file in directory but file can't be retrieved" []
-        | Some content ->
-          let original = File_entry.Content content in
-          Some { File_entry.local_file; original })
-      |> Fiber.all_concurrently
+    let* dir_entries =
+      let file_path = Path.Local.relative package_root "files" in
+      Rev_store.Remote.At_rev.directory_entries at_rev file_path
     in
-    List.filter_opt file_entries
+    Fiber.parallel_map dir_entries ~f:(fun remote_file ->
+      let+ content = Rev_store.Remote.At_rev.content at_rev remote_file in
+      match content with
+      | None ->
+        Code_error.raise
+          "Enumerated file in directory but file can't be retrieved"
+          [ "local_file", Path.Local.to_dyn remote_file ]
+      | Some content ->
+        let local_file =
+          Path.Local.descendant ~of_:package_root remote_file |> Option.value_exn
+        in
+        Some { File_entry.local_file; original = Content content })
+    >>| List.filter_opt
 ;;
 
 module With_file = struct
@@ -355,7 +359,7 @@ let all_package_versions t opam_package_name =
             >>= function
             | "opam" ->
               let+ parent = Path.Local.parent dir_entry in
-              parent |> Path.Local.to_string |> OpamPackage.of_string
+              parent |> Path.Local.basename |> OpamPackage.of_string
             | _ -> None)
         with
         | [] -> None

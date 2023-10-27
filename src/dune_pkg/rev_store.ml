@@ -94,7 +94,7 @@ module Remote = struct
       in
       List.filter_map all_files ~f:(fun entry ->
         let path_entry = Path.Local.of_string entry in
-        Path.Local.descendant path_entry ~of_:path)
+        Option.some_if (Path.Local.is_descendant path_entry ~of_:path) path_entry)
     ;;
 
     let equal { remote; revision = Rev revision } t =

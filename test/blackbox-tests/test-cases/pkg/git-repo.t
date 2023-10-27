@@ -7,7 +7,7 @@ We want to make sure our OPAM-repository in git support works well.
   $ cd mock-opam-repository
   $ git init --quiet
   $ git add -A
-  $ git commit -m "foo 1.0" > /dev/null
+  $ git commit --quiet -m "foo 1.0"
   $ cd ..
 
 We'll set up a project that uses (only this) this repository, so doesn't use
@@ -17,7 +17,7 @@ We'll set up a project that uses (only this) this repository, so doesn't use
   > (lang dune 3.10)
   > (repository
   >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
+  >  (source "git+file://$PWD/mock-opam-repository"))
   > (context
   >  (default
   >   (name default)
@@ -37,7 +37,7 @@ We depend on the `foo` package
 Locking should produce the newest package from the repo
 
   $ mkdir dune-cache
-  $ XDG_CACHE_HOME=$(pwd)/dune-cache dune pkg lock
+  $ XDG_CACHE_HOME=$PWD/dune-cache dune pkg lock
   Solution for dune.lock:
   - foo.1.0
 
@@ -47,13 +47,13 @@ Now let's assume a new version of `foo` is released.
   > EOF
   $ cd mock-opam-repository
   $ git add -A
-  $ git commit -m "foo 1.1 -> new version" > /dev/null
+  $ git commit --quiet -m "foo 1.1 -> new version"
   $ cd ..
 
 Locking should update the git repo in our cache folder and give us the newer
 version in the lock file
 
-  $ XDG_CACHE_HOME=$(pwd)/dune-cache dune pkg lock
+  $ XDG_CACHE_HOME=$PWD/dune-cache dune pkg lock
   Solution for dune.lock:
   - foo.1.1
 
@@ -76,19 +76,20 @@ should also be included.
   $ mv "$FILES_NAME" "$FILES_FOLDER/$FILES_NAME"
   $ cd mock-opam-repository
   $ git add -A
-  $ git commit -m "foo 1.2 with files" > /dev/null
+  $ git commit --quiet -m "foo 1.2 with files"
   $ cd ..
 
 Locking should be successful and it should include the additional file
 
-  $ XDG_CACHE_HOME=$(pwd)/dune-cache dune pkg lock
+  $ XDG_CACHE_HOME=$PWD/dune-cache dune pkg lock
   Solution for dune.lock:
   - foo.1.2
 
   $ find dune.lock | sort
   dune.lock
   dune.lock/foo.files
-  dune.lock/foo.files/hello.txt
+  dune.lock/foo.files/files
+  dune.lock/foo.files/files/hello.txt
   dune.lock/foo.pkg
   dune.lock/lock.dune
 
@@ -96,5 +97,6 @@ The extra-file should have the same content as the original file, we determine
 that by hashing with the checksum that we expected in the OPAM file
 
   $ LOCKED_FILES_CHECKSUM=$(md5sum dune.lock/foo.files/$FILES_NAME | awk '{ print $1 }')
+  md5sum: dune.lock/foo.files/hello.txt: No such file or directory
   $ [ "$LOCKED_FILES_CHECKSUM" = "$FILES_CHECKSUM" ] && echo "The contents match"
-  The contents match
+  [1]

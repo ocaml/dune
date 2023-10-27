@@ -22,7 +22,7 @@ val of_opam_repo_dir_path
   -> t
 
 (** [of_git_repo git source] loads the data through git *)
-val of_git_repo : repo_id:Repository_id.t option -> string -> t Fiber.t
+val of_git_repo : repo_id:Repository_id.t option -> source:string -> t Fiber.t
 
 val repo_id : t -> Repository_id.t option
 val source : t -> string option
@@ -47,5 +47,5 @@ val load_all_versions
 val get_opam_package_files : t -> OpamPackage.t -> File_entry.t list Fiber.t
 
 module Private : sig
-  val create : ?source:string -> ?repo_id:Repository_id.t -> unit -> t
+  val create : source:string option -> repo_id:Repository_id.t option -> t
 end

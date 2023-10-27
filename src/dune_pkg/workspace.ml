@@ -34,7 +34,10 @@ module Repository = struct
 
   let equal { name; source } t = Name.equal name t.name && String.equal source t.source
   let hash { name; source } = Tuple.T2.hash Name.hash String.hash (name, source)
-  let default = { name = "default"; source = "https://opam.ocaml.org/index.tar.gz" }
+
+  let default =
+    { name = "default"; source = "git+https://github.com/ocaml/opam-repository.git" }
+  ;;
 
   let decode =
     let open Decoder in

@@ -205,7 +205,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
            } )
        in
        let opam_repo =
-         let repo_id = Some (Dune_pkg.Repository_id.Private.git_hash "95cf548dc") in
+         let repo_id = Some (Dune_pkg.Repository_id.of_git_hash "95cf548dc") in
          Dune_pkg.Opam_repo.Private.create ~source:(Some "well-known-repo") ~repo_id
        in
        Lock_dir.create_latest_version

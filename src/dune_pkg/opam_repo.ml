@@ -259,8 +259,8 @@ let get_opam_package_files t opam_package =
     in
     Rev_store.Remote.At_rev.directory_entries at_rev files_root
     >>= Fiber.parallel_map ~f:(fun remote_file ->
-      let+ content = Rev_store.Remote.At_rev.content at_rev remote_file in
-      match content with
+      Rev_store.Remote.At_rev.content at_rev remote_file
+      >>| function
       | None ->
         Code_error.raise
           "Enumerated file in directory but file can't be retrieved"
@@ -269,8 +269,7 @@ let get_opam_package_files t opam_package =
         let local_file =
           Path.Local.descendant ~of_:files_root remote_file |> Option.value_exn
         in
-        Some { File_entry.local_file; original = Content content })
-    >>| List.filter_opt
+        { File_entry.local_file; original = Content content })
 ;;
 
 module With_file = struct

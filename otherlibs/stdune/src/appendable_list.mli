@@ -9,3 +9,7 @@ val ( @ ) : 'a t -> 'a t -> 'a t
 val cons : 'a -> 'a t -> 'a t
 val concat : 'a t list -> 'a t
 val to_list : 'a t -> 'a list
+val to_list_rev : 'a t -> 'a list
+val of_list : 'a list -> 'a t
+val is_empty : _ t -> bool
+val of_list_concat : 'a t list -> 'a t

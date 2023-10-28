@@ -29,7 +29,10 @@ module Dir_rules : sig
         Action of
           Rule.Anonymous_action.t Action_builder.t
 
-    type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
+    type t
+
+    val singleton : Loc.t * item -> t
+    val to_list : t -> (Loc.t * item) list
   end
 
   (** A ready to process view of the rules of a directory *)

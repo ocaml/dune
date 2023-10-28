@@ -153,36 +153,41 @@ let xdg_repo_location =
 ;;
 
 let of_git_repo ~repo_id ~source =
-  let dir = Lazy.force xdg_repo_location in
-  let* repo = Rev_store.load_or_create ~dir in
-  let* remote = Rev_store.add_repo repo ~source in
   let+ at_rev, computed_repo_id =
+    let* remote =
+      let* repo =
+        let dir = Lazy.force xdg_repo_location in
+        Rev_store.load_or_create ~dir
+      in
+      Rev_store.add_repo repo ~source
+    in
     match repo_id with
     | Some repo_id ->
       let+ at_rev = Rev_store.Remote.rev_of_repository_id remote repo_id in
       at_rev, Some repo_id
     | None ->
-      let* branch = Rev_store.Remote.default_branch remote in
-      let name =
-        match branch with
-        | Some name -> name
-        | None ->
-          User_error.raise
-            ~hints:
-              [ Pp.text
-                  "Specify a different repository with a default branch or an exiting \
-                   revision"
+      let+ at_rev =
+        let* name =
+          Rev_store.Remote.default_branch remote
+          >>| function
+          | Some name -> name
+          | None ->
+            User_error.raise
+              ~hints:
+                [ Pp.text
+                    "Specify a different repository with a default branch or an exiting \
+                     revision"
+                ]
+              [ Pp.textf
+                  "No revision given and default branch could not be determined in \
+                   repository %s"
+                  source
               ]
-            [ Pp.textf
-                "No revision given and default branch could not be determined in \
-                 repository %s"
-                source
-            ]
+        in
+        Rev_store.Remote.rev_of_name remote ~name
       in
-      let+ at_rev = Rev_store.Remote.rev_of_name remote ~name in
-      (match at_rev with
-       | Some at_rev -> Some at_rev, Some (Rev_store.Remote.At_rev.repository_id at_rev)
-       | None -> None, None)
+      let repo_id = Option.map at_rev ~f:Rev_store.Remote.At_rev.repository_id in
+      at_rev, repo_id
   in
   match at_rev with
   | None ->
@@ -236,10 +241,7 @@ let get_opam_package_files t opam_package =
   let name = opam_package |> OpamPackage.name |> OpamPackage.Name.to_string in
   match t.source with
   | Directory path ->
-    let file_path =
-      path / name / OpamPackage.to_string opam_package / "files" |> if_exists
-    in
-    (match file_path with
+    (match path / name / OpamPackage.to_string opam_package / "files" |> if_exists with
      | None -> Fiber.return []
      | Some file_path ->
        let entries =
@@ -282,35 +284,34 @@ end
 let load_opam_package t opam_package =
   match t.source with
   | Directory d ->
-    (match get_opam_file_path d opam_package with
-     | None -> Fiber.return None
-     | Some opam_file_path ->
-       let opam_file =
-         Path.to_string opam_file_path
-         |> OpamFilename.raw
-         |> OpamFile.make
-         |> OpamFile.OPAM.read
-       in
-       Fiber.return (Some { With_file.opam_file; file = opam_file_path }))
+    get_opam_file_path d opam_package
+    |> Option.map ~f:(fun opam_file_path ->
+      let opam_file =
+        Path.to_string opam_file_path
+        |> OpamFilename.raw
+        |> OpamFile.make
+        |> OpamFile.OPAM.read
+      in
+      { With_file.opam_file; file = opam_file_path })
+    |> Fiber.return
   | Repo at_rev ->
-    let package_name = opam_package |> OpamPackage.name |> OpamPackage.Name.to_string in
-    let package_version =
-      opam_package |> OpamPackage.version |> OpamPackage.Version.to_string
-    in
     let expected_path =
+      let package_name = opam_package |> OpamPackage.name |> OpamPackage.Name.to_string in
+      let package_version =
+        opam_package |> OpamPackage.version |> OpamPackage.Version.to_string
+      in
       sprintf "packages/%s/%s.%s/opam" package_name package_name package_version
     in
     let file = Path.Local.of_string expected_path in
-    let* content = Rev_store.Remote.At_rev.content at_rev file in
-    (match content with
-     | None -> Fiber.return None
-     | Some content ->
-       (* the filename is used to read the version number *)
-       let filename = OpamFile.make (OpamFilename.of_string expected_path) in
-       let opam_file = OpamFile.OPAM.read_from_string ~filename content in
-       (* TODO the [file] here is made up *)
-       Fiber.return
-         (Some { With_file.opam_file; file = Path.source @@ Path.Source.of_local file }))
+    Rev_store.Remote.At_rev.content at_rev file
+    >>| Option.map ~f:(fun content ->
+      let opam_file =
+        (* the filename is used to read the version number *)
+        let filename = OpamFile.make (OpamFilename.of_string expected_path) in
+        OpamFile.OPAM.read_from_string ~filename content
+      in
+      (* TODO the [file] here is made up *)
+      { With_file.opam_file; file = Path.source @@ Path.Source.of_local file })
 ;;
 
 let get_opam_package_version_dir_path packages_dir_path opam_package_name =
@@ -321,8 +322,9 @@ let get_opam_package_version_dir_path packages_dir_path opam_package_name =
 let all_package_versions t opam_package_name =
   match t.source with
   | Directory d ->
+    let+ () = Fiber.return () in
     (match get_opam_package_version_dir_path d opam_package_name with
-     | None -> Fiber.return []
+     | None -> []
      | Some version_dir_path ->
        (match Path.readdir_unsorted version_dir_path with
         | Error e ->
@@ -332,14 +334,14 @@ let all_package_versions t opam_package_name =
                 (Path.to_string_maybe_quoted version_dir_path)
                 (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e)
             ]
-        | Ok version_dirs -> Fiber.return (List.map version_dirs ~f:OpamPackage.of_string)))
+        | Ok version_dirs -> List.map version_dirs ~f:OpamPackage.of_string))
   | Repo at_rev ->
-    let name = OpamPackage.Name.to_string opam_package_name in
-    let version_dir_path = Path.Local.relative (Path.Local.of_string "packages") name in
-    let+ dir_entries =
-      Rev_store.Remote.At_rev.directory_entries at_rev version_dir_path
+    let version_dir_path =
+      let name = OpamPackage.Name.to_string opam_package_name in
+      Path.Local.relative (Path.Local.of_string "packages") name
     in
-    List.filter_map dir_entries ~f:(fun dir_entry ->
+    Rev_store.Remote.At_rev.directory_entries at_rev version_dir_path
+    >>| List.filter_map ~f:(fun dir_entry ->
       let open Option.O in
       Path.Local.basename_opt dir_entry
       >>= function

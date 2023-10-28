@@ -125,7 +125,6 @@ module Context_for_dune = struct
   ;;
 
   let candidates t name =
-    let open Fiber.O in
     match OpamPackage.Name.Map.find_opt name t.local_packages with
     | Some opam_file ->
       let version =
@@ -441,7 +440,6 @@ let opam_package_to_lock_file_pkg
   ~experimental_translate_opam_filters
   opam_package
   =
-  let open Fiber.O in
   let name = OpamPackage.name opam_package in
   let version = OpamPackage.version opam_package |> OpamPackage.Version.to_string in
   let dev = OpamPackage.Name.Map.mem name local_packages in
@@ -612,7 +610,6 @@ let solve_lock_dir
   ~local_packages
   ~experimental_translate_opam_filters
   =
-  let open Fiber.O in
   let local_packages = opam_file_map_of_dune_package_map local_packages in
   let is_local_package package =
     OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages

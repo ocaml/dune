@@ -1,6 +1,7 @@
 open Stdune
 module Process = Dune_engine.Process
 module Display = Dune_engine.Display
+open Fiber.O
 
 let norm = function
   | "" -> None
@@ -36,7 +37,6 @@ let run_capture_line ~path ~prog ~args =
   match prog with
   | None -> Fiber.return None
   | Some prog ->
-    let open Fiber.O in
     let+ res = Process.run_capture_line ~display:Quiet Strict prog args in
     norm res
 ;;
@@ -45,7 +45,6 @@ let uname ~path args = run_capture_line ~path ~prog:"uname" ~args
 let lsb_release ~path args = run_capture_line ~path ~prog:"lsb_release" ~args
 
 let arch ~path =
-  let open Fiber.O in
   let+ raw =
     match Sys.os_type with
     | "Unix" | "Cygwin" -> uname ~path [ "-m" ]
@@ -67,7 +66,6 @@ let arch ~path =
 ;;
 
 let os ~path =
-  let open Fiber.O in
   let+ raw =
     match Sys.os_type with
     | "Unix" -> uname ~path [ "-s" ]
@@ -83,7 +81,6 @@ let android_release ~path =
 ;;
 
 let is_android ~path =
-  let open Fiber.O in
   let+ prop = android_release ~path in
   prop <> None
 ;;
@@ -109,7 +106,6 @@ let os_release_field field =
 ;;
 
 let os_version ~path =
-  let open Fiber.O in
   let* os = os ~path in
   match os with
   | Some "linux" ->
@@ -144,7 +140,6 @@ let os_version ~path =
 ;;
 
 let os_distribution ~path =
-  let open Fiber.O in
   let* os = os ~path in
   match os with
   | Some "macos" as macos ->
@@ -187,7 +182,6 @@ let os_distribution ~path =
 ;;
 
 let os_family ~path =
-  let open Fiber.O in
   let* os = os ~path in
   match os with
   | Some "linux" ->
@@ -205,7 +199,6 @@ let os_family ~path =
 ;;
 
 let sys_bindings ~path =
-  let open Fiber.O in
   let entry k f =
     let+ v = f ~path in
     k, v

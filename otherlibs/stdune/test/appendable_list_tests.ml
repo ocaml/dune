@@ -55,3 +55,17 @@ let%expect_test "concat" =
     8
     9 |}]
 ;;
+
+let%expect_test "is_empty" =
+  let assert_empty l = assert (Al.is_empty l) in
+  assert_empty Al.empty;
+  [%expect {||}];
+  assert_empty @@ Al.concat [];
+  [%expect {||}];
+  assert_empty @@ Al.concat [ Al.empty ];
+  [%expect {||}];
+  assert_empty @@ Al.concat [ Al.empty; Al.empty ];
+  [%expect {||}];
+  assert_empty @@ Al.of_list [];
+  [%expect {||}]
+;;

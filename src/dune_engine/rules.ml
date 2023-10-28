@@ -3,15 +3,26 @@ module Action_builder = Action_builder0
 module Id = Id.Make ()
 
 module Dir_rules = struct
-  module Alias_spec = struct
+  module Alias_spec : sig
     type item =
       | Deps of unit Action_builder.t
       | Action of Rule.Anonymous_action.t Action_builder.t
 
-    type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
+    type t
 
-    let empty = { expansions = Appendable_list.empty }
-    let union x y = { expansions = Appendable_list.( @ ) x.expansions y.expansions }
+    val union_all : t list -> t
+    val singleton : Loc.t * item -> t
+    val to_list : t -> (Loc.t * item) list
+  end = struct
+    type item =
+      | Deps of unit Action_builder.t
+      | Action of Rule.Anonymous_action.t Action_builder.t
+
+    type t = (Loc.t * item) Appendable_list.t
+
+    let singleton = Appendable_list.singleton
+    let union_all all = Appendable_list.of_list_concat all
+    let to_list = Appendable_list.to_list_rev
   end
 
   type alias =
@@ -47,9 +58,7 @@ module Dir_rules = struct
         | Alias { name; spec } -> Right (name, spec))
     in
     let aliases =
-      Alias.Name.Map.of_list_multi aliases
-      |> Alias.Name.Map.map ~f:(fun specs ->
-        List.fold_left specs ~init:Alias_spec.empty ~f:Alias_spec.union)
+      Alias.Name.Map.of_list_multi aliases |> Alias.Name.Map.map ~f:Alias_spec.union_all
     in
     { rules; aliases }
   ;;
@@ -139,10 +148,7 @@ module Produce = struct
     ;;
 
     let add_deps t ?(loc = Loc.none) expansion =
-      alias
-        t
-        { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Deps expansion)
-        }
+      alias t (Dir_rules.Alias_spec.singleton (loc, Dir_rules.Alias_spec.Deps expansion))
     ;;
 
     let add_action t ~loc action =
@@ -155,10 +161,7 @@ module Produce = struct
         ; alias = Some (Alias.name t)
         }
       in
-      alias
-        t
-        { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Action action)
-        }
+      alias t (Dir_rules.Alias_spec.singleton (loc, Dir_rules.Alias_spec.Action action))
     ;;
   end
 end

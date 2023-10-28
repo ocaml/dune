@@ -380,8 +380,8 @@ end = struct
   ;;
 
   let compute_alias_expansions ~(collected : Rules.Dir_rules.ready) ~dir =
-    let aliases = collected.aliases in
     let+ aliases =
+      let aliases = collected.aliases in
       if Alias.Name.Map.mem aliases Alias.Name.default
       then Memo.return aliases
       else
@@ -392,13 +392,10 @@ end = struct
           Alias.Name.Map.set
             aliases
             Alias.Name.default
-            { expansions =
-                Appendable_list.singleton
-                  (Loc.none, Rules.Dir_rules.Alias_spec.Deps expansion)
-            }
+            (Rules.Dir_rules.Alias_spec.singleton
+               (Loc.none, Rules.Dir_rules.Alias_spec.Deps expansion))
     in
-    Alias.Name.Map.map aliases ~f:(fun { Rules.Dir_rules.Alias_spec.expansions } ->
-      Appendable_list.to_list expansions)
+    Alias.Name.Map.map aliases ~f:Rules.Dir_rules.Alias_spec.to_list
   ;;
 
   let add_non_fallback_rules ~init ~source_files rules =

@@ -40,17 +40,14 @@ module Dir_rules = struct
     }
 
   let consume t =
-    let data = Id.Map.values t in
-    let rules =
-      List.filter_map data ~f:(function
-        | Rule rule -> Some rule
-        | Alias _ -> None)
+    let rules, aliases =
+      Id.Map.values t
+      |> List.partition_map ~f:(function
+        | Rule rule -> Left rule
+        | Alias { name; spec } -> Right (name, spec))
     in
     let aliases =
-      Alias.Name.Map.of_list_multi
-        (List.filter_map data ~f:(function
-          | Rule _ -> None
-          | Alias { name; spec } -> Some (name, spec)))
+      Alias.Name.Map.of_list_multi aliases
       |> Alias.Name.Map.map ~f:(fun specs ->
         List.fold_left specs ~init:Alias_spec.empty ~f:Alias_spec.union)
     in

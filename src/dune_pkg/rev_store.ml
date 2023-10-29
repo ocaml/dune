@@ -48,15 +48,17 @@ let show { dir } (Rev rev) path =
 
 let load_or_create ~dir =
   let t = { dir } in
-  (match Path.mkdir_p dir with
-   | () -> ()
-   | exception Unix.Unix_error (e, x, y) ->
-     User_error.raise
-       [ Pp.textf "%s isn't a directory" (Path.to_string_maybe_quoted dir)
-       ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum (e, x, y))
-       ]
-       ~hints:[ Pp.text "delete this file or check its permissions" ]);
-  let+ () = run t [ "init"; "--bare" ] in
+  let+ () =
+    match Fpath.mkdir_p (Path.to_string dir) with
+    | Already_exists -> Fiber.return ()
+    | Created -> run t [ "init"; "--bare" ]
+    | exception Unix.Unix_error (e, x, y) ->
+      User_error.raise
+        [ Pp.textf "%s isn't a directory" (Path.to_string_maybe_quoted dir)
+        ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum (e, x, y))
+        ]
+        ~hints:[ Pp.text "delete this file or check its permissions" ]
+  in
   t
 ;;
 

@@ -48,6 +48,7 @@ let show { dir } (Rev rev) path =
 
 let load_or_create ~dir =
   let t = { dir } in
+  let* () = Fiber.return () in
   let+ () =
     match Fpath.mkdir_p (Path.to_string dir) with
     | Already_exists -> Fiber.return ()

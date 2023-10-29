@@ -46,26 +46,18 @@ let show { dir } (Rev rev) path =
   >>| Result.to_option
 ;;
 
-let dir_exists dir =
-  match Path.exists dir with
-  | false -> false
-  | true ->
-    (match Path.stat dir with
-     | Ok stats ->
-       (match stats.st_kind with
-        | S_DIR -> true
-        | _ -> false)
-     | Error issue -> Dune_filesystem_stubs.Unix_error.Detailed.raise issue)
-;;
-
 let load_or_create ~dir =
   let t = { dir } in
-  match dir_exists dir with
-  | true -> Fiber.return t
-  | false ->
-    Path.mkdir_p dir;
-    let+ () = run t [ "init"; "--bare" ] in
-    t
+  (match Path.mkdir_p dir with
+   | () -> ()
+   | exception Unix.Unix_error (e, x, y) ->
+     User_error.raise
+       [ Pp.textf "%s isn't a directory" (Path.to_string_maybe_quoted dir)
+       ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum (e, x, y))
+       ]
+       ~hints:[ Pp.text "delete this file or check its permissions" ]);
+  let+ () = run t [ "init"; "--bare" ] in
+  t
 ;;
 
 module Remote = struct

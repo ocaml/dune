@@ -1,6 +1,4 @@
-open Stdune
-module Process = Dune_engine.Process
-module Display = Dune_engine.Display
+open Import
 open Fiber.O
 
 module Curl = struct

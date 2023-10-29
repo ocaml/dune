@@ -92,7 +92,7 @@ module Source = struct
   ;;
 
   let encode t =
-    let open Dune_lang.Encoder in
+    let open Encoder in
     match t with
     | External_copy (_loc, path) ->
       constr Fields.copy string (Path.External.to_string path)
@@ -148,7 +148,7 @@ module Pkg = struct
     ; install_command : Action.t option
     ; deps : (Loc.t * Package_name.t) list
     ; info : Pkg_info.t
-    ; exported_env : String_with_vars.t Dune_lang.Action.Env_update.t list
+    ; exported_env : String_with_vars.t Action.Env_update.t list
     }
 
   let equal { build_command; install_command; deps; info; exported_env } t =
@@ -157,7 +157,7 @@ module Pkg = struct
     && List.equal (Tuple.T2.equal Loc.equal Package_name.equal) deps t.deps
     && Pkg_info.equal info t.info
     && List.equal
-         (Dune_lang.Action.Env_update.equal String_with_vars.equal)
+         (Action.Env_update.equal String_with_vars.equal)
          exported_env
          t.exported_env
   ;;
@@ -166,9 +166,7 @@ module Pkg = struct
     { t with
       info = Pkg_info.remove_locs t.info
     ; exported_env =
-        List.map
-          t.exported_env
-          ~f:(Dune_lang.Action.Env_update.map ~f:String_with_vars.remove_locs)
+        List.map t.exported_env ~f:(Action.Env_update.map ~f:String_with_vars.remove_locs)
     ; deps = List.map t.deps ~f:(fun (_, pkg) -> Loc.none, pkg)
     }
   ;;
@@ -180,9 +178,7 @@ module Pkg = struct
       ; "deps", Dyn.list (Dyn.pair Loc.to_dyn_hum Package_name.to_dyn) deps
       ; "info", Pkg_info.to_dyn info
       ; ( "exported_env"
-        , Dyn.list
-            (Dune_lang.Action.Env_update.to_dyn String_with_vars.to_dyn)
-            exported_env )
+        , Dyn.list (Action.Env_update.to_dyn String_with_vars.to_dyn) exported_env )
       ]
   ;;
 
@@ -202,13 +198,13 @@ module Pkg = struct
     enter
     @@ fields
     @@ let+ version = field ~default:Pkg_info.default_version Fields.version string
-       and+ install_command = field_o Fields.install Dune_lang.Action.decode_pkg
-       and+ build_command = field_o Fields.build Dune_lang.Action.decode_pkg
+       and+ install_command = field_o Fields.install Action.decode_pkg
+       and+ build_command = field_o Fields.build Action.decode_pkg
        and+ deps = field ~default:[] Fields.deps (repeat (located Package_name.decode))
        and+ source = field_o Fields.source Source.decode
        and+ dev = field_b Fields.dev
        and+ exported_env =
-         field Fields.exported_env ~default:[] (repeat Dune_lang.Action.Env_update.decode)
+         field Fields.exported_env ~default:[] (repeat Action.Env_update.decode)
        and+ extra_sources =
          field
            Fields.extra_sources
@@ -247,15 +243,15 @@ module Pkg = struct
     ; exported_env
     }
     =
-    let open Dune_lang.Encoder in
+    let open Encoder in
     record_fields
       [ field Fields.version string version
-      ; field_o Fields.install Dune_lang.Action.encode install_command
-      ; field_o Fields.build Dune_lang.Action.encode build_command
+      ; field_o Fields.install Action.encode install_command
+      ; field_o Fields.build Action.encode build_command
       ; field_l Fields.deps Package_name.encode (List.map deps ~f:snd)
       ; field_o Fields.source Source.encode source
       ; field_b Fields.dev dev
-      ; field_l Fields.exported_env Dune_lang.Action.Env_update.encode exported_env
+      ; field_l Fields.exported_env Action.Env_update.encode exported_env
       ; field_l Fields.extra_sources encode_extra_source extra_sources
       ]
   ;;
@@ -492,7 +488,7 @@ module Write_disk = struct
         Option.iter (Path.parent path) ~f:Path.mkdir_p;
         let cst =
           List.map contents ~f:(fun sexp ->
-            Dune_lang.Ast.add_loc ~loc:Loc.none sexp |> Dune_sexp.Cst.concrete)
+            Dune_sexp.Ast.add_loc ~loc:Loc.none sexp |> Dune_sexp.Cst.concrete)
         in
         let pp = Dune_lang.Format.pp_top_sexps ~version:(3, 11) cst in
         Format.asprintf "%a" Pp.to_fmt pp |> Io.write_file path;

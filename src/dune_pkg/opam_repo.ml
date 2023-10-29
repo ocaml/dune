@@ -1,6 +1,4 @@
-open! Stdune
-module Encoder = Dune_lang.Encoder
-module Decoder = Dune_lang.Decoder
+open Import
 open Fiber.O
 
 let ( / ) = Path.relative

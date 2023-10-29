@@ -17,6 +17,12 @@ include struct
   module Action = Action
   module String_with_vars = String_with_vars
   module Pform = Pform
-  module Blang = Dune_lang.Blang
-  module Slang = Dune_lang.Slang
+  module Blang = Blang
+  module Slang = Slang
+end
+
+include struct
+  open Dune_engine
+  module Process = Process
+  module Display = Display
 end

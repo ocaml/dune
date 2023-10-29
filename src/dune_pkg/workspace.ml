@@ -37,7 +37,7 @@ module Repository = struct
   let default = { name = "default"; source = "https://opam.ocaml.org/index.tar.gz" }
 
   let decode =
-    let open Dune_lang.Decoder in
+    let open Decoder in
     fields
       (let+ name = field "name" Name.decode
        and+ source = field "source" string in

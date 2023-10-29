@@ -35,7 +35,7 @@ module Pkg : sig
     }
 
   val equal : t -> t -> bool
-  val decode : (lock_dir:Path.Source.t -> Package_name.t -> t) Dune_sexp.Decoder.t
+  val decode : (lock_dir:Path.Source.t -> Package_name.t -> t) Decoder.t
 end
 
 module Repositories : sig

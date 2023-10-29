@@ -139,7 +139,7 @@ module Variable = struct
     let equal a b = String.equal (to_string a) (to_string b)
 
     let decode =
-      let open Dune_lang.Decoder in
+      let open Decoder in
       let+ loc, string = located string in
       match of_string_opt string with
       | Some t -> t

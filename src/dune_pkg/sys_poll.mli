@@ -1,6 +1,6 @@
 (** Functions to retrieve the values of system-dependent OPAM values like "arch"
     or "os". *)
-open Stdune
+open Import
 
 (** Returns the value of [arch] *)
 val arch : path:Path.t list -> string option Fiber.t

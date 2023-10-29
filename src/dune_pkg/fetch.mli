@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 type failure =
   | Checksum_mismatch of Checksum.t

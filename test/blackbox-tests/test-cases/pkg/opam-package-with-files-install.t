@@ -1,25 +1,18 @@
-We make sure that file like foo.install are correctly included from the files
-subdirectory of an opam repository. Notably, the build step here is empty. The
-library seq is such an example in the wild with this behaviour.
+This test demonstrates a package where the .install file being created by the
+file copying step rather than the build step.
 
   $ . ./helpers.sh
-  $ mkrepo
 
-  $ mkpkg foo
-  $ mkdir -p $mock_packages/foo/foo.0.0.1/files
-  $ cat > $mock_packages/foo/foo.0.0.1/files/foo.install
+  $ mkdir -p dune.lock/foo.files
+  $ cat >dune.lock/lock.dune <<EOF
+  > (lang package 0.1)
+  > EOF
 
-  $ solve foo
-  Solution for dune.lock:
-  - foo.0.0.1
-
-The lock directory contains the .install file as expected.
-  $ [ -f dune.lock/foo.files/foo.install ]
-
-The pkg file is empty, there is no build stanza.
-  $ cat dune.lock/foo.pkg
-  (version 0.0.1)
+  $ touch dune.lock/foo.files/foo.install dune.lock/foo.pkg
 
 The foo.install file in files/ should have been copied over.
-  $ build_pkg foo 2> /dev/null
+  $ build_pkg foo
+  Error:
+  open(_build/_private/default/.pkg/foo/source/foo.install): No such file or directory
+  -> required by _build/_private/default/.pkg/foo/target/cookie
   [1]

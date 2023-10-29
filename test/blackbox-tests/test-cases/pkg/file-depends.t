@@ -1,7 +1,8 @@
-Here we test the file-depends field in pkg1.config. When a package has been installed, the
-.config file can also be included. This can have a file-depends field which is a list of
-external files, together with their checksums, that the package depends on. We make sure
-that such a package really does depend on the files found in files-depend. 
+Here we test the file-depends field in pkg1.config. When a package has been
+installed, the .config file can also be included. This can have a file-depends
+field which is a list of external files, together with their checksums, that
+the package depends on. We make sure that such a package really does depend on
+the files found in files-depend. 
 
   $ . ./helpers.sh
   $ make_lockdir
@@ -9,13 +10,12 @@ that such a package really does depend on the files found in files-depend.
   $ foo=$PWD/foo
   > cat > dune.lock/file-depends.pkg <<EOF
   > (build
-  >  (progn
-  >   (system "echo \"Building file-depends\"")
-  >   (system "\| cat > file-depends.config <<EOF
-  >           "\| opam-version: "2.0"
-  >           "\| file-depends: [ "$foo" "md5=00000000000000000000000000000000" ]
-  >           "\| EOF
-  > )))
+  >  (system "\| echo Building file-depends
+  >          "\| cat > file-depends.config <<EOF
+  >          "\| opam-version: "2.0"
+  >          "\| file-depends: [ "$foo" "md5=00000000000000000000000000000000" ]
+  >          "\| EOF
+  >  ))
   > EOF
 
 Word of warning: the opam libraries will quietly discard the file-depends field if the
@@ -26,7 +26,7 @@ Now we make a package depending on file-depends.
   $ cat > dune.lock/dep.pkg <<EOF
   > (deps file-depends)
   > (build
-  >  (system "echo \"Building dep\""))
+  >  (system "echo Building dep"))
   > EOF
 
   $ cat > foo <<EOF

@@ -556,7 +556,12 @@ let opam_package_to_lock_file_pkg
   let exported_env =
     OpamFile.OPAM.env opam_file |> List.map ~f:opam_env_update_to_env_update
   in
-  { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env }
+  let kind =
+    if List.mem (OpamFile.OPAM.flags opam_file) ~equal:Poly.equal Pkgflag_Compiler
+    then `Compiler
+    else `Non_compiler
+  in
+  kind, { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env }
 ;;
 
 let solve_package_list local_package_names context =
@@ -634,21 +639,37 @@ let solve_lock_dir
         List.map solution ~f:OpamPackage.name |> OpamPackage.Name.Set.of_list
       in
       let opam_packages_to_lock = List.filter solution ~f:(Fun.negate is_local_package) in
-      let* pkgs =
-        let+ pkg_list =
+      let* ocaml, pkgs =
+        let+ pkgs =
           Fiber.parallel_map opam_packages_to_lock ~f:(fun opam_package ->
-            let+ pkg =
-              opam_package_to_lock_file_pkg
-                context
-                ~all_package_names
-                ~repos
-                ~local_packages
-                ~experimental_translate_opam_filters
-                opam_package
-            in
-            pkg.info.name, pkg)
+            opam_package_to_lock_file_pkg
+              context
+              ~all_package_names
+              ~repos
+              ~local_packages
+              ~experimental_translate_opam_filters
+              opam_package)
         in
-        Package_name.Map.of_list pkg_list
+        let ocaml =
+          (* This doesn't allow the compiler to live in the source tree. Oh
+             well, it's not possible now anyway. *)
+          match
+            List.filter_map pkgs ~f:(fun (kind, pkg) ->
+              match kind with
+              | `Compiler -> Some pkg.info.name
+              | `Non_compiler -> None)
+          with
+          | [] -> None
+          | [ x ] -> Some (Loc.none, x)
+          | _ ->
+            User_error.raise
+              [ Pp.text "multiple compilers selected" ]
+              ~hints:[ Pp.text "add a conflict" ]
+        in
+        let pkgs =
+          Package_name.Map.of_list_map pkgs ~f:(fun (_kind, pkg) -> pkg.info.name, pkg)
+        in
+        ocaml, pkgs
       in
       let lock_dir =
         match pkgs with
@@ -657,10 +678,6 @@ let solve_lock_dir
             "Solver selected multiple versions for the same package"
             [ "name", Package_name.to_dyn name ]
         | Ok pkgs_by_name ->
-          let ocaml =
-            let name = Package_name.of_string "ocaml" in
-            Option.some_if (Package_name.Map.mem pkgs_by_name name) (Loc.none, name)
-          in
           let stats = Solver_stats.Updater.snapshot stats_updater in
           let expanded_solver_variable_bindings =
             Solver_stats.Expanded_variable_bindings.of_variable_set

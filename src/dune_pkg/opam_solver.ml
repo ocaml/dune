@@ -564,7 +564,7 @@ let opam_package_to_lock_file_pkg
   kind, { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env }
 ;;
 
-let solve_package_list local_package_names context =
+let solve_package_list ~local_package_names context =
   let* result =
     Fiber.collect_errors (fun () ->
       (* [Solver.solve] returns [Error] when it's unable to find a solution to
@@ -611,34 +611,36 @@ let solve_lock_dir
   ~local_packages
   ~experimental_translate_opam_filters
   =
-  let local_packages = opam_file_map_of_dune_package_map local_packages in
-  let is_local_package package =
-    OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
-  in
-  let stats_updater = Solver_stats.Updater.init () in
-  let context =
-    let local_packages =
-      OpamPackage.Name.Map.map
-        (fun (w : Opam_repo.With_file.t) -> w.opam_file)
-        local_packages
-    in
-    Context_for_dune.create
-      ~solver_env
-      ~repos
-      ~version_preference
-      ~local_packages
-      ~stats_updater
-  in
   let* solver_result =
-    let+ solution =
-      solve_package_list (OpamPackage.Name.Map.keys local_packages) context
+    let stats_updater = Solver_stats.Updater.init () in
+    let local_packages = opam_file_map_of_dune_package_map local_packages in
+    let context =
+      let local_packages =
+        OpamPackage.Name.Map.map
+          (fun (w : Opam_repo.With_file.t) -> w.opam_file)
+          local_packages
+      in
+      Context_for_dune.create
+        ~solver_env
+        ~repos
+        ~version_preference
+        ~local_packages
+        ~stats_updater
     in
-    Result.map solution ~f:(fun solution ->
+    solve_package_list
+      context
+      ~local_package_names:(OpamPackage.Name.Map.keys local_packages)
+    >>| Result.map ~f:(fun solution ->
       (* don't include local packages in the lock dir *)
       let all_package_names =
         List.map solution ~f:OpamPackage.name |> OpamPackage.Name.Set.of_list
       in
-      let opam_packages_to_lock = List.filter solution ~f:(Fun.negate is_local_package) in
+      let opam_packages_to_lock =
+        let is_local_package package =
+          OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
+        in
+        List.filter solution ~f:(Fun.negate is_local_package)
+      in
       let* ocaml, pkgs =
         let+ pkgs =
           Fiber.parallel_map opam_packages_to_lock ~f:(fun opam_package ->
@@ -693,34 +695,27 @@ let solve_lock_dir
       let+ files =
         let+ file_entry_candidates =
           Fiber.parallel_map opam_packages_to_lock ~f:(fun opam_package ->
-            let+ entries_per_repo =
-              Fiber.parallel_map repos ~f:(fun repo ->
-                let+ file_entries = Opam_repo.get_opam_package_files repo opam_package in
-                match file_entries with
-                | [] -> None
-                | file_entries -> Some file_entries)
-            in
-            let first_matching_repo =
-              List.find_map entries_per_repo ~f:(function
-                | None -> None
-                | Some [] -> None
-                | Some entries -> Some entries)
-            in
-            match first_matching_repo with
-            | None -> None
-            | Some files ->
-              Some
-                ( Package_name.of_string
-                    (OpamPackage.Name.to_string (OpamPackage.name opam_package))
-                , files ))
+            Fiber.parallel_map repos ~f:(fun repo ->
+              Opam_repo.get_opam_package_files repo opam_package
+              >>| function
+              | [] -> None
+              | file_entries -> Some file_entries)
+            >>| List.find_map ~f:(function
+              | None -> None
+              | Some [] -> None
+              | Some entries -> Some entries)
+            >>| Option.map ~f:(fun files ->
+              ( Package_name.of_string
+                  (OpamPackage.Name.to_string (OpamPackage.name opam_package))
+              , files )))
         in
         file_entry_candidates |> List.filter_opt |> Package_name.Map.of_list_exn
       in
       { Solver_result.lock_dir; files })
   in
   match solver_result with
+  | Error _ as e -> Fiber.return e
   | Ok ok ->
     let+ ok = ok in
     Ok ok
-  | Error _ as e -> Fiber.return e
 ;;

@@ -35,9 +35,8 @@ Make a mock repo tarball that will get used by dune to download the package
 Our custom cache folder should be populated with the unpacked tarball
 containing the repository:
 
-  $ find fake-xdg-cache | grep HEAD
-  fake-xdg-cache/dune/git-repo/HEAD
-  fake-xdg-cache/dune/git-repo/FETCH_HEAD
+  $ [ -f fake-xdg-cache/dune/git-repo/HEAD ]
+  > [ -f fake-xdg-cache/dune/git-repo/FETCH_HEAD ]
 
 Automatically download the repo and make sure lock.dune contains the repo hash
 (exit code 0 from grep, we don't care about the output as it is not

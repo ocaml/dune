@@ -1,19 +1,17 @@
+The ocaml compiler needs to be marked inside the lock dir:
 
   $ . ./helpers.sh
   $ mkrepo
 
-  $ mkpkg ocaml <<EOF
+To mark it, we use flags: compiler:
+
+  $ mkpkg foocaml <<EOF
+  > flags: compiler
   > EOF
 
-  $ solve ocaml
+  $ solve foocaml
   Solution for dune.lock:
-  - ocaml.0.0.1
+  - foocaml.0.0.1
 
-  $ cat dune.lock/lock.dune
-  (lang package 0.1)
-  
-  (ocaml ocaml)
-  
-  (repositories
-   (complete false)
-   (used))
+  $ grep ocaml dune.lock/lock.dune
+  (ocaml foocaml)

@@ -178,26 +178,24 @@ let if_exists p =
 (* Scan a path recursively down retrieving a list of all files together with their
    relative path. *)
 let scan_files_entries path =
-  (* TODO Add some cycle detection *)
-  let rec read acc dir =
-    let path = Path.append_local path dir in
-    match Path.readdir_unsorted_with_kinds path with
-    | Ok entries ->
-      List.fold_left entries ~init:acc ~f:(fun acc (filename, kind) ->
-        let local_path = Path.Local.relative dir filename in
-        match (kind : Unix.file_kind) with
-        | S_REG -> local_path :: acc
-        | S_DIR -> read acc local_path
-        | _ ->
-          (* TODO should be an error *)
-          acc)
-    | Error (Unix.ENOENT, _, _) -> acc
-    | Error err ->
-      User_error.raise
-        ~loc:(Loc.in_file path)
-        [ Pp.text "Unable to read file in opam repository:"; Unix_error.Detailed.pp err ]
-  in
-  read [] Path.Local.root
+  match Path.stat path with
+  | Error (Unix.ENOENT, _, _) -> []
+  | Error e -> Unix_error.Detailed.raise e
+  | _ ->
+    (try
+       Fpath.traverse_files
+         ~dir:(Path.to_string path)
+         ~init:[]
+         ~f:(fun ~dir filename acc ->
+           let local_path = Path.Local.relative (Path.Local.of_string dir) filename in
+           local_path :: acc)
+     with
+     | Unix.Unix_error (err, a, e) ->
+       User_error.raise
+         ~loc:(Loc.in_file path)
+         [ Pp.text "Unable to read file in opam repository:"
+         ; Unix_error.Detailed.pp (err, a, e)
+         ])
 ;;
 
 module With_file = struct

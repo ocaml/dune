@@ -27,7 +27,7 @@ The error message should have a location for the opam repository.
 This does not currently seem to be the case.
 
   $ solve with-patch
-  File "$TESTCASE_ROOT/mock-opam-repository/packages/with-patch/with-patch.0.0.1/files/dir", line 1, characters 0-0:
+  File "$TESTCASE_ROOT/mock-opam-repository/packages/with-patch/with-patch.0.0.1/files", line 1, characters 0-0:
   Error: Unable to read file in opam repository:
   opendir($TESTCASE_ROOT/mock-opam-repository/packages/with-patch/with-patch.0.0.1/files/dir): Permission denied
   [1]

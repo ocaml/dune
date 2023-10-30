@@ -319,7 +319,6 @@ let is_useful_to distribute memoize =
     | false -> Clearly_not
 ;;
 
-let is_useful_to_sandbox = is_useful_to false false
 let is_useful_to_distribute = is_useful_to true false
 let is_useful_to_memoize = is_useful_to true true
 

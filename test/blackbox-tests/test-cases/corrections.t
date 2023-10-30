@@ -103,28 +103,7 @@ One fix is to not look at it, and flag its existence as an error.
   differ.
   [1]
 
-Sandboxing doesn't necessarily help either because dune thinks
-[diff?] is not worth sandboxing.
+Sandboxing helps since dune will sandbox all actions:
 
   $ dune build text-file-corrected
   $ dune build @correction1 --sandbox copy
-  File "text-file", line 1, characters 0-0:
-  Error: Files _build/default/text-file and _build/default/text-file-corrected
-  differ.
-  [1]
-
-Sandboxing does help if the command producing the
-correction is non-trivial.
-
-  $ cat > dune <<EOF
-  > (rule (alias correction1)
-  >   (deps)
-  >   (action
-  >     (progn
-  >       (bash "true")
-  >       (diff? text-file text-file-corrected)))
-  > )
-  > EOF
-
-  $ dune build @correction1 --sandbox copy
-

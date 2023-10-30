@@ -105,18 +105,17 @@ If rule fails to generate targets, we give a good error message, even with sandb
   - t
   [1]
 
-If rule is configured to require sandboxing, but clearly needs none,
-we give an error message:
+If rule is configured to require sandboxing, but clearly needs none, we sandbox
+anyway.
 
   $ true > dune
-  $ echo '(rule (target t) (deps (sandbox always)) (action (echo "")))' >> dune
+  $ cat >dune <<EOF
+  > (rule
+  >  (target t)
+  >  (deps (sandbox always))
+  >  (action (write-file t "")))
+  > EOF
   $ dune build t
-  File "dune", line 1, characters 0-60:
-  1 | (rule (target t) (deps (sandbox always)) (action (echo "")))
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Rule dependencies are configured to require sandboxing, but the rule
-  has no actions that could potentially require sandboxing.
-  [1]
 
 If an action [chdir]s to a non-existing directory, it is created.
 

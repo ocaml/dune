@@ -2,7 +2,18 @@ open Import
 open Fiber.O
 
 module Curl = struct
-  let bin = lazy (Bin.which ~path:(Env_path.path Env.initial) "curl")
+  let bin =
+    lazy
+      (match Bin.which ~path:(Env_path.path Env.initial) "curl" with
+       | Some p -> p
+       | None ->
+         User_error.raise
+           [ Pp.concat
+               ~sep:Pp.space
+               [ User_message.command "curl"; Pp.text "not available in PATH" ]
+             |> Pp.hovbox
+           ])
+  ;;
 
   let user_agent =
     lazy
@@ -12,30 +23,81 @@ module Curl = struct
        | Some v -> base ^ "." ^ Build_info.V1.Version.to_string v)
   ;;
 
+  module Fiber_lazy : sig
+    type 'a t
+
+    val create : (unit -> 'a Fiber.t) -> 'a t
+    val force : 'a t -> 'a Fiber.t
+  end = struct
+    type 'a t =
+      { value : 'a Fiber.Ivar.t
+      ; mutable f : (unit -> 'a Fiber.t) option
+      }
+
+    let create f = { f = Some f; value = Fiber.Ivar.create () }
+
+    let force t =
+      match t.f with
+      | None -> Fiber.Ivar.read t.value
+      | Some f ->
+        Fiber.of_thunk (fun () ->
+          t.f <- None;
+          let* v = f () in
+          let+ () = Fiber.Ivar.fill t.value v in
+          v)
+    ;;
+  end
+
+  let curl_features_regex =
+    (* If these features are present, then --compressed is supported *)
+    let features = [ "libz"; "brotli"; "zstd" ] in
+    Re.compile
+      Re.(seq [ bol; str "Features:"; rep (first (alt (List.map ~f:str features))) ])
+  ;;
+
+  let compressed_supported =
+    (* We check if curl supports --compressed by running curl -V and checking if
+       the output contains the features we need. *)
+    Fiber_lazy.create (fun () ->
+      let+ lines, _ =
+        let stderr_to =
+          Process.Io.make_stderr
+            ~output_on_success:Swallow
+            ~output_limit:Dune_engine.Execution_parameters.Action_output_limit.default
+        in
+        Process.run_capture_lines
+          Return
+          ~stderr_to
+          ~display:Quiet
+          (Lazy.force bin)
+          [ "-V" ]
+      in
+      match List.find_map lines ~f:(Re.exec_opt curl_features_regex) with
+      | Some group -> Re.Group.test group 0
+      | None -> false)
+  ;;
+
   let run ~url ~temp_dir ~output =
-    let bin =
-      match Lazy.force bin with
-      | Some p -> p
-      | None -> User_error.raise [ Pp.text "curl not available in PATH" ]
-    in
+    let* compressed_supported = Fiber_lazy.force compressed_supported in
     let args =
-      [ "-L"
-      ; "-s"
-      ; "--compressed"
-      ; "--user-agent"
-      ; Lazy.force user_agent
-      ; "--write-out"
-      ; "%{http_code}\\n"
-      ; "-o"
-      ; Path.to_string output
-      ; "--"
-      ; url
-      ]
+      List.flatten
+        [ [ "-L"
+          ; "-s"
+          ; "--user-agent"
+          ; Lazy.force user_agent
+          ; "--write-out"
+          ; "\"%{http_code}\"" (* This arg must be quoted to work on windows *)
+          ; "-o"
+          ; Path.to_string output
+          ]
+        ; (if compressed_supported then [ "--compressed" ] else [])
+        ; [ "--"; url ]
+        ]
     in
     let stderr = Path.relative temp_dir "curl.stderr" in
     let+ http_code, exit_code =
       let stderr_to = Process.Io.file stderr Out in
-      Process.run_capture_line Return ~stderr_to ~display:Quiet bin args
+      Process.run_capture_line Return ~stderr_to ~display:Quiet (Lazy.force bin) args
     in
     if exit_code <> 0
     then (
@@ -56,7 +118,12 @@ module Curl = struct
            ([ Pp.textf "curl returned an invalid error code %d" exit_code ] @ stderr)))
     else (
       Path.unlink_no_err stderr;
-      match Int.of_string http_code with
+      match
+        let open Option.O in
+        let suffix = {|"|} in
+        let prefix = suffix in
+        String.drop_prefix_and_suffix ~prefix ~suffix http_code >>= Int.of_string
+      with
       | None ->
         Error
           (User_message.make

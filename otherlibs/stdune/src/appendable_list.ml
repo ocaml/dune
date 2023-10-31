@@ -20,20 +20,21 @@ let ( @ ) a b =
 let cons x xs = Cons (x, xs)
 
 let to_list_rev =
-  let rec loop acc stack =
+  let rec loop1 acc t stack =
+    match t with
+    | Empty -> loop0 acc stack
+    | Singleton x -> loop0 (x :: acc) stack
+    | Cons (x, xs) -> loop1 (x :: acc) xs stack
+    | List xs -> loop0 (List.rev_append xs acc) stack
+    | Append (xs, ys) -> loop1 acc xs (ys :: stack)
+    | Concat [] -> loop0 acc stack
+    | Concat (x :: xs) -> loop1 acc x (Concat xs :: stack)
+  and loop0 acc stack =
     match stack with
     | [] -> acc
-    | t :: stack ->
-      (match t with
-       | Empty -> loop acc stack
-       | Singleton x -> loop (x :: acc) stack
-       | Cons (x, xs) -> loop (x :: acc) (xs :: stack)
-       | List xs -> loop (List.rev_append xs acc) stack
-       | Append (xs, ys) -> loop acc (xs :: ys :: stack)
-       | Concat [] -> loop acc stack
-       | Concat (x :: xs) -> loop acc (x :: Concat xs :: stack))
+    | t :: stack -> loop1 acc t stack
   in
-  fun t -> loop [] [ t ]
+  fun t -> loop1 [] t []
 ;;
 
 let to_list xs = List.rev (to_list_rev xs)

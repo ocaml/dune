@@ -1078,7 +1078,7 @@ include (
       let name = "gen-install-file"
       let version = 1
       let bimap (entries, dst) _ g = entries, g dst
-      let is_useful_to ~distribute:_ ~memoize = memoize
+      let is_useful_to ~memoize = memoize
 
       let encode (_entries, dst) _path target : Dune_lang.t =
         List [ Dune_lang.atom_or_quoted_string name; target dst ]

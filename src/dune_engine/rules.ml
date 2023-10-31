@@ -85,7 +85,6 @@ module Dir_rules = struct
     Id.Map.set t id data
   ;;
 
-  let is_subset t ~of_ = Id.Map.is_subset t ~of_ ~f:(fun _ ~of_:_ -> true)
   let is_empty = Id.Map.is_empty
 
   module Nonempty : sig
@@ -219,10 +218,6 @@ let map t ~f =
       | `Changed data -> Id.gen (), data)
     |> Dir_rules.Nonempty.create
     |> Option.value_exn)
-;;
-
-let is_subset t ~of_ =
-  Path.Build.Map.is_subset (to_map t) ~of_:(to_map of_) ~f:Dir_rules.is_subset
 ;;
 
 let map_rules t ~f =

@@ -42,8 +42,6 @@ module Dir_rules : sig
     }
 
   val consume : t -> ready
-  val is_subset : t -> of_:t -> bool
-  val is_empty : t -> bool
   val to_dyn : t -> Dyn.t
 end
 
@@ -90,7 +88,6 @@ val union : t -> t -> t
 val of_dir_rules : dir:Path.Build.t -> Dir_rules.t -> t
 val of_rules : Rule.t list -> t
 val produce : t -> unit Memo.t
-val is_subset : t -> of_:t -> bool
 val map_rules : t -> f:(Rule.t -> Rule.t) -> t
 val collect : (unit -> 'a Memo.t) -> ('a * t) Memo.t
 val collect_unit : (unit -> unit Memo.t) -> t Memo.t

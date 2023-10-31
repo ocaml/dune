@@ -24,6 +24,7 @@ module Context_for_dune = struct
   type 'a monad = 'a Monad.t
   type filtered_formula = OpamTypes.filtered_formula
   type filter = OpamTypes.filter
+  type rejection = Unavailable
 
   let local_package_default_version =
     OpamPackage.Version.of_string Lock_dir.Pkg_info.default_version
@@ -36,6 +37,10 @@ module Context_for_dune = struct
     ; solver_env : Solver_env.t
     ; dune_version : OpamPackage.Version.t
     ; stats_updater : Solver_stats.Updater.t
+    ; candidates_cache :
+        ( Package_name.t
+        , (OpamTypes.version * (OpamFile.OPAM.t, rejection) result) list )
+        Table.t
     }
 
   let create ~solver_env ~repos ~local_packages ~version_preference ~stats_updater =
@@ -43,10 +48,16 @@ module Context_for_dune = struct
       let major, minor = Dune_lang.Stanza.latest_version in
       OpamPackage.Version.of_string @@ sprintf "%d.%d" major minor
     in
-    { repos; version_preference; local_packages; solver_env; dune_version; stats_updater }
+    let candidates_cache = Table.create (module Package_name) 1 in
+    { repos
+    ; version_preference
+    ; local_packages
+    ; solver_env
+    ; dune_version
+    ; stats_updater
+    ; candidates_cache
+    }
   ;;
-
-  type rejection = Unavailable
 
   let pp_rejection f = function
     | Unavailable -> Format.pp_print_string f "Availability condition not satisfied"
@@ -125,6 +136,7 @@ module Context_for_dune = struct
   ;;
 
   let candidates t name =
+    let* () = Fiber.return () in
     match OpamPackage.Name.Map.find_opt name t.local_packages with
     | Some opam_file ->
       let version =
@@ -132,20 +144,26 @@ module Context_for_dune = struct
       in
       Fiber.return [ version, Ok opam_file ]
     | None ->
-      let+ opam_files = Opam_repo.load_all_versions t.repos name in
-      (* The CONTEXT interface doesn't give us a way to report this type of
-         error and there's not enough context to give a helpful error message
-         so just tell opam_0install that there are no versions of this
-         package available (technically true) and let it produce the error
-         message. *)
-      let opam_files_in_priority_order =
-        List.sort opam_files ~compare:(opam_version_compare t)
-      in
-      List.map opam_files_in_priority_order ~f:(fun opam_file ->
-        let opam_file_result =
-          if is_opam_available t opam_file then Ok opam_file else Error Unavailable
-        in
-        OpamFile.OPAM.version opam_file, opam_file_result)
+      let key = Package_name.of_string (OpamPackage.Name.to_string name) in
+      (match Table.find t.candidates_cache key with
+       | Some res -> Fiber.return res
+       | None ->
+         let+ res =
+           (* The CONTEXT interface doesn't give us a way to report this type of
+              error and there's not enough context to give a helpful error message
+              so just tell opam_0install that there are no versions of this
+              package available (technically true) and let it produce the error
+              message. *)
+           Opam_repo.load_all_versions t.repos name
+           >>| List.sort ~compare:(opam_version_compare t)
+           >>| List.map ~f:(fun opam_file ->
+             let opam_file_result =
+               if is_opam_available t opam_file then Ok opam_file else Error Unavailable
+             in
+             OpamFile.OPAM.version opam_file, opam_file_result)
+         in
+         Table.set t.candidates_cache key res;
+         res)
   ;;
 
   let user_restrictions : t -> OpamPackage.Name.t -> OpamFormula.version_constraint option

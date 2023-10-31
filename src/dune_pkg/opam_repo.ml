@@ -352,15 +352,18 @@ let all_package_versions t opam_package_name =
 ;;
 
 let load_all_versions ts opam_package_name =
-  Fiber.parallel_map ts ~f:(fun t -> all_package_versions t opam_package_name)
+  Fiber.parallel_map ts ~f:(fun t ->
+    all_package_versions t opam_package_name >>| List.rev_map ~f:(fun pkg -> t, pkg))
   >>| List.concat
-  >>= Fiber.parallel_map ~f:(fun opam_pkg ->
-    let+ found_in_repo =
-      Fiber.parallel_map ts ~f:(fun t -> load_opam_package t opam_pkg)
-    in
-    List.find_map found_in_repo ~f:Fun.id)
+  >>| List.fold_left ~init:OpamPackage.Version.Map.empty ~f:(fun acc (repo, package) ->
+    let version = OpamPackage.version package in
+    if OpamPackage.Version.Map.mem version acc
+    then acc
+    else OpamPackage.Version.Map.add version (repo, package) acc)
+  >>| OpamPackage.Version.Map.values
+  >>= Fiber.parallel_map ~f:(fun (repo, pkg) -> load_opam_package repo pkg)
   >>| List.filter_opt
-  >>| List.map ~f:(fun (with_file : With_file.t) -> with_file.opam_file)
+  >>| List.rev_map ~f:(fun (with_file : With_file.t) -> with_file.opam_file)
 ;;
 
 module Private = struct

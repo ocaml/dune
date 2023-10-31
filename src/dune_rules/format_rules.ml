@@ -33,7 +33,7 @@ let action =
     let name = "format-dune-file"
     let version = 1
     let bimap (ver, src, dst) f g = ver, f src, g dst
-    let is_useful_to ~distribute:_ ~memoize = memoize
+    let is_useful_to ~memoize = memoize
 
     let encode (version, src, dst) path target : Dune_lang.t =
       List

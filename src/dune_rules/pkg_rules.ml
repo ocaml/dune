@@ -387,7 +387,7 @@ module Substitute = struct
     let name = "substitute"
     let version = 1
     let bimap (e, s, i, o) f g = e, s, f i, g o
-    let is_useful_to ~distribute:_ ~memoize = memoize
+    let is_useful_to ~memoize = memoize
 
     let encode (e, s, i, o) input output : Dune_lang.t =
       let e =
@@ -973,7 +973,7 @@ module Install_action = struct
       }
     ;;
 
-    let is_useful_to ~distribute:_ ~memoize = memoize
+    let is_useful_to ~memoize = memoize
 
     let encode
       { install_file; config_file; target_dir; install_action; package }
@@ -1225,7 +1225,7 @@ module Fetch = struct
     let name = "source-fetch"
     let version = 1
     let bimap t _ g = { t with target_dir = g t.target_dir }
-    let is_useful_to ~distribute:_ ~memoize = memoize
+    let is_useful_to ~memoize = memoize
 
     let encode_loc f (loc, x) =
       Dune_lang.List
@@ -1303,7 +1303,7 @@ module Copy_tree = struct
     let name = "copy-tree"
     let version = 1
     let bimap (src, dst) f g = f src, g dst
-    let is_useful_to ~distribute:_ ~memoize = memoize
+    let is_useful_to ~memoize = memoize
 
     let encode (src, dst) dep target : Dune_lang.t =
       List [ Dune_lang.atom_or_quoted_string name; dep src; target dst ]

@@ -21,7 +21,7 @@ module Dir_rules = struct
     type t = (Loc.t * item) Appendable_list.t
 
     let singleton = Appendable_list.singleton
-    let union_all all = Appendable_list.of_list_concat all
+    let union_all all = Appendable_list.concat all
     let to_list = Appendable_list.to_list_rev
   end
 

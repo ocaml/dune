@@ -470,22 +470,10 @@ end = struct
       let* () = Targets.maybe_async (fun () -> Path.mkdir_p (Path.build dir)) in
       let is_action_dynamic = Action.is_dynamic action.action in
       let sandbox_mode =
-        match Action.is_useful_to_sandbox action.action with
-        | Clearly_not ->
-          if Sandbox_config.mem action.sandbox Sandbox_mode.none
-          then Sandbox_mode.none
-          else
-            User_error.raise
-              ~loc
-              [ Pp.text
-                  "Rule dependencies are configured to require sandboxing, but the rule \
-                   has no actions that could potentially require sandboxing."
-              ]
-        | Maybe ->
-          select_sandbox_mode
-            ~loc
-            action.sandbox
-            ~sandboxing_preference:config.sandboxing_preference
+        select_sandbox_mode
+          ~loc
+          action.sandbox
+          ~sandboxing_preference:config.sandboxing_preference
       in
       (* CR-someday amokhov: More [always_rerun] and [can_go_in_shared_cache]
          to [Rule_cache] too. *)

@@ -52,3 +52,4 @@ and is_empty_list = function
 
 let concat list = Concat list
 let of_list x = List x
+let map t ~f = to_list_rev t |> List.rev_map ~f |> of_list

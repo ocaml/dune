@@ -8,9 +8,8 @@ module Dir_rules = struct
       | Deps of unit Action_builder.t
       | Action of Rule.Anonymous_action.t Action_builder.t
 
-    type t
+    type t = (Loc.t * item) Appendable_list.t
 
-    val union_all : t list -> t
     val singleton : Loc.t * item -> t
     val to_list : t -> (Loc.t * item) list
   end = struct
@@ -21,7 +20,6 @@ module Dir_rules = struct
     type t = (Loc.t * item) Appendable_list.t
 
     let singleton = Appendable_list.singleton
-    let union_all all = Appendable_list.concat all
     let to_list = Appendable_list.to_list_rev
   end
 
@@ -58,7 +56,12 @@ module Dir_rules = struct
         | Alias { name; spec } -> Right (name, spec))
     in
     let aliases =
-      Alias.Name.Map.of_list_multi aliases |> Alias.Name.Map.map ~f:Alias_spec.union_all
+      let add_item what = function
+        | None -> Some what
+        | Some base -> Some (Appendable_list.( @ ) what base)
+      in
+      List.fold_left aliases ~init:Alias.Name.Map.empty ~f:(fun acc (name, item) ->
+        Alias.Name.Map.update acc name ~f:(add_item item))
     in
     { rules; aliases }
   ;;

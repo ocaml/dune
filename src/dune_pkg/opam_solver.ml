@@ -30,6 +30,11 @@ module Context_for_dune = struct
     Package_version.to_opam Lock_dir.Pkg_info.default_version
   ;;
 
+  type candidates =
+    { version_to_repo : Opam_repo.t OpamPackage.Version.Map.t Lazy.t
+    ; available : (OpamTypes.version * (OpamFile.OPAM.t, rejection) result) list
+    }
+
   type t =
     { repos : Opam_repo.t list
     ; version_preference : Version_preference.t
@@ -37,10 +42,7 @@ module Context_for_dune = struct
     ; solver_env : Solver_env.t
     ; dune_version : OpamPackage.Version.t
     ; stats_updater : Solver_stats.Updater.t
-    ; candidates_cache :
-        ( Package_name.t
-        , (OpamTypes.version * (OpamFile.OPAM.t, rejection) result) list )
-        Table.t
+    ; candidates_cache : (Package_name.t, candidates) Table.t
     }
 
   let create ~solver_env ~repos ~local_packages ~version_preference ~stats_updater =
@@ -146,24 +148,29 @@ module Context_for_dune = struct
     | None ->
       let key = Package_name.of_string (OpamPackage.Name.to_string name) in
       (match Table.find t.candidates_cache key with
-       | Some res -> Fiber.return res
+       | Some res -> Fiber.return res.available
        | None ->
-         let+ res =
+         let+ packages = Opam_repo.load_all_versions t.repos name in
+         let available =
            (* The CONTEXT interface doesn't give us a way to report this type of
               error and there's not enough context to give a helpful error message
               so just tell opam_0install that there are no versions of this
               package available (technically true) and let it produce the error
               message. *)
-           Opam_repo.load_all_versions t.repos name
-           >>| List.sort ~compare:(opam_version_compare t)
-           >>| List.map ~f:(fun opam_file ->
+           OpamPackage.Version.Map.values packages
+           |> List.rev_map ~f:(fun (_repo, (with_file : Opam_repo.With_file.t)) ->
+             with_file.opam_file)
+           |> List.sort ~compare:(opam_version_compare t)
+           |> List.map ~f:(fun opam_file ->
              let opam_file_result =
                if is_opam_available t opam_file then Ok opam_file else Error Unavailable
              in
              OpamFile.OPAM.version opam_file, opam_file_result)
          in
+         let version_to_repo = lazy (OpamPackage.Version.Map.map fst packages) in
+         let res = { available; version_to_repo } in
          Table.set t.candidates_cache key res;
-         res)
+         res.available)
   ;;
 
   let user_restrictions : t -> OpamPackage.Name.t -> OpamFormula.version_constraint option
@@ -711,23 +718,24 @@ let solve_lock_dir
             ~expanded_solver_variable_bindings
       in
       let+ files =
-        let+ file_entry_candidates =
-          Fiber.parallel_map opam_packages_to_lock ~f:(fun opam_package ->
-            Fiber.parallel_map repos ~f:(fun repo ->
-              Opam_repo.get_opam_package_files repo opam_package
-              >>| function
-              | [] -> None
-              | file_entries -> Some file_entries)
-            >>| List.find_map ~f:(function
-              | None -> None
-              | Some [] -> None
-              | Some entries -> Some entries)
-            >>| Option.map ~f:(fun files ->
-              ( Package_name.of_string
-                  (OpamPackage.Name.to_string (OpamPackage.name opam_package))
-              , files )))
-        in
-        file_entry_candidates |> List.filter_opt |> Package_name.Map.of_list_exn
+        Fiber.parallel_map opam_packages_to_lock ~f:(fun opam_package ->
+          let package_name =
+            OpamPackage.name opam_package
+            |> OpamPackage.Name.to_string
+            |> Package_name.of_string
+          in
+          let repo =
+            let candidates = Table.find_exn context.candidates_cache package_name in
+            OpamPackage.Version.Map.find
+              (OpamPackage.version opam_package)
+              (Lazy.force candidates.version_to_repo)
+          in
+          Opam_repo.get_opam_package_files repo opam_package
+          >>| function
+          | [] -> None
+          | file_entries -> Some (package_name, file_entries))
+        >>| List.filter_opt
+        >>| Package_name.Map.of_list_exn
       in
       { Solver_result.lock_dir; files })
   in

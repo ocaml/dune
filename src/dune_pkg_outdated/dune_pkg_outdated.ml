@@ -101,7 +101,11 @@ let better_candidate
       |> OpamFormula.atoms
       |> List.exists ~f:(fun (name', _) -> OpamPackage.Name.equal pkg_name name'))
   in
-  let+ all_versions = Opam_repo.load_all_versions repos pkg_name in
+  let+ all_versions =
+    Opam_repo.load_all_versions repos pkg_name
+    >>| OpamPackage.Version.Map.values
+    >>| List.map ~f:(fun (_repo, (file : Opam_repo.With_file.t)) -> file.opam_file)
+  in
   match
     List.max all_versions ~f:(fun x y ->
       Ordering.of_int

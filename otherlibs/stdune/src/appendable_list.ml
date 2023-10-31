@@ -52,4 +52,27 @@ and is_empty_list = function
 
 let concat list = Concat list
 let of_list x = List x
-let map t ~f = to_list_rev t |> List.rev_map ~f |> of_list
+
+let rec rev_append_map xs ys ~f =
+  match xs with
+  | [] -> ys
+  | x :: xs -> rev_append_map xs (f x :: ys) ~f
+;;
+
+let rev_map =
+  let rec loop1 acc t stack ~f =
+    match t with
+    | Empty -> loop0 acc stack ~f
+    | Singleton x -> loop0 (f x :: acc) stack ~f
+    | Cons (x, xs) -> loop1 (f x :: acc) xs stack ~f
+    | List xs -> loop0 (rev_append_map xs acc ~f) stack ~f
+    | Append (xs, ys) -> loop1 acc xs (ys :: stack) ~f
+    | Concat [] -> loop0 acc stack ~f
+    | Concat (x :: xs) -> loop1 acc x (Concat xs :: stack) ~f
+  and loop0 acc stack ~f =
+    match stack with
+    | [] -> acc
+    | t :: stack -> loop1 acc t stack ~f
+  in
+  fun t ~f -> List (loop1 [] t [] ~f)
+;;

@@ -12,4 +12,4 @@ val to_list_rev : 'a t -> 'a list
 val of_list : 'a list -> 'a t
 val is_empty : _ t -> bool
 val concat : 'a t list -> 'a t
-val map : 'a t -> f:('a -> 'b) -> 'b t
+val rev_map : 'a t -> f:('a -> 'b) -> 'b t

@@ -197,7 +197,7 @@ let to_map x = (x : t :> Dir_rules.t Path.Build.Map.t)
 let map t ~f =
   Path.Build.Map.map t ~f:(fun m ->
     (m : Dir_rules.Nonempty.t :> Dir_rules.t)
-    |> Appendable_list.map ~f:(fun data ->
+    |> Appendable_list.rev_map ~f:(fun data ->
       match f data with
       | `No_change -> data
       | `Changed data -> data)

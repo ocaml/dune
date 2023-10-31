@@ -1,6 +1,5 @@
 open Import
 module Action_builder = Action_builder0
-module Id = Id.Make ()
 
 module Dir_rules = struct
   module Alias_spec : sig
@@ -32,7 +31,7 @@ module Dir_rules = struct
     | Rule of Rule.t
     | Alias of alias
 
-  type t = data Id.Map.t
+  type t = data Appendable_list.t
 
   let dyn_of_data = function
     | Rule rule ->
@@ -41,7 +40,7 @@ module Dir_rules = struct
       Dyn.Variant ("Alias", [ Record [ "name", Alias.Name.to_dyn alias.name ] ])
   ;;
 
-  let to_dyn t = Dyn.(list dyn_of_data) (Id.Map.values t)
+  let to_dyn t = Dyn.(list dyn_of_data) (Appendable_list.to_list t)
 
   type ready =
     { rules : Rule.t list
@@ -50,7 +49,7 @@ module Dir_rules = struct
 
   let consume t =
     let rules, aliases =
-      Id.Map.values t
+      Appendable_list.to_list_rev t
       |> List.partition_map ~f:(function
         | Rule rule -> Left rule
         | Alias { name; spec } -> Right (name, spec))
@@ -66,26 +65,11 @@ module Dir_rules = struct
     { rules; aliases }
   ;;
 
-  let empty = Id.Map.empty
-  let union_map a b ~f = Id.Map.union a b ~f:(fun _key a b -> Some (f a b))
-
-  let union =
-    union_map ~f:(fun a b ->
-      assert (a == b);
-      a)
-  ;;
-
-  let singleton (data : data) =
-    let id = Id.gen () in
-    Id.Map.singleton id data
-  ;;
-
-  let add t data =
-    let id = Id.gen () in
-    Id.Map.set t id data
-  ;;
-
-  let is_empty = Id.Map.is_empty
+  let empty = Appendable_list.empty
+  let union = Appendable_list.( @ )
+  let singleton = Appendable_list.singleton
+  let add t data = Appendable_list.cons data t
+  let is_empty = Appendable_list.is_empty
 
   module Nonempty : sig
     type maybe_empty = t
@@ -187,7 +171,8 @@ let directory_targets (rules : t) =
     rules
     ~f:(fun (dir_rules : Dir_rules.Nonempty.t) acc ->
       (dir_rules :> Dir_rules.t)
-      |> Id.Map.fold ~init:acc ~f:(fun (data : Dir_rules.data) acc ->
+      |> Appendable_list.to_list_rev
+      |> List.fold_left ~init:acc ~f:(fun acc (data : Dir_rules.data) ->
         match data with
         | Alias _ -> acc
         | Rule rule ->
@@ -211,11 +196,11 @@ let to_map x = (x : t :> Dir_rules.t Path.Build.Map.t)
 
 let map t ~f =
   Path.Build.Map.map t ~f:(fun m ->
-    Id.Map.to_list (m : Dir_rules.Nonempty.t :> Dir_rules.t)
-    |> Id.Map.of_list_map_exn ~f:(fun (id, data) ->
+    (m : Dir_rules.Nonempty.t :> Dir_rules.t)
+    |> Appendable_list.map ~f:(fun data ->
       match f data with
-      | `No_change -> id, data
-      | `Changed data -> Id.gen (), data)
+      | `No_change -> data
+      | `Changed data -> data)
     |> Dir_rules.Nonempty.create
     |> Option.value_exn)
 ;;

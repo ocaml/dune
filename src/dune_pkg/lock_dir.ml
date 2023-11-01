@@ -564,7 +564,7 @@ struct
     match Path.exists (Path.source lock_dir_path) with
     | false ->
       User_error.raise
-        ~hints:[ Pp.text "Run dune pkg lock to generate it." ]
+        ~hints:[ Pp.text "Run `dune pkg lock` to generate it." ]
         [ Pp.textf "%s does not exist." (Path.Source.to_string lock_dir_path) ]
     | true ->
       (match Path.is_directory (Path.source lock_dir_path) with

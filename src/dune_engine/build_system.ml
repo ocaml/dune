@@ -235,7 +235,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 18
+  let rule_digest_version = 19
 
   let compute_rule_digest
     (rule : Rule.t)
@@ -716,7 +716,7 @@ end = struct
     let digest =
       let { Rule.Anonymous_action.action =
               { action; env; locks; can_go_in_shared_cache; sandbox }
-          ; loc
+          ; loc = _
           ; dir
           ; alias
           }
@@ -743,7 +743,6 @@ end = struct
         , Dep.Set.digest deps
         , Action.for_shell action
         , List.map locks ~f:Path.to_string
-        , loc
         , dir
         , alias
         , capture_stdout

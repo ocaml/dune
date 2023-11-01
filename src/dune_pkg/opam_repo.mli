@@ -39,7 +39,10 @@ end
 val load_opam_package : t -> OpamPackage.t -> With_file.t option Fiber.t
 
 (** Load package metadata for all versions of a package with a given name *)
-val load_all_versions : t list -> OpamPackage.Name.t -> OpamFile.OPAM.t list Fiber.t
+val load_all_versions
+  :  t list
+  -> OpamPackage.Name.t
+  -> (t * With_file.t) OpamPackage.Version.Map.t Fiber.t
 
 val get_opam_package_files : t -> OpamPackage.t -> File_entry.t list Fiber.t
 

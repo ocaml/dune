@@ -311,10 +311,13 @@ let load_all_versions ts opam_package_name =
     if OpamPackage.Version.Map.mem version acc
     then acc
     else OpamPackage.Version.Map.add version (repo, package) acc)
-  |> OpamPackage.Version.Map.values
-  |> Fiber.parallel_map ~f:(fun (repo, pkg) -> load_opam_package repo pkg)
+  |> OpamPackage.Version.Map.to_seq
+  |> List.of_seq
+  |> Fiber.parallel_map ~f:(fun (version, (repo, pkg)) ->
+    load_opam_package repo pkg
+    >>| Option.map ~f:(fun (pkg : With_file.t) -> version, (repo, pkg)))
   >>| List.filter_opt
-  >>| List.rev_map ~f:(fun (with_file : With_file.t) -> with_file.opam_file)
+  >>| OpamPackage.Version.Map.of_list
 ;;
 
 module Private = struct

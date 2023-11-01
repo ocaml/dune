@@ -84,37 +84,46 @@ module Remote = struct
     type nonrec t =
       { remote : t
       ; revision : rev
+      ; files_at_rev : string list
       }
 
-    let content { remote = { repo; handle = _ }; revision } path = show repo revision path
+    let content { remote = { repo; handle = _ }; revision; files_at_rev = _ } path =
+      show repo revision path
+    ;;
 
-    let directory_entries { remote = { repo; handle = _ }; revision = Rev rev } path =
+    let directory_entries { files_at_rev; remote = _; revision = _ } path =
       (* TODO: there are much better of implementing this:
          1. Using one [$ git show] for the entire director
          2. using libgit or ocamlgit
          3. using [$ git archive] *)
-      let+ all_files =
-        run_capture_zero_separated_lines
-          repo
-          [ "ls-tree"; "-z"; "--name-only"; "-r"; rev ]
-      in
-      List.filter_map all_files ~f:(fun entry ->
+      List.filter_map files_at_rev ~f:(fun entry ->
         let path_entry = Path.Local.of_string entry in
         Option.some_if (Path.Local.is_descendant path_entry ~of_:path) path_entry)
     ;;
 
-    let equal { remote; revision = Rev revision } t =
+    let equal { remote; revision = Rev revision; files_at_rev } t =
+      let file_sort = List.sort ~compare:String.compare in
       let (Rev revision') = t.revision in
-      equal remote t.remote && String.equal revision revision'
+      equal remote t.remote
+      && String.equal revision revision'
+      && List.equal String.equal (file_sort files_at_rev) (file_sort t.files_at_rev)
     ;;
 
-    let repository_id { revision = Rev rev; remote = _ } = Repository_id.of_git_hash rev
+    let repository_id { revision = Rev rev; remote = _; files_at_rev = _ } =
+      Repository_id.of_git_hash rev
+    ;;
   end
+
+  let files_at_rev repo (Rev rev) =
+    run_capture_zero_separated_lines repo [ "ls-tree"; "-z"; "--name-only"; "-r"; rev ]
+  ;;
 
   let rev_of_name ({ repo; handle } as remote) ~name =
     (* TODO handle non-existing name *)
-    let+ rev = run_capture_line repo [ "rev-parse"; sprintf "%s/%s" handle name ] in
-    Some { At_rev.remote; revision = Rev rev }
+    let* rev = run_capture_line repo [ "rev-parse"; sprintf "%s/%s" handle name ] in
+    let revision = Rev rev in
+    let+ files_at_rev = files_at_rev repo revision in
+    Some { At_rev.remote; revision = Rev rev; files_at_rev }
   ;;
 
   let rev_of_repository_id ({ repo; handle = _ } as remote) repo_id =
@@ -122,9 +131,12 @@ module Remote = struct
     | None -> Fiber.return None
     | Some rev ->
       run_capture_line repo [ "cat-file"; "-t"; rev ]
-      >>| (function
-      | "commit" -> Some { At_rev.remote; revision = Rev rev }
-      | _ -> None)
+      >>= (function
+      | "commit" ->
+        let revision = Rev rev in
+        let+ files_at_rev = files_at_rev repo revision in
+        Some { At_rev.remote; revision = Rev rev; files_at_rev }
+      | _ -> Fiber.return None)
   ;;
 end
 

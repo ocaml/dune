@@ -208,7 +208,7 @@ let get_opam_package_files t opam_package =
         [ "packages"; name; OpamPackage.to_string opam_package; "files" ]
     in
     Rev_store.Remote.At_rev.directory_entries at_rev files_root
-    >>= Fiber.parallel_map ~f:(fun remote_file ->
+    |> Fiber.parallel_map ~f:(fun remote_file ->
       Rev_store.Remote.At_rev.content at_rev remote_file
       >>| function
       | None ->
@@ -272,7 +272,6 @@ let get_opam_package_version_dir_path packages_dir_path opam_package_name =
 let all_package_versions t opam_package_name =
   match t.source with
   | Directory d ->
-    let+ () = Fiber.return () in
     (match get_opam_package_version_dir_path d opam_package_name with
      | None -> []
      | Some version_dir_path ->
@@ -291,7 +290,7 @@ let all_package_versions t opam_package_name =
       Path.Local.relative (Path.Local.of_string "packages") name
     in
     Rev_store.Remote.At_rev.directory_entries at_rev version_dir_path
-    >>| List.filter_map ~f:(fun dir_entry ->
+    |> List.filter_map ~f:(fun dir_entry ->
       let open Option.O in
       Path.Local.basename_opt dir_entry
       >>= function
@@ -302,16 +301,16 @@ let all_package_versions t opam_package_name =
 ;;
 
 let load_all_versions ts opam_package_name =
-  Fiber.parallel_map ts ~f:(fun t ->
-    all_package_versions t opam_package_name >>| List.rev_map ~f:(fun pkg -> t, pkg))
-  >>| List.concat
-  >>| List.fold_left ~init:OpamPackage.Version.Map.empty ~f:(fun acc (repo, package) ->
+  List.map ts ~f:(fun t ->
+    all_package_versions t opam_package_name |> List.rev_map ~f:(fun pkg -> t, pkg))
+  |> List.concat
+  |> List.fold_left ~init:OpamPackage.Version.Map.empty ~f:(fun acc (repo, package) ->
     let version = OpamPackage.version package in
     if OpamPackage.Version.Map.mem version acc
     then acc
     else OpamPackage.Version.Map.add version (repo, package) acc)
-  >>| OpamPackage.Version.Map.values
-  >>= Fiber.parallel_map ~f:(fun (repo, pkg) -> load_opam_package repo pkg)
+  |> OpamPackage.Version.Map.values
+  |> Fiber.parallel_map ~f:(fun (repo, pkg) -> load_opam_package repo pkg)
   >>| List.filter_opt
   >>| List.rev_map ~f:(fun (with_file : With_file.t) -> with_file.opam_file)
 ;;

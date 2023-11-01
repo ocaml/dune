@@ -114,7 +114,7 @@ let dep p =
 let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
   let value_from_version = function
     | None -> [ Value.String "" ]
-    | Some s -> [ String s ]
+    | Some s -> [ String (Dune_pkg.Package_version.to_string s) ]
   in
   let project = Scope.project scope in
   match

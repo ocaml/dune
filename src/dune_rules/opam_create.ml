@@ -232,7 +232,7 @@ let opam_fields project (package : Package.t) =
       , match Package.Info.license info with
         | Some [ x ] -> Some x
         | _ -> None )
-    ; "version", package.version
+    ; "version", Option.map ~f:Dune_pkg.Package_version.to_string package.version
     ; "dev-repo", Option.map ~f:Package.Source_kind.to_string (Package.Info.source info)
     ]
     |> List.filter_map ~f:(fun (k, v) -> Option.map v ~f:(fun v -> k, string v))

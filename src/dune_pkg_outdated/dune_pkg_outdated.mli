@@ -36,8 +36,8 @@ module For_tests : sig
   val better_candidate
     :  is_immediate_dep_of_local_package:bool
     -> name:string
-    -> newer_version:string
-    -> outdated_version:string
+    -> newer_version:Package_version.t
+    -> outdated_version:Package_version.t
     -> result
 
   val explain_results

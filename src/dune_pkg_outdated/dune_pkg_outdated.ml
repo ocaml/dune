@@ -3,8 +3,8 @@ open Import
 type candidate =
   { is_immediate_dep_of_local_package : bool
   ; name : Package_name.t
-  ; outdated_version : string
-  ; newer_version : string
+  ; outdated_version : Package_version.t
+  ; newer_version : Package_version.t
   }
 
 type result =
@@ -111,7 +111,7 @@ let better_candidate
   | Some newest_opam_file ->
     let version = OpamFile.OPAM.version newest_opam_file in
     (match
-       OpamPackage.Version.of_string pkg.info.version
+       Package_version.to_opam pkg.info.version
        |> OpamPackage.Version.compare version
        |> Ordering.of_int
      with
@@ -120,7 +120,7 @@ let better_candidate
        Better_candidate
          { is_immediate_dep_of_local_package
          ; name = pkg.info.name
-         ; newer_version = version |> OpamPackage.Version.to_string
+         ; newer_version = version |> Package_version.of_opam
          ; outdated_version = pkg.info.version
          })
 ;;
@@ -147,11 +147,11 @@ let pp results ~transitive ~lock_dir_path =
                  ; Pp.space
                  ; Pp.tag
                      (User_message.Style.Ansi_styles [ `Fg_bright_red ])
-                     (Pp.verbatim outdated_version)
+                     (Pp.verbatim (Package_version.to_string outdated_version))
                  ; Pp.text " < "
                  ; Pp.tag
                      (User_message.Style.Ansi_styles [ `Fg_bright_green ])
-                     (Pp.verbatim newer_version)
+                     (Pp.verbatim (Package_version.to_string newer_version))
                  ])
           else None)
     with

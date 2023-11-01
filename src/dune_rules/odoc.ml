@@ -458,7 +458,7 @@ let sp = Printf.sprintf
 module Toplevel_index = struct
   type item =
     { name : string
-    ; version : string option
+    ; version : Dune_pkg.Package_version.t option
     ; link : string
     }
 
@@ -474,7 +474,8 @@ module Toplevel_index = struct
       let version_suffix =
         match version with
         | None -> ""
-        | Some v -> sp {| <span class="version">%s</span>|} v
+        | Some v ->
+          sp {| <span class="version">%s</span>|} (Dune_pkg.Package_version.to_string v)
       in
       sp "<li>%s%s</li>" link version_suffix)
     |> String.concat ~sep:"\n      "
@@ -516,7 +517,9 @@ module Toplevel_index = struct
   let item_to_json { name; version; link } =
     `Assoc
       [ "name", string_to_json name
-      ; "version", option_to_json ~f:string_to_json version
+      ; ( "version"
+        , Option.map ~f:Dune_pkg.Package_version.to_string version
+          |> option_to_json ~f:string_to_json )
       ; "link", string_to_json link
       ]
   ;;

@@ -3,24 +3,16 @@ module Action_builder = Action_builder0
 module Id = Id.Make ()
 
 module Dir_rules = struct
-  module Alias_spec : sig
+  module Alias_spec = struct
     type item =
       | Deps of unit Action_builder.t
       | Action of Rule.Anonymous_action.t Action_builder.t
 
-    type t = (Loc.t * item) Appendable_list.t
+    type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
 
-    val singleton : Loc.t * item -> t
-    val to_list : t -> (Loc.t * item) list
-  end = struct
-    type item =
-      | Deps of unit Action_builder.t
-      | Action of Rule.Anonymous_action.t Action_builder.t
-
-    type t = (Loc.t * item) Appendable_list.t
-
-    let singleton = Appendable_list.singleton
-    let to_list = Appendable_list.to_list_rev
+    let union x y = { expansions = Appendable_list.( @ ) x.expansions y.expansions }
+    let singleton x = { expansions = Appendable_list.singleton x }
+    let to_list { expansions } = Appendable_list.to_list_rev expansions
   end
 
   type alias =
@@ -58,7 +50,7 @@ module Dir_rules = struct
     let aliases =
       let add_item what = function
         | None -> Some what
-        | Some base -> Some (Appendable_list.( @ ) what base)
+        | Some base -> Some (Alias_spec.union what base)
       in
       List.fold_left aliases ~init:Alias.Name.Map.empty ~f:(fun acc (name, item) ->
         Alias.Name.Map.update acc name ~f:(add_item item))

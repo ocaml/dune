@@ -56,7 +56,7 @@ module Pkg_info = struct
   let variables t =
     String.Map.of_list_exn
       [ "name", Variable.S (Package.Name.to_string t.name)
-      ; "version", S t.version
+      ; "version", S (Package_version.to_string t.version)
       ; "dev", B t.dev
       ]
   ;;
@@ -332,7 +332,7 @@ module Pkg = struct
         ; "CDPATH", ""
         ; "MAKELEVEL", ""
         ; "OPAM_PACKAGE_NAME", Package.Name.to_string t.info.name
-        ; "OPAM_PACKAGE_VERSION", t.info.version
+        ; "OPAM_PACKAGE_VERSION", Package_version.to_string t.info.version
         ; "OPAMCLI", "2.0"
         ]
     in
@@ -435,7 +435,7 @@ module Action_expander = struct
       ; artifacts : Path.t Filename.Map.t
       ; deps : (Variable.value String.Map.t * Paths.t) Package.Name.Map.t
       ; context : Context_name.t
-      ; version : string
+      ; version : Package_version.t
       ; env : Value.t list Env.Map.t
       }
 

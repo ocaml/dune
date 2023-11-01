@@ -103,7 +103,7 @@ end
 module Pkg_info = struct
   type t =
     { name : Package_name.t
-    ; version : string
+    ; version : Package_version.t
     ; dev : bool
     ; source : Source.t option
     ; extra_sources : (Path.Local.t * Source.t) list
@@ -111,7 +111,7 @@ module Pkg_info = struct
 
   let equal { name; version; dev; source; extra_sources } t =
     Package_name.equal name t.name
-    && String.equal version t.version
+    && Package_version.equal version t.version
     && Bool.equal dev t.dev
     && Option.equal Source.equal source t.source
     && List.equal
@@ -132,14 +132,14 @@ module Pkg_info = struct
   let to_dyn { name; version; dev; source; extra_sources } =
     Dyn.record
       [ "name", Package_name.to_dyn name
-      ; "version", Dyn.string version
+      ; "version", Package_version.to_dyn version
       ; "dev", Dyn.bool dev
       ; "source", Dyn.option Source.to_dyn source
       ; "extra_sources", Dyn.list (Dyn.pair Path.Local.to_dyn Source.to_dyn) extra_sources
       ]
   ;;
 
-  let default_version = "dev"
+  let default_version = Package_version.of_string "dev"
 end
 
 module Pkg = struct
@@ -197,7 +197,8 @@ module Pkg = struct
     let open Decoder in
     enter
     @@ fields
-    @@ let+ version = field ~default:Pkg_info.default_version Fields.version string
+    @@ let+ version =
+         field ~default:Pkg_info.default_version Fields.version Package_version.decode
        and+ install_command = field_o Fields.install Action.decode_pkg
        and+ build_command = field_o Fields.build Action.decode_pkg
        and+ deps = field ~default:[] Fields.deps (repeat (located Package_name.decode))
@@ -245,7 +246,7 @@ module Pkg = struct
     =
     let open Encoder in
     record_fields
-      [ field Fields.version string version
+      [ field Fields.version Package_version.encode version
       ; field_o Fields.install Action.encode install_command
       ; field_o Fields.build Action.encode build_command
       ; field_l Fields.deps Package_name.encode (List.map deps ~f:snd)

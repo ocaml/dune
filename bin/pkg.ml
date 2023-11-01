@@ -3,6 +3,7 @@ module Lock_dir = Dune_pkg.Lock_dir
 module Fetch = Dune_pkg.Fetch
 module Opam_repo = Dune_pkg.Opam_repo
 module Repository_id = Dune_pkg.Repository_id
+module Package_version = Dune_pkg.Package_version
 
 let context_term ~doc =
   Arg.(value & opt (some Arg.context_name) None & info [ "context" ] ~docv:"CONTEXT" ~doc)
@@ -374,7 +375,7 @@ module Lock = struct
     Pp.enumerate
       packages
       ~f:(fun { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; _ }; _ } ->
-        Pp.verbatim (Package_name.to_string name ^ "." ^ version))
+        Pp.verbatim (Package_name.to_string name ^ "." ^ Package_version.to_string version))
   ;;
 
   let solve

@@ -16,13 +16,13 @@ end
 module Pkg_info : sig
   type t =
     { name : Package_name.t
-    ; version : string
+    ; version : Package_version.t
     ; dev : bool
     ; source : Source.t option
     ; extra_sources : (Path.Local.t * Source.t) list
     }
 
-  val default_version : string
+  val default_version : Package_version.t
 end
 
 module Pkg : sig

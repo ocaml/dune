@@ -27,7 +27,7 @@ module Context_for_dune = struct
   type rejection = Unavailable
 
   let local_package_default_version =
-    OpamPackage.Version.of_string Lock_dir.Pkg_info.default_version
+    Package_version.to_opam Lock_dir.Pkg_info.default_version
   ;;
 
   type t =
@@ -455,7 +455,7 @@ let opam_package_to_lock_file_pkg
   opam_package
   =
   let name = OpamPackage.name opam_package in
-  let version = OpamPackage.version opam_package |> OpamPackage.Version.to_string in
+  let version = OpamPackage.version opam_package |> Package_version.of_opam in
   let dev = OpamPackage.Name.Map.mem name local_packages in
   let+ opam_file, loc =
     let+ { Opam_repo.With_file.opam_file = opam_file_with_filters; file } =

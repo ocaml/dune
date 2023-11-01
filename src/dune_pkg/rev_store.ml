@@ -84,7 +84,7 @@ module Remote = struct
     type nonrec t =
       { remote : t
       ; revision : rev
-      ; files_at_rev : string list
+      ; files_at_rev : Path.Local.Set.t
       }
 
     let content { remote = { repo; handle = _ }; revision; files_at_rev = _ } path =
@@ -96,17 +96,15 @@ module Remote = struct
          1. Using one [$ git show] for the entire director
          2. using libgit or ocamlgit
          3. using [$ git archive] *)
-      List.filter_map files_at_rev ~f:(fun entry ->
-        let path_entry = Path.Local.of_string entry in
-        Option.some_if (Path.Local.is_descendant path_entry ~of_:path) path_entry)
+      Path.Local.Set.filter files_at_rev ~f:(fun file ->
+        Path.Local.is_descendant file ~of_:path)
     ;;
 
     let equal { remote; revision = Rev revision; files_at_rev } t =
-      let file_sort = List.sort ~compare:String.compare in
       let (Rev revision') = t.revision in
       equal remote t.remote
       && String.equal revision revision'
-      && List.equal String.equal (file_sort files_at_rev) (file_sort t.files_at_rev)
+      && Path.Local.Set.equal files_at_rev t.files_at_rev
     ;;
 
     let repository_id { revision = Rev rev; remote = _; files_at_rev = _ } =
@@ -116,6 +114,7 @@ module Remote = struct
 
   let files_at_rev repo (Rev rev) =
     run_capture_zero_separated_lines repo [ "ls-tree"; "-z"; "--name-only"; "-r"; rev ]
+    >>| Path.Local.Set.of_list_map ~f:Path.Local.of_string
   ;;
 
   let rev_of_name ({ repo; handle } as remote) ~name =

@@ -208,6 +208,7 @@ let get_opam_package_files t opam_package =
         [ "packages"; name; OpamPackage.to_string opam_package; "files" ]
     in
     Rev_store.Remote.At_rev.directory_entries at_rev files_root
+    |> Path.Local.Set.to_list
     |> Fiber.parallel_map ~f:(fun remote_file ->
       Rev_store.Remote.At_rev.content at_rev remote_file
       >>| function
@@ -290,6 +291,7 @@ let all_package_versions t opam_package_name =
       Path.Local.relative (Path.Local.of_string "packages") name
     in
     Rev_store.Remote.At_rev.directory_entries at_rev version_dir_path
+    |> Path.Local.Set.to_list
     |> List.filter_map ~f:(fun dir_entry ->
       let open Option.O in
       Path.Local.basename_opt dir_entry

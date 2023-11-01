@@ -58,7 +58,6 @@ let equal { source; serializable } t =
   && Option.equal Serializable.equal serializable t.serializable
 ;;
 
-let minimum_opam_version = OpamVersion.of_string "2.0"
 let serializable { serializable; _ } = serializable
 
 let repo_id t =
@@ -71,54 +70,6 @@ let source t =
   let open Option.O in
   let+ serializable = serializable t in
   serializable.source
-;;
-
-let validate_repo_file opam_repo_dir_path =
-  let opam_repo_file_path = opam_repo_dir_path / "repo" in
-  let repo =
-    try
-      OpamFilename.raw (Path.to_string opam_repo_file_path)
-      |> OpamFile.make
-      |> OpamFile.Repo.read
-    with
-    | OpamSystem.Internal_error message -> User_error.raise [ Pp.text message ]
-    | OpamPp.(Bad_format _ | Bad_format_list _ | Bad_version _) as bad_format_exn ->
-      User_error.raise [ Pp.text (OpamPp.string_of_bad_format bad_format_exn) ]
-    | unexpected_exn ->
-      Code_error.raise
-        "Unexpected exception raised while validating opam repo files"
-        [ "exception", Exn.to_dyn unexpected_exn
-        ; "opam_repo_dir_path", Path.to_dyn opam_repo_file_path
-        ]
-  in
-  match OpamFile.Repo.opam_version repo with
-  | None ->
-    User_error.raise
-      [ Pp.textf
-          "The file %s lacks an \"opam-version\" field."
-          (Path.to_string_maybe_quoted opam_repo_file_path)
-      ]
-      ~hints:
-        [ Pp.textf
-            "Add `opam-version: \"%s\"` to the file."
-            (OpamVersion.to_string minimum_opam_version)
-        ]
-  | Some opam_version ->
-    if OpamVersion.compare opam_version minimum_opam_version < 0
-    then
-      User_error.raise
-        [ Pp.textf
-            "The file %s specifies an opam-version which is too low (%s). The minimum \
-             opam-version is %s."
-            (Path.to_string_maybe_quoted opam_repo_file_path)
-            (OpamVersion.to_string opam_version)
-            (OpamVersion.to_string minimum_opam_version)
-        ]
-        ~hints:
-          [ Pp.textf
-              "Change the opam-version field to `opam-version: \"%s\"`."
-              (OpamVersion.to_string minimum_opam_version)
-          ]
 ;;
 
 let of_opam_repo_dir_path ~source ~repo_id opam_repo_dir_path =
@@ -140,7 +91,6 @@ let of_opam_repo_dir_path ~source ~repo_id opam_repo_dir_path =
            named \"packages\""
           (Path.to_string_maybe_quoted opam_repo_dir_path)
       ];
-  validate_repo_file opam_repo_dir_path;
   let serializable =
     Option.map source ~f:(fun source -> { Serializable.repo_id; source })
   in

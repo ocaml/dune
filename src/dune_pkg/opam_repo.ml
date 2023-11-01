@@ -3,6 +3,22 @@ open Fiber.O
 
 let ( / ) = Path.relative
 
+let rev_store =
+  let store = ref None in
+  Fiber.of_thunk (fun () ->
+    match !store with
+    | Some s -> Fiber.return s
+    | None ->
+      let dir =
+        Path.L.relative
+          (Path.of_string (Xdg.cache_dir (Lazy.force Dune_util.xdg)))
+          [ "dune"; "git-repo" ]
+      in
+      let+ rev_store = Rev_store.load_or_create ~dir in
+      store := Some rev_store;
+      rev_store)
+;;
+
 module Serializable = struct
   type t =
     { repo_id : Repository_id.t option
@@ -97,18 +113,10 @@ let of_opam_repo_dir_path ~source ~repo_id opam_repo_dir_path =
   { source = Directory packages_dir_path; serializable }
 ;;
 
-let xdg_repo_location =
-  let ( / ) = Filename.concat in
-  lazy (Xdg.cache_dir (Lazy.force Dune_util.xdg) / "dune/git-repo" |> Path.of_string)
-;;
-
 let of_git_repo ~repo_id ~source =
   let+ at_rev, computed_repo_id =
     let* remote =
-      let* repo =
-        let dir = Lazy.force xdg_repo_location in
-        Rev_store.load_or_create ~dir
-      in
+      let* repo = rev_store in
       Rev_store.add_repo repo ~source
     in
     match repo_id with
@@ -208,17 +216,18 @@ let get_opam_package_files t opam_package =
         [ "packages"; name; OpamPackage.to_string opam_package; "files" ]
     in
     Rev_store.Remote.At_rev.directory_entries at_rev files_root
-    |> Path.Local.Set.to_list
+    |> Rev_store.File.Set.to_list
     |> Fiber.parallel_map ~f:(fun remote_file ->
-      Rev_store.Remote.At_rev.content at_rev remote_file
+      let remote_file_path = Rev_store.File.path remote_file in
+      Rev_store.Remote.At_rev.content at_rev remote_file_path
       >>| function
       | None ->
         Code_error.raise
           "Enumerated file in directory but file can't be retrieved"
-          [ "local_file", Path.Local.to_dyn remote_file ]
+          [ "local_file", Rev_store.File.to_dyn remote_file ]
       | Some content ->
         let local_file =
-          Path.Local.descendant ~of_:files_root remote_file |> Option.value_exn
+          Path.Local.descendant ~of_:files_root remote_file_path |> Option.value_exn
         in
         { File_entry.local_file; original = Content content })
 ;;
@@ -265,59 +274,110 @@ let load_opam_package t opam_package =
       { With_file.opam_file; file = Path.source @@ Path.Source.of_local file })
 ;;
 
+let load_packages_from_git rev_store opam_packages =
+  let+ contents = Rev_store.content_of_files rev_store opam_packages in
+  List.map2 opam_packages contents ~f:(fun file opam_file_contents ->
+    let path = Rev_store.File.path file in
+    let opam_file =
+      let filename =
+        (* the filename is used to read the version number *)
+        Path.Local.to_string path |> OpamFilename.of_string |> OpamFile.make
+      in
+      OpamFile.OPAM.read_from_string ~filename opam_file_contents
+    in
+    (* TODO the [file] here is made up *)
+    { With_file.opam_file; file = Path.source @@ Path.Source.of_local path })
+;;
+
 let get_opam_package_version_dir_path packages_dir_path opam_package_name =
   let p = packages_dir_path / OpamPackage.Name.to_string opam_package_name in
   if_exists p
 ;;
 
+let all_packages_versions_in_dir ~dir opam_package_name =
+  match get_opam_package_version_dir_path dir opam_package_name with
+  | None -> []
+  | Some version_dir_path ->
+    (match Path.readdir_unsorted version_dir_path with
+     | Error e ->
+       User_error.raise
+         [ Pp.textf
+             "Unable to read package versions from %s: %s"
+             (Path.to_string_maybe_quoted version_dir_path)
+             (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e)
+         ]
+     | Ok version_dirs -> List.map version_dirs ~f:OpamPackage.of_string)
+;;
+
+let all_packages_versions_at_rev rev opam_package_name =
+  let version_dir_path =
+    let name = OpamPackage.Name.to_string opam_package_name in
+    Path.Local.relative (Path.Local.of_string "packages") name
+  in
+  Rev_store.Remote.At_rev.directory_entries rev version_dir_path
+  |> Rev_store.File.Set.to_list
+  |> List.filter_map ~f:(fun file ->
+    let path = Rev_store.File.path file in
+    let open Option.O in
+    Path.Local.basename_opt path
+    >>= function
+    | "opam" ->
+      let+ package =
+        Path.Local.parent path >>| Path.Local.basename >>| OpamPackage.of_string
+      in
+      file, package
+    | _ -> None)
+;;
+
 let all_package_versions t opam_package_name =
   match t.source with
-  | Directory d ->
-    (match get_opam_package_version_dir_path d opam_package_name with
-     | None -> []
-     | Some version_dir_path ->
-       (match Path.readdir_unsorted version_dir_path with
-        | Error e ->
-          User_error.raise
-            [ Pp.textf
-                "Unable to read package versions from %s: %s"
-                (Path.to_string_maybe_quoted version_dir_path)
-                (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e)
-            ]
-        | Ok version_dirs -> List.map version_dirs ~f:OpamPackage.of_string))
-  | Repo at_rev ->
-    let version_dir_path =
-      let name = OpamPackage.Name.to_string opam_package_name in
-      Path.Local.relative (Path.Local.of_string "packages") name
-    in
-    Rev_store.Remote.At_rev.directory_entries at_rev version_dir_path
-    |> Path.Local.Set.to_list
-    |> List.filter_map ~f:(fun dir_entry ->
-      let open Option.O in
-      Path.Local.basename_opt dir_entry
-      >>= function
-      | "opam" ->
-        let+ parent = Path.Local.parent dir_entry in
-        parent |> Path.Local.basename |> OpamPackage.of_string
-      | _ -> None)
+  | Directory dir ->
+    all_packages_versions_in_dir ~dir opam_package_name
+    |> List.map ~f:(fun pkg -> None, pkg)
+  | Repo rev ->
+    all_packages_versions_at_rev rev opam_package_name
+    |> List.map ~f:(fun (file, pkg) -> Some file, pkg)
 ;;
 
 let load_all_versions ts opam_package_name =
-  List.map ts ~f:(fun t ->
-    all_package_versions t opam_package_name |> List.rev_map ~f:(fun pkg -> t, pkg))
-  |> List.concat
-  |> List.fold_left ~init:OpamPackage.Version.Map.empty ~f:(fun acc (repo, package) ->
-    let version = OpamPackage.version package in
-    if OpamPackage.Version.Map.mem version acc
-    then acc
-    else OpamPackage.Version.Map.add version (repo, package) acc)
-  |> OpamPackage.Version.Map.to_seq
-  |> List.of_seq
-  |> Fiber.parallel_map ~f:(fun (version, (repo, pkg)) ->
-    load_opam_package repo pkg
-    >>| Option.map ~f:(fun (pkg : With_file.t) -> version, (repo, pkg)))
-  >>| List.filter_opt
-  >>| OpamPackage.Version.Map.of_list
+  let from_git, from_dirs =
+    List.map ts ~f:(fun t ->
+      all_package_versions t opam_package_name
+      |> List.rev_map ~f:(fun (file, pkg) -> t, file, pkg))
+    |> List.concat
+    |> List.fold_left
+         ~init:OpamPackage.Version.Map.empty
+         ~f:(fun acc (repo, file, package) ->
+           let version = OpamPackage.version package in
+           if OpamPackage.Version.Map.mem version acc
+           then acc
+           else OpamPackage.Version.Map.add version (repo, file, package) acc)
+    |> OpamPackage.Version.Map.values
+    |> List.partition_map ~f:(fun (repo, file, pkg) ->
+      match file with
+      | Some file -> Left (repo, file, pkg)
+      | None -> Right (repo, pkg))
+  in
+  let+ from_dirs =
+    Fiber.parallel_map from_dirs ~f:(fun (repo, pkg) ->
+      load_opam_package repo pkg >>| Option.map ~f:(fun opam_file -> pkg, repo, opam_file))
+    >>| List.filter_opt
+  and+ from_git =
+    match from_git with
+    | [] -> Fiber.return []
+    | packages ->
+      let* rev_store = rev_store in
+      let+ opam_files =
+        List.map packages ~f:(fun (_, file, _) -> file)
+        |> load_packages_from_git rev_store
+      in
+      List.map2 opam_files packages ~f:(fun opam_file (repo, _, pkg) ->
+        pkg, repo, opam_file)
+  in
+  from_dirs @ from_git
+  |> List.rev_map ~f:(fun (opam_package, repo, opam_file) ->
+    OpamPackage.version opam_package, (repo, opam_file))
+  |> OpamPackage.Version.Map.of_list
 ;;
 
 module Private = struct

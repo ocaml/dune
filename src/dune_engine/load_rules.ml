@@ -392,10 +392,13 @@ end = struct
           Alias.Name.Map.set
             aliases
             Alias.Name.default
-            (Rules.Dir_rules.Alias_spec.singleton
-               (Loc.none, Rules.Dir_rules.Alias_spec.Deps expansion))
+            { expansions =
+                Appendable_list.singleton
+                  (Loc.none, Rules.Dir_rules.Alias_spec.Deps expansion)
+            }
     in
-    Alias.Name.Map.map aliases ~f:Rules.Dir_rules.Alias_spec.to_list
+    Alias.Name.Map.map aliases ~f:(fun { Rules.Dir_rules.Alias_spec.expansions } ->
+      Appendable_list.to_list_rev expansions)
   ;;
 
   let add_non_fallback_rules ~init ~source_files rules =

@@ -11,8 +11,6 @@ module Dir_rules = struct
     type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
 
     let union x y = { expansions = Appendable_list.( @ ) x.expansions y.expansions }
-    let singleton x = { expansions = Appendable_list.singleton x }
-    let to_list { expansions } = Appendable_list.to_list_rev expansions
   end
 
   type alias =
@@ -143,7 +141,10 @@ module Produce = struct
     ;;
 
     let add_deps t ?(loc = Loc.none) expansion =
-      alias t (Dir_rules.Alias_spec.singleton (loc, Dir_rules.Alias_spec.Deps expansion))
+      alias
+        t
+        { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Deps expansion)
+        }
     ;;
 
     let add_action t ~loc action =
@@ -156,7 +157,10 @@ module Produce = struct
         ; alias = Some (Alias.name t)
         }
       in
-      alias t (Dir_rules.Alias_spec.singleton (loc, Dir_rules.Alias_spec.Action action))
+      alias
+        t
+        { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Action action)
+        }
     ;;
   end
 end

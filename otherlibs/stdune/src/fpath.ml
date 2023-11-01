@@ -16,16 +16,25 @@ let dyn_of_mkdir_result = function
   | Already_exists_not_directory -> Dyn.variant "Already_exists_not_directory" []
 ;;
 
-let mkdir ?(perms = 0o777) t_s =
+let mkdir_simple ~perms t_s =
   try
     Unix.mkdir t_s perms;
     Created
   with
-  | Unix.Unix_error (EEXIST, _, _) ->
-    (* TODO: this is slow! *)
-    if Sys.is_directory t_s then Already_exists else Already_exists_not_directory
+  | Unix.Unix_error (EEXIST, _, _) -> Already_exists
   | Unix.Unix_error (ENOENT, _, _) -> Missing_parent_directory
   | Unix.Unix_error (ENOTDIR, _, _) -> Parent_not_directory
+;;
+
+let mkdir ?(perms = 0o777) t_s =
+  match mkdir_simple ~perms t_s with
+  | (Missing_parent_directory | Parent_not_directory | Created) as res -> res
+  | Already_exists ->
+    if Sys.is_directory t_s then Already_exists else Already_exists_not_directory
+  | Already_exists_not_directory ->
+    Code_error.raise
+      "Impossible happened: mkdir_simple returned Already_exists_not_directory"
+      []
 ;;
 
 type mkdir_p_result =
@@ -40,47 +49,31 @@ let dyn_of_mkdir_p_result = function
   | Created -> Dyn.variant "Created" []
 ;;
 
-let rec mkdir_p ?perms t_s =
-  match mkdir ?perms t_s with
-  | Created -> Created
-  | Already_exists -> Already_exists
-  | Already_exists_not_directory -> Already_exists_not_directory t_s
-  | Missing_parent_directory ->
-    if is_root t_s
-    then
-      Code_error.raise
-        "Impossible happened: [Fpath.mkdir] refused to create a directory at the root, \
-         allegedly because its parent was missing."
-        []
-    else (
-      let parent = Filename.dirname t_s in
-      match mkdir_p ?perms parent with
-      | Already_exists_not_directory _ -> Already_exists_not_directory parent
-      | Created | Already_exists ->
-        (* The [Already_exists] case might happen if some other process managed
-           to create the parent directory concurrently. *)
-        (match mkdir t_s ?perms with
-         | Created -> Created
-         | Already_exists -> Already_exists
-         | Already_exists_not_directory -> Already_exists_not_directory t_s
-         | Missing_parent_directory | Parent_not_directory ->
-           (* But we just successfully created the parent directory. So it was
-              likely deleted or overwritten right now. Let's give up *)
-           Code_error.raise "Failed to create parent directory." [ "t_s", Dyn.string t_s ]))
-  | Parent_not_directory ->
-    (* We are told that a parent is not a directory. We go and find it to give a good error message. *)
+let rec mkdir_p ?(perms = 0o777) t_s =
+  try
+    Unix.mkdir t_s perms;
+    Created
+  with
+  | Unix.Unix_error (EEXIST, _, _) ->
+    if Sys.is_directory t_s then Already_exists else Already_exists_not_directory t_s
+  | Unix.Unix_error (ENOENT, _, _) ->
+    let parent = Filename.dirname t_s in
+    (match mkdir_p ~perms parent with
+     | Already_exists_not_directory _ -> Already_exists_not_directory parent
+     | Created | Already_exists -> mkdir_p ~perms t_s)
+  | Unix.Unix_error (ENOTDIR, _, _) ->
+    (* We are told that a parent is not a directory. We go and find it to give a good
+       error message. *)
     let rec find_non_dir_parent t_s =
       let parent = Filename.dirname t_s in
-      match mkdir ?perms parent with
+      match mkdir_simple ~perms parent with
       | Created | Missing_parent_directory ->
-        (* Since we know that the parent is not a directory, we should never
-           get here. *)
+        (* Since we know that the parent is not a directory, we should never get here. *)
         Code_error.raise
           "Expected parent to not be a directory."
           [ "t_s", Dyn.string t_s; "parent", Dyn.string parent ]
       | Parent_not_directory -> find_non_dir_parent parent
-      | Already_exists -> parent
-      | Already_exists_not_directory -> parent
+      | Already_exists | Already_exists_not_directory -> parent
     in
     Already_exists_not_directory (find_non_dir_parent t_s)
 ;;

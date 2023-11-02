@@ -399,7 +399,8 @@ end = struct
     in
     Alias.Name.Map.map aliases ~f:(fun { Rules.Dir_rules.Alias_spec.expansions } ->
       (* CR-soon rgrinberg: hide this reversal behind the interface from
-         [Alias_spec] *)
+         [Alias_spec]. The order doesn't really matter, as we're just
+         collecting the dependencies that are attached to the alias *)
       Appendable_list.to_list_rev expansions)
   ;;
 

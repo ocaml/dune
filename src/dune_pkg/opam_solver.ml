@@ -457,28 +457,23 @@ let opam_package_to_lock_file_pkg
   context_for_dune
   ~all_package_names
   ~repos
-  ~local_packages
   ~experimental_translate_opam_filters
   opam_package
   =
   let name = OpamPackage.name opam_package in
   let version = OpamPackage.version opam_package |> Package_version.of_opam in
-  let dev = OpamPackage.Name.Map.mem name local_packages in
   let+ opam_file, loc =
     let+ { Opam_repo.With_file.opam_file = opam_file_with_filters; file } =
-      match OpamPackage.Name.Map.find_opt name local_packages with
-      | Some local_package -> Fiber.return local_package
-      | None ->
-        let+ opam_files =
-          let+ pkgs =
-            Fiber.parallel_map repos ~f:(fun repo ->
-              Opam_repo.load_opam_package repo opam_package)
-          in
-          List.filter_opt pkgs
+      let+ opam_files =
+        let+ pkgs =
+          Fiber.parallel_map repos ~f:(fun repo ->
+            Opam_repo.load_opam_package repo opam_package)
         in
-        (match opam_files with
-         | [ opam_file ] -> opam_file
-         | _ -> Code_error.raise "Couldn't map opam package to a repository" [])
+        List.filter_opt pkgs
+      in
+      match opam_files with
+      | [ opam_file ] -> opam_file
+      | _ -> Code_error.raise "Couldn't map opam package to a repository" []
     in
     let opam_file =
       if experimental_translate_opam_filters
@@ -518,7 +513,7 @@ let opam_package_to_lock_file_pkg
     in
     { Lock_dir.Pkg_info.name = Package_name.of_string (OpamPackage.Name.to_string name)
     ; version
-    ; dev
+    ; dev = false
     ; source
     ; extra_sources
     }
@@ -673,7 +668,6 @@ let solve_lock_dir
               context
               ~all_package_names
               ~repos
-              ~local_packages
               ~experimental_translate_opam_filters
               opam_package)
         in

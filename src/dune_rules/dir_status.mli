@@ -26,6 +26,7 @@ module Group_root : sig
 end
 
 type t =
+  | Lock_dir
   | Generated
   | Source_only of Source_tree.Dir.t
   | Standalone of Source_tree.Dir.t * Dune_file.t

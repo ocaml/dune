@@ -412,7 +412,7 @@ end = struct
     >>= function
     | Is_component_of_a_group_but_not_the_root { group_root; stanzas = _ } ->
       Memo.return @@ Group_part group_root
-    | Generated | Source_only _ ->
+    | Lock_dir | Generated | Source_only _ ->
       Memo.return @@ Standalone_or_root (Standalone_or_root.empty ~dir)
     | Standalone (st_dir, d) ->
       Memo.return @@ Standalone_or_root (make_standalone sctx st_dir ~dir d)

@@ -29,6 +29,7 @@ end
 
 module T = struct
   type t =
+    | Lock_dir
     | Generated
     | Source_only of Source_tree.Dir.t
     | (* Directory not part of a multi-directory group *)
@@ -47,7 +48,7 @@ type enclosing_group =
   | Group_root of Path.Build.t
 
 let current_group dir = function
-  | Generated | Source_only _ | Standalone _ -> No_group
+  | Lock_dir | Generated | Source_only _ | Standalone _ -> No_group
   | Group_root _ -> Group_root dir
   | Is_component_of_a_group_but_not_the_root { group_root; _ } -> Group_root group_root
 ;;
@@ -144,7 +145,7 @@ end = struct
     let rec walk st_dir ~dir ~local =
       DB.get ~dir
       >>= function
-      | Generated | Source_only _ | Standalone _ | Group_root _ ->
+      | Lock_dir | Generated | Source_only _ | Standalone _ | Group_root _ ->
         Memo.return Appendable_list.empty
       | Is_component_of_a_group_but_not_the_root { stanzas; group_root = _ } ->
         walk_children st_dir ~dir ~local
@@ -206,9 +207,13 @@ end = struct
   ;;
 
   let get_impl dir =
-    (match Path.Build.drop_build_context dir with
+    (match Path.Build.extract_build_context dir with
      | None -> Memo.return None
-     | Some dir -> Source_tree.find_dir dir)
+     | Some (ctx, dir) ->
+       Source_tree.find_dir dir
+       >>| (function
+        | None -> None
+        | Some src_dir -> Some (ctx, src_dir)))
     >>= function
     | None ->
       enclosing_group ~dir
@@ -216,23 +221,31 @@ end = struct
        | No_group -> Generated
        | Group_root group_root ->
          Is_component_of_a_group_but_not_the_root { stanzas = None; group_root })
-    | Some st_dir ->
-      let build_dir_is_project_root =
-        let project_root = Source_tree.Dir.project st_dir |> Dune_project.root in
-        Source_tree.Dir.path st_dir |> Path.Source.equal project_root
-      in
-      Only_packages.stanzas_in_dir dir
+    | Some (ctx, st_dir) ->
+      let src_dir = Source_tree.Dir.path st_dir in
+      Pkg_rules.lock_dir_path (Context_name.of_string ctx)
+      >>| (function
+             | None -> false
+             | Some of_ -> Path.Source.is_descendant ~of_ src_dir)
       >>= (function
-       | Some d -> has_dune_file ~dir st_dir ~build_dir_is_project_root d
-       | None ->
-         if build_dir_is_project_root
-         then Memo.return (Source_only st_dir)
-         else
-           enclosing_group ~dir
-           >>| (function
-            | No_group -> Source_only st_dir
-            | Group_root group_root ->
-              Is_component_of_a_group_but_not_the_root { stanzas = None; group_root }))
+       | true -> Memo.return Lock_dir
+       | false ->
+         let build_dir_is_project_root =
+           let project_root = Source_tree.Dir.project st_dir |> Dune_project.root in
+           Source_tree.Dir.path st_dir |> Path.Source.equal project_root
+         in
+         Only_packages.stanzas_in_dir dir
+         >>= (function
+          | Some d -> has_dune_file ~dir st_dir ~build_dir_is_project_root d
+          | None ->
+            if build_dir_is_project_root
+            then Memo.return (Source_only st_dir)
+            else
+              enclosing_group ~dir
+              >>| (function
+               | No_group -> Source_only st_dir
+               | Group_root group_root ->
+                 Is_component_of_a_group_but_not_the_root { stanzas = None; group_root })))
   ;;
 
   let get =
@@ -243,6 +256,8 @@ end
 
 let directory_targets t ~dir =
   match t with
+  | Lock_dir | Generated | Source_only _ | Is_component_of_a_group_but_not_the_root _ ->
+    Memo.return Path.Build.Map.empty
   | Standalone (_, dune_file) -> extract_directory_targets ~dir dune_file.stanzas
   | Group_root { components; dune_file; _ } ->
     let f ~dir stanzas acc =
@@ -252,6 +267,4 @@ let directory_targets t ~dir =
     components
     >>= Memo.List.fold_left ~init ~f:(fun acc { Group_component.dir; stanzas; _ } ->
       f ~dir stanzas acc)
-  | Generated | Source_only _ | Is_component_of_a_group_but_not_the_root _ ->
-    Memo.return Path.Build.Map.empty
 ;;

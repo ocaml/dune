@@ -22,7 +22,6 @@ end
 
 module Context_for_dune = struct
   type 'a monad = 'a Monad.t
-  type filtered_formula = OpamTypes.filtered_formula
   type filter = OpamTypes.filter
   type rejection = Unavailable
 
@@ -84,24 +83,6 @@ module Context_for_dune = struct
     | Invalid_argument msg -> Error (`Not_a_bool msg)
   ;;
 
-  (* Substitute variables with their values *)
-  let resolve_solver_env
-    (solver_env : Solver_env.t)
-    (stats_updater : Solver_stats.Updater.t)
-    : OpamTypes.filter -> OpamTypes.filter
-    =
-    OpamFilter.map_up (function
-      | FIdent ([], variable, None) as filter ->
-        (match Solver_env.Variable.of_string_opt (OpamVariable.to_string variable) with
-         | None -> filter
-         | Some variable ->
-           Solver_stats.Updater.expand_variable stats_updater variable;
-           (match Solver_env.get solver_env variable with
-            | Unset_sys -> filter
-            | String string -> FString string))
-      | other -> other)
-  ;;
-
   let is_opam_available =
     (* The solver can call this function several times on the same package. If
        the package contains an invalid `available` filter we want to print a
@@ -112,7 +93,10 @@ module Context_for_dune = struct
       let available = OpamFile.OPAM.available opam in
       match
         let available_vars_resolved =
-          resolve_solver_env t.solver_env t.stats_updater available
+          Resolve_opam_formula.substitute_variables_in_filter
+            ~stats_updater:(Some t.stats_updater)
+            t.solver_env
+            available
         in
         eval_to_bool available_vars_resolved
       with
@@ -180,25 +164,15 @@ module Context_for_dune = struct
       if OpamPackage.Name.equal dune pkg then Some (`Eq, t.dune_version) else None
   ;;
 
-  let map_filters ~(f : filter -> filter) : filtered_formula -> filtered_formula =
-    OpamFilter.gen_filter_formula
-      (OpamFormula.partial_eval (function
-        | OpamTypes.Filter flt -> `Formula (Atom (OpamTypes.Filter (f flt)))
-        | Constraint _ as constraint_ -> `Formula (Atom constraint_)))
-  ;;
-
   let filter_deps t package filtered_formula =
     let package_is_local =
       OpamPackage.Name.Map.mem (OpamPackage.name package) t.local_packages
     in
-    map_filters filtered_formula ~f:(resolve_solver_env t.solver_env t.stats_updater)
-    |> OpamFilter.filter_deps
-         ~build:true
-         ~post:false
-         ~dev:false
-         ~default:false
-         ~test:package_is_local
-         ~doc:false
+    Resolve_opam_formula.apply_filter
+      ~stats_updater:(Some t.stats_updater)
+      ~with_test:package_is_local
+      t.solver_env
+      filtered_formula
   ;;
 end
 
@@ -454,8 +428,8 @@ let remove_filters_from_opam_file opam_file =
 ;;
 
 let opam_package_to_lock_file_pkg
-  context_for_dune
-  ~all_package_names
+  solver_env
+  version_by_package_name
   ~repos
   ~experimental_translate_opam_filters
   opam_package
@@ -518,15 +492,23 @@ let opam_package_to_lock_file_pkg
     ; extra_sources
     }
   in
-  (* This will collect all the atoms from the package's dependency formula regardless of conditions *)
   let deps =
-    Context_for_dune.filter_deps context_for_dune opam_package opam_file.depends
-    |> OpamFormula.fold_right
-         (fun acc (name, _condition) ->
-           if OpamPackage.Name.Set.mem name all_package_names then name :: acc else acc)
-         []
-    |> List.map ~f:(fun name ->
-      Loc.none, Package_name.of_string (OpamPackage.Name.to_string name))
+    match
+      Resolve_opam_formula.filtered_formula_to_package_names
+        ~stats_updater:None
+        ~with_test:false
+        solver_env
+        version_by_package_name
+        opam_file.depends
+    with
+    | Ok dep_package_names ->
+      List.map dep_package_names ~f:(fun package_name -> Loc.none, package_name)
+    | Error (`Formula_could_not_be_satisfied hints) ->
+      Code_error.raise
+        "Dependencies of package can't be satisfied from packages in solution"
+        [ "package", Dyn.string (OpamFile.OPAM.package opam_file |> OpamPackage.to_string)
+        ; "hints", Dyn.list Resolve_opam_formula.Unsatisfied_formula_hint.to_dyn hints
+        ]
   in
   let build_env action =
     let env_update =
@@ -651,10 +633,13 @@ let solve_lock_dir
       context
       ~local_package_names:(OpamPackage.Name.Map.keys local_packages)
     >>| Result.map ~f:(fun solution ->
-      (* don't include local packages in the lock dir *)
-      let all_package_names =
-        List.map solution ~f:OpamPackage.name |> OpamPackage.Name.Set.of_list
+      let version_by_package_name =
+        List.map solution ~f:(fun (package : OpamPackage.t) ->
+          ( Package_name.of_string (OpamPackage.name_to_string package)
+          , Package_version.of_string (OpamPackage.version_to_string package) ))
+        |> Package_name.Map.of_list_exn
       in
+      (* don't include local packages in the lock dir *)
       let opam_packages_to_lock =
         let is_local_package package =
           OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
@@ -665,8 +650,8 @@ let solve_lock_dir
         let+ pkgs =
           Fiber.parallel_map opam_packages_to_lock ~f:(fun opam_package ->
             opam_package_to_lock_file_pkg
-              context
-              ~all_package_names
+              solver_env
+              version_by_package_name
               ~repos
               ~experimental_translate_opam_filters
               opam_package)

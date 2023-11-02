@@ -8,6 +8,8 @@ module Op : sig
     | Gt
     | Lt
     | Neq
+
+  val to_dyn : t -> Dyn.t
 end
 
 module Variable : sig

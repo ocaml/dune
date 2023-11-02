@@ -57,7 +57,6 @@ module Pkg_info = struct
     String.Map.of_list_exn
       [ "name", Variable.S (Package.Name.to_string t.name)
       ; "version", S (Package_version.to_string t.version)
-      ; "dev", B t.dev
       ]
   ;;
 end
@@ -538,6 +537,7 @@ module Action_expander = struct
          | "enable" ->
            Memo.return @@ Ok [ Value.String (if present then "enable" else "disable") ]
          | "installed" -> Memo.return @@ Ok [ Value.String (Bool.to_string present) ]
+         | "dev" -> Memo.return @@ Ok [ Value.false_ ]
          | _ ->
            (match paths with
             | None -> Memo.return (Error (`Undefined_pkg_var variable_name))

@@ -57,8 +57,7 @@ let empty_package name ~version =
   { Lock_dir.Pkg.build_command = None
   ; install_command = None
   ; deps = []
-  ; info =
-      { Lock_dir.Pkg_info.name; version; dev = false; source = None; extra_sources = [] }
+  ; info = { Lock_dir.Pkg_info.name; version; source = None; extra_sources = [] }
   ; exported_env = []
   }
 ;;
@@ -95,7 +94,6 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
               ; info =
                   { name = "bar"
                   ; version = "0.2.0"
-                  ; dev = false
                   ; source = None
                   ; extra_sources = []
                   }
@@ -108,7 +106,6 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
               ; info =
                   { name = "foo"
                   ; version = "0.1.0"
-                  ; dev = false
                   ; source = None
                   ; extra_sources = []
                   }
@@ -149,8 +146,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                     (String_with_vars.make_text ~quoted:true Loc.none "echo 'world'"))
            ; info =
                { pkg.info with
-                 dev = false
-               ; source = Some extra_source
+                 source = Some extra_source
                ; extra_sources =
                    [ Path.Local.of_string "one", extra_source
                    ; ( Path.Local.of_string "two"
@@ -174,8 +170,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
            ; deps = [ Loc.none, fst pkg_a ]
            ; info =
                { pkg.info with
-                 dev = true
-               ; source =
+                 source =
                    Some
                      (Fetch
                         { url = Loc.none, "https://github.com/foo/b"
@@ -197,8 +192,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
              deps = [ Loc.none, fst pkg_a; Loc.none, fst pkg_b ]
            ; info =
                { pkg.info with
-                 dev = false
-               ; source =
+                 source =
                    Some
                      (Fetch
                         { url = Loc.none, "https://github.com/foo/c"; checksum = None })
@@ -227,7 +221,6 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               ; info =
                   { name = "a"
                   ; version = "0.1.0"
-                  ; dev = false
                   ; source = Some External_copy External "/tmp/a"
                   ; extra_sources =
                       [ ("one", External_copy External "/tmp/a")
@@ -243,7 +236,6 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               ; info =
                   { name = "b"
                   ; version = "dev"
-                  ; dev = true
                   ; source =
                       Some
                         Fetch
@@ -264,7 +256,6 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               ; info =
                   { name = "c"
                   ; version = "0.2"
-                  ; dev = false
                   ; source = Some Fetch "https://github.com/foo/c", None
                   ; extra_sources = []
                   }

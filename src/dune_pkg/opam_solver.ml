@@ -513,7 +513,6 @@ let opam_package_to_lock_file_pkg
     in
     { Lock_dir.Pkg_info.name = Package_name.of_string (OpamPackage.Name.to_string name)
     ; version
-    ; dev = false
     ; source
     ; extra_sources
     }

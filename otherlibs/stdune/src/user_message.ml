@@ -293,3 +293,13 @@ let is_loc_none loc =
 let has_embedded_location msg = Annots.mem msg.annots Annots.has_embedded_location
 let has_location msg = (not (is_loc_none msg.loc)) || has_embedded_location msg
 let needs_stack_trace msg = Annots.mem msg.annots Annots.needs_stack_trace
+
+let command cmd =
+  (* CR-someday rgrinberg: this should be its own tag, but that might bring
+     some backward compat issues with rpc. *)
+  Pp.concat
+    [ Pp.verbatim "'"
+    ; Pp.tag (Style.Ansi_styles [ `Underline ]) @@ Pp.verbatim cmd
+    ; Pp.verbatim "'"
+    ]
+;;

@@ -6,9 +6,11 @@ Allow directories to be installable
   > (package (name foo))
   > (using directory-targets 0.1)
   > EOF
+  $ touch a/x a/y
   $ cat >a/dune <<EOF
   > (install
   >  (dirs rules/bar)
+  >  (files x y)
   >  (section share))
   > EOF
   $ mkdir a/rules
@@ -26,7 +28,7 @@ Allow directories to be installable
   (lang dune 3.11)
   (name foo)
   (sections (lib .) (share ../../share/foo))
-  (files (lib (META dune-package)) (share ((dir bar))))
+  (files (lib (META dune-package)) (share ((dir bar) x y)))
   $ dune install --root a --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/foo/META
   Installing $TESTCASE_ROOT/prefix/lib/foo/dune-package
@@ -35,6 +37,8 @@ Allow directories to be installable
   Installing $TESTCASE_ROOT/prefix/share/foo/bar/x
   Installing $TESTCASE_ROOT/prefix/share/foo/bar/y
   Installing $TESTCASE_ROOT/prefix/share/foo/bar/z
+  Installing $TESTCASE_ROOT/prefix/share/foo/x
+  Installing $TESTCASE_ROOT/prefix/share/foo/y
 
   $ cat > b/dune-project <<EOF
   > (lang dune 3.5)
@@ -45,4 +49,12 @@ Allow directories to be installable
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root=b @foo --display=short
   Entering directory 'b'
+  Error:
+  File
+  "$TESTCASE_ROOT/prefix/lib/foo/dune-package",
+  line 8, characters 51-52:
+  Error: S-expression of the form (<name> <values>...) expected
+  
+  -> required by alias foo in dune:1
   Leaving directory 'b'
+  [1]

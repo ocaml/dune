@@ -80,6 +80,11 @@ module Lock_dir = struct
       let with_lexbuf_from_file path ~f =
         Fs_memo.with_lexbuf_from_file (In_source_dir path) ~f
       ;;
+
+      let stats_kind p =
+        Fs_memo.path_stat (In_source_dir p)
+        >>| Stdune.Result.map ~f:(fun { Fs_cache.Reduced_stats.st_kind; _ } -> st_kind)
+      ;;
     end)
 
   let get_path ctx =

@@ -515,6 +515,7 @@ module Make_load (Io : sig
     val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
     val readdir_with_kinds : Path.Source.t -> (Filename.t * Unix.file_kind) list t
     val with_lexbuf_from_file : Path.Source.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
+    val stats_kind : Path.Source.t -> (File_kind.t, Unix_error.Detailed.t) result t
   end) =
 struct
   let load_metadata metadata_file_path =
@@ -562,22 +563,35 @@ struct
   ;;
 
   let check_path lock_dir_path =
-    match Path.exists (Path.source lock_dir_path) with
-    | false ->
+    let open Io.O in
+    Io.stats_kind lock_dir_path
+    >>| function
+    | Ok S_DIR -> ()
+    | Error (Unix.ENOENT, _, _) ->
       User_error.raise
-        ~hints:[ Pp.text "Run `dune pkg lock` to generate it." ]
+        ~hints:
+          [ Pp.concat
+              ~sep:Pp.space
+              [ Pp.text "Run"
+              ; User_message.command "dune pkg lock"
+              ; Pp.text "to generate it."
+              ]
+            |> Pp.hovbox
+          ]
         [ Pp.textf "%s does not exist." (Path.Source.to_string lock_dir_path) ]
-    | true ->
-      (match Path.is_directory (Path.source lock_dir_path) with
-       | false ->
-         User_error.raise
-           [ Pp.textf "%s is not a directory." (Path.Source.to_string lock_dir_path) ]
-       | true -> ())
+    | Error e ->
+      User_error.raise
+        [ Pp.textf "%s is not accessible" (Path.Source.to_string lock_dir_path)
+        ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum e)
+        ]
+    | _ ->
+      User_error.raise
+        [ Pp.textf "%s is not a directory." (Path.Source.to_string lock_dir_path) ]
   ;;
 
   let load lock_dir_path =
     let open Io.O in
-    check_path lock_dir_path;
+    let* () = check_path lock_dir_path in
     let* version, ocaml, repos, expanded_solver_variable_bindings =
       load_metadata (Path.Source.relative lock_dir_path metadata_filename)
     in
@@ -600,6 +614,10 @@ end
 
 module Load_immediate = Make_load (struct
     include Monad.Id
+
+    let stats_kind file =
+      Path.source file |> Path.stat |> Result.map ~f:(fun { Unix.st_kind; _ } -> st_kind)
+    ;;
 
     let parallel_map xs ~f = List.map xs ~f
 

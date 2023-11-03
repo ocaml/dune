@@ -569,7 +569,15 @@ struct
     | Ok S_DIR -> ()
     | Error (Unix.ENOENT, _, _) ->
       User_error.raise
-        ~hints:[ Pp.text "Run `dune pkg lock` to generate it." ]
+        ~hints:
+          [ Pp.concat
+              ~sep:Pp.space
+              [ Pp.text "Run"
+              ; User_message.command "dune pkg lock"
+              ; Pp.text "to generate it."
+              ]
+            |> Pp.hovbox
+          ]
         [ Pp.textf "%s does not exist." (Path.Source.to_string lock_dir_path) ]
     | Error e ->
       User_error.raise

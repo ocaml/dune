@@ -50,6 +50,10 @@ module Dir_rules = struct
         | None -> Some what
         | Some base -> Some (Alias_spec.union what base)
       in
+      (* This accumulates the aliases in reverse order, but there's another
+         reversal whenever the expansion is inspected. The order doesn't really
+         matter, but it does change the tests. So it's nice to maintain it if
+         possible *)
       List.fold_left aliases ~init:Alias.Name.Map.empty ~f:(fun acc (name, item) ->
         Alias.Name.Map.update acc name ~f:(add_item item))
     in

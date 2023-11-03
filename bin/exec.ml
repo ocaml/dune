@@ -167,7 +167,6 @@ let build_prog ~no_rebuild ~prog p =
             ; User_message.command "--no-build"
             ; Pp.text "option."
             ]
-          |> Pp.hovbox
         ]
   else
     let open Memo.O in
@@ -196,7 +195,6 @@ let not_found ~dir ~prog =
     [ Pp.concat
         ~sep:Pp.space
         [ Pp.text "Program"; User_message.command prog; Pp.text "not found!" ]
-      |> Pp.hovbox
     ]
 ;;
 

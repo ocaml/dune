@@ -312,7 +312,6 @@ let subst vcs =
            [ User_message.command "dune subst"
            ; Pp.text "has been disabled in this project. Any use of it is forbidden."
            ]
-         |> Pp.hovbox
        ]
        ~hints:
          [ Pp.text

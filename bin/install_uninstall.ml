@@ -668,7 +668,6 @@ let install_uninstall ~what =
                ; User_message.command "--libdir"
                ; Pp.text "when installing into multiple contexts!"
                ]
-             |> Pp.hovbox
            ]
        | _ -> ());
       let install_files_by_context =

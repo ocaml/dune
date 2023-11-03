@@ -361,15 +361,17 @@ type path = [ `File | `Dir ] * Install.Entry.Dst.t
 
 let decode_path =
   let open Dune_lang.Decoder in
-  let* ast = peek_exn in
-  match ast with
-  | Atom _ ->
+  peek_exn
+  >>= function
+  | List _ ->
+    enter
+    @@
+    let* () = keyword "dir" in
+    let+ d = Install.Entry.Dst.decode in
+    `Dir, d
+  | _ ->
     let+ f = Install.Entry.Dst.decode in
     `File, f
-  | _ ->
-    fields
-      (let+ d = field "dir" Install.Entry.Dst.decode in
-       `Dir, d)
 ;;
 
 let encode_path = function

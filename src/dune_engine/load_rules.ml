@@ -380,8 +380,8 @@ end = struct
   ;;
 
   let compute_alias_expansions ~(collected : Rules.Dir_rules.ready) ~dir =
-    let aliases = collected.aliases in
     let+ aliases =
+      let aliases = collected.aliases in
       if Alias.Name.Map.mem aliases Alias.Name.default
       then Memo.return aliases
       else
@@ -398,7 +398,10 @@ end = struct
             }
     in
     Alias.Name.Map.map aliases ~f:(fun { Rules.Dir_rules.Alias_spec.expansions } ->
-      Appendable_list.to_list expansions)
+      (* CR-soon rgrinberg: hide this reversal behind the interface from
+         [Alias_spec]. The order doesn't really matter, as we're just
+         collecting the dependencies that are attached to the alias *)
+      Appendable_list.to_list_rev expansions)
   ;;
 
   let add_non_fallback_rules ~init ~source_files rules =

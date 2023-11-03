@@ -172,13 +172,16 @@ module Context = struct
           then Path.(relative root file)
           else
             User_error.raise
-              [ Pp.textf
-                  "`fdo %s` expects executable filename ending with .exe extension, not \
-                   %s. \n\
-                   Please specify the name of the executable to optimize, including path \
-                   from <root>."
-                  file
-                  ext
+              [ Pp.concat
+                  ~sep:Pp.space
+                  [ User_message.command (sprintf "fdo %s" file)
+                  ; Pp.textf
+                      "expects executable filename ending with .exe extension, not %s. \n\
+                       Please specify the name of the executable to optimize, including \
+                       path from <root>."
+                      ext
+                  ]
+                |> Pp.hovbox
               ]
         in
         field_o "fdo" (Dune_lang.Syntax.since syntax (2, 0) >>> map string ~f)

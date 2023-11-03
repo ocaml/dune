@@ -159,10 +159,15 @@ let build_prog ~no_rebuild ~prog p =
     then Memo.return p
     else
       User_error.raise
-        [ Pp.textf
-            "Program %S isn't built yet. You need to build it first or remove the \
-             --no-build option."
-            prog
+        [ Pp.concat
+            ~sep:Pp.space
+            [ Pp.text "Program"
+            ; User_message.command prog
+            ; Pp.text "isn't built yet. You need to build it first or remove the"
+            ; User_message.command "--no-build"
+            ; Pp.text "option."
+            ]
+          |> Pp.hovbox
         ]
   else
     let open Memo.O in
@@ -186,7 +191,13 @@ let not_found ~dir ~prog =
     in
     User_message.did_you_mean prog ~candidates
   in
-  User_error.raise ~hints [ Pp.textf "Program %S not found!" prog ]
+  User_error.raise
+    ~hints
+    [ Pp.concat
+        ~sep:Pp.space
+        [ Pp.text "Program"; User_message.command prog; Pp.text "not found!" ]
+      |> Pp.hovbox
+    ]
 ;;
 
 let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =

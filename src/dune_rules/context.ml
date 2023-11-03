@@ -252,9 +252,13 @@ end = struct
            opam
          | Error () ->
            User_error.raise
-             [ Pp.textf
-                 "`%s config --version' returned invalid output:"
-                 (Path.to_string_maybe_quoted opam)
+             [ Pp.concat
+                 ~sep:Pp.space
+                 [ User_message.command
+                     (sprintf "%s config --version" (Path.to_string_maybe_quoted opam))
+                 ; Pp.text "returned invalid output:"
+                 ]
+               |> Pp.hovbox
              ; Pp.verbatim version
              ]))
   ;;

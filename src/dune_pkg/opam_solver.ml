@@ -31,7 +31,7 @@ module Context_for_dune = struct
   ;;
 
   type candidates =
-    { version_to_repo : Opam_repo.t OpamPackage.Version.Map.t Lazy.t
+    { resolved : With_file.t OpamPackage.Version.Map.t
     ; available : (OpamTypes.version * (OpamFile.OPAM.t, rejection) result) list
     }
 
@@ -132,34 +132,32 @@ module Context_for_dune = struct
       Fiber.return [ version, Ok opam_file ]
     | None ->
       let key = Package_name.of_string (OpamPackage.Name.to_string name) in
-      (match Table.find t.candidates_cache key with
-       | Some res -> Fiber.return res.available
-       | None ->
-         let+ packages = Opam_repo.load_all_versions t.repos name in
-         let available =
-           (* The CONTEXT interface doesn't give us a way to report this type of
-              error and there's not enough context to give a helpful error message
-              so just tell opam_0install that there are no versions of this
-              package available (technically true) and let it produce the error
-              message. *)
-           OpamPackage.Version.Map.values packages
-           |> List.rev_map ~f:With_file.opam_file
-           |> List.sort ~compare:(opam_version_compare t)
-           |> List.map ~f:(fun opam_file ->
-             let opam_file_result =
-               if is_opam_available t opam_file then Ok opam_file else Error Unavailable
-             in
-             OpamFile.OPAM.version opam_file, opam_file_result)
-         in
-         let version_to_repo =
-           lazy
-             (OpamPackage.Version.Map.map
-                (fun w -> Opam_repo.With_file.repo w |> Option.value_exn)
-                packages)
-         in
-         let res = { available; version_to_repo } in
-         Table.set t.candidates_cache key res;
-         res.available)
+      let+ res =
+        match Table.find t.candidates_cache key with
+        | Some res -> Fiber.return res
+        | None ->
+          let+ resolved = Opam_repo.load_all_versions t.repos name in
+          let available =
+            (* The CONTEXT interface doesn't give us a way to report this type of
+               error and there's not enough context to give a helpful error message
+               so just tell opam_0install that there are no versions of this
+               package available (technically true) and let it produce the error
+               message. *)
+            OpamPackage.Version.Map.values resolved
+            |> List.sort ~compare:(fun p1 p2 ->
+              opam_version_compare t (With_file.opam_file p1) (With_file.opam_file p2))
+            |> List.map ~f:(fun with_file ->
+              let opam_file = With_file.opam_file with_file in
+              let opam_file_result =
+                if is_opam_available t opam_file then Ok opam_file else Error Unavailable
+              in
+              OpamFile.OPAM.version opam_file, opam_file_result)
+          in
+          let res = { available; resolved } in
+          Table.set t.candidates_cache key res;
+          res
+      in
+      res.available
   ;;
 
   let user_restrictions : t -> OpamPackage.Name.t -> OpamFormula.version_constraint option
@@ -435,24 +433,18 @@ let remove_filters_from_opam_file opam_file =
 let opam_package_to_lock_file_pkg
   solver_env
   version_by_package_name
-  ~repos
   ~experimental_translate_opam_filters
   opam_package
+  ~(candidates_cache : (Package_name.t, Context_for_dune.candidates) Table.t)
   =
   let name = OpamPackage.name opam_package in
   let version = OpamPackage.version opam_package |> Package_version.of_opam in
-  let+ opam_file, loc =
-    let+ with_file =
-      let+ opam_files =
-        let+ pkgs =
-          Fiber.parallel_map repos ~f:(fun repo ->
-            Opam_repo.load_opam_package repo opam_package)
-        in
-        List.filter_opt pkgs
-      in
-      match opam_files with
-      | [ opam_file ] -> opam_file
-      | _ -> Code_error.raise "Couldn't map opam package to a repository" []
+  let opam_file, loc =
+    let with_file =
+      (let key = Package_name.of_string (OpamPackage.Name.to_string name) in
+       Table.find_exn candidates_cache key)
+        .resolved
+      |> OpamPackage.Version.Map.find (Package_version.to_opam version)
     in
     let opam_file =
       let opam_file_with_filters = With_file.opam_file with_file in
@@ -650,15 +642,15 @@ let solve_lock_dir
         in
         List.filter solution ~f:(Fun.negate is_local_package)
       in
-      let* ocaml, pkgs =
-        let+ pkgs =
-          Fiber.parallel_map opam_packages_to_lock ~f:(fun opam_package ->
+      let ocaml, pkgs =
+        let pkgs =
+          List.map opam_packages_to_lock ~f:(fun opam_package ->
             opam_package_to_lock_file_pkg
               solver_env
               version_by_package_name
-              ~repos
               ~experimental_translate_opam_filters
-              opam_package)
+              opam_package
+              ~candidates_cache:context.candidates_cache)
         in
         let ocaml =
           (* This doesn't allow the compiler to live in the source tree. Oh
@@ -711,7 +703,9 @@ let solve_lock_dir
             let candidates = Table.find_exn context.candidates_cache package_name in
             OpamPackage.Version.Map.find
               (OpamPackage.version opam_package)
-              (Lazy.force candidates.version_to_repo)
+              candidates.resolved
+            |> With_file.repo
+            |> Option.value_exn
           in
           Opam_repo.get_opam_package_files repo opam_package
           >>| function

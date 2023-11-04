@@ -698,6 +698,59 @@ let gen_rules_build_dir
             under_melange_emit_target)
 ;;
 
+let gen_rules_regular_directory sctx ~components ~dir =
+  let* under_melange_emit_target = For_melange.under_melange_emit_target ~dir in
+  let src_dir = Path.Build.drop_build_context_exn dir in
+  let allowed_subdirs =
+    let automatic = Automatic_subdir.subdirs components in
+    match components with
+    | _ :: _ -> automatic
+    | [] ->
+      Filename.Set.union
+        automatic
+        (* XXX sync this list with the pattern matches above. It's quite ugly
+           we need this, we should rewrite this code to avoid this. *)
+        (Filename.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ])
+  in
+  Source_tree.find_dir src_dir
+  >>= function
+  | None ->
+    gen_rules_build_dir
+      sctx
+      ~components
+      ~dir
+      ~src_dir
+      ~allowed_subdirs
+      ~under_melange_emit_target
+  | Some source_dir ->
+    let allowed_subdirs =
+      match inside_opam_directory ~nearest_src_dir:source_dir ~src_dir components with
+      | `Project_root -> Filename.Set.add allowed_subdirs "opam"
+      | `Outside | `Inside -> allowed_subdirs
+    in
+    (* This interprets [rule] and [copy_files] stanzas. *)
+    Dir_contents.triage sctx ~dir
+    >>= (function
+    | Group_part _ ->
+      Memo.return
+      @@ gen_melange_emit_rules_or_empty_redirect
+           sctx
+           ~opam_file_rules:(Memo.return Rules.empty)
+           ~dir
+           ~allowed_subdirs
+           under_melange_emit_target
+    | Standalone_or_root { directory_targets; contents } ->
+      gen_rules_standalone_or_root
+        sctx
+        ~dir
+        ~source_dir
+        ~components
+        ~allowed_subdirs
+        ~directory_targets
+        ~contents
+        ~under_melange_emit_target)
+;;
+
 (* Once [gen_rules] has decided what to do with the directory, it should end
    with [has_rules] or [redirect_to_parent] *)
 let gen_rules ~sctx ~dir components : Gen_rules.result Memo.t =
@@ -733,57 +786,7 @@ let gen_rules ~sctx ~dir components : Gen_rules.result Memo.t =
        | [] -> Subdir_set.all
        | _ -> Subdir_set.empty)
       (fun () -> Preprocessing.gen_rules sctx rest)
-  | _ ->
-    let* under_melange_emit_target = For_melange.under_melange_emit_target ~dir in
-    let src_dir = Path.Build.drop_build_context_exn dir in
-    let allowed_subdirs =
-      let automatic = Automatic_subdir.subdirs components in
-      match components with
-      | _ :: _ -> automatic
-      | [] ->
-        Filename.Set.union
-          automatic
-          (* XXX sync this list with the pattern matches above. It's quite ugly
-             we need this, we should rewrite this code to avoid this. *)
-          (Filename.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ])
-    in
-    Source_tree.find_dir src_dir
-    >>= (function
-    | None ->
-      gen_rules_build_dir
-        sctx
-        ~components
-        ~dir
-        ~src_dir
-        ~allowed_subdirs
-        ~under_melange_emit_target
-    | Some source_dir ->
-      let allowed_subdirs =
-        match inside_opam_directory ~nearest_src_dir:source_dir ~src_dir components with
-        | `Project_root -> Filename.Set.add allowed_subdirs "opam"
-        | `Outside | `Inside -> allowed_subdirs
-      in
-      (* This interprets [rule] and [copy_files] stanzas. *)
-      Dir_contents.triage sctx ~dir
-      >>= (function
-      | Group_part _ ->
-        Memo.return
-        @@ gen_melange_emit_rules_or_empty_redirect
-             sctx
-             ~opam_file_rules:(Memo.return Rules.empty)
-             ~dir
-             ~allowed_subdirs
-             under_melange_emit_target
-      | Standalone_or_root { directory_targets; contents } ->
-        gen_rules_standalone_or_root
-          sctx
-          ~dir
-          ~source_dir
-          ~components
-          ~allowed_subdirs
-          ~directory_targets
-          ~contents
-          ~under_melange_emit_target))
+  | _ -> gen_rules_regular_directory sctx ~components ~dir
 ;;
 
 let with_context ctx ~f =

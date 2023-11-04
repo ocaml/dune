@@ -521,8 +521,10 @@ module Group = struct
       if lock
       then Memo.return @@ Kind.Lock { default = true }
       else
-        let+ has_lock = Pkg_rules.has_lock builder.name in
-        if has_lock then Kind.Lock { default = true } else Default
+        Pkg_rules.lock_dir_active builder.name
+        >>| function
+        | true -> Kind.Lock { default = true }
+        | false -> Default
     in
     create { builder with path } ~kind ~targets
   ;;

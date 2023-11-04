@@ -102,7 +102,7 @@ module Lock_dir = struct
 
   let get (ctx : Context_name.t) : t Memo.t = get_path ctx >>= Load.load
 
-  let has_lock ctx =
+  let lock_dir_active ctx =
     if !Clflags.ignore_lock_directory
     then Memo.return false
     else
@@ -1566,7 +1566,7 @@ let which context =
     Filename.Map.find artifacts program)
 ;;
 
-let has_lock = Lock_dir.has_lock
+let lock_dir_active = Lock_dir.lock_dir_active
 
 let exported_env context =
   let+ all_packages = all_packages context in
@@ -1576,7 +1576,7 @@ let exported_env context =
 ;;
 
 let find_package ctx pkg =
-  has_lock ctx
+  lock_dir_active ctx
   >>= function
   | false -> Memo.return None
   | true ->

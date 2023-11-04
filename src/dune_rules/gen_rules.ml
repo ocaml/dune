@@ -605,7 +605,7 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
     has_rules
       ~dir
       (Subdir_set.of_set (Filename.Set.of_list [ "ccomp" ]))
-      (fun () -> Context.DB.get ctx >>= Configurator_rules.gen_rules)
+      (fun () -> Configurator_rules.gen_rules ctx)
   | _ -> gen_rules_regular_directory sctx ~components ~dir
 ;;
 

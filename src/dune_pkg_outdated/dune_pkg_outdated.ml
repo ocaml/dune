@@ -89,8 +89,9 @@ let better_candidate
   let open Fiber.O in
   let pkg_name = pkg.info.name |> Package_name.to_string |> OpamPackage.Name.of_string in
   let is_immediate_dep_of_local_package =
-    Package_name.Map.exists local_packages ~f:(fun { Opam_repo.With_file.opam_file; _ } ->
-      OpamFile.OPAM.depends opam_file
+    Package_name.Map.exists local_packages ~f:(fun with_file ->
+      Opam_repo.With_file.opam_file with_file
+      |> OpamFile.OPAM.depends
       |> OpamFilter.filter_deps
            ~build:true
            ~post:false
@@ -104,7 +105,7 @@ let better_candidate
   let+ all_versions =
     Opam_repo.load_all_versions repos pkg_name
     >>| OpamPackage.Version.Map.values
-    >>| List.map ~f:(fun (_repo, (file : Opam_repo.With_file.t)) -> file.opam_file)
+    >>| List.map ~f:(fun (_repo, file) -> Opam_repo.With_file.opam_file file)
   in
   match
     List.max all_versions ~f:(fun x y ->

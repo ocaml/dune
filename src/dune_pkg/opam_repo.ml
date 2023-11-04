@@ -237,6 +237,10 @@ module With_file = struct
     { opam_file : OpamFile.OPAM.t
     ; file : Path.t
     }
+
+  let file t = t.file
+  let opam_file t = t.opam_file
+  let local file opam_file = { file; opam_file }
 end
 
 (* Reads an opam package definition from an "opam" file in this repository

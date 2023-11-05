@@ -41,6 +41,7 @@ module type S = sig
   val filter : 'a t -> f:('a -> bool) -> 'a t
   val filteri : 'a t -> f:(key -> 'a -> bool) -> 'a t
   val partition : 'a t -> f:('a -> bool) -> 'a t * 'a t
+  val partition_map : 'a t -> f:('a -> ('x, 'y) Either.t) -> 'x t * 'y t
   val partitioni : 'a t -> f:(key -> 'a -> bool) -> 'a t * 'a t
   val cardinal : 'a t -> int
   val to_list : 'a t -> (key * 'a) list

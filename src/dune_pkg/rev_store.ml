@@ -261,20 +261,26 @@ let add_repo t ~source =
 ;;
 
 let content_of_files t files =
-  let+ out =
-    List.map files ~f:(fun (file : File.t) -> `Object file.hash)
-    |> show t
-    >>| function
-    | Some s -> s
-    | None -> Code_error.raise "content_of_files failed" []
-  in
-  let rec loop acc pos = function
-    | [] ->
-      assert (pos = String.length out);
-      acc
-    | (file : File.t) :: files ->
-      let acc = String.sub out ~pos ~len:file.size :: acc in
-      loop acc (pos + file.size) files
-  in
-  List.rev (loop [] 0 files)
+  match files with
+  | [] -> Fiber.return []
+  | _ :: _ ->
+    let+ out =
+      List.map files ~f:(fun (file : File.t) -> `Object file.hash)
+      |> show t
+      >>| function
+      | Some s -> s
+      | None ->
+        Code_error.raise
+          "content_of_files failed"
+          [ "files", Dyn.(list File.to_dyn) files ]
+    in
+    let rec loop acc pos = function
+      | [] ->
+        assert (pos = String.length out);
+        acc
+      | (file : File.t) :: files ->
+        let acc = String.sub out ~pos ~len:file.size :: acc in
+        loop acc (pos + file.size) files
+    in
+    List.rev (loop [] 0 files)
 ;;

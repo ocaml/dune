@@ -69,12 +69,12 @@ end
 module Backend = struct
   type t =
     | Directory of Path.t
-    | Repo of Rev_store.Remote.At_rev.t
+    | Repo of Rev_store.At_rev.t
 
   let equal a b =
     match a, b with
     | Directory a, Directory b -> Path.equal a b
-    | Repo a, Repo b -> Rev_store.Remote.At_rev.equal a b
+    | Repo a, Repo b -> Rev_store.At_rev.equal a b
     | _, _ -> false
   ;;
 end
@@ -169,7 +169,7 @@ let of_git_repo ~repo_id ~source =
         in
         Rev_store.Remote.rev_of_name remote ~name
       in
-      let repo_id = Option.map at_rev ~f:Rev_store.Remote.At_rev.repository_id in
+      let repo_id = Option.map at_rev ~f:Rev_store.At_rev.repository_id in
       at_rev, repo_id
   in
   match at_rev with
@@ -224,11 +224,11 @@ let get_opam_package_files t opam_package =
     |> Fiber.return
   | Repo at_rev ->
     let files_root = Paths.files_dir opam_package in
-    Rev_store.Remote.At_rev.directory_entries at_rev files_root
+    Rev_store.At_rev.directory_entries at_rev files_root
     |> Rev_store.File.Set.to_list
     |> Fiber.parallel_map ~f:(fun remote_file ->
       let remote_file_path = Rev_store.File.path remote_file in
-      Rev_store.Remote.At_rev.content at_rev remote_file_path
+      Rev_store.At_rev.content at_rev remote_file_path
       >>| function
       | None ->
         Code_error.raise
@@ -277,7 +277,7 @@ let load_opam_package t opam_package =
   | Directory dir -> load_opam_package_from_dir ~dir opam_package |> Fiber.return
   | Repo at_rev ->
     let file = Paths.opam_file opam_package in
-    Rev_store.Remote.At_rev.content at_rev file
+    Rev_store.At_rev.content at_rev file
     >>| Option.map ~f:(fun content ->
       let opam_file =
         (* the filename is used to read the version number *)
@@ -321,7 +321,7 @@ let all_packages_versions_in_dir ~dir opam_package_name =
 
 let all_packages_versions_at_rev rev opam_package_name =
   Paths.package_root opam_package_name
-  |> Rev_store.Remote.At_rev.directory_entries rev
+  |> Rev_store.At_rev.directory_entries rev
   |> Rev_store.File.Set.to_list
   |> List.filter_map ~f:(fun file ->
     let path = Rev_store.File.path file in

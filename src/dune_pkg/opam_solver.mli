@@ -7,10 +7,15 @@ module Solver_result : sig
     }
 end
 
+type local_package =
+  { opam_file : OpamFile.OPAM.t
+  ; file : Path.t
+  }
+
 val solve_lock_dir
   :  Solver_env.t
   -> Version_preference.t
   -> Opam_repo.t list
-  -> local_packages:Opam_repo.With_file.t Package_name.Map.t
+  -> local_packages:local_package Package_name.Map.t
   -> experimental_translate_opam_filters:bool
   -> (Solver_result.t, [ `Diagnostic_message of _ Pp.t ]) result Fiber.t

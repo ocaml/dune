@@ -2,6 +2,11 @@ open Import
 open Fiber.O
 module With_file = Opam_repo.With_file
 
+type local_package =
+  { opam_file : OpamFile.OPAM.t
+  ; file : Path.t
+  }
+
 module Monad : Opam_0install.S.Monad with type 'a t = 'a Fiber.t = struct
   type 'a t = 'a Fiber.t
 
@@ -38,7 +43,7 @@ module Context_for_dune = struct
   type t =
     { repos : Opam_repo.t list
     ; version_preference : Version_preference.t
-    ; local_packages : OpamFile.OPAM.t OpamPackage.Name.Map.t
+    ; local_packages : local_package Package_name.Map.t
     ; solver_env : Solver_env.t
     ; dune_version : OpamPackage.Version.t
     ; stats_updater : Solver_stats.Updater.t
@@ -124,14 +129,16 @@ module Context_for_dune = struct
 
   let candidates t name =
     let* () = Fiber.return () in
-    match OpamPackage.Name.Map.find_opt name t.local_packages with
-    | Some opam_file ->
+    let key = Package_name.of_string (OpamPackage.Name.to_string name) in
+    match Package_name.Map.find t.local_packages key with
+    | Some local_package ->
       let version =
-        Option.value opam_file.version ~default:local_package_default_version
+        Option.value
+          local_package.opam_file.version
+          ~default:local_package_default_version
       in
-      Fiber.return [ version, Ok opam_file ]
+      Fiber.return [ version, Ok local_package.opam_file ]
     | None ->
-      let key = Package_name.of_string (OpamPackage.Name.to_string name) in
       let+ res =
         match Table.find t.candidates_cache key with
         | Some res -> Fiber.return res
@@ -169,7 +176,10 @@ module Context_for_dune = struct
 
   let filter_deps t package filtered_formula =
     let package_is_local =
-      OpamPackage.Name.Map.mem (OpamPackage.name package) t.local_packages
+      OpamPackage.name package
+      |> OpamPackage.Name.to_string
+      |> Package_name.of_string
+      |> Package_name.Map.mem t.local_packages
     in
     Resolve_opam_formula.apply_filter
       ~stats_updater:(Some t.stats_updater)
@@ -406,15 +416,6 @@ let make_action = function
   | actions -> Some (Action.Progn actions)
 ;;
 
-let opam_file_map_of_dune_package_map dune_package_map =
-  Package_name.Map.to_list_map dune_package_map ~f:(fun dune_package_name opam_file ->
-    let opam_package_name =
-      Package_name.to_string dune_package_name |> OpamPackage.Name.of_string
-    in
-    opam_package_name, opam_file)
-  |> OpamPackage.Name.Map.of_list
-;;
-
 let remove_filters_from_command ((command, _filter) : OpamTypes.command)
   : OpamTypes.command
   =
@@ -613,11 +614,7 @@ let solve_lock_dir
   =
   let* solver_result =
     let stats_updater = Solver_stats.Updater.init () in
-    let local_packages = opam_file_map_of_dune_package_map local_packages in
     let context =
-      let local_packages =
-        OpamPackage.Name.Map.map Opam_repo.With_file.opam_file local_packages
-      in
       Context_for_dune.create
         ~solver_env
         ~repos
@@ -627,7 +624,9 @@ let solve_lock_dir
     in
     solve_package_list
       context
-      ~local_package_names:(OpamPackage.Name.Map.keys local_packages)
+      ~local_package_names:
+        (Package_name.Map.to_list_map local_packages ~f:(fun name _ ->
+           Package_name.to_string name |> OpamPackage.Name.of_string))
     >>| Result.map ~f:(fun solution ->
       let version_by_package_name =
         List.map solution ~f:(fun (package : OpamPackage.t) ->
@@ -638,7 +637,10 @@ let solve_lock_dir
       (* don't include local packages in the lock dir *)
       let opam_packages_to_lock =
         let is_local_package package =
-          OpamPackage.Name.Map.mem (OpamPackage.name package) local_packages
+          OpamPackage.name package
+          |> OpamPackage.Name.to_string
+          |> Package_name.of_string
+          |> Package_name.Map.mem local_packages
         in
         List.filter solution ~f:(Fun.negate is_local_package)
       in
@@ -705,7 +707,6 @@ let solve_lock_dir
               (OpamPackage.version opam_package)
               candidates.resolved
             |> With_file.repo
-            |> Option.value_exn
           in
           Opam_repo.get_opam_package_files repo opam_package
           >>| function

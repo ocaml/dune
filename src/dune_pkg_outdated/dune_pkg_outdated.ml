@@ -105,7 +105,7 @@ let better_candidate
   let+ all_versions =
     Opam_repo.load_all_versions repos pkg_name
     >>| OpamPackage.Version.Map.values
-    >>| List.map ~f:(fun (_repo, file) -> Opam_repo.With_file.opam_file file)
+    >>| List.map ~f:Opam_repo.With_file.opam_file
   in
   match
     List.max all_versions ~f:(fun x y ->

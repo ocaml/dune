@@ -236,13 +236,12 @@ module With_file = struct
   type nonrec t =
     { opam_file : OpamFile.OPAM.t
     ; file : Path.t
-    ; repo : t option
+    ; repo : t
     }
 
   let file t = t.file
   let opam_file t = t.opam_file
   let repo t = t.repo
-  let local file opam_file = { file; opam_file; repo = None }
 end
 
 (* Reads an opam package definition from an "opam" file in this repository
@@ -258,7 +257,7 @@ let load_opam_package t opam_package =
         |> OpamFile.make
         |> OpamFile.OPAM.read
       in
-      { With_file.opam_file; file = opam_file_path; repo = Some t })
+      { With_file.opam_file; file = opam_file_path; repo = t })
     |> Fiber.return
   | Repo at_rev ->
     let expected_path =
@@ -277,10 +276,7 @@ let load_opam_package t opam_package =
         OpamFile.OPAM.read_from_string ~filename content
       in
       (* TODO the [file] here is made up *)
-      { With_file.opam_file
-      ; file = Path.source @@ Path.Source.of_local file
-      ; repo = Some t
-      })
+      { With_file.opam_file; file = Path.source @@ Path.Source.of_local file; repo = t })
 ;;
 
 let load_packages_from_git rev_store opam_packages =
@@ -295,10 +291,7 @@ let load_packages_from_git rev_store opam_packages =
       OpamFile.OPAM.read_from_string ~filename opam_file_contents
     in
     (* TODO the [file] here is made up *)
-    { With_file.opam_file
-    ; file = Path.source @@ Path.Source.of_local path
-    ; repo = Some repo
-    })
+    { With_file.opam_file; file = Path.source @@ Path.Source.of_local path; repo })
 ;;
 
 let get_opam_package_version_dir_path packages_dir_path opam_package_name =

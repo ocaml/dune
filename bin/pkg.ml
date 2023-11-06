@@ -368,7 +368,7 @@ module Lock = struct
         | Generated | Exists false -> Dune_project.file project
         | Exists true -> pkg.opam_file
       in
-      Opam_repo.With_file.local file opam_file)
+      { Dune_pkg.Opam_solver.opam_file; file })
   ;;
 
   let pp_packages packages =

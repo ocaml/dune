@@ -34,8 +34,7 @@ module With_file : sig
 
   val opam_file : t -> OpamFile.OPAM.t
   val file : t -> Path.t
-  val local : Path.t -> OpamFile.OPAM.t -> t
-  val repo : t -> repo option
+  val repo : t -> repo
 end
 
 (** Load package metadata for a single package *)

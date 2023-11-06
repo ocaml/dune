@@ -1,8 +1,6 @@
 open Import
 open Fiber.O
 
-let ( / ) = Path.relative
-
 let rev_store =
   let store = ref None in
   Fiber.of_thunk (fun () ->
@@ -18,6 +16,23 @@ let rev_store =
       store := Some rev_store;
       rev_store)
 ;;
+
+module Paths = struct
+  let packages = Path.Local.of_string "packages"
+
+  let package_root package_name =
+    OpamPackage.Name.to_string package_name |> Path.Local.relative packages
+  ;;
+
+  let package_dir package =
+    Path.Local.relative
+      (package_root (OpamPackage.name package))
+      (OpamPackage.to_string package)
+  ;;
+
+  let files_dir package = Path.Local.relative (package_dir package) "files"
+  let opam_file package = Path.Local.relative (package_dir package) "opam"
+end
 
 module Serializable = struct
   type t =
@@ -89,28 +104,38 @@ let source t =
 ;;
 
 let of_opam_repo_dir_path ~source ~repo_id opam_repo_dir_path =
-  if not (Path.exists opam_repo_dir_path)
-  then
-    User_error.raise
-      [ Pp.textf "%s does not exist" (Path.to_string_maybe_quoted opam_repo_dir_path) ];
-  if not (Path.is_directory opam_repo_dir_path)
-  then
-    User_error.raise
-      [ Pp.textf "%s is not a directory" (Path.to_string_maybe_quoted opam_repo_dir_path)
-      ];
-  let packages_dir_path = opam_repo_dir_path / "packages" in
-  if not (Path.exists packages_dir_path && Path.is_directory packages_dir_path)
-  then
-    User_error.raise
-      [ Pp.textf
-          "%s doesn't look like a path to an opam repository as it lacks a subdirectory \
-           named \"packages\""
-          (Path.to_string_maybe_quoted opam_repo_dir_path)
-      ];
+  (match Path.stat opam_repo_dir_path with
+   | Error (Unix.ENOENT, _, _) ->
+     User_error.raise
+       [ Pp.textf "%s does not exist" (Path.to_string_maybe_quoted opam_repo_dir_path) ]
+   | Error _ ->
+     User_error.raise
+       [ Pp.textf "could not read %s" (Path.to_string_maybe_quoted opam_repo_dir_path) ]
+   | Ok { Unix.st_kind = S_DIR; _ } -> ()
+   | Ok _ ->
+     User_error.raise
+       [ Pp.textf "%s is not a directory" (Path.to_string_maybe_quoted opam_repo_dir_path)
+       ]);
+  (let packages = Path.append_local opam_repo_dir_path Paths.packages in
+   match Path.stat packages with
+   | Ok { Unix.st_kind = S_DIR; _ } -> ()
+   | Ok _ ->
+     User_error.raise
+       [ Pp.textf "%s is not a directory" (Path.to_string_maybe_quoted packages) ]
+   | Error (Unix.ENOENT, _, _) ->
+     User_error.raise
+       [ Pp.textf
+           "%s doesn't look like a path to an opam repository as it lacks a subdirectory \
+            named \"packages\""
+           (Path.to_string_maybe_quoted opam_repo_dir_path)
+       ]
+   | Error _ ->
+     User_error.raise
+       [ Pp.textf "could not read %s" (Path.to_string_maybe_quoted opam_repo_dir_path) ]);
   let serializable =
     Option.map source ~f:(fun source -> { Serializable.repo_id; source })
   in
-  { source = Directory packages_dir_path; serializable }
+  { source = Directory opam_repo_dir_path; serializable }
 ;;
 
 let of_git_repo ~repo_id ~source =
@@ -163,13 +188,6 @@ let if_exists p =
   | true -> Some p
 ;;
 
-(* Return the path to an "opam" file describing a particular package
-   (name and version) from this opam repository. *)
-let get_opam_file_path path opam_package =
-  let name = opam_package |> OpamPackage.name |> OpamPackage.Name.to_string in
-  path / name / OpamPackage.to_string opam_package / "opam" |> if_exists
-;;
-
 (* Scan a path recursively down retrieving a list of all files together with their
    relative path. *)
 let scan_files_entries path =
@@ -196,25 +214,16 @@ let scan_files_entries path =
 ;;
 
 let get_opam_package_files t opam_package =
-  let name = opam_package |> OpamPackage.name |> OpamPackage.Name.to_string in
   match t.source with
   | Directory path ->
-    (match path / name / OpamPackage.to_string opam_package / "files" |> if_exists with
-     | None -> Fiber.return []
-     | Some file_path ->
-       let entries =
-         scan_files_entries file_path
-         |> List.map ~f:(fun local_file ->
-           let original = File_entry.Path (Path.append_local file_path local_file) in
-           { File_entry.local_file; original })
-       in
-       Fiber.return entries)
+    let file_path = Path.append_local path (Paths.files_dir opam_package) in
+    scan_files_entries file_path
+    |> List.map ~f:(fun local_file ->
+      let original = File_entry.Path (Path.append_local file_path local_file) in
+      { File_entry.local_file; original })
+    |> Fiber.return
   | Repo at_rev ->
-    let files_root =
-      Path.Local.L.relative
-        Path.Local.root
-        [ "packages"; name; OpamPackage.to_string opam_package; "files" ]
-    in
+    let files_root = Paths.files_dir opam_package in
     Rev_store.Remote.At_rev.directory_entries at_rev files_root
     |> Rev_store.File.Set.to_list
     |> Fiber.parallel_map ~f:(fun remote_file ->
@@ -244,35 +253,37 @@ module With_file = struct
   let repo t = t.repo
 end
 
+let load_opam_package_from_dir ~(dir : Path.t) opam_package =
+  Paths.opam_file opam_package
+  |> Path.append_local dir
+  |> if_exists
+  |> Option.map ~f:(fun opam_file_path ->
+    let opam_file =
+      Path.to_string opam_file_path
+      |> OpamFilename.raw
+      |> OpamFile.make
+      |> OpamFile.OPAM.read
+    in
+    { With_file.opam_file
+    ; file = opam_file_path
+    ; repo = { source = Backend.Directory dir; serializable = None }
+    })
+;;
+
 (* Reads an opam package definition from an "opam" file in this repository
    corresponding to a package (name and version). *)
 let load_opam_package t opam_package =
   match t.source with
-  | Directory d ->
-    get_opam_file_path d opam_package
-    |> Option.map ~f:(fun opam_file_path ->
-      let opam_file =
-        Path.to_string opam_file_path
-        |> OpamFilename.raw
-        |> OpamFile.make
-        |> OpamFile.OPAM.read
-      in
-      { With_file.opam_file; file = opam_file_path; repo = t })
-    |> Fiber.return
+  | Directory dir -> load_opam_package_from_dir ~dir opam_package |> Fiber.return
   | Repo at_rev ->
-    let expected_path =
-      let package_name = opam_package |> OpamPackage.name |> OpamPackage.Name.to_string in
-      let package_version =
-        opam_package |> OpamPackage.version |> OpamPackage.Version.to_string
-      in
-      sprintf "packages/%s/%s.%s/opam" package_name package_name package_version
-    in
-    let file = Path.Local.of_string expected_path in
+    let file = Paths.opam_file opam_package in
     Rev_store.Remote.At_rev.content at_rev file
     >>| Option.map ~f:(fun content ->
       let opam_file =
         (* the filename is used to read the version number *)
-        let filename = OpamFile.make (OpamFilename.of_string expected_path) in
+        let filename =
+          Path.Local.to_string file |> OpamFilename.of_string |> OpamFile.make
+        in
         OpamFile.OPAM.read_from_string ~filename content
       in
       (* TODO the [file] here is made up *)
@@ -294,32 +305,23 @@ let load_packages_from_git rev_store opam_packages =
     { With_file.opam_file; file = Path.source @@ Path.Source.of_local path; repo })
 ;;
 
-let get_opam_package_version_dir_path packages_dir_path opam_package_name =
-  let p = packages_dir_path / OpamPackage.Name.to_string opam_package_name in
-  if_exists p
-;;
-
 let all_packages_versions_in_dir ~dir opam_package_name =
-  match get_opam_package_version_dir_path dir opam_package_name with
-  | None -> []
-  | Some version_dir_path ->
-    (match Path.readdir_unsorted version_dir_path with
-     | Error e ->
-       User_error.raise
-         [ Pp.textf
-             "Unable to read package versions from %s: %s"
-             (Path.to_string_maybe_quoted version_dir_path)
-             (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e)
-         ]
-     | Ok version_dirs -> List.map version_dirs ~f:OpamPackage.of_string)
+  let dir = Path.append_local dir (Paths.package_root opam_package_name) in
+  match Path.readdir_unsorted dir with
+  | Ok version_dirs -> List.map version_dirs ~f:OpamPackage.of_string
+  | Error (Unix.ENOENT, _, _) -> []
+  | Error e ->
+    User_error.raise
+      [ Pp.textf
+          "Unable to read package versions from %s: %s"
+          (Path.to_string_maybe_quoted dir)
+          (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e)
+      ]
 ;;
 
 let all_packages_versions_at_rev rev opam_package_name =
-  let version_dir_path =
-    let name = OpamPackage.Name.to_string opam_package_name in
-    Path.Local.relative (Path.Local.of_string "packages") name
-  in
-  Rev_store.Remote.At_rev.directory_entries rev version_dir_path
+  Paths.package_root opam_package_name
+  |> Rev_store.Remote.At_rev.directory_entries rev
   |> Rev_store.File.Set.to_list
   |> List.filter_map ~f:(fun file ->
     let path = Rev_store.File.path file in
@@ -363,11 +365,15 @@ let load_all_versions ts opam_package_name =
       | Some file -> Left (repo, file, pkg)
       | None -> Right (repo, pkg))
   in
-  let+ from_dirs =
-    Fiber.parallel_map from_dirs ~f:(fun (repo, pkg) ->
-      load_opam_package repo pkg >>| Option.map ~f:(fun opam_file -> pkg, opam_file))
-    >>| List.filter_opt
-  and+ from_git =
+  let from_dirs =
+    List.filter_map from_dirs ~f:(fun (repo, pkg) ->
+      match repo.source with
+      | Repo _ -> assert false
+      | Directory dir ->
+        load_opam_package_from_dir ~dir pkg
+        |> Option.map ~f:(fun opam_file -> pkg, opam_file))
+  in
+  let+ from_git =
     match from_git with
     | [] -> Fiber.return []
     | packages ->

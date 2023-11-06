@@ -143,7 +143,7 @@ module Context_for_dune = struct
               package available (technically true) and let it produce the error
               message. *)
            OpamPackage.Version.Map.values packages
-           |> List.rev_map ~f:(fun (_, with_file) -> With_file.opam_file with_file)
+           |> List.rev_map ~f:With_file.opam_file
            |> List.sort ~compare:(opam_version_compare t)
            |> List.map ~f:(fun opam_file ->
              let opam_file_result =
@@ -151,7 +151,12 @@ module Context_for_dune = struct
              in
              OpamFile.OPAM.version opam_file, opam_file_result)
          in
-         let version_to_repo = lazy (OpamPackage.Version.Map.map fst packages) in
+         let version_to_repo =
+           lazy
+             (OpamPackage.Version.Map.map
+                (fun w -> Opam_repo.With_file.repo w |> Option.value_exn)
+                packages)
+         in
          let res = { available; version_to_repo } in
          Table.set t.candidates_cache key res;
          res.available)

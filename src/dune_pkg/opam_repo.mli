@@ -29,11 +29,13 @@ val source : t -> string option
 val serializable : t -> Serializable.t option
 
 module With_file : sig
+  type repo := t
   type t
 
   val opam_file : t -> OpamFile.OPAM.t
   val file : t -> Path.t
   val local : Path.t -> OpamFile.OPAM.t -> t
+  val repo : t -> repo option
 end
 
 (** Load package metadata for a single package *)
@@ -43,7 +45,7 @@ val load_opam_package : t -> OpamPackage.t -> With_file.t option Fiber.t
 val load_all_versions
   :  t list
   -> OpamPackage.Name.t
-  -> (t * With_file.t) OpamPackage.Version.Map.t Fiber.t
+  -> With_file.t OpamPackage.Version.Map.t Fiber.t
 
 val get_opam_package_files : t -> OpamPackage.t -> File_entry.t list Fiber.t
 

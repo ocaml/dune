@@ -29,10 +29,11 @@ val source : t -> string option
 val serializable : t -> Serializable.t option
 
 module With_file : sig
-  type t =
-    { opam_file : OpamFile.OPAM.t
-    ; file : Path.t
-    }
+  type t
+
+  val opam_file : t -> OpamFile.OPAM.t
+  val file : t -> Path.t
+  val local : Path.t -> OpamFile.OPAM.t -> t
 end
 
 (** Load package metadata for a single package *)

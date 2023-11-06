@@ -1,5 +1,6 @@
 open Import
 open Fiber.O
+module With_file = Opam_repo.With_file
 
 module Monad : Opam_0install.S.Monad with type 'a t = 'a Fiber.t = struct
   type 'a t = 'a Fiber.t
@@ -142,8 +143,7 @@ module Context_for_dune = struct
               package available (technically true) and let it produce the error
               message. *)
            OpamPackage.Version.Map.values packages
-           |> List.rev_map ~f:(fun (_repo, (with_file : Opam_repo.With_file.t)) ->
-             with_file.opam_file)
+           |> List.rev_map ~f:(fun (_, with_file) -> With_file.opam_file with_file)
            |> List.sort ~compare:(opam_version_compare t)
            |> List.map ~f:(fun opam_file ->
              let opam_file_result =
@@ -437,7 +437,7 @@ let opam_package_to_lock_file_pkg
   let name = OpamPackage.name opam_package in
   let version = OpamPackage.version opam_package |> Package_version.of_opam in
   let+ opam_file, loc =
-    let+ { Opam_repo.With_file.opam_file = opam_file_with_filters; file } =
+    let+ with_file =
       let+ opam_files =
         let+ pkgs =
           Fiber.parallel_map repos ~f:(fun repo ->
@@ -450,11 +450,12 @@ let opam_package_to_lock_file_pkg
       | _ -> Code_error.raise "Couldn't map opam package to a repository" []
     in
     let opam_file =
+      let opam_file_with_filters = With_file.opam_file with_file in
       if experimental_translate_opam_filters
       then opam_file_with_filters
       else remove_filters_from_opam_file opam_file_with_filters
     in
-    let loc = Loc.in_file file in
+    let loc = Loc.in_file (With_file.file with_file) in
     opam_file, loc
   in
   let extra_sources =
@@ -618,9 +619,7 @@ let solve_lock_dir
     let local_packages = opam_file_map_of_dune_package_map local_packages in
     let context =
       let local_packages =
-        OpamPackage.Name.Map.map
-          (fun (w : Opam_repo.With_file.t) -> w.opam_file)
-          local_packages
+        OpamPackage.Name.Map.map Opam_repo.With_file.opam_file local_packages
       in
       Context_for_dune.create
         ~solver_env

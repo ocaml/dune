@@ -157,6 +157,37 @@ module File = struct
   let path t = t.path
 end
 
+module At_rev = struct
+  type nonrec t =
+    { repo : t
+    ; revision : rev
+    ; files_at_rev : File.Set.t
+    }
+
+  let content { repo; revision; files_at_rev = _ } path =
+    show repo [ `Path (revision, path) ]
+  ;;
+
+  let directory_entries { repo = _; files_at_rev; revision = _ } path =
+    (* TODO: there are much better ways of implementing this:
+       1. using libgit or ocamlgit
+       2. possibly using [$ git archive] *)
+    File.Set.filter files_at_rev ~f:(fun (file : File.t) ->
+      Path.Local.is_descendant file.path ~of_:path)
+  ;;
+
+  let equal { repo; revision = Rev revision; files_at_rev } t =
+    let (Rev revision') = t.revision in
+    equal repo t.repo
+    && String.equal revision revision'
+    && File.Set.equal files_at_rev t.files_at_rev
+  ;;
+
+  let repository_id { revision = Rev rev; repo = _; files_at_rev = _ } =
+    Repository_id.of_git_hash rev
+  ;;
+end
+
 module Remote = struct
   type nonrec t =
     { repo : t
@@ -174,51 +205,20 @@ module Remote = struct
 
   let equal { repo; handle } t = equal repo t.repo && String.equal handle t.handle
 
-  module At_rev = struct
-    type nonrec t =
-      { remote : t
-      ; revision : rev
-      ; files_at_rev : File.Set.t
-      }
-
-    let content { remote = { repo; handle = _ }; revision; files_at_rev = _ } path =
-      show repo [ `Path (revision, path) ]
-    ;;
-
-    let directory_entries { files_at_rev; remote = _; revision = _ } path =
-      (* TODO: there are much better ways of implementing this:
-         1. using libgit or ocamlgit
-         2. possibly using [$ git archive] *)
-      File.Set.filter files_at_rev ~f:(fun (file : File.t) ->
-        Path.Local.is_descendant file.path ~of_:path)
-    ;;
-
-    let equal { remote; revision = Rev revision; files_at_rev } t =
-      let (Rev revision') = t.revision in
-      equal remote t.remote
-      && String.equal revision revision'
-      && File.Set.equal files_at_rev t.files_at_rev
-    ;;
-
-    let repository_id { revision = Rev rev; remote = _; files_at_rev = _ } =
-      Repository_id.of_git_hash rev
-    ;;
-  end
-
   let files_at_rev repo (Rev rev) =
     run_capture_zero_separated_lines repo [ "ls-tree"; "-z"; "--long"; "-r"; rev ]
     >>| File.Set.of_list_map ~f:File.parse
   ;;
 
-  let rev_of_name ({ repo; handle } as remote) ~name =
+  let rev_of_name { repo; handle } ~name =
     (* TODO handle non-existing name *)
     let* rev = run_capture_line repo [ "rev-parse"; sprintf "%s/%s" handle name ] in
     let revision = Rev rev in
     let+ files_at_rev = files_at_rev repo revision in
-    Some { At_rev.remote; revision = Rev rev; files_at_rev }
+    Some { At_rev.repo; revision = Rev rev; files_at_rev }
   ;;
 
-  let rev_of_repository_id ({ repo; handle = _ } as remote) repo_id =
+  let rev_of_repository_id { repo; handle = _ } repo_id =
     match Repository_id.git_hash repo_id with
     | None -> Fiber.return None
     | Some rev ->
@@ -227,7 +227,7 @@ module Remote = struct
       | "commit" ->
         let revision = Rev rev in
         let+ files_at_rev = files_at_rev repo revision in
-        Some { At_rev.remote; revision = Rev rev; files_at_rev }
+        Some { At_rev.repo; revision = Rev rev; files_at_rev }
       | _ -> Fiber.return None)
   ;;
 end

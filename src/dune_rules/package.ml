@@ -63,6 +63,8 @@ module Id = struct
 end
 
 module Dependency = struct
+  include Dune_lang.Package_dependency
+
   let nopos pelem = { OpamParserTypes.FullPos.pelem; pos = Opam_file.nopos }
 
   module Constraint = struct
@@ -126,38 +128,6 @@ module Dependency = struct
       | Or disjunction -> OpamFormula.ors (List.map disjunction ~f:to_opam_condition)
     ;;
   end
-
-  type t =
-    { name : Name.t
-    ; constraint_ : Constraint.t option
-    }
-
-  let encode { name; constraint_ } =
-    let open Dune_sexp.Encoder in
-    match constraint_ with
-    | None -> Name.encode name
-    | Some c -> pair Name.encode Constraint.encode (name, c)
-  ;;
-
-  let decode =
-    let open Dune_sexp.Decoder in
-    let constrained =
-      let+ name = Name.decode
-      and+ expr = Constraint.decode in
-      { name; constraint_ = Some expr }
-    in
-    enter constrained
-    <|> let+ name = Name.decode in
-        { name; constraint_ = None }
-  ;;
-
-  let to_dyn { name; constraint_ } =
-    let open Dyn in
-    record
-      [ "name", Name.to_dyn name
-      ; "constr", Dyn.Option (Option.map ~f:Constraint.to_dyn constraint_)
-      ]
-  ;;
 
   type context =
     | Root

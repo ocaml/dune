@@ -115,11 +115,11 @@ module Produced = struct
      the number of internal invariants. *)
   type 'a t =
     { files : 'a Path.Build.Map.t
-    ; dirs : 'a String.Map.t Path.Build.Map.t
+    ; dirs : 'a Filename.Map.t Path.Build.Map.t
     }
 
   let of_validated =
-    let rec collect dir : (unit String.Map.t Path.Build.Map.t, _) result =
+    let rec collect dir : (unit Filename.Map.t Path.Build.Map.t, _) result =
       match Path.Untracked.readdir_unsorted_with_kinds (Path.build dir) with
       | Error e -> Error (`Directory dir, e)
       | Ok dir_contents ->
@@ -127,10 +127,10 @@ module Produced = struct
         let+ filenames, dirs =
           Result.List.fold_left
             dir_contents
-            ~init:(String.Map.empty, Path.Build.Map.empty)
+            ~init:(Filename.Map.empty, Path.Build.Map.empty)
             ~f:(fun (acc_filenames, acc_dirs) (filename, kind) ->
               match (kind : File_kind.t) with
-              | S_REG -> Ok (String.Map.add_exn acc_filenames filename (), acc_dirs)
+              | S_REG -> Ok (Filename.Map.add_exn acc_filenames filename (), acc_dirs)
               | S_DIR ->
                 let+ dir = collect (Path.Build.relative dir filename) in
                 acc_filenames, Path.Build.Map.union_exn acc_dirs dir
@@ -185,7 +185,7 @@ module Produced = struct
     let files = Path.Build.Set.to_map validated.files ~f:(fun (_ : Path.Build.t) -> ()) in
     let dirs =
       Path.Build.Map.of_list_multi dir_filename_pairs
-      |> Path.Build.Map.map ~f:(String.Map.of_list_map_exn ~f:(fun file -> file, ()))
+      |> Path.Build.Map.map ~f:(Filename.Map.of_list_map_exn ~f:(fun file -> file, ()))
     in
     let is_unexpected dir =
       not
@@ -208,14 +208,14 @@ module Produced = struct
            "Targets.Produced.all_files: duplicate file %S"
            (Path.Build.to_string file))
         [ "files", Path.Build.Map.to_dyn Dyn.opaque files
-        ; "dirs", Path.Build.Map.to_dyn (String.Map.to_dyn Dyn.opaque) dirs
+        ; "dirs", Path.Build.Map.to_dyn (Filename.Map.to_dyn Dyn.opaque) dirs
         ]
     in
     let files_in_dirs =
       Path.Build.Map.foldi dirs ~init:Path.Build.Map.empty ~f:(fun dir filenames ->
         let paths =
           Path.Build.Map.of_list_exn
-            (String.Map.to_list_map filenames ~f:(fun filename payload ->
+            (Filename.Map.to_list_map filenames ~f:(fun filename payload ->
                Path.Build.relative dir filename, payload))
         in
         Path.Build.Map.union paths ~f:disallow_duplicates)
@@ -229,7 +229,7 @@ module Produced = struct
       (Seq.concat
          (Path.Build.Map.to_seq t.dirs
           |> Seq.map ~f:(fun (dir, filenames) ->
-            String.Map.to_seq filenames
+            Filename.Map.to_seq filenames
             |> Seq.map ~f:(fun (filename, payload) ->
               Path.Build.relative dir filename, payload))))
   ;;
@@ -237,7 +237,7 @@ module Produced = struct
   let digest { files; dirs } =
     let all_digests =
       Path.Build.Map.values files
-      :: Path.Build.Map.to_list_map dirs ~f:(fun _ -> String.Map.values)
+      :: Path.Build.Map.to_list_map dirs ~f:(fun _ -> Filename.Map.values)
     in
     Digest.generic (List.concat all_digests)
   ;;
@@ -255,7 +255,7 @@ module Produced = struct
         let files = Path.Build.Map.mapi files ~f in
         let dirs =
           Path.Build.Map.mapi dirs ~f:(fun dir ->
-            String.Map.mapi ~f:(fun filename -> f (Path.Build.relative dir filename)))
+            Filename.Map.mapi ~f:(fun filename -> f (Path.Build.relative dir filename)))
         in
         Some { files; dirs }
       with
@@ -292,7 +292,7 @@ module Produced = struct
   let to_dyn { files; dirs } =
     Dyn.record
       [ "files", Path.Build.Map.to_dyn Dyn.opaque files
-      ; "dirs", Path.Build.Map.to_dyn (String.Map.to_dyn Dyn.opaque) dirs
+      ; "dirs", Path.Build.Map.to_dyn (Filename.Map.to_dyn Dyn.opaque) dirs
       ]
   ;;
 end

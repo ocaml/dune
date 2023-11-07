@@ -56,7 +56,7 @@ module Pkg_info = struct
   let variables t =
     String.Map.of_list_exn
       [ "name", Variable.S (Package.Name.to_string t.name)
-      ; "version", S t.version
+      ; "version", S (Package_version.to_string t.version)
       ; "dev", B t.dev
       ]
   ;;
@@ -80,6 +80,11 @@ module Lock_dir = struct
       let with_lexbuf_from_file path ~f =
         Fs_memo.with_lexbuf_from_file (In_source_dir path) ~f
       ;;
+
+      let stats_kind p =
+        Fs_memo.path_stat (In_source_dir p)
+        >>| Stdune.Result.map ~f:(fun { Fs_cache.Reduced_stats.st_kind; _ } -> st_kind)
+      ;;
     end)
 
   let get_path ctx =
@@ -97,7 +102,7 @@ module Lock_dir = struct
 
   let get (ctx : Context_name.t) : t Memo.t = get_path ctx >>= Load.load
 
-  let has_lock ctx =
+  let lock_dir_active ctx =
     if !Clflags.ignore_lock_directory
     then Memo.return false
     else
@@ -332,7 +337,7 @@ module Pkg = struct
         ; "CDPATH", ""
         ; "MAKELEVEL", ""
         ; "OPAM_PACKAGE_NAME", Package.Name.to_string t.info.name
-        ; "OPAM_PACKAGE_VERSION", t.info.version
+        ; "OPAM_PACKAGE_VERSION", Package_version.to_string t.info.version
         ; "OPAMCLI", "2.0"
         ]
     in
@@ -387,7 +392,7 @@ module Substitute = struct
     let name = "substitute"
     let version = 1
     let bimap (e, s, i, o) f g = e, s, f i, g o
-    let is_useful_to ~distribute:_ ~memoize = memoize
+    let is_useful_to ~memoize = memoize
 
     let encode (e, s, i, o) input output : Dune_lang.t =
       let e =
@@ -435,7 +440,7 @@ module Action_expander = struct
       ; artifacts : Path.t Filename.Map.t
       ; deps : (Variable.value String.Map.t * Paths.t) Package.Name.Map.t
       ; context : Context_name.t
-      ; version : string
+      ; version : Package_version.t
       ; env : Value.t list Env.Map.t
       }
 
@@ -973,7 +978,7 @@ module Install_action = struct
       }
     ;;
 
-    let is_useful_to ~distribute:_ ~memoize = memoize
+    let is_useful_to ~memoize = memoize
 
     let encode
       { install_file; config_file; target_dir; install_action; package }
@@ -1225,7 +1230,7 @@ module Fetch = struct
     let name = "source-fetch"
     let version = 1
     let bimap t _ g = { t with target_dir = g t.target_dir }
-    let is_useful_to ~distribute:_ ~memoize = memoize
+    let is_useful_to ~memoize = memoize
 
     let encode_loc f (loc, x) =
       Dune_lang.List
@@ -1303,7 +1308,7 @@ module Copy_tree = struct
     let name = "copy-tree"
     let version = 1
     let bimap (src, dst) f g = f src, g dst
-    let is_useful_to ~distribute:_ ~memoize = memoize
+    let is_useful_to ~memoize = memoize
 
     let encode (src, dst) dep target : Dune_lang.t =
       List [ Dune_lang.atom_or_quoted_string name; dep src; target dst ]
@@ -1561,7 +1566,7 @@ let which context =
     Filename.Map.find artifacts program)
 ;;
 
-let has_lock = Lock_dir.has_lock
+let lock_dir_active = Lock_dir.lock_dir_active
 
 let exported_env context =
   let+ all_packages = all_packages context in
@@ -1571,7 +1576,7 @@ let exported_env context =
 ;;
 
 let find_package ctx pkg =
-  has_lock ctx
+  lock_dir_active ctx
   >>= function
   | false -> Memo.return None
   | true ->

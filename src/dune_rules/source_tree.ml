@@ -218,13 +218,11 @@ end = struct
         ];
       Memo.return (Error unix_error)
     | Ok dir_contents ->
-      let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
       let+ files, dirs =
-        Memo.parallel_map dir_contents ~f:(fun (fn, kind) ->
+        Fs_cache.Dir_contents.to_list dir_contents
+        |> Memo.parallel_map ~f:(fun (fn, (kind : File_kind.t)) ->
           let path = Path.Source.relative path fn in
-          if Path.Source.is_in_build_dir path
-          then Memo.return List.Skip
-          else if is_temp_file fn
+          if Path.Source.is_in_build_dir path || is_temp_file fn
           then Memo.return List.Skip
           else
             let+ is_directory, file =

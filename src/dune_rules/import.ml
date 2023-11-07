@@ -90,6 +90,7 @@ include struct
   module Binary_kind = Binary_kind
   module Visibility = Visibility
   module Dep_conf = Dep_conf
+  module Package_version = Package_version
 end
 
 include Dune_engine.No_io

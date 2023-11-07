@@ -1,5 +1,4 @@
-open! Stdune
-open Dune_lang
+open Import
 
 module Name : sig
   type t

@@ -361,15 +361,17 @@ type path = [ `File | `Dir ] * Install.Entry.Dst.t
 
 let decode_path =
   let open Dune_lang.Decoder in
-  let* ast = peek_exn in
-  match ast with
-  | Atom _ ->
+  peek_exn
+  >>= function
+  | List _ ->
+    enter
+    @@
+    let* () = keyword "dir" in
+    let+ d = Install.Entry.Dst.decode in
+    `Dir, d
+  | _ ->
     let+ f = Install.Entry.Dst.decode in
     `File, f
-  | _ ->
-    fields
-      (let+ d = field "dir" Install.Entry.Dst.decode in
-       `Dir, d)
 ;;
 
 let encode_path = function
@@ -385,7 +387,7 @@ let path_to_dyn = function
 type t =
   { name : Package.Name.t
   ; entries : Entry.t Lib_name.Map.t
-  ; version : string option
+  ; version : Package_version.t option
   ; sections : Path.t Section.Map.t
   ; sites : Section.t Site.Map.t
   ; dir : Path.t
@@ -395,7 +397,7 @@ type t =
 let decode ~lang ~dir =
   let open Dune_lang.Decoder in
   let+ name = field "name" Package.Name.decode
-  and+ version = field_o "version" string
+  and+ version = field_o "version" Package_version.decode
   and+ sections =
     field
       ~default:[]
@@ -458,7 +460,7 @@ let encode ~dune_version { entries; name; version; dir; sections; sites; files }
   let sexp =
     record_fields
       [ field "name" Package.Name.encode name
-      ; field_o "version" string version
+      ; field_o "version" Package_version.encode version
       ; field_l
           "sections"
           (pair Section.encode (Dune_lang.Path.Local.encode ~dir))
@@ -489,7 +491,7 @@ let to_dyn { entries; name; version; dir; sections; sites; files } =
   record
     [ "entries", list Entry.to_dyn (Lib_name.Map.values entries)
     ; "name", Package.Name.to_dyn name
-    ; "version", option string version
+    ; "version", option Package_version.to_dyn version
     ; "dir", Path.to_dyn dir
     ; "sections", Section.Map.to_dyn Path.to_dyn sections
     ; "sites", Site.Map.to_dyn Section.to_dyn sites

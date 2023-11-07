@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 type t = { expanded_variables : Solver_env.Variable.Set.t }
 
@@ -20,7 +20,7 @@ module Expanded_variable_bindings : sig
   val empty : t
   val is_empty : t -> bool
   val of_variable_set : Solver_env.Variable.Set.t -> Solver_env.t -> t
-  val decode : t Dune_lang.Decoder.t
+  val decode : t Decoder.t
   val encode : t -> Dune_lang.t list
   val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t

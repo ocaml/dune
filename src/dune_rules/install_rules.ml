@@ -1078,7 +1078,7 @@ include (
       let name = "gen-install-file"
       let version = 1
       let bimap (entries, dst) _ g = entries, g dst
-      let is_useful_to ~distribute:_ ~memoize = memoize
+      let is_useful_to ~memoize = memoize
 
       let encode (_entries, dst) _path target : Dune_lang.t =
         List [ Dune_lang.atom_or_quoted_string name; target dst ]
@@ -1234,13 +1234,15 @@ let gen_package_install_file_rules sctx (package : Package.t) =
         if strict_package_deps
         then Action_builder.map packages ~f:(fun (_ : Package.Id.Set.t) -> ())
         else Action_builder.return ()
-      and+ entries = entries in
-      let entries =
+      and+ entries =
+        let+ entries = entries in
         match findlib_toolchain with
         | None -> entries
         | Some toolchain ->
-          let toolchain = Context_name.to_string toolchain in
-          let prefix = Path.of_string (toolchain ^ "-sysroot") in
+          let prefix =
+            let toolchain = Context_name.to_string toolchain in
+            Path.of_string (toolchain ^ "-sysroot")
+          in
           List.map entries ~f:(fun (e : Install.Entry.Sourced.t) ->
             { e with
               entry =
@@ -1295,14 +1297,15 @@ let memo =
     "install-rules-and-pkg-entries"
     (fun (sctx, pkg) ->
       Memo.return
-        (let ctx = Super_context.context sctx in
-         Scheme.Approximation
-           ( Dir_set.subtree (Install.Context.dir ~context:(Context.name ctx))
+        (Scheme.Approximation
+           ( (let ctx = Super_context.context sctx in
+              Dir_set.subtree (Install.Context.dir ~context:(Context.name ctx)))
            , Thunk
                (fun () ->
-                 let+ rules = symlinked_entries sctx pkg >>| snd in
-                 let rules = Rules.of_rules rules in
-                 Scheme.Finite (Rules.to_map rules)) )))
+                 let+ rules =
+                   symlinked_entries sctx pkg >>| snd >>| Rules.of_rules >>| Rules.to_map
+                 in
+                 Scheme.Finite rules) )))
 ;;
 
 let scheme sctx pkg = Memo.exec memo (sctx, pkg)
@@ -1312,16 +1315,16 @@ let scheme_per_ctx_memo =
     ~input:(module Super_context.As_memo_key)
     "install-rule-scheme"
     (fun sctx ->
-      let* packages = Only_packages.get () in
-      let packages = Package.Name.Map.values packages in
-      let* schemes = Memo.sequential_map packages ~f:(scheme sctx) in
-      Scheme.evaluate ~union:Rules.Dir_rules.union (Scheme.all schemes))
+      Only_packages.get ()
+      >>| Package.Name.Map.values
+      >>= Memo.parallel_map ~f:(scheme sctx)
+      >>| Scheme.all
+      >>= Scheme.evaluate ~union:Rules.Dir_rules.union)
 ;;
 
 let symlink_rules sctx ~dir =
   let+ rules, subdirs =
-    let* scheme = Memo.exec scheme_per_ctx_memo sctx in
-    Scheme.Evaluated.get_rules scheme ~dir
+    Memo.exec scheme_per_ctx_memo sctx >>= Scheme.Evaluated.get_rules ~dir
   in
   ( Subdir_set.of_set subdirs
   , match rules with

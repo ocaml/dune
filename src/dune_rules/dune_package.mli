@@ -41,7 +41,7 @@ module Entry : sig
             Dune itself never produces hidden libraries. *)
 
   val name : t -> Lib_name.t
-  val version : t -> string option
+  val version : t -> Package_version.t option
   val loc : t -> Loc.t
   val to_dyn : t Dyn.builder
 end
@@ -51,7 +51,7 @@ type path = [ `File | `Dir ] * Install.Entry.Dst.t
 type t =
   { name : Package.Name.t
   ; entries : Entry.t Lib_name.Map.t
-  ; version : string option
+  ; version : Package_version.t option
   ; sections : Path.t Section.Map.t
   ; sites : Section.t Site.Map.t
   ; dir : Path.t

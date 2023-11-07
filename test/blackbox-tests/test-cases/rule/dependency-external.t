@@ -226,6 +226,6 @@ rules with dependencies outside the build dir are allowed
 # Regression test for #5572
   $ dune exec --root=a/b -- ../
   Entering directory 'a/b'
-  Error: Program "../" not found!
+  Error: Program '../' not found!
   Leaving directory 'a/b'
   [1]

@@ -287,7 +287,7 @@ type is_useful =
   | Clearly_not
   | Maybe
 
-let is_useful_to distribute memoize =
+let is_useful_to memoize =
   let rec loop t =
     match t with
     | Chdir (_, t) -> loop t
@@ -301,17 +301,17 @@ let is_useful_to distribute memoize =
     | Copy _ -> memoize
     | Symlink _ -> false
     | Hardlink _ -> false
-    | Write_file _ -> distribute
+    | Write_file _ -> true
     | Rename _ -> memoize
     | Remove_tree _ -> false
-    | Diff _ -> distribute
+    | Diff _ -> true
     | Mkdir _ -> false
-    | Merge_files_into _ -> distribute
+    | Merge_files_into _ -> true
     | Run _ -> true
     | Dynamic_run _ -> true
     | System _ -> true
     | Bash _ -> true
-    | Extension (module A) -> A.Spec.is_useful_to ~distribute ~memoize
+    | Extension (module A) -> A.Spec.is_useful_to ~memoize
   in
   fun t ->
     match loop t with
@@ -319,9 +319,8 @@ let is_useful_to distribute memoize =
     | false -> Clearly_not
 ;;
 
-let is_useful_to_sandbox = is_useful_to false false
-let is_useful_to_distribute = is_useful_to true false
-let is_useful_to_memoize = is_useful_to true true
+let is_useful_to_distribute = is_useful_to false
+let is_useful_to_memoize = is_useful_to true
 
 module Full = struct
   module T = struct

@@ -452,7 +452,7 @@ module Spec = struct
   let name = "cram"
   let version = 1
   let bimap path f _ = f path
-  let is_useful_to ~distribute:_ ~memoize:_ = true
+  let is_useful_to ~memoize:_ = true
 
   let encode script path _ : Dune_lang.t =
     List [ Dune_lang.atom_or_quoted_string "cram"; path script ]

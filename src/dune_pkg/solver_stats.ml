@@ -1,5 +1,4 @@
-open! Import
-open! Stdune
+open Import
 
 type t = { expanded_variables : Solver_env.Variable.Set.t }
 
@@ -40,7 +39,7 @@ module Expanded_variable_bindings = struct
   ;;
 
   let decode =
-    let open Dune_lang.Decoder in
+    let open Decoder in
     fields
       (let+ variable_values =
          field

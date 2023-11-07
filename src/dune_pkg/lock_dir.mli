@@ -16,13 +16,13 @@ end
 module Pkg_info : sig
   type t =
     { name : Package_name.t
-    ; version : string
+    ; version : Package_version.t
     ; dev : bool
     ; source : Source.t option
     ; extra_sources : (Path.Local.t * Source.t) list
     }
 
-  val default_version : string
+  val default_version : Package_version.t
 end
 
 module Pkg : sig
@@ -35,7 +35,7 @@ module Pkg : sig
     }
 
   val equal : t -> t -> bool
-  val decode : (lock_dir:Path.Source.t -> Package_name.t -> t) Dune_sexp.Decoder.t
+  val decode : (lock_dir:Path.Source.t -> Package_name.t -> t) Decoder.t
 end
 
 module Repositories : sig
@@ -74,16 +74,9 @@ module Write_disk : sig
   type lock_dir := t
   type t
 
-  module Files_entry : sig
-    type t =
-      { original_file : Path.t
-      ; local_file : Path.Local.t
-      }
-  end
-
   val prepare
     :  lock_dir_path:Path.Source.t
-    -> files:Files_entry.t Package_name.Map.Multi.t
+    -> files:File_entry.t Package_name.Map.Multi.t
     -> lock_dir
     -> t
 
@@ -98,6 +91,7 @@ module Make_load (Io : sig
     val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
     val readdir_with_kinds : Path.Source.t -> (Filename.t * Unix.file_kind) list t
     val with_lexbuf_from_file : Path.Source.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
+    val stats_kind : Path.Source.t -> (File_kind.t, Unix_error.Detailed.t) result t
   end) : sig
   val load : Path.Source.t -> t Io.t
 end

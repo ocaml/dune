@@ -1,6 +1,5 @@
-open Stdune
-module Process = Dune_engine.Process
-module Display = Dune_engine.Display
+open Import
+open Fiber.O
 
 module Curl = struct
   let bin = lazy (Bin.which ~path:(Env_path.path Env.initial) "curl")
@@ -33,7 +32,6 @@ module Curl = struct
       ; url
       ]
     in
-    let open Fiber.O in
     let stderr = Path.relative temp_dir "curl.stderr" in
     let+ http_code, exit_code =
       let stderr_to = Process.Io.file stderr Out in
@@ -73,7 +71,6 @@ end
 
 module Fiber_job = struct
   let run (command : OpamProcess.command) =
-    let open Fiber.O in
     let prefix = "dune-source-fetch" in
     let stderr_file = Temp.create File ~prefix ~suffix:"stderr" in
     let stdout_file =
@@ -129,7 +126,6 @@ module Fiber_job = struct
   ;;
 
   let run =
-    let open Fiber.O in
     let rec run1 = function
       | OpamProcess.Job.Op.Done x -> Fiber.return x
       | Run (cmd, cont) ->
@@ -151,7 +147,6 @@ let fetch_curl ~unpack ~checksum ~target (url : OpamUrl.t) =
   let url = OpamUrl.to_string url in
   let temp_dir = Temp.create Dir ~prefix:"dune" ~suffix:(Filename.basename url) in
   let output = Path.relative temp_dir "download" in
-  let open Fiber.O in
   Fiber.finalize ~finally:(fun () ->
     Temp.destroy Dir temp_dir;
     Fiber.return ())
@@ -193,7 +188,6 @@ let fetch_curl ~unpack ~checksum ~target (url : OpamUrl.t) =
 ;;
 
 let fetch_others ~unpack ~checksum ~target (url : OpamUrl.t) =
-  let open Fiber.O in
   let path = Path.to_string target in
   let+ downloaded =
     Fiber_job.run
@@ -259,54 +253,3 @@ let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
         ~target
         url)
 ;;
-
-module Opam_repository = struct
-  type t = Workspace.Repository.t
-
-  let of_url url =
-    let name = Workspace.Repository.Name.of_string "unknown" in
-    let source = OpamUrl.to_string url in
-    Workspace.Repository.create ~name ~source
-  ;;
-
-  let of_workspace_repo v = v
-  let default = Workspace.Repository.default
-
-  let is_archive name =
-    List.exists
-      ~f:(fun suffix -> String.is_suffix ~suffix name)
-      [ ".tar.gz"; ".tgz"; ".tar.bz2"; ".tbz"; ".zip" ]
-  ;;
-
-  type success =
-    { path : Path.t
-    ; repo_id : Repository_id.t option
-    }
-
-  let path =
-    let open Fiber.O in
-    let ( / ) = Filename.concat in
-    fun repo ->
-      let url = Workspace.Repository.opam_url repo in
-      let name =
-        repo |> Workspace.Repository.name |> Workspace.Repository.Name.to_string
-      in
-      let path_digest =
-        url |> OpamUrl.to_string |> Dune_digest.string |> Dune_digest.to_string
-      in
-      let folder = sprintf "%s-%s" name path_digest in
-      Fiber.of_thunk
-      @@ fun () ->
-      let target_dir =
-        Xdg.cache_dir (Lazy.force Dune_util.xdg) / "dune/opam-repositories" / folder
-      in
-      let target = target_dir |> Path.External.of_string |> Path.external_ in
-      let unpack = url |> OpamUrl.to_string |> is_archive in
-      let+ res = fetch ~unpack ~checksum:None ~target url in
-      match res with
-      | Ok () ->
-        let repo_id = Repository_id.of_path target in
-        Ok { path = target; repo_id }
-      | Error _ as failure -> failure
-  ;;
-end

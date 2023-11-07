@@ -44,16 +44,22 @@ let empty kind ~dir =
   }
 ;;
 
-type standalone_or_root =
-  { root : t
-  ; subdirs : t list
-  ; rules : Rules.t
-  }
+module Standalone_or_root = struct
+  type nonrec t =
+    { root : t
+    ; subdirs : t Path.Build.Map.t
+    ; rules : Rules.t
+    }
+
+  let root t = t.root
+  let subdirs t = Path.Build.Map.values t.subdirs
+  let rules t = t.rules
+end
 
 type triage =
   | Standalone_or_root of
       { directory_targets : Loc.t Path.Build.Map.t
-      ; contents : standalone_or_root Memo.Lazy.t
+      ; contents : Standalone_or_root.t Memo.Lazy.t
       }
   | Group_part of Path.Build.t
 
@@ -192,21 +198,6 @@ end = struct
     Filename.Set.union generated_files (Source_tree.Dir.files st_dir)
   ;;
 
-  type result0_here =
-    { t : t
-    ; (* [rules] includes rules for subdirectories too *)
-      rules : Rules.t
-    ; (* The [kind] of the nodes must be Group_part *)
-      subdirs : t Path.Build.Map.t
-    }
-
-  type result0 =
-    | See_above of Path.Build.t
-    | Here of
-        { directory_targets : Loc.t Path.Build.Map.t
-        ; contents : result0_here Memo.Lazy.t
-        }
-
   module Key = struct
     module Super_context = Super_context.As_memo_key
 
@@ -288,7 +279,7 @@ end = struct
       | _ -> acc)
   ;;
 
-  let get0_impl (sctx, dir) : result0 Memo.t =
+  let get0_impl (sctx, dir) : triage Memo.t =
     let ctx = Super_context.context sctx in
     let* lib_config =
       let+ ocaml = Context.ocaml ctx in
@@ -302,15 +293,15 @@ end = struct
     in
     match status with
     | Is_component_of_a_group_but_not_the_root { group_root; stanzas = _ } ->
-      Memo.return (See_above group_root)
+      Memo.return (Group_part group_root)
     | Generated | Source_only _ ->
       Memo.return
-      @@ Here
+      @@ Standalone_or_root
            { directory_targets = Path.Build.Map.empty
            ; contents =
                Memo.lazy_ (fun () ->
                  Memo.return
-                   { t = empty Standalone ~dir
+                   { Standalone_or_root.root = empty Standalone ~dir
                    ; rules = Rules.empty
                    ; subdirs = Path.Build.Map.empty
                    })
@@ -319,7 +310,7 @@ end = struct
       let src_dir = d.dir in
       let dune_version = Dune_project.dune_version d.project in
       Memo.return
-      @@ Here
+      @@ Standalone_or_root
            { directory_targets = extract_directory_targets ~dir d.stanzas
            ; contents =
                Memo.lazy_ ~human_readable_description (fun () ->
@@ -344,7 +335,7 @@ end = struct
                        ~lookup_vlib
                        ~dirs)
                  in
-                 { t =
+                 { Standalone_or_root.root =
                      { kind = Standalone
                      ; dir
                      ; text_files = files
@@ -442,7 +433,7 @@ end = struct
               ; coq
               })
           in
-          let t =
+          let root =
             { kind = Group_root subdirs
             ; dir
             ; text_files = files
@@ -452,12 +443,12 @@ end = struct
             ; coq
             }
           in
-          { t
+          { Standalone_or_root.root
           ; rules
           ; subdirs = Path.Build.Map.of_list_map_exn subdirs ~f:(fun x -> x.dir, x)
           })
       in
-      Memo.return (Here { directory_targets; contents })
+      Memo.return (Standalone_or_root { directory_targets; contents })
   ;;
 
   let memo0 =
@@ -474,30 +465,19 @@ end = struct
   let get sctx ~dir =
     Memo.exec memo0 (sctx, dir)
     >>= function
-    | Here { directory_targets = _; contents } ->
-      let+ { t; rules = _; subdirs = _ } = Memo.Lazy.force contents in
-      t
-    | See_above group_root ->
+    | Standalone_or_root { directory_targets = _; contents } ->
+      let+ { root; rules = _; subdirs = _ } = Memo.Lazy.force contents in
+      root
+    | Group_part group_root ->
       Memo.exec memo0 (sctx, group_root)
       >>= (function
-      | See_above _ -> assert false
-      | Here { directory_targets = _; contents } ->
-        let+ { t; rules = _; subdirs = _ } = Memo.Lazy.force contents in
-        t)
+      | Group_part _ -> assert false
+      | Standalone_or_root { directory_targets = _; contents } ->
+        let+ { root; rules = _; subdirs = _ } = Memo.Lazy.force contents in
+        root)
   ;;
 
-  let triage sctx ~dir =
-    Memo.exec memo0 (sctx, dir)
-    >>| function
-    | See_above group_root -> Group_part group_root
-    | Here { directory_targets; contents } ->
-      Standalone_or_root
-        { directory_targets
-        ; contents =
-            Memo.Lazy.map contents ~f:(fun { t; rules; subdirs } ->
-              { root = t; subdirs = Path.Build.Map.values subdirs; rules })
-        }
-  ;;
+  let triage sctx ~dir = Memo.exec memo0 (sctx, dir)
 end
 
 include Load

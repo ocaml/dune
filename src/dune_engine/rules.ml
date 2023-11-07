@@ -10,7 +10,6 @@ module Dir_rules = struct
 
     type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
 
-    let empty = { expansions = Appendable_list.empty }
     let union x y = { expansions = Appendable_list.( @ ) x.expansions y.expansions }
   end
 
@@ -40,19 +39,23 @@ module Dir_rules = struct
     }
 
   let consume t =
-    let data = Id.Map.values t in
-    let rules =
-      List.filter_map data ~f:(function
-        | Rule rule -> Some rule
-        | Alias _ -> None)
+    let rules, aliases =
+      Id.Map.values t
+      |> List.partition_map ~f:(function
+        | Rule rule -> Left rule
+        | Alias { name; spec } -> Right (name, spec))
     in
     let aliases =
-      Alias.Name.Map.of_list_multi
-        (List.filter_map data ~f:(function
-          | Rule _ -> None
-          | Alias { name; spec } -> Some (name, spec)))
-      |> Alias.Name.Map.map ~f:(fun specs ->
-        List.fold_left specs ~init:Alias_spec.empty ~f:Alias_spec.union)
+      let add_item what = function
+        | None -> Some what
+        | Some base -> Some (Alias_spec.union what base)
+      in
+      (* This accumulates the aliases in reverse order, but there's another
+         reversal whenever the expansion is inspected. The order doesn't really
+         matter, but it does change the tests. So it's nice to maintain it if
+         possible *)
+      List.fold_left aliases ~init:Alias.Name.Map.empty ~f:(fun acc (name, item) ->
+        Alias.Name.Map.update acc name ~f:(add_item item))
     in
     { rules; aliases }
   ;;

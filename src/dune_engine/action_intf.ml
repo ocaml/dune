@@ -112,7 +112,7 @@ module Ext = struct
 
     val name : string
     val version : int
-    val is_useful_to : distribute:bool -> memoize:bool -> bool
+    val is_useful_to : memoize:bool -> bool
     val encode : ('p, 't) t -> ('p -> Dune_sexp.t) -> ('t -> Dune_sexp.t) -> Dune_sexp.t
     val bimap : ('a, 'b) t -> ('a -> 'x) -> ('b -> 'y) -> ('x, 'y) t
 

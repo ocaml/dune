@@ -356,7 +356,7 @@ type 'path t =
   ; src_dir : 'path
   ; orig_src_dir : 'path option
   ; obj_dir : 'path Obj_dir.t
-  ; version : string option
+  ; version : Package_version.t option
   ; synopsis : string option
   ; archives : 'path list Mode.Dict.t
   ; plugins : 'path list Mode.Dict.t
@@ -442,7 +442,7 @@ let equal
   && path_equal src_dir t.src_dir
   && Option.equal path_equal orig_src_dir t.orig_src_dir
   && Obj_dir.equal obj_dir t.obj_dir
-  && Option.equal String.equal version t.version
+  && Option.equal Package_version.equal version t.version
   && Option.equal String.equal synopsis t.synopsis
   && Mode.Dict.equal (List.equal path_equal) archives t.archives
   && Mode.Dict.equal (List.equal path_equal) plugins t.plugins
@@ -769,7 +769,7 @@ let to_dyn
     ; "src_dir", path src_dir
     ; "orig_src_dir", option path orig_src_dir
     ; "obj_dir", Obj_dir.to_dyn obj_dir
-    ; "version", option string version
+    ; "version", option Package_version.to_dyn version
     ; "synopsis", option string synopsis
     ; "archives", Mode.Dict.to_dyn (list path) archives
     ; "plugins", Mode.Dict.to_dyn (list path) plugins

@@ -9,25 +9,6 @@ module Debug = struct
   let verbose_diagnostics = ref false
 end
 
-module Counters = struct
-  let enabled = ref false
-  let nodes_restored = ref 0
-  let nodes_computed = ref 0
-  let edges_traversed = ref 0
-  let nodes_in_cycle_detection_graph = ref 0
-  let edges_in_cycle_detection_graph = ref 0
-  let paths_in_cycle_detection_graph = ref 0
-
-  let reset () =
-    nodes_restored := 0;
-    nodes_computed := 0;
-    edges_traversed := 0;
-    nodes_in_cycle_detection_graph := 0;
-    edges_in_cycle_detection_graph := 0;
-    paths_in_cycle_detection_graph := 0
-  ;;
-end
-
 include Fiber
 
 let when_ x y =
@@ -154,55 +135,10 @@ module M = struct
            Another important reason to list [deps] according to a linearisation
            of the dependency order is to eliminate spurious dependency
            cycles. *)
-        mutable deps : Deps.t
+        mutable deps : Dep_node.packed Deps.t
       }
   end =
     Cached_value
-
-  and Deps : sig
-    type t
-
-    val create : deps_rev:Dep_node.packed list -> t
-    val empty : t
-    val length : t -> int
-    val to_list : t -> Dep_node.packed list
-
-    val changed_or_not
-      :  t
-      -> f:(Dep_node.packed -> Changed_or_not.t Fiber.t)
-      -> Changed_or_not.t Fiber.t
-  end = struct
-    (* The array is stored reversed to avoid reversing the list in [create]. We
-       need to be careful about traversing the array in the right order in the
-       functions [to_list] and [changed_or_not]. *)
-    type t = Dep_node.packed array
-
-    let create ~deps_rev = Array.of_list deps_rev
-    let empty = Array.init 0 ~f:(fun _ -> assert false)
-    let length = Array.length
-    let to_list = Array.fold_left ~init:[] ~f:(fun acc x -> x :: acc)
-
-    let changed_or_not t ~f =
-      let rec go index =
-        if index < 0
-        then (
-          if !Counters.enabled
-          then Counters.edges_traversed := !Counters.edges_traversed + Array.length t;
-          Fiber.return Changed_or_not.Unchanged)
-        else
-          f t.(index)
-          >>= function
-          | Changed_or_not.Unchanged -> go (index - 1)
-          | (Changed | Cancelled _) as res ->
-            if !Counters.enabled
-            then
-              Counters.edges_traversed
-                := !Counters.edges_traversed + (Array.length t - index);
-            Fiber.return res
-      in
-      go (Array.length t - 1)
-    ;;
-  end
 
   (** The following state transition diagram shows how a node's state changes
       during a build run. After a run completes, every node is guaranteed to end
@@ -370,26 +306,6 @@ module M = struct
       }
   end =
     Computation0
-
-  (* Checking dependencies of a node can lead to one of these outcomes:
-
-     - [Unchanged]: all the dependencies of the current node are up to date and we
-       can therefore skip recomputing the node and can reuse the value computed in
-       the previous run.
-
-     - [Changed]: one of the dependencies has changed since the previous run and
-       the current node should therefore be recomputed.
-
-     - [Cancelled _]: one of the dependencies leads to a dependency cycle. In this
-       case, there is no point in recomputing the current node: it's impossible to
-       bring its dependencies up to date! *)
-  and Changed_or_not : sig
-    type t =
-      | Unchanged
-      | Changed
-      | Cancelled of { dependency_cycle : Cycle_error.t }
-  end =
-    Changed_or_not
 end
 
 module Dep_node = struct
@@ -428,8 +344,6 @@ module Dep_node = struct
     ;;
   end
 end
-
-module Deps = M.Deps
 
 module Cycle_error = struct
   include M.Cycle_error
@@ -578,7 +492,7 @@ module Computation0 = struct
   let create () = { ivar = Fiber.Ivar.create (); dag_node = Lazy_dag_node.create () }
 end
 
-module Changed_or_not = M.Changed_or_not
+module Changed_or_not = Deps.Changed_or_not
 
 (* For debugging *)
 let _print_dep_node ?prefix (dep_node : _ Dep_node.t) =
@@ -954,14 +868,15 @@ module Cached_value = struct
     }
   ;;
 
-  (* Dependencies of cancelled computations are not accurate, so we store the
-     empty list of [deps] in this case. In future, it would be better to
-     refactor the code to avoid storing the list altogether in this case. *)
   let create_cancelled ~dependency_cycle =
     { value = Cancelled { dependency_cycle }
     ; last_changed_at = Run.current ()
     ; last_validated_at = Run.current ()
-    ; deps = Deps.empty
+    ; deps =
+        (* CR-someday amokhov: Dependencies of cancelled computations are not accurate,
+           so we store [Deps.empty] in this case. In future, it may be better to refactor
+           the code to avoid storing the list altogether in this case. *)
+        Deps.empty
     }
   ;;
 

@@ -1815,7 +1815,12 @@ module DB = struct
           | Error e ->
             (match e with
              | Invalid_dune_package why -> Invalid why
-             | Not_found when has_bigarray_library && Lib_name.equal name bigarray ->
+             | Not_found when (not has_bigarray_library) && Lib_name.equal name bigarray
+               ->
+               (* Recent versions of OCaml already include a [bigrray] library,
+                  so we just silently ignore dependencies on it. The more
+                  correct thing to do would be to redirect it to the stdlib,
+                  but the stdlib isn't first class. *)
                Ignore
              | Not_found -> Not_found))
         ~all:(fun () ->

@@ -112,9 +112,7 @@ let formula_to_package_names version_by_package_name opam_formula =
       (* check if each conjunction can be satisfied and if they can't, produce a hint indicating why it wasn't satisfied *)
       List.map dnf ~f:(fun conjunction ->
         List.map conjunction ~f:(fun (opam_package_name, version_constraint_opt) ->
-          let package_name =
-            Package_name.of_string (OpamPackage.Name.to_string opam_package_name)
-          in
+          let package_name = Package_name.of_opam_package_name opam_package_name in
           match Package_name.Map.find version_by_package_name package_name with
           | None ->
             (* this package wasn't part of the solution so the current
@@ -151,7 +149,7 @@ let formula_to_package_names version_by_package_name opam_formula =
     | Some satisfied_conjunction ->
       Ok
         (List.map satisfied_conjunction ~f:(fun (opam_package_name, _) ->
-           Package_name.of_string (OpamPackage.Name.to_string opam_package_name))))
+           Package_name.of_opam_package_name opam_package_name)))
 ;;
 
 let filtered_formula_to_package_names

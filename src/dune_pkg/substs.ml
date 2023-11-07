@@ -39,8 +39,7 @@ let subst env self ~src ~dst =
     let variable = OpamVariable.Full.variable full_variable in
     let package =
       OpamVariable.Full.package ~self:self' full_variable
-      |> Option.map ~f:(fun package ->
-        package |> OpamPackage.Name.to_string |> Package_name.of_string)
+      |> Option.map ~f:Package_name.of_opam_package_name
     in
     let key = { Var.T.package; variable } in
     match Map.find env key with

@@ -584,9 +584,8 @@ let gen_rules_standalone_or_root
   =
   let rules =
     let* () = Memo.Lazy.force Configurator_rules.force_files in
-    let* { Dir_contents.root = dir_contents; subdirs; rules } =
-      Memo.Lazy.force contents
-    in
+    (* let* { Dir_contents.root = dir_contents; subdirs; rules } = *)
+    let* standalone_or_root = Memo.Lazy.force contents in
     let+ rules' =
       Rules.collect_unit (fun () ->
         let* () =
@@ -608,14 +607,16 @@ let gen_rules_standalone_or_root
           then gen_project_rules sctx project
           else Memo.return ()
         in
+        let dir_contents = Dir_contents.Standalone_or_root.root standalone_or_root in
         let* cctxs = gen_rules sctx dir_contents [] ~source_dir ~dir in
-        Memo.parallel_iter subdirs ~f:(fun dc ->
+        Dir_contents.Standalone_or_root.subdirs standalone_or_root
+        |> Memo.parallel_iter ~f:(fun dc ->
           let+ (_ : (Loc.t * Compilation_context.t) list) =
             gen_rules sctx dir_contents cctxs ~source_dir ~dir:(Dir_contents.dir dc)
           in
           ()))
     in
-    Rules.union rules rules'
+    Rules.union (Dir_contents.Standalone_or_root.rules standalone_or_root) rules'
   in
   let* build_config =
     let+ directory_targets = collect_directory_targets ~dir ~init:directory_targets in

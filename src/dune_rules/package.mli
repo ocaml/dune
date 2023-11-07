@@ -45,7 +45,7 @@ module Dependency : sig
     val to_dyn : t -> Dyn.t
   end
 
-  type t =
+  type t = Dune_lang.Package_dependency.t =
     { name : Name.t
     ; constraint_ : Constraint.t option
     }

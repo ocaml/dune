@@ -83,14 +83,14 @@ let explain_results_to_user results ~transitive ~lock_dir_path =
 
 let better_candidate
   ~repos
-  ~(local_packages : Dune_pkg.Opam_solver.local_package Package_name.Map.t)
+  ~(local_packages : Dune_pkg.Local_package.t Package_name.Map.t)
   (pkg : Lock_dir.Pkg.t)
   =
   let open Fiber.O in
   let pkg_name = pkg.info.name |> Package_name.to_string |> OpamPackage.Name.of_string in
   let is_immediate_dep_of_local_package =
     Package_name.Map.exists local_packages ~f:(fun local_package ->
-      OpamFile.OPAM.depends local_package.opam_file
+      OpamFile.OPAM.depends (Dune_pkg.Local_package.to_opam_file local_package)
       |> OpamFilter.filter_deps
            ~build:true
            ~post:false
@@ -115,7 +115,7 @@ let better_candidate
   | Some newest_opam_file ->
     let version = OpamFile.OPAM.version newest_opam_file in
     (match
-       Package_version.to_opam pkg.info.version
+       Package_version.to_opam_package_version pkg.info.version
        |> OpamPackage.Version.compare version
        |> Ordering.of_int
      with
@@ -124,7 +124,7 @@ let better_candidate
        Better_candidate
          { is_immediate_dep_of_local_package
          ; name = pkg.info.name
-         ; newer_version = version |> Package_version.of_opam
+         ; newer_version = version |> Package_version.of_opam_package_version
          ; outdated_version = pkg.info.version
          })
 ;;

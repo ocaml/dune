@@ -2,11 +2,6 @@ open Import
 open Fiber.O
 module With_file = Opam_repo.With_file
 
-type local_package =
-  { opam_file : OpamFile.OPAM.t
-  ; file : Path.t
-  }
-
 module Monad : Opam_0install.S.Monad with type 'a t = 'a Fiber.t = struct
   type 'a t = 'a Fiber.t
 
@@ -32,7 +27,7 @@ module Context_for_dune = struct
   type rejection = Unavailable
 
   let local_package_default_version =
-    Package_version.to_opam Lock_dir.Pkg_info.default_version
+    Package_version.to_opam_package_version Lock_dir.Pkg_info.default_version
   ;;
 
   type candidates =
@@ -43,7 +38,7 @@ module Context_for_dune = struct
   type t =
     { repos : Opam_repo.t list
     ; version_preference : Version_preference.t
-    ; local_packages : local_package Package_name.Map.t
+    ; local_packages : OpamFile.OPAM.t Package_name.Map.t
     ; solver_env : Solver_env.t
     ; dune_version : OpamPackage.Version.t
     ; stats_updater : Solver_stats.Updater.t
@@ -133,11 +128,9 @@ module Context_for_dune = struct
     match Package_name.Map.find t.local_packages key with
     | Some local_package ->
       let version =
-        Option.value
-          local_package.opam_file.version
-          ~default:local_package_default_version
+        Option.value local_package.version ~default:local_package_default_version
       in
-      Fiber.return [ version, Ok local_package.opam_file ]
+      Fiber.return [ version, Ok local_package ]
     | None ->
       let+ res =
         match Table.find t.candidates_cache key with
@@ -437,13 +430,15 @@ let opam_package_to_lock_file_pkg
   ~(candidates_cache : (Package_name.t, Context_for_dune.candidates) Table.t)
   =
   let name = OpamPackage.name opam_package in
-  let version = OpamPackage.version opam_package |> Package_version.of_opam in
+  let version =
+    OpamPackage.version opam_package |> Package_version.of_opam_package_version
+  in
   let opam_file, loc =
     let with_file =
       (let key = Package_name.of_opam_package_name name in
        Table.find_exn candidates_cache key)
         .resolved
-      |> OpamPackage.Version.Map.find (Package_version.to_opam version)
+      |> OpamPackage.Version.Map.find (Package_version.to_opam_package_version version)
     in
     let opam_file =
       let opam_file_with_filters = With_file.opam_file with_file in
@@ -617,14 +612,15 @@ let solve_lock_dir
         ~solver_env
         ~repos
         ~version_preference
-        ~local_packages
+        ~local_packages:
+          (Package_name.Map.map local_packages ~f:Local_package.to_opam_file)
         ~stats_updater
     in
     solve_package_list
       context
       ~local_package_names:
         (Package_name.Map.to_list_map local_packages ~f:(fun name _ ->
-           Package_name.to_string name |> OpamPackage.Name.of_string))
+           Package_name.to_opam_package_name name))
     >>| Result.map ~f:(fun solution ->
       let version_by_package_name =
         List.map solution ~f:(fun (package : OpamPackage.t) ->

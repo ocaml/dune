@@ -60,7 +60,7 @@ module Version_constraint = struct
       | `Leq -> Lte
       | `Lt -> Lt
     in
-    let package_version = Package_version.of_opam version in
+    let package_version = Package_version.of_opam_package_version version in
     op, package_version
   ;;
 
@@ -124,7 +124,7 @@ let formula_to_package_names version_by_package_name opam_formula =
                (* no constraint so any version will satisfy *)
                Ok ()
              | Some (constraint_ : OpamFormula.version_constraint) ->
-               let opam_version = Package_version.to_opam version in
+               let opam_version = Package_version.to_opam_package_version version in
                let version_formula = OpamFormula.Atom constraint_ in
                if OpamFormula.check_version_formula version_formula opam_version
                then Ok ()

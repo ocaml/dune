@@ -645,13 +645,6 @@ let missing_deps (t : t) ~effective_deps =
   Name.Set.diff effective_deps specified_deps
 ;;
 
-let to_opam_file t =
-  let opam_package_name = name t |> Name.to_opam_package_name in
-  let depends = Dependency.list_to_opam_filtered_formula t.depends in
-  (* Currently this just creates an opam file with fields needed for dependency
-     solving with opam_0install but could easily be extended with more fields.
-  *)
-  OpamFile.OPAM.empty
-  |> OpamFile.OPAM.with_name opam_package_name
-  |> OpamFile.OPAM.with_depends depends
+let to_local_package t =
+  { Dune_pkg.Local_package.name = name t; version = t.version; dependencies = t.depends }
 ;;

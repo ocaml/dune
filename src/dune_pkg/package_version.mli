@@ -1,6 +1,6 @@
 open! Stdune
 
-type t
+type t = Dune_lang.Package_version.t
 
 val of_string : string -> t
 val to_string : t -> string

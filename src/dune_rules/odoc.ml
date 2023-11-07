@@ -923,6 +923,7 @@ let setup_private_library_doc_alias sctx ~scope ~dir (l : Dune_file.Library.t) =
 
 let has_rules ?(directory_targets = Path.Build.Map.empty) m =
   let rules = Rules.collect_unit (fun () -> m) in
+  let directory_targets = Gen_rules.Directory_targets.of_map directory_targets in
   Memo.return (Gen_rules.make ~directory_targets rules)
 ;;
 

@@ -618,7 +618,10 @@ let gen_rules_standalone_or_root
     Rules.union rules rules'
   in
   let* build_config =
-    let+ directory_targets = collect_directory_targets ~dir ~init:directory_targets in
+    let+ directory_targets =
+      let+ directory_targets = collect_directory_targets ~dir ~init:directory_targets in
+      Gen_rules.Directory_targets.of_map directory_targets
+    in
     fun allowed_subdirs -> rules_for ~dir ~allowed_subdirs rules ~directory_targets
   in
   match under_melange_emit_target with
@@ -861,7 +864,9 @@ let gen_rules ctx ~dir components =
       let ctx = Context_name.of_string ctx in
       with_context ctx ~f:(fun sctx ->
         let+ subdirs, rules = Install_rules.symlink_rules sctx ~dir in
-        let directory_targets = Rules.directory_targets rules in
+        let directory_targets =
+          Gen_rules.Directory_targets.of_map @@ Rules.directory_targets rules
+        in
         Gen_rules.make
           ~build_dir_only_sub_dirs:(Gen_rules.Build_only_sub_dirs.singleton ~dir subdirs)
           ~directory_targets

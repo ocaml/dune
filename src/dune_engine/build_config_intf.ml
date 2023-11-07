@@ -13,13 +13,20 @@ end
 
 type rules = Rules.t
 
+module Directory_targets = struct
+  type t =
+    { all : Loc.t Path.Build.Map.t Memo.t
+    ; mem : Path.Build.t -> bool Memo.t
+    }
+end
+
 module Rules = struct
   type t =
     { build_dir_only_sub_dirs : Build_only_sub_dirs.t
         (** Sub-directories that don't exist in the source tree but exists in
             the build directory. This is for internal directories such as
             [.dune] or [.ppx]. *)
-    ; directory_targets : Loc.t Path.Build.Map.t
+    ; directory_targets : Directory_targets.t
         (** Directories that are target of a rule. For each directory target,
             give the location of the rule that generates it. The keys in this
             map must correspond exactly to the set of directory targets that
@@ -92,12 +99,19 @@ module type Build_config = sig
       val union : t -> t -> t
     end
 
+    module Directory_targets : sig
+      type t = Directory_targets.t
+
+      val of_map : Loc.t Path.Build.Map.t -> t
+      val union_exn : t -> t -> t
+    end
+
     module Rules : sig
       include module type of Rules with type t = Rules.t
 
       val create
         :  ?build_dir_only_sub_dirs:Build_only_sub_dirs.t
-        -> ?directory_targets:Loc.t Path.Build.Map.t
+        -> ?directory_targets:Directory_targets.t
         -> rules Memo.t
         -> t
 

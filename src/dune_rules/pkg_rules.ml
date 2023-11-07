@@ -1510,6 +1510,7 @@ let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
     Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty
   in
   let rules = Rules.collect_unit (fun () -> gen_rules context pkg) in
+  let directory_targets = Gen_rules.Directory_targets.of_map directory_targets in
   Gen_rules.make ~directory_targets ~build_dir_only_sub_dirs rules
 ;;
 

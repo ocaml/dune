@@ -506,14 +506,15 @@ end = struct
   module Normal = struct
     type t =
       { build_dir_only_sub_dirs : Build_only_sub_dirs.t
-      ; directory_targets : Loc.t Path.Build.Map.t
+      ; directory_targets : Gen_rules.Directory_targets.t
       ; rules : Rules.t Memo.Lazy.t
       }
 
     let combine_exn r { build_dir_only_sub_dirs; directory_targets; rules } =
       { build_dir_only_sub_dirs =
           Build_only_sub_dirs.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
-      ; directory_targets = Path.Build.Map.union_exn r.directory_targets directory_targets
+      ; directory_targets =
+          Gen_rules.Directory_targets.union_exn r.directory_targets directory_targets
       ; rules =
           Memo.lazy_ (fun () ->
             let open Memo.O in
@@ -579,7 +580,8 @@ end = struct
       ~of_
       { Gen_rules.Rules.build_dir_only_sub_dirs; directory_targets; rules }
       =
-      check_all_directory_targets_are_descendant ~of_ directory_targets;
+      let+ all = directory_targets.all in
+      check_all_directory_targets_are_descendant ~of_ all;
       check_all_sub_dirs_rule_dirs_are_descendant ~of_ build_dir_only_sub_dirs;
       let rules =
         Memo.lazy_ (fun () ->
@@ -614,7 +616,9 @@ end = struct
       let sub_dir_components = Path.Source.explode sub_dir in
       RG.gen_rules context_name ~dir sub_dir_components
       >>= function
-      | Rules rules -> Memo.return @@ Normal (Normal.make_rules_gen_result ~of_:dir rules)
+      | Rules rules ->
+        let+ result = Normal.make_rules_gen_result ~of_:dir rules in
+        Normal result
       | Unknown_context ->
         Code_error.raise
           "[gen_rules] did not specify rules for the context"
@@ -626,7 +630,7 @@ end = struct
              "[gen_rules] returned Redirect_to_parent on a root directory"
              [ "context_name", Context_name.to_dyn context_name ]
          | Some parent ->
-           let child = Normal.make_rules_gen_result ~of_:dir child in
+           let* child = Normal.make_rules_gen_result ~of_:dir child in
            let+ parent = Gen_rules.gen_rules parent in
            combine_gen_rules_result ~parent ~child)
     ;;
@@ -639,9 +643,11 @@ end = struct
         >>= (function
         | Under_directory_target _ as res -> Memo.return res
         | Normal rules ->
-          if Path.Build.Map.mem rules.directory_targets d.dir
-          then Memo.return (Under_directory_target { directory_target_ancestor = d.dir })
-          else call_rules_generator d)
+          rules.directory_targets.mem d.dir
+          >>= (function
+          | true ->
+            Memo.return (Under_directory_target { directory_target_ancestor = d.dir })
+          | false -> call_rules_generator d))
     ;;
 
     let gen_rules =
@@ -851,6 +857,7 @@ end = struct
       let build_dir_only_sub_dirs =
         Build_only_sub_dirs.find build_dir_only_sub_dirs dir
       in
+      let* directory_targets = directory_targets.all in
       Path.Build.Map.iteri directory_targets ~f:(fun dir_target loc ->
         let name = Path.Build.basename dir_target in
         if Path.Build.equal (Path.Build.parent_exn dir_target) dir
@@ -947,10 +954,10 @@ end = struct
       | Known _ -> Memo.return false
       | Build_directory d ->
         Gen_rules.gen_rules d
-        >>| (function
-        | Under_directory_target _ -> true
+        >>= (function
+        | Under_directory_target _ -> Memo.return true
         | Normal { directory_targets; _ } ->
-          Path.Build.Map.mem directory_targets (Path.as_in_build_dir_exn p)))
+          directory_targets.mem (Path.as_in_build_dir_exn p)))
   ;;
 end
 

@@ -17,12 +17,41 @@ module Gen_rules = struct
     let union a b = Path.Build.Map.union a b ~f:(fun _ a b -> Some (Subdir_set.union a b))
   end
 
+  module Directory_targets = struct
+    include Build_config_intf.Directory_targets
+
+    let empty =
+      { all = Memo.return Path.Build.Map.empty; mem = (fun _ -> Memo.return false) }
+    ;;
+
+    let of_map all =
+      { all = Memo.return all; mem = (fun p -> Memo.return (Path.Build.Map.mem all p)) }
+    ;;
+
+    let union_exn t { all; mem } =
+      let open Memo.O in
+      let all =
+        Memo.Lazy.create (fun () ->
+          let+ left = t.all
+          and+ right = all in
+          Path.Build.Map.union_exn left right)
+      in
+      let mem p =
+        t.mem p
+        >>= function
+        | true -> Memo.return true
+        | false -> mem p
+      in
+      { all = Memo.Lazy.force all; mem }
+    ;;
+  end
+
   module Rules = struct
     include Build_config_intf.Rules
 
     let empty =
       { build_dir_only_sub_dirs = Path.Build.Map.empty
-      ; directory_targets = Path.Build.Map.empty
+      ; directory_targets = Directory_targets.empty
       ; rules = Memo.return Rules.empty
       }
     ;;
@@ -38,7 +67,8 @@ module Gen_rules = struct
     let combine_exn r { build_dir_only_sub_dirs; directory_targets; rules } =
       { build_dir_only_sub_dirs =
           Build_only_sub_dirs.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
-      ; directory_targets = Path.Build.Map.union_exn r.directory_targets directory_targets
+      ; directory_targets =
+          Directory_targets.union_exn r.directory_targets directory_targets
       ; rules =
           (let open Memo.O in
            let+ r = r.rules

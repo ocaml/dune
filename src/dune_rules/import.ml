@@ -99,6 +99,7 @@ module Build_config = struct
     open Build_config.Gen_rules
     module Build_only_sub_dirs = Build_only_sub_dirs
     module Rules = Rules
+    module Directory_targets = Directory_targets
 
     let make
       ?(build_dir_only_sub_dirs = Rules.empty.build_dir_only_sub_dirs)

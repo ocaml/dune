@@ -45,22 +45,37 @@ let empty kind ~dir =
 ;;
 
 module Standalone_or_root = struct
-  type nonrec t =
+  type nonrec standalone_or_root =
     { root : t
     ; subdirs : t Path.Build.Map.t
     ; rules : Rules.t
     }
 
-  let root t = t.root
-  let subdirs t = Path.Build.Map.values t.subdirs
-  let rules t = t.rules
+  type nonrec t =
+    { directory_targets : Loc.t Path.Build.Map.t
+    ; contents : standalone_or_root Memo.Lazy.t
+    }
+
+  let directory_targets t = t.directory_targets
+
+  let root t =
+    let+ contents = Memo.Lazy.force t.contents in
+    contents.root
+  ;;
+
+  let subdirs t =
+    let+ contents = Memo.Lazy.force t.contents in
+    Path.Build.Map.values contents.subdirs
+  ;;
+
+  let rules t =
+    let+ contents = Memo.Lazy.force t.contents in
+    contents.rules
+  ;;
 end
 
 type triage =
-  | Standalone_or_root of
-      { directory_targets : Loc.t Path.Build.Map.t
-      ; contents : Standalone_or_root.t Memo.Lazy.t
-      }
+  | Standalone_or_root of Standalone_or_root.t
   | Group_part of Path.Build.t
 
 let dir t = t.dir
@@ -297,7 +312,7 @@ end = struct
     | Generated | Source_only _ ->
       Memo.return
       @@ Standalone_or_root
-           { directory_targets = Path.Build.Map.empty
+           { Standalone_or_root.directory_targets = Path.Build.Map.empty
            ; contents =
                Memo.lazy_ (fun () ->
                  Memo.return

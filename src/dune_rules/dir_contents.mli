@@ -44,17 +44,14 @@ module Standalone_or_root : sig
   type dir_contents := t
   type t
 
-  val rules : t -> Rules.t
-  val root : t -> dir_contents
-  val subdirs : t -> dir_contents list
+  val directory_targets : t -> Loc.t Path.Build.Map.t
+  val rules : t -> Rules.t Memo.t
+  val root : t -> dir_contents Memo.t
+  val subdirs : t -> dir_contents list Memo.t
 end
 
 type triage =
-  | Standalone_or_root of
-      { directory_targets : Loc.t Path.Build.Map.t
-          (** ALl directory targets that are part of the group. *)
-      ; contents : Standalone_or_root.t Memo.Lazy.t
-      }
+  | Standalone_or_root of Standalone_or_root.t
   | Group_part of Path.Build.t
 
 (** In order to compute the directory contents, we need to interpret stanzas

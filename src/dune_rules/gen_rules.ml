@@ -574,19 +574,16 @@ let gen_melange_emit_rules_or_empty_redirect
 
 let gen_rules_standalone_or_root
   sctx
+  standalone_or_root
   ~dir
   ~source_dir
   ~components
   ~allowed_subdirs
-  ~directory_targets
-  ~contents
   ~under_melange_emit_target
   =
   let rules =
     let* () = Memo.Lazy.force Configurator_rules.force_files in
-    (* let* { Dir_contents.root = dir_contents; subdirs; rules } = *)
-    let* standalone_or_root = Memo.Lazy.force contents in
-    let+ rules' =
+    let* rules' =
       Rules.collect_unit (fun () ->
         let* () =
           match
@@ -607,19 +604,25 @@ let gen_rules_standalone_or_root
           then gen_project_rules sctx project
           else Memo.return ()
         in
-        let dir_contents = Dir_contents.Standalone_or_root.root standalone_or_root in
+        let* dir_contents = Dir_contents.Standalone_or_root.root standalone_or_root in
         let* cctxs = gen_rules sctx dir_contents [] ~source_dir ~dir in
         Dir_contents.Standalone_or_root.subdirs standalone_or_root
-        |> Memo.parallel_iter ~f:(fun dc ->
+        >>= Memo.parallel_iter ~f:(fun dc ->
           let+ (_ : (Loc.t * Compilation_context.t) list) =
             gen_rules sctx dir_contents cctxs ~source_dir ~dir:(Dir_contents.dir dc)
           in
           ()))
     in
-    Rules.union (Dir_contents.Standalone_or_root.rules standalone_or_root) rules'
+    let+ rules = Dir_contents.Standalone_or_root.rules standalone_or_root in
+    Rules.union rules rules'
   in
   let* build_config =
-    let+ directory_targets = collect_directory_targets ~dir ~init:directory_targets in
+    let+ directory_targets =
+      let directory_targets =
+        Dir_contents.Standalone_or_root.directory_targets standalone_or_root
+      in
+      collect_directory_targets ~dir ~init:directory_targets
+    in
     fun allowed_subdirs -> rules_for ~dir ~allowed_subdirs rules ~directory_targets
   in
   match under_melange_emit_target with
@@ -740,15 +743,14 @@ let gen_rules_regular_directory sctx ~components ~dir =
            ~dir
            ~allowed_subdirs
            under_melange_emit_target
-    | Standalone_or_root { directory_targets; contents } ->
+    | Standalone_or_root standalone_or_root ->
       gen_rules_standalone_or_root
         sctx
+        standalone_or_root
         ~dir
         ~source_dir
         ~components
         ~allowed_subdirs
-        ~directory_targets
-        ~contents
         ~under_melange_emit_target)
 ;;
 

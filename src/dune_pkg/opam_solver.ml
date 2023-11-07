@@ -129,7 +129,7 @@ module Context_for_dune = struct
 
   let candidates t name =
     let* () = Fiber.return () in
-    let key = Package_name.of_string (OpamPackage.Name.to_string name) in
+    let key = Package_name.of_opam_package_name name in
     match Package_name.Map.find t.local_packages key with
     | Some local_package ->
       let version =
@@ -177,8 +177,7 @@ module Context_for_dune = struct
   let filter_deps t package filtered_formula =
     let package_is_local =
       OpamPackage.name package
-      |> OpamPackage.Name.to_string
-      |> Package_name.of_string
+      |> Package_name.of_opam_package_name
       |> Package_name.Map.mem t.local_packages
     in
     Resolve_opam_formula.apply_filter
@@ -223,8 +222,7 @@ let opam_variable_to_slang ~loc packages variable =
         Package_variable.(
           to_pform
             { name = Package_variable.Name.of_string variable_string
-            ; scope =
-                Package (Package_name.of_string (OpamPackage.Name.to_string package_name))
+            ; scope = Package (Package_name.of_opam_package_name package_name)
             })
     in
     Slang.pform pform
@@ -442,7 +440,7 @@ let opam_package_to_lock_file_pkg
   let version = OpamPackage.version opam_package |> Package_version.of_opam in
   let opam_file, loc =
     let with_file =
-      (let key = Package_name.of_string (OpamPackage.Name.to_string name) in
+      (let key = Package_name.of_opam_package_name name in
        Table.find_exn candidates_cache key)
         .resolved
       |> OpamPackage.Version.Map.find (Package_version.to_opam version)
@@ -484,7 +482,7 @@ let opam_package_to_lock_file_pkg
         in
         Lock_dir.Source.Fetch { url; checksum })
     in
-    { Lock_dir.Pkg_info.name = Package_name.of_string (OpamPackage.Name.to_string name)
+    { Lock_dir.Pkg_info.name = Package_name.of_opam_package_name name
     ; version
     ; dev = false
     ; source
@@ -630,7 +628,7 @@ let solve_lock_dir
     >>| Result.map ~f:(fun solution ->
       let version_by_package_name =
         List.map solution ~f:(fun (package : OpamPackage.t) ->
-          ( Package_name.of_string (OpamPackage.name_to_string package)
+          ( Package_name.of_opam_package_name (OpamPackage.name package)
           , Package_version.of_string (OpamPackage.version_to_string package) ))
         |> Package_name.Map.of_list_exn
       in
@@ -638,8 +636,7 @@ let solve_lock_dir
       let opam_packages_to_lock =
         let is_local_package package =
           OpamPackage.name package
-          |> OpamPackage.Name.to_string
-          |> Package_name.of_string
+          |> Package_name.of_opam_package_name
           |> Package_name.Map.mem local_packages
         in
         List.filter solution ~f:(Fun.negate is_local_package)
@@ -697,9 +694,7 @@ let solve_lock_dir
       let+ files =
         Fiber.parallel_map opam_packages_to_lock ~f:(fun opam_package ->
           let package_name =
-            OpamPackage.name opam_package
-            |> OpamPackage.Name.to_string
-            |> Package_name.of_string
+            OpamPackage.name opam_package |> Package_name.of_opam_package_name
           in
           let repo =
             let candidates = Table.find_exn context.candidates_cache package_name in

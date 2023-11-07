@@ -484,7 +484,7 @@ type t =
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
   ; info : Info.t
-  ; version : Dune_pkg.Package_version.t option
+  ; version : Package_version.t option
   ; has_opam_file : opam_file
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
@@ -532,7 +532,7 @@ let encode
         ; field_l "depends" Dependency.encode depends
         ; field_l "conflicts" Dependency.encode conflicts
         ; field_l "depopts" Dependency.encode depopts
-        ; field_o "version" Dune_pkg.Package_version.encode version
+        ; field_o "version" Package_version.encode version
         ; field "tags" (list string) ~default:[] tags
         ; field_l
             "deprecated_package_names"
@@ -572,8 +572,7 @@ let decode =
        and+ version =
          field_o
            "version"
-           (Dune_lang.Syntax.since Stanza.syntax (2, 5)
-            >>> Dune_pkg.Package_version.decode)
+           (Dune_lang.Syntax.since Stanza.syntax (2, 5) >>> Package_version.decode)
        and+ depends = field ~default:[] "depends" (repeat Dependency.decode)
        and+ conflicts = field ~default:[] "conflicts" (repeat Dependency.decode)
        and+ depopts = field ~default:[] "depopts" (repeat Dependency.decode)
@@ -657,7 +656,7 @@ let to_dyn
     ; "info", Info.to_dyn info
     ; "has_opam_file", dyn_of_opam_file has_opam_file
     ; "tags", list string tags
-    ; "version", option Dune_pkg.Package_version.to_dyn version
+    ; "version", option Package_version.to_dyn version
     ; "deprecated_package_names", Name.Map.to_dyn Loc.to_dyn_hum deprecated_package_names
     ; "sites", Site.Map.to_dyn Section.to_dyn sites
     ; "allow_empty", Bool allow_empty
@@ -745,7 +744,7 @@ let load_opam_file file name =
   let id = { Id.name; dir = Path.Source.parent_exn file } in
   { id
   ; loc
-  ; version = get_one "version" |> Option.map ~f:Dune_pkg.Package_version.of_string
+  ; version = get_one "version" |> Option.map ~f:Package_version.of_string
   ; conflicts = []
   ; depends = []
   ; depopts = []

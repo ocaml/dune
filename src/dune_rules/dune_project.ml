@@ -129,7 +129,7 @@ end
 type t =
   { name : Name.t
   ; root : Path.Source.t
-  ; version : Dune_pkg.Package_version.t option
+  ; version : Package_version.t option
   ; dune_version : Dune_lang.Syntax.Version.t
   ; info : Package.Info.t
   ; packages : Package.t Package.Name.Map.t
@@ -209,7 +209,7 @@ let to_dyn
   record
     [ "name", Name.to_dyn name
     ; "root", Path.Source.to_dyn root
-    ; "version", (option Dune_pkg.Package_version.to_dyn) version
+    ; "version", (option Package_version.to_dyn) version
     ; "dune_version", Dune_lang.Syntax.Version.to_dyn dune_version
     ; "info", Package.Info.to_dyn info
     ; "project_file", Path.Source.to_dyn project_file
@@ -709,8 +709,7 @@ let encode : t -> Dune_lang.t list =
   in
   let name = constr "name" Name.encode name in
   let version =
-    Option.map ~f:(constr "version" Dune_pkg.Package_version.encode) version
-    |> Option.to_list
+    Option.map ~f:(constr "version" Package_version.encode) version |> Option.to_list
   in
   [ lang_stanza; name ]
   @ flags
@@ -856,7 +855,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
   String_with_vars.set_decoding_env (Pform.Env.initial lang.version)
   @@ fields
   @@ let+ name = field_o "name" Name.decode
-     and+ version = field_o "version" Dune_pkg.Package_version.decode
+     and+ version = field_o "version" Package_version.decode
      and+ info = Package.Info.decode ()
      and+ packages = multi_field "package" (Package.decode ~dir)
      and+ explicit_extensions =

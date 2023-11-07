@@ -60,7 +60,7 @@ let term =
          List.iter pkgs ~f:(fun e ->
            let ver_string =
              match Dune_package.Entry.version e with
-             | Some v -> Dune_pkg.Package_version.to_string v
+             | Some v -> Package_version.to_string v
              | _ -> "n/a"
            in
            Printf.printf

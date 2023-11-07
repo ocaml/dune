@@ -121,7 +121,7 @@ type t =
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
   ; info : Info.t
-  ; version : Dune_pkg.Package_version.t option
+  ; version : Package_version.t option
   ; has_opam_file : opam_file
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t

@@ -191,7 +191,7 @@ let promote
   in
   (* Here we know that the promotion directory exists but we may need to create
      additional subdirectories for [targets.dirs]. *)
-  Path.Build.Map.iteri targets.dirs ~f:(fun dir (_filenames : _ String.Map.t) ->
+  Path.Build.Map.iteri targets.dirs ~f:(fun dir (_filenames : _ Path.Local.Map.t) ->
     create_directory_if_needed ~dir);
   let promote_until_clean =
     match promote.lifetime with
@@ -228,7 +228,7 @@ let promote
     | Ok dir_contents ->
       Fs_cache.Dir_contents.iter dir_contents ~f:(function
         | filename, S_REG ->
-          if not (String.Map.mem expected_filenames filename)
+          if not (Path.Local.Map.mem expected_filenames (Path.Local.of_string filename))
           then Path.unlink_no_err (Path.relative dst_dir filename)
         | dirname, S_DIR ->
           let src_dir = Path.Build.relative dir dirname in

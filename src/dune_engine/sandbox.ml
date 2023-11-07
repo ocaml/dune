@@ -249,7 +249,7 @@ let collect_dir_recursively ~loc ~src_dir ~dst_dir =
         | S_LNK
           (* TODO symlinks outside of the sandbox are going to be broken,
              but users shouldn't be doing this anyway. *)
-        | S_REG -> Appendable_list.singleton (dst_dir, file)
+        | S_REG -> Appendable_list.singleton (dst_dir, Path.Local.of_string file)
         | S_DIR ->
           loop
             ~src_dir:(Path.Build.relative src_dir file)

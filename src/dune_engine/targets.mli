@@ -73,7 +73,7 @@ val pp : t -> _ Pp.t
 module Produced : sig
   type 'a t = private
     { files : 'a Path.Build.Map.t
-    ; dirs : 'a Filename.Map.t Path.Build.Map.t
+    ; dirs : 'a Path.Local.Map.t Path.Build.Map.t
     }
 
   (** Expand [targets : Validated.t] by recursively traversing directory targets
@@ -92,7 +92,7 @@ module Produced : sig
 
   (** Add a list of discovered directory-filename pairs to [Validated.t]. Raises
       a code error on an unexpected directory. *)
-  val expand_validated_exn : Validated.t -> (Path.Build.t * Filename.t) list -> unit t
+  val expand_validated_exn : Validated.t -> (Path.Build.t * Path.Local.t) list -> unit t
 
   (** Union of [t.files] and all files in [t.dirs]. *)
   val all_files : 'a t -> 'a Path.Build.Map.t

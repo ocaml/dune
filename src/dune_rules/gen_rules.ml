@@ -618,10 +618,8 @@ let gen_rules_standalone_or_root
   in
   let* build_config =
     let+ directory_targets =
-      let directory_targets =
-        Dir_contents.Standalone_or_root.directory_targets standalone_or_root
-      in
-      collect_directory_targets ~dir ~init:directory_targets
+      let init = Dir_contents.Standalone_or_root.directory_targets standalone_or_root in
+      collect_directory_targets ~dir ~init
     in
     fun allowed_subdirs -> rules_for ~dir ~allowed_subdirs rules ~directory_targets
   in

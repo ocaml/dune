@@ -55,8 +55,9 @@ val include_subdirs : t -> Dune_file.Include_subdirs.t
 val make
   :  Stanza.t list
   -> dir:Path.Build.t
-  -> scope:Scope.t
-  -> lib_config:Lib_config.t
+  -> libs:Lib.DB.t Memo.t
+  -> project:Dune_project.t
+  -> lib_config:Lib_config.t Memo.t
   -> loc:Loc.t
   -> lookup_vlib:(loc:Loc.t -> dir:Path.Build.t -> t Memo.t)
   -> include_subdirs:Loc.t * Dune_file.Include_subdirs.t

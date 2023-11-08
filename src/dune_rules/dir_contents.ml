@@ -331,7 +331,7 @@ end = struct
         Memo.lazy_ ~human_readable_description (fun () ->
           let include_subdirs = Loc.none, Include_subdirs.No in
           let ctx = Super_context.context sctx in
-          let* lib_config =
+          let lib_config =
             let+ ocaml = Context.ocaml ctx in
             ocaml.lib_config
           in
@@ -344,11 +344,12 @@ end = struct
             Memo.lazy_ (fun () ->
               let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
               let loc = loc_of_dune_file st_dir in
-              let* scope = Scope.DB.find_by_dir dir in
+              let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
               Ml_sources.make
                 d.stanzas
                 ~dir
-                ~scope
+                ~libs
+                ~project:d.project
                 ~lib_config
                 ~loc
                 ~include_subdirs
@@ -363,9 +364,9 @@ end = struct
               ; mlds = Memo.lazy_ (fun () -> build_mlds_map d.stanzas ~dir ~files)
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
+                    let+ lib_config = lib_config in
                     let dune_version = Dune_project.dune_version d.project in
-                    Foreign_sources.make d.stanzas ~dune_version ~lib_config ~dirs
-                    |> Memo.return)
+                    Foreign_sources.make d.stanzas ~dune_version ~lib_config ~dirs)
               ; coq =
                   Memo.lazy_ (fun () ->
                     Coq_sources.of_dir d.stanzas ~dir ~include_subdirs ~dirs
@@ -432,18 +433,20 @@ end = struct
                       { Source_file_dir.dir; path_to_root = path_to_group_root; files })))
           in
           let dirs = { Source_file_dir.dir; path_to_root = []; files } :: subdirs in
+          let lib_config =
+            let+ ocaml = Context.ocaml ctx in
+            ocaml.lib_config
+          in
           let ml =
             Memo.lazy_ (fun () ->
               let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
-              let* scope = Scope.DB.find_by_dir dir
-              and* lib_config =
-                let+ ocaml = Context.ocaml ctx in
-                ocaml.lib_config
-              in
+              let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
+              let project = d.project in
               Ml_sources.make
                 d.stanzas
                 ~dir
-                ~scope
+                ~project
+                ~libs
                 ~lib_config
                 ~loc
                 ~lookup_vlib
@@ -452,13 +455,9 @@ end = struct
           in
           let foreign_sources =
             Memo.lazy_ (fun () ->
-              let+ ocaml = Context.ocaml ctx in
               let dune_version = Dune_project.dune_version d.project in
-              Foreign_sources.make
-                d.stanzas
-                ~dune_version
-                ~lib_config:ocaml.lib_config
-                ~dirs)
+              let+ lib_config = lib_config in
+              Foreign_sources.make d.stanzas ~dune_version ~lib_config ~dirs)
           in
           let coq =
             Memo.lazy_ (fun () ->

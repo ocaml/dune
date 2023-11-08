@@ -82,10 +82,10 @@ let term =
 
 let info =
   let doc =
-    "Print an s-expression describing the environment that would be used to solve \
-     dependencies and then exit without attempting to solve the dependencies or generate \
-     the lockfile. Intended to be used to debug situations where no solution can be \
-     found to a project's dependencies."
+    "Print a description of the environment that would be used to solve dependencies and \
+     then exit without attempting to solve the dependencies or generate the lockfile. \
+     Intended to be used to debug situations where no solution can be found to a \
+     project's dependencies."
   in
   Cmd.info "print-solver-env" ~doc
 ;;

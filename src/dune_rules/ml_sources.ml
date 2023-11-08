@@ -506,9 +506,9 @@ let make
         List.fold_left
           dirs
           ~init:Module_trie.empty
-          ~f:(fun acc ((dir : Path.Build.t), local, files) ->
+          ~f:(fun acc { Source_file_dir.dir; path_to_root; files } ->
             let path =
-              List.map local ~f:(fun m ->
+              List.map path_to_root ~f:(fun m ->
                 Module_name.parse_string_exn
                   (Loc.in_dir (Path.drop_optional_build_context (Path.build dir)), m))
             in
@@ -548,7 +548,7 @@ let make
         List.fold_left
           dirs
           ~init:Module_name.Map.empty
-          ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
+          ~f:(fun acc { Source_file_dir.dir; files; path_to_root = _ } ->
             let modules = modules_of_files ~dialects ~dir ~files ~path:[] in
             Module_name.Map.union acc modules ~f:(fun name x y ->
               User_error.raise

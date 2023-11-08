@@ -53,7 +53,7 @@ val empty : t
 val include_subdirs : t -> Dune_file.Include_subdirs.t
 
 val make
-  :  Dune_file.t
+  :  Stanza.t list
   -> dir:Path.Build.t
   -> scope:Scope.t
   -> lib_config:Lib_config.t

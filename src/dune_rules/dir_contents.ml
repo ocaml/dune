@@ -329,7 +329,7 @@ end = struct
               let loc = loc_of_dune_file st_dir in
               let* scope = Scope.DB.find_by_dir dir in
               Ml_sources.make
-                d
+                d.stanzas
                 ~dir
                 ~scope
                 ~lib_config
@@ -407,7 +407,7 @@ end = struct
                 ocaml.lib_config
               in
               Ml_sources.make
-                d
+                d.stanzas
                 ~dir
                 ~scope
                 ~lib_config

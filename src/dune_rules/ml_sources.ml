@@ -423,8 +423,8 @@ let modules_of_stanzas =
       ; melange_emits = List.rev melange_emits
       }
   in
-  fun dune_file ~dir ~scope ~lookup_vlib ~modules ~include_subdirs ->
-    Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
+  fun stanzas ~dir ~scope ~lookup_vlib ~modules ~include_subdirs ->
+    Memo.parallel_map stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
         (* jeremiedimino: this [Resolve.get] means that if the user writes an

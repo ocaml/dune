@@ -183,8 +183,8 @@ end = struct
   let load_text_files sctx st_dir stanzas ~dir ~src_dir =
     (* Interpret a few stanzas in order to determine the list of files generated
        by the user. *)
-    let* expander = Super_context.expander sctx ~dir >>| add_sources_to_expander sctx in
     let+ generated_files =
+      let* expander = Super_context.expander sctx ~dir >>| add_sources_to_expander sctx in
       Memo.parallel_map stanzas ~f:(fun stanza ->
         match (stanza : Stanza.t) with
         | Coq_stanza.Coqpp.T { modules; _ } ->
@@ -250,32 +250,28 @@ end = struct
     | false -> Load.get sctx ~dir >>= ocaml
   ;;
 
-  let collect_group ~st_dir ~dir =
+  let collect_group =
     let rec walk st_dir ~dir ~local =
-      let* status = Dir_status.DB.get ~dir in
-      match status with
-      | Is_component_of_a_group_but_not_the_root { stanzas; group_root = _ } ->
-        let+ l = walk_children st_dir ~dir ~local in
-        Appendable_list.( @ )
-          (Appendable_list.singleton (dir, List.rev local, st_dir, stanzas))
-          l
+      Dir_status.DB.get ~dir
+      >>= function
       | Generated | Source_only _ | Standalone _ | Group_root _ ->
         Memo.return Appendable_list.empty
+      | Is_component_of_a_group_but_not_the_root { stanzas; group_root = _ } ->
+        walk_children st_dir ~dir ~local
+        >>| Appendable_list.( @ )
+              (Appendable_list.singleton (dir, List.rev local, st_dir, stanzas))
     and walk_children st_dir ~dir ~local =
-      let+ l =
-        (* TODO take account of directory targets *)
-        Source_tree.Dir.sub_dirs st_dir
-        |> Filename.Map.to_list
-        |> Memo.parallel_map ~f:(fun (basename, st_dir) ->
-          let* st_dir = Source_tree.Dir.sub_dir_as_t st_dir in
-          let dir = Path.Build.relative dir basename in
-          let local = basename :: local in
-          walk st_dir ~dir ~local)
-      in
-      Appendable_list.concat l
+      (* TODO take account of directory targets *)
+      Source_tree.Dir.sub_dirs st_dir
+      |> Filename.Map.to_list
+      |> Memo.parallel_map ~f:(fun (basename, st_dir) ->
+        let* st_dir = Source_tree.Dir.sub_dir_as_t st_dir in
+        let dir = Path.Build.relative dir basename in
+        let local = basename :: local in
+        walk st_dir ~dir ~local)
+      >>| Appendable_list.concat
     in
-    let+ l = walk_children st_dir ~dir ~local:[] in
-    Appendable_list.to_list l
+    fun ~st_dir ~dir -> walk_children st_dir ~dir ~local:[] >>| Appendable_list.to_list
   ;;
 
   let extract_directory_targets ~dir stanzas =

@@ -68,3 +68,12 @@ module Stanza : sig
 end
 
 type stanza += T of Stanza.t
+
+module Source : sig
+  type t =
+    | Workspace_file
+    | Dune_file
+
+  val to_dyn : t -> Dyn.t
+  val key : t Univ_map.Key.t
+end

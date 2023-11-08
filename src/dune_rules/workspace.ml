@@ -14,6 +14,7 @@ let env_field, env_field_lazy =
   let make f g =
     field "env" ~default:(f None)
     @@ g
+    @@ set Dune_env.Source.key Workspace_file
     @@ let+ () = Dune_lang.Syntax.since syntax (1, 1)
        and+ version = Dune_lang.Syntax.get_exn syntax
        and+ loc = loc

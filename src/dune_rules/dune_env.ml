@@ -2,6 +2,19 @@ open Import
 
 type stanza = Stanza.t = ..
 
+module Source = struct
+  type t =
+    | Workspace_file
+    | Dune_file
+
+  let to_dyn = function
+    | Workspace_file -> Dyn.variant "Workspace_file" []
+    | Dune_file -> Dyn.variant "Dune_file" []
+  ;;
+
+  let key = Univ_map.Key.create ~name:"Dune_env.Source.key" to_dyn
+end
+
 module Stanza = struct
   open Dune_lang.Decoder
 
@@ -15,13 +28,26 @@ module Stanza = struct
   ;;
 
   let menhir_flags ~since =
-    let decode =
-      let decode = Ordered_set_lang.Unexpanded.decode in
-      match since with
-      | None -> decode
-      | Some since -> Dune_lang.Syntax.since Menhir_stanza.syntax since >>> decode
+    let* source_opt = get Source.key in
+    let source =
+      match source_opt with
+      | None -> Code_error.raise "Dune_env.Source.key has not been set" []
+      | Some x -> x
     in
-    field_o "menhir_flags" decode
+    let version_check =
+      match since, source with
+      | _, Workspace_file -> return ()
+      | None, _ -> return ()
+      | Some since, _ -> Dune_lang.Syntax.since Menhir_stanza.syntax since
+    in
+    field_o "menhir_flags" (version_check >>> Ordered_set_lang.Unexpanded.decode)
+    |> map_validate ~f:(fun r ->
+      match r, source with
+      | Some _, Workspace_file ->
+        Error
+          (User_error.make
+             [ Pp.text "(menhir_flags ...) is not supported in workspace files." ])
+      | _ -> Ok r)
   ;;
 
   module Inline_tests = struct

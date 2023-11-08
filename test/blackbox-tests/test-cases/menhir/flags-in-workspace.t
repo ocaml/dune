@@ -12,9 +12,9 @@ See #9024.
   >  (test (menhir_flags --table)))
   > EOF
 
-  $ dune build 2>&1 | head -n 5
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("Syntax identifier is unset",
-    { name = "menhir"
-    ; supported_versions =
+  $ dune build
+  File "dune-workspace", line 3, characters 7-29:
+  3 |  (test (menhir_flags --table)))
+             ^^^^^^^^^^^^^^^^^^^^^^
+  Error: (menhir_flags ...) is not supported in workspace files.
+  [1]

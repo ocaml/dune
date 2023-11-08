@@ -163,6 +163,7 @@ module Artifacts = struct
   let make ~dir ~lib_config ~libs ~exes =
     let+ libraries =
       Memo.List.map libs ~f:(fun (lib, _, _, _) ->
+        let* lib_config = lib_config in
         let name = Lib_name.of_local lib.Library.name in
         let+ info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
         name, info)
@@ -338,6 +339,7 @@ let make_lib_modules
       assert (Option.is_none lib.virtual_modules);
       let open Memo.O in
       let* resolved =
+        let* libs = libs in
         Library.best_name lib
         |> Lib.DB.find_even_when_hidden libs
         (* can't happen because this library is defined using the current
@@ -423,7 +425,7 @@ let modules_of_stanzas =
       ; melange_emits = List.rev melange_emits
       }
   in
-  fun stanzas ~dir ~scope ~lookup_vlib ~modules ~include_subdirs ->
+  fun stanzas ~project ~dir ~libs ~lookup_vlib ~modules ~include_subdirs ->
     Memo.parallel_map stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
@@ -435,7 +437,7 @@ let modules_of_stanzas =
           let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
           make_lib_modules
             ~dir
-            ~libs:(Scope.libs scope)
+            ~libs
             ~lookup_vlib
             ~modules
             ~lib
@@ -461,7 +463,6 @@ let modules_of_stanzas =
             modules_settings
         in
         let modules =
-          let project = Scope.project scope in
           let obj_dir = Obj_dir.obj_dir obj_dir in
           if Dune_project.wrapped_executables project
           then Modules_group.make_wrapped ~obj_dir ~modules `Exe
@@ -491,7 +492,8 @@ let modules_of_stanzas =
 let make
   dune_file
   ~dir
-  ~scope
+  ~libs
+  ~project
   ~lib_config
   ~loc
   ~lookup_vlib
@@ -500,7 +502,7 @@ let make
   =
   let+ modules_of_stanzas =
     let modules =
-      let dialects = Dune_project.dialects (Scope.project scope) in
+      let dialects = Dune_project.dialects project in
       match include_subdirs with
       | Include Qualified ->
         List.fold_left
@@ -564,8 +566,9 @@ let make
     in
     modules_of_stanzas
       dune_file
+      ~project
       ~dir
-      ~scope
+      ~libs
       ~lookup_vlib
       ~modules
       ~include_subdirs:(loc_include_subdirs, include_subdirs)

@@ -148,26 +148,26 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system)
   | In_source_dir src ->
     matching_targets src
     >>= (function
-    | [] ->
-      as_source_dir src
-      >>= (function
-      | Some res -> Memo.return (Ok res)
-      | None -> can't_build path)
-    | l -> Memo.return (Ok l))
+     | [] ->
+       as_source_dir src
+       >>= (function
+        | Some res -> Memo.return (Ok res)
+        | None -> can't_build path)
+     | l -> Memo.return (Ok l))
   | In_build_dir (_ctx, src) ->
     matching_target ()
     >>= (function
-    | Some res -> Memo.return (Ok res)
-    | None ->
-      as_source_dir src
-      >>= (function
-      | Some res -> Memo.return (Ok res)
-      | None -> can't_build path))
+     | Some res -> Memo.return (Ok res)
+     | None ->
+       as_source_dir src
+       >>= (function
+        | Some res -> Memo.return (Ok res)
+        | None -> can't_build path))
   | In_private_context _ | In_install_dir _ ->
     matching_target ()
     >>= (function
-    | Some res -> Memo.return (Ok res)
-    | None -> can't_build path)
+     | Some res -> Memo.return (Ok res)
+     | None -> can't_build path)
 ;;
 
 let expand_path_from_root (root : Workspace_root.t) sctx sv =

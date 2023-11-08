@@ -144,14 +144,14 @@ let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
     let open Memo.O in
     Lib.DB.find (Scope.libs scope) libname
     >>| (function
-    | Some lib -> value_from_version (Lib_info.version (Lib.info lib))
-    | None ->
-      User_error.raise
-        ~loc:source.loc
-        [ Pp.textf
-            "Package %S doesn't exist in the current project and isn't installed either."
-            s
-        ])
+     | Some lib -> value_from_version (Lib_info.version (Lib.info lib))
+     | None ->
+       User_error.raise
+         ~loc:source.loc
+         [ Pp.textf
+             "Package %S doesn't exist in the current project and isn't installed either."
+             s
+         ])
 ;;
 
 let expand_artifact ~source t a s =

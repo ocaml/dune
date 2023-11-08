@@ -60,42 +60,42 @@ let test_rule
   | Ok test ->
     Expander.eval_blang expander (Blang.And enabled_if)
     >>= (function
-    | false ->
-      Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add_empty sctx ~alias ~loc)
-    | true ->
-      let cram =
-        let open Action_builder.O in
-        let+ action =
-          let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
-          let script = Path.Build.append_source prefix_with (Cram_test.script test) in
-          let+ () = Action_builder.path (Path.build script)
-          and+ () = Action_builder.all_unit deps
-          and+ () =
-            match test with
-            | File _ -> Action_builder.return ()
-            | Dir { dir; file = _ } ->
-              let deps =
-                Path.Build.append_source prefix_with dir
-                |> Path.build
-                |> Source_deps.files
-              in
-              let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
-              ()
-          in
-          Action.progn
-            [ Cram_exec.action (Path.build script)
-            ; Diff
-                { Diff.optional = true
-                ; mode = Text
-                ; file1 = Path.build script
-                ; file2 = Path.Build.extend_basename script ~suffix:".corrected"
-                }
-            ]
-        in
-        let locks = Path.Set.to_list locks in
-        Action.Full.make action ~locks ~sandbox
-      in
-      Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add sctx ~alias ~loc cram))
+     | false ->
+       Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add_empty sctx ~alias ~loc)
+     | true ->
+       let cram =
+         let open Action_builder.O in
+         let+ action =
+           let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
+           let script = Path.Build.append_source prefix_with (Cram_test.script test) in
+           let+ () = Action_builder.path (Path.build script)
+           and+ () = Action_builder.all_unit deps
+           and+ () =
+             match test with
+             | File _ -> Action_builder.return ()
+             | Dir { dir; file = _ } ->
+               let deps =
+                 Path.Build.append_source prefix_with dir
+                 |> Path.build
+                 |> Source_deps.files
+               in
+               let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
+               ()
+           in
+           Action.progn
+             [ Cram_exec.action (Path.build script)
+             ; Diff
+                 { Diff.optional = true
+                 ; mode = Text
+                 ; file1 = Path.build script
+                 ; file2 = Path.Build.extend_basename script ~suffix:".corrected"
+                 }
+             ]
+         in
+         let locks = Path.Set.to_list locks in
+         Action.Full.make action ~locks ~sandbox
+       in
+       Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add sctx ~alias ~loc cram))
 ;;
 
 let collect_stanzas =

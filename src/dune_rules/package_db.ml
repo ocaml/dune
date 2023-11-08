@@ -17,14 +17,14 @@ let find_package ctx pkg =
     let* findlib = Findlib.create ctx in
     Findlib.find_root_package findlib pkg
     >>= (function
-    | Ok p -> Memo.return @@ Some (Installed p)
-    | Error (Invalid_dune_package user_message) ->
-      User_error.raise [ User_message.pp user_message ]
-    | Error Not_found ->
-      Pkg_rules.find_package ctx pkg
-      >>| (function
-      | None -> None
-      | Some b -> Some (Build b)))
+     | Ok p -> Memo.return @@ Some (Installed p)
+     | Error (Invalid_dune_package user_message) ->
+       User_error.raise [ User_message.pp user_message ]
+     | Error Not_found ->
+       Pkg_rules.find_package ctx pkg
+       >>| (function
+        | None -> None
+        | Some b -> Some (Build b)))
 ;;
 
 let create ctx = Memo.return ctx

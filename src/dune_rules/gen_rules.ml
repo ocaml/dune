@@ -47,11 +47,11 @@ module For_stanza : sig
     -> dir_contents:Dir_contents.t
     -> expander:Expander.t
     -> ( Merlin.t list
-       , (Loc.t * Compilation_context.t) list
-       , Path.Build.t list
-       , Path.Source.t list )
-       t
-       Memo.t
+         , (Loc.t * Compilation_context.t) list
+         , Path.Build.t list
+         , Path.Source.t list )
+         t
+         Memo.t
 end = struct
   type ('merlin, 'cctx, 'js, 'source_dirs) t =
     { merlin : 'merlin
@@ -244,55 +244,55 @@ let gen_rules_for_stanzas
       | Menhir_stanza.T m ->
         Expander.eval_blang expander m.enabled_if
         >>= (function
-        | false -> Memo.return ()
-        | true ->
-          let* ml_sources = Dir_contents.ocaml dir_contents in
-          (match
-             let base_path =
-               match Ml_sources.include_subdirs ml_sources with
-               | Include Unqualified | No -> []
-               | Include Qualified ->
-                 Path.Local.descendant
-                   (Path.Build.local ctx_dir)
-                   ~of_:(Path.Build.local (Dir_contents.dir dir_contents))
-                 |> Option.value_exn
-                 |> Path.Local.explode
-                 |> List.map ~f:Module_name.of_string
-             in
-             Menhir_rules.module_names m
-             |> List.find_map ~f:(fun name ->
-               let open Option.O in
-               let path = base_path @ [ name ] in
-               let* origin = Ml_sources.find_origin ml_sources path in
-               List.find_map cctxs ~f:(fun (loc, cctx) ->
-                 Option.some_if (Loc.equal loc (Ml_sources.Origin.loc origin)) cctx))
-           with
-           | Some cctx -> Menhir_rules.gen_rules cctx m ~dir:ctx_dir
-           | None ->
-             (* This happens often when passing a [-p ...] option that hides a
-                library *)
-             let file_targets =
-               Menhir_stanza.targets m |> List.map ~f:(Path.Build.relative ctx_dir)
-             in
-             Super_context.add_rule
-               sctx
-               ~dir:ctx_dir
-               (Action_builder.fail
-                  { fail =
-                      (fun () ->
-                        User_error.raise
-                          ~loc:m.loc
-                          [ Pp.text
-                              "I can't determine what library/executable the files \
-                               produced by this stanza are part of."
-                          ])
-                  }
-                |> Action_builder.with_file_targets ~file_targets)))
+         | false -> Memo.return ()
+         | true ->
+           let* ml_sources = Dir_contents.ocaml dir_contents in
+           (match
+              let base_path =
+                match Ml_sources.include_subdirs ml_sources with
+                | Include Unqualified | No -> []
+                | Include Qualified ->
+                  Path.Local.descendant
+                    (Path.Build.local ctx_dir)
+                    ~of_:(Path.Build.local (Dir_contents.dir dir_contents))
+                  |> Option.value_exn
+                  |> Path.Local.explode
+                  |> List.map ~f:Module_name.of_string
+              in
+              Menhir_rules.module_names m
+              |> List.find_map ~f:(fun name ->
+                let open Option.O in
+                let path = base_path @ [ name ] in
+                let* origin = Ml_sources.find_origin ml_sources path in
+                List.find_map cctxs ~f:(fun (loc, cctx) ->
+                  Option.some_if (Loc.equal loc (Ml_sources.Origin.loc origin)) cctx))
+            with
+            | Some cctx -> Menhir_rules.gen_rules cctx m ~dir:ctx_dir
+            | None ->
+              (* This happens often when passing a [-p ...] option that hides a
+                 library *)
+              let file_targets =
+                Menhir_stanza.targets m |> List.map ~f:(Path.Build.relative ctx_dir)
+              in
+              Super_context.add_rule
+                sctx
+                ~dir:ctx_dir
+                (Action_builder.fail
+                   { fail =
+                       (fun () ->
+                         User_error.raise
+                           ~loc:m.loc
+                           [ Pp.text
+                               "I can't determine what library/executable the files \
+                                produced by this stanza are part of."
+                           ])
+                   }
+                 |> Action_builder.with_file_targets ~file_targets)))
       | Coq_stanza.Theory.T m ->
         Expander.eval_blang expander m.enabled_if
         >>= (function
-        | false -> Memo.return ()
-        | true -> Coq_rules.setup_theory_rules ~sctx ~dir:ctx_dir ~dir_contents m)
+         | false -> Memo.return ()
+         | true -> Coq_rules.setup_theory_rules ~sctx ~dir:ctx_dir ~dir_contents m)
       | Coq_stanza.Extraction.T m ->
         Coq_rules.setup_extraction_rules ~sctx ~dir:ctx_dir ~dir_contents m
       | Coq_stanza.Coqpp.T m -> Coq_rules.setup_coqpp_rules ~sctx ~dir:ctx_dir m
@@ -384,15 +384,15 @@ let gen_project_rules sctx project : unit Memo.t =
            Warning.missing_project_name
            (Warning_emit.Context.project project)
            (fun () ->
-             let+ () = Memo.return () in
-             let loc = Loc.in_file (Path.source (Dune_project.file project)) in
-             User_message.make
-               ~loc
-               [ Pp.text
-                   "Project name is not specified. Add a (name <project-name>) field to \
-                    your dune-project file to make sure that $ dune subst works in \
-                    release or pinned builds"
-               ]))
+              let+ () = Memo.return () in
+              let loc = Loc.in_file (Path.source (Dune_project.file project)) in
+              User_message.make
+                ~loc
+                [ Pp.text
+                    "Project name is not specified. Add a (name <project-name>) field to \
+                     your dune-project file to make sure that $ dune subst works in \
+                     release or pinned builds"
+                ]))
   in
   ()
 ;;
@@ -511,37 +511,37 @@ module For_melange = struct
     | true ->
       under_melange_emit_target ~dir:stanza_dir
       >>| (function
-      | None -> Some (emit_rules sctx for_melange)
-      | Some { stanza_dir = parent_melange_emit_dir; stanza = parent_stanza } ->
-        let main_message = Pp.text "melange.emit stanzas cannot be nested" in
-        let annots =
-          let main = User_message.make ~loc:stanza.loc [ main_message ] in
-          let related =
-            [ User_message.make
-                ~loc:parent_stanza.loc
-                [ Pp.text "under this melange stanza" ]
-            ]
-          in
-          User_message.Annots.singleton
-            Compound_user_error.annot
-            [ Compound_user_error.make ~main ~related ]
-        in
-        User_error.raise
-          ~loc:stanza.loc
-          ~annots
-          [ main_message
-          ; Pp.enumerate ~f:Loc.pp_file_colon_line [ parent_stanza.loc; stanza.loc ]
-          ]
-          ~hints:
-            (let emit_dir = Path.Build.drop_build_context_exn stanza_dir in
-             let parent_melange_emit_dir =
-               Path.Build.drop_build_context_exn parent_melange_emit_dir
-             in
-             [ Pp.textf
-                 "Move the melange.emit stanza from %s to at least the level of %s"
-                 (Path.Source.to_string emit_dir)
-                 (Path.Source.to_string parent_melange_emit_dir)
-             ]))
+       | None -> Some (emit_rules sctx for_melange)
+       | Some { stanza_dir = parent_melange_emit_dir; stanza = parent_stanza } ->
+         let main_message = Pp.text "melange.emit stanzas cannot be nested" in
+         let annots =
+           let main = User_message.make ~loc:stanza.loc [ main_message ] in
+           let related =
+             [ User_message.make
+                 ~loc:parent_stanza.loc
+                 [ Pp.text "under this melange stanza" ]
+             ]
+           in
+           User_message.Annots.singleton
+             Compound_user_error.annot
+             [ Compound_user_error.make ~main ~related ]
+         in
+         User_error.raise
+           ~loc:stanza.loc
+           ~annots
+           [ main_message
+           ; Pp.enumerate ~f:Loc.pp_file_colon_line [ parent_stanza.loc; stanza.loc ]
+           ]
+           ~hints:
+             (let emit_dir = Path.Build.drop_build_context_exn stanza_dir in
+              let parent_melange_emit_dir =
+                Path.Build.drop_build_context_exn parent_melange_emit_dir
+              in
+              [ Pp.textf
+                  "Move the melange.emit stanza from %s to at least the level of %s"
+                  (Path.Source.to_string emit_dir)
+                  (Path.Source.to_string parent_melange_emit_dir)
+              ]))
   ;;
 end
 
@@ -566,8 +566,8 @@ let gen_melange_emit_rules_or_empty_redirect
     | Some for_melange ->
       For_melange.gen_emit_rules sctx ~dir for_melange
       >>= (function
-      | Some r -> r
-      | None -> opam_file_rules)
+       | Some r -> r
+       | None -> opam_file_rules)
   in
   Gen_rules.redirect_to_parent (rules_for ~dir ~allowed_subdirs rules)
 ;;
@@ -733,23 +733,23 @@ let gen_rules_regular_directory sctx ~components ~dir =
     (* This interprets [rule] and [copy_files] stanzas. *)
     Dir_contents.triage sctx ~dir
     >>= (function
-    | Group_part _ ->
-      Memo.return
-      @@ gen_melange_emit_rules_or_empty_redirect
-           sctx
-           ~opam_file_rules:(Memo.return Rules.empty)
-           ~dir
-           ~allowed_subdirs
-           under_melange_emit_target
-    | Standalone_or_root standalone_or_root ->
-      gen_rules_standalone_or_root
-        sctx
-        standalone_or_root
-        ~dir
-        ~source_dir
-        ~components
-        ~allowed_subdirs
-        ~under_melange_emit_target)
+     | Group_part _ ->
+       Memo.return
+       @@ gen_melange_emit_rules_or_empty_redirect
+            sctx
+            ~opam_file_rules:(Memo.return Rules.empty)
+            ~dir
+            ~allowed_subdirs
+            under_melange_emit_target
+     | Standalone_or_root standalone_or_root ->
+       gen_rules_standalone_or_root
+         sctx
+         standalone_or_root
+         ~dir
+         ~source_dir
+         ~components
+         ~allowed_subdirs
+         ~under_melange_emit_target)
 ;;
 
 (* Once [gen_rules] has decided what to do with the directory, it should end
@@ -806,8 +806,8 @@ let analyze_private_context_path components =
      | Some ctx ->
        Per_context.valid ctx
        >>| (function
-       | true -> `Valid (ctx, components)
-       | false -> `Invalid_context))
+        | true -> `Valid (ctx, components)
+        | false -> `Invalid_context))
 ;;
 
 let gen_rules_private_context ~dir components ctx =

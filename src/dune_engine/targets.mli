@@ -111,8 +111,8 @@ module Produced : sig
     :  'a t
     -> f:(Path.Build.t -> 'a -> Cached_digest.Digest_result.t)
     -> ( Digest.t t
-       , (Path.Build.t * Cached_digest.Digest_result.Error.t) Nonempty_list.t )
-       result
+         , (Path.Build.t * Cached_digest.Digest_result.Error.t) Nonempty_list.t )
+         result
 
   val to_dyn : _ t -> Dyn.t
 end

@@ -294,8 +294,8 @@ module Add = struct
       sum
         [ econstr no_others; econstr with_others ]
         (function
-         | No_others x -> case x no_others
-         | With_others { xy; all } -> case (xy, all) with_others)
+          | No_others x -> case x no_others
+          | With_others { xy; all } -> case (xy, all) with_others)
     in
     Decl.Request.make_current_gen ~req ~resp ~version:2
   ;;
@@ -849,8 +849,8 @@ let%expect_test "sexp_for_digest" =
       Conv.sum
         [ Conv.econstr nil; Conv.econstr cons ]
         (function
-         | [] -> Conv.case () nil
-         | x :: xs -> Conv.case (x, xs) cons))
+          | [] -> Conv.case () nil
+          | x :: xs -> Conv.case (x, xs) cons))
   in
   print_sexp_for_digest (list_conv Conv.int);
   [%expect {| (Fixpoint (Sum (nil Unit) (cons (Pair Int (Recurse 0))))) |}];

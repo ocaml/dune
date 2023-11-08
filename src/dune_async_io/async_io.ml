@@ -88,7 +88,7 @@ module Task = struct
                 filter_queue q ~f:(fun (Task (t', _)) -> not (Task_id.equal t.id t'.id))
               in
               should_interrupt
-                := !should_interrupt || Queue.length new_q <> Queue.length q;
+              := !should_interrupt || Queue.length new_q <> Queue.length q;
               if Queue.is_empty new_q
               then Table.remove table fd
               else Table.set table fd new_q);
@@ -388,9 +388,9 @@ let rec with_retry f fd =
     let* task = ready fd `Write ~f:Fun.id in
     Task.await task
     >>= (function
-    | Ok () -> with_retry f fd
-    | Error `Cancelled as e -> Fiber.return e
-    | Error (`Exn _) -> assert false)
+     | Ok () -> with_retry f fd
+     | Error `Cancelled as e -> Fiber.return e
+     | Error (`Exn _) -> assert false)
   | exception Unix.Unix_error (err, x, y) -> Fiber.return (Error (`Unix (err, x, y)))
 ;;
 
@@ -404,9 +404,9 @@ let connect f fd socket =
     let* task = ready fd `Write ~f:(fun () -> Unix.getsockopt_error fd) in
     Task.await task
     >>| (function
-    | Error _ as e -> e
-    | Ok None -> Ok ()
-    | Ok (Some err) -> Error (`Exn (Unix.Unix_error (err, "connect", ""))))
+     | Error _ as e -> e
+     | Ok None -> Ok ()
+     | Ok (Some err) -> Error (`Exn (Unix.Unix_error (err, "connect", ""))))
   | Error (`Unix (e, x, y)) -> Fiber.return @@ Error (`Exn (Unix.Unix_error (e, x, y)))
   | Error (`Exn _) as e -> Fiber.return e
   | Error `Cancelled as e -> Fiber.return e

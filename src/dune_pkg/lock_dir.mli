@@ -48,9 +48,9 @@ type t =
   ; ocaml : (Loc.t * Package_name.t) option
   ; repos : Repositories.t
   ; expanded_solver_variable_bindings : Solver_stats.Expanded_variable_bindings.t
-      (** Stores the solver variables that were evaluated while solving
-          dependencies. Can be used to determine if a lockdir is compatible
-          with a particular system. *)
+  (** Stores the solver variables that were evaluated while solving
+      dependencies. Can be used to determine if a lockdir is compatible
+      with a particular system. *)
   }
 
 val remove_locs : t -> t

@@ -67,7 +67,7 @@ module Mode : sig
     | Single : Value.t t (** Expansion must produce a single value *)
     | Many : Value.t list t (** Expansion may produce any number of values *)
     | At_least_one : (Value.t * Value.t list) t
-        (** Expansion may produce 1 or more values *)
+    (** Expansion may produce 1 or more values *)
 end
 
 type yes_no_unknown =

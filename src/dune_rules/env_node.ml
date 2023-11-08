@@ -168,9 +168,9 @@ let make
             ~field
             ~root:(Foreign_language.Dict.get default_context_flags lang)
             (fun flags ->
-              let+ expander = Memo.Lazy.force expander in
-              let f = Foreign_language.Dict.get config.foreign_flags lang in
-              Expander.expand_and_eval_set expander f ~standard:flags)))
+               let+ expander = Memo.Lazy.force expander in
+               let f = Foreign_language.Dict.get config.foreign_flags lang in
+               Expander.expand_and_eval_set expander f ~standard:flags)))
   in
   let foreign_flags =
     Foreign_language.Dict.make ~c:(foreign_flags C) ~cxx:(foreign_flags Cxx)

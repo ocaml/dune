@@ -224,11 +224,11 @@ module Remote = struct
     | Some rev ->
       run_capture_line repo [ "cat-file"; "-t"; rev ]
       >>= (function
-      | "commit" ->
-        let revision = Rev rev in
-        let+ files_at_rev = files_at_rev repo revision in
-        Some { At_rev.repo; revision = Rev rev; files_at_rev }
-      | _ -> Fiber.return None)
+       | "commit" ->
+         let revision = Rev rev in
+         let+ files_at_rev = files_at_rev repo revision in
+         Some { At_rev.repo; revision = Rev rev; files_at_rev }
+       | _ -> Fiber.return None)
   ;;
 end
 

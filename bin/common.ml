@@ -1289,7 +1289,7 @@ let init (builder : Builder.t) =
   Dune_rules.Clflags.ignore_promoted_rules := c.builder.ignore_promoted_rules;
   Dune_rules.Clflags.ignore_lock_directory := c.builder.ignore_lock_directory;
   Dune_rules.Clflags.on_missing_dune_project_file
-    := if c.builder.require_dune_project_file then Error else Warn;
+  := if c.builder.require_dune_project_file then Error else Warn;
   Log.info
     [ Pp.textf
         "Workspace root: %s"

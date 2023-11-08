@@ -97,12 +97,12 @@ module Status_line : sig
   (** The current status line. *)
   type t =
     | Live of (unit -> User_message.Style.t Pp.t)
-        (** A "live" value that's updated continuously, such as a progress
-            indicator. This message is not shown when a "dumb" terminal backend
-            is in use. *)
+    (** A "live" value that's updated continuously, such as a progress
+        indicator. This message is not shown when a "dumb" terminal backend
+        is in use. *)
     | Constant of User_message.Style.t Pp.t
-        (** A fixed value. Unlike with [Live], this text is printed even if a
-            dumb console backend is in use. *)
+    (** A fixed value. Unlike with [Live], this text is printed even if a
+        dumb console backend is in use. *)
 
   val set : t -> unit
 

@@ -234,9 +234,9 @@ let lookup_and_summarize alldirs name =
     | [] ->
       List.assoc_opt pkg Data.builtin_library
       |> (function
-      | None -> raise (Library_not_found { search_paths = alldirs; prefix = []; name })
-      | Some meta ->
-        find_plugin ~dirs:alldirs ~dir:(Lazy.force Helpers.stdlib) ~suffix meta)
+       | None -> raise (Library_not_found { search_paths = alldirs; prefix = []; name })
+       | Some meta ->
+         find_plugin ~dirs:alldirs ~dir:(Lazy.force Helpers.stdlib) ~suffix meta)
     | dir :: dirs ->
       let dir = Filename.concat dir pkg in
       (match lookup_and_load_one_dir ~dir ~pkg with

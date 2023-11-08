@@ -29,10 +29,10 @@ let config_path_exn coq_config key =
   | Some path ->
     path
     |> (function
-    | Coq_config.Value.Path p -> p (* We have found a path for key *)
-    | path ->
-      (* This should never happen *)
-      Code_error.raise "key is not a path" [ key, Coq_config.Value.to_dyn path ])
+     | Coq_config.Value.Path p -> p (* We have found a path for key *)
+     | path ->
+       (* This should never happen *)
+       Code_error.raise "key is not a path" [ key, Coq_config.Value.to_dyn path ])
   | None ->
     (* This happens if the output of coqc --config doesn't include the key *)
     User_error.raise

@@ -86,8 +86,8 @@ end = struct
       let open Memo.O in
       Lib.DB.resolve_when_exists lib_db (Loc.none, Lib_name.of_string n)
       >>= (function
-      | Some l -> Resolve.Memo.lift l
-      | None -> resolve_first lib_db l)
+       | Some l -> Resolve.Memo.lift l
+       | None -> resolve_first lib_db l)
   ;;
 end
 

@@ -258,11 +258,11 @@ let levenshtein_distance s t =
       then d.(i).(j) <- d.(i - 1).(j - 1) (* no operation required *)
       else
         d.(i).(j)
-          <- min
-               (d.(i - 1).(j) + 1) (* a deletion *)
-               (min
-                  (d.(i).(j - 1) + 1) (* an insertion *)
-                  (d.(i - 1).(j - 1) + 1) (* a substitution *))
+        <- min
+             (d.(i - 1).(j) + 1) (* a deletion *)
+             (min
+                (d.(i).(j - 1) + 1) (* an insertion *)
+                (d.(i - 1).(j - 1) + 1) (* a substitution *))
     done
   done;
   d.(m).(n)

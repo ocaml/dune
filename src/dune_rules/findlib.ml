@@ -350,21 +350,21 @@ module Loader = struct
       let dir = Path.relative dir (Package.Name.to_string name) in
       Fs.dir_exists dir
       >>= (function
-      | false -> Memo.return None
-      | true ->
-        (let dune = Path.relative dir Dune_package.fn in
-         Fs.file_exists dune
-         >>= function
-         | true -> Dune_package.Or_meta.load dune
-         | false -> Memo.return (Ok Dune_package.Or_meta.Use_meta))
-        >>= (function
-        | Error e ->
-          Memo.return (Some (Error (Unavailable_reason.Invalid_dune_package e)))
-        | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.return (Some (Ok p))
-        | Ok Use_meta ->
-          Path.relative dir Findlib.Package.meta_fn
-          |> load_meta ~dir
-          >>| Option.map ~f:(fun pkg -> Ok pkg)))
+       | false -> Memo.return None
+       | true ->
+         (let dune = Path.relative dir Dune_package.fn in
+          Fs.file_exists dune
+          >>= function
+          | true -> Dune_package.Or_meta.load dune
+          | false -> Memo.return (Ok Dune_package.Or_meta.Use_meta))
+         >>= (function
+          | Error e ->
+            Memo.return (Some (Error (Unavailable_reason.Invalid_dune_package e)))
+          | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.return (Some (Ok p))
+          | Ok Use_meta ->
+            Path.relative dir Findlib.Package.meta_fn
+            |> load_meta ~dir
+            >>| Option.map ~f:(fun pkg -> Ok pkg)))
   ;;
 
   let lookup_and_load (db : DB.t) name =

@@ -762,8 +762,8 @@ module Action_expander = struct
     | When (condition, action) ->
       Expander.eval_blang expander condition
       >>= (function
-      | true -> expand action ~expander
-      | false -> Memo.return (Action.progn []))
+       | true -> expand action ~expander
+       | false -> Memo.return (Action.progn []))
     | _ ->
       (* TODO *)
       assert false
@@ -1583,10 +1583,10 @@ let find_package ctx pkg =
     let* db = DB.get ctx in
     Resolve.resolve db ctx (Loc.none, pkg)
     >>| (function
-          | `System_provided -> Action_builder.return ()
-          | `Inside_lock_dir pkg ->
-            let open Action_builder.O in
-            let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-            ())
+           | `System_provided -> Action_builder.return ()
+           | `Inside_lock_dir pkg ->
+             let open Action_builder.O in
+             let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+             ())
     >>| Option.some
 ;;

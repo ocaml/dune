@@ -5,8 +5,8 @@ open Dune_sexp
 type t =
   | Nil
   | Literal of String_with_vars.t
-      (** A string literal which may contain pforms. It's possible for a single
-          unquoted pform to expand to a list of multiple strings. *)
+  (** A string literal which may contain pforms. It's possible for a single
+      unquoted pform to expand to a list of multiple strings. *)
   | Form of (Loc.t * form)
 
 and blang = t Blang.Ast.t
@@ -14,7 +14,7 @@ and blang = t Blang.Ast.t
 and form =
   | Concat of t list (** Concatenate a list of strings recursively with no delimiter *)
   | When of (blang * t)
-      (** If the LHS evaluates to true then this is the RHS, otherwise evaluates to the empty list *)
+  (** If the LHS evaluates to true then this is the RHS, otherwise evaluates to the empty list *)
   | If of
       { condition : blang
       ; then_ : t

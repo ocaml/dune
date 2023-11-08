@@ -750,8 +750,8 @@ module Computation = struct
       let dag_node = Lazy_dag_node.force dag_node ~dep_node:(Dep_node.T dep_node) in
       Call_stack.add_path_to ~dag_node
       >>= (function
-      | Ok () -> Fiber.Ivar.read ivar >>| Result.ok
-      | Error _ as cycle_error -> Fiber.return cycle_error)
+       | Ok () -> Fiber.Ivar.read ivar >>| Result.ok
+       | Error _ as cycle_error -> Fiber.return cycle_error)
   ;;
 end
 
@@ -1063,8 +1063,8 @@ let check_point = ref (Fiber.return ())
 module Exec : sig
   val exec_dep_node : ('i, 'o) Dep_node.t -> 'o Fiber.t
 end = struct
-  let rec restore_from_cache :
-            'o. cached_value:'o Cached_value.t -> 'o Cache_lookup.t Fiber.t
+  let rec restore_from_cache
+    : 'o. cached_value:'o Cached_value.t -> 'o Cache_lookup.t Fiber.t
     =
     fun ~cached_value ->
     match cached_value.value with
@@ -1117,19 +1117,19 @@ end = struct
                   allowing us to skip recomputing the [cached_value]. *)
                consider_and_compute_without_adding_dep dep
                >>| (function
-               | Ok cached_value_of_dep ->
-                 (* Note: [cached_value_of_dep.value] will be [Cancelled _] if
-                    [dep] itself doesn't introduce a dependency cycle but one
-                    of its transitive dependencies does. In this case, the
-                    value will be new, so we will take the [Changed] branch. *)
-                 (match
-                    Run.compare
-                      cached_value_of_dep.last_changed_at
-                      cached_value.last_validated_at
-                  with
-                  | Gt -> Changed_or_not.Changed
-                  | Eq | Lt -> Unchanged)
-               | Error dependency_cycle -> Cancelled { dependency_cycle })))
+                | Ok cached_value_of_dep ->
+                  (* Note: [cached_value_of_dep.value] will be [Cancelled _] if
+                     [dep] itself doesn't introduce a dependency cycle but one
+                     of its transitive dependencies does. In this case, the
+                     value will be new, so we will take the [Changed] branch. *)
+                  (match
+                     Run.compare
+                       cached_value_of_dep.last_changed_at
+                       cached_value.last_validated_at
+                   with
+                   | Gt -> Changed_or_not.Changed
+                   | Eq | Lt -> Unchanged)
+                | Error dependency_cycle -> Cancelled { dependency_cycle })))
       in
       (match deps_changed with
        | Unchanged ->
@@ -1138,12 +1138,12 @@ end = struct
        | Changed -> Out_of_date { old_value = Option.Unboxed.some cached_value }
        | Cancelled { dependency_cycle } -> Cancelled { dependency_cycle })
 
-  and compute :
-        'i 'o.
-        dep_node:('i, 'o) Dep_node.t
-        -> old_value:'o Cached_value.t Option.Unboxed.t
-        -> stack_frame:Stack_frame_with_state.t
-        -> 'o Cached_value.t Fiber.t
+  and compute
+    : 'i 'o.
+    dep_node:('i, 'o) Dep_node.t
+    -> old_value:'o Cached_value.t Option.Unboxed.t
+    -> stack_frame:Stack_frame_with_state.t
+    -> 'o Cached_value.t Fiber.t
     =
     fun ~dep_node ~old_value ~stack_frame ->
     let+ res =
@@ -1165,11 +1165,11 @@ end = struct
         | true -> Cached_value.create value ~deps_rev
         | false -> Cached_value.confirm_old_value ~deps_rev old_cv)
 
-  and start_restoring :
-        'i 'o.
-        dep_node:('i, 'o) Dep_node.t
-        -> cached_value:'o Cached_value.t
-        -> 'o Cache_lookup.t Fiber.t
+  and start_restoring
+    : 'i 'o.
+    dep_node:('i, 'o) Dep_node.t
+    -> cached_value:'o Cached_value.t
+    -> 'o Cache_lookup.t Fiber.t
     =
     fun ~dep_node ~cached_value ->
     let computation = Computation.create () in
@@ -1184,11 +1184,11 @@ end = struct
        | Out_of_date { old_value } -> dep_node.state <- Out_of_date { old_value });
       restore_result)
 
-  and start_computing :
-        'i 'o.
-        dep_node:('i, 'o) Dep_node.t
-        -> old_value:'o Cached_value.t Option.Unboxed.t
-        -> 'o Cached_value.t Fiber.t
+  and start_computing
+    : 'i 'o.
+    dep_node:('i, 'o) Dep_node.t
+    -> old_value:'o Cached_value.t Option.Unboxed.t
+    -> 'o Cached_value.t Fiber.t
     =
     fun ~dep_node ~old_value ->
     let computation = Computation.create () in
@@ -1199,12 +1199,12 @@ end = struct
       then (
         incr Counters.nodes_computed;
         Counters.edges_traversed
-          := !Counters.edges_traversed + Deps.length cached_value.deps);
+        := !Counters.edges_traversed + Deps.length cached_value.deps);
       dep_node.state <- Cached_value cached_value;
       cached_value)
 
-  and consider_and_restore_from_cache_without_adding_dep :
-        'i 'o. ('i, 'o) Dep_node.t -> 'o Cache_lookup.t Fiber.t
+  and consider_and_restore_from_cache_without_adding_dep
+    : 'i 'o. ('i, 'o) Dep_node.t -> 'o Cache_lookup.t Fiber.t
     =
     fun dep_node ->
     match dep_node.state with
@@ -1219,8 +1219,8 @@ end = struct
     | Restoring { restore_from_cache } ->
       Computation.read_but_first_check_for_cycles restore_from_cache ~dep_node
       >>| (function
-      | Ok res -> res
-      | Error dependency_cycle -> Cancelled { dependency_cycle })
+       | Ok res -> res
+       | Error dependency_cycle -> Cancelled { dependency_cycle })
     | Out_of_date { old_value } | Computing { old_value; _ } ->
       Fiber.return (Cache_lookup.Out_of_date { old_value })
 
@@ -1228,8 +1228,8 @@ end = struct
      means we should be in two possible states: [Out_of_date] or [Computing].
      However, as it turns out (see CR-someday below), [dep_node.state] can also
      contain an up-to-date [Cached_value]. We need to figure out why. *)
-  and consider_and_compute_without_adding_dep :
-        'i 'o. ('i, 'o) Dep_node.t -> ('o Cached_value.t, Cycle_error.t) result Fiber.t
+  and consider_and_compute_without_adding_dep
+    : 'i 'o. ('i, 'o) Dep_node.t -> ('o Cached_value.t, Cycle_error.t) result Fiber.t
     =
     fun dep_node ->
     match dep_node.state with
@@ -1251,10 +1251,10 @@ end = struct
     | Computing { compute; _ } ->
       Computation.read_but_first_check_for_cycles compute ~dep_node
       >>| (function
-      | Ok _ as result -> result
-      | Error dependency_cycle as result ->
-        dep_node.state <- Cached_value (Cached_value.create_cancelled ~dependency_cycle);
-        result)
+       | Ok _ as result -> result
+       | Error dependency_cycle as result ->
+         dep_node.state <- Cached_value (Cached_value.create_cancelled ~dependency_cycle);
+         result)
   ;;
 
   let exec_dep_node : 'i 'o. ('i, 'o) Dep_node.t -> 'o Fiber.t =
@@ -1609,7 +1609,7 @@ struct
       name
       ~input:(module Key)
       (function
-       | Key.T input -> eval input >>| fun v -> Value.T (id input, v))
+        | Key.T input -> eval input >>| fun v -> Value.T (id input, v))
   ;;
 
   let eval x = exec memo (Key.T x) >>| Value.get ~input_with_matching_id:x

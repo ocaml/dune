@@ -49,11 +49,11 @@ module File = struct
 
   let register_dep ~source_file ~correction_file =
     db
-      := { src = snd (Path.Build.split_sandbox_root correction_file)
-         ; staging = None
-         ; dst = source_file
-         }
-         :: !db
+    := { src = snd (Path.Build.split_sandbox_root correction_file)
+       ; staging = None
+       ; dst = source_file
+       }
+       :: !db
   ;;
 
   let register_intermediate ~source_file ~correction_file =

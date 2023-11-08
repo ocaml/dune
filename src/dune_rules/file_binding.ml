@@ -48,18 +48,18 @@ let validate_dst_for_install_stanza
          Warning.escaping_paths_in_install_stanza
          (Warning_emit.Context.source_dir_or_enable dir)
          (fun () ->
-           User_message.make
-             ~loc
-             [ Pp.textf
-                 "The destination path %s begins with %s which will become an error in a \
-                  future version of Dune. Destinations of files in install stanzas \
-                  beginning with %s will be disallowed to prevent a package's installed \
-                  files from escaping that package's install directories."
-                 (String.maybe_quoted dst)
-                 (String.maybe_quoted Filename.parent_dir_name)
-                 (String.maybe_quoted Filename.parent_dir_name)
-             ]
-           |> Memo.return)
+            User_message.make
+              ~loc
+              [ Pp.textf
+                  "The destination path %s begins with %s which will become an error in \
+                   a future version of Dune. Destinations of files in install stanzas \
+                   beginning with %s will be disallowed to prevent a package's installed \
+                   files from escaping that package's install directories."
+                  (String.maybe_quoted dst)
+                  (String.maybe_quoted Filename.parent_dir_name)
+                  (String.maybe_quoted Filename.parent_dir_name)
+              ]
+            |> Memo.return)
      | `Always_error ->
        User_error.raise
          ~loc

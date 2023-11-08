@@ -143,7 +143,7 @@ let build_mlds_map stanzas ~dir ~files =
           ~standard:mlds
           ~key:Fun.id
           ~parse:(fun ~loc s ->
-            match String.Map.find mlds s with
+            match Filename.Map.find mlds s with
             | Some s -> s
             | None ->
               User_error.raise

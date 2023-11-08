@@ -266,7 +266,7 @@ let build_o_files
       Dir_contents.dirs dir_contents
       |> List.fold_left ~init:[] ~f:(fun acc dc ->
         Dir_contents.text_files dc
-        |> String.Set.fold ~init:acc ~f:(fun fn acc ->
+        |> Filename.Set.fold ~init:acc ~f:(fun fn acc ->
           if String.is_suffix fn ~suffix:Foreign_language.header_extension
           then Path.relative (Path.build (Dir_contents.dir dc)) fn :: acc
           else acc))

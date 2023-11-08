@@ -249,6 +249,15 @@ end = struct
     | false -> Load.get sctx ~dir >>= ocaml
   ;;
 
+  module Group_component = struct
+    type t =
+      { dir : Path.Build.t
+      ; path_to_group_root : Filename.t list
+      ; source_dir : Source_tree.Dir.t
+      ; stanzas : Stanza.t list
+      }
+  end
+
   let collect_group =
     let rec walk st_dir ~dir ~local =
       Dir_status.DB.get ~dir
@@ -258,7 +267,15 @@ end = struct
       | Is_component_of_a_group_but_not_the_root { stanzas; group_root = _ } ->
         walk_children st_dir ~dir ~local
         >>| Appendable_list.( @ )
-              (Appendable_list.singleton (dir, List.rev local, st_dir, stanzas))
+              (Appendable_list.singleton
+                 { Group_component.dir
+                 ; path_to_group_root = List.rev local
+                 ; source_dir = st_dir
+                 ; stanzas =
+                     (match stanzas with
+                      | None -> []
+                      | Some d -> d.stanzas)
+                 })
     and walk_children st_dir ~dir ~local =
       (* TODO take account of directory targets *)
       Source_tree.Dir.sub_dirs st_dir
@@ -368,15 +385,25 @@ end = struct
     let loc = loc_of_dune_file st_dir in
     let+ subdirs = collect_group ~st_dir ~dir in
     let directory_targets =
-      let dirs = (dir, [], st_dir, Some d) :: subdirs in
-      List.fold_left dirs ~init:Path.Build.Map.empty ~f:(fun acc (dir, _, _, d) ->
-        match d with
-        | None -> acc
-        | Some (d : Dune_file.t) ->
-          Path.Build.Map.union
-            acc
-            (extract_directory_targets ~dir d.stanzas)
-            ~f:(fun _ _ x -> Some x))
+      let dirs =
+        { Group_component.dir
+        ; path_to_group_root = []
+        ; source_dir = st_dir
+        ; stanzas = d.stanzas
+        }
+        :: subdirs
+      in
+      List.fold_left
+        dirs
+        ~init:Path.Build.Map.empty
+        ~f:(fun acc { Group_component.dir; stanzas; _ } ->
+          match stanzas with
+          | [] -> acc
+          | _ :: _ ->
+            Path.Build.Map.union
+              acc
+              (extract_directory_targets ~dir stanzas)
+              ~f:(fun _ _ x -> Some x))
     in
     let contents =
       Memo.lazy_
@@ -388,14 +415,21 @@ end = struct
               Memo.fork_and_join
                 (fun () -> load_text_files sctx st_dir d.stanzas ~src_dir:d.dir ~dir)
                 (fun () ->
-                  Memo.parallel_map subdirs ~f:(fun (dir, local, st_dir, stanzas) ->
-                    let+ files =
-                      match stanzas with
-                      | None -> Memo.return (Source_tree.Dir.files st_dir)
-                      | Some d ->
-                        load_text_files sctx st_dir d.stanzas ~src_dir:d.dir ~dir
-                    in
-                    dir, local, files)))
+                  Memo.parallel_map
+                    subdirs
+                    ~f:(fun { dir; path_to_group_root; source_dir; stanzas } ->
+                      let+ files =
+                        match stanzas with
+                        | [] -> Memo.return (Source_tree.Dir.files source_dir)
+                        | _ :: _ ->
+                          load_text_files
+                            sctx
+                            source_dir
+                            stanzas
+                            ~src_dir:(Source_tree.Dir.path source_dir)
+                            ~dir
+                      in
+                      dir, path_to_group_root, files)))
           in
           let dirs = (dir, [], files) :: subdirs in
           let ml =

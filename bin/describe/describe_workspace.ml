@@ -5,8 +5,8 @@ module Options = struct
   type t =
     { with_deps : bool (* whether to compute direct dependencies between modules *)
     ; with_pps : bool
-        (* whether to include the dependencies to ppx-rewriters (that are
-           used at compile time) *)
+    (* whether to include the dependencies to ppx-rewriters (that are
+       used at compile time) *)
     }
 
   (* whether to sanitize absolute paths of workspace items, and their UIDs, to
@@ -74,7 +74,7 @@ module Descr = struct
       { for_intf : Dune_rules.Module_name.t list
           (* direct module dependencies for the interface *)
       ; for_impl : Dune_rules.Module_name.t list
-          (* direct module dependencies for the implementation *)
+      (* direct module dependencies for the implementation *)
       }
 
     (* Conversion to the [Dyn.t] type *)

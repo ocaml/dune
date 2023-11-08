@@ -8,8 +8,8 @@ type t
 module Unavailable_reason : sig
   type t =
     | Not_found
-        (** The package is hidden because it contains an unsatisfied 'exist_if'
-            clause *)
+    (** The package is hidden because it contains an unsatisfied 'exist_if'
+        clause *)
     | Invalid_dune_package of User_message.t
 
   val to_dyn : t -> Dyn.t

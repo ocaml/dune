@@ -56,7 +56,7 @@ module Stanza : sig
   val foreign_flags
     :  since:Dune_lang.Syntax.Version.t option
     -> Ordered_set_lang.Unexpanded.t Foreign_language.Dict.t
-       Dune_lang.Decoder.fields_parser
+         Dune_lang.Decoder.fields_parser
 
   val decode : t Dune_lang.Decoder.t
   val empty : t

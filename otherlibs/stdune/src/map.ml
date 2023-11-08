@@ -64,7 +64,7 @@ module Make (Key : Key) : S with type key = Key.t = struct
       (merge a b ~f:(fun key a b ->
          f key a b;
          None)
-        : _ t)
+       : _ t)
   ;;
 
   let foldi t ~init ~f = fold t ~init ~f:(fun ~key ~data acc -> f key data acc)

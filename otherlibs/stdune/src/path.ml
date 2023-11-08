@@ -354,8 +354,8 @@ end = struct
   include (
     Local_gen :
       module type of Local_gen
-        with type 'a t := 'a Local_gen.t
-        with module Prefix := Local_gen.Prefix)
+      with type 'a t := 'a Local_gen.t
+      with module Prefix := Local_gen.Prefix)
 
   type nonrec t = w Local_gen.t
 

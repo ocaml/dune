@@ -434,10 +434,10 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
         | Lock _ ->
           Pkg_rules.ocaml_toolchain builder.name
           >>= (function
-          | None -> toolchain `Lock
-          | Some toolchain ->
-            let+ toolchain, _ = Action_builder.run toolchain Eager in
-            toolchain, `Default)
+           | None -> toolchain `Lock
+           | Some toolchain ->
+             let+ toolchain, _ = Action_builder.run toolchain Eager in
+             toolchain, `Default)
       in
       Ocaml_toolchain.register_response_file_support ocaml;
       if Option.is_some builder.fdo_target_exe

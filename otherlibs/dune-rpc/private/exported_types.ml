@@ -159,48 +159,48 @@ module Ansi_color = struct
         ; econstr underline
         ]
         (function
-         | `Fg_default -> case () fg_default
-         | `Fg_black -> case () fg_black
-         | `Fg_red -> case () fg_red
-         | `Fg_green -> case () fg_green
-         | `Fg_yellow -> case () fg_yellow
-         | `Fg_blue -> case () fg_blue
-         | `Fg_magenta -> case () fg_magenta
-         | `Fg_cyan -> case () fg_cyan
-         | `Fg_white -> case () fg_white
-         | `Fg_bright_black -> case () fg_bright_black
-         | `Fg_bright_red -> case () fg_bright_red
-         | `Fg_bright_green -> case () fg_bright_green
-         | `Fg_bright_yellow -> case () fg_bright_yellow
-         | `Fg_bright_blue -> case () fg_bright_blue
-         | `Fg_bright_magenta -> case () fg_bright_magenta
-         | `Fg_bright_cyan -> case () fg_bright_cyan
-         | `Fg_bright_white -> case () fg_bright_white
-         | `Fg_8_bit_color c -> case c fg_8_bit_color
-         | `Fg_24_bit_color c -> case c fg_24_bit_color
-         | `Bg_default -> case () bg_default
-         | `Bg_black -> case () bg_black
-         | `Bg_red -> case () bg_red
-         | `Bg_green -> case () bg_green
-         | `Bg_yellow -> case () bg_yellow
-         | `Bg_blue -> case () bg_blue
-         | `Bg_magenta -> case () bg_magenta
-         | `Bg_cyan -> case () bg_cyan
-         | `Bg_white -> case () bg_white
-         | `Bg_bright_black -> case () bg_bright_black
-         | `Bg_bright_red -> case () bg_bright_red
-         | `Bg_bright_green -> case () bg_bright_green
-         | `Bg_bright_yellow -> case () bg_bright_yellow
-         | `Bg_bright_blue -> case () bg_bright_blue
-         | `Bg_bright_magenta -> case () bg_bright_magenta
-         | `Bg_bright_cyan -> case () bg_bright_cyan
-         | `Bg_bright_white -> case () bg_bright_white
-         | `Bg_8_bit_color c -> case c bg_8_bit_color
-         | `Bg_24_bit_color c -> case c bg_24_bit_color
-         | `Bold -> case () bold
-         | `Dim -> case () dim
-         | `Italic -> case () italic
-         | `Underline -> case () underline)
+          | `Fg_default -> case () fg_default
+          | `Fg_black -> case () fg_black
+          | `Fg_red -> case () fg_red
+          | `Fg_green -> case () fg_green
+          | `Fg_yellow -> case () fg_yellow
+          | `Fg_blue -> case () fg_blue
+          | `Fg_magenta -> case () fg_magenta
+          | `Fg_cyan -> case () fg_cyan
+          | `Fg_white -> case () fg_white
+          | `Fg_bright_black -> case () fg_bright_black
+          | `Fg_bright_red -> case () fg_bright_red
+          | `Fg_bright_green -> case () fg_bright_green
+          | `Fg_bright_yellow -> case () fg_bright_yellow
+          | `Fg_bright_blue -> case () fg_bright_blue
+          | `Fg_bright_magenta -> case () fg_bright_magenta
+          | `Fg_bright_cyan -> case () fg_bright_cyan
+          | `Fg_bright_white -> case () fg_bright_white
+          | `Fg_8_bit_color c -> case c fg_8_bit_color
+          | `Fg_24_bit_color c -> case c fg_24_bit_color
+          | `Bg_default -> case () bg_default
+          | `Bg_black -> case () bg_black
+          | `Bg_red -> case () bg_red
+          | `Bg_green -> case () bg_green
+          | `Bg_yellow -> case () bg_yellow
+          | `Bg_blue -> case () bg_blue
+          | `Bg_magenta -> case () bg_magenta
+          | `Bg_cyan -> case () bg_cyan
+          | `Bg_white -> case () bg_white
+          | `Bg_bright_black -> case () bg_bright_black
+          | `Bg_bright_red -> case () bg_bright_red
+          | `Bg_bright_green -> case () bg_bright_green
+          | `Bg_bright_yellow -> case () bg_bright_yellow
+          | `Bg_bright_blue -> case () bg_bright_blue
+          | `Bg_bright_magenta -> case () bg_bright_magenta
+          | `Bg_bright_cyan -> case () bg_bright_cyan
+          | `Bg_bright_white -> case () bg_bright_white
+          | `Bg_8_bit_color c -> case c bg_8_bit_color
+          | `Bg_24_bit_color c -> case c bg_24_bit_color
+          | `Bold -> case () bold
+          | `Dim -> case () dim
+          | `Italic -> case () italic
+          | `Underline -> case () underline)
     ;;
   end
 end
@@ -252,18 +252,18 @@ module User_message = struct
         ; econstr ansi_styles
         ]
         (function
-         | Loc -> case () loc
-         | Error -> case () error
-         | Warning -> case () warning
-         | Kwd -> case () kwd
-         | Id -> case () id
-         | Prompt -> case () prompt
-         | Hint -> case () hint
-         | Details -> case () details
-         | Ok -> case () ok
-         | Debug -> case () debug
-         | Success -> case () success
-         | Ansi_styles l -> case l ansi_styles)
+          | Loc -> case () loc
+          | Error -> case () error
+          | Warning -> case () warning
+          | Kwd -> case () kwd
+          | Id -> case () id
+          | Prompt -> case () prompt
+          | Hint -> case () hint
+          | Details -> case () details
+          | Ok -> case () ok
+          | Debug -> case () debug
+          | Success -> case () success
+          | Ansi_styles l -> case l ansi_styles)
     ;;
   end
 end
@@ -294,12 +294,12 @@ module Target = struct
       ; econstr loc
       ]
       (function
-       | Path p -> case p path
-       | Alias a -> case a alias
-       | Library l -> case l lib
-       | Executables es -> case es executables
-       | Preprocess ps -> case ps preprocess
-       | Loc l -> case l loc)
+        | Path p -> case p path
+        | Alias a -> case a alias
+        | Library l -> case l lib
+        | Executables es -> case es executables
+        | Preprocess ps -> case ps preprocess
+        | Loc l -> case l loc)
   ;;
 end
 
@@ -364,20 +364,20 @@ let sexp_pp_unit : unit Pp.t Conv.value =
         ; econstr tag
         ]
         (function
-         | Nop -> case () nop
-         | Seq (x, y) -> case (x, y) seq
-         | Concat (x, y) -> case (x, y) concat
-         | Box (i, t) -> case (i, t) box
-         | Vbox (i, t) -> case (i, t) vbox
-         | Hbox t -> case t hbox
-         | Hvbox (i, t) -> case (i, t) hvbox
-         | Hovbox (i, t) -> case (i, t) hovbox
-         | Verbatim s -> case s verbatim
-         | Char c -> case c char
-         | Break (x, y) -> case (x, y) break
-         | Newline -> case () newline
-         | Text s -> case s text
-         | Tag ((), t) -> case t tag))
+          | Nop -> case () nop
+          | Seq (x, y) -> case (x, y) seq
+          | Concat (x, y) -> case (x, y) concat
+          | Box (i, t) -> case (i, t) box
+          | Vbox (i, t) -> case (i, t) vbox
+          | Hbox t -> case t hbox
+          | Hvbox (i, t) -> case (i, t) hvbox
+          | Hovbox (i, t) -> case (i, t) hovbox
+          | Verbatim s -> case s verbatim
+          | Char c -> case c char
+          | Break (x, y) -> case (x, y) break
+          | Newline -> case () newline
+          | Text s -> case s text
+          | Tag ((), t) -> case t tag))
   in
   let to_ast x =
     match Pp.to_ast x with
@@ -454,20 +454,20 @@ module Diagnostic = struct
           ; econstr tag
           ]
           (function
-           | Nop -> case () nop
-           | Seq (x, y) -> case (x, y) seq
-           | Concat (x, y) -> case (x, y) concat
-           | Box (i, t) -> case (i, t) box
-           | Vbox (i, t) -> case (i, t) vbox
-           | Hbox t -> case t hbox
-           | Hvbox (i, t) -> case (i, t) hvbox
-           | Hovbox (i, t) -> case (i, t) hovbox
-           | Verbatim s -> case s verbatim
-           | Char c -> case c char
-           | Break (x, y) -> case (x, y) break
-           | Newline -> case () newline
-           | Text s -> case s text
-           | Tag (s, t) -> case (s, t) tag))
+            | Nop -> case () nop
+            | Seq (x, y) -> case (x, y) seq
+            | Concat (x, y) -> case (x, y) concat
+            | Box (i, t) -> case (i, t) box
+            | Vbox (i, t) -> case (i, t) vbox
+            | Hbox t -> case t hbox
+            | Hvbox (i, t) -> case (i, t) hvbox
+            | Hovbox (i, t) -> case (i, t) hovbox
+            | Verbatim s -> case s verbatim
+            | Char c -> case c char
+            | Break (x, y) -> case (x, y) break
+            | Newline -> case () newline
+            | Text s -> case s text
+            | Tag (s, t) -> case (s, t) tag))
     in
     let to_ast x =
       match Pp.to_ast x with
@@ -576,8 +576,8 @@ module Diagnostic = struct
       sum
         [ econstr add; econstr remove ]
         (function
-         | Add t -> case t add
-         | Remove t -> case t remove)
+          | Add t -> case t add
+          | Remove t -> case t remove)
     ;;
 
     let to_dyn t = Sexp.to_dyn (Conv.to_sexp sexp t)
@@ -687,8 +687,8 @@ module Job = struct
       sum
         [ econstr start; econstr stop ]
         (function
-         | Start t -> case t start
-         | Stop t -> case t stop)
+          | Start t -> case t start
+          | Stop t -> case t stop)
     ;;
   end
 end

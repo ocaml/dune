@@ -203,10 +203,10 @@ end = struct
           | Rule rule ->
             Simple_rules.user_rule sctx rule ~dir ~expander
             >>| (function
-            | None -> []
-            | Some targets ->
-              (* CR-someday amokhov: Do not ignore directory targets. *)
-              Path.Build.Set.to_list_map targets.files ~f:Path.Build.basename)
+             | None -> []
+             | Some targets ->
+               (* CR-someday amokhov: Do not ignore directory targets. *)
+               Path.Build.Set.to_list_map targets.files ~f:Path.Build.basename)
           | Copy_files def ->
             Simple_rules.copy_files sctx def ~src_dir ~dir ~expander
             >>| Path.Set.to_list_map ~f:Path.basename
@@ -523,10 +523,10 @@ end = struct
     | Group_part group_root ->
       Memo.exec memo0 (sctx, group_root)
       >>= (function
-      | Group_part _ -> assert false
-      | Standalone_or_root { directory_targets = _; contents } ->
-        let+ { root; rules = _; subdirs = _ } = Memo.Lazy.force contents in
-        root)
+       | Group_part _ -> assert false
+       | Standalone_or_root { directory_targets = _; contents } ->
+         let+ { root; rules = _; subdirs = _ } = Memo.Lazy.force contents in
+         root)
   ;;
 
   let triage sctx ~dir = Memo.exec memo0 (sctx, dir)

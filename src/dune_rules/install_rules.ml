@@ -343,39 +343,39 @@ end = struct
       | Executables ({ install_conf = Some _; _ } as exes) ->
         Expander.eval_blang expander exes.enabled_if
         >>= (function
-        | false -> Memo.return false
-        | true ->
-          if not exes.optional
-          then Memo.return true
-          else
-            let* compile_info =
-              let dune_version = Scope.project scope |> Dune_project.dune_version in
-              let+ pps =
-                (* This is wrong. If the preprocessors fail to resolve,
-                   we shouldn't install the binary rather than failing outright
-                *)
-                Preprocess.Per_module.with_instrumentation
-                  exes.buildable.preprocess
-                  ~instrumentation_backend:
-                    (Lib.DB.instrumentation_backend (Scope.libs scope))
-                |> Resolve.Memo.read_memo
-                >>| Preprocess.Per_module.pps
-              in
-              let merlin_ident =
-                Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names)
-              in
-              Lib.DB.resolve_user_written_deps
-                (Scope.libs scope)
-                ~forbidden_libraries:[]
-                (`Exe exes.names)
-                exes.buildable.libraries
-                ~pps
-                ~dune_version
-                ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-                ~merlin_ident
-            in
-            let+ requires = Lib.Compile.direct_requires compile_info in
-            Resolve.is_ok requires)
+         | false -> Memo.return false
+         | true ->
+           if not exes.optional
+           then Memo.return true
+           else
+             let* compile_info =
+               let dune_version = Scope.project scope |> Dune_project.dune_version in
+               let+ pps =
+                 (* This is wrong. If the preprocessors fail to resolve,
+                    we shouldn't install the binary rather than failing outright
+                 *)
+                 Preprocess.Per_module.with_instrumentation
+                   exes.buildable.preprocess
+                   ~instrumentation_backend:
+                     (Lib.DB.instrumentation_backend (Scope.libs scope))
+                 |> Resolve.Memo.read_memo
+                 >>| Preprocess.Per_module.pps
+               in
+               let merlin_ident =
+                 Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names)
+               in
+               Lib.DB.resolve_user_written_deps
+                 (Scope.libs scope)
+                 ~forbidden_libraries:[]
+                 (`Exe exes.names)
+                 exes.buildable.libraries
+                 ~pps
+                 ~dune_version
+                 ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
+                 ~merlin_ident
+             in
+             let+ requires = Lib.Compile.direct_requires compile_info in
+             Resolve.is_ok requires)
       | Coq_stanza.Theory.T d -> Memo.return (Option.is_some d.package)
       | _ -> Memo.return false
     in
@@ -1071,87 +1071,87 @@ let package_deps (pkg : Package.t) files =
 ;;
 
 include (
-  struct
-    module Spec = struct
-      type ('path, 'target) t = Path.t Install.Entry.t list * 'target
+struct
+  module Spec = struct
+    type ('path, 'target) t = Path.t Install.Entry.t list * 'target
 
-      let name = "gen-install-file"
-      let version = 1
-      let bimap (entries, dst) _ g = entries, g dst
-      let is_useful_to ~memoize = memoize
+    let name = "gen-install-file"
+    let version = 1
+    let bimap (entries, dst) _ g = entries, g dst
+    let is_useful_to ~memoize = memoize
 
-      let encode (_entries, dst) _path target : Dune_lang.t =
-        List [ Dune_lang.atom_or_quoted_string name; target dst ]
-      ;;
-
-      let make_entry entry path comps =
-        Install.Entry.set_src entry path
-        |> Install.Entry.map_dst ~f:(fun dst -> Install.Entry.Dst.concat_all dst comps)
-      ;;
-
-      let read_dir_recursively (entry : _ Install.Entry.t) =
-        let rec loop acc dirs =
-          match dirs with
-          | [] ->
-            List.rev_map acc ~f:(fun (path, comps) ->
-              let comps = List.rev comps in
-              make_entry entry path comps)
-            |> List.sort ~compare:(fun (x : _ Install.Entry.t) (y : _ Install.Entry.t) ->
-              Path.compare x.src y.src)
-          | (dir, comps) :: dirs ->
-            (match Path.Untracked.readdir_unsorted_with_kinds dir with
-             | Error (e, x, y) -> raise (Unix.Unix_error (e, x, y))
-             | Ok files ->
-               let files, new_dirs =
-                 List.partition_map files ~f:(fun (name, kind) ->
-                   let path = Path.relative dir name in
-                   let comps = name :: comps in
-                   match kind with
-                   | Unix.S_DIR -> Right (path, comps)
-                   | _ -> Left (path, comps))
-               in
-               let acc = List.rev_append files acc in
-               let dirs = List.rev_append new_dirs dirs in
-               loop acc dirs)
-        in
-        loop [] [ entry.src, [] ]
-      ;;
-
-      let action (entries, dst) ~ectx:_ ~eenv:_ =
-        let open Fiber.O in
-        let+ entries =
-          let+ entries =
-            Fiber.parallel_map entries ~f:(fun (entry : _ Install.Entry.t) ->
-              match entry.kind with
-              | `File -> Fiber.return [ entry ]
-              | `Directory -> Fiber.return (read_dir_recursively entry)
-              | `Source_tree ->
-                Code_error.raise
-                  "This entry should have been expanded into `File"
-                  [ "entry", Install.Entry.to_dyn Path.to_dyn entry ])
-          in
-          List.concat entries |> Install.Entry.gen_install_file
-        in
-        Io.write_file (Path.build dst) entries
-      ;;
-    end
-
-    let gen_install_file entries ~dst =
-      let module M = struct
-        type path = Path.t
-        type target = Path.Build.t
-
-        module Spec = Spec
-
-        let v = entries, dst
-      end
-      in
-      Dune_engine.Action.Extension (module M)
+    let encode (_entries, dst) _path target : Dune_lang.t =
+      List [ Dune_lang.atom_or_quoted_string name; target dst ]
     ;;
-  end :
-    sig
-      val gen_install_file : Path.t Install.Entry.t list -> dst:Path.Build.t -> Action.t
-    end)
+
+    let make_entry entry path comps =
+      Install.Entry.set_src entry path
+      |> Install.Entry.map_dst ~f:(fun dst -> Install.Entry.Dst.concat_all dst comps)
+    ;;
+
+    let read_dir_recursively (entry : _ Install.Entry.t) =
+      let rec loop acc dirs =
+        match dirs with
+        | [] ->
+          List.rev_map acc ~f:(fun (path, comps) ->
+            let comps = List.rev comps in
+            make_entry entry path comps)
+          |> List.sort ~compare:(fun (x : _ Install.Entry.t) (y : _ Install.Entry.t) ->
+            Path.compare x.src y.src)
+        | (dir, comps) :: dirs ->
+          (match Path.Untracked.readdir_unsorted_with_kinds dir with
+           | Error (e, x, y) -> raise (Unix.Unix_error (e, x, y))
+           | Ok files ->
+             let files, new_dirs =
+               List.partition_map files ~f:(fun (name, kind) ->
+                 let path = Path.relative dir name in
+                 let comps = name :: comps in
+                 match kind with
+                 | Unix.S_DIR -> Right (path, comps)
+                 | _ -> Left (path, comps))
+             in
+             let acc = List.rev_append files acc in
+             let dirs = List.rev_append new_dirs dirs in
+             loop acc dirs)
+      in
+      loop [] [ entry.src, [] ]
+    ;;
+
+    let action (entries, dst) ~ectx:_ ~eenv:_ =
+      let open Fiber.O in
+      let+ entries =
+        let+ entries =
+          Fiber.parallel_map entries ~f:(fun (entry : _ Install.Entry.t) ->
+            match entry.kind with
+            | `File -> Fiber.return [ entry ]
+            | `Directory -> Fiber.return (read_dir_recursively entry)
+            | `Source_tree ->
+              Code_error.raise
+                "This entry should have been expanded into `File"
+                [ "entry", Install.Entry.to_dyn Path.to_dyn entry ])
+        in
+        List.concat entries |> Install.Entry.gen_install_file
+      in
+      Io.write_file (Path.build dst) entries
+    ;;
+  end
+
+  let gen_install_file entries ~dst =
+    let module M = struct
+      type path = Path.t
+      type target = Path.Build.t
+
+      module Spec = Spec
+
+      let v = entries, dst
+    end
+    in
+    Dune_engine.Action.Extension (module M)
+  ;;
+end :
+sig
+  val gen_install_file : Path.t Install.Entry.t list -> dst:Path.Build.t -> Action.t
+end)
 
 let gen_package_install_file_rules sctx (package : Package.t) =
   let package_name = Package.name package in

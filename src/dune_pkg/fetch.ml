@@ -175,16 +175,16 @@ let fetch_curl ~unpack ~checksum ~target (url : OpamUrl.t) =
           Fiber_job.run
             (OpamSystem.extract_job ~dir:(Path.to_string target) (Path.to_string output))
           >>| (function
-          | None -> Ok ()
-          | Some exn ->
-            let exn =
-              User_message.make
-                [ Pp.textf "failed to unpackage archive downloaded from %s" url
-                ; Pp.text "reason:"
-                ; Exn.pp exn
-                ]
-            in
-            Error (Unavailable (Some exn)))))
+           | None -> Ok ()
+           | Some exn ->
+             let exn =
+               User_message.make
+                 [ Pp.textf "failed to unpackage archive downloaded from %s" url
+                 ; Pp.text "reason:"
+                 ; Exn.pp exn
+                 ]
+             in
+             Error (Unavailable (Some exn)))))
 ;;
 
 let fetch_others ~unpack ~checksum ~target (url : OpamUrl.t) =
@@ -203,10 +203,10 @@ let fetch_others ~unpack ~checksum ~target (url : OpamUrl.t) =
       let open OpamProcess.Job.Op in
       OpamRepository.pull_tree label dirname hashes [ url ]
       @@| (function
-      | Up_to_date _ -> OpamTypes.Up_to_date ()
-      | Checksum_mismatch e -> Checksum_mismatch e
-      | Result _ -> Result ()
-      | Not_available (a, b) -> Not_available (a, b))
+       | Up_to_date _ -> OpamTypes.Up_to_date ()
+       | Checksum_mismatch e -> Checksum_mismatch e
+       | Result _ -> Result ()
+       | Not_available (a, b) -> Not_available (a, b))
     | _ ->
       let fname = OpamFilename.of_string path in
       OpamRepository.pull_file label fname hashes [ url ]

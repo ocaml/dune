@@ -104,8 +104,8 @@ let fold t ~init ~f = foldi t ~init ~f:(fun _key -> f)
 let rec to_dyn f t =
   Map.to_dyn
     (function
-     | Leaf a -> f a
-     | Map a -> to_dyn f a)
+      | Leaf a -> f a
+      | Map a -> to_dyn f a)
     t
 ;;
 

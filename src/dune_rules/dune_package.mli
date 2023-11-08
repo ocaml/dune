@@ -32,13 +32,13 @@ module Entry : sig
     | Library of Lib.t
     | Deprecated_library_name of Deprecated_library_name.t
     | Hidden_library of Lib.t
-        (** Only for external libraries that:
+    (** Only for external libraries that:
 
-            - are not built with dune
+        - are not built with dune
 
-            - have a [META] file with an unsatisfied [exist_if] field
+        - have a [META] file with an unsatisfied [exist_if] field
 
-            Dune itself never produces hidden libraries. *)
+        Dune itself never produces hidden libraries. *)
 
   val name : t -> Lib_name.t
   val version : t -> Package_version.t option

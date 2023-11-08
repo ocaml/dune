@@ -13,11 +13,11 @@ module Make
     (String : T)
     (Extension : T)
     (Ast : Action_intf.Ast
-             with type program := Program.t
-             with type path := Path.t
-             with type target := Target.t
-             with type string := String.t
-              and type ext := Extension.t) =
+           with type program := Program.t
+           with type path := Path.t
+           with type target := Target.t
+           with type string := String.t
+            and type ext := Extension.t) =
 struct
   include Ast
 
@@ -112,11 +112,11 @@ end
 
 module type Ast =
   Action_intf.Ast
-    with type program = Prog.t
-    with type path = Path.t
-    with type target = Path.Build.t
-    with type string = String.t
-     and type ext = Encode_ext.t
+  with type program = Prog.t
+  with type path = Path.t
+  with type target = Path.Build.t
+  with type string = String.t
+   and type ext = Encode_ext.t
 
 module rec Ast : Ast = Ast
 include Make (Prog) (Stdune.Path) (Stdune.Path.Build) (String) (Encode_ext) (Ast)
@@ -139,11 +139,11 @@ type string = String.t
 module For_shell = struct
   module type Ast =
     Action_intf.Ast
-      with type program = string
-      with type path = string
-      with type target = string
-      with type string = string
-      with type ext = Dune_sexp.t
+    with type program = string
+    with type path = string
+    with type target = string
+    with type string = string
+    with type ext = Dune_sexp.t
 
   module rec Ast : Ast = Ast
   include Make (String) (String) (String) (String) (Dune_sexp) (Ast)

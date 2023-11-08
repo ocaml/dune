@@ -24,9 +24,9 @@ module Store_artifacts_result : sig
     | Stored of (Path.Build.t * Digest.t) list
     | Already_present of (Path.Build.t * Digest.t) list
     | Error of exn
-        (** [Error _] can happen due to genuine problems (cannot parse internal
-            cache files) or harmless ones (race with a concurrent change to the
-            cache). *)
+    (** [Error _] can happen due to genuine problems (cannot parse internal
+        cache files) or harmless ones (race with a concurrent change to the
+        cache). *)
     | Will_not_store_due_to_non_determinism of Sexp.t
 end
 

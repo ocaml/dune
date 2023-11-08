@@ -31,9 +31,9 @@ module Event : sig
     | Unlinked of string
     | Modified of string
     | Moved of move
-        (** Queue overflow means that you are not consuming events fast enough
-            and just lost some of them. This means that some changes to files
-            you want might go unnoticed *)
+    (** Queue overflow means that you are not consuming events fast enough
+        and just lost some of them. This means that some changes to files
+        you want might go unnoticed *)
     | Queue_overflow
 
   val to_string : t -> string

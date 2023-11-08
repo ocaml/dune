@@ -121,9 +121,9 @@ let clear_dir dir =
      ());
   let remove_from_set ~set =
     set
-      := Path.Set.filter !set ~f:(fun f ->
-           let removed = (not (Path.equal f dir)) && Path.is_descendant ~of_:dir f in
-           not removed)
+    := Path.Set.filter !set ~f:(fun f ->
+         let removed = (not (Path.equal f dir)) && Path.is_descendant ~of_:dir f in
+         not removed)
   in
   remove_from_set ~set:tmp_files;
   remove_from_set ~set:tmp_dirs

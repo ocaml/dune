@@ -9,16 +9,16 @@ let substitute_variables_in_filter
   =
   OpamFilter.map_up
     (function
-     | FIdent ([], variable, None) as filter ->
-       (match Solver_env.Variable.of_string_opt (OpamVariable.to_string variable) with
-        | None -> filter
-        | Some variable ->
-          Option.iter stats_updater ~f:(fun stats_updater ->
-            Solver_stats.Updater.expand_variable stats_updater variable);
-          (match Solver_env.get solver_env variable with
-           | Unset_sys -> filter
-           | String string -> FString string))
-     | other -> other)
+      | FIdent ([], variable, None) as filter ->
+        (match Solver_env.Variable.of_string_opt (OpamVariable.to_string variable) with
+         | None -> filter
+         | Some variable ->
+           Option.iter stats_updater ~f:(fun stats_updater ->
+             Solver_stats.Updater.expand_variable stats_updater variable);
+           (match Solver_env.get solver_env variable with
+            | Unset_sys -> filter
+            | String string -> FString string))
+      | other -> other)
     opam_filter
 ;;
 

@@ -372,45 +372,45 @@ let setup_separate_compilation_rules sctx components =
     let* installed_libs = Lib.DB.installed ctx in
     Lib.DB.find installed_libs pkg
     >>= (function
-    | None -> Memo.return ()
-    | Some pkg ->
-      let info = Lib.info pkg in
-      let lib_name = Lib_name.to_string (Lib.name pkg) in
-      let archives =
-        let archives = (Lib_info.archives info).byte in
-        (* Special case for the stdlib because it is not referenced in the
-           META *)
-        match lib_name with
-        | "stdlib" ->
-          let archive =
-            let stdlib_dir = (Lib.lib_config pkg).stdlib_dir in
-            Path.relative stdlib_dir
-          in
-          archive "stdlib.cma" :: archive "std_exit.cmo" :: archives
-        | _ -> archives
-      in
-      Memo.parallel_iter archives ~f:(fun fn ->
-        let build_context = Context.build_context ctx in
-        let name = Path.basename fn in
-        let dir = in_build_dir build_context ~config [ lib_name ] in
-        let in_context =
-          { Js_of_ocaml.In_context.flags = Js_of_ocaml.Flags.standard
-          ; javascript_files = []
-          }
-        in
-        let src =
-          let src_dir = Lib_info.src_dir info in
-          Path.relative src_dir name
-        in
-        let target = in_build_dir build_context ~config [ lib_name; with_js_ext name ] in
-        build_cm'
-          sctx
-          ~dir
-          ~in_context
-          ~src
-          ~target
-          ~config:(Some (Action_builder.return config))
-        >>= Super_context.add_rule sctx ~dir))
+     | None -> Memo.return ()
+     | Some pkg ->
+       let info = Lib.info pkg in
+       let lib_name = Lib_name.to_string (Lib.name pkg) in
+       let archives =
+         let archives = (Lib_info.archives info).byte in
+         (* Special case for the stdlib because it is not referenced in the
+            META *)
+         match lib_name with
+         | "stdlib" ->
+           let archive =
+             let stdlib_dir = (Lib.lib_config pkg).stdlib_dir in
+             Path.relative stdlib_dir
+           in
+           archive "stdlib.cma" :: archive "std_exit.cmo" :: archives
+         | _ -> archives
+       in
+       Memo.parallel_iter archives ~f:(fun fn ->
+         let build_context = Context.build_context ctx in
+         let name = Path.basename fn in
+         let dir = in_build_dir build_context ~config [ lib_name ] in
+         let in_context =
+           { Js_of_ocaml.In_context.flags = Js_of_ocaml.Flags.standard
+           ; javascript_files = []
+           }
+         in
+         let src =
+           let src_dir = Lib_info.src_dir info in
+           Path.relative src_dir name
+         in
+         let target = in_build_dir build_context ~config [ lib_name; with_js_ext name ] in
+         build_cm'
+           sctx
+           ~dir
+           ~in_context
+           ~src
+           ~target
+           ~config:(Some (Action_builder.return config))
+         >>= Super_context.add_rule sctx ~dir))
 ;;
 
 let js_of_ocaml_compilation_mode t ~dir =

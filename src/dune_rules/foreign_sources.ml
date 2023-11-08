@@ -296,9 +296,12 @@ let make
 let make stanzas ~dune_version ~(lib_config : Lib_config.t) ~dirs =
   let init = String.Map.empty in
   let sources =
-    List.fold_left dirs ~init ~f:(fun acc (dir, _local, files) ->
-      let sources = Foreign.Sources.Unresolved.load ~dir ~dune_version ~files in
-      String.Map.Multi.rev_union sources acc)
+    List.fold_left
+      dirs
+      ~init
+      ~f:(fun acc { Source_file_dir.dir; path_to_root = _; files } ->
+        let sources = Foreign.Sources.Unresolved.load ~dir ~dune_version ~files in
+        String.Map.Multi.rev_union sources acc)
   in
   make stanzas ~dune_version ~sources ~lib_config
 ;;

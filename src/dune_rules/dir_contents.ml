@@ -339,7 +339,7 @@ end = struct
             Rules.collect (fun () ->
               load_text_files sctx st_dir d.stanzas ~src_dir:d.dir ~dir)
           in
-          let dirs = [ dir, [], files ] in
+          let dirs = [ { Source_file_dir.dir; path_to_root = []; files } ] in
           let ml =
             Memo.lazy_ (fun () ->
               let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
@@ -410,7 +410,7 @@ end = struct
         ~human_readable_description:(fun () -> human_readable_description dir)
         (fun () ->
           let ctx = Super_context.context sctx in
-          let+ (files, (subdirs : (Path.Build.t * _ * _) list)), rules =
+          let+ (files, subdirs), rules =
             Rules.collect (fun () ->
               Memo.fork_and_join
                 (fun () -> load_text_files sctx st_dir d.stanzas ~src_dir:d.dir ~dir)
@@ -429,9 +429,9 @@ end = struct
                             ~src_dir:(Source_tree.Dir.path source_dir)
                             ~dir
                       in
-                      dir, path_to_group_root, files)))
+                      { Source_file_dir.dir; path_to_root = path_to_group_root; files })))
           in
-          let dirs = (dir, [], files) :: subdirs in
+          let dirs = { Source_file_dir.dir; path_to_root = []; files } :: subdirs in
           let ml =
             Memo.lazy_ (fun () ->
               let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
@@ -465,7 +465,7 @@ end = struct
               Coq_sources.of_dir d.stanzas ~dir ~dirs ~include_subdirs |> Memo.return)
           in
           let subdirs =
-            List.map subdirs ~f:(fun (dir, _local, files) ->
+            List.map subdirs ~f:(fun { Source_file_dir.dir; path_to_root = _; files } ->
               { kind = Group_part
               ; dir
               ; text_files = files

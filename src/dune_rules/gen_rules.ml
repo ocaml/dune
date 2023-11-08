@@ -488,8 +488,8 @@ module For_melange = struct
     match Path.Build.parent dir with
     | None -> Memo.return None
     | Some parent ->
-      let* stanzas = Only_packages.stanzas_in_dir parent in
-      (match stanzas with
+      Only_packages.stanzas_in_dir parent
+      >>= (function
        | None -> under_melange_emit_target ~dir:parent
        | Some stanzas ->
          (match

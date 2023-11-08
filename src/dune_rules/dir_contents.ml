@@ -188,8 +188,8 @@ end = struct
       Memo.parallel_map stanzas ~f:(fun stanza ->
         match (stanza : Stanza.t) with
         | Coq_stanza.Coqpp.T { modules; _ } ->
-          let+ mlg_files = Coq_sources.mlg_files ~sctx ~dir ~modules in
-          List.rev_map mlg_files ~f:(fun mlg_file ->
+          Coq_sources.mlg_files ~sctx ~dir ~modules
+          >>| List.rev_map ~f:(fun mlg_file ->
             Path.Build.set_extension mlg_file ~ext:".ml" |> Path.Build.basename)
         | Coq_stanza.Extraction.T s ->
           Memo.return (Coq_stanza.Extraction.ml_target_fnames s)
@@ -202,11 +202,10 @@ end = struct
             (* CR-someday amokhov: Do not ignore directory targets. *)
             Path.Build.Set.to_list_map targets.files ~f:Path.Build.basename)
         | Copy_files def ->
-          let+ ps = Simple_rules.copy_files sctx def ~src_dir ~dir ~expander in
-          Path.Set.to_list_map ps ~f:Path.basename
+          Simple_rules.copy_files sctx def ~src_dir ~dir ~expander
+          >>| Path.Set.to_list_map ~f:Path.basename
         | Generate_sites_module_stanza.T def ->
-          let+ res = Generate_sites_module_rules.setup_rules sctx ~dir def in
-          [ res ]
+          Generate_sites_module_rules.setup_rules sctx ~dir def >>| List.singleton
         | Library { buildable; _ } | Executables { buildable; _ } ->
           let select_deps_files = select_deps_files buildable.libraries in
           let ctypes_files =
@@ -217,10 +216,10 @@ end = struct
           in
           Memo.return (select_deps_files @ ctypes_files)
         | Melange_stanzas.Emit.T { libraries; _ } ->
-          let select_deps_files = select_deps_files libraries in
-          Memo.return select_deps_files
+          Memo.return @@ select_deps_files libraries
         | _ -> Memo.return [])
-      >>| fun l -> Filename.Set.of_list (List.concat l)
+      >>| List.concat
+      >>| Filename.Set.of_list
     in
     Filename.Set.union generated_files (Source_tree.Dir.files st_dir)
   ;;

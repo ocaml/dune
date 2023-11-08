@@ -338,8 +338,8 @@ let make_lib_modules
       assert (Option.is_none lib.virtual_modules);
       let open Memo.O in
       let* resolved =
-        let name = Library.best_name lib in
-        Lib.DB.find_even_when_hidden libs name
+        Library.best_name lib
+        |> Lib.DB.find_even_when_hidden libs
         (* can't happen because this library is defined using the current
            stanza *)
         >>| Option.value_exn
@@ -347,11 +347,12 @@ let make_lib_modules
       let open Resolve.Memo.O in
       (* This [Option.value_exn] is correct because the above [lib.implements]
          is [Some _] and this [lib] variable correspond to the same library. *)
-      let* vlib = Option.value_exn (Lib.implements resolved) in
-      let* wrapped = Lib.wrapped resolved in
-      let wrapped = Option.value_exn wrapped in
+      let* wrapped = Lib.wrapped resolved >>| Option.value_exn in
       let* main_module_name = Lib.main_module_name resolved in
-      let+ impl = Resolve.Memo.lift_memo (virtual_modules ~lookup_vlib vlib) in
+      let+ impl =
+        let* vlib = Lib.implements resolved |> Option.value_exn in
+        virtual_modules ~lookup_vlib vlib |> Resolve.Memo.lift_memo
+      in
       let kind : Modules_field_evaluator.kind = Implementation impl in
       kind, main_module_name, wrapped
   in
@@ -400,89 +401,91 @@ let make_lib_modules
         ~wrapped )
 ;;
 
-let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules ~include_subdirs =
-  let rev_filter_partition =
-    let rec loop l (acc : Modules.groups) =
-      match l with
-      | [] -> acc
-      | x :: l ->
-        (match x with
-         | `Skip -> loop l acc
-         | `Library y -> loop l { acc with libraries = y :: acc.libraries }
-         | `Executables y -> loop l { acc with executables = y :: acc.executables }
-         | `Melange_emit y -> loop l { acc with melange_emits = y :: acc.melange_emits })
+let modules_of_stanzas =
+  let filter_partition_map =
+    let rev_filter_partition =
+      let rec loop l (acc : Modules.groups) =
+        match l with
+        | [] -> acc
+        | x :: l ->
+          (match x with
+           | `Skip -> loop l acc
+           | `Library y -> loop l { acc with libraries = y :: acc.libraries }
+           | `Executables y -> loop l { acc with executables = y :: acc.executables }
+           | `Melange_emit y -> loop l { acc with melange_emits = y :: acc.melange_emits })
+      in
+      fun l -> loop l { libraries = []; executables = []; melange_emits = [] }
     in
-    fun l -> loop l { libraries = []; executables = []; melange_emits = [] }
+    fun l ->
+      let { Modules.libraries; executables; melange_emits } = rev_filter_partition l in
+      { Modules.libraries = List.rev libraries
+      ; executables = List.rev executables
+      ; melange_emits = List.rev melange_emits
+      }
   in
-  let filter_partition_map l =
-    let { Modules.libraries; executables; melange_emits } = rev_filter_partition l in
-    { Modules.libraries = List.rev libraries
-    ; executables = List.rev executables
-    ; melange_emits = List.rev melange_emits
-    }
-  in
-  Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
-    match (stanza : Stanza.t) with
-    | Library lib ->
-      (* jeremiedimino: this [Resolve.get] means that if the user writes an
-         invalid [implements] field, we will get an error immediately even if
-         the library is not built. We should change this to carry the
-         [Or_exn.t] a bit longer. *)
-      let+ sources, modules =
-        let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
-        make_lib_modules
-          ~dir
-          ~libs:(Scope.libs scope)
-          ~lookup_vlib
-          ~modules
-          ~lib
-          ~include_subdirs
-          ~version:lib.dune_version
-        >>= Resolve.read_memo
-      in
-      let obj_dir = Library.obj_dir lib ~dir in
-      `Library (lib, sources, modules, obj_dir)
-    | Executables exes | Tests { exes; _ } ->
-      let obj_dir = Dune_file.Executables.obj_dir ~dir exes in
-      let+ sources, modules =
-        let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
-          exes.buildable
+  fun dune_file ~dir ~scope ~lookup_vlib ~modules ~include_subdirs ->
+    Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
+      match (stanza : Stanza.t) with
+      | Library lib ->
+        (* jeremiedimino: this [Resolve.get] means that if the user writes an
+           invalid [implements] field, we will get an error immediately even if
+           the library is not built. We should change this to carry the
+           [Or_exn.t] a bit longer. *)
+        let+ sources, modules =
+          let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
+          make_lib_modules
+            ~dir
+            ~libs:(Scope.libs scope)
+            ~lookup_vlib
+            ~modules
+            ~lib
+            ~include_subdirs
+            ~version:lib.dune_version
+          >>= Resolve.read_memo
         in
-        Modules_field_evaluator.eval
-          ~modules
-          ~stanza_loc
-          ~src_dir:dir
-          ~kind:Modules_field_evaluator.Exe_or_normal_lib
-          ~private_modules:Ordered_set_lang.standard
-          ~version:exes.dune_version
-          modules_settings
-      in
-      let modules =
-        let project = Scope.project scope in
-        let obj_dir = Obj_dir.obj_dir obj_dir in
-        if Dune_project.wrapped_executables project
-        then Modules_group.make_wrapped ~obj_dir ~modules `Exe
-        else Modules_group.exe_unwrapped modules ~obj_dir
-      in
-      `Executables (exes, sources, modules, obj_dir)
-    | Melange_stanzas.Emit.T mel ->
-      let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
-      let+ sources, modules =
-        Modules_field_evaluator.eval
-          ~modules
-          ~stanza_loc:mel.loc
-          ~kind:Modules_field_evaluator.Exe_or_normal_lib
-          ~version:mel.dune_version
-          ~private_modules:Ordered_set_lang.standard
-          ~src_dir:dir
-          mel.modules
-      in
-      let modules =
-        Modules_group.make_wrapped ~obj_dir:(Obj_dir.obj_dir obj_dir) ~modules `Melange
-      in
-      `Melange_emit (mel, sources, modules, obj_dir)
-    | _ -> Memo.return `Skip)
-  >>| filter_partition_map
+        let obj_dir = Library.obj_dir lib ~dir in
+        `Library (lib, sources, modules, obj_dir)
+      | Executables exes | Tests { exes; _ } ->
+        let obj_dir = Dune_file.Executables.obj_dir ~dir exes in
+        let+ sources, modules =
+          let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
+            exes.buildable
+          in
+          Modules_field_evaluator.eval
+            ~modules
+            ~stanza_loc
+            ~src_dir:dir
+            ~kind:Modules_field_evaluator.Exe_or_normal_lib
+            ~private_modules:Ordered_set_lang.standard
+            ~version:exes.dune_version
+            modules_settings
+        in
+        let modules =
+          let project = Scope.project scope in
+          let obj_dir = Obj_dir.obj_dir obj_dir in
+          if Dune_project.wrapped_executables project
+          then Modules_group.make_wrapped ~obj_dir ~modules `Exe
+          else Modules_group.exe_unwrapped modules ~obj_dir
+        in
+        `Executables (exes, sources, modules, obj_dir)
+      | Melange_stanzas.Emit.T mel ->
+        let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
+        let+ sources, modules =
+          Modules_field_evaluator.eval
+            ~modules
+            ~stanza_loc:mel.loc
+            ~kind:Modules_field_evaluator.Exe_or_normal_lib
+            ~version:mel.dune_version
+            ~private_modules:Ordered_set_lang.standard
+            ~src_dir:dir
+            mel.modules
+        in
+        let modules =
+          Modules_group.make_wrapped ~obj_dir:(Obj_dir.obj_dir obj_dir) ~modules `Melange
+        in
+        `Melange_emit (mel, sources, modules, obj_dir)
+      | _ -> Memo.return `Skip)
+    >>| filter_partition_map
 ;;
 
 let make

@@ -125,8 +125,4 @@ val default : Name.t -> Path.Source.t -> t
 val load_opam_file : Path.Source.t -> Name.t -> t Memo.t
 
 val missing_deps : t -> effective_deps:Name.Set.t -> Name.Set.t
-
-(** [to_opam_file t] returns an [OpamFile.OPAM.t] whose fields are based on the
-    fields of [t]. Note that this does not actually create a corresponding file
-    on disk. *)
-val to_opam_file : t -> OpamFile.OPAM.t
+val to_local_package : t -> Dune_pkg.Local_package.t

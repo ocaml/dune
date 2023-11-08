@@ -185,17 +185,7 @@ let find_local_packages =
     let+ source_dir = Memo.run (Source_tree.root ()) in
     Source_tree.Dir.project source_dir
   in
-  Dune_project.packages project
-  |> Package.Name.Map.map ~f:(fun pkg ->
-    let opam_file = Package.to_opam_file pkg in
-    let file =
-      Path.source
-      @@
-      match pkg.has_opam_file with
-      | Generated | Exists false -> Dune_project.file project
-      | Exists true -> pkg.opam_file
-    in
-    { Dune_pkg.Opam_solver.opam_file; file })
+  Dune_project.packages project |> Package.Name.Map.map ~f:Package.to_local_package
 ;;
 
 module Opam_repository_path = struct

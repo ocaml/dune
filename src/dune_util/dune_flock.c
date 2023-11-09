@@ -52,6 +52,8 @@ CAMLprim value dune_flock_lock(value v_fd, value v_block, value v_exclusive) {
   int flags = 0;
   if (Bool_val(v_exclusive)) {
     flags |= LOCK_EX;
+  } else {
+    flags |= LOCK_SH;
   }
   if (!Bool_val(v_block)) {
     flags |= LOCK_NB;

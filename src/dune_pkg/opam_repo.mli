@@ -32,13 +32,11 @@ module With_file : sig
   type repo := t
   type t
 
+  val package : t -> OpamPackage.t
   val opam_file : t -> OpamFile.OPAM.t
   val file : t -> Path.t
   val repo : t -> repo
 end
-
-(** Load package metadata for a single package *)
-val load_opam_package : t -> OpamPackage.t -> With_file.t option Fiber.t
 
 (** Load package metadata for all versions of a package with a given name *)
 val load_all_versions
@@ -46,7 +44,7 @@ val load_all_versions
   -> OpamPackage.Name.t
   -> With_file.t OpamPackage.Version.Map.t Fiber.t
 
-val get_opam_package_files : t -> OpamPackage.t -> File_entry.t list Fiber.t
+val get_opam_package_files : With_file.t list -> File_entry.t list list Fiber.t
 
 module Private : sig
   val create : source:string option -> repo_id:Repository_id.t option -> t

@@ -4,7 +4,7 @@
   example.h)
  (target example.o)
  (action
-  (run cc -c -fPIC -o %{target} %{c})))
+  (run %{cc} -c -fPIC -o %{target} %{c})))
 
 (rule
  (deps example.o)
@@ -16,4 +16,4 @@
  (deps example.o)
  (target libexample.so)
  (action
-  (run cc -shared -o %{target} %{deps})))
+  (run %{cc} -shared -o %{target} %{deps})))

@@ -17,25 +17,10 @@ val bind : 'a t -> f:('a -> 'b t) -> 'b t
 val map : 'a t -> f:('a -> 'b) -> 'b t
 val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 val both : 'a t -> 'b t -> ('a * 'b) t
-val ignore : 'a t -> unit t
 val all : 'a t list -> 'a list t
 val all_unit : unit t list -> unit t
 
 module List : Monad.List with type 'a t := 'a t
-
-val push_stack_frame
-  :  human_readable_description:(unit -> User_message.Style.t Pp.t)
-  -> (unit -> 'a t)
-  -> 'a t
-
-(** Delay a static computation until the description is evaluated *)
-val delayed : (unit -> 'a) -> 'a t
-
-type fail = { fail : 'a. unit -> 'a }
-
-(** Always fail when executed. We pass a function rather than an exception to
-    get a proper backtrace *)
-val fail : fail -> _ t
 
 (** [memoize ?cutoff name t] is an action builder that behaves like [t] except
     that its result is computed only once.
@@ -70,14 +55,6 @@ val goal : 'a t -> 'a t
     build rule dependencies. *)
 val of_memo : 'a Memo.t -> 'a t
 
-(** Like [of_memo] but collapses the two levels of [t]. *)
-val of_memo_join : 'a t Memo.t -> 'a t
-
-(** If you're thinking of using [Process.run] here, check that: (i) you don't in
-    fact need [Command.run], and that (ii) [Process.run] only reads the declared
-    build rule dependencies. *)
-val dyn_of_memo : 'a Memo.t t -> 'a t
-
 (** {1 Execution} *)
 
 (** Evaluation mode.
@@ -89,20 +66,19 @@ val dyn_of_memo : 'a Memo.t t -> 'a t
     If you want to both evaluate an action builder and build the collected
     dependencies, using [Eager] mode will increase parallelism. If you only want
     to know the set of dependencies, using [Lazy] will avoid unnecessary work. *)
-type 'a eval_mode =
-  | Lazy : unit eval_mode
-  | Eager : Dep.Fact.t eval_mode
+type 'm eval_mode =
+  | Lazy : Dep.Set.t eval_mode
+  | Eager : Dep.Facts.t eval_mode
 
 (** Execute an action builder. *)
-val run : 'a t -> 'b eval_mode -> ('a * 'b Dep.Map.t) Memo.t
+val run : 'a t -> 'm eval_mode -> ('a * 'm) Memo.t
 
 (** {1 Low-level} *)
 
-type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm Dep.Map.t) Memo.t } [@@unboxed]
+type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm) Memo.t } [@@unboxed]
 
 val of_thunk : 'a thunk -> 'a t
 
 module Deps_or_facts : sig
-  val union : 'a eval_mode -> 'a Dep.Map.t -> 'a Dep.Map.t -> 'a Dep.Map.t
-  val union_all : 'a eval_mode -> 'a Dep.Map.t list -> 'a Dep.Map.t
+  val empty : 'm eval_mode -> 'm
 end

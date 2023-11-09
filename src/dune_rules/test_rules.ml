@@ -4,7 +4,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
   let test_kind (loc, name) =
     let files = Dir_contents.text_files dir_contents in
     let expected_basename = name ^ ".expected" in
-    if String.Set.mem files expected_basename
+    if Filename.Set.mem files expected_basename
     then
       `Expect
         { Diff.file1 = String_with_vars.make_text loc expected_basename

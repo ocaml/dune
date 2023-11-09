@@ -2,22 +2,42 @@ open Import
 open Memo.O
 open Dune_file
 
-module T = struct
-  type is_component_of_a_group_but_not_the_root =
+module Is_component_of_a_group_but_not_the_root = struct
+  type t =
     { group_root : Path.Build.t
     ; stanzas : Dune_file.t option
     }
+end
 
+module Group_component = struct
+  type t =
+    { dir : Path.Build.t
+    ; path_to_group_root : Filename.t list
+    ; source_dir : Source_tree.Dir.t
+    ; stanzas : Stanza.t list
+    }
+end
+
+module Group_root = struct
+  type t =
+    { source_dir : Source_tree.Dir.t
+    ; qualification : Loc.t * Dune_file.Include_subdirs.qualification
+    ; dune_file : Dune_file.t
+    ; components : Group_component.t list Memo.t
+    }
+end
+
+module T = struct
   type t =
     | Generated
     | Source_only of Source_tree.Dir.t
     | (* Directory not part of a multi-directory group *)
       Standalone of Source_tree.Dir.t * Dune_file.t
     | (* Directory with [(include_subdirs x)] where [x] is not [no] *)
-      Group_root of
-        Source_tree.Dir.t * (Loc.t * Include_subdirs.qualification) * Dune_file.t
+      Group_root of Group_root.t
     | (* Sub-directory of a [Group_root _] *)
-      Is_component_of_a_group_but_not_the_root of is_component_of_a_group_but_not_the_root
+      Is_component_of_a_group_but_not_the_root of
+        Is_component_of_a_group_but_not_the_root.t
 end
 
 include T
@@ -79,9 +99,49 @@ end = struct
     | Some parent_dir -> get ~dir:parent_dir >>| current_group parent_dir
   ;;
 
+  let collect_group =
+    let rec walk st_dir ~dir ~local =
+      DB.get ~dir
+      >>= function
+      | Generated | Source_only _ | Standalone _ | Group_root _ ->
+        Memo.return Appendable_list.empty
+      | Is_component_of_a_group_but_not_the_root { stanzas; group_root = _ } ->
+        walk_children st_dir ~dir ~local
+        >>| Appendable_list.( @ )
+              (Appendable_list.singleton
+                 { Group_component.dir
+                 ; path_to_group_root = List.rev local
+                 ; source_dir = st_dir
+                 ; stanzas =
+                     (match stanzas with
+                      | None -> []
+                      | Some d -> d.stanzas)
+                 })
+    and walk_children st_dir ~dir ~local =
+      (* TODO take account of directory targets *)
+      Source_tree.Dir.sub_dirs st_dir
+      |> Filename.Map.to_list
+      |> Memo.parallel_map ~f:(fun (basename, st_dir) ->
+        let* st_dir = Source_tree.Dir.sub_dir_as_t st_dir in
+        let dir = Path.Build.relative dir basename in
+        let local = basename :: local in
+        walk st_dir ~dir ~local)
+      >>| Appendable_list.concat
+    in
+    fun st_dir ~dir -> walk_children st_dir ~dir ~local:[] >>| Appendable_list.to_list
+  ;;
+
   let has_dune_file ~dir st_dir ~build_dir_is_project_root (d : Dune_file.t) =
     match get_include_subdirs d.stanzas with
-    | Some (loc, Include mode) -> Memo.return (T.Group_root (st_dir, (loc, mode), d))
+    | Some (loc, Include mode) ->
+      let components = Memo.Lazy.create (fun () -> collect_group st_dir ~dir) in
+      Memo.return
+      @@ T.Group_root
+           { source_dir = st_dir
+           ; qualification = loc, mode
+           ; dune_file = d
+           ; components = Memo.Lazy.force components
+           }
     | Some (_, No) -> Memo.return (Standalone (st_dir, d))
     | None ->
       if build_dir_is_project_root
@@ -97,8 +157,8 @@ end = struct
              | Some loc ->
                get ~dir:group_root
                >>| (function
-                | Group_root (_, (_, qualification), _) ->
-                  error_no_module_consumer ~loc qualification
+                | Group_root group_root ->
+                  error_no_module_consumer ~loc (snd group_root.qualification)
                 | _ -> Code_error.raise "impossible as we looked up a group root" [])
            in
            Is_component_of_a_group_but_not_the_root { stanzas = Some d; group_root })

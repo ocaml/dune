@@ -2,7 +2,11 @@ open Import
 open Memo.O
 
 let bin_dir_basename = ".bin"
-let local_bin p = Path.Build.relative p bin_dir_basename
+
+let local_bin p =
+  let ctx, src = Path.Build.extract_build_context_dir_exn p in
+  Path.Build.append_source (Path.Build.relative ctx bin_dir_basename) src
+;;
 
 type t =
   { context : Context.t

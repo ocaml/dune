@@ -421,14 +421,10 @@ module Automatic_subdir = struct
   type t =
     | Utop
     | Formatted
-    | Bin
 
   let map =
     Filename.Map.of_list_exn
-      [ Utop.utop_dir_basename, Utop
-      ; Format_rules.formatted_dir_basename, Formatted
-      ; Artifacts.bin_dir_basename, Bin
-      ]
+      [ Utop.utop_dir_basename, Utop; Format_rules.formatted_dir_basename, Formatted ]
   ;;
 
   let of_src_dir src_dir = Filename.Map.find map (Path.Source.basename src_dir)
@@ -444,13 +440,6 @@ module Automatic_subdir = struct
     match kind with
     | Utop -> Utop.setup sctx ~dir:(Path.Build.parent_exn dir)
     | Formatted -> Format_rules.gen_rules sctx ~output_dir:dir
-    | Bin ->
-      Super_context.local_binaries sctx ~dir:(Path.Build.parent_exn dir)
-      >>= Memo.parallel_iter ~f:(fun t ->
-        let loc = File_binding.Expanded.src_loc t in
-        let src = Path.build (File_binding.Expanded.src t) in
-        let dst = File_binding.Expanded.dst_path t ~dir in
-        Super_context.add_rule sctx ~loc ~dir (Action_builder.symlink ~src ~dst))
   ;;
 end
 
@@ -773,6 +762,16 @@ let gen_rules ~sctx ~dir components : Gen_rules.result Memo.t =
            ignored. *)
         Jsoo_rules.setup_separate_compilation_rules sctx rest)
   | "_doc" :: rest -> Odoc.gen_rules sctx rest ~dir
+  | bin :: rest when Filename.equal Artifacts.bin_dir_basename bin ->
+    let related_dir = Path.Source.L.relative Path.Source.root rest in
+    ignore related_dir;
+    has_rules ~dir Subdir_set.empty (fun () ->
+      Super_context.local_binaries sctx ~dir:(Path.Build.parent_exn dir)
+      >>= Memo.parallel_iter ~f:(fun t ->
+        let loc = File_binding.Expanded.src_loc t in
+        let src = Path.build (File_binding.Expanded.src t) in
+        let dst = File_binding.Expanded.dst_path t ~dir in
+        Super_context.add_rule sctx ~loc ~dir (Action_builder.symlink ~src ~dst)))
   | ".topmod" :: comps ->
     has_rules
       ~dir

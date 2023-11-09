@@ -370,9 +370,8 @@ end = struct
               ; mlds = Memo.lazy_ (fun () -> build_mlds_map d.stanzas ~dir ~files)
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
-                    let+ lib_config = lib_config in
                     let dune_version = Dune_project.dune_version d.project in
-                    Foreign_sources.make d.stanzas ~dune_version ~lib_config ~dirs)
+                    Memo.return (Foreign_sources.make d.stanzas ~dune_version ~dirs))
               ; coq =
                   Memo.lazy_ (fun () ->
                     Coq_sources.of_dir d.stanzas ~dir ~include_subdirs ~dirs
@@ -453,8 +452,7 @@ end = struct
           let foreign_sources =
             Memo.lazy_ (fun () ->
               let dune_version = Dune_project.dune_version d.project in
-              let+ lib_config = lib_config in
-              Foreign_sources.make d.stanzas ~dune_version ~lib_config ~dirs)
+              Memo.return (Foreign_sources.make d.stanzas ~dune_version ~dirs))
           in
           let coq =
             Memo.lazy_ (fun () ->

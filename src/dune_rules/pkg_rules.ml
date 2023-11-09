@@ -1513,6 +1513,24 @@ let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
   Gen_rules.make ~directory_targets ~build_dir_only_sub_dirs rules
 ;;
 
+let setup_rules ~components ~dir ctx =
+  match components with
+  | [ ".pkg" ] ->
+    Gen_rules.make
+      ~build_dir_only_sub_dirs:
+        (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
+      (Memo.return Rules.empty)
+    |> Memo.return
+  | [ ".pkg"; pkg_name ] -> setup_package_rules ctx ~dir ~pkg_name
+  | ".pkg" :: _ :: _ -> Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
+  | [] ->
+    let build_dir_only_sub_dirs =
+      Gen_rules.Build_only_sub_dirs.singleton ~dir @@ Subdir_set.of_list [ ".pkg" ]
+    in
+    Memo.return @@ Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
+  | _ -> Memo.return @@ Gen_rules.rules_here Gen_rules.Rules.empty
+;;
+
 let ocaml_toolchain context =
   let* lock_dir = Lock_dir.get context in
   let+ pkg =

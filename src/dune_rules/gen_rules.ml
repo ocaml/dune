@@ -575,37 +575,24 @@ let gen_rules_standalone_or_root
     let+ rules = Dir_contents.Standalone_or_root.rules standalone_or_root in
     Rules.union rules rules'
   in
-  let* build_config =
+  let* rules =
     let+ directory_targets =
       let init = Dir_contents.Standalone_or_root.directory_targets standalone_or_root in
       collect_directory_targets ~dir ~init
     in
-    fun allowed_subdirs ->
-      Gen_rules.rules_for ~dir ~allowed_subdirs rules ~directory_targets
+    Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rules ~directory_targets
   in
   match under_melange_emit_target with
-  | None ->
-    let+ subdirs =
-      Only_packages.stanzas_in_dir dir
-      >>| function
-      | None -> Filename.Set.empty
-      | Some stanzas ->
-        List.filter_map stanzas.stanzas ~f:(function
-          | Melange_stanzas.Emit.T mel -> Some mel.target
-          | _ -> None)
-        |> Filename.Set.of_list
-    in
-    Gen_rules.rules_here (build_config subdirs)
+  | None -> Memo.return @@ Gen_rules.rules_here rules
   | Some for_melange ->
-    let build_config = build_config Filename.Set.empty in
     let+ melange_rules = For_melange.gen_emit_rules sctx ~dir for_melange in
     Gen_rules.redirect_to_parent
     @@
       (match melange_rules with
-      | None -> build_config
+      | None -> rules
       | Some emit ->
         Gen_rules.Rules.combine_exn
-          build_config
+          rules
           (Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty emit))
 ;;
 

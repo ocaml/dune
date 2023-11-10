@@ -627,8 +627,8 @@ let gen_rules_standalone_or_root
   | None ->
     let+ subdirs =
       let+ subdirs =
-        let+ stanzas = Only_packages.stanzas_in_dir dir in
-        match stanzas with
+        Only_packages.stanzas_in_dir dir
+        >>| function
         | None -> allowed_subdirs
         | Some stanzas ->
           List.filter_map stanzas.stanzas ~f:(function

@@ -343,3 +343,45 @@ let add_rules sctx project =
       | `Inside_opam_directory -> Memo.return ()
       | `Relative_to_project -> add_opam_file_rule sctx ~project ~pkg))
 ;;
+
+module Gen_rules = Build_config.Gen_rules
+
+let gen_rules sctx ~dir ~nearest_src_dir ~src_dir =
+  match nearest_src_dir with
+  | None -> None
+  | Some nearest_src_dir ->
+    let project = Source_tree.Dir.project nearest_src_dir in
+    let project_root = Dune_project.root project in
+    (match Path.Source.is_descendant src_dir ~of_:project_root with
+     | false -> None
+     | true ->
+       let project_root = Dune_project.root project in
+       let project_rules = Path.Source.equal project_root src_dir in
+       let opam_file_location = Dune_project.opam_file_location project in
+       let opam_dir = "opam" in
+       let inside_generated_opam_directory =
+         match opam_file_location with
+         | `Inside_opam_directory ->
+           Path.Source.equal src_dir (Path.Source.relative project_root opam_dir)
+         | `Relative_to_project -> false
+       in
+       if (not inside_generated_opam_directory) && not project_rules
+       then None
+       else (
+         let allowed_subdirs =
+           match opam_file_location with
+           | `Inside_opam_directory when project_rules -> Filename.Set.singleton opam_dir
+           | `Relative_to_project | `Inside_opam_directory -> Filename.Set.empty
+         in
+         let rules =
+           Rules.collect_unit (fun () ->
+             let+ () = if project_rules then add_rules sctx project else Memo.return ()
+             and+ () =
+               if inside_generated_opam_directory
+               then add_opam_file_rules sctx project
+               else Memo.return ()
+             in
+             ())
+         in
+         Some (Gen_rules.rules_for ~allowed_subdirs ~dir rules)))
+;;

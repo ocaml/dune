@@ -351,8 +351,7 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir
 (* To be called once per project, when we are generating the rules for the root
    directory of the project *)
 let gen_project_rules sctx project : unit Memo.t =
-  let+ () = Opam_create.add_rules sctx project
-  and+ () = Install_rules.gen_project_rules sctx project
+  let+ () = Install_rules.gen_project_rules sctx project
   and+ () = Odoc.gen_project_rules sctx project
   and+ () =
     let version = 2, 8 in
@@ -395,22 +394,6 @@ let gen_project_rules sctx project : unit Memo.t =
                 ]))
   in
   ()
-;;
-
-let inside_opam_directory ~nearest_src_dir ~src_dir components =
-  let project = Source_tree.Dir.project nearest_src_dir in
-  match Dune_project.opam_file_location project with
-  | `Relative_to_project -> `Outside
-  | `Inside_opam_directory ->
-    if Path.Source.equal (Dune_project.root project) src_dir
-    then `Project_root
-    else (
-      match List.last components with
-      | Some "opam" ->
-        if Path.Source.equal (Path.Source.parent_exn src_dir) (Dune_project.root project)
-        then `Inside
-        else `Outside
-      | Some _ | None -> `Outside)
 ;;
 
 module Automatic_subdir = struct
@@ -545,31 +528,18 @@ module For_melange = struct
   ;;
 end
 
-let rules_for ?directory_targets ~dir ~allowed_subdirs rules =
-  Gen_rules.Rules.create
-    ?directory_targets
-    ~build_dir_only_sub_dirs:
-      (Gen_rules.Build_only_sub_dirs.singleton ~dir (Subdir_set.of_set allowed_subdirs))
-    rules
-;;
-
-let gen_melange_emit_rules_or_empty_redirect
-  sctx
-  ~opam_file_rules
-  ~dir
-  ~allowed_subdirs
-  under_melange_emit
+let gen_melange_emit_rules_or_empty_redirect sctx ~dir ~allowed_subdirs under_melange_emit
   =
   let rules =
     match under_melange_emit with
-    | None -> opam_file_rules
+    | None -> Memo.return Rules.empty
     | Some for_melange ->
       For_melange.gen_emit_rules sctx ~dir for_melange
       >>= (function
        | Some r -> r
-       | None -> opam_file_rules)
+       | None -> Memo.return Rules.empty)
   in
-  Gen_rules.redirect_to_parent (rules_for ~dir ~allowed_subdirs rules)
+  Gen_rules.redirect_to_parent (Gen_rules.rules_for ~dir ~allowed_subdirs rules)
 ;;
 
 let gen_rules_standalone_or_root
@@ -577,7 +547,6 @@ let gen_rules_standalone_or_root
   standalone_or_root
   ~dir
   ~source_dir
-  ~components
   ~allowed_subdirs
   ~under_melange_emit_target
   =
@@ -585,15 +554,6 @@ let gen_rules_standalone_or_root
     let* () = Memo.Lazy.force Configurator_rules.force_files in
     let* rules' =
       Rules.collect_unit (fun () ->
-        let* () =
-          match
-            let src_dir = Source_tree.Dir.path source_dir in
-            inside_opam_directory ~nearest_src_dir:source_dir ~src_dir components
-          with
-          | `Outside | `Project_root -> Memo.return ()
-          | `Inside ->
-            Opam_create.add_opam_file_rules sctx (Source_tree.Dir.project source_dir)
-        in
         let* () =
           let project = Source_tree.Dir.project source_dir in
           if Path.Build.equal
@@ -621,7 +581,8 @@ let gen_rules_standalone_or_root
       let init = Dir_contents.Standalone_or_root.directory_targets standalone_or_root in
       collect_directory_targets ~dir ~init
     in
-    fun allowed_subdirs -> rules_for ~dir ~allowed_subdirs rules ~directory_targets
+    fun allowed_subdirs ->
+      Gen_rules.rules_for ~dir ~allowed_subdirs rules ~directory_targets
   in
   match under_melange_emit_target with
   | None ->
@@ -648,60 +609,44 @@ let gen_rules_standalone_or_root
       (match melange_rules with
       | None -> build_config
       | Some emit ->
-        Gen_rules.Rules.combine_exn build_config (rules_for ~dir ~allowed_subdirs emit))
+        Gen_rules.Rules.combine_exn
+          build_config
+          (Gen_rules.rules_for ~dir ~allowed_subdirs emit))
 ;;
 
 let gen_rules_build_dir
   sctx
-  ~components
   ~dir
+  ~nearest_src_dir
   ~src_dir
   ~allowed_subdirs
   ~under_melange_emit_target
   =
   (* There is always a source dir at the root, so we can't be at the root if
      we are in this branch *)
-  let parent = Path.Source.parent_exn src_dir in
-  Source_tree.find_dir parent
-  >>= function
+  match nearest_src_dir with
   | None ->
     Memo.return
     @@ gen_melange_emit_rules_or_empty_redirect
          sctx
-         ~opam_file_rules:(Memo.return Rules.empty)
          ~dir
          ~allowed_subdirs
          under_melange_emit_target
-  | Some nearest_src_dir ->
+  | Some _ ->
     (match Automatic_subdir.of_src_dir src_dir with
      | Some kind ->
        has_rules ~dir Subdir_set.empty (fun () ->
          Automatic_subdir.gen_rules ~sctx ~dir kind)
      | None ->
-       let allowed_subdirs, opam_file_rules =
-         match inside_opam_directory ~nearest_src_dir ~src_dir components with
-         | `Project_root ->
-           Filename.Set.add allowed_subdirs "opam", Memo.return Rules.empty
-         | `Outside -> allowed_subdirs, Memo.return Rules.empty
-         | `Inside ->
-           ( allowed_subdirs
-           , Rules.collect_unit
-             @@ fun () ->
-             Opam_create.add_opam_file_rules
-               sctx
-               (Source_tree.Dir.project nearest_src_dir) )
-       in
        Memo.return
        @@ gen_melange_emit_rules_or_empty_redirect
             sctx
             ~dir
-            ~opam_file_rules
             ~allowed_subdirs
             under_melange_emit_target)
 ;;
 
 let gen_rules_regular_directory sctx ~components ~dir =
-  let* under_melange_emit_target = For_melange.under_melange_emit_target ~dir in
   let src_dir = Path.Build.drop_build_context_exn dir in
   let allowed_subdirs =
     let automatic = Automatic_subdir.subdirs components in
@@ -714,42 +659,51 @@ let gen_rules_regular_directory sctx ~components ~dir =
            we need this, we should rewrite this code to avoid this. *)
         (Filename.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ])
   in
-  Source_tree.find_dir src_dir
-  >>= function
-  | None ->
-    gen_rules_build_dir
-      sctx
-      ~components
-      ~dir
-      ~src_dir
-      ~allowed_subdirs
-      ~under_melange_emit_target
-  | Some source_dir ->
-    let allowed_subdirs =
-      match inside_opam_directory ~nearest_src_dir:source_dir ~src_dir components with
-      | `Project_root -> Filename.Set.add allowed_subdirs "opam"
-      | `Outside | `Inside -> allowed_subdirs
-    in
-    (* This interprets [rule] and [copy_files] stanzas. *)
-    Dir_contents.triage sctx ~dir
-    >>= (function
-     | Group_part _ ->
-       Memo.return
-       @@ gen_melange_emit_rules_or_empty_redirect
-            sctx
-            ~opam_file_rules:(Memo.return Rules.empty)
-            ~dir
-            ~allowed_subdirs
-            under_melange_emit_target
-     | Standalone_or_root standalone_or_root ->
-       gen_rules_standalone_or_root
-         sctx
-         standalone_or_root
-         ~dir
-         ~source_dir
-         ~components
-         ~allowed_subdirs
-         ~under_melange_emit_target)
+  let* st_dir = Source_tree.find_dir src_dir in
+  let* nearest_src_dir =
+    match st_dir with
+    | Some dir -> Memo.return (Some dir)
+    | None -> Source_tree.find_dir (Path.Source.parent_exn src_dir)
+  in
+  let+ rules =
+    let* under_melange_emit_target = For_melange.under_melange_emit_target ~dir in
+    match st_dir with
+    | None ->
+      gen_rules_build_dir
+        sctx
+        ~nearest_src_dir
+        ~dir
+        ~src_dir
+        ~allowed_subdirs
+        ~under_melange_emit_target
+    | Some source_dir ->
+      (* This interprets [rule] and [copy_files] stanzas. *)
+      Dir_contents.triage sctx ~dir
+      >>= (function
+       | Group_part _ ->
+         Memo.return
+         @@ gen_melange_emit_rules_or_empty_redirect
+              sctx
+              ~dir
+              ~allowed_subdirs
+              under_melange_emit_target
+       | Standalone_or_root standalone_or_root ->
+         gen_rules_standalone_or_root
+           sctx
+           standalone_or_root
+           ~dir
+           ~source_dir
+           ~allowed_subdirs
+           ~under_melange_emit_target)
+  in
+  match Opam_create.gen_rules sctx ~dir ~nearest_src_dir ~src_dir with
+  | None -> rules
+  | Some opam_rules ->
+    (match rules with
+     | Unknown_context -> Unknown_context
+     | Rules rules -> Rules (Gen_rules.Rules.combine_exn rules opam_rules)
+     | Redirect_to_parent rules ->
+       Redirect_to_parent (Gen_rules.Rules.combine_exn rules opam_rules))
 ;;
 
 (* Once [gen_rules] has decided what to do with the directory, it should end

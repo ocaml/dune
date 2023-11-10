@@ -115,6 +115,14 @@ module Build_config = struct
     type result = Gen_rules_result.t
 
     module type Generator = Rule_generator
+
+    let rules_for ?directory_targets ~dir ~allowed_subdirs rules =
+      Rules.create
+        ?directory_targets
+        ~build_dir_only_sub_dirs:
+          (Build_only_sub_dirs.singleton ~dir (Subdir_set.of_set allowed_subdirs))
+        rules
+    ;;
   end
 
   let set = Build_config.set

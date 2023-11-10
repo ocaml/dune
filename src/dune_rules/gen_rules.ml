@@ -528,8 +528,7 @@ module For_melange = struct
   ;;
 end
 
-let gen_melange_emit_rules_or_empty_redirect sctx ~dir ~allowed_subdirs under_melange_emit
-  =
+let gen_melange_emit_rules_or_empty_redirect sctx ~dir under_melange_emit =
   let rules =
     match under_melange_emit with
     | None -> Memo.return Rules.empty
@@ -539,7 +538,8 @@ let gen_melange_emit_rules_or_empty_redirect sctx ~dir ~allowed_subdirs under_me
        | Some r -> r
        | None -> Memo.return Rules.empty)
   in
-  Gen_rules.redirect_to_parent (Gen_rules.rules_for ~dir ~allowed_subdirs rules)
+  Gen_rules.redirect_to_parent
+    (Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rules)
 ;;
 
 let gen_rules_standalone_or_root
@@ -547,7 +547,6 @@ let gen_rules_standalone_or_root
   standalone_or_root
   ~dir
   ~source_dir
-  ~allowed_subdirs
   ~under_melange_emit_target
   =
   let rules =
@@ -587,22 +586,18 @@ let gen_rules_standalone_or_root
   match under_melange_emit_target with
   | None ->
     let+ subdirs =
-      let+ subdirs =
-        Only_packages.stanzas_in_dir dir
-        >>| function
-        | None -> allowed_subdirs
-        | Some stanzas ->
-          List.filter_map stanzas.stanzas ~f:(function
-            | Melange_stanzas.Emit.T mel -> Some mel.target
-            | _ -> None)
-          |> Filename.Set.of_list
-          |> Filename.Set.union allowed_subdirs
-      in
-      Filename.Set.union subdirs allowed_subdirs
+      Only_packages.stanzas_in_dir dir
+      >>| function
+      | None -> Filename.Set.empty
+      | Some stanzas ->
+        List.filter_map stanzas.stanzas ~f:(function
+          | Melange_stanzas.Emit.T mel -> Some mel.target
+          | _ -> None)
+        |> Filename.Set.of_list
     in
     Gen_rules.rules_here (build_config subdirs)
   | Some for_melange ->
-    let build_config = build_config allowed_subdirs in
+    let build_config = build_config Filename.Set.empty in
     let+ melange_rules = For_melange.gen_emit_rules sctx ~dir for_melange in
     Gen_rules.redirect_to_parent
     @@
@@ -611,27 +606,16 @@ let gen_rules_standalone_or_root
       | Some emit ->
         Gen_rules.Rules.combine_exn
           build_config
-          (Gen_rules.rules_for ~dir ~allowed_subdirs emit))
+          (Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty emit))
 ;;
 
-let gen_rules_build_dir
-  sctx
-  ~dir
-  ~nearest_src_dir
-  ~src_dir
-  ~allowed_subdirs
-  ~under_melange_emit_target
-  =
+let gen_rules_build_dir sctx ~dir ~nearest_src_dir ~src_dir ~under_melange_emit_target =
   (* There is always a source dir at the root, so we can't be at the root if
      we are in this branch *)
   match nearest_src_dir with
   | None ->
     Memo.return
-    @@ gen_melange_emit_rules_or_empty_redirect
-         sctx
-         ~dir
-         ~allowed_subdirs
-         under_melange_emit_target
+    @@ gen_melange_emit_rules_or_empty_redirect sctx ~dir under_melange_emit_target
   | Some _ ->
     (match Automatic_subdir.of_src_dir src_dir with
      | Some kind ->
@@ -639,71 +623,77 @@ let gen_rules_build_dir
          Automatic_subdir.gen_rules ~sctx ~dir kind)
      | None ->
        Memo.return
-       @@ gen_melange_emit_rules_or_empty_redirect
-            sctx
-            ~dir
-            ~allowed_subdirs
-            under_melange_emit_target)
+       @@ gen_melange_emit_rules_or_empty_redirect sctx ~dir under_melange_emit_target)
 ;;
 
 let gen_rules_regular_directory sctx ~components ~dir =
   let src_dir = Path.Build.drop_build_context_exn dir in
-  let allowed_subdirs =
-    let automatic = Automatic_subdir.subdirs components in
-    match components with
-    | _ :: _ -> automatic
-    | [] ->
-      Filename.Set.union
-        automatic
-        (* XXX sync this list with the pattern matches above. It's quite ugly
-           we need this, we should rewrite this code to avoid this. *)
-        (Filename.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ])
-  in
+  let* under_melange_emit_target = For_melange.under_melange_emit_target ~dir in
   let* st_dir = Source_tree.find_dir src_dir in
   let* nearest_src_dir =
     match st_dir with
     | Some dir -> Memo.return (Some dir)
     | None -> Source_tree.find_dir (Path.Source.parent_exn src_dir)
   in
-  let+ rules =
-    let* under_melange_emit_target = For_melange.under_melange_emit_target ~dir in
+  let* rules =
     match st_dir with
     | None ->
-      gen_rules_build_dir
-        sctx
-        ~nearest_src_dir
-        ~dir
-        ~src_dir
-        ~allowed_subdirs
-        ~under_melange_emit_target
+      gen_rules_build_dir sctx ~nearest_src_dir ~dir ~src_dir ~under_melange_emit_target
     | Some source_dir ->
       (* This interprets [rule] and [copy_files] stanzas. *)
       Dir_contents.triage sctx ~dir
       >>= (function
        | Group_part _ ->
          Memo.return
-         @@ gen_melange_emit_rules_or_empty_redirect
-              sctx
-              ~dir
-              ~allowed_subdirs
-              under_melange_emit_target
+         @@ gen_melange_emit_rules_or_empty_redirect sctx ~dir under_melange_emit_target
        | Standalone_or_root standalone_or_root ->
          gen_rules_standalone_or_root
            sctx
            standalone_or_root
            ~dir
            ~source_dir
-           ~allowed_subdirs
            ~under_melange_emit_target)
   in
+  let* rules =
+    Gen_rules.map_rules rules ~f:(fun (rules : Gen_rules.Rules.t) ->
+      let+ build_dir_only_sub_dirs =
+        let+ allowed_subdirs =
+          (let automatic = Automatic_subdir.subdirs components in
+           let toplevel =
+             match components with
+             | _ :: _ -> Filename.Set.empty
+             | [] ->
+               (* XXX sync this list with the pattern matches above. It's quite ugly
+                  we need this, we should rewrite this code to avoid this. *)
+               Filename.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ]
+           in
+           let+ melange =
+             match under_melange_emit_target with
+             | Some _ -> Memo.return Filename.Set.empty
+             | None ->
+               (* this should probably be handled by [Dir_status] *)
+               Only_packages.stanzas_in_dir dir
+               >>| (function
+                | None -> Filename.Set.empty
+                | Some dune_file ->
+                  List.filter_map dune_file.stanzas ~f:(function
+                    | Melange_stanzas.Emit.T mel -> Some mel.target
+                    | _ -> None)
+                  |> Filename.Set.of_list)
+           in
+           Filename.Set.union_all [ automatic; toplevel; melange ])
+          >>| Subdir_set.of_set
+          >>| Gen_rules.Build_only_sub_dirs.singleton ~dir
+        in
+        Gen_rules.Build_only_sub_dirs.union rules.build_dir_only_sub_dirs allowed_subdirs
+      in
+      { rules with build_dir_only_sub_dirs })
+  in
   match Opam_create.gen_rules sctx ~dir ~nearest_src_dir ~src_dir with
-  | None -> rules
+  | None -> Memo.return rules
   | Some opam_rules ->
-    (match rules with
-     | Unknown_context -> Unknown_context
-     | Rules rules -> Rules (Gen_rules.Rules.combine_exn rules opam_rules)
-     | Redirect_to_parent rules ->
-       Redirect_to_parent (Gen_rules.Rules.combine_exn rules opam_rules))
+    Gen_rules.map_rules rules ~f:(fun rules ->
+      Memo.return (Gen_rules.Rules.combine_exn opam_rules rules))
 ;;
 
 (* Once [gen_rules] has decided what to do with the directory, it should end

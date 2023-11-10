@@ -123,6 +123,18 @@ module Build_config = struct
           (Build_only_sub_dirs.singleton ~dir (Subdir_set.of_set allowed_subdirs))
         rules
     ;;
+
+    let map_rules t ~f =
+      let open Memo.O in
+      match t with
+      | Unknown_context -> Memo.return Unknown_context
+      | Rules rules ->
+        let+ rules = f rules in
+        Rules rules
+      | Redirect_to_parent rules ->
+        let+ rules = f rules in
+        Redirect_to_parent rules
+    ;;
   end
 
   let set = Build_config.set

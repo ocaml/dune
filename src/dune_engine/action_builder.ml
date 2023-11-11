@@ -22,18 +22,6 @@ let record (deps : Dep.Set.t) =
     }
 ;;
 
-let paths_matching : type m. File_selector.t -> m eval_mode -> (unit * m) Memo.t =
-  fun g mode ->
-  let open Memo.O in
-  match mode with
-  | Eager ->
-    let+ facts = Build_system.build_pred g in
-    (), Dep.Facts.singleton (Dep.file_selector g) (Dep.Fact.file_selector g facts)
-  | Lazy -> Memo.return ((), Dep.Set.singleton (Dep.file_selector g))
-;;
-
-let paths_matching ~loc:_ g = of_thunk { f = (fun mode -> paths_matching g mode) }
-
 let contents =
   let read_file =
     Memo.exec

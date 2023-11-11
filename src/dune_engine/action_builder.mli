@@ -6,10 +6,6 @@ include module type of Action_builder0
 (** Record the given set as dependencies of the action produced by the action builder. *)
 val record : Dep.Set.t -> unit t
 
-(** Evaluate a file selector and record all the matched files as dependencies of the
-    action produced by the action builder. *)
-val paths_matching : loc:Loc.t -> File_selector.t -> unit t
-
 (** [contents path] returns an action builder that when run will evaluate to the contents
     of the file at [path]. *)
 val contents : Path.t -> string t

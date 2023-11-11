@@ -182,13 +182,11 @@ end = struct
   ;;
 
   let of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander =
-    let+ l =
-      Memo.parallel_map
-        stanzas
-        ~f:(of_stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander)
-    in
-    List.fold_left l ~init:{ empty_list with cctx = cctxs } ~f:(fun acc x -> cons acc x)
-    |> rev
+    Memo.parallel_map
+      stanzas
+      ~f:(of_stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander)
+    >>| List.fold_left ~init:{ empty_list with cctx = cctxs } ~f:(fun acc x -> cons acc x)
+    >>| rev
   ;;
 end
 
@@ -555,11 +553,9 @@ let gen_rules_standalone_or_root
       Rules.collect_unit (fun () ->
         let* () =
           let project = Source_tree.Dir.project source_dir in
-          if Path.Build.equal
-               (Path.Build.append_source
-                  (Super_context.context sctx |> Context.build_dir)
-                  (Dune_project.root project))
-               dir
+          if Path.Source.equal
+               (Source_tree.Dir.path source_dir)
+               (Dune_project.root project)
           then gen_project_rules sctx project
           else Memo.return ()
         in

@@ -135,6 +135,17 @@ module Build_config = struct
         let+ rules = f rules in
         Redirect_to_parent rules
     ;;
+
+    let combine x y =
+      match x, y with
+      | Unknown_context, _ -> Unknown_context
+      | _, Unknown_context -> Unknown_context
+      | Rules x, Rules y -> Rules (Rules.combine_exn x y)
+      | Rules x, Redirect_to_parent y -> Redirect_to_parent (Rules.combine_exn x y)
+      | Redirect_to_parent x, Rules y -> Redirect_to_parent (Rules.combine_exn x y)
+      | Redirect_to_parent x, Redirect_to_parent y ->
+        Redirect_to_parent (Rules.combine_exn x y)
+    ;;
   end
 
   let set = Build_config.set

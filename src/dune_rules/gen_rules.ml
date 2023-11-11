@@ -500,8 +500,8 @@ let gen_rules_regular_directory sctx ~components ~dir =
       | Some dir -> Memo.return (Some dir)
       | None -> Source_tree.find_dir (Path.Source.parent_exn src_dir)
     in
-    let* rules =
-      let* rules =
+    let+ rules =
+      let+ rules =
         match st_dir with
         | None -> gen_rules_build_dir sctx ~nearest_src_dir ~dir ~src_dir
         | Some source_dir ->
@@ -533,13 +533,12 @@ let gen_rules_regular_directory sctx ~components ~dir =
             rules.build_dir_only_sub_dirs
             allowed_subdirs
         in
-        Memo.return { rules with build_dir_only_sub_dirs })
+        { rules with build_dir_only_sub_dirs })
     in
     match Opam_create.gen_rules sctx ~dir ~nearest_src_dir ~src_dir with
-    | None -> Memo.return rules
+    | None -> rules
     | Some opam_rules ->
-      Gen_rules.map_rules rules ~f:(fun rules ->
-        Memo.return (Gen_rules.Rules.combine_exn opam_rules rules))
+      Gen_rules.map_rules rules ~f:(Gen_rules.Rules.combine_exn opam_rules)
   and+ melange_rules = Melange_rules.setup_emit_js_rules sctx ~dir in
   Gen_rules.combine melange_rules rules
 ;;

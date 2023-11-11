@@ -53,5 +53,3 @@ let if_file_exists p ~then_ ~else_ =
            | false -> run else_ mode)
     }
 ;;
-
-let file_exists p = if_file_exists p ~then_:(return true) ~else_:(return false)

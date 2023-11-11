@@ -10,10 +10,6 @@ val record : Dep.Set.t -> unit t
     of the file at [path]. *)
 val contents : Path.t -> string t
 
-(** Evaluates to [true] if the file is present in the source tree or is a target of a
-    rule. It doesn't add the path as dependency of the resulting action builder. *)
-val file_exists : Path.t -> bool t
-
-(** [if_file_exists p ~then ~else] evaluates to [then_] if [file_exists p] evaluates to
-    [true], and [else_] otherwise. *)
+(** [if_file_exists file ~then ~else] evaluates to [then_] if the [file] is present in the
+    source tree or is a target of a rule. Otherwise, it evaluates to [else_]. *)
 val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t

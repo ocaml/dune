@@ -2,6 +2,7 @@ open! Stdune
 open Fiber.O
 module Graph = Dune_graph.Graph
 module Console = Dune_console
+module Counter = Metrics.Counter
 
 module Debug = struct
   let track_locations_of_lazy_values = ref false
@@ -478,7 +479,7 @@ module Lazy_dag_node = struct
         dag_node)
       ~none:(fun () ->
         let (dag_node : Dag.node) =
-          if !Counters.enabled then incr Counters.nodes_in_cycle_detection_graph;
+          Counter.incr Metrics.Cycle_detection.nodes;
           Dag.create_node dep_node
         in
         t := Option.Unboxed.some dag_node;
@@ -614,13 +615,13 @@ module Call_stack = struct
     Fiber.Var.set call_stack_var stack (fun () -> Implicit_output.forbid f)
   ;;
 
-  (* Add all edges leading from the root of the call stack to [dag_node] to the
-     cycle detection DAG. *)
+  (* Add all edges leading from the root of the call stack to [dag_node] to the cycle
+     detection DAG. *)
   let add_path_to ~dag_node : (unit, Cycle_error.t) result Fiber.t =
     let+ stack = get_call_stack () in
-    let rec add_path_impl stack dag_node =
+    let rec add_path_impl stack dag_node edges_added =
       match stack with
-      | [] -> Ok ()
+      | [] -> Ok (), edges_added
       | frame :: stack ->
         let dag_node_id = Dag.node_id dag_node in
         let children_added_to_dag = Stack_frame_with_state.children_added_to_dag frame in
@@ -630,23 +631,25 @@ module Call_stack = struct
               a previous [add_path_to] call. Therefore, the DAG already contains
               all the edges that we will discover by continuing the recursive
               traversal. We might as well stop here and save time. *)
-           Ok ()
+           Ok (), edges_added
          | false ->
            let caller_dag_node = Stack_frame_with_state.dag_node frame in
            (match Dag.add_assuming_missing caller_dag_node dag_node with
-            | exception Dag.Cycle cycle -> Error (List.map cycle ~f:Dag.value)
+            | exception Dag.Cycle cycle ->
+              Error (List.map cycle ~f:Dag.value), edges_added
             | () ->
-              if !Counters.enabled then incr Counters.edges_in_cycle_detection_graph;
+              let edges_added = edges_added + 1 in
               let not_traversed_before = Dag.Id.Set.is_empty children_added_to_dag in
               Stack_frame_with_state.record_child_added_to_dag frame ~dag_node_id;
               (match not_traversed_before with
-               | true -> add_path_impl stack caller_dag_node
+               | true -> add_path_impl stack caller_dag_node edges_added
                | false ->
                  (* Same optimisation as above: no need to traverse again. *)
-                 Ok ())))
+                 Ok (), edges_added)))
     in
-    if !Counters.enabled then incr Counters.paths_in_cycle_detection_graph;
-    add_path_impl stack dag_node
+    let result, edges_added = add_path_impl stack dag_node 0 in
+    Counter.add Metrics.Cycle_detection.edges edges_added;
+    result
   ;;
 
   (* Add a dependency on the [dep_node] from the caller, if there is one. *)
@@ -742,11 +745,14 @@ module Computation = struct
     result
   ;;
 
-  let read_but_first_check_for_cycles { ivar; dag_node } ~dep_node =
+  let read_but_first_check_for_cycles { ivar; dag_node } ~phase ~dep_node =
     Fiber.Ivar.peek ivar
     >>= function
     | Some res -> Fiber.return (Ok res)
     | None ->
+      (match (phase : Stack_frame_with_state.phase) with
+       | Restore_from_cache -> Counter.incr Metrics.Restore.blocked
+       | Compute -> Counter.incr Metrics.Compute.blocked);
       let dag_node = Lazy_dag_node.force dag_node ~dep_node:(Dep_node.T dep_node) in
       Call_stack.add_path_to ~dag_node
       >>= (function
@@ -1176,7 +1182,7 @@ end = struct
     dep_node.state <- Restoring { restore_from_cache = computation };
     Computation.force computation ~phase:Restore_from_cache ~dep_node (fun _stack_frame ->
       let+ restore_result = restore_from_cache ~cached_value in
-      if !Counters.enabled then incr Counters.nodes_restored;
+      Counter.incr Metrics.Restore.nodes;
       (match restore_result with
        | Ok cached_value -> dep_node.state <- Cached_value cached_value
        | Cancelled { dependency_cycle } ->
@@ -1195,11 +1201,8 @@ end = struct
     dep_node.state <- Computing { old_value; compute = computation };
     Computation.force computation ~phase:Compute ~dep_node (fun stack_frame ->
       let+ cached_value = compute ~dep_node ~old_value ~stack_frame in
-      if !Counters.enabled
-      then (
-        incr Counters.nodes_computed;
-        Counters.edges_traversed
-        := !Counters.edges_traversed + Deps.length cached_value.deps);
+      Counter.incr Metrics.Compute.nodes;
+      Counter.add Metrics.Compute.edges (Deps.length cached_value.deps);
       dep_node.state <- Cached_value cached_value;
       cached_value)
 
@@ -1217,7 +1220,10 @@ end = struct
       then Fiber.return (Cache_lookup.Ok cached_value)
       else start_restoring ~dep_node ~cached_value
     | Restoring { restore_from_cache } ->
-      Computation.read_but_first_check_for_cycles restore_from_cache ~dep_node
+      Computation.read_but_first_check_for_cycles
+        ~phase:Restore_from_cache
+        restore_from_cache
+        ~dep_node
       >>| (function
        | Ok res -> res
        | Error dependency_cycle -> Cancelled { dependency_cycle })
@@ -1249,7 +1255,7 @@ end = struct
     | Restoring _ -> assert false
     | Out_of_date { old_value } -> start_computing ~dep_node ~old_value >>| Result.ok
     | Computing { compute; _ } ->
-      Computation.read_but_first_check_for_cycles compute ~dep_node
+      Computation.read_but_first_check_for_cycles ~phase:Compute compute ~dep_node
       >>| (function
        | Ok _ as result -> result
        | Error dependency_cycle as result ->
@@ -1620,56 +1626,10 @@ let reset invalidation =
      justifies the [~reason:Unknown] below. *)
   let invalidate_current_run = Current_run.invalidate ~reason:Unknown in
   Invalidation.execute (Invalidation.combine invalidation invalidate_current_run);
-  Run.restart ();
-  Counters.reset ()
+  Run.restart ()
 ;;
 
-module Perf_counters = struct
-  let enable () = Counters.enabled := true
-  let nodes_restored_in_current_run () = !Counters.nodes_restored
-  let nodes_computed_in_current_run () = !Counters.nodes_computed
-  let edges_traversed_in_current_run () = !Counters.edges_traversed
-
-  let nodes_for_cycle_detection_in_current_run () =
-    !Counters.nodes_in_cycle_detection_graph
-  ;;
-
-  let edges_for_cycle_detection_in_current_run () =
-    !Counters.edges_in_cycle_detection_graph
-  ;;
-
-  let paths_for_cycle_detection_in_current_run () =
-    !Counters.paths_in_cycle_detection_graph
-  ;;
-
-  let report_for_current_run () =
-    let memo =
-      sprintf
-        "Memo graph: %d/%d restored/computed nodes, %d traversed edges"
-        (nodes_restored_in_current_run ())
-        (nodes_computed_in_current_run ())
-        (edges_traversed_in_current_run ())
-    in
-    let cycle_detection =
-      sprintf
-        "Memo cycle detection graph: %d/%d/%d nodes/edges/paths"
-        (nodes_for_cycle_detection_in_current_run ())
-        (edges_for_cycle_detection_in_current_run ())
-        (paths_for_cycle_detection_in_current_run ())
-    in
-    String.concat ~sep:"\n" [ memo; cycle_detection ]
-  ;;
-
-  let assert_invariants () =
-    assert (
-      nodes_for_cycle_detection_in_current_run ()
-      <= nodes_computed_in_current_run () + nodes_restored_in_current_run ());
-    assert (
-      edges_for_cycle_detection_in_current_run () <= edges_traversed_in_current_run ())
-  ;;
-
-  let reset () = Counters.reset ()
-end
+module Metrics = Metrics
 
 module For_tests = struct
   let get_deps (type i o) (t : (i, o) Table.t) inp =

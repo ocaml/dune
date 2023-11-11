@@ -1197,10 +1197,7 @@ let build (builder : Builder.t) =
     else `Forbid_builds
   in
   if builder.store_digest_preimage then Dune_engine.Reversible_digest.enable ();
-  if builder.print_metrics
-  then (
-    Memo.Perf_counters.enable ();
-    Dune_metrics.enable ());
+  if builder.print_metrics then Dune_metrics.enable ();
   { builder; root; rpc; stats }
 ;;
 

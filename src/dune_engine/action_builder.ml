@@ -21,15 +21,3 @@ let record (deps : Dep.Set.t) =
            (), deps)
     }
 ;;
-
-let if_file_exists p ~then_ ~else_ =
-  of_thunk
-    { f =
-        (fun mode ->
-           let open Memo.O in
-           Build_system.file_exists p
-           >>= function
-           | true -> run then_ mode
-           | false -> run else_ mode)
-    }
-;;

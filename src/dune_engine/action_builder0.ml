@@ -75,10 +75,10 @@ module T = struct
     }
   ;;
 
-  let of_memo m =
+  let of_memo memo =
     { f =
         (fun mode ->
-           let+ x = m in
+           let+ x = memo in
            x, Deps_or_facts.empty mode)
     }
   ;;

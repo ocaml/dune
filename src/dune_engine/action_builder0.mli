@@ -50,10 +50,19 @@ val exec_memo : ('i, 'o) memo -> 'i -> 'o t
     but the contents of [p] is irrelevant. *)
 val goal : 'a t -> 'a t
 
-(** If you're thinking of using [Process.run] here, check that: (i) you don't in
+(** An action builder with no dependencies. Consider passing [Memo.of_thunk] to delay
+    forcing the computation until the action's dependencies need to be determined.
+
+    If you're thinking of using [Process.run] here, check that: (i) you don't in
     fact need [Command.run], and that (ii) [Process.run] only reads the declared
     build rule dependencies. *)
 val of_memo : 'a Memo.t -> 'a t
+
+(** Like [of_memo_forced] but takes a thunk. *)
+val of_memo : (unit -> 'a Memo.t) -> 'a t
+
+(** Like [of_memo] but accepts functions of any argument. *)
+val of_memo_apply : ('a -> 'b Memo.t) -> 'a -> 'b t
 
 (** {1 Execution} *)
 

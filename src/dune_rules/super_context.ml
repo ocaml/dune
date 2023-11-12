@@ -484,7 +484,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
      is used as default at the root of every project in the workspace. *)
   let default_env =
     let profile = Context.profile context in
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"default_env" (fun () ->
       make_default_env_node
         ocaml.ocaml_config
         (Context.build_context context)
@@ -511,7 +511,7 @@ let all =
     let rec sctxs =
       lazy
         (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
-           Context.name c, Memo.Lazy.create (fun () -> make_sctx c)))
+           Context.name c, Memo.Lazy.create ~name:"make_sctx" (fun () -> make_sctx c)))
     and make_sctx (context : Context.t) =
       let host () =
         match Context.for_host context with

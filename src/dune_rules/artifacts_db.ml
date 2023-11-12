@@ -91,7 +91,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
 ;;
 
 let all =
-  Memo.lazy_
+  Memo.lazy_ ~name:"Artifacts_db.all"
   @@ fun () ->
   let+ contexts = Context.DB.all () in
   Context_name.Map.of_list_map_exn contexts ~f:(fun context ->

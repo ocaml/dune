@@ -299,26 +299,6 @@ let gen_rules_for_stanzas
   cctxs
 ;;
 
-let collect_directory_targets ~init ~dir =
-  Only_packages.stanzas_in_dir dir
-  >>= function
-  | None -> Memo.return init
-  | Some d ->
-    Memo.List.fold_left d.stanzas ~init ~f:(fun acc stanza ->
-      match stanza with
-      | Coq_stanza.Theory.T m ->
-        Coq_rules.coqdoc_directory_targets ~dir m
-        >>| Path.Build.Map.union acc ~f:(fun path loc1 loc2 ->
-          User_error.raise
-            ~loc:loc1
-            [ Pp.textf
-                "The following both define the same directory target: %s"
-                (Path.Build.to_string path)
-            ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
-            ])
-      | _ -> Memo.return acc)
-;;
-
 let gen_rules sctx dir_contents cctxs ~source_dir ~dir
   : (Loc.t * Compilation_context.t) list Memo.t
   =
@@ -469,10 +449,7 @@ let gen_rules_standalone_or_root sctx standalone_or_root ~dir ~source_dir =
     Rules.union rules rules'
   in
   let+ rules =
-    let+ directory_targets =
-      let init = Dir_contents.Standalone_or_root.directory_targets standalone_or_root in
-      collect_directory_targets ~dir ~init
-    in
+    let+ directory_targets = Dir_status.directory_targets ~dir in
     Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rules ~directory_targets
   in
   Gen_rules.rules_here rules

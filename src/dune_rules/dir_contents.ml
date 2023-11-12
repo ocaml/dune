@@ -51,14 +51,10 @@ module Standalone_or_root = struct
     ; rules : Rules.t
     }
 
-  type nonrec t =
-    { directory_targets : Loc.t Path.Build.Map.t
-    ; contents : standalone_or_root Memo.Lazy.t
-    }
+  type nonrec t = { contents : standalone_or_root Memo.Lazy.t }
 
   let empty ~dir =
-    { directory_targets = Path.Build.Map.empty
-    ; contents =
+    { contents =
         Memo.Lazy.create (fun () ->
           Memo.return
             { root = empty Standalone ~dir
@@ -67,8 +63,6 @@ module Standalone_or_root = struct
             })
     }
   ;;
-
-  let directory_targets t = t.directory_targets
 
   let root t =
     let+ contents = Memo.Lazy.force t.contents in
@@ -255,34 +249,6 @@ end = struct
     | false -> Load.get sctx ~dir >>= ocaml
   ;;
 
-  let extract_directory_targets ~dir stanzas =
-    List.fold_left stanzas ~init:Path.Build.Map.empty ~f:(fun acc stanza ->
-      match stanza with
-      | Rule { targets = Static { targets = l; _ }; loc = rule_loc; _ } ->
-        List.fold_left l ~init:acc ~f:(fun acc (target, kind) ->
-          let loc = String_with_vars.loc target in
-          match (kind : Targets_spec.Kind.t) with
-          | File -> acc
-          | Directory ->
-            (match String_with_vars.text_only target with
-             | None ->
-               User_error.raise
-                 ~loc
-                 [ Pp.text "Variables are not allowed in directory targets." ]
-             | Some target ->
-               let dir_target = Path.Build.relative ~error_loc:loc dir target in
-               if Path.Build.is_descendant dir_target ~of_:dir
-               then
-                 (* We ignore duplicates here as duplicates are detected and
-                    reported by [Load_rules]. *)
-                 Path.Build.Map.set acc dir_target rule_loc
-               else
-                 (* This will be checked when we interpret the stanza
-                    completely, so just ignore this rule for now. *)
-                 acc))
-      | _ -> acc)
-  ;;
-
   let human_readable_description dir =
     Pp.textf
       "Computing directory contents of %s"
@@ -291,8 +257,7 @@ end = struct
 
   let make_standalone sctx st_dir ~dir (d : Dune_file.t) =
     let human_readable_description () = human_readable_description dir in
-    { Standalone_or_root.directory_targets = extract_directory_targets ~dir d.stanzas
-    ; contents =
+    { Standalone_or_root.contents =
         Memo.lazy_ ~human_readable_description (fun () ->
           let include_subdirs = Loc.none, Include_subdirs.No in
           let ctx = Super_context.context sctx in
@@ -353,21 +318,6 @@ end = struct
     in
     let loc = loc_of_dune_file source_dir in
     let+ components = components in
-    let directory_targets =
-      let dirs =
-        { Dir_status.Group_component.dir
-        ; path_to_group_root = []
-        ; source_dir
-        ; stanzas = dune_file.stanzas
-        }
-        :: components
-      in
-      List.fold_left
-        dirs
-        ~init:Path.Build.Map.empty
-        ~f:(fun acc { Dir_status.Group_component.dir; stanzas; _ } ->
-          Path.Build.Map.superpose acc (extract_directory_targets ~dir stanzas))
-    in
     let contents =
       Memo.lazy_
         ~human_readable_description:(fun () -> human_readable_description dir)
@@ -454,7 +404,7 @@ end = struct
           ; subdirs = Path.Build.Map.of_list_map_exn subdirs ~f:(fun x -> x.dir, x)
           })
     in
-    { Standalone_or_root.directory_targets; contents }
+    { Standalone_or_root.contents }
   ;;
 
   let get0_impl (sctx, dir) : triage Memo.t =
@@ -485,14 +435,14 @@ end = struct
   let get sctx ~dir =
     Memo.exec memo0 (sctx, dir)
     >>= function
-    | Standalone_or_root { directory_targets = _; contents } ->
+    | Standalone_or_root { contents } ->
       let+ { root; rules = _; subdirs = _ } = Memo.Lazy.force contents in
       root
     | Group_part group_root ->
       Memo.exec memo0 (sctx, group_root)
       >>= (function
        | Group_part _ -> assert false
-       | Standalone_or_root { directory_targets = _; contents } ->
+       | Standalone_or_root { contents } ->
          let+ { root; rules = _; subdirs = _ } = Memo.Lazy.force contents in
          root)
   ;;

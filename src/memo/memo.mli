@@ -57,7 +57,14 @@ val of_reproducible_fiber : 'a Fiber.t -> 'a t
     therefore be re-executed on every build run. *)
 val of_non_reproducible_fiber : 'a Fiber.t -> 'a t
 
+(** Convert a thunk to a Memo computation, making sure the thunk runs in the context of
+    the Memo computation rather than in the current context.
+
+    [of_thunk f] is equivalent to [return () >> f] but is more explicit. *)
 val of_thunk : (unit -> 'a t) -> 'a t
+
+(** Like [of_thunk] but accepts functions of any argument. *)
+val of_thunk_apply : ('a -> 'b t) -> 'a -> 'b t
 
 (** Combine results of two computations executed in sequence. *)
 val both : 'a t -> 'b t -> ('a * 'b) t

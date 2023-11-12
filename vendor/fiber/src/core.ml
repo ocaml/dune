@@ -245,6 +245,7 @@ module Var = struct
 end
 
 let of_thunk f k = f () k
+let of_thunk_apply f x k = f x k
 
 module O = struct
   let ( >>> ) a b k = a (fun () -> b k)

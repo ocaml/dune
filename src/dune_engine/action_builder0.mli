@@ -78,7 +78,3 @@ val run : 'a t -> 'm eval_mode -> ('a * 'm) Memo.t
 type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm) Memo.t } [@@unboxed]
 
 val of_thunk : 'a thunk -> 'a t
-
-module Deps_or_facts : sig
-  val empty : 'm eval_mode -> 'm
-end

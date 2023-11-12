@@ -22,26 +22,6 @@ let record (deps : Dep.Set.t) =
     }
 ;;
 
-let contents =
-  let read_file =
-    Memo.exec
-      (Memo.create_with_store
-         "Action_builder.contents"
-         ~store:(module Path.Table)
-         ~input:(module Path)
-         ~cutoff:String.equal
-         (fun p -> Build_system.read_file p ~f:Io.read_file))
-  in
-  fun p ->
-    of_thunk
-      { f =
-          (fun mode ->
-             let open Memo.O in
-             let+ x = read_file p in
-             x, Deps_or_facts.empty mode)
-      }
-;;
-
 let if_file_exists p ~then_ ~else_ =
   of_thunk
     { f =

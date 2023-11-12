@@ -561,6 +561,7 @@ type t =
 
 let emit_rules sctx { stanza_dir; stanza } =
   Rules.collect_unit (fun () ->
+    let* sctx = sctx in
     let* dir_contents = Dir_contents.get sctx ~dir:stanza_dir in
     let* scope = Scope.DB.find_by_dir stanza_dir in
     setup_emit_js_rules ~dir_contents ~dir:stanza_dir ~scope ~sctx stanza)

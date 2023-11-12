@@ -21,7 +21,7 @@ val deps_of
 val coqdoc_directory_targets
   :  dir:Path.Build.t
   -> Coq_stanza.Theory.t
-  -> Loc.t Path.Build.Map.t Memo.t
+  -> Loc.t Path.Build.Map.t
 
 (** ** Rules for Coq stanzas *)
 

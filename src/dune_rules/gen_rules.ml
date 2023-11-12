@@ -301,14 +301,14 @@ let gen_rules_for_stanzas
 
 let collect_directory_targets ~init ~dir =
   Only_packages.stanzas_in_dir dir
-  >>= function
-  | None -> Memo.return init
+  >>| function
+  | None -> init
   | Some d ->
-    Memo.List.fold_left d.stanzas ~init ~f:(fun acc stanza ->
+    List.fold_left d.stanzas ~init ~f:(fun acc stanza ->
       match stanza with
       | Coq_stanza.Theory.T m ->
         Coq_rules.coqdoc_directory_targets ~dir m
-        >>| Path.Build.Map.union acc ~f:(fun path loc1 loc2 ->
+        |> Path.Build.Map.union acc ~f:(fun path loc1 loc2 ->
           User_error.raise
             ~loc:loc1
             [ Pp.textf
@@ -316,7 +316,7 @@ let collect_directory_targets ~init ~dir =
                 (Path.Build.to_string path)
             ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
             ])
-      | _ -> Memo.return acc)
+      | _ -> acc)
 ;;
 
 let gen_rules sctx dir_contents cctxs ~source_dir ~dir

@@ -11,7 +11,8 @@ Duplicate theories should be caught by Dune:
 BUG The directory target is found before the theory
 
   $ dune build
-  Error: Coq theory foo is defined twice:
-  - theory foo in dune:5
-  - theory foo in dune:2
-  [1]
+  File "dune", line 1, characters 0-24:
+  1 | (coq.theory
+  2 |  (name foo))
+  Error: The following both define the same directory target:
+  _build/default/foo.tex

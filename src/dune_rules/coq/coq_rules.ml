@@ -644,31 +644,6 @@ let source_rule ~sctx theories =
      List.concat l)
 ;;
 
-let coqdoc_directory ~mode ~obj_dir ~name =
-  Path.Build.relative
-    obj_dir
-    (Coq_lib_name.to_string name
-     ^
-     match mode with
-     | `Html -> ".html"
-     | `Latex -> ".tex")
-;;
-
-let coqdoc_directory_targets ~dir:obj_dir (theory : Coq_stanza.Theory.t) =
-  let+ (_ : Coq_lib.DB.t) =
-    (* We force the creation of the coq_lib db here so that errors there can
-       appear before any errors to do with directory targets from coqdoc. *)
-    let* scope = Scope.DB.find_by_dir obj_dir in
-    Scope.coq_libs scope
-  in
-  let loc = theory.buildable.loc in
-  let name = snd theory.name in
-  Path.Build.Map.of_list_exn
-    [ coqdoc_directory ~mode:`Html ~obj_dir ~name, loc
-    ; coqdoc_directory ~mode:`Latex ~obj_dir ~name, loc
-    ]
-;;
-
 let setup_coqdoc_rules ~sctx ~dir ~theories_deps (s : Coq_stanza.Theory.t) coq_modules =
   let loc, name = s.buildable.loc, snd s.name in
   let rule =
@@ -691,7 +666,7 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps (s : Coq_stanza.Theory.t) coq_m
             ~loc:(Some loc)
             ~hint:"opam install coq"
         in
-        (let doc_dir = coqdoc_directory ~mode ~obj_dir:dir ~name in
+        (let doc_dir = Coq_doc.coqdoc_directory ~mode ~obj_dir:dir ~name in
          let file_flags =
            let globs =
              let open Action_builder.O in
@@ -752,7 +727,7 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps (s : Coq_stanza.Theory.t) coq_m
         | `Html -> Alias.make Alias0.doc ~dir
         | `Latex -> Alias.make (Alias.Name.of_string "doc-latex") ~dir
       in
-      coqdoc_directory ~mode ~obj_dir:dir ~name
+      Coq_doc.coqdoc_directory ~mode ~obj_dir:dir ~name
       |> Path.build
       |> Action_builder.path
       |> Rules.Produce.Alias.add_deps alias ~loc

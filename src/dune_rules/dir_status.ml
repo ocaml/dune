@@ -88,6 +88,47 @@ let error_no_module_consumer ~loc (qualification : Include_subdirs.qualification
     ]
 ;;
 
+let extract_directory_targets ~dir stanzas =
+  Memo.List.fold_left stanzas ~init:Path.Build.Map.empty ~f:(fun acc stanza ->
+    match stanza with
+    | Rule { targets = Static { targets = l; _ }; loc = rule_loc; _ } ->
+      List.fold_left l ~init:acc ~f:(fun acc (target, kind) ->
+        let loc = String_with_vars.loc target in
+        match (kind : Targets_spec.Kind.t) with
+        | File -> acc
+        | Directory ->
+          (match String_with_vars.text_only target with
+           | None ->
+             User_error.raise
+               ~loc
+               [ Pp.text "Variables are not allowed in directory targets." ]
+           | Some target ->
+             let dir_target = Path.Build.relative ~error_loc:loc dir target in
+             if Path.Build.is_descendant dir_target ~of_:dir
+             then
+               (* We ignore duplicates here as duplicates are detected and
+                  reported by [Load_rules]. *)
+               Path.Build.Map.set acc dir_target rule_loc
+             else
+               (* This will be checked when we interpret the stanza
+                  completely, so just ignore this rule for now. *)
+               acc))
+      |> Memo.return
+    | Coq_stanza.Theory.T m ->
+      (* It's unfortunate that we need to pull in the coq rules here. But
+         we don't have a generic mechanism for this yet. *)
+      Coq_doc.coqdoc_directory_targets ~dir m
+      >>| Path.Build.Map.union acc ~f:(fun path loc1 loc2 ->
+        User_error.raise
+          ~loc:loc1
+          [ Pp.textf
+              "The following both define the same directory target: %s"
+              (Path.Build.to_string path)
+          ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
+          ])
+    | _ -> Memo.return acc)
+;;
+
 module rec DB : sig
   val get : dir:Path.Build.t -> t Memo.t
 end = struct
@@ -199,3 +240,19 @@ end = struct
     fun ~dir -> Memo.exec memo dir
   ;;
 end
+
+let directory_targets ~dir =
+  DB.get ~dir
+  >>= function
+  | Standalone (_, dune_file) -> extract_directory_targets ~dir dune_file.stanzas
+  | Group_root { components; dune_file; _ } ->
+    let f ~dir stanzas acc =
+      extract_directory_targets ~dir stanzas >>| Path.Build.Map.superpose acc
+    in
+    let* init = f ~dir dune_file.stanzas Path.Build.Map.empty in
+    components
+    >>= Memo.List.fold_left ~init ~f:(fun acc { Group_component.dir; stanzas; _ } ->
+      f ~dir stanzas acc)
+  | Generated | Source_only _ | Is_component_of_a_group_but_not_the_root _ ->
+    Memo.return Path.Build.Map.empty
+;;

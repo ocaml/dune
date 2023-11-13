@@ -299,26 +299,47 @@ let gen_rules_for_stanzas
   cctxs
 ;;
 
-let gen_rules sctx dir_contents cctxs ~source_dir ~dir
+let gen_format_and_cram_rules sctx ~expander ~dir source_dir =
+  let+ () = Format_rules.setup_alias sctx ~dir
+  and+ () =
+    Source_tree.Dir.cram_tests source_dir >>= Cram_rules.rules ~sctx ~expander ~dir
+  in
+  ()
+;;
+
+let gen_rules_source_only sctx ~dir source_dir =
+  Rules.collect_unit (fun () ->
+    let* sctx = sctx in
+    let* expander =
+      let+ expander = Super_context.expander sctx ~dir in
+      Dir_contents.add_sources_to_expander sctx expander
+    in
+    let+ () = gen_format_and_cram_rules sctx ~expander ~dir source_dir
+    and+ () =
+      define_all_alias ~dir ~js_targets:[] ~project:(Source_tree.Dir.project source_dir)
+    in
+    ())
+;;
+
+let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
   : (Loc.t * Compilation_context.t) list Memo.t
   =
   let* expander =
     let+ expander = Super_context.expander sctx ~dir in
     Dir_contents.add_sources_to_expander sctx expander
-  and+ () = Format_rules.setup_alias sctx ~dir
-  and+ tests = Source_tree.Dir.cram_tests source_dir
+  in
+  let* () = gen_format_and_cram_rules sctx ~expander ~dir source_dir
   and+ stanzas =
+    (* CR-soon rgrinberg: we shouldn't have to fetch the stanzas yet again *)
     Only_packages.stanzas_in_dir dir
     >>= function
     | Some d -> Memo.return (Some d)
     | None ->
-      let* scope = Scope.DB.find_by_dir dir in
-      let project = Scope.project scope in
+      let project = Source_tree.Dir.project source_dir in
       let+ () = define_all_alias ~dir ~js_targets:[] ~project in
       None
   in
-  let+ () = Cram_rules.rules ~sctx ~expander ~dir tests
-  and+ contexts =
+  let+ contexts =
     match stanzas with
     | None -> Memo.return []
     | Some d -> gen_rules_for_stanzas sctx dir_contents cctxs expander d ~dir
@@ -445,11 +466,16 @@ let gen_rules_standalone_or_root sctx ~dir ~source_dir =
         else Memo.return ()
       in
       let* dir_contents = Dir_contents.Standalone_or_root.root standalone_or_root in
-      let* cctxs = gen_rules sctx dir_contents [] ~source_dir ~dir in
+      let* cctxs = gen_rules_group_part_or_root sctx dir_contents [] ~source_dir ~dir in
       Dir_contents.Standalone_or_root.subdirs standalone_or_root
       >>= Memo.parallel_iter ~f:(fun dc ->
         let+ (_ : (Loc.t * Compilation_context.t) list) =
-          gen_rules sctx dir_contents cctxs ~source_dir ~dir:(Dir_contents.dir dc)
+          gen_rules_group_part_or_root
+            sctx
+            dir_contents
+            cctxs
+            ~source_dir
+            ~dir:(Dir_contents.dir dc)
         in
         ()))
   in
@@ -507,7 +533,8 @@ let gen_rules_regular_directory sctx ~components ~dir =
           Gen_rules.rules_for ~dir ~directory_targets ~allowed_subdirs rules
       in
       match dir_status with
-      | Source_only _ -> Gen_rules.rules_here Gen_rules.Rules.empty
+      | Source_only source_dir ->
+        gen_rules_source_only sctx ~dir source_dir |> make_rules |> Gen_rules.rules_here
       | Generated | Is_component_of_a_group_but_not_the_root _ ->
         Memo.return Rules.empty |> make_rules |> Gen_rules.redirect_to_parent
       | Standalone (source_dir, _) | Group_root { source_dir; _ } ->

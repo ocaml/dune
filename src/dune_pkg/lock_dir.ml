@@ -339,7 +339,44 @@ let to_dyn { version; packages; ocaml; repos; expanded_solver_variable_bindings 
     ]
 ;;
 
+type missing_dependency =
+  { dependant_package : Pkg.t
+  ; dependency : Package_name.t
+  ; loc : Loc.t
+  }
+
+(* [validate_packages packages] returns
+   [Error (`Missing_dependencies missing_dependencies)] where
+   [missing_dependencies] is a non-empty list with an element for each package
+   dependency which doesn't have a corresponding entry in [packages]. *)
+let validate_packages packages =
+  let missing_dependencies =
+    Package_name.Map.values packages
+    |> List.concat_map ~f:(fun (dependant_package : Pkg.t) ->
+      List.filter_map dependant_package.deps ~f:(fun (loc, dependency) ->
+        if Package_name.Map.mem packages dependency
+        then None
+        else Some { dependant_package; dependency; loc }))
+  in
+  if List.is_empty missing_dependencies
+  then Ok ()
+  else Error (`Missing_dependencies missing_dependencies)
+;;
+
 let create_latest_version packages ~ocaml ~repos ~expanded_solver_variable_bindings =
+  (match validate_packages packages with
+   | Ok () -> ()
+   | Error (`Missing_dependencies missing_dependencies) ->
+     Code_error.raise
+       "Invalid package table"
+       (List.map
+          missing_dependencies
+          ~f:(fun { dependant_package; dependency; loc = _ } ->
+            ( "missing dependency"
+            , Dyn.record
+                [ "missing package", Package_name.to_dyn dependency
+                ; "dependency of", Package_name.to_dyn dependant_package.info.name
+                ] ))));
   let version = Syntax.greatest_supported_version Dune_lang.Pkg.syntax in
   let complete, used =
     match repos with
@@ -350,7 +387,8 @@ let create_latest_version packages ~ocaml ~repos ~expanded_solver_variable_bindi
       complete, Some used
   in
   let repos : Repositories.t = { complete; used } in
-  { version; packages; ocaml; repos; expanded_solver_variable_bindings }
+  let t = { version; packages; ocaml; repos; expanded_solver_variable_bindings } in
+  t
 ;;
 
 let default_path = Path.Source.(relative root "dune.lock")
@@ -589,6 +627,39 @@ struct
         [ Pp.textf "%s is not a directory." (Path.Source.to_string lock_dir_path) ]
   ;;
 
+  let check_packages packages ~lock_dir_path =
+    match validate_packages packages with
+    | Ok () -> ()
+    | Error (`Missing_dependencies missing_dependencies) ->
+      List.iter missing_dependencies ~f:(fun { dependant_package; dependency; loc } ->
+        User_message.prerr
+          (User_message.make
+             ~loc
+             [ Pp.textf
+                 "The package %S depends on the package %S, but %S does not appear in \
+                  the lockdir %s."
+                 (Package_name.to_string dependant_package.info.name)
+                 (Package_name.to_string dependency)
+                 (Package_name.to_string dependency)
+                 (Path.Source.to_string_maybe_quoted lock_dir_path)
+             ]));
+      User_error.raise
+        ~hints:
+          [ Pp.concat
+              ~sep:Pp.space
+              [ Pp.text
+                  "This could indicate that the lockdir is corrupted. Delete it and then \
+                   regenerate it by running:"
+              ; User_message.command "dune pkg lock"
+              ]
+          ]
+        [ Pp.textf
+            "At least one package dependency is itself not present as a package in the \
+             lockdir %s."
+            (Path.Source.to_string_maybe_quoted lock_dir_path)
+        ]
+  ;;
+
   let load lock_dir_path =
     let open Io.O in
     let* () = check_path lock_dir_path in
@@ -608,6 +679,7 @@ struct
         package_name, pkg)
       >>| Package_name.Map.of_list_exn
     in
+    check_packages packages ~lock_dir_path;
     { version; packages; ocaml; repos; expanded_solver_variable_bindings }
   ;;
 end

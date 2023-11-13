@@ -349,50 +349,60 @@ let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
 
 (* To be called once per project, when we are generating the rules for the root
    directory of the project *)
-let gen_project_rules sctx project : unit Memo.t =
-  let+ () = Install_rules.gen_project_rules sctx project
-  and+ () = Odoc.gen_project_rules sctx project
-  and+ () =
-    let version = 2, 8 in
-    match Dune_project.allow_approximate_merlin project with
-    | None -> Memo.return ()
-    | Some _ when Dune_project.dune_version project < version -> Memo.return ()
-    | Some loc ->
-      let+ vendored = Source_tree.is_vendored (Dune_project.root project) in
-      if not vendored
-      then
-        Dune_lang.Syntax.Warning.deprecated_in
-          ~extra_info:
-            "It is useless since the Merlin configurations are not ambiguous anymore."
-          loc
-          Stanza.syntax
-          version
-          ~what:"This field"
-  and+ () =
-    match Dune_project.name project with
-    | Named _ -> Memo.return ()
-    | Anonymous _ ->
-      (match
-         Dune_project.dune_version project >= (2, 8)
-         && Dune_project.generate_opam_files project
-       with
-       | false -> Memo.return ()
-       | true ->
-         Warning_emit.emit
-           Warning.missing_project_name
-           (Warning_emit.Context.project project)
-           (fun () ->
-              let+ () = Memo.return () in
-              let loc = Loc.in_file (Path.source (Dune_project.file project)) in
-              User_message.make
-                ~loc
-                [ Pp.text
-                    "Project name is not specified. Add a (name <project-name>) field to \
-                     your dune-project file to make sure that $ dune subst works in \
-                     release or pinned builds"
-                ]))
+let gen_project_rules =
+  let rules sctx project =
+    let* sctx = sctx in
+    let+ () = Install_rules.gen_project_rules sctx project
+    and+ () = Odoc.gen_project_rules sctx project
+    and+ () =
+      let version = 2, 8 in
+      match Dune_project.allow_approximate_merlin project with
+      | None -> Memo.return ()
+      | Some _ when Dune_project.dune_version project < version -> Memo.return ()
+      | Some loc ->
+        let+ vendored = Source_tree.is_vendored (Dune_project.root project) in
+        if not vendored
+        then
+          Dune_lang.Syntax.Warning.deprecated_in
+            ~extra_info:
+              "It is useless since the Merlin configurations are not ambiguous anymore."
+            loc
+            Stanza.syntax
+            version
+            ~what:"This field"
+    and+ () =
+      match Dune_project.name project with
+      | Named _ -> Memo.return ()
+      | Anonymous _ ->
+        (match
+           Dune_project.dune_version project >= (2, 8)
+           && Dune_project.generate_opam_files project
+         with
+         | false -> Memo.return ()
+         | true ->
+           Warning_emit.emit
+             Warning.missing_project_name
+             (Warning_emit.Context.project project)
+             (fun () ->
+                let+ () = Memo.return () in
+                let loc = Loc.in_file (Path.source (Dune_project.file project)) in
+                User_message.make
+                  ~loc
+                  [ Pp.text
+                      "Project name is not specified. Add a (name <project-name>) field \
+                       to your dune-project file to make sure that $ dune subst works in \
+                       release or pinned builds"
+                  ]))
+    in
+    ()
   in
-  ()
+  fun sctx source_dir ->
+    let project = Source_tree.Dir.project source_dir in
+    match
+      Path.Source.equal (Source_tree.Dir.path source_dir) (Dune_project.root project)
+    with
+    | false -> Memo.return Rules.empty
+    | true -> Rules.collect_unit (fun () -> rules sctx project)
 ;;
 
 module Automatic_subdir = struct
@@ -459,12 +469,6 @@ let gen_rules_standalone_or_root sctx ~dir ~source_dir =
   let* () = Memo.Lazy.force Configurator_rules.force_files in
   let* rules' =
     Rules.collect_unit (fun () ->
-      let* () =
-        let project = Source_tree.Dir.project source_dir in
-        if Path.Source.equal (Source_tree.Dir.path source_dir) (Dune_project.root project)
-        then gen_project_rules sctx project
-        else Memo.return ()
-      in
       let* dir_contents = Dir_contents.Standalone_or_root.root standalone_or_root in
       let* cctxs = gen_rules_group_part_or_root sctx dir_contents [] ~source_dir ~dir in
       Dir_contents.Standalone_or_root.subdirs standalone_or_root
@@ -527,8 +531,12 @@ let gen_rules_regular_directory sctx ~components ~dir =
           let rules =
             let+ automatic_subdir_rules =
               gen_automatic_subdir_rules sctx ~dir ~nearest_src_dir ~src_dir
+            and+ project_rules =
+              match st_dir with
+              | None -> Memo.return Rules.empty
+              | Some st_dir -> gen_project_rules sctx st_dir
             and+ rules = rules in
-            Rules.union automatic_subdir_rules rules
+            Rules.union (Rules.union project_rules automatic_subdir_rules) rules
           in
           Gen_rules.rules_for ~dir ~directory_targets ~allowed_subdirs rules
       in

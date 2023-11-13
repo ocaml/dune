@@ -560,7 +560,7 @@ let gen_rules_regular_directory sctx ~components ~dir =
 
 (* Once [gen_rules] has decided what to do with the directory, it should end
    with [has_rules] or [redirect_to_parent] *)
-let gen_rules sctx ~dir components : Gen_rules.result Memo.t =
+let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
   match components with
   | [ ".dune"; "ccomp" ] ->
     has_rules ~dir Subdir_set.empty (fun () ->
@@ -601,6 +601,11 @@ let gen_rules sctx ~dir components : Gen_rules.result Memo.t =
       (fun () ->
         let* sctx = sctx in
         Preprocessing.gen_rules sctx rest)
+  | [ ".dune" ] ->
+    has_rules
+      ~dir
+      (Subdir_set.of_set (Filename.Set.of_list [ "ccomp" ]))
+      (fun () -> Context.DB.get ctx >>= Configurator_rules.gen_rules)
   | _ -> gen_rules_regular_directory sctx ~components ~dir
 ;;
 
@@ -669,12 +674,5 @@ let gen_rules ctx ~dir components =
     Per_context.valid ctx
     >>= function
     | false -> Memo.return Gen_rules.unknown_context
-    | true ->
-      (match components with
-       | [ ".dune" ] ->
-         has_rules
-           ~dir
-           (Subdir_set.of_set (Filename.Set.of_list [ "ccomp" ]))
-           (fun () -> Context.DB.get ctx >>= Configurator_rules.gen_rules)
-       | _ -> gen_rules (Super_context.find_exn ctx) ~dir components)
+    | true -> gen_rules ctx (Super_context.find_exn ctx) ~dir components
 ;;

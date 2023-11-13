@@ -12,6 +12,7 @@ An empty project, should not copy any file.
 
   $ dune build
   $ [ -d _build/default ] && find _build/default -name '*.ml'
+  [1]
 
 A project that only uses a.ml, should not copy b.ml
 

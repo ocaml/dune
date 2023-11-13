@@ -261,9 +261,7 @@ module Dune_files = struct
     | Some d ->
       let project = Source_tree.Dir.project d in
       (match Source_tree.Dir.dune_file d with
-       | None ->
-         let dir = Source_tree.Dir.path d in
-         Memo.return (Some { Dune_file.dir; project; stanzas = [] })
+       | None -> Memo.return None
        | Some dune_file ->
          let* dune_file = interpret ~dir:source_dir ~project ~dune_file in
          (match dune_file with

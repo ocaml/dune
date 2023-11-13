@@ -41,4 +41,4 @@ module DB : sig
   val get : dir:Path.Build.t -> t Memo.t
 end
 
-val directory_targets : dir:Path.Build.t -> Loc.t Path.Build.Map.t Memo.t
+val directory_targets : t -> dir:Path.Build.t -> Loc.t Path.Build.Map.t Memo.t

@@ -392,7 +392,11 @@ module Automatic_subdir = struct
       ]
   ;;
 
-  let of_src_dir src_dir = Filename.Map.find map (Path.Source.basename src_dir)
+  let of_src_dir src_dir =
+    match Path.Source.basename_opt src_dir with
+    | None -> None
+    | Some basename -> Filename.Map.find map basename
+  ;;
 
   let subdirs components =
     match List.last components with
@@ -423,39 +427,37 @@ let has_rules ~dir subdirs f =
        rules)
 ;;
 
-let gen_rules_standalone_or_root sctx standalone_or_root ~dir ~source_dir =
-  let rules =
-    let* () = Memo.Lazy.force Configurator_rules.force_files in
-    let* rules' =
-      Rules.collect_unit (fun () ->
-        let* () =
-          let project = Source_tree.Dir.project source_dir in
-          if Path.Source.equal
-               (Source_tree.Dir.path source_dir)
-               (Dune_project.root project)
-          then gen_project_rules sctx project
-          else Memo.return ()
+let gen_rules_standalone_or_root sctx ~dir ~source_dir =
+  let* sctx = sctx in
+  let* standalone_or_root =
+    Dir_contents.triage ~dir sctx
+    >>| function
+    | Group_part _ -> assert false
+    | Standalone_or_root standalone_or_root -> standalone_or_root
+  in
+  let* () = Memo.Lazy.force Configurator_rules.force_files in
+  let* rules' =
+    Rules.collect_unit (fun () ->
+      let* () =
+        let project = Source_tree.Dir.project source_dir in
+        if Path.Source.equal (Source_tree.Dir.path source_dir) (Dune_project.root project)
+        then gen_project_rules sctx project
+        else Memo.return ()
+      in
+      let* dir_contents = Dir_contents.Standalone_or_root.root standalone_or_root in
+      let* cctxs = gen_rules sctx dir_contents [] ~source_dir ~dir in
+      Dir_contents.Standalone_or_root.subdirs standalone_or_root
+      >>= Memo.parallel_iter ~f:(fun dc ->
+        let+ (_ : (Loc.t * Compilation_context.t) list) =
+          gen_rules sctx dir_contents cctxs ~source_dir ~dir:(Dir_contents.dir dc)
         in
-        let* dir_contents = Dir_contents.Standalone_or_root.root standalone_or_root in
-        let* cctxs = gen_rules sctx dir_contents [] ~source_dir ~dir in
-        Dir_contents.Standalone_or_root.subdirs standalone_or_root
-        >>= Memo.parallel_iter ~f:(fun dc ->
-          let+ (_ : (Loc.t * Compilation_context.t) list) =
-            gen_rules sctx dir_contents cctxs ~source_dir ~dir:(Dir_contents.dir dc)
-          in
-          ()))
-    in
-    let+ rules = Dir_contents.Standalone_or_root.rules standalone_or_root in
-    Rules.union rules rules'
+        ()))
   in
-  let+ rules =
-    let+ directory_targets = Dir_status.directory_targets ~dir in
-    Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rules ~directory_targets
-  in
-  Gen_rules.rules_here rules
+  let+ rules = Dir_contents.Standalone_or_root.rules standalone_or_root in
+  Rules.union rules rules'
 ;;
 
-let gen_rules_build_dir sctx ~dir ~nearest_src_dir ~src_dir =
+let gen_automatic_subdir_rules sctx ~dir ~nearest_src_dir ~src_dir =
   (* There is always a source dir at the root, so we can't be at the root if
      we are in this branch *)
   match
@@ -463,9 +465,11 @@ let gen_rules_build_dir sctx ~dir ~nearest_src_dir ~src_dir =
     | None -> None
     | Some _ -> Automatic_subdir.of_src_dir src_dir
   with
-  | None -> Memo.return (Gen_rules.redirect_to_parent Gen_rules.Rules.empty)
+  | None -> Memo.return Rules.empty
   | Some kind ->
-    has_rules ~dir Subdir_set.empty (fun () -> Automatic_subdir.gen_rules ~sctx ~dir kind)
+    Rules.collect_unit (fun () ->
+      let* sctx = sctx in
+      Automatic_subdir.gen_rules ~sctx ~dir kind)
 ;;
 
 let gen_rules_regular_directory sctx ~components ~dir =
@@ -478,39 +482,38 @@ let gen_rules_regular_directory sctx ~components ~dir =
       | None -> Source_tree.find_dir (Path.Source.parent_exn src_dir)
     in
     let+ rules =
-      let+ rules =
-        match st_dir with
-        | None -> gen_rules_build_dir sctx ~nearest_src_dir ~dir ~src_dir
-        | Some source_dir ->
-          (* This interprets [rule] and [copy_files] stanzas. *)
-          Dir_contents.triage sctx ~dir
-          >>= (function
-           | Group_part _ ->
-             Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
-           | Standalone_or_root standalone_or_root ->
-             gen_rules_standalone_or_root sctx standalone_or_root ~dir ~source_dir)
-      in
-      Gen_rules.map_rules rules ~f:(fun (rules : Gen_rules.Rules.t) ->
-        let build_dir_only_sub_dirs =
-          let allowed_subdirs =
-            (let automatic = Automatic_subdir.subdirs components in
-             let toplevel =
-               match components with
-               | _ :: _ -> Filename.Set.empty
-               | [] ->
-                 (* XXX sync this list with the pattern matches above. It's quite ugly
-                    we need this, we should rewrite this code to avoid this. *)
-                 Filename.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ]
-             in
-             Filename.Set.union automatic toplevel)
-            |> Subdir_set.of_set
-            |> Gen_rules.Build_only_sub_dirs.singleton ~dir
+      let* dir_status = Dir_status.DB.get ~dir in
+      let+ make_rules =
+        let+ directory_targets = Dir_status.directory_targets dir_status ~dir in
+        let allowed_subdirs =
+          let automatic = Automatic_subdir.subdirs components in
+          let toplevel =
+            match components with
+            | _ :: _ -> Filename.Set.empty
+            | [] ->
+              (* XXX sync this list with the pattern matches above. It's quite ugly
+                 we need this, we should rewrite this code to avoid this. *)
+              Filename.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ]
           in
-          Gen_rules.Build_only_sub_dirs.union
-            rules.build_dir_only_sub_dirs
-            allowed_subdirs
+          Filename.Set.union automatic toplevel
         in
-        { rules with build_dir_only_sub_dirs })
+        fun rules ->
+          let rules =
+            let+ automatic_subdir_rules =
+              gen_automatic_subdir_rules sctx ~dir ~nearest_src_dir ~src_dir
+            and+ rules = rules in
+            Rules.union automatic_subdir_rules rules
+          in
+          Gen_rules.rules_for ~dir ~directory_targets ~allowed_subdirs rules
+      in
+      match dir_status with
+      | Source_only _ -> Gen_rules.rules_here Gen_rules.Rules.empty
+      | Generated | Is_component_of_a_group_but_not_the_root _ ->
+        Memo.return Rules.empty |> make_rules |> Gen_rules.redirect_to_parent
+      | Standalone (source_dir, _) | Group_root { source_dir; _ } ->
+        gen_rules_standalone_or_root sctx ~dir ~source_dir
+        |> make_rules
+        |> Gen_rules.rules_here
     in
     match Opam_create.gen_rules sctx ~dir ~nearest_src_dir ~src_dir with
     | None -> rules
@@ -522,11 +525,12 @@ let gen_rules_regular_directory sctx ~components ~dir =
 
 (* Once [gen_rules] has decided what to do with the directory, it should end
    with [has_rules] or [redirect_to_parent] *)
-let gen_rules ~sctx ~dir components : Gen_rules.result Memo.t =
+let gen_rules sctx ~dir components : Gen_rules.result Memo.t =
   match components with
   | [ ".dune"; "ccomp" ] ->
     has_rules ~dir Subdir_set.empty (fun () ->
       (* Add rules for C compiler detection *)
+      let* sctx = sctx in
       Cxx_rules.rules ~sctx ~dir)
   | ".js" :: rest ->
     has_rules
@@ -539,22 +543,29 @@ let gen_rules ~sctx ~dir components : Gen_rules.result Memo.t =
            take into account the env stanza. But really, these are internal
            libraries that are being compiled and user settings should be
            ignored. *)
+        let* sctx = sctx in
         Jsoo_rules.setup_separate_compilation_rules sctx rest)
-  | "_doc" :: rest -> Odoc.gen_rules sctx rest ~dir
+  | "_doc" :: rest ->
+    let* sctx = sctx in
+    Odoc.gen_rules sctx rest ~dir
   | ".topmod" :: comps ->
     has_rules
       ~dir
       (match comps with
        | [] -> Subdir_set.all
        | _ -> Subdir_set.empty)
-      (fun () -> Top_module.gen_rules sctx ~dir ~comps)
+      (fun () ->
+        let* sctx = sctx in
+        Top_module.gen_rules sctx ~dir ~comps)
   | ".ppx" :: rest ->
     has_rules
       ~dir
       (match rest with
        | [] -> Subdir_set.all
        | _ -> Subdir_set.empty)
-      (fun () -> Preprocessing.gen_rules sctx rest)
+      (fun () ->
+        let* sctx = sctx in
+        Preprocessing.gen_rules sctx rest)
   | _ -> gen_rules_regular_directory sctx ~components ~dir
 ;;
 
@@ -619,12 +630,16 @@ let gen_rules ctx ~dir components =
           (Memo.return rules)))
   else if Context_name.equal ctx Private_context.t.name
   then private_context ~dir components ctx
-  else (
-    match components with
-    | [ ".dune" ] ->
-      has_rules
-        ~dir
-        (Subdir_set.of_set (Filename.Set.of_list [ "ccomp" ]))
-        (fun () -> Context.DB.get ctx >>= Configurator_rules.gen_rules)
-    | _ -> with_context ctx ~f:(fun sctx -> gen_rules ~sctx ~dir components))
+  else
+    Per_context.valid ctx
+    >>= function
+    | false -> Memo.return Gen_rules.unknown_context
+    | true ->
+      (match components with
+       | [ ".dune" ] ->
+         has_rules
+           ~dir
+           (Subdir_set.of_set (Filename.Set.of_list [ "ccomp" ]))
+           (fun () -> Context.DB.get ctx >>= Configurator_rules.gen_rules)
+       | _ -> gen_rules (Super_context.find_exn ctx) ~dir components)
 ;;

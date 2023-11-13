@@ -573,6 +573,12 @@ let find name =
   Context_name.Map.find all name
 ;;
 
+let find_exn name =
+  let open Memo.O in
+  let+ all = Memo.Lazy.force all in
+  Context_name.Map.find_exn all name
+;;
+
 let all_init_deferred () =
   let* all = Memo.Lazy.force all in
   Context_name.Map.values all |> Memo.parallel_iter ~f:Env_tree.force_artifacts

@@ -241,9 +241,8 @@ end = struct
   ;;
 end
 
-let directory_targets ~dir =
-  DB.get ~dir
-  >>= function
+let directory_targets t ~dir =
+  match t with
   | Standalone (_, dune_file) -> extract_directory_targets ~dir dune_file.stanzas
   | Group_root { components; dune_file; _ } ->
     let f ~dir stanzas acc =

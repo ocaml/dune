@@ -375,6 +375,7 @@ let gen_rules sctx ~dir ~nearest_src_dir ~src_dir =
          in
          let rules =
            Rules.collect_unit (fun () ->
+             let* sctx = sctx in
              let+ () = if project_rules then add_rules sctx project else Memo.return ()
              and+ () =
                if inside_generated_opam_directory

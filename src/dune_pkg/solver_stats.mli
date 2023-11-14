@@ -24,4 +24,5 @@ module Expanded_variable_bindings : sig
   val encode : t -> Dune_lang.t list
   val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t
+  val to_solver_env : t -> Solver_env.t
 end

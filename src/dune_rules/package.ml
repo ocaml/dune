@@ -646,5 +646,9 @@ let missing_deps (t : t) ~effective_deps =
 ;;
 
 let to_local_package t =
-  { Dune_pkg.Local_package.name = name t; version = t.version; dependencies = t.depends }
+  { Dune_pkg.Local_package.name = name t
+  ; version = t.version
+  ; dependencies = t.depends
+  ; loc = t.loc
+  }
 ;;

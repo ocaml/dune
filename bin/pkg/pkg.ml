@@ -11,4 +11,12 @@ let info =
   Cmd.info "pkg" ~doc ~man
 ;;
 
-let group = Cmd.group info [ Lock.command; Print_solver_env.command; Outdated.command ]
+let group =
+  Cmd.group
+    info
+    [ Lock.command
+    ; Print_solver_env.command
+    ; Outdated.command
+    ; Validate_lock_dir.command
+    ]
+;;

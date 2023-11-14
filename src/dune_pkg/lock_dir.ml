@@ -705,3 +705,32 @@ module Load_immediate = Make_load (struct
   end)
 
 let read_disk = Load_immediate.load
+
+let transitive_dependency_closure t start =
+  let missing_packages =
+    let all_packages_in_lock_dir = Package_name.Set.of_keys t.packages in
+    Package_name.Set.diff start all_packages_in_lock_dir
+  in
+  match Package_name.Set.is_empty missing_packages with
+  | false -> Error (`Missing_packages missing_packages)
+  | true ->
+    let to_visit = Queue.create () in
+    let push_set = Package_name.Set.iter ~f:(Queue.push to_visit) in
+    push_set start;
+    let rec loop seen =
+      match Queue.pop to_visit with
+      | None -> seen
+      | Some node ->
+        let unseen_deps =
+          (* Note that the call to find_exn won't raise because [t] guarantees
+             that its map of dependencies is closed under "depends on". *)
+          Package_name.Set.(
+            diff
+              (of_list_map (Package_name.Map.find_exn t.packages node).deps ~f:snd)
+              seen)
+        in
+        push_set unseen_deps;
+        loop (Package_name.Set.union seen unseen_deps)
+    in
+    Ok (loop start)
+;;

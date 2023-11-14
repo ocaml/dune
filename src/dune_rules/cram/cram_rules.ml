@@ -179,6 +179,8 @@ let rules ~sctx ~expander ~dir tests =
                 let base = `This (Path.build dir) in
                 let open Action_builder.O in
                 let+ more_locks =
+                  (* XXX wrong expander? this should be the expander in the
+                     directory of the cram stanzas *)
                   Expander.expand_locks ~base expander stanza.locks
                   |> Action_builder.of_memo
                   >>| Path.Set.of_list

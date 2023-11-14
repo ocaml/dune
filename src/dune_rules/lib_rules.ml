@@ -501,7 +501,7 @@ let setup_build_archives
             ~obj_dir)
       in
       Memo.parallel_iter action_with_targets ~f:(fun rule ->
-        rule >>= Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc))
+        Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc rule))
   in
   Memo.when_
     (Dynlink_supported.By_the_os.get natdynlink_supported && modes.ocaml.native)

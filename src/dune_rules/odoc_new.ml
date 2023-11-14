@@ -274,47 +274,47 @@ let libs_maps_def =
              let pkg = Lib_info.package info in
              Lib.DB.find db name
              >>| (function
-             | None -> maps
-             | Some lib ->
-               let loc_of_lib =
-                 match Lib_name.Map.add maps.loc_of_lib name location with
-                 | Ok l -> l
-                 | Error _ ->
-                   (* I don't expect this should ever happen *)
-                   Log.info
-                     [ Pp.textf
-                         "Error adding lib %s to loc_of_lib map"
-                         (Lib_name.to_string name)
-                     ];
-                   maps.loc_of_lib
-               in
-               let loc_of_pkg =
-                 match pkg with
-                 | None -> maps.loc_of_pkg
-                 | Some pkg_name ->
-                   (match Package.Name.Map.add maps.loc_of_pkg pkg_name location with
-                    | Ok l -> l
-                    | Error _ ->
-                      (* There will be lots of repeated packages, no problem here *)
-                      maps.loc_of_pkg)
-               in
-               let update_fn = function
-                 | None -> Some (Lib_name.Map.singleton name (l, lib))
-                 | Some libs ->
-                   (match Lib_name.Map.add libs name (l, lib) with
-                    | Ok libs -> Some libs
-                    | Error _ ->
-                      Log.info
-                        [ Pp.textf
-                            "Error adding lib %s to libs_of_loc map"
-                            (Lib_name.to_string name)
-                        ];
-                      Some libs)
-               in
-               let libs_of_loc =
-                 Ext_loc_map.update maps.libs_of_loc location ~f:update_fn
-               in
-               { maps with loc_of_lib; loc_of_pkg; libs_of_loc })))
+              | None -> maps
+              | Some lib ->
+                let loc_of_lib =
+                  match Lib_name.Map.add maps.loc_of_lib name location with
+                  | Ok l -> l
+                  | Error _ ->
+                    (* I don't expect this should ever happen *)
+                    Log.info
+                      [ Pp.textf
+                          "Error adding lib %s to loc_of_lib map"
+                          (Lib_name.to_string name)
+                      ];
+                    maps.loc_of_lib
+                in
+                let loc_of_pkg =
+                  match pkg with
+                  | None -> maps.loc_of_pkg
+                  | Some pkg_name ->
+                    (match Package.Name.Map.add maps.loc_of_pkg pkg_name location with
+                     | Ok l -> l
+                     | Error _ ->
+                       (* There will be lots of repeated packages, no problem here *)
+                       maps.loc_of_pkg)
+                in
+                let update_fn = function
+                  | None -> Some (Lib_name.Map.singleton name (l, lib))
+                  | Some libs ->
+                    (match Lib_name.Map.add libs name (l, lib) with
+                     | Ok libs -> Some libs
+                     | Error _ ->
+                       Log.info
+                         [ Pp.textf
+                             "Error adding lib %s to libs_of_loc map"
+                             (Lib_name.to_string name)
+                         ];
+                       Some libs)
+                in
+                let libs_of_loc =
+                  Ext_loc_map.update maps.libs_of_loc location ~f:update_fn
+                in
+                { maps with loc_of_lib; loc_of_pkg; libs_of_loc })))
     in
     result
   in
@@ -1243,11 +1243,13 @@ let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =
       | Dune_section.Doc, fs ->
         let doc_path = Section.Map.find_exn dpkg.sections Doc in
         Some
-          (List.filter_map fs ~f:(fun dst ->
-             let str = Install.Entry.Dst.to_string dst in
-             if Filename.check_suffix str ".mld"
-             then Some (Path.relative doc_path str)
-             else None))
+          (List.filter_map fs ~f:(function
+            | `File, dst ->
+              let str = Install.Entry.Dst.to_string dst in
+              if Filename.check_suffix str ".mld"
+              then Some (Path.relative doc_path str)
+              else None
+            | _ -> None))
       | _ -> None)
     |> List.concat
 ;;

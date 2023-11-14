@@ -1107,10 +1107,46 @@ module Install_action = struct
       | false -> []
       | true ->
         let config =
-          Path.to_string config_file
-          |> OpamFilename.of_string
-          |> OpamFile.make
-          |> OpamFile.Dot_config.read
+          let config_file_str = Path.to_string config_file in
+          let file = OpamFilename.of_string config_file_str |> OpamFile.make in
+          match OpamFile.Dot_config.read file with
+          | s -> s
+          | exception OpamPp.Bad_format (pos, message) ->
+            let loc =
+              Option.map
+                pos
+                ~f:(fun { OpamParserTypes.FullPos.filename = _; start; stop } ->
+                  let file_contents = Io.read_file config_file in
+                  let bols = ref [ 0 ] in
+                  String.iteri file_contents ~f:(fun i ch ->
+                    if ch = '\n' then bols := (i + 1) :: !bols);
+                  let bols = Array.of_list (List.rev !bols) in
+                  let make_pos (line, column) =
+                    let pos_bol = bols.(line - 1) in
+                    { Lexing.pos_fname = config_file_str
+                    ; pos_lnum = line
+                    ; pos_bol
+                    ; pos_cnum = pos_bol + column
+                    }
+                  in
+                  let start = make_pos start in
+                  let stop = make_pos stop in
+                  Loc.create ~start ~stop)
+            in
+            let message_with_loc =
+              (* The location is inlined b/c the original config file is going
+                 to be deleted, so we don't be able to fetch the part of the
+                 file that's bad *)
+              let open Pp.O in
+              let error = Pp.textf "Error parsing %s" (Path.basename config_file) in
+              match loc with
+              | None -> error
+              | Some loc ->
+                (Loc.pp loc |> Pp.map_tags ~f:(fun Loc.Loc -> User_message.Style.Loc))
+                ++ error
+            in
+            User_error.raise
+              [ message_with_loc; Pp.seq (Pp.text "Reason: ") (Pp.text message) ]
         in
         OpamFile.Dot_config.bindings config
         |> List.map ~f:(fun (name, value) -> OpamVariable.to_string name, value)

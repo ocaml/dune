@@ -24,18 +24,16 @@ module Timer = struct
     if not stopped
     then
       aggregate
-        := String.Map.update !aggregate tag ~f:(function
-             | Some { Measure.cumulative_time; count } ->
-               Some
-                 { Measure.cumulative_time =
-                     cumulative_time +. (Unix.gettimeofday () -. start_time)
-                 ; count = count + 1
-                 }
-             | None ->
-               Some
-                 { Measure.cumulative_time = Unix.gettimeofday () -. start_time
-                 ; count = 1
-                 })
+      := String.Map.update !aggregate tag ~f:(function
+           | Some { Measure.cumulative_time; count } ->
+             Some
+               { Measure.cumulative_time =
+                   cumulative_time +. (Unix.gettimeofday () -. start_time)
+               ; count = count + 1
+               }
+           | None ->
+             Some
+               { Measure.cumulative_time = Unix.gettimeofday () -. start_time; count = 1 })
   ;;
 
   let start tag = { start_time = Unix.gettimeofday (); tag; stopped = false }

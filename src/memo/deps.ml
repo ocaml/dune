@@ -1,5 +1,6 @@
 open! Stdune
 open Fiber.O
+module Counter = Metrics.Counter
 
 (* The array is stored reversed to avoid reversing the list in [create]. We need to be
    careful about traversing the array in the right order in the functions [to_list] and
@@ -22,17 +23,14 @@ let changed_or_not t ~f =
   let rec go index =
     if index < 0
     then (
-      if !Counters.enabled
-      then Counters.edges_traversed := !Counters.edges_traversed + Array.length t;
+      Counter.add Metrics.Restore.edges (Array.length t);
       Fiber.return Changed_or_not.Unchanged)
     else
       f t.(index)
       >>= function
       | Changed_or_not.Unchanged -> go (index - 1)
       | (Changed | Cancelled _) as res ->
-        if !Counters.enabled
-        then
-          Counters.edges_traversed := !Counters.edges_traversed + (Array.length t - index);
+        Counter.add Metrics.Restore.edges (Array.length t - index);
         Fiber.return res
   in
   go (Array.length t - 1)

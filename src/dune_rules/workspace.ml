@@ -664,9 +664,9 @@ let step1 clflags =
                    (Context_name.to_string name)
                ];
            defined_names
-             := Context_name.Set.union
-                  !defined_names
-                  (Context_name.Set.of_list (Context.all_names ctx));
+           := Context_name.Set.union
+                !defined_names
+                (Context_name.Set.of_list (Context.all_names ctx));
            match Context.base ctx, acc with
            | { merlin = true; _ }, Some _ ->
              User_error.raise
@@ -757,13 +757,13 @@ let workspace_step1 =
       | Some p ->
         Fs_memo.file_exists p
         >>| (function
-        | true -> Some p
-        | false ->
-          User_error.raise
-            [ Pp.textf
-                "Workspace file %s does not exist"
-                (Path.Outside_build_dir.to_string_maybe_quoted p)
-            ])
+         | true -> Some p
+         | false ->
+           User_error.raise
+             [ Pp.textf
+                 "Workspace file %s does not exist"
+                 (Path.Outside_build_dir.to_string_maybe_quoted p)
+             ])
     in
     let clflags = { clflags with workspace_file } in
     match workspace_file with

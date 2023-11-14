@@ -13,8 +13,8 @@ type t =
   | Configpath of configpath
   | Hardcoded_ocaml_path
   | Repeat of int * string
-      (** [Repeat (n, s)] evaluates to [s] repeated [n] times. This substitution
-          is used for unit tests. *)
+  (** [Repeat (n, s)] evaluates to [s] repeated [n] times. This substitution
+      is used for unit tests. *)
 
 type hardcoded_ocaml_path =
   | Hardcoded of Path.t list

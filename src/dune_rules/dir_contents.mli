@@ -44,7 +44,6 @@ module Standalone_or_root : sig
   type dir_contents := t
   type t
 
-  val directory_targets : t -> Loc.t Path.Build.Map.t
   val rules : t -> Rules.t Memo.t
   val root : t -> dir_contents Memo.t
   val subdirs : t -> dir_contents list Memo.t

@@ -230,13 +230,13 @@ end = struct
               | S_DIR ->
                 File.of_source_path (In_source_dir path)
                 >>| (function
-                | Ok file -> true, file
-                | Error _ -> true, File.dummy)
+                 | Ok file -> true, file
+                 | Error _ -> true, File.dummy)
               | S_LNK ->
                 Fs_memo.path_stat (In_source_dir path)
                 >>| (function
-                | Ok ({ st_kind = S_DIR; _ } as st) -> true, File.of_stats st
-                | Ok _ | Error _ -> false, File.dummy)
+                 | Ok ({ st_kind = S_DIR; _ } as st) -> true, File.of_stats st
+                 | Ok _ | Error _ -> false, File.dummy)
               | _ -> Memo.return (false, File.dummy)
             in
             if is_directory

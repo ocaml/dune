@@ -124,7 +124,7 @@ module Ext = struct
             known dependencies. In the future, we may generalize this to return
             an [Action_exec.done_or_more_deps], but that may be trickier to get
             right, and is a bridge we can cross when we get there. *)
-         unit Fiber.t
+      unit Fiber.t
   end
 
   module type Instance = sig

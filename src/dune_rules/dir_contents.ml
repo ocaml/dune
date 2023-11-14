@@ -51,14 +51,10 @@ module Standalone_or_root = struct
     ; rules : Rules.t
     }
 
-  type nonrec t =
-    { directory_targets : Loc.t Path.Build.Map.t
-    ; contents : standalone_or_root Memo.Lazy.t
-    }
+  type nonrec t = { contents : standalone_or_root Memo.Lazy.t }
 
   let empty ~dir =
-    { directory_targets = Path.Build.Map.empty
-    ; contents =
+    { contents =
         Memo.Lazy.create (fun () ->
           Memo.return
             { root = empty Standalone ~dir
@@ -67,8 +63,6 @@ module Standalone_or_root = struct
             })
     }
   ;;
-
-  let directory_targets t = t.directory_targets
 
   let root t =
     let+ contents = Memo.Lazy.force t.contents in
@@ -143,7 +137,7 @@ let build_mlds_map stanzas ~dir ~files =
           ~standard:mlds
           ~key:Fun.id
           ~parse:(fun ~loc s ->
-            match String.Map.find mlds s with
+            match Filename.Map.find mlds s with
             | Some s -> s
             | None ->
               User_error.raise
@@ -203,10 +197,10 @@ end = struct
           | Rule rule ->
             Simple_rules.user_rule sctx rule ~dir ~expander
             >>| (function
-            | None -> []
-            | Some targets ->
-              (* CR-someday amokhov: Do not ignore directory targets. *)
-              Path.Build.Set.to_list_map targets.files ~f:Path.Build.basename)
+             | None -> []
+             | Some targets ->
+               (* CR-someday amokhov: Do not ignore directory targets. *)
+               Path.Build.Set.to_list_map targets.files ~f:Path.Build.basename)
           | Copy_files def ->
             Simple_rules.copy_files sctx def ~src_dir ~dir ~expander
             >>| Path.Set.to_list_map ~f:Path.basename
@@ -255,75 +249,6 @@ end = struct
     | false -> Load.get sctx ~dir >>= ocaml
   ;;
 
-  module Group_component = struct
-    type t =
-      { dir : Path.Build.t
-      ; path_to_group_root : Filename.t list
-      ; source_dir : Source_tree.Dir.t
-      ; stanzas : Stanza.t list
-      }
-  end
-
-  let collect_group =
-    let rec walk st_dir ~dir ~local =
-      Dir_status.DB.get ~dir
-      >>= function
-      | Generated | Source_only _ | Standalone _ | Group_root _ ->
-        Memo.return Appendable_list.empty
-      | Is_component_of_a_group_but_not_the_root { stanzas; group_root = _ } ->
-        walk_children st_dir ~dir ~local
-        >>| Appendable_list.( @ )
-              (Appendable_list.singleton
-                 { Group_component.dir
-                 ; path_to_group_root = List.rev local
-                 ; source_dir = st_dir
-                 ; stanzas =
-                     (match stanzas with
-                      | None -> []
-                      | Some d -> d.stanzas)
-                 })
-    and walk_children st_dir ~dir ~local =
-      (* TODO take account of directory targets *)
-      Source_tree.Dir.sub_dirs st_dir
-      |> Filename.Map.to_list
-      |> Memo.parallel_map ~f:(fun (basename, st_dir) ->
-        let* st_dir = Source_tree.Dir.sub_dir_as_t st_dir in
-        let dir = Path.Build.relative dir basename in
-        let local = basename :: local in
-        walk st_dir ~dir ~local)
-      >>| Appendable_list.concat
-    in
-    fun ~st_dir ~dir -> walk_children st_dir ~dir ~local:[] >>| Appendable_list.to_list
-  ;;
-
-  let extract_directory_targets ~dir stanzas =
-    List.fold_left stanzas ~init:Path.Build.Map.empty ~f:(fun acc stanza ->
-      match stanza with
-      | Rule { targets = Static { targets = l; _ }; loc = rule_loc; _ } ->
-        List.fold_left l ~init:acc ~f:(fun acc (target, kind) ->
-          let loc = String_with_vars.loc target in
-          match (kind : Targets_spec.Kind.t) with
-          | File -> acc
-          | Directory ->
-            (match String_with_vars.text_only target with
-             | None ->
-               User_error.raise
-                 ~loc
-                 [ Pp.text "Variables are not allowed in directory targets." ]
-             | Some target ->
-               let dir_target = Path.Build.relative ~error_loc:loc dir target in
-               if Path.Build.is_descendant dir_target ~of_:dir
-               then
-                 (* We ignore duplicates here as duplicates are detected and
-                    reported by [Load_rules]. *)
-                 Path.Build.Map.set acc dir_target rule_loc
-               else
-                 (* This will be checked when we interpret the stanza
-                    completely, so just ignore this rule for now. *)
-                 acc))
-      | _ -> acc)
-  ;;
-
   let human_readable_description dir =
     Pp.textf
       "Computing directory contents of %s"
@@ -332,8 +257,7 @@ end = struct
 
   let make_standalone sctx st_dir ~dir (d : Dune_file.t) =
     let human_readable_description () = human_readable_description dir in
-    { Standalone_or_root.directory_targets = extract_directory_targets ~dir d.stanzas
-    ; contents =
+    { Standalone_or_root.contents =
         Memo.lazy_ ~human_readable_description (fun () ->
           let include_subdirs = Loc.none, Include_subdirs.No in
           let ctx = Super_context.context sctx in
@@ -370,9 +294,8 @@ end = struct
               ; mlds = Memo.lazy_ (fun () -> build_mlds_map d.stanzas ~dir ~files)
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
-                    let+ lib_config = lib_config in
                     let dune_version = Dune_project.dune_version d.project in
-                    Foreign_sources.make d.stanzas ~dune_version ~lib_config ~dirs)
+                    Memo.return (Foreign_sources.make d.stanzas ~dune_version ~dirs))
               ; coq =
                   Memo.lazy_ (fun () ->
                     Coq_sources.of_dir d.stanzas ~dir ~include_subdirs ~dirs
@@ -384,28 +307,17 @@ end = struct
     }
   ;;
 
-  let make_group_root sctx st_dir qualif_mode ~dir (d : Dune_file.t) =
+  let make_group_root
+    sctx
+    ~dir
+    { Dir_status.Group_root.qualification; dune_file; source_dir; components }
+    =
     let include_subdirs =
-      let loc, qualif_mode = qualif_mode in
+      let loc, qualif_mode = qualification in
       loc, Include_subdirs.Include qualif_mode
     in
-    let loc = loc_of_dune_file st_dir in
-    let+ subdirs = collect_group ~st_dir ~dir in
-    let directory_targets =
-      let dirs =
-        { Group_component.dir
-        ; path_to_group_root = []
-        ; source_dir = st_dir
-        ; stanzas = d.stanzas
-        }
-        :: subdirs
-      in
-      List.fold_left
-        dirs
-        ~init:Path.Build.Map.empty
-        ~f:(fun acc { Group_component.dir; stanzas; _ } ->
-          Path.Build.Map.superpose acc (extract_directory_targets ~dir stanzas))
-    in
+    let loc = loc_of_dune_file source_dir in
+    let+ components = components in
     let contents =
       Memo.lazy_
         ~human_readable_description:(fun () -> human_readable_description dir)
@@ -414,10 +326,16 @@ end = struct
           let+ (files, subdirs), rules =
             Rules.collect (fun () ->
               Memo.fork_and_join
-                (fun () -> load_text_files sctx st_dir d.stanzas ~src_dir:d.dir ~dir)
+                (fun () ->
+                  load_text_files
+                    sctx
+                    source_dir
+                    dune_file.stanzas
+                    ~src_dir:dune_file.dir
+                    ~dir)
                 (fun () ->
                   Memo.parallel_map
-                    subdirs
+                    components
                     ~f:(fun { dir; path_to_group_root; source_dir; stanzas } ->
                       let+ files =
                         load_text_files
@@ -438,9 +356,9 @@ end = struct
             Memo.lazy_ (fun () ->
               let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
               let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
-              let project = d.project in
+              let project = dune_file.project in
               Ml_sources.make
-                d.stanzas
+                dune_file.stanzas
                 ~dir
                 ~project
                 ~libs
@@ -452,13 +370,13 @@ end = struct
           in
           let foreign_sources =
             Memo.lazy_ (fun () ->
-              let dune_version = Dune_project.dune_version d.project in
-              let+ lib_config = lib_config in
-              Foreign_sources.make d.stanzas ~dune_version ~lib_config ~dirs)
+              let dune_version = Dune_project.dune_version dune_file.project in
+              Memo.return (Foreign_sources.make dune_file.stanzas ~dune_version ~dirs))
           in
           let coq =
             Memo.lazy_ (fun () ->
-              Coq_sources.of_dir d.stanzas ~dir ~dirs ~include_subdirs |> Memo.return)
+              Coq_sources.of_dir dune_file.stanzas ~dir ~dirs ~include_subdirs
+              |> Memo.return)
           in
           let subdirs =
             List.map subdirs ~f:(fun { Source_file_dir.dir; path_to_root = _; files } ->
@@ -467,7 +385,7 @@ end = struct
               ; text_files = files
               ; ml
               ; foreign_sources
-              ; mlds = Memo.lazy_ (fun () -> build_mlds_map d.stanzas ~dir ~files)
+              ; mlds = Memo.lazy_ (fun () -> build_mlds_map dune_file.stanzas ~dir ~files)
               ; coq
               })
           in
@@ -477,7 +395,7 @@ end = struct
             ; text_files = files
             ; ml
             ; foreign_sources
-            ; mlds = Memo.lazy_ (fun () -> build_mlds_map d.stanzas ~dir ~files)
+            ; mlds = Memo.lazy_ (fun () -> build_mlds_map dune_file.stanzas ~dir ~files)
             ; coq
             }
           in
@@ -486,20 +404,20 @@ end = struct
           ; subdirs = Path.Build.Map.of_list_map_exn subdirs ~f:(fun x -> x.dir, x)
           })
     in
-    { Standalone_or_root.directory_targets; contents }
+    { Standalone_or_root.contents }
   ;;
 
   let get0_impl (sctx, dir) : triage Memo.t =
-    let* status = Dir_status.DB.get ~dir in
-    match status with
+    Dir_status.DB.get ~dir
+    >>= function
     | Is_component_of_a_group_but_not_the_root { group_root; stanzas = _ } ->
-      Memo.return (Group_part group_root)
-    | Generated | Source_only _ ->
+      Memo.return @@ Group_part group_root
+    | Lock_dir | Generated | Source_only _ ->
       Memo.return @@ Standalone_or_root (Standalone_or_root.empty ~dir)
     | Standalone (st_dir, d) ->
       Memo.return @@ Standalone_or_root (make_standalone sctx st_dir ~dir d)
-    | Group_root (st_dir, qualif_mode, d) ->
-      let+ group_root = make_group_root sctx st_dir qualif_mode ~dir d in
+    | Group_root root ->
+      let+ group_root = make_group_root sctx root ~dir in
       Standalone_or_root group_root
   ;;
 
@@ -517,16 +435,16 @@ end = struct
   let get sctx ~dir =
     Memo.exec memo0 (sctx, dir)
     >>= function
-    | Standalone_or_root { directory_targets = _; contents } ->
+    | Standalone_or_root { contents } ->
       let+ { root; rules = _; subdirs = _ } = Memo.Lazy.force contents in
       root
     | Group_part group_root ->
       Memo.exec memo0 (sctx, group_root)
       >>= (function
-      | Group_part _ -> assert false
-      | Standalone_or_root { directory_targets = _; contents } ->
-        let+ { root; rules = _; subdirs = _ } = Memo.Lazy.force contents in
-        root)
+       | Group_part _ -> assert false
+       | Standalone_or_root { contents } ->
+         let+ { root; rules = _; subdirs = _ } = Memo.Lazy.force contents in
+         root)
   ;;
 
   let triage sctx ~dir = Memo.exec memo0 (sctx, dir)

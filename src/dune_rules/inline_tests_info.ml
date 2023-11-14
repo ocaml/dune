@@ -52,8 +52,8 @@ module Backend = struct
          ; field_i
              "list_partitions_flags"
              (function
-              | None -> []
-              | Some x -> Ordered_set_lang.Unexpanded.encode x)
+               | None -> []
+               | Some x -> Ordered_set_lang.Unexpanded.encode x)
              t.list_partitions_flags
          ; field_o
              "generate_runner"

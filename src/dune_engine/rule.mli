@@ -40,9 +40,9 @@ module Mode : sig
     | Fallback (** Only use this rule if the source files don't exist. *)
     | Promote of Promote.t (** Silently promote the targets to the source tree. *)
     | Ignore_source_files
-        (** Just ignore the source files entirely. This is for cases where the
-            targets are promoted only in a specific context, such as for
-            .install files. *)
+    (** Just ignore the source files entirely. This is for cases where the
+        targets are promoted only in a specific context, such as for
+        .install files. *)
 end
 
 module Id : sig
@@ -88,8 +88,8 @@ module Anonymous_action : sig
     { action : Action.Full.t
     ; loc : Loc.t
     ; dir : Path.Build.t
-        (** Directory the action is attached to. This is the directory where
-            the outcome of the action will be cached. *)
+    (** Directory the action is attached to. This is the directory where
+        the outcome of the action will be cached. *)
     ; alias : Alias.Name.t option (** For better error messages *)
     }
 end

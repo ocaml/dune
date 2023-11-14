@@ -213,8 +213,8 @@ let ocamlmklib
        unless dynamically linked foreign archives are disabled. *)
     Context.dynamically_linked_foreign_archives ctx
     >>| (function
-          | true -> [ static_target; dynamic_target ]
-          | false -> [ static_target ])
+           | true -> [ static_target; dynamic_target ]
+           | false -> [ static_target ])
     >>= build ~sandbox:Sandbox_config.no_special_requirements ~custom:false
   else
     let open Memo.O in

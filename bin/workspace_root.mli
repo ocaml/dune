@@ -12,7 +12,7 @@ type t =
   { dir : string
   ; to_cwd : string list (** How to reach the cwd from the root *)
   ; reach_from_root_prefix : string
-      (** Prefix filenames with this to reach them from the root *)
+  (** Prefix filenames with this to reach them from the root *)
   ; kind : Kind.t
   }
 

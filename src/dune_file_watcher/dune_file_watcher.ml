@@ -153,7 +153,7 @@ type kind =
 type t =
   { kind : kind
   ; sync_table : (string, Sync_id.t) Table.t
-      (* Pending fs sync operations indexed by the special sync filename. *)
+  (* Pending fs sync operations indexed by the special sync filename. *)
   }
 
 module Re = Dune_re

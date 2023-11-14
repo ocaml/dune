@@ -77,31 +77,31 @@ end
 
 include
   Action_intf.Ast
-    with type program := Prog.t
-    with type path := Path.t
-    with type target := Path.Build.t
-    with type string := string
-    with type ext :=
-      (module Ext.Instance with type target = Path.Build.t and type path = Path.t)
+  with type program := Prog.t
+  with type path := Path.t
+  with type target := Path.Build.t
+  with type string := string
+  with type ext :=
+    (module Ext.Instance with type target = Path.Build.t and type path = Path.t)
 
 include
   Action_intf.Helpers
-    with type program := Prog.t
-    with type path := Path.t
-    with type target := Path.Build.t
-    with type string := string
-    with type t := t
+  with type program := Prog.t
+  with type path := Path.t
+  with type target := Path.Build.t
+  with type string := string
+  with type t := t
 
 include Monoid with type t := t
 
 module For_shell : sig
   include
     Action_intf.Ast
-      with type program := string
-      with type path := string
-      with type target := string
-      with type string := string
-      with type ext := Dune_sexp.t
+    with type program := string
+    with type path := string
+    with type target := string
+    with type string := string
+    with type ext := Dune_sexp.t
 end
 
 (** Convert the action to a format suitable for printing *)

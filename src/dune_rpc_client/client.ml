@@ -12,8 +12,8 @@ include
         | Some packets ->
           write t packets
           >>| (function
-          | Ok () -> ()
-          | Error `Closed -> raise Dune_util.Report_error.Already_reported)
+           | Ok () -> ()
+           | Error `Closed -> raise Dune_util.Report_error.Already_reported)
       ;;
     end)
 

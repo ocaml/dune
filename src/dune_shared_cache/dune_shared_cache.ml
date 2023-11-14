@@ -153,40 +153,40 @@ struct
         | `Enabled ->
           Scheduler.async digest
           >>| (function
-          | Ok _ as s -> s
-          | Error exn -> Error exn.exn)
+           | Ok _ as s -> s
+           | Error exn -> Error exn.exn)
       in
       Dune_cache.Local.store_artifacts ~mode ~rule_digest ~compute_digest targets
       >>= (function
-      | Stored targets_and_digests ->
-        let+ () = upload ~rule_digest in
-        Log.info [ Pp.textf "cache store success [%s]" hex ];
-        update_cached_digests ~targets_and_digests
-      | Already_present targets_and_digests ->
-        Log.info [ Pp.textf "cache store skipped [%s]: already present" hex ];
-        Fiber.return (update_cached_digests ~targets_and_digests)
-      | Error (Unix.Unix_error (Unix.EXDEV, "link", file)) ->
-        (* We cannot hardlink across partitions so we kindly let the user know
-           that they should use copy cache instead. *)
-        Log.info
-          [ Pp.concat
-              [ Pp.textf "cache store error [%s]:" hex
-              ; Pp.space
-              ; Pp.textf
-                  "cannot link %s between file systems. Use (cache-storage-mode copy) \
-                   instead."
-                  file
-              ]
-          ];
-        Fiber.return None
-      | Error exn ->
-        Log.info [ pp_error (Printexc.to_string exn) ];
-        Fiber.return None
-      | Will_not_store_due_to_non_determinism sexp ->
-        (* CR-someday amokhov: We should systematically log all warnings. *)
-        Log.info [ pp_error (Sexp.to_string sexp) ];
-        User_warning.emit [ pp_error (Sexp.to_string sexp) ];
-        Fiber.return None)
+       | Stored targets_and_digests ->
+         let+ () = upload ~rule_digest in
+         Log.info [ Pp.textf "cache store success [%s]" hex ];
+         update_cached_digests ~targets_and_digests
+       | Already_present targets_and_digests ->
+         Log.info [ Pp.textf "cache store skipped [%s]: already present" hex ];
+         Fiber.return (update_cached_digests ~targets_and_digests)
+       | Error (Unix.Unix_error (Unix.EXDEV, "link", file)) ->
+         (* We cannot hardlink across partitions so we kindly let the user know
+            that they should use copy cache instead. *)
+         Log.info
+           [ Pp.concat
+               [ Pp.textf "cache store error [%s]:" hex
+               ; Pp.space
+               ; Pp.textf
+                   "cannot link %s between file systems. Use (cache-storage-mode copy) \
+                    instead."
+                   file
+               ]
+           ];
+         Fiber.return None
+       | Error exn ->
+         Log.info [ pp_error (Printexc.to_string exn) ];
+         Fiber.return None
+       | Will_not_store_due_to_non_determinism sexp ->
+         (* CR-someday amokhov: We should systematically log all warnings. *)
+         Log.info [ pp_error (Sexp.to_string sexp) ];
+         User_warning.emit [ pp_error (Sexp.to_string sexp) ];
+         Fiber.return None)
   ;;
 
   let compute_target_digests_or_raise_error exec_params ~loc ~produced_targets

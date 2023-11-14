@@ -42,21 +42,29 @@ module Repositories : sig
   type t
 end
 
-type t =
+type t = private
   { version : Syntax.Version.t
   ; packages : Pkg.t Package_name.Map.t
+  (** It's guaranteed that this map will contain an entry for all dependencies
+      of all packages in this map. That is, the set of packages is closed under
+      the "depends on" relationship between packages. *)
   ; ocaml : (Loc.t * Package_name.t) option
   ; repos : Repositories.t
   ; expanded_solver_variable_bindings : Solver_stats.Expanded_variable_bindings.t
-      (** Stores the solver variables that were evaluated while solving
-          dependencies. Can be used to determine if a lockdir is compatible
-          with a particular system. *)
+  (** Stores the solver variables that were evaluated while solving
+      dependencies. Can be used to determine if a lockdir is compatible
+      with a particular system. *)
   }
 
 val remove_locs : t -> t
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 
+(** [create_latest_version packages ~ocaml ~repos
+    ~expanded_solver_variable_bindings] raises a [Code_error] if [packages] is
+    not closed under the "depends on" relationship between packages. Every
+    dependency of every package in [packages] must itself have a corresponding
+    entry in [packages]. *)
 val create_latest_version
   :  Pkg.t Package_name.Map.t
   -> ocaml:(Loc.t * Package_name.t) option

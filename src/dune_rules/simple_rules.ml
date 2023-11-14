@@ -199,8 +199,8 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
     | In_source_tree src_in_src ->
       Source_tree.find_dir src_in_src
       >>= (function
-      | Some _ -> Memo.return true
-      | None -> Load_rules.is_under_directory_target src_in_build)
+       | Some _ -> Memo.return true
+       | None -> Load_rules.is_under_directory_target src_in_build)
   in
   if not exists_or_generated
   then

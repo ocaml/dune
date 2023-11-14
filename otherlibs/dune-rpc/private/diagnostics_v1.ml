@@ -102,8 +102,8 @@ module Event = struct
     sum
       [ econstr add; econstr remove ]
       (function
-       | Add t -> case t add
-       | Remove t -> case t remove)
+        | Add t -> case t add
+        | Remove t -> case t remove)
   ;;
 
   let to_event : t -> Diagnostic.Event.t = function

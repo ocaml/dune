@@ -1197,10 +1197,7 @@ let build (builder : Builder.t) =
     else `Forbid_builds
   in
   if builder.store_digest_preimage then Dune_engine.Reversible_digest.enable ();
-  if builder.print_metrics
-  then (
-    Memo.Perf_counters.enable ();
-    Dune_metrics.enable ());
+  if builder.print_metrics then Dune_metrics.enable ();
   { builder; root; rpc; stats }
 ;;
 
@@ -1289,7 +1286,7 @@ let init (builder : Builder.t) =
   Dune_rules.Clflags.ignore_promoted_rules := c.builder.ignore_promoted_rules;
   Dune_rules.Clflags.ignore_lock_directory := c.builder.ignore_lock_directory;
   Dune_rules.Clflags.on_missing_dune_project_file
-    := if c.builder.require_dune_project_file then Error else Warn;
+  := if c.builder.require_dune_project_file then Error else Warn;
   Log.info
     [ Pp.textf
         "Workspace root: %s"

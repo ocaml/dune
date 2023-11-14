@@ -688,22 +688,28 @@ let solve_lock_dir
             ~expanded_solver_variable_bindings
       in
       let+ files =
-        Fiber.parallel_map opam_packages_to_lock ~f:(fun opam_package ->
-          let package_name =
-            OpamPackage.name opam_package |> Package_name.of_opam_package_name
-          in
-          let repo =
+        let with_files =
+          List.map opam_packages_to_lock ~f:(fun opam_package ->
+            let package_name =
+              OpamPackage.name opam_package
+              |> OpamPackage.Name.to_string
+              |> Package_name.of_string
+            in
             let candidates = Table.find_exn context.candidates_cache package_name in
             OpamPackage.Version.Map.find
               (OpamPackage.version opam_package)
-              candidates.resolved
-            |> With_file.repo
+              candidates.resolved)
+        in
+        Opam_repo.get_opam_package_files with_files
+        >>| List.map2 with_files ~f:(fun with_file entries ->
+          let package_name =
+            With_file.package with_file
+            |> OpamPackage.name
+            |> OpamPackage.Name.to_string
+            |> Package_name.of_string
           in
-          Opam_repo.get_opam_package_files repo opam_package
-          >>| function
-          | [] -> None
-          | file_entries -> Some (package_name, file_entries))
-        >>| List.filter_opt
+          package_name, entries)
+        >>| List.filter ~f:(fun (_, entries) -> List.is_non_empty entries)
         >>| Package_name.Map.of_list_exn
       in
       { Solver_result.lock_dir; files })

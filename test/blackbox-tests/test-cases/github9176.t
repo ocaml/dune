@@ -19,8 +19,4 @@ We check that `version = ""` in META files are correctly handled.
 
   $ touch e.ml
 
-  $ dune build 2>&1 | head -n 4
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("Invalid Package_version.t", { s = "" })
-  Raised at Stdune__Code_error.raise in file
+  $ dune build

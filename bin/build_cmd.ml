@@ -7,9 +7,11 @@ let with_metrics ~common f =
     if Common.print_metrics common
     then (
       let gc_stat = Gc.quick_stat () in
+      (* We reset Memo counters below, unconditionally. *)
+      let memo_counters_report = Memo.Metrics.report ~reset_after_reporting:false in
       Console.print_user_message
         (User_message.make
-           ([ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
+           ([ Pp.textf "%s" memo_counters_report
             ; Pp.textf
                 "(%.2fs total, %.1fM heap words)"
                 duration
@@ -24,6 +26,7 @@ let with_metrics ~common f =
                     cumulative_time
                     count)
                 (String.Map.to_list (Metrics.Timer.aggregated_timers ())))));
+    Memo.Metrics.reset ();
     Fiber.return ())
 ;;
 

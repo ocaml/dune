@@ -252,9 +252,13 @@ end = struct
            opam
          | Error () ->
            User_error.raise
-             [ Pp.textf
-                 "`%s config --version' returned invalid output:"
-                 (Path.to_string_maybe_quoted opam)
+             [ Pp.concat
+                 ~sep:Pp.space
+                 [ User_message.command
+                     (sprintf "%s config --version" (Path.to_string_maybe_quoted opam))
+                 ; Pp.text "returned invalid output:"
+                 ]
+               |> Pp.hovbox
              ; Pp.verbatim version
              ]))
   ;;
@@ -430,10 +434,10 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
         | Lock _ ->
           Pkg_rules.ocaml_toolchain builder.name
           >>= (function
-          | None -> toolchain `Lock
-          | Some toolchain ->
-            let+ toolchain, _ = Action_builder.run toolchain Eager in
-            toolchain, `Default)
+           | None -> toolchain `Lock
+           | Some toolchain ->
+             let+ toolchain, _ = Action_builder.run toolchain Eager in
+             toolchain, `Default)
       in
       Ocaml_toolchain.register_response_file_support ocaml;
       if Option.is_some builder.fdo_target_exe
@@ -521,8 +525,10 @@ module Group = struct
       if lock
       then Memo.return @@ Kind.Lock { default = true }
       else
-        let+ has_lock = Pkg_rules.has_lock builder.name in
-        if has_lock then Kind.Lock { default = true } else Default
+        Pkg_rules.lock_dir_active builder.name
+        >>| function
+        | true -> Kind.Lock { default = true }
+        | false -> Default
     in
     create { builder with path } ~kind ~targets
   ;;

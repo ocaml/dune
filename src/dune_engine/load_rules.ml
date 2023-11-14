@@ -80,10 +80,10 @@ let get_dir_triage ~dir =
     let module Source_tree = (val (Build_config.get ()).source_tree) in
     Source_tree.find_dir dir
     >>| (function
-    | None -> Dir_triage.empty_source
-    | Some dir ->
-      let files = Source_tree.Dir.file_paths dir in
-      Dir_triage.Known (Source { files }))
+     | None -> Dir_triage.empty_source
+     | Some dir ->
+       let files = Source_tree.Dir.file_paths dir in
+       Dir_triage.Known (Source { files }))
   | External dir_ext ->
     let+ files =
       Fs_memo.dir_contents (External dir_ext)
@@ -380,8 +380,8 @@ end = struct
   ;;
 
   let compute_alias_expansions ~(collected : Rules.Dir_rules.ready) ~dir =
-    let aliases = collected.aliases in
     let+ aliases =
+      let aliases = collected.aliases in
       if Alias.Name.Map.mem aliases Alias.Name.default
       then Memo.return aliases
       else
@@ -398,7 +398,10 @@ end = struct
             }
     in
     Alias.Name.Map.map aliases ~f:(fun { Rules.Dir_rules.Alias_spec.expansions } ->
-      Appendable_list.to_list expansions)
+      (* CR-soon rgrinberg: hide this reversal behind the interface from
+         [Alias_spec]. The order doesn't really matter, as we're just
+         collecting the dependencies that are attached to the alias *)
+      Appendable_list.to_list_rev expansions)
   ;;
 
   let add_non_fallback_rules ~init ~source_files rules =
@@ -634,11 +637,11 @@ end = struct
       | Some d' ->
         Gen_rules.gen_rules d'
         >>= (function
-        | Under_directory_target _ as res -> Memo.return res
-        | Normal rules ->
-          if Path.Build.Map.mem rules.directory_targets d.dir
-          then Memo.return (Under_directory_target { directory_target_ancestor = d.dir })
-          else call_rules_generator d)
+         | Under_directory_target _ as res -> Memo.return res
+         | Normal rules ->
+           if Path.Build.Map.mem rules.directory_targets d.dir
+           then Memo.return (Under_directory_target { directory_target_ancestor = d.dir })
+           else call_rules_generator d)
     ;;
 
     let gen_rules =
@@ -941,13 +944,13 @@ end = struct
     | Some dir ->
       get_dir_triage ~dir
       >>= (function
-      | Known _ -> Memo.return false
-      | Build_directory d ->
-        Gen_rules.gen_rules d
-        >>| (function
-        | Under_directory_target _ -> true
-        | Normal { directory_targets; _ } ->
-          Path.Build.Map.mem directory_targets (Path.as_in_build_dir_exn p)))
+       | Known _ -> Memo.return false
+       | Build_directory d ->
+         Gen_rules.gen_rules d
+         >>| (function
+          | Under_directory_target _ -> true
+          | Normal { directory_targets; _ } ->
+            Path.Build.Map.mem directory_targets (Path.as_in_build_dir_exn p)))
   ;;
 end
 
@@ -966,10 +969,10 @@ let get_rule_internal path =
   | Build_under_directory_target { directory_target_ancestor } ->
     load_dir ~dir:(Path.build (Path.Build.parent_exn directory_target_ancestor))
     >>= (function
-    | External _ | Source _ | Build_under_directory_target _ -> assert false
-    | Build { rules_here; _ } ->
-      Memo.return
-        (Path.Build.Map.find rules_here.by_directory_targets directory_target_ancestor))
+     | External _ | Source _ | Build_under_directory_target _ -> assert false
+     | Build { rules_here; _ } ->
+       Memo.return
+         (Path.Build.Map.find rules_here.by_directory_targets directory_target_ancestor))
 ;;
 
 let get_rule path =
@@ -990,10 +993,10 @@ let get_rule_or_source path =
   | `Inside path ->
     get_rule_internal path
     >>= (function
-    | Some rule -> Memo.return (Rule (path, rule))
-    | None ->
-      let* loc = Current_rule_loc.get () in
-      no_rule_found ~loc path)
+     | Some rule -> Memo.return (Rule (path, rule))
+     | None ->
+       let* loc = Current_rule_loc.get () in
+       no_rule_found ~loc path)
 ;;
 
 let get_alias_definition alias =
@@ -1021,14 +1024,14 @@ let is_target file =
   | Some dir ->
     load_dir ~dir
     >>| (function
-    | External _ | Source _ -> No
-    | Build { rules_here; _ } ->
-      let file = Path.as_in_build_dir_exn file in
-      (match Path.Build.Map.find rules_here.by_file_targets file with
-       | Some _ -> Yes File
-       | None ->
-         (match Path.Build.Map.find rules_here.by_directory_targets file with
-          | Some _ -> Yes Directory
-          | None -> No))
-    | Build_under_directory_target _ -> Under_directory_target_so_cannot_say)
+     | External _ | Source _ -> No
+     | Build { rules_here; _ } ->
+       let file = Path.as_in_build_dir_exn file in
+       (match Path.Build.Map.find rules_here.by_file_targets file with
+        | Some _ -> Yes File
+        | None ->
+          (match Path.Build.Map.find rules_here.by_directory_targets file with
+           | Some _ -> Yes Directory
+           | None -> No))
+     | Build_under_directory_target _ -> Under_directory_target_so_cannot_say)
 ;;

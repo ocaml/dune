@@ -1,5 +1,4 @@
-open Stdune
-open Dune_lang
+open Import
 
 module Name = struct
   include String

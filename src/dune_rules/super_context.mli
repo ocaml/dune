@@ -17,6 +17,9 @@ val all_init_deferred : unit -> unit Memo.t
 (** Find a super context by name. *)
 val find : Context_name.t -> t option Memo.t
 
+(** Find a super context by name. *)
+val find_exn : Context_name.t -> t Memo.t
+
 val to_dyn : t -> Dyn.t
 val context : t -> Context.t
 

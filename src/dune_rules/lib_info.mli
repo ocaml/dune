@@ -151,7 +151,7 @@ val preprocess : _ t -> Preprocess.With_instrumentation.t Preprocess.Per_module.
 val sub_systems : _ t -> Sub_system_info.t Sub_system_name.Map.t
 val enabled : _ t -> Enabled_status.t
 val orig_src_dir : 'path t -> 'path option
-val version : _ t -> string option
+val version : _ t -> Package_version.t option
 val dune_version : _ t -> Dune_lang.Syntax.Version.t option
 
 (** Directory where the source files for the library are located. Returns the
@@ -164,7 +164,7 @@ type local = Path.Build.t t
 val user_written_deps : _ t -> Lib_dep.t list
 val of_local : local -> external_
 val as_local_exn : external_ -> local
-val set_version : 'a t -> string option -> 'a t
+val set_version : 'a t -> Package_version.t option -> 'a t
 
 val for_dune_package
   :  Path.t t
@@ -196,7 +196,7 @@ val create
   -> src_dir:'a
   -> orig_src_dir:'a option
   -> obj_dir:'a Obj_dir.t
-  -> version:string option
+  -> version:Package_version.t option
   -> synopsis:string option
   -> main_module_name:Main_module_name.t
   -> sub_systems:Sub_system_info.t Sub_system_name.Map.t

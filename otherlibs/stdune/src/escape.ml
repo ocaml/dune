@@ -10,19 +10,19 @@ let quote_length s =
   let needs_quoting = ref false in
   for i = 0 to len - 1 do
     n
-      := !n
-         +
-         match String.unsafe_get s i with
-         | '\"' | '\\' | '\n' | '\t' | '\r' | '\b' ->
-           needs_quoting := true;
-           2
-         | ' ' ->
-           needs_quoting := true;
-           1
-         | '!' .. '~' -> 1
-         | _ ->
-           needs_quoting := true;
-           4
+    := !n
+       +
+       match String.unsafe_get s i with
+       | '\"' | '\\' | '\n' | '\t' | '\r' | '\b' ->
+         needs_quoting := true;
+         2
+       | ' ' ->
+         needs_quoting := true;
+         1
+       | '!' .. '~' -> 1
+       | _ ->
+         needs_quoting := true;
+         4
   done;
   if !needs_quoting
   then Needs_quoting_with_length len

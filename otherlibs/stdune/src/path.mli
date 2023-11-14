@@ -345,8 +345,8 @@ val readdir_unsorted
 val readdir_unsorted_with_kinds
   :  t
   -> ( (Filename.t * Unix.file_kind) list
-     , Dune_filesystem_stubs.Unix_error.Detailed.t )
-     Result.t
+       , Dune_filesystem_stubs.Unix_error.Detailed.t )
+       Result.t
 
 val is_dir_sep : char -> bool
 

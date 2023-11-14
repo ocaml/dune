@@ -17,7 +17,7 @@ val of_dir
   :  Stanza.t list
   -> dir:Path.Build.t
   -> include_subdirs:Loc.t * Dune_file.Include_subdirs.t
-  -> dirs:(Path.Build.t * string list * String.Set.t) list
+  -> dirs:Source_file_dir.t list
   -> t
 
 (** [find_module ~source t] finds a Coq library name and module corresponding to

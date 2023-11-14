@@ -124,7 +124,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib =
       | Public (_, _) -> Lib_info.Status.Installed
     in
     let src_dir = Obj_dir.dir obj_dir in
-    let version = Findlib.Package.version t in
+    let version = Findlib.Package.version t |> Option.map ~f:Package_version.of_string in
     let dune_version = None in
     let virtual_deps = [] in
     let implements = None in
@@ -350,21 +350,21 @@ module Loader = struct
       let dir = Path.relative dir (Package.Name.to_string name) in
       Fs.dir_exists dir
       >>= (function
-      | false -> Memo.return None
-      | true ->
-        (let dune = Path.relative dir Dune_package.fn in
-         Fs.file_exists dune
-         >>= function
-         | true -> Dune_package.Or_meta.load dune
-         | false -> Memo.return (Ok Dune_package.Or_meta.Use_meta))
-        >>= (function
-        | Error e ->
-          Memo.return (Some (Error (Unavailable_reason.Invalid_dune_package e)))
-        | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.return (Some (Ok p))
-        | Ok Use_meta ->
-          Path.relative dir Findlib.Package.meta_fn
-          |> load_meta ~dir
-          >>| Option.map ~f:(fun pkg -> Ok pkg)))
+       | false -> Memo.return None
+       | true ->
+         (let dune = Path.relative dir Dune_package.fn in
+          Fs.file_exists dune
+          >>= function
+          | true -> Dune_package.Or_meta.load dune
+          | false -> Memo.return (Ok Dune_package.Or_meta.Use_meta))
+         >>= (function
+          | Error e ->
+            Memo.return (Some (Error (Unavailable_reason.Invalid_dune_package e)))
+          | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.return (Some (Ok p))
+          | Ok Use_meta ->
+            Path.relative dir Findlib.Package.meta_fn
+            |> load_meta ~dir
+            >>| Option.map ~f:(fun pkg -> Ok pkg)))
   ;;
 
   let lookup_and_load (db : DB.t) name =

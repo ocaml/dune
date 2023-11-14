@@ -77,31 +77,31 @@ end
 
 include
   Action_intf.Ast
-    with type program := Prog.t
-    with type path := Path.t
-    with type target := Path.Build.t
-    with type string := string
-    with type ext :=
-      (module Ext.Instance with type target = Path.Build.t and type path = Path.t)
+  with type program := Prog.t
+  with type path := Path.t
+  with type target := Path.Build.t
+  with type string := string
+  with type ext :=
+    (module Ext.Instance with type target = Path.Build.t and type path = Path.t)
 
 include
   Action_intf.Helpers
-    with type program := Prog.t
-    with type path := Path.t
-    with type target := Path.Build.t
-    with type string := string
-    with type t := t
+  with type program := Prog.t
+  with type path := Path.t
+  with type target := Path.Build.t
+  with type string := string
+  with type t := t
 
 include Monoid with type t := t
 
 module For_shell : sig
   include
     Action_intf.Ast
-      with type program := string
-      with type path := string
-      with type target := string
-      with type string := string
-      with type ext := Dune_sexp.t
+    with type program := string
+    with type path := string
+    with type target := string
+    with type string := string
+    with type ext := Dune_sexp.t
 end
 
 (** Convert the action to a format suitable for printing *)
@@ -122,14 +122,6 @@ val sandbox : t -> Sandbox.t -> t
 type is_useful =
   | Clearly_not
   | Maybe
-
-(** Whether it makes sense to run the action inside a sandbox because it could
-    have harmful side effects, to ensure it only consumes declared dependencies
-    and it does not produce undeclared targets.
-
-    Eg. it is maybe useful to sandbox an arbitrary shell command, but not a
-    directory creation. *)
-val is_useful_to_sandbox : t -> is_useful
 
 (** Whether it makes sense to lookup the target in the distributed cache.
 

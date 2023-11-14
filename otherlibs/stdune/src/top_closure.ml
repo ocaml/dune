@@ -24,8 +24,8 @@ module Make (Keys : Top_closure_intf.Keys) (Monad : Monad_intf.S) = struct
       | elt :: elts ->
         loop res visited elt ~temporarily_marked
         >>= (function
-        | Error _ as result -> Monad.return result
-        | Ok (res, visited) -> iter_elts res visited elts ~temporarily_marked)
+         | Error _ as result -> Monad.return result
+         | Ok (res, visited) -> iter_elts res visited elts ~temporarily_marked)
     in
     iter_elts [] Keys.empty elements ~temporarily_marked:Keys.empty
     >>| function

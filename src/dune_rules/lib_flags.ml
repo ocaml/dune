@@ -7,8 +7,8 @@ module Link_params = struct
         (* List of files that will be read by the compiler at link time and
            appear directly on the command line *)
     ; hidden_deps : Path.t list
-        (* List of files that will be read by the compiler at link time but do
-           not appear on the command line *)
+    (* List of files that will be read by the compiler at link time but do
+       not appear on the command line *)
     }
 
   let get sctx (t : Lib.t) (mode : Link_mode.t) =

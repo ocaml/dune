@@ -3,6 +3,7 @@ module Checksum = Dune_pkg.Checksum
 module Lock_dir = Dune_pkg.Lock_dir
 module Expanded_variable_bindings = Dune_pkg.Solver_stats.Expanded_variable_bindings
 module Variable = Dune_pkg.Solver_env.Variable
+module Package_version = Dune_pkg.Package_version
 module Package_name = Dune_lang.Package_name
 
 let () = Dune_tests_common.init ()
@@ -78,8 +79,8 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
            ; unset_variables = [ Variable.Sys `Os_family ]
            }
          (Package_name.Map.of_list_exn
-            [ mk_pkg_basic ~name:"foo" ~version:"0.1.0"
-            ; mk_pkg_basic ~name:"bar" ~version:"0.2.0"
+            [ mk_pkg_basic ~name:"foo" ~version:(Package_version.of_string "0.1.0")
+            ; mk_pkg_basic ~name:"bar" ~version:(Package_version.of_string "0.2.0")
             ]));
   [%expect
     {|
@@ -135,7 +136,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
            External_copy (Loc.none, Path.External.of_string "/tmp/a")
          in
          ( name
-         , let pkg = empty_package name ~version:"0.1.0" in
+         , let pkg = empty_package name ~version:(Package_version.of_string "0.1.0") in
            { pkg with
              build_command =
                Some
@@ -167,7 +168,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
        let pkg_b =
          let name = Package_name.of_string "b" in
          ( name
-         , let pkg = empty_package name ~version:"dev" in
+         , let pkg = empty_package name ~version:(Package_version.of_string "dev") in
            { pkg with
              install_command = None
            ; deps = [ Loc.none, fst pkg_a ]
@@ -191,7 +192,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
        let pkg_c =
          let name = Package_name.of_string "c" in
          ( name
-         , let pkg = empty_package name ~version:"0.2" in
+         , let pkg = empty_package name ~version:(Package_version.of_string "0.2") in
            { pkg with
              deps = [ Loc.none, fst pkg_a; Loc.none, fst pkg_b ]
            ; info =
@@ -205,7 +206,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
            } )
        in
        let opam_repo =
-         let repo_id = Some (Dune_pkg.Repository_id.Private.git_hash "95cf548dc") in
+         let repo_id = Some (Dune_pkg.Repository_id.of_git_hash "95cf548dc") in
          Dune_pkg.Opam_repo.Private.create ~source:(Some "well-known-repo") ~repo_id
        in
        Lock_dir.create_latest_version

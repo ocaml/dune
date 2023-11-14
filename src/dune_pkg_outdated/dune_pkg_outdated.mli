@@ -9,7 +9,7 @@ type t
     collection of [packages] by consulting the [repos] and [local_packages].*)
 val find
   :  repos:Opam_repo.t list
-  -> local_packages:Opam_repo.With_file.t Package_name.Map.t
+  -> local_packages:Dune_pkg.Local_package.t Package_name.Map.t
   -> Lock_dir.Pkg.t Package_name.Map.t
   -> t Fiber.t
 
@@ -36,8 +36,8 @@ module For_tests : sig
   val better_candidate
     :  is_immediate_dep_of_local_package:bool
     -> name:string
-    -> newer_version:string
-    -> outdated_version:string
+    -> newer_version:Package_version.t
+    -> outdated_version:Package_version.t
     -> result
 
   val explain_results

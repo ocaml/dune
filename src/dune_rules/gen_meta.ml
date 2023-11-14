@@ -158,7 +158,7 @@ let gen ~(package : Package.t) ~add_directory_entry entries =
   let version =
     match package.version with
     | None -> []
-    | Some s -> [ rule "version" [] Set s ]
+    | Some s -> [ rule "version" [] Set (Package_version.to_string s) ]
   in
   let+ pkgs =
     Memo.parallel_map entries ~f:(fun (e : Scope.DB.Lib_entry.t) ->

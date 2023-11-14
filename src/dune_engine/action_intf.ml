@@ -112,7 +112,7 @@ module Ext = struct
 
     val name : string
     val version : int
-    val is_useful_to : distribute:bool -> memoize:bool -> bool
+    val is_useful_to : memoize:bool -> bool
     val encode : ('p, 't) t -> ('p -> Dune_sexp.t) -> ('t -> Dune_sexp.t) -> Dune_sexp.t
     val bimap : ('a, 'b) t -> ('a -> 'x) -> ('b -> 'y) -> ('x, 'y) t
 
@@ -124,7 +124,7 @@ module Ext = struct
             known dependencies. In the future, we may generalize this to return
             an [Action_exec.done_or_more_deps], but that may be trickier to get
             right, and is a bridge we can cross when we get there. *)
-         unit Fiber.t
+      unit Fiber.t
   end
 
   module type Instance = sig

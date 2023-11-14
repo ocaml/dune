@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 module Variable = struct
   type t = OpamVariable.t
@@ -12,21 +12,18 @@ end
 module Var = struct
   module T = struct
     type t =
-      { package : Dune_lang.Package_name.t option
+      { package : Package_name.t option
       ; variable : Variable.t
       }
 
     let compare a b =
-      match Option.compare Dune_lang.Package_name.compare a.package b.package with
+      match Option.compare Package_name.compare a.package b.package with
       | Eq -> Ordering.of_int @@ OpamVariable.compare a.variable b.variable
       | otherwise -> otherwise
     ;;
 
     let to_dyn { package; variable } =
-      Dyn.pair
-        (Dyn.option Dune_lang.Package_name.to_dyn)
-        Variable.to_dyn
-        (package, variable)
+      Dyn.pair (Dyn.option Package_name.to_dyn) Variable.to_dyn (package, variable)
     ;;
   end
 
@@ -37,13 +34,12 @@ end
 module Map = Var.Map
 
 let subst env self ~src ~dst =
-  let self' = self |> Dune_lang.Package_name.to_string |> OpamPackage.Name.of_string in
+  let self' = self |> Package_name.to_string |> OpamPackage.Name.of_string in
   let env full_variable =
     let variable = OpamVariable.Full.variable full_variable in
     let package =
       OpamVariable.Full.package ~self:self' full_variable
-      |> Option.map ~f:(fun package ->
-        package |> OpamPackage.Name.to_string |> Dune_lang.Package_name.of_string)
+      |> Option.map ~f:Package_name.of_opam_package_name
     in
     let key = { Var.T.package; variable } in
     match Map.find env key with

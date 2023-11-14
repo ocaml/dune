@@ -92,7 +92,7 @@ module Source = struct
   ;;
 
   let encode t =
-    let open Dune_lang.Encoder in
+    let open Encoder in
     match t with
     | External_copy (_loc, path) ->
       constr Fields.copy string (Path.External.to_string path)
@@ -103,7 +103,7 @@ end
 module Pkg_info = struct
   type t =
     { name : Package_name.t
-    ; version : string
+    ; version : Package_version.t
     ; dev : bool
     ; source : Source.t option
     ; extra_sources : (Path.Local.t * Source.t) list
@@ -111,7 +111,7 @@ module Pkg_info = struct
 
   let equal { name; version; dev; source; extra_sources } t =
     Package_name.equal name t.name
-    && String.equal version t.version
+    && Package_version.equal version t.version
     && Bool.equal dev t.dev
     && Option.equal Source.equal source t.source
     && List.equal
@@ -132,14 +132,14 @@ module Pkg_info = struct
   let to_dyn { name; version; dev; source; extra_sources } =
     Dyn.record
       [ "name", Package_name.to_dyn name
-      ; "version", Dyn.string version
+      ; "version", Package_version.to_dyn version
       ; "dev", Dyn.bool dev
       ; "source", Dyn.option Source.to_dyn source
       ; "extra_sources", Dyn.list (Dyn.pair Path.Local.to_dyn Source.to_dyn) extra_sources
       ]
   ;;
 
-  let default_version = "dev"
+  let default_version = Package_version.of_string "dev"
 end
 
 module Pkg = struct
@@ -148,7 +148,7 @@ module Pkg = struct
     ; install_command : Action.t option
     ; deps : (Loc.t * Package_name.t) list
     ; info : Pkg_info.t
-    ; exported_env : String_with_vars.t Dune_lang.Action.Env_update.t list
+    ; exported_env : String_with_vars.t Action.Env_update.t list
     }
 
   let equal { build_command; install_command; deps; info; exported_env } t =
@@ -157,7 +157,7 @@ module Pkg = struct
     && List.equal (Tuple.T2.equal Loc.equal Package_name.equal) deps t.deps
     && Pkg_info.equal info t.info
     && List.equal
-         (Dune_lang.Action.Env_update.equal String_with_vars.equal)
+         (Action.Env_update.equal String_with_vars.equal)
          exported_env
          t.exported_env
   ;;
@@ -166,9 +166,7 @@ module Pkg = struct
     { t with
       info = Pkg_info.remove_locs t.info
     ; exported_env =
-        List.map
-          t.exported_env
-          ~f:(Dune_lang.Action.Env_update.map ~f:String_with_vars.remove_locs)
+        List.map t.exported_env ~f:(Action.Env_update.map ~f:String_with_vars.remove_locs)
     ; deps = List.map t.deps ~f:(fun (_, pkg) -> Loc.none, pkg)
     }
   ;;
@@ -180,9 +178,7 @@ module Pkg = struct
       ; "deps", Dyn.list (Dyn.pair Loc.to_dyn_hum Package_name.to_dyn) deps
       ; "info", Pkg_info.to_dyn info
       ; ( "exported_env"
-        , Dyn.list
-            (Dune_lang.Action.Env_update.to_dyn String_with_vars.to_dyn)
-            exported_env )
+        , Dyn.list (Action.Env_update.to_dyn String_with_vars.to_dyn) exported_env )
       ]
   ;;
 
@@ -201,14 +197,15 @@ module Pkg = struct
     let open Decoder in
     enter
     @@ fields
-    @@ let+ version = field ~default:Pkg_info.default_version Fields.version string
-       and+ install_command = field_o Fields.install Dune_lang.Action.decode_pkg
-       and+ build_command = field_o Fields.build Dune_lang.Action.decode_pkg
+    @@ let+ version =
+         field ~default:Pkg_info.default_version Fields.version Package_version.decode
+       and+ install_command = field_o Fields.install Action.decode_pkg
+       and+ build_command = field_o Fields.build Action.decode_pkg
        and+ deps = field ~default:[] Fields.deps (repeat (located Package_name.decode))
        and+ source = field_o Fields.source Source.decode
        and+ dev = field_b Fields.dev
        and+ exported_env =
-         field Fields.exported_env ~default:[] (repeat Dune_lang.Action.Env_update.decode)
+         field Fields.exported_env ~default:[] (repeat Action.Env_update.decode)
        and+ extra_sources =
          field
            Fields.extra_sources
@@ -247,15 +244,15 @@ module Pkg = struct
     ; exported_env
     }
     =
-    let open Dune_lang.Encoder in
+    let open Encoder in
     record_fields
-      [ field Fields.version string version
-      ; field_o Fields.install Dune_lang.Action.encode install_command
-      ; field_o Fields.build Dune_lang.Action.encode build_command
+      [ field Fields.version Package_version.encode version
+      ; field_o Fields.install Action.encode install_command
+      ; field_o Fields.build Action.encode build_command
       ; field_l Fields.deps Package_name.encode (List.map deps ~f:snd)
       ; field_o Fields.source Source.encode source
       ; field_b Fields.dev dev
-      ; field_l Fields.exported_env Dune_lang.Action.Env_update.encode exported_env
+      ; field_l Fields.exported_env Action.Env_update.encode exported_env
       ; field_l Fields.extra_sources encode_extra_source extra_sources
       ]
   ;;
@@ -342,7 +339,44 @@ let to_dyn { version; packages; ocaml; repos; expanded_solver_variable_bindings 
     ]
 ;;
 
+type missing_dependency =
+  { dependant_package : Pkg.t
+  ; dependency : Package_name.t
+  ; loc : Loc.t
+  }
+
+(* [validate_packages packages] returns
+   [Error (`Missing_dependencies missing_dependencies)] where
+   [missing_dependencies] is a non-empty list with an element for each package
+   dependency which doesn't have a corresponding entry in [packages]. *)
+let validate_packages packages =
+  let missing_dependencies =
+    Package_name.Map.values packages
+    |> List.concat_map ~f:(fun (dependant_package : Pkg.t) ->
+      List.filter_map dependant_package.deps ~f:(fun (loc, dependency) ->
+        if Package_name.Map.mem packages dependency
+        then None
+        else Some { dependant_package; dependency; loc }))
+  in
+  if List.is_empty missing_dependencies
+  then Ok ()
+  else Error (`Missing_dependencies missing_dependencies)
+;;
+
 let create_latest_version packages ~ocaml ~repos ~expanded_solver_variable_bindings =
+  (match validate_packages packages with
+   | Ok () -> ()
+   | Error (`Missing_dependencies missing_dependencies) ->
+     Code_error.raise
+       "Invalid package table"
+       (List.map
+          missing_dependencies
+          ~f:(fun { dependant_package; dependency; loc = _ } ->
+            ( "missing dependency"
+            , Dyn.record
+                [ "missing package", Package_name.to_dyn dependency
+                ; "dependency of", Package_name.to_dyn dependant_package.info.name
+                ] ))));
   let version = Syntax.greatest_supported_version Dune_lang.Pkg.syntax in
   let complete, used =
     match repos with
@@ -353,7 +387,8 @@ let create_latest_version packages ~ocaml ~repos ~expanded_solver_variable_bindi
       complete, Some used
   in
   let repos : Repositories.t = { complete; used } in
-  { version; packages; ocaml; repos; expanded_solver_variable_bindings }
+  let t = { version; packages; ocaml; repos; expanded_solver_variable_bindings } in
+  t
 ;;
 
 let default_path = Path.Source.(relative root "dune.lock")
@@ -492,7 +527,7 @@ module Write_disk = struct
         Option.iter (Path.parent path) ~f:Path.mkdir_p;
         let cst =
           List.map contents ~f:(fun sexp ->
-            Dune_lang.Ast.add_loc ~loc:Loc.none sexp |> Dune_sexp.Cst.concrete)
+            Dune_sexp.Ast.add_loc ~loc:Loc.none sexp |> Dune_sexp.Cst.concrete)
         in
         let pp = Dune_lang.Format.pp_top_sexps ~version:(3, 11) cst in
         Format.asprintf "%a" Pp.to_fmt pp |> Io.write_file path;
@@ -518,6 +553,7 @@ module Make_load (Io : sig
     val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
     val readdir_with_kinds : Path.Source.t -> (Filename.t * Unix.file_kind) list t
     val with_lexbuf_from_file : Path.Source.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
+    val stats_kind : Path.Source.t -> (File_kind.t, Unix_error.Detailed.t) result t
   end) =
 struct
   let load_metadata metadata_file_path =
@@ -565,22 +601,68 @@ struct
   ;;
 
   let check_path lock_dir_path =
-    match Path.exists (Path.source lock_dir_path) with
-    | false ->
+    let open Io.O in
+    Io.stats_kind lock_dir_path
+    >>| function
+    | Ok S_DIR -> ()
+    | Error (Unix.ENOENT, _, _) ->
       User_error.raise
-        ~hints:[ Pp.text "Run dune pkg lock to generate it." ]
+        ~hints:
+          [ Pp.concat
+              ~sep:Pp.space
+              [ Pp.text "Run"
+              ; User_message.command "dune pkg lock"
+              ; Pp.text "to generate it."
+              ]
+            |> Pp.hovbox
+          ]
         [ Pp.textf "%s does not exist." (Path.Source.to_string lock_dir_path) ]
-    | true ->
-      (match Path.is_directory (Path.source lock_dir_path) with
-       | false ->
-         User_error.raise
-           [ Pp.textf "%s is not a directory." (Path.Source.to_string lock_dir_path) ]
-       | true -> ())
+    | Error e ->
+      User_error.raise
+        [ Pp.textf "%s is not accessible" (Path.Source.to_string lock_dir_path)
+        ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum e)
+        ]
+    | _ ->
+      User_error.raise
+        [ Pp.textf "%s is not a directory." (Path.Source.to_string lock_dir_path) ]
+  ;;
+
+  let check_packages packages ~lock_dir_path =
+    match validate_packages packages with
+    | Ok () -> ()
+    | Error (`Missing_dependencies missing_dependencies) ->
+      List.iter missing_dependencies ~f:(fun { dependant_package; dependency; loc } ->
+        User_message.prerr
+          (User_message.make
+             ~loc
+             [ Pp.textf
+                 "The package %S depends on the package %S, but %S does not appear in \
+                  the lockdir %s."
+                 (Package_name.to_string dependant_package.info.name)
+                 (Package_name.to_string dependency)
+                 (Package_name.to_string dependency)
+                 (Path.Source.to_string_maybe_quoted lock_dir_path)
+             ]));
+      User_error.raise
+        ~hints:
+          [ Pp.concat
+              ~sep:Pp.space
+              [ Pp.text
+                  "This could indicate that the lockdir is corrupted. Delete it and then \
+                   regenerate it by running:"
+              ; User_message.command "dune pkg lock"
+              ]
+          ]
+        [ Pp.textf
+            "At least one package dependency is itself not present as a package in the \
+             lockdir %s."
+            (Path.Source.to_string_maybe_quoted lock_dir_path)
+        ]
   ;;
 
   let load lock_dir_path =
     let open Io.O in
-    check_path lock_dir_path;
+    let* () = check_path lock_dir_path in
     let* version, ocaml, repos, expanded_solver_variable_bindings =
       load_metadata (Path.Source.relative lock_dir_path metadata_filename)
     in
@@ -597,12 +679,17 @@ struct
         package_name, pkg)
       >>| Package_name.Map.of_list_exn
     in
+    check_packages packages ~lock_dir_path;
     { version; packages; ocaml; repos; expanded_solver_variable_bindings }
   ;;
 end
 
 module Load_immediate = Make_load (struct
     include Monad.Id
+
+    let stats_kind file =
+      Path.source file |> Path.stat |> Result.map ~f:(fun { Unix.st_kind; _ } -> st_kind)
+    ;;
 
     let parallel_map xs ~f = List.map xs ~f
 

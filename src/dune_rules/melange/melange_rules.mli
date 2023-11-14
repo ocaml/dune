@@ -10,9 +10,6 @@ val setup_emit_cmj_rules
   -> (Compilation_context.t * Merlin.t) Memo.t
 
 val setup_emit_js_rules
-  :  dir_contents:Dir_contents.t
+  :  Super_context.t Memo.t
   -> dir:Path.Build.t
-  -> scope:Scope.t
-  -> sctx:Super_context.t
-  -> Melange_stanzas.Emit.t
-  -> unit Memo.t
+  -> Build_config.Gen_rules.t Memo.t

@@ -9,13 +9,16 @@ let configurator_v2 t = Path.Build.relative (dot_dune_dir t) "configurator.v2"
    runtime. Ideally, this should be created on-demand if we run a program linked
    against configurator, however we currently don't support this kind of
    "runtime dependencies" so we just do it eagerly. *)
-let gen_rules (ctx : Build_context.t) (ocaml : Ocaml_toolchain.t) =
-  let ocamlc = Path.to_absolute_filename ocaml.ocamlc in
-  let ocaml_config_vars = Ocaml_config.Vars.to_list ocaml.ocaml_config_vars in
+let gen_rules (ctx : Build_context.t) (ocaml : Ocaml_toolchain.t Action_builder.t) =
+  let ocaml_and_ocaml_config_vars =
+    Action_builder.map ocaml ~f:(fun (ocaml : Ocaml_toolchain.t) ->
+      ( Path.to_absolute_filename ocaml.ocamlc
+      , Ocaml_config.Vars.to_list ocaml.ocaml_config_vars ))
+  in
   let* () =
     let fn = configurator_v1 ctx in
     (let open Action_builder.O in
-     let+ () = Action_builder.return () in
+     let+ ocamlc, ocaml_config_vars = ocaml_and_ocaml_config_vars in
      (let open Dune_lang.Encoder in
       record_fields
         [ field "ocamlc" string ocamlc
@@ -30,7 +33,7 @@ let gen_rules (ctx : Build_context.t) (ocaml : Ocaml_toolchain.t) =
   in
   let fn = configurator_v2 ctx in
   (let open Action_builder.O in
-   let+ () = Action_builder.return () in
+   let+ ocamlc, ocaml_config_vars = ocaml_and_ocaml_config_vars in
    (let open Sexp in
     let ocaml_config_vars =
       Sexp.List (List.map ocaml_config_vars ~f:(fun (k, v) -> List [ Atom k; Atom v ]))
@@ -59,7 +62,12 @@ let force_files =
     Memo.parallel_iter files ~f:Build_system.build_file)
 ;;
 
-let gen_rules (context : Context.t) =
-  let* ocaml = Context.ocaml context in
-  gen_rules (Context.build_context context) ocaml
+let gen_rules (name : Context_name.t) =
+  let ocaml =
+    Action_builder.of_memo
+    @@ let* context = Context.DB.get name in
+       Context.ocaml context
+  in
+  let build_context = Build_context.create ~name in
+  gen_rules build_context ocaml
 ;;

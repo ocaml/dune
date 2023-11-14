@@ -50,37 +50,37 @@ let get_pped_file super_context file =
   | false ->
     Build_system.file_exists file_in_build_dir
     >>= (function
-    | true ->
-      let* dir =
-        Source_tree.nearest_dir (Path.Source.of_string file)
-        >>| Source_tree.Dir.path
-        >>| Path.source
-      in
-      let* dune_file = Dune_rules.Dune_load.Dune_files.in_dir (dir |> in_build_dir) in
-      let staged_pps =
-        Option.bind dune_file ~f:(fun dune_file ->
-          dune_file.stanzas
-          |> List.fold_left ~init:None ~f:(fun acc stanza ->
-            match stanza with
-            | Dune_rules.Dune_file.Library lib ->
-              let preprocess =
-                Dune_rules.Preprocess.Per_module.(
-                  lib.buildable.preprocess |> single_preprocess)
-              in
-              (match preprocess with
-               | Dune_rules.Preprocess.Pps ({ staged = true; _ } as pps) -> Some pps
-               | _ -> acc)
-            | _ -> acc))
-      in
-      (match staged_pps with
-       | None ->
-         let+ () = Build_system.build_file file_in_build_dir in
-         Error file_in_build_dir
-       | Some { loc; _ } ->
-         User_error.raise ~loc [ Pp.text "staged_pps are not supported." ])
-    | false ->
-      User_error.raise
-        [ Pp.textf "%s does not exist" (Path.to_string_maybe_quoted file_in_build_dir) ])
+     | true ->
+       let* dir =
+         Source_tree.nearest_dir (Path.Source.of_string file)
+         >>| Source_tree.Dir.path
+         >>| Path.source
+       in
+       let* dune_file = Dune_rules.Dune_load.Dune_files.in_dir (dir |> in_build_dir) in
+       let staged_pps =
+         Option.bind dune_file ~f:(fun dune_file ->
+           dune_file.stanzas
+           |> List.fold_left ~init:None ~f:(fun acc stanza ->
+             match stanza with
+             | Dune_rules.Dune_file.Library lib ->
+               let preprocess =
+                 Dune_rules.Preprocess.Per_module.(
+                   lib.buildable.preprocess |> single_preprocess)
+               in
+               (match preprocess with
+                | Dune_rules.Preprocess.Pps ({ staged = true; _ } as pps) -> Some pps
+                | _ -> acc)
+             | _ -> acc))
+       in
+       (match staged_pps with
+        | None ->
+          let+ () = Build_system.build_file file_in_build_dir in
+          Error file_in_build_dir
+        | Some { loc; _ } ->
+          User_error.raise ~loc [ Pp.text "staged_pps are not supported." ])
+     | false ->
+       User_error.raise
+         [ Pp.textf "%s does not exist" (Path.to_string_maybe_quoted file_in_build_dir) ])
 ;;
 
 let term =

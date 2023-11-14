@@ -19,5 +19,5 @@ We should suggest to the user here that they should use --prefix.
   $ unset OPAM_SWITCH_PREFIX
   $ dune install
   Error: The mandir installation directory is unknown.
-  Hint: It can be specified with --prefix or by setting --mandir
+  Hint: It can be specified with '--prefix' or by setting '--mandir'
   [1]

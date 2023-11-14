@@ -258,11 +258,11 @@ let levenshtein_distance s t =
       then d.(i).(j) <- d.(i - 1).(j - 1) (* no operation required *)
       else
         d.(i).(j)
-          <- min
-               (d.(i - 1).(j) + 1) (* a deletion *)
-               (min
-                  (d.(i).(j - 1) + 1) (* an insertion *)
-                  (d.(i - 1).(j - 1) + 1) (* a substitution *))
+        <- min
+             (d.(i - 1).(j) + 1) (* a deletion *)
+             (min
+                (d.(i).(j - 1) + 1) (* an insertion *)
+                (d.(i - 1).(j - 1) + 1) (* a substitution *))
     done
   done;
   d.(m).(n)
@@ -293,3 +293,13 @@ let is_loc_none loc =
 let has_embedded_location msg = Annots.mem msg.annots Annots.has_embedded_location
 let has_location msg = (not (is_loc_none msg.loc)) || has_embedded_location msg
 let needs_stack_trace msg = Annots.mem msg.annots Annots.needs_stack_trace
+
+let command cmd =
+  (* CR-someday rgrinberg: this should be its own tag, but that might bring
+     some backward compat issues with rpc. *)
+  Pp.concat
+    [ Pp.verbatim "'"
+    ; Pp.tag (Style.Ansi_styles [ `Underline ]) @@ Pp.verbatim cmd
+    ; Pp.verbatim "'"
+    ]
+;;

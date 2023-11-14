@@ -101,9 +101,9 @@ let copy_file =
     { name = "copy_file"
     ; of_string =
         (function
-         | "portable" -> Ok `Portable
-         | "fast" -> Ok `Best
-         | _ -> Error (sprintf "only %S and %S are allowed" "fast" "portable"))
+          | "portable" -> Ok `Portable
+          | "fast" -> Ok `Best
+          | _ -> Error (sprintf "only %S and %S are allowed" "fast" "portable"))
     ; value = `Best
     }
   in

@@ -589,24 +589,24 @@ let expand
     Dep_conf_eval.named ~expander deps_written_by_user
   in
   let expander =
-    match (targets_written_by_user : _ Targets_spec.t) with
-    | Infer -> expander
-    | Static { targets; multiplicity } ->
-      Expander.add_bindings_full
-        expander
-        ~bindings:
-          (Pform.Map.singleton
-             (Var
-                (match multiplicity with
-                 | One -> Target
-                 | Multiple -> Targets))
-             (Expander.Deps.Without
-                (Memo.return
-                   (Value.L.paths
-                      (List.map targets ~f:(fun (target, (_ : Targets_spec.Kind.t)) ->
-                         Path.build target))))))
-  in
-  let expander =
+    let expander =
+      match (targets_written_by_user : _ Targets_spec.t) with
+      | Infer -> expander
+      | Static { targets; multiplicity } ->
+        Expander.add_bindings_full
+          expander
+          ~bindings:
+            (Pform.Map.singleton
+               (Var
+                  (match multiplicity with
+                   | One -> Target
+                   | Multiple -> Targets))
+               (Expander.Deps.Without
+                  (Memo.return
+                     (Value.L.paths
+                        (List.map targets ~f:(fun (target, (_ : Targets_spec.Kind.t)) ->
+                           Path.build target))))))
+    in
     Expander.set_expanding_what expander (User_action targets_written_by_user)
   in
   let+! { Action_builder.With_targets.build; targets } =

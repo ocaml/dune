@@ -502,65 +502,69 @@ let gen_automatic_subdir_rules sctx ~dir ~nearest_src_dir ~src_dir =
       Automatic_subdir.gen_rules ~sctx ~dir kind)
 ;;
 
-let gen_rules_regular_directory sctx ~components ~dir =
-  let src_dir = Path.Build.drop_build_context_exn dir in
-  let+ rules =
-    let* st_dir = Source_tree.find_dir src_dir in
-    let* nearest_src_dir =
-      match st_dir with
-      | Some dir -> Memo.return (Some dir)
-      | None -> Source_tree.find_dir (Path.Source.parent_exn src_dir)
-    in
+let gen_rules_regular_directory sctx ~src_dir ~components ~dir =
+  Dir_status.DB.get ~dir
+  >>= function
+  | Lock_dir -> Memo.return Gen_rules.no_rules
+  | dir_status ->
     let+ rules =
-      let* dir_status = Dir_status.DB.get ~dir in
-      let+ make_rules =
-        let+ directory_targets = Dir_status.directory_targets dir_status ~dir in
-        let allowed_subdirs =
-          let automatic = Automatic_subdir.subdirs components in
-          let toplevel =
-            match components with
-            | _ :: _ -> Filename.Set.empty
-            | [] ->
-              (* XXX sync this list with the pattern matches above. It's quite ugly
-                 we need this, we should rewrite this code to avoid this. *)
-              Filename.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ]
-          in
-          Filename.Set.union automatic toplevel
-        in
-        fun rules ->
-          let rules =
-            let+ automatic_subdir_rules =
-              gen_automatic_subdir_rules sctx ~dir ~nearest_src_dir ~src_dir
-            and+ project_rules =
-              match st_dir with
-              | None -> Memo.return Rules.empty
-              | Some st_dir -> gen_project_rules sctx st_dir
-            and+ rules = rules in
-            Rules.union (Rules.union project_rules automatic_subdir_rules) rules
-          in
-          Gen_rules.rules_for ~dir ~directory_targets ~allowed_subdirs rules
+      let* st_dir = Source_tree.find_dir src_dir in
+      let* nearest_src_dir =
+        match st_dir with
+        | Some dir -> Memo.return (Some dir)
+        | None -> Source_tree.find_dir (Path.Source.parent_exn src_dir)
       in
-      match dir_status with
-      | Source_only source_dir ->
-        gen_rules_source_only sctx ~dir source_dir |> make_rules |> Gen_rules.rules_here
-      | Generated | Is_component_of_a_group_but_not_the_root _ ->
-        Memo.return Rules.empty |> make_rules |> Gen_rules.redirect_to_parent
-      | Standalone (source_dir, _) | Group_root { source_dir; _ } ->
-        gen_rules_standalone_or_root sctx ~dir ~source_dir
-        |> make_rules
-        |> Gen_rules.rules_here
-    in
-    match Opam_create.gen_rules sctx ~dir ~nearest_src_dir ~src_dir with
-    | None -> rules
-    | Some opam_rules ->
-      Gen_rules.map_rules rules ~f:(Gen_rules.Rules.combine_exn opam_rules)
-  and+ melange_rules = Melange_rules.setup_emit_js_rules sctx ~dir in
-  Gen_rules.combine melange_rules rules
+      let+ rules =
+        let+ make_rules =
+          let+ directory_targets = Dir_status.directory_targets dir_status ~dir in
+          let allowed_subdirs =
+            let automatic = Automatic_subdir.subdirs components in
+            let toplevel =
+              match components with
+              | _ :: _ -> Filename.Set.empty
+              | [] ->
+                (* XXX sync this list with the pattern matches above. It's quite ugly
+                   we need this, we should rewrite this code to avoid this. *)
+                Filename.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ]
+            in
+            Filename.Set.union automatic toplevel
+          in
+          fun rules ->
+            let rules =
+              let+ automatic_subdir_rules =
+                gen_automatic_subdir_rules sctx ~dir ~nearest_src_dir ~src_dir
+              and+ project_rules =
+                match st_dir with
+                | None -> Memo.return Rules.empty
+                | Some st_dir -> gen_project_rules sctx st_dir
+              and+ rules = rules in
+              Rules.union (Rules.union project_rules automatic_subdir_rules) rules
+            in
+            Gen_rules.rules_for ~dir ~directory_targets ~allowed_subdirs rules
+        in
+        match dir_status with
+        | Lock_dir -> Gen_rules.rules_here Gen_rules.Rules.empty
+        | Source_only source_dir ->
+          gen_rules_source_only sctx ~dir source_dir |> make_rules |> Gen_rules.rules_here
+        | Generated | Is_component_of_a_group_but_not_the_root _ ->
+          Memo.return Rules.empty |> make_rules |> Gen_rules.redirect_to_parent
+        | Standalone (source_dir, _) | Group_root { source_dir; _ } ->
+          gen_rules_standalone_or_root sctx ~dir ~source_dir
+          |> make_rules
+          |> Gen_rules.rules_here
+      in
+      match Opam_create.gen_rules sctx ~dir ~nearest_src_dir ~src_dir with
+      | None -> rules
+      | Some opam_rules ->
+        Gen_rules.map_rules rules ~f:(Gen_rules.Rules.combine_exn opam_rules)
+    and+ melange_rules = Melange_rules.setup_emit_js_rules sctx ~dir in
+    Gen_rules.combine melange_rules rules
 ;;
 
 (* Once [gen_rules] has decided what to do with the directory, it should end
    with [has_rules] or [redirect_to_parent] *)
 let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
+  let src_dir = Path.Build.drop_build_context_exn dir in
   match components with
   | [ ".dune"; "ccomp" ] ->
     has_rules ~dir Subdir_set.empty (fun () ->
@@ -606,7 +610,7 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
       ~dir
       (Subdir_set.of_set (Filename.Set.of_list [ "ccomp" ]))
       (fun () -> Configurator_rules.gen_rules ctx)
-  | _ -> gen_rules_regular_directory sctx ~components ~dir
+  | _ -> gen_rules_regular_directory sctx ~src_dir ~components ~dir
 ;;
 
 let with_context ctx ~f =
@@ -670,9 +674,5 @@ let gen_rules ctx ~dir components =
           (Memo.return rules)))
   else if Context_name.equal ctx Private_context.t.name
   then private_context ~dir components ctx
-  else
-    Per_context.valid ctx
-    >>= function
-    | false -> Memo.return Gen_rules.unknown_context
-    | true -> gen_rules ctx (Super_context.find_exn ctx) ~dir components
+  else gen_rules ctx (Super_context.find_exn ctx) ~dir components
 ;;

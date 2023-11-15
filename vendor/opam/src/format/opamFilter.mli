@@ -222,3 +222,13 @@ val atomise_extended:
 val sort_filtered_formula:
   ((name * condition) -> (name * condition) -> int) -> filtered_formula ->
   filtered_formula
+
+val escape_value : string -> string
+
+val expand_string_aux :
+    ?partial:bool ->
+    ?escape_value:(string -> string) ->
+    ?default:(string -> string) ->
+    (full_variable -> variable_contents option) ->
+    string ->
+    string

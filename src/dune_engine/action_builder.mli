@@ -80,26 +80,13 @@ module Expert : sig
     -> 'a t
 end
 
-(** {1 Execution} *)
+(** {1 Evaluation} *)
 
-(** Evaluation mode.
+(** Evaluate a [t] and collect the set of its dependencies. This avoids doing the build
+    work required for finding the facts about those dependencies, so you should use this
+    function if you don't need the facts. *)
+val evaluate_and_collect_deps : 'a t -> ('a * Dep.Set.t) Memo.t
 
-    In [Lazy] mode, dependencies are only collected. In [Eager] mode,
-    dependencies are build as soon as they are recorded and their facts are
-    returned.
-
-    If you want to both evaluate an action builder and build the collected
-    dependencies, using [Eager] mode will increase parallelism. If you only want
-    to know the set of dependencies, using [Lazy] will avoid unnecessary work. *)
-type 'm eval_mode =
-  | Lazy : Dep.Set.t eval_mode
-  | Eager : Dep.Facts.t eval_mode
-
-(** Execute an action builder. *)
-val run : 'a t -> 'm eval_mode -> ('a * 'm) Memo.t
-
-(** {1 Low-level} *)
-
-type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm) Memo.t } [@@unboxed]
-
-val of_thunk : 'a thunk -> 'a t
+(** Evaluate a [t] and collect the set of its dependencies along with facts about them.
+    Note that finding [t]'s facts requires building all of [t]'s dependencies. *)
+val evaluate_and_collect_facts : 'a t -> ('a * Dep.Facts.t) Memo.t

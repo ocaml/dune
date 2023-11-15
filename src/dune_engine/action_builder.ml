@@ -180,8 +180,8 @@ open struct
   module List = Stdune.List
 end
 
-let of_thunk t = t
-let run t mode = t.f mode
+let evaluate_and_collect_deps t = t.f Lazy
+let evaluate_and_collect_facts t = t.f Eager
 
 let force_lazy_or_eager
   : type a m.

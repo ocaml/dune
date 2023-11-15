@@ -76,7 +76,8 @@ let dep_on_alias_multi_contexts ~dir ~name ~contexts =
   let context_to_alias_expansion ctx =
     let ctx_dir = Context_name.build_dir ctx in
     let dir = Path.Build.(append_source ctx_dir dir) in
-    Action_builder.alias (Alias.make ~dir name)
+    Build_system.record_deps
+      (Dep.Set.singleton (Dep.alias (Dune_engine.Alias.make ~dir name)))
   in
   Action_builder.all_unit (List.map contexts ~f:context_to_alias_expansion)
 ;;

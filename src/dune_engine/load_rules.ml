@@ -269,41 +269,6 @@ let no_rule_found ~loc fn =
       [ "fn", Path.Build.to_dyn fn ]
 ;;
 
-let source_or_external_file_digest path =
-  let report_user_error details =
-    let+ loc = Current_rule_loc.get () in
-    User_error.raise
-      ?loc
-      ([ Pp.textf
-           "File unavailable: %s"
-           (Path.Outside_build_dir.to_string_maybe_quoted path)
-       ]
-       @ details)
-  in
-  Fs_memo.file_digest path
-  >>= function
-  | Ok digest -> Memo.return digest
-  | Error No_such_file -> report_user_error []
-  | Error Broken_symlink -> report_user_error [ Pp.text "Broken symbolic link" ]
-  | Error Cyclic_symlink -> report_user_error [ Pp.text "Cyclic symbolic link" ]
-  | Error (Unexpected_kind st_kind) ->
-    report_user_error
-      [ Pp.textf "This is not a regular file (%s)" (File_kind.to_string st_kind) ]
-  | Error (Unix_error unix_error) ->
-    report_user_error [ Unix_error.Detailed.pp ~prefix:"Reason: " unix_error ]
-  | Error (Unrecognized exn) ->
-    report_user_error [ Pp.textf "%s" (Printexc.to_string exn) ]
-;;
-
-let eval_source_file : type a. a Action_builder.eval_mode -> Path.Source.t -> a Memo.t =
-  fun mode path ->
-  match mode with
-  | Lazy -> Memo.return ()
-  | Eager ->
-    let+ d = source_or_external_file_digest (In_source_dir path) in
-    Dep.Fact.file (Path.source path) d
-;;
-
 module rec Load_rules : sig
   val load_dir : dir:Path.t -> Loaded.t Memo.t
   val is_under_directory_target : Path.t -> bool Memo.t
@@ -314,27 +279,30 @@ module rec Load_rules : sig
 end = struct
   open Load_rules
 
-  let create_copy_rules ~ctx_dir ~non_target_source_files =
-    Path.Source.Set.to_list_map non_target_source_files ~f:(fun path ->
-      let ctx_path = Path.Build.append_source ctx_dir path in
-      let build =
-        Action_builder.of_thunk
-          { f =
-              (fun mode ->
-                let+ fact = eval_source_file mode path in
-                let path = Path.source path in
-                ( Action.Full.make
-                    (Action.copy path ctx_path)
-                    (* There's an [assert false] in [prepare_managed_paths]
-                       that blows up if we try to sandbox this. *)
-                    ~sandbox:Sandbox_config.no_sandboxing
-                , Dep.Map.singleton (Dep.file path) fact ))
-          }
-      in
+  let copy_source_action ~src_path ~build_path : Action.Full.t Action_builder.t =
+    let action =
+      Action.Full.make
+        (Action.copy (Path.source src_path) build_path)
+        (* Sandboxing this action doesn't make much sense: if we can copy [src_path] to
+           the sandbox, we might as well copy it to the build directory directly. *)
+        ~sandbox:Sandbox_config.no_sandboxing
+        ~visibility_override:visibility_override_for_copying_actions
+    in
+    Action_builder.Expert.record_dep_on_source_file_exn
+      action
+      ~loc:Current_rule_loc.get
+      src_path
+  ;;
+
+  let create_copy_rules ~dir ~ctx_dir ~non_target_source_filenames =
+    Filename.Set.to_list_map non_target_source_filenames ~f:(fun filename ->
+      let src_path = Path.Source.relative dir filename in
+      let build_path = Path.Build.append_source ctx_dir src_path in
       Rule.make
-        ~info:(Source_file_copy path)
-        ~targets:(Targets.File.create ctx_path)
-        build)
+        ~context:None
+        ~info:(Source_file_copy src_path)
+        ~targets:(Targets.File.create build_path)
+        (copy_source_action ~src_path ~build_path))
   ;;
 
   let compile_rules ~dir ~source_dirs rules =
@@ -988,8 +956,8 @@ type rule_or_source =
 let get_rule_or_source path =
   match Path.destruct_build_dir path with
   | `Outside path ->
-    let+ d = source_or_external_file_digest path in
-    Source d
+    let+ digest = Fs_memo.file_digest_exn ~loc:Current_rule_loc.get path in
+    Source digest
   | `Inside path ->
     get_rule_internal path
     >>= (function

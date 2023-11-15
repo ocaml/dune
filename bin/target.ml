@@ -13,7 +13,7 @@ let request targets =
     acc
     >>>
     match (target : Request.t) with
-    | File path -> Action_builder.path path
+    | File path -> Build_system.record_deps (Dep.Set.singleton (Dep.file path))
     | Alias a -> Alias.request a)
 ;;
 

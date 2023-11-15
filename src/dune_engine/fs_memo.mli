@@ -34,6 +34,12 @@ val file_digest
   -> Path.Outside_build_dir.t
   -> Cached_digest.Digest_result.t Memo.t
 
+(** Like [file_digest] but raises a user error if the resulting digest is not [Ok _]. *)
+val file_digest_exn
+  :  ?loc:(unit -> Loc.t option Memo.t)
+  -> Path.Outside_build_dir.t
+  -> Digest.t Memo.t
+
 (** Like [Io.Untracked.with_lexbuf_from_file] but declares a dependency on the
     path. *)
 val with_lexbuf_from_file

@@ -83,6 +83,51 @@ module T = struct
     }
   ;;
 
+  let record res (deps : Dep.Set.t) ~f =
+    let f : type m. m eval_mode -> (_ * m) Memo.t =
+      fun mode ->
+      let open Memo.O in
+      match mode with
+      | Lazy -> Memo.return (res, deps)
+      | Eager ->
+        let+ facts = Dep.Facts.record_facts deps ~f in
+        res, facts
+    in
+    { f }
+  ;;
+
+  let record_success memo =
+    let f : type m. m eval_mode -> (unit * m) Memo.t =
+      fun mode ->
+      let open Memo.O in
+      match mode with
+      | Lazy -> Memo.return ((), Dep.Set.empty)
+      | Eager ->
+        let+ () = memo in
+        (), Dep.Facts.empty
+    in
+    { f }
+  ;;
+
+  module Expert = struct
+    let record_dep_on_source_file_exn res ?loc (src_path : Path.Source.t) =
+      let f : type m. m eval_mode -> (_ * m) Memo.t =
+        fun mode ->
+        let (path : Path.t) = Path.source src_path in
+        let dep = Dep.file path in
+        match mode with
+        | Lazy -> Memo.return (res, Dep.Set.singleton dep)
+        | Eager ->
+          let open Memo.O in
+          let+ digest =
+            Fs_memo.file_digest_exn ?loc (Path.Outside_build_dir.In_source_dir src_path)
+          in
+          res, Dep.Facts.singleton dep (Dep.Fact.file path digest)
+      in
+      { f }
+    ;;
+  end
+
   module O = struct
     let ( >>> ) a b =
       { f =

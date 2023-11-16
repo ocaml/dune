@@ -1,29 +1,23 @@
 open Import
 
-module Variable = struct
-  type t = OpamVariable.t
-
-  let to_dyn v = Dyn.string @@ OpamVariable.to_string v
-  let compare a b = Ordering.of_int @@ OpamVariable.compare a b
-  let encode v = Dune_lang.atom_or_quoted_string @@ OpamVariable.to_string v
-  let of_string = OpamVariable.of_string
-end
-
 module Var = struct
   module T = struct
     type t =
       { package : Package_name.t option
-      ; variable : Variable.t
+      ; variable : Package_variable.Name.t
       }
 
     let compare a b =
       match Option.compare Package_name.compare a.package b.package with
-      | Eq -> Ordering.of_int @@ OpamVariable.compare a.variable b.variable
+      | Eq -> Package_variable.Name.compare a.variable b.variable
       | otherwise -> otherwise
     ;;
 
     let to_dyn { package; variable } =
-      Dyn.pair (Dyn.option Package_name.to_dyn) Variable.to_dyn (package, variable)
+      Dyn.pair
+        (Dyn.option Package_name.to_dyn)
+        Package_variable.Name.to_dyn
+        (package, variable)
     ;;
   end
 
@@ -105,7 +99,9 @@ struct
     let env =
       let self' = self |> Package_name.to_string |> OpamPackage.Name.of_string in
       fun full_variable ->
-        let variable = OpamVariable.Full.variable full_variable in
+        let variable =
+          OpamVariable.Full.variable full_variable |> Package_variable.Name.of_opam
+        in
         let package =
           OpamVariable.Full.package ~self:self' full_variable
           |> Option.map ~f:Package_name.of_opam_package_name

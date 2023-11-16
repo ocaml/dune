@@ -3,6 +3,8 @@
 
 - Introduce new experimental odoc rules (#8803, @jonjudlam)
 
+- Cherry-pick #9177 and #9201 (@emillon)
+
 3.12.0~alpha1 (2023-11-10)
 --------------------------
 

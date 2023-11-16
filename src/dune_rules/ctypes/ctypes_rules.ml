@@ -179,13 +179,12 @@ let build_c_program
   ~deps
   =
   let ctx = Super_context.context sctx in
-  let open Memo.O in
   let ocaml = Context.ocaml ctx in
   let exe =
-    (let* ocaml = ocaml in
-     Ocaml_config.c_compiler ocaml.ocaml_config
-     |> Super_context.resolve_program ~loc:None ~dir sctx)
-    |> Action_builder.of_memo
+    let open Action_builder.O in
+    let* ocaml = Action_builder.of_memo ocaml in
+    Ocaml_config.c_compiler ocaml.ocaml_config
+    |> Super_context.resolve_program ~loc:None ~dir sctx
   in
   let project = Scope.project scope in
   let with_user_and_std_flags =

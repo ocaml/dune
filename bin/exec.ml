@@ -202,7 +202,7 @@ let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
   let open Memo.O in
   match Filename.analyze_program_name prog with
   | In_path ->
-    Super_context.resolve_program sctx ~dir ~loc:None prog
+    Super_context.resolve_program_memo sctx ~dir ~loc:None prog
     >>= (function
      | Error (_ : Action.Prog.Not_found.t) -> not_found ~dir ~prog
      | Ok p -> build_prog ~no_rebuild ~prog p)

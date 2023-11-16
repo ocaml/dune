@@ -278,9 +278,13 @@ let local_binaries t ~dir = Env_tree.get_node t ~dir >>= Env_node.local_binaries
 let env_node = Env_tree.get_node
 let bin_annot t ~dir = Env_tree.get_node t ~dir >>= Env_node.bin_annot
 
-let resolve_program t ~dir ?hint ~loc bin =
+let resolve_program_memo t ~dir ?hint ~loc bin =
   let* artifacts = Env_tree.artifacts_host t ~dir in
   Artifacts.binary ?hint ~loc artifacts bin
+;;
+
+let resolve_program t ~dir ?hint ~loc bin =
+  Action_builder.of_memo @@ resolve_program_memo t ~dir ?hint ~loc bin
 ;;
 
 let add_packages_env context ~base stanzas packages =

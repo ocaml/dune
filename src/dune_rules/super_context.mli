@@ -77,6 +77,15 @@ val resolve_program
   -> ?hint:string
   -> loc:Loc.t option
   -> string
+  -> Action.Prog.t Action_builder.t
+
+(** try not to use this as it breaks rule loading laziness *)
+val resolve_program_memo
+  :  t
+  -> dir:Path.Build.t
+  -> ?hint:string
+  -> loc:Loc.t option
+  -> string
   -> Action.Prog.t Memo.t
 
 val expander : t -> dir:Path.Build.t -> Expander.t Memo.t

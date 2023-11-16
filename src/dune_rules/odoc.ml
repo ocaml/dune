@@ -230,12 +230,13 @@ let odoc_base_flags sctx quiet build_dir =
 
 let odoc_program sctx dir =
   Super_context.resolve_program sctx ~dir "odoc" ~loc:None ~hint:"opam install odoc"
+  |> Action_builder.of_memo
 ;;
 
 let run_odoc sctx ~dir command ~quiet ~flags_for args =
   let build_dir = Super_context.context sctx |> Context.build_dir in
   let open Memo.O in
-  let* program = odoc_program sctx build_dir in
+  let program = odoc_program sctx build_dir in
   let+ base_flags =
     match flags_for with
     | None -> Memo.return Command.Args.empty
@@ -244,7 +245,7 @@ let run_odoc sctx ~dir command ~quiet ~flags_for args =
   let deps = Action_builder.env_var "ODOC_SYNTAX" in
   let open Action_builder.With_targets.O in
   Action_builder.with_no_targets deps
-  >>> Command.run ~dir program [ A command; base_flags; S args ]
+  >>> Command.run_dyn_prog ~dir program [ A command; base_flags; S args ]
 ;;
 
 let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =

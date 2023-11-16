@@ -14,7 +14,7 @@ module Scope_key : sig
 end
 
 val lib_unique_name : Lib.t -> string
-val odoc_program : Super_context.t -> Path.Build.t -> Action.Prog.t Memo.t
+val odoc_program : Super_context.t -> Path.Build.t -> Action.Prog.t Action_builder.t
 
 val check_mlds_no_dupes
   :  pkg:Dune_lang.Package_name.t

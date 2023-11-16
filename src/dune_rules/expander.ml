@@ -332,8 +332,12 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
                     |> String.quoted)
              ])
     else (
-      let artifacts = if lib_exec then t.lib_artifacts_host else t.lib_artifacts in
-      file_of_lib artifacts (Context.host t.context) ~loc ~lib ~file)
+      let artifacts, context =
+        if lib_exec
+        then t.lib_artifacts_host, Context.host t.context
+        else t.lib_artifacts, t.context
+      in
+      file_of_lib artifacts context ~loc ~lib ~file)
   in
   let p =
     let open Memo.O in

@@ -1,3 +1,8 @@
+3.12.0~alpha2 (2023-11-16)
+--------------------------
+
+- Introduce new experimental odoc rules (#8803, @jonjudlam)
+
 3.12.0~alpha1 (2023-11-10)
 --------------------------
 

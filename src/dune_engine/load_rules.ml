@@ -285,7 +285,6 @@ end = struct
         (* Sandboxing this action doesn't make much sense: if we can copy [src_path] to
            the sandbox, we might as well copy it to the build directory directly. *)
         ~sandbox:Sandbox_config.no_sandboxing
-        ~visibility_override:visibility_override_for_copying_actions
     in
     Action_builder.Expert.record_dep_on_source_file_exn
       action

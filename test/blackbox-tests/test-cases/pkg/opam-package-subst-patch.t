@@ -51,5 +51,5 @@ The lockfile should contain the substitute and patch actions.
 
 The file foo.ml should have been built:
 
-  $ build_pkg with-substs-and-patches 
+  $ build_pkg with-substs-and-patches
   This is right

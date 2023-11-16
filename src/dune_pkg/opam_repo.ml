@@ -150,23 +150,7 @@ let of_git_repo ~repo_id ~source =
       at_rev, Some repo_id
     | None ->
       let+ at_rev =
-        let* name =
-          Rev_store.Remote.default_branch remote
-          >>| function
-          | Some name -> name
-          | None ->
-            User_error.raise
-              ~hints:
-                [ Pp.text
-                    "Specify a different repository with a default branch or an exiting \
-                     revision"
-                ]
-              [ Pp.textf
-                  "No revision given and default branch could not be determined in \
-                   repository %s"
-                  source
-              ]
-        in
+        let name = Rev_store.Remote.default_branch remote in
         Rev_store.Remote.rev_of_name remote ~name
       in
       let repo_id = Option.map at_rev ~f:Rev_store.At_rev.repository_id in

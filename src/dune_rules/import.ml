@@ -125,15 +125,21 @@ module Build_config = struct
     ;;
 
     let map_rules t ~f =
-      let open Memo.O in
       match t with
-      | Unknown_context -> Memo.return Unknown_context
-      | Rules rules ->
-        let+ rules = f rules in
-        Rules rules
-      | Redirect_to_parent rules ->
-        let+ rules = f rules in
-        Redirect_to_parent rules
+      | Unknown_context -> Unknown_context
+      | Rules rules -> Rules (f rules)
+      | Redirect_to_parent rules -> Redirect_to_parent (f rules)
+    ;;
+
+    let combine x y =
+      match x, y with
+      | Unknown_context, _ -> Unknown_context
+      | _, Unknown_context -> Unknown_context
+      | Rules x, Rules y -> Rules (Rules.combine_exn x y)
+      | Rules x, Redirect_to_parent y -> Redirect_to_parent (Rules.combine_exn x y)
+      | Redirect_to_parent x, Rules y -> Redirect_to_parent (Rules.combine_exn x y)
+      | Redirect_to_parent x, Redirect_to_parent y ->
+        Redirect_to_parent (Rules.combine_exn x y)
     ;;
   end
 

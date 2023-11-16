@@ -216,12 +216,6 @@ let build_c
                behaviour."
           ];
       foreign_flags sctx ~dir ~expander ~flags ~language:kind
-  and* c_compiler =
-    Super_context.resolve_program
-      ~loc:None
-      ~dir
-      sctx
-      (Ocaml_config.c_compiler ocaml.ocaml_config)
   in
   let output_param =
     match ocaml.lib_config.ccomp_type with
@@ -236,7 +230,14 @@ let build_c
      let src = Path.build (Foreign.Source.path src) in
      (* We have to execute the rule in the library directory as the .o is
         produced in the current directory *)
-     Command.run
+     let c_compiler =
+       Super_context.resolve_program
+         ~loc:None
+         ~dir
+         sctx
+         (Ocaml_config.c_compiler ocaml.ocaml_config)
+     in
+     Command.run_dyn_prog
        ~dir:(Path.build dir)
        c_compiler
        ([ Command.Args.dyn with_user_and_std_flags

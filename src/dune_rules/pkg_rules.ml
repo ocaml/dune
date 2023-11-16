@@ -95,19 +95,23 @@ module Lock_dir = struct
         | false -> None
         | true -> Some ctx')
     with
-    | None -> default_path
-    | Some (Default { lock; _ }) -> Option.value lock ~default:default_path
-    | Some (Opam _) -> assert false
+    | None -> Some default_path
+    | Some (Default { lock; _ }) -> Some (Option.value lock ~default:default_path)
+    | Some (Opam _) -> None
   ;;
 
-  let get (ctx : Context_name.t) : t Memo.t = get_path ctx >>= Load.load
+  let get (ctx : Context_name.t) : t Memo.t =
+    get_path ctx >>| Option.value_exn >>= Load.load
+  ;;
 
   let lock_dir_active ctx =
     if !Clflags.ignore_lock_directory
     then Memo.return false
     else
-      let* path = get_path ctx in
-      Fs_memo.dir_exists (In_source_dir path)
+      get_path ctx
+      >>= function
+      | None -> Memo.return false
+      | Some path -> Fs_memo.dir_exists (In_source_dir path)
   ;;
 end
 
@@ -249,7 +253,7 @@ module Pkg = struct
     ; deps : t list
     ; info : Pkg_info.t
     ; paths : Paths.t
-    ; files_dir : Path.Source.t
+    ; files_dir : Path.Build.t
     ; mutable exported_env : string Env_update.t list
     }
 
@@ -375,6 +379,18 @@ module Pkg_installed = struct
 end
 
 module Substitute = struct
+  include Substs.Make (struct
+      type 'a t = 'a
+
+      module O = struct
+        let ( let+ ) x f = f x
+      end
+
+      module List = struct
+        let map t ~f = List.map t ~f
+      end
+    end)
+
   module Spec = struct
     type ('path, 'target) t =
       (* XXX it's not good to serialize the substitution map like this. We're
@@ -412,10 +428,19 @@ module Substitute = struct
       List [ Dune_lang.atom_or_quoted_string name; List e; s; input i; output o ]
     ;;
 
-    let action (env, self, src, dst) ~ectx:_ ~eenv:_ =
+    let action
+      ((env : OpamVariable.variable_contents Substs.Var.Map.t), self, src, dst)
+      ~ectx:_
+      ~eenv:_
+      =
       let open Fiber.O in
       let+ () = Fiber.return () in
-      Substs.subst env ~src self ~dst
+      let env var =
+        match Substs.Var.Map.find env var with
+        | Some _ as v -> v
+        | None -> Substs.Var.Map.find env { var with Substs.Var.package = Some self }
+      in
+      subst env ~src self ~dst
     ;;
   end
 
@@ -891,10 +916,12 @@ end = struct
           | `System_provided -> None)
         >>| List.filter_opt
       and+ files_dir =
-        let+ lock_dir = Lock_dir.get_path ctx in
-        Path.Source.relative
-          lock_dir
-          (sprintf "%s.files" (Package.Name.to_string info.name))
+        let+ lock_dir = Lock_dir.get_path ctx >>| Option.value_exn in
+        Path.Build.append_source
+          (Context_name.build_dir ctx)
+          (Path.Source.relative
+             lock_dir
+             (sprintf "%s.files" (Package.Name.to_string info.name)))
       in
       let id = Pkg.Id.gen () in
       let paths = Paths.make name ctx in
@@ -1101,10 +1128,46 @@ module Install_action = struct
       | false -> []
       | true ->
         let config =
-          Path.to_string config_file
-          |> OpamFilename.of_string
-          |> OpamFile.make
-          |> OpamFile.Dot_config.read
+          let config_file_str = Path.to_string config_file in
+          let file = OpamFilename.of_string config_file_str |> OpamFile.make in
+          match OpamFile.Dot_config.read file with
+          | s -> s
+          | exception OpamPp.Bad_format (pos, message) ->
+            let loc =
+              Option.map
+                pos
+                ~f:(fun { OpamParserTypes.FullPos.filename = _; start; stop } ->
+                  let file_contents = Io.read_file config_file in
+                  let bols = ref [ 0 ] in
+                  String.iteri file_contents ~f:(fun i ch ->
+                    if ch = '\n' then bols := (i + 1) :: !bols);
+                  let bols = Array.of_list (List.rev !bols) in
+                  let make_pos (line, column) =
+                    let pos_bol = bols.(line - 1) in
+                    { Lexing.pos_fname = config_file_str
+                    ; pos_lnum = line
+                    ; pos_bol
+                    ; pos_cnum = pos_bol + column
+                    }
+                  in
+                  let start = make_pos start in
+                  let stop = make_pos stop in
+                  Loc.create ~start ~stop)
+            in
+            let message_with_loc =
+              (* The location is inlined b/c the original config file is going
+                 to be deleted, so we don't be able to fetch the part of the
+                 file that's bad *)
+              let open Pp.O in
+              let error = Pp.textf "Error parsing %s" (Path.basename config_file) in
+              match loc with
+              | None -> error
+              | Some loc ->
+                (Loc.pp loc |> Pp.map_tags ~f:(fun Loc.Loc -> User_message.Style.Loc))
+                ++ error
+            in
+            User_error.raise
+              [ message_with_loc; Pp.seq (Pp.text "Reason: ") (Pp.text message) ]
         in
         OpamFile.Dot_config.bindings config
         |> List.map ~f:(fun (name, value) -> OpamVariable.to_string name, value)
@@ -1301,56 +1364,6 @@ module Fetch = struct
   ;;
 end
 
-module Copy_tree = struct
-  module Spec = struct
-    type ('path, 'target) t = 'path * 'target
-
-    let name = "copy-tree"
-    let version = 1
-    let bimap (src, dst) f g = f src, g dst
-    let is_useful_to ~memoize = memoize
-
-    let encode (src, dst) dep target : Dune_lang.t =
-      List [ Dune_lang.atom_or_quoted_string name; dep src; target dst ]
-    ;;
-
-    let action (root, dst) ~ectx:_ ~eenv:_ =
-      let open Fiber.O in
-      let+ () = Fiber.return () in
-      Install_action.Spec.collect [ root ] []
-      |> List.iter ~f:(fun src ->
-        let dst =
-          Path.append_local (Path.build dst) (Path.drop_prefix_exn src ~prefix:root)
-        in
-        let old_permissions =
-          match Path.Untracked.stat dst with
-          | Error _ -> None
-          | Ok s ->
-            Path.unlink dst;
-            Some s.st_perm
-        in
-        Io.copy_file
-          ~chmod:(fun default -> Option.value old_permissions ~default)
-          ~src
-          ~dst
-          ())
-    ;;
-  end
-
-  let action ~src ~dst =
-    let module M = struct
-      type path = Path.t
-      type target = Path.Build.t
-
-      module Spec = Spec
-
-      let v = src, dst
-    end
-    in
-    Action.Extension (module M)
-  ;;
-end
-
 let add_env env action =
   Action_builder.With_targets.map action ~f:(Action.Full.add_env env)
 ;;
@@ -1415,13 +1428,29 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
     let+ build_and_install =
       let+ copy_action =
         let+ copy_action =
-          Fs_memo.dir_exists (In_source_dir pkg.files_dir)
-          >>| function
-          | false -> []
+          Fs_memo.dir_exists
+            (In_source_dir (Path.Build.drop_build_context_exn pkg.files_dir))
+          >>= function
+          | false -> Memo.return []
           | true ->
-            [ Copy_tree.action ~src:(Path.source pkg.files_dir) ~dst:pkg.paths.source_dir
-              |> Action.Full.make
-              |> Action_builder.With_targets.return
+            let+ deps, source_deps = Source_deps.files (Path.build pkg.files_dir) in
+            let open Action_builder.O in
+            [ Action_builder.with_no_targets
+              @@ (Action_builder.deps deps
+                  >>> (Path.Set.to_list_map source_deps ~f:(fun src ->
+                         let dst =
+                           let local_path =
+                             Path.drop_prefix_exn src ~prefix:(Path.build pkg.files_dir)
+                           in
+                           Path.Build.append_local pkg.paths.source_dir local_path
+                         in
+                         Action.progn
+                           [ Action.mkdir (Path.Build.parent_exn dst)
+                           ; Action.copy src dst
+                           ])
+                       |> Action.concurrent
+                       |> Action.Full.make
+                       |> Action_builder.return))
             ]
         in
         copy_action
@@ -1585,6 +1614,7 @@ let which context =
 ;;
 
 let lock_dir_active = Lock_dir.lock_dir_active
+let lock_dir_path = Lock_dir.get_path
 
 let exported_env context =
   let+ all_packages = all_packages context in

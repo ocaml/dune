@@ -26,6 +26,7 @@ module Group_root : sig
 end
 
 type t =
+  | Lock_dir
   | Generated
   | Source_only of Source_tree.Dir.t
   | Standalone of Source_tree.Dir.t * Dune_file.t
@@ -40,3 +41,5 @@ type t =
 module DB : sig
   val get : dir:Path.Build.t -> t Memo.t
 end
+
+val directory_targets : t -> dir:Path.Build.t -> Loc.t Path.Build.Map.t Memo.t

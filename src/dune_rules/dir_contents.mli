@@ -35,6 +35,7 @@ val coq : t -> Coq_sources.t Memo.t
 val get : Super_context.t -> dir:Path.Build.t -> t Memo.t
 
 val modules_of_lib : Super_context.t -> Lib.t -> Modules.t option Memo.t
+val modules_of_local_lib : Super_context.t -> Lib.Local.t -> Modules.t Memo.t
 
 (** All directories in this group if [t] is a group root or just [t] if it is
     not part of a group. *)
@@ -44,7 +45,6 @@ module Standalone_or_root : sig
   type dir_contents := t
   type t
 
-  val directory_targets : t -> Loc.t Path.Build.Map.t
   val rules : t -> Rules.t Memo.t
   val root : t -> dir_contents Memo.t
   val subdirs : t -> dir_contents list Memo.t

@@ -2,11 +2,72 @@ open Stdune
 open Dune_vcs
 module Process = Dune_engine.Process
 module Display = Dune_engine.Display
+module Scheduler = Dune_engine.Scheduler
 module Re = Dune_re
+module Flock = Dune_util.Flock
 open Fiber.O
 
 type t = { dir : Path.t }
+
+let lock_path { dir } =
+  let parent = dir |> Path.parent_exn in
+  Path.relative parent "rev-store.lock"
+;;
+
 type rev = Rev of string
+
+(* Async-inspired variation of [Fiber.repeat_until] *)
+let rec repeat_until_finished state f =
+  let* computation = f state in
+  match computation with
+  | `Repeat state -> repeat_until_finished state f
+  | `Finished result -> Fiber.return result
+;;
+
+let attempt_to_lock flock lock ~max_tries =
+  let sleep_duration = 0.1 in
+  repeat_until_finished max_tries (function
+    | 0 -> Fiber.return @@ `Finished (Ok `Failure)
+    | retry ->
+      (match Flock.lock_non_block flock lock with
+       | Ok `Success as ok -> Fiber.return @@ `Finished ok
+       | Ok `Failure ->
+         let+ () = Scheduler.sleep sleep_duration in
+         `Repeat (retry - 1)
+       | err -> Fiber.return @@ `Finished err))
+;;
+
+let with_flock lock_path ~f =
+  let open Fiber.O in
+  let parent = Path.parent_exn lock_path in
+  Path.mkdir_p parent;
+  let fd = Unix.openfile (Path.to_string lock_path) [ Unix.O_CREAT; O_RDONLY ] 0o644 in
+  let flock = Flock.create fd in
+  let max_tries = 50 in
+  Fiber.finalize
+    ~finally:(fun () ->
+      (* closing the fd releases the flock automatically *)
+      match Unix_error.Detailed.catch Unix.close fd with
+      | Ok () ->
+        (* delete the lock to signal to the user we don't hold a lock *)
+        Fiber.return @@ Path.unlink_no_err lock_path
+      | Error detailed -> Unix_error.Detailed.raise detailed)
+    (fun () ->
+      let* acquired = attempt_to_lock flock Flock.Exclusive ~max_tries in
+      match acquired with
+      | Ok `Success -> f ()
+      | Ok `Failure ->
+        Code_error.raise
+          (sprintf "Couldn't acquire lock after %d attempts to lock" max_tries)
+          []
+      | Error error ->
+        User_error.raise
+          [ Pp.textf
+              "Failed to get a lock for the revision store at %s: %s"
+              (Path.to_string_maybe_quoted lock_path)
+              (Unix.error_message error)
+          ])
+;;
 
 let equal { dir } t = Path.equal dir t.dir
 let display = Display.Quiet
@@ -85,17 +146,19 @@ let show =
 
 let load_or_create ~dir =
   let t = { dir } in
+  let lock = lock_path t in
   let* () = Fiber.return () in
   let+ () =
-    match Fpath.mkdir_p (Path.to_string dir) with
-    | Already_exists -> Fiber.return ()
-    | Created -> run t [ "init"; "--bare" ]
-    | exception Unix.Unix_error (e, x, y) ->
-      User_error.raise
-        [ Pp.textf "%s isn't a directory" (Path.to_string_maybe_quoted dir)
-        ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum (e, x, y))
-        ]
-        ~hints:[ Pp.text "delete this file or check its permissions" ]
+    with_flock lock ~f:(fun () ->
+      match Fpath.mkdir_p (Path.to_string dir) with
+      | Already_exists -> Fiber.return ()
+      | Created -> run t [ "init"; "--bare" ]
+      | exception Unix.Unix_error (e, x, y) ->
+        User_error.raise
+          [ Pp.textf "%s isn't a directory" (Path.to_string_maybe_quoted dir)
+          ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum (e, x, y))
+          ]
+          ~hints:[ Pp.text "delete this file or check its permissions" ])
   in
   t
 ;;
@@ -192,25 +255,27 @@ module Remote = struct
   type nonrec t =
     { repo : t
     ; handle : string
+    ; default_branch : string
     }
 
-  let head_branch = Re.(compile (seq [ str "HEAD branch: "; group (rep1 any); eol ]))
-  let update { repo; handle } = run repo [ "fetch"; handle; "--no-tags" ]
-
-  let default_branch { repo; handle } =
-    run_capture_lines repo [ "remote"; "show"; handle ]
-    >>| List.find_map ~f:(fun line ->
-      Re.exec_opt head_branch line |> Option.map ~f:(fun groups -> Re.Group.get groups 1))
+  let update { repo; handle; default_branch = _ } =
+    run repo [ "fetch"; handle; "--no-tags" ]
   ;;
 
-  let equal { repo; handle } t = equal repo t.repo && String.equal handle t.handle
+  let default_branch { repo = _; handle = _; default_branch } = default_branch
+
+  let equal { repo; handle; default_branch } t =
+    equal repo t.repo
+    && String.equal handle t.handle
+    && String.equal default_branch t.default_branch
+  ;;
 
   let files_at_rev repo (Rev rev) =
     run_capture_zero_separated_lines repo [ "ls-tree"; "-z"; "--long"; "-r"; rev ]
     >>| File.Set.of_list_map ~f:File.parse
   ;;
 
-  let rev_of_name { repo; handle } ~name =
+  let rev_of_name { repo; handle; default_branch = _ } ~name =
     (* TODO handle non-existing name *)
     let* rev = run_capture_line repo [ "rev-parse"; sprintf "%s/%s" handle name ] in
     let revision = Rev rev in
@@ -218,7 +283,7 @@ module Remote = struct
     Some { At_rev.repo; revision = Rev rev; files_at_rev }
   ;;
 
-  let rev_of_repository_id { repo; handle = _ } repo_id =
+  let rev_of_repository_id { repo; handle = _; default_branch = _ } repo_id =
     match Repository_id.git_hash repo_id with
     | None -> Fiber.return None
     | Some rev ->
@@ -232,7 +297,7 @@ module Remote = struct
   ;;
 end
 
-let remote_exists { dir } ~name =
+let remote_exists dir ~name =
   (* TODO read this directly from .git/config *)
   let stdout_to = make_stdout () in
   let stderr_to = make_stderr () in
@@ -246,18 +311,79 @@ let remote_exists { dir } ~name =
   | 128 | _ -> false
 ;;
 
-let add_repo t ~source =
+let query_head_branch =
+  let re =
+    Re.(
+      compile
+      @@ seq
+           [ bol
+           ; str "ref: refs/heads/"
+           ; group (rep1 (diff any space))
+           ; rep1 space
+           ; str "HEAD"
+           ; eol
+           ])
+  in
+  fun t source ->
+    let+ lines = run_capture_lines t [ "ls-remote"; "--symref"; source ] in
+    List.find_map lines ~f:(fun line ->
+      match Re.exec_opt re line with
+      | None -> None
+      | Some m -> Some (Re.Group.get m 1))
+;;
+
+let read_head_branch =
+  let headline = Re.(compile @@ seq [ bol; rep space; str "Remote branch:" ]) in
+  fun t handle ->
+    let+ lines = run_capture_lines t [ "remote"; "show"; "-n"; handle ] in
+    let rec inspect = function
+      | [] | [ _ ] -> None
+      | heading :: branch :: rest ->
+        (match Re.exec_opt headline heading with
+         | None -> inspect (branch :: rest)
+         | Some _ -> Some (String.trim branch))
+    in
+    inspect lines
+;;
+
+let add_repo ({ dir } as t) ~source =
   (* TODO add this directly using .git/config *)
   let handle = source |> Dune_digest.string |> Dune_digest.to_string in
-  let* exists = remote_exists t ~name:handle in
-  let* () =
-    match exists with
-    | true -> Fiber.return ()
-    | false -> run t [ "remote"; "add"; handle; source ]
-  in
-  let remote : Remote.t = { repo = t; handle } in
-  let+ () = Remote.update remote in
-  remote
+  let lock = lock_path t in
+  with_flock lock ~f:(fun () ->
+    let* exists = remote_exists dir ~name:handle in
+    let* default_branch =
+      match exists with
+      | true ->
+        let+ head_branch = read_head_branch t handle in
+        (match head_branch with
+         | Some head_branch -> head_branch
+         | None ->
+           (* the rev store is in some sort of unexpected state *)
+           Code_error.raise
+             (sprintf "Could not load default branch of repository '%s'" source)
+             [ "source", Dyn.string source; "handle", Dyn.string handle ])
+      | false ->
+        let* head_branch = query_head_branch t source in
+        let head_branch =
+          match head_branch with
+          | Some head_branch -> head_branch
+          | None ->
+            User_error.raise
+              ~hints:
+                [ Pp.textf
+                    "Make sure '%s' is a valid git repository and has a HEAD branch"
+                    source
+                ]
+              [ Pp.textf "Could not determine default branch of repository at '%s'" source
+              ]
+        in
+        let+ () = run t [ "remote"; "add"; "--track"; head_branch; handle; source ] in
+        head_branch
+    in
+    let remote : Remote.t = { repo = t; handle; default_branch } in
+    let+ () = Remote.update remote in
+    remote)
 ;;
 
 let content_of_files t files =

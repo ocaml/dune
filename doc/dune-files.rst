@@ -583,7 +583,7 @@ use_standard_c_and_cxx_flags
 
    .. versionadded:: 2.8
 
-   Control how flags coming grom ``ocamlc -config`` are passed to the C
+   Control how flags coming from ``ocamlc -config`` are passed to the C
    compiler command line.
 
    Historically, they have been systematically prepended without a way to

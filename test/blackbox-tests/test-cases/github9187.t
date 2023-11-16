@@ -26,9 +26,3 @@ situation. See #9187.
   $ touch e.ml
 
   $ dune build
-  Error: Dependency cycle between:
-     Computing directory contents of _build/default
-  -> Computing installable artifacts for package p
-  -> %{bin-available:e} at dune:11
-  -> Computing directory contents of _build/default
-  [1]

@@ -25,7 +25,7 @@ module Remote : sig
 
   val equal : t -> t -> bool
   val update : t -> unit Fiber.t
-  val default_branch : t -> string option Fiber.t
+  val default_branch : t -> string
   val rev_of_name : t -> name:string -> At_rev.t option Fiber.t
   val rev_of_repository_id : t -> Repository_id.t -> At_rev.t option Fiber.t
 end

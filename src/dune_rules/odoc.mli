@@ -35,7 +35,7 @@ val run_odoc
   -> quiet:bool
   -> flags_for:Path.Build.t option
   -> Command.Args.any Command.Args.t list
-  -> Action.Full.t Action_builder.With_targets.t Memo.t
+  -> Action.Full.t Action_builder.With_targets.t
 
 val setup_library_odoc_rules : Compilation_context.t -> Lib.Local.t -> unit Memo.t
 val gen_project_rules : Super_context.t -> Dune_project.t -> unit Memo.t

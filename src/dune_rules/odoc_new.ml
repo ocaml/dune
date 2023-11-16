@@ -1059,11 +1059,11 @@ let external_module_deps_rule sctx ~all a =
     let ctx = Super_context.context sctx in
     let deps_file = Path.Build.set_extension (Artifact.odoc_file a) ~ext:".deps" in
     let+ () =
-      let* odoc = Odoc.odoc_program sctx (Paths.root ctx ~all) in
+      let odoc = Odoc.odoc_program sctx (Paths.root ctx ~all) in
       Super_context.add_rule
         sctx
         ~dir:(Paths.root ctx ~all)
-        (Command.run
+        (Command.run_dyn_prog
            odoc
            ~dir:(Path.parent_exn (Path.build deps_file))
            ~stdout_to:deps_file

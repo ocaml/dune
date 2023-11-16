@@ -22,7 +22,7 @@ type t =
   ; artifacts : Artifacts.t Memo.Lazy.t
   ; inline_tests : Dune_env.Stanza.Inline_tests.t Memo.Lazy.t
   ; menhir_flags : string list Action_builder.t Memo.Lazy.t
-  ; odoc : Odoc.t Memo.Lazy.t
+  ; odoc : Odoc.t Action_builder.t Memo.Lazy.t
   ; js_of_ocaml : string list Action_builder.t Js_of_ocaml.Env.t Memo.Lazy.t
   ; coq : Coq.t Action_builder.t Memo.Lazy.t
   ; format_config : Format_config.t Memo.Lazy.t
@@ -45,7 +45,7 @@ let set_format_config t format_config =
   { t with format_config = Memo.Lazy.of_val format_config }
 ;;
 
-let odoc t = Memo.Lazy.force t.odoc
+let odoc t = Memo.Lazy.force t.odoc |> Action_builder.of_memo_join
 let coq t = Memo.Lazy.force t.coq
 let bin_annot t = Memo.Lazy.force t.bin_annot
 
@@ -202,10 +202,17 @@ let make
     let open Odoc in
     let root =
       (* DUNE4: Enable for dev profile in the future *)
-      { warnings = Nonfatal }
+      Action_builder.return { warnings = Nonfatal }
     in
-    inherited ~field:odoc ~root (fun { warnings } ->
-      Memo.return { warnings = Option.value config.odoc.warnings ~default:warnings })
+    inherited
+      ~field:(fun t -> Memo.return (odoc t))
+      ~root
+      (fun warnings ->
+        Memo.return
+        @@
+        let open Action_builder.O in
+        let+ { warnings } = warnings in
+        { warnings = Option.value config.odoc.warnings ~default:warnings })
   in
   let default_coq_flags = Action_builder.return [ "-q" ] in
   let coq : Coq.t Action_builder.t Memo.Lazy.t =

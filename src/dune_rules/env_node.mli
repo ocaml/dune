@@ -40,7 +40,7 @@ val foreign_flags : t -> string list Action_builder.t Foreign_language.Dict.t
 val link_flags : t -> Link_flags.t Memo.t
 val local_binaries : t -> File_binding.Expanded.t list Memo.t
 val artifacts : t -> Artifacts.t Memo.t
-val odoc : t -> Odoc.t Memo.t
+val odoc : t -> Odoc.t Action_builder.t
 val coq : t -> Coq.t Action_builder.t Memo.t
 val menhir_flags : t -> string list Action_builder.t
 val format_config : t -> Format_config.t Memo.t

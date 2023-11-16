@@ -866,14 +866,13 @@ let compile_module
   ~indices
   =
   let odoc_file = Artifact.odoc_file a in
-  let open Memo.O in
   let ctx = Super_context.context sctx in
   let* valid_libs, _ = Valid.get ctx ~all in
   let* maps = Valid.libs_maps ctx ~all in
   let+ () =
-    let* action_with_targets =
+    let action_with_targets =
       let doc_dir = Path.parent_exn (Path.build (Artifact.odoc_file a)) in
-      let+ run_odoc =
+      let run_odoc =
         let cmti = Artifact.source_file a in
         let iflags =
           Command.Args.memo (odoc_include_flags ctx all maps package requires indices)
@@ -934,7 +933,7 @@ let link_requires stdlib_opt libs =
 let compile_mld sctx a ~parent_opt ~quiet ~is_index ~children =
   assert (Artifact.artifact_ty a = Artifact.Mld);
   let odoc_file = Artifact.odoc_file a in
-  let* run_odoc =
+  let run_odoc =
     let quiet_arg =
       if quiet then Command.Args.A "--print-warnings=false" else Command.Args.empty
     in
@@ -988,9 +987,8 @@ let link_odoc_rules sctx ~all (artifacts : Artifact.t list) ~quiet ~package ~lib
   let quiet_arg =
     if quiet then Command.Args.A "--print-warnings=false" else Command.Args.empty
   in
-  let open Memo.O in
   Memo.parallel_iter artifacts ~f:(fun a ->
-    let* run_odoc =
+    let run_odoc =
       Odoc.run_odoc
         sctx
         ~dir:(Path.parent_exn (Path.build (Artifact.odocl_file a)))
@@ -1014,13 +1012,12 @@ let link_odoc_rules sctx ~all (artifacts : Artifact.t list) ~quiet ~package ~lib
 (* Output the actual html *)
 let html_generate sctx all (a : Artifact.t) =
   let ctx = Super_context.context sctx in
-  let open Memo.O in
   let html_output = Paths.html_root ctx ~all in
   let support_relative =
     let odoc_support_path = Paths.odoc_support ctx ~all in
     Path.reach (Path.build odoc_support_path) ~from:(Path.build html_output)
   in
-  let* run_odoc =
+  let run_odoc =
     Odoc.run_odoc
       sctx
       ~quiet:false
@@ -1884,11 +1881,10 @@ let setup_odoc_rules sctx ~all =
 ;;
 
 let setup_css_rule sctx ~all =
-  let open Memo.O in
-  let* run_odoc =
+  let run_odoc =
     let ctx = Super_context.context sctx in
     let dir = Paths.odoc_support ctx ~all in
-    let+ cmd =
+    let cmd =
       Odoc.run_odoc
         sctx
         ~quiet:false

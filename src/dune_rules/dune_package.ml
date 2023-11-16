@@ -6,31 +6,69 @@ module Vfile = Dune_lang.Versioned_file.Make (struct
 
 let fn = "dune-package"
 
+module External_location = struct
+  type t =
+    | Relative_to_stdlib of Path.Local.t
+    | Relative_to_findlib of (Path.t * Path.Local.t)
+    | Absolute of Path.t
+
+  let to_dyn x =
+    let open Dyn in
+    match x with
+    | Relative_to_stdlib p -> variant "Relative_to_stdlib" [ Path.Local.to_dyn p ]
+    | Relative_to_findlib (p1, p2) ->
+      variant "Relative_to_findlib" [ pair Path.to_dyn Path.Local.to_dyn (p1, p2) ]
+    | Absolute p -> variant "Absolute" [ Path.to_dyn p ]
+  ;;
+
+  let compare x y =
+    match x, y with
+    | Relative_to_stdlib x, Relative_to_stdlib y -> Path.Local.compare x y
+    | Relative_to_findlib (x1, x2), Relative_to_findlib (y1, y2) ->
+      let open Ordering.O in
+      let= () = Path.compare x1 y1 in
+      Path.Local.compare x2 y2
+    | Absolute x, Absolute y -> Path.compare x y
+    | Relative_to_stdlib _, _ -> Lt
+    | _, Relative_to_stdlib _ -> Gt
+    | Relative_to_findlib _, Absolute _ -> Lt
+    | Absolute _, Relative_to_findlib _ -> Gt
+  ;;
+
+  let hash = Poly.hash
+end
+
 module Lib = struct
   type t =
     { info : Path.t Lib_info.t
     ; main_module_name : Module_name.t option
+    ; external_location : External_location.t option
     }
 
-  let make ~info ~main_module_name =
+  let make ~info ~main_module_name ~external_location =
     let obj_dir = Lib_info.obj_dir info in
     let dir = Obj_dir.dir obj_dir in
     let map_path p =
       if Path.is_managed p then Path.relative dir (Path.basename p) else p
     in
     let info = Lib_info.map_path info ~f:map_path in
-    { info; main_module_name }
+    { info; main_module_name; external_location }
   ;;
 
-  let of_dune_lib ~info ~main_module_name = make ~info ~main_module_name
-  let of_findlib info = make ~info ~main_module_name:None
+  let of_dune_lib ~info ~main_module_name =
+    make ~info ~main_module_name ~external_location:None
+  ;;
+
+  let of_findlib info external_location =
+    make ~info ~main_module_name:None ~external_location:(Some external_location)
+  ;;
 
   let dir_of_name name =
     let _, components = Lib_name.split name in
     Path.Local.L.relative Path.Local.root components
   ;;
 
-  let encode ~package_root ~stublibs { info; main_module_name } =
+  let encode ~package_root ~stublibs { info; main_module_name; external_location = _ } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
     let path = Dune_lang.Path.Local.encode ~dir:package_root in
@@ -259,7 +297,17 @@ module Lib = struct
            ~instrumentation_backend
            ~melange_runtime_deps
        in
-       { info; main_module_name })
+       let external_location =
+         let opam_dir = Path.parent_exn base in
+         let pkg, components = Lib_name.split name in
+         let local =
+           Path.Local.L.relative
+             (Path.Local.of_string (Package.Name.to_string pkg))
+             components
+         in
+         Some (External_location.Relative_to_findlib (opam_dir, local))
+       in
+       { info; main_module_name; external_location })
   ;;
 
   let main_module_name t = t.main_module_name
@@ -271,12 +319,14 @@ module Lib = struct
   ;;
 
   let info dp = dp.info
+  let external_location dp = dp.external_location
 
-  let to_dyn { info; main_module_name } =
+  let to_dyn { info; main_module_name; external_location } =
     let open Dyn in
     record
       [ "info", Lib_info.to_dyn Path.to_dyn info
       ; "main_module_name", option Module_name.to_dyn main_module_name
+      ; "external_location", option External_location.to_dyn external_location
       ]
   ;;
 end

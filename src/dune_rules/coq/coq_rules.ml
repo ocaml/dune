@@ -92,7 +92,12 @@ end = struct
 end
 
 let coqc ~loc ~dir ~sctx =
-  Super_context.resolve_program sctx "coqc" ~dir ~loc:(Some loc) ~hint:"opam install coq"
+  Super_context.resolve_program_memo
+    sctx
+    "coqc"
+    ~dir
+    ~loc:(Some loc)
+    ~hint:"opam install coq"
 ;;
 
 let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =
@@ -404,7 +409,7 @@ let setup_coqdep_for_theory_rule
   in
   let stdout_to = dep_theory_file ~dir ~wrapper_name in
   let* coqdep =
-    Super_context.resolve_program
+    Super_context.resolve_program_memo
       sctx
       "coqdep"
       ~dir
@@ -659,7 +664,7 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps (s : Coq_stanza.Theory.t) coq_m
     fun mode ->
       let* () =
         let* coqdoc =
-          Super_context.resolve_program
+          Super_context.resolve_program_memo
             sctx
             "coqdoc"
             ~dir
@@ -988,7 +993,7 @@ let install_rules ~sctx ~dir s =
 
 let setup_coqpp_rules ~sctx ~dir ({ loc; modules } : Coq_stanza.Coqpp.t) =
   let* coqpp =
-    Super_context.resolve_program
+    Super_context.resolve_program_memo
       sctx
       "coqpp"
       ~dir

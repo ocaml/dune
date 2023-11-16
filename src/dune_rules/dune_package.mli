@@ -5,6 +5,17 @@ open Import
 (** The filename of a dune-package file*)
 val fn : string
 
+module External_location : sig
+  type t =
+    | Relative_to_stdlib of Path.Local.t
+    | Relative_to_findlib of (Path.t * Path.Local.t)
+    | Absolute of Path.t
+
+  val to_dyn : t Dyn.builder
+  val compare : t -> t -> Ordering.t
+  val hash : t -> int
+end
+
 module Lib : sig
   type t
 
@@ -12,7 +23,8 @@ module Lib : sig
   val dir_of_name : Lib_name.t -> Path.Local.t
   val wrapped : t -> Wrapped.t option
   val info : t -> Path.t Lib_info.t
-  val of_findlib : Path.t Lib_info.t -> t
+  val external_location : t -> External_location.t option
+  val of_findlib : Path.t Lib_info.t -> External_location.t -> t
   val of_dune_lib : info:Path.t Lib_info.t -> main_module_name:Module_name.t option -> t
   val to_dyn : t Dyn.builder
 end

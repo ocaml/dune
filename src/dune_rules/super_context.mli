@@ -27,14 +27,11 @@ val context : t -> Context.t
 val context_env : t -> Env.t
 
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
-    associated directory is [Path.relative dir ".bin"] *)
+    associated directory is *)
 val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list Memo.t
 
 val env_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
 val bin_annot : t -> dir:Path.Build.t -> bool Memo.t
-
-(** Dump a directory environment in a readable form *)
-val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Action_builder.t
 
 val add_rule
   :  t
@@ -75,6 +72,15 @@ val add_alias_action
 
     [hint] should tell the user what to install when the program is not found. *)
 val resolve_program
+  :  t
+  -> dir:Path.Build.t
+  -> ?hint:string
+  -> loc:Loc.t option
+  -> string
+  -> Action.Prog.t Action_builder.t
+
+(** try not to use this as it breaks rule loading laziness *)
+val resolve_program_memo
   :  t
   -> dir:Path.Build.t
   -> ?hint:string

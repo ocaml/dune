@@ -98,7 +98,6 @@ module Run (P : PARAMS) = struct
 
   let menhir_binary =
     Super_context.resolve_program sctx ~dir "menhir" ~loc:None ~hint:"opam install menhir"
-    |> Action_builder.of_memo
   ;;
 
   (* Reminder (from command.mli):

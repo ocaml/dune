@@ -236,7 +236,6 @@ let build_c
          ~dir
          sctx
          (Ocaml_config.c_compiler ocaml.ocaml_config)
-       |> Action_builder.of_memo
      in
      Command.run_dyn_prog
        ~dir:(Path.build dir)

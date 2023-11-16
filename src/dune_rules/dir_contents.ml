@@ -452,14 +452,20 @@ end
 
 include Load
 
+let modules_of_local_lib sctx lib =
+  let info = Lib.Local.info lib in
+  let dir = Lib_info.src_dir info in
+  let* t = get sctx ~dir in
+  let+ ml_sources = ocaml t in
+  let name = Lib_info.name info in
+  Ml_sources.modules ml_sources ~for_:(Library name)
+;;
+
 let modules_of_lib sctx lib =
   let info = Lib.info lib in
   match Lib_info.modules info with
   | External modules -> Memo.return modules
   | Local ->
-    let dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
-    let* t = get sctx ~dir in
-    let+ ml_sources = ocaml t in
-    let name = Lib.name lib in
-    Some (Ml_sources.modules ml_sources ~for_:(Library name))
+    let+ modules = modules_of_local_lib sctx (Lib.Local.of_lib_exn lib) in
+    Some modules
 ;;

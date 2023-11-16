@@ -506,7 +506,6 @@ let gen_rules t ~sctx ~dir ~scope ~expander =
         ~loc:(Some t.loc)
         ~hint:"opam install mdx"
         "ocaml-mdx"
-      |> Action_builder.of_memo
     in
     let* mdx_prog_gen =
       if Dune_lang.Syntax.Version.Infix.(t.version >= (0, 2))

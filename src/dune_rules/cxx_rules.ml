@@ -45,7 +45,6 @@ let rules ~sctx ~dir =
       let open Action_builder.O in
       let* ocfg = ocfg in
       Super_context.resolve_program sctx ~dir ~loc:None (Ocaml_config.c_compiler ocfg)
-      |> Action_builder.of_memo
     in
     let open Action_builder.With_targets.O in
     let+ run_preprocessor =

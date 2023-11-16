@@ -217,34 +217,40 @@ end = struct
   let odoc_input t = t
 end
 
-let odoc_base_flags sctx build_dir =
-  let open Memo.O in
-  let+ conf = Super_context.env_node sctx ~dir:build_dir >>= Env_node.odoc in
+let odoc_base_flags sctx quiet build_dir =
+  let open Action_builder.O in
+  let+ conf =
+    let* env_node =
+      Action_builder.of_memo @@ Super_context.env_node sctx ~dir:build_dir
+    in
+    Env_node.odoc env_node
+  in
   match conf.warnings with
-  | Fatal -> Command.Args.A "--warn-error"
+  | Fatal ->
+    (* if quiet has been passed, we're running odoc on an external
+       artifact (e.g. stdlib.cmti) - so no point in warn-error *)
+    if quiet then Command.Args.S [] else A "--warn-error"
   | Nonfatal -> S []
 ;;
 
-let run_odoc sctx ~dir command ~flags_for args =
+let odoc_program sctx dir =
+  Super_context.resolve_program sctx ~dir "odoc" ~loc:None ~hint:"opam install odoc"
+;;
+
+let run_odoc sctx ~dir command ~quiet ~flags_for args =
   let build_dir = Super_context.context sctx |> Context.build_dir in
-  let open Memo.O in
-  let* program =
-    Super_context.resolve_program
-      sctx
-      ~dir:build_dir
-      "odoc"
-      ~loc:None
-      ~hint:"opam install odoc"
-  in
-  let+ base_flags =
+  let program = odoc_program sctx build_dir in
+  let base_flags =
+    let open Action_builder.O in
+    let* () = Action_builder.return () in
     match flags_for with
-    | None -> Memo.return Command.Args.empty
-    | Some path -> odoc_base_flags sctx path
+    | None -> Action_builder.return Command.Args.empty
+    | Some path -> odoc_base_flags sctx quiet path
   in
   let deps = Action_builder.env_var "ODOC_SYNTAX" in
   let open Action_builder.With_targets.O in
   Action_builder.with_no_targets deps
-  >>> Command.run ~dir program [ A command; base_flags; S args ]
+  >>> Command.run_dyn_prog ~dir program [ A command; Dyn base_flags; S args ]
 ;;
 
 let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
@@ -272,13 +278,14 @@ let compile_module
   let odoc_file = Obj_dir.Module.odoc obj_dir m in
   let open Memo.O in
   let+ () =
-    let* action_with_targets =
+    let action_with_targets =
       let doc_dir = Path.build (Obj_dir.odoc_dir obj_dir) in
-      let+ run_odoc =
+      let run_odoc =
         run_odoc
           sctx
           ~dir:doc_dir
           "compile"
+          ~quiet:false
           ~flags_for:(Some odoc_file)
           [ A "-I"
           ; Path doc_dir
@@ -311,11 +318,12 @@ let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
   let open Memo.O in
   let odoc_file = Mld.odoc_file m ~doc_dir in
   let odoc_input = Mld.odoc_input m in
-  let* run_odoc =
+  let run_odoc =
     run_odoc
       sctx
       ~dir:(Path.build doc_dir)
       "compile"
+      ~quiet:false
       ~flags_for:(Some odoc_input)
       [ Command.Args.dyn includes
       ; As [ "--pkg"; Package.Name.to_string pkg ]
@@ -351,12 +359,12 @@ let odoc_include_flags ctx pkg requires =
 let link_odoc_rules sctx (odoc_file : odoc_artefact) ~pkg ~requires =
   let ctx = Super_context.context sctx in
   let deps = Dep.deps ctx pkg requires in
-  let open Memo.O in
-  let* run_odoc =
+  let run_odoc =
     run_odoc
       sctx
       ~dir:(Path.build (Paths.html_root ctx))
       "link"
+      ~quiet:false
       ~flags_for:(Some odoc_file.odoc_file)
       [ odoc_include_flags ctx pkg requires
       ; A "-o"
@@ -371,7 +379,6 @@ let link_odoc_rules sctx (odoc_file : odoc_artefact) ~pkg ~requires =
 ;;
 
 let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
-  let open Memo.O in
   (* Using the proper package name doesn't actually work since odoc assumes that
      a package contains only 1 library *)
   let pkg_or_lnu = pkg_or_lnu (Lib.Local.to_lib local_lib) in
@@ -409,13 +416,13 @@ let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
 
 let setup_generate sctx (odoc_file : odoc_artefact) out =
   let ctx = Super_context.context sctx in
-  let open Memo.O in
   let odoc_support_path = Paths.odoc_support ctx in
-  let* run_odoc =
+  let run_odoc =
     run_odoc
       sctx
       ~dir:(Path.build (Paths.html_root ctx))
       "html-generate"
+      ~quiet:false
       ~flags_for:None
       [ A "-o"
       ; Path (Path.build (Paths.html_root ctx))
@@ -436,15 +443,15 @@ let setup_generate_all sctx odoc_file =
 ;;
 
 let setup_css_rule sctx =
-  let open Memo.O in
   let ctx = Super_context.context sctx in
   let dir = Paths.odoc_support ctx in
-  let* run_odoc =
-    let+ cmd =
+  let run_odoc =
+    let cmd =
       run_odoc
         sctx
         ~dir:(Path.build (Context.build_dir ctx))
         "support-files"
+        ~quiet:false
         ~flags_for:None
         [ A "-o"; Path (Path.build dir) ]
     in
@@ -561,13 +568,7 @@ let libs_of_pkg ctx ~pkg =
 ;;
 
 let entry_modules_by_lib sctx lib =
-  let info = Lib.Local.info lib in
-  let dir = Lib_info.src_dir info in
-  let name = Lib.name (Lib.Local.to_lib lib) in
-  Dir_contents.get sctx ~dir
-  >>= Dir_contents.ocaml
-  >>| Ml_sources.modules ~for_:(Library name)
-  >>| Modules.entry_modules
+  Dir_contents.modules_of_local_lib sctx lib >>| Modules.entry_modules
 ;;
 
 let entry_modules sctx ~pkg =

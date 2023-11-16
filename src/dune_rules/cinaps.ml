@@ -122,7 +122,6 @@ let gen_rules sctx t ~dir ~scope =
            ~loc:(Some loc)
            name
            ~hint:"opam install cinaps"
-         |> Action_builder.of_memo
        in
        Command.run_dyn_prog
          ~dir:(Path.build dir)

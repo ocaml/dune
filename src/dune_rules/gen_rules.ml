@@ -354,6 +354,7 @@ let gen_project_rules =
     let* sctx = sctx in
     let+ () = Install_rules.gen_project_rules sctx project
     and+ () = Odoc.gen_project_rules sctx project
+    and+ () = Odoc_new.gen_project_rules sctx project
     and+ () =
       let version = 2, 8 in
       match Dune_project.allow_approximate_merlin project with
@@ -525,7 +526,8 @@ let gen_rules_regular_directory sctx ~src_dir ~components ~dir =
               | [] ->
                 (* XXX sync this list with the pattern matches above. It's quite ugly
                    we need this, we should rewrite this code to avoid this. *)
-                Filename.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ]
+                Filename.Set.of_list
+                  [ ".js"; "_doc"; "_doc_new"; ".ppx"; ".dune"; ".topmod" ]
             in
             Filename.Set.union automatic toplevel
           in
@@ -587,6 +589,9 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
   | "_doc" :: rest ->
     let* sctx = sctx in
     Odoc.gen_rules sctx rest ~dir
+  | "_doc_new" :: rest ->
+    let* sctx = sctx in
+    Odoc_new.gen_rules sctx rest ~dir
   | ".topmod" :: comps ->
     has_rules
       ~dir

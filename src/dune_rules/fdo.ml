@@ -38,7 +38,6 @@ let ocamlfdo_binary sctx dir =
     ~loc:None
     "ocamlfdo"
     ~hint:"opam install ocamlfdo"
-  |> Action_builder.of_memo
 ;;
 
 (* FDO flags are context dependent. *)

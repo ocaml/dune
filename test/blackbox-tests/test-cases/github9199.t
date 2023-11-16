@@ -34,4 +34,4 @@ See #9199.
   $ cat _build/host/target
   ../install/host/lib/somelib/somelib.a
   $ cat _build/cross/target
-  ../install/host/lib/somelib/somelib.a
+  ../install/cross/lib/somelib/somelib.a

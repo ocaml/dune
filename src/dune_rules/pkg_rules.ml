@@ -379,6 +379,18 @@ module Pkg_installed = struct
 end
 
 module Substitute = struct
+  include Substs.Make (struct
+      type 'a t = 'a
+
+      module O = struct
+        let ( let+ ) x f = f x
+      end
+
+      module List = struct
+        let map t ~f = List.map t ~f
+      end
+    end)
+
   module Spec = struct
     type ('path, 'target) t =
       (* XXX it's not good to serialize the substitution map like this. We're
@@ -416,10 +428,19 @@ module Substitute = struct
       List [ Dune_lang.atom_or_quoted_string name; List e; s; input i; output o ]
     ;;
 
-    let action (env, self, src, dst) ~ectx:_ ~eenv:_ =
+    let action
+      ((env : OpamVariable.variable_contents Substs.Var.Map.t), self, src, dst)
+      ~ectx:_
+      ~eenv:_
+      =
       let open Fiber.O in
       let+ () = Fiber.return () in
-      Substs.subst env ~src self ~dst
+      let env var =
+        match Substs.Var.Map.find env var with
+        | Some _ as v -> v
+        | None -> Substs.Var.Map.find env { var with Substs.Var.package = Some self }
+      in
+      subst env ~src self ~dst
     ;;
   end
 

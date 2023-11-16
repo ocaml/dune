@@ -50,13 +50,22 @@ let%expect_test "adding remotes" =
     let remote_path = Path.relative cwd "git-remote" in
     let* () = create_repo_at remote_path in
     let source = Path.to_string remote_path in
-    let* _remote = Rev_store.add_repo rev_store ~source in
+    let* remote = Rev_store.add_repo rev_store ~source in
+    let* (_ : Rev_store.Remote.t) = Rev_store.Remote.update remote in
     print_endline "Creating first remote succeeded";
-    let* _remote' = Rev_store.add_repo rev_store ~source in
-    print_endline "Adding same remote succeeded";
-    Fiber.return ());
-  [%expect {|
+    [%expect {|
     Creating first remote succeeded
-    Adding same remote succeeded
-    |}]
+    |}];
+    let* (_remote' : Rev_store.Remote.uninit) = Rev_store.add_repo rev_store ~source in
+    print_endline "Adding same remote without update succeeded";
+    [%expect {|
+    Adding same remote without update succeeded
+    |}];
+    let* remote'' = Rev_store.add_repo rev_store ~source in
+    let* (_ : Rev_store.Remote.t) = Rev_store.Remote.update remote'' in
+    print_endline "Adding same remote with update succeeded";
+    [%expect {|
+    Adding same remote with update succeeded
+    |}];
+    Fiber.return ())
 ;;

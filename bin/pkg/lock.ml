@@ -37,6 +37,7 @@ let solve
   per_context
   ~opam_repository_path
   ~opam_repository_url
+  ~update_opam_repositories
   ~sys_bindings_from_current_system
   ~experimental_translate_opam_filters
   =
@@ -67,7 +68,12 @@ let solve
                   ~sys_bindings_from_current_system)
          in
          let* repos =
-           get_repos repos ~opam_repository_path ~opam_repository_url ~repositories
+           get_repos
+             repos
+             ~opam_repository_path
+             ~opam_repository_url
+             ~repositories
+             ~update_opam_repositories
          in
          let overlay =
            Console.Status_line.add_overlay (Constant (Pp.text "Solving for Build Plan"))
@@ -128,6 +134,7 @@ let lock
   ~version_preference
   ~opam_repository_path
   ~opam_repository_url
+  ~update_opam_repositories
   ~experimental_translate_opam_filters
   =
   let open Fiber.O in
@@ -145,6 +152,7 @@ let lock
     per_context
     ~opam_repository_path
     ~opam_repository_url
+    ~update_opam_repositories
     ~sys_bindings_from_current_system
     ~experimental_translate_opam_filters
 ;;
@@ -186,6 +194,15 @@ let term =
              enabled by default but is currently opt-in as we expect to make major \
              changes to it in the future. Without this flag all conditional commands and \
              terms in Opam files are included unconditionally.")
+  and+ skip_update =
+    Arg.(
+      value
+      & flag
+      & info
+          [ "skip-update" ]
+          ~doc:
+            "Do not fetch updates of opam repositories, will use the cached opam \
+             metadata. This allows offline use if the repositories are cached locally.")
   in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
@@ -197,6 +214,7 @@ let term =
       ~version_preference
       ~opam_repository_path
       ~opam_repository_url
+      ~update_opam_repositories:(not skip_update)
       ~experimental_translate_opam_filters)
 ;;
 

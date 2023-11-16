@@ -25,8 +25,14 @@ let find_outdated_packages
               ; repositories
               }
             ->
+            (* updating makes sense when checking for outdated packages *)
             let* repos =
-              get_repos repos ~opam_repository_path ~opam_repository_url ~repositories
+              get_repos
+                repos
+                ~opam_repository_path
+                ~opam_repository_url
+                ~repositories
+                ~update_opam_repositories:true
             and+ local_packages = find_local_packages in
             let lock_dir = Lock_dir.read_disk lock_dir_path in
             let+ results =

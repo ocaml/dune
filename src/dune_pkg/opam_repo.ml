@@ -138,11 +138,14 @@ let of_opam_repo_dir_path ~source ~repo_id opam_repo_dir_path =
   { source = Directory opam_repo_dir_path; serializable }
 ;;
 
-let of_git_repo ~repo_id ~source =
+let of_git_repo ~repo_id ~update ~source =
   let+ at_rev, computed_repo_id =
     let* remote =
       let* repo = rev_store in
-      Rev_store.add_repo repo ~source
+      let* remote = Rev_store.add_repo repo ~source in
+      match update with
+      | true -> Rev_store.Remote.update remote
+      | false -> Fiber.return @@ Rev_store.Remote.don't_update remote
     in
     match repo_id with
     | Some repo_id ->

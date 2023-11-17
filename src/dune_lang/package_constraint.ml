@@ -18,11 +18,13 @@ module Op = struct
   let map = [ "=", Eq; ">=", Gte; "<=", Lte; ">", Gt; "<", Lt; "<>", Neq ]
   let to_dyn t = Dyn.variant (fst (List.find_exn ~f:(fun (_, op) -> equal t op) map)) []
 
-  let encode x =
+  let to_string x =
     let f (_, op) = equal x op in
     (* Assumes the [map] is complete, so exception is impossible *)
-    List.find_exn ~f map |> fst |> Dune_sexp.Encoder.string
+    List.find_exn ~f map |> fst
   ;;
+
+  let encode x = Dune_sexp.Encoder.string (to_string x)
 end
 
 module Variable = struct

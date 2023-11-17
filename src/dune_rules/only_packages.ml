@@ -104,9 +104,9 @@ let filtered_stanzas =
   let db =
     Per_context.create_by_name ~name:"filtered_stanzas"
     @@ fun context ->
-    let* { Dune_load.dune_files; packages = _; projects = _ } = Dune_load.load () in
-    let* stanzas = Dune_load.Dune_files.eval ~context dune_files in
-    let+ only_packages = Memo.Lazy.force conf in
+    let* only_packages = Memo.Lazy.force conf
+    and+ { Dune_load.dune_files; packages = _; projects = _ } = Dune_load.load () in
+    let+ stanzas = Dune_load.Dune_files.eval ~context dune_files in
     match only_packages with
     | None -> stanzas
     | Some visible_pkgs ->

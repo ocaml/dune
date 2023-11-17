@@ -10,6 +10,7 @@ module Op : sig
     | Neq
 
   val to_dyn : t -> Dyn.t
+  val to_string : t -> string
 end
 
 module Variable : sig

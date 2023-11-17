@@ -2164,5 +2164,5 @@ let%expect_test "implicit output bug. storage cell is reused between runs" =
   set_invalidate_print_run ();
   [%expect {| Some [ "x" ] |}];
   set_invalidate_print_run ();
-  [%expect {| Some [ "x"; "x" ] |}]
+  [%expect {| Some [ "x" ] |}]
 ;;

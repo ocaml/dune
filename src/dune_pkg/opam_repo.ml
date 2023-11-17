@@ -34,6 +34,80 @@ module Paths = struct
   let opam_file package = Path.Local.relative (package_dir package) "opam"
 end
 
+module Source = struct
+  type commitish =
+    | Commit of string
+    | Branch of string
+    | Tag of string
+
+  let commitish_to_dyn = function
+    | Commit c -> Dyn.variant "Commit" [ Dyn.string c ]
+    | Branch b -> Dyn.variant "Branch" [ Dyn.string b ]
+    | Tag t -> Dyn.variant "Tag" [ Dyn.string t ]
+  ;;
+
+  let commitish_equal a b =
+    match a, b with
+    | Commit x, Commit x' | Branch x, Branch x' | Tag x, Tag x' -> String.equal x x'
+    | _, _ -> false
+  ;;
+
+  type t =
+    { url : string
+    ; commit : commitish option
+    }
+
+  module Private = struct
+    let of_opam_url rev_store ({ OpamUrl.hash; _ } as opam_url) =
+      (* fairly ugly to pull the rev-store out of thin air *)
+      let url = OpamUrl.base_url opam_url in
+      let+ commit =
+        match hash with
+        | None -> Fiber.return None
+        | Some ref ->
+          (* OpamUrl doesn't distinguish between branches/tags and commits, so we need to look up *)
+          let* member = Rev_store.mem rev_store ~rev:ref in
+          (match member with
+           | true -> Fiber.return @@ Some (Commit ref)
+           | false ->
+             let+ type' = Rev_store.ref_type rev_store ~source:url ~ref in
+             (match type' with
+              | Some `Tag -> Some (Tag ref)
+              | Some `Head -> Some (Branch ref)
+              | None ->
+                User_error.raise
+                  ~hints:
+                    [ Pp.text
+                        "Make sure the URL is correct and the repository contains the \
+                         branch/tag"
+                    ]
+                  [ Pp.textf
+                      "Opam repository at '%s' does not have a reference '%s'"
+                      url
+                      ref
+                  ]))
+      in
+      { commit; url }
+    ;;
+  end
+
+  let of_opam_url opam_url =
+    (* fairly ugly to pull the rev-store out of thin air *)
+    let* rev_store = rev_store in
+    Private.of_opam_url rev_store opam_url
+  ;;
+
+  let to_string { url; commit = _ } = url
+
+  let to_dyn { url; commit } =
+    Dyn.record [ "url", Dyn.string url; "commit", Dyn.option commitish_to_dyn commit ]
+  ;;
+
+  let equal { url; commit } t =
+    String.equal url t.url && Option.equal commitish_equal commit t.commit
+  ;;
+end
+
 module Serializable = struct
   type t =
     { repo_id : Repository_id.t option
@@ -64,6 +138,21 @@ module Serializable = struct
        and+ repo_id = field_o "repo_id" Repository_id.decode in
        { repo_id; source })
   ;;
+
+  module Private = struct
+    let with_commit ~commit { repo_id; source } =
+      let repo_id =
+        match repo_id with
+        | None -> None
+        | Some repo_id as orig ->
+          let candidate_repo_id = Repository_id.of_git_hash commit in
+          (match Repository_id.equal repo_id candidate_repo_id with
+           | true -> Some (Repository_id.of_git_hash "MATCHING")
+           | false -> orig)
+      in
+      { repo_id; source }
+    ;;
+  end
 end
 
 module Backend = struct
@@ -95,12 +184,6 @@ let repo_id t =
   let open Option.O in
   let* serializable = serializable t in
   serializable.repo_id
-;;
-
-let source t =
-  let open Option.O in
-  let+ serializable = serializable t in
-  serializable.source
 ;;
 
 let of_opam_repo_dir_path ~source ~repo_id opam_repo_dir_path =
@@ -138,11 +221,16 @@ let of_opam_repo_dir_path ~source ~repo_id opam_repo_dir_path =
   { source = Directory opam_repo_dir_path; serializable }
 ;;
 
-let of_git_repo ~repo_id ~update ~source =
+let of_git_repo ~repo_id ~update (source : Source.t) =
   let+ at_rev, computed_repo_id =
     let* remote =
       let* repo = rev_store in
-      let* remote = Rev_store.add_repo repo ~source in
+      let branch =
+        match source.commit with
+        | Some (Branch b) -> Some b
+        | _ -> None
+      in
+      let* remote = Rev_store.add_repo repo ~source:source.url ~branch in
       match update with
       | true -> Rev_store.Remote.update remote
       | false -> Fiber.return @@ Rev_store.Remote.don't_update remote
@@ -153,8 +241,11 @@ let of_git_repo ~repo_id ~update ~source =
       at_rev, Some repo_id
     | None ->
       let+ at_rev =
-        let name = Rev_store.Remote.default_branch remote in
-        Rev_store.Remote.rev_of_name remote ~name
+        match source.commit with
+        | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref
+        | _ ->
+          let name = Rev_store.Remote.default_branch remote in
+          Rev_store.Remote.rev_of_name remote ~name
       in
       let repo_id = Option.map at_rev ~f:Rev_store.At_rev.repository_id in
       at_rev, repo_id
@@ -163,9 +254,11 @@ let of_git_repo ~repo_id ~update ~source =
   | None ->
     User_error.raise
       ~hints:[ Pp.text "Double check that the revision is included in the repository" ]
-      [ Pp.textf "Could not find revision in repository %s" source ]
+      [ Pp.textf "Could not find revision in repository %s" (Source.to_string source) ]
   | Some at_rev ->
-    let serializable = Some { Serializable.repo_id = computed_repo_id; source } in
+    let serializable =
+      Some { Serializable.repo_id = computed_repo_id; source = source.url }
+    in
     { source = Repo at_rev; serializable }
 ;;
 

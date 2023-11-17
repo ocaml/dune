@@ -876,3 +876,20 @@ let compute_missing_checksums t =
   in
   { t with packages }
 ;;
+
+module Private = struct
+  let used_with_commit ~commit xs =
+    List.map xs ~f:(fun serializable ->
+      Opam_repo.Serializable.Private.with_commit ~commit serializable)
+  ;;
+
+  let repos_with_commit ~commit ({ Repositories.used; _ } as repos) =
+    let used = Option.map used ~f:(used_with_commit ~commit) in
+    { repos with used }
+  ;;
+
+  let with_commit ~commit ({ repos; _ } as lock_dir) =
+    let repos = repos_with_commit ~commit repos in
+    { lock_dir with repos }
+  ;;
+end

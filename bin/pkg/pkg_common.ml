@@ -79,7 +79,7 @@ let location_of_opam_url url =
   match (url : OpamUrl.t).backend with
   | `rsync -> `Path (Path.of_string url.path)
   (* contrary to OPAM we also attempt to load HTTP sources via git *)
-  | `git | `http -> `Git (OpamUrl.base_url url)
+  | `git | `http -> `Git
   | `darcs | `hg ->
     User_error.raise
       ~hints:[ Pp.text "Specify either a file path or git repo via SSH/HTTPS" ]
@@ -88,6 +88,7 @@ let location_of_opam_url url =
 ;;
 
 let get_repos repos ~repositories ~update_opam_repositories =
+  let open Fiber.O in
   let module Repository_id = Dune_pkg.Repository_id in
   let module Opam_repo = Dune_pkg.Opam_repo in
   let module Repository = Dune_pkg.Pkg_workspace.Repository in
@@ -103,8 +104,9 @@ let get_repos repos ~repositories ~update_opam_repositories =
     | Some repo ->
       let opam_url = Dune_pkg.Pkg_workspace.Repository.opam_url repo in
       (match location_of_opam_url opam_url with
-       | `Git source ->
-         Opam_repo.of_git_repo ~repo_id:None ~update:update_opam_repositories ~source
+       | `Git ->
+         let* source = Opam_repo.Source.of_opam_url opam_url in
+         Opam_repo.of_git_repo ~repo_id:None ~update:update_opam_repositories source
        | `Path path ->
          let repo_id = Repository_id.of_path path in
          Fiber.return @@ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path))

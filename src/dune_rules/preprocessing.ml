@@ -285,9 +285,8 @@ module Driver = struct
   ;;
 end
 
-let ppx_exe (ctx : Context.t) ~key =
-  let build_dir = Context.build_dir ctx in
-  Path.Build.relative build_dir (".ppx/" ^ key ^ "/ppx.exe")
+let ppx_exe (ctx : Build_context.t) ~key =
+  Path.Build.relative ctx.build_dir (".ppx/" ^ key ^ "/ppx.exe")
 ;;
 
 let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
@@ -360,7 +359,8 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
 
 let get_rules sctx key =
   let ctx = Super_context.context sctx in
-  let exe = ppx_exe ctx ~key in
+  let build_context = Context.build_context ctx in
+  let exe = ppx_exe build_context ~key in
   let* pp_names, scope =
     match Digest.from_hex key with
     | None ->
@@ -372,7 +372,7 @@ let get_rules sctx key =
         let dir =
           match project_root with
           | None -> Context.build_dir ctx
-          | Some dir -> Path.Build.append_source (Context.build_dir ctx) dir
+          | Some dir -> Path.Build.append_source build_context.build_dir dir
         in
         Scope.DB.find_by_dir dir
       in
@@ -396,7 +396,7 @@ let ppx_driver_exe (ctx : Context.t) libs =
   let key = Digest.to_string (Key.Decoded.of_libs libs |> Key.encode) in
   (* Make sure to compile ppx.exe for the compiling host. See: #2252, #2286 and
      #3698 *)
-  ppx_exe ~key (Context.host ctx)
+  Context.host ctx >>| Context.build_context >>| ppx_exe ~key
 ;;
 
 let get_cookies ~loc ~expander ~lib_name libs =
@@ -460,10 +460,9 @@ let ppx_driver_and_flags_internal sctx ~dune_version ~loc ~expander ~lib_name ~f
       Action_builder.List.concat_map flags ~f:(Expander.expand ~mode:Many expander)
       |> Action_builder.map
            ~f:(List.map ~f:(Value.to_string ~dir:(Path.build @@ Expander.dir expander)))
-  and+ cookies = Action_builder.of_memo (get_cookies ~loc ~lib_name ~expander libs) in
-  let ppx_driver_exe =
-    let ctx = Context.host (Super_context.context sctx) in
-    ppx_driver_exe ctx libs
+  and+ cookies = Action_builder.of_memo (get_cookies ~loc ~lib_name ~expander libs)
+  and+ ppx_driver_exe =
+    Action_builder.of_memo @@ ppx_driver_exe (Super_context.context sctx) libs
   in
   ppx_driver_exe, flags @ cookies
 ;;
@@ -836,8 +835,8 @@ let get_ppx_driver sctx ~loc ~expander ~scope ~lib_name ~flags pps =
 
 let ppx_exe sctx ~scope pp =
   let open Resolve.Memo.O in
-  let+ libs = Lib.DB.resolve_pps (Scope.libs scope) [ Loc.none, pp ] in
-  ppx_driver_exe sctx libs
+  let* libs = Lib.DB.resolve_pps (Scope.libs scope) [ Loc.none, pp ] in
+  Resolve.Memo.lift_memo @@ ppx_driver_exe sctx libs
 ;;
 
 let pped_modules_map preprocess v =

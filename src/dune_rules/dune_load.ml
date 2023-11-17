@@ -164,7 +164,7 @@ module Script = struct
         ~wrapper
         ~target:generated_dune_file
     in
-    let context = Context.host context in
+    let* context = Context.host context in
     let args =
       List.concat
         [ [ "-I"; "+compiler-libs" ]; [ Path.to_absolute_filename (Path.build wrapper) ] ]

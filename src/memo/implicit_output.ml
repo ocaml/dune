@@ -104,6 +104,7 @@ let produce_opt t v =
 ;;
 
 let collect (type o) (type_ : o t) f =
+  let* () = Fiber.return () in
   let output = ref None in
   Fiber.map
     (Fiber.Var.set

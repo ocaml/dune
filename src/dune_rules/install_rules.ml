@@ -1119,7 +1119,7 @@ struct
 
     let action (entries, dst) ~ectx:_ ~eenv:_ =
       let open Fiber.O in
-      let+ entries =
+      let* entries =
         let+ entries =
           Fiber.parallel_map entries ~f:(fun (entry : _ Install.Entry.t) ->
             match entry.kind with
@@ -1132,7 +1132,7 @@ struct
         in
         List.concat entries |> Install.Entry.gen_install_file
       in
-      Io.write_file (Path.build dst) entries
+      Async.async (fun () -> Io.write_file (Path.build dst) entries)
     ;;
   end
 

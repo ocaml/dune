@@ -262,7 +262,10 @@ let expand_read_macro ~dir ~source s ~read ~pack =
   let path = relative ~source dir s in
   let read =
     let open Memo.O in
-    let+ x = Build_system.read_file path ~f:read in
+    let+ x =
+      Build_system.read_file path ~f:(fun a -> Async.async (fun () -> read a))
+      >>= Memo.of_reproducible_fiber
+    in
     pack x
   in
   Need_full_expander

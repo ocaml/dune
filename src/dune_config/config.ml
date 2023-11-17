@@ -147,6 +147,14 @@ let background_sandboxes =
   t
 ;;
 
+let background_dune_rules =
+  let t =
+    { name = "background_dune_rules"; of_string = Toggle.of_string; value = `Disabled }
+  in
+  register t;
+  t
+;;
+
 let background_file_system_operations_in_rule_execution =
   let t =
     { name = "background_file_system_operations_in_rule_execution"

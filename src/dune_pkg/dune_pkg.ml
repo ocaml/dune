@@ -16,3 +16,4 @@ module Version_preference = Version_preference
 module Package_version = Package_version
 module Pkg_workspace = Workspace
 module Local_package = Local_package
+module Package_universe = Package_universe

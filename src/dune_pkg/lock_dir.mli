@@ -103,3 +103,13 @@ module Make_load (Io : sig
   end) : sig
   val load : Path.Source.t -> t Io.t
 end
+
+(** [transitive_dependency_closure t names] returns the set of package names
+    making up the transitive closure of dependencies of the set [names], or
+    [Error (`Missing_packages missing_packages)] if if any element of [names]
+    is not found in the lockdir. [missing_packages] is a subset of [names]
+    not present in the lockdir. *)
+val transitive_dependency_closure
+  :  t
+  -> Package_name.Set.t
+  -> (Package_name.Set.t, [ `Missing_packages of Package_name.Set.t ]) result

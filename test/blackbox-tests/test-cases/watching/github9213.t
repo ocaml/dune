@@ -18,11 +18,8 @@ This test demonstrates a bug where rules are being duplicated between rebuilds.
   $ cat > src/a
 
   $ build .
-  Failure
+  Success
 
   $ stop_dune
   Success, waiting for filesystem changes...
-  Error: Multiple rules generated for _build/default/test.install:
-  - <internal location>
-  - <internal location>
-  Had 1 error, waiting for filesystem changes...
+  Success, waiting for filesystem changes...

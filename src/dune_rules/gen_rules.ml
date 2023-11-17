@@ -398,6 +398,7 @@ let gen_project_rules =
     ()
   in
   fun sctx source_dir ->
+    let* () = Memo.return () in
     let project = Source_tree.Dir.project source_dir in
     match
       Path.Source.equal (Source_tree.Dir.path source_dir) (Dune_project.root project)

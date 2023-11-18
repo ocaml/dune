@@ -27,7 +27,7 @@ module Clflags = struct
 end
 
 let conf =
-  Memo.lazy_ (fun () ->
+  Memo.lazy_ ~name:"only_packages" (fun () ->
     match Clflags.t () with
     | No_restriction -> Memo.return None
     | Restrict { names; command_line_option } ->

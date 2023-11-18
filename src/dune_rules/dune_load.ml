@@ -356,6 +356,6 @@ let load () =
 ;;
 
 let load =
-  let memo = Memo.lazy_ load in
+  let memo = Memo.lazy_ ~name:"dune_load" load in
   fun () -> Memo.Lazy.force memo
 ;;

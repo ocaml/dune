@@ -421,7 +421,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
     Findlib_config.discover_from_env ~env:builder.env ~which ~ocamlpath ~findlib_toolchain
   in
   let ocaml_and_build_env_kind =
-    Memo.Lazy.create (fun () ->
+    Memo.Lazy.create ~name:"ocaml_and_build_env_kind" (fun () ->
       let+ ocaml, env =
         let toolchain kind =
           let+ toolchain =
@@ -479,7 +479,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
           let+ ocaml, _ = Memo.Lazy.force ocaml_and_build_env_kind in
           ocaml)
     ; findlib_paths =
-        Memo.Lazy.create (fun () ->
+        Memo.Lazy.create ~name:"findlib_paths" (fun () ->
           let+ default_ocamlpath = Memo.Lazy.force default_ocamlpath in
           ocamlpath @ default_ocamlpath)
     ; default_ocamlpath
@@ -504,7 +504,8 @@ module Group = struct
              Workspace.Context.Target.Native)
       in
       let builder = { builder with implicit } in
-      builder.name, Memo.Lazy.create (fun () -> create builder ~kind)
+      ( builder.name
+      , Memo.Lazy.create ~name:"native-context" (fun () -> create builder ~kind) )
     in
     let targets =
       let builder =
@@ -518,7 +519,7 @@ module Group = struct
         | Native -> None
         | Named findlib_toolchain ->
           Some
-            (Memo.Lazy.create (fun () ->
+            (Memo.Lazy.create ~name:"findlib_toolchain" (fun () ->
                let name = Context_name.target builder.name ~toolchain:findlib_toolchain in
                create
                  { builder with name; findlib_toolchain = Some findlib_toolchain }
@@ -665,7 +666,7 @@ module DB = struct
       Memo.lazy_ ~name (fun () ->
         let+ map = all () in
         Context_name.Map.of_list_map_exn map ~f:(fun context ->
-          context.builder.name, Memo.lazy_ (fun () -> f context)))
+          context.builder.name, Memo.lazy_ ~name (fun () -> f context)))
     in
     Staged.stage (fun context ->
       let* map = Memo.Lazy.force map in

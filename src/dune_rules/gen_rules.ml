@@ -443,7 +443,8 @@ module Automatic_subdir = struct
     | Utop -> Utop.setup sctx ~dir:(Path.Build.parent_exn dir)
     | Formatted -> Format_rules.gen_rules sctx ~output_dir:dir
     | Bin ->
-      Super_context.local_binaries sctx ~dir:(Path.Build.parent_exn dir)
+      Super_context.env_node sctx ~dir:(Path.Build.parent_exn dir)
+      >>= Env_node.local_binaries
       >>= Memo.parallel_iter ~f:(fun t ->
         let loc = File_binding.Expanded.src_loc t in
         let src = Path.build (File_binding.Expanded.src t) in

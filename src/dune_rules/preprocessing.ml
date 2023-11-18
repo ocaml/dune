@@ -450,7 +450,15 @@ let get_cookies ~loc ~expander ~lib_name libs =
   |> List.concat
 ;;
 
-let ppx_driver_and_flags_internal sctx ~dune_version ~loc ~expander ~lib_name ~flags libs =
+let ppx_driver_and_flags_internal
+  context
+  ~dune_version
+  ~loc
+  ~expander
+  ~lib_name
+  ~flags
+  libs
+  =
   let open Action_builder.O in
   let+ flags =
     if dune_version <= (3, 2)
@@ -461,9 +469,7 @@ let ppx_driver_and_flags_internal sctx ~dune_version ~loc ~expander ~lib_name ~f
       |> Action_builder.map
            ~f:(List.map ~f:(Value.to_string ~dir:(Path.build @@ Expander.dir expander)))
   and+ cookies = Action_builder.of_memo (get_cookies ~loc ~lib_name ~expander libs)
-  and+ ppx_driver_exe =
-    Action_builder.of_memo @@ ppx_driver_exe (Super_context.context sctx) libs
-  in
+  and+ ppx_driver_exe = Action_builder.of_memo @@ ppx_driver_exe context libs in
   ppx_driver_exe, flags @ cookies
 ;;
 
@@ -587,6 +593,7 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
             ~loc
             [ Pp.text "Staged ppx rewriters cannot be used as linters." ];
         let corrected_suffix = ".lint-corrected" in
+        let ctx = Super_context.context sctx in
         let driver_and_flags =
           Action_builder.memoize
             ~cutoff:
@@ -597,7 +604,7 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
             "ppx driver and flags"
             (let* () = Action_builder.return () in
              let* exe, driver, flags =
-               ppx_driver_and_flags sctx ~expander ~loc ~lib_name ~flags ~scope pps
+               ppx_driver_and_flags ctx ~expander ~loc ~lib_name ~flags ~scope pps
              in
              let+ ppx_flags =
                driver_flags
@@ -617,9 +624,7 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
                  (Path.as_in_build_dir_exn
                     (Option.value_exn (Module.file source ~ml_kind)))
                  (let* exe, flags, args = driver_and_flags in
-                  let dir =
-                    Super_context.context sctx |> Context.build_dir |> Path.build
-                  in
+                  let dir = ctx |> Context.build_dir |> Path.build in
                   Command.run'
                     ~dir
                     (Ok (Path.build exe))
@@ -688,7 +693,14 @@ let pp_one_module
             ~cutoff:(List.equal String.equal)
             "ppx command"
             (let* exe, driver, flags =
-               ppx_driver_and_flags sctx ~expander ~loc ~scope ~flags ~lib_name pps
+               ppx_driver_and_flags
+                 (Super_context.context sctx)
+                 ~expander
+                 ~loc
+                 ~scope
+                 ~flags
+                 ~lib_name
+                 pps
              in
              let* driver_flags =
                Expander.expand_and_eval_set
@@ -728,7 +740,14 @@ let pp_one_module
           "ppx driver and flags"
           (let* () = Action_builder.return () in
            let* exe, driver, flags =
-             ppx_driver_and_flags sctx ~expander ~loc ~lib_name ~flags ~scope pps
+             ppx_driver_and_flags
+               (Super_context.context sctx)
+               ~expander
+               ~loc
+               ~lib_name
+               ~flags
+               ~scope
+               pps
            in
            let+ ppx_flags =
              driver_flags
@@ -826,11 +845,11 @@ let make
   |> Pp_spec.make
 ;;
 
-let get_ppx_driver sctx ~loc ~expander ~scope ~lib_name ~flags pps =
+let get_ppx_driver ctx ~loc ~expander ~scope ~lib_name ~flags pps =
   let open Action_builder.O in
   let* libs = Resolve.Memo.read (Lib.DB.resolve_pps (Scope.libs scope) pps) in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
-  ppx_driver_and_flags_internal sctx ~loc ~expander ~dune_version ~lib_name ~flags libs
+  ppx_driver_and_flags_internal ctx ~loc ~expander ~dune_version ~lib_name ~flags libs
 ;;
 
 let ppx_exe sctx ~scope pp =

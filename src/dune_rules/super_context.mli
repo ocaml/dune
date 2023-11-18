@@ -26,10 +26,6 @@ val context : t -> Context.t
 (** Context env with additional variables computed from packages *)
 val context_env : t -> Env.t
 
-(** Binaries that are symlinked in the associated .bin directory of [dir]. This
-    associated directory is *)
-val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list Memo.t
-
 val env_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
 val bin_annot : t -> dir:Path.Build.t -> bool Memo.t
 

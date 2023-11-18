@@ -275,7 +275,6 @@ let add_alias_action t alias ~dir ~loc action =
   Rules.Produce.Alias.add_action alias ~loc build
 ;;
 
-let local_binaries t ~dir = Env_tree.get_node t ~dir >>= Env_node.local_binaries
 let env_node = Env_tree.get_node
 let bin_annot t ~dir = Env_tree.get_node t ~dir >>= Env_node.bin_annot
 

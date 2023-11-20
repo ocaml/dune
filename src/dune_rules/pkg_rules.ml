@@ -1233,8 +1233,8 @@ module Install_action = struct
       ~eenv:_
       =
       let open Fiber.O in
-      let+ () = Fiber.return () in
-      let files =
+      let* () = Fiber.return () in
+      let* files =
         let from_install_action =
           match install_action with
           | `No_install_action -> Section.Map.empty
@@ -1245,11 +1245,12 @@ module Install_action = struct
             in
             section_map_of_dir install_paths
         in
-        let from_install_file =
-          match Path.Untracked.exists install_file with
-          | false -> Section.Map.empty
+        let+ from_install_file =
+          Async.async (fun () -> Path.Untracked.exists install_file)
+          >>= function
+          | false -> Fiber.return Section.Map.empty
           | true ->
-            let map =
+            let* map =
               let install_entries =
                 let dir = Path.parent_exn install_file in
                 Install.Entry.load_install_file install_file (fun local ->
@@ -1260,32 +1261,35 @@ module Install_action = struct
                   entry.src, entry)
                 |> Path.Map.of_list_multi
               in
-              let install_entries =
+              let+ install_entries =
                 Path.Map.to_list_map by_src ~f:(fun src entries ->
-                  List.filter_map
-                    entries
-                    ~f:(install_entry ~src ~install_file ~target_dir))
+                  List.map entries ~f:(fun entry -> src, entry))
+                |> List.concat
+                |> Fiber.parallel_map ~f:(fun (src, entry) ->
+                  Async.async (fun () ->
+                    install_entry ~src ~install_file ~target_dir entry))
+                >>| List.filter_opt
               in
-              List.concat install_entries
-              |> List.rev_map ~f:(fun (section, file) ->
+              List.rev_map install_entries ~f:(fun (section, file) ->
                 let file = maybe_drop_sandbox_dir file in
                 section, file)
               |> Section.Map.of_list_multi
             in
-            Path.unlink install_file;
+            let+ () = Async.async (fun () -> Path.unlink install_file) in
             map
         in
         (* TODO we should make sure that overwrites aren't allowed *)
         Section.Map.union from_install_action from_install_file ~f:(fun _ x y ->
           Some (x @ y))
       in
-      let cookies =
-        let variables = read_variables config_file in
+      let* cookies =
+        let+ variables = Async.async (fun () -> read_variables config_file) in
         { Install_cookie.files; variables }
       in
       let cookie_file = Path.build @@ Paths.install_cookie' target_dir in
-      cookie_file |> Path.parent_exn |> Path.mkdir_p;
-      Install_cookie.dump cookie_file cookies
+      Async.async (fun () ->
+        cookie_file |> Path.parent_exn |> Path.mkdir_p;
+        Install_cookie.dump cookie_file cookies)
     ;;
   end
 

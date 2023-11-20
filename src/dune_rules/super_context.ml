@@ -81,9 +81,10 @@ end = struct
     match Context.for_host context with
     | None -> Memo.return scope
     | Some host ->
-      let dir =
+      let* dir =
         let root = Scope.root scope in
         let src = Path.Build.drop_build_context_exn root in
+        let+ host = host in
         Path.Build.append_source (Context.build_dir host) src
       in
       Scope.DB.find_by_dir dir
@@ -274,7 +275,6 @@ let add_alias_action t alias ~dir ~loc action =
   Rules.Produce.Alias.add_action alias ~loc build
 ;;
 
-let local_binaries t ~dir = Env_tree.get_node t ~dir >>= Env_node.local_binaries
 let env_node = Env_tree.get_node
 let bin_annot t ~dir = Env_tree.get_node t ~dir >>= Env_node.bin_annot
 
@@ -456,17 +456,17 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   let+ root_expander =
     let artifacts_host, public_libs_host, context_host =
       match Context.for_host context with
-      | None -> artifacts, public_libs, context
+      | None -> artifacts, public_libs, Memo.return context
       | Some host ->
-        let artifacts = Artifacts_db.get host in
-        let public_libs = Scope.DB.public_libs host in
+        let artifacts = host >>= Artifacts_db.get in
+        let public_libs = host >>= Scope.DB.public_libs in
         artifacts, public_libs, host
     in
     let+ scope = Scope.DB.find_by_dir (Context.build_dir context)
     and+ public_libs = public_libs
     and+ artifacts_host = artifacts_host
     and+ public_libs_host = public_libs_host
-    and+ scope_host = Scope.DB.find_by_dir (Context.build_dir context_host) in
+    and+ scope_host = context_host >>| Context.build_dir >>= Scope.DB.find_by_dir in
     Expander.make_root
       ~scope
       ~scope_host
@@ -483,7 +483,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
      is used as default at the root of every project in the workspace. *)
   let default_env =
     let profile = Context.profile context in
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"default_env" (fun () ->
       make_default_env_node
         ocaml.ocaml_config
         (Context.build_context context)
@@ -510,13 +510,14 @@ let all =
     let rec sctxs =
       lazy
         (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
-           Context.name c, Memo.Lazy.create (fun () -> make_sctx c)))
+           Context.name c, Memo.Lazy.create ~name:"make_sctx" (fun () -> make_sctx c)))
     and make_sctx (context : Context.t) =
       let host () =
         match Context.for_host context with
         | None -> Memo.return None
         | Some h ->
           let+ sctx =
+            let* h = h in
             Memo.Lazy.force
               (Context_name.Map.find_exn (Lazy.force sctxs) (Context.name h))
           in

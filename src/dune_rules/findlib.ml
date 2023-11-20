@@ -301,9 +301,7 @@ module Loader = struct
         loop ~loc:external_location ~full_name meta acc)
     in
     let name = Option.value_exn meta.name in
-    let+ entries =
-      loop ~loc ~full_name:(Option.value_exn meta.name) meta Lib_name.Map.empty
-    in
+    let+ entries = loop ~loc ~full_name:name meta Lib_name.Map.empty in
     let dir = dir_of_loc loc in
     { Dune_package.name = Lib_name.package_name name
     ; version =

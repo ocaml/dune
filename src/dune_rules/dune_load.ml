@@ -164,7 +164,7 @@ module Script = struct
         ~wrapper
         ~target:generated_dune_file
     in
-    let context = Context.host context in
+    let* context = Context.host context in
     let args =
       List.concat
         [ [ "-I"; "+compiler-libs" ]; [ Path.to_absolute_filename (Path.build wrapper) ] ]
@@ -356,6 +356,6 @@ let load () =
 ;;
 
 let load =
-  let memo = Memo.lazy_ load in
+  let memo = Memo.lazy_ ~name:"dune_load" load in
   fun () -> Memo.Lazy.force memo
 ;;

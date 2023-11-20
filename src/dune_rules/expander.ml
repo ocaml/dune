@@ -262,7 +262,10 @@ let expand_read_macro ~dir ~source s ~read ~pack =
   let path = relative ~source dir s in
   let read =
     let open Memo.O in
-    let+ x = Build_system.read_file path ~f:read in
+    let+ x =
+      Build_system.read_file path ~f:(fun a -> Async.async (fun () -> read a))
+      >>= Memo.of_reproducible_fiber
+    in
     pack x
   in
   Need_full_expander
@@ -278,21 +281,22 @@ let expand_read_macro ~dir ~source s ~read ~pack =
 
 let file_of_lib db context ~loc ~lib ~file =
   let open Resolve.Memo.O in
-  let+ lib = Lib.DB.resolve db (loc, lib) in
-  let dir =
+  let* lib = Lib.DB.resolve db (loc, lib) in
+  let+ dir =
     let info = Lib.info lib in
     match Lib.is_local lib with
-    | false -> Lib_info.src_dir info
+    | false -> Resolve.Memo.return @@ Lib_info.src_dir info
     | true ->
       let name = Lib.name lib in
       let subdir =
         Lib_info.Status.relative_to_package (Lib_info.status info) name
         |> Option.value_exn
       in
-      let pkg_root =
+      let+ pkg_root =
         let package = Lib_name.package_name name in
         (* Why do we return the install path? *)
-        Install.Context.lib_dir ~context:(Context.name context) ~package
+        let+ context = Resolve.Memo.lift_memo @@ context >>| Context.name in
+        Install.Context.lib_dir ~context ~package
       in
       Path.build (Path.Build.append_local pkg_root subdir)
   in
@@ -335,7 +339,7 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
       let artifacts, context =
         if lib_exec
         then t.lib_artifacts_host, Context.host t.context
-        else t.lib_artifacts, t.context
+        else t.lib_artifacts, Memo.return t.context
       in
       file_of_lib artifacts context ~loc ~lib ~file)
   in

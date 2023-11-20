@@ -69,10 +69,26 @@ let%expect_test _ =
   |}]
 ;;
 
+(* CR-someday alizter: This is a bug *)
+let%expect_test _ =
+  is_descendant (r "foo") ~of_:(r "foo\\");
+  [%expect {|
+  false
+  |}]
+;;
+
 let%expect_test _ =
   is_descendant (r "foo/") ~of_:(r "foo");
   [%expect {|
   true
+  |}]
+;;
+
+(* CR-someday alizter: This is a bug *)
+let%expect_test _ =
+  is_descendant (r "foo\\") ~of_:(r "foo");
+  [%expect {|
+  false
   |}]
 ;;
 
@@ -119,6 +135,13 @@ false
 ;;
 
 let%expect_test _ =
+  is_descendant (e "C:\\foo\\bar") ~of_:(e "C:\\foo");
+  [%expect {|
+  false
+|}]
+;;
+
+let%expect_test _ =
   is_descendant (e "/foo/bar") ~of_:(e "/foo/bar");
   [%expect {|
 false
@@ -153,6 +176,12 @@ Some In_source_tree "."
 |}]
 ;;
 
+(* CR-someday alizter: This is a bug *)
+let%expect_test _ =
+  descendant (r "foo") ~of_:(r "foo\\");
+  [%expect {| None |}]
+;;
+
 let%expect_test _ =
   descendant (r "foo/") ~of_:(r "foo");
   [%expect {|
@@ -160,11 +189,23 @@ Some In_source_tree "."
 |}]
 ;;
 
+(* CR-someday alizter: This is a bug *)
+let%expect_test _ =
+  descendant (r "foo\\") ~of_:(r "foo");
+  [%expect {| None |}]
+;;
+
 let%expect_test _ =
   descendant (r "foo/bar") ~of_:(r "foo");
   [%expect {|
 Some In_source_tree "bar"
 |}]
+;;
+
+(* CR-someday alizter: This is a bug *)
+let%expect_test _ =
+  descendant (r "foo\\bar") ~of_:(r "foo");
+  [%expect {| None |}]
 ;;
 
 let%expect_test _ =
@@ -237,11 +278,23 @@ Some [ "a"; "b"; "c" ]
 |}]
 ;;
 
+(* CR-someday alizter: This is a bug *)
+let%expect_test _ =
+  explode "a\\b\\c";
+  [%expect {| Some [ "a\\b\\c" ] |}]
+;;
+
 let%expect_test _ =
   explode "a/b";
   [%expect {|
 Some [ "a"; "b" ]
 |}]
+;;
+
+(* CR-someday alizter: This is a bug *)
+let%expect_test _ =
+  explode "a\\b";
+  [%expect {| Some [ "a\\b" ] |}]
 ;;
 
 let%expect_test _ =
@@ -265,11 +318,23 @@ let%expect_test _ =
 |}]
 ;;
 
+(* CR-someday alizter: This is a bug *)
+let%expect_test _ =
+  reach "C:\\foo\\baz" ~from:"D:\\foo\\bar";
+  [%expect {| "../C:\\foo\\baz" |}]
+;;
+
 let%expect_test _ =
   reach "/foo/bar" ~from:"baz";
   [%expect {|
 "/foo/bar"
 |}]
+;;
+
+(* CR-someday alizter: This is a bug *)
+let%expect_test _ =
+  reach "C:\\foo\\bar" ~from:"baz";
+  [%expect {| "../C:\\foo\\bar" |}]
 ;;
 
 let%expect_test _ =
@@ -280,10 +345,21 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
+  reach "bar\\foo" ~from:"bar\\baz\\y";
+  [%expect {| "../bar\\foo" |}]
+;;
+
+let%expect_test _ =
   relative (Path.of_string "relative") "/absolute/path";
   [%expect {|
 External "/absolute/path"
 |}]
+;;
+
+(* CR-someday alizter: This is a bug *)
+let%expect_test _ =
+  relative (Path.of_string "relative") "C:\\absolute\\path";
+  [%expect {| In_source_tree "relative/C:\\absolute\\path" |}]
 ;;
 
 let%expect_test _ =
@@ -293,10 +369,24 @@ External "/abs2"
 |}]
 ;;
 
+(* CR-somday alizter: This is a bug *)
+let%expect_test _ =
+  relative (Path.of_string "C:\\abs1") "C:\\abs2";
+  [%expect {| In_source_tree "C:\\abs1/C:\\abs2" |}]
+;;
+
 let%expect_test _ =
   relative (of_string "/abs1") "";
   [%expect {|
 External "/abs1"
+|}]
+;;
+
+(* CR-someday alizter: This is a bug *)
+let%expect_test _ =
+  relative (of_string "C:\\abs1") "";
+  [%expect {|
+In_source_tree "C:\\abs1"
 |}]
 ;;
 
@@ -340,6 +430,12 @@ let%expect_test _ =
   [%expect {|
 External "/root/foo"
 |}]
+;;
+
+(* CR-someday alizter: This is a bug *)
+let%expect_test _ =
+  append_source (Path.of_string "C:\\root") (Path.Source.relative Path.Source.root "foo");
+  [%expect {| In_source_tree "C:\\root/foo" |}]
 ;;
 
 let%expect_test _ =
@@ -430,6 +526,7 @@ In_build_dir "."
 |}]
 ;;
 
+(* CR-someday alizter: This is a bug *)
 let%expect_test _ =
   (* This is not right, but kind of annoying to fix :/ *)
   relative (r "foo") "../_build";
@@ -439,9 +536,44 @@ In_build_dir "."
 ;;
 
 let%expect_test _ =
+  relative (r "foo") "/bar/baz";
+  [%expect {| External "/bar/baz" |}]
+;;
+
+(* CR-someday alizter: This is a bug *)
+let%expect_test _ =
+  relative (r "foo") "C:\\bar\\baz";
+  [%expect {| In_source_tree "foo/C:\\bar\\baz" |}]
+;;
+
+let%expect_test _ =
+  relative (r "foo") "bar/baz";
+  [%expect {| In_source_tree "foo/bar/baz" |}]
+;;
+
+let%expect_test _ =
+  relative (r "/foo") "bar/baz";
+  [%expect {| External "/foo/bar/baz" |}]
+;;
+
+(* CR-someday alizter: This is a bug *)
+let%expect_test _ =
+  relative (r "C:\\foo") "bar/baz";
+  [%expect {| In_source_tree "C:\\foo/bar/baz" |}]
+;;
+
+let%expect_test _ =
   local_part (Path.of_string "/c/d");
   [%expect {|
 "c/d"
+|}]
+;;
+
+(* CR-someday alizter: This is a bug *)
+let%expect_test _ =
+  local_part (Path.of_string "C:\\c\\d");
+  [%expect {|
+"C:\\c\\d"
 |}]
 ;;
 

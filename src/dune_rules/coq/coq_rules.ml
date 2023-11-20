@@ -450,6 +450,15 @@ let coqdep_invalid phase line =
     [ "phase", Dyn.string phase; "line", Dyn.string line ]
 ;;
 
+(* Handle the case where the path contains ":" and coqdep escapes this
+   as "\:" causing Dune to misinterpret the path. We revert
+   the escaping, which allows dune to work on Windows.
+
+   Note that coqdep escapes a few more things, including spaces, $, #,
+   [], ?, %, homedir... How to handle that seems tricky.
+*)
+let unescape_coqdep string = Re.replace_string (Re.compile (Re.str "\\:")) ~by:":" string
+
 let parse_line ~dir line =
   match String.lsplit2 line ~on:':' with
   | None -> coqdep_invalid "split" line
@@ -463,7 +472,9 @@ let parse_line ~dir line =
     in
     (* let depname, ext = Filename.split_extension ff in *)
     let target = Path.relative (Path.build dir) target in
-    let deps = String.extract_blank_separated_words deps in
+    (* EJGA: XXX using `String.extract_blank_separated_words` works
+       for OCaml, but not for Coq as we don't use `-modules` *)
+    let deps = unescape_coqdep deps |> String.extract_blank_separated_words in
     (* Add prelude deps for when stdlib is in scope and we are not actually
        compiling the prelude *)
     let deps = List.map ~f:(Path.relative (Path.build dir)) deps in

@@ -9,17 +9,19 @@ let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
     match Dune_project.use_standard_c_and_cxx_flags project with
     | None | Some false -> Action_builder.(return cflags, return cxxflags)
     | Some true ->
+      let fdiagnostics_color =
+        Cxx_flags.ccomp_type ctx |> Action_builder.map ~f:Cxx_flags.fdiagnostics_color
+      in
       let open Action_builder.O in
       let c =
-        let+ cc = Cxx_flags.ccomp_type ctx in
-        let fdiagnostics_color = Cxx_flags.fdiagnostics_color cc in
-        cflags @ Ocaml_config.ocamlc_cppflags ocaml_config @ fdiagnostics_color
+        let+ fdiagnostics_color = fdiagnostics_color in
+        List.concat
+          [ cflags; Ocaml_config.ocamlc_cppflags ocaml_config; fdiagnostics_color ]
       in
       let cxx =
-        let+ cc = Cxx_flags.ccomp_type ctx
+        let+ fdiagnostics_color = fdiagnostics_color
         and+ db_flags = Cxx_flags.get_flags ~for_:Compile ctx in
-        let fdiagnostics_color = Cxx_flags.fdiagnostics_color cc in
-        db_flags @ cxxflags @ fdiagnostics_color
+        List.concat [ db_flags; cxxflags; fdiagnostics_color ]
       in
       c, cxx
   in

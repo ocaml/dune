@@ -635,10 +635,7 @@ module DB = struct
           let+ { Group.native; targets } = Group.instantiate (Workspace.Context.name c) in
           native :: targets)
       in
-      let+ all =
-        let all = List.concat contexts in
-        Memo.parallel_map all ~f:Memo.Lazy.force
-      in
+      let+ all = List.concat contexts |> Memo.parallel_map ~f:Memo.Lazy.force in
       List.iter all ~f:(fun t ->
         let open Pp.O in
         Log.info

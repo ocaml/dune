@@ -56,7 +56,8 @@ let all_non_local_dependencies_of_local_packages t version_by_package_name =
   let+ all_dependencies_of_local_packages =
     Package_name.Map.values t.local_packages
     |> List.map ~f:(fun (local_package : Local_package.t) ->
-      Local_package.opam_filtered_dependency_formula local_package
+      Local_package.(
+        for_solver local_package |> For_solver.opam_filtered_dependency_formula)
       |> Resolve_opam_formula.filtered_formula_to_package_names
            ~stats_updater:None
            ~with_test:true
@@ -127,8 +128,71 @@ let check_for_unnecessary_packges_in_lock_dir
          ]))
 ;;
 
+let validate_dependency_hash { local_packages; lock_dir } =
+  let local_packages =
+    Package_name.Map.values local_packages |> List.map ~f:Local_package.for_solver
+  in
+  let regenerate_lock_dir_hints =
+    [ Pp.concat
+        ~sep:Pp.space
+        [ Pp.text "Regenerate the lockdir by running"
+        ; User_message.command "dune pkg lock"
+        ]
+    ]
+  in
+  let non_local_dependencies =
+    Local_package.For_solver.list_non_local_dependency_set local_packages
+  in
+  let dependency_hash = Local_package.Dependency_set.hash non_local_dependencies in
+  match lock_dir.dependency_hash, dependency_hash with
+  | None, None -> Ok ()
+  | Some (loc, lock_dir_dependency_hash), None ->
+    Error
+      (User_error.make
+         ~loc
+         ~hints:regenerate_lock_dir_hints
+         [ Pp.textf
+             "This project has no non-local dependencies yet the lockfile contains a \
+              dependency hash: %s"
+             (Local_package.Dependency_hash.to_string lock_dir_dependency_hash)
+         ])
+  | None, Some _ ->
+    let any_non_local_dependency : Package_dependency.t =
+      List.hd (Local_package.Dependency_set.package_dependencies non_local_dependencies)
+    in
+    Error
+      (User_error.make
+         ~hints:regenerate_lock_dir_hints
+         [ Pp.text
+             "This project has at least one non-local dependency but the lockdir doesn't \
+              contain a dependency hash."
+         ; Pp.textf
+             "An example of a non-local dependency of this project is: %s"
+             (Package_name.to_string any_non_local_dependency.name)
+         ])
+  | Some (loc, lock_dir_dependency_hash), Some non_local_dependency_hash ->
+    if Local_package.Dependency_hash.equal
+         lock_dir_dependency_hash
+         non_local_dependency_hash
+    then Ok ()
+    else
+      Error
+        (User_error.make
+           ~loc
+           ~hints:regenerate_lock_dir_hints
+           [ Pp.text
+               "Dependency hash in lockdir does not match the hash of non-local \
+                dependencies of this project. The lockdir expects the the non-local \
+                dependencies to hash to:"
+           ; Pp.text (Local_package.Dependency_hash.to_string lock_dir_dependency_hash)
+           ; Pp.text "...but the non-local dependencies of this project hash to:"
+           ; Pp.text (Local_package.Dependency_hash.to_string non_local_dependency_hash)
+           ])
+;;
+
 let validate t =
   let open Result.O in
+  let* () = validate_dependency_hash t in
   version_by_package_name t
   >>= all_non_local_dependencies_of_local_packages t
   >>= check_for_unnecessary_packges_in_lock_dir t

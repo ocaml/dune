@@ -81,7 +81,10 @@ let solve
                solver_env
                version_preference
                repos
-               ~local_packages
+               ~local_packages:
+                 (Package_name.Map.map
+                    local_packages
+                    ~f:Dune_pkg.Local_package.for_solver)
                ~experimental_translate_opam_filters)
          >>| function
          | Error (`Diagnostic_message message) -> Error (context_name, message)

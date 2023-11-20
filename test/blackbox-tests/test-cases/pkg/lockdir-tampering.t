@@ -1,12 +1,15 @@
-Tests that dune can detect when the lockdir no longer contains a valid solution
-to local packges
+Tests that dune can detect when the lockdir has diverged from the local package
+dependencies due to tampering with the lockdir. These are cases that won't be
+caught by checking the dependency hash.
 
   $ . ./helpers.sh
   $ mkrepo
   $ mkpkg a <<EOF
   > depends: [ "c" "d" ]
   > EOF
-  $ mkpkg b <<EOF
+  $ mkpkg b 0.0.1 <<EOF
+  > EOF
+  $ mkpkg b 0.0.2 <<EOF
   > EOF
   $ mkpkg c <<EOF
   > depends: [ "e" ]
@@ -15,15 +18,11 @@ to local packges
   > EOF
   $ mkpkg e <<EOF
   > EOF
-  $ mkpkg f 0.0.1 <<EOF
-  > EOF
-  $ mkpkg f 0.0.2 <<EOF
-  > EOF
 
 Define some local packages.
   $ cat >dune-project <<EOF
   > (lang dune 3.11)
-  > (package (name foo) (depends a b))
+  > (package (name foo) (depends a (b (>= 0.0.2))))
   > (package (name bar) (depends foo c))
   > EOF
 
@@ -35,7 +34,7 @@ Make the lockdir.
   $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   - a.0.0.1
-  - b.0.0.1
+  - b.0.0.2
   - c.0.0.1
   - d.0.0.1
   - e.0.0.1
@@ -59,7 +58,7 @@ Remove the file but corrupt the lockdir metadata file.
   $ echo foo >> dune.lock/lock.dune
   $ dune pkg validate-lockdir
   Failed to parse lockdir dune.lock:
-  File "dune.lock/lock.dune", line 6, characters 0-3:
+  File "dune.lock/lock.dune", line 8, characters 0-3:
   Error: S-expression of the form (<name> <values>...) expected
   
   Error: Some lockdirs do not contain solutions for local packages:
@@ -71,26 +70,22 @@ Regenerate the lockdir and validate the result.
   $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   - a.0.0.1
-  - b.0.0.1
+  - b.0.0.2
   - c.0.0.1
   - d.0.0.1
   - e.0.0.1
   $ dune pkg validate-lockdir
 
-Add a dependency that's not present in the lockdir.
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > (package (name foo) (depends a b))
-  > (package (name bar) (depends foo c f))
-  > EOF
+Remove a package from the lockdir.
+  $ rm dune.lock/a.pkg
 
 This results in an invalid lockdir due to the missing package.
   $ dune pkg validate-lockdir
   Lockdir dune.lock does not contain a solution for local packages:
-  File "dune-project", line 3, characters 0-38:
-  The dependencies of local package "bar" could not be satisfied from the
+  File "dune-project", line 2, characters 0-47:
+  The dependencies of local package "foo" could not be satisfied from the
   lockdir:
-  Package "f" is missing
+  Package "a" is missing
   Hint: The lockdir no longer contains a solution for the local packages in
   this project. Regenerate the lockdir by running: 'dune pkg lock'
   Error: Some lockdirs do not contain solutions for local packages:
@@ -101,28 +96,27 @@ Regenerate the lockdir and validate the result.
   $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   - a.0.0.1
-  - b.0.0.1
+  - b.0.0.2
   - c.0.0.1
   - d.0.0.1
   - e.0.0.1
-  - f.0.0.2
   $ dune pkg validate-lockdir
 
-Change the version of a dependency to one which isn't in the lockdir.
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > (package (name foo) (depends a b))
-  > (package (name bar) (depends foo c (f (< 0.0.2))))
+  $ cat dune.lock/b.pkg
+  (version 0.0.2)
+Change the version of a dependency by modifying its lockfile.
+  $ cat >dune.lock/b.pkg <<EOF
+  > (version 0.0.1)
   > EOF
 
-Now the lockdir is invalid as it doesn't contain the right version of "f".
+Now the lockdir is invalid as it doesn't contain the right version of "b".
   $ dune pkg validate-lockdir
   Lockdir dune.lock does not contain a solution for local packages:
-  File "dune-project", line 3, characters 0-50:
-  The dependencies of local package "bar" could not be satisfied from the
+  File "dune-project", line 2, characters 0-47:
+  The dependencies of local package "foo" could not be satisfied from the
   lockdir:
-  Found version "0.0.2" of package "f" which doesn't satisfy the required
-  version constraint "< 0.0.2"
+  Found version "0.0.1" of package "b" which doesn't satisfy the required
+  version constraint ">= 0.0.2"
   Hint: The lockdir no longer contains a solution for the local packages in
   this project. Regenerate the lockdir by running: 'dune pkg lock'
   Error: Some lockdirs do not contain solutions for local packages:
@@ -133,26 +127,22 @@ Regenerate the lockdir and validate the result.
   $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   - a.0.0.1
-  - b.0.0.1
+  - b.0.0.2
   - c.0.0.1
   - d.0.0.1
   - e.0.0.1
-  - f.0.0.1
   $ dune pkg validate-lockdir
 
-Add a new local package with the same name as a locked package.
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > (package (name foo) (depends a b))
-  > (package (name bar) (depends foo c (f (< 0.0.2))))
-  > (package (name b))
+Add a package to the lockdir with the same name as a local package.
+  $ cat >dune.lock/foo.pkg <<EOF
+  > (version 0.0.1)
   > EOF
 
 The lockdir is invalid as the package "b" is now defined both locally and in the lockdir.
   $ dune pkg validate-lockdir
   Lockdir dune.lock does not contain a solution for local packages:
-  File "dune-project", line 4, characters 0-18:
-  A package named "b" is defined locally but is also present in the lockdir
+  File "dune-project", line 2, characters 0-47:
+  A package named "foo" is defined locally but is also present in the lockdir
   Hint: The lockdir no longer contains a solution for the local packages in
   this project. Regenerate the lockdir by running: 'dune pkg lock'
   Error: Some lockdirs do not contain solutions for local packages:
@@ -163,18 +153,15 @@ Regenerate the lockdir and validate the result.
   $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
   - a.0.0.1
+  - b.0.0.2
   - c.0.0.1
   - d.0.0.1
   - e.0.0.1
-  - f.0.0.1
   $ dune pkg validate-lockdir
 
-Remove a dependency from a local package so that the lockdir contains an unneeded package.
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > (package (name foo) (depends b))
-  > (package (name bar) (depends foo c (f (< 0.0.2))))
-  > (package (name b))
+Add a package to the lockdir which isn't part of the local package dependency hierarchy.
+  $ cat >dune.lock/f.pkg <<EOF
+  > (version 0.0.1)
   > EOF
 
 The lockdir is invalid as it contains unnecessary packages.
@@ -182,8 +169,7 @@ The lockdir is invalid as it contains unnecessary packages.
   Lockdir dune.lock does not contain a solution for local packages:
   The lockdir contains packages which are not among the transitive dependencies
   of any local package:
-  - a.0.0.1
-  - d.0.0.1
+  - f.0.0.1
   Hint: The lockdir no longer contains a solution for the local packages in
   this project. Regenerate the lockdir by running: 'dune pkg lock'
   Error: Some lockdirs do not contain solutions for local packages:
@@ -193,7 +179,9 @@ The lockdir is invalid as it contains unnecessary packages.
 Regenerate the lockdir and validate the result.
   $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
   Solution for dune.lock:
+  - a.0.0.1
+  - b.0.0.2
   - c.0.0.1
+  - d.0.0.1
   - e.0.0.1
-  - f.0.0.1
   $ dune pkg validate-lockdir

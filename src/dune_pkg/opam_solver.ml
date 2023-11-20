@@ -613,7 +613,7 @@ let solve_lock_dir
         ~repos
         ~version_preference
         ~local_packages:
-          (Package_name.Map.map local_packages ~f:Local_package.to_opam_file)
+          (Package_name.Map.map local_packages ~f:Local_package.For_solver.to_opam_file)
         ~stats_updater
     in
     solve_package_list
@@ -683,6 +683,7 @@ let solve_lock_dir
           in
           Lock_dir.create_latest_version
             pkgs_by_name
+            ~local_packages:(Package_name.Map.values local_packages)
             ~ocaml
             ~repos:(Some repos)
             ~expanded_solver_variable_bindings

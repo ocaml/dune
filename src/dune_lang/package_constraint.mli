@@ -43,3 +43,5 @@ type t =
 val encode : t Dune_sexp.Encoder.t
 val decode : t Dune_sexp.Decoder.t
 val to_dyn : t -> Dyn.t
+
+include Comparable_intf.S with type key := t

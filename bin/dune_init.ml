@@ -464,10 +464,11 @@ module Component = struct
           }
       in
       let test_target =
+        let test_name = "test_" ^ Dune_lang.Atom.to_string common.name in
         test
           { context = { context with dir = Path.relative dir "test" }
           ; options = ()
-          ; common
+          ; common = { common with name = Dune_lang.Atom.of_string test_name }
           }
       in
       let bin_target =
@@ -494,10 +495,11 @@ module Component = struct
           }
       in
       let test_target =
+        let test_name = "test_" ^ Dune_lang.Atom.to_string common.name in
         test
           { context = { context with dir = Path.relative dir "test" }
           ; options = ()
-          ; common
+          ; common = { common with name = Dune_lang.Atom.of_string test_name }
           }
       in
       lib_target @ test_target

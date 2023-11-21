@@ -34,16 +34,9 @@ We check that `version = ""` in META files are correctly handled.
   >   print_endline s
   > EOF
 
-  $ dune build 2>&1 | head -n 4
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("Invalid Package_version.t", { s = "" })
-  Raised at Stdune__Code_error.raise in file
+  $ dune build
 
 In dune 3.11 and earlier, we would return "empty string" here.
 
-  $ dune exec ./e.exe 2>&1 | head -n 4
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("Invalid Package_version.t", { s = "" })
-  Raised at Stdune__Code_error.raise in file
+  $ dune exec ./e.exe
+  no version

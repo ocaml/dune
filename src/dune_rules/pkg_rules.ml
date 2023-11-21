@@ -47,6 +47,13 @@ module Variable = struct
     | L s -> List.map s ~f:(fun x -> Value.String x)
   ;;
 
+  let of_values : dir:Path.t -> Value.t list -> value =
+    fun ~dir xs ->
+    match List.map xs ~f:(Value.to_string ~dir) with
+    | [ x ] -> S x
+    | xs -> L xs
+  ;;
+
   let to_dyn (name, value) = Dyn.(pair Variable_name.to_dyn dyn_of_value (name, value))
 end
 
@@ -379,18 +386,32 @@ module Pkg_installed = struct
   ;;
 end
 
+module Expander0 = struct
+  include Expander0
+
+  type t =
+    { paths : Paths.t
+    ; artifacts : Path.t Filename.Map.t
+    ; deps : (Variable.value Variable_name.Map.t * Paths.t) Package.Name.Map.t
+    ; context : Context_name.t
+    ; version : Package_version.t
+    ; env : Value.t list Env.Map.t
+    }
+
+  let expand_pform_fdecl
+    : (t
+       -> source:Dune_sexp.Template.Pform.t
+       -> Pform.t
+       -> (Value.t list, [ `Undefined_pkg_var of Variable_name.t ]) result Memo.t)
+        Fdecl.t
+    =
+    Fdecl.create Dyn.opaque
+  ;;
+end
+
 module Substitute = struct
-  include Substs.Make (struct
-      type 'a t = 'a
-
-      module O = struct
-        let ( let+ ) x f = f x
-      end
-
-      module List = struct
-        let map t ~f = List.map t ~f
-      end
-    end)
+  include Substs.Make (Memo)
+  module Expander = Expander0
 
   module Spec = struct
     type ('src, 'dst) t =
@@ -401,8 +422,7 @@ module Substitute = struct
            The two implementations are bound to drift. Better would be to
            reconstruct everything that is needed to call our one and only
            substitution function. *)
-        vars : OpamVariable.variable_contents Package_variable.Map.t
-      ; package : Package.Name.t
+        expander : Expander.t
       ; src : 'src
       ; dst : 'dst
       }
@@ -412,51 +432,66 @@ module Substitute = struct
     let bimap t f g = { t with src = f t.src; dst = g t.dst }
     let is_useful_to ~memoize = memoize
 
-    let encode { vars; package; src; dst } input output : Dune_lang.t =
+    let encode { expander; src; dst } input output : Dune_lang.t =
       let e =
-        Package_variable.Map.to_list_map
-          vars
-          ~f:(fun { Package_variable.scope; name } v ->
-            let k =
-              let package =
-                match scope with
-                | Self -> Dune_sexp.List []
-                | Package p -> Dune_lang.Package_name.encode p
-              in
-              Dune_sexp.List [ package; Variable_name.encode name ]
-            in
-            let v =
-              Dune_lang.atom_or_quoted_string (OpamVariable.string_of_variable_contents v)
-            in
-            Dune_sexp.List [ k; v ])
+        let paths (p : Paths.t) = p.source_dir, p.target_dir, p.name in
+        ( paths expander.paths
+        , expander.artifacts
+        , Package.Name.Map.to_list_map expander.deps ~f:(fun _ (m, p) -> m, paths p)
+        , expander.version
+        , expander.context
+        , expander.env )
+        |> Digest.generic
+        |> Digest.to_string_raw
+        |> Dune_sexp.atom_or_quoted_string
       in
-      let s = Dune_lang.Package_name.encode package in
-      List [ Dune_lang.atom_or_quoted_string name; List e; s; input src; output dst ]
+      List [ Dune_lang.atom_or_quoted_string name; e; input src; output dst ]
     ;;
 
-    let action { vars; package; src; dst } ~ectx:_ ~eenv:_ =
+    let action { expander; src; dst } ~ectx:_ ~eenv:_ =
       let open Fiber.O in
-      let+ () = Fiber.return () in
-      let env (var : Package_variable.t) =
-        match Package_variable.Map.find vars var with
-        | Some _ as v -> v
-        | None ->
-          Package_variable.Map.find
-            vars
-            { var with Package_variable.scope = Package package }
+      let* () = Fiber.return () in
+      let env (var : Substs.Variable.t) =
+        let open Memo.O in
+        ((* TODO loc *)
+         let loc = Loc.none in
+         let source =
+           (* TODO it's rather ugly that we're going through the pform machinery
+              to do this *)
+           { Dune_sexp.Template.Pform.loc; name = ""; payload = None }
+         in
+         match
+           match var with
+           | Package var -> Some (Package_variable.to_pform var)
+           | Global n ->
+             Variable_name.to_string n
+             |> Pform.Var.of_opam_global_variable_name
+             |> Option.map ~f:(fun v -> Pform.Var v)
+         with
+         | None -> Memo.return @@ Variable.S ""
+         | Some pform ->
+           (Fdecl.get Expander.expand_pform_fdecl) expander ~source pform
+           >>| (function
+            | Error (`Undefined_pkg_var _) ->
+              (* these are opam's semantics as far as I understand. *)
+              Variable.S ""
+            | Ok v ->
+              let dir = Path.parent_exn src |> Path.drop_optional_sandbox_root in
+              Variable.of_values v ~dir))
+        >>| Option.some
       in
-      subst env package ~src ~dst
+      subst env expander.paths.name ~src ~dst |> Memo.run
     ;;
   end
 
-  let action package ~vars ~src ~dst =
+  let action expander ~src ~dst =
     let module M = struct
       type path = Path.t
       type target = Path.Build.t
 
       module Spec = Spec
 
-      let v = { Spec.vars; package; src; dst }
+      let v = { Spec.expander; src; dst }
     end
     in
     Action.Extension (module M)
@@ -465,14 +500,7 @@ end
 
 module Action_expander = struct
   module Expander = struct
-    type t =
-      { paths : Paths.t
-      ; artifacts : Path.t Filename.Map.t
-      ; deps : (Variable.value Variable_name.Map.t * Paths.t) Package.Name.Map.t
-      ; context : Context_name.t
-      ; version : Package_version.t
-      ; env : Value.t list Env.Map.t
-      }
+    include Expander0
 
     let map_exe _ x =
       (* TODO *)
@@ -608,6 +636,8 @@ module Action_expander = struct
       | _ -> Expander0.isn't_allowed_in_this_position ~source
     ;;
 
+    let () = Fdecl.set expand_pform_fdecl expand_pform
+
     let expand_pform_gen t =
       String_expander.Memo.expand
         ~dir:(Path.build t.paths.source_dir)
@@ -676,52 +706,6 @@ module Action_expander = struct
     ;;
   end
 
-  let substitute_env (expander : Expander.t) =
-    let setenv package name value env =
-      let var = { Package_variable.scope = Package package; name } in
-      Package_variable.Map.add_exn env var value
-    in
-    let env =
-      (* values set with withenv *)
-      Env.Map.map expander.env ~f:Env_update.string_of_env_values
-      |> Env.Map.to_list_map ~f:(fun variable value ->
-        ( { Package_variable.scope = Self; name = Variable_name.of_string variable }
-        , OpamVariable.S value ))
-      |> Package_variable.Map.of_list_exn
-    in
-    Dune_lang.Package_name.Map.foldi
-      expander.deps
-      ~init:env
-      ~f:(fun name (var_conts, paths) env ->
-        let env =
-          Variable_name.Map.foldi var_conts ~init:env ~f:(fun key value env ->
-            setenv name key value env)
-        in
-        let install_paths = Paths.install_paths paths in
-        List.fold_left
-          ~init:env
-          ~f:(fun env (var_name, section) ->
-            let key = Variable_name.of_string var_name in
-            let section =
-              OpamVariable.S (Path.to_string (Install.Paths.get install_paths section))
-            in
-            setenv name key section env)
-          [ "lib", Section.Lib
-          ; "lib_root", Lib_root
-          ; "libexec", Libexec
-          ; "libexec_root", Libexec_root
-          ; "bin", Bin
-          ; "sbin", Sbin
-          ; "toplevel", Toplevel
-          ; "share", Share
-          ; "share_root", Share_root
-          ; "etc", Etc
-          ; "doc", Doc
-          ; "stublibs", Stublibs
-          ; "man", Man
-          ])
-  ;;
-
   let rec expand (action : Dune_lang.Action.t) ~(expander : Expander.t) =
     let dir = Path.build expander.paths.source_dir in
     match action with
@@ -773,8 +757,7 @@ module Action_expander = struct
         >>| Value.to_path ~dir
         >>| Expander0.as_in_build_dir ~what:"subsitute" ~loc:(String_with_vars.loc dst)
       in
-      let vars = substitute_env expander in
-      Substitute.action ~vars expander.paths.name ~src ~dst
+      Substitute.action expander ~src ~dst
     | Withenv (updates, action) -> expand_withenv expander updates action
     | When (condition, action) ->
       Expander.eval_blang expander condition

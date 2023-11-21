@@ -31,40 +31,42 @@ let validate_lock_dirs ~context_name_arg ~all_contexts_arg =
   let open Fiber.O in
   let+ lock_dirs_by_path = enumerate_lock_dirs_by_path ~context_name_arg ~all_contexts_arg
   and+ local_packages = Pkg_common.find_local_packages in
-  if List.is_empty lock_dirs_by_path then print_endline "No lockdirs to validate.";
-  let errors_by_path =
-    List.filter_map lock_dirs_by_path ~f:(function
-      | Error e -> Some e
-      | Ok (path, lock_dir) ->
-        (match Package_universe.create local_packages lock_dir with
-         | Ok _ -> None
-         | Error e -> Some (path, `Lock_dir_out_of_sync e)))
-  in
-  if not (List.is_empty errors_by_path)
-  then (
-    List.iter errors_by_path ~f:(fun (path, error) ->
-      match error with
-      | `Parse_error error ->
-        User_message.prerr
-          (User_message.make
-             [ Pp.textf
-                 "Failed to parse lockdir %s:"
-                 (Path.Source.to_string_maybe_quoted path)
-             ; User_message.pp error
-             ])
-      | `Lock_dir_out_of_sync error ->
-        User_message.prerr
-          (User_message.make
-             [ Pp.textf
-                 "Lockdir %s does not contain a solution for local packages:"
-                 (Path.Source.to_string path)
-             ]);
-        User_message.prerr error);
-    User_error.raise
-      [ Pp.text "Some lockdirs do not contain solutions for local packages:"
-      ; Pp.enumerate errors_by_path ~f:(fun (path, _) ->
-          Pp.text (Path.Source.to_string path))
-      ])
+  if List.is_empty lock_dirs_by_path
+  then Console.print [ Pp.text "No lockdirs to validate." ]
+  else (
+    match
+      List.filter_map lock_dirs_by_path ~f:(function
+        | Error e -> Some e
+        | Ok (path, lock_dir) ->
+          (match Package_universe.create local_packages lock_dir with
+           | Ok _ -> None
+           | Error e -> Some (path, `Lock_dir_out_of_sync e)))
+    with
+    | [] -> ()
+    | errors_by_path ->
+      List.iter errors_by_path ~f:(fun (path, error) ->
+        match error with
+        | `Parse_error error ->
+          User_message.prerr
+            (User_message.make
+               [ Pp.textf
+                   "Failed to parse lockdir %s:"
+                   (Path.Source.to_string_maybe_quoted path)
+               ; User_message.pp error
+               ])
+        | `Lock_dir_out_of_sync error ->
+          User_message.prerr
+            (User_message.make
+               [ Pp.textf
+                   "Lockdir %s does not contain a solution for local packages:"
+                   (Path.Source.to_string path)
+               ]);
+          User_message.prerr error);
+      User_error.raise
+        [ Pp.text "Some lockdirs do not contain solutions for local packages:"
+        ; Pp.enumerate errors_by_path ~f:(fun (path, _) ->
+            Pp.text (Path.Source.to_string path))
+        ])
 ;;
 
 let term =

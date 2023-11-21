@@ -1,32 +1,5 @@
 open Import
 
-module Var = struct
-  module T = struct
-    type t =
-      { package : Package_name.t option
-      ; variable : Package_variable.Name.t
-      }
-
-    let compare a b =
-      match Option.compare Package_name.compare a.package b.package with
-      | Eq -> Package_variable.Name.compare a.variable b.variable
-      | otherwise -> otherwise
-    ;;
-
-    let to_dyn { package; variable } =
-      Dyn.pair
-        (Dyn.option Package_name.to_dyn)
-        Package_variable.Name.to_dyn
-        (package, variable)
-    ;;
-  end
-
-  include Comparable.Make (T)
-  include T
-end
-
-module Map = Var.Map
-
 module Make (Monad : sig
     type 'a t
 
@@ -99,14 +72,18 @@ struct
     let env =
       let self' = self |> Package_name.to_string |> OpamPackage.Name.of_string in
       fun full_variable ->
-        let variable =
+        let name =
           OpamVariable.Full.variable full_variable |> Package_variable.Name.of_opam
         in
-        let package =
-          OpamVariable.Full.package ~self:self' full_variable
-          |> Option.map ~f:Package_name.of_opam_package_name
+        let scope : Package_variable.Scope.t =
+          match
+            OpamVariable.Full.package ~self:self' full_variable
+            |> Option.map ~f:Package_name.of_opam_package_name
+          with
+          | None -> Self
+          | Some p -> Package p
         in
-        env { Var.package; variable }
+        env { Package_variable.scope; name }
     in
     let+ expansions =
       let+ expanded =

@@ -16,25 +16,17 @@ let lock_path { dir } =
 
 type rev = Rev of string
 
-(* Async-inspired variation of [Fiber.repeat_until] *)
-let rec repeat_until_finished state f =
-  let* computation = f state in
-  match computation with
-  | `Repeat state -> repeat_until_finished state f
-  | `Finished result -> Fiber.return result
-;;
-
-let attempt_to_lock flock lock ~max_tries =
+let rec attempt_to_lock flock lock ~max_tries =
   let sleep_duration = 0.1 in
-  repeat_until_finished max_tries (function
-    | 0 -> Fiber.return @@ `Finished (Ok `Failure)
-    | retry ->
-      (match Flock.lock_non_block flock lock with
-       | Ok `Success as ok -> Fiber.return @@ `Finished ok
-       | Ok `Failure ->
-         let+ () = Scheduler.sleep sleep_duration in
-         `Repeat (retry - 1)
-       | err -> Fiber.return @@ `Finished err))
+  match Flock.lock_non_block flock lock with
+  | Error e -> Fiber.return @@ Error e
+  | Ok `Success -> Fiber.return (Ok `Success)
+  | Ok `Failure ->
+    if max_tries > 0
+    then
+      let* () = Scheduler.sleep sleep_duration in
+      attempt_to_lock flock lock ~max_tries:(max_tries - 1)
+    else Fiber.return (Ok `Failure)
 ;;
 
 let with_flock lock_path ~f =

@@ -356,6 +356,7 @@ type t =
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Section.t Site.Map.t
   ; allow_empty : bool
+  ; private_ : bool
   }
 
 (* Package name are globally unique, so we can reasonably expect that there will
@@ -385,6 +386,7 @@ let encode
   ; deprecated_package_names
   ; sites
   ; allow_empty
+  ; private_ = _
   ; opam_file = _
   }
   =
@@ -464,6 +466,8 @@ let decode =
            "Site location name"
        and+ allow_empty =
          field_b "allow_empty" ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
+       and+ private_ =
+         field_b "private" ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 13))
        and+ lang_version = Dune_lang.Syntax.get_exn Stanza.syntax in
        let allow_empty = lang_version < (3, 0) || allow_empty in
        let id = { Id.name; dir } in
@@ -482,6 +486,7 @@ let decode =
        ; deprecated_package_names
        ; sites
        ; allow_empty
+       ; private_
        ; opam_file
        }
 ;;
@@ -508,6 +513,7 @@ let to_dyn
   ; deprecated_package_names
   ; sites
   ; allow_empty
+  ; private_
   ; opam_file = _
   }
   =
@@ -526,6 +532,7 @@ let to_dyn
     ; "deprecated_package_names", Name.Map.to_dyn Loc.to_dyn_hum deprecated_package_names
     ; "sites", Site.Map.to_dyn Section.to_dyn sites
     ; "allow_empty", Bool allow_empty
+    ; "private", Bool private_
     ]
 ;;
 
@@ -556,6 +563,7 @@ let default name dir =
   ; sites = Site.Map.empty
   ; allow_empty = false
   ; opam_file = Id.default_opam_file id
+  ; private_ = false
   }
 ;;
 
@@ -632,6 +640,7 @@ let load_opam_file file name =
   ; deprecated_package_names = Name.Map.empty
   ; sites = Site.Map.empty
   ; allow_empty = true
+  ; private_ = false
   ; opam_file = Id.default_opam_file id
   }
 ;;

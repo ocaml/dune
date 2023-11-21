@@ -1316,6 +1316,11 @@ module Executables = struct
                     project
                     (pluralize "executable" ~multi)
               }
+        | Some (_loc, package), None when package.private_ ->
+          Some
+            { package
+            ; public_names = List.map names ~f:(fun (loc, name) -> loc, Some name)
+            }
         | Some (loc, _), None ->
           User_error.raise
             ~loc

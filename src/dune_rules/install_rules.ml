@@ -1353,6 +1353,9 @@ let gen_project_rules sctx project =
   let* () = meta_and_dune_package_rules sctx project in
   let* packages = Only_packages.packages_of_project project in
   Package.Name.Map_traversals.parallel_iter packages ~f:(fun _name package ->
-    let* () = gen_package_install_file_rules sctx package in
-    gen_install_alias sctx package)
+    if package.private_
+    then Memo.return ()
+    else
+      let* () = gen_package_install_file_rules sctx package in
+      gen_install_alias sctx package)
 ;;

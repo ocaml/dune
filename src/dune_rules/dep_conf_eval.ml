@@ -126,13 +126,17 @@ let rec dir_contents ~loc d =
 ;;
 
 let package loc pkg (context : Build_context.t) ~dune_version =
-  let pkg = Package.Name.of_string pkg in
+  let pkg_name = Package.Name.of_string pkg in
   Action_builder.of_memo
     (let open Memo.O in
      let* package_db = Package_db.create context.name in
-     Package_db.find_package package_db pkg)
+     Package_db.find_package package_db pkg_name)
   >>= function
   | Some (Build build) -> build
+  | Some (Local pkg) when pkg.private_ ->
+    User_error.raise
+      ~loc
+      [ Pp.text "Only non-private packages are accepted in (package) dependencies." ]
   | Some (Local pkg) -> Action_builder.alias (package_install ~context ~pkg)
   | Some (Installed pkg) ->
     if dune_version < (2, 9)
@@ -169,7 +173,7 @@ let package loc pkg (context : Build_context.t) ~dune_version =
           (fun () ->
             User_error.raise
               ~loc
-              [ Pp.textf "Package %s does not exist" (Package.Name.to_string pkg) ])
+              [ Pp.textf "Package %s does not exist" (Package.Name.to_string pkg_name) ])
       }
 ;;
 

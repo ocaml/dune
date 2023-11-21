@@ -16,16 +16,16 @@ let lock_path { dir } =
 
 type rev = Rev of string
 
-let rec attempt_to_lock flock lock ~max_tries =
+let rec attempt_to_lock flock lock ~max_retries =
   let sleep_duration = 0.1 in
   match Flock.lock_non_block flock lock with
   | Error e -> Fiber.return @@ Error e
   | Ok `Success -> Fiber.return (Ok `Success)
   | Ok `Failure ->
-    if max_tries > 0
+    if max_retries > 0
     then
       let* () = Scheduler.sleep sleep_duration in
-      attempt_to_lock flock lock ~max_tries:(max_tries - 1)
+      attempt_to_lock flock lock ~max_retries:(max_retries - 1)
     else Fiber.return (Ok `Failure)
 ;;
 
@@ -35,7 +35,7 @@ let with_flock lock_path ~f =
   Path.mkdir_p parent;
   let fd = Unix.openfile (Path.to_string lock_path) [ Unix.O_CREAT; O_RDONLY ] 0o644 in
   let flock = Flock.create fd in
-  let max_tries = 50 in
+  let max_retries = 49 in
   Fiber.finalize
     ~finally:(fun () ->
       (* closing the fd releases the flock automatically *)
@@ -45,12 +45,12 @@ let with_flock lock_path ~f =
         Fiber.return @@ Path.unlink_no_err lock_path
       | Error detailed -> Unix_error.Detailed.raise detailed)
     (fun () ->
-      let* acquired = attempt_to_lock flock Flock.Exclusive ~max_tries in
+      let* acquired = attempt_to_lock flock Flock.Exclusive ~max_retries in
       match acquired with
       | Ok `Success -> f ()
       | Ok `Failure ->
         Code_error.raise
-          (sprintf "Couldn't acquire lock after %d attempts to lock" max_tries)
+          (sprintf "Couldn't acquire lock after %d attempts to lock" max_retries)
           []
       | Error error ->
         User_error.raise

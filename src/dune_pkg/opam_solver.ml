@@ -206,17 +206,13 @@ let opam_variable_to_slang ~loc packages variable =
     if not (is_valid_package_variable_name variable_string)
     then invalid_variable_error ~loc variable;
     let pform =
-      match package_name with
-      | None ->
-        Package_variable.(
-          to_pform
-            { name = Package_variable.Name.of_string variable_string; scope = Self })
-      | Some package_name ->
-        Package_variable.(
-          to_pform
-            { name = Package_variable.Name.of_string variable_string
-            ; scope = Package (Package_name.of_opam_package_name package_name)
-            })
+      let name = Package_variable.Name.of_string variable_string in
+      let scope : Package_variable.Scope.t =
+        match package_name with
+        | None -> Self
+        | Some p -> Package (Package_name.of_opam_package_name p)
+      in
+      Package_variable.to_pform { Package_variable.name; scope }
     in
     Slang.pform pform
   in

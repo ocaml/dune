@@ -2137,3 +2137,32 @@ let%expect_test "variables - cutoff" =
   set_invalidate_print_run 202;
   [%expect {| var: 202 |}]
 ;;
+
+let%expect_test "implicit output bug. storage cell is reused between runs" =
+  let var = Memo.Var.create ~name:"var" () in
+  let output =
+    Memo.Implicit_output.add
+      (module struct
+        type t = string list
+
+        let name = "foo"
+        let union x y = x @ y
+      end)
+  in
+  let test =
+    Memo.Implicit_output.collect output (fun () ->
+      let* () = Memo.Var.read var in
+      Memo.Implicit_output.produce output [ "x" ])
+  in
+  let set_invalidate_print_run () =
+    let invalidation = Memo.Var.set var () in
+    Memo.reset invalidation;
+    (let+ (), collected = test in
+     (Dyn.option @@ Dyn.list Dyn.string) collected |> Dyn.to_string |> print_endline)
+    |> run
+  in
+  set_invalidate_print_run ();
+  [%expect {| Some [ "x" ] |}];
+  set_invalidate_print_run ();
+  [%expect {| Some [ "x"; "x" ] |}]
+;;

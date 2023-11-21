@@ -395,27 +395,28 @@ module Substitute = struct
     end)
 
   module Spec = struct
-    type ('path, 'target) t =
-      (* XXX it's not good to serialize the substitution map like this. We're
-         essentially implementing the same substitution procedure but in two
-         different places: action geeneration, and action execution.
+    type ('src, 'dst) t =
+      { (* XXX it's not good to serialize the substitution map like this. We're
+           essentially implementing the same substitution procedure but in two
+           different places: action geeneration, and action execution.
 
-         The two implementations are bound to drift. Better would be to
-         reconstruct everything that is needed to call our one and only
-         substitution function. *)
-      OpamVariable.variable_contents Substs.Var.Map.t
-      * Dune_lang.Package_name.t
-      * 'path
-      * 'target
+           The two implementations are bound to drift. Better would be to
+           reconstruct everything that is needed to call our one and only
+           substitution function. *)
+        vars : OpamVariable.variable_contents Substs.Var.Map.t
+      ; package : Package.Name.t
+      ; src : 'src
+      ; dst : 'dst
+      }
 
     let name = "substitute"
     let version = 1
-    let bimap (e, s, i, o) f g = e, s, f i, g o
+    let bimap t f g = { t with src = f t.src; dst = g t.dst }
     let is_useful_to ~memoize = memoize
 
-    let encode (e, s, i, o) input output : Dune_lang.t =
+    let encode { vars; package; src; dst } input output : Dune_lang.t =
       let e =
-        Substs.Var.Map.to_list_map e ~f:(fun { Substs.Var.package; variable } v ->
+        Substs.Var.Map.to_list_map vars ~f:(fun { Substs.Var.package; variable } v ->
           let k =
             let package =
               Dune_sexp.Encoder.option Dune_lang.Package_name.encode package
@@ -427,34 +428,30 @@ module Substitute = struct
           in
           Dune_sexp.List [ k; v ])
       in
-      let s = Dune_lang.Package_name.encode s in
-      List [ Dune_lang.atom_or_quoted_string name; List e; s; input i; output o ]
+      let s = Dune_lang.Package_name.encode package in
+      List [ Dune_lang.atom_or_quoted_string name; List e; s; input src; output dst ]
     ;;
 
-    let action
-      ((env : OpamVariable.variable_contents Substs.Var.Map.t), self, src, dst)
-      ~ectx:_
-      ~eenv:_
-      =
+    let action { vars; package; src; dst } ~ectx:_ ~eenv:_ =
       let open Fiber.O in
       let+ () = Fiber.return () in
       let env var =
-        match Substs.Var.Map.find env var with
+        match Substs.Var.Map.find vars var with
         | Some _ as v -> v
-        | None -> Substs.Var.Map.find env { var with Substs.Var.package = Some self }
+        | None -> Substs.Var.Map.find vars { var with Substs.Var.package = Some package }
       in
-      subst env ~src self ~dst
+      subst env package ~src ~dst
     ;;
   end
 
-  let action ~env ~name ~input ~output =
+  let action package ~vars ~src ~dst =
     let module M = struct
       type path = Path.t
       type target = Path.Build.t
 
       module Spec = Spec
 
-      let v = env, name, input, output
+      let v = { Spec.vars; package; src; dst }
     end
     in
     Action.Extension (module M)
@@ -750,16 +747,16 @@ module Action_expander = struct
         Expander.expand_pform_gen ~mode:Single expander p >>| Value.to_path ~dir
       in
       Dune_patch.action ~patch
-    | Substitute (input, output) ->
-      let+ input =
-        Expander.expand_pform_gen ~mode:Single expander input >>| Value.to_path ~dir
-      and+ output =
-        Expander.expand_pform_gen ~mode:Single expander output
+    | Substitute (src, dst) ->
+      let+ src =
+        Expander.expand_pform_gen ~mode:Single expander src >>| Value.to_path ~dir
+      and+ dst =
+        Expander.expand_pform_gen ~mode:Single expander dst
         >>| Value.to_path ~dir
-        >>| Expander0.as_in_build_dir ~what:"subsitute" ~loc:(String_with_vars.loc output)
+        >>| Expander0.as_in_build_dir ~what:"subsitute" ~loc:(String_with_vars.loc dst)
       in
-      let env = substitute_env expander in
-      Substitute.action ~env ~name:expander.paths.name ~input ~output
+      let vars = substitute_env expander in
+      Substitute.action ~vars expander.paths.name ~src ~dst
     | Withenv (updates, action) -> expand_withenv expander updates action
     | When (condition, action) ->
       Expander.eval_blang expander condition

@@ -12,39 +12,19 @@ module Dependency_hash = struct
   type t = Digest.t
 
   let hash_string = Digest.string
-  let label = "md5"
-  let to_string t = sprintf "%s=%s" label (Digest.to_hex t)
+  let to_string t = Digest.to_hex t
   let equal = Digest.equal
   let to_dyn t = Dyn.string (to_string t)
   let encode t = to_string t |> Encoder.string
 
   let decode =
     let open Decoder in
-    let+ loc, string = located string in
-    match String.lsplit2 string ~on:'=' with
-    | Some (found_label, hash) ->
-      if String.equal found_label label
-      then (
-        try Digest.from_hex hash with
-        | Invalid_argument _ ->
-          User_error.raise
-            ~loc
-            [ Pp.textf "Dependency hash is not a valid md5 hash: %s" hash ])
-      else
-        User_error.raise
-          ~loc
-          [ Pp.textf
-              "Dependency hash has unexpected label %S (expected %S)"
-              found_label
-              label
-          ]
-    | None ->
+    let+ loc, hash = located string in
+    try Digest.from_hex hash with
+    | Invalid_argument _ ->
       User_error.raise
         ~loc
-        [ Pp.textf
-            "Expected dependency hash to be encoded as \"md5=<hash>\" but found %S"
-            string
-        ]
+        [ Pp.textf "Dependency hash is not a valid md5 hash: %s" hash ]
   ;;
 end
 

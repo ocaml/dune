@@ -70,7 +70,7 @@ Print the contents of each file in the lockdir:
   
   (lang package 0.1)
   
-  (dependency_hash md5=ca83e32ab35d71d20fa075b395046c29)
+  (dependency_hash ca83e32ab35d71d20fa075b395046c29)
   
   (repositories
    (complete false)
@@ -115,7 +115,7 @@ Run the solver again preferring oldest versions of dependencies:
   
   (lang package 0.1)
   
-  (dependency_hash md5=ca83e32ab35d71d20fa075b395046c29)
+  (dependency_hash ca83e32ab35d71d20fa075b395046c29)
   
   (repositories
    (complete false)

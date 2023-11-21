@@ -611,22 +611,19 @@ module Action_expander = struct
       | _ -> Expander0.isn't_allowed_in_this_position ~source
     ;;
 
-    let expand_pform_exn t ~source pform =
-      expand_pform t ~source pform
-      >>| function
-      | Ok x -> x
-      | Error (`Undefined_pkg_var variable_name) ->
-        User_error.raise
-          [ Pp.textf
-              "Undefined package variable: %s"
-              (Package_variable.Name.to_string variable_name)
-          ]
-    ;;
-
     let expand_pform_gen t =
       String_expander.Memo.expand
-        ~f:(expand_pform_exn t)
         ~dir:(Path.build t.paths.source_dir)
+        ~f:(fun ~source pform ->
+          expand_pform t ~source pform
+          >>| function
+          | Ok x -> x
+          | Error (`Undefined_pkg_var variable_name) ->
+            User_error.raise
+              [ Pp.textf
+                  "Undefined package variable: %s"
+                  (Package_variable.Name.to_string variable_name)
+              ])
     ;;
 
     let expand_exe_value t value ~loc =

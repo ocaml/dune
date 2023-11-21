@@ -225,7 +225,7 @@ let concrete_dependencies_of_local_package_without_test t local_package_name =
        t.solver_env
        t.version_by_package_name
   |> function
-  | Ok x -> Package_name.Set.of_list x
+  | Ok x -> x
   | Error (`Formula_could_not_be_satisfied hints) ->
     User_error.raise
       (Pp.textf
@@ -235,23 +235,19 @@ let concrete_dependencies_of_local_package_without_test t local_package_name =
        :: List.map hints ~f:Resolve_opam_formula.Unsatisfied_formula_hint.pp)
 ;;
 
-let local_transitive_dependency_closure_without_test t start =
-  let to_visit = Queue.create () in
-  let push_set = Package_name.Set.iter ~f:(Queue.push to_visit) in
-  push_set start;
-  let rec loop seen =
-    match Queue.pop to_visit with
-    | None -> seen
-    | Some node ->
-      let deps = concrete_dependencies_of_local_package_without_test t node in
-      let local_unseen_deps =
-        Package_name.Set.(
-          diff deps seen |> filter ~f:(Package_name.Map.mem t.local_packages))
-      in
-      push_set local_unseen_deps;
-      loop (Package_name.Set.union seen local_unseen_deps)
-  in
-  loop start
+let local_transitive_dependency_closure_without_test =
+  let module Top_closure = Top_closure.Make (Package_name.Set) (Monad.Id) in
+  fun t start ->
+    match
+      Top_closure.top_closure
+        ~deps:(fun a ->
+          concrete_dependencies_of_local_package_without_test t a
+          |> List.filter ~f:(Package_name.Map.mem t.local_packages))
+        ~key:Fun.id
+        start
+    with
+    | Ok s -> Package_name.Set.of_list s
+    | Error _ -> Code_error.raise "cycles aren't allowed because we forbid post deps" []
 ;;
 
 let transitive_dependency_closure_without_test t start =
@@ -259,13 +255,17 @@ let transitive_dependency_closure_without_test t start =
   let local_transitive_dependency_closure =
     local_transitive_dependency_closure_without_test
       t
-      (Package_name.Set.inter local_package_names start)
+      (Package_name.Set.inter local_package_names start |> Package_name.Set.to_list)
   in
   let non_local_transitive_dependency_closure =
     let non_local_immediate_dependencies_of_local_transitive_dependency_closure =
-      Package_name.Set.to_list local_transitive_dependency_closure
+      local_transitive_dependency_closure
+      |> Package_name.Set.to_list
       |> Package_name.Set.union_map ~f:(fun name ->
-        let all_deps = concrete_dependencies_of_local_package_without_test t name in
+        let all_deps =
+          concrete_dependencies_of_local_package_without_test t name
+          |> Package_name.Set.of_list
+        in
         Package_name.Set.diff all_deps local_package_names)
     in
     Lock_dir.transitive_dependency_closure
@@ -317,7 +317,9 @@ let all_dependencies t package ~traverse =
 let non_test_dependencies t package ~traverse =
   check_contains_package t package;
   match traverse with
-  | `Immediate -> concrete_dependencies_of_local_package_without_test t package
+  | `Immediate ->
+    concrete_dependencies_of_local_package_without_test t package
+    |> Package_name.Set.of_list
   | `Transitive ->
     let closure =
       transitive_dependency_closure_without_test t (Package_name.Set.singleton package)

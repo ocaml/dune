@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-version=0984de6a2def6ddf2b3beab7857c062db7e0319d
+version=7c05922290adb214f834d9e0f1efe7028c4ebb85
 
 set -e -o pipefail
 
@@ -193,7 +193,7 @@ do
     PKG=opam/src/$subpackage/
     mkdir -p $PKG
     set +e
-    cp -v $SRC/src/$subpackage/*.{ml,mli,mll,mly} $PKG
+    cp -v $SRC/src/$subpackage/*.{ml,mli,mll,mly,c} $PKG
     set -e
     git checkout $PKG/dune
 done

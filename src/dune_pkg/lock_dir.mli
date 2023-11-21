@@ -44,6 +44,7 @@ end
 
 type t = private
   { version : Syntax.Version.t
+  ; dependency_hash : (Loc.t * Local_package.Dependency_hash.t) option
   ; packages : Pkg.t Package_name.Map.t
   (** It's guaranteed that this map will contain an entry for all dependencies
       of all packages in this map. That is, the set of packages is closed under
@@ -67,6 +68,7 @@ val to_dyn : t -> Dyn.t
     entry in [packages]. *)
 val create_latest_version
   :  Pkg.t Package_name.Map.t
+  -> local_packages:Local_package.For_solver.t list
   -> ocaml:(Loc.t * Package_name.t) option
   -> repos:Opam_repo.t list option
   -> expanded_solver_variable_bindings:Solver_stats.Expanded_variable_bindings.t

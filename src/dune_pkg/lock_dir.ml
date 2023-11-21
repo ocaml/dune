@@ -305,6 +305,7 @@ end
 
 type t =
   { version : Syntax.Version.t
+  ; dependency_hash : (Loc.t * Local_package.Dependency_hash.t) option
   ; packages : Pkg.t Package_name.Map.t
   ; ocaml : (Loc.t * Package_name.t) option
   ; repos : Repositories.t
@@ -318,8 +319,15 @@ let remove_locs t =
   }
 ;;
 
-let equal { version; packages; ocaml; repos; expanded_solver_variable_bindings } t =
+let equal
+  { version; dependency_hash; packages; ocaml; repos; expanded_solver_variable_bindings }
+  t
+  =
   Syntax.Version.equal version t.version
+  && Option.equal
+       (Tuple.T2.equal Loc.equal Local_package.Dependency_hash.equal)
+       dependency_hash
+       t.dependency_hash
   && Option.equal (Tuple.T2.equal Loc.equal Package_name.equal) ocaml t.ocaml
   && Repositories.equal repos t.repos
   && Package_name.Map.equal packages t.packages ~equal:Pkg.equal
@@ -328,9 +336,15 @@ let equal { version; packages; ocaml; repos; expanded_solver_variable_bindings }
        t.expanded_solver_variable_bindings
 ;;
 
-let to_dyn { version; packages; ocaml; repos; expanded_solver_variable_bindings } =
+let to_dyn
+  { version; dependency_hash; packages; ocaml; repos; expanded_solver_variable_bindings }
+  =
   Dyn.record
     [ "version", Syntax.Version.to_dyn version
+    ; ( "dependency_hash"
+      , Dyn.option
+          (Tuple.T2.to_dyn Loc.to_dyn_hum Local_package.Dependency_hash.to_dyn)
+          dependency_hash )
     ; "packages", Package_name.Map.to_dyn Pkg.to_dyn packages
     ; "ocaml", Dyn.option (Tuple.T2.to_dyn Loc.to_dyn_hum Package_name.to_dyn) ocaml
     ; "repos", Repositories.to_dyn repos
@@ -363,7 +377,13 @@ let validate_packages packages =
   else Error (`Missing_dependencies missing_dependencies)
 ;;
 
-let create_latest_version packages ~ocaml ~repos ~expanded_solver_variable_bindings =
+let create_latest_version
+  packages
+  ~local_packages
+  ~ocaml
+  ~repos
+  ~expanded_solver_variable_bindings
+  =
   (match validate_packages packages with
    | Ok () -> ()
    | Error (`Missing_dependencies missing_dependencies) ->
@@ -378,6 +398,11 @@ let create_latest_version packages ~ocaml ~repos ~expanded_solver_variable_bindi
                 ; "dependency of", Package_name.to_dyn dependant_package.info.name
                 ] ))));
   let version = Syntax.greatest_supported_version Dune_lang.Pkg.syntax in
+  let dependency_hash =
+    Local_package.(
+      Dependency_set.hash (For_solver.list_non_local_dependency_set local_packages))
+    |> Option.map ~f:(fun dependency_hash -> Loc.none, dependency_hash)
+  in
   let complete, used =
     match repos with
     | None -> true, None
@@ -387,7 +412,15 @@ let create_latest_version packages ~ocaml ~repos ~expanded_solver_variable_bindi
       complete, Some used
   in
   let repos : Repositories.t = { complete; used } in
-  let t = { version; packages; ocaml; repos; expanded_solver_variable_bindings } in
+  let t =
+    { version
+    ; dependency_hash
+    ; packages
+    ; ocaml
+    ; repos
+    ; expanded_solver_variable_bindings
+    }
+  in
   t
 ;;
 
@@ -399,7 +432,13 @@ module Metadata = Dune_sexp.Versioned_file.Make (Unit)
 let () = Metadata.Lang.register Dune_lang.Pkg.syntax ()
 
 let encode_metadata
-  { version; ocaml; repos; packages = _; expanded_solver_variable_bindings }
+  { version
+  ; dependency_hash
+  ; ocaml
+  ; repos
+  ; packages = _
+  ; expanded_solver_variable_bindings
+  }
   =
   let open Encoder in
   let base =
@@ -411,6 +450,15 @@ let encode_metadata
       ]
   in
   [ base ]
+  @ (match dependency_hash with
+     | None -> []
+     | Some (_loc, dependency_hash) ->
+       [ list
+           sexp
+           [ string "dependency_hash"
+           ; Local_package.Dependency_hash.encode dependency_hash
+           ]
+       ])
   @ (match ocaml with
      | None -> []
      | Some ocaml -> [ list sexp [ string "ocaml"; Package_name.encode (snd ocaml) ] ])
@@ -431,6 +479,8 @@ let decode_metadata =
   let open Decoder in
   fields
     (let+ ocaml = field_o "ocaml" (located Package_name.decode)
+     and+ dependency_hash =
+       field_o "dependency_hash" (located Local_package.Dependency_hash.decode)
      and+ repos = field "repositories" ~default:Repositories.default Repositories.decode
      and+ expanded_solver_variable_bindings =
        field
@@ -438,7 +488,7 @@ let decode_metadata =
          ~default:Solver_stats.Expanded_variable_bindings.empty
          Solver_stats.Expanded_variable_bindings.decode
      in
-     ocaml, repos, expanded_solver_variable_bindings)
+     ocaml, dependency_hash, repos, expanded_solver_variable_bindings)
 ;;
 
 module Package_filename = struct
@@ -558,17 +608,25 @@ module Make_load (Io : sig
 struct
   let load_metadata metadata_file_path =
     let open Io.O in
-    let+ syntax, version, ocaml, repos, expanded_solver_variable_bindings =
+    let+ syntax, version, dependency_hash, ocaml, repos, expanded_solver_variable_bindings
+      =
       Io.with_lexbuf_from_file metadata_file_path ~f:(fun lexbuf ->
         Metadata.parse_contents
           lexbuf
           ~f:(fun { Metadata.Lang.Instance.syntax; data = (); version } ->
             let open Decoder in
-            let+ ocaml, repos, expanded_solver_variable_bindings = decode_metadata in
-            syntax, version, ocaml, repos, expanded_solver_variable_bindings))
+            let+ ocaml, dependency_hash, repos, expanded_solver_variable_bindings =
+              decode_metadata
+            in
+            ( syntax
+            , version
+            , dependency_hash
+            , ocaml
+            , repos
+            , expanded_solver_variable_bindings )))
     in
     if String.equal (Syntax.name syntax) (Syntax.name Dune_lang.Pkg.syntax)
-    then version, ocaml, repos, expanded_solver_variable_bindings
+    then version, dependency_hash, ocaml, repos, expanded_solver_variable_bindings
     else
       User_error.raise
         [ Pp.textf
@@ -663,7 +721,7 @@ struct
   let load lock_dir_path =
     let open Io.O in
     let* () = check_path lock_dir_path in
-    let* version, ocaml, repos, expanded_solver_variable_bindings =
+    let* version, dependency_hash, ocaml, repos, expanded_solver_variable_bindings =
       load_metadata (Path.Source.relative lock_dir_path metadata_filename)
     in
     let+ packages =
@@ -680,7 +738,13 @@ struct
       >>| Package_name.Map.of_list_exn
     in
     check_packages packages ~lock_dir_path;
-    { version; packages; ocaml; repos; expanded_solver_variable_bindings }
+    { version
+    ; dependency_hash
+    ; packages
+    ; ocaml
+    ; repos
+    ; expanded_solver_variable_bindings
+    }
   ;;
 end
 

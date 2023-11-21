@@ -1,5 +1,6 @@
 open Import
 module Lock_dir = Dune_pkg.Lock_dir
+module Local_package = Dune_pkg.Local_package
 
 module Lock = struct
   let term =
@@ -39,8 +40,43 @@ module Lock = struct
   ;;
 end
 
+module Dependency_hash = struct
+  let print_local_packages_hash () =
+    let open Fiber.O in
+    let+ local_packages =
+      Pkg_common.find_local_packages
+      >>| Package_name.Map.values
+      >>| List.map ~f:Local_package.for_solver
+    in
+    match
+      Local_package.(
+        For_solver.list_non_local_dependency_set local_packages |> Dependency_set.hash)
+    with
+    | None -> User_error.raise [ Pp.text "No non-local dependencies" ]
+    | Some dependency_hash ->
+      print_endline (Local_package.Dependency_hash.to_string dependency_hash)
+  ;;
+
+  let term =
+    let+ builder = Common.Builder.term in
+    let builder = Common.Builder.forbid_builds builder in
+    let common, config = Common.init builder in
+    Scheduler.go ~common ~config print_local_packages_hash
+  ;;
+
+  let info =
+    let doc =
+      "Print the hash of the project's non-local dependencies such as what would appear \
+       in the \"dependency_hash\" field of a a lock.dune file."
+    in
+    Cmd.info "dependency-hash" ~doc
+  ;;
+
+  let command = Cmd.v info term
+end
+
 let command =
   let doc = "Subcommands related to package management" in
   let info = Cmd.info ~doc "pkg" in
-  Cmd.group info [ Lock.command ]
+  Cmd.group info [ Lock.command; Dependency_hash.command ]
 ;;

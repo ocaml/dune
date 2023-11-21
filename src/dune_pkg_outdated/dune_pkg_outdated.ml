@@ -90,7 +90,8 @@ let better_candidate
   let pkg_name = pkg.info.name |> Package_name.to_string |> OpamPackage.Name.of_string in
   let is_immediate_dep_of_local_package =
     Package_name.Map.exists local_packages ~f:(fun local_package ->
-      OpamFile.OPAM.depends (Dune_pkg.Local_package.to_opam_file local_package)
+      Dune_pkg.Local_package.(
+        for_solver local_package |> For_solver.opam_filtered_dependency_formula)
       |> OpamFilter.filter_deps
            ~build:true
            ~post:false

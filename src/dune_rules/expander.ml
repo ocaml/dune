@@ -189,20 +189,22 @@ let expand_artifact ~source t a s =
             ~what:"Library"
             (Lib_name.to_string name)
         | Some lib ->
-          let archives = Mode.Dict.get (Lib_info.archives lib) mode in
-          Action_builder.all
-            (List.map archives ~f:(fun fn ->
-               let fn = Path.build fn in
-               let+ () = Action_builder.path fn in
-               Value.Path fn))))
+          Mode.Dict.get (Lib_info.archives lib) mode
+          |> Action_builder.List.map ~f:(fun fn ->
+            let fn = Path.build fn in
+            let+ () = Action_builder.path fn in
+            Value.Path fn)))
 ;;
 
 let cc t =
-  Memo.map (t.foreign_flags ~dir:t.dir) ~f:(fun cc ->
-    Foreign_language.Dict.map cc ~f:(fun cc ->
-      let+ flags = cc
-      and+ c_compiler = Action_builder.of_memo t.c_compiler in
-      strings (c_compiler :: flags)))
+  let make (language : Foreign_language.t) =
+    let+ cc =
+      let* cc = Action_builder.of_memo @@ t.foreign_flags ~dir:t.dir in
+      Foreign_language.Dict.get cc language
+    and+ c_compiler = Action_builder.of_memo t.c_compiler in
+    strings (c_compiler :: cc)
+  in
+  { Foreign_language.Dict.c = make C; cxx = make Cxx }
 ;;
 
 let get_prog = function
@@ -524,20 +526,8 @@ let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
   | Project_root ->
     Need_full_expander
       (fun t -> Without (Memo.return [ Value.Dir (Path.build (Scope.root t.scope)) ]))
-  | Cc ->
-    Need_full_expander
-      (fun t ->
-        With
-          (let open Action_builder.O in
-           let* cc = Action_builder.of_memo (cc t) in
-           cc.c))
-  | Cxx ->
-    Need_full_expander
-      (fun t ->
-        With
-          (let open Action_builder.O in
-           let* cc = Action_builder.of_memo (cc t) in
-           cc.cxx))
+  | Cc -> Need_full_expander (fun t -> With (cc t).c)
+  | Cxx -> Need_full_expander (fun t -> With (cc t).cxx)
   | Toolchain ->
     static
     @@ string

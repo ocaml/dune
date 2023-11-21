@@ -34,12 +34,42 @@ module Scope = struct
   type t =
     | Self
     | Package of Package_name.t
+
+  let compare x y =
+    match x, y with
+    | Self, Self -> Eq
+    | Self, Package _ -> Gt
+    | Package _, Self -> Lt
+    | Package x, Package y -> Package_name.compare x y
+  ;;
+
+  let to_dyn = function
+    | Self -> Dyn.variant "Self" []
+    | Package name -> Dyn.variant "Package" [ Package_name.to_dyn name ]
+  ;;
 end
 
-type t =
-  { name : Name.t
-  ; scope : Scope.t
-  }
+module T = struct
+  type t =
+    { name : Name.t
+    ; scope : Scope.t
+    }
+
+  let compare t { name; scope } =
+    match Scope.compare t.scope scope with
+    | Eq -> Name.compare t.name name
+    | x -> x
+  ;;
+
+  let to_dyn { name; scope } =
+    let open Dyn in
+    record [ "name", Name.to_dyn name; "scope", Scope.to_dyn scope ]
+  ;;
+end
+
+include T
+module C = Comparable.Make (T)
+include C
 
 let self_scoped name = { name; scope = Self }
 let package_scoped name package_name = { name; scope = Package package_name }

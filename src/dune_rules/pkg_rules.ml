@@ -403,7 +403,7 @@ module Substitute = struct
            The two implementations are bound to drift. Better would be to
            reconstruct everything that is needed to call our one and only
            substitution function. *)
-        vars : OpamVariable.variable_contents Substs.Var.Map.t
+        vars : OpamVariable.variable_contents Package_variable.Map.t
       ; package : Package.Name.t
       ; src : 'src
       ; dst : 'dst
@@ -416,17 +416,21 @@ module Substitute = struct
 
     let encode { vars; package; src; dst } input output : Dune_lang.t =
       let e =
-        Substs.Var.Map.to_list_map vars ~f:(fun { Substs.Var.package; variable } v ->
-          let k =
-            let package =
-              Dune_sexp.Encoder.option Dune_lang.Package_name.encode package
+        Package_variable.Map.to_list_map
+          vars
+          ~f:(fun { Package_variable.scope; name } v ->
+            let k =
+              let package =
+                match scope with
+                | Self -> Dune_sexp.List []
+                | Package p -> Dune_lang.Package_name.encode p
+              in
+              Dune_sexp.List [ package; Package_variable.Name.encode name ]
             in
-            Dune_sexp.List [ package; Package_variable.Name.encode variable ]
-          in
-          let v =
-            Dune_lang.atom_or_quoted_string (OpamVariable.string_of_variable_contents v)
-          in
-          Dune_sexp.List [ k; v ])
+            let v =
+              Dune_lang.atom_or_quoted_string (OpamVariable.string_of_variable_contents v)
+            in
+            Dune_sexp.List [ k; v ])
       in
       let s = Dune_lang.Package_name.encode package in
       List [ Dune_lang.atom_or_quoted_string name; List e; s; input src; output dst ]
@@ -435,10 +439,13 @@ module Substitute = struct
     let action { vars; package; src; dst } ~ectx:_ ~eenv:_ =
       let open Fiber.O in
       let+ () = Fiber.return () in
-      let env var =
-        match Substs.Var.Map.find vars var with
+      let env (var : Package_variable.t) =
+        match Package_variable.Map.find vars var with
         | Some _ as v -> v
-        | None -> Substs.Var.Map.find vars { var with Substs.Var.package = Some package }
+        | None ->
+          Package_variable.Map.find
+            vars
+            { var with Package_variable.scope = Package package }
       in
       subst env package ~src ~dst
     ;;
@@ -674,20 +681,19 @@ module Action_expander = struct
   end
 
   let substitute_env (expander : Expander.t) =
-    let setenv package variable value env =
-      let var = { Substs.Var.package = Some package; variable } in
-      Substs.Var.Map.add_exn env var value
+    let setenv package name value env =
+      let var = { Package_variable.scope = Package package; name } in
+      Package_variable.Map.add_exn env var value
     in
     let env =
       (* values set with withenv *)
       Env.Map.map expander.env ~f:Env_update.string_of_env_values
       |> Env.Map.to_list_map ~f:(fun variable value ->
-        (* TODO why is [package = None]? *)
-        ( { Substs.Var.package = None
-          ; variable = Package_variable.Name.of_string variable
+        ( { Package_variable.scope = Self
+          ; name = Package_variable.Name.of_string variable
           }
         , OpamVariable.S value ))
-      |> Substs.Var.Map.of_list_exn
+      |> Package_variable.Map.of_list_exn
     in
     Dune_lang.Package_name.Map.foldi
       expander.deps

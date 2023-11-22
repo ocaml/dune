@@ -600,7 +600,13 @@ module Group = struct
       | Opam { base; switch } ->
         create_for_opam builder ~switch ~loc:base.loc ~targets:base.targets
       | Default
-          { lock; version_preference = _; solver_sys_vars = _; repositories = _; base } ->
+          { lock
+          ; version_preference = _
+          ; solver_sys_vars = _
+          ; solver_user_vars = _
+          ; repositories = _
+          ; base
+          } ->
         let builder =
           match builder.findlib_toolchain with
           | Some _ -> builder

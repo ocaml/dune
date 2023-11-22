@@ -35,7 +35,7 @@ module Expanded_variable_bindings = struct
       match Solver_env.get solver_env variable with
       | String string ->
         { acc with variable_values = (variable, string) :: acc.variable_values }
-      | Unset_sys -> { acc with unset_variables = variable :: acc.unset_variables })
+      | Unset -> { acc with unset_variables = variable :: acc.unset_variables })
   ;;
 
   let decode =
@@ -91,16 +91,18 @@ module Expanded_variable_bindings = struct
   let to_solver_env { variable_values; unset_variables = _ } =
     (* TODO currently this only supports system variables but this will be
        generalized when the solver gains support for arbitrary variables *)
-    let sys =
+    let sys, user =
       List.fold_left
         variable_values
-        ~init:Solver_env.Variable.Sys.Bindings.empty
-        ~f:(fun acc (variable, value) ->
+        ~init:Solver_env.Variable.(Sys.Bindings.empty, User.Bindings.empty)
+        ~f:(fun ((sys_bindings, user_bindings) as acc) (variable, value) ->
           match variable with
           | Solver_env.Variable.Sys sys ->
-            Solver_env.Variable.Sys.Bindings.set acc sys value
+            Solver_env.Variable.Sys.Bindings.set sys_bindings sys value, user_bindings
+          | User user ->
+            sys_bindings, Solver_env.Variable.User.Bindings.set user_bindings user value
           | Const _ -> acc)
     in
-    Solver_env.create ~sys
+    Solver_env.create ~sys ~user
   ;;
 end

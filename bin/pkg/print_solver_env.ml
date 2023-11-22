@@ -4,6 +4,7 @@ open Pkg_common
 let print_solver_env_for_one_context
   ~sys_bindings_from_current_system
   { Per_context.solver_sys_vars = solver_sys_vars_from_context
+  ; solver_user_vars
   ; context_common = { name = context_name; _ }
   ; _
   }
@@ -14,6 +15,10 @@ let print_solver_env_for_one_context
         (solver_env_variables
            ~solver_sys_vars_from_context
            ~sys_bindings_from_current_system)
+      ~user:
+        (Option.value
+           solver_user_vars
+           ~default:Dune_pkg.Solver_env.Variable.User.Bindings.empty)
   in
   Console.print
     [ Pp.textf

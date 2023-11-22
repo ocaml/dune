@@ -38,6 +38,24 @@ module Variable : sig
     end
   end
 
+  module User : sig
+    (** A custom variable that can be configured by a user *)
+    type t = Package_variable.Name.t
+
+    module Bindings : sig
+      type user_var := t
+
+      (** A mapping from user variables to their values *)
+      type t
+
+      val to_dyn : t -> Dyn.t
+      val decode : t Decoder.t
+      val equal : t -> t -> bool
+      val empty : t
+      val set : t -> user_var -> string -> t
+    end
+  end
+
   module Const : sig
     (** Constant variables whose value can't be configured. These can be read
         while solving and evaluating packages. *)
@@ -46,6 +64,7 @@ module Variable : sig
 
   type t =
     | Sys of Sys.t
+    | User of User.t
     | Const of Const.t
 
   val to_string : t -> string
@@ -68,7 +87,7 @@ end
     environment as dune does not give users access to those variables.. *)
 type t
 
-val create : sys:Variable.Sys.Bindings.t -> t
+val create : sys:Variable.Sys.Bindings.t -> user:Variable.User.Bindings.t -> t
 val default : t
 val decode : t Decoder.t
 val to_dyn : t -> Dyn.t
@@ -82,7 +101,7 @@ val pp : t -> 'a Pp.t
 module Variable_value : sig
   type t =
     | String of string
-    | Unset_sys
+    | Unset
 end
 
 val get : t -> Variable.t -> Variable_value.t

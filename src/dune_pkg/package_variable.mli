@@ -7,7 +7,8 @@ module Name : sig
   val of_opam : OpamVariable.t -> t
   val compare : t -> t -> Ordering.t
   val to_dyn : t -> Dyn.t
-  val encode : t -> Dune_sexp.t
+  val encode : t Dune_lang.Encoder.t
+  val decode : t Dune_lang.Decoder.t
 
   module Map : Map.S with type key = t
 

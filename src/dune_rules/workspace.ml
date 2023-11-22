@@ -283,10 +283,13 @@ module Context = struct
       ; lock : Path.Source.t option
       ; version_preference : Dune_pkg.Version_preference.t option
       ; solver_sys_vars : Dune_pkg.Solver_env.Variable.Sys.Bindings.t option
+      ; solver_user_vars : Dune_pkg.Solver_env.Variable.User.Bindings.t option
       ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
       }
 
-    let to_dyn { base; lock; version_preference; solver_sys_vars; repositories } =
+    let to_dyn
+      { base; lock; version_preference; solver_sys_vars; solver_user_vars; repositories }
+      =
       Dyn.record
         [ "base", Common.to_dyn base
         ; "lock", Dyn.(option Path.Source.to_dyn) lock
@@ -294,6 +297,9 @@ module Context = struct
           , Dyn.option Dune_pkg.Version_preference.to_dyn version_preference )
         ; ( "solver_sys_vars"
           , Dyn.option Dune_pkg.Solver_env.Variable.Sys.Bindings.to_dyn solver_sys_vars )
+        ; ( "solver_user_vars"
+          , Dyn.option Dune_pkg.Solver_env.Variable.User.Bindings.to_dyn solver_user_vars
+          )
         ; ( "repositories"
           , Dyn.list Dune_pkg.Pkg_workspace.Repository.Name.to_dyn repositories )
         ]
@@ -321,6 +327,8 @@ module Context = struct
         field_o "version_preference" Dune_pkg.Version_preference.decode
       and+ solver_sys_vars =
         field_o "solver_sys_vars" Dune_pkg.Solver_env.Variable.Sys.Bindings.decode
+      and+ solver_user_vars =
+        field_o "solver_user_vars" Dune_pkg.Solver_env.Variable.User.Bindings.decode
       and+ repositories_osl = Dune_lang.Ordered_set_lang.field "repositories" in
       let repositories = repositories_of_ordered_set repositories_osl in
       let lock = Option.map lock ~f:Path.as_in_source_tree_exn in
@@ -333,10 +341,19 @@ module Context = struct
         in
         let name = Option.value ~default name in
         let base = { common with targets = Target.add common.targets x; name } in
-        { base; lock; version_preference; solver_sys_vars; repositories }
+        { base
+        ; lock
+        ; version_preference
+        ; solver_sys_vars
+        ; solver_user_vars
+        ; repositories
+        }
     ;;
 
-    let equal { base; lock; version_preference; solver_sys_vars; repositories } t =
+    let equal
+      { base; lock; version_preference; solver_sys_vars; solver_user_vars; repositories }
+      t
+      =
       Common.equal base t.base
       && Option.equal Path.Source.equal lock t.lock
       && Option.equal
@@ -347,6 +364,10 @@ module Context = struct
            Dune_pkg.Solver_env.Variable.Sys.Bindings.equal
            solver_sys_vars
            t.solver_sys_vars
+      && Option.equal
+           Dune_pkg.Solver_env.Variable.User.Bindings.equal
+           solver_user_vars
+           t.solver_user_vars
       && List.equal
            Dune_pkg.Pkg_workspace.Repository.Name.equal
            repositories
@@ -416,6 +437,7 @@ module Context = struct
       { lock = None
       ; version_preference = None
       ; solver_sys_vars = None
+      ; solver_user_vars = None
       ; repositories = [ Dune_pkg.Pkg_workspace.Repository.Name.of_string "default" ]
       ; base =
           { loc = Loc.of_pos __POS__

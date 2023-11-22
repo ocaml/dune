@@ -56,6 +56,7 @@ let solve
            ; version_preference
            ; repos
            ; solver_sys_vars = solver_sys_vars_from_context
+           ; solver_user_vars
            ; context_common = { name = context_name; _ }
            ; repositories
            }
@@ -66,6 +67,10 @@ let solve
                (solver_env_variables
                   ~solver_sys_vars_from_context
                   ~sys_bindings_from_current_system)
+             ~user:
+               (Option.value
+                  solver_user_vars
+                  ~default:Dune_pkg.Solver_env.Variable.User.Bindings.empty)
          in
          let* repos =
            get_repos

@@ -16,6 +16,7 @@ module Per_context : sig
     { lock_dir_path : Path.Source.t
     ; version_preference : Dune_pkg.Version_preference.t
     ; solver_sys_vars : Dune_pkg.Solver_env.Variable.Sys.Bindings.t option
+    ; solver_user_vars : Dune_pkg.Solver_env.Variable.User.Bindings.t option
     ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
     ; context_common : Workspace.Context.Common.t
     ; repos :

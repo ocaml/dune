@@ -16,7 +16,7 @@ let substitute_variables_in_filter
            Option.iter stats_updater ~f:(fun stats_updater ->
              Solver_stats.Updater.expand_variable stats_updater variable);
            (match Solver_env.get solver_env variable with
-            | Unset_sys -> filter
+            | Unset -> filter
             | String string -> FString string))
       | other -> other)
     opam_filter

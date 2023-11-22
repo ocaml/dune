@@ -49,6 +49,7 @@ module Context : sig
       ; lock : Path.Source.t option
       ; version_preference : Dune_pkg.Version_preference.t option
       ; solver_sys_vars : Dune_pkg.Solver_env.Variable.Sys.Bindings.t option
+      ; solver_user_vars : Dune_pkg.Solver_env.Variable.User.Bindings.t option
       ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
       }
   end

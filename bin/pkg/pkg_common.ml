@@ -48,6 +48,7 @@ module Per_context = struct
     { lock_dir_path : Path.Source.t
     ; version_preference : Version_preference.t
     ; solver_sys_vars : Dune_pkg.Solver_env.Variable.Sys.Bindings.t option
+    ; solver_user_vars : Dune_pkg.Solver_env.Variable.User.Bindings.t option
     ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
     ; context_common : Dune_rules.Workspace.Context.Common.t
     ; repos :
@@ -87,6 +88,7 @@ module Per_context = struct
              { lock
              ; version_preference = version_preference_context
              ; solver_sys_vars
+             ; solver_user_vars
              ; repositories
              ; base = context_common
              ; _
@@ -97,6 +99,7 @@ module Per_context = struct
                  ~from_arg:version_preference_arg
                  ~from_context:version_preference_context
            ; solver_sys_vars
+           ; solver_user_vars
            ; repositories
            ; context_common
            ; repos = repositories_of_workspace workspace
@@ -116,6 +119,7 @@ module Per_context = struct
             ; version_preference = version_preference_context
             ; base = context_common
             ; solver_sys_vars
+            ; solver_user_vars
             ; repositories
             } ->
           let lock_dir_path = Option.value lock ~default:Dune_pkg.Lock_dir.default_path in
@@ -127,6 +131,7 @@ module Per_context = struct
                   ~from_context:version_preference_context
             ; context_common
             ; solver_sys_vars
+            ; solver_user_vars
             ; repositories
             ; repos = repositories_of_workspace workspace
             }

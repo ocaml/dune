@@ -83,6 +83,51 @@ module Variable = struct
     end
   end
 
+  module User = struct
+    type t = Package_variable.Name.t
+
+    module Map = Package_variable.Name.Map
+
+    module Bindings = struct
+      type t = string Map.t
+
+      let empty = Map.empty
+      let to_dyn = Map.to_dyn Dyn.string
+      let equal = Map.equal ~equal:String.equal
+      let get = Map.find
+      let set = Map.set
+
+      let decode =
+        let open Decoder in
+        let+ loc, bindings =
+          located (repeat (pair Package_variable.Name.decode string))
+        in
+        match Map.of_list bindings with
+        | Ok t -> t
+        | Error (duplicate_key, a, b) ->
+          User_error.raise
+            ~loc
+            [ Pp.textf
+                "Duplicate entries for user variable %s (%s, %s)"
+                (String.maybe_quoted (Package_variable.Name.to_string duplicate_key))
+                (String.maybe_quoted a)
+                (String.maybe_quoted b)
+            ]
+      ;;
+
+      let pp t =
+        if Map.is_empty t
+        then Pp.text "(none)"
+        else
+          Pp.enumerate (Map.to_list t) ~f:(fun (variable, value) ->
+            Pp.textf
+              "%s = %s"
+              (Package_variable.Name.to_string variable)
+              (String.maybe_quoted value))
+      ;;
+    end
+  end
+
   module Const = struct
     type t = [ `Opam_version ]
 
@@ -117,21 +162,27 @@ module Variable = struct
   module T = struct
     type t =
       | Sys of Sys.t
+      | User of User.t
       | Const of Const.t
 
     let to_dyn = function
       | Sys sys -> Dyn.variant "Sys" [ Sys.to_dyn sys ]
+      | User user -> Dyn.variant "User" [ Package_variable.Name.to_dyn user ]
       | Const const -> Dyn.variant "Const" [ Const.to_dyn const ]
     ;;
 
     let of_string_opt string =
       match Sys.of_string_opt string with
       | Some sys -> Some (Sys sys)
-      | None -> Const.of_string_opt string |> Option.map ~f:(fun const -> Const const)
+      | None ->
+        (match Const.of_string_opt string with
+         | Some const -> Some (Const const)
+         | None -> Some (User (Package_variable.Name.of_string string)))
     ;;
 
     let to_string = function
       | Sys sys -> Sys.to_string sys
+      | User user -> Package_variable.Name.to_string user
       | Const const -> Const.to_string const
     ;;
 
@@ -158,35 +209,41 @@ end
 
 type t =
   { sys : Variable.Sys.Bindings.t
+  ; user : Variable.User.Bindings.t
   ; const : Variable.Const.Bindings.t
   }
 
 module Fields = struct
   let sys = "sys"
+  let user = "user"
   let const = "const"
 end
 
-let create ~sys = { sys; const = Variable.Const.bindings }
-let default = create ~sys:Variable.Sys.Bindings.empty
+let create ~sys ~user = { sys; user; const = Variable.Const.bindings }
+let default = create ~sys:Variable.Sys.Bindings.empty ~user:Variable.User.Map.empty
 
 let decode =
   let open Decoder in
   fields
   @@
-  let+ sys = field Fields.sys ~default:default.sys Variable.Sys.Bindings.decode in
+  let+ sys = field Fields.sys ~default:default.sys Variable.Sys.Bindings.decode
+  and+ user = field Fields.user ~default:default.user Variable.User.Bindings.decode in
   let const = default.const in
-  { sys; const }
+  { sys; user; const }
 ;;
 
-let to_dyn { sys; const } =
+let to_dyn { sys; const; user } =
   Dyn.record
     [ Fields.sys, Variable.Sys.Bindings.to_dyn sys
+    ; Fields.user, Variable.User.Bindings.to_dyn user
     ; Fields.const, Variable.Const.Bindings.to_dyn const
     ]
 ;;
 
-let equal { sys; const } t =
-  Variable.Sys.Bindings.equal sys t.sys && Variable.Const.Bindings.equal const t.const
+let equal { sys; user; const } t =
+  Variable.Sys.Bindings.equal sys t.sys
+  && Variable.User.Bindings.equal user t.user
+  && Variable.Const.Bindings.equal const t.const
 ;;
 
 let sys { sys; _ } = sys
@@ -198,10 +255,11 @@ let pp =
     let pp_heading = Pp.hbox (Pp.text heading) in
     Pp.concat ~sep:Pp.space [ pp_heading; pp_section ] |> Pp.vbox
   in
-  fun { sys; const } ->
+  fun { sys; user; const } ->
     Pp.enumerate
       ~f:Fun.id
       [ pp_section "System Environment Variables" (Variable.Sys.Bindings.pp sys)
+      ; pp_section "User" (Variable.User.Bindings.pp user)
       ; pp_section "Constants" (Variable.Const.Bindings.pp const)
       ]
 ;;
@@ -209,14 +267,18 @@ let pp =
 module Variable_value = struct
   type t =
     | String of string
-    | Unset_sys
+    | Unset
 end
 
 let get t variable =
   match (variable : Variable.t) with
   | Const const -> Variable_value.String (Variable.Const.Bindings.get t.const const)
+  | User user ->
+    (match Variable.User.Bindings.get t.user user with
+     | Some value -> String value
+     | None -> Unset)
   | Sys sys ->
     (match Variable.Sys.Bindings.get t.sys sys with
      | Some value -> String value
-     | None -> Unset_sys)
+     | None -> Unset)
 ;;

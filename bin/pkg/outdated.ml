@@ -21,6 +21,7 @@ let find_outdated_packages
               ; version_preference = _
               ; repos
               ; solver_sys_vars = _
+              ; solver_user_vars = _
               ; context_common = _
               ; repositories
               }

@@ -55,7 +55,7 @@ Solve packages with no variables set.
   - static-deps.1.0
   (lang package 0.1)
   
-  (dependency_hash md5=aea7daa72b636fa3a44973ec5e29d225)
+  (dependency_hash aea7daa72b636fa3a44973ec5e29d225)
   
   (repositories
    (complete false)
@@ -64,7 +64,7 @@ Solve packages with no variables set.
   - dynamic-deps.1.0
   (lang package 0.1)
   
-  (dependency_hash md5=6957fba0128609ffc98fac2561c329cb)
+  (dependency_hash 6957fba0128609ffc98fac2561c329cb)
   
   (repositories
    (complete false)
@@ -76,7 +76,7 @@ Solve packages with no variables set.
   - dynamic-deps-lazy.1.0
   (lang package 0.1)
   
-  (dependency_hash md5=9675a3014e7e2db0f946b3ad2a95c037)
+  (dependency_hash 9675a3014e7e2db0f946b3ad2a95c037)
   
   (repositories
    (complete false)
@@ -104,7 +104,7 @@ Solve the packages again, this time with the variables set.
   - static-deps.1.0
   (lang package 0.1)
   
-  (dependency_hash md5=aea7daa72b636fa3a44973ec5e29d225)
+  (dependency_hash aea7daa72b636fa3a44973ec5e29d225)
   
   (repositories
    (complete false)
@@ -113,7 +113,7 @@ Solve the packages again, this time with the variables set.
   - dynamic-deps.1.0
   (lang package 0.1)
   
-  (dependency_hash md5=6957fba0128609ffc98fac2561c329cb)
+  (dependency_hash 6957fba0128609ffc98fac2561c329cb)
   
   (repositories
    (complete false)
@@ -127,7 +127,7 @@ Solve the packages again, this time with the variables set.
   - dynamic-deps-lazy.1.0
   (lang package 0.1)
   
-  (dependency_hash md5=9675a3014e7e2db0f946b3ad2a95c037)
+  (dependency_hash 9675a3014e7e2db0f946b3ad2a95c037)
   
   (repositories
    (complete false)

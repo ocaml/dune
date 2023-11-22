@@ -1,6 +1,6 @@
-Testing whether the revision store locks properly.
+We want to test that a failing flock(2) shows an error.
 
-To start with we create a repository in with a `foo` package.
+Thus we first create a repo:
 
   $ . ./helpers.sh
   $ mkrepo
@@ -11,8 +11,6 @@ To start with we create a repository in with a `foo` package.
   $ git add -A
   $ git commit --quiet -m "Initial commit"
   $ cd ..
-
-We set this repository as sole source for opam repositories.
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.10)
@@ -37,9 +35,11 @@ We set the project up to depend on `foo`
   $ cat > dune <<EOF
   > EOF
 
-Creating a lock should thus work.
+There should be some kind of error message if getting the revision store lock
+fails (simulated here with a failing flock(2) call):
 
-  $ mkdir dune-workspace-cache
-  $ XDG_CACHE_HOME=$(pwd)/fake-xdg-cache dune pkg lock
-  Solution for dune.lock:
-  - foo.1.0
+  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache strace -e inject=flock:error=EBADFD -o /dev/null dune pkg lock
+  Error: Failed to get a lock for the revision store at
+  $TESTCASE_ROOT/dune-workspace-cache/dune/rev-store.lock:
+  File descriptor in bad state
+  [1]

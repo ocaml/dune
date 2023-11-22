@@ -73,8 +73,7 @@ let all_non_local_dependencies_of_local_packages t =
   let open Result.O in
   let+ all_dependencies_of_local_packages =
     Package_name.Map.keys t.local_packages
-    |> List.map ~f:(concrete_dependencies_of_local_package_with_test t)
-    |> Result.List.all
+    |> Result.List.map ~f:(concrete_dependencies_of_local_package_with_test t)
     |> Result.map ~f:Package_name.Set.union_all
   in
   Package_name.Set.diff
@@ -86,21 +85,21 @@ let check_for_unnecessary_packges_in_lock_dir
   t
   all_non_local_dependencies_of_local_packages
   =
-  let locked_transitive_closure_of_local_package_dependencies =
-    match
-      Lock_dir.transitive_dependency_closure
-        t.lock_dir
-        all_non_local_dependencies_of_local_packages
-    with
-    | Ok x -> x
-    | Error (`Missing_packages missing_packages) ->
-      (* Resolving the dependency formulae would have failed if there were any missing packages in the lockdir. *)
-      Code_error.raise
-        "Missing packages from lockdir after confirming no missing packages in lockdir"
-        [ "missing package", Package_name.Set.to_dyn missing_packages ]
-  in
-  let all_locked_packages = Package_name.Set.of_keys t.lock_dir.packages in
   let unneeded_packages_in_lock_dir =
+    let locked_transitive_closure_of_local_package_dependencies =
+      match
+        Lock_dir.transitive_dependency_closure
+          t.lock_dir
+          all_non_local_dependencies_of_local_packages
+      with
+      | Ok x -> x
+      | Error (`Missing_packages missing_packages) ->
+        (* Resolving the dependency formulae would have failed if there were any missing packages in the lockdir. *)
+        Code_error.raise
+          "Missing packages from lockdir after confirming no missing packages in lockdir"
+          [ "missing package", Package_name.Set.to_dyn missing_packages ]
+    in
+    let all_locked_packages = Package_name.Set.of_keys t.lock_dir.packages in
     Package_name.Set.diff
       all_locked_packages
       locked_transitive_closure_of_local_package_dependencies
@@ -341,8 +340,7 @@ let opam_package_dependencies_of_package t package ~which ~traverse =
     | `Test_only -> test_only_dependencies
   in
   get_deps t package ~traverse
-  |> Package_name.Set.to_list
-  |> List.map ~f:(fun package_name ->
+  |> Package_name.Set.to_list_map ~f:(fun package_name ->
     OpamPackage.create
       (Package_name.to_opam_package_name package_name)
       (Package_name.Map.find_exn t.version_by_package_name package_name

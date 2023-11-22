@@ -109,7 +109,11 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
       | Public (_, _) -> Lib_info.Status.Installed
     in
     let src_dir = Obj_dir.dir obj_dir in
-    let version = Findlib.Package.version t |> Option.map ~f:Package_version.of_string in
+    let version =
+      (* Errors are silently ignored: versions in META files are less strict
+         than what we allow in `Package_version` *)
+      Option.bind (Findlib.Package.version t) ~f:Package_version.of_string_opt
+    in
     let dune_version = None in
     let virtual_deps = [] in
     let implements = None in

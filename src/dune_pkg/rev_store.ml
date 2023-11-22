@@ -255,10 +255,14 @@ module Remote = struct
     ; default_branch : string
     }
 
-  let update { repo; handle; default_branch = _ } =
-    run repo [ "fetch"; handle; "--no-tags" ]
+  type uninit = t
+
+  let update ({ repo; handle; default_branch = _ } as t) =
+    let+ () = run repo [ "fetch"; handle; "--no-tags" ] in
+    t
   ;;
 
+  let don't_update t = t
   let default_branch { repo = _; handle = _; default_branch } = default_branch
 
   let equal { repo; handle; default_branch } t =
@@ -295,17 +299,18 @@ module Remote = struct
 end
 
 let remote_exists dir ~name =
-  (* TODO read this directly from .git/config *)
-  let stdout_to = make_stdout () in
   let stderr_to = make_stderr () in
-  let command = [ "remote"; "show"; name ] in
-  let+ (), exit_code =
+  let command = [ "remote"; "--verbose" ] in
+  let+ lines =
     let git = Lazy.force Vcs.git in
-    Process.run ~dir ~display ~stderr_to ~stdout_to Return git command
+    Process.run_capture_lines ~dir ~display ~stderr_to Strict git command
   in
-  match exit_code with
-  | 0 -> true
-  | 128 | _ -> false
+  lines
+  |> List.find ~f:(fun line ->
+    match String.lsplit2 ~on:'\t' line with
+    | None -> false
+    | Some (candidate, _) -> String.equal candidate name)
+  |> Option.is_some
 ;;
 
 let query_head_branch =
@@ -349,7 +354,7 @@ let add_repo ({ dir } as t) ~source =
   let lock = lock_path t in
   with_flock lock ~f:(fun () ->
     let* exists = remote_exists dir ~name:handle in
-    let* default_branch =
+    let+ default_branch =
       match exists with
       | true ->
         let+ head_branch = read_head_branch t handle in
@@ -378,9 +383,7 @@ let add_repo ({ dir } as t) ~source =
         let+ () = run t [ "remote"; "add"; "--track"; head_branch; handle; source ] in
         head_branch
     in
-    let remote : Remote.t = { repo = t; handle; default_branch } in
-    let+ () = Remote.update remote in
-    remote)
+    { Remote.repo = t; handle; default_branch })
 ;;
 
 let content_of_files t files =

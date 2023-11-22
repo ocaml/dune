@@ -34,6 +34,7 @@ val get_repos
   -> opam_repository_path:Path.t option
   -> opam_repository_url:OpamUrl.t option
   -> repositories:Dune_pkg.Pkg_workspace.Repository.Name.t list
+  -> update_opam_repositories:bool
   -> Dune_pkg.Opam_repo.t list Fiber.t
 
 val find_local_packages : Dune_pkg.Local_package.t Package_name.Map.t Fiber.t

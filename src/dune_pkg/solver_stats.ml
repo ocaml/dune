@@ -87,4 +87,20 @@ module Expanded_variable_bindings = struct
       ; "unset_variables", Dyn.list Solver_env.Variable.to_dyn unset_variables
       ]
   ;;
+
+  let to_solver_env { variable_values; unset_variables = _ } =
+    (* TODO currently this only supports system variables but this will be
+       generalized when the solver gains support for arbitrary variables *)
+    let sys =
+      List.fold_left
+        variable_values
+        ~init:Solver_env.Variable.Sys.Bindings.empty
+        ~f:(fun acc (variable, value) ->
+          match variable with
+          | Solver_env.Variable.Sys sys ->
+            Solver_env.Variable.Sys.Bindings.set acc sys value
+          | Const _ -> acc)
+    in
+    Solver_env.create ~sys
+  ;;
 end

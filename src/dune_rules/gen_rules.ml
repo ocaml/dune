@@ -398,6 +398,7 @@ let gen_project_rules =
     ()
   in
   fun sctx source_dir ->
+    let* () = Memo.return () in
     let project = Source_tree.Dir.project source_dir in
     match
       Path.Source.equal (Source_tree.Dir.path source_dir) (Dune_project.root project)
@@ -442,7 +443,8 @@ module Automatic_subdir = struct
     | Utop -> Utop.setup sctx ~dir:(Path.Build.parent_exn dir)
     | Formatted -> Format_rules.gen_rules sctx ~output_dir:dir
     | Bin ->
-      Super_context.local_binaries sctx ~dir:(Path.Build.parent_exn dir)
+      Super_context.env_node sctx ~dir:(Path.Build.parent_exn dir)
+      >>= Env_node.local_binaries
       >>= Memo.parallel_iter ~f:(fun t ->
         let loc = File_binding.Expanded.src_loc t in
         let src = Path.build (File_binding.Expanded.src t) in

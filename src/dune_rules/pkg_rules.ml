@@ -31,7 +31,7 @@ module Variable = struct
     | S of string
     | L of string list
 
-  type t = string * value
+  type t = Package_variable.Name.t * value
 
   let dyn_of_value : value -> Dyn.t =
     let open Dyn in
@@ -47,18 +47,21 @@ module Variable = struct
     | L s -> List.map s ~f:(fun x -> Value.String x)
   ;;
 
-  let to_dyn (name, value) = Dyn.(pair string dyn_of_value (name, value))
+  let to_dyn (name, value) =
+    Dyn.(pair Package_variable.Name.to_dyn dyn_of_value (name, value))
+  ;;
 end
 
 module Pkg_info = struct
   include Dune_pkg.Lock_dir.Pkg_info
 
   let variables t =
-    String.Map.of_list_exn
+    Package_variable.Name.Map.of_list_map_exn
       [ "name", Variable.S (Package.Name.to_string t.name)
       ; "version", S (Package_version.to_string t.version)
       ; "dev", B t.dev
       ]
+      ~f:(fun (name, value) -> Package_variable.Name.of_string name, value)
   ;;
 end
 
@@ -392,66 +395,70 @@ module Substitute = struct
     end)
 
   module Spec = struct
-    type ('path, 'target) t =
-      (* XXX it's not good to serialize the substitution map like this. We're
-         essentially implementing the same substitution procedure but in two
-         different places: action geeneration, and action execution.
+    type ('src, 'dst) t =
+      { (* XXX it's not good to serialize the substitution map like this. We're
+           essentially implementing the same substitution procedure but in two
+           different places: action geeneration, and action execution.
 
-         The two implementations are bound to drift. Better would be to
-         reconstruct everything that is needed to call our one and only
-         substitution function. *)
-      OpamVariable.variable_contents Substs.Var.Map.t
-      * Dune_lang.Package_name.t
-      * 'path
-      * 'target
+           The two implementations are bound to drift. Better would be to
+           reconstruct everything that is needed to call our one and only
+           substitution function. *)
+        vars : OpamVariable.variable_contents Package_variable.Map.t
+      ; package : Package.Name.t
+      ; src : 'src
+      ; dst : 'dst
+      }
 
     let name = "substitute"
     let version = 1
-    let bimap (e, s, i, o) f g = e, s, f i, g o
+    let bimap t f g = { t with src = f t.src; dst = g t.dst }
     let is_useful_to ~memoize = memoize
 
-    let encode (e, s, i, o) input output : Dune_lang.t =
+    let encode { vars; package; src; dst } input output : Dune_lang.t =
       let e =
-        Substs.Var.Map.to_list_map e ~f:(fun { Substs.Var.package; variable } v ->
-          let k =
-            let package =
-              Dune_sexp.Encoder.option Dune_lang.Package_name.encode package
+        Package_variable.Map.to_list_map
+          vars
+          ~f:(fun { Package_variable.scope; name } v ->
+            let k =
+              let package =
+                match scope with
+                | Self -> Dune_sexp.List []
+                | Package p -> Dune_lang.Package_name.encode p
+              in
+              Dune_sexp.List [ package; Package_variable.Name.encode name ]
             in
-            Dune_sexp.List [ package; Substs.Variable.encode variable ]
-          in
-          let v =
-            Dune_lang.atom_or_quoted_string (OpamVariable.string_of_variable_contents v)
-          in
-          Dune_sexp.List [ k; v ])
+            let v =
+              Dune_lang.atom_or_quoted_string (OpamVariable.string_of_variable_contents v)
+            in
+            Dune_sexp.List [ k; v ])
       in
-      let s = Dune_lang.Package_name.encode s in
-      List [ Dune_lang.atom_or_quoted_string name; List e; s; input i; output o ]
+      let s = Dune_lang.Package_name.encode package in
+      List [ Dune_lang.atom_or_quoted_string name; List e; s; input src; output dst ]
     ;;
 
-    let action
-      ((env : OpamVariable.variable_contents Substs.Var.Map.t), self, src, dst)
-      ~ectx:_
-      ~eenv:_
-      =
+    let action { vars; package; src; dst } ~ectx:_ ~eenv:_ =
       let open Fiber.O in
       let+ () = Fiber.return () in
-      let env var =
-        match Substs.Var.Map.find env var with
+      let env (var : Package_variable.t) =
+        match Package_variable.Map.find vars var with
         | Some _ as v -> v
-        | None -> Substs.Var.Map.find env { var with Substs.Var.package = Some self }
+        | None ->
+          Package_variable.Map.find
+            vars
+            { var with Package_variable.scope = Package package }
       in
-      subst env ~src self ~dst
+      subst env package ~src ~dst
     ;;
   end
 
-  let action ~env ~name ~input ~output =
+  let action package ~vars ~src ~dst =
     let module M = struct
       type path = Path.t
       type target = Path.Build.t
 
       module Spec = Spec
 
-      let v = env, name, input, output
+      let v = { Spec.vars; package; src; dst }
     end
     in
     Action.Extension (module M)
@@ -463,7 +470,7 @@ module Action_expander = struct
     type t =
       { paths : Paths.t
       ; artifacts : Path.t Filename.Map.t
-      ; deps : (Variable.value String.Map.t * Paths.t) Package.Name.Map.t
+      ; deps : (Variable.value Package_variable.Name.Map.t * Paths.t) Package.Name.Map.t
       ; context : Context_name.t
       ; version : Package_version.t
       ; env : Value.t list Env.Map.t
@@ -554,16 +561,15 @@ module Action_expander = struct
           | Package package_name -> package_name
         in
         match Package.Name.Map.find deps package_name with
-        | None -> String.Map.empty, None
+        | None -> Package_variable.Name.Map.empty, None
         | Some (var, paths) -> var, Some paths
       in
-      let variable_name = Package_variable.Name.to_string variable_name in
-      match String.Map.find variables variable_name with
+      match Package_variable.Name.Map.find variables variable_name with
       | Some v -> Memo.return @@ Ok (Variable.dune_value v)
       | None ->
         let present = Option.is_some paths in
         (* TODO we should be looking it up in all packages now *)
-        (match variable_name with
+        (match Package_variable.Name.to_string variable_name with
          | "pinned" -> Memo.return @@ Ok [ Value.false_ ]
          | "enable" ->
            Memo.return @@ Ok [ Value.String (if present then "enable" else "disable") ]
@@ -572,7 +578,10 @@ module Action_expander = struct
            (match paths with
             | None -> Memo.return (Error (`Undefined_pkg_var variable_name))
             | Some paths ->
-              (match Pform.Var.Pkg.Section.of_string variable_name with
+              (match
+                 Pform.Var.Pkg.Section.of_string
+                   (Package_variable.Name.to_string variable_name)
+               with
                | None -> Memo.return (Error (`Undefined_pkg_var variable_name))
                | Some section ->
                  let section = dune_section_of_pform section in
@@ -584,7 +593,7 @@ module Action_expander = struct
       { env = _; paths; artifacts = _; context; deps; version = _ }
       ~source
       (pform : Pform.t)
-      : (Value.t list, [ `Undefined_pkg_var of string ]) result Memo.t
+      : (Value.t list, [ `Undefined_pkg_var of Package_variable.Name.t ]) result Memo.t
       =
       let loc = Dune_sexp.Template.Pform.loc source in
       match pform with
@@ -602,22 +611,22 @@ module Action_expander = struct
       | _ -> Expander0.isn't_allowed_in_this_position ~source
     ;;
 
-    let expand_pform_exn t ~source pform =
-      let+ result = expand_pform t ~source pform in
-      match result with
-      | Ok x -> x
-      | Error (`Undefined_pkg_var variable_name) ->
-        User_error.raise [ Pp.textf "Undefined package variable: %s" variable_name ]
-    ;;
-
     let expand_pform_gen t =
       String_expander.Memo.expand
-        ~f:(expand_pform_exn t)
         ~dir:(Path.build t.paths.source_dir)
+        ~f:(fun ~source pform ->
+          expand_pform t ~source pform
+          >>| function
+          | Ok x -> x
+          | Error (`Undefined_pkg_var variable_name) ->
+            User_error.raise
+              [ Pp.textf
+                  "Undefined package variable: %s"
+                  (Package_variable.Name.to_string variable_name)
+              ])
     ;;
 
     let expand_exe_value t value ~loc =
-      let dir = Path.build t.paths.source_dir in
       let+ prog =
         match value with
         | Value.Dir p ->
@@ -630,16 +639,15 @@ module Action_expander = struct
         | String program ->
           (match Filename.analyze_program_name program with
            | Relative_to_current_dir | Absolute ->
+             let dir = Path.build t.paths.source_dir in
              Memo.return @@ Ok (Path.relative dir program)
            | In_path ->
              (match Filename.Map.find t.artifacts program with
               | Some s -> Memo.return @@ Ok s
               | None ->
-                let+ path =
-                  let path = Global.env () |> Env_path.path in
-                  Which.which ~path program
-                in
-                (match path with
+                (let path = Global.env () |> Env_path.path in
+                 Which.which ~path program)
+                >>| (function
                  | Some p -> Ok p
                  | None ->
                    Error
@@ -670,33 +678,33 @@ module Action_expander = struct
   end
 
   let substitute_env (expander : Expander.t) =
-    let setenv package variable value env =
-      let var = { Substs.Var.package = Some package; variable } in
-      Substs.Var.Map.add_exn env var value
+    let setenv package name value env =
+      let var = { Package_variable.scope = Package package; name } in
+      Package_variable.Map.add_exn env var value
     in
     let env =
       (* values set with withenv *)
       Env.Map.map expander.env ~f:Env_update.string_of_env_values
       |> Env.Map.to_list_map ~f:(fun variable value ->
-        (* TODO why is [package = None]? *)
-        ( { Substs.Var.package = None; variable = Substs.Variable.of_string variable }
+        ( { Package_variable.scope = Self
+          ; name = Package_variable.Name.of_string variable
+          }
         , OpamVariable.S value ))
-      |> Substs.Var.Map.of_list_exn
+      |> Package_variable.Map.of_list_exn
     in
     Dune_lang.Package_name.Map.foldi
       expander.deps
       ~init:env
       ~f:(fun name (var_conts, paths) env ->
         let env =
-          String.Map.foldi var_conts ~init:env ~f:(fun key value env ->
-            let key = Substs.Variable.of_string key in
+          Package_variable.Name.Map.foldi var_conts ~init:env ~f:(fun key value env ->
             setenv name key value env)
         in
         let install_paths = Paths.install_paths paths in
         List.fold_left
           ~init:env
           ~f:(fun env (var_name, section) ->
-            let key = Substs.Variable.of_string var_name in
+            let key = Package_variable.Name.of_string var_name in
             let section =
               OpamVariable.S (Path.to_string (Install.Paths.get install_paths section))
             in
@@ -721,8 +729,8 @@ module Action_expander = struct
     let dir = Path.build expander.paths.source_dir in
     match action with
     | Run args ->
-      let* args = Expander.eval_slangs_located expander args in
-      (match args with
+      Expander.eval_slangs_located expander args
+      >>= (function
        | [] ->
          User_error.raise [ Pp.text "\"run\" action must have at least one argument" ]
        | (prog_loc, prog) :: args ->
@@ -742,48 +750,17 @@ module Action_expander = struct
         Expander.expand_pform_gen ~mode:Single expander p >>| Value.to_path ~dir
       in
       Dune_patch.action ~patch
-    | Substitute (input, output) ->
-      let+ input =
-        Expander.expand_pform_gen ~mode:Single expander input >>| Value.to_path ~dir
-      and+ output =
-        Expander.expand_pform_gen ~mode:Single expander output
+    | Substitute (src, dst) ->
+      let+ src =
+        Expander.expand_pform_gen ~mode:Single expander src >>| Value.to_path ~dir
+      and+ dst =
+        Expander.expand_pform_gen ~mode:Single expander dst
         >>| Value.to_path ~dir
-        >>| Expander0.as_in_build_dir ~what:"subsitute" ~loc:(String_with_vars.loc output)
+        >>| Expander0.as_in_build_dir ~what:"subsitute" ~loc:(String_with_vars.loc dst)
       in
-      let env = substitute_env expander in
-      Substitute.action ~env ~name:expander.paths.name ~input ~output
-    | Withenv (updates, action) ->
-      let* env, updates =
-        Memo.List.fold_left
-          ~init:(expander.env, [])
-          updates
-          ~f:(fun (env, updates) ({ Env_update.op = _; var; value } as update) ->
-            let+ value =
-              let+ value =
-                let expander = { expander with env } in
-                Expander.expand_pform_gen expander value ~mode:Single
-              in
-              Value.to_string ~dir value
-            in
-            let env = Env_update.set env { update with value } in
-            let update =
-              let value =
-                match Env.Map.find env var with
-                | Some v -> Env_update.string_of_env_values v
-                | None ->
-                  (* TODO *)
-                  ""
-              in
-              var, value
-            in
-            env, update :: updates)
-      in
-      let+ action =
-        let expander = { expander with env } in
-        expand action ~expander
-      in
-      List.fold_left updates ~init:action ~f:(fun action (k, v) ->
-        Action.Setenv (k, v, action))
+      let vars = substitute_env expander in
+      Substitute.action ~vars expander.paths.name ~src ~dst
+    | Withenv (updates, action) -> expand_withenv expander updates action
     | When (condition, action) ->
       Expander.eval_blang expander condition
       >>= (function
@@ -792,42 +769,92 @@ module Action_expander = struct
     | _ ->
       (* TODO *)
       assert false
+
+  and expand_withenv (expander : Expander.t) updates action =
+    let* env, updates =
+      let dir = Path.build expander.paths.source_dir in
+      Memo.List.fold_left
+        ~init:(expander.env, [])
+        updates
+        ~f:(fun (env, updates) ({ Env_update.op = _; var; value } as update) ->
+          let+ value =
+            let+ value =
+              let expander = { expander with env } in
+              Expander.expand_pform_gen expander value ~mode:Single
+            in
+            Value.to_string ~dir value
+          in
+          let env = Env_update.set env { update with value } in
+          let update =
+            let value =
+              match Env.Map.find env var with
+              | Some v -> Env_update.string_of_env_values v
+              | None ->
+                (* TODO *)
+                ""
+            in
+            var, value
+          in
+          env, update :: updates)
+    in
+    let+ action =
+      let expander = { expander with env } in
+      expand action ~expander
+    in
+    List.fold_left updates ~init:action ~f:(fun action (k, v) ->
+      Action.Setenv (k, v, action))
   ;;
 
-  let artifacts_and_deps closure =
-    Memo.parallel_map closure ~f:(fun (pkg : Pkg.t) ->
-      let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-      Action_builder.run cookie Eager
-      |> Memo.map ~f:(fun ((cookie : Install_cookie.t), _) -> pkg, cookie))
-    |> Memo.map ~f:(fun cookies ->
-      List.fold_left
-        cookies
-        ~init:(Filename.Map.empty, Package.Name.Map.empty)
-        ~f:(fun (bins, dep_info) ((pkg : Pkg.t), (cookie : Install_cookie.t)) ->
-          let bins =
-            Section.Map.Multi.find cookie.files Bin
-            |> List.fold_left ~init:bins ~f:(fun acc bin ->
-              Filename.Map.set acc (Path.basename bin) bin)
-          in
-          let dep_info =
-            let variables =
-              String.Map.superpose
-                (String.Map.of_list_exn cookie.variables)
-                (Pkg_info.variables pkg.info)
+  module Artifacts_and_deps = struct
+    type artifacts_and_deps =
+      { binaries : Path.t Filename.Map.t
+      ; dep_info :
+          (OpamVariable.variable_contents Package_variable.Name.Map.t * Paths.t)
+            Package.Name.Map.t
+      }
+
+    let empty = { binaries = Filename.Map.empty; dep_info = Package.Name.Map.empty }
+
+    let of_closure closure =
+      Memo.parallel_map closure ~f:(fun (pkg : Pkg.t) ->
+        let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+        Action_builder.run cookie Eager
+        |> Memo.map ~f:(fun ((cookie : Install_cookie.t), _) -> pkg, cookie))
+      |> Memo.map ~f:(fun cookies ->
+        List.fold_left
+          cookies
+          ~init:empty
+          ~f:(fun { binaries; dep_info } ((pkg : Pkg.t), (cookie : Install_cookie.t)) ->
+            let binaries =
+              Section.Map.Multi.find cookie.files Bin
+              |> List.fold_left ~init:binaries ~f:(fun acc bin ->
+                Filename.Map.set acc (Path.basename bin) bin)
             in
-            Package.Name.Map.add_exn dep_info pkg.info.name (variables, pkg.paths)
-          in
-          bins, dep_info))
-  ;;
+            let dep_info =
+              let variables =
+                Package_variable.Name.Map.superpose
+                  (Package_variable.Name.Map.of_list_exn cookie.variables)
+                  (Pkg_info.variables pkg.info)
+              in
+              Package.Name.Map.add_exn dep_info pkg.info.name (variables, pkg.paths)
+            in
+            { binaries; dep_info }))
+    ;;
+  end
 
   let expander context (pkg : Pkg.t) =
-    let+ artifacts, deps = Pkg.deps_closure pkg |> artifacts_and_deps in
+    let+ { Artifacts_and_deps.binaries; dep_info } =
+      Pkg.deps_closure pkg |> Artifacts_and_deps.of_closure
+    in
     let env = Pkg.build_env pkg in
     let deps =
-      Package.Name.Map.add_exn deps pkg.info.name (Pkg_info.variables pkg.info, pkg.paths)
+      Package.Name.Map.add_exn
+        dep_info
+        pkg.info.name
+        (Pkg_info.variables pkg.info, pkg.paths)
     in
     { Expander.paths = pkg.paths
-    ; artifacts
+    ; artifacts = binaries
     ; context
     ; deps
     ; version = pkg.info.version
@@ -921,6 +948,7 @@ end = struct
           (Context_name.build_dir ctx)
           (Path.Source.relative
              lock_dir
+             (* TODO this should come from [Dune_pkg] *)
              (sprintf "%s.files" (Package.Name.to_string info.name)))
       in
       let id = Pkg.Id.gen () in
@@ -1170,7 +1198,7 @@ module Install_action = struct
               [ message_with_loc; Pp.seq (Pp.text "Reason: ") (Pp.text message) ]
         in
         OpamFile.Dot_config.bindings config
-        |> List.map ~f:(fun (name, value) -> OpamVariable.to_string name, value)
+        |> List.map ~f:(fun (name, value) -> Package_variable.Name.of_opam name, value)
     ;;
 
     let install_entry ~src ~install_file ~target_dir (entry : Path.t Install.Entry.t) =
@@ -1205,8 +1233,8 @@ module Install_action = struct
       ~eenv:_
       =
       let open Fiber.O in
-      let+ () = Fiber.return () in
-      let files =
+      let* () = Fiber.return () in
+      let* files =
         let from_install_action =
           match install_action with
           | `No_install_action -> Section.Map.empty
@@ -1217,11 +1245,12 @@ module Install_action = struct
             in
             section_map_of_dir install_paths
         in
-        let from_install_file =
-          match Path.Untracked.exists install_file with
-          | false -> Section.Map.empty
+        let+ from_install_file =
+          Async.async (fun () -> Path.Untracked.exists install_file)
+          >>= function
+          | false -> Fiber.return Section.Map.empty
           | true ->
-            let map =
+            let* map =
               let install_entries =
                 let dir = Path.parent_exn install_file in
                 Install.Entry.load_install_file install_file (fun local ->
@@ -1232,32 +1261,35 @@ module Install_action = struct
                   entry.src, entry)
                 |> Path.Map.of_list_multi
               in
-              let install_entries =
+              let+ install_entries =
                 Path.Map.to_list_map by_src ~f:(fun src entries ->
-                  List.filter_map
-                    entries
-                    ~f:(install_entry ~src ~install_file ~target_dir))
+                  List.map entries ~f:(fun entry -> src, entry))
+                |> List.concat
+                |> Fiber.parallel_map ~f:(fun (src, entry) ->
+                  Async.async (fun () ->
+                    install_entry ~src ~install_file ~target_dir entry))
+                >>| List.filter_opt
               in
-              List.concat install_entries
-              |> List.rev_map ~f:(fun (section, file) ->
+              List.rev_map install_entries ~f:(fun (section, file) ->
                 let file = maybe_drop_sandbox_dir file in
                 section, file)
               |> Section.Map.of_list_multi
             in
-            Path.unlink install_file;
+            let+ () = Async.async (fun () -> Path.unlink install_file) in
             map
         in
         (* TODO we should make sure that overwrites aren't allowed *)
         Section.Map.union from_install_action from_install_file ~f:(fun _ x y ->
           Some (x @ y))
       in
-      let cookies =
-        let variables = read_variables config_file in
+      let* cookies =
+        let+ variables = Async.async (fun () -> read_variables config_file) in
         { Install_cookie.files; variables }
       in
       let cookie_file = Path.build @@ Paths.install_cookie' target_dir in
-      cookie_file |> Path.parent_exn |> Path.mkdir_p;
-      Install_cookie.dump cookie_file cookies
+      Async.async (fun () ->
+        cookie_file |> Path.parent_exn |> Path.mkdir_p;
+        Install_cookie.dump cookie_file cookies)
     ;;
   end
 
@@ -1605,8 +1637,10 @@ let all_packages context =
 let which context =
   let artifacts_and_deps =
     Memo.lazy_ (fun () ->
-      let+ artifacts, _ = all_packages context >>= Action_expander.artifacts_and_deps in
-      artifacts)
+      let+ { binaries; dep_info = _ } =
+        all_packages context >>= Action_expander.Artifacts_and_deps.of_closure
+      in
+      binaries)
   in
   Staged.stage (fun program ->
     let+ artifacts = Memo.Lazy.force artifacts_and_deps in

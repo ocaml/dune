@@ -4,7 +4,10 @@
    from Jenga's trimmer. *)
 
 module Trimming_result : sig
-  type t = { trimmed_bytes : int64 }
+  type t =
+    { trimmed_bytes : int64
+    ; number_of_files_removed : int
+    }
 end
 
 (** Trim the cache by removing a set of unused files so that the total freed

@@ -29,6 +29,7 @@ module Unsatisfied_formula_hint : sig
         }
 
   val to_dyn : t -> Dyn.t
+  val pp : t -> 'a Pp.t
 end
 
 (** An unsatisfied formula is accompanied by a list of hints rather than a

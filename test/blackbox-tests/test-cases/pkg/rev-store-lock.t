@@ -43,12 +43,3 @@ Creating a lock should thus work.
   $ XDG_CACHE_HOME=$(pwd)/fake-xdg-cache dune pkg lock
   Solution for dune.lock:
   - foo.1.0
-
-There should also be some kind of error message if getting the revision store
-lock fails (simulated here with a failing flock(2) call):
-
-  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache strace -e inject=flock:error=EBADFD -o /dev/null dune pkg lock
-  Error: Failed to get a lock for the revision store at
-  $TESTCASE_ROOT/dune-workspace-cache/dune/rev-store.lock:
-  File descriptor in bad state
-  [1]

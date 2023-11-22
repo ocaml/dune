@@ -67,6 +67,10 @@ module Version_constraint = struct
   let to_dyn (op, package_version) =
     Dyn.Tuple [ Op.to_dyn op; Package_version.to_dyn package_version ]
   ;;
+
+  let to_string (op, package_version) =
+    sprintf "%s %s" (Op.to_string op) (Package_version.to_string package_version)
+  ;;
 end
 
 module Unsatisfied_formula_hint = struct
@@ -91,6 +95,19 @@ module Unsatisfied_formula_hint = struct
             ; "version_constraint", Version_constraint.to_dyn version_constraint
             ]
         ]
+  ;;
+
+  let pp = function
+    | Missing_package missing_package ->
+      Pp.textf "Package %S is missing" (Package_name.to_string missing_package)
+    | Unsatisfied_version_constraint { package_name; found_version; version_constraint }
+      ->
+      Pp.textf
+        "Found version %S of package %S which doesn't satisfy the required version \
+         constraint %S"
+        (Package_version.to_string found_version)
+        (Package_name.to_string package_name)
+        (Version_constraint.to_string version_constraint)
   ;;
 end
 

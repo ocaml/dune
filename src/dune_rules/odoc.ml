@@ -384,34 +384,34 @@ let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
   let pkg_or_lnu = pkg_or_lnu (Lib.Local.to_lib local_lib) in
   let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
-  let* requires = Compilation_context.requires_compile cctx in
   let info = Lib.Local.info local_lib in
-  let package = Lib_info.package info in
-  let odoc_include_flags = Command.Args.memo (odoc_include_flags ctx package requires) in
   let obj_dir = Compilation_context.obj_dir cctx in
   let modules = Compilation_context.modules cctx in
-  let includes = Dep.deps ctx package requires, odoc_include_flags in
-  let modules_and_odoc_files =
-    Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
-      let compiled =
-        let modes = Lib_info.modes info in
-        let mode = Lib_mode.Map.Set.for_merlin modes in
-        compile_module
-          sctx
-          ~includes
-          ~dep_graphs:(Compilation_context.dep_graphs cctx)
-          ~obj_dir
-          ~pkg_or_lnu
-          ~mode
-          m
-      in
-      compiled :: acc)
+  let* includes =
+    let+ requires = Compilation_context.requires_compile cctx in
+    let package = Lib_info.package info in
+    let odoc_include_flags =
+      Command.Args.memo (odoc_include_flags ctx package requires)
+    in
+    Dep.deps ctx package requires, odoc_include_flags
   in
-  let* modules_and_odoc_files = Memo.all_concurrently modules_and_odoc_files in
-  Dep.setup_deps
-    ctx
-    (Lib local_lib)
-    (Path.Set.of_list_map modules_and_odoc_files ~f:(fun (_, p) -> Path.build p))
+  Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
+    let compiled =
+      let modes = Lib_info.modes info in
+      let mode = Lib_mode.Map.Set.for_merlin modes in
+      compile_module
+        sctx
+        ~includes
+        ~dep_graphs:(Compilation_context.dep_graphs cctx)
+        ~obj_dir
+        ~pkg_or_lnu
+        ~mode
+        m
+    in
+    compiled :: acc)
+  |> Memo.all_concurrently
+  >>| Path.Set.of_list_map ~f:(fun (_, p) -> Path.build p)
+  >>= Dep.setup_deps ctx (Lib local_lib)
 ;;
 
 let setup_generate sctx (odoc_file : odoc_artefact) out =

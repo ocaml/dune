@@ -110,9 +110,9 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
     in
     let src_dir = Obj_dir.dir obj_dir in
     let version =
-      match Findlib.Package.version t with
-      | Some "" | None -> None
-      | Some s -> Some (Package_version.of_string s)
+      (* Errors are silently ignored: versions in META files are less strict
+         than what we allow in `Package_version` *)
+      Option.bind (Findlib.Package.version t) ~f:Package_version.of_string_opt
     in
     let dune_version = None in
     let virtual_deps = [] in
@@ -305,9 +305,7 @@ module Loader = struct
         loop ~loc:external_location ~full_name meta acc)
     in
     let name = Option.value_exn meta.name in
-    let+ entries =
-      loop ~loc ~full_name:(Option.value_exn meta.name) meta Lib_name.Map.empty
-    in
+    let+ entries = loop ~loc ~full_name:name meta Lib_name.Map.empty in
     let dir = dir_of_loc loc in
     { Dune_package.name = Lib_name.package_name name
     ; version =

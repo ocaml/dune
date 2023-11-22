@@ -8,8 +8,8 @@ Generating Documentation
 
    Split between:
 
-   - a "generating API documentation" how-to guide
-   - some reference documentation
+   - A "generating API documentation" how-to guide
+   - Some reference documentation
 
 Prerequisites
 =============
@@ -123,3 +123,15 @@ See :ref:`dune-env` for more details on the ``(env ...)`` stanza.
   field is available since Dune 2.4.0 and requires odoc_ 1.5.0.
 
 .. _odoc: https://github.com/ocaml-doc/odoc
+
+Local Documentation Search Using Sherlodoc
+==========================================
+
+If Sherlodoc is installed, generated HTML documentation will include a
+search bar. It supports search by name, documentation and fuzzy type search.
+
+In can be installed with:
+
+.. code:: console
+
+  $ opam install sherlodoc

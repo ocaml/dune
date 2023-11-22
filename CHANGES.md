@@ -1,3 +1,11 @@
+3.12.0~alpha3 (2023-11-22)
+--------------------------
+
+- Cherry-pick #9215 (@emillon)
+
+- dune-build-info: when `version=""` is found in a `META` file, we now return
+  `None` as a version string (#9177, @emillon)
+
 3.12.0~alpha2 (2023-11-16)
 --------------------------
 

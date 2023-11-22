@@ -33,7 +33,12 @@ let with_flock lock_path ~f =
   let open Fiber.O in
   let parent = Path.parent_exn lock_path in
   Path.mkdir_p parent;
-  let fd = Unix.openfile (Path.to_string lock_path) [ Unix.O_CREAT; O_RDONLY ] 0o644 in
+  let fd =
+    Unix.openfile
+      (Path.to_string lock_path)
+      [ Unix.O_CREAT; O_WRONLY; O_SHARE_DELETE; Unix.O_CLOEXEC ]
+      0o600
+  in
   let flock = Flock.create fd in
   let max_retries = 49 in
   Fiber.finalize

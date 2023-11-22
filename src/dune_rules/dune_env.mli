@@ -33,7 +33,7 @@ module Stanza : sig
     ; menhir_flags : Ordered_set_lang.Unexpanded.t option
     ; odoc : Odoc.t
     ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
-    ; coq : Ordered_set_lang.Unexpanded.t
+    ; coq : Coq_env.t
     ; format_config : Format_config.t option
     ; error_on_use : User_message.t option
     ; warn_on_load : User_message.t option

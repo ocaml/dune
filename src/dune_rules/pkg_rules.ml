@@ -195,8 +195,8 @@ module Install_cookie = struct
 
   let load_exn f =
     match load f with
-    | None -> User_error.raise [ Pp.text "unable to load" ]
     | Some f -> f
+    | None -> User_error.raise ~loc:(Loc.in_file f) [ Pp.text "unable to load" ]
   ;;
 end
 
@@ -620,6 +620,7 @@ module Action_expander = struct
           | Ok x -> x
           | Error (`Undefined_pkg_var variable_name) ->
             User_error.raise
+              ~loc:(Dune_sexp.Template.Pform.loc source)
               [ Pp.textf
                   "Undefined package variable: %s"
                   (Package_variable.Name.to_string variable_name)
@@ -631,6 +632,7 @@ module Action_expander = struct
         match value with
         | Value.Dir p ->
           User_error.raise
+            ~loc
             [ Pp.textf
                 "%s is a directory and cannot be used as an executable"
                 (Path.to_string_maybe_quoted p)
@@ -732,7 +734,25 @@ module Action_expander = struct
       Expander.eval_slangs_located expander args
       >>= (function
        | [] ->
-         User_error.raise [ Pp.text "\"run\" action must have at least one argument" ]
+         let loc =
+           let loc = function
+             | Slang.Nil -> None
+             | Literal sw -> Some (String_with_vars.loc sw)
+             | Form (loc, _) -> Some loc
+           in
+           let start = List.find_map args ~f:loc in
+           let stop =
+             List.fold_left args ~init:None ~f:(fun last a ->
+               match loc a with
+               | None -> last
+               | Some _ as s -> s)
+           in
+           Option.both start stop
+           |> Option.map ~f:(fun (start, stop) -> Loc.span start stop)
+         in
+         User_error.raise
+           ?loc
+           [ Pp.text "\"run\" action must have at least one argument" ]
        | (prog_loc, prog) :: args ->
          let+ exe = Expander.expand_exe_value expander prog ~loc:prog_loc in
          let args = Value.L.to_strings (List.map ~f:snd args) ~dir in
@@ -1206,6 +1226,7 @@ module Install_action = struct
       | false, true -> None
       | false, false ->
         User_error.raise
+          (* TODO loc *)
           [ Pp.textf
               "entry %s in %s does not exist"
               (Path.to_string_maybe_quoted src)
@@ -1554,6 +1575,7 @@ let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
     | `Inside_lock_dir pkg -> pkg
     | `System_provided ->
       User_error.raise
+        (* TODO loc *)
         [ Pp.textf
             "There are no rules for %S because it's set as provided by the system"
             (Package.Name.to_string name)

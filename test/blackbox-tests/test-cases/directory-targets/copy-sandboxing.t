@@ -81,3 +81,54 @@ mode:
   permissions of output/subdir/z
   444
   
+
+Now we demonstrate that symlinks aren't supported:
+
+  $ mkdir sub
+
+  $ cat >dune <<EOF
+  > (rule
+  >  (alias foo)
+  >  (action (echo test))
+  >  (deps sub/targetdir))
+  > EOF
+
+  $ runtest() {
+  > cat >sub/dune <<EOF
+  > (rule
+  >  (target (dir targetdir))
+  >  (action (system "mkdir targetdir && cd targetdir && $1")))
+  > EOF
+  > dune build @foo --sandbox=copy
+  > }
+
+  $ runtest "touch foo && ln -s foo bar"
+  File "dune", line 1, characters 0-63:
+  1 | (rule
+  2 |  (alias foo)
+  3 |  (action (echo test))
+  4 |  (deps sub/targetdir))
+  Error: Failed to copy file _build/default/sub/targetdir/bar of kind "symbolic
+  link" while creating a copy sandbox
+  Hint: Re-run Dune to delete the stale artifact, or manually delete this file
+  [1]
+
+  $ runtest "mkdir bar && touch bar/somefileinbar && ln -s bar symlinktobar"
+  File "sub/dune", line 1, characters 0-151:
+  1 | (rule
+  2 |  (target (dir targetdir))
+  3 |  (action (system "mkdir targetdir && cd targetdir && mkdir bar && touch bar/somefileinbar && ln -s bar symlinktobar")))
+  Error: Error trying to read targets after a rule was run:
+  - sub/targetdir/symlinktobar: Unexpected file kind "S_DIR" (directory)
+  [1]
+
+Now we try a broken symlink:
+
+  $ runtest "ln -s foo bar"
+  File "sub/dune", line 1, characters 0-102:
+  1 | (rule
+  2 |  (target (dir targetdir))
+  3 |  (action (system "mkdir targetdir && cd targetdir && ln -s foo bar")))
+  Error: Error trying to read targets after a rule was run:
+  - sub/targetdir/bar: Broken symbolic link
+  [1]

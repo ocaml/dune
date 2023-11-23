@@ -80,20 +80,20 @@ CAMLprim value OPAMW_GetArchitecture(value unit)
 
 #else
 
-static void fail ()
-{
-  caml_failwith("Windows stubs are only allowed to be called on Windows.");
-}
+static char * unavailable_message =
+  "Windows stubs are only allowed to be called on Windows.";
 
 
 CAMLprim value OPAMW_GetWindowsVersion(value unit)
 {
-  fail ();
+  (void)unit;
+  caml_failwith(unavailable_message);
 }
 
 CAMLprim value OPAMW_GetArchitecture(value unit)
 {
-  fail ();
+  (void)unit;
+  caml_failwith(unavailable_message);
 }
 
 #endif

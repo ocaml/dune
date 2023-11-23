@@ -1,10 +1,9 @@
 open Import
 open Memo.O
 
-module Lib_to_preprocess = struct
+module Lib_or_exes_to_pp = struct
   type t =
-    { name : string
-    ; ppx_driver_and_flags : (Path.Build.t * string list) Action_builder.t
+    { ppx_driver_and_flags : (Path.Build.t * string list) Action_builder.t
     ; sources : Module.t list
     }
 
@@ -33,12 +32,15 @@ module Lib_to_preprocess = struct
       Memo.return (Some driver)
   ;;
 
+  let modules_to_pp ms =
+    Modules.fold_user_written ms ~init:[] ~f:(fun module_ acc -> module_ :: acc)
+  ;;
+
   let sources ~sctx lib =
     let+ modules = Dir_contents.modules_of_lib sctx lib in
     match modules with
     | None -> []
-    | Some ms ->
-      Modules.fold_user_written ms ~init:[] ~f:(fun module_ acc -> module_ :: acc)
+    | Some ms -> modules_to_pp ms
   ;;
 
   let from_lib ~sctx ~scope ~expander lib =
@@ -46,19 +48,59 @@ module Lib_to_preprocess = struct
     match ppx_driver_and_flags with
     | Some ppx_driver_and_flags ->
       let+ sources = sources ~sctx lib in
-      let name = Lib_name.to_string (Lib.name lib) in
-      Some { name; ppx_driver_and_flags; sources }
+      Some { ppx_driver_and_flags; sources }
     | None -> Memo.return None
+  ;;
+
+  let from_exes ~sctx ~scope ~expander ~dir (exes : Executables.t) =
+    let libs = Scope.libs scope in
+    let* triage = Dir_contents.triage sctx ~dir in
+    let* dir_contents =
+      match triage with
+      | Standalone_or_root sor -> Dir_contents.Standalone_or_root.root sor
+      | Group_part _ -> assert false
+    in
+    let names = Nonempty_list.to_list exes.names in
+    let first_exe = snd (List.hd names) in
+    let* sources =
+      let* ml_sources = Dir_contents.ocaml dir_contents in
+      let+ modules = Ml_sources.modules ~libs ~for_:(Exe { first_exe }) ml_sources in
+      modules_to_pp modules
+    in
+    let pp = exes.buildable.preprocess in
+    let pps =
+      Preprocess.Per_module.pps (Preprocess.Per_module.without_instrumentation pp)
+    in
+    match pps with
+    | [] -> Memo.return None
+    | _ ->
+      let ctx = Super_context.context sctx in
+      let ppx_driver_and_flags =
+        Ppx_driver.get_ppx_driver
+          ~loc:Loc.none
+          ~expander
+          ~scope
+          ~lib_name:None
+          ~flags:[]
+          ctx
+          pps
+      in
+      Memo.return (Some { sources; ppx_driver_and_flags })
   ;;
 end
 
-module Libs_and_exes = Monoid.Appendable_list (struct
-    type t = Lib.t
+module To_pp_list = Monoid.Appendable_list (struct
+    type t = Lib_or_exes_to_pp.t
   end)
 
-module Source_tree_map_reduce = Source_tree.Dir.Make_map_reduce (Memo) (Libs_and_exes)
+module Source_tree_map_reduce = Source_tree.Dir.Make_map_reduce (Memo) (To_pp_list)
 
-let libs_or_exes_under_dir ~sctx ~scope dir =
+let libs_or_exes_to_pp_under_dir ~sctx ~scope ~expander dir =
+  let append_opt opt acc =
+    match opt with
+    | None -> acc
+    | Some v -> Appendable_list.cons v acc
+  in
   let db = Scope.libs scope in
   (match Path.drop_build_context dir with
    | None -> Memo.return None
@@ -66,7 +108,7 @@ let libs_or_exes_under_dir ~sctx ~scope dir =
   >>= function
   | None -> Memo.return []
   | Some dir ->
-    let+ libs =
+    let+ srcs_to_pp =
       Source_tree_map_reduce.map_reduce
         dir
         ~traverse:Source_dir_status.Set.all
@@ -75,13 +117,13 @@ let libs_or_exes_under_dir ~sctx ~scope dir =
           let dir = Path.Build.append_source build_dir (Source_tree.Dir.path dir) in
           Dune_load.stanzas_in_dir dir
           >>= function
-          | None -> Memo.return Libs_and_exes.empty
+          | None -> Memo.return To_pp_list.empty
           | Some (d : Dune_file.t) ->
             let* stanzas = Dune_file.stanzas d in
-            Memo.List.fold_left stanzas ~init:Libs_and_exes.empty ~f:(fun acc stanza ->
+            Memo.List.fold_left stanzas ~init:To_pp_list.empty ~f:(fun acc stanza ->
               match Stanza.repr stanza with
               | Library.T l ->
-                let+ lib =
+                let* lib =
                   let open Memo.O in
                   let+ resolve =
                     Lib.DB.resolve_when_exists db (l.buildable.loc, Library.best_name l)
@@ -92,61 +134,27 @@ let libs_or_exes_under_dir ~sctx ~scope dir =
                 (match lib with
                  | None | Some (Error ()) ->
                    (* library is defined but outside our scope or is disabled *)
-                   acc
+                   Memo.return acc
                  | Some (Ok lib) ->
-                   (* still need to make sure that it's not coming from an external
-                      source *)
+                   (* still need to make sure that it's not coming from an
+                      external source *)
                    let info = Lib.info lib in
                    let src_dir = Lib_info.src_dir info in
-                   (* Only select libraries that are not implementations.
-                      Implementations are selected using the default implementation
-                      feature. *)
-                   let not_impl = Option.is_none (Lib_info.implements info) in
-                   if not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir
-                   then Appendable_list.cons lib acc
-                   else acc)
+                   if Path.is_descendant ~of_:(Path.build dir) src_dir
+                   then
+                     let+ src_to_pp =
+                       Lib_or_exes_to_pp.from_lib ~sctx ~scope ~expander lib
+                     in
+                     append_opt src_to_pp acc
+                   else Memo.return acc)
               | Executables.T exes ->
-                let+ libs =
-                  let open Memo.O in
-                  let* compile_info =
-                    let* scope = Scope.DB.find_by_dir dir in
-                    let dune_version =
-                      let project = Scope.project scope in
-                      Dune_project.dune_version project
-                    in
-                    let+ pps =
-                      Resolve.Memo.read_memo
-                        (Preprocess.Per_module.with_instrumentation
-                           exes.buildable.preprocess
-                           ~instrumentation_backend:
-                             (Lib.DB.instrumentation_backend (Scope.libs scope)))
-                      >>| Preprocess.Per_module.pps
-                    in
-                    let names = Nonempty_list.to_list exes.names in
-                    let merlin_ident =
-                      Merlin_ident.for_exes ~names:(List.map ~f:snd names)
-                    in
-                    Lib.DB.resolve_user_written_deps
-                      db
-                      (`Exe names)
-                      exes.buildable.libraries
-                      ~pps
-                      ~dune_version
-                      ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-                      ~forbidden_libraries:exes.forbidden_libraries
-                      ~merlin_ident
-                  in
-                  let+ available = Lib.Compile.direct_requires compile_info in
-                  Resolve.peek available
+                let+ src_to_pp =
+                  Lib_or_exes_to_pp.from_exes ~sctx ~scope ~expander ~dir exes
                 in
-                (match libs with
-                 | Error () -> acc
-                 | Ok libs ->
-                   List.fold_left libs ~init:acc ~f:(fun acc lib ->
-                     Appendable_list.cons lib acc))
+                append_opt src_to_pp acc
               | _ -> Memo.return acc))
     in
-    Appendable_list.to_list libs
+    Appendable_list.to_list srcs_to_pp
 ;;
 
 type t = { dirs_to_include : String_with_vars.t list }
@@ -188,22 +196,20 @@ let gen_rules_for_module ~sctx ~dir ~ppx_driver_and_flags module_ =
     gen_rule_for_source_file ~sctx ~dir ~ppx_driver_and_flags ~ml_kind:Intf path
 ;;
 
-let gen_rules_for_lib ~sctx ~dir ~scope ~expander lib =
-  let* lib_to_preprocess = Lib_to_preprocess.from_lib ~sctx ~scope ~expander lib in
-  match lib_to_preprocess with
-  | None -> Memo.return ()
-  | Some { name = _; sources; ppx_driver_and_flags } ->
-    Memo.List.iter sources ~f:(gen_rules_for_module ~sctx ~dir ~ppx_driver_and_flags)
+let gen_rules_for_lib_or_exes ~sctx ~dir lib_or_exes_to_pp =
+  let { Lib_or_exes_to_pp.sources; ppx_driver_and_flags } = lib_or_exes_to_pp in
+  Memo.List.iter sources ~f:(gen_rules_for_module ~sctx ~dir ~ppx_driver_and_flags)
 ;;
 
 let gen_stanza_rules ~dir ~dirs_to_include sctx =
   let* scope = Scope.DB.find_by_dir dir in
   let* expander = Super_context.expander sctx ~dir in
-  let* libs =
-    Memo.all (List.map dirs_to_include ~f:(libs_or_exes_under_dir ~sctx ~scope))
+  let* libs_or_exes_to_pp =
+    Memo.all
+      (List.map dirs_to_include ~f:(libs_or_exes_to_pp_under_dir ~sctx ~scope ~expander))
     >>| List.concat
   in
-  Memo.List.iter libs ~f:(gen_rules_for_lib ~sctx ~dir ~scope ~expander)
+  Memo.List.iter libs_or_exes_to_pp ~f:(gen_rules_for_lib_or_exes ~sctx ~dir)
 ;;
 
 include Stanza.Make (struct

@@ -926,18 +926,23 @@ module DB = struct
     && Package.Name.Set.equal t.system_provided system_provided
   ;;
 
-  let get context =
-    let+ all = Lock_dir.get context in
-    let system_provided =
-      let base = Package.Name.Set.singleton (Package.Name.of_string "dune") in
-      match Env.mem Env.initial ~var:"DUNE_PKG_OVERRIDE_OCAML" with
-      | false -> base
-      | true ->
-        (match all.ocaml with
-         | None -> Package.Name.Set.add base ocaml_package_name
-         | Some (_, name) -> Package.Name.Set.singleton name)
-    in
-    { all = all.packages; system_provided }
+  let get =
+    let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
+    fun context ->
+      let+ all = Lock_dir.get context in
+      let system_provided =
+        let ocaml =
+          match Env.mem Env.initial ~var:"DUNE_PKG_OVERRIDE_OCAML" with
+          | false -> Package.Name.Set.empty
+          | true ->
+            Package.Name.Set.singleton
+              (match all.ocaml with
+               | None -> ocaml_package_name
+               | Some (_, name) -> name)
+        in
+        Package.Name.Set.union dune ocaml
+      in
+      { all = all.packages; system_provided }
   ;;
 end
 

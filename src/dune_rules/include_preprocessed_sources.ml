@@ -94,70 +94,70 @@ module To_pp_list = Monoid.Appendable_list (struct
 
 module Source_tree_map_reduce = Source_tree.Dir.Make_map_reduce (Memo) (To_pp_list)
 
-let libs_or_exes_to_pp_under_dir ~sctx ~scope ~expander dir =
+let is_descendant_of ~dirs_to_exclude dir =
+  let dir = Source_tree.Dir.path dir in
+  List.exists dirs_to_exclude ~f:(fun to_exclude ->
+    Path.Source.is_descendant dir ~of_:to_exclude)
+;;
+
+let libs_or_exes_to_pp_in_source_tree ~sctx ~scope ~expander ~dirs_to_exclude =
   let append_opt opt acc =
     match opt with
     | None -> acc
     | Some v -> Appendable_list.cons v acc
   in
   let db = Scope.libs scope in
-  (match Path.drop_build_context dir with
-   | None -> Memo.return None
-   | Some dir -> Source_tree.find_dir dir)
-  >>= function
-  | None -> Memo.return []
-  | Some dir ->
-    let+ srcs_to_pp =
-      Source_tree_map_reduce.map_reduce
-        dir
-        ~traverse:Sub_dirs.Status.Set.all
-        ~f:(fun dir ->
-          let build_dir = Context.build_dir (Super_context.context sctx) in
-          let dir = Path.Build.append_source build_dir (Source_tree.Dir.path dir) in
-          Only_packages.stanzas_in_dir dir
-          >>= function
-          | None -> Memo.return To_pp_list.empty
-          | Some (d : Dune_file.t) ->
-            Memo.List.fold_left d.stanzas ~init:To_pp_list.empty ~f:(fun acc stanza ->
-              match Stanza.repr stanza with
-              | Dune_file.Library.T l ->
-                let* lib =
-                  let open Memo.O in
-                  let+ resolve =
-                    Lib.DB.resolve_when_exists
-                      db
-                      (l.buildable.loc, Dune_file.Library.best_name l)
-                  in
-                  Option.map resolve ~f:Resolve.peek
-                  (* external lib with a name matching our private name *)
+  Source_tree.root ()
+  >>= fun dir ->
+  let+ srcs_to_pp =
+    Source_tree_map_reduce.map_reduce dir ~traverse:Sub_dirs.Status.Set.all ~f:(fun dir ->
+      if is_descendant_of ~dirs_to_exclude dir
+      then Memo.return To_pp_list.empty
+      else (
+        let build_dir = Context.build_dir (Super_context.context sctx) in
+        let dir = Path.Build.append_source build_dir (Source_tree.Dir.path dir) in
+        Only_packages.stanzas_in_dir dir
+        >>= function
+        | None -> Memo.return To_pp_list.empty
+        | Some (d : Dune_file.t) ->
+          Memo.List.fold_left d.stanzas ~init:To_pp_list.empty ~f:(fun acc stanza ->
+            match Stanza.repr stanza with
+            | Dune_file.Library.T l ->
+              let* lib =
+                let open Memo.O in
+                let+ resolve =
+                  Lib.DB.resolve_when_exists
+                    db
+                    (l.buildable.loc, Dune_file.Library.best_name l)
                 in
-                (match lib with
-                 | None | Some (Error ()) ->
-                   (* library is defined but outside our scope or is disabled *)
-                   Memo.return acc
-                 | Some (Ok lib) ->
-                   (* still need to make sure that it's not coming from an
-                      external source *)
-                   let info = Lib.info lib in
-                   let src_dir = Lib_info.src_dir info in
-                   if Path.is_descendant ~of_:(Path.build dir) src_dir
-                   then
-                     let+ src_to_pp =
-                       Lib_or_exes_to_pp.from_lib ~sctx ~scope ~expander lib
-                     in
-                     append_opt src_to_pp acc
-                   else Memo.return acc)
-              | Dune_file.Executables.T exes ->
-                let+ src_to_pp =
-                  Lib_or_exes_to_pp.from_exes ~sctx ~scope ~expander ~dir exes
-                in
-                append_opt src_to_pp acc
-              | _ -> Memo.return acc))
-    in
-    Appendable_list.to_list srcs_to_pp
+                Option.map resolve ~f:Resolve.peek
+                (* external lib with a name matching our private name *)
+              in
+              (match lib with
+               | None | Some (Error ()) ->
+                 (* library is defined but outside our scope or is disabled *)
+                 Memo.return acc
+               | Some (Ok lib) ->
+                 (* still need to make sure that it's not coming from an
+                    external source *)
+                 let info = Lib.info lib in
+                 let src_dir = Lib_info.src_dir info in
+                 if Path.is_descendant ~of_:(Path.build dir) src_dir
+                 then
+                   let+ src_to_pp =
+                     Lib_or_exes_to_pp.from_lib ~sctx ~scope ~expander lib
+                   in
+                   append_opt src_to_pp acc
+                 else Memo.return acc)
+            | Dune_file.Executables.T exes ->
+              let+ src_to_pp =
+                Lib_or_exes_to_pp.from_exes ~sctx ~scope ~expander ~dir exes
+              in
+              append_opt src_to_pp acc
+            | _ -> Memo.return acc)))
+  in
+  Appendable_list.to_list srcs_to_pp
 ;;
-
-type t = { dirs_to_include : String_with_vars.t list }
 
 let gen_rule_for_source_file ~sctx ~dir ~ppx_driver_and_flags ~ml_kind path =
   let target = Path.Build.append_source dir (Path.drop_build_context_exn path) in
@@ -201,16 +201,17 @@ let gen_rules_for_lib_or_exes ~sctx ~dir lib_or_exes_to_pp =
   Memo.List.iter sources ~f:(gen_rules_for_module ~sctx ~dir ~ppx_driver_and_flags)
 ;;
 
-let gen_stanza_rules ~dir ~dirs_to_include sctx =
+let gen_stanza_rules ~dir ~dirs_to_exclude sctx =
   let* scope = Scope.DB.find_by_dir dir in
   let* expander = Super_context.expander sctx ~dir in
+  let dirs_to_exclude = List.map dirs_to_exclude ~f:Path.drop_build_context_exn in
   let* libs_or_exes_to_pp =
-    Memo.all
-      (List.map dirs_to_include ~f:(libs_or_exes_to_pp_under_dir ~sctx ~scope ~expander))
-    >>| List.concat
+    libs_or_exes_to_pp_in_source_tree ~sctx ~scope ~expander ~dirs_to_exclude
   in
   Memo.List.iter libs_or_exes_to_pp ~f:(gen_rules_for_lib_or_exes ~sctx ~dir)
 ;;
+
+type t = { dirs_to_exclude : String_with_vars.t list }
 
 include Stanza.Make (struct
     type nonrec t = t
@@ -227,8 +228,10 @@ let syntax =
 let decode =
   let open Dune_lang.Decoder in
   fields
-    (let+ dirs_to_include = field "dirs" (repeat String_with_vars.decode) in
-     { dirs_to_include })
+    (let+ dirs_to_exclude =
+       field ~default:[] "exclude_dirs" (repeat String_with_vars.decode)
+     in
+     { dirs_to_exclude })
 ;;
 
 let () =

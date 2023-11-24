@@ -2,13 +2,13 @@
 
 open Import
 
-type t = { dirs_to_include : String_with_vars.t list }
+type t = { dirs_to_exclude : String_with_vars.t list }
 
 include Stanza.S with type t := t
 
 val gen_stanza_rules
   :  dir:Path.Build.t
-  -> dirs_to_include:Path.t list
+  -> dirs_to_exclude:Path.t list
   -> Super_context.t
   -> unit Memo.t
 

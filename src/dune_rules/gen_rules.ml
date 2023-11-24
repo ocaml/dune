@@ -178,12 +178,12 @@ end = struct
       Expander.eval_blang expander mel.enabled_if
       >>= if_available_buildable ~loc:mel.loc (fun () ->
         Melange_rules.setup_emit_cmj_rules ~dir_contents ~dir ~scope ~sctx ~expander mel)
-    | Include_preprocessed_sources.T { dirs_to_include } ->
+    | Include_preprocessed_sources.T { dirs_to_exclude } ->
       let+ () =
-        let* dirs_to_include =
-          Memo.all (List.map ~f:(Expander.No_deps.expand_path expander) dirs_to_include)
+        let* dirs_to_exclude =
+          Memo.all (List.map ~f:(Expander.No_deps.expand_path expander) dirs_to_exclude)
         in
-        Include_preprocessed_sources.gen_stanza_rules sctx ~dir ~dirs_to_include
+        Include_preprocessed_sources.gen_stanza_rules sctx ~dir ~dirs_to_exclude
       in
       empty_none
     | _ -> Memo.return empty_none

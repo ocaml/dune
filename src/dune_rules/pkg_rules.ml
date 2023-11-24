@@ -910,6 +910,18 @@ end
 
 let ocaml_package_name = Package.Name.of_string "ocaml"
 
+let ocaml_package_dependencies =
+  List.map
+    ~f:Package.Name.of_string
+    (* These are all dependencies of the "ocaml" package *)
+    [ "ocaml-config"
+    ; "ocaml-base-compiler"
+    ; "dkml-base-compiler"
+    ; "ocaml-system"
+    ; "ocaml-variants"
+    ]
+;;
+
 module DB = struct
   type t =
     { all : Lock_dir.Pkg.t Package.Name.Map.t
@@ -930,10 +942,11 @@ module DB = struct
           match Env.mem Env.initial ~var:"DUNE_PKG_OVERRIDE_OCAML" with
           | false -> Package.Name.Set.empty
           | true ->
-            Package.Name.Set.singleton
-              (match all.ocaml with
-               | None -> ocaml_package_name
-               | Some (_, name) -> name)
+            (match all.ocaml with
+             | None ->
+               ocaml_package_name :: ocaml_package_dependencies
+               |> Package.Name.Set.of_list
+             | Some (_, name) -> Package.Name.Set.singleton name)
         in
         Package.Name.Set.union dune ocaml
       in

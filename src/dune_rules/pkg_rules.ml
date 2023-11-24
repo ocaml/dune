@@ -786,6 +786,16 @@ module Action_expander = struct
       >>= (function
        | true -> expand action ~expander
        | false -> Memo.return (Action.progn []))
+    | Redirect_out (outputs, file, file_perm, action) ->
+      let+ action = expand action ~expander
+      and+ file =
+        Expander.expand_pform_gen ~mode:Single expander file
+        >>| Value.to_path ~dir
+        >>| Expander0.as_in_build_dir
+              ~what:"redirect_out"
+              ~loc:(String_with_vars.loc file)
+      in
+      Action.Redirect_out (outputs, file, file_perm, action)
     | _ ->
       (* TODO *)
       assert false

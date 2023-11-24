@@ -535,6 +535,12 @@ let opam_package_to_lock_file_pkg
     in
     List.concat [ subst_step; patch_step; build_step ]
     |> make_action
+    |> Option.map ~f:(fun action ->
+      Action.Redirect_out
+        ( Action.Outputs.Outputs
+        , String_with_vars.make_text Loc.none (OpamPackage.Name.to_string name ^ ".build")
+        , Action.File_perm.Normal
+        , action ))
     |> Option.map ~f:build_env
   in
   let install_command =

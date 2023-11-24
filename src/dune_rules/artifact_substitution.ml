@@ -149,7 +149,7 @@ module Conf = struct
         Hardcoded default_ocamlpath
     in
     let get_location section package =
-      let paths = Install.Paths.make ~package ~roots in
+      let paths = Install.Paths.make ~relative:Path.relative ~package ~roots in
       Install.Paths.get paths section
     in
     let get_config_path = function

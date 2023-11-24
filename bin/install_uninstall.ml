@@ -36,8 +36,10 @@ let get_dirs context ~prefix_from_command_line ~from_command_line =
   let prefix_from_command_line = Option.map ~f:Path.of_string prefix_from_command_line in
   let roots =
     match prefix_from_command_line with
-    | Some prefix -> Roots.opam_from_prefix prefix |> Roots.map ~f:(fun s -> Some s)
     | None -> Context.roots context
+    | Some prefix ->
+      Roots.opam_from_prefix prefix ~relative:Path.relative
+      |> Roots.map ~f:(fun s -> Some s)
   in
   let roots = Roots.first_has_priority from_command_line roots in
   let must_be_defined name v =
@@ -758,7 +760,7 @@ let install_uninstall ~what =
               Artifact_substitution.Conf.of_install ~relocatable ~roots ~context
             in
             Fiber.sequential_iter entries_per_package ~f:(fun (package, entries) ->
-              let paths = Install.Paths.make ~package ~roots in
+              let paths = Install.Paths.make ~relative:Path.relative ~package ~roots in
               let+ entries =
                 (* CR rgrinberg: why don't we install things concurrently? *)
                 Fiber.sequential_map entries ~f:(fun entry ->

@@ -701,7 +701,8 @@ let roots t =
     | None -> Roots.make_all None
     | Some prefix ->
       let prefix = Path.of_filename_relative_to_initial_cwd prefix in
-      Roots.opam_from_prefix prefix |> Roots.map ~f:(fun s -> Some s)
+      Roots.opam_from_prefix prefix ~relative:Path.relative
+      |> Roots.map ~f:(fun s -> Some s)
   in
   match t.kind with
   | Lock _ | Default ->

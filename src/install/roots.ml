@@ -36,7 +36,7 @@ let make_all a =
   }
 ;;
 
-let opam_from_prefix prefix = make prefix ~relative:Path.relative
+let opam_from_prefix prefix ~relative = make prefix ~relative
 
 let complete x =
   match x.libexec_root with

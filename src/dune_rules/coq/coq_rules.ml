@@ -126,12 +126,27 @@ let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =
 ;;
 
 let coq_flags ~dir ~stanza_flags ~expander ~sctx =
-  let open Action_builder.O in
-  let* standard =
-    Action_builder.of_memo
-    @@ (Super_context.env_node ~dir sctx |> Memo.bind ~f:Env_node.coq)
+  let standard =
+    let open Memo.O in
+    Super_context.env_node ~dir sctx >>= Env_node.coq_flags |> Action_builder.of_memo_join
   in
-  Expander.expand_and_eval_set expander stanza_flags ~standard
+  Expander.expand_and_eval_set
+    expander
+    stanza_flags
+    ~standard:
+      (Action_builder.map ~f:(fun { Coq_flags.coq_flags; _ } -> coq_flags) standard)
+;;
+
+let coqdoc_flags ~dir ~stanza_coqdoc_flags ~expander ~sctx =
+  let standard =
+    let open Memo.O in
+    Super_context.env_node ~dir sctx >>= Env_node.coq_flags |> Action_builder.of_memo_join
+  in
+  Expander.expand_and_eval_set
+    expander
+    stanza_coqdoc_flags
+    ~standard:
+      (Action_builder.map ~f:(fun { Coq_flags.coqdoc_flags; _ } -> coqdoc_flags) standard)
 ;;
 
 let theory_coqc_flag lib =
@@ -697,9 +712,11 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps (s : Coq_stanza.Theory.t) coq_m
            in
            let extra_coqdoc_flags =
              (* Standard flags for coqdoc *)
-             let standard = Action_builder.return [ "--toc" ] in
              let open Action_builder.O in
              let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
+             let standard =
+               coqdoc_flags ~dir ~stanza_coqdoc_flags:s.coqdoc_flags ~expander ~sctx
+             in
              Expander.expand_and_eval_set expander s.coqdoc_flags ~standard
            in
            [ Command.Args.S file_flags

@@ -142,6 +142,10 @@ accept-corrections: promote
 all-supported-ocaml-versions: $(BIN)
 	$(BIN) build @install @runtest --workspace dune-workspace.dev --root .
 
+.PHONY: ppx
+ppx: $(BIN)
+	$(BIN) build ppx
+
 .PHONY: clean
 clean:
 	rm -rf _boot _build

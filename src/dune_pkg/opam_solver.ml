@@ -43,6 +43,11 @@ module Context_for_dune = struct
     ; dune_version : OpamPackage.Version.t
     ; stats_updater : Solver_stats.Updater.t
     ; candidates_cache : (Package_name.t, candidates) Table.t
+    ; (* The solver can call this function several times on the same package.
+         If the package contains an invalid "available" filter we want to print a
+         warning, but only once per package. This field will keep track of the
+         packages for which we've printed a warning. *)
+      mutable available_cache : bool OpamPackage.Map.t
     }
 
   let create ~solver_env ~repos ~local_packages ~version_preference ~stats_updater =
@@ -58,6 +63,7 @@ module Context_for_dune = struct
     ; dune_version
     ; stats_updater
     ; candidates_cache
+    ; available_cache = OpamPackage.Map.empty
     }
   ;;
 
@@ -84,42 +90,38 @@ module Context_for_dune = struct
     | Invalid_argument msg -> Error (`Not_a_bool msg)
   ;;
 
-  let is_opam_available =
-    (* The solver can call this function several times on the same package. If
-       the package contains an invalid `available` filter we want to print a
-       warning, but only once per package. This variable will keep track of the
-       packages for which we've printed a warning. *)
-    let warned_packages = ref OpamPackage.Set.empty in
-    fun t opam ->
-      let available = OpamFile.OPAM.available opam in
-      match
-        let available_vars_resolved =
-          Resolve_opam_formula.substitute_variables_in_filter
-            ~stats_updater:(Some t.stats_updater)
-            t.solver_env
-            available
-        in
-        eval_to_bool available_vars_resolved
-      with
-      | Ok available -> available
-      | Error error ->
-        let package = OpamFile.OPAM.package opam in
-        if not (OpamPackage.Set.mem package !warned_packages)
-        then (
-          warned_packages := OpamPackage.Set.add package !warned_packages;
-          match error with
-          | `Not_a_bool msg ->
-            let package_string = OpamFile.OPAM.package opam |> OpamPackage.to_string in
-            let available_string = OpamFilter.to_string available in
-            User_warning.emit
-              [ Pp.textf
-                  "Ignoring package %s as its `available` filter can't be resolved to a \
-                   boolean value."
-                  package_string
-              ; Pp.textf "available: %s" available_string
-              ; Pp.text msg
-              ]);
-        false
+  let is_opam_available t opam =
+    let package = OpamFile.OPAM.package opam in
+    match OpamPackage.Map.find_opt package t.available_cache with
+    | Some s -> s
+    | None ->
+      let res =
+        let available = OpamFile.OPAM.available opam in
+        match
+          let available_vars_resolved =
+            Resolve_opam_formula.substitute_variables_in_filter
+              ~stats_updater:(Some t.stats_updater)
+              t.solver_env
+              available
+          in
+          eval_to_bool available_vars_resolved
+        with
+        | Ok available -> available
+        | Error (`Not_a_bool msg) ->
+          (let package_string = OpamFile.OPAM.package opam |> OpamPackage.to_string in
+           let available_string = OpamFilter.to_string available in
+           User_warning.emit
+             [ Pp.textf
+                 "Ignoring package %s as its \"available\" filter can't be resolved to a \
+                  boolean value."
+                 package_string
+             ; Pp.textf "available: %s" available_string
+             ; Pp.text msg
+             ]);
+          false
+      in
+      t.available_cache <- OpamPackage.Map.add package res t.available_cache;
+      res
   ;;
 
   let candidates t name =

@@ -1,5 +1,6 @@
 open! Import
 module Package_constraint = Dune_lang.Package_constraint
+module Digest = Dune_digest
 
 type t =
   { name : Package_name.t
@@ -9,19 +10,16 @@ type t =
   }
 
 module Dependency_hash = struct
-  type t = Digest.t
+  include Digest
 
-  let hash_string = Digest.string
-  let to_string t = Digest.to_hex t
-  let equal = Digest.equal
-  let to_dyn t = Dyn.string (to_string t)
   let encode t = to_string t |> Encoder.string
 
   let decode =
     let open Decoder in
     let+ loc, hash = located string in
-    try Digest.from_hex hash with
-    | Invalid_argument _ ->
+    match Digest.from_hex hash with
+    | Some hash -> hash
+    | None ->
       User_error.raise
         ~loc
         [ Pp.textf "Dependency hash is not a valid md5 hash: %s" hash ]
@@ -67,7 +65,7 @@ module Dependency_set = struct
   let hash t =
     if Package_name.Map.is_empty t
     then None
-    else Some (encode_for_hash t |> Dune_sexp.to_string |> Dependency_hash.hash_string)
+    else Some (encode_for_hash t |> Dune_sexp.to_string |> Dune_digest.string)
   ;;
 end
 

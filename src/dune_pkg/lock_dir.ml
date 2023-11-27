@@ -516,19 +516,18 @@ module Write_disk = struct
      values indicate that it's unsafe to remove the existing directory and lock
      directory regeneration should not proceed. *)
   let check_existing_lock_dir path =
-    match Path.exists path with
-    | false -> Ok `Non_existant
-    | true ->
-      (match Path.is_directory path with
-       | false -> Error `Not_directory
-       | true ->
-         let metadata_path = Path.relative path metadata_filename in
-         (match Path.exists metadata_path && not (Path.is_directory metadata_path) with
-          | false -> Error `No_metadata_file
-          | true ->
-            (match Metadata.load metadata_path ~f:(Fun.const decode_metadata) with
-             | Ok _unused -> Ok `Is_existing_lock_dir
-             | Error exn -> Error (`Failed_to_parse_metadata (metadata_path, exn)))))
+    match Path.stat path with
+    | Ok { st_kind = S_DIR; _ } ->
+      let metadata_path = Path.relative path metadata_filename in
+      (match Path.stat metadata_path with
+       | Ok { st_kind = S_REG; _ } ->
+         (match Metadata.load metadata_path ~f:(Fun.const decode_metadata) with
+          | Ok _unused -> Ok `Is_existing_lock_dir
+          | Error exn -> Error (`Failed_to_parse_metadata (metadata_path, exn)))
+       | _ -> Error `No_metadata_file)
+    | Error (Unix.ENOENT, _, _) -> Ok `Non_existant
+    | Error _ -> Error `Unreadable
+    | Ok _ -> Error `Not_directory
   ;;
 
   (* Removes the exitsing lock directory at the specified path if it exists and
@@ -543,6 +542,7 @@ module Write_disk = struct
     | Error e ->
       let error_reason_pp =
         match e with
+        | `Unreadable -> Pp.text "Unable to read lock directory"
         | `Not_directory -> Pp.text "Specified lock dir path is not a directory"
         | `No_metadata_file ->
           Pp.textf "Specified lock dir lacks metadata file (%s)" metadata_filename

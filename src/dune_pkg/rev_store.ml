@@ -39,20 +39,29 @@ let with_flock lock_path ~f =
       [ Unix.O_CREAT; O_WRONLY; O_SHARE_DELETE; Unix.O_CLOEXEC ]
       0o600
   in
+  let out = Unix.out_channel_of_descr fd in
   let flock = Flock.create fd in
   let max_retries = 49 in
   Fiber.finalize
     ~finally:(fun () ->
-      (* closing the fd releases the flock automatically *)
-      match Unix_error.Detailed.catch Unix.close fd with
-      | Ok () ->
-        (* delete the lock to signal to the user we don't hold a lock *)
-        Fiber.return @@ Path.unlink_no_err lock_path
-      | Error detailed -> Unix_error.Detailed.raise detailed)
+      let+ () = Fiber.return () in
+      close_out out)
     (fun () ->
-      let* acquired = attempt_to_lock flock Flock.Exclusive ~max_retries in
-      match acquired with
-      | Ok `Success -> f ()
+      attempt_to_lock flock Flock.Exclusive ~max_retries
+      >>= function
+      | Ok `Success ->
+        Fiber.finalize
+          (fun () ->
+            Printf.fprintf out "%d\n%!" (Unix.getpid ());
+            f ())
+          ~finally:(fun () ->
+            let+ () = Fiber.return () in
+            Path.unlink_no_err lock_path;
+            match Flock.unlock flock with
+            | Ok () -> ()
+            | Error ue ->
+              Unix_error.Detailed.create ue ~syscall:"flock" ~arg:"unlock"
+              |> Unix_error.Detailed.raise)
       | Ok `Failure ->
         Code_error.raise
           (sprintf "Couldn't acquire lock after %d attempts to lock" max_retries)

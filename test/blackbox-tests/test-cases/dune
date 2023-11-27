@@ -47,15 +47,6 @@
  (applies_to tests-locks)
  (enabled_if false))
 
-; The following test is flaky due to platform sensitivity
-; see https://github.com/ocaml/dune/issues/3744
-
-(subdir
- cram
- (cram
-  (applies_to error)
-  (enabled_if false)))
-
 (cram
  (applies_to sandboxing)
  (deps %{bin:file}))

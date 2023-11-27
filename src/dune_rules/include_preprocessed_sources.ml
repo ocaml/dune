@@ -225,13 +225,23 @@ let syntax =
   Dune_lang.Syntax.create ~name ~desc [ (0, 1), `Since (3, 10) ]
 ;;
 
+let project_is_dune project =
+  match Dune_project.name project with
+  | Named s when String.equal s "dune" -> true
+  | _ -> false
+;;
+
 let decode =
   let open Dune_lang.Decoder in
   fields
-    (let+ dirs_to_exclude =
+    (let+ loc = loc
+     and+ project = Dune_project.get_exn ()
+     and+ dirs_to_exclude =
        field ~default:[] "exclude_dirs" (repeat String_with_vars.decode)
      in
-     { dirs_to_exclude })
+     if project_is_dune project
+     then { dirs_to_exclude }
+     else User_error.raise ~loc [ Pp.text "This stanza is reserved for Dune itself" ])
 ;;
 
 let () =

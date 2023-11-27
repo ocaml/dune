@@ -95,14 +95,13 @@ Generate a mock opam repository
   version greater than 0 (version is 0.0.1)
   disjunction with some undefined vars
   conjunction with some undefined vars
-  check if variable 'installed' is defined
   $ build_single_package baz
   Solution for dune.lock:
   - baz.0.0.1
   installed
   not madeup:installed
   hello
-  installed-defined
+  
   $ build_single_package error1
   Solution for dune.lock:
   - error1.0.0.1
@@ -122,22 +121,18 @@ Generate a mock opam repository
   $ build_single_package error3
   Solution for dune.lock:
   - error3.0.0.1
-  File "dune.lock/error3.pkg", line 5, characters 2-46:
-  5 |   (when
-  6 |    (not
-  7 |     (< 2 1))
-  8 |    not-a-program)
+  File "dune.lock/error3.pkg", line 5, characters 2-27:
+  5 |   (when true not-a-program)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Program not-a-program not found in the tree or in PATH
    (context: default)
   [1]
   $ build_single_package error4
   Solution for dune.lock:
   - error4.0.0.1
-  File "dune.lock/error4.pkg", line 5, characters 2-63:
-  5 |   (when
-  6 |    (not
-  7 |     (< 2 1))
-  8 |    not-a-program-%{pkg-self:name})
+  File "dune.lock/error4.pkg", line 5, characters 2-44:
+  5 |   (when true not-a-program-%{pkg-self:name})
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Program not-a-program-error4 not found in the tree or in PATH
    (context: default)
   [1]

@@ -351,36 +351,66 @@ let filter_to_blang ~package ~loc filter =
   filter_to_blang filter
 ;;
 
+let simplify_filter =
+  OpamFilter.partial_eval (fun var ->
+    match OpamVariable.Full.scope var with
+    | Global ->
+      let name = OpamVariable.Full.variable var in
+      if OpamVariable.equal name (OpamVariable.of_string "with-doc")
+         || OpamVariable.equal name (OpamVariable.of_string "with-test")
+      then Some (B false)
+      else None
+    | _ -> None)
+;;
+
+let filter_needed = function
+  | None -> true
+  | Some f -> OpamFilter.eval_to_bool ~default:true (Fun.const None) f
+;;
+
 let opam_commands_to_actions loc package (commands : OpamTypes.command list) =
   List.filter_map commands ~f:(fun (args, filter) ->
-    let terms =
-      List.map args ~f:(fun (simple_arg, filter_opt) ->
-        let slang =
-          match simple_arg with
-          | OpamTypes.CString s -> opam_string_to_slang ~package ~loc s
-          | CIdent ident -> opam_raw_fident_to_slang ~loc ident
-        in
-        let slang = Slang.simplify slang in
-        match filter_opt with
-        | None -> slang
-        | Some filter ->
-          let filter_blang =
-            filter_to_blang ~package ~loc filter |> Slang.simplify_blang
-          in
-          Slang.when_ filter_blang slang)
-    in
-    if List.is_empty terms
-    then None
-    else (
-      let action =
-        let action = Action.Run terms in
-        match filter with
-        | None -> action
-        | Some filter ->
-          let condition = filter_to_blang ~package ~loc filter |> Slang.simplify_blang in
-          Action.When (condition, action)
+    let filter = Option.map filter ~f:simplify_filter in
+    match filter_needed filter with
+    | false -> None
+    | true ->
+      let terms =
+        List.filter_map args ~f:(fun (simple_arg, filter) ->
+          let filter = Option.map filter ~f:simplify_filter in
+          match filter_needed filter with
+          | false -> None
+          | true ->
+            let slang =
+              let slang =
+                match simple_arg with
+                | OpamTypes.CString s -> opam_string_to_slang ~package ~loc s
+                | CIdent ident -> opam_raw_fident_to_slang ~loc ident
+              in
+              Slang.simplify slang
+            in
+            Some
+              (match filter with
+               | None -> slang
+               | Some filter ->
+                 let filter_blang =
+                   filter_to_blang ~package ~loc filter |> Slang.simplify_blang
+                 in
+                 Slang.when_ filter_blang slang))
       in
-      Some action))
+      if List.is_empty terms
+      then None
+      else (
+        let action =
+          let action = Action.Run terms in
+          match filter with
+          | None -> action
+          | Some filter ->
+            let condition =
+              filter_to_blang ~package ~loc filter |> Slang.simplify_blang
+            in
+            Action.When (condition, action)
+        in
+        Some action))
 ;;
 
 let opam_env_update_to_env_update ((var, env_op, value_string, _) : OpamTypes.env_update)

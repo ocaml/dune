@@ -7,3 +7,7 @@ dune              text eol=lf
 dune.inc          text eol=lf
 .gitignore        text eol=lf
 .gitattributes    text eol=lf
+
+# Files in ppx/ are marked as generated and binary so they are not displayed by
+# `git diff`, `git grep` or on github
+ppx/**/*.ml*      binary linguist-generated=true

@@ -63,9 +63,17 @@ let with_flock lock_path ~f =
               Unix_error.Detailed.create ue ~syscall:"flock" ~arg:"unlock"
               |> Unix_error.Detailed.raise)
       | Ok `Failure ->
-        Code_error.raise
-          (sprintf "Couldn't acquire lock after %d attempts to lock" max_retries)
-          []
+        let pid = Io.read_file lock_path in
+        User_error.raise
+          ~hints:
+            [ Pp.textf
+                "Another dune instance (pid %s) has locked the revision store. If this \
+                 is happening in error, make sure to terminate that instance and re-run \
+                 the command."
+                pid
+            ]
+          [ Pp.textf "Couldn't acquire revision store lock after %d attempts" max_retries
+          ]
       | Error error ->
         User_error.raise
           [ Pp.textf

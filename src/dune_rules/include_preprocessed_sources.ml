@@ -224,7 +224,7 @@ include Stanza.Make (struct
 
 let syntax =
   let name = "include_preprocessed_sources" in
-  let desc = "dummy" in
+  let desc = "private extension to allow use of ppx in dune" in
   Dune_lang.Syntax.create ~name ~desc [ (0, 1), `Since (3, 10) ]
 ;;
 

@@ -1,5 +1,6 @@
   $ ocamlc_where="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
+  $ unset OPAMCONFIRMLEVEL
 
 We call `$(opam switch show)` so that this test always uses an existing switch
 

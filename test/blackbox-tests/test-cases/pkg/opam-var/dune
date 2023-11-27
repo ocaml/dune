@@ -21,8 +21,8 @@
   (with-stdout-to
    %{target}
    (progn
-    (run %{bin:opam} var --root fake_opam_root arch)
-    (run %{bin:opam} var --root fake_opam_root os)
-    (run %{bin:opam} var --root fake_opam_root os-distribution)
-    (run %{bin:opam} var --root fake_opam_root os-family)
-    (run %{bin:opam} var --root fake_opam_root os-version)))))
+    (run %{bin:opam} --cli 2.1 var --root fake_opam_root arch)
+    (run %{bin:opam} --cli 2.1 var --root fake_opam_root os)
+    (run %{bin:opam} --cli 2.1 var --root fake_opam_root os-distribution)
+    (run %{bin:opam} --cli 2.1 var --root fake_opam_root os-family)
+    (run %{bin:opam} --cli 2.1 var --root fake_opam_root os-version)))))

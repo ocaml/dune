@@ -1,3 +1,4 @@
 boot/libs.ml
 src/dune_rules/assets.ml
 src/dune_rules/setup.defaults.ml
+ppx/**

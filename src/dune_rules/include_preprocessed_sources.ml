@@ -250,7 +250,7 @@ let decode =
 
 let () =
   let open Dune_lang.Decoder in
-  let decode = Dune_lang.Syntax.since Stanza.syntax (3, 12) >>> decode in
+  let decode = Dune_lang.Syntax.since Stanza.syntax (3, 13) >>> decode in
   Dune_project.Extension.register_simple
     syntax
     (return

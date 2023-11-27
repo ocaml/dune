@@ -1,4 +1,4 @@
-(lang dune 3.12)
+(lang dune 3.13)
 ;          ^^^^
 ; When changing the version, don't forget to regenerate *.opam files
 ; by running [dune build].

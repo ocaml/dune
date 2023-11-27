@@ -9,7 +9,7 @@ We call `$(opam switch show)` so that this test always uses an existing switch
   > (context
   > (opam
   >  (name cross)
-  >  (switch $(opam switch show))
+  >  (switch $(opam --cli 2.1 switch show))
   >  (merlin)))
   > EOF
 

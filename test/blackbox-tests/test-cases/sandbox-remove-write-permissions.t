@@ -12,8 +12,6 @@ Remove write permissions from a sandbox directory and observe the error we get
   > EOF
 
   $ dune build ./foo --sandbox=copy 2>&1 | sed -E 's#/.*.sandbox/[^/]+#/.sandbox/$SANDBOX#g'
-  Error: Permission denied
-  -> required by _build/default/foo
   File "dune", line 1, characters 0-90:
   1 | (rule
   2 |  (target (dir foo))
@@ -22,6 +20,9 @@ Remove write permissions from a sandbox directory and observe the error we get
   _build/.sandbox/$SANDBOX
   Reason:
   rmdir(_build/.sandbox/$SANDBOX/default/foo): Directory not empty
+  Error:
+  rename(_build/.sandbox/$SANDBOX/default/foo): Permission denied
+  -> required by _build/default/foo
 
 Manual cleaning step so the dune executing the test suite doesn't croak trying
 to delete the readonly dir

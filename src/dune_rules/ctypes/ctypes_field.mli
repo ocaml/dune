@@ -73,3 +73,4 @@ val c_generated_types_module : t -> Module_name.t
 val type_gen_script : t -> string
 val c_generated_functions_cout_c : t -> Function_description.t -> string
 val function_gen_script : t -> Function_description.t -> string
+val has_stubs : t option -> bool

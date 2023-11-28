@@ -20,15 +20,4 @@
   3 |     (module Type_description.Types)
                   ^^^^^^^^^^^^^^^^^^^^^^
   Error: Unbound module Type_description
-  File "dune", line 1, characters 0-211:
-  1 | (library
-  2 |  (name foo)
-  3 |  (ctypes
-  4 |   (external_library_name fooBar)
-  5 |   (build_flags_resolver vendored)
-  6 |   (generated_entry_point Types_generated2)
-  7 |   (type_description
-  8 |    (instance Type)
-  9 |    (functor Type_description))))
-  Error: No rule found for libfoo_stubs.a
   [1]

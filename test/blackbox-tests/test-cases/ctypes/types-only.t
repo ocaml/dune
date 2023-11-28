@@ -1,5 +1,5 @@
-When a ctypes description has just a type description, Dune does not setup a
-rule for a stubs file it tries to use.
+When a ctypes description has just a type description, if should be possible to
+build the library.
 See #9300.
 
   $ cat > dune-project << EOF
@@ -24,15 +24,3 @@ See #9300.
   > EOF
 
   $ dune build
-  File "dune", line 1, characters 0-185:
-  1 | (library
-  2 |  (name l)
-  3 |  (ctypes
-  4 |   (external_library_name none)
-  5 |   (build_flags_resolver vendored)
-  6 |   (type_description
-  7 |    (functor bindings)
-  8 |    (instance types))
-  9 |   (generated_entry_point c)))
-  Error: No rule found for libl_stubs.a
-  [1]

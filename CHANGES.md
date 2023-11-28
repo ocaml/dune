@@ -1,9 +1,64 @@
-Unreleased
-----------
+3.12.0 (2023-11-28)
+-------------------
 
-If you're a contributor, please include your CHANGES entry in a file
-`doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
-changelog properly.
+- Introduce `$ dune ocaml doc` to open and browse documentation. (#7262, fixes
+  #6831, @EmileTrotignon)
+
+- `dune cache trim` now accepts binary byte units: `KiB`, `MiB`, etc. (#8618,
+  @Alizter)
+
+- No longer force colors for OCaml 4.03 and 4.04 (#8778, @rgrinberg)
+
+- Introduce new experimental odoc rules (#8803, @jonjudlam)
+
+- Introduce the `runtest_alias` field to the `cram` stanza. This allows
+  removing default `runtest` alias from tests. (@rgrinberg, #8887)
+
+- Do not ignore libraries named `bigarray` when they are defined in conjunction
+  with OCaml 5.0 (#8902, fixes #8901, @rgrinberg)
+
+- Dependencies in the copying sandbox are now writeable (#8920, @rgrinberg)
+
+- Absent packages shouldn't prevent all rules from being loaded (#8948, fixes
+  #8630, @rgrinberg)
+
+- Correctly determine the stanza of menhir modules when `(include_subdirs
+  qualified)` is enabled (@rgrinberg, #8949, fixes #7610)
+
+- Display cache location in Dune log (#8974, @nojb)
+
+- Re-run actions whenever `(expand_aliases_in_sandbox)` changes (#8990,
+  @rgrinberg)
+
+- Rules that only use internal dune actions (`write-file`, `echo`, etc.) can
+  now be sandboxed. (#9041, fixes #8854, @rgrinberg)
+
+- Do not re-run rules when their location changes (#9052, @rgrinberg)
+
+- Correctly ignore `bigarray` on recent version of OCaml (#9076, @rgrinberg)
+
+- Add `test_` prefix to default test name in `dune init project` (#9257, fixes
+  #9131, @9sako6)
+
+- Add `coqdoc_flags` field to `coq` field of `env` stanza allowing the setting
+  of workspace-wide defaults for `coqdoc_flags`. (#9280, fixes #9139, @Alizter)
+
+- [coq rules] Be more tolerant when coqc --print-version / --config don't work
+  properly, and fallback to a reasonable default. This fixes problems when
+  building Coq projects with `(stdlib no)` and likely other cases. (#8966, fix
+  #8958, @Alizter, reported by Lasse Blaauwbroek)
+
+- Dune will now run at a lower framerate of 15 fps rather than 60 when
+  `INSIDE_EMACS`. (#8812, @Alizter)
+
+- dune-build-info: when `version=""` is found in a `META` file, we now return
+  `None` as a version string (#9177, @emillon)
+
+- Dune can now be built and installed on Haiku (#8795, fix #8551, @Alizter)
+
+- Mark installed directories in `dune-package` files. This fixes `(package)`
+  dependencies against packages that contain such directories. (#8953, fixes
+  #8915, @emillon)
 
 3.11.1 (2023-10-09)
 -------------------

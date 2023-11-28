@@ -193,6 +193,7 @@ let js_of_ocaml_rule
   ~config
   ~spec
   ~target
+  ~other_targets
   =
   let open Action_builder.O in
   let jsoo =
@@ -206,11 +207,6 @@ let js_of_ocaml_rule
     | Compile -> flags.compile
     | Link -> flags.link
     | Build_runtime -> flags.build_runtime
-  in
-  let other_targets =
-    match ctarget with
-    | JS -> []
-    | Wasm -> [ Path.Build.set_extension target ~ext:".wasm" ]
   in
   Command.run_dyn_prog
     ~dir:(Path.build dir)
@@ -263,6 +259,7 @@ let standalone_runtime_rule cc ~javascript_files ~target ~flags =
     ~dir
     ~flags
     ~target
+    ~other_targets:[]
     ~spec
     ~config:(Some config)
 ;;
@@ -274,6 +271,7 @@ let exe_rule
   ~wasm_files
   ~src
   ~target
+  ~other_targets
   ~flags
   =
   let dir = Compilation_context.dir cc in
@@ -306,6 +304,7 @@ let exe_rule
     ~dir
     ~spec
     ~target
+    ~other_targets
     ~flags
     ~config:None
 ;;
@@ -396,6 +395,7 @@ let link_rule cc ~runtime ~target ~obj_dir cm ~flags ~linkall ~link_time_code_ge
     ~dir
     ~spec
     ~target
+    ~other_targets:[]
     ~flags
     ~config:None
 ;;
@@ -403,7 +403,16 @@ let link_rule cc ~runtime ~target ~obj_dir cm ~flags ~linkall ~link_time_code_ge
 let build_cm' sctx ~dir ~in_context ~src ~target ~config =
   let spec = Command.Args.Dep src in
   let flags = in_context.Js_of_ocaml.In_context.flags in
-  js_of_ocaml_rule sctx ~ctarget:JS ~sub_command:Compile ~dir ~flags ~spec ~target ~config
+  js_of_ocaml_rule
+    sctx
+    ~ctarget:JS
+    ~sub_command:Compile
+    ~dir
+    ~flags
+    ~spec
+    ~target
+    ~other_targets:[]
+    ~config
 ;;
 
 let build_cm sctx ~dir ~in_context ~src ~obj_dir ~config =
@@ -496,7 +505,6 @@ let build_exe
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in
   let { Js_of_ocaml.In_context.javascript_files; wasm_files; flags } = in_context in
-  let target = Path.Build.set_extension src ~ext:Js_of_ocaml.Ext.exe in
   let standalone_runtime =
     in_obj_dir
       ~obj_dir
@@ -510,38 +518,63 @@ let build_exe
   in
   let open Memo.O in
   let* cmode = js_of_ocaml_compilation_mode sctx ~dir
-  and* ctarget =
+  and* ctargets =
     let+ js_of_ocaml = Super_context.env_node sctx ~dir >>= Env_node.js_of_ocaml in
-    match js_of_ocaml.target with
-    | None -> Js_of_ocaml.Target.JS
-    | Some m -> m
+    match js_of_ocaml.targets with
+    | Some m -> Js_of_ocaml.Target.Set.to_list m
+    | None -> [ JS ]
   in
-  match cmode, ctarget with
-  | Separate_compilation, JS ->
-    let+ () =
-      standalone_runtime_rule cc ~javascript_files ~target:standalone_runtime ~flags
-      |> Super_context.add_rule ~loc sctx ~dir
-    and+ () =
-      link_rule
-        cc
-        ~runtime:standalone_runtime
-        ~target
-        ~obj_dir
-        top_sorted_modules
-        ~flags
-        ~linkall
-        ~link_time_code_gen
-      |> Super_context.add_rule sctx ~loc ~dir ~mode
+  Memo.parallel_iter ctargets ~f:(fun ctarget ->
+    let target =
+      let ext =
+        match ctarget with
+        | Wasm when List.length ctargets > 1 -> Js_of_ocaml.Ext.wasm_exe
+        | _ -> Js_of_ocaml.Ext.exe
+      in
+      Path.Build.set_extension src ~ext
     in
-    ()
-  | Whole_program, JS ->
-    exe_rule ~ctarget cc ~javascript_files ~wasm_files:[] ~src ~target ~flags
-    |> Super_context.add_rule sctx ~loc ~dir ~mode
-  | _, Wasm ->
-    (* We force whole program compilation for now, since separate
-       compilation is not yet implemented. *)
-    exe_rule ~ctarget cc ~javascript_files ~wasm_files ~src ~target ~flags
-    |> Super_context.add_rule sctx ~loc ~dir ~mode
+    match cmode, ctarget with
+    | Separate_compilation, JS ->
+      let+ () =
+        standalone_runtime_rule cc ~javascript_files ~target:standalone_runtime ~flags
+        |> Super_context.add_rule ~loc sctx ~dir
+      and+ () =
+        link_rule
+          cc
+          ~runtime:standalone_runtime
+          ~target
+          ~obj_dir
+          top_sorted_modules
+          ~flags
+          ~linkall
+          ~link_time_code_gen
+        |> Super_context.add_rule sctx ~loc ~dir ~mode
+      in
+      ()
+    | Whole_program, JS ->
+      exe_rule
+        ~ctarget
+        cc
+        ~javascript_files
+        ~wasm_files:[]
+        ~src
+        ~target
+        ~other_targets:[]
+        ~flags
+      |> Super_context.add_rule sctx ~loc ~dir ~mode
+    | _, Wasm ->
+      (* We force whole program compilation for now, since separate
+         compilation is not yet implemented. *)
+      exe_rule
+        ~ctarget
+        cc
+        ~javascript_files
+        ~wasm_files
+        ~src
+        ~target
+        ~other_targets:[ Path.Build.set_extension src ~ext:Js_of_ocaml.Ext.wasm ]
+        ~flags
+      |> Super_context.add_rule sctx ~loc ~dir ~mode)
 ;;
 
 let runner = "node"

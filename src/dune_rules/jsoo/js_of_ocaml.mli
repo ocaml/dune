@@ -4,6 +4,8 @@ module Ext : sig
   type t = string
 
   val exe : t
+  val wasm_exe : t
+  val wasm : t
   val cmo : t
   val cma : t
   val runtime : t
@@ -70,12 +72,23 @@ module Target : sig
   type t =
     | JS
     | Wasm
+
+  type target := t
+
+  module Set : sig
+    type t =
+      { js : bool
+      ; wasm : bool
+      }
+
+    val to_list : t -> target list
+  end
 end
 
 module Env : sig
   type 'a t =
     { compilation_mode : Compilation_mode.t option
-    ; target : Target.t option
+    ; targets : Target.Set.t option
     ; runtest_alias : Alias.Name.t option
     ; flags : 'a Flags.t
     }

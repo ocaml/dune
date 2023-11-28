@@ -103,15 +103,7 @@ Now we demonstrate that symlinks aren't supported:
   > }
 
   $ runtest "touch foo && ln -s foo bar"
-  File "dune", line 1, characters 0-63:
-  1 | (rule
-  2 |  (alias foo)
-  3 |  (action (echo test))
-  4 |  (deps sub/targetdir))
-  Error: Failed to copy file _build/default/sub/targetdir/bar of kind "symbolic
-  link" while creating a copy sandbox
-  Hint: Re-run Dune to delete the stale artifact, or manually delete this file
-  [1]
+  test
 
   $ runtest "mkdir bar && touch bar/somefileinbar && ln -s bar symlinktobar"
   File "sub/dune", line 1, characters 0-151:

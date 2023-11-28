@@ -45,6 +45,7 @@ module Item = struct
   type t =
     | File
     | Directory of { perms : int }
+    | Link
     | Other of Unix.file_kind
 
   let of_path path =
@@ -59,6 +60,7 @@ module Item = struct
     match kind with
     | S_DIR -> Directory { perms = (Path.Untracked.stat_exn path).st_perm }
     | S_REG -> File
+    | S_LNK -> Link
     | _ -> Other kind
   ;;
 end
@@ -71,6 +73,12 @@ let copy_recursively =
   in
   let rec loop item ~src ~dst =
     match (item : Item.t) with
+    | Link ->
+      (match Path.Untracked.stat_exn src with
+       | { Unix.st_kind = S_REG; _ } -> Io.copy_file ~chmod:chmod_file ~src ~dst ()
+       | { Unix.st_kind = S_DIR; st_perm = perms; _ } ->
+         loop (Directory { perms }) ~src ~dst
+       | { Unix.st_kind; _ } -> loop (Other st_kind) ~src ~dst)
     | File -> Io.copy_file ~chmod:chmod_file ~src ~dst ()
     | Directory { perms } ->
       (match Path.Untracked.readdir_unsorted_with_kinds src with

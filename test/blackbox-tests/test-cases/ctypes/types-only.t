@@ -36,12 +36,3 @@ See #9300.
   9 |   (generated_entry_point c)))
   Error: No rule found for libl_stubs.a
   [1]
-
-Creating an empty file works around the issue.
-
-  $ cat >> dune << EOF
-  > (rule
-  >  (write-file libl_stubs.a ""))
-  > EOF
-
-  $ dune build

@@ -30,18 +30,8 @@ rebuilds.
   $ cat > src/a
 
   $ build .
-  Failure
+  Success
 
   $ stop_dune
   Success, waiting for filesystem changes...
-  Error: Multiple rules generated for _build/default/.dune/ccomp/ccomp:
-  - <internal location>
-  - <internal location>
-  -> required by _build/default/src/stub.o
-  -> required by _build/default/src/dlldune_rpc_lwt_tests_stubs.so
-  -> required by alias src/all
-  -> required by alias src/default
-  Error: Multiple rules generated for _build/default/test.opam:
-  - <internal location>
-  - <internal location>
-  Had 2 errors, waiting for filesystem changes...
+  Success, waiting for filesystem changes...

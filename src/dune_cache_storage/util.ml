@@ -3,7 +3,7 @@ open Stdune
 module Optimistically = struct
   let rename ~src ~dst =
     try Path.rename src dst with
-    | Sys_error _ ->
+    | Unix.Unix_error _ ->
       Path.mkdir_p (Path.parent_exn dst);
       Path.rename src dst
   ;;

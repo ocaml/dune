@@ -104,18 +104,22 @@ let produce_opt t v =
 ;;
 
 let collect (type o) (type_ : o t) f =
-  let output = ref None in
-  Fiber.map
-    (Fiber.Var.set
-       current_handler
-       (module struct
-         type nonrec o = o
+  (* If we don't delay the computation here, [output] becomes shared between
+     future runs of the resulting fiber, causing the collected output to be
+     duplicated. *)
+  Fiber.of_thunk (fun () ->
+    let output = ref None in
+    Fiber.map
+      (Fiber.Var.set
+         current_handler
+         (module struct
+           type nonrec o = o
 
-         let type_ = type_
-         let so_far = output
-       end)
-       f)
-    ~f:(fun res -> res, !output)
+           let type_ = type_
+           let so_far = output
+         end)
+         f)
+      ~f:(fun res -> res, !output))
 ;;
 
 let forbid f = Fiber.Var.unset current_handler f

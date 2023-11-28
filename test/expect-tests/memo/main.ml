@@ -2138,7 +2138,7 @@ let%expect_test "variables - cutoff" =
   [%expect {| var: 202 |}]
 ;;
 
-let%expect_test "implicit output bug. storage cell is reused between runs" =
+let%expect_test "Ensure that implicit output storage cell is not reused between runs" =
   let var = Memo.Var.create ~name:"var" () in
   let output =
     Memo.Implicit_output.add

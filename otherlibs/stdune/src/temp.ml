@@ -28,7 +28,10 @@ let tmp_dirs = ref Path.Set.empty
 
 let create_temp_file ?(perms = 0o600) path =
   let file = Path.to_string path in
-  match Unix.close (Unix.openfile file [ O_WRONLY; Unix.O_CREAT; Unix.O_EXCL ] perms) with
+  match
+    Unix.close
+      (Unix.openfile file [ O_WRONLY; Unix.O_CREAT; Unix.O_EXCL; Unix.O_CLOEXEC ] perms)
+  with
   | () -> Ok ()
   | exception Unix.Unix_error (EEXIST, _, _) -> Error `Retry
 ;;

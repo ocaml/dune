@@ -104,6 +104,8 @@ let produce_opt t v =
 ;;
 
 let collect (type o) (type_ : o t) f =
+  (* If we don't delay the computation here, [output] becomes shared between future runs
+     of the resulting fiber, causing the collected output to be duplicated. *)
   let* () = Fiber.return () in
   let output = ref None in
   Fiber.map

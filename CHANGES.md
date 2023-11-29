@@ -1,4 +1,4 @@
-3.12.1 (unreleased)
+3.12.1 (2023-11-29)
 -------------------
 
 - Revert unintended inclusion of #9250 and #9280 (@emillon)

@@ -1,3 +1,8 @@
+3.12.1 (unreleased)
+-------------------
+
+- Revert unintended inclusion of #9280 (@emillon)
+
 3.12.0 (2023-11-28)
 -------------------
 
@@ -39,9 +44,6 @@
 
 - Add `test_` prefix to default test name in `dune init project` (#9257, fixes
   #9131, @9sako6)
-
-- Add `coqdoc_flags` field to `coq` field of `env` stanza allowing the setting
-  of workspace-wide defaults for `coqdoc_flags`. (#9280, fixes #9139, @Alizter)
 
 - [coq rules] Be more tolerant when coqc --print-version / --config don't work
   properly, and fallback to a reasonable default. This fixes problems when

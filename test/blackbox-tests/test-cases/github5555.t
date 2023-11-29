@@ -87,3 +87,10 @@ And for another profile:
 Version checking is supposed to work even if (binaries) is empty.
 
   $ t 3.1 _ ""
+  File "dune-workspace", line 2, characters 0-21:
+  2 | (env (_ (binaries )))
+      ^^^^^^^^^^^^^^^^^^^^^
+  Error: "binaries" in an "env" stanza in a dune-workspace file is only
+  available since version 3.2 of the dune language. Please update your
+  dune-project file to have (lang dune 3.2).
+  [1]

@@ -258,7 +258,10 @@ let%expect_test "raise inside callback" =
       raise Exit)
     (fun () ->
       Io.String_path.write_file "old" "foobar";
-      Io.String_path.write_file "old" "foobar");
+      Io.String_path.write_file "old" "foobar";
+      (* Delay to allow the event handler callback to catch the exception
+         before stopping the watcher. *)
+      Unix.sleepf 1.0);
   [%expect {|
     [EXIT]
     exiting. |}]

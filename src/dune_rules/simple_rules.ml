@@ -53,8 +53,9 @@ let rule_kind ~(rule : Rule.t) ~(action : _ Action_builder.With_targets.t) =
 ;;
 
 let interpret_and_add_locks ~expander locks action =
+  let open Action_builder.O in
   Expander.expand_locks expander ~base:`Of_expander locks
-  >>| function
+  >>= function
   | [] -> action
   | locks -> Action_builder.map action ~f:(Action.Full.add_locks locks)
 ;;
@@ -66,8 +67,10 @@ let add_user_rule
   ~(action : _ Action_builder.With_targets.t)
   ~expander
   =
-  let* build = interpret_and_add_locks ~expander rule.locks action.build in
-  let action = { action with Action_builder.With_targets.build } in
+  let action =
+    let build = interpret_and_add_locks ~expander rule.locks action.build in
+    { action with Action_builder.With_targets.build }
+  in
   Super_context.add_rule_get_targets sctx ~dir ~mode:rule.mode ~loc:rule.loc action
 ;;
 
@@ -145,7 +148,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
        Some targets
      | Aliases_only aliases ->
        let+ () =
-         let* action = interpret_and_add_locks ~expander rule.locks action.build in
+         let action = interpret_and_add_locks ~expander rule.locks action.build in
          Memo.parallel_iter aliases ~f:(fun alias ->
            let alias = Alias.make ~dir alias in
            Alias_rules.add sctx ~alias ~loc:rule.loc action)
@@ -287,6 +290,6 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
            ~deps:alias_conf.deps
            ~what:"aliases"
        in
-       let* action = interpret_and_add_locks ~expander alias_conf.locks action in
-       Alias_rules.add sctx ~loc action ~alias)
+       interpret_and_add_locks ~expander alias_conf.locks action
+       |> Alias_rules.add sctx ~loc ~alias)
 ;;

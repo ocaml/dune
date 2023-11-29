@@ -8,6 +8,7 @@
   >  (name foo)
   >  (ctypes
   >   (external_library_name fooBar)
+  >   (build_flags_resolver vendored)
   >   (generated_entry_point Types_generated2)
   >   (type_description
   >    (instance Type)
@@ -19,20 +20,15 @@
   3 |     (module Type_description.Types)
                   ^^^^^^^^^^^^^^^^^^^^^^
   Error: Unbound module Type_description
-  File "dune", line 1, characters 0-177:
+  File "dune", line 1, characters 0-211:
   1 | (library
   2 |  (name foo)
   3 |  (ctypes
   4 |   (external_library_name fooBar)
-  5 |   (generated_entry_point Types_generated2)
-  6 |   (type_description
-  7 |    (instance Type)
-  8 |    (functor Type_description))))
+  5 |   (build_flags_resolver vendored)
+  6 |   (generated_entry_point Types_generated2)
+  7 |   (type_description
+  8 |    (instance Type)
+  9 |    (functor Type_description))))
   Error: No rule found for libfoo_stubs.a
-  File "dune", line 2, characters 7-10:
-  2 |  (name foo)
-             ^^^
-  Package fooBar was not found in the pkg-config search path.
-  Perhaps you should add the directory containing `fooBar.pc'
-  to the PKG_CONFIG_PATH environment variable
   [1]

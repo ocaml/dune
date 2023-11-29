@@ -417,7 +417,7 @@ Let us start with a simple project. First, make sure we have a
 
 .. code:: dune
 
-  (lang dune 3.13)
+  (lang dune 3.12)
   (using coq 0.8)
 
 Next we need a :ref:`dune<dune-files>` file with a :ref:`coq-theory` stanza:
@@ -647,7 +647,7 @@ otherwise Coq will not be able to find it.
 
 .. code:: dune
 
-  (lang dune 3.13)
+  (lang dune 3.12)
   (using coq 0.8)
 
   (package

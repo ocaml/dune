@@ -26,7 +26,7 @@ consists of a name and a :ref:`section<install>` (e.g ``lib``, ``share``,
 
 .. code:: dune
 
-   (lang dune 3.13)
+   (lang dune 3.12)
    (using dune_site 0.1)
    (name mygui)
 
@@ -225,7 +225,7 @@ Main Executable (C)
 
 .. code:: dune
 
-  (lang dune 3.13)
+  (lang dune 3.12)
   (using dune_site 0.1)
   (name app)
 
@@ -285,7 +285,7 @@ The Plugin "plugin1"
 
 .. code:: dune
 
-  (lang dune 3.13)
+  (lang dune 3.12)
   (using dune_site 0.1)
 
   (generate_opam_files true)

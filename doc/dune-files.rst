@@ -14,7 +14,7 @@ contents of all configuration files read by Dune and looks like:
 
 .. code:: dune
 
-   (lang dune 3.13)
+   (lang dune 3.12)
 
 Additionally, they can contains the following stanzas.
 
@@ -785,7 +785,7 @@ The ``dune-workspace`` file uses the S-expression syntax. This is what a typical
 
 .. code:: dune
 
-    (lang dune 3.13)
+    (lang dune 3.12)
     (context (opam (switch 4.07.1)))
     (context (opam (switch 4.08.1)))
     (context (opam (switch 4.11.1)))

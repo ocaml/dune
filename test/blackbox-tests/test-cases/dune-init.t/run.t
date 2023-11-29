@@ -369,7 +369,7 @@ And the opam file will be generated as expected
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
     "ocaml"
-    $dune {>= "3.13"}
+    $dune {>= "3.12"}
     "odoc" {with-doc}
   ]
   build: [
@@ -479,7 +479,7 @@ And the opam file will be generated as expected
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
     "ocaml"
-    "dune" {>= "3.13"}
+    "dune" {>= "3.12"}
     "odoc" {with-doc}
   ]
   build: [

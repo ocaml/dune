@@ -4,7 +4,7 @@ version due to the convention in opam. In this case we could also give a hint ho
 it in a dune-project file.
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.13)
+  > (lang dune 3.12)
   > (package
   >  (name invalid)
   >  (depends foo.1.2.3))

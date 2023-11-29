@@ -129,4 +129,4 @@ val expand_locks
   :  base:[ `Of_expander | `This of Path.t ]
   -> t
   -> Locks.t
-  -> Path.t list Memo.t
+  -> Path.t list Action_builder.t

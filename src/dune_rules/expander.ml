@@ -958,5 +958,5 @@ let expand_lock ~base expander (Locks.Lock sw) =
 ;;
 
 let expand_locks ~base expander locks =
-  Memo.List.map locks ~f:(expand_lock ~base expander)
+  Memo.List.map locks ~f:(expand_lock ~base expander) |> Action_builder.of_memo
 ;;

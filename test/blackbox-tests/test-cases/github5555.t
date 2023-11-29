@@ -83,3 +83,7 @@ And for another profile:
   Error: Variables are not supported in 'binaries' in an 'env' stanza in a
   dune-workspace file.
   [1]
+
+Version checking is supposed to work even if (binaries) is empty.
+
+  $ t 3.1 _ ""

@@ -52,7 +52,6 @@ module Coq_module = Coq_module
 module Coq_sources = Coq_sources
 module Coq_lib_name = Coq_lib_name
 module Coq_lib = Coq_lib
-module Coq_flags = Coq_flags
 module Command = Command
 module Clflags = Clflags
 module Dune_project = Dune_project

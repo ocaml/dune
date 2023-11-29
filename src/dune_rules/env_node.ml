@@ -8,6 +8,10 @@ module Odoc = struct
   type t = { warnings : warnings }
 end
 
+module Coq = struct
+  type t = string list
+end
+
 type t =
   { scope : Scope.t
   ; local_binaries : File_binding.Expanded.t list Memo.Lazy.t
@@ -20,7 +24,7 @@ type t =
   ; menhir_flags : string list Action_builder.t Memo.Lazy.t
   ; odoc : Odoc.t Action_builder.t Memo.Lazy.t
   ; js_of_ocaml : string list Action_builder.t Js_of_ocaml.Env.t Memo.Lazy.t
-  ; coq_flags : Coq_flags.t Action_builder.t Memo.Lazy.t
+  ; coq : Coq.t Action_builder.t Memo.Lazy.t
   ; format_config : Format_config.t Memo.Lazy.t
   ; bin_annot : bool Memo.Lazy.t
   }
@@ -42,7 +46,7 @@ let set_format_config t format_config =
 ;;
 
 let odoc t = Memo.Lazy.force t.odoc |> Action_builder.of_memo_join
-let coq_flags t = Memo.Lazy.force t.coq_flags
+let coq t = Memo.Lazy.force t.coq
 let bin_annot t = Memo.Lazy.force t.bin_annot
 
 let expand_str_lazy expander sw =
@@ -210,25 +214,12 @@ let make
         let+ { warnings } = warnings in
         { warnings = Option.value config.odoc.warnings ~default:warnings })
   in
-  let coq_flags : Coq_flags.t Action_builder.t Memo.Lazy.t =
-    inherited
-      ~field:coq_flags
-      ~root:(Action_builder.return Coq_flags.default)
-      (fun coq_flags ->
-         let+ expander = Memo.Lazy.force expander in
-         let open Action_builder.O in
-         let* { coq_flags; coqdoc_flags } = coq_flags in
-         let+ coq_flags =
-           let standard = Action_builder.return coq_flags in
-           Expander.expand_and_eval_set expander (Coq_env.flags config.coq) ~standard
-         and+ coqdoc_flags =
-           let standard = Action_builder.return coqdoc_flags in
-           Expander.expand_and_eval_set
-             expander
-             (Coq_env.coqdoc_flags config.coq)
-             ~standard
-         in
-         { Coq_flags.coq_flags; coqdoc_flags })
+  let default_coq_flags = Action_builder.return [ "-q" ] in
+  let coq : Coq.t Action_builder.t Memo.Lazy.t =
+    inherited ~field:coq ~root:default_coq_flags (fun flags ->
+      let+ expander = Memo.Lazy.force expander in
+      let standard = flags in
+      Expander.expand_and_eval_set expander config.coq ~standard)
   in
   let format_config =
     inherited_if_absent
@@ -256,7 +247,7 @@ let make
   ; js_of_ocaml
   ; menhir_flags
   ; odoc
-  ; coq_flags
+  ; coq
   ; format_config
   ; bin_annot
   }

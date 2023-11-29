@@ -788,19 +788,3 @@ configuration. These are:
 
 See :doc:`concepts/variables` for more information on variables supported by
 Dune.
-
-
-.. _coq-env:
-
-Coq Environment Fields
-----------------------
-
-The :ref:`dune-env` stanza has a ``(coq <coq_fields>)`` field with the following
-values for ``<coq_fields>``:
-
-- ``(flags <flags>)``: The default flags passed to ``coqc``. The default value
-  is ``-q``. Values set here become the ``:standard`` value in the
-  ``(coq.theory (flags <flags>))`` field. 
-- ``(coqdoc_flags <flags>)``: The default flags passed to ``coqdoc``. The default
-  value is ``--toc``. Values set here become the ``:standard`` value in the
-  ``(coq.theory (coqdoc_flags <flags>))`` field.

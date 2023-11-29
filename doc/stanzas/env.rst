@@ -62,7 +62,7 @@ Fields supported in ``<settings>`` are:
 - ``(odoc <fields>)`` allows passing options to ``odoc``. See
   :ref:`odoc-options` for more details.
 
-- ``(coq <coq_fields>)`` allow passing options to Coq. See :ref:`coq-env`
+- ``(coq (flags <flags>))`` allows passing options to Coq. See :ref:`coq-theory`
   for more details.
 
 - ``(formatting <settings>)`` allows the user to set auto-formatting in the

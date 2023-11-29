@@ -82,7 +82,7 @@ module Stanza = struct
     ; menhir_flags : Ordered_set_lang.Unexpanded.t option
     ; odoc : Odoc.t
     ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
-    ; coq : Coq_env.t
+    ; coq : Ordered_set_lang.Unexpanded.t
     ; format_config : Format_config.t option
     ; error_on_use : User_message.t option
     ; warn_on_load : User_message.t option
@@ -123,7 +123,7 @@ module Stanza = struct
     && Option.equal Inline_tests.equal inline_tests t.inline_tests
     && Option.equal Ordered_set_lang.Unexpanded.equal menhir_flags t.menhir_flags
     && Odoc.equal odoc t.odoc
-    && Coq_env.equal coq t.coq
+    && Ordered_set_lang.Unexpanded.equal coq t.coq
     && Option.equal Format_config.equal format_config t.format_config
     && Js_of_ocaml.Env.equal js_of_ocaml t.js_of_ocaml
     && Option.equal User_message.equal error_on_use t.error_on_use
@@ -143,7 +143,7 @@ module Stanza = struct
     ; menhir_flags = None
     ; odoc = Odoc.empty
     ; js_of_ocaml = Js_of_ocaml.Env.empty
-    ; coq = Coq_env.default
+    ; coq = Ordered_set_lang.Unexpanded.standard
     ; format_config = None
     ; error_on_use = None
     ; warn_on_load = None
@@ -220,6 +220,15 @@ module Stanza = struct
       (Dune_lang.Syntax.since Stanza.syntax (3, 0) >>> Js_of_ocaml.Env.decode)
   ;;
 
+  let coq_flags = Ordered_set_lang.Unexpanded.field "flags"
+
+  let coq_field =
+    field
+      "coq"
+      ~default:Ordered_set_lang.Unexpanded.standard
+      (Dune_lang.Syntax.since Stanza.syntax (2, 7) >>> fields coq_flags)
+  ;;
+
   let bin_annot =
     field_o "bin_annot" (Dune_lang.Syntax.since Stanza.syntax (3, 8) >>> bool)
   ;;
@@ -239,7 +248,7 @@ module Stanza = struct
     and+ menhir_flags = menhir_flags ~since:(Some (2, 1))
     and+ odoc = odoc_field
     and+ js_of_ocaml = js_of_ocaml_field
-    and+ coq = Coq_env.decode
+    and+ coq = coq_field
     and+ format_config = Format_config.field ~since:(2, 8)
     and+ bin_annot = bin_annot in
     { flags

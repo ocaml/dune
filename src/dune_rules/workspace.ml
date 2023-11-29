@@ -34,7 +34,7 @@ let env_field, env_field_lazy =
                    (Dune_lang.Syntax.Error_msg.since
                       syntax
                       minimum_version
-                      ~what:"'binaries' in an 'env' stanza in a dune-workspace file")
+                      ~what:"\"binaries\" in an \"env\" stanza in a dune-workspace file")
                ]
            in
            Dune_env.Stanza.add_warning ~message s |> Dune_env.Stanza.add_error ~message)
@@ -45,8 +45,8 @@ let env_field, env_field_lazy =
              User_error.raise
                ~loc
                [ Pp.text
-                   "Variables are not supported in 'binaries' in an 'env' stanza in a \
-                    dune-workspace file."
+                   "Variables are not supported in \"binaries\" in an \"env\" stanza in \
+                    a dune-workspace file."
                ]))
   in
   make Fun.id Fun.id, make Lazy.from_val lazy_

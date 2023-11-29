@@ -14,7 +14,7 @@ In the default context, this produces an error.
   File "dune-workspace", line 2, characters 0-26:
   2 | (env (_ (binaries x.exe)))
       ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: 'binaries' in an 'env' stanza in a dune-workspace file is only
+  Error: "binaries" in an "env" stanza in a dune-workspace file is only
   available since version 3.2 of the dune language. Please update your
   dune-project file to have (lang dune 3.2).
   [1]
@@ -25,7 +25,7 @@ For explicit profiles too:
   File "dune-workspace", line 2, characters 0-28:
   2 | (env (dev (binaries x.exe)))
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: 'binaries' in an 'env' stanza in a dune-workspace file is only
+  Error: "binaries" in an "env" stanza in a dune-workspace file is only
   available since version 3.2 of the dune language. Please update your
   dune-project file to have (lang dune 3.2).
   [1]
@@ -36,7 +36,7 @@ When the profile is not selected, this is ignored but a warning is printed:
   File "dune-workspace", line 2, characters 0-30:
   2 | (env (other (binaries x.exe)))
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Warning: 'binaries' in an 'env' stanza in a dune-workspace file is only
+  Warning: "binaries" in an "env" stanza in a dune-workspace file is only
   available since version 3.2 of the dune language. Please update your
   dune-project file to have (lang dune 3.2).
 
@@ -60,7 +60,7 @@ Even in 3.2, this fails with pforms in this field.
   File "dune-workspace", line 2, characters 18-33:
   2 | (env (_ (binaries x%{ext_dll}.exe)))
                         ^^^^^^^^^^^^^^^
-  Error: Variables are not supported in 'binaries' in an 'env' stanza in a
+  Error: Variables are not supported in "binaries" in an "env" stanza in a
   dune-workspace file.
   [1]
 
@@ -70,7 +70,7 @@ And for explicit profiles:
   File "dune-workspace", line 2, characters 20-35:
   2 | (env (dev (binaries x%{ext_dll}.exe)))
                           ^^^^^^^^^^^^^^^
-  Error: Variables are not supported in 'binaries' in an 'env' stanza in a
+  Error: Variables are not supported in "binaries" in an "env" stanza in a
   dune-workspace file.
   [1]
 
@@ -80,6 +80,6 @@ And for another profile:
   File "dune-workspace", line 2, characters 22-37:
   2 | (env (other (binaries x%{ext_dll}.exe)))
                             ^^^^^^^^^^^^^^^
-  Error: Variables are not supported in 'binaries' in an 'env' stanza in a
+  Error: Variables are not supported in "binaries" in an "env" stanza in a
   dune-workspace file.
   [1]

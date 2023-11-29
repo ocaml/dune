@@ -103,16 +103,7 @@ Package which has boolean where string was expected. This should be caught while
     (when
      %{pkg-self:dev}
      (run dune subst))
-    (run
-     dune
-     build
-     -p
-     %{pkg-self:name}
-     -j
-     %{jobs}
-     @install
-     (when %{pkg-self:with-test} @runtest)
-     (when %{pkg-self:with-doc} @doc))))
+    (run dune build -p %{pkg-self:name} -j %{jobs} @install)))
 
   $ cat dune.lock/with-interpolation.pkg
   (version 0.0.1)
@@ -189,15 +180,10 @@ Package which has boolean where string was expected. This should be caught while
      (< %{pkg-self:version} 1.0)
      (run echo g))
     (when
-     (and_absorb_undefined_var
-      %{pkg-self:with-test}
-      (< %{pkg:ocaml:version} 5.0.0))
-     (run echo h))
-    (when
      true
      (run echo i))
     (when
-     (not false)
+     true
      (run echo j))
     (when
      %{pkg:foo:installed}
@@ -207,15 +193,7 @@ Package which has boolean where string was expected. This should be caught while
      (run echo l))
     (when
      (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg:baz:installed})
-     (run echo m))
-    (when
-     (not
-      (has_undefined_var %{pkg-self:madeup}))
-     (run echo n))
-    (when
-     (not
-      (has_undefined_var %{pkg-self:installed}))
-     (run echo o))))
+     (run echo m))))
 
 Test that if opam filter translation is disabled the output doesn't contain any translated filters:
   $ solve exercise-filters

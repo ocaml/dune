@@ -31,11 +31,11 @@ Create a workspace config that defines separate build contexts for macos and lin
   > (lang dune 3.8)
   > (lock_dir
   >  (path dune.linux.lock)
-  >  (solver_sys_vars
+  >  (solver_env
   >   (os linux)))
   > (lock_dir
   >  (path dune.macos.lock)
-  >  (solver_sys_vars
+  >  (solver_env
   >   (os macos)))
   > (context
   >  (default

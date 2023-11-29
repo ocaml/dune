@@ -1,20 +1,5 @@
 open Import
 
-module Name : sig
-  type t
-
-  val to_opam : t -> OpamVariable.t
-  val of_opam : OpamVariable.t -> t
-  val compare : t -> t -> Ordering.t
-  val to_dyn : t -> Dyn.t
-  val encode : t -> Dune_sexp.t
-
-  module Map : Map.S with type key = t
-
-  val of_string : string -> t
-  val to_string : t -> string
-end
-
 module Scope : sig
   type t =
     | Self
@@ -22,7 +7,7 @@ module Scope : sig
 end
 
 type t =
-  { name : Name.t
+  { name : Variable_name.t
   ; scope : Scope.t
   }
 

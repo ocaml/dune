@@ -38,7 +38,7 @@ let solve
   ~opam_repository_path
   ~opam_repository_url
   ~update_opam_repositories
-  ~sys_bindings_from_current_system
+  ~solver_env_from_current_system
   ~experimental_translate_opam_filters
   =
   let open Fiber.O in
@@ -55,17 +55,13 @@ let solve
            { Per_context.lock_dir_path
            ; version_preference
            ; repos
-           ; solver_sys_vars = solver_sys_vars_from_context
+           ; solver_env = solver_env_from_context
            ; context_common = { name = context_name; _ }
            ; repositories
            }
          ->
          let solver_env =
-           Dune_pkg.Solver_env.create
-             ~sys:
-               (solver_env_variables
-                  ~solver_sys_vars_from_context
-                  ~sys_bindings_from_current_system)
+           solver_env ~solver_env_from_context ~solver_env_from_current_system
          in
          let* repos =
            get_repos
@@ -143,17 +139,20 @@ let lock
       ~context_name_arg:context_name
       ~all_contexts_arg:all_contexts
       ~version_preference_arg:version_preference
-  and* sys_bindings_from_current_system =
+  and* solver_env_from_current_system =
     if dont_poll_system_solver_variables
-    then Fiber.return Dune_pkg.Solver_env.Variable.Sys.Bindings.empty
-    else Dune_pkg.Sys_poll.sys_bindings ~path:(Env_path.path Stdune.Env.initial)
+    then Fiber.return None
+    else
+      Dune_pkg.Sys_poll.solver_env_from_current_system
+        ~path:(Env_path.path Stdune.Env.initial)
+      >>| Option.some
   in
   solve
     per_context
     ~opam_repository_path
     ~opam_repository_url
     ~update_opam_repositories
-    ~sys_bindings_from_current_system
+    ~solver_env_from_current_system
     ~experimental_translate_opam_filters
 ;;
 

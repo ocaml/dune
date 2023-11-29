@@ -20,7 +20,7 @@ let find_outdated_packages
               { Per_context.lock_dir_path
               ; version_preference = _
               ; repos
-              ; solver_sys_vars = _
+              ; solver_env = _
               ; context_common = _
               ; repositories
               }

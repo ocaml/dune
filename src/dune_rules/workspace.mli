@@ -6,7 +6,7 @@ module Lock_dir : sig
   type t =
     { path : Path.Source.t
     ; version_preference : Dune_pkg.Version_preference.t option
-    ; solver_sys_vars : Dune_pkg.Solver_env.Variable.Sys.Bindings.t option
+    ; solver_env : Dune_pkg.Solver_env.t option
     ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
     }
 

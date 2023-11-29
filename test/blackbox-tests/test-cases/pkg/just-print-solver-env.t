@@ -13,22 +13,26 @@ Print the solver env when no dune-workspace is present
 Add some build contexts with different environments
   $ cat >dune-workspace <<EOF
   > (lang dune 3.8)
+  > (lock_dir
+  >  (path dune.linux.lock)
+  >  (solver_sys_vars
+  >   (os linux)))
+  > (lock_dir
+  >  (path dune.linux.no-doc.lock)
+  >  (solver_sys_vars
+  >   (arch x86_64)
+  >   (os linux)
+  >   (os-family ubuntu)
+  >   (os-distribution ubuntu)
+  >   (os-version 22.04)))
   > (context
   >  (default
   >   (name linux)
-  >   (lock dune.linux.lock)
-  >   (solver_sys_vars
-  >    (os linux))))
+  >   (lock dune.linux.lock)))
   > (context
   >  (default
   >   (name no-doc)
-  >   (lock dune.linux.lock)
-  >   (solver_sys_vars
-  >    (arch x86_64)
-  >    (os linux)
-  >    (os-family ubuntu)
-  >    (os-distribution ubuntu)
-  >    (os-version 22.04))))
+  >   (lock dune.linux.no-doc.lock)))
   > EOF
 
   $ dune pkg print-solver-env --all-contexts --dont-poll-system-solver-variables

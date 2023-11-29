@@ -88,12 +88,14 @@ Solve packages with no variables set.
 Make a workspace file which sets some of the variables.
   $ cat >dune-workspace <<EOF
   > (lang dune 3.8)
+  > (lock_dir
+  >  (path dune.lock)
+  >  (solver_sys_vars
+  >   (os linux)
+  >   (arch arm)))
   > (context
   >  (default
-  >   (name default)
-  >   (solver_sys_vars
-  >    (os linux)
-  >    (arch arm))))
+  >   (name default)))
   > EOF
 
 Solve the packages again, this time with the variables set.

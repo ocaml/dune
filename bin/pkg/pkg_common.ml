@@ -60,6 +60,32 @@ module Per_context = struct
     |> Dune_pkg.Pkg_workspace.Repository.Name.Map.of_list_exn
   ;;
 
+  let make_solver workspace context_common ~version_preference_arg ~lock =
+    let lock_dir_path = Option.value lock ~default:Dune_pkg.Lock_dir.default_path in
+    let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
+    let solver_sys_vars =
+      Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_sys_vars)
+    in
+    let version_preference_context =
+      Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.version_preference)
+    in
+    let repositories =
+      Option.map lock_dir ~f:(fun lock_dir -> lock_dir.repositories)
+      |> Option.value
+           ~default:[ Dune_pkg.Pkg_workspace.Repository.Name.of_string "default" ]
+    in
+    { lock_dir_path
+    ; version_preference =
+        Version_preference.choose
+          ~from_arg:version_preference_arg
+          ~from_context:version_preference_context
+    ; context_common
+    ; solver_sys_vars
+    ; repositories
+    ; repos = repositories_of_workspace workspace
+    }
+  ;;
+
   let choose ~context_name_arg ~all_contexts_arg ~version_preference_arg =
     let open Fiber.O in
     match context_name_arg, all_contexts_arg with
@@ -82,26 +108,8 @@ module Per_context = struct
                "Unknown build context: %s"
                (Dune_engine.Context_name.to_string context_name |> String.maybe_quoted)
            ]
-       | Some
-           (Default
-             { lock
-             ; version_preference = version_preference_context
-             ; solver_sys_vars
-             ; repositories
-             ; base = context_common
-             ; _
-             }) ->
-         [ { lock_dir_path = Option.value lock ~default:Lock_dir.default_path
-           ; version_preference =
-               Version_preference.choose
-                 ~from_arg:version_preference_arg
-                 ~from_context:version_preference_context
-           ; solver_sys_vars
-           ; repositories
-           ; context_common
-           ; repos = repositories_of_workspace workspace
-           }
-         ]
+       | Some (Default { lock; base = context_common; _ }) ->
+         [ make_solver workspace context_common ~version_preference_arg ~lock ]
        | Some (Opam _) ->
          User_error.raise
            [ Pp.textf
@@ -111,25 +119,8 @@ module Per_context = struct
     | None, true ->
       let+ workspace = Memo.run (Workspace.workspace ()) in
       List.filter_map workspace.contexts ~f:(function
-        | Workspace.Context.Default
-            { lock
-            ; version_preference = version_preference_context
-            ; base = context_common
-            ; solver_sys_vars
-            ; repositories
-            } ->
-          let lock_dir_path = Option.value lock ~default:Dune_pkg.Lock_dir.default_path in
-          Some
-            { lock_dir_path
-            ; version_preference =
-                Version_preference.choose
-                  ~from_arg:version_preference_arg
-                  ~from_context:version_preference_context
-            ; context_common
-            ; solver_sys_vars
-            ; repositories
-            ; repos = repositories_of_workspace workspace
-            }
+        | Workspace.Context.Default { lock; base = context_common } ->
+          Some (make_solver workspace context_common ~version_preference_arg ~lock)
         | Opam _ -> None)
   ;;
 end

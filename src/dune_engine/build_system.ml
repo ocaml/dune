@@ -382,7 +382,10 @@ end = struct
     Fiber.finalize
       ~finally:(fun () ->
         match sandbox with
-        | Some sandbox -> Sandbox.destroy sandbox
+        | Some sandbox ->
+          (match Config.(get clear_sandboxes) with
+           | `Enabled -> Sandbox.destroy sandbox
+           | `Disabled -> Fiber.return ())
         | None ->
           Pending_targets.remove targets;
           Fiber.return ())

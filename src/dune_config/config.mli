@@ -57,6 +57,9 @@ val threaded_console_frames_per_second : [ `Default | `Custom of int ] t
 (** Controls whether we use background threads in the dune rules *)
 val background_dune_rules : Toggle.t t
 
+(** Whether to destroy sandboxes after use. Enabled by default. *)
+val clear_sandboxes : Toggle.t t
+
 (** Before any configuration value is accessed, this function must be called
     with all the configuration values from the relevant config file
     ([dune-workspace], or [dune-config]).

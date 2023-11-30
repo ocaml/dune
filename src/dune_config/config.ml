@@ -192,3 +192,9 @@ let threaded_console_frames_per_second =
   register t;
   t
 ;;
+
+let clear_sandboxes =
+  let t = { name = "clear_sandboxes"; of_string = Toggle.of_string; value = `Enabled } in
+  register t;
+  t
+;;

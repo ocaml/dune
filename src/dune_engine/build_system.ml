@@ -570,10 +570,12 @@ end = struct
               let remove_target_dir dir = Path.rm_rf (Path.build dir) in
               let remove_target_file path =
                 try Path.Build.unlink path with
-                | Unix.Unix_error (EISDIR, _, _) ->
-                  (* If target changed from a directory to a file, delete
-                     in anyway. *)
-                  remove_target_dir path
+                (* If target changed from a directory to a file, delete
+                   in anyway. *)
+                | Unix.Unix_error (error, _, _) ->
+                  (match error, Platform.OS.value with
+                   | EISDIR, _ | EPERM, Darwin -> remove_target_dir path
+                   | _ -> ())
                 | _ -> ()
               in
               Targets.Validated.iter

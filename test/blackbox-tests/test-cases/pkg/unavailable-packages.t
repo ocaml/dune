@@ -6,11 +6,11 @@ Set up two build contexts: a default one for linux and another for macos.
   > (lang dune 3.8)
   > (lock_dir
   >  (path dune.lock)
-  >  (solver_sys_vars
+  >  (solver_env
   >   (os linux)))
   > (lock_dir
   >  (path dune.macos.lock)
-  >  (solver_sys_vars
+  >  (solver_env
   >   (os macos)))
   > (context (default))
   > (context

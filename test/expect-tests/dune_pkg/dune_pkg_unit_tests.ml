@@ -2,7 +2,8 @@ open Stdune
 module Checksum = Dune_pkg.Checksum
 module Lock_dir = Dune_pkg.Lock_dir
 module Expanded_variable_bindings = Dune_pkg.Solver_stats.Expanded_variable_bindings
-module Variable = Dune_pkg.Solver_env.Variable
+module Variable_name = Dune_pkg.Variable_name
+module Variable_value = Dune_pkg.Variable_value
 module Package_version = Dune_pkg.Package_version
 module Package_name = Dune_lang.Package_name
 
@@ -78,8 +79,9 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
          ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
          ~repos:None
          ~expanded_solver_variable_bindings:
-           { Expanded_variable_bindings.variable_values = [ Variable.Sys `Os, "linux" ]
-           ; unset_variables = [ Variable.Sys `Os_family ]
+           { Expanded_variable_bindings.variable_values =
+               [ Variable_name.os, Variable_value.string "linux" ]
+           ; unset_variables = [ Variable_name.os_family ]
            }
          (Package_name.Map.of_list_exn
             [ mk_pkg_basic ~name:"foo" ~version:(Package_version.of_string "0.1.0")
@@ -122,8 +124,8 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
     ; ocaml = Some ("simple_lock_dir/lock.dune:3", "ocaml")
     ; repos = { complete = true; used = None }
     ; expanded_solver_variable_bindings =
-        { variable_values = [ (Sys "os", "linux") ]
-        ; unset_variables = [ Sys "os-family" ]
+        { variable_values = [ ("os", String "linux") ]
+        ; unset_variables = [ "os-family" ]
         }
     } |}]
 ;;

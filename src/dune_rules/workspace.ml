@@ -6,36 +6,32 @@ module Lock_dir = struct
   type t =
     { path : Path.Source.t
     ; version_preference : Dune_pkg.Version_preference.t option
-    ; solver_sys_vars : Dune_pkg.Solver_env.Variable.Sys.Bindings.t option
+    ; solver_env : Dune_pkg.Solver_env.t option
     ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
     }
 
-  let to_dyn { path; version_preference; solver_sys_vars; repositories } =
+  let to_dyn { path; version_preference; solver_env; repositories } =
     Dyn.record
       [ "path", Path.Source.to_dyn path
       ; ( "version_preference"
         , Dyn.option Dune_pkg.Version_preference.to_dyn version_preference )
-      ; ( "solver_sys_vars"
-        , Dyn.option Dune_pkg.Solver_env.Variable.Sys.Bindings.to_dyn solver_sys_vars )
+      ; "solver_env", Dyn.option Dune_pkg.Solver_env.to_dyn solver_env
       ; ( "repositories"
         , Dyn.list Dune_pkg.Pkg_workspace.Repository.Name.to_dyn repositories )
       ]
   ;;
 
-  let hash { path; version_preference; solver_sys_vars; repositories } =
-    Poly.hash (path, version_preference, solver_sys_vars, repositories)
+  let hash { path; version_preference; solver_env; repositories } =
+    Poly.hash (path, version_preference, solver_env, repositories)
   ;;
 
-  let equal { path; version_preference; solver_sys_vars; repositories } t =
+  let equal { path; version_preference; solver_env; repositories } t =
     Path.Source.equal path t.path
     && Option.equal
          Dune_pkg.Version_preference.equal
          version_preference
          t.version_preference
-    && Option.equal
-         Dune_pkg.Solver_env.Variable.Sys.Bindings.equal
-         solver_sys_vars
-         t.solver_sys_vars
+    && Option.equal Dune_pkg.Solver_env.equal solver_env t.solver_env
     && List.equal Dune_pkg.Pkg_workspace.Repository.Name.equal repositories t.repositories
   ;;
 
@@ -54,13 +50,12 @@ module Lock_dir = struct
         >>| function
         | None -> Path.Source.(relative root "dune.lock")
         | Some p -> Path.as_in_source_tree_exn p
-      and+ solver_sys_vars =
-        field_o "solver_sys_vars" Dune_pkg.Solver_env.Variable.Sys.Bindings.decode
+      and+ solver_env = field_o "solver_env" Dune_pkg.Solver_env.decode
       and+ version_preference =
         field_o "version_preference" Dune_pkg.Version_preference.decode
       and+ repositories = Dune_lang.Ordered_set_lang.field "repositories" in
       { path
-      ; solver_sys_vars
+      ; solver_env
       ; version_preference
       ; repositories = repositories_of_ordered_set repositories
       }

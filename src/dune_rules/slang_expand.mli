@@ -4,8 +4,7 @@ open Import
 type expander =
   String_with_vars.t
   -> dir:Path.t
-  -> (Value.t list, [ `Undefined_pkg_var of Dune_pkg.Package_variable.Name.t ]) result
-       Memo.t
+  -> (Value.t list, [ `Undefined_pkg_var of Dune_pkg.Variable_name.t ]) result Memo.t
 
 (** Evaluate a [Slang.t] expression. Expressions in the unfollowed branches of
     if-statements are not followed and boolean expressions are evaluated

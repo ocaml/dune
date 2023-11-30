@@ -196,27 +196,27 @@ let os_family ~path =
   | _ -> os_distribution ~path
 ;;
 
-let sys_bindings ~path =
+let solver_env_from_current_system ~path =
   let entry k f =
     let+ v = f ~path in
-    k, v
+    k, Option.map v ~f:Variable_value.string
   in
   (* TODO this will rerun `uname` multiple times with the same arguments
      unless it is memoized *)
   let+ mappings =
     Fiber.all
-      [ entry `Arch arch
-      ; entry `Os os
-      ; entry `Os_version os_version
-      ; entry `Os_distribution os_distribution
-      ; entry `Os_family os_family
+      [ entry Variable_name.arch arch
+      ; entry Variable_name.os os
+      ; entry Variable_name.os_version os_version
+      ; entry Variable_name.os_distribution os_distribution
+      ; entry Variable_name.os_family os_family
       ]
   in
   List.fold_left
-    ~init:Solver_env.Variable.Sys.Bindings.empty
-    ~f:(fun sys_bindings (var, data) ->
+    ~init:Solver_env.empty
+    ~f:(fun solver_env (var, data) ->
       match data with
-      | Some value -> Solver_env.Variable.Sys.Bindings.set sys_bindings var value
-      | None -> sys_bindings)
+      | Some value -> Solver_env.set solver_env var value
+      | None -> solver_env)
     mappings
 ;;

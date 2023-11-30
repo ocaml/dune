@@ -1,19 +1,17 @@
 open Import
 module Lock_dir = Dune_pkg.Lock_dir
+module Solver_env = Dune_pkg.Solver_env
+module Variable_name = Dune_pkg.Variable_name
+module Variable_value = Dune_pkg.Variable_value
 
 let context_term ~doc =
   Arg.(value & opt (some Arg.context_name) None & info [ "context" ] ~docv:"CONTEXT" ~doc)
 ;;
 
-(* The system environment variables used by the solver are taken from the
-   current system by default but can be overridden by the build context. *)
-let solver_env_variables ~solver_sys_vars_from_context ~sys_bindings_from_current_system =
-  match solver_sys_vars_from_context with
-  | None -> sys_bindings_from_current_system
-  | Some solver_env_variables ->
-    Dune_pkg.Solver_env.Variable.Sys.Bindings.extend
-      sys_bindings_from_current_system
-      solver_env_variables
+let solver_env ~solver_env_from_current_system ~solver_env_from_context =
+  [ solver_env_from_current_system; solver_env_from_context ]
+  |> List.filter_opt
+  |> List.fold_left ~init:Solver_env.with_opam_version_set_to_current ~f:Solver_env.extend
 ;;
 
 module Version_preference = struct
@@ -47,7 +45,7 @@ module Per_context = struct
   type t =
     { lock_dir_path : Path.Source.t
     ; version_preference : Version_preference.t
-    ; solver_sys_vars : Dune_pkg.Solver_env.Variable.Sys.Bindings.t option
+    ; solver_env : Dune_pkg.Solver_env.t option
     ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
     ; context_common : Dune_rules.Workspace.Context.Common.t
     ; repos :
@@ -63,9 +61,7 @@ module Per_context = struct
   let make_solver workspace context_common ~version_preference_arg ~lock =
     let lock_dir_path = Option.value lock ~default:Dune_pkg.Lock_dir.default_path in
     let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
-    let solver_sys_vars =
-      Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_sys_vars)
-    in
+    let solver_env = Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env) in
     let version_preference_context =
       Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.version_preference)
     in
@@ -80,7 +76,7 @@ module Per_context = struct
           ~from_arg:version_preference_arg
           ~from_context:version_preference_context
     ; context_common
-    ; solver_sys_vars
+    ; solver_env
     ; repositories
     ; repos = repositories_of_workspace workspace
     }

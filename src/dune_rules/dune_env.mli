@@ -28,7 +28,7 @@ module Stanza : sig
     ; foreign_flags : Ordered_set_lang.Unexpanded.t Foreign_language.Dict.t
     ; link_flags : Link_flags.Spec.t
     ; env_vars : Env.t
-    ; binaries : File_binding.Unexpanded.t list
+    ; binaries : File_binding.Unexpanded.t list option
     ; inline_tests : Inline_tests.t option
     ; menhir_flags : Ordered_set_lang.Unexpanded.t option
     ; odoc : Odoc.t

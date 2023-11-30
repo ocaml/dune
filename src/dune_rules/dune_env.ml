@@ -77,7 +77,7 @@ module Stanza = struct
     ; foreign_flags : Ordered_set_lang.Unexpanded.t Foreign_language.Dict.t
     ; link_flags : Link_flags.Spec.t
     ; env_vars : Env.t
-    ; binaries : File_binding.Unexpanded.t list
+    ; binaries : File_binding.Unexpanded.t list option
     ; inline_tests : Inline_tests.t option
     ; menhir_flags : Ordered_set_lang.Unexpanded.t option
     ; odoc : Odoc.t
@@ -119,7 +119,7 @@ module Stanza = struct
          t.foreign_flags
     && Link_flags.Spec.equal link_flags t.link_flags
     && Env.equal env_vars t.env_vars
-    && List.equal File_binding.Unexpanded.equal binaries t.binaries
+    && Option.equal (List.equal File_binding.Unexpanded.equal) binaries t.binaries
     && Option.equal Inline_tests.equal inline_tests t.inline_tests
     && Option.equal Ordered_set_lang.Unexpanded.equal menhir_flags t.menhir_flags
     && Odoc.equal odoc t.odoc
@@ -138,7 +138,7 @@ module Stanza = struct
     ; foreign_flags = Foreign_language.Dict.make_both Ordered_set_lang.Unexpanded.standard
     ; link_flags = Link_flags.Spec.standard
     ; env_vars = Env.empty
-    ; binaries = []
+    ; binaries = None
     ; inline_tests = None
     ; menhir_flags = None
     ; odoc = Odoc.empty
@@ -231,8 +231,7 @@ module Stanza = struct
       Link_flags.Spec.decode ~check:(Some (Dune_lang.Syntax.since Stanza.syntax (3, 0)))
     and+ env_vars = env_vars_field
     and+ binaries =
-      field
-        ~default:[]
+      field_o
         "binaries"
         (Dune_lang.Syntax.since Stanza.syntax (1, 6) >>> File_binding.Unexpanded.L.decode)
     and+ inline_tests = inline_tests_field

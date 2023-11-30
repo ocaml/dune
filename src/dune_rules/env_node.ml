@@ -88,10 +88,11 @@ let make
            let* field = Memo.Lazy.force t >>= field in
            f_absent (Some field)))
   in
+  let config_binaries = Option.value config.binaries ~default:[] in
   let local_binaries =
     Memo.lazy_ (fun () ->
       Memo.parallel_map
-        config.binaries
+        config_binaries
         ~f:
           (File_binding.Unexpanded.expand
              ~dir
@@ -101,7 +102,7 @@ let make
     inherited ~field:external_env ~root:default_env (fun env ->
       let env =
         let env = Env.extend_env env config.env_vars in
-        match config.binaries with
+        match config_binaries with
         | [] -> env
         | _ :: _ ->
           let dir = Artifacts.local_bin dir |> Path.build in

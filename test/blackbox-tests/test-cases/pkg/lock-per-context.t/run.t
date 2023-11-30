@@ -1,18 +1,22 @@
 Create a workspace with multiple contexts, each specifying a lockdir name.
   $ cat >dune-workspace <<EOF
   > (lang dune 3.8)
+  > (lock_dir
+  >  (path foo.lock)
+  >  (version_preference newest)) ; this is the default
+  > (lock_dir
+  >  (path prefers_oldest.lock)
+  >  (version_preference oldest))
   > (context
   >  (default
   >   (lock foo.lock)))
   > (context
   >  (default
   >   (name foo)
-  >   (version_preference newest) ; this is the default
   >   (lock bar.lock)))
   > (context
   >  (default
   >   (name prefers_oldest)
-  >   (version_preference oldest)
   >   (lock prefers_oldest.lock)))
   > (context
   >  (opam

@@ -17,10 +17,12 @@ Thus we first create a repo:
   > (repository
   >  (name mock)
   >  (source "git+file://$(pwd)/mock-opam-repository"))
+  > (lock_dir
+  >  (repositories mock))
   > (context
   >  (default
   >   (name default)
-  >   (repositories mock)))
+  >   (lock dune.lock)))
   > EOF
 
 We set the project up to depend on `foo`

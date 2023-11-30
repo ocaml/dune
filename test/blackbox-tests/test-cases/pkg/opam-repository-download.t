@@ -65,10 +65,11 @@ The repository can also be injected via the dune-workspace file
   > (repository
   >  (name foo)
   >  (source "git+file://$(pwd)/mock-opam-repository"))
+  > (lock_dir
+  >  (repositories foo))
   > (context
   >  (default
-  >   (name default)
-  >   (repositories foo)))
+  >   (name default)))
   > EOF
   $ mkdir dune-workspace-cache
   $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock

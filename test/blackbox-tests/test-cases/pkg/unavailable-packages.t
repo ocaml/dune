@@ -4,15 +4,19 @@
 Set up two build contexts: a default one for linux and another for macos.
   $ cat >dune-workspace <<EOF
   > (lang dune 3.8)
-  > (context (default
+  > (lock_dir
+  >  (path dune.lock)
   >  (solver_sys_vars
-  >   (os linux))))
+  >   (os linux)))
+  > (lock_dir
+  >  (path dune.macos.lock)
+  >  (solver_sys_vars
+  >   (os macos)))
+  > (context (default))
   > (context
   >  (default
   >   (name macos)
-  >   (lock dune.macos.lock)
-  >   (solver_sys_vars
-  >    (os macos))))
+  >   (lock dune.macos.lock)))
   > EOF
 
 !! Do not delete this one for the one in helpers.sh as it passes --context !!

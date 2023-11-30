@@ -102,7 +102,7 @@ module Options_implied_by_dash_p = struct
     ; always_show_command_line : bool
     ; promote_install_files : bool
     ; require_dune_project_file : bool
-    ; ignore_lock_directory : bool
+    ; ignore_lock_dir : bool
     }
 
   let docs = copts_sect
@@ -216,9 +216,9 @@ module Options_implied_by_dash_p = struct
         last
         & opt_all ~vopt:true bool [ false ]
         & info [ "require-dune-project-file" ] ~docs ~doc)
-    and+ ignore_lock_directory =
+    and+ ignore_lock_dir =
       let doc = "Ignore dune.lock/ directory." in
-      Arg.(value & flag & info [ "ignore-lock-directory" ] ~docs ~doc)
+      Arg.(value & flag & info [ "ignore-lock-dir" ] ~docs ~doc)
     in
     { root
     ; only_packages = No_restriction
@@ -229,7 +229,7 @@ module Options_implied_by_dash_p = struct
     ; always_show_command_line
     ; promote_install_files
     ; require_dune_project_file
-    ; ignore_lock_directory
+    ; ignore_lock_dir
     }
   ;;
 
@@ -244,7 +244,7 @@ module Options_implied_by_dash_p = struct
       ; "--always-show-command-line"
       ; "--promote-install-files"
       ; "--require-dune-project-file"
-      ; "--ignore-lock-directory"
+      ; "--ignore-lock-dir"
       ; "--default-target"
       ; "@install"
       ]
@@ -577,7 +577,7 @@ module Builder = struct
     ; ignore_promoted_rules : bool
     ; force : bool
     ; no_print_directory : bool
-    ; ignore_lock_directory : bool
+    ; ignore_lock_dir : bool
     ; store_orig_src_dir : bool
     ; default_target : Arg.Dep.t (* For build & runtest only *)
     ; watch : Dune_rpc_impl.Watch_mode_config.t
@@ -820,7 +820,7 @@ module Builder = struct
          ; always_show_command_line
          ; promote_install_files
          ; require_dune_project_file
-         ; ignore_lock_directory
+         ; ignore_lock_dir
          }
       =
       Options_implied_by_dash_p.term
@@ -1004,7 +1004,7 @@ module Builder = struct
     ; ignore_promoted_rules
     ; force
     ; no_print_directory
-    ; ignore_lock_directory
+    ; ignore_lock_dir
     ; store_orig_src_dir
     ; default_target
     ; watch
@@ -1284,7 +1284,7 @@ let init (builder : Builder.t) =
   Dune_rules.Clflags.promote_install_files := c.builder.promote_install_files;
   Dune_engine.Clflags.always_show_command_line := c.builder.always_show_command_line;
   Dune_rules.Clflags.ignore_promoted_rules := c.builder.ignore_promoted_rules;
-  Dune_rules.Clflags.ignore_lock_directory := c.builder.ignore_lock_directory;
+  Dune_rules.Clflags.ignore_lock_dir := c.builder.ignore_lock_dir;
   Dune_rules.Clflags.on_missing_dune_project_file
   := if c.builder.require_dune_project_file then Error else Warn;
   Log.info

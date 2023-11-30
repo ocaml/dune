@@ -4,7 +4,7 @@ let promote_install_files = ref false
 let display = Dune_engine.Clflags.display
 let capture_outputs = Dune_engine.Clflags.capture_outputs
 let debug_artifact_substitution = ref false
-let ignore_lock_directory = ref false
+let ignore_lock_dir = ref false
 
 type on_missing_dune_project_file =
   | Error

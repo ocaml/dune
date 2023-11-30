@@ -106,7 +106,7 @@ module Lock_dir = struct
   ;;
 
   let lock_dir_active ctx =
-    if !Clflags.ignore_lock_directory
+    if !Clflags.ignore_lock_dir
     then Memo.return false
     else
       get_path ctx

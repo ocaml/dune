@@ -6,10 +6,6 @@ module Repository = Dune_pkg.Pkg_workspace.Repository
    simplicity *)
 let syntax = Stanza.syntax
 
-let all_binaries (e : Dune_env.Stanza.t) =
-  List.concat_map e.rules ~f:(fun (_, config) -> config.binaries)
-;;
-
 let env_field, env_field_lazy =
   let make f g =
     field "env" ~default:(f None)
@@ -18,36 +14,39 @@ let env_field, env_field_lazy =
        and+ version = Dune_lang.Syntax.get_exn syntax
        and+ loc = loc
        and+ s = Dune_env.Stanza.decode in
-       Option.some
-       @@
-       let binaries = all_binaries s in
-       if List.is_empty binaries
-       then s
-       else (
+       let s =
          let minimum_version = 3, 2 in
-         if version < minimum_version
-         then (
-           let message =
-             User_message.make
-               ~loc
-               [ Pp.text
-                   (Dune_lang.Syntax.Error_msg.since
-                      syntax
-                      minimum_version
-                      ~what:"\"binaries\" in an \"env\" stanza in a dune-workspace file")
-               ]
-           in
-           Dune_env.Stanza.add_warning ~message s |> Dune_env.Stanza.add_error ~message)
+         if version >= minimum_version
+         then s
          else (
-           match File_binding.Unexpanded.L.find_pform binaries with
+           match List.find_map s.rules ~f:(fun (_, config) -> config.binaries) with
            | None -> s
-           | Some loc ->
-             User_error.raise
-               ~loc
-               [ Pp.text
-                   "Variables are not supported in \"binaries\" in an \"env\" stanza in \
-                    a dune-workspace file."
-               ]))
+           | Some _ (* CR-rgrinberg: the location should come from this field *) ->
+             let message =
+               User_message.make
+                 ~loc
+                 [ Pp.text
+                     (Dune_lang.Syntax.Error_msg.since
+                        syntax
+                        minimum_version
+                        ~what:"\"binaries\" in an \"env\" stanza in a dune-workspace file")
+                 ]
+             in
+             Dune_env.Stanza.add_warning ~message s |> Dune_env.Stanza.add_error ~message)
+       in
+       match
+         List.find_map s.rules ~f:(fun (_, config) ->
+           Option.bind config.binaries ~f:File_binding.Unexpanded.L.find_pform)
+       with
+       | None -> Some s
+       | Some loc ->
+         (* CR-rgrinberg: why do we forbid variables here?. *)
+         User_error.raise
+           ~loc
+           [ Pp.text
+               "Variables are not supported in \"binaries\" in an \"env\" stanza in a \
+                dune-workspace file."
+           ]
   in
   make Fun.id Fun.id, make Lazy.from_val lazy_
 ;;

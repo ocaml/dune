@@ -276,3 +276,9 @@ let generated_ml_and_c_files ctypes =
   in
   ml_files @ c_files
 ;;
+
+let has_stubs = function
+  | None -> false
+  | Some { function_description = []; _ } -> false
+  | _ -> true
+;;

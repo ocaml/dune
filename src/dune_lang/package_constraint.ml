@@ -207,3 +207,5 @@ let decode =
       Bvar (Variable.of_name (String.drop s 1))
     | _ -> sum (ops @ logops))
 ;;
+
+let equal x y = Ordering.is_eq (compare x y)

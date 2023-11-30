@@ -57,6 +57,7 @@ let solve
            ; repos
            ; solver_env = solver_env_from_context
            ; context_common = { name = context_name; _ }
+           ; constraints
            ; repositories
            }
          ->
@@ -87,7 +88,8 @@ let solve
                  (Package_name.Map.map
                     local_packages
                     ~f:Dune_pkg.Local_package.for_solver)
-               ~experimental_translate_opam_filters)
+               ~experimental_translate_opam_filters
+               ~constraints)
          >>| function
          | Error (`Diagnostic_message message) -> Error (context_name, message)
          | Ok { lock_dir; files; _ } ->

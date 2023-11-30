@@ -217,6 +217,10 @@ module Buildable = struct
   let has_mode_dependent_foreign_stubs t =
     List.exists ~f:Foreign.Stubs.is_mode_dependent t.foreign_stubs
   ;;
+
+  let has_foreign_stubs t =
+    List.is_non_empty t.foreign_stubs || Ctypes_field.has_stubs t.ctypes
+  ;;
 end
 
 module Public_lib = struct
@@ -823,9 +827,9 @@ module Library = struct
   let has_foreign_cxx t = Buildable.has_foreign_cxx t.buildable
 
   let stubs_archive t =
-    if List.is_empty t.buildable.foreign_stubs && Option.is_none t.buildable.ctypes
-    then None
-    else Some (Foreign.Archive.stubs (Lib_name.Local.to_string (snd t.name)))
+    if Buildable.has_foreign_stubs t.buildable
+    then Some (Foreign.Archive.stubs (Lib_name.Local.to_string (snd t.name)))
+    else None
   ;;
 
   let foreign_archives t = List.map ~f:snd t.buildable.foreign_archives

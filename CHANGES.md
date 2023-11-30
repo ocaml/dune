@@ -1,3 +1,10 @@
+Unreleased
+----------
+
+If you're a contributor, please include your CHANGES entry in a file
+`doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
+changelog properly.  
+
 3.12.1 (2023-11-29)
 -------------------
 

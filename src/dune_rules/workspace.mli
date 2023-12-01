@@ -58,7 +58,7 @@ module Context : sig
   module Default : sig
     type t =
       { base : Common.t
-      ; lock : Path.Source.t option
+      ; lock_dir : Path.Source.t option
       }
   end
 

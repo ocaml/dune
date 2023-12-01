@@ -104,7 +104,7 @@ module Lock_dir = struct
         | true -> Some ctx')
     with
     | None -> Some default_path
-    | Some (Default { lock; _ }) -> Some (Option.value lock ~default:default_path)
+    | Some (Default { lock_dir; _ }) -> Some (Option.value lock_dir ~default:default_path)
     | Some (Opam _) -> None
   ;;
 

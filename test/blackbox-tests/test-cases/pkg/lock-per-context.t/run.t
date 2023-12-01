@@ -9,15 +9,15 @@ Create a workspace with multiple contexts, each specifying a lockdir name.
   >  (version_preference oldest))
   > (context
   >  (default
-  >   (lock foo.lock)))
+  >   (lock_dir foo.lock)))
   > (context
   >  (default
   >   (name foo)
-  >   (lock bar.lock)))
+  >   (lock_dir bar.lock)))
   > (context
   >  (default
   >   (name prefers_oldest)
-  >   (lock prefers_oldest.lock)))
+  >   (lock_dir prefers_oldest.lock)))
   > (context
   >  (opam
   >   (name bar)

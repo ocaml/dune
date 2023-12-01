@@ -17,7 +17,7 @@
   > (context
   >  (default
   >   (name workspace-context)
-  >   (lock dune.workspace.lock)))
+  >   (lock_dir dune.workspace.lock)))
   > EOF
   $ solve_project --all-contexts <<EOF
   > (lang dune 3.11)

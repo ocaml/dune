@@ -599,7 +599,7 @@ module Group = struct
       match context with
       | Opam { base; switch } ->
         create_for_opam builder ~switch ~loc:base.loc ~targets:base.targets
-      | Default { lock; base } ->
+      | Default { lock_dir; base } ->
         let builder =
           match builder.findlib_toolchain with
           | Some _ -> builder
@@ -611,7 +611,7 @@ module Group = struct
                  findlib_toolchain = Some (Context_name.parse_string_exn (Loc.none, name))
                })
         in
-        let lock = Option.is_some lock in
+        let lock = Option.is_some lock_dir in
         default builder ~targets:base.targets ~lock
     ;;
 

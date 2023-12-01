@@ -58,8 +58,8 @@ module Per_context = struct
     |> Dune_pkg.Pkg_workspace.Repository.Name.Map.of_list_exn
   ;;
 
-  let make_solver workspace context_common ~version_preference_arg ~lock =
-    let lock_dir_path = Option.value lock ~default:Dune_pkg.Lock_dir.default_path in
+  let make_solver workspace context_common ~version_preference_arg ~lock_dir =
+    let lock_dir_path = Option.value lock_dir ~default:Dune_pkg.Lock_dir.default_path in
     let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
     let solver_env = Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env) in
     let version_preference_context =
@@ -104,8 +104,8 @@ module Per_context = struct
                "Unknown build context: %s"
                (Dune_engine.Context_name.to_string context_name |> String.maybe_quoted)
            ]
-       | Some (Default { lock; base = context_common; _ }) ->
-         [ make_solver workspace context_common ~version_preference_arg ~lock ]
+       | Some (Default { lock_dir; base = context_common; _ }) ->
+         [ make_solver workspace context_common ~version_preference_arg ~lock_dir ]
        | Some (Opam _) ->
          User_error.raise
            [ Pp.textf
@@ -115,8 +115,8 @@ module Per_context = struct
     | None, true ->
       let+ workspace = Memo.run (Workspace.workspace ()) in
       List.filter_map workspace.contexts ~f:(function
-        | Workspace.Context.Default { lock; base = context_common } ->
-          Some (make_solver workspace context_common ~version_preference_arg ~lock)
+        | Workspace.Context.Default { lock_dir; base = context_common } ->
+          Some (make_solver workspace context_common ~version_preference_arg ~lock_dir)
         | Opam _ -> None)
   ;;
 end

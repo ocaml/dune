@@ -211,11 +211,11 @@ module File = struct
       let perm = Re.(rep1 digit) in
       let hash = Re.(rep1 alnum) in
       let type_ = Re.(rep1 alpha) in
-      let size = Re.(rep1 digit) in
+      let size = Re.(alt [ rep1 digit; str "-" ]) in
       let path = Re.(rep1 any) in
       [ perm
       ; space
-      ; type_
+      ; Re.group type_
       ; space
       ; Re.group hash
       ; space
@@ -227,11 +227,16 @@ module File = struct
       |> Re.compile
     in
     fun line ->
-      let m = Re.exec re line in
-      { hash = Re.Group.get m 1
-      ; size = Int.of_string_exn @@ Re.Group.get m 2
-      ; path = Path.Local.of_string @@ Re.Group.get m 3
-      }
+      Re.exec_opt re line
+      |> Option.bind ~f:(fun m ->
+        match Re.Group.get m 1 with
+        | "blob" ->
+          Some
+            { hash = Re.Group.get m 2
+            ; size = Int.of_string_exn @@ Re.Group.get m 3
+            ; path = Path.Local.of_string @@ Re.Group.get m 4
+            }
+        | _ -> None)
   ;;
 
   let path t = t.path
@@ -293,7 +298,8 @@ module Remote = struct
 
   let files_at_rev repo (Rev rev) =
     run_capture_zero_separated_lines repo [ "ls-tree"; "-z"; "--long"; "-r"; rev ]
-    >>| File.Set.of_list_map ~f:File.parse
+    >>| List.filter_map ~f:File.parse
+    >>| File.Set.of_list
   ;;
 
   let rev_of_name { repo; handle; default_branch = _ } ~name =

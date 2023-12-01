@@ -7,13 +7,28 @@ let equal = Variable_name.Map.equal ~equal:Variable_value.equal
 let to_dyn = Variable_name.Map.to_dyn Variable_value.to_dyn
 let is_empty = Variable_name.Map.is_empty
 
+let validate t ~loc =
+  if Variable_name.Map.mem t Variable_name.with_test
+  then
+    User_error.raise
+      ?loc
+      [ Pp.textf
+          "Setting the %S solver variable is not permitted as it would conflict with \
+           dune's internal use of %S while solving opam packages."
+          Variable_name.(to_string with_test)
+          Variable_name.(to_string with_test)
+      ]
+;;
+
 let decode =
   let open Decoder in
   let+ loc, bindings =
     located (repeat (pair Variable_name.decode Variable_value.decode))
   in
   match Variable_name.Map.of_list bindings with
-  | Ok t -> t
+  | Ok t ->
+    validate t ~loc:(Some loc);
+    t
   | Error (duplicate_key, a, b) ->
     User_error.raise
       ~loc
@@ -25,7 +40,12 @@ let decode =
       ]
 ;;
 
-let set = Variable_name.Map.set
+let set t variable_name variable_value =
+  let t = Variable_name.Map.set t variable_name variable_value in
+  validate t ~loc:None;
+  t
+;;
+
 let get = Variable_name.Map.find
 let extend = Variable_name.Map.superpose
 

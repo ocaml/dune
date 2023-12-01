@@ -1,5 +1,11 @@
 open Import
 
+module Variable = struct
+  type t =
+    | Global of Variable_name.t
+    | Package of Package_variable.t
+end
+
 module Make (Monad : sig
     type 'a t
 
@@ -46,6 +52,26 @@ struct
     aux lines
   ;;
 
+  let package_variable self full_variable =
+    let name = OpamVariable.Full.variable full_variable |> Variable_name.of_opam in
+    match OpamVariable.Full.scope full_variable with
+    | Global ->
+      (match Variable_name.to_string name with
+       | "name" -> Variable.Package { Package_variable.scope = Self; name }
+       | "version" -> Variable.Package { Package_variable.scope = Self; name }
+       | _ -> Variable.Global name)
+    | _ ->
+      let scope : Package_variable.Scope.t =
+        match
+          OpamVariable.Full.package ~self full_variable
+          |> Option.map ~f:Package_name.of_opam_package_name
+        with
+        | None -> Self
+        | Some p -> Package p
+      in
+      Variable.Package { Package_variable.scope; name }
+  ;;
+
   let subst env self ~src ~dst =
     let contents =
       let contents = Io.read_file src in
@@ -70,18 +96,8 @@ struct
       !variables
     in
     let env =
-      let self' = self |> Package_name.to_string |> OpamPackage.Name.of_string in
-      fun full_variable ->
-        let name = OpamVariable.Full.variable full_variable |> Variable_name.of_opam in
-        let scope : Package_variable.Scope.t =
-          match
-            OpamVariable.Full.package ~self:self' full_variable
-            |> Option.map ~f:Package_name.of_opam_package_name
-          with
-          | None -> Self
-          | Some p -> Package p
-        in
-        env { Package_variable.scope; name }
+      let self = self |> Package_name.to_string |> OpamPackage.Name.of_string in
+      fun full_variable -> env (package_variable self full_variable)
     in
     let+ expansions =
       let+ expanded =

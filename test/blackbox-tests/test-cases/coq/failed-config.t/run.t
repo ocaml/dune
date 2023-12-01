@@ -32,7 +32,8 @@ These should fail.
   > coqc --config 2> /dev/null
   [1]
 
-Now we create a simple project that uses this coqc wrapper.
+Now we create a simple project that uses this coqc wrapper, should
+fail when the stdlib cannot be determined
 
   $ cat > dune <<EOF
   > (coq.theory
@@ -47,11 +48,36 @@ Now we create a simple project that uses this coqc wrapper.
   >   (write-file a.v "")))
   > EOF
 
-Here we build a simple Coq project. Neither a failing --config or --print-version should
-block this.
+Should fail: first warning that installed theories are being skipped due to the
+failure, then, as the library requires the stdlib, it fails:
+  $ FAIL_CONFIG=1 \
+  > dune build
+  Warning: Skipping installed theories due to 'coqc --config' failure:
+  - $TESTCASE_ROOT/bin/coqc --config failed with exit code 1.
+  Hint: Try running 'coqc --config' manually to see the error.
+  Error: Couldn't find Coq standard library, and theory is not using (stdlib
+  no)
+  [1]
 
-Should succeed, but should warn that installed theories are being skipped due to the
-failure.
+Here we build a simple Coq project. Neither a failing --config or --print-version should
+block this as it doesn't depend on the stdlib.
+
+  $ cat > dune <<EOF
+  > (coq.theory
+  >  (flags -noinit)
+  >  (name foo)
+  >  (stdlib no))
+  > 
+  > (rule
+  >  (deps
+  >   (env_var FAIL_VERSION)
+  >   (env_var FAIL_CONFIG))
+  >  (action
+  >   (write-file a.v "")))
+  > EOF
+
+Should succeed, warning that installed theories are being skipped due to the
+failure (c.f. #8958):
   $ FAIL_CONFIG=1 \
   > dune build
   Warning: Skipping installed theories due to 'coqc --config' failure:

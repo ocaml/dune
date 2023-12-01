@@ -1,5 +1,11 @@
 open Import
 
+module Variable : sig
+  type t =
+    | Global of Variable_name.t
+    | Package of Package_variable.t
+end
+
 module Make (Monad : sig
     type 'a t
 
@@ -12,7 +18,7 @@ module Make (Monad : sig
     end
   end) : sig
   val subst
-    :  (Package_variable.t -> OpamVariable.variable_contents option Monad.t)
+    :  (Variable.t -> OpamVariable.variable_contents option Monad.t)
     -> Package_name.t
     -> src:Path.t
     -> dst:Path.Build.t

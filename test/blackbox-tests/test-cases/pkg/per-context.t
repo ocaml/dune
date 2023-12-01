@@ -8,11 +8,11 @@ TODO: versioning will be added once this feature is stable
   > (lang dune 3.8)
   > (context
   >  (default
-  >   (lock foo.lock)))
+  >   (lock_dir foo.lock)))
   > (context
   >  (default
   >   (name foo)
-  >   (lock bar.lock)))
+  >   (lock_dir bar.lock)))
   > EOF
 
   $ mkdir foo.lock

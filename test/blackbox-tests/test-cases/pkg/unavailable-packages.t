@@ -16,7 +16,7 @@ Set up two build contexts: a default one for linux and another for macos.
   > (context
   >  (default
   >   (name macos)
-  >   (lock dune.macos.lock)))
+  >   (lock_dir dune.macos.lock)))
   > EOF
 
 !! Do not delete this one for the one in helpers.sh as it passes --context !!

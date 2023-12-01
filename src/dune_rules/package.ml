@@ -636,7 +636,10 @@ let load_opam_file file name =
   }
 ;;
 
-let equal = Poly.equal
+let equal =
+  (* TODO get rid of this *)
+  Poly.equal
+;;
 
 let missing_deps (t : t) ~effective_deps =
   let specified_deps =
@@ -649,6 +652,7 @@ let to_local_package t =
   { Dune_pkg.Local_package.name = name t
   ; version = t.version
   ; dependencies = t.depends
+  ; conflicts = t.conflicts
   ; loc = t.loc
   }
 ;;

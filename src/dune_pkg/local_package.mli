@@ -11,6 +11,7 @@ type t =
   { name : Package_name.t
   ; version : Package_version.t option
   ; dependencies : Package_dependency.t list
+  ; conflicts : Package_dependency.t list
   ; loc : Loc.t
   }
 
@@ -48,6 +49,7 @@ module For_solver : sig
   type t =
     { name : Package_name.t
     ; dependencies : Package_dependency.t list
+    ; conflicts : Package_dependency.t list
     }
 
   (** [to_opam_file t] returns an [OpamFile.OPAM.t] whose fields are based on the

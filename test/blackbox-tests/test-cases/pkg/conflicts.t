@@ -17,7 +17,12 @@ The solver should say no solution rather than just ignoring the conflict.
   >  (conflicts foo)
   >  (depends bar))
   > EOF
-  Solution for dune.lock:
-  - bar.0.0.1
-  - foo.0.0.1
+  Error: Unable to solve dependencies in build context: default
+  Can't find all required versions.
+  Selected: bar.0.0.1 x.dev
+  - foo -> (problem)
+      x dev requires conflict with all versions
+      Rejected candidates:
+        foo.0.0.1: Incompatible with restriction: conflict with all versions
+  [1]
 

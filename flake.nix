@@ -8,7 +8,9 @@
       inputs.flake-utils.follows = "flake-utils";
     };
     melange = {
-      url = "github:melange-re/melange/1.0.0";
+      # We use melange 1.0 because later versions do not work on OCaml < 5.0.
+      # melange 1.0 has a non-reproducible test causing issues. This branch removes that test.
+      url = "github:alizter/melange/melange-1.0-without-failing-test";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };
@@ -19,7 +21,7 @@
     , nixpkgs
     , ocamllsp
     , melange
-    }@inputs:
+    }:
     let package = "dune";
     in flake-utils.lib.eachDefaultSystem (system:
     let

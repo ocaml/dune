@@ -351,15 +351,20 @@ let filter_to_blang ~package ~loc filter =
   filter_to_blang filter
 ;;
 
-let simplify_filter =
+let simplify_filter solver_env =
   OpamFilter.partial_eval (fun var ->
     match OpamVariable.Full.scope var with
     | Global ->
-      let name = OpamVariable.Full.variable var in
-      if OpamVariable.equal name (OpamVariable.of_string "with-doc")
-         || OpamVariable.equal name (OpamVariable.of_string "with-test")
-      then Some (B false)
-      else None
+      let name = OpamVariable.Full.variable var |> Variable_name.of_opam in
+      if Variable_name.equal name Variable_name.with_test
+      then
+        (* We don't generate lockfiles for local packages, and we don't include
+           test dependencies for non-local packages, so "with-test" always
+           evaluates to "false". *)
+        Some (B false)
+      else
+        Solver_env.get solver_env name
+        |> Option.map ~f:Variable_value.to_opam_variable_contents
     | _ -> None)
 ;;
 
@@ -368,15 +373,15 @@ let filter_needed = function
   | Some f -> OpamFilter.eval_to_bool ~default:true (Fun.const None) f
 ;;
 
-let opam_commands_to_actions loc package (commands : OpamTypes.command list) =
+let opam_commands_to_actions solver_env loc package (commands : OpamTypes.command list) =
   List.filter_map commands ~f:(fun (args, filter) ->
-    let filter = Option.map filter ~f:simplify_filter in
+    let filter = Option.map filter ~f:(simplify_filter solver_env) in
     match filter_needed filter with
     | false -> None
     | true ->
       let terms =
         List.filter_map args ~f:(fun (simple_arg, filter) ->
-          let filter = Option.map filter ~f:simplify_filter in
+          let filter = Option.map filter ~f:(simplify_filter solver_env) in
           match filter_needed filter with
           | false -> None
           | true ->
@@ -389,13 +394,14 @@ let opam_commands_to_actions loc package (commands : OpamTypes.command list) =
               Slang.simplify slang
             in
             Some
-              (match filter with
-               | None -> slang
-               | Some filter ->
-                 let filter_blang =
-                   filter_to_blang ~package ~loc filter |> Slang.simplify_blang
-                 in
-                 Slang.when_ filter_blang slang))
+              (Slang.simplify
+                 (match filter with
+                  | None -> slang
+                  | Some filter ->
+                    let filter_blang =
+                      filter_to_blang ~package ~loc filter |> Slang.simplify_blang
+                    in
+                    Slang.when_ filter_blang slang)))
       in
       if List.is_empty terms
       then None
@@ -563,7 +569,7 @@ let opam_package_to_lock_file_pkg
             , action ))
     in
     let build_step =
-      opam_commands_to_actions loc opam_package (OpamFile.OPAM.build opam_file)
+      opam_commands_to_actions solver_env loc opam_package (OpamFile.OPAM.build opam_file)
     in
     List.concat [ subst_step; patch_step; build_step ]
     |> make_action
@@ -571,7 +577,7 @@ let opam_package_to_lock_file_pkg
   in
   let install_command =
     OpamFile.OPAM.install opam_file
-    |> opam_commands_to_actions loc opam_package
+    |> opam_commands_to_actions solver_env loc opam_package
     |> make_action
     |> Option.map ~f:build_env
   in

@@ -2,6 +2,7 @@ Print the solver env when no dune-workspace is present
   $ dune pkg print-solver-env --dont-poll-system-solver-variables
   Solver environment for context default:
   - opam-version = 2.2.0~alpha-vendored
+  - with-doc = false
 
 Add some build contexts with different environments
   $ cat >dune-workspace <<EOF
@@ -39,6 +40,7 @@ Add some build contexts with different environments
   $ dune pkg print-solver-env --all-contexts --dont-poll-system-solver-variables
   Solver environment for context change-opam-version:
   - opam-version = 42
+  - with-doc = false
   Solver environment for context no-doc:
   - arch = x86_64
   - opam-version = 2.2.0~alpha-vendored
@@ -46,6 +48,8 @@ Add some build contexts with different environments
   - os-distribution = ubuntu
   - os-family = ubuntu
   - os-version = 22.04
+  - with-doc = false
   Solver environment for context linux:
   - opam-version = 2.2.0~alpha-vendored
   - os = linux
+  - with-doc = false

@@ -4,7 +4,7 @@ The solver should repsect the (conflicts) field of the (package) stanza.
   $ mkrepo
   $ mkpkg foo
   $ mkpkg bar << EOF
-  > depends: [ foo ]
+  > depends: [ "foo" ]
   > EOF
 
 The solver should say no solution rather than just ignoring the conflict.
@@ -19,4 +19,5 @@ The solver should say no solution rather than just ignoring the conflict.
   > EOF
   Solution for dune.lock:
   - bar.0.0.1
+  - foo.0.0.1
 

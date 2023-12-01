@@ -163,23 +163,94 @@ let theories_flags ~theories_deps =
      Command.Args.S (List.map ~f:theory_coqc_flag libs))
 ;;
 
-let boot_flags ~coq_lang_version t : _ Command.Args.t =
-  let boot_flag = if coq_lang_version >= (0, 8) then [ "-boot" ] else [] in
-  match t with
-  (* We are compiling the prelude itself
-     [should be replaced with (per_file ...) flags] *)
-  | `Bootstrap_prelude -> As ("-noinit" :: boot_flag)
-  (* No special case *)
-  | `No_boot | `Bootstrap _ -> As boot_flag
-;;
+module Bootstrap : sig
+  type t =
+    | Implicit (** Use implicit stdlib loading, for coq lang versions < 0.8 *)
+    | No_stdlib
+    (** We are in >= 0.8, however the user set stdlib = no
+        , or we are compiling the prelude *)
+    | Stdlib of Coq_lib.t (** Regular case in >= 0.8 (or in < 0.8
+                              (boot) was used *)
 
-let coqc_file_flags
-  ~dir
-  ~theories_deps
-  ~wrapper_name
-  ~boot_type
-  ~ml_flags
-  ~coq_lang_version
+  val empty : t Memo.t
+
+  val make
+    :  dir:Path.Build.t
+    -> use_stdlib:bool
+    -> wrapper_name:string
+    -> coq_lang_version:Syntax.Version.t
+    -> Coq_module.t
+    -> t Memo.t
+
+  val flags : t -> 'a Command.Args.t
+end = struct
+  type t =
+    | Implicit (** Use implicit stdlib loading, for coq lang versions < 0.8 *)
+    | No_stdlib
+    (** We are in >= 0.8, however the user set stdlib = no
+        , or we are compiling the prelude *)
+    | Stdlib of Coq_lib.t (** Regular case in >= 0.8 (or in < 0.8
+                              (boot) was used *)
+
+  (* For empty set of modules, we return Prelude which is kinda
+     conservative. *)
+  let empty = Memo.return No_stdlib
+
+  (* Hack to know if a module is a prelude module *)
+  let check_init_module bootlib wrapper_name coq_module =
+    String.equal (Coq_lib_name.wrapper (Coq_lib.name bootlib)) wrapper_name
+    && Option.equal
+         String.equal
+         (List.hd_opt (Coq_module.prefix coq_module))
+         (Some "Init")
+  ;;
+
+  (* [Boostrap.t] determines, for a concrete Coq module, how the Coq
+     "standard library" is being handled. See the main modes above. *)
+  let make ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module =
+    let* scope = Scope.DB.find_by_dir dir in
+    let+ boot_lib =
+      Scope.coq_libs scope
+      >>= Coq_lib.DB.resolve_boot ~coq_lang_version
+      |> Resolve.Memo.read_memo
+    in
+    if use_stdlib
+    then (
+      match boot_lib with
+      | None ->
+        if coq_lang_version >= (0, 8)
+        then
+          User_error.raise
+            [ Pp.text
+                "Couldn't find Coq standard library, and theory is not using (stdlib no)"
+            ]
+        else Implicit
+      | Some (_loc, boot_lib) ->
+        (* TODO: replace with per_file flags *)
+        let init = check_init_module boot_lib wrapper_name coq_module in
+        if init
+        then No_stdlib
+        else if coq_lang_version >= (0, 8)
+        then Stdlib boot_lib
+        else (
+          (* Check if the boot library is in scope or not; note!!
+             This will change once we install dune-package files
+             for installed libs *)
+          match boot_lib with
+          | Legacy _ -> Implicit
+          | Dune _ -> Stdlib boot_lib))
+    else No_stdlib
+  ;;
+
+  let flags t : _ Command.Args.t =
+    match t with
+    | Implicit -> As []
+    | Stdlib _ -> As [ "-boot" ]
+    | No_stdlib -> As [ "-noinit"; "-boot" ]
+  ;;
+end
+
+let coqc_file_flags ~dir ~theories_deps ~wrapper_name ~boot_type ~ml_flags
   : _ Command.Args.t list
   =
   let file_flags : _ Command.Args.t list =
@@ -190,7 +261,7 @@ let coqc_file_flags
     ; A wrapper_name
     ]
   in
-  [ boot_flags ~coq_lang_version boot_type; S file_flags ]
+  [ Bootstrap.flags boot_type; S file_flags ]
 ;;
 
 let native_includes ~dir =
@@ -349,38 +420,6 @@ let ml_flags_and_ml_pack_rule
   Resolve.Memo.map ~f:fst res, mlpack_rule
 ;;
 
-(* the internal boot flag determines if the Coq "standard library" is being
-   built, in case we need to explicitly tell Coq where the build artifacts are
-   and add `Init.Prelude.vo` as a dependency; there is a further special case
-   when compiling the prelude, in this case we also need to tell Coq not to
-   try to load the prelude. *)
-let boot_type ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module =
-  let* scope = Scope.DB.find_by_dir dir in
-  let+ boot_lib =
-    Scope.coq_libs scope
-    >>= Coq_lib.DB.resolve_boot ~coq_lang_version
-    |> Resolve.Memo.read_memo
-  in
-  if use_stdlib
-  then (
-    match boot_lib with
-    | None ->
-      `No_boot
-        (* XXX: use_stdlib + no_boot is
-           actually a workspace error, cleanup *)
-    | Some (_loc, lib) ->
-      (* This is here as an optimization, TODO; replace with per_file flags *)
-      let init =
-        String.equal (Coq_lib_name.wrapper (Coq_lib.name lib)) wrapper_name
-        && Option.equal
-             String.equal
-             (List.hd_opt (Coq_module.prefix coq_module))
-             (Some "Init")
-      in
-      if init then `Bootstrap_prelude else `Bootstrap lib)
-  else `Bootstrap_prelude
-;;
-
 let dep_theory_file ~dir ~wrapper_name =
   Path.Build.relative dir ("." ^ wrapper_name)
   |> Path.Build.set_extension ~ext:".theory.d"
@@ -404,20 +443,14 @@ let setup_coqdep_for_theory_rule
        the more conservative path and pass -boot, we don't care here
        about -noinit as coqdep ignores it *)
     match coq_modules with
-    | [] -> Memo.return `Bootstrap_prelude
-    | m :: _ -> boot_type ~dir ~use_stdlib ~wrapper_name ~coq_lang_version m
+    | [] -> Bootstrap.empty
+    | m :: _ -> Bootstrap.make ~dir ~use_stdlib ~wrapper_name ~coq_lang_version m
   in
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
   let sources = List.rev_map ~f:Coq_module.source coq_modules in
   let file_flags =
     [ Command.Args.S
-        (coqc_file_flags
-           ~dir
-           ~theories_deps
-           ~wrapper_name
-           ~boot_type
-           ~ml_flags
-           ~coq_lang_version)
+        (coqc_file_flags ~dir ~theories_deps ~wrapper_name ~boot_type ~ml_flags)
     ; As [ "-dyndep"; "opt"; "-vos" ]
     ; Deps sources
     ]
@@ -524,8 +557,8 @@ let deps_of ~dir ~boot_type ~wrapper_name ~mode coq_module =
     let deps =
       let prelude = "Init/Prelude.vo" in
       match boot_type with
-      | `No_boot | `Bootstrap_prelude -> deps
-      | `Bootstrap lib -> Path.relative (Coq_lib.obj_root lib) prelude :: deps
+      | Bootstrap.No_stdlib | Bootstrap.Implicit -> deps
+      | Bootstrap.Stdlib lib -> Path.relative (Coq_lib.obj_root lib) prelude :: deps
     in
     Action_builder.paths deps
 ;;
@@ -541,7 +574,6 @@ let generic_coq_args
   ~ml_flags
   ~theories_deps
   ~theory_dirs
-  ~coq_lang_version
   coq_module
   =
   let+ coq_stanza_flags =
@@ -575,13 +607,7 @@ let generic_coq_args
     coqc_native_flags ~sctx ~dir ~theories_deps ~theory_dirs ~mode
   in
   let file_flags =
-    coqc_file_flags
-      ~dir
-      ~theories_deps
-      ~wrapper_name
-      ~boot_type
-      ~ml_flags
-      ~coq_lang_version
+    coqc_file_flags ~dir ~theories_deps ~wrapper_name ~boot_type ~ml_flags
   in
   match coq_prog with
   | `Coqc ->
@@ -611,7 +637,7 @@ let setup_coqc_rule
   =
   (* Process coqdep and generate rules *)
   let* boot_type =
-    boot_type ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module
+    Bootstrap.make ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module
   in
   let* coqc = coqc ~loc ~dir ~sctx in
   let obj_files =
@@ -635,7 +661,6 @@ let setup_coqc_rule
       ~theories_deps
       ~theory_dirs
       ~mode
-      ~coq_lang_version
       ~coq_prog:`Coqc
       coq_module
   in
@@ -900,7 +925,7 @@ let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) coq_mo
   let name = snd s.name in
   let use_stdlib = s.buildable.use_stdlib in
   let* boot_type =
-    boot_type ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module
+    Bootstrap.make ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module
   in
   let* coq_dir_contents = Dir_contents.coq dir_contents in
   let theory_dirs =
@@ -917,7 +942,6 @@ let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) coq_mo
     ~ml_flags
     ~theories_deps
     ~theory_dirs
-    ~coq_lang_version
     coq_module
 ;;
 
@@ -1100,7 +1124,7 @@ let coqtop_args_extraction ~sctx ~dir (s : Coq_stanza.Extraction.t) coq_module =
   in
   let wrapper_name = "DuneExtraction" in
   let* boot_type =
-    boot_type ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module
+    Bootstrap.make ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module
   in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
   generic_coq_args
@@ -1114,7 +1138,6 @@ let coqtop_args_extraction ~sctx ~dir (s : Coq_stanza.Extraction.t) coq_module =
     ~ml_flags
     ~theories_deps
     ~theory_dirs:Path.Build.Set.empty
-    ~coq_lang_version
     coq_module
 ;;
 
@@ -1123,7 +1146,7 @@ let deps_of ~dir ~use_stdlib ~wrapper_name ~mode ~coq_lang_version coq_module =
   let open Action_builder.O in
   let* boot_type =
     Action_builder.of_memo
-      (boot_type ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module)
+      (Bootstrap.make ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module)
   in
   deps_of ~dir ~boot_type ~wrapper_name ~mode coq_module
 ;;

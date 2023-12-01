@@ -339,24 +339,26 @@ module Context = struct
   module Default = struct
     type t =
       { base : Common.t
-      ; lock : Path.Source.t option
+      ; lock_dir : Path.Source.t option
       }
 
-    let to_dyn { base; lock } =
+    let to_dyn { base; lock_dir } =
       Dyn.record
-        [ "base", Common.to_dyn base; "lock", Dyn.(option Path.Source.to_dyn) lock ]
+        [ "base", Common.to_dyn base
+        ; "lock_dir", Dyn.(option Path.Source.to_dyn) lock_dir
+        ]
     ;;
 
     let decode ~dir =
       let+ common = Common.decode
       and+ name =
         field_o "name" (Dune_lang.Syntax.since syntax (1, 10) >>> Context_name.decode)
-      and+ lock =
+      and+ lock_dir =
         (* TODO
            1. guard before version check before releasing
            2. allow external paths
         *)
-        let+ path = field_o "lock" string in
+        let+ path = field_o "lock_dir" string in
         Option.map path ~f:(Path.Source.relative dir)
       in
       fun ~profile_default ~instrument_with_default ~x ->
@@ -368,11 +370,11 @@ module Context = struct
         in
         let name = Option.value ~default name in
         let base = { common with targets = Target.add common.targets x; name } in
-        { base; lock }
+        { base; lock_dir }
     ;;
 
-    let equal { base; lock } t =
-      Common.equal base t.base && Option.equal Path.Source.equal lock t.lock
+    let equal { base; lock_dir } t =
+      Common.equal base t.base && Option.equal Path.Source.equal lock_dir t.lock_dir
     ;;
   end
 
@@ -435,7 +437,7 @@ module Context = struct
 
   let default ~x ~profile ~instrument_with =
     Default
-      { lock = None
+      { lock_dir = None
       ; base =
           { loc = Loc.of_pos __POS__
           ; targets = [ Option.value x ~default:Target.Native ]

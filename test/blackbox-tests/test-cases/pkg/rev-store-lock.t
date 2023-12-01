@@ -24,7 +24,7 @@ We set this repository as sole source for opam repositories.
   > (context
   >  (default
   >   (name default)
-  >   (lock dune.lock)))
+  >   (lock_dir dune.lock)))
   > EOF
 
 We set the project up to depend on `foo`

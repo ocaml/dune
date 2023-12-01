@@ -19,7 +19,7 @@ First we setup a repo.
   > (context
   >  (default
   >   (name "foo")
-  >   (lock foo.lock)))
+  >   (lock_dir foo.lock)))
   > EOF
 
 Here is the output of solving for multiple contexts:

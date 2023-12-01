@@ -43,11 +43,11 @@ Define several build contexts that all use the same custom lockdir:
   > (context
   >  (default
   >   (name b)
-  >   (lock foo.lock)))
+  >   (lock_dir foo.lock)))
   > (context
   >  (default
   >   (name a)
-  >   (lock foo.lock)))
+  >   (lock_dir foo.lock)))
   > EOF
 
 Check that we can still generate lockdirs for individual contexts:
@@ -60,10 +60,10 @@ Check that we can still generate lockdirs for individual contexts:
 
 It's an error to use --all-contexts when there are multiple contexts with the same lockdir:
   $ dune pkg lock --opam-repository-path=mock-opam-repository --all-contexts
-  File "dune-workspace", line 7, characters 1-39:
+  File "dune-workspace", line 7, characters 1-43:
   7 |  (default
   8 |   (name a)
-  9 |   (lock foo.lock)))
+  9 |   (lock_dir foo.lock)))
   Error: Refusing to proceed as multiple selected contexts would create a lock
   dir at the same path.
   These contexts all create a lock dir: foo.lock

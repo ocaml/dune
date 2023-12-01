@@ -25,15 +25,15 @@ Add some build contexts with different environments
   > (context
   >  (default
   >   (name linux)
-  >   (lock dune.linux.lock)))
+  >   (lock_dir dune.linux.lock)))
   > (context
   >  (default
   >   (name no-doc)
-  >   (lock dune.linux.no-doc.lock)))
+  >   (lock_dir dune.linux.no-doc.lock)))
   > (context
   >  (default
   >   (name change-opam-version)
-  >   (lock change-opam-version.lock)))
+  >   (lock_dir change-opam-version.lock)))
   > EOF
 
   $ dune pkg print-solver-env --all-contexts --dont-poll-system-solver-variables

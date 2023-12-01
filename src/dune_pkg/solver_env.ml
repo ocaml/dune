@@ -47,7 +47,7 @@ let set t variable_name variable_value =
 ;;
 
 let get = Variable_name.Map.find
-let extend = Variable_name.Map.superpose
+let extend a b = Variable_name.Map.superpose b a
 
 let with_opam_version_set_to_current =
   set

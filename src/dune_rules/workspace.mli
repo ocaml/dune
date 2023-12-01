@@ -2,6 +2,18 @@
 
 open Import
 
+module Lock_dir : sig
+  type t =
+    { path : Path.Source.t
+    ; version_preference : Dune_pkg.Version_preference.t option
+    ; solver_env : Dune_pkg.Solver_env.t option
+    ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
+    }
+
+  val equal : t -> t -> bool
+  val to_dyn : t -> Dyn.t
+end
+
 module Context : sig
   module Target : sig
     type t =
@@ -47,9 +59,6 @@ module Context : sig
     type t =
       { base : Common.t
       ; lock : Path.Source.t option
-      ; version_preference : Dune_pkg.Version_preference.t option
-      ; solver_sys_vars : Dune_pkg.Solver_env.Variable.Sys.Bindings.t option
-      ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
       }
   end
 
@@ -81,11 +90,13 @@ type t = private
   ; env : Dune_env.Stanza.t option
   ; config : Dune_config.t
   ; repos : Dune_pkg.Pkg_workspace.Repository.t list
+  ; lock_dirs : Lock_dir.t list
   }
 
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 val hash : t -> int
+val find_lock_dir : t -> Path.Source.t -> Lock_dir.t option
 
 module Clflags : sig
   type t =

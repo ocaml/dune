@@ -208,7 +208,7 @@ let opam_variable_to_slang ~loc packages variable =
     if not (is_valid_package_variable_name variable_string)
     then invalid_variable_error ~loc variable;
     let pform =
-      let name = Package_variable.Name.of_string variable_string in
+      let name = Variable_name.of_string variable_string in
       let scope : Package_variable.Scope.t =
         match package_name with
         | None -> Self

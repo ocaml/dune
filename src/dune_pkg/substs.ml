@@ -72,9 +72,7 @@ struct
     let env =
       let self' = self |> Package_name.to_string |> OpamPackage.Name.of_string in
       fun full_variable ->
-        let name =
-          OpamVariable.Full.variable full_variable |> Package_variable.Name.of_opam
-        in
+        let name = OpamVariable.Full.variable full_variable |> Variable_name.of_opam in
         let scope : Package_variable.Scope.t =
           match
             OpamVariable.Full.package ~self:self' full_variable

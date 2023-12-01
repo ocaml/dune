@@ -15,13 +15,14 @@ We'll set up a project that uses (only this) this repository, so doesn't use
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.10)
+  > (lock_dir
+  >  (repositories mock))
   > (repository
   >  (name mock)
   >  (source "git+file://$PWD/mock-opam-repository"))
   > (context
   >  (default
-  >   (name default)
-  >   (repositories mock)))
+  >   (name default)))
   > EOF
 
 We depend on the foo package

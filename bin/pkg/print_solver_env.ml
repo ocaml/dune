@@ -2,19 +2,13 @@ open Import
 open Pkg_common
 
 let print_solver_env_for_one_context
-  ~sys_bindings_from_current_system
-  { Per_context.solver_sys_vars = solver_sys_vars_from_context
+  ~solver_env_from_current_system
+  { Per_context.solver_env = solver_env_from_context
   ; context_common = { name = context_name; _ }
   ; _
   }
   =
-  let solver_env =
-    Dune_pkg.Solver_env.create
-      ~sys:
-        (solver_env_variables
-           ~solver_sys_vars_from_context
-           ~sys_bindings_from_current_system)
-  in
+  let solver_env = solver_env ~solver_env_from_current_system ~solver_env_from_context in
   Console.print
     [ Pp.textf
         "Solver environment for context %s:"
@@ -35,14 +29,17 @@ let print_solver_env
       ~context_name_arg:context_name
       ~all_contexts_arg:all_contexts
       ~version_preference_arg:version_preference
-  and+ sys_bindings_from_current_system =
+  and+ solver_env_from_current_system =
     if dont_poll_system_solver_variables
-    then Fiber.return Dune_pkg.Solver_env.Variable.Sys.Bindings.empty
-    else Dune_pkg.Sys_poll.sys_bindings ~path:(Env_path.path Stdune.Env.initial)
+    then Fiber.return None
+    else
+      Dune_pkg.Sys_poll.solver_env_from_current_system
+        ~path:(Env_path.path Stdune.Env.initial)
+      >>| Option.some
   in
   List.iter
     per_context
-    ~f:(print_solver_env_for_one_context ~sys_bindings_from_current_system)
+    ~f:(print_solver_env_for_one_context ~solver_env_from_current_system)
 ;;
 
 let term =

@@ -16,13 +16,15 @@ We set this repository as sole source for opam repositories.
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.10)
+  > (lock_dir
+  >  (repositories mock))
   > (repository
   >  (name mock)
   >  (source "git+file://$(pwd)/mock-opam-repository"))
   > (context
   >  (default
   >   (name default)
-  >   (repositories mock)))
+  >   (lock dune.lock)))
   > EOF
 
 We set the project up to depend on `foo`

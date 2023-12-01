@@ -8,10 +8,10 @@ module File_format = struct
 
   let conv =
     ( (function
-       | "gexf" -> Ok Gexf
-       | "dot" -> Ok Dot
-       | "summary" -> Ok Summary
-       | s -> Error (`Msg (Format.sprintf "%s is not a valid graph format" s)))
+        | "gexf" -> Ok Gexf
+        | "dot" -> Ok Dot
+        | "summary" -> Ok Summary
+        | s -> Error (`Msg (Format.sprintf "%s is not a valid graph format" s)))
     , fun fmt t ->
         Format.pp_print_string
           fmt

@@ -153,7 +153,7 @@ type kind =
 type t =
   { kind : kind
   ; sync_table : (string, Sync_id.t) Table.t
-      (* Pending fs sync operations indexed by the special sync filename. *)
+  (* Pending fs sync operations indexed by the special sync filename. *)
   }
 
 module Re = Dune_re
@@ -358,11 +358,25 @@ let fswatch_backend () =
   | None ->
     let hints =
       match Platform.OS.value with
-      | Haiku -> [ Pp.text "fswatch is available on HaikuPorts" ]
-      | FreeBSD -> [ Pp.text "pkg install fswatch-mon" ]
+      | Haiku ->
+        [ Pp.concat
+            ~sep:Pp.space
+            [ User_message.command "fswatch"; Pp.text "is available on HaikuPorts" ]
+          |> Pp.hovbox
+        ]
+      | FreeBSD -> [ User_message.command "pkg install fswatch-mon" ]
       | _ -> []
     in
-    User_error.raise ~hints [ Pp.text "Please install fswatch to enable watch mode." ]
+    User_error.raise
+      ~hints
+      [ Pp.concat
+          ~sep:Pp.space
+          [ Pp.text "Please install"
+          ; User_message.command "fswatch"
+          ; Pp.text "to enable watch mode."
+          ]
+        |> Pp.hovbox
+      ]
 ;;
 
 let select_watcher_backend () =

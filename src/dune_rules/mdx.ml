@@ -75,7 +75,7 @@ module Deps = struct
   ;;
 
   let rule ~dir ~mdx_prog (files : Files.t) =
-    Command.run
+    Command.run_dyn_prog
       ~dir:(Path.build dir)
       mdx_prog
       ~stdout_to:files.deps
@@ -295,7 +295,6 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
   let files = Files.from_source_file ~mdx_dir src in
   (* Add the rule for generating the .mdx.deps file with ocaml-mdx deps *)
   let open Memo.O in
-  let* locks = Expander.expand_locks expander ~base:`Of_expander stanza.locks in
   let* () = Super_context.add_rule sctx ~loc ~dir (Deps.rule ~dir ~mdx_prog files)
   and* () =
     (* Add the rule for generating the .corrected file using ocaml-mdx test *)
@@ -353,7 +352,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
         let open Command.Args in
         match mdx_prog_gen with
         | Some prog ->
-          ( Ok (Path.build prog)
+          ( Action_builder.return @@ Ok (Path.build prog)
           , [ Dep (Path.build files.src)
             ; S (List.map ~f:(Prelude.runtime_deps ~dir) stanza.preludes)
             ] )
@@ -371,17 +370,21 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
       let deps, sandbox =
         Dep_conf_eval.unnamed ~expander (mdx_package_deps @ mdx_generic_deps)
       in
-      Action_builder.with_no_targets deps
-      >>> Action_builder.with_no_targets
-            (Action_builder.env_var "MDX_RUN_NON_DETERMINISTIC")
-      >>> Action_builder.with_no_targets (Action_builder.dyn_deps dyn_deps)
-      >>> Command.run
-            ~dir:(Path.build dir)
-            ~stdout_to:files.corrected
-            executable
-            command_line
-      >>| Action.Full.add_locks locks
-      >>| Action.Full.add_sandbox sandbox
+      let+ action =
+        Action_builder.with_no_targets deps
+        >>> Action_builder.with_no_targets
+              (Action_builder.env_var "MDX_RUN_NON_DETERMINISTIC")
+        >>> Action_builder.with_no_targets (Action_builder.dyn_deps dyn_deps)
+        >>> Command.run_dyn_prog
+              ~dir:(Path.build dir)
+              ~stdout_to:files.corrected
+              executable
+              command_line
+      and+ locks =
+        Expander.expand_locks expander ~base:`Of_expander stanza.locks
+        |> Action_builder.with_no_targets
+      in
+      Action.Full.add_locks locks action |> Action.Full.add_sandbox sandbox
     in
     Super_context.add_rule sctx ~loc ~dir (mdx_action ~loc)
   in
@@ -430,7 +433,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
   let prelude_args = S (List.concat_map t.preludes ~f:(Prelude.to_args ~dir)) in
   (* We call mdx to generate the testing executable source *)
   let action =
-    Command.run
+    Command.run_dyn_prog
       ~dir:(Path.build dir)
       mdx_prog
       ~stdout_to:file
@@ -494,8 +497,8 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
 let gen_rules t ~sctx ~dir ~scope ~expander =
   let open Memo.O in
   let register_rules () =
-    let* files_to_mdx = files_to_mdx t ~sctx ~dir
-    and* mdx_prog =
+    let* files_to_mdx = files_to_mdx t ~sctx ~dir in
+    let mdx_prog =
       Super_context.resolve_program
         sctx
         ~dir

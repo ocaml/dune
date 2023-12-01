@@ -9,17 +9,19 @@ let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
     match Dune_project.use_standard_c_and_cxx_flags project with
     | None | Some false -> Action_builder.(return cflags, return cxxflags)
     | Some true ->
+      let fdiagnostics_color =
+        Cxx_flags.ccomp_type ctx |> Action_builder.map ~f:Cxx_flags.fdiagnostics_color
+      in
       let open Action_builder.O in
       let c =
-        let+ cc = Cxx_flags.ccomp_type ctx in
-        let fdiagnostics_color = Cxx_flags.fdiagnostics_color cc in
-        cflags @ Ocaml_config.ocamlc_cppflags ocaml_config @ fdiagnostics_color
+        let+ fdiagnostics_color = fdiagnostics_color in
+        List.concat
+          [ cflags; Ocaml_config.ocamlc_cppflags ocaml_config; fdiagnostics_color ]
       in
       let cxx =
-        let+ cc = Cxx_flags.ccomp_type ctx
+        let+ fdiagnostics_color = fdiagnostics_color
         and+ db_flags = Cxx_flags.get_flags ~for_:Compile ctx in
-        let fdiagnostics_color = Cxx_flags.fdiagnostics_color cc in
-        db_flags @ cxxflags @ fdiagnostics_color
+        List.concat [ db_flags; cxxflags; fdiagnostics_color ]
       in
       c, cxx
   in
@@ -81,9 +83,10 @@ end = struct
     match Context.for_host context with
     | None -> Memo.return scope
     | Some host ->
-      let dir =
+      let* dir =
         let root = Scope.root scope in
         let src = Path.Build.drop_build_context_exn root in
+        let+ host = host in
         Path.Build.append_source (Context.build_dir host) src
       in
       Scope.DB.find_by_dir dir
@@ -274,48 +277,16 @@ let add_alias_action t alias ~dir ~loc action =
   Rules.Produce.Alias.add_action alias ~loc build
 ;;
 
-let local_binaries t ~dir = Env_tree.get_node t ~dir >>= Env_node.local_binaries
 let env_node = Env_tree.get_node
 let bin_annot t ~dir = Env_tree.get_node t ~dir >>= Env_node.bin_annot
 
-let dump_env t ~dir =
-  let node = Env_tree.get_node t ~dir in
-  let ocaml_flags = node >>= Env_node.ocaml_flags in
-  let foreign_flags = node >>| Env_node.foreign_flags in
-  let link_flags = node >>= Env_node.link_flags in
-  let menhir_flags = node >>| Env_node.menhir_flags in
-  let coq_flags = node >>= Env_node.coq in
-  let js_of_ocaml = node >>= Env_node.js_of_ocaml in
-  let open Action_builder.O in
-  let+ o_dump =
-    let* ocaml_flags = Action_builder.of_memo ocaml_flags in
-    Ocaml_flags.dump ocaml_flags
-  and+ c_dump =
-    let* foreign_flags = Action_builder.of_memo foreign_flags in
-    let+ c_flags = foreign_flags.c
-    and+ cxx_flags = foreign_flags.cxx in
-    List.map
-      ~f:Dune_lang.Encoder.(pair string (list string))
-      [ "c_flags", c_flags; "cxx_flags", cxx_flags ]
-  and+ link_flags_dump =
-    let* link_flags = Action_builder.of_memo link_flags in
-    Link_flags.dump link_flags
-  and+ menhir_dump =
-    let+ flags = Action_builder.of_memo_join menhir_flags in
-    [ "menhir_flags", flags ] |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
-  and+ coq_dump =
-    let+ flags = Action_builder.of_memo_join coq_flags in
-    [ "coq_flags", flags ] |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
-  and+ jsoo_dump =
-    let* jsoo = Action_builder.of_memo js_of_ocaml in
-    Js_of_ocaml.Flags.dump jsoo.flags
-  in
-  List.concat [ o_dump; c_dump; link_flags_dump; menhir_dump; coq_dump; jsoo_dump ]
+let resolve_program_memo t ~dir ?hint ~loc bin =
+  let* artifacts = Env_tree.artifacts_host t ~dir in
+  Artifacts.binary ?hint ~loc artifacts bin
 ;;
 
 let resolve_program t ~dir ?hint ~loc bin =
-  let* artifacts = Env_tree.artifacts_host t ~dir in
-  Artifacts.binary ?hint ~loc artifacts bin
+  Action_builder.of_memo @@ resolve_program_memo t ~dir ?hint ~loc bin
 ;;
 
 let add_packages_env context ~base stanzas packages =
@@ -487,17 +458,17 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   let+ root_expander =
     let artifacts_host, public_libs_host, context_host =
       match Context.for_host context with
-      | None -> artifacts, public_libs, context
+      | None -> artifacts, public_libs, Memo.return context
       | Some host ->
-        let artifacts = Artifacts_db.get host in
-        let public_libs = Scope.DB.public_libs host in
+        let artifacts = host >>= Artifacts_db.get in
+        let public_libs = host >>= Scope.DB.public_libs in
         artifacts, public_libs, host
     in
     let+ scope = Scope.DB.find_by_dir (Context.build_dir context)
     and+ public_libs = public_libs
     and+ artifacts_host = artifacts_host
     and+ public_libs_host = public_libs_host
-    and+ scope_host = Scope.DB.find_by_dir (Context.build_dir context_host) in
+    and+ scope_host = context_host >>| Context.build_dir >>= Scope.DB.find_by_dir in
     Expander.make_root
       ~scope
       ~scope_host
@@ -514,7 +485,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
      is used as default at the root of every project in the workspace. *)
   let default_env =
     let profile = Context.profile context in
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"default_env" (fun () ->
       make_default_env_node
         ocaml.ocaml_config
         (Context.build_context context)
@@ -541,13 +512,14 @@ let all =
     let rec sctxs =
       lazy
         (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
-           Context.name c, Memo.Lazy.create (fun () -> make_sctx c)))
+           Context.name c, Memo.Lazy.create ~name:"make_sctx" (fun () -> make_sctx c)))
     and make_sctx (context : Context.t) =
       let host () =
         match Context.for_host context with
         | None -> Memo.return None
         | Some h ->
           let+ sctx =
+            let* h = h in
             Memo.Lazy.force
               (Context_name.Map.find_exn (Lazy.force sctxs) (Context.name h))
           in
@@ -571,6 +543,12 @@ let find name =
   let open Memo.O in
   let+ all = Memo.Lazy.force all in
   Context_name.Map.find all name
+;;
+
+let find_exn name =
+  let open Memo.O in
+  let+ all = Memo.Lazy.force all in
+  Context_name.Map.find_exn all name
 ;;
 
 let all_init_deferred () =

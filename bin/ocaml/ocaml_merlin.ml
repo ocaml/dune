@@ -99,7 +99,7 @@ end = struct
     | None ->
       Path.Build.drop_build_context_exn file
       |> Path.Source.to_string_maybe_quoted
-      |> Printf.sprintf "No config found for file %s. Try calling `dune build`."
+      |> Printf.sprintf "No config found for file %s. Try calling 'dune build'."
       |> Merlin_conf.make_error
   ;;
 

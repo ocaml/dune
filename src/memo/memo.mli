@@ -436,43 +436,7 @@ module Debug : sig
   val verbose_diagnostics : bool ref
 end
 
-(** Various performance counters. Reset to zero at the start of every run. *)
-module Perf_counters : sig
-  (** This function must be called to enable performance counters. *)
-  val enable : unit -> unit
-
-  (** Number of nodes restored in the current run. *)
-  val nodes_restored_in_current_run : unit -> int
-
-  (** Number of nodes (re)computed in the current run. *)
-  val nodes_computed_in_current_run : unit -> int
-
-  (** Number of edges traversed in the current run. Some edges may be traversed
-      twice: first when restoring and then when (re)computing a value. *)
-  val edges_traversed_in_current_run : unit -> int
-
-  (** Number of nodes added to the cycle detection DAG in the current run; can't
-      exceed [nodes_restored_in_current_run + nodes_computed_in_current_run]. *)
-  val nodes_for_cycle_detection_in_current_run : unit -> int
-
-  (** Number of edges added to the cycle detection DAG in the current run; can't
-      exceed [edges_traversed_in_current_run]. *)
-  val edges_for_cycle_detection_in_current_run : unit -> int
-
-  (** Number of paths added to the cycle detection DAG in the current run. Each
-      path is a sequence of "forcing" edges followed by a "blocking" edge. *)
-  val paths_for_cycle_detection_in_current_run : unit -> int
-
-  (** A concise summary of performance counters. *)
-  val report_for_current_run : unit -> string
-
-  (** Raise if any internal invariants are violated. *)
-  val assert_invariants : unit -> unit
-
-  (** Reset the counters to zero. You typically don't need to call this function
-      directly (as counters are reset on every run) but it's useful for tests. *)
-  val reset : unit -> unit
-end
+module Metrics = Metrics
 
 module For_tests : sig
   (** After executing a memoized function with a given name and input, it is

@@ -64,6 +64,7 @@ include struct
   module Profile = Profile
   module Lib_name = Lib_name
   module Package_name = Package_name
+  module Package_version = Package_version
 end
 
 module Log = Dune_util.Log

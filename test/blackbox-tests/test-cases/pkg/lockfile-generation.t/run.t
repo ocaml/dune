@@ -70,6 +70,8 @@ Print the contents of each file in the lockdir:
   
   (lang package 0.1)
   
+  (dependency_hash ca83e32ab35d71d20fa075b395046c29)
+  
   (repositories
    (complete false)
    (used))
@@ -112,6 +114,8 @@ Run the solver again preferring oldest versions of dependencies:
   dune.lock/lock.dune:
   
   (lang package 0.1)
+  
+  (dependency_hash ca83e32ab35d71d20fa075b395046c29)
   
   (repositories
    (complete false)

@@ -213,6 +213,7 @@ end
 module Facts = struct
   type t = Fact.t Map.t
 
+  let equal x y = Map.equal ~equal:Fact.equal x y
   let empty = Map.empty
 
   let union a b =

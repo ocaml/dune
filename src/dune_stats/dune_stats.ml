@@ -292,9 +292,9 @@ module Fd_count = struct
         | Unknown ->
           let res = lsof () in
           (how
-             := match res with
-                | This _ -> `Lsof
-                | Unknown -> `Disable);
+           := match res with
+              | This _ -> `Lsof
+              | Unknown -> `Disable);
           res)
   ;;
 end

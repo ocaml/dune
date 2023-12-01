@@ -256,8 +256,8 @@ let dyn_of_sexp (S (syntax, dlang)) =
     "S"
     [ Dyn.pair
         (function
-         | Dune -> Variant ("Dune", [])
-         | Jbuild -> Variant ("Jbuild", []))
+          | Dune -> Variant ("Dune", [])
+          | Jbuild -> Variant ("Jbuild", []))
         Dune_lang.to_dyn
         (syntax, dlang)
     ]

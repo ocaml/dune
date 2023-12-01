@@ -70,5 +70,5 @@ module Partial = struct
 end
 
 let disallow (mode : Sandbox_mode.t) =
-  Sandbox_mode.Dict.of_func (fun mode' -> not (Sandbox_mode.equal mode mode'))
+  Sandbox_mode.Set.of_func (fun mode' -> not (Sandbox_mode.equal mode mode'))
 ;;

@@ -126,19 +126,18 @@ let opt_rule cctx m =
         ; As [ "-md5-unit"; "-reorder-blocks"; "opt"; "-q" ]
         ]
   in
-  let open Memo.O in
-  let* ocamlfdo_binary = ocamlfdo_binary sctx dir
-  and* ocamlfdo_flags = ocamlfdo_flags ctx in
+  let ocamlfdo_binary = ocamlfdo_binary sctx dir in
+  let ocamlfdo_flags = ocamlfdo_flags ctx |> Action_builder.of_memo in
   Super_context.add_rule
     sctx
     ~dir
-    (Command.run
+    (Command.run_dyn_prog
        ~dir:(Path.build dir)
        ocamlfdo_binary
        [ A "opt"
        ; Hidden_targets [ linear_fdo ]
        ; Dep (Path.build linear)
-       ; As ocamlfdo_flags
+       ; Command.Args.dyn ocamlfdo_flags
        ; Dyn flags
        ])
 ;;
@@ -164,13 +163,15 @@ module Linker_script = struct
       | None -> As []
     in
     let open Memo.O in
-    let* ocamlfdo_binary = ocamlfdo_binary sctx dir
-    and* ocamlfdo_linker_script_flags = ocamlfdo_linker_script_flags ctx in
+    let ocamlfdo_binary = ocamlfdo_binary sctx dir in
+    let ocamlfdo_linker_script_flags =
+      Action_builder.of_memo @@ ocamlfdo_linker_script_flags ctx
+    in
     let+ () =
       Super_context.add_rule
         sctx
         ~dir
-        (Command.run
+        (Command.run_dyn_prog
            ~dir:(Path.build (Context.build_dir ctx))
            ocamlfdo_binary
            [ A "linker-script"
@@ -178,7 +179,7 @@ module Linker_script = struct
            ; Target linker_script_path
            ; Dyn flags
            ; A "-q"
-           ; As ocamlfdo_linker_script_flags
+           ; Command.Args.dyn ocamlfdo_linker_script_flags
            ])
     in
     linker_script

@@ -2,16 +2,21 @@ open Stdune
 open Dune_cache_storage
 
 module Trimming_result = struct
-  type t = { trimmed_bytes : int64 }
+  type t =
+    { trimmed_bytes : int64
+    ; number_of_files_removed : int
+    }
 
-  let empty = { trimmed_bytes = 0L }
+  let empty = { trimmed_bytes = 0L; number_of_files_removed = 0 }
 
   (* CR-someday amokhov: Right now Dune doesn't support large (>1Gb) files on
      32-bit platforms due to the pervasive use of [int] for representing
      individual file sizes. It's not fundamentally difficult to switch to
      [int64], so we should do it if it becomes a real issue. *)
   let add t ~(bytes : int) =
-    { trimmed_bytes = Int64.add t.trimmed_bytes (Int64.of_int bytes) }
+    { trimmed_bytes = Int64.add t.trimmed_bytes (Int64.of_int bytes)
+    ; number_of_files_removed = t.number_of_files_removed + 1
+    }
   ;;
 end
 

@@ -79,7 +79,7 @@ type builder =
   ; env : Env.t
   ; implicit : bool
   ; findlib_toolchain : Context_name.t option
-  ; for_host : t option
+  ; for_host : (Context_name.t * t Memo.t) option
   ; path : Path.t list
   }
 
@@ -169,7 +169,7 @@ let ocaml t = t.ocaml
 let build_dir t = t.build_dir
 let kind t = t.kind
 let findlib_paths t = Memo.Lazy.force t.findlib_paths
-let for_host t = t.builder.for_host
+let for_host t = Option.map t.builder.for_host ~f:snd
 let default_ocamlpath t = Memo.Lazy.force t.default_ocamlpath
 let implicit t = t.builder.implicit
 let findlib_toolchain t = t.builder.findlib_toolchain
@@ -191,12 +191,17 @@ let equal x y = Context_name.equal x.builder.name y.builder.name
 let hash t = Context_name.hash t.builder.name
 let build_context t = t.build_context
 let which t fname = t.which fname
-let host t = Option.value ~default:t t.builder.for_host
 let name t = t.builder.name
 let path t = t.builder.path
 let installed_env t = t.builder.env
 let to_dyn_concise t : Dyn.t = Context_name.to_dyn t.builder.name
 let compare a b = Context_name.compare a.builder.name b.builder.name
+
+let host t =
+  match t.builder.for_host with
+  | None -> Memo.return t
+  | Some (_, host) -> host
+;;
 
 let to_dyn t : Dyn.t =
   let open Dyn in
@@ -206,10 +211,6 @@ let to_dyn t : Dyn.t =
     ; "kind", Kind.to_dyn t.kind
     ; "profile", Profile.to_dyn t.builder.profile
     ; "merlin", Bool t.builder.merlin
-    ; ( "for_host"
-      , option
-          Context_name.to_dyn
-          (Option.map t.builder.for_host ~f:(fun t -> t.builder.name)) )
     ; "fdo_target_exe", option path t.builder.fdo_target_exe
     ; "build_dir", Path.Build.to_dyn t.build_dir
     ; "installed_env", Env.to_dyn (Env.diff t.builder.env Env.initial)
@@ -252,9 +253,13 @@ end = struct
            opam
          | Error () ->
            User_error.raise
-             [ Pp.textf
-                 "`%s config --version' returned invalid output:"
-                 (Path.to_string_maybe_quoted opam)
+             [ Pp.concat
+                 ~sep:Pp.space
+                 [ User_message.command
+                     (sprintf "%s config --version" (Path.to_string_maybe_quoted opam))
+                 ; Pp.text "returned invalid output:"
+                 ]
+               |> Pp.hovbox
              ; Pp.verbatim version
              ]))
   ;;
@@ -416,7 +421,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
     Findlib_config.discover_from_env ~env:builder.env ~which ~ocamlpath ~findlib_toolchain
   in
   let ocaml_and_build_env_kind =
-    Memo.Lazy.create (fun () ->
+    Memo.Lazy.create ~name:"ocaml_and_build_env_kind" (fun () ->
       let+ ocaml, env =
         let toolchain kind =
           let+ toolchain =
@@ -430,10 +435,10 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
         | Lock _ ->
           Pkg_rules.ocaml_toolchain builder.name
           >>= (function
-          | None -> toolchain `Lock
-          | Some toolchain ->
-            let+ toolchain, _ = Action_builder.run toolchain Eager in
-            toolchain, `Default)
+           | None -> toolchain `Lock
+           | Some toolchain ->
+             let+ toolchain, _ = Action_builder.run toolchain Eager in
+             toolchain, `Default)
       in
       Ocaml_toolchain.register_response_file_support ocaml;
       if Option.is_some builder.fdo_target_exe
@@ -474,7 +479,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
           let+ ocaml, _ = Memo.Lazy.force ocaml_and_build_env_kind in
           ocaml)
     ; findlib_paths =
-        Memo.Lazy.create (fun () ->
+        Memo.Lazy.create ~name:"findlib_paths" (fun () ->
           let+ default_ocamlpath = Memo.Lazy.force default_ocamlpath in
           ocamlpath @ default_ocamlpath)
     ; default_ocamlpath
@@ -485,12 +490,12 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
 
 module Group = struct
   type nonrec t =
-    { native : t
-    ; targets : t list
+    { native : t Memo.Lazy.t
+    ; targets : t Memo.Lazy.t list
     }
 
   let create builder ~(kind : Kind.t) ~targets =
-    let* native =
+    let name, native =
       let implicit =
         not
           (List.mem
@@ -499,36 +504,46 @@ module Group = struct
              Workspace.Context.Target.Native)
       in
       let builder = { builder with implicit } in
-      create builder ~kind
+      ( builder.name
+      , Memo.Lazy.create ~name:"native-context" (fun () -> create builder ~kind) )
     in
-    let+ others =
+    let targets =
       let builder =
-        { builder with implicit = false; merlin = false; for_host = Some native }
+        { builder with
+          implicit = false
+        ; merlin = false
+        ; for_host = Some (name, Memo.Lazy.force native)
+        }
       in
-      Memo.parallel_map targets ~f:(function
-        | Native -> Memo.return None
+      List.filter_map targets ~f:(function
+        | Native -> None
         | Named findlib_toolchain ->
-          let name = Context_name.target builder.name ~toolchain:findlib_toolchain in
-          create { builder with name; findlib_toolchain = Some findlib_toolchain } ~kind
-          >>| Option.some)
+          Some
+            (Memo.Lazy.create ~name:"findlib_toolchain" (fun () ->
+               let name = Context_name.target builder.name ~toolchain:findlib_toolchain in
+               create
+                 { builder with name; findlib_toolchain = Some findlib_toolchain }
+                 ~kind)))
     in
-    { native; targets = List.filter_opt others }
+    { native; targets }
   ;;
 
   let default (builder : Builder.t) ~lock ~targets =
     let path = Env_path.path builder.env in
-    let* (kind : Kind.t) =
+    let+ (kind : Kind.t) =
       if lock
       then Memo.return @@ Kind.Lock { default = true }
       else
-        let+ has_lock = Pkg_rules.has_lock builder.name in
-        if has_lock then Kind.Lock { default = true } else Default
+        Pkg_rules.lock_dir_active builder.name
+        >>| function
+        | true -> Kind.Lock { default = true }
+        | false -> Default
     in
     create { builder with path } ~kind ~targets
   ;;
 
   let create_for_opam (builder : Builder.t) ~switch ~loc ~targets =
-    let* vars = Opam.env ~env:builder.env switch in
+    let+ vars = Opam.env ~env:builder.env switch in
     if not (Env.Map.mem vars Opam_switch.opam_switch_prefix_var_name)
     then
       User_error.raise
@@ -564,7 +579,7 @@ module Group = struct
         | None -> Memo.return None
         | Some context_name ->
           let+ { native; targets = _ } = Instantiate.instantiate context_name in
-          Some native
+          Some (context_name, Memo.Lazy.force native)
       in
       let builder : Builder.t =
         let builder =
@@ -584,8 +599,7 @@ module Group = struct
       match context with
       | Opam { base; switch } ->
         create_for_opam builder ~switch ~loc:base.loc ~targets:base.targets
-      | Default
-          { lock; version_preference = _; solver_sys_vars = _; repositories = _; base } ->
+      | Default { lock; base } ->
         let builder =
           match builder.findlib_toolchain with
           | Some _ -> builder
@@ -615,12 +629,12 @@ module DB = struct
   let all =
     let impl () =
       let* workspace = Workspace.workspace () in
-      let+ contexts =
+      let* contexts =
         Memo.parallel_map workspace.contexts ~f:(fun c ->
           let+ { Group.native; targets } = Group.instantiate (Workspace.Context.name c) in
           native :: targets)
       in
-      let all = List.concat contexts in
+      let+ all = List.concat contexts |> Memo.parallel_map ~f:Memo.Lazy.force in
       List.iter all ~f:(fun t ->
         let open Pp.O in
         Log.info
@@ -648,7 +662,7 @@ module DB = struct
       Memo.lazy_ ~name (fun () ->
         let+ map = all () in
         Context_name.Map.of_list_map_exn map ~f:(fun context ->
-          context.builder.name, Memo.lazy_ (fun () -> f context)))
+          context.builder.name, Memo.lazy_ ~name (fun () -> f context)))
     in
     Staged.stage (fun context ->
       let* map = Memo.Lazy.force map in
@@ -674,11 +688,12 @@ end
 let map_exe (context : t) =
   match context.builder.for_host with
   | None -> fun exe -> exe
-  | Some (host : t) ->
+  | Some (name, _) ->
     fun exe ->
+      let build_dir = Context_name.build_dir name in
       (match Path.extract_build_context_dir exe with
        | Some (dir, exe) when Path.equal dir (Path.build context.build_dir) ->
-         Path.append_source (Path.build host.build_dir) exe
+         Path.append_source (Path.build build_dir) exe
        | _ -> exe)
 ;;
 

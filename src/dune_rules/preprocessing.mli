@@ -21,7 +21,7 @@ val make
 
 (** Get a path to a cached ppx driver with some extra flags for cookies. *)
 val get_ppx_driver
-  :  Super_context.t
+  :  Context.t
   -> loc:Loc.t
   -> expander:Expander.t
   -> scope:Scope.t

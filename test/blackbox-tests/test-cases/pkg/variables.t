@@ -40,3 +40,23 @@ Test that we can set variables
       ; ("somestrings", Strings [ "foo"; "bar" ])
       ]
   }
+
+Now we demonstrate we get a proper error from invalid .config files:
+
+  $ cat >dune.lock/test.pkg <<EOF
+  > (build
+  >  (system "\| cat >test.config <<EOF
+  >          "\| this is dummy text
+  >          "\| EOF
+  >  ))
+  > EOF
+
+  $ build_pkg test 2>&1 | sed 's/File .*:/File $REDACTED:/'
+  Error:
+  File $REDACTED:
+  1 | this is dummy text
+           ^^
+  Error parsing test.config
+  Reason: Parse error
+  -> required by _build/_private/default/.pkg/test/target/cookie
+  -> required by - package usetest

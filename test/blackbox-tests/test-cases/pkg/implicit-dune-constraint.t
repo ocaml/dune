@@ -20,9 +20,9 @@ constraint.
   Can't find all required versions.
   Selected: foo.0.0.1 x.dev
   - dune -> (problem)
-      User requested = 3.11
+      User requested = 3.13
       Rejected candidates:
-        dune.3.11.0: Incompatible with restriction: = 3.11
+        dune.3.11.0: Incompatible with restriction: = 3.13
   [1]
   $ test "4.0.0"
   Solution for dune.lock:

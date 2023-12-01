@@ -27,7 +27,7 @@ module Clflags = struct
 end
 
 let conf =
-  Memo.lazy_ (fun () ->
+  Memo.lazy_ ~name:"only_packages" (fun () ->
     match Clflags.t () with
     | No_restriction -> Memo.return None
     | Restrict { names; command_line_option } ->
@@ -104,9 +104,9 @@ let filtered_stanzas =
   let db =
     Per_context.create_by_name ~name:"filtered_stanzas"
     @@ fun context ->
-    let* { Dune_load.dune_files; packages = _; projects = _ } = Dune_load.load () in
-    let* stanzas = Dune_load.Dune_files.eval ~context dune_files in
-    let+ only_packages = Memo.Lazy.force conf in
+    let* only_packages = Memo.Lazy.force conf
+    and+ { Dune_load.dune_files; packages = _; projects = _ } = Dune_load.load () in
+    let+ stanzas = Dune_load.Dune_files.eval ~context dune_files in
     match only_packages with
     | None -> stanzas
     | Some visible_pkgs ->
@@ -128,16 +128,16 @@ let stanzas_in_dir dir =
   if Path.Build.is_root dir
   then Memo.return None
   else
-    let* dune_file = Dune_load.Dune_files.in_dir dir in
-    match dune_file with
+    Dune_load.Dune_files.in_dir dir
+    >>= function
     | None -> Memo.return None
     | Some dune_file ->
-      let* only_packages = Memo.Lazy.force conf in
-      let stanzas =
-        match only_packages with
+      let+ stanzas =
+        Memo.Lazy.force conf
+        >>| function
         | None -> dune_file.stanzas
         | Some visible_pkgs ->
           filter_out_stanzas_from_hidden_packages ~visible_pkgs dune_file.stanzas
       in
-      Memo.return (Some { dune_file with stanzas })
+      Some { dune_file with stanzas }
 ;;

@@ -16,8 +16,8 @@ Make a package with a substs field
   > (source (copy $PWD/source))
   > EOF
 
-The lockfile should contain the substitute action. 
-  $ cat dune.lock/with-substs.pkg 
+The lockfile should contain the substitute action.
+  $ cat dune.lock/with-substs.pkg
   (version 0.0.1)
   
   (build
@@ -33,5 +33,5 @@ The lockfile should contain the substitute action.
 
 The file foo.ml should have been built:
 
-  $ build_pkg with-substs 
+  $ build_pkg with-substs
   I have been substituted.

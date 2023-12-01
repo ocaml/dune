@@ -103,7 +103,7 @@ end
 module Pkg_info = struct
   type t =
     { name : Package_name.t
-    ; version : string
+    ; version : Package_version.t
     ; dev : bool
     ; source : Source.t option
     ; extra_sources : (Path.Local.t * Source.t) list
@@ -111,7 +111,7 @@ module Pkg_info = struct
 
   let equal { name; version; dev; source; extra_sources } t =
     Package_name.equal name t.name
-    && String.equal version t.version
+    && Package_version.equal version t.version
     && Bool.equal dev t.dev
     && Option.equal Source.equal source t.source
     && List.equal
@@ -132,14 +132,14 @@ module Pkg_info = struct
   let to_dyn { name; version; dev; source; extra_sources } =
     Dyn.record
       [ "name", Package_name.to_dyn name
-      ; "version", Dyn.string version
+      ; "version", Package_version.to_dyn version
       ; "dev", Dyn.bool dev
       ; "source", Dyn.option Source.to_dyn source
       ; "extra_sources", Dyn.list (Dyn.pair Path.Local.to_dyn Source.to_dyn) extra_sources
       ]
   ;;
 
-  let default_version = "dev"
+  let default_version = Package_version.of_string "dev"
 end
 
 module Pkg = struct
@@ -197,7 +197,8 @@ module Pkg = struct
     let open Decoder in
     enter
     @@ fields
-    @@ let+ version = field ~default:Pkg_info.default_version Fields.version string
+    @@ let+ version =
+         field ~default:Pkg_info.default_version Fields.version Package_version.decode
        and+ install_command = field_o Fields.install Action.decode_pkg
        and+ build_command = field_o Fields.build Action.decode_pkg
        and+ deps = field ~default:[] Fields.deps (repeat (located Package_name.decode))
@@ -245,7 +246,7 @@ module Pkg = struct
     =
     let open Encoder in
     record_fields
-      [ field Fields.version string version
+      [ field Fields.version Package_version.encode version
       ; field_o Fields.install Action.encode install_command
       ; field_o Fields.build Action.encode build_command
       ; field_l Fields.deps Package_name.encode (List.map deps ~f:snd)
@@ -304,6 +305,7 @@ end
 
 type t =
   { version : Syntax.Version.t
+  ; dependency_hash : (Loc.t * Local_package.Dependency_hash.t) option
   ; packages : Pkg.t Package_name.Map.t
   ; ocaml : (Loc.t * Package_name.t) option
   ; repos : Repositories.t
@@ -317,8 +319,15 @@ let remove_locs t =
   }
 ;;
 
-let equal { version; packages; ocaml; repos; expanded_solver_variable_bindings } t =
+let equal
+  { version; dependency_hash; packages; ocaml; repos; expanded_solver_variable_bindings }
+  t
+  =
   Syntax.Version.equal version t.version
+  && Option.equal
+       (Tuple.T2.equal Loc.equal Local_package.Dependency_hash.equal)
+       dependency_hash
+       t.dependency_hash
   && Option.equal (Tuple.T2.equal Loc.equal Package_name.equal) ocaml t.ocaml
   && Repositories.equal repos t.repos
   && Package_name.Map.equal packages t.packages ~equal:Pkg.equal
@@ -327,9 +336,15 @@ let equal { version; packages; ocaml; repos; expanded_solver_variable_bindings }
        t.expanded_solver_variable_bindings
 ;;
 
-let to_dyn { version; packages; ocaml; repos; expanded_solver_variable_bindings } =
+let to_dyn
+  { version; dependency_hash; packages; ocaml; repos; expanded_solver_variable_bindings }
+  =
   Dyn.record
     [ "version", Syntax.Version.to_dyn version
+    ; ( "dependency_hash"
+      , Dyn.option
+          (Tuple.T2.to_dyn Loc.to_dyn_hum Local_package.Dependency_hash.to_dyn)
+          dependency_hash )
     ; "packages", Package_name.Map.to_dyn Pkg.to_dyn packages
     ; "ocaml", Dyn.option (Tuple.T2.to_dyn Loc.to_dyn_hum Package_name.to_dyn) ocaml
     ; "repos", Repositories.to_dyn repos
@@ -338,8 +353,56 @@ let to_dyn { version; packages; ocaml; repos; expanded_solver_variable_bindings 
     ]
 ;;
 
-let create_latest_version packages ~ocaml ~repos ~expanded_solver_variable_bindings =
+type missing_dependency =
+  { dependant_package : Pkg.t
+  ; dependency : Package_name.t
+  ; loc : Loc.t
+  }
+
+(* [validate_packages packages] returns
+   [Error (`Missing_dependencies missing_dependencies)] where
+   [missing_dependencies] is a non-empty list with an element for each package
+   dependency which doesn't have a corresponding entry in [packages]. *)
+let validate_packages packages =
+  let missing_dependencies =
+    Package_name.Map.values packages
+    |> List.concat_map ~f:(fun (dependant_package : Pkg.t) ->
+      List.filter_map dependant_package.deps ~f:(fun (loc, dependency) ->
+        if Package_name.Map.mem packages dependency
+        then None
+        else Some { dependant_package; dependency; loc }))
+  in
+  if List.is_empty missing_dependencies
+  then Ok ()
+  else Error (`Missing_dependencies missing_dependencies)
+;;
+
+let create_latest_version
+  packages
+  ~local_packages
+  ~ocaml
+  ~repos
+  ~expanded_solver_variable_bindings
+  =
+  (match validate_packages packages with
+   | Ok () -> ()
+   | Error (`Missing_dependencies missing_dependencies) ->
+     Code_error.raise
+       "Invalid package table"
+       (List.map
+          missing_dependencies
+          ~f:(fun { dependant_package; dependency; loc = _ } ->
+            ( "missing dependency"
+            , Dyn.record
+                [ "missing package", Package_name.to_dyn dependency
+                ; "dependency of", Package_name.to_dyn dependant_package.info.name
+                ] ))));
   let version = Syntax.greatest_supported_version Dune_lang.Pkg.syntax in
+  let dependency_hash =
+    Local_package.(
+      Dependency_set.hash (For_solver.list_non_local_dependency_set local_packages))
+    |> Option.map ~f:(fun dependency_hash -> Loc.none, dependency_hash)
+  in
   let complete, used =
     match repos with
     | None -> true, None
@@ -349,7 +412,16 @@ let create_latest_version packages ~ocaml ~repos ~expanded_solver_variable_bindi
       complete, Some used
   in
   let repos : Repositories.t = { complete; used } in
-  { version; packages; ocaml; repos; expanded_solver_variable_bindings }
+  let t =
+    { version
+    ; dependency_hash
+    ; packages
+    ; ocaml
+    ; repos
+    ; expanded_solver_variable_bindings
+    }
+  in
+  t
 ;;
 
 let default_path = Path.Source.(relative root "dune.lock")
@@ -360,7 +432,13 @@ module Metadata = Dune_sexp.Versioned_file.Make (Unit)
 let () = Metadata.Lang.register Dune_lang.Pkg.syntax ()
 
 let encode_metadata
-  { version; ocaml; repos; packages = _; expanded_solver_variable_bindings }
+  { version
+  ; dependency_hash
+  ; ocaml
+  ; repos
+  ; packages = _
+  ; expanded_solver_variable_bindings
+  }
   =
   let open Encoder in
   let base =
@@ -372,6 +450,15 @@ let encode_metadata
       ]
   in
   [ base ]
+  @ (match dependency_hash with
+     | None -> []
+     | Some (_loc, dependency_hash) ->
+       [ list
+           sexp
+           [ string "dependency_hash"
+           ; Local_package.Dependency_hash.encode dependency_hash
+           ]
+       ])
   @ (match ocaml with
      | None -> []
      | Some ocaml -> [ list sexp [ string "ocaml"; Package_name.encode (snd ocaml) ] ])
@@ -392,6 +479,8 @@ let decode_metadata =
   let open Decoder in
   fields
     (let+ ocaml = field_o "ocaml" (located Package_name.decode)
+     and+ dependency_hash =
+       field_o "dependency_hash" (located Local_package.Dependency_hash.decode)
      and+ repos = field "repositories" ~default:Repositories.default Repositories.decode
      and+ expanded_solver_variable_bindings =
        field
@@ -399,7 +488,7 @@ let decode_metadata =
          ~default:Solver_stats.Expanded_variable_bindings.empty
          Solver_stats.Expanded_variable_bindings.decode
      in
-     ocaml, repos, expanded_solver_variable_bindings)
+     ocaml, dependency_hash, repos, expanded_solver_variable_bindings)
 ;;
 
 module Package_filename = struct
@@ -427,19 +516,18 @@ module Write_disk = struct
      values indicate that it's unsafe to remove the existing directory and lock
      directory regeneration should not proceed. *)
   let check_existing_lock_dir path =
-    match Path.exists path with
-    | false -> Ok `Non_existant
-    | true ->
-      (match Path.is_directory path with
-       | false -> Error `Not_directory
-       | true ->
-         let metadata_path = Path.relative path metadata_filename in
-         (match Path.exists metadata_path && not (Path.is_directory metadata_path) with
-          | false -> Error `No_metadata_file
-          | true ->
-            (match Metadata.load metadata_path ~f:(Fun.const decode_metadata) with
-             | Ok _unused -> Ok `Is_existing_lock_dir
-             | Error exn -> Error (`Failed_to_parse_metadata (metadata_path, exn)))))
+    match Path.stat path with
+    | Ok { st_kind = S_DIR; _ } ->
+      let metadata_path = Path.relative path metadata_filename in
+      (match Path.stat metadata_path with
+       | Ok { st_kind = S_REG; _ } ->
+         (match Metadata.load metadata_path ~f:(Fun.const decode_metadata) with
+          | Ok _unused -> Ok `Is_existing_lock_dir
+          | Error exn -> Error (`Failed_to_parse_metadata (metadata_path, exn)))
+       | _ -> Error `No_metadata_file)
+    | Error (Unix.ENOENT, _, _) -> Ok `Non_existant
+    | Error _ -> Error `Unreadable
+    | Ok _ -> Error `Not_directory
   ;;
 
   (* Removes the exitsing lock directory at the specified path if it exists and
@@ -454,6 +542,7 @@ module Write_disk = struct
     | Error e ->
       let error_reason_pp =
         match e with
+        | `Unreadable -> Pp.text "Unable to read lock directory"
         | `Not_directory -> Pp.text "Specified lock dir path is not a directory"
         | `No_metadata_file ->
           Pp.textf "Specified lock dir lacks metadata file (%s)" metadata_filename
@@ -514,21 +603,30 @@ module Make_load (Io : sig
     val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
     val readdir_with_kinds : Path.Source.t -> (Filename.t * Unix.file_kind) list t
     val with_lexbuf_from_file : Path.Source.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
+    val stats_kind : Path.Source.t -> (File_kind.t, Unix_error.Detailed.t) result t
   end) =
 struct
   let load_metadata metadata_file_path =
     let open Io.O in
-    let+ syntax, version, ocaml, repos, expanded_solver_variable_bindings =
+    let+ syntax, version, dependency_hash, ocaml, repos, expanded_solver_variable_bindings
+      =
       Io.with_lexbuf_from_file metadata_file_path ~f:(fun lexbuf ->
         Metadata.parse_contents
           lexbuf
           ~f:(fun { Metadata.Lang.Instance.syntax; data = (); version } ->
             let open Decoder in
-            let+ ocaml, repos, expanded_solver_variable_bindings = decode_metadata in
-            syntax, version, ocaml, repos, expanded_solver_variable_bindings))
+            let+ ocaml, dependency_hash, repos, expanded_solver_variable_bindings =
+              decode_metadata
+            in
+            ( syntax
+            , version
+            , dependency_hash
+            , ocaml
+            , repos
+            , expanded_solver_variable_bindings )))
     in
     if String.equal (Syntax.name syntax) (Syntax.name Dune_lang.Pkg.syntax)
-    then version, ocaml, repos, expanded_solver_variable_bindings
+    then version, dependency_hash, ocaml, repos, expanded_solver_variable_bindings
     else
       User_error.raise
         [ Pp.textf
@@ -561,23 +659,69 @@ struct
   ;;
 
   let check_path lock_dir_path =
-    match Path.exists (Path.source lock_dir_path) with
-    | false ->
+    let open Io.O in
+    Io.stats_kind lock_dir_path
+    >>| function
+    | Ok S_DIR -> ()
+    | Error (Unix.ENOENT, _, _) ->
       User_error.raise
-        ~hints:[ Pp.text "Run dune pkg lock to generate it." ]
+        ~hints:
+          [ Pp.concat
+              ~sep:Pp.space
+              [ Pp.text "Run"
+              ; User_message.command "dune pkg lock"
+              ; Pp.text "to generate it."
+              ]
+            |> Pp.hovbox
+          ]
         [ Pp.textf "%s does not exist." (Path.Source.to_string lock_dir_path) ]
-    | true ->
-      (match Path.is_directory (Path.source lock_dir_path) with
-       | false ->
-         User_error.raise
-           [ Pp.textf "%s is not a directory." (Path.Source.to_string lock_dir_path) ]
-       | true -> ())
+    | Error e ->
+      User_error.raise
+        [ Pp.textf "%s is not accessible" (Path.Source.to_string lock_dir_path)
+        ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum e)
+        ]
+    | _ ->
+      User_error.raise
+        [ Pp.textf "%s is not a directory." (Path.Source.to_string lock_dir_path) ]
+  ;;
+
+  let check_packages packages ~lock_dir_path =
+    match validate_packages packages with
+    | Ok () -> ()
+    | Error (`Missing_dependencies missing_dependencies) ->
+      List.iter missing_dependencies ~f:(fun { dependant_package; dependency; loc } ->
+        User_message.prerr
+          (User_message.make
+             ~loc
+             [ Pp.textf
+                 "The package %S depends on the package %S, but %S does not appear in \
+                  the lockdir %s."
+                 (Package_name.to_string dependant_package.info.name)
+                 (Package_name.to_string dependency)
+                 (Package_name.to_string dependency)
+                 (Path.Source.to_string_maybe_quoted lock_dir_path)
+             ]));
+      User_error.raise
+        ~hints:
+          [ Pp.concat
+              ~sep:Pp.space
+              [ Pp.text
+                  "This could indicate that the lockdir is corrupted. Delete it and then \
+                   regenerate it by running:"
+              ; User_message.command "dune pkg lock"
+              ]
+          ]
+        [ Pp.textf
+            "At least one package dependency is itself not present as a package in the \
+             lockdir %s."
+            (Path.Source.to_string_maybe_quoted lock_dir_path)
+        ]
   ;;
 
   let load lock_dir_path =
     let open Io.O in
-    check_path lock_dir_path;
-    let* version, ocaml, repos, expanded_solver_variable_bindings =
+    let* () = check_path lock_dir_path in
+    let* version, dependency_hash, ocaml, repos, expanded_solver_variable_bindings =
       load_metadata (Path.Source.relative lock_dir_path metadata_filename)
     in
     let+ packages =
@@ -593,12 +737,23 @@ struct
         package_name, pkg)
       >>| Package_name.Map.of_list_exn
     in
-    { version; packages; ocaml; repos; expanded_solver_variable_bindings }
+    check_packages packages ~lock_dir_path;
+    { version
+    ; dependency_hash
+    ; packages
+    ; ocaml
+    ; repos
+    ; expanded_solver_variable_bindings
+    }
   ;;
 end
 
 module Load_immediate = Make_load (struct
     include Monad.Id
+
+    let stats_kind file =
+      Path.source file |> Path.stat |> Result.map ~f:(fun { Unix.st_kind; _ } -> st_kind)
+    ;;
 
     let parallel_map xs ~f = List.map xs ~f
 
@@ -614,3 +769,32 @@ module Load_immediate = Make_load (struct
   end)
 
 let read_disk = Load_immediate.load
+
+let transitive_dependency_closure t start =
+  let missing_packages =
+    let all_packages_in_lock_dir = Package_name.Set.of_keys t.packages in
+    Package_name.Set.diff start all_packages_in_lock_dir
+  in
+  match Package_name.Set.is_empty missing_packages with
+  | false -> Error (`Missing_packages missing_packages)
+  | true ->
+    let to_visit = Queue.create () in
+    let push_set = Package_name.Set.iter ~f:(Queue.push to_visit) in
+    push_set start;
+    let rec loop seen =
+      match Queue.pop to_visit with
+      | None -> seen
+      | Some node ->
+        let unseen_deps =
+          (* Note that the call to find_exn won't raise because [t] guarantees
+             that its map of dependencies is closed under "depends on". *)
+          Package_name.Set.(
+            diff
+              (of_list_map (Package_name.Map.find_exn t.packages node).deps ~f:snd)
+              seen)
+        in
+        push_set unseen_deps;
+        loop (Package_name.Set.union seen unseen_deps)
+    in
+    Ok (loop start)
+;;

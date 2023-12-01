@@ -81,24 +81,24 @@ module Deprecated = struct
       { tfuncs with
         mark_open_stag =
           (function
-           | Format.String_tag "atom" ->
-             state := In_atom :: !state;
-             ""
-           | Format.String_tag "makefile-action" ->
-             state := In_makefile_action :: !state;
-             ""
-           | Format.String_tag "makefile-stuff" ->
-             state := In_makefile_stuff :: !state;
-             ""
-           | s -> tfuncs.mark_open_stag s)
+            | Format.String_tag "atom" ->
+              state := In_atom :: !state;
+              ""
+            | Format.String_tag "makefile-action" ->
+              state := In_makefile_action :: !state;
+              ""
+            | Format.String_tag "makefile-stuff" ->
+              state := In_makefile_stuff :: !state;
+              ""
+            | s -> tfuncs.mark_open_stag s)
       ; mark_close_stag =
           (function
-           | Format.String_tag "atom"
-           | Format.String_tag "makefile-action"
-           | Format.String_tag "makefile-stuff" ->
-             state := List.tl !state;
-             ""
-           | s -> tfuncs.mark_close_stag s)
+            | Format.String_tag "atom"
+            | Format.String_tag "makefile-action"
+            | Format.String_tag "makefile-stuff" ->
+              state := List.tl !state;
+              ""
+            | s -> tfuncs.mark_close_stag s)
       };
     Format.pp_set_formatter_out_functions
       ppf

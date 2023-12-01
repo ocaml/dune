@@ -30,6 +30,14 @@ let equal a b =
   | Lt | Gt -> false
 ;;
 
+let to_dyn =
+  Dyn.option (function
+    | Symlink -> Variant ("Symlink", [])
+    | Copy -> Variant ("Copy", [])
+    | Hardlink -> Variant ("Hardlink", [])
+    | Patch_back_source_tree -> Variant ("Patch_back_source_tree", []))
+;;
+
 module Dict = struct
   type key = t
 
@@ -70,51 +78,32 @@ module Dict = struct
 end
 
 module Set = struct
-  type key = t
-  type t = bool Dict.t
+  module T = struct
+    type nonrec t = t
 
-  let compare = Dict.compare Bool.compare
-  let of_func = Dict.of_func
-  let singleton k = of_func (equal k)
+    let to_int = function
+      | None -> 0
+      | Some Copy -> 1
+      | Some Symlink -> 2
+      | Some Hardlink -> 3
+      | Some Patch_back_source_tree -> 4
+    ;;
+
+    let all =
+      [ None; Some Copy; Some Symlink; Some Hardlink; Some Patch_back_source_tree ]
+    ;;
+
+    let to_dyn = to_dyn
+  end
+
+  include Bit_set.Make (T)
 
   (* CR-someday amokhov: [Patch_back_source_tree] is a bit special in that it
      can only appear as a singleton. Perhaps, it should be treated differently
      than other sandboxing modes to make meaningless states
      non-representable. *)
   let patch_back_source_tree_only = singleton (Some Patch_back_source_tree)
-
-  let is_patch_back_source_tree_only t =
-    match compare t patch_back_source_tree_only with
-    | Eq -> true
-    | Lt | Gt -> false
-  ;;
-
-  let equal a b =
-    match compare a b with
-    | Eq -> true
-    | Lt | Gt -> false
-  ;;
-
-  let mem = Dict.get
-
-  let inter (x : t) (y : t) : t =
-    { none = x.none && y.none
-    ; copy = x.copy && y.copy
-    ; symlink = x.symlink && y.symlink
-    ; hardlink = x.hardlink && y.hardlink
-    ; patch_back_source_tree = x.patch_back_source_tree && y.patch_back_source_tree
-    }
-  ;;
-
-  let to_dyn { Dict.none; copy; symlink; hardlink; patch_back_source_tree } =
-    Dyn.Record
-      [ "none", Bool none
-      ; "copy", Bool copy
-      ; "symlink", Bool symlink
-      ; "hardlink", Bool hardlink
-      ; "patch_back_source_tree", Bool patch_back_source_tree
-      ]
-  ;;
+  let is_patch_back_source_tree_only t = t = patch_back_source_tree_only
 end
 
 (* The order of sandboxing modes in this list determines the order in which Dune
@@ -147,12 +136,4 @@ let to_string = function
   | Some Copy -> "copy"
   | Some Hardlink -> "hardlink"
   | Some Patch_back_source_tree -> "patch_back_source_tree"
-;;
-
-let to_dyn =
-  Dyn.option (function
-    | Symlink -> Variant ("Symlink", [])
-    | Copy -> Variant ("Copy", [])
-    | Hardlink -> Variant ("Hardlink", [])
-    | Patch_back_source_tree -> Variant ("Patch_back_source_tree", []))
 ;;

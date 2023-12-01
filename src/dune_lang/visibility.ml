@@ -20,13 +20,14 @@ let encode =
 
 let decode =
   let open Dune_sexp.Decoder in
-  plain_string (fun ~loc -> function
-    | "public" -> Public
-    | "private" -> Private
-    | _ ->
-      User_error.raise
-        ~loc
-        [ Pp.text "Not a valid visibility. Valid visibility is public or private" ])
+  plain_string (fun ~loc ->
+       function
+       | "public" -> Public
+       | "private" -> Private
+       | _ ->
+         User_error.raise
+           ~loc
+           [ Pp.text "Not a valid visibility. Valid visibility is public or private" ])
 ;;
 
 module Map = struct

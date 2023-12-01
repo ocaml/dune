@@ -16,16 +16,16 @@ let dummy_results
     Dune_pkg_outdated.For_tests.better_candidate
       ~is_immediate_dep_of_local_package:true
       ~name:(sprintf "foo%d" i)
-      ~newer_version:"2.0.0"
-      ~outdated_version:"1.0.0")
+      ~newer_version:(Dune_pkg.Package_version.of_string "2.0.0")
+      ~outdated_version:(Dune_pkg.Package_version.of_string "1.0.0"))
   @ List.init (total_number_of_transitive - number_of_transitive) ~f:(fun _ ->
     Dune_pkg_outdated.For_tests.package_is_best_candidate)
   @ List.init number_of_transitive ~f:(fun i ->
     Dune_pkg_outdated.For_tests.better_candidate
       ~is_immediate_dep_of_local_package:false
       ~name:(sprintf "bar%d" i)
-      ~newer_version:"2.0.0"
-      ~outdated_version:"1.0.0")
+      ~newer_version:(Dune_pkg.Package_version.of_string "2.0.0")
+      ~outdated_version:(Dune_pkg.Package_version.of_string "1.0.0"))
 ;;
 
 (* This will comb through a [User_message.Style.t Pp.t] message and find the style that

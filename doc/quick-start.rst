@@ -50,7 +50,7 @@ This creates a project directory that includes the following contents:
     ├── dune-project
     ├── test
     │   ├── dune
-    │   └── project_name.ml
+    │   └── test_project_name.ml
     ├── lib
     │   └── dune
     ├── bin
@@ -93,7 +93,7 @@ which you can dive deeper into Dune's capabilities:
   authors and maintainers. Open this in your editor to fill in the
   placeholder values. See :ref:`dune-project` for details.
 * The ``test`` directory contains a skeleton for your project's tests. Add to
-  the tests by editing ``test/project_name.ml``. See :ref:`writing-tests` for
+  the tests by editing ``test/test_project_name.ml``. See :ref:`writing-tests` for
   details on testing.
 * The ``lib`` directory will hold the library you write to provide your executable's core
   functionality. Add modules to your library by creating new
@@ -133,7 +133,7 @@ This creates a project directory that includes the following contents:
     │   └── dune
     ├── test
     │   ├── dune
-    │   └── project_name.ml
+    │   └── test_project_name.ml
     └── project_name.opam
 
 Now, enter your project's directory:

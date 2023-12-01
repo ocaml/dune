@@ -82,8 +82,8 @@ module Bag = struct
        Source_tree.nearest_dir project_root
        >>| Source_tree.Dir.status
        >>| (function
-       | Vendored -> `Disabled
-       | _ -> active))
+        | Vendored -> `Disabled
+        | _ -> active))
     >>= maybe_emit warning produce
   ;;
 

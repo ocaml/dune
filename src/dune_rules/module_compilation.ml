@@ -323,7 +323,7 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
               ~obj_dir
               ~config:None
           in
-          action_with_targets >>= Super_context.add_rule sctx ~dir))
+          Super_context.add_rule sctx ~dir action_with_targets))
   in
   Memo.when_ melange (fun () ->
     let* () = build_cm ~cm_kind:(Melange Cmj) ~phase:None in

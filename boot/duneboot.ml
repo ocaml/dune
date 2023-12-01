@@ -691,8 +691,8 @@ module Build_info = struct
           "git"
           [ "describe"; "--always"; "--dirty"; "--abbrev=7" ]
         >>| (function
-        | Some s -> Some (String.trim s)
-        | None -> None)
+         | Some s -> Some (String.trim s)
+         | None -> None)
   ;;
 
   let gen_data_module oc =

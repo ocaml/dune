@@ -430,9 +430,9 @@ module Dune_config = struct
       | Clear_on_rebuild_and_flush_history -> Console.reset_flush_history ());
     Stdune.Io.set_copy_impl Config.(get copy_file);
     Log.verbose
-      := match t.display with
-         | Simple { verbosity = Verbose; _ } -> true
-         | _ -> false
+    := match t.display with
+       | Simple { verbosity = Verbose; _ } -> true
+       | _ -> false
   ;;
 
   let auto_concurrency =
@@ -497,9 +497,9 @@ module Dune_config = struct
         n
     in
     (Dune_engine.Clflags.display
-       := match t.display with
-          | Tui -> Dune_engine.Display.Quiet
-          | Simple { verbosity; _ } -> verbosity);
+     := match t.display with
+        | Tui -> Dune_engine.Display.Quiet
+        | Simple { verbosity; _ } -> verbosity);
     { Scheduler.Config.concurrency
     ; stats
     ; insignificant_changes

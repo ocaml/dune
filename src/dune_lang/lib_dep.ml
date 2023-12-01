@@ -196,7 +196,7 @@ module L = struct
            List.fold_left choices ~init:acc ~f:(fun acc (c : Select.Choice.t) ->
              let acc = Lib_name.Set.fold c.required ~init:acc ~f:(add Optional) in
              Lib_name.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
-        : _ Lib_name.Map.t);
+       : _ Lib_name.Map.t);
     t
   ;;
 

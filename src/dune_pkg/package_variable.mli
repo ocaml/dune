@@ -1,12 +1,5 @@
 open Import
 
-module Name : sig
-  type t
-
-  val of_string : string -> t
-  val to_string : t -> string
-end
-
 module Scope : sig
   type t =
     | Self
@@ -14,9 +7,15 @@ module Scope : sig
 end
 
 type t =
-  { name : Name.t
+  { name : Variable_name.t
   ; scope : Scope.t
   }
+
+val compare : t -> t -> Ordering.t
+
+include Comparable_intf.S with type key := t
+
+val to_dyn : t -> Dyn.t
 
 (** [of_macro_invocation ~loc macro_invocation] interprets a macro invocation
     as a package variable. It's assumed that the macro invocation was created

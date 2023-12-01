@@ -213,11 +213,11 @@ module Client = struct
       { chan : Chan.t
       ; requests :
           ( Id.t
-          , [ `Cancelled
-            | `Pending of
-              [ `Completed of Response.t | `Connection_dead | `Cancelled ] Fiber.Ivar.t
-            ] )
-          Table.t
+            , [ `Cancelled
+              | `Pending of
+                [ `Completed of Response.t | `Connection_dead | `Cancelled ] Fiber.Ivar.t
+              ] )
+            Table.t
       ; initialize : Initialize.Request.t
       ; mutable next_id : int
       ; mutable running : bool

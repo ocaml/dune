@@ -28,32 +28,7 @@ module Id : sig
   include Comparable_intf.S with type key := t
 end
 
-module Dependency : sig
-  module Constraint : sig
-    module Op : sig
-      type t = Dune_lang.Package_constraint.Op.t
-
-      val to_relop : t -> OpamParserTypes.FullPos.relop
-    end
-
-    module Value : sig
-      type t = Dune_lang.Package_constraint.Value.t
-    end
-
-    type t = Dune_lang.Package_constraint.t
-
-    val to_dyn : t -> Dyn.t
-  end
-
-  type t =
-    { name : Name.t
-    ; constraint_ : Constraint.t option
-    }
-
-  val opam_depend : t -> OpamParserTypes.FullPos.value
-  val to_dyn : t -> Dyn.t
-  val decode : t Dune_lang.Decoder.t
-end
+module Dependency : module type of Dune_pkg.Package_dependency
 
 module Source_kind : sig
   module Host : sig
@@ -121,7 +96,7 @@ type t =
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
   ; info : Info.t
-  ; version : string option
+  ; version : Package_version.t option
   ; has_opam_file : opam_file
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
@@ -150,8 +125,4 @@ val default : Name.t -> Path.Source.t -> t
 val load_opam_file : Path.Source.t -> Name.t -> t Memo.t
 
 val missing_deps : t -> effective_deps:Name.Set.t -> Name.Set.t
-
-(** [to_opam_file t] returns an [OpamFile.OPAM.t] whose fields are based on the
-    fields of [t]. Note that this does not actually create a corresponding file
-    on disk. *)
-val to_opam_file : t -> OpamFile.OPAM.t
+val to_local_package : t -> Dune_pkg.Local_package.t

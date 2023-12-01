@@ -58,16 +58,16 @@ let term =
              Lib_name.to_string (Dune_package.Entry.name e))
          in
          List.iter pkgs ~f:(fun e ->
-           let ver =
+           let ver_string =
              match Dune_package.Entry.version e with
-             | Some v -> v
+             | Some v -> Package_version.to_string v
              | _ -> "n/a"
            in
            Printf.printf
              "%-*s (version: %s)\n"
              max_len
              (Lib_name.to_string (Dune_package.Entry.name e))
-             ver);
+             ver_string);
          Memo.return ())
      in
      fun () -> Memo.run (run ()))

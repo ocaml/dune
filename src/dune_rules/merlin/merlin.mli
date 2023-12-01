@@ -68,6 +68,6 @@ val add_rules
 
 val pp_config
   :  t
-  -> Super_context.t
+  -> Context.t
   -> expander:Expander.t
   -> Processed.pp_flag option Module_name.Per_item.t Action_builder.t

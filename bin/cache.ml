@@ -58,9 +58,14 @@ let trim =
        Dune_cache.Trimmer.trim ~goal
      with
      | Error s -> User_error.raise [ Pp.text s ]
-     | Ok { trimmed_bytes } ->
+     | Ok { trimmed_bytes; number_of_files_removed } ->
        User_message.print
-         (User_message.make [ Pp.textf "Freed %s" (Bytes_unit.pp trimmed_bytes) ])
+         (User_message.make
+            [ Pp.textf
+                "Freed %s (%d files removed)"
+                (Bytes_unit.pp trimmed_bytes)
+                number_of_files_removed
+            ])
 ;;
 
 let size =

@@ -77,12 +77,12 @@ module Stanza = struct
     ; foreign_flags : Ordered_set_lang.Unexpanded.t Foreign_language.Dict.t
     ; link_flags : Link_flags.Spec.t
     ; env_vars : Env.t
-    ; binaries : File_binding.Unexpanded.t list
+    ; binaries : File_binding.Unexpanded.t list option
     ; inline_tests : Inline_tests.t option
     ; menhir_flags : Ordered_set_lang.Unexpanded.t option
     ; odoc : Odoc.t
     ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
-    ; coq : Ordered_set_lang.Unexpanded.t
+    ; coq : Coq_env.t
     ; format_config : Format_config.t option
     ; error_on_use : User_message.t option
     ; warn_on_load : User_message.t option
@@ -119,11 +119,11 @@ module Stanza = struct
          t.foreign_flags
     && Link_flags.Spec.equal link_flags t.link_flags
     && Env.equal env_vars t.env_vars
-    && List.equal File_binding.Unexpanded.equal binaries t.binaries
+    && Option.equal (List.equal File_binding.Unexpanded.equal) binaries t.binaries
     && Option.equal Inline_tests.equal inline_tests t.inline_tests
     && Option.equal Ordered_set_lang.Unexpanded.equal menhir_flags t.menhir_flags
     && Odoc.equal odoc t.odoc
-    && Ordered_set_lang.Unexpanded.equal coq t.coq
+    && Coq_env.equal coq t.coq
     && Option.equal Format_config.equal format_config t.format_config
     && Js_of_ocaml.Env.equal js_of_ocaml t.js_of_ocaml
     && Option.equal User_message.equal error_on_use t.error_on_use
@@ -138,12 +138,12 @@ module Stanza = struct
     ; foreign_flags = Foreign_language.Dict.make_both Ordered_set_lang.Unexpanded.standard
     ; link_flags = Link_flags.Spec.standard
     ; env_vars = Env.empty
-    ; binaries = []
+    ; binaries = None
     ; inline_tests = None
     ; menhir_flags = None
     ; odoc = Odoc.empty
     ; js_of_ocaml = Js_of_ocaml.Env.empty
-    ; coq = Ordered_set_lang.Unexpanded.standard
+    ; coq = Coq_env.default
     ; format_config = None
     ; error_on_use = None
     ; warn_on_load = None
@@ -220,15 +220,6 @@ module Stanza = struct
       (Dune_lang.Syntax.since Stanza.syntax (3, 0) >>> Js_of_ocaml.Env.decode)
   ;;
 
-  let coq_flags = Ordered_set_lang.Unexpanded.field "flags"
-
-  let coq_field =
-    field
-      "coq"
-      ~default:Ordered_set_lang.Unexpanded.standard
-      (Dune_lang.Syntax.since Stanza.syntax (2, 7) >>> fields coq_flags)
-  ;;
-
   let bin_annot =
     field_o "bin_annot" (Dune_lang.Syntax.since Stanza.syntax (3, 8) >>> bool)
   ;;
@@ -240,15 +231,14 @@ module Stanza = struct
       Link_flags.Spec.decode ~check:(Some (Dune_lang.Syntax.since Stanza.syntax (3, 0)))
     and+ env_vars = env_vars_field
     and+ binaries =
-      field
-        ~default:[]
+      field_o
         "binaries"
         (Dune_lang.Syntax.since Stanza.syntax (1, 6) >>> File_binding.Unexpanded.L.decode)
     and+ inline_tests = inline_tests_field
     and+ menhir_flags = menhir_flags ~since:(Some (2, 1))
     and+ odoc = odoc_field
     and+ js_of_ocaml = js_of_ocaml_field
-    and+ coq = coq_field
+    and+ coq = Coq_env.decode
     and+ format_config = Format_config.field ~since:(2, 8)
     and+ bin_annot = bin_annot in
     { flags

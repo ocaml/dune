@@ -39,13 +39,13 @@ module Register (M : S) : sig end = struct
       let p = !record_parser in
       let name_s = Sub_system_name.to_string name in
       record_parser
-        := fun acc ->
-             field_o name_s decode
-             >>= (function
-             | None -> p acc
-             | Some x ->
-               let acc = Sub_system_name.Map.set acc name (T x) in
-               p acc)
+      := fun acc ->
+           field_o name_s decode
+           >>= (function
+            | None -> p acc
+            | Some x ->
+              let acc = Sub_system_name.Map.set acc name (T x) in
+              p acc)
   ;;
 end
 

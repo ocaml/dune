@@ -64,7 +64,7 @@ module Make (Key : Key) : S with type key = Key.t = struct
       (merge a b ~f:(fun key a b ->
          f key a b;
          None)
-        : _ t)
+       : _ t)
   ;;
 
   let foldi t ~init ~f = fold t ~init ~f:(fun ~key ~data acc -> f key data acc)
@@ -77,6 +77,14 @@ module Make (Key : Key) : S with type key = Key.t = struct
   let filter t ~f = filteri t ~f:(fun _ x -> f x)
   let partitioni t ~f = partition t ~f
   let partition t ~f = partitioni t ~f:(fun _ x -> f x)
+
+  let partition_map t ~f =
+    foldi t ~init:(empty, empty) ~f:(fun i x (l, r) ->
+      match f x with
+      | Either.Left e -> set l i e, r
+      | Right e -> l, set r i e)
+  ;;
+
   let to_list = bindings
   let to_list_map t ~f = foldi t ~init:[] ~f:(fun k v acc -> f k v :: acc) |> List.rev
 

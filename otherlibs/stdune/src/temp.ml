@@ -28,7 +28,10 @@ let tmp_dirs = ref Path.Set.empty
 
 let create_temp_file ?(perms = 0o600) path =
   let file = Path.to_string path in
-  match Unix.close (Unix.openfile file [ O_WRONLY; Unix.O_CREAT; Unix.O_EXCL ] perms) with
+  match
+    Unix.close
+      (Unix.openfile file [ O_WRONLY; Unix.O_CREAT; Unix.O_EXCL; Unix.O_CLOEXEC ] perms)
+  with
   | () -> Ok ()
   | exception Unix.Unix_error (EEXIST, _, _) -> Error `Retry
 ;;
@@ -121,9 +124,9 @@ let clear_dir dir =
      ());
   let remove_from_set ~set =
     set
-      := Path.Set.filter !set ~f:(fun f ->
-           let removed = (not (Path.equal f dir)) && Path.is_descendant ~of_:dir f in
-           not removed)
+    := Path.Set.filter !set ~f:(fun f ->
+         let removed = (not (Path.equal f dir)) && Path.is_descendant ~of_:dir f in
+         not removed)
   in
   remove_from_set ~set:tmp_files;
   remove_from_set ~set:tmp_dirs

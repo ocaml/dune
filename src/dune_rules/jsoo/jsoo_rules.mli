@@ -22,7 +22,7 @@ val build_cm
   -> src:Path.t
   -> obj_dir:Path.Build.t Obj_dir.t
   -> config:Config.t option
-  -> Action.Full.t Action_builder.With_targets.t Memo.t
+  -> Action.Full.t Action_builder.With_targets.t
 
 val build_exe
   :  Compilation_context.t

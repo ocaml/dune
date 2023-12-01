@@ -93,11 +93,17 @@ let dep_prog = function
   | Error _ -> Action_builder.return ()
 ;;
 
-let run ~dir ?sandbox ?stdout_to prog args =
+let run_dyn_prog ~dir ?sandbox ?stdout_to prog args =
   Action_builder.With_targets.add
     ~file_targets:(Option.to_list stdout_to)
     (let open Action_builder.With_targets.O in
-     let+ () = Action_builder.with_no_targets (dep_prog prog)
+     let+ prog =
+       Action_builder.with_no_targets
+       @@
+       let open Action_builder.O in
+       let* prog = prog in
+       let+ () = dep_prog prog in
+       prog
      and+ args = expand ~dir (S args) in
      let action = Action.run prog args in
      let action =
@@ -106,6 +112,10 @@ let run ~dir ?sandbox ?stdout_to prog args =
        | Some path -> Action.with_stdout_to path action
      in
      Action.Full.make ?sandbox (Action.chdir dir action))
+;;
+
+let run ~dir ?sandbox ?stdout_to prog args =
+  run_dyn_prog ~dir ?sandbox ?stdout_to (Action_builder.return prog) args
 ;;
 
 let run' ~dir prog args =

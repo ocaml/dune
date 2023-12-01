@@ -46,7 +46,7 @@ let binary_available t name =
     (match path with
      | External e -> Fs_memo.file_exists @@ External e
      | In_source_tree e -> Fs_memo.file_exists @@ In_source_dir e
-     | In_build_dir _ -> Build_system.file_exists path)
+     | In_build_dir _ -> Memo.return true)
 ;;
 
 let add_binaries t ~dir l =

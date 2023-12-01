@@ -4,7 +4,7 @@ type mkdir_result =
   | Already_exists (** The directory already exists. No action was taken. *)
   | Created (** The directory was created. *)
   | Missing_parent_directory
-      (** No parent directory, use [mkdir_p] if you want to create it too. *)
+  (** No parent directory, use [mkdir_p] if you want to create it too. *)
 
 val mkdir : ?perms:int -> string -> mkdir_result
 

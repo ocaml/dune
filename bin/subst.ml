@@ -295,13 +295,23 @@ let subst vcs =
             "There is no dune-project file in the current directory, please add one with \
              a (name <name>) field in it."
         ]
-        ~hints:[ Pp.text "dune subst must be executed from the root of the project." ]
+        ~hints:
+          [ Pp.concat
+              ~sep:Pp.space
+              [ User_message.command "dune subst"
+              ; Pp.text "must be executed from the root of the project."
+              ]
+            |> Pp.hovbox
+          ]
   in
   (match Dune_project.subst_config dune_project.project with
    | Dune_lang.Subst_config.Disabled ->
      User_error.raise
-       [ Pp.text
-           "dune subst has been disabled in this project. Any use of it is forbidden."
+       [ Pp.concat
+           ~sep:Pp.space
+           [ User_message.command "dune subst"
+           ; Pp.text "has been disabled in this project. Any use of it is forbidden."
+           ]
        ]
        ~hints:
          [ Pp.text

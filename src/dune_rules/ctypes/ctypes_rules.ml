@@ -179,15 +179,18 @@ let build_c_program
   ~deps
   =
   let ctx = Super_context.context sctx in
-  let open Memo.O in
-  let* ocaml = Context.ocaml ctx in
-  let* exe =
+  let ocaml = Context.ocaml ctx in
+  let exe =
+    let open Action_builder.O in
+    let* ocaml = Action_builder.of_memo ocaml in
     Ocaml_config.c_compiler ocaml.ocaml_config
     |> Super_context.resolve_program ~loc:None ~dir sctx
   in
   let project = Scope.project scope in
   let with_user_and_std_flags =
     let base_flags =
+      let open Action_builder.O in
+      let+ ocaml = Action_builder.of_memo ocaml in
       let use_standard_flags = Dune_project.use_standard_c_and_cxx_flags project in
       let cfg = ocaml.ocaml_config in
       let fdo_flags = Command.Args.As (Fdo.c_flags ctx) in
@@ -211,9 +214,11 @@ let build_c_program
         ~flags:Ordered_set_lang.Unexpanded.standard
         ~language:C
     in
-    Command.Args.S [ base_flags; As foreign_flags ]
+    Command.Args.S [ Dyn base_flags; As foreign_flags ]
   in
   let include_args =
+    let open Action_builder.O in
+    let* ocaml = Action_builder.of_memo ocaml in
     let ocaml_where = ocaml.lib_config.stdlib_dir in
     (* XXX: need glob dependency *)
     let open Action_builder.O in
@@ -257,7 +262,8 @@ let build_c_program
       ]
     in
     let open Action_builder.With_targets.O in
-    Action_builder.with_no_targets deps >>> Command.run ~dir:(Path.build dir) exe args
+    Action_builder.with_no_targets deps
+    >>> Command.run_dyn_prog ~dir:(Path.build dir) exe args
   in
   Super_context.add_rule sctx ~dir action
 ;;

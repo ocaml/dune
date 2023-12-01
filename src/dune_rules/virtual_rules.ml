@@ -58,70 +58,70 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
   | Some (loc, implements) ->
     Lib.DB.find (Scope.libs scope) implements
     >>= (function
-    | None ->
-      User_error.raise
-        ~loc
-        [ Pp.textf
-            "Cannot implement %s as that library isn't available"
-            (Lib_name.to_string implements)
-        ]
-    | Some vlib ->
-      let info = Lib.info vlib in
-      let virtual_ =
-        let virtual_ = Lib_info.virtual_ info in
-        match virtual_ with
-        | Some v -> v
-        | None ->
-          User_error.raise
-            ~loc:lib.buildable.loc
-            [ Pp.textf
-                "Library %s isn't virtual and cannot be implemented"
-                (Lib_name.to_string implements)
-            ]
-      in
-      let+ vlib_modules, vlib_foreign_objects =
-        let foreign_objects = Lib_info.foreign_objects info in
-        match virtual_, foreign_objects with
-        | External _, Local | Local, External _ -> assert false
-        | External modules, External fa -> Memo.return (modules, fa)
-        | Local, Local ->
-          let name = Lib.name vlib in
-          let vlib = Lib.Local.of_lib_exn vlib in
-          let* dir_contents =
-            let info = Lib.Local.info vlib in
-            let dir = Lib_info.src_dir info in
-            Dir_contents.get sctx ~dir
-          in
-          let* modules =
-            let* preprocess =
-              (* TODO wrong, this should be delayed *)
-              Resolve.Memo.read_memo
-                (Preprocess.Per_module.with_instrumentation
-                   lib.buildable.preprocess
-                   ~instrumentation_backend:
-                     (Lib.DB.instrumentation_backend (Scope.libs scope)))
-            in
-            let* ocaml = Context.ocaml (Super_context.context sctx) in
-            let pp_spec =
-              Staged.unstage (Preprocessing.pped_modules_map preprocess ocaml.version)
-            in
-            Dir_contents.ocaml dir_contents
-            >>| Ml_sources.modules ~for_:(Library name)
-            >>= Modules.map_user_written ~f:(fun m -> Memo.return (pp_spec m))
-          in
-          let+ foreign_objects =
-            let* ext_obj =
-              let+ ocaml = Context.ocaml (Super_context.context sctx) in
-              ocaml.lib_config.ext_obj
-            in
-            let dir = Obj_dir.obj_dir (Lib.Local.obj_dir vlib) in
-            let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
-            foreign_sources
-            |> Foreign_sources.for_lib ~name
-            |> Foreign.Sources.object_files ~ext_obj ~dir
-            |> List.map ~f:Path.build
-          in
-          modules, foreign_objects
-      in
-      Some (Vimpl.make ~impl:lib ~vlib ~vlib_modules ~vlib_foreign_objects))
+     | None ->
+       User_error.raise
+         ~loc
+         [ Pp.textf
+             "Cannot implement %s as that library isn't available"
+             (Lib_name.to_string implements)
+         ]
+     | Some vlib ->
+       let info = Lib.info vlib in
+       let virtual_ =
+         let virtual_ = Lib_info.virtual_ info in
+         match virtual_ with
+         | Some v -> v
+         | None ->
+           User_error.raise
+             ~loc:lib.buildable.loc
+             [ Pp.textf
+                 "Library %s isn't virtual and cannot be implemented"
+                 (Lib_name.to_string implements)
+             ]
+       in
+       let+ vlib_modules, vlib_foreign_objects =
+         let foreign_objects = Lib_info.foreign_objects info in
+         match virtual_, foreign_objects with
+         | External _, Local | Local, External _ -> assert false
+         | External modules, External fa -> Memo.return (modules, fa)
+         | Local, Local ->
+           let name = Lib.name vlib in
+           let vlib = Lib.Local.of_lib_exn vlib in
+           let* dir_contents =
+             let info = Lib.Local.info vlib in
+             let dir = Lib_info.src_dir info in
+             Dir_contents.get sctx ~dir
+           in
+           let* modules =
+             let* preprocess =
+               (* TODO wrong, this should be delayed *)
+               Resolve.Memo.read_memo
+                 (Preprocess.Per_module.with_instrumentation
+                    lib.buildable.preprocess
+                    ~instrumentation_backend:
+                      (Lib.DB.instrumentation_backend (Scope.libs scope)))
+             in
+             let* ocaml = Context.ocaml (Super_context.context sctx) in
+             let pp_spec =
+               Staged.unstage (Preprocessing.pped_modules_map preprocess ocaml.version)
+             in
+             Dir_contents.ocaml dir_contents
+             >>| Ml_sources.modules ~for_:(Library name)
+             >>= Modules.map_user_written ~f:(fun m -> Memo.return (pp_spec m))
+           in
+           let+ foreign_objects =
+             let* ext_obj =
+               let+ ocaml = Context.ocaml (Super_context.context sctx) in
+               ocaml.lib_config.ext_obj
+             in
+             let dir = Obj_dir.obj_dir (Lib.Local.obj_dir vlib) in
+             let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
+             foreign_sources
+             |> Foreign_sources.for_lib ~name
+             |> Foreign.Sources.object_files ~ext_obj ~dir
+             |> List.map ~f:Path.build
+           in
+           modules, foreign_objects
+       in
+       Some (Vimpl.make ~impl:lib ~vlib ~vlib_modules ~vlib_foreign_objects))
 ;;

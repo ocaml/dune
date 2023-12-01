@@ -25,3 +25,8 @@ Now we set (expand_aliases_in_sandbox), and re-run the action.
   > (expand_aliases_in_sandbox)
   > EOF
   $ dune build @foo
+  .
+  ./alias-dep
+
+The above output should include the files that we depend on via the alias
+expansion.

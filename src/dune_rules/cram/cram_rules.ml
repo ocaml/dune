@@ -8,7 +8,7 @@ module Spec = struct
     ; deps : unit Action_builder.t list
     ; sandbox : Sandbox_config.t
     ; enabled_if : Blang.t list
-    ; locks : Path.Set.t
+    ; locks : Path.Set.t Action_builder.t
     ; packages : Package.Name.Set.t
     }
 
@@ -16,7 +16,7 @@ module Spec = struct
     { loc = Loc.none
     ; alias = Alias.Name.Set.empty
     ; enabled_if = [ Blang.true_ ]
-    ; locks = Path.Set.empty
+    ; locks = Action_builder.return Path.Set.empty
     ; deps = []
     ; sandbox = Sandbox_config.needs_sandboxing
     ; packages = Package.Name.Set.empty
@@ -60,42 +60,39 @@ let test_rule
   | Ok test ->
     Expander.eval_blang expander (Blang.And enabled_if)
     >>= (function
-    | false ->
-      Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add_empty sctx ~alias ~loc)
-    | true ->
-      let cram =
-        let open Action_builder.O in
-        let+ action =
-          let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
-          let script = Path.Build.append_source prefix_with (Cram_test.script test) in
-          let+ () = Action_builder.path (Path.build script)
-          and+ () = Action_builder.all_unit deps
-          and+ () =
-            match test with
-            | File _ -> Action_builder.return ()
-            | Dir { dir; file = _ } ->
-              let deps =
-                Path.Build.append_source prefix_with dir
-                |> Path.build
-                |> Source_deps.files
-              in
-              let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
-              ()
-          in
-          Action.progn
-            [ Cram_exec.action (Path.build script)
-            ; Diff
-                { Diff.optional = true
-                ; mode = Text
-                ; file1 = Path.build script
-                ; file2 = Path.Build.extend_basename script ~suffix:".corrected"
-                }
-            ]
-        in
-        let locks = Path.Set.to_list locks in
-        Action.Full.make action ~locks ~sandbox
-      in
-      Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add sctx ~alias ~loc cram))
+     | false ->
+       Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add_empty sctx ~alias ~loc)
+     | true ->
+       let cram =
+         let open Action_builder.O in
+         let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
+         let script = Path.Build.append_source prefix_with (Cram_test.script test) in
+         let+ () = Action_builder.path (Path.build script)
+         and+ () = Action_builder.all_unit deps
+         and+ () =
+           match test with
+           | File _ -> Action_builder.return ()
+           | Dir { dir; file = _ } ->
+             let deps =
+               Path.Build.append_source prefix_with dir |> Path.build |> Source_deps.files
+             in
+             let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
+             ()
+         and+ locks = locks >>| Path.Set.to_list in
+         let action =
+           Action.progn
+             [ Cram_exec.action (Path.build script)
+             ; Diff
+                 { Diff.optional = true
+                 ; mode = Text
+                 ; file1 = Path.build script
+                 ; file2 = Path.Build.extend_basename script ~suffix:".corrected"
+                 }
+             ]
+         in
+         Action.Full.make action ~locks ~sandbox
+       in
+       Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add sctx ~alias ~loc cram))
 ;;
 
 let collect_stanzas =
@@ -175,13 +172,18 @@ let rules ~sctx ~expander ~dir tests =
                     Dep_conf_eval.named ~expander deps
                   in
                   deps :: acc.deps, Sandbox_config.inter acc.sandbox sandbox
-              and+ locks =
+              in
+              let locks =
                 (* Locks must be relative to the cram stanza directory and not
                    the individual tests directories *)
                 let base = `This (Path.build dir) in
-                Expander.expand_locks ~base expander stanza.locks
-                >>| Path.Set.of_list
-                >>| Path.Set.union acc.locks
+                let open Action_builder.O in
+                let+ more_locks =
+                  (* XXX wrong expander? this should be the expander in the
+                     directory of the cram stanzas *)
+                  Expander.expand_locks ~base expander stanza.locks >>| Path.Set.of_list
+                and+ locks = acc.locks in
+                Path.Set.union locks more_locks
               in
               let runtest_alias =
                 match stanza.runtest_alias with

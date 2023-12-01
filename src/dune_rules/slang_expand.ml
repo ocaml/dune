@@ -4,12 +4,12 @@ open Import
 type expander =
   String_with_vars.t
   -> dir:Path.t
-  -> (Value.t list, [ `Undefined_pkg_var of string ]) result Memo.t
+  -> (Value.t list, [ `Undefined_pkg_var of Dune_pkg.Variable_name.t ]) result Memo.t
 
 type error =
   | Undefined_pkg_var of
       { literal : String_with_vars.t
-      ; variable_name : string
+      ; variable_name : Dune_pkg.Variable_name.t
       }
 
 let rec eval_rec (t : Slang.t) ~dir ~f =
@@ -176,7 +176,10 @@ let eval t ~dir ~f =
   | Error (Undefined_pkg_var { literal; variable_name }) ->
     User_error.raise
       ~loc:(String_with_vars.loc literal)
-      [ Pp.textf "Undefined package variable %S" variable_name ]
+      [ Pp.textf
+          "Undefined package variable %S"
+          (Dune_pkg.Variable_name.to_string variable_name)
+      ]
 ;;
 
 let eval_multi_located ts ~dir ~f =
@@ -194,5 +197,8 @@ let eval_blang blang ~dir ~f =
   | Error (Undefined_pkg_var { literal; variable_name }) ->
     User_error.raise
       ~loc:(String_with_vars.loc literal)
-      [ Pp.textf "Undefined package variable %S" variable_name ]
+      [ Pp.textf
+          "Undefined package variable %S"
+          (Dune_pkg.Variable_name.to_string variable_name)
+      ]
 ;;

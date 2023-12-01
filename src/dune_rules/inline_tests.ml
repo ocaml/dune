@@ -263,9 +263,7 @@ include Sub_system.Register_end_point (struct
             let+ flags = flags in
             Action.run (Ok exe) flags
           | Some runner ->
-            let* prog =
-              Action_builder.of_memo
-                (Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner)
+            let* prog = Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner
             and* flags = flags in
             let action =
               Action.run prog (Path.reach exe ~from:(Path.build dir) :: flags)

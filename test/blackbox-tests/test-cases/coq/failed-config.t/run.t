@@ -54,9 +54,9 @@ Should succeed, but should warn that installed theories are being skipped due to
 failure.
   $ FAIL_CONFIG=1 \
   > dune build
-  Warning: Skipping installed theories due to coqc --config failure:
+  Warning: Skipping installed theories due to 'coqc --config' failure:
   - $TESTCASE_ROOT/bin/coqc --config failed with exit code 1.
-  Hint: Try running `coqc --config` manually to see the error.
+  Hint: Try running 'coqc --config' manually to see the error.
 
   $ FAIL_VERSION=1 \
   > dune build

@@ -296,3 +296,14 @@ let drop_prefix_and_suffix t ~prefix ~suffix =
   then Some (sub t ~pos:p_len ~len:(t_len - p_s_len))
   else None
 ;;
+
+let contains_double_underscore =
+  let rec aux s len i =
+    if i > len - 2
+    then false
+    else if s.[i] = '_' && s.[i + 1] = '_'
+    then true
+    else aux s len (i + 1)
+  in
+  fun s -> aux s (String.length s) 0
+;;

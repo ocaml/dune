@@ -190,8 +190,8 @@ let option x =
   sum
     [ econstr none; econstr some ]
     (function
-     | None -> case () none
-     | Some s -> case s some)
+      | None -> case () none
+      | Some s -> case s some)
 ;;
 
 let char = Char

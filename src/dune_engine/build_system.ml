@@ -235,7 +235,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 17
+  let rule_digest_version = 20
 
   let compute_rule_digest
     (rule : Rule.t)
@@ -270,7 +270,7 @@ end = struct
       , Execution_parameters.action_stdout_on_success execution_parameters
       , Execution_parameters.action_stderr_on_success execution_parameters
       , Execution_parameters.workspace_root_to_build_path_prefix_map execution_parameters
-      )
+      , Execution_parameters.expand_aliases_in_sandbox execution_parameters )
     in
     Digest.generic trace
   ;;
@@ -470,22 +470,10 @@ end = struct
       let* () = Targets.maybe_async (fun () -> Path.mkdir_p (Path.build dir)) in
       let is_action_dynamic = Action.is_dynamic action.action in
       let sandbox_mode =
-        match Action.is_useful_to_sandbox action.action with
-        | Clearly_not ->
-          if Sandbox_config.mem action.sandbox Sandbox_mode.none
-          then Sandbox_mode.none
-          else
-            User_error.raise
-              ~loc
-              [ Pp.text
-                  "Rule dependencies are configured to require sandboxing, but the rule \
-                   has no actions that could potentially require sandboxing."
-              ]
-        | Maybe ->
-          select_sandbox_mode
-            ~loc
-            action.sandbox
-            ~sandboxing_preference:config.sandboxing_preference
+        select_sandbox_mode
+          ~loc
+          action.sandbox
+          ~sandboxing_preference:config.sandboxing_preference
       in
       (* CR-someday amokhov: More [always_rerun] and [can_go_in_shared_cache]
          to [Rule_cache] too. *)
@@ -728,7 +716,7 @@ end = struct
     let digest =
       let { Rule.Anonymous_action.action =
               { action; env; locks; can_go_in_shared_cache; sandbox }
-          ; loc
+          ; loc = _
           ; dir
           ; alias
           }
@@ -755,7 +743,6 @@ end = struct
         , Dep.Set.digest deps
         , Action.for_shell action
         , List.map locks ~f:Path.to_string
-        , loc
         , dir
         , alias
         , capture_stdout

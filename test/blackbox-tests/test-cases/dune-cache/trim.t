@@ -34,7 +34,7 @@ Function to reset build tree and cache.
 Check that trimming does not crash when the cache directory does not exist.
 
   $ dune cache trim --size 0B
-  Freed 0B
+  Freed 0B (0 files removed)
 
 Check that the digest scheme for executable and non-executable digests hasn't
 changed. If it has, make sure to increment the version of the cache. Note that
@@ -78,8 +78,8 @@ entries uniformly.
 
   $ (cd "$PWD/.xdg-cache/dune/db/meta/v5"; grep -rws . -e 'metadata' | sort ) > out
   $ cat out
-  ./c7/c7dd3e91adf65ae3cd721eef06904b93:((8:metadata)(5:files(8:target_b32:8a53bfae3829b48866079fa7f2d97781)))
-  ./d7/d74e8e6eb3d6cf509b6d3b7cbfeee223:((8:metadata)(5:files(8:target_a32:5637dd9730e430c7477f52d46de3909c)))
+  ./57/572f0d07f15fafa10217f0f78d2d4f39:((8:metadata)(5:files(8:target_a32:5637dd9730e430c7477f52d46de3909c)))
+  ./5a/5a512ee6d64f5d7a29d7863269566506:((8:metadata)(5:files(8:target_b32:8a53bfae3829b48866079fa7f2d97781)))
 
   $ digest="$(awk -F: '/target_b/ { digest=$1 } END { print digest }' < out)"
 
@@ -94,7 +94,7 @@ all metadata entries in [meta/v4] since they are broken: remember, we moved all
   $ find "$PWD/.xdg-cache/dune/db/meta/v4" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
   4
   $ dune cache trim --trimmed-size 1B
-  Freed 287B
+  Freed 287B (4 files removed)
   $ dune_cmd stat hardlinks _build/default/target_a
   2
   $ dune_cmd stat hardlinks _build/default/target_b
@@ -107,7 +107,7 @@ trimmed.
 
   $ rm -f _build/default/target_a _build/default/beacon_a _build/default/beacon_b
   $ dune cache trim --trimmed-size 1B
-  Freed 79B
+  Freed 79B (2 files removed)
   $ dune build target_a target_b
   $ dune_cmd stat hardlinks _build/default/target_a
   2
@@ -153,7 +153,7 @@ by the existence of [beacon_b].
   $ dune_cmd wait-for-fs-clock-to-advance
   $ rm -f _build/default/beacon_a _build/default/target_a
   $ dune cache trim --trimmed-size 1B
-  Freed 79B
+  Freed 79B (2 files removed)
   $ dune build target_a target_b
   $ dune_cmd stat hardlinks _build/default/target_a
   2
@@ -173,7 +173,7 @@ thus making the trimmer delete [target_a] instead of [target_b] as above.
   $ dune_cmd wait-for-fs-clock-to-advance
   $ rm -f _build/default/beacon_b _build/default/target_b
   $ dune cache trim --trimmed-size 1B
-  Freed 79B
+  Freed 79B (2 files removed)
   $ dune build target_a target_b
   $ dune_cmd stat hardlinks _build/default/target_a
   2
@@ -191,7 +191,7 @@ are part of the same rule.
   $ dune build multi_a multi_b
   $ rm -f _build/default/multi_a _build/default/multi_b
   $ dune cache trim --trimmed-size 1B
-  Freed 123B
+  Freed 123B (2 files removed)
 
 TODO: Test trimming priority in the [copy] mode. In PR #4497 we added a test but
 it turned out to be flaky so we subsequently deleted it in #4511.

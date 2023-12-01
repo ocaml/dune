@@ -35,23 +35,23 @@ val coq : t -> Coq_sources.t Memo.t
 val get : Super_context.t -> dir:Path.Build.t -> t Memo.t
 
 val modules_of_lib : Super_context.t -> Lib.t -> Modules.t option Memo.t
+val modules_of_local_lib : Super_context.t -> Lib.Local.t -> Modules.t Memo.t
 
 (** All directories in this group if [t] is a group root or just [t] if it is
     not part of a group. *)
 val dirs : t -> t list
 
-type standalone_or_root =
-  { root : t
-  ; subdirs : t list (** Sub-directories part of the group *)
-  ; rules : Rules.t
-  }
+module Standalone_or_root : sig
+  type dir_contents := t
+  type t
+
+  val rules : t -> Rules.t Memo.t
+  val root : t -> dir_contents Memo.t
+  val subdirs : t -> dir_contents list Memo.t
+end
 
 type triage =
-  | Standalone_or_root of
-      { directory_targets : Loc.t Path.Build.Map.t
-          (** ALl directory targets that are part of the group. *)
-      ; contents : standalone_or_root Memo.Lazy.t
-      }
+  | Standalone_or_root of Standalone_or_root.t
   | Group_part of Path.Build.t
 
 (** In order to compute the directory contents, we need to interpret stanzas

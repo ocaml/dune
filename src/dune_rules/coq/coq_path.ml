@@ -29,13 +29,19 @@ let config_path_exn coq_config key =
   | Some path ->
     path
     |> (function
-    | Coq_config.Value.Path p -> p (* We have found a path for key *)
-    | path ->
-      (* This should never happen *)
-      Code_error.raise "key is not a path" [ key, Coq_config.Value.to_dyn path ])
+     | Coq_config.Value.Path p -> p (* We have found a path for key *)
+     | path ->
+       (* This should never happen *)
+       Code_error.raise "key is not a path" [ key, Coq_config.Value.to_dyn path ])
   | None ->
     (* This happens if the output of coqc --config doesn't include the key *)
-    User_error.raise [ Pp.text "key not found from coqc --config"; Pp.text key ]
+    User_error.raise
+      [ Pp.concat
+          ~sep:Pp.space
+          [ Pp.text "key not found from"; User_message.command "coqc --config" ]
+        |> Pp.hovbox
+      ; Pp.text key
+      ]
 ;;
 
 let config_path ~default coq_config key =
@@ -173,10 +179,24 @@ let of_coq_install coqc =
   match coq_config with
   | Error msg ->
     User_warning.emit
-      [ Pp.text "Skipping installed theories due to coqc --config failure:"
+      [ Pp.concat
+          ~sep:Pp.space
+          [ Pp.text "Skipping installed theories due to"
+          ; User_message.command "coqc --config"
+          ; Pp.text "failure:"
+          ]
+        |> Pp.hovbox
       ; Pp.enumerate ~f:Fun.id [ msg ]
       ]
-      ~hints:[ Pp.text "Try running `coqc --config` manually to see the error." ];
+      ~hints:
+        [ Pp.concat
+            ~sep:Pp.space
+            [ Pp.text "Try running"
+            ; User_message.command "coqc --config"
+            ; Pp.text "manually to see the error."
+            ]
+          |> Pp.hovbox
+        ];
     Memo.return []
   | Ok coq_config ->
     (* Now we query for coqlib *)

@@ -13,7 +13,6 @@ end
 
 include struct
   open Dune_lang
-  module Package_name = Package_name
   module Action = Action
   module String_with_vars = String_with_vars
   module Pform = Pform

@@ -48,23 +48,41 @@ Now the same but with an alias.
   running...
   digest: $2
 
-Let's add a comment to the dune file. One might think that it doesn't affect
-the rule digest, but it does because all the locations gets shifted.
+Let's add a comment to the dune file. Dune does not re-run the rule because it
+has the same digest:
+
+  $ changelocation() {
+  > sed -i.bak '1s/^/;; spurious location change\n/' dune
+  > }
+
+  $ changelocation
+
+Now we make sure that failed rules re-run when the location changes:
 
   $ cat >dune <<EOF
-  > ; hello
   > (rule
-  >  (alias default)
-  >  (deps (sandbox always) pwd.ml)
-  >  (action (run ocaml pwd.ml)))
+  >  (alias foo)
+  >  (action (system "echo failing; exit 1")))
   > EOF
 
-... but it does! It would be nice to encode the locations in a way that would
-make them more resilient to non semantic changes.
+  $ dune build @foo
+  File "dune", line 1, characters 0-61:
+  1 | (rule
+  2 |  (alias foo)
+  3 |  (action (system "echo failing; exit 1")))
+  failing
+  [1]
 
-# CR-someday amokhov: Remove actual digests from this test so that we don't
-# need to update it when rule digest version changes.
+  $ changelocation
+
+This should re-run the action
+
+  $ dune build @foo
+  File "dune", line 2, characters 0-61:
+  2 | (rule
+  3 |  (alias foo)
+  4 |  (action (system "echo failing; exit 1")))
+  failing
+  [1]
 
   $ dune build @default
-  running...
-  digest: $3

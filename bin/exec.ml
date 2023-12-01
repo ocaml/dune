@@ -159,10 +159,14 @@ let build_prog ~no_rebuild ~prog p =
     then Memo.return p
     else
       User_error.raise
-        [ Pp.textf
-            "Program %S isn't built yet. You need to build it first or remove the \
-             --no-build option."
-            prog
+        [ Pp.concat
+            ~sep:Pp.space
+            [ Pp.text "Program"
+            ; User_message.command prog
+            ; Pp.text "isn't built yet. You need to build it first or remove the"
+            ; User_message.command "--no-build"
+            ; Pp.text "option."
+            ]
         ]
   else
     let open Memo.O in
@@ -186,34 +190,39 @@ let not_found ~dir ~prog =
     in
     User_message.did_you_mean prog ~candidates
   in
-  User_error.raise ~hints [ Pp.textf "Program %S not found!" prog ]
+  User_error.raise
+    ~hints
+    [ Pp.concat
+        ~sep:Pp.space
+        [ Pp.text "Program"; User_message.command prog; Pp.text "not found!" ]
+    ]
 ;;
 
 let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
   let open Memo.O in
   match Filename.analyze_program_name prog with
   | In_path ->
-    Super_context.resolve_program sctx ~dir ~loc:None prog
+    Super_context.resolve_program_memo sctx ~dir ~loc:None prog
     >>= (function
-    | Error (_ : Action.Prog.Not_found.t) -> not_found ~dir ~prog
-    | Ok p -> build_prog ~no_rebuild ~prog p)
+     | Error (_ : Action.Prog.Not_found.t) -> not_found ~dir ~prog
+     | Ok p -> build_prog ~no_rebuild ~prog p)
   | Relative_to_current_dir ->
     let path = Path.relative_to_source_in_build_or_external ~dir prog in
     Build_system.file_exists path
     >>= (function
-          | true -> Memo.return (Some path)
-          | false ->
-            if not (Filename.check_suffix prog ".exe")
-            then Memo.return None
-            else (
-              let path = Path.extend_basename path ~suffix:".exe" in
-              Build_system.file_exists path
-              >>| function
-              | true -> Some path
-              | false -> None))
+           | true -> Memo.return (Some path)
+           | false ->
+             if not (Filename.check_suffix prog ".exe")
+             then Memo.return None
+             else (
+               let path = Path.extend_basename path ~suffix:".exe" in
+               Build_system.file_exists path
+               >>| function
+               | true -> Some path
+               | false -> None))
     >>= (function
-    | Some path -> build_prog ~no_rebuild ~prog path
-    | None -> not_found ~dir ~prog)
+     | Some path -> build_prog ~no_rebuild ~prog path
+     | None -> not_found ~dir ~prog)
   | Absolute ->
     (match
        let prog = Path.of_string prog in

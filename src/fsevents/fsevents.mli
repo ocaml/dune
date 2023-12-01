@@ -33,8 +33,8 @@ module Event : sig
     | Dir (** directory *)
     | File (** file event *)
     | Dir_and_descendants
-        (** non-specific directory event. all descendants of this directory are
-            invalidated *)
+    (** non-specific directory event. all descendants of this directory are
+        invalidated *)
 
   val dyn_of_kind : kind -> Dyn.t
 
@@ -47,8 +47,8 @@ module Event : sig
     | Modify (* [path t] guaranteed to exist *)
     | Rename
     | Unknown
-        (** multiple actions merged into one by debouncing or an uninformative
-            "rename". inspect the FS to see what happened *)
+    (** multiple actions merged into one by debouncing or an uninformative
+        "rename". inspect the FS to see what happened *)
 
   val dyn_of_action : action -> Dyn.t
 

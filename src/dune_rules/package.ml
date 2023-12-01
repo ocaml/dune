@@ -1,6 +1,7 @@
 open! Import
 module Stanza = Dune_lang.Stanza
 module Opam_file = Dune_pkg.Opam_file
+module Dependency = Dune_pkg.Package_dependency
 
 let opam_ext = ".opam"
 let is_opam_file path = String.is_suffix (Path.to_string path) ~suffix:opam_ext
@@ -60,171 +61,6 @@ module Id = struct
   module C = Comparable.Make (T)
   module Set = C.Set
   module Map = C.Map
-end
-
-module Dependency = struct
-  let nopos pelem = { OpamParserTypes.FullPos.pelem; pos = Opam_file.nopos }
-
-  module Constraint = struct
-    include Dune_lang.Package_constraint
-
-    module Op = struct
-      include Op
-
-      let to_relop = function
-        | Eq -> nopos `Eq
-        | Gte -> nopos `Geq
-        | Lte -> nopos `Leq
-        | Gt -> nopos `Gt
-        | Lt -> nopos `Lt
-        | Neq -> nopos `Neq
-      ;;
-
-      let to_relop_pelem op =
-        let ({ pelem; _ } : OpamParserTypes.FullPos.relop) = to_relop op in
-        pelem
-      ;;
-    end
-
-    module Variable = struct
-      include Variable
-
-      let to_opam { name } = nopos (OpamParserTypes.FullPos.Ident name)
-
-      let to_opam_filter { name } =
-        OpamTypes.FIdent ([], OpamVariable.of_string name, None)
-      ;;
-    end
-
-    module Value = struct
-      include Value
-
-      let to_opam v =
-        match v with
-        | String_literal x -> nopos (OpamParserTypes.FullPos.String x)
-        | Variable variable -> Variable.to_opam variable
-      ;;
-
-      let to_opam_filter = function
-        | String_literal literal -> OpamTypes.FString literal
-        | Variable variable -> Variable.to_opam_filter variable
-      ;;
-    end
-
-    let rec to_opam_condition = function
-      | Bvar variable ->
-        OpamTypes.Atom (OpamTypes.Filter (Variable.to_opam_filter variable))
-      | Uop (op, value) ->
-        OpamTypes.Atom
-          (OpamTypes.Constraint (Op.to_relop_pelem op, Value.to_opam_filter value))
-      | Bop (op, lhs, rhs) ->
-        OpamTypes.Atom
-          (OpamTypes.Filter
-             (OpamTypes.FOp
-                (Value.to_opam_filter lhs, Op.to_relop_pelem op, Value.to_opam_filter rhs)))
-      | And conjunction -> OpamFormula.ands (List.map conjunction ~f:to_opam_condition)
-      | Or disjunction -> OpamFormula.ors (List.map disjunction ~f:to_opam_condition)
-    ;;
-  end
-
-  type t =
-    { name : Name.t
-    ; constraint_ : Constraint.t option
-    }
-
-  let encode { name; constraint_ } =
-    let open Dune_sexp.Encoder in
-    match constraint_ with
-    | None -> Name.encode name
-    | Some c -> pair Name.encode Constraint.encode (name, c)
-  ;;
-
-  let decode =
-    let open Dune_sexp.Decoder in
-    let constrained =
-      let+ name = Name.decode
-      and+ expr = Constraint.decode in
-      { name; constraint_ = Some expr }
-    in
-    enter constrained
-    <|> let+ name = Name.decode in
-        { name; constraint_ = None }
-  ;;
-
-  let to_dyn { name; constraint_ } =
-    let open Dyn in
-    record
-      [ "name", Name.to_dyn name
-      ; "constr", Dyn.Option (Option.map ~f:Constraint.to_dyn constraint_)
-      ]
-  ;;
-
-  type context =
-    | Root
-    | Ctx_and
-    | Ctx_or
-
-  (* The printer in opam-file-format does not insert parentheses on its own,
-     but it is possible to use the [Group] constructor with a singleton to
-     force insertion of parentheses. *)
-  let group e = nopos (Group (nopos [ e ]) : OpamParserTypes.FullPos.value_kind)
-  let group_if b e = if b then group e else e
-
-  let op_list op = function
-    | [] ->
-      User_error.raise
-        [ Pp.textf "logical operations with no arguments are not supported" ]
-    | v :: vs ->
-      List.fold_left ~init:v vs ~f:(fun a b ->
-        nopos (OpamParserTypes.FullPos.Logop (nopos op, a, b)))
-  ;;
-
-  let opam_constraint t : OpamParserTypes.FullPos.value =
-    let open OpamParserTypes.FullPos in
-    let rec opam_constraint context = function
-      | Constraint.Bvar v -> Constraint.Variable.to_opam v
-      | Uop (op, x) ->
-        nopos (Prefix_relop (Constraint.Op.to_relop op, Constraint.Value.to_opam x))
-      | Bop (op, x, y) ->
-        nopos
-          (Relop
-             ( Constraint.Op.to_relop op
-             , Constraint.Value.to_opam x
-             , Constraint.Value.to_opam y ))
-      | And cs -> logical_op `And cs ~inner_ctx:Ctx_and ~group_needed:false
-      | Or cs ->
-        let group_needed =
-          match context with
-          | Root -> false
-          | Ctx_and -> true
-          | Ctx_or -> false
-        in
-        logical_op `Or cs ~inner_ctx:Ctx_or ~group_needed
-    and logical_op op cs ~inner_ctx ~group_needed =
-      List.map cs ~f:(opam_constraint inner_ctx) |> op_list op |> group_if group_needed
-    in
-    opam_constraint Root t
-  ;;
-
-  let opam_depend { name; constraint_ } =
-    let constraint_ = Option.map ~f:opam_constraint constraint_ in
-    let pkg = nopos (OpamParserTypes.FullPos.String (Name.to_string name)) in
-    match constraint_ with
-    | None -> pkg
-    | Some c -> nopos (OpamParserTypes.FullPos.Option (pkg, nopos [ c ]))
-  ;;
-
-  let list_to_opam_filtered_formula ts =
-    List.map ts ~f:(fun { name; constraint_ } ->
-      let opam_package_name = Name.to_opam_package_name name in
-      let condition =
-        match constraint_ with
-        | None -> OpamTypes.Empty
-        | Some constraint_ -> Constraint.to_opam_condition constraint_
-      in
-      OpamFormula.Atom (opam_package_name, condition))
-    |> OpamFormula.ands
-  ;;
 end
 
 module Source_kind = struct
@@ -514,7 +350,7 @@ type t =
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
   ; info : Info.t
-  ; version : string option
+  ; version : Package_version.t option
   ; has_opam_file : opam_file
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
@@ -562,7 +398,7 @@ let encode
         ; field_l "depends" Dependency.encode depends
         ; field_l "conflicts" Dependency.encode conflicts
         ; field_l "depopts" Dependency.encode depopts
-        ; field_o "version" string version
+        ; field_o "version" Package_version.encode version
         ; field "tags" (list string) ~default:[] tags
         ; field_l
             "deprecated_package_names"
@@ -600,7 +436,9 @@ let decode =
        and+ synopsis = field_o "synopsis" string
        and+ description = field_o "description" string
        and+ version =
-         field_o "version" (Dune_lang.Syntax.since Stanza.syntax (2, 5) >>> string)
+         field_o
+           "version"
+           (Dune_lang.Syntax.since Stanza.syntax (2, 5) >>> Package_version.decode)
        and+ depends = field ~default:[] "depends" (repeat Dependency.decode)
        and+ conflicts = field ~default:[] "conflicts" (repeat Dependency.decode)
        and+ depopts = field ~default:[] "depopts" (repeat Dependency.decode)
@@ -684,7 +522,7 @@ let to_dyn
     ; "info", Info.to_dyn info
     ; "has_opam_file", dyn_of_opam_file has_opam_file
     ; "tags", list string tags
-    ; "version", option string version
+    ; "version", option Package_version.to_dyn version
     ; "deprecated_package_names", Name.Map.to_dyn Loc.to_dyn_hum deprecated_package_names
     ; "sites", Site.Map.to_dyn Section.to_dyn sites
     ; "allow_empty", Bool allow_empty
@@ -772,7 +610,7 @@ let load_opam_file file name =
   let id = { Id.name; dir = Path.Source.parent_exn file } in
   { id
   ; loc
-  ; version = get_one "version"
+  ; version = get_one "version" |> Option.map ~f:Package_version.of_string
   ; conflicts = []
   ; depends = []
   ; depopts = []
@@ -807,13 +645,10 @@ let missing_deps (t : t) ~effective_deps =
   Name.Set.diff effective_deps specified_deps
 ;;
 
-let to_opam_file t =
-  let opam_package_name = name t |> Name.to_opam_package_name in
-  let depends = Dependency.list_to_opam_filtered_formula t.depends in
-  (* Currently this just creates an opam file with fields needed for dependency
-     solving with opam_0install but could easily be extended with more fields.
-  *)
-  OpamFile.OPAM.empty
-  |> OpamFile.OPAM.with_name opam_package_name
-  |> OpamFile.OPAM.with_depends depends
+let to_local_package t =
+  { Dune_pkg.Local_package.name = name t
+  ; version = t.version
+  ; dependencies = t.depends
+  ; loc = t.loc
+  }
 ;;

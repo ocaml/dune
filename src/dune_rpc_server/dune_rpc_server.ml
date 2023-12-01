@@ -100,8 +100,8 @@ module Session = struct
       ; mutable state : 'a state
       ; (* TODO these should be cancelled when the connection closes *)
         pending : (Dune_rpc_private.Id.t, Response.t Fiber.Ivar.t) Table.t
-          (** Pending requests sent to the client. When a response is
-              received, the ivar for the response will be filled. *)
+      (** Pending requests sent to the client. When a response is
+          received, the ivar for the response will be filled. *)
       ; name : string
       }
 
@@ -667,8 +667,8 @@ struct
             List.map packets ~f:(Conv.to_sexp Packet.sexp)
             |> S.write session
             >>| (function
-            | Ok () -> ()
-            | Error `Closed -> raise Dune_util.Report_error.Already_reported)
+             | Ok () -> ()
+             | Error `Closed -> raise Dune_util.Report_error.Already_reported)
         in
         let queries =
           create_sequence (fun () -> S.read session) ~version:(version server) Packet.sexp

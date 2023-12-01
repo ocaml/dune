@@ -130,24 +130,31 @@ let force_lazy_or_eager
   : type a b.
     a eval_mode
     -> (b * Dep.Set.t) Memo.Lazy.t Lazy.t
-    -> (b * Dep.Facts.t) Memo.Lazy.t Lazy.t
+    -> (b * Dep.Facts.t) Memo.Lazy.t
     -> (b * a Dep.Map.t) Memo.t
   =
   fun mode lazy_ eager ->
   match mode with
   | Lazy -> Memo.Lazy.force (Lazy.force lazy_)
-  | Eager -> Memo.Lazy.force (Lazy.force eager)
+  | Eager -> Memo.Lazy.force eager
 ;;
 
 let memoize ?cutoff name t =
-  let cutoff ~equal =
-    Option.map cutoff ~f:(fun eq -> Tuple.T2.equal eq (Dep.Map.equal ~equal))
+  let lazy_ : ('a * Dep.Set.t) Memo.Lazy.t Lazy.t =
+    lazy
+      (let cutoff =
+         Option.map cutoff ~f:(fun equal -> Tuple.T2.equal equal Dep.Set.equal)
+       in
+       Memo.lazy_ ?cutoff ~name:(name ^ "(lazy)") (fun () -> t.f Lazy))
   in
-  let memo ~equal eval_mode =
-    Memo.lazy_ ?cutoff:(cutoff ~equal) ~name (fun () -> t.f eval_mode)
+  (* Unlike [lazy_], [eager] doesn't have the outer [Lazy.t] wrapper because most [Eager]
+     nodes end up getting forced during every build. *)
+  let eager : ('a * Dep.Facts.t) Memo.Lazy.t =
+    let cutoff =
+      Option.map cutoff ~f:(fun equal -> Tuple.T2.equal equal Dep.Facts.equal)
+    in
+    Memo.lazy_ ?cutoff ~name (fun () -> t.f Eager)
   in
-  let lazy_ = lazy (memo ~equal:Unit.equal Lazy)
-  and eager = lazy (memo ~equal:Dep.Fact.equal Eager) in
   { f = (fun mode -> force_lazy_or_eager mode lazy_ eager) }
 ;;
 

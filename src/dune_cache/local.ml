@@ -202,10 +202,10 @@ module Artifacts = struct
          | Ok () ->
            compute_digests_in ~temp_dir ~targets ~compute_digest
            >>| (function
-           | Error exn -> Store_artifacts_result.Error exn
-           | Ok artifacts ->
-             let result = store_to_cache_from ~temp_dir ~mode artifacts in
-             Store_artifacts_result.of_store_result ~artifacts result)))
+            | Error exn -> Store_artifacts_result.Error exn
+            | Ok artifacts ->
+              let result = store_to_cache_from ~temp_dir ~mode artifacts in
+              Store_artifacts_result.of_store_result ~artifacts result)))
   ;;
 
   let store ~mode ~rule_digest ~compute_digest targets : Store_artifacts_result.t Fiber.t =

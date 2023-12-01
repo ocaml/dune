@@ -230,9 +230,8 @@ let test_with_operations ?on_event ?exclusion_paths f =
 
 let%expect_test "file create event" =
   test_with_operations (fun () -> Io.String_path.write_file "./file" "foobar");
-  [%expect
-    {|
-    > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/file" } |}]
+  [%expect {|
+    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/file" } |}]
 ;;
 
 let%expect_test "dir create event" =
@@ -248,8 +247,8 @@ let%expect_test "move file" =
     Unix.rename "old" "new");
   [%expect
     {|
-    > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/old" }
-    > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/new" } |}]
+    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/old" }
+    > { action = "Rename"; kind = "File"; path = "$TESTCASE_ROOT/new" } |}]
 ;;
 
 let%expect_test "raise inside callback" =
@@ -259,7 +258,10 @@ let%expect_test "raise inside callback" =
       raise Exit)
     (fun () ->
       Io.String_path.write_file "old" "foobar";
-      Io.String_path.write_file "old" "foobar");
+      Io.String_path.write_file "old" "foobar";
+      (* Delay to allow the event handler callback to catch the exception
+         before stopping the watcher. *)
+      Unix.sleepf 1.0);
   [%expect {|
     [EXIT]
     exiting. |}]
@@ -278,14 +280,13 @@ let%expect_test "set exclusion paths" =
   run Filename.concat;
   [%expect
     {|
-    > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/ignored" }
-    > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/ignored/old" } |}];
+    > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/ignored" } |}];
   (* but relative paths do not *)
   run (fun _ name -> name);
   [%expect
     {|
     > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/ignored" }
-    > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/ignored/old" } |}]
+    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/ignored/old" } |}]
 ;;
 
 let%expect_test "multiple fsevents" =

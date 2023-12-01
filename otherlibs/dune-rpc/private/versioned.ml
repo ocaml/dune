@@ -219,16 +219,16 @@ module Make (Fiber : Fiber_intf.S) = struct
     type (_, _, _) field_witness =
       | Declared_requests
           : ( _
-            , Method.Name.t
-              * ('req, 'resp) Decl.Generation.t Method.Version.Map.t Univ_map.Key.t
-            , ('req, 'resp) Decl.Generation.t )
-            field_witness
+              , Method.Name.t
+                * ('req, 'resp) Decl.Generation.t Method.Version.Map.t Univ_map.Key.t
+              , ('req, 'resp) Decl.Generation.t )
+              field_witness
       | Declared_notifs
           : ( _
-            , Method.Name.t
-              * ('a, unit) Decl.Generation.t Method.Version.Map.t Univ_map.Key.t
-            , ('a, unit) Decl.Generation.t )
-            field_witness
+              , Method.Name.t
+                * ('a, unit) Decl.Generation.t Method.Version.Map.t Univ_map.Key.t
+              , ('a, unit) Decl.Generation.t )
+              field_witness
       | Impl_requests : ('state, string, 'state r_handler) field_witness
       | Impl_notifs : ('state, string, 'state n_handler) field_witness
 
@@ -260,14 +260,12 @@ module Make (Fiber : Fiber_intf.S) = struct
         let name, key = key in
         let known_keys, table = t.declared_requests in
         t.declared_requests
-          <- ( Method.Name.Map.add_multi known_keys name (T key)
-             , Univ_map.set table key value )
+        <- Method.Name.Map.add_multi known_keys name (T key), Univ_map.set table key value
       | Declared_notifs ->
         let name, key = key in
         let known_keys, table = t.declared_notifications in
         t.declared_notifications
-          <- ( Method.Name.Map.add_multi known_keys name (T key)
-             , Univ_map.set table key value )
+        <- Method.Name.Map.add_multi known_keys name (T key), Univ_map.set table key value
       | Impl_requests -> Method.Name.Table.set t.implemented_requests key value
       | Impl_notifs -> Method.Name.Table.set t.implemented_notifications key value
     ;;

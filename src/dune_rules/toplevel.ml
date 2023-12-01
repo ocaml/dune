@@ -73,13 +73,13 @@ let make ~cctx ~source ~preprocess expander = { cctx; source; preprocess; expand
 let pp_flags t =
   let open Action_builder.O in
   let open Pp.O in
-  let sctx = Compilation_context.super_context t.cctx in
   let scope = Compilation_context.scope t.cctx in
   match t.preprocess with
   | Pps { loc; pps; flags; staged = _ } ->
     let+ exe, flags =
+      let ctx = Compilation_context.context t.cctx in
       Preprocessing.get_ppx_driver
-        sctx
+        ctx
         ~loc
         ~expander:t.expander
         ~lib_name:None

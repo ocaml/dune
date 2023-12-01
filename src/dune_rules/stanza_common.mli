@@ -12,12 +12,12 @@ end
 (** [preprocess] and [preprocessor_deps] fields *)
 val preprocess_fields
   : (Preprocess.Without_instrumentation.t Preprocess.Per_module.t * Dep_conf.t list)
-    fields_parser
+      fields_parser
 
 (** [instrumentation] multi field *)
 val instrumentation
   : (Loc.t * (((Loc.t * Lib_name.t) * String_with_vars.t list) * Dep_conf.t list) list)
-    fields_parser
+      fields_parser
 
 module Modules_settings : sig
   type t =

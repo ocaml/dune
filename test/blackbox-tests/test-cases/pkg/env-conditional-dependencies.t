@@ -29,18 +29,22 @@ dependencies are included.
 Create a workspace config that defines separate build contexts for macos and linux.
   $ cat >dune-workspace <<EOF
   > (lang dune 3.8)
+  > (lock_dir
+  >  (path dune.linux.lock)
+  >  (solver_env
+  >   (os linux)))
+  > (lock_dir
+  >  (path dune.macos.lock)
+  >  (solver_env
+  >   (os macos)))
   > (context
   >  (default
   >   (name linux)
-  >   (lock dune.linux.lock)
-  >   (solver_sys_vars
-  >    (os linux))))
+  >   (lock dune.linux.lock)))
   > (context
   >  (default
   >   (name macos)
-  >   (lock dune.macos.lock)
-  >   (solver_sys_vars
-  >    (os macos))))
+  >   (lock dune.macos.lock)))
   > EOF
 
 Now the os-specific dependencies are included on their respective systems.

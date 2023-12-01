@@ -29,16 +29,14 @@ We have to define both repositories in the workspace, but will only use `new`.
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.10)
+  > (lock_dir
+  >  (repositories new))
   > (repository
   >  (name new)
   >  (source "git+file://$(pwd)/mock-opam-repository"))
   > (repository
   >  (name old)
   >  (source "git+file://$(pwd)/old-mock-opam-repository"))
-  > (context
-  >  (default
-  >   (name default)
-  >   (repositories new)))
   > EOF
 
   $ cat > dune-project <<EOF
@@ -63,6 +61,8 @@ solution:
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.10)
+  > (lock_dir
+  >  (repositories old))
   > (repository
   >  (name new)
   >  (source "git+file://$(pwd)/mock-opam-repository"))
@@ -71,8 +71,7 @@ solution:
   >  (source "git+file://$(pwd)/old-mock-opam-repository"))
   > (context
   >  (default
-  >   (name default)
-  >   (repositories old)))
+  >   (name default)))
   > EOF
  
   $ rm -r dune-workspace-cache && mkdir dune-workspace-cache
@@ -85,6 +84,8 @@ package:
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.10)
+  > (lock_dir
+  >  (repositories old new))
   > (repository
   >  (name new)
   >  (source "git+file://$(pwd)/mock-opam-repository"))
@@ -93,8 +94,7 @@ package:
   >  (source "git+file://$(pwd)/old-mock-opam-repository"))
   > (context
   >  (default
-  >   (name default)
-  >   (repositories new old)))
+  >   (name default)))
   > EOF
 
   $ rm -r dune-workspace-cache && mkdir dune-workspace-cache
@@ -114,10 +114,11 @@ older version of foo:
   > (repository
   >  (name old)
   >  (source "git+file://$(pwd)/old-mock-opam-repository"))
+  > (lock_dir
+  >  (repositories new old \ new))
   > (context
   >  (default
-  >   (name default)
-  >   (repositories new old \ new)))
+  >   (name default)))
   > EOF
 
   $ rm -r dune-workspace-cache && mkdir dune-workspace-cache

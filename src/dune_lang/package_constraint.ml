@@ -9,20 +9,40 @@ module Op = struct
     | Lt
     | Neq
 
-  let equal a b =
+  (* Define an arbitrary ordering on [t] to allow a package constraint to be
+     used as the key of a map or set. The order from lowest to highest is:
+     [Eq, Gte, Lte, Gt, Lt, Neq] *)
+  let compare a b =
     match a, b with
-    | Eq, Eq | Gte, Gte | Lte, Lte | Gt, Gt | Lt, Lt | Neq, Neq -> true
-    | _ -> false
+    | Eq, Eq -> Ordering.Eq
+    | Eq, _ -> Lt
+    | _, Eq -> Gt
+    | Gte, Gte -> Eq
+    | Gte, _ -> Lt
+    | _, Gte -> Gt
+    | Lte, Lte -> Eq
+    | Lte, _ -> Lt
+    | _, Lte -> Gt
+    | Gt, Gt -> Eq
+    | Gt, _ -> Lt
+    | _, Gt -> Gt
+    | Lt, Lt -> Eq
+    | Lt, _ -> Lt
+    | _, Lt -> Gt
+    | Neq, Neq -> Eq
   ;;
 
+  let equal a b = Ordering.is_eq (compare a b)
   let map = [ "=", Eq; ">=", Gte; "<=", Lte; ">", Gt; "<", Lt; "<>", Neq ]
   let to_dyn t = Dyn.variant (fst (List.find_exn ~f:(fun (_, op) -> equal t op) map)) []
 
-  let encode x =
+  let to_string x =
     let f (_, op) = equal x op in
     (* Assumes the [map] is complete, so exception is impossible *)
-    List.find_exn ~f map |> fst |> Dune_sexp.Encoder.string
+    List.find_exn ~f map |> fst
   ;;
+
+  let encode x = to_string x |> Dune_sexp.Encoder.string
 end
 
 module Variable = struct
@@ -36,6 +56,8 @@ module Variable = struct
     Dune_sexp.Decoder.atom_matching ~desc:"variable" (fun s ->
       if String.is_prefix s ~prefix:":" then Some (of_name (String.drop s 1)) else None)
   ;;
+
+  let compare { name } t = String.compare name t.name
 end
 
 module Value = struct
@@ -46,6 +68,14 @@ module Value = struct
   let to_dyn = function
     | String_literal s -> Dyn.variant "String_literal" [ Dyn.string s ]
     | Variable v -> Dyn.variant "Variable" [ Variable.to_dyn v ]
+  ;;
+
+  let compare a b =
+    match a, b with
+    | String_literal a, String_literal b -> String.compare a b
+    | String_literal _, _ -> Lt
+    | _, String_literal _ -> Gt
+    | Variable a, Variable b -> Variable.compare a b
   ;;
 
   let encode = function
@@ -62,12 +92,50 @@ module Value = struct
   ;;
 end
 
-type t =
-  | Bvar of Variable.t
-  | Uop of Op.t * Value.t
-  | Bop of Op.t * Value.t * Value.t
-  | And of t list
-  | Or of t list
+module T = struct
+  type t =
+    | Bvar of Variable.t
+    | Uop of Op.t * Value.t
+    | Bop of Op.t * Value.t * Value.t
+    | And of t list
+    | Or of t list
+
+  let rec to_dyn =
+    let open Dyn in
+    function
+    | Bvar v -> variant "Bvar" [ Variable.to_dyn v ]
+    | Uop (b, x) -> variant "Uop" [ Op.to_dyn b; Value.to_dyn x ]
+    | Bop (b, x, y) -> variant "Bop" [ Op.to_dyn b; Value.to_dyn x; Value.to_dyn y ]
+    | And t -> variant "And" (List.map ~f:to_dyn t)
+    | Or t -> variant "Or" (List.map ~f:to_dyn t)
+  ;;
+
+  let rec compare a b =
+    let open Ordering.O in
+    match a, b with
+    | Bvar a, Bvar b -> Variable.compare a b
+    | Bvar _, _ -> Lt
+    | _, Bvar _ -> Gt
+    | Uop (a_op, a_value), Uop (b_op, b_value) ->
+      let= () = Op.compare a_op b_op in
+      Value.compare a_value b_value
+    | Uop _, _ -> Lt
+    | _, Uop _ -> Gt
+    | Bop (a_op, a_lhs, a_rhs), Bop (b_op, b_lhs, b_rhs) ->
+      let= () = Op.compare a_op b_op in
+      let= () = Value.compare a_lhs b_lhs in
+      Value.compare a_rhs b_rhs
+    | Bop _, _ -> Lt
+    | _, Bop _ -> Gt
+    | And a, And b -> List.compare a b ~compare
+    | And _, _ -> Lt
+    | _, And _ -> Gt
+    | Or a, Or b -> List.compare a b ~compare
+  ;;
+end
+
+include T
+include Comparable.Make (T)
 
 let rec encode c =
   let open Dune_sexp.Encoder in
@@ -138,14 +206,4 @@ let decode =
       let+ () = junk in
       Bvar (Variable.of_name (String.drop s 1))
     | _ -> sum (ops @ logops))
-;;
-
-let rec to_dyn =
-  let open Dyn in
-  function
-  | Bvar v -> variant "Bvar" [ Variable.to_dyn v ]
-  | Uop (b, x) -> variant "Uop" [ Op.to_dyn b; Value.to_dyn x ]
-  | Bop (b, x, y) -> variant "Bop" [ Op.to_dyn b; Value.to_dyn x; Value.to_dyn y ]
-  | And t -> variant "And" (List.map ~f:to_dyn t)
-  | Or t -> variant "Or" (List.map ~f:to_dyn t)
 ;;

@@ -8,7 +8,7 @@ module Clflags : sig
     | Restrict of
         { names : Package.Name.Set.t
         ; command_line_option : string
-            (** Which of [-p], [--only-packages], ... was passed *)
+        (** Which of [-p], [--only-packages], ... was passed *)
         }
 
   (** This must be called exactly once *)

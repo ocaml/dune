@@ -167,12 +167,7 @@ let eval_foreign_stubs
         ~paths:Foreign.Source.[ path src1; path src2 ]))
 ;;
 
-let make
-  stanzas
-  ~(sources : Foreign.Sources.Unresolved.t)
-  ~dune_version
-  ~(lib_config : Lib_config.t)
-  =
+let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version =
   let libs, foreign_libs, exes =
     let libs, foreign_libs, exes =
       List.fold_left
@@ -216,7 +211,7 @@ let make
         ]
       |> List.concat_map ~f:(fun sources ->
         String.Map.to_list_map sources ~f:(fun _ (loc, source) ->
-          Foreign.Source.object_name source ^ lib_config.ext_obj, loc))
+          Foreign.Source.object_name source, loc))
     in
     match String.Map.of_list objects with
     | Ok _ -> ()
@@ -293,12 +288,15 @@ let make
   { libraries; archives; executables }
 ;;
 
-let make stanzas ~dune_version ~(lib_config : Lib_config.t) ~dirs =
+let make stanzas ~dune_version ~dirs =
   let init = String.Map.empty in
   let sources =
-    List.fold_left dirs ~init ~f:(fun acc (dir, _local, files) ->
-      let sources = Foreign.Sources.Unresolved.load ~dir ~dune_version ~files in
-      String.Map.Multi.rev_union sources acc)
+    List.fold_left
+      dirs
+      ~init
+      ~f:(fun acc { Source_file_dir.dir; path_to_root = _; files } ->
+        let sources = Foreign.Sources.Unresolved.load ~dir ~dune_version ~files in
+        String.Map.Multi.rev_union sources acc)
   in
-  make stanzas ~dune_version ~sources ~lib_config
+  make stanzas ~dune_version ~sources
 ;;

@@ -250,7 +250,7 @@ struct
     with_file_in fn ~f:(fun ic ->
       let lb = Lexing.from_channel ic in
       lb.lex_curr_p
-        <- { pos_fname = Path.to_string fn; pos_lnum = 1; pos_bol = 0; pos_cnum = 0 };
+      <- { pos_fname = Path.to_string fn; pos_lnum = 1; pos_bol = 0; pos_cnum = 0 };
       f lb)
   ;;
 

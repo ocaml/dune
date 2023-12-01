@@ -35,7 +35,7 @@ module Path_digest_result : sig
     | Ok of t
     | Unexpected_kind
     | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
-        (** A Unix error, e.g., [(ENOENT, _, _)] if the path doesn't exist. *)
+    (** A Unix error, e.g., [(ENOENT, _, _)] if the path doesn't exist. *)
 
   val equal : t -> t -> bool
 end

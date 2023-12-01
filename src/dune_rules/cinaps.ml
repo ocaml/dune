@@ -82,13 +82,6 @@ let gen_rules sctx t ~dir ~scope =
         Some
           (Path.Build.append_source (Super_context.context sctx |> Context.build_dir) p)
       else None)
-  and* prog =
-    Super_context.resolve_program
-      sctx
-      ~dir
-      ~loc:(Some loc)
-      name
-      ~hint:"opam install cinaps"
   in
   let cinaps_dir =
     let stamp =
@@ -122,7 +115,15 @@ let gen_rules sctx t ~dir ~scope =
       sctx
       ~loc:t.loc
       ~dir
-      (Command.run
+      (let prog =
+         Super_context.resolve_program
+           sctx
+           ~dir
+           ~loc:(Some loc)
+           name
+           ~hint:"opam install cinaps"
+       in
+       Command.run_dyn_prog
          ~dir:(Path.build dir)
          prog
          ~sandbox

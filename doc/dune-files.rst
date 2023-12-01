@@ -14,7 +14,7 @@ contents of all configuration files read by Dune and looks like:
 
 .. code:: dune
 
-   (lang dune 3.11)
+   (lang dune 3.13)
 
 Additionally, they can contains the following stanzas.
 
@@ -583,7 +583,7 @@ use_standard_c_and_cxx_flags
 
    .. versionadded:: 2.8
 
-   Control how flags coming grom ``ocamlc -config`` are passed to the C
+   Control how flags coming from ``ocamlc -config`` are passed to the C
    compiler command line.
 
    Historically, they have been systematically prepended without a way to
@@ -785,7 +785,7 @@ The ``dune-workspace`` file uses the S-expression syntax. This is what a typical
 
 .. code:: dune
 
-    (lang dune 3.11)
+    (lang dune 3.13)
     (context (opam (switch 4.07.1)))
     (context (opam (switch 4.08.1)))
     (context (opam (switch 4.11.1)))

@@ -10,10 +10,6 @@ module Odoc : sig
   type t = { warnings : warnings }
 end
 
-module Coq : sig
-  type t = string list
-end
-
 type t
 
 val make
@@ -38,10 +34,14 @@ val inline_tests : t -> Dune_env.Stanza.Inline_tests.t Memo.t
 val js_of_ocaml : t -> string list Action_builder.t Js_of_ocaml.Env.t Memo.t
 val foreign_flags : t -> string list Action_builder.t Foreign_language.Dict.t
 val link_flags : t -> Link_flags.t Memo.t
+
+(** Binaries that are symlinked in the associated .bin directory of [dir]. This
+    associated directory is *)
 val local_binaries : t -> File_binding.Expanded.t list Memo.t
+
 val artifacts : t -> Artifacts.t Memo.t
-val odoc : t -> Odoc.t Memo.t
-val coq : t -> Coq.t Action_builder.t Memo.t
+val odoc : t -> Odoc.t Action_builder.t
+val coq_flags : t -> Coq_flags.t Action_builder.t Memo.t
 val menhir_flags : t -> string list Action_builder.t
 val format_config : t -> Format_config.t Memo.t
 val set_format_config : t -> Format_config.t -> t

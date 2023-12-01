@@ -24,9 +24,9 @@ module Dependency = struct
       sum
         [ econstr file; econstr directory; econstr glob_cstr ]
         (function
-         | File s -> case s file
-         | Directory s -> case s directory
-         | Glob { path; glob } -> case (path, glob) glob_cstr)
+          | File s -> case s file
+          | Directory s -> case s directory
+          | Glob { path; glob } -> case (path, glob) glob_cstr)
     ;;
 
     let compare x y =
@@ -117,8 +117,8 @@ module Response = struct
       sum
         [ econstr done_; econstr need_more_deps ]
         (function
-         | Done -> case () done_
-         | Need_more_deps deps -> case deps need_more_deps)
+          | Done -> case () done_
+          | Need_more_deps deps -> case deps need_more_deps)
     ;;
 
     let version = 0

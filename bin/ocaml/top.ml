@@ -165,7 +165,7 @@ module Module = struct
       in
       let pps () =
         let module Merlin = Dune_rules.Merlin in
-        let pps = Merlin.pp_config merlin sctx ~expander in
+        let pps = Merlin.pp_config merlin ctx ~expander in
         let+ pps, _ = Action_builder.run pps Eager in
         let pp = Dune_rules.Module_name.Per_item.get pps module_name in
         match pp with

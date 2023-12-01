@@ -164,7 +164,7 @@ module Script = struct
         ~wrapper
         ~target:generated_dune_file
     in
-    let context = Context.host context in
+    let* context = Context.host context in
     let args =
       List.concat
         [ [ "-I"; "+compiler-libs" ]; [ Path.to_absolute_filename (Path.build wrapper) ] ]
@@ -259,14 +259,12 @@ module Dune_files = struct
     >>= function
     | None -> Memo.return None
     | Some d ->
-      let project = Source_tree.Dir.project d in
       (match Source_tree.Dir.dune_file d with
-       | None ->
-         let dir = Source_tree.Dir.path d in
-         Memo.return (Some { Dune_file.dir; project; stanzas = [] })
+       | None -> Memo.return None
        | Some dune_file ->
-         let* dune_file = interpret ~dir:source_dir ~project ~dune_file in
-         (match dune_file with
+         let project = Source_tree.Dir.project d in
+         interpret ~dir:source_dir ~project ~dune_file
+         >>= (function
           | Literal dune_file -> Memo.return (Some dune_file)
           | Script script ->
             let context =
@@ -358,6 +356,6 @@ let load () =
 ;;
 
 let load =
-  let memo = Memo.lazy_ load in
+  let memo = Memo.lazy_ ~name:"dune_load" load in
   fun () -> Memo.Lazy.force memo
 ;;

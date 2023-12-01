@@ -71,6 +71,15 @@ module Args : sig
   val as_any : without_targets t -> any t
 end
 
+(** Same as [run] but we delay determining the program *)
+val run_dyn_prog
+  :  dir:Path.t
+  -> ?sandbox:Sandbox_config.t
+  -> ?stdout_to:Path.Build.t
+  -> Action.Prog.t Action_builder.t
+  -> Args.any Args.t list
+  -> Action.Full.t Action_builder.With_targets.t
+
 val run
   :  dir:Path.t
   -> ?sandbox:Sandbox_config.t

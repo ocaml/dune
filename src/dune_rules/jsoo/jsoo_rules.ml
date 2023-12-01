@@ -127,9 +127,7 @@ module Version = struct
 
   let version_memo = Memo.create "jsoo-version" ~input:(module Path) impl_version
 
-  let jsoo_version path =
-    let open Memo.O in
-    let* jsoo = path in
+  let jsoo_version jsoo =
     match jsoo with
     | Ok jsoo_path -> Memo.exec version_memo jsoo_path
     | Error e -> Action.Prog.Not_found.raise e
@@ -170,6 +168,8 @@ type sub_command =
   | Build_runtime
 
 let js_of_ocaml_flags t ~dir (spec : Js_of_ocaml.Flags.Spec.t) =
+  Action_builder.of_memo
+  @@
   let open Memo.O in
   let+ expander = Super_context.expander t ~dir
   and+ js_of_ocaml = Super_context.env_node t ~dir >>= Env_node.js_of_ocaml in
@@ -188,21 +188,23 @@ let js_of_ocaml_rule
   ~spec
   ~target
   =
-  let open Memo.O in
-  let+ jsoo = jsoo ~dir sctx
-  and+ flags = js_of_ocaml_flags sctx ~dir flags in
-  Command.run
+  let open Action_builder.O in
+  let jsoo = jsoo ~dir sctx in
+  let flags =
+    let* flags = js_of_ocaml_flags sctx ~dir flags in
+    match sub_command with
+    | Compile -> flags.compile
+    | Link -> flags.link
+    | Build_runtime -> flags.build_runtime
+  in
+  Command.run_dyn_prog
     ~dir:(Path.build dir)
     jsoo
     [ (match sub_command with
        | Compile -> S []
        | Link -> A "link"
        | Build_runtime -> A "build-runtime")
-    ; Command.Args.dyn
-        (match sub_command with
-         | Compile -> flags.compile
-         | Link -> flags.link
-         | Build_runtime -> flags.build_runtime)
+    ; Command.Args.dyn flags
     ; (match config with
        | None -> S []
        | Some config ->
@@ -222,8 +224,8 @@ let standalone_runtime_rule cc ~javascript_files ~target ~flags =
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
   let config =
-    Action_builder.of_memo_join
-      (Memo.map ~f:(fun x -> x.compile) (js_of_ocaml_flags sctx ~dir flags))
+    js_of_ocaml_flags sctx ~dir flags
+    |> Action_builder.bind ~f:(fun (x : _ Js_of_ocaml.Flags.t) -> x.compile)
     |> Action_builder.map ~f:Config.of_flags
   in
   let libs = Compilation_context.requires_link cc in
@@ -298,15 +300,18 @@ let link_rule cc ~runtime ~target ~obj_dir cm ~flags ~linkall ~link_time_code_ge
   let get_all =
     let open Action_builder.O in
     let+ config =
-      Action_builder.of_memo_join
-        (Memo.map ~f:(fun x -> x.compile) (js_of_ocaml_flags sctx ~dir flags))
+      js_of_ocaml_flags sctx ~dir flags
+      |> Action_builder.bind ~f:(fun (x : _ Js_of_ocaml.Flags.t) -> x.compile)
       |> Action_builder.map ~f:Config.of_flags
     and+ cm = cm
     and+ linkall = linkall
     and+ libs = Resolve.Memo.read (Compilation_context.requires_link cc)
     and+ { Link_time_code_gen_type.to_link; force_linkall } =
       Resolve.read link_time_code_gen
-    and+ jsoo_version = Action_builder.of_memo (Version.jsoo_version (jsoo ~dir sctx)) in
+    and+ jsoo_version =
+      let* jsoo = jsoo ~dir sctx in
+      Action_builder.of_memo @@ Version.jsoo_version jsoo
+    in
     (* Special case for the stdlib because it is not referenced in the
        META *)
     let stdlib =
@@ -372,45 +377,45 @@ let setup_separate_compilation_rules sctx components =
     let* installed_libs = Lib.DB.installed ctx in
     Lib.DB.find installed_libs pkg
     >>= (function
-    | None -> Memo.return ()
-    | Some pkg ->
-      let info = Lib.info pkg in
-      let lib_name = Lib_name.to_string (Lib.name pkg) in
-      let archives =
-        let archives = (Lib_info.archives info).byte in
-        (* Special case for the stdlib because it is not referenced in the
-           META *)
-        match lib_name with
-        | "stdlib" ->
-          let archive =
-            let stdlib_dir = (Lib.lib_config pkg).stdlib_dir in
-            Path.relative stdlib_dir
-          in
-          archive "stdlib.cma" :: archive "std_exit.cmo" :: archives
-        | _ -> archives
-      in
-      Memo.parallel_iter archives ~f:(fun fn ->
-        let build_context = Context.build_context ctx in
-        let name = Path.basename fn in
-        let dir = in_build_dir build_context ~config [ lib_name ] in
-        let in_context =
-          { Js_of_ocaml.In_context.flags = Js_of_ocaml.Flags.standard
-          ; javascript_files = []
-          }
-        in
-        let src =
-          let src_dir = Lib_info.src_dir info in
-          Path.relative src_dir name
-        in
-        let target = in_build_dir build_context ~config [ lib_name; with_js_ext name ] in
-        build_cm'
-          sctx
-          ~dir
-          ~in_context
-          ~src
-          ~target
-          ~config:(Some (Action_builder.return config))
-        >>= Super_context.add_rule sctx ~dir))
+     | None -> Memo.return ()
+     | Some pkg ->
+       let info = Lib.info pkg in
+       let lib_name = Lib_name.to_string (Lib.name pkg) in
+       let archives =
+         let archives = (Lib_info.archives info).byte in
+         (* Special case for the stdlib because it is not referenced in the
+            META *)
+         match lib_name with
+         | "stdlib" ->
+           let archive =
+             let stdlib_dir = (Lib.lib_config pkg).stdlib_dir in
+             Path.relative stdlib_dir
+           in
+           archive "stdlib.cma" :: archive "std_exit.cmo" :: archives
+         | _ -> archives
+       in
+       Memo.parallel_iter archives ~f:(fun fn ->
+         let build_context = Context.build_context ctx in
+         let name = Path.basename fn in
+         let dir = in_build_dir build_context ~config [ lib_name ] in
+         let in_context =
+           { Js_of_ocaml.In_context.flags = Js_of_ocaml.Flags.standard
+           ; javascript_files = []
+           }
+         in
+         let src =
+           let src_dir = Lib_info.src_dir info in
+           Path.relative src_dir name
+         in
+         let target = in_build_dir build_context ~config [ lib_name; with_js_ext name ] in
+         build_cm'
+           sctx
+           ~dir
+           ~in_context
+           ~src
+           ~target
+           ~config:(Some (Action_builder.return config))
+         |> Super_context.add_rule sctx ~dir))
 ;;
 
 let js_of_ocaml_compilation_mode t ~dir =
@@ -454,21 +459,25 @@ let build_exe
   let* cmode = js_of_ocaml_compilation_mode sctx ~dir in
   match (cmode : Js_of_ocaml.Compilation_mode.t) with
   | Separate_compilation ->
-    standalone_runtime_rule cc ~javascript_files ~target:standalone_runtime ~flags
-    >>= Super_context.add_rule ~loc sctx ~dir
-    >>> link_rule
-          cc
-          ~runtime:standalone_runtime
-          ~target
-          ~obj_dir
-          top_sorted_modules
-          ~flags
-          ~linkall
-          ~link_time_code_gen
-    >>= Super_context.add_rule sctx ~loc ~dir ~mode
+    let+ () =
+      standalone_runtime_rule cc ~javascript_files ~target:standalone_runtime ~flags
+      |> Super_context.add_rule ~loc sctx ~dir
+    and+ () =
+      link_rule
+        cc
+        ~runtime:standalone_runtime
+        ~target
+        ~obj_dir
+        top_sorted_modules
+        ~flags
+        ~linkall
+        ~link_time_code_gen
+      |> Super_context.add_rule sctx ~loc ~dir ~mode
+    in
+    ()
   | Whole_program ->
     exe_rule cc ~javascript_files ~src ~target ~flags
-    >>= Super_context.add_rule sctx ~loc ~dir ~mode
+    |> Super_context.add_rule sctx ~loc ~dir ~mode
 ;;
 
 let runner = "node"

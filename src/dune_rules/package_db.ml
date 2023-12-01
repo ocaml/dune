@@ -13,18 +13,21 @@ let find_package ctx pkg =
   match Package.Name.Map.find packages pkg with
   | Some p -> Memo.return (Some (Local p))
   | None ->
-    let open Memo.O in
-    let* findlib = Findlib.create ctx in
-    Findlib.find_root_package findlib pkg
+    Pkg_rules.lock_dir_active ctx
     >>= (function
-    | Ok p -> Memo.return @@ Some (Installed p)
-    | Error (Invalid_dune_package user_message) ->
-      User_error.raise [ User_message.pp user_message ]
-    | Error Not_found ->
-      Pkg_rules.find_package ctx pkg
-      >>| (function
-      | None -> None
-      | Some b -> Some (Build b)))
+     | true ->
+       Pkg_rules.find_package ctx pkg
+       >>| (function
+        | None -> None
+        | Some b -> Some (Build b))
+     | false ->
+       let* findlib = Findlib.create ctx in
+       Findlib.find_root_package findlib pkg
+       >>= (function
+        | Ok p -> Memo.return @@ Some (Installed p)
+        | Error (Invalid_dune_package user_message) ->
+          User_error.raise [ User_message.pp user_message ]
+        | Error Not_found -> Memo.return None))
 ;;
 
 let create ctx = Memo.return ctx

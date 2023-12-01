@@ -117,3 +117,6 @@ val has_embedded_location : t -> bool
 (** Returns [true] if the message's annotations contains
     [Annot.Needs_stack_trace]. *)
 val needs_stack_trace : t -> bool
+
+(** Formatting of shell commands *)
+val command : string -> Style.t Pp.t

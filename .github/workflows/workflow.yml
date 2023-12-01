@@ -247,3 +247,23 @@ jobs:
           push_image_and_stages: on:push
           username: ocamldune
           password: "${{ secrets.DOCKER_HUB_PASSWORD }}"
+
+  create-local-opam-switch:
+    name: Create local opam switch
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+        ocaml-compiler:
+          - 5
+          - 4.14
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Use OCaml ${{ matrix.ocaml-compiler }}
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+      - uses: actions/checkout@v3
+      - run: opam switch create . -y

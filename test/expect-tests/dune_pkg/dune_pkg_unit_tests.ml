@@ -2,7 +2,9 @@ open Stdune
 module Checksum = Dune_pkg.Checksum
 module Lock_dir = Dune_pkg.Lock_dir
 module Expanded_variable_bindings = Dune_pkg.Solver_stats.Expanded_variable_bindings
-module Variable = Dune_pkg.Solver_env.Variable
+module Variable_name = Dune_pkg.Variable_name
+module Variable_value = Dune_pkg.Variable_value
+module Package_version = Dune_pkg.Package_version
 module Package_name = Dune_lang.Package_name
 
 let () = Dune_tests_common.init ()
@@ -37,6 +39,7 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
     ~lock_dir:
       (Lock_dir.create_latest_version
          Package_name.Map.empty
+         ~local_packages:[]
          ~ocaml:None
          ~repos:None
          ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty);
@@ -44,6 +47,7 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
     {|
     lockdir matches after roundtrip:
     { version = (0, 1)
+    ; dependency_hash = None
     ; packages = map {}
     ; ocaml = None
     ; repos = { complete = true; used = None }
@@ -71,20 +75,23 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
          name, empty_package name ~version
        in
        Lock_dir.create_latest_version
+         ~local_packages:[]
          ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
          ~repos:None
          ~expanded_solver_variable_bindings:
-           { Expanded_variable_bindings.variable_values = [ Variable.Sys `Os, "linux" ]
-           ; unset_variables = [ Variable.Sys `Os_family ]
+           { Expanded_variable_bindings.variable_values =
+               [ Variable_name.os, Variable_value.string "linux" ]
+           ; unset_variables = [ Variable_name.os_family ]
            }
          (Package_name.Map.of_list_exn
-            [ mk_pkg_basic ~name:"foo" ~version:"0.1.0"
-            ; mk_pkg_basic ~name:"bar" ~version:"0.2.0"
+            [ mk_pkg_basic ~name:"foo" ~version:(Package_version.of_string "0.1.0")
+            ; mk_pkg_basic ~name:"bar" ~version:(Package_version.of_string "0.2.0")
             ]));
   [%expect
     {|
     lockdir matches after roundtrip:
     { version = (0, 1)
+    ; dependency_hash = None
     ; packages =
         map
           { "bar" :
@@ -117,8 +124,8 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
     ; ocaml = Some ("simple_lock_dir/lock.dune:3", "ocaml")
     ; repos = { complete = true; used = None }
     ; expanded_solver_variable_bindings =
-        { variable_values = [ (Sys "os", "linux") ]
-        ; unset_variables = [ Sys "os-family" ]
+        { variable_values = [ ("os", String "linux") ]
+        ; unset_variables = [ "os-family" ]
         }
     } |}]
 ;;
@@ -135,7 +142,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
            External_copy (Loc.none, Path.External.of_string "/tmp/a")
          in
          ( name
-         , let pkg = empty_package name ~version:"0.1.0" in
+         , let pkg = empty_package name ~version:(Package_version.of_string "0.1.0") in
            { pkg with
              build_command =
                Some
@@ -167,7 +174,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
        let pkg_b =
          let name = Package_name.of_string "b" in
          ( name
-         , let pkg = empty_package name ~version:"dev" in
+         , let pkg = empty_package name ~version:(Package_version.of_string "dev") in
            { pkg with
              install_command = None
            ; deps = [ Loc.none, fst pkg_a ]
@@ -191,7 +198,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
        let pkg_c =
          let name = Package_name.of_string "c" in
          ( name
-         , let pkg = empty_package name ~version:"0.2" in
+         , let pkg = empty_package name ~version:(Package_version.of_string "0.2") in
            { pkg with
              deps = [ Loc.none, fst pkg_a; Loc.none, fst pkg_b ]
            ; info =
@@ -209,6 +216,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
          Dune_pkg.Opam_repo.Private.create ~source:(Some "well-known-repo") ~repo_id
        in
        Lock_dir.create_latest_version
+         ~local_packages:[]
          ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
          ~repos:(Some [ opam_repo ])
          ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
@@ -217,6 +225,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
     {|
     lockdir matches after roundtrip:
     { version = (0, 1)
+    ; dependency_hash = None
     ; packages =
         map
           { "a" :

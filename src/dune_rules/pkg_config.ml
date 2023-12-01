@@ -44,10 +44,9 @@ module Query = struct
   let read t sctx ~dir =
     let open Action_builder.O in
     let* bin =
-      Action_builder.of_memo
-        (let open Memo.O in
-         let* pkg_config = pkg_config_binary sctx ~dir in
-         Super_context.resolve_program sctx ~loc:None ~dir pkg_config)
+      let open Action_builder.O in
+      let* pkg_config = Action_builder.of_memo @@ pkg_config_binary sctx ~dir in
+      Super_context.resolve_program sctx ~loc:None ~dir pkg_config
     in
     match bin with
     | Error _ -> Action_builder.return (default t)
@@ -63,7 +62,7 @@ let gen_rule sctx ~loc ~dir query =
   let* bin =
     let open Memo.O in
     let* pkg_config = pkg_config_binary sctx ~dir in
-    Super_context.resolve_program sctx ~loc:(Some loc) ~dir pkg_config
+    Super_context.resolve_program_memo sctx ~loc:(Some loc) ~dir pkg_config
   in
   match bin with
   | Error _ -> Memo.return @@ Error `Not_found

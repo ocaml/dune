@@ -78,7 +78,7 @@ val path : t -> Path.t list
 (** If this context is a cross-compilation context, you need another
     context for building tools used for the compilation that run on the
     host. *)
-val for_host : t -> t option
+val for_host : t -> t Memo.t option
 
 (** Directory where artifact are stored, for instance "_build/default" *)
 val build_dir : t -> Path.Build.t
@@ -100,7 +100,7 @@ val map_exe : t -> Path.t -> Path.t
     an explicit installation directory. *)
 val roots : t -> Path.t option Install.Roots.t
 
-val host : t -> t
+val host : t -> t Memo.t
 
 module DB : sig
   val get : Context_name.t -> t Memo.t

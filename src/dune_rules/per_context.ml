@@ -31,7 +31,7 @@ let create_db ?cutoff ~name f =
   let map =
     Memo.lazy_ ~name ?cutoff (fun () ->
       let+ map = Memo.Lazy.force all in
-      Context_name.Map.map map ~f)
+      Context_name.Map.mapi map ~f)
   in
   Staged.stage (fun context ->
     let+ map = Memo.Lazy.force map in
@@ -44,18 +44,14 @@ let or_invalid ctx = function
 ;;
 
 let create_by_name ~name f =
-  let f =
-    Staged.unstage
-    @@ create_db ~name (function
-      | `Native ctx -> f (Workspace.Context.name ctx)
-      | `Target (_ctx, name) -> f name)
-  in
+  let f = Staged.unstage @@ create_db ~name (fun k _ -> f k) in
   Staged.stage (fun name -> f name >>= or_invalid name)
 ;;
 
 let profile =
   let profile =
-    create_db ~cutoff:Profile.equal ~name:"profile" (function
+    create_db ~cutoff:Profile.equal ~name:"profile" (fun _ v ->
+      match v with
       | `Native ctx | `Target (ctx, _) -> (Workspace.Context.base ctx).profile)
     |> Staged.unstage
   in
@@ -64,7 +60,8 @@ let profile =
 
 let valid =
   let find =
-    create_db ~cutoff:Unit.equal ~name:"context-validation" (function
+    create_db ~cutoff:Unit.equal ~name:"context-validation" (fun _ v ->
+      match v with
       | `Native _ | `Target (_, _) -> ())
     |> Staged.unstage
   in

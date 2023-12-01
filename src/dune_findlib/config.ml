@@ -33,17 +33,17 @@ module File = struct
       | Ok true ->
         Fs_memo.dir_contents config_dir
         >>= (function
-        | Ok dir_contents ->
-          let+ all_vars =
-            Memo.parallel_map
-              (Fs_cache.Dir_contents.to_list dir_contents)
-              ~f:(fun (p, _kind) ->
-                let p = Path.Outside_build_dir.relative config_dir p in
-                load p)
-          in
-          List.fold_left all_vars ~init:vars ~f:(fun acc vars ->
-            Vars.union acc vars ~f:(fun _ x y -> Some (Rules.union x y)))
-        | Error (_ : Unix.error * _ * _) -> Memo.return vars)
+         | Ok dir_contents ->
+           let+ all_vars =
+             Memo.parallel_map
+               (Fs_cache.Dir_contents.to_list dir_contents)
+               ~f:(fun (p, _kind) ->
+                 let p = Path.Outside_build_dir.relative config_dir p in
+                 load p)
+           in
+           List.fold_left all_vars ~init:vars ~f:(fun acc vars ->
+             Vars.union acc vars ~f:(fun _ x y -> Some (Rules.union x y)))
+         | Error (_ : Unix.error * _ * _) -> Memo.return vars)
     in
     { vars; preds = Ps.empty }
   ;;
@@ -135,11 +135,11 @@ let ocamlfind_config_path ~env ~which ~findlib_toolchain =
        | Some _ ->
          which "ocamlfind"
          >>= (function
-         | None -> Memo.return None
-         | Some fn ->
-           Process.run_capture_line ~display:Quiet ~env Strict fn [ "printconf"; "conf" ]
-           |> Memo.of_reproducible_fiber
-           |> Memo.map ~f:Option.some))
+          | None -> Memo.return None
+          | Some fn ->
+            Process.run_capture_line ~display:Quiet ~env Strict fn [ "printconf"; "conf" ]
+            |> Memo.of_reproducible_fiber
+            |> Memo.map ~f:Option.some))
   in
   (* From http://projects.camlcity.org/projects/dl/findlib-1.9.6/doc/ref-html/r865.html
      This variable overrides the location of the configuration file

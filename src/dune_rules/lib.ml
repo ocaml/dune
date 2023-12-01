@@ -411,8 +411,7 @@ and resolve_result =
   | Invalid of User_message.t
   | Ignore
   | (* Redirect (None, lib) looks up lib in the same database *)
-    Redirect of
-      db option * (Loc.t * Lib_name.t)
+    Redirect of db option * (Loc.t * Lib_name.t)
 
 let equal_db : db -> db -> bool = phys_equal
 let lib_config (t : lib) = t.lib_config
@@ -1136,8 +1135,8 @@ end = struct
        | None -> Memo.return Status.Not_found
        | Some db -> find_internal db name)
       >>= (function
-      | Status.Found _ as x -> Memo.return x
-      | _ -> instantiate db name info ~hidden:(Some hidden))
+       | Status.Found _ as x -> Memo.return x
+       | _ -> instantiate db name info ~hidden:(Some hidden))
   ;;
 
   let available_internal db (name : Lib_name.t) =
@@ -1815,7 +1814,12 @@ module DB = struct
           | Error e ->
             (match e with
              | Invalid_dune_package why -> Invalid why
-             | Not_found when has_bigarray_library && Lib_name.equal name bigarray ->
+             | Not_found when (not has_bigarray_library) && Lib_name.equal name bigarray
+               ->
+               (* Recent versions of OCaml already include a [bigrray] library,
+                  so we just silently ignore dependencies on it. The more
+                  correct thing to do would be to redirect it to the stdlib,
+                  but the stdlib isn't first class. *)
                Ignore
              | Not_found -> Not_found))
         ~all:(fun () ->

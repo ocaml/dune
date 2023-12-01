@@ -53,12 +53,11 @@ let rule_kind ~(rule : Rule.t) ~(action : _ Action_builder.With_targets.t) =
 ;;
 
 let interpret_and_add_locks ~expander locks action =
-  let+ locks = Expander.expand_locks expander ~base:`Of_expander locks in
-  match locks with
+  let open Action_builder.O in
+  Expander.expand_locks expander ~base:`Of_expander locks
+  >>= function
   | [] -> action
-  | _ ->
-    let open Action_builder.O in
-    action >>| Action.Full.add_locks locks
+  | locks -> Action_builder.map action ~f:(Action.Full.add_locks locks)
 ;;
 
 let add_user_rule
@@ -68,8 +67,10 @@ let add_user_rule
   ~(action : _ Action_builder.With_targets.t)
   ~expander
   =
-  let* build = interpret_and_add_locks ~expander rule.locks action.build in
-  let action = { action with Action_builder.With_targets.build } in
+  let action =
+    let build = interpret_and_add_locks ~expander rule.locks action.build in
+    { action with Action_builder.With_targets.build }
+  in
   Super_context.add_rule_get_targets sctx ~dir ~mode:rule.mode ~loc:rule.loc action
 ;;
 
@@ -77,9 +78,9 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   Expander.eval_blang expander rule.enabled_if
   >>= function
   | false ->
-    let aliases = List.map rule.aliases ~f:(Alias.make ~dir) in
     let+ () =
-      Memo.parallel_iter aliases ~f:(fun alias ->
+      Memo.parallel_iter rule.aliases ~f:(fun alias ->
+        let alias = Alias.make ~dir alias in
         Alias_rules.add_empty sctx ~loc:rule.loc ~alias)
     in
     None
@@ -90,14 +91,13 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       | Static { targets; multiplicity } ->
         let+ targets =
           Memo.List.concat_map targets ~f:(fun (target, kind) ->
-            let error_loc = String_with_vars.loc target in
             (match multiplicity with
              | One ->
-               let+ x = Expander.No_deps.expand expander ~mode:Single target in
-               [ x ]
+               Expander.No_deps.expand expander ~mode:Single target >>| List.singleton
              | Multiple -> Expander.No_deps.expand expander ~mode:Many target)
-            >>| List.map ~f:(fun value ->
-              check_filename ~kind ~dir ~error_loc value, kind))
+            >>|
+            let error_loc = String_with_vars.loc target in
+            List.map ~f:(fun value -> check_filename ~kind ~dir ~error_loc value, kind))
         in
         Targets_spec.Static { multiplicity; targets }
     in
@@ -106,18 +106,18 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       | None -> expander
       | Some bindings -> Expander.add_bindings expander ~bindings
     in
-    let* (action : _ Action_builder.With_targets.t) =
-      let chdir = Expander.dir expander in
-      Action_unexpanded.expand
-        (snd rule.action)
-        ~loc:(fst rule.action)
-        ~chdir
-        ~expander
-        ~deps:rule.deps
-        ~targets
-        ~targets_dir:dir
-    in
-    let action =
+    let* action =
+      let+ (action : _ Action_builder.With_targets.t) =
+        let chdir = Expander.dir expander in
+        Action_unexpanded.expand
+          (snd rule.action)
+          ~loc:(fst rule.action)
+          ~chdir
+          ~expander
+          ~deps:rule.deps
+          ~targets
+          ~targets_dir:dir
+      in
       if rule.patch_back_source_tree
       then
         Action_builder.With_targets.map action ~f:(fun action ->
@@ -138,20 +138,19 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
        let+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in
        Some targets
      | Aliases_with_targets (aliases, alias_target) ->
-       let* () =
-         let aliases = List.map ~f:(Alias.make ~dir) aliases in
+       let+ () =
          Memo.parallel_iter aliases ~f:(fun alias ->
+           let alias = Alias.make ~dir alias in
            Rules.Produce.Alias.add_deps
              alias
              (Action_builder.path (Path.build alias_target)))
-       in
-       let+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in
+       and+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in
        Some targets
      | Aliases_only aliases ->
-       let aliases = List.map ~f:(Alias.make ~dir) aliases in
-       let* action = interpret_and_add_locks ~expander rule.locks action.build in
        let+ () =
+         let action = interpret_and_add_locks ~expander rule.locks action.build in
          Memo.parallel_iter aliases ~f:(fun alias ->
+           let alias = Alias.make ~dir alias in
            Alias_rules.add sctx ~alias ~loc:rule.loc action)
        in
        None)
@@ -203,8 +202,8 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
     | In_source_tree src_in_src ->
       Source_tree.find_dir src_in_src
       >>= (function
-      | Some _ -> Memo.return true
-      | None -> Load_rules.is_under_directory_target src_in_build)
+       | Some _ -> Memo.return true
+       | None -> Load_rules.is_under_directory_target src_in_build)
   in
   if not exists_or_generated
   then
@@ -291,6 +290,6 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
            ~deps:alias_conf.deps
            ~what:"aliases"
        in
-       let* action = interpret_and_add_locks ~expander alias_conf.locks action in
-       Alias_rules.add sctx ~loc action ~alias)
+       interpret_and_add_locks ~expander alias_conf.locks action
+       |> Alias_rules.add sctx ~loc ~alias)
 ;;

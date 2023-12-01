@@ -101,9 +101,9 @@ let copy_file =
     { name = "copy_file"
     ; of_string =
         (function
-         | "portable" -> Ok `Portable
-         | "fast" -> Ok `Best
-         | _ -> Error (sprintf "only %S and %S are allowed" "fast" "portable"))
+          | "portable" -> Ok `Portable
+          | "fast" -> Ok `Best
+          | _ -> Error (sprintf "only %S and %S are allowed" "fast" "portable"))
     ; value = `Best
     }
   in
@@ -142,6 +142,14 @@ let background_sandboxes =
     ; of_string = Toggle.of_string
     ; value = background_default
     }
+  in
+  register t;
+  t
+;;
+
+let background_dune_rules =
+  let t =
+    { name = "background_dune_rules"; of_string = Toggle.of_string; value = `Disabled }
   in
   register t;
   t

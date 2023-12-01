@@ -136,7 +136,7 @@ let term =
         let args = Dune_rules.Command.expand ~dir (S args) in
         Action_builder.run args.build Eager
       in
-      let* prog = Super_context.resolve_program sctx ~dir ~loc:None coqtop in
+      let* prog = Super_context.resolve_program_memo sctx ~dir ~loc:None coqtop in
       let prog = Action.Prog.ok_exn prog in
       let+ () = Build_system.build_file prog in
       Path.to_string prog, args

@@ -110,9 +110,8 @@ module Run (P : PARAMS) = struct
 
   (* [menhir args] generates a Menhir command line (a build action). *)
 
-  let menhir (args : 'a args) : Action.Full.t Action_builder.With_targets.t Memo.t =
-    Memo.map menhir_binary ~f:(fun prog ->
-      Command.run ~sandbox ~dir:(Path.build build_dir) prog args)
+  let menhir (args : 'a args) : Action.Full.t Action_builder.With_targets.t =
+    Command.run_dyn_prog ~sandbox ~dir:(Path.build build_dir) menhir_binary args
   ;;
 
   let rule ?(mode = stanza.mode)
@@ -198,7 +197,7 @@ module Run (P : PARAMS) = struct
         ; A "--infer-write-query"
         ; Target (mock_ml base)
         ]
-      >>= rule ~mode:Standard
+      |> rule ~mode:Standard
     in
     (* 2. The OCaml compiler performs type inference. *)
     let name = Module_name.of_string_allow_invalid (stanza.loc, mock base) in
@@ -236,7 +235,7 @@ module Run (P : PARAMS) = struct
       ; Dep (Path.build (inferred_mli base))
       ; Hidden_targets (targets base ~cmly)
       ]
-    >>= rule
+    |> rule
   ;;
 
   (* ------------------------------------------------------------------------ *)
@@ -245,7 +244,6 @@ module Run (P : PARAMS) = struct
      is a simpler one-step process where Menhir is invoked directly. *)
 
   let process1 base ~cmly (stanza : stanza) : unit Memo.t =
-    let open Memo.O in
     let expanded_flags = expand_flags stanza.flags in
     menhir
       [ Command.Args.dyn expanded_flags
@@ -254,7 +252,7 @@ module Run (P : PARAMS) = struct
       ; Path (Path.relative (Path.build dir) base)
       ; Hidden_targets (targets base ~cmly)
       ]
-    >>= rule
+    |> rule
   ;;
 
   (* ------------------------------------------------------------------------ *)

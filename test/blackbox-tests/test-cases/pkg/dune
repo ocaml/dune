@@ -12,7 +12,13 @@
 
 (cram
  (deps %{bin:git})
- (applies_to git-source opam-repository-download multiple-opam-repos))
+ (applies_to :whole_subtree))
+
+(cram
+ (applies_to rev-store-lock-linux)
+ (enabled_if
+  (= %{system} linux))
+ (deps %{bin:strace}))
 
 (cram
  (deps %{bin:git} %{bin:awk} %{bin:cmp})

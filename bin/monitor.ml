@@ -188,8 +188,8 @@ let fetch_loop ~(event : Event.t Fiber_event_bus.t) ~client ~f sub =
     let rec loop () =
       Fiber.collect_errors (fun () -> Client.Stream.next poller)
       >>= (function
-            | Ok (Some payload) -> Fiber_event_bus.push event (f payload)
-            | Error _ | Ok None -> Fiber_event_bus.close event >>> Fiber.return `Closed)
+             | Ok (Some payload) -> Fiber_event_bus.push event (f payload)
+             | Error _ | Ok None -> Fiber_event_bus.close event >>> Fiber.return `Closed)
       >>= function
       | `Closed -> Fiber.return ()
       | `Ok -> loop ()

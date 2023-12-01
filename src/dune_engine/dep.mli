@@ -68,6 +68,7 @@ module Facts : sig
      keys. For example, we can't have [Map.find (File f) = File_selector _]. *)
   type t = Fact.t Map.t
 
+  val equal : t -> t -> bool
   val empty : t
   val union : t -> t -> t
   val union_all : t list -> t

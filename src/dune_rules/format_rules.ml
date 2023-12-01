@@ -33,7 +33,7 @@ let action =
     let name = "format-dune-file"
     let version = 1
     let bimap (ver, src, dst) f g = ver, f src, g dst
-    let is_useful_to ~distribute:_ ~memoize = memoize
+    let is_useful_to ~memoize = memoize
 
     let encode (version, src, dst) path target : Dune_lang.t =
       List
@@ -79,9 +79,7 @@ let gen_rules_output
   assert (formatted_dir_basename = Path.Build.basename output_dir);
   let loc = Format_config.loc config in
   let dir = Path.Build.parent_exn output_dir in
-  let source_dir = Path.Build.drop_build_context_exn dir in
   let alias_formatted = Alias.fmt ~dir:output_dir in
-  let depend_on_files named = depend_on_files ~named (Path.build dir) in
   let open Memo.O in
   let setup_formatting file =
     let input_basename = Path.Source.basename file in
@@ -105,7 +103,7 @@ let gen_rules_output
       let extra_deps =
         match extra_deps with
         | [] -> Action_builder.return ()
-        | extra_deps -> depend_on_files extra_deps
+        | extra_deps -> depend_on_files ~named:extra_deps (Path.build dir)
       in
       let open Action_builder.With_targets.O in
       Action_builder.with_no_targets extra_deps
@@ -121,39 +119,37 @@ let gen_rules_output
       Super_context.add_rule sctx ~mode:Standard ~loc ~dir action
       >>> add_diff sctx loc alias_formatted ~dir ~input:(Path.build input) ~output)
   in
+  let* source_dir = Source_tree.find_dir (Path.Build.drop_build_context_exn dir) in
   let* () =
-    Source_tree.files_of source_dir
-    >>= Memo.parallel_iter_set (module Path.Source.Set) ~f:setup_formatting
-  in
-  let* () =
+    match source_dir with
+    | None -> Memo.return ()
+    | Some source_dir ->
+      Source_tree.Dir.file_paths source_dir
+      |> Memo.parallel_iter_set (module Path.Source.Set) ~f:setup_formatting
+  and* () =
     match Format_config.includes config Dune with
     | false -> Memo.return ()
     | true ->
-      Source_tree.find_dir source_dir
-      >>= (function
-      | None -> Memo.return ()
-      | Some source_dir ->
-        (match Source_tree.Dir.dune_file source_dir with
-         | None -> Memo.return ()
-         | Some f ->
-           (match Source_tree.Dune_file.path f with
-            | None -> Memo.return ()
-            | Some path ->
-              let input_basename = Path.Source.basename path in
-              let input = Path.Build.relative dir input_basename in
-              let output = Path.Build.relative output_dir input_basename in
-              Super_context.add_rule
-                sctx
-                ~mode:Standard
-                ~loc
-                ~dir
-                (Action_builder.with_file_targets ~file_targets:[ output ]
-                 @@
-                 let open Action_builder.O in
-                 let input = Path.build input in
-                 let+ () = Action_builder.path input in
-                 Action.Full.make (action ~version input output))
-              >>> add_diff sctx loc alias_formatted ~dir ~input:(Path.build input) ~output)))
+      Memo.Option.iter source_dir ~f:(fun source_dir ->
+        Source_tree.Dir.dune_file source_dir
+        |> Memo.Option.iter ~f:(fun f ->
+          Source_tree.Dune_file.path f
+          |> Memo.Option.iter ~f:(fun path ->
+            let input_basename = Path.Source.basename path in
+            let input = Path.Build.relative dir input_basename in
+            let output = Path.Build.relative output_dir input_basename in
+            Super_context.add_rule
+              sctx
+              ~mode:Standard
+              ~loc
+              ~dir
+              (Action_builder.with_file_targets ~file_targets:[ output ]
+               @@
+               let open Action_builder.O in
+               let input = Path.build input in
+               let+ () = Action_builder.path input in
+               Action.Full.make (action ~version input output))
+            >>> add_diff sctx loc alias_formatted ~dir ~input:(Path.build input) ~output)))
   in
   Rules.Produce.Alias.add_deps alias_formatted (Action_builder.return ())
 ;;

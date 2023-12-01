@@ -28,12 +28,12 @@ module Stanza : sig
     ; foreign_flags : Ordered_set_lang.Unexpanded.t Foreign_language.Dict.t
     ; link_flags : Link_flags.Spec.t
     ; env_vars : Env.t
-    ; binaries : File_binding.Unexpanded.t list
+    ; binaries : File_binding.Unexpanded.t list option
     ; inline_tests : Inline_tests.t option
     ; menhir_flags : Ordered_set_lang.Unexpanded.t option
     ; odoc : Odoc.t
     ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
-    ; coq : Ordered_set_lang.Unexpanded.t
+    ; coq : Coq_env.t
     ; format_config : Format_config.t option
     ; error_on_use : User_message.t option
     ; warn_on_load : User_message.t option
@@ -56,7 +56,7 @@ module Stanza : sig
   val foreign_flags
     :  since:Dune_lang.Syntax.Version.t option
     -> Ordered_set_lang.Unexpanded.t Foreign_language.Dict.t
-       Dune_lang.Decoder.fields_parser
+         Dune_lang.Decoder.fields_parser
 
   val decode : t Dune_lang.Decoder.t
   val empty : t

@@ -5,13 +5,13 @@ let quote_length s =
   let len = String.length s in
   for i = 0 to len - 1 do
     n
-      := !n
-         +
-         match String.unsafe_get s i with
-         | '\"' | '\\' | '\n' | '\t' | '\r' | '\b' -> 2
-         | '%' -> if i + 1 < len && s.[i + 1] = '{' then 2 else 1
-         | ' ' .. '~' -> 1
-         | _ -> 4
+    := !n
+       +
+       match String.unsafe_get s i with
+       | '\"' | '\\' | '\n' | '\t' | '\r' | '\b' -> 2
+       | '%' -> if i + 1 < len && s.[i + 1] = '{' then 2 else 1
+       | ' ' .. '~' -> 1
+       | _ -> 4
   done;
   !n
 ;;

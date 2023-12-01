@@ -39,9 +39,9 @@ module Expanding_what : sig
     | Deps_like_field
     | User_action of Path.Build.t Targets_spec.t
     | User_action_without_targets of { what : string }
-        (** [what] describe what the action is. It should be a plural and is
-            inserted in a sentence as follow: "<what> are not allowed to have
-            targets" *)
+    (** [what] describe what the action is. It should be a plural and is
+        inserted in a sentence as follow: "<what> are not allowed to have
+        targets" *)
 end
 
 (** Used to improve error messages and handing special cases, such as:
@@ -129,4 +129,4 @@ val expand_locks
   :  base:[ `Of_expander | `This of Path.t ]
   -> t
   -> Locks.t
-  -> Path.t list Memo.t
+  -> Path.t list Action_builder.t

@@ -139,26 +139,31 @@ let cram_stanzas lexbuf =
 ;;
 
 let run_expect_test file ~f =
-  let file_contents = Io.read_file ~binary:false file in
-  (* Nasty hack so that the user doesn't observe the test file while running the
-     test.
-
-     Eventually, we should just have a way to read the source from outside the
-     sandbox. *)
-  Path.unlink_no_err file;
   let open Fiber.O in
-  let+ expected =
+  let* file_contents =
+    Async.async (fun () ->
+      let file_contents = Io.read_file ~binary:false file in
+      (* Nasty hack so that the user doesn't observe the test file while running the
+         test.
+
+         Eventually, we should just have a way to read the source from outside the
+         sandbox. *)
+      Path.unlink_no_err file;
+      file_contents)
+  in
+  let* expected =
     let lexbuf = Lexbuf.from_string file_contents ~fname:(Path.to_string file) in
     f lexbuf
   in
   let corrected_file = Path.extend_basename file ~suffix:".corrected" in
-  if file_contents <> expected
-  then (
-    (* we only need to restore the test file so the diff doesn't fail *)
-    let () = Io.write_file file file_contents in
-    Io.write_file ~binary:false corrected_file expected)
-  else if Path.Untracked.exists corrected_file
-  then Path.rm_rf corrected_file
+  Dune_engine.Scheduler.async_exn (fun () ->
+    if file_contents <> expected
+    then (
+      (* we only need to restore the test file so the diff doesn't fail *)
+      let () = Io.write_file file file_contents in
+      Io.write_file ~binary:false corrected_file expected)
+    else if Path.Untracked.exists corrected_file
+    then Path.rm_rf corrected_file)
 ;;
 
 let fprln oc fmt = Printf.fprintf oc (fmt ^^ "\n")
@@ -452,7 +457,7 @@ module Spec = struct
   let name = "cram"
   let version = 1
   let bimap path f _ = f path
-  let is_useful_to ~distribute:_ ~memoize:_ = true
+  let is_useful_to ~memoize:_ = true
 
   let encode script path _ : Dune_lang.t =
     List [ Dune_lang.atom_or_quoted_string "cram"; path script ]

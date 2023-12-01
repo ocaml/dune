@@ -107,3 +107,4 @@ val quote_for_shell : string -> string
 val quote_list_for_shell : string list -> string
 
 val filter_map : string -> f:(char -> char option) -> string
+val contains_double_underscore : string -> bool

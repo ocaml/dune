@@ -50,9 +50,9 @@ module Var = struct
   let set t v =
     t.value := v;
     invalidation_acc
-      := Memo.Invalidation.combine
-           !invalidation_acc
-           (Memo.Cell.invalidate ~reason:Memo.Invalidation.Reason.Test t.cell)
+    := Memo.Invalidation.combine
+         !invalidation_acc
+         (Memo.Cell.invalidate ~reason:Memo.Invalidation.Reason.Test t.cell)
   ;;
 
   let read t = Memo.of_thunk (fun () -> Memo.Cell.read t.cell)

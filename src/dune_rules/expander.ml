@@ -114,7 +114,7 @@ let dep p =
 let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
   let value_from_version = function
     | None -> [ Value.String "" ]
-    | Some s -> [ String s ]
+    | Some s -> [ String (Package_version.to_string s) ]
   in
   let project = Scope.project scope in
   match
@@ -144,14 +144,14 @@ let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
     let open Memo.O in
     Lib.DB.find (Scope.libs scope) libname
     >>| (function
-    | Some lib -> value_from_version (Lib_info.version (Lib.info lib))
-    | None ->
-      User_error.raise
-        ~loc:source.loc
-        [ Pp.textf
-            "Package %S doesn't exist in the current project and isn't installed either."
-            s
-        ])
+     | Some lib -> value_from_version (Lib_info.version (Lib.info lib))
+     | None ->
+       User_error.raise
+         ~loc:source.loc
+         [ Pp.textf
+             "Package %S doesn't exist in the current project and isn't installed either."
+             s
+         ])
 ;;
 
 let expand_artifact ~source t a s =
@@ -189,20 +189,22 @@ let expand_artifact ~source t a s =
             ~what:"Library"
             (Lib_name.to_string name)
         | Some lib ->
-          let archives = Mode.Dict.get (Lib_info.archives lib) mode in
-          Action_builder.all
-            (List.map archives ~f:(fun fn ->
-               let fn = Path.build fn in
-               let+ () = Action_builder.path fn in
-               Value.Path fn))))
+          Mode.Dict.get (Lib_info.archives lib) mode
+          |> Action_builder.List.map ~f:(fun fn ->
+            let fn = Path.build fn in
+            let+ () = Action_builder.path fn in
+            Value.Path fn)))
 ;;
 
 let cc t =
-  Memo.map (t.foreign_flags ~dir:t.dir) ~f:(fun cc ->
-    Foreign_language.Dict.map cc ~f:(fun cc ->
-      let+ flags = cc
-      and+ c_compiler = Action_builder.of_memo t.c_compiler in
-      strings (c_compiler :: flags)))
+  let make (language : Foreign_language.t) =
+    let+ cc =
+      let* cc = Action_builder.of_memo @@ t.foreign_flags ~dir:t.dir in
+      Foreign_language.Dict.get cc language
+    and+ c_compiler = Action_builder.of_memo t.c_compiler in
+    strings (c_compiler :: cc)
+  in
+  { Foreign_language.Dict.c = make C; cxx = make Cxx }
 ;;
 
 let get_prog = function
@@ -262,7 +264,10 @@ let expand_read_macro ~dir ~source s ~read ~pack =
   let path = relative ~source dir s in
   let read =
     let open Memo.O in
-    let+ x = Build_system.read_file path ~f:read in
+    let+ x =
+      Build_system.read_file path ~f:(fun a -> Async.async (fun () -> read a))
+      >>= Memo.of_reproducible_fiber
+    in
     pack x
   in
   Need_full_expander
@@ -278,21 +283,22 @@ let expand_read_macro ~dir ~source s ~read ~pack =
 
 let file_of_lib db context ~loc ~lib ~file =
   let open Resolve.Memo.O in
-  let+ lib = Lib.DB.resolve db (loc, lib) in
-  let dir =
+  let* lib = Lib.DB.resolve db (loc, lib) in
+  let+ dir =
     let info = Lib.info lib in
     match Lib.is_local lib with
-    | false -> Lib_info.src_dir info
+    | false -> Resolve.Memo.return @@ Lib_info.src_dir info
     | true ->
       let name = Lib.name lib in
       let subdir =
         Lib_info.Status.relative_to_package (Lib_info.status info) name
         |> Option.value_exn
       in
-      let pkg_root =
+      let+ pkg_root =
         let package = Lib_name.package_name name in
         (* Why do we return the install path? *)
-        Install.Context.lib_dir ~context:(Context.name context) ~package
+        let+ context = Resolve.Memo.lift_memo @@ context >>| Context.name in
+        Install.Context.lib_dir ~context ~package
       in
       Path.build (Path.Build.append_local pkg_root subdir)
   in
@@ -332,8 +338,12 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
                     |> String.quoted)
              ])
     else (
-      let artifacts = if lib_exec then t.lib_artifacts_host else t.lib_artifacts in
-      file_of_lib artifacts (Context.host t.context) ~loc ~lib ~file)
+      let artifacts, context =
+        if lib_exec
+        then t.lib_artifacts_host, Context.host t.context
+        else t.lib_artifacts, Memo.return t.context
+      in
+      file_of_lib artifacts context ~loc ~lib ~file)
   in
   let p =
     let open Memo.O in
@@ -516,20 +526,8 @@ let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
   | Project_root ->
     Need_full_expander
       (fun t -> Without (Memo.return [ Value.Dir (Path.build (Scope.root t.scope)) ]))
-  | Cc ->
-    Need_full_expander
-      (fun t ->
-        With
-          (let open Action_builder.O in
-           let* cc = Action_builder.of_memo (cc t) in
-           cc.c))
-  | Cxx ->
-    Need_full_expander
-      (fun t ->
-        With
-          (let open Action_builder.O in
-           let* cc = Action_builder.of_memo (cc t) in
-           cc.cxx))
+  | Cc -> Need_full_expander (fun t -> With (cc t).c)
+  | Cxx -> Need_full_expander (fun t -> With (cc t).cxx)
   | Toolchain ->
     static
     @@ string
@@ -960,5 +958,5 @@ let expand_lock ~base expander (Locks.Lock sw) =
 ;;
 
 let expand_locks ~base expander locks =
-  Memo.List.map locks ~f:(expand_lock ~base expander)
+  Memo.List.map locks ~f:(expand_lock ~base expander) |> Action_builder.of_memo
 ;;

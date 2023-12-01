@@ -14,9 +14,9 @@ module Store_result : sig
     | Stored
     | Already_present
     | Error of exn
-        (** [Error _] can happen due to genuine problems (cannot parse internal
-            cache files) or harmless ones (race with a concurrent change to the
-            cache). *)
+    (** [Error _] can happen due to genuine problems (cannot parse internal
+        cache files) or harmless ones (race with a concurrent change to the
+        cache). *)
     | Will_not_store_due_to_non_determinism of Sexp.t
 
   (** We consider [Will_not_store_due_to_non_determinism] as an error of higher

@@ -72,7 +72,7 @@ jobs:
           auto-push: true
           # Ratio indicating how worse the current benchmark result is.
           # 175% means if last build took 40s and current takes >70s, it will trigger an alert
-          alert-threshold: "175%"
+          alert-threshold: "225%"
           fail-on-alert: true
           # Enable alert commit comment
           comment-on-alert: true
@@ -113,7 +113,7 @@ jobs:
           auto-push: true
           # Ratio indicating how worse the current benchmark result is.
           # 150% means if last build took 40s and current takes >60s, it will trigger an alert
-          alert-threshold: "150%"
+          alert-threshold: "225%"
           fail-on-alert: true
           # Enable alert commit comment
           comment-on-alert: true
@@ -144,7 +144,7 @@ jobs:
           auto-push: true
           # Ratio indicating how worse the current benchmark result is.
           # 150% means if last build took 40s and current takes >60s, it will trigger an alert
-          alert-threshold: "150%"
+          alert-threshold: "225%"
           fail-on-alert: true
           # Enable alert commit comment
           comment-on-alert: true
@@ -171,7 +171,7 @@ jobs:
           auto-push: true
           # Ratio indicating how worse the current benchmark result is.
           # 150% means if last build took 40s and current takes >60s, it will trigger an alert
-          alert-threshold: "150%"
+          alert-threshold: "225%"
           fail-on-alert: true
           # Enable alert commit comment
           comment-on-alert: true

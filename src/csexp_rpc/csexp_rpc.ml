@@ -61,7 +61,7 @@ module Socket = struct
          else if Sys.unix
          then (module Unix)
          else (module Fail)
-        : Unix_socket)
+      : Unix_socket)
 
   let max_len = 104 (* 108 on some systems but we keep it conservative *)
 

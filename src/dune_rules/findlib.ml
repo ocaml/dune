@@ -85,22 +85,7 @@ module DB = struct
   ;;
 end
 
-let has_double_underscore s =
-  let len = String.length s in
-  len >= 2
-  &&
-  let last = ref s.[0] in
-  try
-    for i = 1 to len - 1 do
-      let c = s.[i] in
-      if c = '_' && !last = '_' then raise_notrace Exit else last := c
-    done;
-    false
-  with
-  | Exit -> true
-;;
-
-let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib =
+let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_location =
   let loc = Loc.in_file t.meta_file in
   let add_loc x = loc, x in
   let archives = Findlib.Package.archives t in
@@ -124,7 +109,11 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib =
       | Public (_, _) -> Lib_info.Status.Installed
     in
     let src_dir = Obj_dir.dir obj_dir in
-    let version = Findlib.Package.version t in
+    let version =
+      (* Errors are silently ignored: versions in META files are less strict
+         than what we allow in `Package_version` *)
+      Option.bind (Findlib.Package.version t) ~f:Package_version.of_string_opt
+    in
     let dune_version = None in
     let virtual_deps = [] in
     let implements = None in
@@ -206,7 +195,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib =
                 | true ->
                   if (* We add this hack to skip manually mangled
                         libraries *)
-                     has_double_underscore fname
+                     String.contains_double_underscore fname
                   then Ok None
                   else (
                     match
@@ -256,33 +245,46 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib =
       ~instrumentation_backend:None
       ~melange_runtime_deps
   in
-  Dune_package.Lib.of_findlib info
+  Dune_package.Lib.of_findlib info external_location
 ;;
 
 module Loader = struct
   open Memo.O
 
   (* Parse all the packages defined in a META file *)
-  let dune_package_of_meta (db : DB.t) ~dir ~meta_file ~(meta : Meta.Simplified.t) =
-    let rec loop ~dir ~full_name (meta : Meta.Simplified.t) acc =
+  let dune_package_of_meta (db : DB.t) ~loc ~meta_file ~(meta : Meta.Simplified.t) =
+    let dir_of_loc (loc : Dune_package.External_location.t) =
+      match loc with
+      | Absolute d -> d
+      | Relative_to_findlib (dir, l) -> Path.relative dir (Path.Local.to_string l)
+      | Relative_to_stdlib l -> Path.relative db.stdlib_dir (Path.Local.to_string l)
+    in
+    let rec loop ~loc ~full_name (meta : Meta.Simplified.t) acc =
       let vars = Vars.of_meta_rules meta.vars in
       let pkg_dir = Vars.get vars "directory" Ps.empty in
-      let dir =
+      let external_location : Dune_package.External_location.t =
         match pkg_dir with
-        | None | Some "" -> dir
+        | None | Some "" -> loc
         | Some pkg_dir ->
           if pkg_dir.[0] = '+' || pkg_dir.[0] = '^'
-          then Path.relative db.stdlib_dir (String.drop pkg_dir 1)
+          then Relative_to_stdlib (Path.Local.of_string (String.drop pkg_dir 1))
           else if Filename.is_relative pkg_dir
-          then Path.relative dir pkg_dir
-          else Path.of_filename_relative_to_initial_cwd pkg_dir
+          then (
+            match loc with
+            | Relative_to_findlib (cur, sub) ->
+              Relative_to_findlib (cur, Path.Local.relative sub pkg_dir)
+            | Absolute path -> Absolute (Path.relative path pkg_dir)
+            | Relative_to_stdlib sub ->
+              Relative_to_stdlib (Path.Local.relative sub pkg_dir))
+          else Absolute (Path.of_filename_relative_to_initial_cwd pkg_dir)
       in
+      let dir = dir_of_loc external_location in
       let pkg : Findlib.Package.t =
         { Findlib.Package.meta_file; name = full_name; dir; vars }
       in
       let* lib =
         let+ dir_contents = Fs.dir_contents pkg.dir in
-        to_dune_library pkg ~dir_contents ~ext_lib:db.ext_lib
+        to_dune_library pkg ~dir_contents ~ext_lib:db.ext_lib ~external_location
       in
       let* (entry : Dune_package.Entry.t) =
         let+ exists =
@@ -300,12 +302,11 @@ module Loader = struct
           | None -> full_name
           | Some name -> Lib_name.nest full_name name
         in
-        loop ~dir ~full_name meta acc)
+        loop ~loc:external_location ~full_name meta acc)
     in
     let name = Option.value_exn meta.name in
-    let+ entries =
-      loop ~dir ~full_name:(Option.value_exn meta.name) meta Lib_name.Map.empty
-    in
+    let+ entries = loop ~loc ~full_name:name meta Lib_name.Map.empty in
+    let dir = dir_of_loc loc in
     { Dune_package.name = Lib_name.package_name name
     ; version =
         (let open Option.O in
@@ -329,42 +330,48 @@ module Loader = struct
   let load_builtin db meta =
     dune_package_of_meta
       db
-      ~dir:db.stdlib_dir
+      ~loc:(Relative_to_stdlib (Path.Local.of_string "."))
       ~meta_file:(Path.of_string "<internal>")
       ~meta
   ;;
 
-  let lookup db name dir : (Dune_package.t, Unavailable_reason.t) result option Memo.t =
-    let load_meta ~dir meta_file =
+  let lookup db name findlib_dir
+    : (Dune_package.t, Unavailable_reason.t) result option Memo.t
+    =
+    let load_meta ~findlib_dir ~dir meta_file =
       load_meta (Some name) meta_file
       >>= function
       | None -> Memo.return None
-      | Some meta -> dune_package_of_meta db ~dir ~meta_file ~meta >>| Option.some
+      | Some meta ->
+        let loc = Dune_package.External_location.Relative_to_findlib (findlib_dir, dir) in
+        dune_package_of_meta db ~loc ~meta_file ~meta >>| Option.some
     in
     (* XXX DUNE4 why do we allow [META.foo] override [dune-package] file? *)
-    Path.relative dir (Findlib.Package.meta_fn ^ "." ^ Package.Name.to_string name)
-    |> load_meta ~dir
+    Path.relative findlib_dir (Findlib.Package.meta_fn ^ "." ^ Package.Name.to_string name)
+    |> load_meta ~findlib_dir ~dir:(Path.Local.of_string ".")
     >>= function
     | Some pkg -> Memo.return (Some (Ok pkg))
     | None ->
-      let dir = Path.relative dir (Package.Name.to_string name) in
+      let dir = Path.relative findlib_dir (Package.Name.to_string name) in
       Fs.dir_exists dir
       >>= (function
-      | false -> Memo.return None
-      | true ->
-        (let dune = Path.relative dir Dune_package.fn in
-         Fs.file_exists dune
-         >>= function
-         | true -> Dune_package.Or_meta.load dune
-         | false -> Memo.return (Ok Dune_package.Or_meta.Use_meta))
-        >>= (function
-        | Error e ->
-          Memo.return (Some (Error (Unavailable_reason.Invalid_dune_package e)))
-        | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.return (Some (Ok p))
-        | Ok Use_meta ->
-          Path.relative dir Findlib.Package.meta_fn
-          |> load_meta ~dir
-          >>| Option.map ~f:(fun pkg -> Ok pkg)))
+       | false -> Memo.return None
+       | true ->
+         (let dune = Path.relative dir Dune_package.fn in
+          Fs.file_exists dune
+          >>= function
+          | true -> Dune_package.Or_meta.load dune
+          | false -> Memo.return (Ok Dune_package.Or_meta.Use_meta))
+         >>= (function
+          | Error e ->
+            Memo.return (Some (Error (Unavailable_reason.Invalid_dune_package e)))
+          | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.return (Some (Ok p))
+          | Ok Use_meta ->
+            Path.relative dir Findlib.Package.meta_fn
+            |> load_meta
+                 ~findlib_dir
+                 ~dir:(Path.Local.of_string (Package.Name.to_string name))
+            >>| Option.map ~f:(fun pkg -> Ok pkg)))
   ;;
 
   let lookup_and_load (db : DB.t) name =

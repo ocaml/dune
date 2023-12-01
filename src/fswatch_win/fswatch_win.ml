@@ -47,10 +47,10 @@ let add t p =
 let wait t ~sleep =
   List.filter
     (function
-     | { Event.action = Modified; path; directory } ->
-       (try not (Sys.is_directory (Filename.concat directory path)) with
-        | Sys_error _ -> (* should not happen *) true)
-     | _ -> true)
+      | { Event.action = Modified; path; directory } ->
+        (try not (Sys.is_directory (Filename.concat directory path)) with
+         | Sys_error _ -> (* should not happen *) true)
+      | _ -> true)
     (wait t ~sleep)
 ;;
 

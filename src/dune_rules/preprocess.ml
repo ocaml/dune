@@ -297,8 +297,8 @@ module Per_module = struct
       | Instrumentation_backend { libname; deps; flags = _ } ->
         instrumentation_backend libname
         >>| (function
-        | Some _ -> deps
-        | None -> [])
+         | Some _ -> deps
+         | None -> [])
     in
     Resolve_traversals.fold t ~init:[] ~f:(fun t init ->
       let f acc t =

@@ -72,7 +72,7 @@ module Spec = struct
   let name = "copy-line-directive"
   let version = 1
   let bimap (src, dst, merlin) f g = f src, g dst, merlin
-  let is_useful_to ~distribute:_ ~memoize = memoize
+  let is_useful_to ~memoize = memoize
 
   let encode (src, dst, merlin) path target : Dune_lang.t =
     List

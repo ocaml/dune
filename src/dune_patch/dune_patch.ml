@@ -115,7 +115,7 @@ module Spec = struct
   let name = "patch"
   let version = 1
   let bimap patch f _ = f patch
-  let is_useful_to ~distribute:_ ~memoize = memoize
+  let is_useful_to ~memoize = memoize
 
   let encode patch input _ : Dune_lang.t =
     List [ Dune_lang.atom_or_quoted_string name; input patch ]

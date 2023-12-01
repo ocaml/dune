@@ -699,23 +699,22 @@ type status =
     Standing_by of
       { invalidation : Memo.Invalidation.t
       ; saw_insignificant_changes : bool
-          (* When [insignificant_changes = `Ignore], this field is always
-             false.
+      (* When [insignificant_changes = `Ignore], this field is always
+         false.
 
-             When [insignificant_changes = `React], we do the following:
+         When [insignificant_changes = `React], we do the following:
 
-             Whether we saw build input changes that are insignificant for
-             the build. We need to track this because we still want to start
-             a new build in this case, even if we know it's going to be a
-             no-op. We do that so that RPC clients can observe that Dune
-             reacted to the change. *)
+         Whether we saw build input changes that are insignificant for
+         the build. We need to track this because we still want to start
+         a new build in this case, even if we know it's going to be a
+         no-op. We do that so that RPC clients can observe that Dune
+         reacted to the change. *)
       }
   | (* Running a build *)
     Building of Fiber.Cancel.t
   | (* Cancellation requested. Build jobs are immediately rejected in this
        state *)
-    Restarting_build of
-      Memo.Invalidation.t
+    Restarting_build of Memo.Invalidation.t
 
 module Build_outcome = struct
   type t =
@@ -763,10 +762,10 @@ end = struct
     Mutex.lock t.mutex;
     let found = ref false in
     t.alarms
-      <- List.filter t.alarms ~f:(fun (_, alarm') ->
-           let eq = alarm' == alarm in
-           if eq then found := true;
-           not eq);
+    <- List.filter t.alarms ~f:(fun (_, alarm') ->
+         let eq = alarm' == alarm in
+         if eq then found := true;
+         not eq);
     Mutex.unlock t.mutex;
     if !found
     then Event.Queue.send_timers_completed t.events [ Fiber.Fill (alarm, `Cancelled) ]
@@ -1059,10 +1058,10 @@ end = struct
         | Building cancellation ->
           t.handler t.config Build_interrupted;
           t.status
-            := Standing_by
-                 { invalidation = Memo.Invalidation.empty
-                 ; saw_insignificant_changes = false
-                 };
+          := Standing_by
+               { invalidation = Memo.Invalidation.empty
+               ; saw_insignificant_changes = false
+               };
           Fiber.Cancel.fire' cancellation
       in
       (match Nonempty_list.of_list fills with
@@ -1081,15 +1080,15 @@ end = struct
       match !(t.status) with
       | Restarting_build prev_invalidation ->
         t.status
-          := Restarting_build (Memo.Invalidation.combine prev_invalidation invalidation);
+        := Restarting_build (Memo.Invalidation.combine prev_invalidation invalidation);
         []
       | Standing_by prev ->
         t.status
-          := Standing_by
-               { invalidation = Memo.Invalidation.combine prev.invalidation invalidation
-               ; saw_insignificant_changes =
-                   prev.saw_insignificant_changes || insignificant_changes
-               };
+        := Standing_by
+             { invalidation = Memo.Invalidation.combine prev.invalidation invalidation
+             ; saw_insignificant_changes =
+                 prev.saw_insignificant_changes || insignificant_changes
+             };
         []
       | Building cancellation ->
         (match significant_changes with
@@ -1211,7 +1210,7 @@ module Run = struct
     let cancel = Fiber.Cancel.create () in
     t.status := Building cancel;
     if Memo.Invalidation.is_empty invalidation
-    then Memo.Perf_counters.reset ()
+    then Memo.Metrics.reset ()
     else (
       let details_hum = Memo.Invalidation.details_hum invalidation in
       t.handler t.config (Source_files_changed { details_hum });
@@ -1234,8 +1233,8 @@ module Run = struct
         | Ok () -> Success
       in
       t.status
-        := Standing_by
-             { invalidation = Memo.Invalidation.empty; saw_insignificant_changes = false };
+      := Standing_by
+           { invalidation = Memo.Invalidation.empty; saw_insignificant_changes = false };
       t.handler t.config (Build_finish res);
       Fiber.return res
   ;;
@@ -1255,8 +1254,8 @@ module Run = struct
       | Building _ -> true
       | _ -> false);
     t.status
-      := Standing_by
-           { invalidation = Memo.Invalidation.empty; saw_insignificant_changes = false };
+    := Standing_by
+         { invalidation = Memo.Invalidation.empty; saw_insignificant_changes = false };
     t
   ;;
 

@@ -48,7 +48,16 @@ let get_dirs context ~prefix_from_command_line ~from_command_line =
          missing option, since this is the most common case. *)
       User_error.raise
         [ Pp.textf "The %s installation directory is unknown." name ]
-        ~hints:[ Pp.textf "It can be specified with --prefix or by setting --%s" name ]
+        ~hints:
+          [ Pp.concat
+              ~sep:Pp.space
+              [ Pp.text "It can be specified with"
+              ; User_message.command "--prefix"
+              ; Pp.textf "or by setting"
+              ; User_message.command (sprintf "--%s" name)
+              ]
+            |> Pp.hovbox
+          ]
   in
   { Roots.lib_root = must_be_defined "libdir" roots.lib_root
   ; libexec_root = must_be_defined "libexecdir" roots.libexec_root
@@ -640,13 +649,25 @@ let install_uninstall ~what =
           [ Pp.textf "The following <package>.install are missing:"
           ; Pp.enumerate missing_install_files ~f:(fun p -> Pp.text (Path.to_string p))
           ]
-          ~hints:[ Pp.text "try running: dune build [-p <pkg>] @install" ];
+          ~hints:
+            [ Pp.concat
+                ~sep:Pp.space
+                [ Pp.text "try running"
+                ; User_message.command "dune build [-p <pkg>] @install"
+                ]
+              |> Pp.hovbox
+            ];
       (match contexts, prefix_from_command_line, libdir_from_command_line with
        | _ :: _ :: _, Some _, _ | _ :: _ :: _, _, Some _ ->
          User_error.raise
-           [ Pp.text
-               "Cannot specify --prefix or --libdir when installing into multiple \
-                contexts!"
+           [ Pp.concat
+               ~sep:Pp.space
+               [ Pp.text "Cannot specify"
+               ; User_message.command "--prefix"
+               ; Pp.text "or"
+               ; User_message.command "--libdir"
+               ; Pp.text "when installing into multiple contexts!"
+               ]
            ]
        | _ -> ());
       let install_files_by_context =
@@ -694,7 +715,16 @@ let install_uninstall ~what =
           match prefix_from_command_line with
           | Some dir -> Some (Path.of_string dir)
           | None ->
-            User_error.raise [ Pp.text "Option --prefix is needed with --relocation" ])
+            User_error.raise
+              [ Pp.concat
+                  ~sep:Pp.space
+                  [ Pp.text "Option"
+                  ; User_message.command "--prefix"
+                  ; Pp.text "is needed with"
+                  ; User_message.command "--relocation"
+                  ]
+                |> Pp.hovbox
+              ])
         else None
       in
       let verbosity =

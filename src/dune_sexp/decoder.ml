@@ -7,11 +7,6 @@ let[@inline] loc_compare_start_pos_cnum a b =
   Int.compare a b
 ;;
 
-type hint =
-  { on : string
-  ; candidates : string list
-  }
-
 module Name = struct
   module T = struct
     type t = string
@@ -250,13 +245,6 @@ let result : type a k. k context -> a * k -> a =
 let parse t context sexp =
   let ctx = Values (Ast.loc sexp, None, context) in
   result ctx (t ctx [ sexp ])
-;;
-
-let set_input : type k. Ast.t list -> (unit, k) parser =
-  fun sexps context _ ->
-  match context with
-  | Values _ -> (), sexps
-  | Fields _ -> (), Fields.of_values sexps
 ;;
 
 let capture ctx state =

@@ -117,14 +117,9 @@ module List_locked_dependencies = struct
     |> Pp.vbox
   ;;
 
-  let enumerate_lock_dirs_by_path ~context_name_arg ~all_contexts_arg =
+  let enumerate_lock_dirs_by_path =
     let open Fiber.O in
-    let+ per_contexts =
-      Pkg_common.Per_context.choose
-        ~context_name_arg
-        ~all_contexts_arg
-        ~version_preference_arg:None
-    in
+    let+ per_contexts = Pkg_common.Per_context.choose ~version_preference_arg:None in
     List.filter_map per_contexts ~f:(fun { Pkg_common.Per_context.lock_dir_path; _ } ->
       if Path.exists (Path.source lock_dir_path)
       then (
@@ -140,10 +135,9 @@ module List_locked_dependencies = struct
       else None)
   ;;
 
-  let list_locked_dependencies ~context_name_arg ~all_contexts_arg ~transitive =
+  let list_locked_dependencies ~transitive =
     let open Fiber.O in
-    let+ lock_dirs_by_path =
-      enumerate_lock_dirs_by_path ~context_name_arg ~all_contexts_arg
+    let+ lock_dirs_by_path = enumerate_lock_dirs_by_path
     and+ local_packages = Pkg_common.find_local_packages in
     let pp =
       Pp.concat
@@ -171,12 +165,6 @@ module List_locked_dependencies = struct
 
   let term =
     let+ builder = Common.Builder.term
-    and+ context_name =
-      Pkg_common.context_term
-        ~doc:"Print information about the lockdir associated with this context"
-    and+ all_contexts =
-      Arg.(
-        value & flag & info [ "all-contexts" ] ~doc:"Print information about all lockdirs")
     and+ transitive =
       Arg.(
         value
@@ -189,12 +177,7 @@ module List_locked_dependencies = struct
     in
     let builder = Common.Builder.forbid_builds builder in
     let common, config = Common.init builder in
-    Scheduler.go ~common ~config
-    @@ fun () ->
-    list_locked_dependencies
-      ~context_name_arg:context_name
-      ~all_contexts_arg:all_contexts
-      ~transitive
+    Scheduler.go ~common ~config @@ fun () -> list_locked_dependencies ~transitive
   ;;
 
   let command = Cmd.v info term

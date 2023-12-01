@@ -1,7 +1,5 @@
 open Import
 
-val context_term : doc:string -> Context_name.t option Term.t
-
 (** Create a [Dune_pkg.Solver_env.t] by combining variables taken from the
     current system and variables taken from the current context, with priority
     being given to the latter. Some variables are initialized to default values
@@ -32,9 +30,7 @@ module Per_context : sig
     }
 
   val choose
-    :  context_name_arg:Context_name.t option
-    -> all_contexts_arg:bool
-    -> version_preference_arg:Dune_pkg.Version_preference.t option
+    :  version_preference_arg:Dune_pkg.Version_preference.t option
     -> t list Fiber.t
 end
 

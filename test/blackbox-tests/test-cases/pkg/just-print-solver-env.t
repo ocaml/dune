@@ -33,7 +33,7 @@
   >   (lock_dir change-opam-version.lock)))
   > EOF
 
-  $ dune pkg print-solver-env --all-contexts
+  $ dune pkg print-solver-env 
   Solver environment for context change-opam-version:
   - opam-version = 42
   - with-doc = false

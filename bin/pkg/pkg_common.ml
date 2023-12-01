@@ -4,10 +4,6 @@ module Solver_env = Dune_pkg.Solver_env
 module Variable_name = Dune_pkg.Variable_name
 module Variable_value = Dune_pkg.Variable_value
 
-let context_term ~doc =
-  Arg.(value & opt (some Arg.context_name) None & info [ "context" ] ~docv:"CONTEXT" ~doc)
-;;
-
 let solver_env
   ~solver_env_from_current_system
   ~solver_env_from_context
@@ -106,42 +102,13 @@ module Per_context = struct
     }
   ;;
 
-  let choose ~context_name_arg ~all_contexts_arg ~version_preference_arg =
+  let choose ~version_preference_arg =
     let open Fiber.O in
-    match context_name_arg, all_contexts_arg with
-    | Some _, true ->
-      User_error.raise [ Pp.text "--context and --all-contexts are mutually exclusive" ]
-    | context_name_opt, false ->
-      let+ workspace = Memo.run (Workspace.workspace ()) in
-      let context_name =
-        Option.value context_name_opt ~default:Dune_engine.Context_name.default
-      in
-      let context =
-        (* TODO this doesn't work for target contexts defined by cross compilation *)
-        List.find workspace.contexts ~f:(fun context ->
-          Dune_engine.Context_name.equal (Workspace.Context.name context) context_name)
-      in
-      (match context with
-       | None ->
-         User_error.raise
-           [ Pp.textf
-               "Unknown build context: %s"
-               (Dune_engine.Context_name.to_string context_name |> String.maybe_quoted)
-           ]
-       | Some (Default { lock_dir; base = context_common; _ }) ->
-         [ make_solver workspace context_common ~version_preference_arg ~lock_dir ]
-       | Some (Opam _) ->
-         User_error.raise
-           [ Pp.textf
-               "Unexpected opam build context: %s"
-               (Dune_engine.Context_name.to_string context_name |> String.maybe_quoted)
-           ])
-    | None, true ->
-      let+ workspace = Memo.run (Workspace.workspace ()) in
-      List.filter_map workspace.contexts ~f:(function
-        | Workspace.Context.Default { lock_dir; base = context_common } ->
-          Some (make_solver workspace context_common ~version_preference_arg ~lock_dir)
-        | Opam _ -> None)
+    let+ workspace = Memo.run (Workspace.workspace ()) in
+    List.filter_map workspace.contexts ~f:(function
+      | Workspace.Context.Default { lock_dir; base = context_common } ->
+        Some (make_solver workspace context_common ~version_preference_arg ~lock_dir)
+      | Opam _ -> None)
   ;;
 end
 

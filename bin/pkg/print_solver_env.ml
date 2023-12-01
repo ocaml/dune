@@ -23,18 +23,9 @@ let print_solver_env_for_one_context
     ]
 ;;
 
-let print_solver_env
-  ~context_name
-  ~all_contexts
-  ~version_preference
-  ~dont_poll_system_solver_variables
-  =
+let print_solver_env ~version_preference ~dont_poll_system_solver_variables =
   let open Fiber.O in
-  let+ per_context =
-    Per_context.choose
-      ~context_name_arg:context_name
-      ~all_contexts_arg:all_contexts
-      ~version_preference_arg:version_preference
+  let+ per_context = Per_context.choose ~version_preference_arg:version_preference
   and+ solver_env_from_current_system =
     if dont_poll_system_solver_variables
     then Fiber.return None
@@ -50,14 +41,6 @@ let print_solver_env
 
 let term =
   let+ builder = Common.Builder.term
-  and+ context_name =
-    context_term
-      ~doc:
-        "Generate the lockdir associated with this context (the default context will be \
-         used if this is omitted)"
-  and+ all_contexts =
-    Arg.(
-      value & flag & info [ "all-contexts" ] ~doc:"Generate the lockdir for all contexts")
   and+ version_preference = Version_preference.term
   and+ dont_poll_system_solver_variables =
     Arg.(
@@ -76,11 +59,7 @@ let term =
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
   Scheduler.go ~common ~config (fun () ->
-    print_solver_env
-      ~context_name
-      ~all_contexts
-      ~version_preference
-      ~dont_poll_system_solver_variables)
+    print_solver_env ~version_preference ~dont_poll_system_solver_variables)
 ;;
 
 let info =

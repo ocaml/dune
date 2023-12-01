@@ -10,7 +10,7 @@
   $ mkpkg bar <<EOF
   > depends: [ "foo" {>= "0.0.1"} ]
   > EOF
-  $ cat > dune-workspace <<EOF
+  $ cat > dune-workspace.dev <<EOF
   > (lang dune 3.11)
   > (lock_dir
   >  (repositories mock))
@@ -27,7 +27,7 @@
   >  (name mock)
   >  (source "file://$(pwd)/mock-opam-repository"))
   > EOF
-  $ solve_project --all-contexts <<EOF
+  $ solve_project --workspace dune-workspace.dev <<EOF
   > (lang dune 3.11)
   > (package
   >  (name baz)
@@ -43,7 +43,7 @@ No package should be outdated after a fresh lock.
   $ outdated
   dune.lock is up to date.
 Same for all contexts:
-  $ outdated --all-contexts
+  $ outdated --workspace dune-workspace.dev
   - dune.workspace.lock is up to date.
   - dune.lock is up to date.
 
@@ -57,7 +57,7 @@ Dune should report the new version of bar as available.
   1/2 packages in dune.lock are outdated.
   - bar 0.0.1 < 0.0.2
 Same for all contexts:
-  $ outdated --all-contexts
+  $ outdated --workspace dune-workspace.dev
   - 1/2 packages in dune.workspace.lock are outdated.
     - bar 0.0.1 < 0.0.2
   - 1/2 packages in dune.lock are outdated.
@@ -71,7 +71,7 @@ Dune should only report the bar package as it is an immediate dependency.
   Showing immediate dependencies, use --transitive to see them all.
   - bar 0.0.1 < 0.0.2
 Same for all contexts:
-  $ outdated --all-contexts
+  $ outdated --workspace dune-workspace.dev
   - 2/2 packages in dune.workspace.lock are outdated.
     Showing immediate dependencies, use --transitive to see them all.
     - bar 0.0.1 < 0.0.2
@@ -85,7 +85,7 @@ If --transitive is also passed then both should be reported.
   - bar 0.0.1 < 0.0.2
   - foo 0.0.1 < 0.0.2
 Same for all contexts:
-  $ outdated --all-contexts --transitive
+  $ outdated --transitive --workspace dune-workspace.dev
   - 2/2 packages in dune.workspace.lock are outdated.
     - bar 0.0.1 < 0.0.2
     - foo 0.0.1 < 0.0.2
@@ -117,7 +117,7 @@ When printing both successes and failures, any errors should appear afterwards.
   [1]
 
 Similarly for all contexts.
-  $ outdated --all-contexts --transitive
+  $ outdated --transitive --workspace dune-workspace.dev
   - 1/2 packages in dune.workspace.lock are outdated.
     - foo 0.0.1 < 0.0.2
   - 1/2 packages in dune.lock are outdated.
@@ -147,7 +147,7 @@ appear irrespective of being a transitive dependency.
   [1]
 
 With multiple contexts, the errors should also be printed for each context.
-  $ outdated --all-contexts
+  $ outdated --workspace dune-workspace.dev
   - dune.workspace.lock is up to date.
   - dune.lock is up to date.
   Error: Some packages could not be found.

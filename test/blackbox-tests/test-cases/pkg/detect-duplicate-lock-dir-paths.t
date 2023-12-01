@@ -19,19 +19,8 @@ Define several build contexts that all use the default lockdir
   >  (source "file://$(pwd)/mock-opam-repository"))
   > EOF
 
-Check that we can still generate lockdirs for individual contexts:
-  $ dune pkg lock
-  Solution for dune.lock:
-  (no dependencies to lock)
-  $ dune pkg lock --context=default
-  Solution for dune.lock:
-  (no dependencies to lock)
-  $ dune pkg lock --context=custom-context-with-default-lock-dir
-  Solution for dune.lock:
-  (no dependencies to lock)
-
-It's an error to use --all-contexts when there are multiple contexts with the same lockdir:
-  $ dune pkg lock --all-contexts
+It's an error to lock when multiple contexts have the same lockdir:
+  $ dune pkg lock 
   File "dune-workspace", line 5, characters 1-56:
   5 |  (default
   6 |   (name custom-context-with-default-lock-dir)))
@@ -61,16 +50,8 @@ Define several build contexts that all use the same custom lockdir:
   >  (source "file://$(pwd)/mock-opam-repository"))
   > EOF
 
-Check that we can still generate lockdirs for individual contexts:
-  $ dune pkg lock --context=a
-  Solution for foo.lock:
-  (no dependencies to lock)
-  $ dune pkg lock --context=b
-  Solution for foo.lock:
-  (no dependencies to lock)
-
-It's an error to use --all-contexts when there are multiple contexts with the same lockdir:
-  $ dune pkg lock --all-contexts
+It's an error to lock when multiple contexts have the same lockdir:
+  $ dune pkg lock 
   File "dune-workspace", line 7, characters 1-43:
   7 |  (default
   8 |   (name a)

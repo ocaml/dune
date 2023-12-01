@@ -14,7 +14,7 @@ Add a workspace that attempts to set the "with-test" variable:
   >   (lock dune.lock)))
   > EOF
 
-  $ dune pkg print-solver-env --all-contexts --dont-poll-system-solver-variables
+  $ dune pkg print-solver-env --dont-poll-system-solver-variables
   File "dune-workspace", line 5, characters 2-19:
   5 |   (with-test false)))
         ^^^^^^^^^^^^^^^^^

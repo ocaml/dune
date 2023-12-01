@@ -3,10 +3,10 @@ open Pkg_common
 module Lock_dir = Dune_pkg.Lock_dir
 module Opam_repo = Dune_pkg.Opam_repo
 
-let find_outdated_packages ~context_name_arg ~all_contexts_arg ~transitive () =
+let find_outdated_packages ~transitive () =
   let open Fiber.O in
   let+ pps, not_founds =
-    Per_context.choose ~context_name_arg ~all_contexts_arg ~version_preference_arg:None
+    Per_context.choose ~version_preference_arg:None
     >>= Fiber.parallel_map
           ~f:
             (fun
@@ -71,12 +71,6 @@ let find_outdated_packages ~context_name_arg ~all_contexts_arg ~transitive () =
 
 let term =
   let+ builder = Common.Builder.term
-  and+ context_name_arg = context_term ~doc:"Check for outdated packages in this context"
-  and+ all_contexts_arg =
-    Arg.(
-      value
-      & flag
-      & info [ "all-contexts" ] ~doc:"Check for outdated packages in all contexts")
   and+ transitive =
     Arg.(
       value
@@ -87,8 +81,7 @@ let term =
   in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config
-  @@ find_outdated_packages ~context_name_arg ~all_contexts_arg ~transitive
+  Scheduler.go ~common ~config @@ find_outdated_packages ~transitive
 ;;
 
 let info =

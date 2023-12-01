@@ -117,18 +117,12 @@ let solve per_context ~update_opam_repositories ~solver_env_from_current_system 
 ;;
 
 let lock
-  ~context_name
-  ~all_contexts
   ~dont_poll_system_solver_variables
   ~version_preference
   ~update_opam_repositories
   =
   let open Fiber.O in
-  let* per_context =
-    Per_context.choose
-      ~context_name_arg:context_name
-      ~all_contexts_arg:all_contexts
-      ~version_preference_arg:version_preference
+  let* per_context = Per_context.choose ~version_preference_arg:version_preference
   and* solver_env_from_current_system =
     if dont_poll_system_solver_variables
     then Fiber.return None
@@ -142,14 +136,6 @@ let lock
 
 let term =
   let+ builder = Common.Builder.term
-  and+ context_name =
-    context_term
-      ~doc:
-        "Generate the lockdir associated with this context (the default context will be \
-         used if this is omitted)"
-  and+ all_contexts =
-    Arg.(
-      value & flag & info [ "all-contexts" ] ~doc:"Generate the lockdir for all contexts")
   and+ version_preference = Version_preference.term
   and+ dont_poll_system_solver_variables =
     Arg.(
@@ -178,8 +164,6 @@ let term =
   let common, config = Common.init builder in
   Scheduler.go ~common ~config (fun () ->
     lock
-      ~context_name
-      ~all_contexts
       ~dont_poll_system_solver_variables
       ~version_preference
       ~update_opam_repositories:(not skip_update))

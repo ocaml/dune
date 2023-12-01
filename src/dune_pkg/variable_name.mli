@@ -21,3 +21,4 @@ val os_version : t
 val os_distribution : t
 val os_family : t
 val opam_version : t
+val with_test : t

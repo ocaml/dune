@@ -109,10 +109,10 @@ end = struct
     let toplevel_setup = Toplevel.Stanza.setup in
     let open Dune_file in
     match stanza with
-    | Toplevel toplevel ->
+    | Toplevel.T toplevel ->
       let+ () = toplevel_setup ~sctx ~dir ~toplevel in
       empty_none
-    | Library lib ->
+    | Library.T lib ->
       (* XXX why are we setting up private doc rules for disabled libraries? *)
       let* () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
       and+ enabled_if =
@@ -122,10 +122,10 @@ end = struct
         ~loc:lib.buildable.loc
         (fun () -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander)
         enabled_if
-    | Foreign_library lib ->
+    | Foreign.Library.T lib ->
       let+ () = Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander in
       empty_none
-    | Executables exes ->
+    | Executables.T exes ->
       Expander.eval_blang expander exes.enabled_if
       >>= if_available (fun () ->
         let+ () =
@@ -139,14 +139,14 @@ end = struct
               (List.map exes.names ~f:(fun (_, exe) ->
                  Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe)))
         })
-    | Alias alias ->
+    | Alias_conf.T alias ->
       let+ () = Simple_rules.alias sctx alias ~dir ~expander in
       empty_none
-    | Tests tests ->
+    | Tests.T tests ->
       Expander.eval_blang expander tests.build_if
       >>= if_available_buildable ~loc:tests.exes.buildable.loc (fun () ->
         Test_rules.rules tests ~sctx ~dir ~scope ~expander ~dir_contents)
-    | Copy_files { files = glob; _ } ->
+    | Copy_files.T { files = glob; _ } ->
       let+ source_dirs =
         let+ src_glob = Expander.No_deps.expand_str expander glob in
         if Filename.is_relative src_glob
@@ -160,10 +160,10 @@ end = struct
         else None
       in
       { empty_none with source_dirs }
-    | Install i ->
+    | Install_conf.T i ->
       let+ () = install_stanza_rules ~ctx_dir ~expander i in
       empty_none
-    | Plugin p ->
+    | Plugin.T p ->
       let+ () = Plugin_rules.setup_rules ~sctx ~dir p in
       empty_none
     | Cinaps.T cinaps ->

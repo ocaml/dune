@@ -44,7 +44,9 @@ module Coqpp = struct
        { modules; loc })
   ;;
 
-  type Stanza.t += T of t
+  include Stanza.Make (struct
+      type nonrec t = t
+    end)
 
   let p = "coq.pp", decode >>| fun x -> [ T x ]
 end
@@ -129,7 +131,9 @@ module Extraction = struct
        { prelude; extracted_modules; buildable })
   ;;
 
-  type Stanza.t += T of t
+  include Stanza.Make (struct
+      type nonrec t = t
+    end)
 
   let p = "coq.extraction", decode >>| fun x -> [ T x ]
 end
@@ -230,7 +234,9 @@ module Theory = struct
        })
   ;;
 
-  type Stanza.t += T of t
+  include Stanza.Make (struct
+      type nonrec t = t
+    end)
 
   let coqlib_warn x =
     User_warning.emit

@@ -192,7 +192,9 @@ type t =
 
 let enabled_if t = t.enabled_if
 
-type Stanza.t += T of t
+include Stanza.Make (struct
+    type nonrec t = t
+  end)
 
 let syntax =
   let name = "mdx" in

@@ -344,12 +344,12 @@ module DB = struct
         ~f:(fun dune_file stanza (acc, coq_acc) ->
           let build_dir = Context.build_dir context in
           match stanza with
-          | Dune_file.Library lib ->
+          | Dune_file.Library.T lib ->
             let ctx_dir = Path.Build.append_source build_dir dune_file.dir in
             Library_related_stanza.Library (ctx_dir, lib) :: acc, coq_acc
-          | Dune_file.Deprecated_library_name d ->
+          | Dune_file.Deprecated_library_name.T d ->
             Deprecated_library_name d :: acc, coq_acc
-          | Dune_file.Library_redirect d -> Library_redirect d :: acc, coq_acc
+          | Dune_file.Library_redirect.Local.T d -> Library_redirect d :: acc, coq_acc
           | Coq_stanza.Theory.T coq_lib ->
             let ctx_dir = Path.Build.append_source build_dir dune_file.dir in
             acc, (ctx_dir, coq_lib) :: coq_acc
@@ -417,7 +417,7 @@ module DB = struct
       let+ libs =
         Dune_file.Memo_fold.fold_stanzas stanzas ~init:[] ~f:(fun d stanza acc ->
           match stanza with
-          | Dune_file.Library ({ visibility = Private (Some pkg); _ } as lib) ->
+          | Dune_file.Library.T ({ visibility = Private (Some pkg); _ } as lib) ->
             let+ lib =
               let* scope = find_by_dir (Path.Build.append_source build_dir d.dir) in
               let db = libs scope in
@@ -428,7 +428,7 @@ module DB = struct
              | Some lib ->
                let name = Package.name pkg in
                (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
-          | Dune_file.Library { visibility = Public pub; _ } ->
+          | Dune_file.Library.T { visibility = Public pub; _ } ->
             let+ lib = Lib.DB.find public_libs (Dune_file.Public_lib.name pub) in
             (match lib with
              | None ->
@@ -439,8 +439,8 @@ module DB = struct
                let package = Dune_file.Public_lib.package pub in
                let name = Package.name package in
                (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
-          | Dune_file.Deprecated_library_name ({ old_name = old_public_name, _; _ } as d)
-            ->
+          | Dune_file.Deprecated_library_name.T
+              ({ old_name = old_public_name, _; _ } as d) ->
             let package = Dune_file.Public_lib.package old_public_name in
             let name = Package.name package in
             Memo.return ((name, Lib_entry.Deprecated_library_name d) :: acc)

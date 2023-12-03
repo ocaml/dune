@@ -3,7 +3,13 @@
 open! Stdune
 open Dune_sexp
 
-type t = ..
+type t = private ..
+
+module Make (S : sig
+    type t
+  end) : sig
+  type t += T of S.t
+end
 
 val latest_version : Syntax.Version.t
 

@@ -54,7 +54,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
           | Some (d : Dune_file.t) ->
             Memo.List.fold_left d.stanzas ~init:Libs_and_ppxs.empty ~f:(fun (acc, pps) ->
                 function
-                | Dune_file.Library l ->
+                | Dune_file.Library.T l ->
                   let+ lib =
                     let open Memo.O in
                     let+ resolve =
@@ -88,7 +88,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
                              (Lib_info.loc info, Lib_info.name info)
                              pps ))
                      else acc, pps)
-                | Dune_file.Executables exes ->
+                | Dune_file.Executables.T exes ->
                   let+ libs =
                     let open Memo.O in
                     let* compile_info =

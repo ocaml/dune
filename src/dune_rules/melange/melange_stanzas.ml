@@ -21,7 +21,9 @@ module Emit = struct
     ; dune_version : Dune_lang.Syntax.Version.t
     }
 
-  type Stanza.t += T of t
+  include Stanza.Make (struct
+      type nonrec t = t
+    end)
 
   let implicit_alias = Alias.Name.of_string "melange"
 

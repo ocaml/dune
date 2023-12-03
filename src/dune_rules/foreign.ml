@@ -263,6 +263,10 @@ module Library = struct
        and+ stubs = Stubs.decode_stubs ~for_library:true in
        { archive_name; archive_name_loc; stubs })
   ;;
+
+  include Stanza.Make (struct
+      type nonrec t = t
+    end)
 end
 
 module Source = struct

@@ -67,9 +67,9 @@ let get_installed_binaries ~(context : Context.t) stanzas =
     in
     Memo.List.map d.stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
-      | Dune_file.Install { section = Section Bin; files; _ } ->
+      | Dune_file.Install_conf.T { section = Section Bin; files; _ } ->
         binaries_from_install files
-      | Dune_file.Executables
+      | Dune_file.Executables.T
           ({ install_conf = Some { section = Section Bin; files; _ }; _ } as exes) ->
         let* available =
           let* enabled_if =

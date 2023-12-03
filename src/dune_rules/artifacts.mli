@@ -2,6 +2,11 @@ open Import
 
 type t
 
+type origin =
+  { binding : File_binding.Unexpanded.t
+  ; dir : Path.Build.t
+  }
+
 (** Force the computation of the internal list of binaries. This is exposed as
     some error checking is only performed during this computation and some
     errors will go unreported unless this computation takes place. *)
@@ -19,4 +24,12 @@ val binary : t -> ?hint:string -> loc:Loc.t option -> string -> Action.Prog.t Me
 
 val binary_available : t -> string -> bool Memo.t
 val add_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list -> t
-val create : Context.t -> local_bins:Path.Build.Set.t Memo.Lazy.t -> t
+
+val binary_with_origin
+  :  t
+  -> ?hint:string
+  -> loc:Loc.t option
+  -> Filename.t
+  -> ([ `External of Path.t | `Origin of origin ], Action.Prog.Not_found.t) result Memo.t
+
+val create : Context.t -> local_bins:origin Path.Build.Map.t Memo.Lazy.t -> t

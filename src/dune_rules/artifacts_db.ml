@@ -35,6 +35,7 @@ let available_exes ~dir (exes : Dune_file.Executables.t) =
 ;;
 
 let get_installed_binaries ~(context : Context.t) stanzas =
+  let merge _ _ x = Some x in
   let open Memo.O in
   let install_dir = Install.Context.bin_dir ~context:(Context.name context) in
   let expand_str ~dir sw = Expander.With_reduced_var_set.expand_str ~context ~dir sw in
@@ -60,10 +61,12 @@ let get_installed_binaries ~(context : Context.t) stanzas =
         in
         let p = Path.Local.of_string (Install.Entry.Dst.to_string p) in
         if Path.Local.is_root (Path.Local.parent_exn p)
-        then Some (Path.Build.append_local install_dir p)
+        then (
+          let origin = { Artifacts.binding = fb; dir } in
+          Some (Path.Build.append_local install_dir p, origin))
         else None)
       >>| List.filter_opt
-      >>| Path.Build.Set.of_list
+      >>| Path.Build.Map.of_list_reduce ~f:(fun _ y -> y)
     in
     Memo.List.map d.stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
@@ -84,10 +87,10 @@ let get_installed_binaries ~(context : Context.t) stanzas =
         in
         if available
         then binaries_from_install files
-        else Memo.return Path.Build.Set.empty
-      | _ -> Memo.return Path.Build.Set.empty)
-    >>| Path.Build.Set.union_all)
-  >>| Path.Build.Set.union_all
+        else Memo.return Path.Build.Map.empty
+      | _ -> Memo.return Path.Build.Map.empty)
+    >>| Path.Build.Map.union_all ~f:merge)
+  >>| Path.Build.Map.union_all ~f:merge
 ;;
 
 let all =

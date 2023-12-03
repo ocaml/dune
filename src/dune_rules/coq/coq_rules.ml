@@ -92,12 +92,20 @@ end = struct
 end
 
 let coqc ~loc ~dir ~sctx =
-  Super_context.resolve_program_memo
-    sctx
-    "coqc"
-    ~dir
-    ~loc:(Some loc)
-    ~hint:"opam install coq"
+  let* artifacts = Super_context.env_node sctx ~dir >>= Env_node.artifacts in
+  Artifacts.binary_with_origin artifacts ~loc:(Some loc) ~hint:"opam install coq" "coqc"
+  >>= function
+  | Error e -> Memo.return @@ Error e
+  | Ok (`External p) -> Memo.return @@ Ok p
+  | Ok (`Origin { Artifacts.binding; dir }) ->
+    let+ expanded =
+      File_binding.Unexpanded.expand binding ~dir ~f:(fun sw ->
+        Expander.With_reduced_var_set.expand_str
+          ~context:(Super_context.context sctx)
+          ~dir
+          sw)
+    in
+    Ok (Path.build (File_binding.Expanded.dst_path expanded ~dir))
 ;;
 
 let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =

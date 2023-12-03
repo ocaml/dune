@@ -428,7 +428,7 @@ let modules_of_stanzas =
   fun stanzas ~project ~dir ~libs ~lookup_vlib ~modules ~include_subdirs ->
     Memo.parallel_map stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
-      | Library lib ->
+      | Library.T lib ->
         (* jeremiedimino: this [Resolve.get] means that if the user writes an
            invalid [implements] field, we will get an error immediately even if
            the library is not built. We should change this to carry the
@@ -447,7 +447,7 @@ let modules_of_stanzas =
         in
         let obj_dir = Library.obj_dir lib ~dir in
         `Library (lib, sources, modules, obj_dir)
-      | Executables exes | Tests { exes; _ } ->
+      | Executables.T exes | Tests.T { exes; _ } ->
         let obj_dir = Dune_file.Executables.obj_dir ~dir exes in
         let+ sources, modules =
           let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =

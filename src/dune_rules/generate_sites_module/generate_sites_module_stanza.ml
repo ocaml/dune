@@ -26,4 +26,6 @@ let decode =
      { loc; module_; sourceroot; relocatable; sites; plugins })
 ;;
 
-type Stanza.t += T of t
+include Stanza.Make (struct
+    type nonrec t = t
+  end)

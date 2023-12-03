@@ -149,7 +149,7 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
     Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
       let dir = dune_file.dir in
       match stanza with
-      | Dune_rules.Dune_file.Executables exes ->
+      | Dune_rules.Dune_file.Executables.T exes ->
         let* ocaml = Context.ocaml context in
         resolve_libs
           db
@@ -161,7 +161,7 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
           Item.Kind.Executables
           (exes_extensions ocaml.lib_config exes.modes)
         >>| List.singleton
-      | Dune_rules.Dune_file.Library lib ->
+      | Dune_rules.Dune_file.Library.T lib ->
         resolve_libs
           db
           dir
@@ -172,7 +172,7 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
           Item.Kind.Library
           []
         >>| List.singleton
-      | Dune_rules.Dune_file.Tests tests ->
+      | Dune_rules.Dune_file.Tests.T tests ->
         let* ocaml = Context.ocaml context in
         resolve_libs
           db

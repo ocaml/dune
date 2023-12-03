@@ -329,7 +329,7 @@ end = struct
     let+ keep =
       let open Dune_file in
       match (stanza : Stanza.t) with
-      | Library lib ->
+      | Library.T lib ->
         let* enabled_if = Expander.eval_blang expander lib.enabled_if in
         if enabled_if
         then
@@ -337,10 +337,10 @@ end = struct
           then Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
           else Memo.return true
         else Memo.return false
-      | Documentation _ -> Memo.return true
-      | Install { enabled_if; _ } -> Expander.eval_blang expander enabled_if
-      | Plugin _ -> Memo.return true
-      | Executables ({ install_conf = Some _; _ } as exes) ->
+      | Documentation.T _ -> Memo.return true
+      | Install_conf.T { enabled_if; _ } -> Expander.eval_blang expander enabled_if
+      | Plugin.T _ -> Memo.return true
+      | Executables.T ({ install_conf = Some _; _ } as exes) ->
         Expander.eval_blang expander exes.enabled_if
         >>= (function
          | false -> Memo.return false
@@ -455,14 +455,14 @@ end = struct
       let new_entries =
         let open Dune_file in
         match (stanza : Stanza.t) with
-        | Install i | Executables { install_conf = Some i; _ } ->
+        | Install_conf.T i | Executables.T { install_conf = Some i; _ } ->
           entries_of_install_stanza ~dir ~expander ~package_db i
-        | Library lib ->
+        | Library.T lib ->
           let sub_dir = Dune_file.Library.sub_dir lib in
           let* dir_contents = Dir_contents.get sctx ~dir in
           lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
         | Coq_stanza.Theory.T coqlib -> Coq_rules.install_rules ~sctx ~dir coqlib
-        | Documentation d ->
+        | Documentation.T d ->
           let* dc = Dir_contents.get sctx ~dir in
           let+ mlds = Dir_contents.mlds dc d in
           List.map mlds ~f:(fun mld ->
@@ -474,7 +474,7 @@ end = struct
                 mld
             in
             Install.Entry.Sourced.create ~loc:d.loc entry)
-        | Plugin t -> Plugin_rules.install_rules ~sctx ~package_db ~dir t
+        | Plugin.T t -> Plugin_rules.install_rules ~sctx ~package_db ~dir t
         | _ -> Memo.return []
       in
       let name = Package.name package in

@@ -41,7 +41,9 @@ let decode =
      { merge_into; flags; modules; mode; loc; infer; enabled_if })
 ;;
 
-type Stanza.t += T of t
+include Stanza.Make (struct
+    type nonrec t = t
+  end)
 
 let () =
   Dune_project.Extension.register_simple

@@ -149,7 +149,9 @@ type t =
   ; version : Syntax.Version.t
   }
 
-type Stanza.t += T of t
+include Stanza.Make (struct
+    type nonrec t = t
+  end)
 
 let decode =
   let open Dune_lang.Decoder in

@@ -196,3 +196,28 @@ let%expect_test "downloading, tarball" =
   but got
   <REDACTED> |}]
 ;;
+
+let%expect_test "downloading, tarball with no checksum match" =
+  (* This test ensures that the contents of the extracted tarball are in the
+     correct location. *)
+  let filename = "tarball.tar.gz" in
+  let port, server = serve_once ~filename in
+  let target = target "tarball" in
+  run (download ~reproducible:false ~unpack:true ~port ~filename ~target);
+  Thread.join server;
+  print_endline "Finished successfully, no checksum verification";
+  (* print all the files in the target directory *)
+  let () =
+    print_endline "------\nfiles in target dir:";
+    Dune_engine.No_io.Path.Untracked.readdir_unsorted target
+    |> Result.value ~default:[]
+    |> List.iter ~f:print_endline
+  in
+  [%expect
+    {|
+    Done downloading
+    Finished successfully, no checksum verification
+    ------
+    files in target dir:
+    plaintext.md |}]
+;;

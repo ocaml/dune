@@ -35,7 +35,7 @@ module Lock_dir = struct
     && List.equal Dune_pkg.Pkg_workspace.Repository.Name.equal repositories t.repositories
   ;;
 
-  let decode =
+  let decode ~dir =
     let repositories_of_ordered_set ordered_set =
       Dune_lang.Ordered_set_lang.eval
         ordered_set
@@ -46,10 +46,8 @@ module Lock_dir = struct
     in
     let decode =
       let+ path =
-        field_o "path" (Dune_lang.Path.Local.decode ~dir:Path.root)
-        >>| function
-        | None -> Path.Source.(relative root "dune.lock")
-        | Some p -> Path.as_in_source_tree_exn p
+        let+ path = field ~default:"dune.lock" "path" string in
+        Path.Source.relative dir path
       and+ solver_env = field_o "solver_env" Dune_pkg.Solver_env.decode
       and+ version_preference =
         field_o "version_preference" Dune_pkg.Version_preference.decode
@@ -75,7 +73,7 @@ let env_field, env_field_lazy =
     @@ let+ () = Dune_lang.Syntax.since syntax (1, 1)
        and+ version = Dune_lang.Syntax.get_exn syntax
        and+ loc = loc
-       and+ s = Dune_env.Stanza.decode in
+       and+ s = Dune_env.decode in
        let s =
          let minimum_version = 3, 2 in
          if version >= minimum_version
@@ -94,7 +92,7 @@ let env_field, env_field_lazy =
                         ~what:"\"binaries\" in an \"env\" stanza in a dune-workspace file")
                  ]
              in
-             Dune_env.Stanza.add_warning ~message s |> Dune_env.Stanza.add_error ~message)
+             Dune_env.add_warning ~message s |> Dune_env.add_error ~message)
        in
        match
          List.find_map s.rules ~f:(fun (_, config) ->
@@ -152,7 +150,7 @@ module Context = struct
       { loc : Loc.t
       ; profile : Profile.t
       ; targets : Target.t list
-      ; env : Dune_env.Stanza.t option
+      ; env : Dune_env.t option
       ; toolchain : Context_name.t option
       ; name : Context_name.t
       ; host_context : Context_name.t option
@@ -189,7 +187,7 @@ module Context = struct
       =
       Profile.equal profile t.profile
       && List.equal Target.equal targets t.targets
-      && Option.equal Dune_env.Stanza.equal env t.env
+      && Option.equal Dune_env.equal env t.env
       && Option.equal Context_name.equal toolchain t.toolchain
       && Context_name.equal name t.name
       && Option.equal Context_name.equal host_context t.host_context
@@ -341,26 +339,28 @@ module Context = struct
   module Default = struct
     type t =
       { base : Common.t
-      ; lock : Path.Source.t option
+      ; lock_dir : Path.Source.t option
       }
 
-    let to_dyn { base; lock } =
+    let to_dyn { base; lock_dir } =
       Dyn.record
-        [ "base", Common.to_dyn base; "lock", Dyn.(option Path.Source.to_dyn) lock ]
+        [ "base", Common.to_dyn base
+        ; "lock_dir", Dyn.(option Path.Source.to_dyn) lock_dir
+        ]
     ;;
 
-    let decode =
+    let decode ~dir =
       let+ common = Common.decode
       and+ name =
         field_o "name" (Dune_lang.Syntax.since syntax (1, 10) >>> Context_name.decode)
-      and+ lock =
+      and+ lock_dir =
         (* TODO
            1. guard before version check before releasing
            2. allow external paths
         *)
-        field_o "lock" (Dune_lang.Path.Local.decode ~dir:(Path.source Path.Source.root))
+        let+ path = field_o "lock_dir" string in
+        Option.map path ~f:(Path.Source.relative dir)
       in
-      let lock = Option.map lock ~f:Path.as_in_source_tree_exn in
       fun ~profile_default ~instrument_with_default ~x ->
         let common = common ~profile_default ~instrument_with_default in
         let default =
@@ -370,11 +370,11 @@ module Context = struct
         in
         let name = Option.value ~default name in
         let base = { common with targets = Target.add common.targets x; name } in
-        { base; lock }
+        { base; lock_dir }
     ;;
 
-    let equal { base; lock } t =
-      Common.equal base t.base && Option.equal Path.Source.equal lock t.lock
+    let equal { base; lock_dir } t =
+      Common.equal base t.base && Option.equal Path.Source.equal lock_dir t.lock_dir
     ;;
   end
 
@@ -410,10 +410,10 @@ module Context = struct
       -> host_context
   ;;
 
-  let decode =
+  let decode ~dir =
     sum
       [ ( "default"
-        , let+ f = fields Default.decode in
+        , let+ f = fields (Default.decode ~dir) in
           fun ~profile_default ~instrument_with_default ~x ->
             Default (f ~profile_default ~instrument_with_default ~x) )
       ; ( "opam"
@@ -437,7 +437,7 @@ module Context = struct
 
   let default ~x ~profile ~instrument_with =
     Default
-      { lock = None
+      { lock_dir = None
       ; base =
           { loc = Loc.of_pos __POS__
           ; targets = [ Option.value x ~default:Target.Native ]
@@ -470,7 +470,7 @@ end
 type t =
   { merlin_context : Context_name.t option
   ; contexts : Context.t list
-  ; env : Dune_env.Stanza.t option
+  ; env : Dune_env.t option
   ; config : Dune_config.t
   ; repos : Dune_pkg.Pkg_workspace.Repository.t list
   ; lock_dirs : Lock_dir.t list
@@ -481,7 +481,7 @@ let to_dyn { merlin_context; contexts; env; config; repos; lock_dirs } =
   record
     [ "merlin_context", option Context_name.to_dyn merlin_context
     ; "contexts", list Context.to_dyn contexts
-    ; "env", option Dune_env.Stanza.to_dyn env
+    ; "env", option Dune_env.to_dyn env
     ; "config", Dune_config.to_dyn config
     ; "repos", list Repository.to_dyn repos
     ; "solver", (list Lock_dir.to_dyn) lock_dirs
@@ -491,7 +491,7 @@ let to_dyn { merlin_context; contexts; env; config; repos; lock_dirs } =
 let equal { merlin_context; contexts; env; config; repos; lock_dirs } w =
   Option.equal Context_name.equal merlin_context w.merlin_context
   && List.equal Context.equal contexts w.contexts
-  && Option.equal Dune_env.Stanza.equal env w.env
+  && Option.equal Dune_env.equal env w.env
   && Dune_config.equal config w.config
   && List.equal Repository.equal repos w.repos
   && List.equal Lock_dir.equal lock_dirs w.lock_dirs
@@ -501,7 +501,7 @@ let hash { merlin_context; contexts; env; config; repos; lock_dirs } =
   Poly.hash
     ( Option.hash Context_name.hash merlin_context
     , List.hash Context.hash contexts
-    , Option.hash Dune_env.Stanza.hash env
+    , Option.hash Dune_env.hash env
     , Dune_config.hash config
     , List.hash Repository.hash repos
     , List.hash Lock_dir.hash lock_dirs )
@@ -632,12 +632,24 @@ let step1 clflags =
   let { Clflags.x
       ; profile = cl_profile
       ; instrument_with = cl_instrument_with
-      ; workspace_file = _
+      ; workspace_file
       ; config_from_command_line
       ; config_from_config_file
       }
     =
     clflags
+  in
+  let dir =
+    match workspace_file with
+    | None -> Path.Source.root
+    | Some file ->
+      (match Path.Outside_build_dir.parent file with
+       | None -> assert false
+       | Some (External _) ->
+         (* CR-rgrinberg: not really correct, but we don't support lock
+            directories outside the workspace (for now) *)
+         Path.Source.root
+       | Some (In_source_dir s) -> s)
   in
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
   let superpose_with_command_line cl field =
@@ -659,8 +671,8 @@ let step1 clflags =
          (lazy_ (Dune_lang.Syntax.since Stanza.syntax (2, 7) >>> repeat Lib_name.decode))
          ~default:(lazy []))
   and+ config_from_workspace_file = Dune_config.decode_fields_of_workspace_file
-  and+ lock_dirs = multi_field "lock_dir" Lock_dir.decode in
-  let+ contexts = multi_field "context" (lazy_ Context.decode) in
+  and+ lock_dirs = multi_field "lock_dir" (Lock_dir.decode ~dir) in
+  let+ contexts = multi_field "context" (lazy_ (Context.decode ~dir)) in
   let config =
     create_final_config
       ~config_from_workspace_file

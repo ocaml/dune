@@ -6,6 +6,7 @@ type t =
   { name : Package_name.t
   ; version : Package_version.t option
   ; dependencies : Package_dependency.t list
+  ; conflicts : Package_dependency.t list
   ; loc : Loc.t
   }
 
@@ -73,13 +74,16 @@ module For_solver = struct
   type t =
     { name : Package_name.t
     ; dependencies : Package_dependency.t list
+    ; conflicts : Package_dependency.t list
     }
 
-  let to_opam_file { name; dependencies } =
+  let to_opam_file { name; dependencies; conflicts } =
     OpamFile.OPAM.empty
     |> OpamFile.OPAM.with_name (Package_name.to_opam_package_name name)
     |> OpamFile.OPAM.with_depends
          (Package_dependency.list_to_opam_filtered_formula dependencies)
+    |> OpamFile.OPAM.with_conflicts
+         (Package_dependency.list_to_opam_filtered_formula conflicts)
   ;;
 
   let opam_filtered_dependency_formula { dependencies; _ } =
@@ -95,6 +99,6 @@ module For_solver = struct
   ;;
 end
 
-let for_solver { name; version = _; dependencies; loc = _ } =
-  { For_solver.name; dependencies }
+let for_solver { name; version = _; dependencies; conflicts; loc = _ } =
+  { For_solver.name; dependencies; conflicts }
 ;;

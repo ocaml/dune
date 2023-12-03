@@ -28,7 +28,7 @@ module Context : sig
       { loc : Loc.t
       ; profile : Profile.t
       ; targets : Target.t list
-      ; env : Dune_env.Stanza.t option
+      ; env : Dune_env.t option
       ; toolchain : Context_name.t option
       ; name : Context_name.t
       ; host_context : Context_name.t option
@@ -58,7 +58,7 @@ module Context : sig
   module Default : sig
     type t =
       { base : Common.t
-      ; lock : Path.Source.t option
+      ; lock_dir : Path.Source.t option
       }
   end
 
@@ -68,7 +68,7 @@ module Context : sig
 
   val loc : t -> Loc.t
   val name : t -> Context_name.t
-  val env : t -> Dune_env.Stanza.t option
+  val env : t -> Dune_env.t option
   val host_context : t -> Context_name.t option
   val to_dyn : t -> Dyn.t
   val base : t -> Common.t
@@ -87,7 +87,7 @@ end
 type t = private
   { merlin_context : Context_name.t option
   ; contexts : Context.t list
-  ; env : Dune_env.Stanza.t option
+  ; env : Dune_env.t option
   ; config : Dune_config.t
   ; repos : Dune_pkg.Pkg_workspace.Repository.t list
   ; lock_dirs : Lock_dir.t list

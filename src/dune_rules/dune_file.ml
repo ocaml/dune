@@ -659,11 +659,7 @@ module Library = struct
          in
          let+ _ = field_b "no_keep_locs" ~check in
          ()
-       and+ sub_systems =
-         return ()
-         >>> (* CR rgrinberg: weird that we have to remember to delay this. Can't
-                this be pushed down to the [record_parser] itself *)
-         Sub_system_info.record_parser ()
+       and+ sub_systems = Sub_system_info.record_parser
        and+ virtual_modules =
          field_o
            "virtual_modules"
@@ -2352,7 +2348,7 @@ module Stanzas = struct
       , let+ () = Dune_lang.Syntax.deleted_in Stanza.syntax (2, 6) in
         [] )
     ; ( "env"
-      , let+ x = Dune_env.Stanza.decode in
+      , let+ x = Dune_env.decode in
         [ Dune_env.T x ] )
     ; ( "include_subdirs"
       , let* project = Dune_project.get_exn () in

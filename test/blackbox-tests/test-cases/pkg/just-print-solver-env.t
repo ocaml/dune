@@ -18,17 +18,27 @@ Add some build contexts with different environments
   >   (os-family ubuntu)
   >   (os-distribution ubuntu)
   >   (os-version 22.04)))
+  > (lock_dir
+  >  (path change-opam-version.lock)
+  >  (solver_env
+  >   (opam-version 42)))
   > (context
   >  (default
   >   (name linux)
-  >   (lock dune.linux.lock)))
+  >   (lock_dir dune.linux.lock)))
   > (context
   >  (default
   >   (name no-doc)
-  >   (lock dune.linux.no-doc.lock)))
+  >   (lock_dir dune.linux.no-doc.lock)))
+  > (context
+  >  (default
+  >   (name change-opam-version)
+  >   (lock_dir change-opam-version.lock)))
   > EOF
 
   $ dune pkg print-solver-env --all-contexts --dont-poll-system-solver-variables
+  Solver environment for context change-opam-version:
+  - opam-version = 42
   Solver environment for context no-doc:
   - arch = x86_64
   - opam-version = 2.2.0~alpha-vendored

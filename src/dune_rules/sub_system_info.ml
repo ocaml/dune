@@ -49,5 +49,9 @@ module Register (M : S) : sig end = struct
   ;;
 end
 
-let record_parser () = !record_parser Sub_system_name.Map.empty
+let record_parser =
+  let* () = return () in
+  !record_parser Sub_system_name.Map.empty
+;;
+
 let get name = Table.find_exn all name

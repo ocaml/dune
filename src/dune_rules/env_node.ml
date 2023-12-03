@@ -1,7 +1,7 @@
 open Import
 
 module Odoc = struct
-  type warnings = Dune_env.Stanza.Odoc.warnings =
+  type warnings = Dune_env.Odoc.warnings =
     | Fatal
     | Nonfatal
 
@@ -16,7 +16,7 @@ type t =
   ; link_flags : Link_flags.t Memo.Lazy.t
   ; external_env : Env.t Memo.Lazy.t
   ; artifacts : Artifacts.t Memo.Lazy.t
-  ; inline_tests : Dune_env.Stanza.Inline_tests.t Memo.Lazy.t
+  ; inline_tests : Dune_env.Inline_tests.t Memo.Lazy.t
   ; menhir_flags : string list Action_builder.t Memo.Lazy.t
   ; odoc : Odoc.t Action_builder.t Memo.Lazy.t
   ; js_of_ocaml : string list Action_builder.t Js_of_ocaml.Env.t Memo.Lazy.t
@@ -69,7 +69,7 @@ let make
   ~default_bin_annot
   =
   let open Memo.O in
-  let config = Dune_env.Stanza.find config_stanza ~profile in
+  let config = Dune_env.find config_stanza ~profile in
   let inherited ~field ~root extend =
     Memo.lazy_ (fun () ->
       (match inherit_from with
@@ -137,7 +137,7 @@ let make
         Memo.return
         ~root:
           (if Profile.is_inline_test profile
-           then Dune_env.Stanza.Inline_tests.Enabled
+           then Dune_env.Inline_tests.Enabled
            else Disabled)
   in
   let js_of_ocaml =

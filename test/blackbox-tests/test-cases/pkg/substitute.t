@@ -75,32 +75,28 @@ Now with variables set
   > '%%{doc}%%' is '%{doc}%'
   > '%%{stublibs}%%' is '%{stublibs}%'
   > '%%{man}%%' is '%{man}%'
-  > Finally, '%%{custom}%%' is '%{custom}%'
   > EOF
   $ cat >dune.lock/test.pkg <<EOF
   > (source (copy $PWD/test-source))
   > (build
   >  (progn
-  >   (withenv
-  >    ((= custom defined-here))
-  >    (substitute defined.ml.in defined.ml))
+  >   (substitute defined.ml.in defined.ml)
   >   (system "cat defined.ml")))
   > EOF
   $ build_pkg test
   We substitute '%{name}%' into 'test' and '%{_:name}%' into 'test'
   And '%{version}%' is set to 'dev'
   There is also some paths set:
-  '%{lib}%' is '_build/_private/default/.pkg/test/target/lib/test'
-  '%{libexec}%' is '_build/_private/default/.pkg/test/target/lib/test'
-  '%{bin}%' is '_build/_private/default/.pkg/test/target/bin'
-  '%{sbin}%' is '_build/_private/default/.pkg/test/target/sbin'
-  '%{toplevel}%' is '_build/_private/default/.pkg/test/target/lib/toplevel'
-  '%{share}%' is '_build/_private/default/.pkg/test/target/share/test'
-  '%{etc}%' is '_build/_private/default/.pkg/test/target/etc/test'
-  '%{doc}%' is '_build/_private/default/.pkg/test/target/doc/test'
-  '%{stublibs}%' is '_build/_private/default/.pkg/test/target/lib/stublibs'
-  '%{man}%' is '_build/_private/default/.pkg/test/target/man'
-  Finally, '%{custom}%' is 'defined-here'
+  '%{lib}%' is '../target/lib'
+  '%{libexec}%' is '../target/lib'
+  '%{bin}%' is '../target/bin'
+  '%{sbin}%' is '../target/sbin'
+  '%{toplevel}%' is '../target/lib/toplevel'
+  '%{share}%' is '../target/share'
+  '%{etc}%' is '../target/etc'
+  '%{doc}%' is '../target/doc'
+  '%{stublibs}%' is '../target/lib/stublibs'
+  '%{man}%' is '../target/man'
 
 It is also possible to use variables of your dependencies:
 
@@ -110,8 +106,7 @@ It is also possible to use variables of your dependencies:
   > EOF
   $ cat >dune.lock/test.pkg <<EOF
   > (source (copy $PWD/test-source))
-  > ; adding deps breaks cat
-  > ;(deps dependency)
+  > (deps dependency)
   > (build
   >  (progn
   >   (substitute dependencies.ml.in dependencies.ml)
@@ -123,4 +118,4 @@ It is also possible to use variables of your dependencies:
   > EOF
   $ build_pkg test
   There is also some paths set:
-  '%{dependency:lib}%' is '_build/_private/default/.pkg/test/target/lib/test'
+  '%{dependency:lib}%' is '../../dependency/target/lib/dependency'

@@ -18,4 +18,4 @@ Test the %{pkg:intsalled}% form inside file substitution:
 
   $ build_pkg test
   somepkg installation false
-  foo: 
+  foo: false

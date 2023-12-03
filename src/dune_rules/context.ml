@@ -48,8 +48,8 @@ end
 
 module Env_nodes = struct
   type t =
-    { context : Dune_env.Stanza.t option
-    ; workspace : Dune_env.Stanza.t option
+    { context : Dune_env.t option
+    ; workspace : Dune_env.t option
     }
 
   let empty = { context = None; workspace = None }
@@ -59,9 +59,7 @@ module Env_nodes = struct
       Option.value
         ~default:Env.empty
         (let open Option.O in
-         let+ (env : Dune_env.Stanza.config) =
-           env >>= Dune_env.Stanza.find_opt ~profile
-         in
+         let+ (env : Dune_env.config) = env >>= Dune_env.find_opt ~profile in
          env.env_vars)
     in
     Env.extend_env (make context) (make workspace)
@@ -599,7 +597,7 @@ module Group = struct
       match context with
       | Opam { base; switch } ->
         create_for_opam builder ~switch ~loc:base.loc ~targets:base.targets
-      | Default { lock; base } ->
+      | Default { lock_dir; base } ->
         let builder =
           match builder.findlib_toolchain with
           | Some _ -> builder
@@ -611,7 +609,7 @@ module Group = struct
                  findlib_toolchain = Some (Context_name.parse_string_exn (Loc.none, name))
                })
         in
-        let lock = Option.is_some lock in
+        let lock = Option.is_some lock_dir in
         default builder ~targets:base.targets ~lock
     ;;
 

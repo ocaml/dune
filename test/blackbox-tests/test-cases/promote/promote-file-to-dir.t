@@ -30,14 +30,13 @@ Change cram test to a directory cram test
 
 Run the cram test, should fail and file should be promoted
 
-  $ dune build @runtest
+  $ dune build @runtest 2>&1 | sed -E 's#/.*.sandbox/[^/]+#/.sandbox/$SANDBOX#g'
   File "my_cram.t/run.t", line 1, characters 0-0:
   Error: Files _build/default/my_cram.t/run.t and
   _build/default/my_cram.t/run.t.corrected differ.
   Error:
-  rename(_build/.sandbox/0d2c8c941b0c829ffc4b1b9e9f04c8e5/default/my_cram.t/run.t.corrected): Not a directory
+  rename(_build/.sandbox/$SANDBOX/default/my_cram.t/run.t.corrected): Not a directory
   -> required by alias runtest
-  [1]
 
 We cannot promote:
 

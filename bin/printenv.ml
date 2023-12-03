@@ -32,7 +32,7 @@ let dump sctx ~dir =
   and+ menhir_dump =
     let+ flags = Action_builder.of_memo_join menhir_flags in
     [ "menhir_flags", flags ] |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
-  and+ coq_dump = Action_builder.of_memo_join coq_flags >>| Dune_rules.Coq_flags.dump
+  and+ coq_dump = Action_builder.of_memo_join coq_flags >>| Dune_rules.Coq.Coq_flags.dump
   and+ jsoo_dump =
     let* jsoo = Action_builder.of_memo js_of_ocaml in
     Js_of_ocaml.Flags.dump jsoo.flags

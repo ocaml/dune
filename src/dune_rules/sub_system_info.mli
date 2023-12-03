@@ -33,7 +33,7 @@ module Register (_ : S) : sig end
 
 val record_parser
   :  unit
-  -> (sub_system Sub_system_name.Map.t, Dune_lang.Decoder.fields) Dune_lang.Decoder.parser
+  -> (t Sub_system_name.Map.t, Dune_lang.Decoder.fields) Dune_lang.Decoder.parser
 
 val get : Sub_system_name.t -> (module S)
 val equal : t -> t -> bool

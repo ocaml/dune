@@ -650,6 +650,7 @@ let expand_pform_macro
   | Coq_config ->
     Need_full_expander
       (fun t ->
+        (* CR-rgrinberg: Why [Without]? We're accumulating dependencies. *)
         Without
           (let open Memo.O in
            let* coqc = Artifacts.binary t.artifacts_host ~loc:None "coqc" in

@@ -952,11 +952,14 @@ let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) coq_mo
 (* This is here for compatibility with Coq < 8.11, which expects plugin files to
    be in the folder containing the `.vo` files *)
 let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Coq_stanza.Theory.t) =
-  let lib_db = Scope.libs scope in
   let+ ml_libs =
     (* get_libraries from Coq's ML dependencies *)
-    Resolve.Memo.read_memo
-      (Resolve.Memo.List.map ~f:(Lib.DB.resolve lib_db) s.buildable.plugins)
+    Resolve.Memo.List.map s.buildable.plugins ~f:(fun lib ->
+      let open Resolve.Memo.O in
+      let* scope = Resolve.Memo.lift_memo scope in
+      let lib_db = Scope.libs scope in
+      Lib.DB.resolve lib_db lib)
+    |> Resolve.Memo.read_memo
   in
   let rules_for_lib lib =
     let info = Lib.info lib in
@@ -988,12 +991,6 @@ let install_rules ~sctx ~dir s =
   | { Coq_stanza.Theory.package = Some package; buildable; _ } ->
     let loc = s.buildable.loc in
     let* mode = select_native_mode ~sctx ~dir buildable in
-    let* scope = Scope.DB.find_by_dir dir in
-    (* We force the coq scope for this DB as to fail early in case of
-       some library conflicts that would also generate conflicting
-       install rules. This is needed as now install rules less lazy
-       than the theory rules. *)
-    let _ = Scope.coq_libs scope in
     let* dir_contents = Dir_contents.get sctx ~dir in
     let name = snd s.name in
     (* This must match the wrapper prefix for now to remain compatible *)
@@ -1012,7 +1009,9 @@ let install_rules ~sctx ~dir s =
     let* coq_plugins_install_rules =
       if s.boot
       then Memo.return []
-      else coq_plugins_install_rules ~scope ~package ~dst_dir s
+      else (
+        let scope = Scope.DB.find_by_dir dir in
+        coq_plugins_install_rules ~scope ~package ~dst_dir s)
     in
     let wrapper_name = Coq_lib_name.wrapper name in
     let to_path f = Path.reach ~from:(Path.build dir) (Path.build f) in

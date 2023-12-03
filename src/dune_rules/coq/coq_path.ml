@@ -225,6 +225,8 @@ let of_coq_install coqc =
 let of_coq_install coqc =
   (* If coqc was found in the _build directory then we must be composing
      with Coq and therefore cannot have any installed libs *)
+  (* CR-rgrinberg: this check seems sketchy. [Context.which] will only return
+     external paths or those installed by dune's package management. *)
   if Path.is_in_build_dir coqc then Memo.return [] else of_coq_install coqc
 ;;
 

@@ -48,8 +48,8 @@ end
 
 module Env_nodes = struct
   type t =
-    { context : Dune_env.Stanza.t option
-    ; workspace : Dune_env.Stanza.t option
+    { context : Dune_env.t option
+    ; workspace : Dune_env.t option
     }
 
   let empty = { context = None; workspace = None }
@@ -59,9 +59,7 @@ module Env_nodes = struct
       Option.value
         ~default:Env.empty
         (let open Option.O in
-         let+ (env : Dune_env.Stanza.config) =
-           env >>= Dune_env.Stanza.find_opt ~profile
-         in
+         let+ (env : Dune_env.config) = env >>= Dune_env.find_opt ~profile in
          env.env_vars)
     in
     Env.extend_env (make context) (make workspace)

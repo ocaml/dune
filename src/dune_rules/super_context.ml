@@ -103,7 +103,7 @@ end = struct
     let+ artifacts_host = artifacts_host t ~dir
     and+ bindings =
       let+ inline_tests = get_node t ~dir >>= Env_node.inline_tests in
-      let str = Dune_env.Stanza.Inline_tests.to_string inline_tests in
+      let str = Dune_env.Inline_tests.to_string inline_tests in
       Pform.Map.singleton (Var Inline_tests) [ Value.String str ]
     in
     Expander.add_bindings ~bindings expander_for_artifacts
@@ -125,7 +125,7 @@ end = struct
   let get_env_stanza ~dir =
     let open Memo.O in
     let+ stanzas = Only_packages.stanzas_in_dir dir in
-    Option.value ~default:Dune_env.Stanza.empty
+    Option.value ~default:Dune_env.empty
     @@
     let open Option.O in
     let* stanzas = stanzas in
@@ -380,7 +380,7 @@ let make_default_env_node
   ~(artifacts : Artifacts.t)
   =
   let make ~inherit_from ~config_stanza =
-    let config_stanza = Option.value config_stanza ~default:Dune_env.Stanza.empty in
+    let config_stanza = Option.value config_stanza ~default:Dune_env.empty in
     let dir = context.build_dir in
     let+ scope = Scope.DB.find_by_dir dir in
     let project = Scope.project scope in
@@ -389,7 +389,7 @@ let make_default_env_node
       Memo.lazy_ (fun () ->
         Code_error.raise "[expander_for_artifacts] in [default_env] is undefined" [])
     in
-    Dune_env.Stanza.fire_hooks config_stanza ~profile;
+    Dune_env.fire_hooks config_stanza ~profile;
     let expander = Memo.Lazy.of_val (Expander.set_dir ~dir root_expander) in
     Env_node.make
       context

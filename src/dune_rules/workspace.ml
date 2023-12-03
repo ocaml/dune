@@ -73,7 +73,7 @@ let env_field, env_field_lazy =
     @@ let+ () = Dune_lang.Syntax.since syntax (1, 1)
        and+ version = Dune_lang.Syntax.get_exn syntax
        and+ loc = loc
-       and+ s = Dune_env.Stanza.decode in
+       and+ s = Dune_env.decode in
        let s =
          let minimum_version = 3, 2 in
          if version >= minimum_version
@@ -92,7 +92,7 @@ let env_field, env_field_lazy =
                         ~what:"\"binaries\" in an \"env\" stanza in a dune-workspace file")
                  ]
              in
-             Dune_env.Stanza.add_warning ~message s |> Dune_env.Stanza.add_error ~message)
+             Dune_env.add_warning ~message s |> Dune_env.add_error ~message)
        in
        match
          List.find_map s.rules ~f:(fun (_, config) ->
@@ -150,7 +150,7 @@ module Context = struct
       { loc : Loc.t
       ; profile : Profile.t
       ; targets : Target.t list
-      ; env : Dune_env.Stanza.t option
+      ; env : Dune_env.t option
       ; toolchain : Context_name.t option
       ; name : Context_name.t
       ; host_context : Context_name.t option
@@ -187,7 +187,7 @@ module Context = struct
       =
       Profile.equal profile t.profile
       && List.equal Target.equal targets t.targets
-      && Option.equal Dune_env.Stanza.equal env t.env
+      && Option.equal Dune_env.equal env t.env
       && Option.equal Context_name.equal toolchain t.toolchain
       && Context_name.equal name t.name
       && Option.equal Context_name.equal host_context t.host_context
@@ -470,7 +470,7 @@ end
 type t =
   { merlin_context : Context_name.t option
   ; contexts : Context.t list
-  ; env : Dune_env.Stanza.t option
+  ; env : Dune_env.t option
   ; config : Dune_config.t
   ; repos : Dune_pkg.Pkg_workspace.Repository.t list
   ; lock_dirs : Lock_dir.t list
@@ -481,7 +481,7 @@ let to_dyn { merlin_context; contexts; env; config; repos; lock_dirs } =
   record
     [ "merlin_context", option Context_name.to_dyn merlin_context
     ; "contexts", list Context.to_dyn contexts
-    ; "env", option Dune_env.Stanza.to_dyn env
+    ; "env", option Dune_env.to_dyn env
     ; "config", Dune_config.to_dyn config
     ; "repos", list Repository.to_dyn repos
     ; "solver", (list Lock_dir.to_dyn) lock_dirs
@@ -491,7 +491,7 @@ let to_dyn { merlin_context; contexts; env; config; repos; lock_dirs } =
 let equal { merlin_context; contexts; env; config; repos; lock_dirs } w =
   Option.equal Context_name.equal merlin_context w.merlin_context
   && List.equal Context.equal contexts w.contexts
-  && Option.equal Dune_env.Stanza.equal env w.env
+  && Option.equal Dune_env.equal env w.env
   && Dune_config.equal config w.config
   && List.equal Repository.equal repos w.repos
   && List.equal Lock_dir.equal lock_dirs w.lock_dirs
@@ -501,7 +501,7 @@ let hash { merlin_context; contexts; env; config; repos; lock_dirs } =
   Poly.hash
     ( Option.hash Context_name.hash merlin_context
     , List.hash Context.hash contexts
-    , Option.hash Dune_env.Stanza.hash env
+    , Option.hash Dune_env.hash env
     , Dune_config.hash config
     , List.hash Repository.hash repos
     , List.hash Lock_dir.hash lock_dirs )

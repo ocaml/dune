@@ -2348,7 +2348,7 @@ module Stanzas = struct
       , let+ () = Dune_lang.Syntax.deleted_in Stanza.syntax (2, 6) in
         [] )
     ; ( "env"
-      , let+ x = Dune_env.Stanza.decode in
+      , let+ x = Dune_env.decode in
         [ Dune_env.T x ] )
     ; ( "include_subdirs"
       , let* project = Dune_project.get_exn () in

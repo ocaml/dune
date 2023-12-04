@@ -322,4 +322,6 @@ let fire_hooks t ~profile =
       User_warning.emit ?loc paragraphs))
 ;;
 
-type Stanza.t += T of t
+include Stanza.Make (struct
+    type nonrec t = t
+  end)

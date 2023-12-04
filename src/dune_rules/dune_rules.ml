@@ -46,13 +46,6 @@ module Dep_graph = Dep_graph
 module Lib_config = Lib_config
 module Preprocess = Preprocess
 module Preprocessing = Preprocessing
-module Coq_mode = Coq_mode
-module Coq_rules = Coq_rules
-module Coq_module = Coq_module
-module Coq_sources = Coq_sources
-module Coq_lib_name = Coq_lib_name
-module Coq_lib = Coq_lib
-module Coq_flags = Coq_flags
 module Command = Command
 module Clflags = Clflags
 module Dune_project = Dune_project
@@ -73,4 +66,14 @@ module For_tests = struct
   module Ocamlobjinfo = Ocamlobjinfo
   module Action_unexpanded = Action_unexpanded
   module Jsoo_rules = Jsoo_rules
+end
+
+module Coq = struct
+  module Coq_mode = Coq_mode
+  module Coq_rules = Coq_rules
+  module Coq_module = Coq_module
+  module Coq_sources = Coq_sources
+  module Coq_lib_name = Coq_lib_name
+  module Coq_lib = Coq_lib
+  module Coq_flags = Coq_flags
 end

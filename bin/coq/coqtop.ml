@@ -69,7 +69,7 @@ let term =
       let* coq_src = Dune_rules.Dir_contents.coq dc in
       let coq_module =
         let source = coq_file_build in
-        match Dune_rules.Coq_sources.find_module ~source coq_src with
+        match Dune_rules.Coq.Coq_sources.find_module ~source coq_src with
         | Some m -> snd m
         | None ->
           let hints =
@@ -81,7 +81,7 @@ let term =
             ~hints
             [ Pp.textf "Cannot find file: %s" (coq_file_arg |> Path.Local.to_string) ]
       in
-      let stanza = Dune_rules.Coq_sources.lookup_module coq_src coq_module in
+      let stanza = Dune_rules.Coq.Coq_sources.lookup_module coq_src coq_module in
       let args, use_stdlib, coq_lang_version, wrapper_name, mode =
         match stanza with
         | None ->
@@ -91,7 +91,7 @@ let term =
                 (coq_file_arg |> Path.Local.to_string)
             ]
         | Some (`Theory theory) ->
-          ( Dune_rules.Coq_rules.coqtop_args_theory
+          ( Dune_rules.Coq.Coq_rules.coqtop_args_theory
               ~sctx
               ~dir
               ~dir_contents:dc
@@ -99,10 +99,10 @@ let term =
               coq_module
           , theory.buildable.use_stdlib
           , theory.buildable.coq_lang_version
-          , Dune_rules.Coq_lib_name.wrapper (snd theory.name)
+          , Dune_rules.Coq.Coq_lib_name.wrapper (snd theory.name)
           , theory.buildable.mode )
         | Some (`Extraction extr) ->
-          ( Dune_rules.Coq_rules.coqtop_args_extraction ~sctx ~dir extr coq_module
+          ( Dune_rules.Coq.Coq_rules.coqtop_args_extraction ~sctx ~dir extr coq_module
           , extr.buildable.use_stdlib
           , extr.buildable.coq_lang_version
           , "DuneExtraction"
@@ -116,10 +116,10 @@ let term =
           else (
             let mode =
               match mode with
-              | None -> Dune_rules.Coq_mode.VoOnly
+              | None -> Dune_rules.Coq.Coq_mode.VoOnly
               | Some mode -> mode
             in
-            Dune_rules.Coq_rules.deps_of
+            Dune_rules.Coq.Coq_rules.deps_of
               ~dir
               ~use_stdlib
               ~wrapper_name

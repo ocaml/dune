@@ -54,9 +54,9 @@ module File = struct
     let stanzas_conflict (a : Stanza.t) (b : Stanza.t) =
       let open Dune_file in
       match a, b with
-      | Executables a, Executables b -> executables_conflict a b
-      | Library a, Library b -> libraries_conflict a b
-      | Tests a, Tests b -> tests_conflict a b
+      | Executables.T a, Executables.T b -> executables_conflict a b
+      | Library.T a, Library.T b -> libraries_conflict a b
+      | Tests.T a, Tests.T b -> tests_conflict a b
       (* NOTE No other stanza types currently supported *)
       | _ -> false
     ;;

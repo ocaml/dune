@@ -15,7 +15,9 @@ type t =
 let name = "cinaps"
 let cinaps_alias = Alias.Name.of_string name
 
-type Stanza.t += T of t
+include Stanza.Make (struct
+    type nonrec t = t
+  end)
 
 let syntax =
   Dune_lang.Syntax.create

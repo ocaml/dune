@@ -11,33 +11,15 @@ open! Import
    be needed for full compatibility with the [OpamTypes.variable_contents]
    type.
 *)
-type t = String of string
+type t = string
 
-let string string = String string
-
-let equal a b =
-  match a, b with
-  | String a, String b -> String.equal a b
-;;
-
-let to_dyn = function
-  | String string -> Dyn.variant "String" [ Dyn.string string ]
-;;
-
-let to_string = function
-  | String string -> string
-;;
-
-let decode =
-  let open Decoder in
-  let+ string = string in
-  String string
-;;
-
-let encode = function
-  | String string -> Encoder.string string
-;;
-
-let to_opam_filter = function
-  | String string -> OpamTypes.FString string
-;;
+let true_ = "true"
+let false_ = "false"
+let string = Fun.id
+let equal = String.equal
+let to_dyn = Dyn.string
+let to_string = Fun.id
+let decode = Decoder.string
+let encode = Encoder.string
+let to_opam_filter t = OpamTypes.FString t
+let to_opam_variable_contents t = OpamTypes.S t

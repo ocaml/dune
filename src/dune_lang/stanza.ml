@@ -3,6 +3,13 @@ open Dune_sexp
 
 type t = ..
 
+module Make (S : sig
+    type t
+  end) =
+struct
+  type t += T of S.t
+end
+
 module Parser = struct
   type nonrec t = string * t list Decoder.t
 end

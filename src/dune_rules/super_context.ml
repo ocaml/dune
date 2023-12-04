@@ -334,9 +334,9 @@ let add_packages_env context ~base stanzas packages =
                 add_in_package_section acc pkg_name section
             in
             match stanza with
-            | Dune_file.Install { section = Site { pkg; site; loc }; _ } ->
+            | Dune_file.Install_conf.T { section = Site { pkg; site; loc }; _ } ->
               add_in_package_sites pkg site loc
-            | Dune_file.Plugin { site = loc, (pkg, site); _ } ->
+            | Dune_file.Plugin.T { site = loc, (pkg, site); _ } ->
               add_in_package_sites pkg site loc
             | _ -> Memo.return acc)
       in

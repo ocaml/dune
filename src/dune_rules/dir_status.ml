@@ -56,7 +56,7 @@ let current_group dir = function
 let get_include_subdirs stanzas =
   List.fold_left stanzas ~init:None ~f:(fun acc stanza ->
     match stanza with
-    | Include_subdirs (loc, x) ->
+    | Include_subdirs.T (loc, x) ->
       if Option.is_some acc
       then
         User_error.raise
@@ -70,9 +70,9 @@ let find_module_stanza stanzas =
   List.find_map stanzas ~f:(fun stanza ->
     match stanza with
     | Melange_stanzas.Emit.T { loc; _ }
-    | Library { buildable = { loc; _ }; _ }
-    | Executables { buildable = { loc; _ }; _ }
-    | Tests { exes = { buildable = { loc; _ }; _ }; _ } -> Some loc
+    | Library.T { buildable = { loc; _ }; _ }
+    | Executables.T { buildable = { loc; _ }; _ }
+    | Tests.T { exes = { buildable = { loc; _ }; _ }; _ } -> Some loc
     | _ -> None)
 ;;
 
@@ -92,7 +92,7 @@ let error_no_module_consumer ~loc (qualification : Include_subdirs.qualification
 let extract_directory_targets ~dir stanzas =
   Memo.List.fold_left stanzas ~init:Path.Build.Map.empty ~f:(fun acc stanza ->
     match stanza with
-    | Rule { targets = Static { targets = l; _ }; loc = rule_loc; _ } ->
+    | Rule.T { targets = Static { targets = l; _ }; loc = rule_loc; _ } ->
       List.fold_left l ~init:acc ~f:(fun acc (target, kind) ->
         let loc = String_with_vars.loc target in
         match (kind : Targets_spec.Kind.t) with

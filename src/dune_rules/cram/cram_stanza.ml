@@ -31,7 +31,9 @@ type t =
   ; runtest_alias : (Loc.t * bool) option
   }
 
-type Stanza.t += T of t
+include Stanza.Make (struct
+    type nonrec t = t
+  end)
 
 let decode =
   fields

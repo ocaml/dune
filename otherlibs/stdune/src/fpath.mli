@@ -29,6 +29,15 @@ val follow_symlinks : string -> string option
 
 val unlink : string -> unit
 val unlink_no_err : string -> unit
+
+type unlink_status =
+  | Success
+  | Is_a_directory
+  | Other_error
+
+(** Unlink and return error, if any. *)
+val unlink_status : string -> unlink_status
+
 val initial_cwd : string
 
 type clear_dir_result =

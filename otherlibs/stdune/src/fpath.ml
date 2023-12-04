@@ -115,6 +115,21 @@ let win32_unlink fn =
 
 let unlink = if Stdlib.Sys.win32 then win32_unlink else Unix.unlink
 
+type unlink_status =
+  | Success
+  | Is_a_directory
+  | Other_error
+
+let unlink_status t =
+  match unlink t with
+  | () -> Success
+  | exception Unix.Unix_error (error, _, _) ->
+    (match error, Platform.OS.value with
+     | EISDIR, _ | EPERM, Darwin -> Is_a_directory
+     | _ -> Other_error)
+  | exception _ -> Other_error
+;;
+
 let unlink_no_err t =
   try unlink t with
   | _ -> ()

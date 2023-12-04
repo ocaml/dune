@@ -569,14 +569,13 @@ end = struct
             maybe_async_rule_file_op (fun () ->
               let remove_target_dir dir = Path.rm_rf (Path.build dir) in
               let remove_target_file path =
-                try Path.Build.unlink path with
-                (* If target changed from a directory to a file, delete
-                   in anyway. *)
-                | Unix.Unix_error (error, _, _) ->
-                  (match error, Platform.OS.value with
-                   | EISDIR, _ | EPERM, Darwin -> remove_target_dir path
-                   | _ -> ())
-                | _ -> ()
+                match Path.Build.unlink_status path with
+                | Success -> ()
+                | Is_a_directory ->
+                  (* If target changed from a directory to a file, delete
+                     in anyway. *)
+                  remove_target_dir path
+                | Other_error -> ()
               in
               Targets.Validated.iter
                 targets

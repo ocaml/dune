@@ -217,14 +217,27 @@ end = struct
   let odoc_input t = t
 end
 
-let odoc_base_flags sctx quiet build_dir =
+module Flags = struct
+  type warnings = Dune_env.Odoc.warnings =
+    | Fatal
+    | Nonfatal
+
+  type t = { warnings : warnings }
+
+  let default = { warnings = Nonfatal }
+
+  let get ~dir =
+    Env_stanza_db.value ~default ~dir ~f:(fun config ->
+      match config.odoc.warnings with
+      | None -> Memo.return None
+      | Some warnings -> Memo.return (Some { warnings }))
+    |> Action_builder.of_memo
+  ;;
+end
+
+let odoc_base_flags quiet build_dir =
   let open Action_builder.O in
-  let+ conf =
-    let* env_node =
-      Action_builder.of_memo @@ Super_context.env_node sctx ~dir:build_dir
-    in
-    Env_node.odoc env_node
-  in
+  let+ conf = Flags.get ~dir:build_dir in
   match conf.warnings with
   | Fatal ->
     (* if quiet has been passed, we're running odoc on an external
@@ -245,7 +258,7 @@ let run_odoc sctx ~dir command ~quiet ~flags_for args =
     let* () = Action_builder.return () in
     match flags_for with
     | None -> Action_builder.return Command.Args.empty
-    | Some path -> odoc_base_flags sctx quiet path
+    | Some path -> odoc_base_flags quiet path
   in
   let deps = Action_builder.env_var "ODOC_SYNTAX" in
   let open Action_builder.With_targets.O in

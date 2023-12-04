@@ -300,7 +300,7 @@ let gen_rules_for_stanzas
 ;;
 
 let gen_format_and_cram_rules sctx ~expander ~dir source_dir =
-  let+ () = Format_rules.setup_alias sctx ~dir
+  let+ () = Format_rules.setup_alias ~dir
   and+ () =
     Source_tree.Dir.cram_tests source_dir >>= Cram_rules.rules ~sctx ~expander ~dir
   in

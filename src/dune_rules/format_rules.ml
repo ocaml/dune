@@ -154,29 +154,53 @@ let gen_rules_output
   Rules.Produce.Alias.add_deps alias_formatted (Action_builder.return ())
 ;;
 
+let format_config ~dir =
+  let open Memo.O in
+  let+ value =
+    Env_stanza_db.value ~default:None ~dir ~f:(fun (t : Dune_env.config) ->
+      Memo.return
+      @@
+      match t.format_config with
+      | Some x -> Some (Some x)
+      | None -> None)
+  and+ default =
+    (* we always force the default for error checking *)
+    Path.Build.drop_build_context_exn dir
+    |> Source_tree.nearest_dir
+    >>| Source_tree.Dir.project
+    >>| Dune_project.format_config
+  in
+  Option.value value ~default
+;;
+
+let with_config ~dir f =
+  let open Memo.O in
+  let* config = format_config ~dir in
+  if Format_config.is_empty config
+  then
+    (* CR-rgrinberg: this [is_empty] check is weird. We should use [None]
+       to represent that no settings have been set. *)
+    Memo.return ()
+  else f config
+;;
+
 let gen_rules sctx ~output_dir =
   let open Memo.O in
   let dir = Path.Build.parent_exn output_dir in
-  let* config = Super_context.env_node sctx ~dir >>= Env_node.format_config in
-  Memo.when_
-    (not (Format_config.is_empty config))
-    (fun () ->
-      let* expander = Super_context.expander sctx ~dir in
-      let* scope = Scope.DB.find_by_dir output_dir in
-      let project = Scope.project scope in
-      let dialects = Dune_project.dialects project in
-      let version = Dune_project.dune_version project in
-      gen_rules_output sctx config ~version ~dialects ~expander ~output_dir)
+  with_config ~dir (fun config ->
+    let* expander = Super_context.expander sctx ~dir in
+    (* CR-rgrinberg: initializing the library database seems unnecessary here *)
+    let* scope = Scope.DB.find_by_dir output_dir in
+    let project = Scope.project scope in
+    let dialects = Dune_project.dialects project in
+    let version = Dune_project.dune_version project in
+    gen_rules_output sctx config ~version ~dialects ~expander ~output_dir)
 ;;
 
-let setup_alias sctx ~dir =
-  let open Memo.O in
-  let* config = Super_context.env_node sctx ~dir >>= Env_node.format_config in
-  Memo.when_
-    (not (Format_config.is_empty config))
-    (fun () ->
-      let output_dir = Path.Build.relative dir formatted_dir_basename in
-      let alias = Alias.fmt ~dir in
-      let alias_formatted = Alias.fmt ~dir:output_dir in
-      Rules.Produce.Alias.add_deps alias (Action_builder.dep (Dep.alias alias_formatted)))
+let setup_alias ~dir =
+  with_config ~dir (fun (_ : Format_config.t) ->
+    let output_dir = Path.Build.relative dir formatted_dir_basename in
+    let alias = Alias.fmt ~dir in
+    let alias_formatted = Alias.fmt ~dir:output_dir in
+    Rules.Produce.Alias.add_deps alias (Action_builder.dep (Dep.alias alias_formatted)))
 ;;

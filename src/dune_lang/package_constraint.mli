@@ -1,18 +1,5 @@
 open! Stdune
 
-module Op : sig
-  type t =
-    | Eq
-    | Gte
-    | Lte
-    | Gt
-    | Lt
-    | Neq
-
-  val to_dyn : t -> Dyn.t
-  val to_string : t -> string
-end
-
 module Variable : sig
   type t = { name : string }
 end
@@ -31,12 +18,13 @@ end
     boolean is expected it will be assumed to represent a boolean. *)
 type t =
   | Bvar of Variable.t (** A boolean variable *)
-  | Uop of Op.t * Value.t
+  | Uop of Relop.t * Value.t
   (** A unary operator applied to a value. Unary operators are operators
       whose LHS is implied by context. E.g. when placing version constraints
       on dependencies of a package the implied LHS is the version of the
       dependency: `(dependency (>= version))` *)
-  | Bop of Op.t * Value.t * Value.t (** A binary operator applied to LHS and RHS values *)
+  | Bop of Relop.t * Value.t * Value.t
+  (** A binary operator applied to LHS and RHS values *)
   | And of t list (** The conjunction of a list of boolean expressions *)
   | Or of t list (** The disjunction of a list of boolean expressions *)
 

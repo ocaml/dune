@@ -1,50 +1,5 @@
 open Stdune
 
-module Op = struct
-  type t =
-    | Eq
-    | Gte
-    | Lte
-    | Gt
-    | Lt
-    | Neq
-
-  (* Define an arbitrary ordering on [t] to allow a package constraint to be
-     used as the key of a map or set. The order from lowest to highest is:
-     [Eq, Gte, Lte, Gt, Lt, Neq] *)
-  let compare a b =
-    match a, b with
-    | Eq, Eq -> Ordering.Eq
-    | Eq, _ -> Lt
-    | _, Eq -> Gt
-    | Gte, Gte -> Eq
-    | Gte, _ -> Lt
-    | _, Gte -> Gt
-    | Lte, Lte -> Eq
-    | Lte, _ -> Lt
-    | _, Lte -> Gt
-    | Gt, Gt -> Eq
-    | Gt, _ -> Lt
-    | _, Gt -> Gt
-    | Lt, Lt -> Eq
-    | Lt, _ -> Lt
-    | _, Lt -> Gt
-    | Neq, Neq -> Eq
-  ;;
-
-  let equal a b = Ordering.is_eq (compare a b)
-  let map = [ "=", Eq; ">=", Gte; "<=", Lte; ">", Gt; "<", Lt; "<>", Neq ]
-  let to_dyn t = Dyn.variant (fst (List.find_exn ~f:(fun (_, op) -> equal t op) map)) []
-
-  let to_string x =
-    let f (_, op) = equal x op in
-    (* Assumes the [map] is complete, so exception is impossible *)
-    List.find_exn ~f map |> fst
-  ;;
-
-  let encode x = to_string x |> Dune_sexp.Encoder.string
-end
-
 module Variable = struct
   type t = { name : string }
 
@@ -95,8 +50,8 @@ end
 module T = struct
   type t =
     | Bvar of Variable.t
-    | Uop of Op.t * Value.t
-    | Bop of Op.t * Value.t * Value.t
+    | Uop of Relop.t * Value.t
+    | Bop of Relop.t * Value.t * Value.t
     | And of t list
     | Or of t list
 
@@ -104,8 +59,8 @@ module T = struct
     let open Dyn in
     function
     | Bvar v -> variant "Bvar" [ Variable.to_dyn v ]
-    | Uop (b, x) -> variant "Uop" [ Op.to_dyn b; Value.to_dyn x ]
-    | Bop (b, x, y) -> variant "Bop" [ Op.to_dyn b; Value.to_dyn x; Value.to_dyn y ]
+    | Uop (b, x) -> variant "Uop" [ Relop.to_dyn b; Value.to_dyn x ]
+    | Bop (b, x, y) -> variant "Bop" [ Relop.to_dyn b; Value.to_dyn x; Value.to_dyn y ]
     | And t -> variant "And" (List.map ~f:to_dyn t)
     | Or t -> variant "Or" (List.map ~f:to_dyn t)
   ;;
@@ -117,12 +72,12 @@ module T = struct
     | Bvar _, _ -> Lt
     | _, Bvar _ -> Gt
     | Uop (a_op, a_value), Uop (b_op, b_value) ->
-      let= () = Op.compare a_op b_op in
+      let= () = Relop.compare a_op b_op in
       Value.compare a_value b_value
     | Uop _, _ -> Lt
     | _, Uop _ -> Gt
     | Bop (a_op, a_lhs, a_rhs), Bop (b_op, b_lhs, b_rhs) ->
-      let= () = Op.compare a_op b_op in
+      let= () = Relop.compare a_op b_op in
       let= () = Value.compare a_lhs b_lhs in
       Value.compare a_rhs b_rhs
     | Bop _, _ -> Lt
@@ -141,8 +96,8 @@ let rec encode c =
   let open Dune_sexp.Encoder in
   match c with
   | Bvar x -> Variable.encode x
-  | Uop (op, x) -> pair Op.encode Value.encode (op, x)
-  | Bop (op, x, y) -> triple Op.encode Value.encode Value.encode (op, x, y)
+  | Uop (op, x) -> pair Relop.encode Value.encode (op, x)
+  | Bop (op, x, y) -> triple Relop.encode Value.encode Value.encode (op, x, y)
   | And conjuncts -> list sexp (string "and" :: List.map ~f:encode conjuncts)
   | Or disjuncts -> list sexp (string "or" :: List.map ~f:encode disjuncts)
 ;;
@@ -166,7 +121,7 @@ let logical_op t =
 let decode =
   let open Dune_sexp.Decoder in
   let ops =
-    List.map Op.map ~f:(fun (name, op) ->
+    List.map Relop.map ~f:(fun (name, op) ->
       ( name
       , let+ x = Value.decode
         and+ y = maybe Value.decode

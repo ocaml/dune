@@ -1,5 +1,5 @@
 open! Import
-module Op = Dune_lang.Package_constraint.Op
+module Relop = Dune_lang.Relop
 
 let substitute_variables_in_filter
   ~stats_updater
@@ -46,28 +46,19 @@ let apply_filter
 ;;
 
 module Version_constraint = struct
-  type t = Op.t * Package_version.t
+  type t = Relop.t * Package_version.t
 
   let of_opam ((relop, version) : OpamFormula.version_constraint) =
-    let op =
-      match relop with
-      | `Eq -> Op.Eq
-      | `Neq -> Neq
-      | `Geq -> Gte
-      | `Gt -> Gt
-      | `Leq -> Lte
-      | `Lt -> Lt
-    in
     let package_version = Package_version.of_opam_package_version version in
-    op, package_version
+    Package_dependency.Constraint.Op.of_opam relop, package_version
   ;;
 
   let to_dyn (op, package_version) =
-    Dyn.Tuple [ Op.to_dyn op; Package_version.to_dyn package_version ]
+    Dyn.Tuple [ Relop.to_dyn op; Package_version.to_dyn package_version ]
   ;;
 
   let to_string (op, package_version) =
-    sprintf "%s %s" (Op.to_string op) (Package_version.to_string package_version)
+    sprintf "%s %s" (Relop.to_string op) (Package_version.to_string package_version)
   ;;
 end
 

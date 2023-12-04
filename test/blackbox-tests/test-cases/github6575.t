@@ -14,3 +14,12 @@ We turn it into a single-file test:
 
 Dune detects the change:
   $ dune build @sometest
+
+The other way. Turn the file test into a directory test:
+
+  $ mv sometest.t sometest.t.bak
+  $ mkdir sometest.t
+  $ mv sometest.t.bak sometest.t/run.t
+
+And this works:
+  $ dune build @sometest

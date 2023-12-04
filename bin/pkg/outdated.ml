@@ -7,7 +7,6 @@ let find_outdated_packages
   ~context_name_arg
   ~all_contexts_arg
   ~opam_repository_path
-  ~opam_repository_url
   ~transitive
   ()
   =
@@ -31,7 +30,6 @@ let find_outdated_packages
               get_repos
                 repos
                 ~opam_repository_path
-                ~opam_repository_url
                 ~repositories
                 ~update_opam_repositories:true
             and+ local_packages = find_local_packages in
@@ -90,7 +88,6 @@ let term =
       & flag
       & info [ "all-contexts" ] ~doc:"Check for outdated packages in all contexts")
   and+ opam_repository_path = Opam_repository_path.term
-  and+ opam_repository_url = Opam_repository_url.term
   and+ transitive =
     Arg.(
       value
@@ -106,7 +103,6 @@ let term =
        ~context_name_arg
        ~all_contexts_arg
        ~opam_repository_path
-       ~opam_repository_url
        ~transitive
 ;;
 

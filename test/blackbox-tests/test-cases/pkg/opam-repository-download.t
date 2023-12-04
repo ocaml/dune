@@ -19,15 +19,23 @@ Make a mock repo tarball that will get used by dune to download the package
   $ mkdir fake-xdg-cache
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.8)
+  > (lang dune 3.10)
   > (generate_opam_files true)
   > 
   > (package
   >   (name baz)
   >   (depends bar))
   > EOF
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.10)
+  > (lock_dir
+  >  (repositories mock))
+  > (repository
+  >  (name mock)
+  >  (source "git+file://$(pwd)/mock-opam-repository"))
+  > EOF
 
-  $ XDG_CACHE_HOME=$(pwd)/fake-xdg-cache dune pkg lock --opam-repository-url=git+file://$(pwd)/mock-opam-repository
+  $ XDG_CACHE_HOME=$(pwd)/fake-xdg-cache dune pkg lock
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.0.1

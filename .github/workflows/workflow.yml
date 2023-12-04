@@ -80,6 +80,9 @@ jobs:
         run: |
           git config --global user.name github-actions[bot]
           git config --global user.email github-actions[bot]@users.noreply.github.com
+          
+      - name: Pin opam packages
+        run: opam pin ./opam/ --no-action -y
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: opam install ./dune.opam --deps-only --with-test

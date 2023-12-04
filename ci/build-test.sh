@@ -59,6 +59,9 @@ echo ======== Set git user
 git config --global user.name 'github-actions[bot]'
 git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
+echo ======== Pin opam packages
+opamrun pin add ./opam/ --no-action -y
+
 echo ======== Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
 opamrun install ./dune.opam --deps-only --with-test
 

@@ -128,7 +128,8 @@ let build_mlds_map stanzas ~dir ~files =
         | _ -> acc)
       |> Memo.return)
   in
-  Memo.parallel_map stanzas ~f:(function
+  Memo.parallel_map stanzas ~f:(fun x ->
+    match Stanza.repr x with
     | Documentation.T doc ->
       let+ mlds =
         let+ mlds = Memo.Lazy.force mlds in
@@ -186,7 +187,7 @@ end = struct
           Super_context.expander sctx ~dir >>| add_sources_to_expander sctx
         in
         Memo.parallel_map stanzas ~f:(fun stanza ->
-          match (stanza : Stanza.t) with
+          match Stanza.repr stanza with
           | Coq_stanza.Coqpp.T { modules; _ } ->
             Coq_sources.mlg_files ~sctx ~dir ~modules
             >>| List.rev_map ~f:(fun mlg_file ->

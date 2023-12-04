@@ -171,7 +171,7 @@ module Library : sig
     ; melange_runtime_deps : Loc.t * Dep_conf.t list
     }
 
-  type Stanza.t += T of t
+  type Stanza.repr += T of t
 
   val sub_dir : t -> string option
   val package : t -> Package.t option
@@ -224,7 +224,7 @@ module Plugin : sig
     ; optional : bool
     }
 
-  type Stanza.t += T of t
+  type Stanza.repr += T of t
 end
 
 module Install_conf : sig
@@ -237,7 +237,7 @@ module Install_conf : sig
     ; enabled_if : Blang.t
     }
 
-  type Stanza.t += T of t
+  type Stanza.repr += T of t
 end
 
 module Executables : sig
@@ -287,7 +287,7 @@ module Executables : sig
     ; dune_version : Dune_lang.Syntax.Version.t
     }
 
-  type Stanza.t += T of t
+  type Stanza.repr += T of t
 
   (** Check if the executables have any foreign stubs or archives. *)
   val has_foreign : t -> bool
@@ -308,7 +308,7 @@ module Copy_files : sig
     ; syntax_version : Dune_lang.Syntax.Version.t
     }
 
-  type Stanza.t += T of t
+  type Stanza.repr += T of t
 end
 
 module Rule : sig
@@ -325,7 +325,7 @@ module Rule : sig
     ; package : Package.t option
     }
 
-  type Stanza.t += T of t
+  type Stanza.repr += T of t
 end
 
 module Alias_conf : sig
@@ -339,7 +339,7 @@ module Alias_conf : sig
     ; loc : Loc.t
     }
 
-  type Stanza.t += T of t
+  type Stanza.repr += T of t
 end
 
 module Documentation : sig
@@ -349,7 +349,7 @@ module Documentation : sig
     ; mld_files : Ordered_set_lang.t
     }
 
-  type Stanza.t += T of t
+  type Stanza.repr += T of t
 end
 
 module Tests : sig
@@ -363,7 +363,7 @@ module Tests : sig
     ; action : Dune_lang.Action.t option
     }
 
-  type Stanza.t += T of t
+  type Stanza.repr += T of t
 end
 
 module Toplevel : sig
@@ -374,7 +374,7 @@ module Toplevel : sig
     ; pps : Preprocess.Without_instrumentation.t Preprocess.t
     }
 
-  type Stanza.t += T of t
+  type Stanza.repr += T of t
 end
 
 module Include_subdirs : sig
@@ -387,7 +387,7 @@ module Include_subdirs : sig
     | Include of qualification
 
   type stanza = Loc.t * t
-  type Stanza.t += T of stanza
+  type Stanza.repr += T of stanza
 end
 
 (** The purpose of [Library_redirect] stanza is to create a redirection from an
@@ -411,7 +411,8 @@ module Library_redirect : sig
 
   module Local : sig
     type nonrec t = (Loc.t * Lib_name.Local.t) t
-    type Stanza.t += T of t
+
+    include Stanza.S with type t := t
 
     val of_private_lib : Library.t -> t option
   end
@@ -427,7 +428,7 @@ module Deprecated_library_name : sig
   end
 
   type t = Old_name.t Library_redirect.t
-  type Stanza.t += T of t
+  type Stanza.repr += T of t
 
   val old_public_name : t -> Lib_name.t
 end

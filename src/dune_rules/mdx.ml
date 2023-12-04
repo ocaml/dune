@@ -194,6 +194,8 @@ let enabled_if t = t.enabled_if
 
 include Stanza.Make (struct
     type nonrec t = t
+
+    include Poly
   end)
 
 let syntax =
@@ -268,7 +270,7 @@ let () =
   let decode = Dune_lang.Syntax.since Stanza.syntax (2, 4) >>> decode in
   Dune_project.Extension.register_simple
     syntax
-    (return [ ("mdx", decode >>| fun x -> [ T x ]) ])
+    (return [ ("mdx", decode >>| fun x -> [ make_stanza x ]) ])
 ;;
 
 (** Returns the list of files (in _build) to be passed to mdx for the given

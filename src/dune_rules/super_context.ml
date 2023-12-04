@@ -129,7 +129,8 @@ end = struct
     @@
     let open Option.O in
     let* stanzas = stanzas in
-    List.find_map stanzas.stanzas ~f:(function
+    List.find_map stanzas.stanzas ~f:(fun stanza ->
+      match Stanza.repr stanza with
       | Dune_env.T config -> Some config
       | _ -> None)
   ;;
@@ -327,7 +328,7 @@ let add_packages_env context ~base stanzas packages =
                 in
                 add_in_package_section acc pkg_name section
             in
-            match stanza with
+            match Stanza.repr stanza with
             | Dune_file.Install_conf.T { section = Site { pkg; site; loc }; _ } ->
               add_in_package_sites pkg site loc
             | Dune_file.Plugin.T { site = loc, (pkg, site); _ } ->

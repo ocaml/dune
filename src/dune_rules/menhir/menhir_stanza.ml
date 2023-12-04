@@ -43,12 +43,14 @@ let decode =
 
 include Stanza.Make (struct
     type nonrec t = t
+
+    include Poly
   end)
 
 let () =
   Dune_project.Extension.register_simple
     syntax
-    (return [ ("menhir", decode >>| fun x -> [ T x ]) ])
+    (return [ ("menhir", decode >>| fun x -> [ make_stanza x ]) ])
 ;;
 
 let modules (stanza : t) : string list =

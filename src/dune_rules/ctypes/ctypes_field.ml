@@ -151,6 +151,8 @@ type t =
 
 include Stanza.Make (struct
     type nonrec t = t
+
+    include Poly
   end)
 
 let decode =
@@ -200,7 +202,7 @@ let () =
   let open Dune_lang.Decoder in
   Dune_project.Extension.register_simple
     syntax
-    (return [ (name, decode >>| fun x -> [ T x ]) ])
+    (return [ (name, decode >>| fun x -> [ make_stanza x ]) ])
 ;;
 
 let type_gen_script ctypes =

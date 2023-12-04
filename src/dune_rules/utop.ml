@@ -52,8 +52,11 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
           >>= function
           | None -> Memo.return Libs_and_ppxs.empty
           | Some (d : Dune_file.t) ->
-            Memo.List.fold_left d.stanzas ~init:Libs_and_ppxs.empty ~f:(fun (acc, pps) ->
-                function
+            Memo.List.fold_left
+              d.stanzas
+              ~init:Libs_and_ppxs.empty
+              ~f:(fun (acc, pps) stanza ->
+                match Stanza.repr stanza with
                 | Dune_file.Library.T l ->
                   let+ lib =
                     let open Memo.O in

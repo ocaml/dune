@@ -266,6 +266,8 @@ module Library = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 end
 

@@ -536,7 +536,7 @@ module Crawl = struct
       Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
         Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
           let dir = Path.Build.append_source (Context.build_dir context) dune_file.dir in
-          match stanza with
+          match Stanza.repr stanza with
           | Dune_file.Executables.T exes ->
             executables sctx ~options ~project:dune_file.project ~dir exes
           | _ -> Memo.return None)

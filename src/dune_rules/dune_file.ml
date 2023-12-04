@@ -1093,6 +1093,8 @@ module Library = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 end
 
@@ -1118,6 +1120,8 @@ module Plugin = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 end
 
@@ -1133,6 +1137,8 @@ module Install_conf = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 
   let decode =
@@ -1567,6 +1573,8 @@ module Executables = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 
   let bootstrap_info_extension =
@@ -1732,6 +1740,8 @@ module Rule = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 
   type action_or_field =
@@ -1994,6 +2004,8 @@ module Alias_conf = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 
   let decode =
@@ -2033,6 +2045,8 @@ module Tests = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 
   let gen_parse names =
@@ -2111,6 +2125,8 @@ module Toplevel = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 
   let decode =
@@ -2149,6 +2165,8 @@ module Copy_files = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 
   let long_form =
@@ -2187,6 +2205,8 @@ module Documentation = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 
   let decode =
@@ -2211,6 +2231,8 @@ module Include_subdirs = struct
 
   include Stanza.Make (struct
       type nonrec t = stanza
+
+      include Poly
     end)
 
   let decode ~enable_qualified =
@@ -2239,6 +2261,8 @@ module Library_redirect = struct
 
     include Stanza.Make (struct
         type nonrec t = t
+
+        include Poly
       end)
 
     let for_lib (lib : Library.t) ~new_public_name ~loc : t =
@@ -2296,6 +2320,8 @@ module Deprecated_library_name = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 
   let old_public_name (t : t) = Public_lib.name (fst t.old_name)
@@ -2323,34 +2349,36 @@ module Include = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 end
 
 module Stanzas = struct
   type t = Stanza.t list
 
-  let rules l = List.map l ~f:(fun x -> Rule.T x)
-  let execs exe = [ Executables.T exe ]
+  let rules l = List.map l ~f:(fun x -> Rule.make_stanza x)
+  let execs exe = [ Executables.make_stanza exe ]
 
   type constructors = Stanza.Parser.t list
 
   let stanzas : constructors =
     [ ( "library"
       , let+ x = Library.decode in
-        let base = [ Library.T x ] in
+        let base = [ Library.make_stanza x ] in
         match Library_redirect.Local.of_lib x with
         | None -> base
-        | Some r -> Library_redirect.Local.T r :: base )
+        | Some r -> Library_redirect.Local.make_stanza r :: base )
     ; ( "foreign_library"
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
         and+ x = Foreign.Library.decode in
-        [ Foreign.Library.T x ] )
+        [ Foreign.Library.make_stanza x ] )
     ; "executable", Executables.single >>| execs
     ; "executables", Executables.multi >>| execs
     ; ( "rule"
       , let+ loc = loc
         and+ x = Rule.decode in
-        [ Rule.T { x with loc } ] )
+        [ Rule.make_stanza { x with loc } ] )
     ; ( "ocamllex"
       , let+ loc = loc
         and+ x = Rule.ocamllex in
@@ -2361,23 +2389,23 @@ module Stanzas = struct
         rules (Rule.ocamlyacc_to_rule loc x) )
     ; ( "install"
       , let+ x = Install_conf.decode in
-        [ Install_conf.T x ] )
+        [ Install_conf.make_stanza x ] )
     ; ( "alias"
       , let+ x = Alias_conf.decode in
-        [ Alias_conf.T x ] )
+        [ Alias_conf.make_stanza x ] )
     ; ( "copy_files"
       , let+ x = Copy_files.decode in
-        [ Copy_files.T x ] )
+        [ Copy_files.make_stanza x ] )
     ; ( "copy_files#"
       , let+ x = Copy_files.decode in
-        [ Copy_files.T { x with add_line_directive = true } ] )
+        [ Copy_files.make_stanza { x with add_line_directive = true } ] )
     ; ( "include"
       , let+ loc = loc
         and+ fn = relative_file in
-        [ Include.T (loc, fn) ] )
+        [ Include.make_stanza (loc, fn) ] )
     ; ( "documentation"
       , let+ d = Documentation.decode in
-        [ Documentation.T d ] )
+        [ Documentation.make_stanza d ] )
     ; ( "jbuild_version"
       , let+ () = Dune_lang.Syntax.deleted_in Stanza.syntax (1, 0)
         and+ _ = Jbuild_version.decode in
@@ -2385,17 +2413,17 @@ module Stanzas = struct
     ; ( "tests"
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 0)
         and+ t = Tests.multi in
-        [ Tests.T t ] )
+        [ Tests.make_stanza t ] )
     ; ( "test"
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 0)
         and+ t = Tests.single in
-        [ Tests.T t ] )
+        [ Tests.make_stanza t ] )
     ; ( "external_variant"
       , let+ () = Dune_lang.Syntax.deleted_in Stanza.syntax (2, 6) in
         [] )
     ; ( "env"
       , let+ x = Dune_env.decode in
-        [ Dune_env.T x ] )
+        [ Dune_env.make_stanza x ] )
     ; ( "include_subdirs"
       , let* project = Dune_project.get_exn () in
         let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
@@ -2403,15 +2431,15 @@ module Stanzas = struct
           let enable_qualified = Dune_project.is_extension_set project Coq_stanza.key in
           Include_subdirs.decode ~enable_qualified
         and+ loc = loc in
-        [ Include_subdirs.T (loc, t) ] )
+        [ Include_subdirs.make_stanza (loc, t) ] )
     ; ( "toplevel"
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 7)
         and+ t = Toplevel.decode in
-        [ Toplevel.T t ] )
+        [ Toplevel.make_stanza t ] )
     ; ( "deprecated_library_name"
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
         and+ t = Deprecated_library_name.decode in
-        [ Deprecated_library_name.T t ] )
+        [ Deprecated_library_name.make_stanza t ] )
     ; ( "cram"
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 7)
         and+ t = Cram_stanza.decode
@@ -2428,15 +2456,15 @@ module Stanzas = struct
                   "You can enable cram tests by adding (cram enable) to your \
                    dune-project file."
               ];
-        [ Cram_stanza.T t ] )
+        [ Cram_stanza.make_stanza t ] )
     ; ( "generate_sites_module"
       , let+ () = Dune_lang.Syntax.since Site.dune_site_syntax (0, 1)
         and+ t = Generate_sites_module_stanza.decode in
-        [ Generate_sites_module_stanza.T t ] )
+        [ Generate_sites_module_stanza.make_stanza t ] )
     ; ( "plugin"
       , let+ () = Dune_lang.Syntax.since Site.dune_site_syntax (0, 1)
         and+ t = Plugin.decode in
-        [ Plugin.T t ] )
+        [ Plugin.make_stanza t ] )
     ]
   ;;
 
@@ -2458,12 +2486,13 @@ module Stanzas = struct
      in OCaml syntax.*)
   let rec parse_file_includes ~stanza_parser ~context sexps =
     List.concat_map sexps ~f:(parse stanza_parser)
-    |> Memo.List.concat_map ~f:(function
+    |> Memo.List.concat_map ~f:(fun stanza ->
+      match Stanza.repr stanza with
       | Include.T (loc, fn) ->
         let open Memo.O in
         let* sexps, context = Include_stanza.load_sexps ~context (loc, fn) in
         parse_file_includes ~stanza_parser ~context sexps
-      | stanza -> Memo.return [ stanza ])
+      | _ -> Memo.return [ stanza ])
   ;;
 
   let parse ~file ~dir (project : Dune_project.t) sexps =
@@ -2485,7 +2514,7 @@ module Stanzas = struct
     in
     let (_ : bool) =
       List.fold_left stanzas ~init:false ~f:(fun env stanza ->
-        match stanza with
+        match Stanza.repr stanza with
         | Dune_env.T e ->
           if env
           then
@@ -2500,7 +2529,8 @@ module Stanzas = struct
   ;;
 end
 
-let stanza_package = function
+let stanza_package stanza =
+  match Stanza.repr stanza with
   | Library.T lib -> Library.package lib
   | Alias_conf.T { package = Some package; _ }
   | Rule.T { package = Some package; _ }
@@ -2531,7 +2561,7 @@ let is_promoted_rule =
     | _ -> false
   in
   fun version rule ->
-    match rule with
+    match Stanza.repr rule with
     | Rule.T { mode; _ } | Menhir_stanza.T { mode; _ } -> is_promoted_mode version mode
     | _ -> false
 ;;
@@ -2574,7 +2604,7 @@ let fold_stanzas t ~init ~f = Id_fold.fold_stanzas t ~init ~f
 let equal t { dir; project; stanzas } =
   Path.Source.equal t.dir dir
   && Dune_project.equal t.project project
-  && List.equal phys_equal t.stanzas stanzas
+  && List.equal Stanza.equal t.stanzas stanzas
 ;;
 
 let hash = Poly.hash

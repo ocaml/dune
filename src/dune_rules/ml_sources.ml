@@ -427,7 +427,7 @@ let modules_of_stanzas =
   in
   fun stanzas ~project ~dir ~libs ~lookup_vlib ~modules ~include_subdirs ->
     Memo.parallel_map stanzas ~f:(fun stanza ->
-      match (stanza : Stanza.t) with
+      match Stanza.repr stanza with
       | Library.T lib ->
         (* jeremiedimino: this [Resolve.get] means that if the user writes an
            invalid [implements] field, we will get an error immediately even if

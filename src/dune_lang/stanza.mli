@@ -3,14 +3,28 @@
 open! Stdune
 open Dune_sexp
 
-type t = private ..
+type repr = ..
+type t
+
+val repr : t -> repr
+
+module type S = sig
+  type stanza := t
+  type t
+  type repr += T of t
+
+  val make_stanza : t -> stanza
+end
 
 module Make (S : sig
     type t
-  end) : sig
-  type t += T of S.t
-end
 
+    val hash : t -> int
+    val compare : t -> t -> Ordering.t
+  end) : S with type t := S.t
+
+val equal : t -> t -> bool
+val hash : t -> int
 val latest_version : Syntax.Version.t
 
 module Parser : sig

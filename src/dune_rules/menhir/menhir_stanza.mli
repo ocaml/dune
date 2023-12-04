@@ -19,4 +19,4 @@ val modules : t -> string list
     directory. *)
 val targets : t -> string list
 
-type Stanza.t += T of t
+type Stanza.repr += T of t
